@@ -700,7 +700,7 @@ cold reset while the pin is high, so the isolation holds across it.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="subsystem-controls-and-clock-gating"><a class="anchor" href="#subsystem-controls-and-clock-gating"></a><a class="link" href="#subsystem-controls-and-clock-gating">4. Subsystem Controls and Clock Gating</a></h2>
+<h2 id="smc-subsystem-controls"><a class="anchor" href="#smc-subsystem-controls"></a><a class="link" href="#smc-subsystem-controls">4. Subsystem Controls and Clock Gating</a></h2>
 <div class="sectionbody">
 <span id="advanced-reset-features-table"></span>
 <span id="advanced-subsystem-reset-capabilities"></span>
@@ -712,7 +712,10 @@ SRAM, debug and critical-signal hold controls for 32 subsystems. These are reque
 to the receiving subsystem, whose implementation defines the retained state.
 <code>SS_CONFIG_LOCK</code> and <code>SS_COLD_RESET_LOCK</code> mask writes to the corresponding
 configuration and cold-reset bits. <code>SS_RESET_COMPLETE</code> samples the return vector
-through a three-stage synchronizer; the unit does not sequence releases from it.</p>
+through a three-stage synchronizer; the unit does not sequence releases from it.
+The
+<a href="../../../ocah-programmer-guide/latest/index.html#smc-subsystem-resets" class="xref page">subsystem reset sequences</a>
+are in the Programmer&#8217;s Guide.</p>
 </div>
 <div class="paragraph">
 <p>SMC blocks have their own clock-gating enables, activity detection and hysteresis

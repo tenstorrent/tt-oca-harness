@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-programmer-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="index.html">Programmer&#8217;s Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#smc-programming-guide">SMC Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#sep-programming-guide">SEP Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#sep-smc-common-blocks-communication">SEP &amp; SMC Common Blocks &amp; Communication</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#dtp-programming-guide">DTP Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#reset-control">Reset Control</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="index.html#smc-boot-rom">A. SMC Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="index.html#sep-boot-rom">B. SEP Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="index.html#km-application-rom">C. Key Manager Application ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="index.html#aou-software-operation-guide">D. AXI-over-UCIe Bridge (AoU) Software Operation</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect1">
+<h2 id="reset-control"><a class="anchor" href="#reset-control"></a><a class="link" href="#reset-control">1. Reset Control</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This chapter lists every reset that firmware or a debugger can request in the
+OCA Harness, and the section that gives its programming sequence. Resets from pins and power-good are described in the
+<a href="../../ocah-docs/latest/reset.html#ocah-reset" class="xref page">Reset chapter</a>
+of the Technical Reference Manual.</p>
+</div>
+<table id="reset-control-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Software- and debugger-requested resets</caption>
+<colgroup>
+<col style="width: 22.2222%;">
+<col style="width: 33.3333%;">
+<col style="width: 22.2222%;">
+<col style="width: 22.2223%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Reset</th>
+<th class="tableblock halign-left valign-top">Control</th>
+<th class="tableblock halign-left valign-top">Requested by</th>
+<th class="tableblock halign-left valign-top">Sequence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC CPU core or uncore, held</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CPU_CTRL.RESET_CTRL</code> reset bits, <code>RESET_TIMEOUT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP, or another manager outside the SMC cluster</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#smc-core-reset-sequence">[smc-core-reset-sequence]</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC CPU core restart</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RESET_CTRL.core&lt;n&gt;_reset_pulse_start</code>, <code>CORE_RESET_PULSE_COUNT</code>,
+<code>RESET_VECTOR[n]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP, or another manager outside the SMC cluster</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#smc-core-reset-pulse">[smc-core-reset-pulse]</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC warm reset on watchdog expiry</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC WDT <code>CTRL.wdogrsten</code>, <code>CPU_CTRL.WDT_TIMEOUT</code>, <code>WDT_TIMEOUT_RESET</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC firmware arms it; an unserviced WDT triggers it</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#smc-watchdog">[smc-watchdog]</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Managed subsystem cold or warm reset</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset unit <code>SS_COLD_RESET_N</code>, <code>SS_WARM_RESET_N</code>, hold and lock registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC firmware</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#smc-subsystem-resets">[smc-subsystem-resets]</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Function-level cool reset and isolation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset unit <code>ISOLATE_REQ_*</code> registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC firmware prepares and recovers; a PCIe FLR triggers it</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#smc-flr-isolation">[smc-flr-isolation]</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External CPU cluster non-debug-module reset</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NDMRESET_REQUEST</code>, <code>NDMRESET_PROCESS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External cluster requests; SMC firmware answers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#smc-ndm-reset">[smc-ndm-reset]</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP cryptographic engines, TRNG and Key Manager</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_RESET_CTRL.SW_RESET_N</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP firmware</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sep-software-reset">[sep-software-reset]</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager restart</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x53525354</code> written to Key Manager <code>SOFT_RST_CODE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager firmware</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sep-software-reset">[sep-software-reset]</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP CPU on watchdog bite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP watchdog bite threshold</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP firmware arms it; an unserviced watchdog triggers it</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sep-watchdog">[sep-watchdog]</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AoU core</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AOU_CON0.AOU_SW_RESET</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Firmware handling a LinkReset</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#aou-linkreset-error-reporting">[aou-linkreset-error-reporting]</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug overrides of any SMU reset</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG IC_RESET TDR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debugger</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#dtp-ic-reset-overrides">[dtp-ic-reset-overrides]</a></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Two classes of reset differ in what software must do first. The SMC CPU cluster
+resets and the SEP engine resets drain and isolate the affected AXI paths in
+hardware before the reset takes effect. The subsystem resets of the reset unit
+and the AoU core reset do not, so software quiesces traffic to and from the
+target before requesting them.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/register-sections.js"></script>
+<script src="../../_/js/toc-collapse.js"></script>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script src="../../_/js/vendor/viewer.min.js"></script>
+<script src="../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>

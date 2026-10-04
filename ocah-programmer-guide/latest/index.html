@@ -103,6 +103,9 @@
     <a class="nav-link" href="#dtp-programming-guide">DTP Programming Guide</a>
   </li>
   <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="#reset-control">Reset Control</a>
+  </li>
+  <li class="nav-item" data-depth="2">
     <button class="nav-item-toggle"></button>
     <span class="nav-text">Appendices</span>
 <ul class="nav-list">
@@ -249,6 +252,10 @@ filters, mailboxes and reference counter that both subsystems share.</p>
 <li>
 <p><a href="#dtp-programming-guide">DTP Programming Guide</a> covers cross-trigger configuration and the debug
 host procedures.</p>
+</li>
+<li>
+<p><a href="#reset-control">Reset Control</a> lists every software- and debugger-requested reset and
+where its sequence is described.</p>
 </li>
 <li>
 <p>The appendices document the production SMC and SEP Boot ROMs, the Key
@@ -528,7 +535,13 @@ handshake and the associated risks.</p>
 <p>A software reset through <code>CPU_CTRL.RESET_CTRL</code> is withheld until the CPU AXI
 isolation boundary drains. Holding any core in reset terminates the other
 cores' MMIO accesses with SLVERR and stalls L2 frontend traffic until every
-core is released. To request one:</p>
+core is released. An SMC hart that requests a reset therefore cannot read the
+status registers below until the boundary reconnects. Request and monitor these
+resets from a manager outside the cluster, normally the SEP, which reaches
+<code>CPU_CTRL</code> at <code>0x4003_9000</code> in its view of the SMC.</p>
+</div>
+<div class="paragraph">
+<p>To hold a core or the uncore in reset:</p>
 </div>
 <div class="olist arabic">
 <ol class="arabic">
@@ -539,8 +552,7 @@ how long the request may wait for the drain; zero waits indefinitely.
 withholding the reset, <code>1</code> forces the reset and flushes the isolation blocks.</p>
 </li>
 <li>
-<p>Write the core or uncore reset bit, or the core reset pulse bit, in
-<code>RESET_CTRL</code>.</p>
+<p>Clear the core or uncore reset bit in <code>RESET_CTRL</code>.</p>
 </li>
 <li>
 <p>Poll <code>RESET_TIMEOUT.reset_applied</code>, which rises once the reset is applied by a
@@ -548,7 +560,7 @@ completed drain or a forced timeout. <code>RESET_TIMEOUT.reset_timeout</code> re
 expired wait in either mode and stays high until the request is removed.</p>
 </li>
 <li>
-<p>Release the reset bit, or let the pulse complete, so the boundary reconnects.</p>
+<p>Set the reset bit again so the boundary reconnects.</p>
 </li>
 </ol>
 </div>
@@ -565,6 +577,69 @@ address. Before they join normal coherent operation, software can program a
 parked hart&#8217;s <code>RESET_VECTOR[n]</code> and pulse its reset to start it at that address.
 Avoid this flow where possible for the reasons described in the Technical
 Reference Manual.</p>
+</div>
+<div class="sect4">
+<h5 id="smc-core-reset-pulse"><a class="anchor" href="#smc-core-reset-pulse"></a><a class="link" href="#smc-core-reset-pulse">Core Reset Pulse</a></h5>
+<div class="paragraph">
+<p>A reset pulse restarts one core without software having to release it. The
+pulse passes through the same drain handshake as a held reset, and
+<code>RESET_TIMEOUT</code> applies to it in the same way. To restart core <code>n</code>:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Program <code>RESET_VECTOR[n]</code> if the core must start at a different address.</p>
+</li>
+<li>
+<p>Program <code>CORE_RESET_PULSE_COUNT</code>. Once the drain completes, the core stays
+out of reset for <code>pre_reset_count + 1</code> SMC clock cycles and is then held in
+reset for <code>post_reset_count + 1</code> cycles. The reset values give 9 and 17
+cycles.</p>
+</li>
+<li>
+<p>Write 1 to <code>RESET_CTRL.core&lt;n&gt;_reset_pulse_start</code>, leaving
+<code>core&lt;n&gt;_reset_n</code> at 1. A 0 in <code>core&lt;n&gt;_reset_n</code> holds the core in reset for
+the whole pulse and after it.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The pulse start bits read as 0, so a read-modify-write of <code>RESET_CTRL</code> does not
+start another pulse. Writing a start bit while that core&#8217;s pulse runs restarts
+the count of the current phase. <code>CORE_RESET_PULSE_COUNT.core_resets_done</code> bit
+<code>n</code> reads 0 while the pulse of core <code>n</code> runs. It also reads 1 before a withheld
+pulse starts, so confirm the restart through a handshake with the restarted
+core, such as a scratch register it writes, rather than by polling
+<code>core_resets_done</code>.</p>
+</div>
+<div class="listingblock">
+<div class="title">Core reset pulse example C definitions.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// SMC CPU control register addresses.
+// In SEP-local address space, through the SEP view of the SMC.
+#define SMC_CPU_CTRL_BASE           0x40039000
+#define SMC_REG_RESET_VECTOR_LO(n)  (SMC_CPU_CTRL_BASE + ((n) * 0x8))
+#define SMC_REG_RESET_VECTOR_HI(n)  (SMC_CPU_CTRL_BASE + ((n) * 0x8) + 0x4)
+#define SMC_REG_RESET_CTRL          (SMC_CPU_CTRL_BASE + 0x20)
+
+// RESET_CTRL pulse start bit of core `n`.
+#define RESET_CTRL_CORE_PULSE_START(n) (0x10 &lt;&lt; (n))</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Core reset pulse example C usage.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Restart SMC core `n` at `entry` with a reset pulse.
+void smc_core_restart(unsigned n, uint64_t entry) {
+    write32(SMC_REG_RESET_VECTOR_LO(n), (uint32_t)entry);
+    write32(SMC_REG_RESET_VECTOR_HI(n), (uint32_t)(entry &gt;&gt; 32));
+    __asm__ volatile("fence" ::: "memory");
+
+    uint32_t val = read32(SMC_REG_RESET_CTRL);
+    write32(SMC_REG_RESET_CTRL, val | RESET_CTRL_CORE_PULSE_START(n));
+}</code></pre>
+</div>
+</div>
 </div>
 </div>
 <div class="sect3">
@@ -875,7 +950,7 @@ delivery paths select from the same accrued bits, so clearing them affects both.
 <h4 id="smc-watchdog"><a class="anchor" href="#smc-watchdog"></a><a class="link" href="#smc-watchdog">2.2.2. Watchdog Timers</a></h4>
 <div class="paragraph">
 <p>Each core of the SMC has a dedicated watchdog timer (WDT), that can generate
-an interrupt and optionally a reset of the core if not serviced within a
+an interrupt and optionally a reset request if not serviced within a
 configurable period of time. The watchdog timers are driven by the SMU clock
 signal <code>clk_smu_i</code>.</p>
 </div>
@@ -909,15 +984,24 @@ must be manually written to to set it to a lower value (after unlocking a
 register write by writing to <code>KEY</code>).</p>
 </div>
 <div class="paragraph">
-<p>If <code>wdogrsten</code> (bit 8) is enabled in <code>CTRL</code> and the WDT fires, the core being
-reset will not be able to service its own WDT interrupt. Other SMC cores
-<strong>should</strong> enable interrupts from each other&#8217;s watchdog timers to be notified when
-a core is reset by the watchdog, so that SMC software can robustly recover from
-the failure or reallocate work while the reset core is brought up again.</p>
+<p>If <code>wdogrsten</code> (bit 8) is enabled in <code>CTRL</code> when the WDT fires, the WDT latches
+a reset request until the cluster uncore is reset. The request does not reset the core.
+It starts that core&#8217;s second-stage countdown in <code>CPU_CTRL</code>, and when the
+countdown expires the SMC warm reset restarts the whole CPU cluster.
+<code>CPU_CTRL.WDT_TIMEOUT</code> sets the countdown length in SMC clock cycles, 16384
+after reset, and writing 1 to <code>WDT_TIMEOUT_RESET.reset_cycle_count_&lt;n&gt;</code>
+restarts the countdown of core <code>n</code>. Feeding the WDT does not withdraw a latched
+request, so restarting the countdown only postpones the warm reset.</p>
+</div>
+<div class="paragraph">
+<p>The core whose WDT fired is presumed unable to service its own interrupt. Other
+SMC cores <strong>should</strong> enable interrupts from each other&#8217;s watchdog timers to be
+notified, so that SMC software can save state or reallocate work before the
+warm reset, postponing it while it does.</p>
 </div>
 <div class="paragraph">
 <p>In the event of a watchdog timer interrupt, software&#8201;&#8212;&#8201;running on a core other
-than the one reset by <code>wdogrsten</code> being set&#8201;&#8212;&#8201;should clear the interrupt at the</p>
+than the one whose WDT fired&#8201;&#8212;&#8201;should clear the interrupt at the</p>
 </div>
 <div id="smc-watchdog-clear" class="paragraph">
 <p>watchdog by:</p>
@@ -2426,7 +2510,105 @@ void dma_copy(uint64_t dst, uint64_t src, uint32_t len) {
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-flr-isolation"><a class="anchor" href="#smc-flr-isolation"></a><a class="link" href="#smc-flr-isolation">2.2.7. Function-Level Reset and Isolation</a></h4>
+<h4 id="smc-subsystem-resets"><a class="anchor" href="#smc-subsystem-resets"></a><a class="link" href="#smc-subsystem-resets">2.2.7. Subsystem Resets</a></h4>
+<div class="paragraph">
+<p>The SMC reset unit drives a cold reset, a warm reset and four warm-reset hold
+requests to each of up to 32 managed subsystems. Bit <code>i</code> of every <code>SS_*</code>
+register controls subsystem <code>i</code>. The integration assigns the indices and
+defines what each hold preserves, as the adopter chiplet specification records.
+The hardware is described in the
+<a href="../../ocah-docs/latest/smc/clk_rst.html#smc-subsystem-controls" class="xref page">Subsystem Controls and Clock Gating</a>
+section of the Technical Reference Manual.</p>
+</div>
+<div class="paragraph">
+<p>After a primary reset, <code>SS_COLD_RESET_N</code> reads 0, holding every managed
+subsystem in cold reset, and <code>SS_WARM_RESET_N</code> reads all ones. The Boot ROMs do
+not write either register, so later firmware releases the subsystems it uses.
+The reset unit does not sequence releases: the order between subsystems is
+firmware policy. These resets have no drain handshake, so quiesce traffic to and
+from a subsystem before asserting either of its resets. To release subsystem
+<code>i</code> from cold reset:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Program <code>SS_CONFIG</code> and lock it with <code>SS_CONFIG_LOCK</code>, if the integration
+uses them.</p>
+</li>
+<li>
+<p>Set bit <code>i</code> of <code>SS_COLD_RESET_N</code> with a read-modify-write that preserves the
+other bits.</p>
+</li>
+<li>
+<p>Poll bit <code>i</code> of <code>SS_RESET_COMPLETE</code> until it reads 1, if the subsystem
+reports completion. The register shows the subsystem&#8217;s completion level after
+synchronization; it does not latch.</p>
+</li>
+<li>
+<p>Set bit <code>i</code> of <code>SS_COLD_RESET_LOCK</code>. The matching <code>SS_COLD_RESET_N</code> bit then
+ignores writes until the next primary reset. Locking a bit while it is 0 keeps
+the subsystem in cold reset, which disables a subsystem the chiplet does not
+use.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>To warm-reset subsystem <code>i</code>:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Set bit <code>i</code> of each hold register, <code>SS_CONFIG_HOLD</code>, <code>SS_SRAM_HOLD</code>,
+<code>SS_CRITICAL_HOLD</code> and <code>SS_DEBUG_HOLD</code>, whose state the subsystem must keep.
+Leave the holds unchanged until the warm reset is released.</p>
+</li>
+<li>
+<p>Clear bit <code>i</code> of <code>SS_WARM_RESET_N</code>, and keep it clear for as long as the
+subsystem requires; the reset unit does not time the warm reset.</p>
+</li>
+<li>
+<p>Set the bit again, and poll <code>SS_RESET_COMPLETE</code> as for a cold release.</p>
+</li>
+<li>
+<p>Clear the hold bits.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>A JTAG IC_RESET override can replace any subsystem&#8217;s cold or warm reset, as
+<a href="#dtp-ic-reset-overrides">IC_RESET Overrides</a> describes.</p>
+</div>
+<div class="listingblock">
+<div class="title">Subsystem reset example C definitions.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Reset unit register addresses.
+// In SMC-local address space.
+#define RESET_UNIT_BASE                0xC0002000
+#define RESET_UNIT_SS_COLD_RESET_N     (RESET_UNIT_BASE + 0x40)
+#define RESET_UNIT_SS_RESET_COMPLETE   (RESET_UNIT_BASE + 0x60)
+#define RESET_UNIT_SS_COLD_RESET_LOCK  (RESET_UNIT_BASE + 0x70)</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Subsystem reset example C usage.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Release subsystem `i` from cold reset and keep it released
+// until the next primary reset.
+void ss_cold_release(unsigned i) {
+    uint32_t bit = 1u &lt;&lt; i;
+    uint32_t val = read32(RESET_UNIT_SS_COLD_RESET_N);
+    write32(RESET_UNIT_SS_COLD_RESET_N, val | bit);
+
+    while (!(read32(RESET_UNIT_SS_RESET_COMPLETE) &amp; bit));
+
+    // Lock bits are write-1-to-set, so this locks only bit `i`.
+    write32(RESET_UNIT_SS_COLD_RESET_LOCK, bit);
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="smc-flr-isolation"><a class="anchor" href="#smc-flr-isolation"></a><a class="link" href="#smc-flr-isolation">2.2.8. Function-Level Reset and Isolation</a></h4>
 <div class="paragraph">
 <p>The hardware behavior is described in the
 <a href="../../ocah-docs/latest/smc/clk_rst.html#smc-function-level-reset" class="xref page">Function Level Reset and Isolation</a>
@@ -2451,8 +2633,10 @@ still sets the isolation latch.</p>
 overlapping requests.</p>
 </li>
 <li>
-<p>After the cool reset, re-establish the affected subsystem&#8217;s state and satisfy
-its isolation-release requirements.</p>
+<p>After the cool reset, <code>SS_COLD_RESET_N</code> again holds every managed subsystem
+in cold reset. Release the subsystems as <a href="#smc-subsystem-resets">Subsystem Resets</a> describes,
+re-establish the affected subsystem&#8217;s state and satisfy its isolation-release
+requirements.</p>
 </li>
 <li>
 <p>Write <code>ISOLATE_REQ_SMC_REG</code> to clear the FLR isolation latch; any write with a
@@ -2478,7 +2662,7 @@ wake on bus activity.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-axi-hang-detectors"><a class="anchor" href="#smc-axi-hang-detectors"></a><a class="link" href="#smc-axi-hang-detectors">2.2.8. AXI Hang Detectors</a></h4>
+<h4 id="smc-axi-hang-detectors"><a class="anchor" href="#smc-axi-hang-detectors"></a><a class="link" href="#smc-axi-hang-detectors">2.2.9. AXI Hang Detectors</a></h4>
 <div class="paragraph">
 <p>One hang detector watches each of the <code>sys_axi</code>, <code>sep_axi</code> and <code>data_accel</code>
 masters; their interrupts are OR-combined onto one PLIC source. To arm a
@@ -2512,7 +2696,7 @@ cleared. The CPU AXI master is covered by the watchdog instead.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-dfd-capture"><a class="anchor" href="#smc-dfd-capture"></a><a class="link" href="#smc-dfd-capture">2.2.9. Design-for-Debug and CLA</a></h4>
+<h4 id="smc-dfd-capture"><a class="anchor" href="#smc-dfd-capture"></a><a class="link" href="#smc-dfd-capture">2.2.10. Design-for-Debug and CLA</a></h4>
 <div class="paragraph">
 <p>The debug bus selection and the CLA event and action model are described in the
 <a href="../../ocah-docs/latest/smc/dfd.html#smc-dfd-cla" class="xref page">Design-for-Debug chapter</a>
@@ -2542,7 +2726,7 @@ for this when programming or testing them.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-system-timer"><a class="anchor" href="#smc-system-timer"></a><a class="link" href="#smc-system-timer">2.2.10. OCTS System Timer</a></h4>
+<h4 id="smc-system-timer"><a class="anchor" href="#smc-system-timer"></a><a class="link" href="#smc-system-timer">2.2.11. OCTS System Timer</a></h4>
 <div class="sect4">
 <h5 id="smc-octs-setup"><a class="anchor" href="#smc-octs-setup"></a><a class="link" href="#smc-octs-setup">Configure and Start</a></h5>
 <div class="olist arabic">
@@ -2653,7 +2837,7 @@ capture or move secondary timestamps backward.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-telemetry-receiver"><a class="anchor" href="#smc-telemetry-receiver"></a><a class="link" href="#smc-telemetry-receiver">2.2.11. Telemetry Receiver</a></h4>
+<h4 id="smc-telemetry-receiver"><a class="anchor" href="#smc-telemetry-receiver"></a><a class="link" href="#smc-telemetry-receiver">2.2.12. Telemetry Receiver</a></h4>
 <div class="sect4">
 <h5 id="smc-telemetry-buffer"><a class="anchor" href="#smc-telemetry-buffer"></a><a class="link" href="#smc-telemetry-buffer">Buffer Management</a></h5>
 <div class="olist arabic">
@@ -2774,7 +2958,7 @@ alone does not acknowledge this sticky interrupt.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-avsbus"><a class="anchor" href="#smc-avsbus"></a><a class="link" href="#smc-avsbus">2.2.12. AVSBus Controller</a></h4>
+<h4 id="smc-avsbus"><a class="anchor" href="#smc-avsbus"></a><a class="link" href="#smc-avsbus">2.2.13. AVSBus Controller</a></h4>
 <div class="paragraph">
 <p>The controller starts issuing slave resync operations as soon as its resets
 are released, using a divide-by-4 AVS clock, so configuration adjusts defaults
@@ -2809,7 +2993,7 @@ one to the matching bit of <code>AVS_INTERRUPT_CLEAR</code>, which self-clears.<
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-i2c"><a class="anchor" href="#smc-i2c"></a><a class="link" href="#smc-i2c">2.2.13. I2C Controllers</a></h4>
+<h4 id="smc-i2c"><a class="anchor" href="#smc-i2c"></a><a class="link" href="#smc-i2c">2.2.14. I2C Controllers</a></h4>
 <div class="paragraph">
 <p>The SMC I2C controllers are OpenTitan I2C cores behind an OCAH register wrapper.
 Program them following the
@@ -3005,8 +3189,16 @@ void sep_engine_reset_release(uint32_t mask) {
 <p>Releasing the Key Manager from reset starts it; the SEP host can still reach the
 SEP-to-KM mailbox while the Key Manager is in reset, because the mailbox&#8217;s
 SEP-facing side is in the Key Manager&#8217;s cold domain. The Key Manager can also
-restart itself by writing its <code>SOFT_RST_CODE</code> register, which takes the same
-warm-reset path without isolation.</p>
+restart itself by writing <code>0x53525354</code> (ASCII <code>SRST</code>) to its <code>SOFT_RST_CODE</code>
+register; any other value has no effect. The soft reset takes the same
+warm-reset path without isolation and re-enters the Key Manager Application ROM.
+It keeps the cold-domain state: the KM SRAM contents,
+<code>BOOT_STATUS.COLD_BOOT_DONE</code>, which the ROM reads to skip cold initialization,
+<code>OTP_READ_LOCK_COLD</code>, the SRAM scrambling state and the mailbox FIFO contents,
+which the ROM flushes during boot, so a request pending at the reset is lost.
+It restores the warm-domain state: <code>IRQ_ENTRY_ADDR</code> and <code>IRQ_ENTRY_LOCK</code> return
+to their reset values, <code>OTP_READ_LOCK</code> clears, and the local copies of the UIDs,
+class key and public identities reload from the shadow bus.</p>
 </div>
 <div class="paragraph">
 <p>The TRNG bit resets the whole internal entropy chain. Follow
@@ -4934,6 +5126,110 @@ gives the full write behavior.</p>
 </div>
 </div>
 <div class="sect1">
+<h2 id="reset-control"><a class="anchor" href="#reset-control"></a><a class="link" href="#reset-control">6. Reset Control</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This chapter lists every reset that firmware or a debugger can request in the
+OCA Harness, and the section that gives its programming sequence. Resets from pins and power-good are described in the
+<a href="../../ocah-docs/latest/reset.html#ocah-reset" class="xref page">Reset chapter</a>
+of the Technical Reference Manual.</p>
+</div>
+<table id="reset-control-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 8. Software- and debugger-requested resets</caption>
+<colgroup>
+<col style="width: 22.2222%;">
+<col style="width: 33.3333%;">
+<col style="width: 22.2222%;">
+<col style="width: 22.2223%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Reset</th>
+<th class="tableblock halign-left valign-top">Control</th>
+<th class="tableblock halign-left valign-top">Requested by</th>
+<th class="tableblock halign-left valign-top">Sequence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC CPU core or uncore, held</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CPU_CTRL.RESET_CTRL</code> reset bits, <code>RESET_TIMEOUT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP, or another manager outside the SMC cluster</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#smc-core-reset-sequence">Per-Core Reset</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC CPU core restart</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RESET_CTRL.core&lt;n&gt;_reset_pulse_start</code>, <code>CORE_RESET_PULSE_COUNT</code>,
+<code>RESET_VECTOR[n]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP, or another manager outside the SMC cluster</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#smc-core-reset-pulse">Core Reset Pulse</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC warm reset on watchdog expiry</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC WDT <code>CTRL.wdogrsten</code>, <code>CPU_CTRL.WDT_TIMEOUT</code>, <code>WDT_TIMEOUT_RESET</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC firmware arms it; an unserviced WDT triggers it</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#smc-watchdog">Watchdog Timers</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Managed subsystem cold or warm reset</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset unit <code>SS_COLD_RESET_N</code>, <code>SS_WARM_RESET_N</code>, hold and lock registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC firmware</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#smc-subsystem-resets">Subsystem Resets</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Function-level cool reset and isolation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset unit <code>ISOLATE_REQ_*</code> registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC firmware prepares and recovers; a PCIe FLR triggers it</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#smc-flr-isolation">Function-Level Reset and Isolation</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External CPU cluster non-debug-module reset</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NDMRESET_REQUEST</code>, <code>NDMRESET_PROCESS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External cluster requests; SMC firmware answers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#smc-ndm-reset">External CPU Cluster NDM Reset</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP cryptographic engines, TRNG and Key Manager</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_RESET_CTRL.SW_RESET_N</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP firmware</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sep-software-reset">Software Reset of the Cryptographic Engines</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager restart</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x53525354</code> written to Key Manager <code>SOFT_RST_CODE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager firmware</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sep-software-reset">Software Reset of the Cryptographic Engines</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP CPU on watchdog bite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP watchdog bite threshold</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP firmware arms it; an unserviced watchdog triggers it</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sep-watchdog">Watchdog</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AoU core</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AOU_CON0.AOU_SW_RESET</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Firmware handling a LinkReset</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#aou-linkreset-error-reporting">LinkReset Error Reporting</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug overrides of any SMU reset</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG IC_RESET TDR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debugger</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#dtp-ic-reset-overrides">IC_RESET Overrides</a></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Two classes of reset differ in what software must do first. The SMC CPU cluster
+resets and the SEP engine resets drain and isolate the affected AXI paths in
+hardware before the reset takes effect. The subsystem resets of the reset unit
+and the AoU core reset do not, so software quiesces traffic to and from the
+target before requesting them.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
 <h2 id="smc-boot-rom"><a class="anchor" href="#smc-boot-rom"></a><a class="link" href="#smc-boot-rom">Appendix A: SMC Boot ROM</a></h2>
 <div class="sectionbody">
 <div class="sect2">
@@ -5008,7 +5304,7 @@ The 11-bit <code>Length</code> field is the body length in bytes and does not in
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 8. Packet-header fields</caption>
+<caption class="title">Table 9. Packet-header fields</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 20%;">
@@ -5089,7 +5385,7 @@ Successful responses with no body clear it.</p>
 <div class="sect3">
 <h4 id="applications-and-commands"><a class="anchor" href="#applications-and-commands"></a><a class="link" href="#applications-and-commands">A.2.3. Applications and commands</a></h4>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 9. Implemented commands</caption>
+<caption class="title">Table 10. Implemented commands</caption>
 <colgroup>
 <col style="width: 12.5%;">
 <col style="width: 12.5%;">
@@ -5165,7 +5461,7 @@ returns <code>Oversize_msg</code> instead of the version.
 The four-byte response body is:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 10. GetVersion response body</caption>
+<caption class="title">Table 11. GetVersion response body</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 20%;">
@@ -5207,7 +5503,7 @@ The four-byte response body is:</p>
 The response body is one 32-bit status value.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 11. Supported status IDs</caption>
+<caption class="title">Table 12. Supported status IDs</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 80%;">
@@ -5256,7 +5552,7 @@ An empty SEP or SMC ring buffer returns a zero value.</p>
 protocol error codes carried by error-response bodies:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 12. Internal implementation errors</caption>
+<caption class="title">Table 13. Internal implementation errors</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -5338,7 +5634,7 @@ incomplete (<code>0x09</code>) or overflow (<code>0x0A</code>).</p>
 <p>The request body contains a 12-byte command prefix followed by the write data.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 13. WriteData request body</caption>
+<caption class="title">Table 14. WriteData request body</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 20%;">
@@ -5394,7 +5690,7 @@ A successful response has an empty body.</p>
 <p>The request body is exactly 12 bytes.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 14. ReadData request body</caption>
+<caption class="title">Table 15. ReadData request body</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 20%;">
@@ -5442,7 +5738,7 @@ The response body is the requested data and always carries a body CRC.</p>
 <p>Both commands use the same ten-byte body:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 15. Boot command request body</caption>
+<caption class="title">Table 16. Boot command request body</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 20%;">
@@ -5503,7 +5799,7 @@ The response normally echoes the request AppID, MsgID, and flags.
 For a corrupt header CRC, AppID and MsgID are both <code>0xFF</code> because the request identifiers are not trusted.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 16. Protocol error codes</caption>
+<caption class="title">Table 17. Protocol error codes</caption>
 <colgroup>
 <col style="width: 14.2857%;">
 <col style="width: 28.5714%;">
@@ -5710,7 +6006,7 @@ Boot stall is controlled by the dedicated GPIO 57 hardware path before ROM
 execution and is not a captured strap.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 17. ROM strap use</caption>
+<caption class="title">Table 18. ROM strap use</caption>
 <colgroup>
 <col style="width: 28.5714%;">
 <col style="width: 14.2857%;">
@@ -5904,7 +6200,7 @@ ROM records an interface error and remains in <code>wfi</code>.</p>
 <div class="sect3">
 <h4 id="image-and-sram-layout"><a class="anchor" href="#image-and-sram-layout"></a><a class="link" href="#image-and-sram-layout">A.5.1. Image and SRAM layout</a></h4>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 18. ROM-visible memory regions</caption>
+<caption class="title">Table 19. ROM-visible memory regions</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">
@@ -5988,7 +6284,7 @@ The ROM reads all eight bits as a differential encoding:</p>
 For a valid encoding, the low nibble selects the policy:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 19. Lifecycle values used by the ROM</caption>
+<caption class="title">Table 20. Lifecycle values used by the ROM</caption>
 <colgroup>
 <col style="width: 16.6666%;">
 <col style="width: 33.3333%;">
@@ -6133,7 +6429,7 @@ No status-sequence protocol is implemented on that GPIO.</p>
 Scratch register 0 is at <code>0xC0039080</code>; consecutive scratch registers are eight bytes apart.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 20. Scratch registers used by the ROM</caption>
+<caption class="title">Table 21. Scratch registers used by the ROM</caption>
 <colgroup>
 <col style="width: 14.2857%;">
 <col style="width: 28.5714%;">
@@ -6204,7 +6500,7 @@ Scratch register 0 is at <code>0xC0039080</code>; consecutive scratch registers 
 It deliberately preserves register 15.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 21. Scratch register 9</caption>
+<caption class="title">Table 22. Scratch register 9</caption>
 <colgroup>
 <col style="width: 14.2857%;">
 <col style="width: 28.5714%;">
@@ -6257,7 +6553,7 @@ A read returns the oldest unread entry and advances the tail.</p>
 <p>Status messages use this format:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 22. Status message</caption>
+<caption class="title">Table 23. Status message</caption>
 <colgroup>
 <col style="width: 14.2857%;">
 <col style="width: 28.5714%;">
@@ -6297,7 +6593,7 @@ Primary, secondary, and recovery values report sampled straps; they do not
 select different ROM FW algorithms.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 23. Boot status values</caption>
+<caption class="title">Table 24. Boot status values</caption>
 <colgroup>
 <col style="width: 12.5%;">
 <col style="width: 25%;">
@@ -6391,7 +6687,7 @@ eight bits of the associated command or error value. Access-denied details use
 <code>base | ((detail &amp; 0xF) &lt;&lt; 8)</code>.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 24. OCCP ring-buffer status values</caption>
+<caption class="title">Table 25. OCCP ring-buffer status values</caption>
 <colgroup>
 <col style="width: 14.2857%;">
 <col style="width: 28.5714%;">
@@ -6492,7 +6788,7 @@ It only rejects OCCP <code>GetStatus</code>.</p>
 <p>The ROM maintains an in-memory 32-bit status word:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 25. OCCP status word</caption>
+<caption class="title">Table 26. OCCP status word</caption>
 <colgroup>
 <col style="width: 14.2857%;">
 <col style="width: 28.5714%;">
@@ -6543,7 +6839,7 @@ It only rejects OCCP <code>GetStatus</code>.</p>
 <p>Scratch register 1 carries a structured development-observability word.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 26. POST fields</caption>
+<caption class="title">Table 27. POST fields</caption>
 <colgroup>
 <col style="width: 14.2857%;">
 <col style="width: 28.5714%;">
@@ -7821,7 +8117,7 @@ and checksum placement.</p>
 <p><a href="#key-manager-command-message-fields-table">Key Manager command-message fields</a> defines the command container fields.</p>
 </div>
 <table id="key-manager-command-message-fields-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 27. Key Manager command-message fields</caption>
+<caption class="title">Table 28. Key Manager command-message fields</caption>
 <colgroup>
 <col style="width: 22%;">
 <col style="width: 78%;">
@@ -7872,7 +8168,7 @@ The full validation order is in <a href="#km-firmware-incoming-message-handler">
 <p><a href="#key-manager-command-summary-table">Key Manager command summary</a> lists the command IDs and their functions.</p>
 </div>
 <table id="key-manager-command-summary-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 28. Key Manager command summary</caption>
+<caption class="title">Table 29. Key Manager command summary</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 40%;">
@@ -8099,7 +8395,7 @@ and a return argument containing the KM status information.</p>
 status bits.</p>
 </div>
 <table id="key-manager-status-fields-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 29. Key Manager status fields</caption>
+<caption class="title">Table 30. Key Manager status fields</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -8219,7 +8515,7 @@ CMD_SRAM_LOAD_EXEC.</p>
 reserved bits.</p>
 </div>
 <table id="key-manager-sram-load-payload-fields-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 30. Key Manager SRAM-load payload fields</caption>
+<caption class="title">Table 31. Key Manager SRAM-load payload fields</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -8253,7 +8549,7 @@ reserved bits.</p>
 mailbox frame with the following structure (<a href="#key-manager-sram-image-frame-table">Key Manager SRAM image frame</a>).</p>
 </div>
 <table id="key-manager-sram-image-frame-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 31. Key Manager SRAM image frame</caption>
+<caption class="title">Table 32. Key Manager SRAM image frame</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -8358,7 +8654,7 @@ destination-policy words for CMD_KEY_GENERATE.</p>
 generated key.</p>
 </div>
 <table id="key-generation-destination-policy-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 32. Key-generation destination policy</caption>
+<caption class="title">Table 33. Key-generation destination policy</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -8537,7 +8833,7 @@ destination-engine mask.</p>
 transfer request.</p>
 </div>
 <table id="key-transfer-requested-engines-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 33. Key-transfer requested engines</caption>
+<caption class="title">Table 34. Key-transfer requested engines</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -8629,7 +8925,7 @@ returned on success.</p>
 transfer response.</p>
 </div>
 <table id="key-transfer-completed-engines-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 34. Key-transfer completed engines</caption>
+<caption class="title">Table 35. Key-transfer completed engines</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -8717,7 +9013,7 @@ request.</p>
 registers are to be purged.</p>
 </div>
 <table id="key-purge-requested-engines-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 35. Key-purge requested engines</caption>
+<caption class="title">Table 36. Key-purge requested engines</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -8806,7 +9102,7 @@ purge.</p>
 purged.</p>
 </div>
 <table id="key-purge-completed-engines-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 36. Key-purge completed engines</caption>
+<caption class="title">Table 37. Key-purge completed engines</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -8895,7 +9191,7 @@ sent with CMD_KEY_LOAD.</p>
 loaded key.</p>
 </div>
 <table id="key-load-destination-policy-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 37. Key-load destination policy</caption>
+<caption class="title">Table 38. Key-load destination policy</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -8973,7 +9269,7 @@ The return argument is the fixed header-word index of the offending field
 error returned at each failure.</p>
 </div>
 <table id="cmd-key-load-validation-order-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 38. CMD_KEY_LOAD Validation Order</caption>
+<caption class="title">Table 39. CMD_KEY_LOAD Validation Order</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 55%;">
@@ -9092,7 +9388,7 @@ for the captured shared key.</p>
 for the captured shared key.</p>
 </div>
 <table id="adams-bridge-shared-key-destination-policy-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 39. Adams Bridge shared-key destination policy</caption>
+<caption class="title">Table 40. Adams Bridge shared-key destination policy</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -9226,7 +9522,7 @@ CMD_OTP_READ_LOCK_COLD.</p>
 reads it locks.</p>
 </div>
 <table id="otp-cold-read-lock-bit-encoding-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 40. OTP cold-read-lock bit encoding</caption>
+<caption class="title">Table 41. OTP cold-read-lock bit encoding</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 20%;">
@@ -9343,7 +9639,7 @@ relationship between command IDs and response IDs.</p>
 generate them.</p>
 </div>
 <table id="key-manager-response-summary-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 41. Key Manager response summary</caption>
+<caption class="title">Table 42. Key Manager response summary</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 40%;">
@@ -9418,7 +9714,7 @@ and optional return argument.</p>
 return arguments.</p>
 </div>
 <table id="key-manager-command-return-codes-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 42. Key Manager command return codes</caption>
+<caption class="title">Table 43. Key Manager command return codes</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 18%;">
@@ -9559,7 +9855,7 @@ recoverable-fault code.</p>
 the SEP host.</p>
 </div>
 <table id="key-manager-recoverable-fault-codes-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 43. Key Manager recoverable-fault codes</caption>
+<caption class="title">Table 44. Key Manager recoverable-fault codes</caption>
 <colgroup>
 <col style="width: 12%;">
 <col style="width: 28%;">
@@ -9635,7 +9931,7 @@ unrecoverable-fault code.</p>
 to the SEP host.</p>
 </div>
 <table id="key-manager-unrecoverable-fault-codes-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 44. Key Manager unrecoverable-fault codes</caption>
+<caption class="title">Table 45. Key Manager unrecoverable-fault codes</caption>
 <colgroup>
 <col style="width: 12%;">
 <col style="width: 28%;">
@@ -10798,7 +11094,7 @@ CRC Accelerator reference gives instruction encodings and hardware behavior.</p>
 <p><a href="#crc-8-rohc-parameters-table">CRC-8/ROHC Parameters</a> specifies the CRC-8 parameters used for message headers.</p>
 </div>
 <table id="crc-8-rohc-parameters-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 45. CRC-8/ROHC Parameters</caption>
+<caption class="title">Table 46. CRC-8/ROHC Parameters</caption>
 <colgroup>
 <col style="width: 40%;">
 <col style="width: 60%;">
@@ -10855,7 +11151,7 @@ from least significant byte to most significant byte.</p>
 integrity.</p>
 </div>
 <table id="crc-32c-parameters-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 46. CRC-32C Parameters</caption>
+<caption class="title">Table 47. CRC-32C Parameters</caption>
 <colgroup>
 <col style="width: 40%;">
 <col style="width: 60%;">

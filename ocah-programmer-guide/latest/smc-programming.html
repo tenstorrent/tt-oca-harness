@@ -103,6 +103,9 @@
     <a class="nav-link" href="index.html#dtp-programming-guide">DTP Programming Guide</a>
   </li>
   <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#reset-control">Reset Control</a>
+  </li>
+  <li class="nav-item" data-depth="2">
     <button class="nav-item-toggle"></button>
     <span class="nav-text">Appendices</span>
 <ul class="nav-list">
@@ -467,7 +470,13 @@ handshake and the associated risks.</p>
 <p>A software reset through <code>CPU_CTRL.RESET_CTRL</code> is withheld until the CPU AXI
 isolation boundary drains. Holding any core in reset terminates the other
 cores' MMIO accesses with SLVERR and stalls L2 frontend traffic until every
-core is released. To request one:</p>
+core is released. An SMC hart that requests a reset therefore cannot read the
+status registers below until the boundary reconnects. Request and monitor these
+resets from a manager outside the cluster, normally the SEP, which reaches
+<code>CPU_CTRL</code> at <code>0x4003_9000</code> in its view of the SMC.</p>
+</div>
+<div class="paragraph">
+<p>To hold a core or the uncore in reset:</p>
 </div>
 <div class="olist arabic">
 <ol class="arabic">
@@ -478,8 +487,7 @@ how long the request may wait for the drain; zero waits indefinitely.
 withholding the reset, <code>1</code> forces the reset and flushes the isolation blocks.</p>
 </li>
 <li>
-<p>Write the core or uncore reset bit, or the core reset pulse bit, in
-<code>RESET_CTRL</code>.</p>
+<p>Clear the core or uncore reset bit in <code>RESET_CTRL</code>.</p>
 </li>
 <li>
 <p>Poll <code>RESET_TIMEOUT.reset_applied</code>, which rises once the reset is applied by a
@@ -487,7 +495,7 @@ completed drain or a forced timeout. <code>RESET_TIMEOUT.reset_timeout</code> re
 expired wait in either mode and stays high until the request is removed.</p>
 </li>
 <li>
-<p>Release the reset bit, or let the pulse complete, so the boundary reconnects.</p>
+<p>Set the reset bit again so the boundary reconnects.</p>
 </li>
 </ol>
 </div>
@@ -504,6 +512,69 @@ address. Before they join normal coherent operation, software can program a
 parked hart&#8217;s <code>RESET_VECTOR[n]</code> and pulse its reset to start it at that address.
 Avoid this flow where possible for the reasons described in the Technical
 Reference Manual.</p>
+</div>
+<div class="sect4">
+<h5 id="smc-core-reset-pulse"><a class="anchor" href="#smc-core-reset-pulse"></a><a class="link" href="#smc-core-reset-pulse">Core Reset Pulse</a></h5>
+<div class="paragraph">
+<p>A reset pulse restarts one core without software having to release it. The
+pulse passes through the same drain handshake as a held reset, and
+<code>RESET_TIMEOUT</code> applies to it in the same way. To restart core <code>n</code>:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Program <code>RESET_VECTOR[n]</code> if the core must start at a different address.</p>
+</li>
+<li>
+<p>Program <code>CORE_RESET_PULSE_COUNT</code>. Once the drain completes, the core stays
+out of reset for <code>pre_reset_count + 1</code> SMC clock cycles and is then held in
+reset for <code>post_reset_count + 1</code> cycles. The reset values give 9 and 17
+cycles.</p>
+</li>
+<li>
+<p>Write 1 to <code>RESET_CTRL.core&lt;n&gt;_reset_pulse_start</code>, leaving
+<code>core&lt;n&gt;_reset_n</code> at 1. A 0 in <code>core&lt;n&gt;_reset_n</code> holds the core in reset for
+the whole pulse and after it.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The pulse start bits read as 0, so a read-modify-write of <code>RESET_CTRL</code> does not
+start another pulse. Writing a start bit while that core&#8217;s pulse runs restarts
+the count of the current phase. <code>CORE_RESET_PULSE_COUNT.core_resets_done</code> bit
+<code>n</code> reads 0 while the pulse of core <code>n</code> runs. It also reads 1 before a withheld
+pulse starts, so confirm the restart through a handshake with the restarted
+core, such as a scratch register it writes, rather than by polling
+<code>core_resets_done</code>.</p>
+</div>
+<div class="listingblock">
+<div class="title">Core reset pulse example C definitions.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// SMC CPU control register addresses.
+// In SEP-local address space, through the SEP view of the SMC.
+#define SMC_CPU_CTRL_BASE           0x40039000
+#define SMC_REG_RESET_VECTOR_LO(n)  (SMC_CPU_CTRL_BASE + ((n) * 0x8))
+#define SMC_REG_RESET_VECTOR_HI(n)  (SMC_CPU_CTRL_BASE + ((n) * 0x8) + 0x4)
+#define SMC_REG_RESET_CTRL          (SMC_CPU_CTRL_BASE + 0x20)
+
+// RESET_CTRL pulse start bit of core `n`.
+#define RESET_CTRL_CORE_PULSE_START(n) (0x10 &lt;&lt; (n))</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Core reset pulse example C usage.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Restart SMC core `n` at `entry` with a reset pulse.
+void smc_core_restart(unsigned n, uint64_t entry) {
+    write32(SMC_REG_RESET_VECTOR_LO(n), (uint32_t)entry);
+    write32(SMC_REG_RESET_VECTOR_HI(n), (uint32_t)(entry &gt;&gt; 32));
+    __asm__ volatile("fence" ::: "memory");
+
+    uint32_t val = read32(SMC_REG_RESET_CTRL);
+    write32(SMC_REG_RESET_CTRL, val | RESET_CTRL_CORE_PULSE_START(n));
+}</code></pre>
+</div>
+</div>
 </div>
 </div>
 <div class="sect3">
@@ -814,7 +885,7 @@ delivery paths select from the same accrued bits, so clearing them affects both.
 <h4 id="smc-watchdog"><a class="anchor" href="#smc-watchdog"></a><a class="link" href="#smc-watchdog">1.2.2. Watchdog Timers</a></h4>
 <div class="paragraph">
 <p>Each core of the SMC has a dedicated watchdog timer (WDT), that can generate
-an interrupt and optionally a reset of the core if not serviced within a
+an interrupt and optionally a reset request if not serviced within a
 configurable period of time. The watchdog timers are driven by the SMU clock
 signal <code>clk_smu_i</code>.</p>
 </div>
@@ -848,15 +919,24 @@ must be manually written to to set it to a lower value (after unlocking a
 register write by writing to <code>KEY</code>).</p>
 </div>
 <div class="paragraph">
-<p>If <code>wdogrsten</code> (bit 8) is enabled in <code>CTRL</code> and the WDT fires, the core being
-reset will not be able to service its own WDT interrupt. Other SMC cores
-<strong>should</strong> enable interrupts from each other&#8217;s watchdog timers to be notified when
-a core is reset by the watchdog, so that SMC software can robustly recover from
-the failure or reallocate work while the reset core is brought up again.</p>
+<p>If <code>wdogrsten</code> (bit 8) is enabled in <code>CTRL</code> when the WDT fires, the WDT latches
+a reset request until the cluster uncore is reset. The request does not reset the core.
+It starts that core&#8217;s second-stage countdown in <code>CPU_CTRL</code>, and when the
+countdown expires the SMC warm reset restarts the whole CPU cluster.
+<code>CPU_CTRL.WDT_TIMEOUT</code> sets the countdown length in SMC clock cycles, 16384
+after reset, and writing 1 to <code>WDT_TIMEOUT_RESET.reset_cycle_count_&lt;n&gt;</code>
+restarts the countdown of core <code>n</code>. Feeding the WDT does not withdraw a latched
+request, so restarting the countdown only postpones the warm reset.</p>
+</div>
+<div class="paragraph">
+<p>The core whose WDT fired is presumed unable to service its own interrupt. Other
+SMC cores <strong>should</strong> enable interrupts from each other&#8217;s watchdog timers to be
+notified, so that SMC software can save state or reallocate work before the
+warm reset, postponing it while it does.</p>
 </div>
 <div class="paragraph">
 <p>In the event of a watchdog timer interrupt, software&#8201;&#8212;&#8201;running on a core other
-than the one reset by <code>wdogrsten</code> being set&#8201;&#8212;&#8201;should clear the interrupt at the</p>
+than the one whose WDT fired&#8201;&#8212;&#8201;should clear the interrupt at the</p>
 </div>
 <div id="smc-watchdog-clear" class="paragraph">
 <p>watchdog by:</p>
@@ -2365,7 +2445,105 @@ void dma_copy(uint64_t dst, uint64_t src, uint32_t len) {
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-flr-isolation"><a class="anchor" href="#smc-flr-isolation"></a><a class="link" href="#smc-flr-isolation">1.2.7. Function-Level Reset and Isolation</a></h4>
+<h4 id="smc-subsystem-resets"><a class="anchor" href="#smc-subsystem-resets"></a><a class="link" href="#smc-subsystem-resets">1.2.7. Subsystem Resets</a></h4>
+<div class="paragraph">
+<p>The SMC reset unit drives a cold reset, a warm reset and four warm-reset hold
+requests to each of up to 32 managed subsystems. Bit <code>i</code> of every <code>SS_*</code>
+register controls subsystem <code>i</code>. The integration assigns the indices and
+defines what each hold preserves, as the adopter chiplet specification records.
+The hardware is described in the
+<a href="../../ocah-docs/latest/smc/clk_rst.html#smc-subsystem-controls" class="xref page">Subsystem Controls and Clock Gating</a>
+section of the Technical Reference Manual.</p>
+</div>
+<div class="paragraph">
+<p>After a primary reset, <code>SS_COLD_RESET_N</code> reads 0, holding every managed
+subsystem in cold reset, and <code>SS_WARM_RESET_N</code> reads all ones. The Boot ROMs do
+not write either register, so later firmware releases the subsystems it uses.
+The reset unit does not sequence releases: the order between subsystems is
+firmware policy. These resets have no drain handshake, so quiesce traffic to and
+from a subsystem before asserting either of its resets. To release subsystem
+<code>i</code> from cold reset:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Program <code>SS_CONFIG</code> and lock it with <code>SS_CONFIG_LOCK</code>, if the integration
+uses them.</p>
+</li>
+<li>
+<p>Set bit <code>i</code> of <code>SS_COLD_RESET_N</code> with a read-modify-write that preserves the
+other bits.</p>
+</li>
+<li>
+<p>Poll bit <code>i</code> of <code>SS_RESET_COMPLETE</code> until it reads 1, if the subsystem
+reports completion. The register shows the subsystem&#8217;s completion level after
+synchronization; it does not latch.</p>
+</li>
+<li>
+<p>Set bit <code>i</code> of <code>SS_COLD_RESET_LOCK</code>. The matching <code>SS_COLD_RESET_N</code> bit then
+ignores writes until the next primary reset. Locking a bit while it is 0 keeps
+the subsystem in cold reset, which disables a subsystem the chiplet does not
+use.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>To warm-reset subsystem <code>i</code>:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Set bit <code>i</code> of each hold register, <code>SS_CONFIG_HOLD</code>, <code>SS_SRAM_HOLD</code>,
+<code>SS_CRITICAL_HOLD</code> and <code>SS_DEBUG_HOLD</code>, whose state the subsystem must keep.
+Leave the holds unchanged until the warm reset is released.</p>
+</li>
+<li>
+<p>Clear bit <code>i</code> of <code>SS_WARM_RESET_N</code>, and keep it clear for as long as the
+subsystem requires; the reset unit does not time the warm reset.</p>
+</li>
+<li>
+<p>Set the bit again, and poll <code>SS_RESET_COMPLETE</code> as for a cold release.</p>
+</li>
+<li>
+<p>Clear the hold bits.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>A JTAG IC_RESET override can replace any subsystem&#8217;s cold or warm reset, as
+<a href="#dtp-ic-reset-overrides">[dtp-ic-reset-overrides]</a> describes.</p>
+</div>
+<div class="listingblock">
+<div class="title">Subsystem reset example C definitions.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Reset unit register addresses.
+// In SMC-local address space.
+#define RESET_UNIT_BASE                0xC0002000
+#define RESET_UNIT_SS_COLD_RESET_N     (RESET_UNIT_BASE + 0x40)
+#define RESET_UNIT_SS_RESET_COMPLETE   (RESET_UNIT_BASE + 0x60)
+#define RESET_UNIT_SS_COLD_RESET_LOCK  (RESET_UNIT_BASE + 0x70)</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Subsystem reset example C usage.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Release subsystem `i` from cold reset and keep it released
+// until the next primary reset.
+void ss_cold_release(unsigned i) {
+    uint32_t bit = 1u &lt;&lt; i;
+    uint32_t val = read32(RESET_UNIT_SS_COLD_RESET_N);
+    write32(RESET_UNIT_SS_COLD_RESET_N, val | bit);
+
+    while (!(read32(RESET_UNIT_SS_RESET_COMPLETE) &amp; bit));
+
+    // Lock bits are write-1-to-set, so this locks only bit `i`.
+    write32(RESET_UNIT_SS_COLD_RESET_LOCK, bit);
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="smc-flr-isolation"><a class="anchor" href="#smc-flr-isolation"></a><a class="link" href="#smc-flr-isolation">1.2.8. Function-Level Reset and Isolation</a></h4>
 <div class="paragraph">
 <p>The hardware behavior is described in the
 <a href="../../ocah-docs/latest/smc/clk_rst.html#smc-function-level-reset" class="xref page">Function Level Reset and Isolation</a>
@@ -2390,8 +2568,10 @@ still sets the isolation latch.</p>
 overlapping requests.</p>
 </li>
 <li>
-<p>After the cool reset, re-establish the affected subsystem&#8217;s state and satisfy
-its isolation-release requirements.</p>
+<p>After the cool reset, <code>SS_COLD_RESET_N</code> again holds every managed subsystem
+in cold reset. Release the subsystems as <a href="#smc-subsystem-resets">Subsystem Resets</a> describes,
+re-establish the affected subsystem&#8217;s state and satisfy its isolation-release
+requirements.</p>
 </li>
 <li>
 <p>Write <code>ISOLATE_REQ_SMC_REG</code> to clear the FLR isolation latch; any write with a
@@ -2417,7 +2597,7 @@ wake on bus activity.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-axi-hang-detectors"><a class="anchor" href="#smc-axi-hang-detectors"></a><a class="link" href="#smc-axi-hang-detectors">1.2.8. AXI Hang Detectors</a></h4>
+<h4 id="smc-axi-hang-detectors"><a class="anchor" href="#smc-axi-hang-detectors"></a><a class="link" href="#smc-axi-hang-detectors">1.2.9. AXI Hang Detectors</a></h4>
 <div class="paragraph">
 <p>One hang detector watches each of the <code>sys_axi</code>, <code>sep_axi</code> and <code>data_accel</code>
 masters; their interrupts are OR-combined onto one PLIC source. To arm a
@@ -2451,7 +2631,7 @@ cleared. The CPU AXI master is covered by the watchdog instead.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-dfd-capture"><a class="anchor" href="#smc-dfd-capture"></a><a class="link" href="#smc-dfd-capture">1.2.9. Design-for-Debug and CLA</a></h4>
+<h4 id="smc-dfd-capture"><a class="anchor" href="#smc-dfd-capture"></a><a class="link" href="#smc-dfd-capture">1.2.10. Design-for-Debug and CLA</a></h4>
 <div class="paragraph">
 <p>The debug bus selection and the CLA event and action model are described in the
 <a href="../../ocah-docs/latest/smc/dfd.html#smc-dfd-cla" class="xref page">Design-for-Debug chapter</a>
@@ -2481,7 +2661,7 @@ for this when programming or testing them.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-system-timer"><a class="anchor" href="#smc-system-timer"></a><a class="link" href="#smc-system-timer">1.2.10. OCTS System Timer</a></h4>
+<h4 id="smc-system-timer"><a class="anchor" href="#smc-system-timer"></a><a class="link" href="#smc-system-timer">1.2.11. OCTS System Timer</a></h4>
 <div class="sect4">
 <h5 id="smc-octs-setup"><a class="anchor" href="#smc-octs-setup"></a><a class="link" href="#smc-octs-setup">Configure and Start</a></h5>
 <div class="olist arabic">
@@ -2592,7 +2772,7 @@ capture or move secondary timestamps backward.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-telemetry-receiver"><a class="anchor" href="#smc-telemetry-receiver"></a><a class="link" href="#smc-telemetry-receiver">1.2.11. Telemetry Receiver</a></h4>
+<h4 id="smc-telemetry-receiver"><a class="anchor" href="#smc-telemetry-receiver"></a><a class="link" href="#smc-telemetry-receiver">1.2.12. Telemetry Receiver</a></h4>
 <div class="sect4">
 <h5 id="smc-telemetry-buffer"><a class="anchor" href="#smc-telemetry-buffer"></a><a class="link" href="#smc-telemetry-buffer">Buffer Management</a></h5>
 <div class="olist arabic">
@@ -2713,7 +2893,7 @@ alone does not acknowledge this sticky interrupt.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-avsbus"><a class="anchor" href="#smc-avsbus"></a><a class="link" href="#smc-avsbus">1.2.12. AVSBus Controller</a></h4>
+<h4 id="smc-avsbus"><a class="anchor" href="#smc-avsbus"></a><a class="link" href="#smc-avsbus">1.2.13. AVSBus Controller</a></h4>
 <div class="paragraph">
 <p>The controller starts issuing slave resync operations as soon as its resets
 are released, using a divide-by-4 AVS clock, so configuration adjusts defaults
@@ -2748,7 +2928,7 @@ one to the matching bit of <code>AVS_INTERRUPT_CLEAR</code>, which self-clears.<
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-i2c"><a class="anchor" href="#smc-i2c"></a><a class="link" href="#smc-i2c">1.2.13. I2C Controllers</a></h4>
+<h4 id="smc-i2c"><a class="anchor" href="#smc-i2c"></a><a class="link" href="#smc-i2c">1.2.14. I2C Controllers</a></h4>
 <div class="paragraph">
 <p>The SMC I2C controllers are OpenTitan I2C cores behind an OCAH register wrapper.
 Program them following the

@@ -103,6 +103,9 @@
     <a class="nav-link" href="index.html#dtp-programming-guide">DTP Programming Guide</a>
   </li>
   <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#reset-control">Reset Control</a>
+  </li>
+  <li class="nav-item" data-depth="2">
     <button class="nav-item-toggle"></button>
     <span class="nav-text">Appendices</span>
 <ul class="nav-list">
@@ -378,8 +381,16 @@ void sep_engine_reset_release(uint32_t mask) {
 <p>Releasing the Key Manager from reset starts it; the SEP host can still reach the
 SEP-to-KM mailbox while the Key Manager is in reset, because the mailbox&#8217;s
 SEP-facing side is in the Key Manager&#8217;s cold domain. The Key Manager can also
-restart itself by writing its <code>SOFT_RST_CODE</code> register, which takes the same
-warm-reset path without isolation.</p>
+restart itself by writing <code>0x53525354</code> (ASCII <code>SRST</code>) to its <code>SOFT_RST_CODE</code>
+register; any other value has no effect. The soft reset takes the same
+warm-reset path without isolation and re-enters the Key Manager Application ROM.
+It keeps the cold-domain state: the KM SRAM contents,
+<code>BOOT_STATUS.COLD_BOOT_DONE</code>, which the ROM reads to skip cold initialization,
+<code>OTP_READ_LOCK_COLD</code>, the SRAM scrambling state and the mailbox FIFO contents,
+which the ROM flushes during boot, so a request pending at the reset is lost.
+It restores the warm-domain state: <code>IRQ_ENTRY_ADDR</code> and <code>IRQ_ENTRY_LOCK</code> return
+to their reset values, <code>OTP_READ_LOCK</code> clears, and the local copies of the UIDs,
+class key and public identities reload from the shadow bus.</p>
 </div>
 <div class="paragraph">
 <p>The TRNG bit resets the whole internal entropy chain. Follow
