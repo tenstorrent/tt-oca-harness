@@ -7884,8 +7884,9 @@ at the bottom of the Telemetry Message Buffer.</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>START</ipxact:name>
-              <ipxact:description>Start the system timer. Asserts the sync_load signal to start synchronization (only does anything if primary mode). Ensure
-both primary and secondary are out of reset.</ipxact:description>
+              <ipxact:description>Start the system timer. In PRIMARY mode, a write of 1 loads the preset and pulses the sync-load output for PULSE_WIDTH cycles.
+In SECONDARY mode, the write has no effect; a secondary starts on the primary's sync-load pulse, which is what loads its preset.
+Ensure both primary and secondary are out of reset.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -7959,7 +7960,7 @@ both primary and secondary are out of reset.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>RUNNING</ipxact:name>
-              <ipxact:description>Timer is currently enabled and running</ipxact:description>
+              <ipxact:description>Timer is enabled and its count is nonzero.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>

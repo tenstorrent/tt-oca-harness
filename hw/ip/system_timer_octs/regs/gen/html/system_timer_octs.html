@@ -26,7 +26,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>START</td><td>RW 1P</td><td>0x0</td><td>Start the system timer. Asserts the sync_load signal to start synchronization (only does anything if primary mode). Ensure<br>both primary and secondary are out of reset.</td></tr>
+<tr><td>0</td><td>START</td><td>RW 1P</td><td>0x0</td><td>Start the system timer. In PRIMARY mode, a write of 1 loads the preset and pulses the sync-load output for PULSE_WIDTH cycles.<br>In SECONDARY mode, the write has no effect; a secondary starts on the primary&#x27;s sync-load pulse, which is what loads its preset.<br>Ensure both primary and secondary are out of reset.</td></tr>
 </table>
 <h3 id="CTRL">CTRL</h3>
 <table>
@@ -40,7 +40,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>RUNNING</td><td>R</td><td>0x0</td><td>Timer is currently enabled and running</td></tr>
+<tr><td>4</td><td>RUNNING</td><td>R</td><td>0x0</td><td>Timer is enabled and its count is nonzero.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>MODE</td><td>R</td><td>0x0</td><td>Timer mode driven by the is_primary_i input: 0=PRIMARY (is_primary_i=1), 1=SECONDARY (is_primary_i=0).</td></tr>
 </table>
