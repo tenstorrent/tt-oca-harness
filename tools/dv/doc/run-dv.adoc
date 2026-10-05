@@ -2019,7 +2019,7 @@ repository, run, and seed paths abbreviated:
 
 [source,text]
 ----
-run        flow=dtp tool=verilator items=2 stages=flist,hdl_compile,sim run_dir=hw/sys/dtp/dv/build/runs/<stamp>__verilator__smoke mode=regression sim_jobs=1 executor=local backend=log
+run        flow=dtp tool=verilator items=6 stages=flist,hdl_compile,sim run_dir=hw/sys/dtp/dv/build/runs/<stamp>__verilator__smoke mode=regression sim_jobs=1 executor=local backend=log
 config     merge_order=simulator-defaults < profile(native) < dut(hw/sys/dtp/dv/dtp_sim_cfg.toml) < cli
 config     effective_defaults=simulators.toml[verilator.build_defaults], simulators.toml[verilator.coverage_defaults], profile/DUT [defaults], profile/DUT [target_defaults], profile/DUT [build.options]
 stage      start name=flist item=- log=<run>/stages/flist/logs/flist.log
@@ -2034,21 +2034,23 @@ artifact   build=<repo>/hw/sys/dtp/dv/build/cocotb/verilator (rebuild=False)
 WRITE: <run>/stages/hdl_compile/scripts/hdl_compile.sh
 WRITE: <run>/stages/hdl_compile/env/hdl_compile.env
 stage      done name=hdl_compile item=- status=PASS elapsed=0.0s
-regression start total=2 sim_jobs=1 executor=local seeds=1 retry=0
+regression start total=6 sim_jobs=1 executor=local seeds=1 retry=0
 WRITE: <run>/dtp_sanity_test/seed_<seed>/attempt_0/scripts/sim.dtp_sanity_test.py
 CMD  : <python> <run>/dtp_sanity_test/seed_<seed>/attempt_0/scripts/sim.dtp_sanity_test.py
 WRITE: <run>/dtp_sanity_test/seed_<seed>/attempt_0/scripts/sim.dtp_sanity_test.sh
 WRITE: <run>/dtp_sanity_test/seed_<seed>/attempt_0/env/sim.env
-regression done index=1/2 status=PASS item=dtp_sanity_test seed=<seed> attempt=0 elapsed=0.0s
-(the second leaf, dtp_jtag_idcode_test, repeats the five lines above)
-summary    passing=2 total=2 failing=0 skipped=0 elapsed=0.0s
-result     status=PASS tests=2 elapsed=0.0s run_dir=<run> json=<run>/result.json
+regression done index=1/6 status=PASS item=dtp_sanity_test seed=<seed> attempt=0 elapsed=0.0s
+(each of the other five leaves repeats the five lines above, in group order)
+summary    passing=6 total=6 failing=0 skipped=0 elapsed=0.0s
+summary    status=PASS item=dtp_sanity_test seed=<seed> elapsed=0.0s
+(one such line per leaf)
+result     status=PASS tests=6 elapsed=0.0s run_dir=<run> json=<run>/result.json
 ----
 
 Reading it:
 
-* The `run` line is the resolved selection: the two `smoke` members became
-  two leaves under the scheduler (`mode=regression`), and the implicit stage
+* The `run` line is the resolved selection: the six `smoke` members became
+  six leaves under the scheduler (`mode=regression`), and the implicit stage
   path is `flist -> hdl_compile -> sim` because no selected test declares
   firmware.
 * The two `config` lines state the merge order and the tables that supplied

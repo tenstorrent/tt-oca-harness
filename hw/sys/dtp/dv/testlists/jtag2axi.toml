@@ -74,7 +74,7 @@ name = "dtp_jtag2axi_smc_axi_single_write_read_test"
 module = { cocotb = "dtp_jtag2axi_smc_axi_single_write_read_test", uvm = "dtp_jtag2axi_smc_axi_single_write_read_test" }
 seed = 1
 timeout_sec = 1800
-tags = ["jtag2axi"]
+tags = ["smoke", "ci", "jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
