@@ -22,7 +22,9 @@ cd tt-oca-harness
 
 The repository contains a Python environment used for scripting workflows. Some of
 these workflows are contained within submodules, meaning the Python environment requires
-the submodules to be initialised. To do this, run the following command:
+the submodules to be initialised. The container image tag needs them too: once you
+modify any file, `docker-run.sh` fails with `Failed to fetch git repository` if they
+are missing. To initialise them, run the following command:
 
 ```bash
 git submodule update --init --recursive
@@ -106,6 +108,11 @@ export OCAH_CONTAINER_REGISTRY_IMAGE=ghcr.io/tenstorrent/ocah-container
 export OCAH_IMAGE_WITH_UV=true            # the variant CI publishes
 ./scripts/docker-run.sh verify           # pulls once; run/shell then reuse it
 ```
+
+The image is tagged with a hash of the Nix flake, which `docker-run.sh`
+evaluates before every command. Without Nix on the host it evaluates the hash in
+a throwaway `nixos/nix` container, which takes several minutes each time even
+when the image is already loaded; installing Nix keeps it fast.
 
 Published images are listed on the
 https://github.com/orgs/tenstorrent/packages/container/package/ocah-container[`ocah-container` package page].

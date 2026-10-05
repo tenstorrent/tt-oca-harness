@@ -79,11 +79,14 @@ submodule_safe_dirs() {
 }
 
 NIX_IMAGE_NAME=$([[ "${IMAGE_WITH_UV:-false}" == true ]] && echo "ocah-uv-container" || echo "ocah-container")
+# Evaluating the hash takes minutes on a host without nix, so one invocation
+# evaluates it at most once.
+IMAGE_HASH=""
 
 # A built image can be cached as a tarball on shared storage, keyed by the flake
 # output hash. When a registry repository is configured, ensure can pull that
 # same content-addressed tag before falling back to the existing cache/build
-# paths. Registry acquisition remains opt-in while the package is private.
+# paths. Registry acquisition remains opt-in.
 DOCKER_CACHE_DIR="${OCAH_DOCKER_CACHE_DIR:-}"
 
 # Will this invocation actually need a container engine? run/run-here/verify/shell
@@ -327,7 +330,7 @@ nixos_shell() {
 }
 
 image_cache_tar() {
-  echo "${DOCKER_CACHE_DIR}/${NIX_IMAGE_NAME##*/}-$(image_hash).tar.gz"
+  echo "${DOCKER_CACHE_DIR}/${NIX_IMAGE_NAME##*/}-${IMAGE_HASH:-$(image_hash)}.tar.gz"
 }
 
 # Build the nix container image and publish it to the shared tarball cache when
@@ -359,7 +362,8 @@ build_image() {
 # then retains the existing tarball-cache and local-build fallbacks.
 ensure_image() {
   local flake_hash registry_ref
-  flake_hash=$(image_hash)
+  [[ -n "$IMAGE_HASH" ]] || IMAGE_HASH=$(image_hash)
+  flake_hash=$IMAGE_HASH
   IMAGE="${NIX_IMAGE_NAME}:${flake_hash}"
   # Test for an exact image already loaded in the selected engine.
   if "$ENGINE" ${PODMAN_STORAGE_FLAGS} images | grep -qE "${NIX_IMAGE_NAME} *${flake_hash}"; then

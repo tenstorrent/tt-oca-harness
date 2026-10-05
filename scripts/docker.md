@@ -13,7 +13,6 @@ normally do **not** need to build it yourself. Point `docker-run.sh` at the
 registry and it pulls the exact image CI verified:
 
 ```bash
-docker login ghcr.io -u <github-user>    # while the package is private
 export OCAH_CONTAINER_REGISTRY_IMAGE=ghcr.io/tenstorrent/ocah-container
 export OCAH_IMAGE_WITH_UV=true            # the variant CI publishes
 ./scripts/docker-run.sh verify           # pulls once; run/shell then reuse it
@@ -98,19 +97,23 @@ local build.
 For example, once an image has been published:
 
 ```bash
-docker login ghcr.io -u <github-user>
 OCAH_CONTAINER_REGISTRY_IMAGE=ghcr.io/tenstorrent/ocah-container \
   OCAH_IMAGE_WITH_UV=true \
   ./scripts/docker-run.sh ensure
 ```
 
-The login is required while the package is private. The token needs
-`read:packages`; CI should use its short-lived job token rather than a personal
-token.
+The package is public, so pulling needs no login.
 
 On hosts **without Nix installed**, all nix operations (`build`, `ensure`,
 `image_hash`) are transparently proxied through a container running
-`OCAH_NIXOS_IMAGE` (default `docker.io/nixos/nix:latest`). The `nixos-shell`
+`OCAH_NIXOS_IMAGE` (default `docker.io/nixos/nix:latest`). That container starts
+with an empty store, so evaluating the hash downloads the flake inputs each time
+and takes several minutes before every `docker-run.sh` command, even when the
+image is already loaded; one invocation evaluates it once. Installing Nix on
+the host keeps the inputs cached between commands. The evaluation reads the
+submodules from the working tree, so with uncommitted changes and uninitialised
+submodules it fails with `Failed to fetch git repository`; run
+`git submodule update --init --recursive`. The `nixos-shell`
 command opens an interactive shell in that same image, which is useful for
 debugging the container build without a local Nix install.
 
