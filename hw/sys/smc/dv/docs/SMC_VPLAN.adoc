@@ -16,8 +16,9 @@ nothing for this plan's sign-off; a card's cocotb checkers alone carry its
 Pass Criteria here, and a card whose checkers were all SV-UVM would be
 unclosed. The enrolled testcases and the membership of the `all`
 sign-off group are defined in `testlists/all.toml`; `all` is every test this
-plan grades, partitioned into the `hosted`, `fw` and `sanity` classes by what a
-leaf needs to build. Non-ROM leaves outside `all` are in
+plan grades, and its `expected_count` is the membership gate. The `hosted`,
+`fw` and `sanity` classes select by what a leaf needs to build and do not
+between them cover `all`. Non-ROM leaves outside `all` are in
 `testlists/holdout.toml`; ROM/OCCP leaves are in `testlists/smc_rom.toml` and
 selected through `occp_rom`. Sign-off holdouts have cards under
 <<smc-held-out-testcases>>; where the reason is a defect, Known Limitations
@@ -130,7 +131,7 @@ Executable membership is resolved from the testlists; the groups and their
 |`sanity` |The three dual-target leaves, held out of `all`
 |`occp_rom` |33 of the 34 BL0/SMC ROM cases (`smc_occp_ring_buffer_stress_test` is left out for runtime), including the hours-long dual-SMC unsecure boot
 |`rtl_issue` |Weekly on its own `regress.yml` row: defect reproducers graded under `expect_fail`; no feature credit
-|`all` |The package regression, `hosted` + `fw`; `holdout.toml` defines the non-ROM leaves outside it, `sanity` holds the dual-target leaves, and <<smc-held-out-testcases>> records the sign-off holdouts
+|`all` |The package regression, gated by its `expected_count`; `holdout.toml` defines the non-ROM leaves outside it, `sanity` holds the dual-target leaves, and <<smc-held-out-testcases>> records the sign-off holdouts
 |===
 
 `smoke` is the three-leaf PR gate (`smc_canonical_smoke_test`,
@@ -12544,7 +12545,7 @@ checked by inverting one assertion. `--validate-configs` then lists
 |===
 |Group |Meaning
 |`smoke` |CI gate on every pull request and push (`sim.yml`): three toolchain-free bring-up leaves
-|`all` |Every test this plan grades and the coverage set: `hosted` + `fw` + `sanity`, no overlap, nothing left over; `expected_count` is the membership gate
+|`all` |Every test this plan grades and the coverage set; `expected_count` is the membership gate. `hosted`, `fw` and `sanity` select by what a leaf builds and do not between them cover it
 |`hosted` |Toolchain-free class of `all`, single-instance model; the nightly and weekly tiers on the hosted runners, one seed per leaf (`reseed: 1` in `regress.yml`)
 |`fw` |Firmware class of `all`: the fifteen CPU-boot leaves whose image the `c_compile` stage builds with a picolibc-enabled RISC-V GCC or the toolchain container
 |`sanity` |SMC_DUAL class of `all`: the three `target = "dual"` leaves, each loading a ROM or firmware image
@@ -12641,7 +12642,7 @@ the `expected_count` guards in `hw/sys/smc/dv/testlists/all.toml`.
 |`smoke` |PR gate: canonical bring-up, cold reset, and a CSR frontdoor read
 |`hosted` |Nightly and weekly: `all` minus the twenty leaves that need the RISC-V toolchain (fifteen `fw` leaves, three dual-target leaves that run a ROM or firmware image, and the two `mmio_wedge` leaves of `cpu`)
 |`rtl_issue` |Weekly on its own `regress.yml` row: defect reproducers graded under `expect_fail`; no bring-up credit
-|`all` |The package regression, `hosted` + `fw`; `holdout.toml` defines the non-ROM leaves outside it, `sanity` holds the dual-target leaves, and <<smc-held-out-testcases>> records the sign-off holdouts
+|`all` |The package regression, gated by its `expected_count`; `holdout.toml` defines the non-ROM leaves outside it, `sanity` holds the dual-target leaves, and <<smc-held-out-testcases>> records the sign-off holdouts
 |===
 
 [[smc-canonical-credit]]
