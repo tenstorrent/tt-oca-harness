@@ -17,10 +17,10 @@ it was given, and clears a NACK as soon as it sees one. Two other endings:
 
 The last leg is also where `CONTROLLER_EVENTS` is checked as a register rather
 than as a flag. Its fields clear on a written one, so two writes that must
-*not* clear them are made first: a word of zeros over a set bit, and a
-byte-sized write to the far end of the register, which leaves the lane that
-carries the bit disabled. The bit is read back set after each, and only a
-written one clears it.
+*not* clear them are made first: a word of zeros over a set bit, and a word
+of ones that strobes only the top byte lane, so the lane that carries the bit
+is disabled while carrying a one. The bit is read back set after each, and
+only a written one clears it.
 
 The bench EEPROM target answers the first leg; the second addresses a device
 that is not there.
@@ -36,7 +36,7 @@ import cocotb
 from cocotb.triggers import ClockCycles, Timer
 
 from .smc_addr_map import I2C_CG_EN, smc_indexed_addr
-from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_csr_seq_utils import ALL_ONES_WORD, TOP_BYTE_LANE, SmcCsrSeq
 from .smc_i2c_master_target_test_seq import (
     CLOCK_GATE_CONTROL,
     I2C0_CONTROLLER_EVENTS,
@@ -295,13 +295,16 @@ class smc_i2c_controller_exits_test_seq(SmcCsrSeq):
             f"{label}: {name} cleared on a word of zeros (0x{after_zero:08x}); the field "
             f"clears on a written one"
         )
-        # A byte-sized write to the top byte: the lane carrying the event bits
-        # is not enabled, so the register must not change at all.
-        await self.csr_write(f"{label}_{name}_LANE", I2C0_CONTROLLER_EVENTS + 3, 0xFF, length=1)
+        # Ones on every lane with only the top byte lane strobed: the lane
+        # carrying the event bits holds a one it is not enabled to take.
+        await self.csr_write_strobed(
+            f"{label}_{name}_LANE", I2C0_CONTROLLER_EVENTS, ALL_ONES_WORD, wstrb=TOP_BYTE_LANE
+        )
         after_lane = await self.csr_read(f"{label}_{name}_AFTER_LANE", I2C0_CONTROLLER_EVENTS)
         assert after_lane & bit, (
-            f"{label}: {name} cleared on a byte write to the far end of the register "
-            f"(0x{after_lane:08x}); that write leaves its lane disabled"
+            f"{label}: {name} cleared on a word of ones that strobed only the top byte lane "
+            f"(0x{after_lane:08x}); its own lane was disabled, so the one it carried must "
+            f"not land"
         )
         await self.csr_write(f"{label}_{name}_CLEAR", I2C0_CONTROLLER_EVENTS, bit)
         cleared = await self.csr_read(f"{label}_{name}_CLEARED", I2C0_CONTROLLER_EVENTS)
@@ -351,7 +354,8 @@ class smc_i2c_controller_exits_test_seq(SmcCsrSeq):
         await self._retain_checks(label, EVENTS_NACK, "NACK")
         cocotb.log.info(
             "CHK-I2C-CTRL-EVENTS-RETAIN: each of %s survived a word of zeros written over it "
-            "and a byte write that left its lane disabled, and cleared only on a written one",
+            "and a word of ones that strobed only the top byte lane, so its own lane carried "
+            "a one it was not enabled to take, and cleared only on a written one",
             " and ".join(self.retained),
         )
         await self.csr_write(

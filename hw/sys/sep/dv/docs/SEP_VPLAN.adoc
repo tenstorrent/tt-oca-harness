@@ -569,7 +569,7 @@ never when it was written.
 |`sep_pic_irq_source_map_delivery_test`
 |cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
-|Prove the PIC delivers a seeded subset of interrupt sources to the CPU with one-hot claim and RW1C clear.
+|Prove the PIC delivers every source in the firmware catalog (eleven) to the CPU with one-hot claim and RW1C clear; the seed sets only the order of the extras.
 |`sep_spi_ot_host_csr_irq_rand_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -4422,7 +4422,7 @@ every seed; `reseed = 3`.
 
 *Bucket*: Mailbox, IRQ, PIC
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`
 
 *Source Module*: `sep_irq_simultaneous_fanin_no_alias_test`
 
@@ -4435,8 +4435,8 @@ every seed; `reseed = 3`.
 *Test Procedure*:
 
 [arabic]
-. Fire a single source and require exactly one aggregate bit.
-. Fire several together; the `[8:33]` region must equal exactly the driven mask.
+. Fire each of the four sources alone and require exactly its one aggregate bit.
+. For each of the eleven subsets of two or more sources, fire the subset together; the `[8:33]` region must equal exactly the driven mask.
 . Re-sample the region raw and require every bit in it to be resolved.
 . Write-one-to-clear each source and require the region to return to zero.
 
@@ -4446,13 +4446,13 @@ every seed; `reseed = 3`.
 |===
 |Checker |Contract
 |CHK-NONVAC
-|A single source lights exactly one aggregate bit — the real per-bit map proof.
+|Each of the four sources, alone, lights exactly its one aggregate bit — the real per-bit map proof.
 |CHK-FANIN-MAP
-|Several sources asserted together light exactly their own bits, compared as an exact equality against the driven mask, and each source's own IP interrupt-state register reads 1. The per-IP read is independent of the aggregate.
+|Each of the eleven subsets of two or more sources, asserted together, lights exactly its own bits, compared as an exact equality against the driven mask, and each source's own IP interrupt-state register reads 1. The per-IP read is independent of the aggregate.
 |CHK-ANTI-ALIAS
 |The `[8:33]` region equals exactly the driven set. That equality is the Verilator proof. X/Z resolution (neither X nor Z on any bit in the region) is claimed only on a four-state simulator — VCS default, or Verilator `--x-assign unique --x-initial unique`. The default Verilator regression is two-state and does not grade the X half. The region polls read through a helper that maps unknown bits to zero, so an undriven aggregator leg is indistinguishable from a quiet source there; the four-state path re-samples without that mapping.
 |CHK-CLEAR
-|All driven sources clear on write-one-to-clear and the region returns to zero.
+|After each subset, all driven sources clear on write-one-to-clear and the region returns to zero.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -4461,10 +4461,11 @@ smear that clears before a later sample would pass. The checker wording reads as
 an always-property; it is not one. A two-state Verilator log that prints
 `CHK-ANTI-ALIAS PASS` has proven the driven-set equality only.
 
+*Randomization*: none. Each source alone and all eleven subsets of two or more
+of the four cross-IP sources walk on every run.
+
 *Not claimed*: CPU-ISR delivery of the simultaneous set, and the full 32-source
-cross-product. One seed asserts one subset of at least two of the four
-cross-IP sources; the `[8:33]` contract is identical for every subset, but no
-single run covers every combination.
+cross-product.
 
 '''''
 
@@ -4481,14 +4482,14 @@ single run covers every combination.
 
 *BFM / Model*: ocah_axi_vip, CPU FW, `tb/sep_outbound_mbx.sv` (console + verdict mailbox; OKAY / zero read data for any address)
 
-*Objective*: Prove the PIC delivers a seeded subset of interrupt sources to the CPU with one-hot claim and RW1C clear (MUST trio every seed).
+*Objective*: Prove the PIC delivers every source in the firmware catalog to the CPU with one-hot claim and RW1C clear: the MUST trio and all eight extras on every seed.
 
-*Test Coverage*: PIC delivers a seeded source subset with one-hot claim and RW1C.
+*Test Coverage*: PIC delivers all eleven catalog sources with one-hot claim and RW1C.
 
 *Test Procedure*:
 
 [arabic]
-. Arm the MUST PIC sources plus the seeded extras and wait a quiet window with no ISR.
+. Arm the MUST PIC sources plus all eight extras, in the seeded order, and wait a quiet window with no ISR.
 . Deliver OTBN done to the CPU; complete when the source de-asserts.
 
 *Checkers*:
@@ -4503,24 +4504,22 @@ single run covers every combination.
 |CHK-DELIVER
 |Each source's interrupt reaches the CPU and its handler runs. This also *carries the source-to-PIC-id map*, but by the claim id rather than by which handler ran: the firmware registers ONE shared service routine for every non-mailbox source, so the identity of the running handler distinguishes nothing among them. The routine reads the claim id out of `meihap` and increments the per-source delivery counter selected by that id, and the test waits on that specific counter. A wrong id therefore resolves to no selected source, or to a different one, and the wait expires either way.
 |CHK-ONEHOT
-|Triggering one source does not fire another *selected* source. Every selected PIC source stays interrupt-enabled throughout, including after the mailbox ISR (WIRQT is raised past occupancy rather than masking IRQEN). Sources outside the per-seed selection are not observed, so this is not a claim about the full aggregator.
+|Triggering one source does not fire another *selected* source. Every selected PIC source stays interrupt-enabled throughout, including after the mailbox ISR (WIRQT is raised past occupancy rather than masking IRQEN). The selection is the whole firmware catalog; sources outside it are not observed, so this is not a claim about the full aggregator.
 |CHK-IP-RW1C
 |Event-type sources and the mailbox clear by write-one-to-clear of `INTR_STATE` / IRQS. DMA is Status-type: `INTR_STATE` is read-only, and the ISR writes INTR_TEST=0 (and W1C `STATUS`). The clear is bracketed: the ISR reads the IP state bit (or IRQS) set immediately before its clear, and the bit reads 0 afterwards, so a clear that did nothing fails.
 |CHK-PIC-COMPLETE
 |No source re-fires after its handler cleared it — the claim completed, no storm. An unexpected PIC claim during that window also fails. The quiet window runs with every selected source still interrupt-enabled.
 |CHK-RANDCFG
-|Firmware consumed the patched MUST trio plus two seed-selected extras: the logged `SCENARIO` line must match the Python config exactly, which is what rules out an inert patch running only the compiled-in MUST trio. The firmware's own line here reports only that its parameters resolved — the compiled default satisfies that — so the host-side needle owns this contract.
+|Firmware consumed the patched MUST trio plus all eight extras in the seeded order: the logged `SCENARIO` line must match the Python config exactly, which is what rules out an inert patch running only the compiled-in MUST trio. The firmware's own line here reports only that its parameters resolved — the compiled default satisfies that — so the host-side needle owns this contract.
 |CHK-FW-REPORTED
 |Every firmware checker above appears in the console, AND the per-source checkers appear once per selected source. The pass magic cannot show that a source was skipped or that a check was compiled out; a line count short of the selected-source count can. The pass verdict itself is asserted before any summary line is logged, so a kept log cannot carry a PASS summary under a failing verdict.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Randomization*: RANDCFG — the MUST trio (mailbox, OTBN done, HMAC done) walks
-every seed; two extras are drawn per seed from an eight-member pool (DMA done/chunk/error, HMAC-err, KMAC, CSRNG, EDN, KMAC-err), so one run
-exercises two of the eight and six go untouched. With three seeds a run covers
-at most six draws and is not guaranteed to reach all eight. DMA chunk/error and HMAC-err are walked every seed on the aggregator leaf. The map contract is
-identical for every draw; which extras are graded here is seed-dependent and is not
-tallied.
+*Randomization*: RANDCFG — the MUST trio (mailbox, OTBN done, HMAC done) and all
+eight extras (DMA done/chunk/error, HMAC-err, KMAC, CSRNG, EDN, KMAC-err) walk on
+every seed, so every run grades every catalog source. The seed sets only the
+order in which the extras are raised; `reseed = 3` varies that order.
 
 *Not claimed*: "wake on wait-for-interrupt, not by polling". The wait helper loops
 on a `wfi` and a counter, so a `wfi` implemented as a no-op degenerates to a spin

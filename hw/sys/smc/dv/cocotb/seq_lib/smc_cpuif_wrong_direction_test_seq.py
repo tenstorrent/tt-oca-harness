@@ -17,7 +17,8 @@ the RDL compiles to, and both are checked here rather than assumed:
 
 * every write at a read-only register must be answered, and where the register
   holds still at idle and reading it has no side effect, it must read the same
-  value before and after;
+  value before and after a write of the complement of that value, so a write
+  that reached any field would show in every bit;
 * every read of a write-only register must return zero;
 * around each block's accesses the block's probe register -- the same plain or
   read-only register `smc_cpuif_handshake_test` uses -- must read the same
@@ -35,7 +36,9 @@ Some registers need care, and the card records each choice:
 * `TARGET_NACK_COUNT` clears when read. At idle it holds zero, so the read that
   reaches its decode clears nothing, and it must read zero.
 * `TARGET_ACK_CTRL` takes a write of zero at idle: its `NBYTES` write enable is
-  held off by hardware and a zero on the write-only `NACK` is no NACK.
+  held off by hardware and a zero on the write-only `NACK` is no NACK. The
+  write carries nothing the register could take, so it is answered and read
+  around but not counted among the writes shown to take no effect.
 
 Three UART rows are not driven, because the UART's own address demux never
 presents those accesses to the block the rows belong to. `uart_16550.sv`
@@ -132,6 +135,9 @@ _LEVEL_REGS = {
     f"{_AVS}/AVS_READBACK": f"{_AVS}/AVS_FIFOS_STATUS",
 }
 
+# Word written where the register itself is not read back: a FIFO pop or a
+# free-running count. A register that is read back takes the complement of
+# what it held instead.
 _WRITE_PATTERN = 0xFFFF_FFFF_FFFF_FFFF
 
 
@@ -141,6 +147,7 @@ class smc_cpuif_wrong_direction_test_seq(SmcCsrSeq):
     def __init__(self, name: str = "smc_cpuif_wrong_direction_test_seq") -> None:
         super().__init__(name)
         self.writes_ignored = 0
+        self.zero_writes = 0
         self.reads_zero = 0
         self.plain_reads = 0
         self.blocks_guarded = 0
@@ -189,7 +196,12 @@ class smc_cpuif_wrong_direction_test_seq(SmcCsrSeq):
             assert level is not None, f"{block}: {name} has no level register to watch"
             before = await self._read(f"{block}_{name}_LEVEL_BEFORE", level)
 
-        data = 0 if action == _WRITE_ZERO else _WRITE_PATTERN & mask
+        if action == _WRITE_ZERO:
+            data = 0
+        elif check in (_STABLE, _SETTLE):
+            data = ~before & mask
+        else:
+            data = _WRITE_PATTERN & mask
         await self.csr_write(f"{block}_{name}_WR", reg.addr, data, length=width)
 
         if check in (_STABLE, _SETTLE):
@@ -206,7 +218,10 @@ class smc_cpuif_wrong_direction_test_seq(SmcCsrSeq):
                 f"{name} and 0x{after:x} after it; a write there reaches no writable "
                 f"field, so the FIFO had to stay where it was"
             )
-        self.writes_ignored += 1
+        if action == _WRITE_ZERO:
+            self.zero_writes += 1
+        else:
+            self.writes_ignored += 1
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
@@ -235,7 +250,7 @@ class smc_cpuif_wrong_direction_test_seq(SmcCsrSeq):
             )
             self.blocks_guarded += 1
 
-        total = self.writes_ignored + self.reads_zero + self.plain_reads
+        total = self.writes_ignored + self.zero_writes + self.reads_zero + self.plain_reads
         assert total == len(_TARGETS), f"{total} of {len(_TARGETS)} accesses completed"
         sb = getattr(getattr(self, "env", None), "scoreboard", None)
         assert sb is not None, "no scoreboard on this sequence's env"
@@ -243,10 +258,13 @@ class smc_cpuif_wrong_direction_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-CPUIF-WRITE-READ-ONLY: %d writes at read-only registers across %d "
             "register blocks were answered and took no effect -- each register that holds "
-            "still at idle read the same before and after, each FIFO whose data register "
-            "pops on read kept its level -- and no block's probe register moved",
+            "still at idle read the same before and after a write of the complement of what "
+            "it held, each FIFO whose data register pops on read kept its level -- and no "
+            "block's probe register moved; the %d write of zero at TARGET_ACK_CTRL, which "
+            "carries nothing its fields could take, was answered and is not among them",
             self.writes_ignored,
             self.blocks_guarded,
+            self.zero_writes,
         )
         cocotb.log.info(
             "CHK-CPUIF-READ-WRITE-ONLY: %d reads of write-only registers were answered and "
