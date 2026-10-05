@@ -8,15 +8,15 @@
     "run_dir": "vcs/dtp/runs/combined"
   },
   "coverage": {
-    "comparison_key": "COVCMP-3cb4e141f6440aa0",
+    "comparison_key": "COVCMP-f4119147330e3e3a",
     "details_available": true,
     "effective_metrics": {
       "assertion": 100.0,
-      "branch": 97.99,
-      "condition": 97.17,
+      "branch": 97.85,
+      "condition": 97.08,
       "fsm_state": 89.59,
       "functional": 100.0,
-      "line": 99.05,
+      "line": 99.0,
       "toggle": 98.86,
       "user": 100.0
     },
@@ -39,7 +39,7 @@
     "raw_metrics": {
       "assertion": 98.59,
       "branch": 92.39,
-      "condition": 92.25,
+      "condition": 92.26,
       "fsm_state": 60.21,
       "functional": 100.0,
       "line": 96.52,
@@ -56,16 +56,16 @@
     "target": "default",
     "threshold": 0.0,
     "threshold_met": true,
-    "total_percent": 97.52
+    "total_percent": 97.48
   },
   "failure_buckets": [],
   "flow": "dtp",
   "framework": "",
-  "generated_at": "2026-10-05T03:08:05+00:00",
+  "generated_at": "2026-10-05T11:04:19+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "5bd6aae835f5f82c764ace37d4a083bcd5a3d254",
-    "short_sha": "5bd6aae83"
+    "sha": "ea533e73618f005e04ecebe66efbd907280df306",
+    "short_sha": "ea533e736"
   },
   "junit_xml": {
     "missing": 0,
@@ -74,10 +74,10 @@
   "kind": "dv",
   "run_metadata": {
     "executor": "local",
-    "generated_at": "2026-10-05T03:08:02.716072+00:00",
+    "generated_at": "2026-10-05T11:04:13.621993+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "5bd6aae835f5f82c764ace37d4a083bcd5a3d254",
+      "commit": "ea533e73618f005e04ecebe66efbd907280df306",
       "dirty": "false"
     },
     "label": "combine",
@@ -102,9 +102,9 @@
   },
   "tests_detail": [],
   "timing": {
-    "duration_sec": 16.86,
-    "end_time": "2026-10-05T03:08:02.327957+00:00",
-    "start_time": "2026-10-05T03:07:45.461864+00:00"
+    "duration_sec": 18.444,
+    "end_time": "2026-10-05T11:04:12.929337+00:00",
+    "start_time": "2026-10-05T11:03:54.462605+00:00"
   },
   "tool": "vcs"
 }
