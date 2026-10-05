@@ -115,9 +115,8 @@ jobs:
       - name: Compare with the container's Verilator
         run: |
           set -euo pipefail
-          rev=$(jq -r '.nodes[.nodes.root.inputs.nixpkgs].locked.rev' flake.lock)
-          container="v$(nix eval --raw "github:nixos/nixpkgs/${rev}#verilator.version")"
-          echo "ocah-container (nixpkgs ${rev}): ${container}"
+          container="v$(./scripts/ci/container_tool_version.sh verilator)"
+          echo "ocah-container: ${container}"
           status=0
           check() {
             echo "$1 ($2): ${3:-unset}"

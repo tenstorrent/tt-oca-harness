@@ -36,8 +36,19 @@ jobs:
         with:
           python-version: "3.11"
 
+      # The committed filelists must match what the ocah-container image's
+      # bender generates, and their formatting differs across bender releases.
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.11.1
+
+      - name: Resolve the container's Bender version
+        id: bender-version
+        run: echo "version=$(./scripts/ci/container_tool_version.sh bender)" >> "$GITHUB_OUTPUT"
+
       - name: Install Bender
         uses: pulp-platform/pulp-actions/bender-install@v2.5.1
+        with:
+          version: ${{ steps.bender-version.outputs.version }}
 
       - name: Regenerate filelists
         run: python3 scripts/update_integration_filelists.py
