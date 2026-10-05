@@ -156,8 +156,8 @@ class ocah_jtag_master_sequence extends uvm_sequence #(ocah_jtag_item);
 
   // TRST level control through one TRST_LEVEL item: `tck_cycles` TCK cycles
   // run with TMS at `tms` after the level change. TMS high is the
-  // Test-Logic-Reset self-loop; TMS low holds the controller where it is, so
-  // only the reset can move it. Asserting resets the tracked model to
+  // Test-Logic-Reset self-loop; TMS low never enters Test-Logic-Reset, so
+  // only the reset can put the controller there. Asserting resets the tracked model to
   // Test-Logic-Reset; releasing steps it through the cycles.
   task assert_trst(int unsigned tck_cycles = 1, bit tms = 1'b1);
     trst_level_op(1'b1, tck_cycles, tms);
