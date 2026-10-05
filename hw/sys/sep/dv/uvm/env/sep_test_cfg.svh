@@ -7,7 +7,7 @@
 // bounded-wait constants of the cocotb base test, the negative-validation
 // switch, and the scoreboard features a test requires. The base test fills
 // the knobs (read_knobs), then derives sep_env_cfg from it. The cocotb
-// twin is env/sep_env_cfg.py.
+// twin is cocotb/env/sep_env_cfg.py.
 
 class sep_test_cfg extends ocah_test_cfg;
   `uvm_object_utils(sep_test_cfg)

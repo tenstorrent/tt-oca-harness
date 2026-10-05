@@ -4,7 +4,7 @@
 # PROD lifecycle carrying the encrypted-payload class key.
 #
 # sep_efuse_class_key.toml is the TEST_DEV version of this file, used by
-# sep_rom_oca_encrypted_boot_test. That test picks TEST_DEV so a
+# sep_firmware_encrypted_boot_test. That test picks TEST_DEV so a
 # signature failure cannot mask a decryption failure.
 #
 # sep_decryption_failure_terminal_test needs the opposite trade. Its stimulus is a

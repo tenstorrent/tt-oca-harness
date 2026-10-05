@@ -2,10 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """CPU LSU loads from the boot ROM return the staged image, and a store to a ROM word is ignored.
 
-Provenance: OCAH `sep_rom_uvm_basic_read_test`, `sep_rom_uvm_sequential_read_test`,
-`sep_rom_uvm_content_verify_test`, `sep_rom_uvm_addr_boundary_test` and
-`sep_rom_uvm_write_ignore_test` (ROM LSU reads and the ignored store). The test boots
-the VeeR EL2 core and runs the rom_lsu_read firmware. The firmware does CPU LSU data
+The test boots the VeeR EL2 core and runs the rom_lsu_read firmware. The firmware does CPU LSU data
 loads from the boot ROM (0x1004_0000, on the dedicated lsu_rom_axi CPU port). The
 no_cpu splice cannot reach that port, so the test needs cpu mode. The firmware
 value-checks the loads against a known preloaded image. Then it proves that a store

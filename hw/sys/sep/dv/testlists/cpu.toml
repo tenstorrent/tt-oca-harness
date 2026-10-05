@@ -40,7 +40,7 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 # Inbound mailbox channel ch -> PIC source ch+1 -> CPU ISR; an outbound push raises no PIC
-# source and asserts smc_mailbox_interrupt_o (OCAH `sep_mailbox_plic_test`).
+# source and asserts smc_mailbox_interrupt_o.
 name = "sep_mailbox_plic_test"
 module = "cpu.sep_mailbox_plic_test"
 firmware = "mailbox_plic_test"
@@ -52,7 +52,7 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 # WDT bark -> NMI -> registered handler, with SEP_NMI_VEC default, writeback and sticky
-# lock (OCAH `sep_nmi_sanity_test`).
+# lock.
 name = "sep_nmi_sanity_test"
 module = "cpu.sep_nmi_sanity_test"
 firmware = "nmi_sanity_test"
@@ -78,9 +78,7 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Secure-DMA control and copy breadth over the CPU LSU (OCAH DMA tests `reg_rw`,
-# `reg_reset`, `cfg_regwen`, `range_regwen`, `addr_fixed`, `addr_wrap`, `addr_combo`,
-# `mem_copy`, `err_opcode`).
+# Secure-DMA control and copy breadth over the CPU LSU.
 name = "sep_dma_basic_test"
 module = "cpu.sep_dma_basic_test"
 firmware = "dma_basic_test"
@@ -106,7 +104,7 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 # A warm reset clears the WARM scratch bank and keeps the COLD bank; a cold reset
-# clears both (OCAH `sep_clock_uvm_warm_reset_vs_cold_reset_test`).
+# clears both.
 name = "sep_warm_cold_reset_scratch_test"
 module = "cpu.sep_warm_cold_reset_scratch_test"
 seed = 1
@@ -117,9 +115,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# CPU-side IFU and LSU alias remap of 0xD000_xxxx to physical SRAM 0x1000_xxxx (OCAH
-# `sep_cpu_ifu_lsu_alias_remap_matrix_test`). MUST be cpu mode: the no_cpu AXI splice is
-# post-remap and bypasses the remap.
+# CPU-side IFU and LSU alias remap of 0xD000_xxxx to physical SRAM 0x1000_xxxx. MUST be
+# cpu mode: the no_cpu AXI splice is post-remap and bypasses the remap.
 name = "sep_cpu_ifu_lsu_alias_remap_matrix_test"
 module = "cpu.sep_cpu_ifu_lsu_alias_remap_matrix_test"
 firmware = "cpu_alias_remap_test"

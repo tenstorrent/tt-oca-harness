@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-# SEP OSS firmware
+# SEP DV firmware
 
-Self-contained boot firmware for the SEP OSS DV environment. Tests supply
+Self-contained boot firmware for the SEP DV environment. Tests supply
 `main()` and link against `libsep.a`. The shared DV firmware engine
 (`hw/common/dv/fw/compile.mk`, driven by `fw.mk`) emits the gitignored
 `.itcm` / `.dtcm` hex images under `fw/build/tests/<name>/`.

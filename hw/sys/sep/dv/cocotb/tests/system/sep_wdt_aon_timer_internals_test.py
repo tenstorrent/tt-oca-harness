@@ -12,10 +12,7 @@ WKUP_CAUSE status (CHK-WKUP-CAUSE), INTR_TEST (CHK-INTR-TEST), the REGWEN lock
 scope (CHK-REGWEN-SCOPE) and SEP_CPU_CTRL.REFERENCE_COUNTER (CHK-REFCNT-RUNS,
 not an aon_timer register).
 
-Ports OCAH `sep_clock_uvm_aon_timer_operation_test` (counter advance),
-`wdt_cfg_lock_test` (WDOG_REGWEN lock), `wdt_wkup_timer_test` (wakeup timer) and
-`wdt_pet_reset_test`. This test reads every counter frontdoor and clears with a
-full RW1C; the OCAH test reads WDOG_COUNT by backdoor. Distinct from
+This test reads every counter frontdoor and clears with a full RW1C. Distinct from
 cpu/sep_nmi_sanity_test (bark -> NMI) and cpu/sep_reset_wdt_sanity_test
 (bark/pet/disable/re-bark and bite -> wdt_timer_rst_req_o): this test proves the
 other aon_timer internals (WKUP timer, REGWEN config-lock, plain counter/pet),

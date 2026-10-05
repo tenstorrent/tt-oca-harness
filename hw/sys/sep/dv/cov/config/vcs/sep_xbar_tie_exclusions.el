@@ -21,9 +21,9 @@
 // Two rules keep this file honest:
 //   * A field that the SMN inbound port, an integrator-driven target, or any
 //     free CPU/DMA field can reach is NOT listed. Those holes are stimulus gaps.
-//   * A bit that any leaf toggled in either direction is NOT listed. Every
-//     listed bit had no 0->1 and no 1->0 toggle in the merged database that
-//     supplies the checksums, and urg -excl_strict accepts the file.
+//   * A bit that any leaf toggles in either direction is NOT listed. No listed
+//     bit toggles in the merged database that supplies the checksums, and
+//     urg -excl_strict accepts the file.
 //
 // Checksums come from `urg -dump full_exclusions tgl` on the merged VDB.
 //==================================================

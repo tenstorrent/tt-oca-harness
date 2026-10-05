@@ -10,10 +10,8 @@ cross-check only) does not reach:
     SHA3-224/256/384/512, SHAKE-128/256, cSHAKE-128/256,
     KMAC-128/256 across all five key lengths  (13 cells).
 
-Provenance: the OCAH KMAC tests run a keyed KMAC cross-check only (no standalone
-SHA3/SHAKE/cSHAKE digest golden), so the independent pure-Python Keccak
-golden (env/sep_kmac_golden.py: SHA3/SHAKE cross-checked vs hashlib, cSHAKE/KMAC vs
-NIST SP800-185) is the reference here. Distinct from
+The independent pure-Python Keccak golden (env/sep_kmac_golden.py: SHA3/SHAKE cross-checked
+vs hashlib, cSHAKE/KMAC vs NIST SP800-185) is the reference. Distinct from
 `sep_km_kmac_sideload_kat_test` (KMAC-256 via sideload, cross-check) -- KMAC
 mode/strength breadth is standalone SW-key with an exact golden.
 
@@ -100,10 +98,8 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
         self.logger.info("KMAC mode x strength breadth: seed=%d", seed)
 
         # Collect each cell's DUT result so the matrix claim rests on observed
-        # output, not on the loop's own trip count. Comparing `walked` only to a
-        # product of file-scope constants asserts the test's own arithmetic.
-        # Distinct results additionally show the cells programmed different
-        # configurations.
+        # output, not on the loop's own trip count. Distinct results additionally
+        # show the cells programmed different configurations.
         results: dict[str, tuple[int, ...]] = {}
         for mode, sec, outb, key_bits, s in CELLS:
             # Key the cell by every dimension that distinguishes it, key length

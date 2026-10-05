@@ -24,7 +24,7 @@
 // The always-on sep_scoreboard independently predicts every predicted-CSR
 // read from the writes the passive monitor observed;
 // +SEP_CSR_SCOREBOARD_NEGATIVE corrupts that prediction so the run must
-// FAIL (see sep_scoreboard). The cocotb twin is seq_lib/sep_axi_smoke_seq.py.
+// FAIL (see sep_scoreboard). The cocotb twin is cocotb/seq_lib/sep_axi_smoke_seq.py.
 
 class sep_axi_smoke_test_seq extends sep_base_test_seq;
   `uvm_object_utils(sep_axi_smoke_test_seq)

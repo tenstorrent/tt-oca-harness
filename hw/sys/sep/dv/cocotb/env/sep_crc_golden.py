@@ -13,7 +13,7 @@ the caller -- so :func:`step` and :func:`word_update` return the raw chaining
 state. ``init``/``xorout`` appear only in :func:`crc32c` and :func:`crc8_rohc`,
 which exist to anchor this file against published check values.
 
-The anchor matters. A golden derived as "four byte steps", compared against
+A golden derived as "four byte steps", compared against
 hardware that is also "four byte steps", agrees even when the polynomial or the
 byte order is wrong in both. The self-tests below pin the polynomial,
 reflection and byte order to values published outside this repository, so a

@@ -133,9 +133,7 @@ Isolation proof (both directions, then the remaining isolated bits):
                     the endpoint FIFO; the empty read on the next cycle is
                     that pop, so it is not the arm.
 
-OCAH sep_clock_uvm_sw_reset_per_ip_test proves only the SW_RESET_N register ->
-sep_sw_rst_no output bit mapping, through an HDL backdoor; this test proves the
-reset actually lands in the IP and is domain-isolated at the level of a live
+This test proves the reset actually lands in the IP and is domain-isolated at the level of a live
 crypto-datapath result, frontdoor.
 
 Run mode: no_cpu with +skip_fuse_sense (entropy + crypto are independent of OTP

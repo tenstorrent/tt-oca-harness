@@ -8,8 +8,8 @@
 #
 # The DRBG-sampler DATA read blocks until a stream word is available; the
 # sampler's read-timeout (CFG.TIMEOUT, reset 256 cycles) would otherwise abort
-# the read long before the forced-noise entropy datapath produces a seed
-# (~78k cycles), so the timeout is disabled first by writing CFG = 0.
+# the read long before the forced-noise entropy datapath produces a seed, so
+# the timeout is disabled first by writing CFG = 0.
 #
 # Addresses come from the generated key_manager_addr.h (key_manager.rdl):
 #   DRBG sampler DATA  read consumes one EDN stream word

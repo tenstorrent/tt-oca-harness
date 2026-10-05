@@ -2,21 +2,18 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Each covered IP interrupt sets only its own aggregator bit, and bridge faults set [40]/[42].
 
-Ports OCAH `sep_irq_ip_to_aggregator_test` (sequence extends
-`sep_irq_connectivity_test_seq`). no_cpu: with the CPU held off, the host injects each covered IP
-interrupt via its real INTR_TEST register and proves it propagates to the mapped
-bit of the sep_internal_interrupts aggregate vector that feeds the VeeR PIC --
-exercising the IP `intr_o` -> aggregator wiring (sep.sv, `sep_internal_interrupts`
-aggregation block), not merely that
-the IP raised its own status bit. HMAC error is Event-type (W1C). DMA done /
+no_cpu: with the CPU held off, the host injects each covered IP interrupt via its real
+INTR_TEST register and proves it propagates to the mapped bit of the
+sep_internal_interrupts aggregate vector that feeds the VeeR PIC -- exercising the IP
+`intr_o` -> aggregator wiring (sep.sv, `sep_internal_interrupts` aggregation block),
+not merely that the IP raised its own status bit. HMAC error is Event-type (W1C). DMA done /
 chunk / error are Status-type (INTR_TEST=0 deasserts). HMAC/KMAC fifo_empty
 Status bits are idle-true and are not walked.
 
 The aggregate vector has no frontdoor CSR mirror and the PIC is on the CPU bus
 (unreachable with the CPU held off), so the test observes it through the tb_top
-`sep_internal_interrupts_probe_o` observation-only XMR mirror. The OCAH
-`sep_irq_ip_to_aggregator_test` observes the same aggregate bit. The
-IP-local INTR_STATE RW1C contract is checked frontdoor over AXI.
+`sep_internal_interrupts_probe_o` observation-only XMR mirror. The IP-local INTR_STATE
+RW1C contract is checked frontdoor over AXI.
 
 Per source (CSRNG bits 23..26, EDN bits 27..28, HMAC error bit 19, DMA done /
 chunk / error bits 8..10), the 3-phase check:
@@ -26,8 +23,7 @@ chunk / error bits 8..10), the 3-phase check:
             (proves INTR_TEST -> intr_o -> sep_internal_interrupts[idx]); a
             stuck-low / mis-wired aggregate bit fails here.
   CHK-ISO   while this source is asserted, the other mapped bits stay 0
-            (one-hot aggregation -- catches an OR-network smear; stronger than
-            the OCAH test, which checks one source at a time).
+            (one-hot aggregation -- catches an OR-network smear).
   CHK-CLR   Event: INTR_TEST=0 alone leaves the aggregate bit at 1 for
             _STICKY_HOLD clocks AND INTR_STATE bit 1 (the state is sticky); then
             W1C INTR_STATE -> aggregate bit returns 0 AND INTR_STATE bit 0.

@@ -10,9 +10,8 @@ time 0. The DUT knows nothing about register names, so something has to turn
 Placement is NOT described here. Register offsets and widths come from
 ``SepEfuseImage``'s field table (derived from the generated register header, in
 turn generated from ``sep_efuse_map.rdl``), and bit ranges within a register come
-from that header's ctypes bitfield structs. Nothing here restates the fuse map:
-a hand-maintained copy placed by TOML iteration order would let a reordered
-config file silently move every field after the edit.
+from that header's ctypes bitfield structs. Nothing here restates the fuse map,
+so the key order in a config never affects placement.
 
 ``apply_toml()`` is called TWICE per simulation, from two processes:
 ``dv_sim_prestage.stage()`` before the simulator launches, to write the array the
@@ -30,9 +29,8 @@ Config format (every key optional; anything unstated stays 0)::
     value = 0x54e01f1d...
 
 An unknown register name, an unknown field name, or a value too wide for its
-field is a hard error. That is the property an opaque committed ``.hex`` cannot
-have: when the RDL moves a field, a stale config fails loudly here instead of
-staging a plausible-looking image that no longer means what its filename says.
+field is a hard error, so a stale config fails here when the RDL moves a field
+instead of staging a plausible-looking image.
 
 Run directly for the two human-facing jobs, neither needed for a normal test run:
 

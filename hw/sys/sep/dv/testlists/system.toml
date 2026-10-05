@@ -25,9 +25,9 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Simultaneous cross-IP interrupt fan-in (OCAH `sep_irq_extended_connectivity_test`):
-# the aggregate holds exactly the asserted bits, with no neighbor alias in [8:33].
-# Each source alone and every subset of two or more walk on every run.
+# Simultaneous cross-IP interrupt fan-in: the aggregate holds exactly the asserted bits,
+# with no neighbor alias in [8:33]. Each source alone and every subset of two or more
+# walk on every run.
 name = "sep_irq_simultaneous_fanin_no_alias_test"
 module = "system.sep_irq_simultaneous_fanin_no_alias_test"
 seed = 1
@@ -38,10 +38,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Fabric remap and filter CSR-bank R/W breadth (OCAH `sep_fabric_64bit_regwidth_test`,
-# `sep_outbound_filter_cfg_test`, `sep_cpuctrl_misc_regs_test` and the System-block subset of
-# `sep_reg_sanity_test`). CSR layer only; sep_fabric_output_remap_datapath_proxy_test owns the
-# live translation.
+# Fabric remap and filter CSR-bank R/W breadth. CSR layer only;
+# sep_fabric_output_remap_datapath_proxy_test owns the live translation.
 name = "sep_fabric_remap_filter_csr_bank_test"
 module = "system.sep_fabric_remap_filter_csr_bank_test"
 seed = 1
@@ -66,9 +64,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# AON timer internals (OCAH `sep_clock_uvm_aon_timer_operation_test`, `wdt_wkup_timer_test`,
-# `wdt_cfg_lock_test`, `wdt_pet_reset_test`): WKUP timer, WDOG pet and WDOG_REGWEN lock. The
-# WKUP interrupt output is unused in sep, so expiry is read from the polled status bit.
+# AON timer internals: WKUP timer, WDOG pet and WDOG_REGWEN lock. The WKUP interrupt
+# output is unused in sep, so expiry is read from the polled status bit.
 name = "sep_wdt_aon_timer_internals_test"
 module = "system.sep_wdt_aon_timer_internals_test"
 seed = 1
@@ -80,9 +77,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# axil_mailbox TX-path interface breadth (OCAH `sep_mailbox_64bit_data_test`,
-# `sep_mailbox_misc_regs_test`, `sep_fabric_mailbox_fifo_closure_test`). TX only:
-# sep_mailbox_peer_rx_rirqt_test owns the peer RX path.
+# axil_mailbox TX-path interface breadth. TX only: sep_mailbox_peer_rx_rirqt_test owns the
+# peer RX path.
 name = "sep_axil_mailbox_iface_rand_test"
 module = "system.sep_axil_mailbox_iface_rand_test"
 seed = 1
@@ -119,9 +115,9 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Per-IP SW_RESET_N isolation (OCAH `sep_clock_uvm_sw_reset_per_ip_test`): the pulsed
-# engine clears its result, the sibling keeps a golden-checked result, and no EDN word leaks
-# across the reset. Drain-before-reset is claimed on the HMAC path only.
+# Per-IP SW_RESET_N isolation: the pulsed engine clears its result, the sibling keeps a
+# golden-checked result, and no EDN word leaks across the reset. Drain-before-reset is
+# claimed on the HMAC path only.
 name = "sep_crypto_per_ip_reset_isolation_test"
 module = "system.sep_crypto_per_ip_reset_isolation_test"
 seed = 1
@@ -170,9 +166,8 @@ target = "lsu_stub_all_live"
 args = ["+sep_efuse_preload"]
 
 [[tests]]
-# Inbound-filter per-entry rule matrix (OCAH `sep_inbound_filter_blockbydefault_test`,
-# `sep_inbound_filter_programming_ownership_test`, `sep_inbound_id_remap_test`). Real PROD
-# fuse sense keeps the filter active (sep_debug=0).
+# Inbound-filter per-entry rule matrix. Real PROD fuse sense keeps the filter active
+# (sep_debug=0).
 name = "sep_fabric_inbound_filter_rule_matrix_test"
 module = "system.sep_fabric_inbound_filter_rule_matrix_test"
 seed = 1
@@ -202,8 +197,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# IP INTR_TEST -> sep_internal_interrupts, one source at a time (OCAH
-# `sep_irq_ip_to_aggregator_test`), plus through-adapter SLVERR bus-error bits 40 and 42.
+# IP INTR_TEST -> sep_internal_interrupts, one source at a time, plus through-adapter
+# SLVERR bus-error bits 40 and 42.
 # No DMA transfer starts, so host_path_err / bit 41 is not proven here.
 name = "sep_irq_ip_to_aggregator_test"
 module = { cocotb = "system.sep_irq_ip_to_aggregator_test", uvm = "sep_irq_ip_to_aggregator_test" }
@@ -227,9 +222,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# LCC sep_debug gates the SMN inbound port (OCAH `sep_lcc_uvm_inbound_filter_gating_test`):
-# blocked in PROD, allowed after a DEMOTE_1 write. Real fuse sense: the FEAT_CTRL decode reads
-# the sensed LC_STATE.
+# LCC sep_debug gates the SMN inbound port: blocked in PROD, allowed after a DEMOTE_1
+# write. Real fuse sense: the FEAT_CTRL decode reads the sensed LC_STATE.
 name = "sep_lcc_uvm_inbound_filter_gating_test"
 module = "lcc.sep_lcc_uvm_inbound_filter_gating_test"
 seed = 1
@@ -239,9 +233,9 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# reset_ctrl CSR and WDT sanity (OCAH `sep_reset_ctrl_csr_test`, `wdt_sanity_test`),
-# including the BITE reset request on wdt_timer_rst_req_o. JTAG holds OTBN/AES/HMAC/KMAC across
-# reset release, so they raise no crypto edn_req before the firmware probes their resets.
+# reset_ctrl CSR and WDT sanity, including the BITE reset request on wdt_timer_rst_req_o.
+# JTAG holds OTBN/AES/HMAC/KMAC across reset release, so they raise no crypto edn_req
+# before the firmware probes their resets.
 name = "sep_reset_wdt_sanity_test"
 module = "cpu.sep_reset_wdt_sanity_test"
 firmware = "reset_wdt_sanity_test"

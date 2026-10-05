@@ -182,7 +182,7 @@ tests = [
 ]
 
 [[groups]]
-# Full-CPU daily regression: bounded sim fanout, single-threaded Verilator model.
+# Full-CPU class: the tests on the `default` target.
 name = "cpu"
 tests = [
     "sep_hello_world_test",
@@ -208,8 +208,8 @@ tests = [
 ]
 
 [[groups]]
-# CPU-stub daily regression: high sim fanout, single-threaded Verilator model.
-# The CPU is not alive (`sep_cpu` stub). Run mode stays `no_cpu`.
+# CPU-stub class: the no_cpu tests on lsu_stub_all_live. The CPU is not alive
+# (`sep_cpu` stub). Run mode stays `no_cpu`.
 name = "cpu_stub"
 tests = [
     "sep_axi_smoke_test",

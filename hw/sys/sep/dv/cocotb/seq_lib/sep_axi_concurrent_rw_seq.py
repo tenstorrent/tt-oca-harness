@@ -32,9 +32,8 @@ The two orderings the fabric cannot present are covered at the module's own
 port by `sep_drbg_axil_adapter_port_arbitration_test`, which drives a
 TB-instantiated instance of the same adapter directly.
 
-Calibration also shows the overlap needs no timing manipulation: with plain
-untimed traffic AW and AR land in the same cycle whenever a store and a load
-are in flight together.
+With plain untimed traffic AW and AR land in the same cycle whenever a store
+and a load are in flight together, so the overlap needs no timing manipulation.
 
 ONE ordering per lane per simulation so a wedge cannot contaminate a later
 cell. Driving one scenario per leaf is what makes each verdict independent.

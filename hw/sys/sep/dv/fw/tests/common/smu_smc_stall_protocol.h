@@ -3,14 +3,12 @@
 /*
  * smu_smc_stall_sep  --  shared protocol contract (single source of truth).
  *
- * Included by both firmwares (SMC hold/release + SEP GO-poll) and parsed by the
- * cocotb checker so DUT stimulus and DV expectations share one contract.
- * Keep every value a plain integer/hex #define so the Python parser can read it.
+ * Included by the SMC firmware hw/sys/smc/dv/fw/tests/smu_smc_stall_sep/main.c.
+ * Keep every value a plain integer/hex #define so a parser can read it.
  *
  * Channels (SMC CPU_CTRL scratch array, 8-byte stride, base 0xC0039080):
  *   scratch0 : SMC status/progress markers (SMC -> observers)
- *   scratch1 : common CLA arm token (written by the SMC fw in this test to satisfy the SV
- *              liveness monitor)
+ *   scratch1 : CLA arm token (SMC -> observers, written after the CLA release values)
  *   scratch2 : SMC -> SEP command channel
  *   scratch3 : SEP -> SMC response channel
  * The SEP reaches the SMC scratch through the SEP->SMC alias (subtract 0x4000_0000 then SMC
@@ -19,7 +17,7 @@
 #ifndef SMU_SMC_STALL_PROTOCOL_H
 #define SMU_SMC_STALL_PROTOCOL_H
 
-/* common CLA arm token (scratch1) the SV real-CLA liveness monitor waits for */
+/* CLA arm token: the SMC firmware writes it to scratch1 after the CLA release values. */
 #define SMU_STALL_ARM_TOKEN 0x02200100
 
 /* Frontdoor SMC bring-up over the SEP->SMC port: no net force and no ext_in

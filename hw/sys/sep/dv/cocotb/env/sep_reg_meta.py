@@ -655,11 +655,9 @@ def indexed_block_count(prefix: str) -> int:
     """How many ``<prefix>_<n>_`` blocks the generated header declares.
 
     The filter banks are RDL arrays -- ``outbound_filter_ctrl[32]`` and
-    ``inbound_filter_ctrl[16]`` in ``hw/sys/sep/regs/sep.rdl`` -- so the entry
-    count belongs to the register export, not to a sequence. Two sweeps that
-    each carry their own literal will disagree the moment the array changes, and
-    the one that is short simply never reaches the tail entries: a sweep that
-    selects from 16 of 32 entries reports a clean pass over half the bank.
+    ``inbound_filter_ctrl[16]`` in ``hw/sys/sep/regs/sep.rdl``. The entry count
+    comes from the register export, not from a sequence, so every sweep reaches
+    the tail entries.
 
     Indices must be contiguous from zero. A gap means the header and the RDL
     disagree, and a sweep built on the count would silently skip the hole.
@@ -858,8 +856,7 @@ def iter_register_walk() -> RegisterWalk:
     * ``duplicate``     -- the ``(block, register)`` pair was already walked: a
       generator that emits an instance twice lands here.
 
-    Reporting one figure would let a change of cause pass unnoticed, so the
-    three are kept apart and ``nometa`` sums them.
+    The three causes are counted apart; ``nometa`` sums them.
     """
     names = block_names()
     access = _ipxact_access()

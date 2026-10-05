@@ -73,8 +73,6 @@ Checkers:
                    the same integrity claim as CHK-WIDE-OUTSTANDING, carried
                    to every host path in the table rather than only the
                    entropy source
-
-Pass Criteria: every named checker PASSes. UVM_ERROR == 0.
 """
 
 from __future__ import annotations

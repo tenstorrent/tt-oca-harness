@@ -31,8 +31,8 @@
 #
 # Both passes zero the whole file with the scrambler OFF first. With the
 # scrambler off the vault addresses the register file logically and passes
-# data through, so that is both a legitimate way to reach a known starting
-# state without a wipe, and a legitimate frontdoor view of what was stored.
+# data through, so the zero fill reaches a known state without a wipe and a
+# read shows what was stored.
 #
 # Response, in order:
 #   pass A: the number of non-zero words, then that many {index, value} pairs

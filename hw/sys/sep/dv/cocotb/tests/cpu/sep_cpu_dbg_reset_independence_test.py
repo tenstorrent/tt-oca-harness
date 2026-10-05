@@ -54,9 +54,6 @@ class sep_cpu_dbg_reset_independence_test(sep_base_test):
         await self._check_reset(dut.sep_cpu_reset_n_o, "CHK-BASELINE sep_cpu_reset_n released", 1)
         self.logger.info("CHK-BASELINE PASS: both reset observables released with dbg_rstb_i high")
 
-        # No CHK-ISO: in lsu_stub_all_live dbg_rstb_i has no netlist path to either
-        # observable (module docstring), so a pulse-and-check could not fail.
-
         # CHK-LIVE: a real reset source (wdt_rst_ni_i low) MUST drop sep_cpu_reset_n,
         # proving the observable is live rather than stuck at 1.
         dut.wdt_rst_ni_i.value = 0

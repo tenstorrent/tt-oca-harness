@@ -47,7 +47,6 @@ from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 # Derived from the generated SystemRDL export, never hardcoded.
 # No CLOCK_GATE_CTRL field gates a fabric bank (sep_cpu_ctrl.rdl), so the banks
 # are clocked without this write; it exercises the CSR write path only.
-# Writing the full implemented mask keeps this step's CSR write-path coverage.
 CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
 CLOCK_GATE_UNGATE = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
 

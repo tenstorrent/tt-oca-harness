@@ -18,8 +18,8 @@
 // Two rules keep this file honest:
 //   * A net that a master, the inbound SoC port, JTAG, an integrator port or
 //     software (a sw-writable CSR) can move is NOT listed. Those are stimulus gaps.
-//   * A bit that any leaf moved is NOT listed. Every entry had no 0->1 and no 1->0
-//     toggle in the merged `all` database; the file passes urg -excl_strict.
+//   * A bit that any leaf moved is NOT listed. No listed bit toggles in either
+//     direction in the merged `all` database; the file passes urg -excl_strict.
 //
 // Checksums come from `urg -dump full_exclusions tgl` on the merged VDB.
 //==================================================

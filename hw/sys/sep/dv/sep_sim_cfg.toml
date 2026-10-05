@@ -141,8 +141,6 @@ incdirs = [
 ]
 
 [build.options]
-# SEP is a large cold build (VeeR EL2 + OTBN + full crypto).
-#
 # Partition the build dir by input fingerprint so the targets that share a
 # build_dir coexist instead of clobbering one shared model on every target
 # switch. Each unchanged target then reuses its build; only a config or source
@@ -325,7 +323,7 @@ outputs = [
 #   oca-images and decrypt_negative_images
 #                     are pure Python and must run on the HOST: the packer's deps
 #                     come from the tt-oca-manifest submodule's pyproject.toml via
-#                     uv, and the ocah-toolchain image carries neither.
+#                     uv, and the ocah-container image carries neither.
 #
 # Toolchain: an explicit $RISCV_TOOLCHAIN, or the OCAH container via
 # scripts/docker-run.sh run-here. GCC_PREFIX differs from the engine's

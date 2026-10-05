@@ -95,7 +95,6 @@ static void digest_to_hex(const uint8_t *digest, size_t n, char *out) {
 }
 
 int main(void) {
-    // Initialize outbound filter to allow testpass mailbox access
     sep_outbound_filter_init();
 
     pic_register_handler(EXT_INT_DMA_DONE, dma_isr);
@@ -537,7 +536,6 @@ int main(void) {
         test_fail(errors);
     }
 
-    // Keep CPU alive after signaling completion.
     while (1) {
         __asm__("wfi");
     }

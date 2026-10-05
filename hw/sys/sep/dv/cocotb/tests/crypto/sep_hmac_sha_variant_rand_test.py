@@ -9,10 +9,8 @@ does not reach:
 
     {SHA-256, SHA-384, SHA-512} x {keyed HMAC, plain SHA} x legal key-length.
 
-Provenance: the OCAH HMAC tests cover SHA-256 only, with no SHA-384/512 HMAC or
-key-length coverage, so the independent stdlib golden (env/sep_hmac_golden.py,
-HMAC-SHA256/384/512 RFC 4231 + plain SHA FIPS-180, self-tested) is the reference.
-Distinct from
+The independent stdlib golden (env/sep_hmac_golden.py, HMAC-SHA256/384/512 RFC 4231 +
+plain SHA FIPS-180, self-tested) is the reference. Distinct from
 `sep_km_hmac_sideload_kat_test` (SHA-256 via SIDELOAD) and the CPU
 crypto smoke (SHA-256): HMAC SHA-variant breadth is standalone SW-key across variants.
 
@@ -91,10 +89,8 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
         conv = await self._check_key_convention()
 
         # Collect each cell's DUT result so the matrix claim rests on observed
-        # output, not on the loop's own trip count. Comparing `walked` only to a
-        # product of file-scope constants asserts the test's own arithmetic.
-        # Distinct results additionally show the cells programmed different
-        # configurations.
+        # output, not on the loop's own trip count. Distinct results additionally
+        # show the cells programmed different configurations.
         results: dict[str, tuple[int, ...]] = {}
         for sha_bits in SHA_VARIANTS:
             for key_bits in KEYED_MATRIX[sha_bits]:

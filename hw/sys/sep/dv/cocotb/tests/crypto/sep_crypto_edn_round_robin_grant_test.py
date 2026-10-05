@@ -228,9 +228,7 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         cocotb.start_soon(_monitor())
         await self.start_seq(SepEsrcEnableEdnSeq("esrc_enable_edn"))
 
-        # Collect grants for a fixed budget and let the asserts below decide.
-        # Breaking out on the same condition the asserts test would make them
-        # restatements of the loop guard, unable to fail at their own sites.
+        # Collect grants for a fixed budget; the asserts below decide.
         for _ in range(_GRANT_POLLS):
             if len(grants) >= _GRANT_SAMPLE_TARGET:
                 break
@@ -256,8 +254,7 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         # round-robin from fixed priority, because a URND grant may follow AES
         # dropping edn_req (dual_grants is logged, not graded). A repeat
         # after both clients have already been served is the legal tail (one
-        # client dropped req). `any(a != b)` would be a tautology once
-        # CHK-NO-STARVE has both values in the list.
+        # client dropped req).
         pairs = list(zip(grants, grants[1:]))
         alt_pairs = 0
         for a, b in pairs:
@@ -398,13 +395,10 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         #   KMAC, seed produces, so a seed change does not trip them. They do
         #   pool  NOT bound their sink's full stimulus.
         #
-        # The floors stay constants rather than tracking the observed grant
-        # count. The scoreboard scores one item per cycle where
-        # crypto_edn_req_o & crypto_edn_ack_o for that client, which is the same
-        # pair of ports the grant monitor edge-counts, so items >= grants holds
-        # by construction and a grant-derived floor could not fail for any DUT
-        # behaviour. The grant counts are logged below as diagnostics, which is
-        # what they can honestly be.
+        # The floors are constants. The scoreboard scores one item per
+        # req && ack cycle on the same ports the grant monitor counts, so a
+        # grant-derived floor would hold by construction. The grant counts are
+        # logged below as diagnostics.
         #
         # What still carries each unbounded sink: AES and URND by CHK-NO-STARVE
         # and CHK-GRANT-ALT on the grant stream; KMAC by CHK-KMAC-CLIENT, whose

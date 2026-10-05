@@ -8,8 +8,7 @@ handshake) -> OT SPI host TX FIFO -> flash: the OT SPI TX watermark drives
 lsio_trigger, which refills the TX FIFO from SRAM a 16-byte chunk at a time. RX is
 held quiescent so the single lsio_trigger (= tx_wm | rx_wm) is TX-watermark-driven.
 
-Beyond OCAH `spi_ot_dma_tx_test` (raw-byte stream, done+no-error only): the DMA
-feeds a real flash PAGE PROGRAM stream (opcode 0x02 + 24-bit addr + data) from SRAM;
+The DMA feeds a real flash PAGE PROGRAM stream (opcode 0x02 + 24-bit addr + data) from SRAM;
 the firmware then reads the flash back over SPI and value-checks it; and an
 independent cocotb BFM golden confirms the flash memory == the SRAM source. Distinct
 from `sep_spi_ot_dma_rx_test` (RX direction) -- reuses that test's lsio_trigger /

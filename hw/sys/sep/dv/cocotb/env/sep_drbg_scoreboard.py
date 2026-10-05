@@ -904,9 +904,7 @@ class SepDrbgScoreboard:
         or an extra Update all still mismatch; what the value compare cannot see
         is gen_last itself landing on the wrong beat. report() checks each segment
         length against legal_gen_lengths (the sequence glen unless the caller pins
-        the full set via golden_kwargs["legal_gen_lengths"]). Predicting the
-        boundary outright would mean modelling EDN arbitration, or probing the
-        commanded glen inside the vendored csrng_cmd_stage generate block.
+        the full set via golden_kwargs["legal_gen_lengths"]).
 
         Protocol: every emitted block must carry genbits_fips_o==1.
         """

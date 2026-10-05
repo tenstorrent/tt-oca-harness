@@ -23,8 +23,8 @@
 // leaves the block as reset left it. Expected values come from the generated
 // register header hw/sys/sep/regs/gen/svh/sep_reg.svh (address, reset value,
 // field masks), from the written stimulus, and from the access-class table
-// below. The cocotb twin is tests/system/sep_address_map_test.py with
-// seq_lib/sep_address_map_seq.py.
+// below. The cocotb twin is cocotb/tests/system/sep_address_map_test.py with
+// cocotb/seq_lib/sep_address_map_seq.py.
 
 class sep_address_map_test_seq extends sep_base_test_seq;
   `uvm_object_utils(sep_address_map_test_seq)

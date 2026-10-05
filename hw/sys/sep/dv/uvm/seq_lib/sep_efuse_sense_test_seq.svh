@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP eFuse sense scenario sequence, carrying the cocotb
-// tests/efuse/sep_efuse_sense_test.py semantics with no AXI access:
+// cocotb/tests/efuse/sep_efuse_sense_test.py semantics with no AXI access:
 //   * the eFuse bank model loads the committed default image at reset
 //     (+sep_efuse_hex, from the testlist), and the real OTP sense runs (no
 //     +skip_fuse_sense);

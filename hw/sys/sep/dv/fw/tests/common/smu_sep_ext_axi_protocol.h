@@ -216,10 +216,9 @@ _Static_assert(EXTAXI_FILTER_STRIDE == 0x20u, "inbound filter stride drift");
 #define EXTAXI_FILTER_STRIDE 0x20u
 #endif
 
-/* Firmware poll bound (loop iterations; never hang). Secondary bound only -- the
- * cocotb MONITOR_TIMEOUT is the primary fail-loud gate. Sized wide vs the whole
- * post-boot datapath while bounding every post-egress wait so the firmware always
- * reaches a defined, named PC. */
+/* Firmware poll bound in loop iterations. MONITOR_TIMEOUT is the primary fail-loud
+ * gate; this bound keeps every post-egress wait finite so the firmware parks at a
+ * named PC. */
 #define EXTAXI_FW_POLL_LIMIT 200000
 
 #endif /* SMU_SEP_EXT_AXI_PROTOCOL_H */

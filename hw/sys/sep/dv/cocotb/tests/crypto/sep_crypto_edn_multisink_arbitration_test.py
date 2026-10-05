@@ -11,9 +11,8 @@ and uses KM (a different leg) as the second sink; the standalone AES/KMAC breadt
 tests are single-engine KATs. DISTINCT from all of those -- do NOT re-prove
 single-sink routing here.
 
-Provenance: OCAH `sep_drbg_real_sink_multi_rand_test` (two real sinks off one DRBG),
-moved here to the crypto-endpoint arbiter, which a per-IP bench cannot reach: there two
-crypto engines share one EDN adapter. No KM firmware / no
+The two sinks are crypto engines that share one EDN adapter at the crypto-endpoint
+arbiter. No KM firmware / no
 rom_main / no real fuse-sense (+skip_fuse_sense), so it follows the standalone
 crypto-engine bring-up style.
 
@@ -92,7 +91,7 @@ KMAC_S = b"crypto EDN arbiter"
 # Concurrent-window op counts. Kept small so AES+KMAC consumption stays well under
 # one CSRNG Generate (cfg.glen=32 genbits blocks) -- else the bit-exact CHK4 golden
 # (one Generate per seed) desyncs. No KM boot here, so the whole 32-block budget is
-# for these ops. Raise only after re-confirming CHK4 mismatch=0.
+# for these ops.
 AES_BLOCKS_FORK = 2
 KMAC_OPS_FORK = 2
 

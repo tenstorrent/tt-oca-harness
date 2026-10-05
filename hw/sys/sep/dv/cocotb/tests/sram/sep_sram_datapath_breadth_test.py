@@ -2,10 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Every SRAM byte lane, data pattern, boundary word and address bit reads back exactly.
 
-Provenance: OCAH `sep_sram_uvm_byte_strobe`, `..._byte_pattern`, `..._data_pattern`,
-`..._addr_boundary`, `..._write_read`, `..._sequential_access`. Exercises the external scratch SRAM
-(0x1000_0000, 256 KiB) over the CPU-LSU AXI splice (no_cpu) beyond the
-smoke (a single 64-bit R/W + one 32-bit partial).
+Exercises the external scratch SRAM (0x1000_0000, 256 KiB) over the CPU-LSU AXI splice
+(no_cpu) beyond the smoke (a single 64-bit R/W + one 32-bit partial).
 
 `[RANDCFG]` -- ``SepSramBreadthCfg`` is the single source of truth for both the
 DUT programming and the golden expectations. Required coverage is walked

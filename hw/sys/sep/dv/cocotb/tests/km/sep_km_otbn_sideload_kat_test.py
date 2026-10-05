@@ -10,11 +10,8 @@ writes the 384-bit result to DMEM. The host asserts DMEM == the exact known key.
 
 This is a fully FRONTDOOR consume-proof: because the host loaded the key value
 itself, the expected value is known without reading the wrapper shares (which are
-write-only / on the KM-private bus). OCAH `sep_km_otbn_sideload_kat_test`
-generates a random key and reconstructs it by a read-only backdoor of the wrapper
-shares. Here the 12
-distinct key words make an exact compare catch any truncation, word-swap, or
-share-defeat bug.
+write-only / on the KM-private bus). The 12 distinct key words make an exact compare
+catch any truncation, word-swap, or share-defeat bug.
 
 Checkers:
   CHK0       boot KM on real DRBG -> RESP_KM_READY

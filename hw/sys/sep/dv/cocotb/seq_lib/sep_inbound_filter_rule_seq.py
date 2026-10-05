@@ -115,10 +115,10 @@ BURST_ALLOW_SPAN = 0x2000
 # --- same-page 4 KB widen -----------------------------------------------------
 # axi_filter_wrap.sv rewrites an allow_burst=1 window whose START and END share a
 # 4 KB page to that whole page, and traffic_filter.sv then compares only
-# addr[ADDR_WIDTH-1:12]. memory_map.adoc packs distinct blocks of the SEP System
-# aperture at that same 4 KB pitch -- DMA CSR 0x1080_0000, WDT 0x1080_1000, the
-# dual scratch banks 0x1080_2000 -- so a grant that crossed the page edge would
-# reach a neighbouring block.
+# addr[ADDR_WIDTH-1:12]. `hw/sys/sep/doc/memory_map.adoc` packs distinct blocks of
+# the SEP System aperture at that same 4 KB pitch -- DMA CSR 0x1080_0000, WDT
+# 0x1080_1000, the dual scratch banks 0x1080_2000 -- so a grant that crossed the
+# page edge would reach a neighbouring block.
 PAGE_SHIFT = 12
 PAGE_SIZE = 1 << PAGE_SHIFT
 GRANULE_BYTES = 1 << DBW_RO_VAL

@@ -500,8 +500,8 @@ free_done:
     # matching IRQ_STATUS bit so an ISR can be exercised without the hardware
     # condition. DRBG_ERR is used here because it is the one status bit whose
     # own fault source has no frontdoor from the SEP side. This grades the
-    # set/W1C plumbing and the aggregation ONLY -- it does not prove a DRBG
-    # fault is detected, and must not be recorded as coverage of that source.
+    # set/W1C plumbing and the aggregation only; it does not show that a DRBG
+    # fault is detected.
     addi  x11, x0, IRQ_DRBG_ERR
     sw    x11, 0(x9)            # W1C first: the bit is sticky
     lw    x7, 0(x9)

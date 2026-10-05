@@ -2103,7 +2103,7 @@ module sep_fcov (
     option.per_instance = 1;
     option.name = "sep_dma_completion_route_cg";
     // The DMA reports completion two ways and the suite walks both:
-    // dma_basic_test polls STATUS.done, dma_hash_test takes the DMA_DONE
+    // sep_dma_basic_test polls STATUS.done, sep_dma_hash_test takes the DMA_DONE
     // interrupt whose handler clears STATUS.done before software reads it.
     // Recording only "completed" would hide which route the transfer took.
     cp_route: coverpoint irq_route {
@@ -2283,7 +2283,7 @@ module sep_fcov (
           (binsof(cp_debug.none) || binsof(cp_debug.partial));
     }
     // SECURE_TM does NOT qualify feature control in this layout
-    // (env/sep_lcc_golden.py), so it is recorded on its own rather than
+    // (cocotb/env/sep_lcc_golden.py), so it is recorded on its own rather than
     // crossed: the stitch test drives the strap both ways.
     cp_secure_tm: coverpoint secure_tm {
       bins off = {1'b0}; bins on = {1'b1};

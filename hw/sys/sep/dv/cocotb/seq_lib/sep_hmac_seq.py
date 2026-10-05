@@ -159,13 +159,9 @@ class SepHmac(SepAxiRegDriver):
         """Read the 32 public KEY CSRs, plus a positive control.
 
         These key registers are declared write-only and the generated register
-        block ties their read data to a constant '0. Reading them back as zero is
-        therefore NOT evidence that the sideloaded key is unexposed -- they read
-        zero whether the key is protected, mirrored elsewhere, or never delivered.
-        What the readback can do is catch the day they become readable. (The KMAC
-        sibling can demonstrate this directly, because it writes a decoy to its key
-        registers earlier in the run; nothing writes these HMAC ones, so here the
-        claim rests on the generated register block rather than on an observation.)
+        block ties their read data to '0, so a zero readback is not by itself
+        evidence that the sideloaded key is unexposed; it catches only a register
+        that becomes readable. Nothing in this run writes them.
 
         For that to be worth anything the read path must be known alive, so this
         also returns STATUS, a readable register in the same window over the same

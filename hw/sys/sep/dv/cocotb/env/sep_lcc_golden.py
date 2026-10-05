@@ -120,8 +120,7 @@ def lc_state_next(
     Everything else follows from those three, including the destinations the
     chapter never names: from PROD_END every reachable set lands outside the
     named set, which is exactly the chapter's "the only permitted transition is
-    to INVALID". A destination table would be a second, weaker statement of the
-    same rule.
+    to INVALID".
 
     ``sip_match`` / ``chiplet_match`` are the token-comparator verdicts
     (``TOKEN_MATCH_CODE`` presented, not merely a token written).
@@ -378,8 +377,10 @@ def selftest() -> None:
 # ---------------------------------------------------------------------------
 # Named dbg_disable bits. Each is a DUT-output port on tb_top; checkers read
 # those ports by name. The DTP ladder in lifecycle_controller.adoc states the
-# three cases, not a packing order. Same-case bits still share a golden, but
-# a swapped pair of ports fails because the sample reads each port by name.
+# three cases, not a packing order. The sample reads each port by name. Bits
+# in the same case share a golden, so a swap between two of them is not
+# detected. A swap across cases fails on a FEAT_CTRL value that opens one of
+# the two cases and not the other.
 DBG_DISABLE_FIELDS = (
     "stap_io",
     "stap_smc",

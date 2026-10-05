@@ -26,9 +26,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# SRAM byte-lane, data-pattern, boundary and sequential-word breadth over the CPU-LSU splice
-# (OCAH SRAM tests `byte_strobe`, `byte_pattern`, `data_pattern`, `addr_boundary`,
-# `write_read`, `sequential_access`).
+# SRAM byte-lane, data-pattern, boundary and sequential-word breadth over the CPU-LSU
+# splice.
 name = "sep_sram_datapath_breadth_test"
 module = "sram.sep_sram_datapath_breadth_test"
 seed = 1
@@ -75,9 +74,8 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense", "+sep_boot_rom_hex=rom_sanity_rom.hex"]
 
 [[tests]]
-# LSU reads of the boot ROM match the preloaded image; a store is ignored, NOT DECERR (OCAH
-# ROM tests `basic_read`, `sequential_read`, `content_verify`, `addr_boundary`,
-# `write_ignore`). cpu mode is required: the no_cpu splice cannot reach the ROM.
+# LSU reads of the boot ROM match the preloaded image; a store is ignored, NOT DECERR.
+# cpu mode is required: the no_cpu splice cannot reach the ROM.
 name = "sep_boot_rom_lsu_read_test"
 module = "cpu.sep_boot_rom_lsu_read_test"
 firmware = "rom_lsu_read_test"

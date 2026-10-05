@@ -87,8 +87,6 @@ static inline void nmi_set_vector(void) {
      * Mailbox command format for LOAD_NMI_ADDR (0x81):
      *   bits [7:0]  = 0x81 (command)
      *   bits [31:8] = nmi_addr >> 8
-     *
-     * The testbench reconstructs: nmi_vec[31:1] = {mailbox[31:8], 7'b0}
      */
     uint32_t mailbox_cmd = ((nmi_addr >> 8) << 8) | LOAD_NMI_ADDR;
     WRITE_REG(STDOUT, mailbox_cmd);

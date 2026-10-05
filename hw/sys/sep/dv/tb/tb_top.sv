@@ -2322,8 +2322,7 @@ module sep_uvm_top
     // request ordering, and ID outstanding tracking. They drive nothing.
     //
     // Both buses carry TB-sourced stimulus, so a failure here is a stimulus
-    // bug in the VIP or a sequence rather than a DUT bug. That is the value:
-    // it stops an illegal transaction being blamed on the DUT.
+    // bug in the VIP or a sequence rather than a DUT bug.
     //
     // The Verilator targets pass no --assert, so Verilator drops the
     // two-state rules; the X-hygiene rules are gated by OCAH_INC_ASSERT
@@ -2766,7 +2765,7 @@ module sep_uvm_top
     assign esrc_noise_ext_i         = '0;
     assign spi_miso_i               = 1'b1;
 
-    // Non-reusable test classes compile as part of this top (module scope).
+    // Test classes compile as part of this top (module scope).
     `include "sep_tests.sv"
 
     initial begin

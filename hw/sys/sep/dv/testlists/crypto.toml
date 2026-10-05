@@ -202,7 +202,10 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 # Pipelined reads of one ABR register at depths 1, 2, 3, 4 and 8 from the SMN
-# inbound master (m_axi); each returns its value. sep_abr_pipelined_read_matrix_test adds s_axi.
+# inbound master (m_axi); each returns its value. m_axi is the port for this stimulus: the
+# CPU-LSU splice (s_axi) stands in for the VeeR LSU, which serialises MMIO loads, and the
+# inbound port is a SoC master under no such restriction. sep_abr_pipelined_read_matrix_test
+# also drives s_axi.
 name = "sep_abr_pipelined_read_test"
 module = "crypto.sep_abr_pipelined_read_test"
 seed = 1

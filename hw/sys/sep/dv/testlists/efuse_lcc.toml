@@ -63,9 +63,8 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# eFuse JTAG AXI-Lite and EL2 CPU arbitration at the eFuse mux (OCAH
-# `sep_efuse_jtag_axil_el2_cpu_mux_test`), plus the PROD shadow deny. Real fuse
-# sense: the JTAG lifecycle gate reads the sensed LC_STATE.
+# eFuse JTAG AXI-Lite and EL2 CPU arbitration at the eFuse mux, plus the PROD shadow
+# deny. Real fuse sense: the JTAG lifecycle gate reads the sensed LC_STATE.
 name = "sep_efuse_jtag_axil_el2_cpu_mux_test"
 module = "efuse.sep_efuse_jtag_axil_el2_cpu_mux_test"
 firmware = "efuse_jtag_el2_mux_test"

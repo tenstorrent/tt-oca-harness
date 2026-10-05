@@ -22,7 +22,7 @@
 #ifndef SMU_CLA_SEP_CPU_DEBUG_PROTOCOL_H
 #define SMU_CLA_SEP_CPU_DEBUG_PROTOCOL_H
 
-/* common CLA arm token (scratch1) the SV real-CLA liveness monitor waits for */
+/* CLA arm token: the SMC firmware writes it to scratch1 after the CLA release values. */
 #define CLADBG_ARM_TOKEN 0x02200100
 
 /* Frontdoor boot (reuse the smu_smc_stall_sep mechanism): TB backdoor-preloads the SMC image;

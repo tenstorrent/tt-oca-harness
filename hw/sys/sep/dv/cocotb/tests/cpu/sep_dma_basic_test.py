@@ -2,12 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Secure DMA CSRs, address modes, widths and error legs meet their contracts on SRAM copies.
 
-Provenance: OCAH `sep_dma_uvm_reg_rw_test`, `sep_dma_uvm_reg_reset_test`,
-`sep_dma_uvm_cfg_regwen_test`, `sep_dma_uvm_range_regwen_test`, `sep_dma_uvm_addr_fixed_test`,
-`sep_dma_uvm_addr_wrap_test`, `sep_dma_uvm_addr_combo_test`, `sep_dma_uvm_mem_copy_test` (width
-sweep) and `sep_dma_uvm_err_opcode_test`. The test boots the VeeR EL2 core and runs the
-dma_basic firmware. The firmware drives the Secure DMA over the CPU LSU and checks the DMA CSR
-and copy-datapath contracts on bare sep (SRAM->SRAM transfers).
+The test boots the VeeR EL2 core and runs the dma_basic firmware. The firmware drives the
+Secure DMA over the CPU LSU and checks the DMA CSR and copy-datapath contracts on bare sep
+(SRAM->SRAM transfers).
 
 Distinct from the other DMA tests (sep_dma_hash_test: inline SHA-256, SRAM->DCCM and IRQ;
 sep_dma_cpu_contention_test: mid-flight BUSY and dual master; sep_spi_ot_dma_rx_test: lsio

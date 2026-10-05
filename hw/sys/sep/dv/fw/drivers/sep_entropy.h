@@ -152,7 +152,7 @@ static inline int sep_entropy_wait_boot_phase(void) {
 
 // PHASE-B: enable EDN last (auto+boot). Call after a seed has accumulated; EDN
 // then auto-issues Instantiate+Generate and streams genbits to the KM. Lock the
-// now-proven ESRC configuration before exposing entropy to consumers.
+// ESRC configuration before exposing entropy to consumers.
 static inline void sep_entropy_enable_edn(void) {
     sep_entropy_wr(SEP_ESRC_FIPS_LOCK, ENTROPY_SOURCE__FIPS_LOCK__LOCK_bm);
     sep_entropy_wr(SEP_EDN_CTRL, SEP_EDN_CTRL_AUTO);

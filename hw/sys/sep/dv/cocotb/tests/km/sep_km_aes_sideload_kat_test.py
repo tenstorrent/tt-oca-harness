@@ -151,8 +151,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
 
         # CHK-ISO: key-bus isolation, positive evidence. Only AES (of the five KM
         # sideload targets) is released; OTBN/KMAC/HMAC are held in SW reset
-        # and cannot receive the key. OCAH `sep_km_aes_sideload_kat_test` counts
-        # key-bus AW handshakes per engine; this test reads SW_RESET_N back instead.
+        # and cannot receive the key. The test reads SW_RESET_N back.
         rst = await self.swrst.read_back()
         parked = (
             (1 << SW_RESET_N_BIT["otbn"])

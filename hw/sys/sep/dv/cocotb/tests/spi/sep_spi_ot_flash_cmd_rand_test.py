@@ -2,17 +2,16 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The OT SPI host drives the exact flash command sequence, and program, erase and read land.
 
-A cpu-firmware port of OCAH `spi_ot_flash_write_read_test` and
-`spi_ot_flash_sector_erase_test`, randomized ([RAND-REP]). Boots the VeeR EL2 core
-and runs the spi_ot_flash_cmd firmware, which drives the OT SPI host
-(@ 0x10B0_0000) against the OcahSpiFlash BFM:
+A cpu-firmware test, randomized ([RAND-REP]). It boots the VeeR EL2 core and runs the
+spi_ot_flash_cmd firmware, which drives the OT SPI host (@ 0x10B0_0000) against the
+OcahSpiFlash BFM:
 
     WREN -> PAGE PROGRAM -> READ + verify == pattern ->
     WREN -> SECTOR ERASE -> READ + verify == 0xFF, ERROR_STATUS == 0 throughout,
     then the write-protect / RDSR2 breadth and the ERROR_STATUS injections.
 
-cpu-firmware mode (not no_cpu): every OCAH spi_ot flash test and
-`sep_spi_ot_dma_rx_test` run the multi-command SPI flash sequence from firmware.
+cpu-firmware mode (not no_cpu): the firmware runs the multi-command SPI flash
+sequence, as in `sep_spi_ot_dma_rx_test`.
 Distinct from `sep_spi_ot_dma_rx_test` (RX+DMA) and `sep_spi_flash_jedec_smoke_test`.
 
 Randomization (this test is the single source of randomness):

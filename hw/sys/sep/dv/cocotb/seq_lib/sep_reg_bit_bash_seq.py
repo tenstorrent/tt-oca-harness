@@ -706,8 +706,10 @@ class SepRegBitBash:
             )
             if (~mask) & 0xFFFF_FFFF:
                 self.ro_ok += 1
-            # The reserved-bit compare runs only when the register has a
-            # software-usable field and no field is masked out of the write mask.
+            # A register with no software-usable field (mask 0) skips the
+            # reserved compare: its RDL `reserved` field is sw=rw storage
+            # (TIMEOUT_COUNT_*) and reads back what was written. A register
+            # whose write mask drops a field skips it too.
             if mask != 0 and mask == info.mask:
                 reserved = after & info.reserved
                 assert reserved == 0, (

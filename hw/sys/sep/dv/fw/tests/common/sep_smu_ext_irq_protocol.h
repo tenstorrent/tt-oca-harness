@@ -6,8 +6,7 @@
  *
  * sep.sv concatenates the wrapper pin vector directly above the internal
  * slots, so wrapper bit N drives sep_interrupts[NUM_INTERNAL_IRQS + N], and
- * EL2 numbers PIC sources from 1. The source ID is that mapping, not a hedged
- * candidate window.
+ * EL2 numbers PIC sources from 1. The source ID follows from that mapping.
  *
  * SEP_NUM_INTERNAL_IRQS mirrors sep_pkg::NUM_INTERNAL_IRQS, which C cannot
  * read. If the two differ, the pin pulse lands on a source that is not

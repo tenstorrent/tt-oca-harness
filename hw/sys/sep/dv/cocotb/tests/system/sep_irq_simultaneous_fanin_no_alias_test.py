@@ -12,8 +12,7 @@ X/Z resolution of that region is graded only on a four-state simulator. A packin
 that truncates a multi-bit source or aliases a neighbour is the defect class this
 leaf targets in the crypto/KM region.
 
-OCAH sep_irq_extended_connectivity_test asserts connectivity one source at a
-time; this test asserts a cross-IP set simultaneously and proves no aggregator smear. Distinct
+This test asserts a cross-IP set simultaneously and proves no aggregator smear. Distinct
 from the single-source-at-a-time aggregator check (sep_irq_ip_to_aggregator_test)
 and from the CPU PIC/ISR delivery path. CPU-ISR delivery of the simultaneous set and
 the full 32-source cross-product are not covered here.

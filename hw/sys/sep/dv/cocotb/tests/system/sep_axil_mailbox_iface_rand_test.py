@@ -28,16 +28,14 @@ of its step when ``full`` or ``empty`` differs, so a threshold fault in one
 half of the range fails CHK-WIRQT by name. Each PASS line logs the register
 values it read.
 
-OCAH tests: sep_mailbox_64bit_data_test, sep_mailbox_misc_regs_test,
-sep_fabric_mailbox_fifo_closure_test (one rep covers the TX FIFO/IRQ/error/flush family).
+One rep covers the TX FIFO, IRQ, error and flush contracts.
 Run mode: no_cpu (CPU-LSU master) with +skip_fuse_sense (the local mailbox has
 no OTP/LC dependency).
 
 Not covered here: (1) data round-trip readback and (2) read-threshold (RIRQT) need the
 RX FIFO filled from the peer side, which this aperture cannot do, so the read half of
-the threshold pair has no vehicle on this master. The rep is TX-only, like the
-OCAH tests it ports; the peer path is reachable only from the external
-smn_inbound master.
+the threshold pair has no vehicle on this master. The rep is TX-only; the peer path
+is reachable only from the external smn_inbound master.
 """
 
 from __future__ import annotations

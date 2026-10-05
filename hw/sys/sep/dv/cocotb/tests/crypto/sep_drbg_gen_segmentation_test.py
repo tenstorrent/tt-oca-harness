@@ -2,9 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Each completed CSRNG Generate command carries exactly glen blocks, with glen shortened to 4.
 
-Every other entropy test leaves Generate unfinished, so CHK4's legality loop
-never runs ("segmentation NOT EXERCISED"). Two independent reasons, both needed
-to close it:
+With the default glen no Generate completes inside the block budget, so CHK4's
+legality loop never runs ("segmentation NOT EXERCISED"). Two independent reasons,
+both needed to close it:
 
   * ``EDN.BOOT_GEN_CMD`` resets to ``glen=4095``. ``EDN_CTRL_AUTO`` sets
     ``BOOT_REQ``, so the first Generate is the boot command, not
@@ -15,10 +15,10 @@ to close it:
 
 This test sets ``SepEntropyCfg(glen=4, program_boot_generate=True)``. That one
 object programs ``BOOT_GEN_CMD``, ``GENERATE_CMD``, and the golden, so DUT and
-model stay in lockstep. Existing tests leave ``program_boot_generate`` False so
-their one-open-command CHK4 budgets stay put.
+model stay in lockstep. ``program_boot_generate`` defaults to False, which keeps
+the one-open-command CHK4 budget of a test that does not set it.
 
-What this proves that no other test does:
+What this proves:
   * ``gen_last`` is observed asserted at the end of a Generate command;
   * every completed command carries exactly ``cfg.glen`` blocks -- a segment of
     any other length fails;
@@ -41,8 +41,8 @@ from seq_lib.sep_km_mem_smoke_seq import sep_km_release_seq
 # so a command still spans multiple beats (glen=1 would make every beat a
 # boundary and hide an off-by-one in the countdown).
 SEGMENTATION_GLEN = 4
-# Poll window for completed Generate commands, sized so the one boot Generate
-# retires with margin (about one command per 1.1 ms of sim at glen=4).
+# Poll window for completed Generate commands, sized with margin; the loop exits
+# once MIN_COMPLETED_COMMANDS retire.
 POLL_ITERATIONS = 400
 POLL_CYCLES = 200
 # One completed command is all this test reaches (see the class docstring).

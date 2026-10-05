@@ -18,7 +18,8 @@ Checkers:
                       the image golden after it.
   CHK-OTP-DIRECT      the burned bits read 1 in a direct OTP read before the resense.
   CHK-W1S-NOCLOBBER   programming a second bit in a word keeps the first one set
-                      (the bank ORs, it does not overwrite).
+                      (the bank ORs, it does not overwrite). This check is an
+                      assert only; it logs no PASS line.
   CHK-W1S-PERSIST     after the resense the shadow equals the image plus every
                       W1S bit.
 """

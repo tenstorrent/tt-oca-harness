@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Reserved addresses in the SEP memory map must be refused.
 
-Ports the negative-decode behaviour of the OCAH ``sep_cpu_lsu_negative_matrix``,
-``sep_cpu_ifu_invalid_target`` and ``sep_fabric_xbar_error_closure`` tests.
-
 no_cpu / +skip_fuse_sense. RANDCFG: reserved gaps just above each live block
 every seed, plus seed-selected addresses drawn from every reserved row.
 

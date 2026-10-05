@@ -14,9 +14,9 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# OT SPI flash command breadth from CPU firmware (OCAH spi_ot `flash_write_read`,
-# `sector_erase`). RAND-REP: seeded flash address, word count and data; +spi1_directed pins
-# the directed defaults. Dual/quad paths are not walked: the BFM is single-bit.
+# OT SPI flash command breadth from CPU firmware. RAND-REP: seeded flash address, word
+# count and data; +spi1_directed pins the directed defaults. Dual/quad paths are not
+# walked: the BFM is single-bit.
 name = "sep_spi_ot_flash_cmd_rand_test"
 module = "spi.sep_spi_ot_flash_cmd_rand_test"
 firmware = "spi_ot_flash_cmd_test"

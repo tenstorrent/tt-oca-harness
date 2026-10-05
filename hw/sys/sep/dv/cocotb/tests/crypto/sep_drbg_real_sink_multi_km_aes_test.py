@@ -51,11 +51,10 @@ AES_KEY = (
 AES_PT = (0x00112233, 0x44556677, 0x8899AABB, 0xCCDDEEFF)
 
 # Concurrent-window consumers: KM keygen DRBG pulls (KM AXIS sink) interleaved with
-# AES reseed+encrypt blocks (crypto-EDN sink). Bounded so KM boot + these stay
-# inside one CSRNG Generate (cfg.glen=32). Budget: each KM keygen ~6-7 genbits
-# blocks, each AES reseed+block ~2, KM boot ~13. KM_CMDS=1 and AES_BLOCKS=2
-# stay under glen (~24 blocks). Raising glen is not a substitute: a longer
-# Generate can drift the seed boundary on a longer firmware run.
+# AES reseed+encrypt blocks (crypto-EDN sink). KM_CMDS=1 and AES_BLOCKS=2 keep KM
+# boot plus the fork inside one CSRNG Generate (cfg.glen=32). Raising glen is not
+# a substitute: a longer Generate can drift the seed boundary on a longer
+# firmware run.
 KM_CMDS = 1
 AES_BLOCKS = 2
 

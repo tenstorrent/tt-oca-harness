@@ -16,7 +16,7 @@
  * SMC CPU_CTRL scratch array (8-byte stride, SMC-local base 0xC0039080; SEP-view alias =
  * SMC-internal - 0x8000_0000, base 0x40039080):
  *   scratch0  : SMC status/progress markers (SMC -> observers)   SMC 0xC0039080 / SEP 0x40039080
- *   scratch1  : SMC CLA arm token (satisfies the SV real-CLA liveness monitor)
+ *   scratch1  : SMC CLA arm token (written after the CLA release values)
  *   scratch2  : SMC -> SEP status channel (SMC_READY, SCRATCH8_OK)
  *   scratch8  : SEP -> SMC dedicated fixed-alias datapath word    SMC 0xC00390C0 / SEP 0x400390C0
  *   scratch12 : SEP -> SMC response channel (READY, ACK, SEP_PASS) SMC 0xC00390E0 / SEP 0x400390E0
@@ -59,7 +59,7 @@
 /* ---- SMC scratch2 (SMC->SEP status) markers ---- */
 #define XBAR_SMC_READY 0x00330001u       /* SMC: setup done, ready for SEP */
 #define XBAR_SMC_SCRATCH8_OK 0x0038A001u /* SMC: validated scratch8 == DATA_PATTERN */
-/* ---- SMC scratch1 CLA arm token (SV real-CLA liveness monitor) ---- */
+/* ---- SMC scratch1 CLA arm token ---- */
 #define XBAR_SMC_ARM_TOKEN 0x02200100u
 
 /* SEP-view alias addresses of the SMC status/response scratch registers */

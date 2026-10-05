@@ -8,10 +8,8 @@ KAT (`sep_km_aes_sideload_kat_test`, ECB-256 via keymgr) does not reach:
 
     {ECB, CBC, CTR} x {128, 192, 256}  (9 cells).
 
-Provenance: the OCAH AES tests are register- and alert-centric and have no
-CBC/CTR/128/192 ciphertext golden, so the independent pure-Python golden
-(env/sep_aes_golden.py: FIPS-197 ECB 128/192/256 + SP 800-38A CBC/CTR, self-tested)
-is the reference here. Distinct from
+The independent pure-Python golden (env/sep_aes_golden.py: FIPS-197 ECB 128/192/256 +
+SP 800-38A CBC/CTR, self-tested) is the reference. Distinct from
 `sep_km_aes_sideload_kat_test` (ECB-256 via sideload) -- AES mode/key-size breadth
 is standalone SW-key across modes/sizes.
 

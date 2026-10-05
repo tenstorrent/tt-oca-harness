@@ -38,13 +38,11 @@ Scope:
   * The consume-proof is the sideload-vs-SW cross-check. The SW-key digest is
     also compared against the bit-exact KMAC golden (CHK-MAC-GOLDEN). The key is
     KNOWN and distinct-word, so no backdoor and no key/mask non-degeneracy guard
-    is needed (OCAH `sep_km_kmac_sideload_kat_test` instead reconstructs a
-    KM-generated key by backdoor). The wrapper-internal SHARE0 mask
+    is needed. The wrapper-internal SHARE0 mask
     non-degeneracy is out of frontdoor scope; km/sep_km_otbn_sideload_kat_test
     covers it, as for the AES and HMAC sideload KATs.
-  * Key-bus isolation is graded by SW_RESET_N read-back (OCAH
-    `sep_km_kmac_sideload_kat_test` counts key-bus AW handshakes per engine
-    instead); CHK-MAC also proves KMAC got the correct key.
+  * Key-bus isolation is graded by SW_RESET_N read-back; CHK-MAC also proves KMAC
+    got the correct key.
 
 Boot recipe matches the OTBN, AES and HMAC sideload KATs (real fuse-sense, valid
 PROD OTP image).

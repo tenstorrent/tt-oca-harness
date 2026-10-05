@@ -629,7 +629,7 @@ selects them (`sep_cpu` stub on no_cpu, entropy RO). Scoped `sep_public_scope.vl
 [[_boot_rom_firmware_builds]]
 === Boot ROM Firmware Builds
 
-Production Boot ROM firmware tests (188 in `testlists/rom_fw.toml`, for example
+Production Boot ROM firmware tests (`testlists/rom_fw.toml`, for example
 `sep_rom_non_secure_boot_test` and `sep_rom_ot_{dma,pio,secure}_boot_test`) run
 in the `rom_fw` group only -- naming that group, or the test, is the only way to
 reach them. They belong to the ROM-FW owner; the OSS suite
@@ -796,9 +796,9 @@ Logical item names stay framework-neutral and match the VPLAN scenarios, and
 the UVM class name equals the scenario name (testlist
 `name = "sep_axi_smoke_test"`,
 `module = { cocotb = "system.sep_axi_smoke_test", uvm = "sep_axi_smoke_test" }`),
-so `--items <name>` selects the same scenario in either realization. Nine
-scenarios are bound; the "SystemVerilog UVM Smoke Set" section of
-xref:SEP_VPLAN.adoc#sep-dv-verification-plan[SEP_VPLAN] lists them. For `sep_axi_smoke_test` a
+so `--items <name>` selects the same scenario in either realization. The
+"SystemVerilog UVM Smoke Set" section of
+xref:SEP_VPLAN.adoc#sep-dv-verification-plan[SEP_VPLAN] lists the bound scenarios. For `sep_axi_smoke_test` a
 pass covers fuse-sense release, the
 `SEP_LOCAL_BASE_ADDR` reset-value read, directed and seeded-random
 write/readback of `SEP_SW_DEBUG`, `SEP_NMI_VEC`, `PKA_CTRL` and `SEP_REGION_SIZE` through
@@ -846,7 +846,7 @@ scenario names. They differ in the rows below.
 [cols="1,3,3",options="header"]
 |===
 |Element |cocotb realization |SV-UVM realization
-|Scenario set |Every test in the testlists |The nine scenarios with a `uvm` binding
+|Scenario set |Every test in the testlists |The scenarios with a `uvm` binding
 |Simulators |`verilator` (default), `vcs`, `xcelium` |`vcs` only
 |Stimulus masters |`SepAxiAgent` on the CPU-LSU splice (`s_axi`) and a second `SepAxiAgent` on SMN-inbound (`m_axi`) |The shared `ocah_axi_master_env` on the CPU-LSU splice; every other cocotb-driven pin is tied to the idle value `sep_base_test.drive_idle_defaults` uses
 |Scoreboard |`SepScoreboard` on the CPU-LSU agent: OKAY responses, exact `expected` values, and the `expect_error` inverse; `check_phase` needs at least one transaction |`sep_scoreboard` with one reference model per feature (`sep_cpu_ctrl_csr_ref_model`); a test that requires a feature fails when the feature recorded no comparison

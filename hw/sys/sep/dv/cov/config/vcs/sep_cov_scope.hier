@@ -233,7 +233,6 @@
 // carrying an abr_ prefix: abr_prim_buf/prim_buf, abr_prim_flop/prim_flop,
 // abr_prim_sec_anchor_buf/prim_sec_anchor_buf, abr_prim_slicer/prim_slicer,
 // abr_prim_count/prim_count, abr_prim_sparse_fsm_flop/prim_sparse_fsm_flop.
-// Grading the clone but not the original is an inconsistency, not a decision.
 //
 // abr_prim_lfsr is not library-class: its function is part of the accelerator.
 // The ownership scope below applies the same policy to it and the original.
@@ -513,7 +512,7 @@
 -module spi_host_window
 
 // pulp-platform/apb -- 1 module.
-// pulp-platform APB infrastructure. Same reasoning as the AXI library above.
+// pulp-platform APB infrastructure. Same reasoning as the pulp-platform AXI library below.
 -module apb_demux
 
 // pulp-platform/axi -- 36 modules and 1 interface.

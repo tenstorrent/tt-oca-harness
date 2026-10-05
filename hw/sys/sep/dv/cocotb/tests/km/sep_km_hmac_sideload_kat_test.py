@@ -18,10 +18,7 @@ the public KEY CSRs, then runs the keyed MAC. The digest must equal the golden
 of the KM key and differ from the golden of the decoy, so an engine that takes
 the CSR key over the sideloaded key fails.
 
-Provenance: OCAH `sep_km_hmac_sideload_kat_test` generates a random key,
-reconstructs it by a read-only backdoor of the wrapper shares, then searches 8
-byte/word representations for the one that reproduces the engine digest. Here
-the key is known a priori and the digest is checked directly against the golden
+The key is known a priori and the digest is checked directly against the golden
 under key_word_rev=1, key_be=1, msg_be=0, so a truncated, word-swapped or
 wrong-key sideload changes the digest and fails.
 
@@ -52,9 +49,8 @@ Scope:
     key flowed. The HMAC-wrapper-internal SHARE0 mask non-degeneracy is out of
     frontdoor scope; km/sep_km_otbn_sideload_kat_test CHK-F covers it frontdoor,
     as for km/sep_km_aes_sideload_kat_test.
-  * Key-bus isolation is graded by SW_RESET_N read-back (OCAH
-    `sep_km_hmac_sideload_kat_test` counts key-bus AW handshakes per engine
-    instead); CHK-MAC also proves HMAC got the correct key.
+  * Key-bus isolation is graded by SW_RESET_N read-back; CHK-MAC also proves HMAC
+    got the correct key.
 
 Boot recipe matches km/sep_km_otbn_sideload_kat_test and
 km/sep_km_aes_sideload_kat_test (real fuse-sense, valid PROD OTP image; rom_main

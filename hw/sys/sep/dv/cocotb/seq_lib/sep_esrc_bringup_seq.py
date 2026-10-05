@@ -142,14 +142,12 @@ HEALTH_CTRL_DEFAULT = ENTROPY_SOURCE.value("HEALTH_TEST_CTRL", ENABLE=0x7, REPET
 
 # HEALTH_TEST_WINDOW_SIZE is LEFT AT ITS 2048-SAMPLE RESET.
 #
-# Do not "speed up" the bring-up by shrinking it. The APT and Markov thresholds are
-# SP 800-90B values sized for a full window, so a short window (0x40, for example)
-# fails them by construction. entropy_source gates the whole stream on
-# entropy_src_main_sm's boot_phase_done, ALERT_THRESHOLD resets to 4, and four
-# failing windows park the FSM permanently in AlertHang -- after which the
-# decorrelator keeps sampling but the SHA whitener never accepts a word and no seed
-# ever reaches CSRNG. That is a shrink which breaks the mechanism it is meant to
-# exercise, not a timing-only knob.
+# The APT and Markov thresholds are SP 800-90B values sized for a full window,
+# so a short window (0x40, for example) fails them by construction.
+# entropy_source gates the whole stream on entropy_src_main_sm's boot_phase_done,
+# ALERT_THRESHOLD resets to 4, and four failing windows park the FSM permanently
+# in AlertHang -- after which the decorrelator keeps sampling but the SHA
+# whitener never accepts a word and no seed ever reaches CSRNG.
 #
 # Cost at the /8 raw-sampling default: one window is 2048 samples x 8 core cycles
 # ~= 16.4k cycles, well inside wait_seed_ready()'s 60k budget.

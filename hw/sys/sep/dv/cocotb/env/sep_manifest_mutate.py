@@ -160,8 +160,8 @@ HASH_FIELD_SIZE = K.HASH_FIELD_SIZE
 
 # Erased-flash byte. Matches the BFM's backing store and its out-of-range read
 # value (ocah_spi_flash.py), so an erased region and an address past the end of
-# the image are indistinguishable to the ROM -- which is what makes 0xFF the
-# honest representation of "nothing is programmed here".
+# the image are indistinguishable to the ROM, so 0xFF stands for an unprogrammed
+# byte.
 ERASED_BYTE = 0xFF
 
 
@@ -230,9 +230,7 @@ def graft_slot(dst: bytearray, src: bytes, slot: str) -> tuple[int, int]:
 
     A whole slot moves, manifest and payload together, so what lands is a slot that
     was signed as a unit by whichever key packed ``src`` -- it verifies rather than
-    going stale, which a field-level rewrite of the same selector cannot do. That is
-    the difference between proving the ROM refuses an authorized key it was told to
-    revoke and proving only that it refuses a key whose signature no longer checks.
+    going stale, which a field-level rewrite of the same selector cannot do.
 
     Both images must devote the same byte range to the slot, which the packer's
     shared combined layout guarantees; a payload offset is stored manifest-relative
@@ -411,9 +409,8 @@ def rom_status_for_result(boot_error: int) -> int:
     The console code and the status ring live in DIFFERENT spaces: the console
     carries ``OCA_BOOT_ERR_BASE | oca_result_t`` while the ring carries
     ``STATUS_ENCODE(type, SEP_MSG_*)``. ``status_for_result()`` in oca_boot.c is
-    the only bridge, so it is parsed rather than mirrored -- masking the console
-    code and calling the low half a status is how a test ends up asserting on a
-    value the ROM never reports.
+    the only bridge, so it is parsed rather than mirrored. The low half of a
+    console code is not a status.
 
     Only the RESULT range crosses that bridge. rom_manifest_boot() re-reports a
     slot's verdict through status_for_result() under

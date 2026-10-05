@@ -20,8 +20,8 @@
 //     reach is NOT listed. Those fields are an integrator's to drive, so a hole
 //     there is a stimulus gap.
 //   * A tied field that any leaf moved (for example, the no_cpu TB force on the
-//     LSU path) is NOT listed. Every listed signal had no 0->1 and no 1->0
-//     toggle in the merged `all` database that supplies the checksums.
+//     LSU path) is NOT listed. No listed bit toggles in either direction in the
+//     merged `all` database that supplies the checksums.
 //
 // Checksums come from `urg -dump full_exclusions tgl` on the merged VDB.
 //==================================================

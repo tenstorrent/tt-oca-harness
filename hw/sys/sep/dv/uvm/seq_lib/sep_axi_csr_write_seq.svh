@@ -6,7 +6,7 @@
 // (response, timing, timeout). The CSR value is placed on its byte lanes of
 // the 64-bit beat with the matching strobes (raw-bus-word item semantics).
 // Started by sep_base_test_seq::csr_write(). The cocotb twin is the WRITE
-// op of env/sep_axi_agent.py.
+// op of cocotb/env/sep_axi_agent.py.
 
 class sep_axi_csr_write_seq extends ocah_axi_master_sequence;
   `uvm_object_utils(sep_axi_csr_write_seq)

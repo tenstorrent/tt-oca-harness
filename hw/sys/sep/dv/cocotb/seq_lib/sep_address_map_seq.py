@@ -139,12 +139,12 @@ BASE_ADDR_RW = [
 
 # (name, pattern) — pure-RW, no side effects. The readback is compared against
 # `pattern & mask` where mask is the register's implemented-field mask from the
-# generated header, so a placeholder register that implements one bit is
-# checked honestly instead of against a full 32-bit pattern.
+# generated header, so a register whose only field is an RDL `reserved` field
+# declared sw=rw is compared on that one bit, not on a full 32-bit pattern.
 WRITE_READBACK = [
     ("SEP_SW_DEBUG", 0xDEAD_BEEF),
-    # Odd literal: TIMEOUT_COUNT* implement only bit 0 (a placeholder
-    # `reserved` field declared sw=rw), and its reset is 0. An even pattern would
+    # Odd literal: TIMEOUT_COUNT* implement only bit 0 (an RDL `reserved`
+    # field declared sw=rw), and its reset is 0. An even pattern would
     # mask to 0 == reset, so the readback could not tell a stored write from an
     # ignored one. An even pattern such as 0x…DE masks to the reset; 0x…DF does not.
     ("TIMEOUT_COUNT_DMA", 0x0BAD_C0DF),
@@ -229,7 +229,7 @@ class sep_address_map_seq(uvm_sequence):
         self.base_addr_rw_checks = 0
         self.write_readback_checks = 0
         self.fabric_walk_checks = 0
-        # Registers whose only fields are RDL `reserved` placeholders. They are
+        # Registers whose only fields are RDL `reserved` fields. They are
         # still fully checked above (real sw=rw storage), but what they prove is
         # storage rather than an implemented-field readback -- noted so the
         # evidence line can say so.
@@ -273,8 +273,7 @@ class sep_address_map_seq(uvm_sequence):
         # all-ones or a zero return all hold still between the two reads.
         #
         # expected=None on these two reads: the advance below is the check.
-        # Every other read in this sweep
-        # keeps its pinned expectation.
+        # Every other read in this sweep keeps its pinned expectation.
         ref_off = SEP_CPU_CTRL.offset("REFERENCE_COUNTER")
         first_low = await self._read(BASE + ref_off, expected=None, name="REFERENCE_COUNTER_lo")
         self.ref_counter_high = await self._read(

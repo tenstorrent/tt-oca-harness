@@ -244,8 +244,8 @@ int main(void) {
     sep_mbx_puts("SEP mailbox PLIC test\n");
     sep_mbx_puts("STEP filter init done; mailbox CSR clock ungate written\n");
 
-    // This clock-enable write targets no defined register field; it is not on
-    // the checked path.
+    // CLOCK_GATE_CTRL bit 2 is not a defined field; the write has no hardware
+    // effect.
     sep_axil_mbox_clock_enable();
 
     pic_enable_interrupts();

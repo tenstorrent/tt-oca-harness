@@ -2,10 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """CPU-driven HMAC matches a software SHA-256, and AES round-trips the FIPS-197 vector via SRAM.
 
-Ported from OCAH ``hmac_test`` and ``kmac_test`` (crypto engine datapath), plus the
-CPU-owned AES data path. The test boots the VeeR EL2 core and runs the hmac_kmac
-firmware, which exercises three OpenTitan crypto engines over
-the real CPU->fabric path on bare ``sep``:
+The test boots the VeeR EL2 core and runs the hmac_kmac firmware, which exercises three
+OpenTitan crypto engines over the real CPU->fabric path on bare ``sep``:
 
   * HMAC (SHA-256 mode): hashes empty / "abc" / "Hello OTBN." and compares each
     HW digest against an independent software SHA-256 (fw/tests/common/sha256.c), plus

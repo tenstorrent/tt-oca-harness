@@ -26,9 +26,8 @@ args = ["+skip_fuse_sense", "+km_rom_hex=km_rom.parhex"]
 args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom.parhex"]
 
 [[tests]]
-# The EL2 host and the KM PicoRV32 contend at u_km_efuse_axi_lite_mux (OCAH
-# `sep_efuse_km_axil_cpu_mux_coexist_test`). Real fuse sense keeps the host
-# CHIPLET_UID read path live; the OTP image is staged to out/sep_efuse.hex.
+# The EL2 host and the KM PicoRV32 contend at u_km_efuse_axi_lite_mux. Real fuse sense
+# keeps the host CHIPLET_UID read path live; the OTP image is staged to out/sep_efuse.hex.
 name = "sep_efuse_km_axil_cpu_mux_coexist_test"
 module = "km.sep_efuse_km_axil_cpu_mux_coexist_test"
 firmware = { name = "km_efuse_coexist", mode = "el2_km_rom_coexist" }

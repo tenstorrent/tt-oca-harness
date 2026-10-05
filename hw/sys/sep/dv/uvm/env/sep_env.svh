@@ -19,7 +19,7 @@
 //     sep_scoreboard pairing each feature's expected stream with the
 //     observed one.
 //
-// The cocotb twin is env/sep_env.py.
+// The cocotb twin is cocotb/env/sep_env.py.
 
 class sep_env extends ocah_env;
   `uvm_component_utils(sep_env)

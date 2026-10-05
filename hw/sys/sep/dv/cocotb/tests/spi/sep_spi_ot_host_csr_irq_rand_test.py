@@ -2,13 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The OT SPI host CSRs, interrupts, error bits, watermark and enable follow the spi_host spec.
 
-A combined-per-group `[RAND-REP]` that folds the OCAH OT-SPI host-control firmware
-tests (`spi_ot_reg`, `tx_fifo`, `cmd_queue`, `interrupt`, `error_handling`,
-`watermark`, `enable_disable`) into one representative. Not folded, because nothing
-here checks them: clock_config (CFG.CLKDIV is R/W-walked but no transfer runs at a
-programmed divider) and rx_fifo (the only RX touch is the empty-FIFO read that
-triggers UNDERFLOW). Drives the upstream OpenTitan spi_host CSRs (@0x10B0_0000,
-NUM_CS=1) directly over the CPU-LSU AXI splice (no_cpu, no firmware, no flash BFM).
+A combined-per-group `[RAND-REP]` for the OT SPI host control plane: register R/W,
+TX FIFO, command queue, interrupts, error handling, watermark and enable/disable.
+Not covered, because nothing here checks them: the clock configuration (CFG.CLKDIV
+is R/W-walked but no transfer runs at a programmed divider) and the RX FIFO (the
+only RX touch is the empty-FIFO read that triggers UNDERFLOW). Drives the upstream
+OpenTitan spi_host CSRs (@0x10B0_0000, NUM_CS=1) directly over the CPU-LSU AXI splice
+(no_cpu, no firmware, no flash BFM).
 This is the host control plane, distinct from `sep_spi_ot_flash_cmd_rand_test`
 (flash command datapath) and `sep_spi_ot_dma_rx_test` (flash READ + DMA).
 
