@@ -1,28 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""A stalled HMAC message FIFO fails the ROM self-hash instead of hanging it (PyUVM).
+"""A stalled HMAC message FIFO must fail the ROM self-hash instead of hanging it.
 
-FEATURE UNDER TEST. ``fifo_feed()`` (``bootrom/prod/src/hmac_sha256.c``) waits for
-message-FIFO room through helpers bounded by ``HMAC_FIFO_POLL_MAX``. When the engine
-stops consuming, the wait times out and ``sha256()`` takes its fail path.
-
-``hmac_fifo_drain_stall_i`` holds the FIFO's read side idle, so the engine stops
-draining and the FIFO fills. It is raised only once the ROM prints
-``CRYPTO_SELFTEST_OK`` at the end of [S14]: that self-test hashes three bytes,
-which never fill a 32-entry FIFO, so a stall from reset would fail that hash in
-the completion wait rather than in the FIFO wait under test. rom_main() runs the
-[S17] ROM self-hash next, ahead of [S15] and [S16]. It covers the whole ROM
-region, so the FIFO fills almost at once and the word-aligned feed waits for
-credit.
+``fifo_feed()`` (``bootrom/prod/src/hmac_sha256.c``) waits for FIFO room through helpers
+bounded by ``HMAC_FIFO_POLL_MAX``. ``hmac_fifo_drain_stall_i`` holds the FIFO read side
+idle, so the FIFO fills. The stall starts after ``CRYPTO_SELFTEST_OK`` at the end of
+[S14]: that self-test hashes three bytes, which never fill the 32-entry FIFO. The [S17]
+ROM self-hash runs next and covers the whole ROM, so the feed waits for credit.
 
 The ROM must report ``SEP_MSG_HMAC_FIFO_TIMEOUT``, print ``SHA_FIFO_TIMEOUT`` and
-``ROM_HASH_COMPUTE_FAIL``, and halt on ``ROM_ERR_ROM_HASH_MISMATCH`` with a FAIL
-verdict. A ROM whose FIFO wait is unbounded never reaches a verdict, and the run
-times out.
-
-The terminal outcome is a halt before any manifest transport is chosen, so no SPI
-flash is attached and ``SepBootScoreboard`` is not used, as in
-``sep_firmware_sboot_dis_rsvd_terminal_test``.
+``ROM_HASH_COMPUTE_FAIL``, and halt on ``ROM_ERR_ROM_HASH_MISMATCH`` with a cold_scratch[0]
+FAIL verdict. A ROM with an unbounded FIFO wait never reaches a verdict and times out.
+No SPI flash is attached and ``SepBootScoreboard`` is not used: the halt comes before
+any manifest transport is chosen.
 """
 
 from __future__ import annotations

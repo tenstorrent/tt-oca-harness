@@ -185,7 +185,7 @@ if _INFILT0_CFG_RESET is None:
     raise RuntimeError(
         "INBOUND_FILTER_CTRL_0_.FILTER_CONFIG is not in the generated register "
         "export, so the inbound-filter address-map row has no reset value to "
-        "check; update FABRIC_BLOCKS if the block was renamed"
+        "check; update FABRIC_BLOCKS to the block's name in the export"
     )
 FABRIC_BLOCKS = [
     ("SECURE_DMA", sym("SECURE_DMA_REG_MAP_BASE_ADDR"), None),

@@ -1278,9 +1278,7 @@ class SepDrbgScoreboard:
             self.log.info(
                 "CHK4 segmentation NOT EXERCISED: no Generate command completed "
                 "in this run (%d genbits observed), so gen_last was never seen "
-                "asserted and the trailing-Update boundary is unverified. "
-                "Closing this needs an independent probe of the commanded glen "
-                "inside csrng_cmd_stage.",
+                "asserted and the trailing-Update boundary is unverified.",
                 self.results["CHK4_genbits"].dut_items,
             )
         # A completed command must carry one of the legal block counts (the

@@ -2,33 +2,18 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """BL1 security version carrying every device flag -> accepted, the primary boots.
 
-The accept boundary of anti-rollback. ``manifest_security_version`` is a 128-flag
-bitmap, not a counter: a manifest is refused when it omits a flag the device holds,
-``(device & ~manifest) != 0``. Both slots are written with exactly the device's flags
-and re-sealed, so equality is the boundary under test and one flag fewer would reject.
+The accept boundary of anti-rollback. ``manifest_security_version`` is a 128-flag bitmap: a
+manifest is refused when ``(device & ~manifest) != 0``. Both slots carry exactly the device's
+flags and are re-sealed, so one flag fewer would reject. The reject side is
+``sep_firmware_backup_invalid_security_version_test`` and
+``sep_firmware_primary_invalid_security_version_test``; those also show the comparison exists,
+which an accept-only test cannot.
 
-The reject side is covered by ``sep_firmware_backup_invalid_security_version_test``
-and ``sep_firmware_primary_invalid_security_version_test``; this is the accept side.
-
-Where anti-rollback sits, and why both halves are asserted here. The check runs after
-the root key is authorized and BEFORE the signature. The key-selection family relies
-on reaching the key decision before this check can reject, and the reject siblings
-rely on a rolled-back manifest never being handed to the verifier, so the ordering is
-pinned here rather than inherited: ``PUBK_SEL=`` then ``FUSE_VER=`` then ``RSA_EXEC``.
-
-The flags are spread across all four words the platform reads -- the low 16 bytes of
-the ``BL1_VERSION`` bank -- each word distinct and non-empty. A read that truncated
-to one word, repeated a word, or mis-indexed would change the verdict rather than
-pass, which a preload concentrating its bits in word 0 could not show.
-
-The device flags are read TWICE per slot: the library re-runs the check after the
-signature as fault-injection hardening, so ``FUSE_VER=`` appears twice on the one
-slot attempted and a count of one would mean the recheck did not happen.
-
-An accept-only test cannot exclude a ROM whose comparison has been deleted while the
-two echoes remain: printing both operands does not show the comparison ran, and
-ordering is sequence rather than comparison. The two reject siblings are what
-establish that the comparison exists.
+The check runs after root-key authorization and before the signature, so the order ``PUBK_SEL=``
+then ``FUSE_VER=`` then ``RSA_EXEC`` is asserted. The flags are spread across the four words the
+platform reads (the low 16 bytes of ``BL1_VERSION``), so a truncated, repeated or mis-indexed read
+changes the verdict. The library re-runs the check after the signature, so ``FUSE_VER=`` appears
+twice on the one slot attempted.
 
 Needs ``+esrc_noise_force``: the primary is valid, so a real RSA-3072 modexp runs.
 """
@@ -55,15 +40,14 @@ _EFUSE_PRELOAD = (
     / "sep_efuse_lc_prod_bl1ver36_spread.toml"
 )
 
-# The device flag word the preload burns, and the value this testcase writes into
-# both manifests. Equal on purpose: under the superset rule
-# ``(device & ~manifest) == 0``, equality IS the accept boundary -- one flag fewer
-# and the slot is refused.
+# The device flag word the preload burns is also written into both manifests.
+# Under the superset rule ``(device & ~manifest) == 0``, equality is the accept
+# boundary; one flag fewer is refused.
 #
 # The platform reads the LOW 16 BYTES of the 32-byte BL1_VERSION bank, so only
 # these four words of the preload participate. They carry distinct flags, so a
-# manifest omitting any one of them rejects -- which is what makes a truncated
-# read observable through the verdict even though the echo shows 32 bits.
+# manifest that omits any one of them is refused, and a truncated read changes
+# the verdict even though the echo shows only 32 bits.
 _DEVICE_FLAGS = 0x0000000F_00000007_00000003_00000001
 _FUSE_VER_ECHO = f"FUSE_VER=0x{_DEVICE_FLAGS & 0xFFFF_FFFF:08x}"
 _MFST_VER_ECHO = f"MFST_VER=0x{_DEVICE_FLAGS & 0xFFFF_FFFF:08x}"
@@ -71,8 +55,8 @@ _MFST_VER_ECHO = f"MFST_VER=0x{_DEVICE_FLAGS & 0xFFFF_FFFF:08x}"
 _LC_PROD = "LC=PROD"
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
-_PUBK_SEL = "PUBK_SEL="  #
-_RSA_START = "RSA_EXEC"  #
+_PUBK_SEL = "PUBK_SEL="
+_RSA_START = "RSA_EXEC"
 _RSA_VERIFY_OK = "RSA_VERIFY_OK"
 
 _CRYPTO_OK = "MANIFEST_OK"
@@ -94,9 +78,10 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
         "BL1_COPIED",
         "BL1_JUMP=",
     )
-    # VERSION_ROLLBACK is the load-bearing forbid: it is the arm this boundary must
-    # NOT take. The rest exclude a boot that completed for some other reason -- a
-    # failover, a skipped crypto chain, or a different rejecting arm firing first.
+    # MANIFEST_ERR= excludes every manifest refusal, which includes the rollback
+    # refusal this boundary must not take. The rest exclude a boot that completed
+    # for another reason: a failover, a skipped crypto chain, or a different
+    # rejecting arm that fires first.
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
         "SBOOT_OFF",
         "FUSE: SBOOT_DIS: 1",
@@ -138,7 +123,7 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
         assert low16 == _DEVICE_FLAGS, (
             f"BL1_VERSION's low 16 bytes are 0x{low16:032x}, expected "
             f"0x{_DEVICE_FLAGS:032x}: the device flags must EQUAL what this testcase "
-            f"writes into both manifests, or the run is no longer the accept boundary"
+            f"writes into both manifests, or the run does not sit on the accept boundary"
         )
         assert all(words), (
             f"BL1_VERSION's low 16 bytes have an empty word ({[hex(w) for w in words]}): "
@@ -169,10 +154,10 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
 
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
         for slot in ("primary", "backup"):
-            # Anchor before mutating: the shipped slot is fully sealed, its modulus
-            # is the dev0 key the ROM has in slot 0, and the local signer reproduces
-            # the packer's own signature byte for byte. Only then is a re-seal a
-            # sound operation rather than an assumption.
+            # A re-seal reproduces a valid slot only when the shipped slot is fully
+            # sealed, carries the dev0 modulus the ROM holds in slot 0, and the local
+            # signer reproduces the packer's signature byte for byte. Check all three
+            # before mutating.
             pm.verify_sealed(buf, slot)
             mm.verify_public_key(buf, slot)
             pm.verify_signing_key(buf, slot)
@@ -235,10 +220,9 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
             f"{_RSA_VERIFY_OK}@{i_sig} -> {_CRYPTO_OK}@{i_ok}. Console: {console}"
         )
         # CHK-ROLLBACK-AFTER-KEYSEL-BEFORE-SIGNATURE: anti-rollback sits BETWEEN
-        # root-key authorization and the signature. Both halves are load-bearing and
-        # neither is inherited: the key-selection testcases rely on reaching the key
-        # decision before this check can reject, and the reject siblings rely on a
-        # rolled-back manifest never being handed to the verifier.
+        # root-key authorization and the signature. The key-selection testcases need
+        # the key decision before this check can reject, and the reject siblings need
+        # a rolled-back manifest never to reach the verifier.
         assert 0 <= i_sel < i_fuse < i_rsa, (
             f"the version comparison is not between key selection and the "
             f"verifier: {_PUBK_SEL}@{i_sel} -> {_FUSE_VER_ECHO}@{i_fuse} -> "
@@ -261,7 +245,8 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
             )
         self.logger.info(
             "CHK-ROLLBACK-BOUNDARY: primary@%d -> %s@%d -> %s@%d (equal, so accepted) "
-            "-> %s@%d -> %s@%d -> %s@%d, each exactly once; and it followed %s@%d",
+            "-> %s@%d -> %s@%d -> %s@%d; FUSE_VER= twice (recheck after the signature), "
+            "the others once; and it followed %s@%d",
             i_psrc,
             _MFST_VER_ECHO,
             i_mfst,

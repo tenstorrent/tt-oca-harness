@@ -940,7 +940,7 @@ def reg_hw_updating(block: str) -> frozenset[str]:
     if unknown:
         raise RuntimeError(
             f"_CONSTANT_RO[{block!r}] names absent from the export: "
-            f"{sorted(unknown)}; the register was renamed or its access changed"
+            f"{sorted(unknown)}; the export has no read-only register by that name"
         )
     return readonly - constant
 
@@ -1229,7 +1229,7 @@ def _selftest() -> int:
         )
     write_only = [i for i in shapes if i.access.write_only]
     if len(write_only) != 555:
-        failures.append(f"write-only registers {len(write_only)} != 554")
+        failures.append(f"write-only registers {len(write_only)} != 555")
     nonzero_wo = sorted(f"{i.block}.{i.name}" for i in write_only if i.reset != 0)
     if nonzero_wo != ["ABR.MLDSA_MSG_STROBE", "AES.TRIGGER"]:
         failures.append(f"write-only registers with a non-zero DEFAULT {nonzero_wo}")

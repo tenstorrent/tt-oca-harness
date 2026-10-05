@@ -181,5 +181,5 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
         assert self.drbg_sb.report()
         self.logger.info(
             "CHK1..CHK4 bit-exact + CHK5_aes per-sink ROUTING (AES==AXIS1) + CHK5_km/"
-            "CHK5_axis1 genbits-membership + entropy alerts zero (bit-exact, > reference suite)"
+            "CHK5_axis1 genbits-membership + entropy alerts zero (bit-exact)"
         )

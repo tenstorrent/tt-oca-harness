@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Backup asks for SMC SRAM staging after the primary is refused.
+"""Unsupported backup-clear payload-destination scaffold.
 
-The primary is refused on its identifier before staging and keeps use_ext_sram=1;
-the backup clears it, so the run's only staging event must use the SMC window.
+The OCA manifest has no payload-destination selector, the ROM stages payloads into SEP
+SRAM, and shared payload helpers reject ``smc=True`` and ``stage_in_smc``. This file
+defines primary-refusal, backup-clear, and SMC-marker geometry.
 """
 
 from __future__ import annotations
@@ -30,7 +31,7 @@ _REQUIRED, _FORBIDDEN = ues.smc_markers()
 
 @pyuvm.test()
 class sep_firmware_manifest_backup_use_ext_sram_disabled_test(sep_primary_fail_backup_boot_base):
-    """Primary refused on its identifier; the backup stages in the SMC window."""
+    """Primary-refusal and backup-clear marker scaffold."""
 
     efuse_preload = _EFUSE_PRELOAD
     primary_expected_error = _MANIFEST_ERR_BAD_MAGIC
@@ -39,7 +40,7 @@ class sep_firmware_manifest_backup_use_ext_sram_disabled_test(sep_primary_fail_b
 
     def corrupt_primary(self, buf: bytearray) -> None:
         mm.set_identifier(buf, "primary")
-        # The slots must disagree, so a ROM that reads the wrong slot's bit fails.
+        # The scaffold assigns different nominal field values to the two slots.
         ues.assert_stimulus(self.logger, buf, "primary", want_set=True)
 
     def prepare_backup(self, buf: bytearray) -> None:

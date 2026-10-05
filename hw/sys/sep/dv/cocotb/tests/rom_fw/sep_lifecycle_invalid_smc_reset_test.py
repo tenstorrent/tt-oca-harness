@@ -1,9 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Invalid LC_STATE: the ROM halts, and its SMC-reset mitigation really lands.
+"""Invalid LC_STATE: the ROM halts, and its SMC-reset write lands on RESET_CTRL.
 
-Checks that the reset-control write hits an implemented SMC window with core reset_n
-bits clear.
+The reset-control write must hit an implemented SMC window with the core reset_n bits
+clear, and the PC must stay in a small span after the terminal verdict.
+
+Difference from ``sep_rom_lc_state_invalid_test``: this test uses the
+``sep_efuse_lc_invalid.toml`` preload, parses the ``SMC_RESET_ON_INVALID_LC=`` value and
+checks the PC span. The sibling uses ``sep_efuse_lc_invalid_0x9.toml``, checks that the
+halt makes no progress, and is the base of the 0x4 and 0x5 members.
 """
 
 from __future__ import annotations
@@ -33,7 +38,7 @@ _EFUSE_PRELOAD = (
     / "sep_efuse_lc_invalid.toml"
 )
 
-# lc_state_is_valid() accepts raw 0x0..0x8; 0x9 is the first code outside it.
+# lc_state_is_valid() (lifecycle.c) accepts raw 0x0-0x3 and 0x6-0x8; 0x9 is invalid.
 _LC_INVALID_RAW = 0x9
 
 # STATUS_ENCODE(ERROR, ROM_ERR_LIFECYCLE_INVALID): the last store before the wfi spin.
@@ -74,7 +79,7 @@ class sep_lifecycle_invalid_smc_reset_test(sep_base_test):
         self.write_efuse_image(image)
         self.logger.info(
             "CHK-STIMULUS-LC: preloaded LC_STATE raw=0x%x, which lifecycle.c "
-            "rejects (valid set is 0x0..0x8)",
+            "rejects (valid set is 0x0-0x3 and 0x6-0x8)",
             lc,
         )
 

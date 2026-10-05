@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Backup's PLAINTEXT TOC entry 0 starts inside the TOC; the ROM halts.
 
-The payload format puts every image after the TOC, so ``OCA_FAIL_PAYLOAD_TOC`` is expected;
-the ROM does not check this placement and accepts the slot. Needs ``+esrc_noise_force``.
+The payload format places every image after the TOC, so the slot must be refused with
+``OCA_FAIL_PAYLOAD_TOC``. Needs ``+esrc_noise_force``: an RSA-3072 modexp.
 """
 
 from __future__ import annotations

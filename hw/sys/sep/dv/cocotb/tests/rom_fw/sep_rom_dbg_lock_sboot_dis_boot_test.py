@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SBOOT_DIS overrides the TEST_DEV debug lock: an unsigned image boots (PyUVM).
+"""SBOOT_DIS overrides the TEST_DEV debug lock: an unsigned image boots.
 
 The chicken bit is consulted before the device's enforcement view, so it relaxes
 the debug-lock requirement exactly as it relaxes PROD enforcement

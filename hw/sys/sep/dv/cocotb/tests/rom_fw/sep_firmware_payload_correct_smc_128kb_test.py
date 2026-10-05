@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""A 128 KiB payload staged in the SMC SRAM window is accepted and boots.
+"""Unsupported 128 KiB SMC-staging scaffold.
 
-The size also fits SEP SRAM, so only the SMC ``PAYLOAD_DST=`` and the forbidden
-``USING_SEP_SRAM`` show that the ROM honoured bit 29.
+The OCA manifest has no payload-destination selector, the ROM stages payloads into SEP
+SRAM, and shared payload helpers reject ``smc=True`` and ``stage_in_smc``. This file
+defines the 128 KiB payload and expected marker geometry.
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ _REQUIRED, _FORBIDDEN = psb.accepted_markers(_PAYLOAD_BYTES, smc=True)
 
 @pyuvm.test()
 class sep_firmware_payload_correct_smc_128kb_test(psb.PayloadSizeAcceptedTest):
-    """128 KiB payload, SMC SRAM staging, accepted."""
+    """128 KiB SMC-staging marker scaffold."""
 
     payload_bytes = _PAYLOAD_BYTES
     stage_in_smc = True

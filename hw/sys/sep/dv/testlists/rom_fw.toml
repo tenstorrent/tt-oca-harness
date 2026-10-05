@@ -1,29 +1,32 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 schema_version = 1
 
-# ROM firmware boot tests: the production Boot ROM on the `rom_boot` RTL target with the `boot_rom` /
-# `boot_rom_pio` firmware profiles. They run only in the `rom_fw` group, not `cpu` or `all`; select
-# them by group or by test name.
+# ROM firmware boot tests: the production Boot ROM on the `rom_boot` target with the
+# `boot_rom` / `boot_rom_pio` firmware profiles. They run only in the `rom_fw` group.
 
 [[tests]]
 # Non-secure boot of the production Boot ROM with the manifest served from SMC SRAM (SPI stubbed).
 name = "sep_rom_non_secure_boot_test"
 module = "rom_fw.sep_rom_non_secure_boot_test"
 target = "rom_boot"
-# The manifest packer needs `git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest`.
+# The manifest packer needs `git submodule update --init
+# hw/sys/sep/bootrom/prod/tools/tt-oca-manifest`.
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 3600
 tags = ["boot", "rom", "cpu", "subsystem"]
 run_modes = ["cpu"]
-# No +skip_fuse_sense: the ROM lifecycle policy needs the LC_STATE that only the real fuse sense writes.
+# No +skip_fuse_sense: the ROM lifecycle policy needs the LC_STATE that only the real fuse sense
+# writes.
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
 ]
 
 [[tests]]
-# OpenTitan SPI boot, SECURE_DMA drain; no SMC SRAM image is staged, so an SMC-SRAM fallback cannot pass.
+# OpenTitan SPI boot, SECURE_DMA drain; no SMC SRAM image is staged, so an SMC-SRAM fallback cannot
+# pass.
 name = "sep_rom_ot_dma_boot_test"
 module = "rom_fw.sep_rom_ot_dma_boot_test"
 target = "rom_boot"
@@ -38,20 +41,7 @@ args = [
 ]
 
 [[tests]]
-# The manifest BL0 vouched for must still parse at hand-off.
-#
-# Same stimulus as sep_rom_ot_dma_boot_test -- an ordinary successful
-# non-secure boot -- with one added check: SEP SRAM word 0 must still hold the
-# OCA magic once the run completes. bl0_state.sep_sram_manifest_addr points BL1
-# there, and nothing in the ROM re-reads it, so the [S29] ICCM ECC pad filling
-# from the staged body went unnoticed until BL1 tried to parse what it was given.
-#
-# ICCM_PAD= is a required marker, not decoration: it is printed only when that
-# pad runs, so without it the testcase would pass on a build where the
-# destructive path was compiled out.
-#
-# Non-secure on purpose. The defect is in the hand-off fill, so the signed image
-# would add an RSA-3072 modexp to a run that does not exercise one.
+# SEP SRAM word 0 must still hold the OCA magic at hand-off; ICCM_PAD= proves the [S29] pad ran.
 name = "sep_manifest_magic_survives_handoff_test"
 module = "rom_fw.sep_manifest_magic_survives_handoff_test"
 target = "rom_boot"
@@ -81,7 +71,8 @@ args = [
 ]
 
 [[tests]]
-# Signed RSA-3072 image over OpenTitan SPI under TEST_DEV; the manifest secure-boot flag enables enforcement.
+# Signed RSA-3072 image over OpenTitan SPI under TEST_DEV; the manifest secure-boot flag enables
+# enforcement.
 name = "sep_rom_ot_secure_boot_test"
 module = "rom_fw.sep_rom_ot_secure_boot_test"
 target = "rom_boot"
@@ -98,7 +89,8 @@ args = [
 ]
 
 [[tests]]
-# The 0xFFFFFFFD injection clears only mem_repair_success, so a gate that checks the wrong bit fails.
+# The 0xFFFFFFFD injection clears only mem_repair_success, so a gate that checks the wrong bit
+# fails.
 name = "sep_firmware_mbist_fail_test"
 module = "rom_fw.sep_firmware_mbist_fail_test"
 target = "rom_boot"
@@ -142,30 +134,14 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_sboot_dis.toml",
-  # The image is signed, so the signature is still checked under SBOOT_DIS and OTBN needs EDN entropy.
+  # The image is signed, so the signature is still checked under SBOOT_DIS and OTBN needs EDN
+  # entropy.
   "+esrc_noise_force",
 ]
 
 [[tests]]
-# SBOOT_DIS reserved bits are a fuse-integrity fault, not a second chicken bit.
-#
-# The companion to the entry above, on the other half of the same register:
-# there the chicken bit is blown and must be honoured, here a RESERVED bit is
-# set and must not be mistaken for it. rsvd[31:1] is hw=rw in the RDL, so a real
-# part can present a non-zero word without disable_secure_boot being blown, and
-# [S18] stops on it (SEP-ROM-SB-041).
-#
-# +sep_efuse_preload carries an explicit path for the same reason as the entry
-# above: a bare plusarg resolves to the committed default, which is TEST_DEV with
-# an all-zero SBOOT_DIS and would make this vacuous.
-#
-# Neither +sep_boot_from_spi nor +esrc_noise_force: [S18] precedes boot-mode
-# selection and SPI bring-up ([S21]) and entropy is brought up lazily by the
-# first crypto callback, so no transport is chosen and no EDN handshake is owed.
-# If this test ever needs either plusarg, the fault has stopped being terminal.
-#
-# Budget matches sep_firmware_mbist_fail_test: this run halts before any RSA
-# work, and the ROM self-hash at [S17] is the expensive part in front of it.
+# A reserved SBOOT_DIS bit is a fuse-integrity fault and [S18] must halt (SEP-ROM-SB-041).
+# The explicit preload path matters: the default preload has an all-zero SBOOT_DIS.
 name = "sep_firmware_sboot_dis_rsvd_terminal_test"
 module = "rom_fw.sep_firmware_sboot_dis_rsvd_terminal_test"
 target = "rom_boot"
@@ -180,22 +156,8 @@ args = [
 ]
 
 [[tests]]
-# An OTBN that never executed must not report a verified signature.
-#
-# +sep_otbn_cmd_drop holds reg2hw.cmd.qe low so OTBN ignores every command while
-# staying powered and idle, and the test forges the literal PKCS#1 v1.5 block
-# into both slots' signature fields. The modexp result shares its DMEM buffer
-# with the signature, so a block that never runs leaves the forgery in place for
-# the checker to accept -- an unverified boot reported as a verified one. The
-# ROM must refuse it on INTR_STATE.done instead.
-#
-# +esrc_noise_force is load-bearing: the signature path establishes entropy
-# before OTBN, and without injected noise the health test stops the boot short
-# of the verifier this entry exists to exercise.
-#
-# No +sep_efuse_preload: the packed image carries secure_boot_control, so
-# verification is in force under the default TEST_DEV OTP, the same way
-# sep_rom_ot_secure_boot_test relies on it.
+# OTBN ignores every command (+sep_otbn_cmd_drop) and both slots carry a forged PKCS#1 block;
+# the ROM must refuse on INTR_STATE.done. +esrc_noise_force lets the boot reach the verifier.
 name = "sep_otbn_no_op_bypass_test"
 module = "rom_fw.sep_otbn_no_op_bypass_test"
 target = "rom_boot"
@@ -311,9 +273,7 @@ module = "rom_fw.sep_firmware_signature_zeroed_refuse_test"
 target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
-# 21600 rather than 14400 for the reason sep_firmware_primary_invalid_signature_test
-# gives: TWO RSA-3072 modexps, one per slot, and the 4 h cap ends the run inside
-# the second.
+# Two RSA-3072 modexps, one per slot: 4 h is not enough.
 timeout_sec = 21600
 tags = ["boot", "rom", "spi", "secure", "crypto", "lifecycle", "negative", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
@@ -378,7 +338,8 @@ args = [
 ]
 
 [[tests]]
-# Backup security version is below the fuse; rollback is checked before the signature, so OTBN never runs.
+# Backup security version is below the fuse; rollback is checked before the signature, so OTBN never
+# runs.
 name = "sep_firmware_backup_invalid_security_version_test"
 module = "rom_fw.sep_firmware_backup_invalid_security_version_test"
 target = "rom_boot"
@@ -410,7 +371,8 @@ args = [
 ]
 
 [[tests]]
-# Backup selects a reserved ROM key slot; the modulus comes from the manifest, so the ROM must fail closed.
+# Backup selects a reserved ROM key slot; the modulus comes from the manifest, so the ROM must fail
+# closed.
 name = "sep_firmware_backup_unpopulated_rom_key_slot_test"
 module = "rom_fw.sep_firmware_backup_unpopulated_rom_key_slot_test"
 target = "rom_boot"
@@ -456,7 +418,8 @@ args = [
 ]
 
 [[tests]]
-# EXT SRAM is cleared before the backup fetch; Verilator only, the array is reached through sep_public_scope.vlt.
+# EXT SRAM is cleared before the backup fetch; Verilator only, the array is reached through
+# sep_public_scope.vlt.
 name = "sep_failover_sram_clear_assertion_test"
 module = "rom_fw.sep_failover_sram_clear_assertion_test"
 target = "rom_boot"
@@ -487,7 +450,8 @@ args = [
 ]
 
 [[tests]]
-# +sep_dft_status=00000012: repair passes and MBIST is done but not passed, so the MBIST arm rejects.
+# +sep_dft_status=00000012: repair passes and MBIST is done but not passed, so the MBIST arm
+# rejects.
 name = "sep_firmware_mbist_only_fail_test"
 module = "rom_fw.sep_firmware_mbist_only_fail_test"
 target = "rom_boot"
@@ -502,7 +466,8 @@ args = [
 ]
 
 [[tests]]
-# 0x112 sets exactly the three bits the gate requires; without mbist_done the ROM waits and times out.
+# 0x112 sets exactly the three bits the gate requires; without mbist_done the ROM waits and times
+# out.
 name = "sep_firmware_mbist_pass_test"
 module = "rom_fw.sep_firmware_mbist_pass_test"
 target = "rom_boot"
@@ -518,7 +483,8 @@ args = [
 ]
 
 [[tests]]
-# Recovery boot: the primary_chiplet and boot_recovery straps take the SMC-SRAM manifest path, not SPI.
+# Recovery boot: the primary_chiplet and boot_recovery straps take the SMC-SRAM manifest path, not
+# SPI.
 name = "sep_boot_recovery_test"
 module = "rom_fw.sep_boot_recovery_test"
 target = "rom_boot"
@@ -535,7 +501,8 @@ args = [
 ]
 
 [[tests]]
-# ROTATE_UPDATE swaps slot order; the check is the read order, because an unrotated ROM also boots 0x41000.
+# ROTATE_UPDATE swaps slot order; the check is the read order, because an unrotated ROM also boots
+# 0x41000.
 name = "sep_rotate_update_set_test"
 module = "rom_fw.sep_rotate_update_set_test"
 target = "rom_boot"
@@ -584,7 +551,8 @@ args = [
 ]
 
 [[tests]]
-# Backup selects ROM key slot 5 with CHIPLET_PUBK_REVOKE bit 5 blown; revocation precedes the signature.
+# Backup selects ROM key slot 5 with CHIPLET_PUBK_REVOKE bit 5 blown; revocation precedes the
+# signature.
 name = "sep_firmware_backup_pubkey_rom_5_revoked_key_test"
 module = "rom_fw.sep_firmware_backup_pubkey_rom_5_revoked_key_test"
 target = "rom_boot"
@@ -653,7 +621,8 @@ args = [
 ]
 
 [[tests]]
-# Only the primary's ciphertext is corrupted; the ROM fails over after decryption and the backup boots.
+# Only the primary's ciphertext is corrupted; the ROM fails over after decryption and the backup
+# boots.
 name = "sep_decryption_failure_failover_test"
 module = "rom_fw.sep_decryption_failure_failover_test"
 target = "rom_boot"
@@ -670,7 +639,8 @@ args = [
 ]
 
 [[tests]]
-# Same injection as the MBIST fail arm, but the STATUS_RPT skip-mem-check fuse bit lets the boot continue.
+# Same injection as the MBIST fail arm, but the STATUS_RPT skip-mem-check fuse bit lets the boot
+# continue.
 name = "sep_mbist_fail_continue_test"
 module = "rom_fw.sep_mbist_fail_continue_test"
 target = "rom_boot"
@@ -745,7 +715,8 @@ args = [
 ]
 
 [[tests]]
-# A flipped signature bit in both slots is rejected by the OTBN verify; the two modexps are real work, not a hang.
+# A flipped signature bit in both slots is rejected by the OTBN verify; the two modexps are real
+# work, not a hang.
 name = "sep_otbn_rsa_verify_failure_test"
 module = "rom_fw.sep_otbn_rsa_verify_failure_test"
 target = "rom_boot"
@@ -763,7 +734,8 @@ args = [
 ]
 
 [[tests]]
-# Backup selects ROM key slot 0 with CHIPLET_PUBK_REVOKE bit 0 blown; revocation precedes the signature.
+# Backup selects ROM key slot 0 with CHIPLET_PUBK_REVOKE bit 0 blown; revocation precedes the
+# signature.
 name = "sep_firmware_backup_pubkey_rom_0_revoked_key_test"
 module = "rom_fw.sep_firmware_backup_pubkey_rom_0_revoked_key_test"
 target = "rom_boot"
@@ -779,7 +751,8 @@ args = [
 ]
 
 [[tests]]
-# Backup selects ROM key slot 1 with CHIPLET_PUBK_REVOKE bit 1 blown; revocation precedes the signature.
+# Backup selects ROM key slot 1 with CHIPLET_PUBK_REVOKE bit 1 blown; revocation precedes the
+# signature.
 name = "sep_firmware_backup_pubkey_rom_1_revoked_key_test"
 module = "rom_fw.sep_firmware_backup_pubkey_rom_1_revoked_key_test"
 target = "rom_boot"
@@ -795,7 +768,8 @@ args = [
 ]
 
 [[tests]]
-# Backup selects ROM key slot 2 with CHIPLET_PUBK_REVOKE bit 2 blown; revocation precedes the signature.
+# Backup selects ROM key slot 2 with CHIPLET_PUBK_REVOKE bit 2 blown; revocation precedes the
+# signature.
 name = "sep_firmware_backup_pubkey_rom_2_revoked_key_test"
 module = "rom_fw.sep_firmware_backup_pubkey_rom_2_revoked_key_test"
 target = "rom_boot"
@@ -811,7 +785,8 @@ args = [
 ]
 
 [[tests]]
-# Backup selects ROM key slot 3 with CHIPLET_PUBK_REVOKE bit 3 blown; revocation precedes the signature.
+# Backup selects ROM key slot 3 with CHIPLET_PUBK_REVOKE bit 3 blown; revocation precedes the
+# signature.
 name = "sep_firmware_backup_pubkey_rom_3_revoked_key_test"
 module = "rom_fw.sep_firmware_backup_pubkey_rom_3_revoked_key_test"
 target = "rom_boot"
@@ -827,7 +802,8 @@ args = [
 ]
 
 [[tests]]
-# Backup selects ROM key slot 4 with CHIPLET_PUBK_REVOKE bit 4 blown; revocation precedes the signature.
+# Backup selects ROM key slot 4 with CHIPLET_PUBK_REVOKE bit 4 blown; revocation precedes the
+# signature.
 name = "sep_firmware_backup_pubkey_rom_4_revoked_key_test"
 module = "rom_fw.sep_firmware_backup_pubkey_rom_4_revoked_key_test"
 target = "rom_boot"
@@ -843,7 +819,8 @@ args = [
 ]
 
 [[tests]]
-# Backup declares an unsupported signature type; the type check preempts key selection (no PUBK_SEL= echo).
+# Backup declares an unsupported signature type; the type check preempts key selection (no PUBK_SEL=
+# echo).
 name = "sep_firmware_backup_invalid_signature_type_test"
 module = "rom_fw.sep_firmware_backup_invalid_signature_type_test"
 target = "rom_boot"
@@ -859,7 +836,8 @@ args = [
 ]
 
 [[tests]]
-# Backup names OCA_KEY_SLOT_MAX + 1, the smallest reserved slot; the bound must stop it before revocation.
+# Backup names OCA_KEY_SLOT_MAX + 1, the smallest reserved slot; the bound must stop it before
+# revocation.
 name = "sep_firmware_backup_rom_key_index_invalid_test"
 module = "rom_fw.sep_firmware_backup_rom_key_index_invalid_test"
 target = "rom_boot"
@@ -1045,7 +1023,8 @@ args = [
 ]
 
 [[tests]]
-# Primary declares an unsupported signature type; it is refused before key selection and the backup boots.
+# Primary declares an unsupported signature type; it is refused before key selection and the backup
+# boots.
 name = "sep_firmware_primary_invalid_signature_type_test"
 module = "rom_fw.sep_firmware_primary_invalid_signature_type_test"
 target = "rom_boot"
@@ -1062,7 +1041,8 @@ args = [
 ]
 
 [[tests]]
-# Primary names the smallest reserved key slot; the bound stops it before revocation and the backup boots.
+# Primary names the smallest reserved key slot; the bound stops it before revocation and the backup
+# boots.
 name = "sep_firmware_primary_rom_key_index_invalid_test"
 module = "rom_fw.sep_firmware_primary_rom_key_index_invalid_test"
 target = "rom_boot"
@@ -1097,7 +1077,8 @@ args = [
 
 
 [[tests]]
-# BL1 security version equal to the device flags is accepted; the flags span all four fuse words read.
+# BL1 security version equal to the device flags is accepted; the flags span all four fuse words
+# read.
 name = "sep_firmware_bl1_ver_test"
 module = "rom_fw.sep_firmware_bl1_ver_test"
 target = "rom_boot"
@@ -1203,7 +1184,8 @@ args = [
 
 
 [[tests]]
-# PROD, BL1_DEMOTION_VALID and ENABLE set: DEMOTE_1 demoted and locked; the sboot_dis fuse boots the unsigned image.
+# PROD, BL1_DEMOTION_VALID and ENABLE set: DEMOTE_1 demoted and locked; the sboot_dis fuse boots the
+# unsigned image.
 name = "sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test"
 module = "rom_fw.sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test"
 target = "rom_boot"
@@ -1272,7 +1254,8 @@ args = [
 ]
 
 [[tests]]
-# PROD, BL1_DEMOTION_VALID clear, BL2 demotion requested: DEMOTE_1 is never written and stays unlocked.
+# PROD, BL1_DEMOTION_VALID clear, BL2 demotion requested: DEMOTE_1 is never written and stays
+# unlocked.
 name = "sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_test"
 module = "rom_fw.sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_test"
 target = "rom_boot"
@@ -1321,7 +1304,8 @@ args = [
 
 
 [[tests]]
-# The selected chiplet fuse holds a decoy and the other holds the real digest, so both slots are refused.
+# The selected chiplet fuse holds a decoy and the other holds the real digest, so both slots are
+# refused.
 name = "sep_firmware_chiplet_pubkey_0_wrong_digest_test"
 module = "rom_fw.sep_firmware_chiplet_pubkey_0_wrong_digest_test"
 target = "rom_boot"
@@ -1369,7 +1353,8 @@ args = [
 ]
 
 [[tests]]
-# Signed region tampered in both slots; the hash check refuses it before OTBN runs, so no entropy force.
+# Signed region tampered in both slots; the hash check refuses it before OTBN runs, so no entropy
+# force.
 name = "sep_rom_oca_tamper_test"
 module = "rom_fw.sep_rom_oca_tamper_test"
 target = "rom_boot"
@@ -1434,7 +1419,8 @@ args = [
 ]
 
 [[tests]]
-# Wrong 64-byte OCA KDF context fails PKCS#7 (AES_PAD_BAD, OCA_FAIL_DECRYPT); encrypted backup boots.
+# Wrong 64-byte OCA KDF context fails PKCS#7 (AES_PAD_BAD, OCA_FAIL_DECRYPT); encrypted backup
+# boots.
 name = "sep_firmware_invalid_decryption_kdf_input_test"
 module = "rom_fw.sep_firmware_invalid_decryption_kdf_input_test"
 target = "rom_boot"
@@ -1550,7 +1536,8 @@ args = [
 ]
 
 [[tests]]
-# Primary chiplet life_cycle_states permits every token but PROD (0x7d) and is refused; the backup boots.
+# Primary chiplet life_cycle_states permits every token but PROD (0x7d) and is refused; the backup
+# boots.
 name = "sep_firmware_manifest_primary_lc_state_failure_test"
 module = "rom_fw.sep_firmware_manifest_primary_lc_state_failure_test"
 target = "rom_boot"
@@ -1617,7 +1604,8 @@ args = [
 ]
 
 [[tests]]
-# Primary constrains the package lifecycle, which the SEP cannot report, and is refused; the backup boots.
+# Primary constrains the package lifecycle, which the SEP cannot report, and is refused; the backup
+# boots.
 name = "sep_firmware_manifest_primary_unsupported_lifecycle_level_test"
 module = "rom_fw.sep_firmware_manifest_primary_unsupported_lifecycle_level_test"
 target = "rom_boot"
@@ -1684,7 +1672,8 @@ args = [
 ]
 
 [[tests]]
-# Primary v1.0 manifest_length body-4 is refused (OCA_FAIL_MANIFEST_LENGTH) before RSA; the v1.0 body-size backup boots.
+# Primary v1.0 manifest_length body-4 is refused (OCA_FAIL_MANIFEST_LENGTH) before RSA; the v1.0
+# body-size backup boots.
 name = "sep_firmware_backup_manifest_major_version_valid_minor_0_length_correct_test"
 module = "rom_fw.sep_firmware_backup_manifest_major_version_valid_minor_0_length_correct_test"
 target = "rom_boot"
@@ -1718,7 +1707,8 @@ args = [
 ]
 
 [[tests]]
-# Backup payload has no SEP_BL1 TOC entry, refused after PAYLOAD_OK; both slots are refused and the ROM halts.
+# Backup payload has no SEP_BL1 TOC entry, refused after PAYLOAD_OK; both slots are refused and the
+# ROM halts.
 name = "sep_firmware_manifest_backup_missing_sepbl1_test"
 module = "rom_fw.sep_firmware_manifest_backup_missing_sepbl1_test"
 target = "rom_boot"
@@ -1735,7 +1725,8 @@ args = [
 ]
 
 [[tests]]
-# Primary payload stores SEP_BL1 at TOC index 2 of the multi-image golden and still boots; the ROM finds BL1 by type.
+# Primary payload stores SEP_BL1 at TOC index 2 of the multi-image golden and still boots; the ROM
+# finds BL1 by type.
 name = "sep_firmware_manifest_primary_reordered_sepbl1_test"
 module = "rom_fw.sep_firmware_manifest_primary_reordered_sepbl1_test"
 target = "rom_boot"
@@ -1752,7 +1743,8 @@ args = [
 ]
 
 [[tests]]
-# Backup payload stores SEP_BL1 at TOC index 2 and boots after the primary is refused on package identity.
+# Backup payload stores SEP_BL1 at TOC index 2 and boots after the primary is refused on package
+# identity.
 name = "sep_firmware_manifest_backup_reordered_sepbl1_test"
 module = "rom_fw.sep_firmware_manifest_backup_reordered_sepbl1_test"
 target = "rom_boot"
@@ -1818,7 +1810,8 @@ args = [
 ]
 
 [[tests]]
-# Demotion: under PROD_END a signed BL1 demotion request (valid and enabled) is ignored and both registers lock.
+# Demotion: under PROD_END a signed BL1 demotion request (valid and enabled) is ignored and both
+# registers lock.
 name = "sep_firmware_demotion_decision_unauth_flag_30_prod_end_test"
 module = "rom_fw.sep_firmware_demotion_decision_unauth_flag_30_prod_end_test"
 target = "rom_boot"
@@ -1949,7 +1942,8 @@ args = [
 ]
 
 [[tests]]
-# Primary manifest_version_major = 2 is refused with OCA_FAIL_FORMAT_VERSION_MISMATCH; the backup boots.
+# Primary manifest_version_major = 2 is refused with OCA_FAIL_FORMAT_VERSION_MISMATCH; the backup
+# boots.
 name = "sep_firmware_primary_manifest_major_version_invalid_test"
 module = "rom_fw.sep_firmware_primary_manifest_major_version_invalid_test"
 target = "rom_boot"
@@ -1966,7 +1960,8 @@ args = [
 ]
 
 [[tests]]
-# Primary v1.0 with manifest_length equal to the body size boots; the ROM reads only the body and payload.
+# Primary v1.0 with manifest_length equal to the body size boots; the ROM reads only the body and
+# payload.
 name = "sep_firmware_primary_manifest_major_version_valid_minor_0_length_correct_test"
 module = "rom_fw.sep_firmware_primary_manifest_major_version_valid_minor_0_length_correct_test"
 target = "rom_boot"
@@ -2050,7 +2045,7 @@ args = [
 ]
 
 [[tests]]
-# Primary payload_hashed_length = 0 is refused with OCA_FAIL_PAYLOAD_TOC after RSA; the backup boots.
+# Primary payload_hashed_length = 0 is refused (OCA_FAIL_PAYLOAD_TOC) after RSA; the backup boots.
 name = "sep_firmware_primary_payload_invalid_payload_hash_length_test"
 module = "rom_fw.sep_firmware_primary_payload_invalid_payload_hash_length_test"
 target = "rom_boot"
@@ -2067,7 +2062,7 @@ args = [
 ]
 
 [[tests]]
-# Backup payload_hashed_length = 0 is refused with OCA_FAIL_PAYLOAD_TOC after RSA and the ROM halts.
+# Backup payload_hashed_length = 0 is refused (OCA_FAIL_PAYLOAD_TOC) after RSA and the ROM halts.
 name = "sep_firmware_backup_payload_invalid_payload_hash_length_test"
 module = "rom_fw.sep_firmware_backup_payload_invalid_payload_hash_length_test"
 target = "rom_boot"
@@ -2084,7 +2079,8 @@ args = [
 ]
 
 [[tests]]
-# Seeded payload_length / payload_offset past the 32-bit boundary or int64: both PAYLOAD_LOC_FAIL, terminal.
+# Seeded payload_length / payload_offset past the 32-bit boundary or int64: both PAYLOAD_LOC_FAIL,
+# terminal.
 name = "sep_manifest_payload_limits_test"
 module = "rom_fw.sep_manifest_payload_limits_test"
 target = "rom_boot"
@@ -2103,7 +2099,7 @@ args = [
 # TOC defect rows: one planted TOC field per row. Encrypted rows use the CLASS_KEY preload.
 
 [[tests]]
-# Primary encrypted TOC major_version 2 must be refused with OCA_FAIL_PAYLOAD_TOC; the backup boots.
+# Primary encrypted TOC major_version 2 must be refused (OCA_FAIL_PAYLOAD_TOC); the backup boots.
 name = "sep_firmware_primary_encrypted_payload_toc_version_major_invalid_test"
 module = "rom_fw.sep_firmware_primary_encrypted_payload_toc_version_major_invalid_test"
 target = "rom_boot"
@@ -2120,7 +2116,8 @@ args = [
 ]
 
 [[tests]]
-# Backup encrypted TOC major_version 2 must be refused with OCA_FAIL_PAYLOAD_TOC; the primary is refused on its magic word. Terminal.
+# Backup encrypted TOC major_version 2 must be refused (OCA_FAIL_PAYLOAD_TOC); primary bad magic;
+# terminal.
 name = "sep_firmware_backup_encrypted_payload_toc_version_major_invalid_test"
 module = "rom_fw.sep_firmware_backup_encrypted_payload_toc_version_major_invalid_test"
 target = "rom_boot"
@@ -2137,7 +2134,7 @@ args = [
 ]
 
 [[tests]]
-# Primary plaintext TOC major_version 2 must be refused with OCA_FAIL_PAYLOAD_TOC; the backup boots.
+# Primary plaintext TOC major_version 2 must be refused (OCA_FAIL_PAYLOAD_TOC); the backup boots.
 name = "sep_firmware_primary_non_encrypted_payload_toc_version_major_invalid_test"
 module = "rom_fw.sep_firmware_primary_non_encrypted_payload_toc_version_major_invalid_test"
 target = "rom_boot"
@@ -2154,7 +2151,8 @@ args = [
 ]
 
 [[tests]]
-# Backup plaintext TOC major_version 2 must be refused with OCA_FAIL_PAYLOAD_TOC; the primary is refused on its magic word. Terminal.
+# Backup plaintext TOC major_version 2 must be refused (OCA_FAIL_PAYLOAD_TOC); primary bad magic;
+# terminal.
 name = "sep_firmware_backup_non_encrypted_payload_toc_version_major_invalid_test"
 module = "rom_fw.sep_firmware_backup_non_encrypted_payload_toc_version_major_invalid_test"
 target = "rom_boot"
@@ -2171,7 +2169,8 @@ args = [
 ]
 
 [[tests]]
-# Primary encrypted TOC image_count 257 overruns the payload, refused with OCA_FAIL_PAYLOAD_TOC; the backup boots.
+# Primary encrypted TOC image_count 257 overruns the payload, refused (OCA_FAIL_PAYLOAD_TOC); the
+# backup boots.
 name = "sep_firmware_primary_encrypted_invalid_payload_image_count_test"
 module = "rom_fw.sep_firmware_primary_encrypted_invalid_payload_image_count_test"
 target = "rom_boot"
@@ -2188,7 +2187,8 @@ args = [
 ]
 
 [[tests]]
-# Backup encrypted TOC image_count 257 overruns the payload, refused with OCA_FAIL_PAYLOAD_TOC; the primary is refused on its magic word. Terminal.
+# Backup encrypted TOC image_count 257 overruns the payload, refused (OCA_FAIL_PAYLOAD_TOC); primary
+# bad magic; terminal.
 name = "sep_firmware_backup_encrypted_invalid_payload_image_count_test"
 module = "rom_fw.sep_firmware_backup_encrypted_invalid_payload_image_count_test"
 target = "rom_boot"
@@ -2205,7 +2205,8 @@ args = [
 ]
 
 [[tests]]
-# Primary plaintext TOC image_count 257 overruns the payload, refused with OCA_FAIL_PAYLOAD_TOC; the backup boots.
+# Primary plaintext TOC image_count 257 overruns the payload, refused (OCA_FAIL_PAYLOAD_TOC); the
+# backup boots.
 name = "sep_firmware_primary_non_encrypted_invalid_payload_image_count_test"
 module = "rom_fw.sep_firmware_primary_non_encrypted_invalid_payload_image_count_test"
 target = "rom_boot"
@@ -2222,7 +2223,8 @@ args = [
 ]
 
 [[tests]]
-# Backup plaintext TOC image_count 257 overruns the payload, refused with OCA_FAIL_PAYLOAD_TOC; the primary is refused on its magic word. Terminal.
+# Backup plaintext TOC image_count 257 overruns the payload, refused (OCA_FAIL_PAYLOAD_TOC); primary
+# bad magic; terminal.
 name = "sep_firmware_backup_non_encrypted_invalid_payload_image_count_test"
 module = "rom_fw.sep_firmware_backup_non_encrypted_invalid_payload_image_count_test"
 target = "rom_boot"
@@ -2239,7 +2241,8 @@ args = [
 ]
 
 [[tests]]
-# Backup encrypted TOC image_count one past the ROM's OCA_TOC_MAX_IMAGES fits the toc_cap payload, refused with OCA_FAIL_PAYLOAD_TOO_MANY_IMAGES; the primary is refused on its magic word. Terminal.
+# Backup encrypted TOC image_count one past the ROM's OCA_TOC_MAX_IMAGES fits the toc_cap payload,
+# refused (OCA_FAIL_PAYLOAD_TOO_MANY_IMAGES); primary bad magic; terminal.
 name = "sep_firmware_backup_encrypted_payload_image_count_cap_test"
 module = "rom_fw.sep_firmware_backup_encrypted_payload_image_count_cap_test"
 target = "rom_boot"
@@ -2256,7 +2259,8 @@ args = [
 ]
 
 [[tests]]
-# Backup plaintext TOC image_count one past the ROM's OCA_TOC_MAX_IMAGES fits the toc_cap payload, refused with OCA_FAIL_PAYLOAD_TOO_MANY_IMAGES; the primary is refused on its magic word. Terminal.
+# Backup plaintext TOC image_count one past the ROM's OCA_TOC_MAX_IMAGES fits the toc_cap payload,
+# refused (OCA_FAIL_PAYLOAD_TOO_MANY_IMAGES); primary bad magic; terminal.
 name = "sep_firmware_backup_non_encrypted_payload_image_count_cap_test"
 module = "rom_fw.sep_firmware_backup_non_encrypted_payload_image_count_cap_test"
 target = "rom_boot"
@@ -2273,7 +2277,8 @@ args = [
 ]
 
 [[tests]]
-# Backup plaintext TOC image_count equal to the ROM's OCA_TOC_MAX_IMAGES passes the cap and is refused with OCA_FAIL_PAYLOAD_TOC, not TOO_MANY_IMAGES; the primary is refused on its magic word. Terminal.
+# Backup plaintext TOC image_count equal to the ROM's OCA_TOC_MAX_IMAGES passes the cap and is
+# refused (OCA_FAIL_PAYLOAD_TOC), not TOO_MANY_IMAGES; primary bad magic; terminal.
 name = "sep_firmware_backup_non_encrypted_payload_image_count_at_cap_test"
 module = "rom_fw.sep_firmware_backup_non_encrypted_payload_image_count_at_cap_test"
 target = "rom_boot"
@@ -2290,7 +2295,8 @@ args = [
 ]
 
 [[tests]]
-# Primary encrypted TOC stored in descending order with entry 1 overlapping entry 2, refused with OCA_FAIL_PAYLOAD_TOC; the backup boots.
+# Primary encrypted TOC stored in descending order with entry 1 overlapping entry 2, refused
+# (OCA_FAIL_PAYLOAD_TOC); the backup boots.
 name = "sep_firmware_primary_encrypted_payload_images_overlapping_test"
 module = "rom_fw.sep_firmware_primary_encrypted_payload_images_overlapping_test"
 target = "rom_boot"
@@ -2307,7 +2313,8 @@ args = [
 ]
 
 [[tests]]
-# Backup encrypted TOC stored in descending order with entry 1 overlapping entry 2, refused with OCA_FAIL_PAYLOAD_TOC; the primary is refused on its magic word. Terminal.
+# Backup encrypted TOC stored in descending order with entry 1 overlapping entry 2, refused
+# (OCA_FAIL_PAYLOAD_TOC); primary bad magic; terminal.
 name = "sep_firmware_backup_encrypted_payload_images_overlapping_test"
 module = "rom_fw.sep_firmware_backup_encrypted_payload_images_overlapping_test"
 target = "rom_boot"
@@ -2324,7 +2331,8 @@ args = [
 ]
 
 [[tests]]
-# Primary plaintext TOC stored in descending order with entry 1 overlapping entry 2, refused with OCA_FAIL_PAYLOAD_TOC; the backup boots.
+# Primary plaintext TOC stored in descending order with entry 1 overlapping entry 2, refused
+# (OCA_FAIL_PAYLOAD_TOC); the backup boots.
 name = "sep_firmware_primary_non_encrypted_payload_images_overlapping_test"
 module = "rom_fw.sep_firmware_primary_non_encrypted_payload_images_overlapping_test"
 target = "rom_boot"
@@ -2341,7 +2349,8 @@ args = [
 ]
 
 [[tests]]
-# Backup plaintext TOC stored in descending order with entry 1 overlapping entry 2, refused with OCA_FAIL_PAYLOAD_TOC; the primary is refused on its magic word. Terminal.
+# Backup plaintext TOC stored in descending order with entry 1 overlapping entry 2, refused
+# (OCA_FAIL_PAYLOAD_TOC); primary bad magic; terminal.
 name = "sep_firmware_backup_non_encrypted_payload_images_overlapping_test"
 module = "rom_fw.sep_firmware_backup_non_encrypted_payload_images_overlapping_test"
 target = "rom_boot"
@@ -2392,7 +2401,7 @@ args = [
 ]
 
 [[tests]]
-# Primary encrypted TOC entry 0 offset 4 modulo 8, refused with OCA_FAIL_PAYLOAD_TOC; the backup boots.
+# Primary encrypted TOC entry 0 offset 4 modulo 8, refused (OCA_FAIL_PAYLOAD_TOC); the backup boots.
 name = "sep_firmware_primary_encrypted_payload_image_offset_misaligned_test"
 module = "rom_fw.sep_firmware_primary_encrypted_payload_image_offset_misaligned_test"
 target = "rom_boot"
@@ -2409,7 +2418,8 @@ args = [
 ]
 
 [[tests]]
-# Backup encrypted TOC entry 0 offset 4 modulo 8, refused with OCA_FAIL_PAYLOAD_TOC; the primary is refused on its magic word. Terminal.
+# Backup encrypted TOC entry 0 offset 4 modulo 8, refused (OCA_FAIL_PAYLOAD_TOC); primary bad magic;
+# terminal.
 name = "sep_firmware_backup_encrypted_payload_image_offset_misaligned_test"
 module = "rom_fw.sep_firmware_backup_encrypted_payload_image_offset_misaligned_test"
 target = "rom_boot"
@@ -2426,7 +2436,7 @@ args = [
 ]
 
 [[tests]]
-# Primary plaintext TOC entry 0 offset 4 modulo 8, refused with OCA_FAIL_PAYLOAD_TOC; the backup boots.
+# Primary plaintext TOC entry 0 offset 4 modulo 8, refused (OCA_FAIL_PAYLOAD_TOC); the backup boots.
 name = "sep_firmware_primary_non_encrypted_payload_image_offset_misaligned_test"
 module = "rom_fw.sep_firmware_primary_non_encrypted_payload_image_offset_misaligned_test"
 target = "rom_boot"
@@ -2443,7 +2453,8 @@ args = [
 ]
 
 [[tests]]
-# Backup plaintext TOC entry 0 offset 4 modulo 8, refused with OCA_FAIL_PAYLOAD_TOC; the primary is refused on its magic word. Terminal.
+# Backup plaintext TOC entry 0 offset 4 modulo 8, refused (OCA_FAIL_PAYLOAD_TOC); primary bad magic;
+# terminal.
 name = "sep_firmware_backup_non_encrypted_payload_image_offset_misaligned_test"
 module = "rom_fw.sep_firmware_backup_non_encrypted_payload_image_offset_misaligned_test"
 target = "rom_boot"
@@ -2460,7 +2471,8 @@ args = [
 ]
 
 [[tests]]
-# Primary encrypted TOC entry 0 starts inside the TOC and must be refused with OCA_FAIL_PAYLOAD_TOC; the backup boots.
+# Primary encrypted TOC entry 0 starts inside the TOC and must be refused (OCA_FAIL_PAYLOAD_TOC);
+# the backup boots.
 name = "sep_firmware_primary_encrypted_payload_image_exceeds_bound_test"
 module = "rom_fw.sep_firmware_primary_encrypted_payload_image_exceeds_bound_test"
 target = "rom_boot"
@@ -2477,7 +2489,8 @@ args = [
 ]
 
 [[tests]]
-# Backup encrypted TOC entry 0 starts inside the TOC and must be refused with OCA_FAIL_PAYLOAD_TOC; the primary is refused on its magic word. Terminal.
+# Backup encrypted TOC entry 0 starts inside the TOC and must be refused (OCA_FAIL_PAYLOAD_TOC);
+# primary bad magic; terminal.
 name = "sep_firmware_backup_encrypted_payload_image_exceeds_bound_test"
 module = "rom_fw.sep_firmware_backup_encrypted_payload_image_exceeds_bound_test"
 target = "rom_boot"
@@ -2494,7 +2507,8 @@ args = [
 ]
 
 [[tests]]
-# Primary plaintext TOC entry 0 starts inside the TOC and must be refused with OCA_FAIL_PAYLOAD_TOC; the backup boots.
+# Primary plaintext TOC entry 0 starts inside the TOC and must be refused (OCA_FAIL_PAYLOAD_TOC);
+# the backup boots.
 name = "sep_firmware_primary_non_encrypted_payload_image_exceeds_bound_test"
 module = "rom_fw.sep_firmware_primary_non_encrypted_payload_image_exceeds_bound_test"
 target = "rom_boot"
@@ -2511,7 +2525,8 @@ args = [
 ]
 
 [[tests]]
-# Backup plaintext TOC entry 0 starts inside the TOC and must be refused with OCA_FAIL_PAYLOAD_TOC; the primary is refused on its magic word. Terminal.
+# Backup plaintext TOC entry 0 starts inside the TOC and must be refused (OCA_FAIL_PAYLOAD_TOC);
+# primary bad magic; terminal.
 name = "sep_firmware_backup_non_encrypted_payload_image_exceeds_bound_test"
 module = "rom_fw.sep_firmware_backup_non_encrypted_payload_image_exceeds_bound_test"
 target = "rom_boot"
@@ -2528,7 +2543,8 @@ args = [
 ]
 
 [[tests]]
-# Primary encrypted TOC payload_length 0x2000 disagrees with the manifest and must be refused with OCA_FAIL_PAYLOAD_TOC; the backup boots.
+# Primary encrypted TOC payload_length 0x2000 disagrees with the manifest and must be refused
+# (OCA_FAIL_PAYLOAD_TOC); the backup boots.
 name = "sep_firmware_primary_encrypted_toc_payload_size_mismatch_test"
 module = "rom_fw.sep_firmware_primary_encrypted_toc_payload_size_mismatch_test"
 target = "rom_boot"
@@ -2545,7 +2561,8 @@ args = [
 ]
 
 [[tests]]
-# Backup encrypted TOC payload_length 0x2000 disagrees with the manifest and must be refused with OCA_FAIL_PAYLOAD_TOC; the primary is refused on its magic word. Terminal.
+# Backup encrypted TOC payload_length 0x2000 disagrees with the manifest and must be refused
+# (OCA_FAIL_PAYLOAD_TOC); primary bad magic; terminal.
 name = "sep_firmware_backup_encrypted_toc_payload_size_mismatch_test"
 module = "rom_fw.sep_firmware_backup_encrypted_toc_payload_size_mismatch_test"
 target = "rom_boot"
@@ -2562,7 +2579,8 @@ args = [
 ]
 
 [[tests]]
-# Primary plaintext TOC payload_length 0x2000 disagrees with the manifest and must be refused with OCA_FAIL_PAYLOAD_TOC; the backup boots.
+# Primary plaintext TOC payload_length 0x2000 disagrees with the manifest and must be refused
+# (OCA_FAIL_PAYLOAD_TOC); the backup boots.
 name = "sep_firmware_primary_non_encrypted_toc_payload_size_mismatch_test"
 module = "rom_fw.sep_firmware_primary_non_encrypted_toc_payload_size_mismatch_test"
 target = "rom_boot"
@@ -2579,7 +2597,8 @@ args = [
 ]
 
 [[tests]]
-# Backup plaintext TOC payload_length 0x2000 disagrees with the manifest and must be refused with OCA_FAIL_PAYLOAD_TOC; the primary is refused on its magic word. Terminal.
+# Backup plaintext TOC payload_length 0x2000 disagrees with the manifest and must be refused
+# (OCA_FAIL_PAYLOAD_TOC); primary bad magic; terminal.
 name = "sep_firmware_backup_non_encrypted_toc_payload_size_mismatch_test"
 module = "rom_fw.sep_firmware_backup_non_encrypted_toc_payload_size_mismatch_test"
 target = "rom_boot"
@@ -2629,10 +2648,7 @@ args = [
   "+esrc_noise_force",
 ]
 
-# Pending: the manifest and ROM do not yet support manifest-selected payload
-# staging into SMC SRAM. Keep these entries disabled until that contract,
-# scratch[13]/[14] window handling and the corresponding ROM markers are
-# implemented.
+# The OCA manifest has no payload-destination selector, and the ROM stages payloads into SEP SRAM.
 #
 # [[tests]]
 # name = "sep_firmware_payload_correct_smc_64kb_test"
@@ -2668,7 +2684,8 @@ args = [
 ]
 
 [[tests]]
-# Primary payload ends a random 1 to 100 KiB past its slot window (PAYLOAD_LOC_FAIL, 0x1B); backup boots.
+# Primary payload ends a random 1 to 100 KiB past its slot window (PAYLOAD_LOC_FAIL, 0x1B); backup
+# boots.
 name = "sep_firmware_payload_exceeds_slot_window_random_test"
 module = "rom_fw.sep_firmware_payload_exceeds_slot_window_random_test"
 target = "rom_boot"
@@ -2736,7 +2753,8 @@ args = [
 ]
 
 [[tests]]
-# Primary payload_offset lies inside its manifest body and is refused (PAYLOAD_LOC_FAIL); the backup boots.
+# Primary payload_offset lies inside its manifest body and is refused (PAYLOAD_LOC_FAIL); the backup
+# boots.
 name = "sep_firmware_payload_overlaps_manifest_test"
 module = "rom_fw.sep_firmware_payload_overlaps_manifest_test"
 target = "rom_boot"
@@ -2753,7 +2771,8 @@ args = [
 ]
 
 [[tests]]
-# Primary payload_offset names the backup slot's payload and is refused (PAYLOAD_LOC_FAIL); the backup boots.
+# Primary payload_offset names the backup slot's payload and is refused (PAYLOAD_LOC_FAIL); the
+# backup boots.
 name = "sep_firmware_primary_payload_offset_into_backup_test"
 module = "rom_fw.sep_firmware_primary_payload_offset_into_backup_test"
 target = "rom_boot"
@@ -2936,7 +2955,8 @@ args = [
 # Per-byte device-ID selector rows: each refuses the primary, backup boots.
 
 [[tests]]
-# Primary chiplet_id selects byte 2 (matching) and byte 5 (not) and is refused; the backup selects bytes 1..31, all matching, and boots.
+# Primary chiplet_id selects byte 2 (matching) and byte 5 (not) and is refused; the backup selects
+# bytes 1..31, all matching, and boots.
 name = "sep_chiplet_id_per_byte_variations_test"
 module = "rom_fw.sep_chiplet_id_per_byte_variations_test"
 target = "rom_boot"
@@ -2953,7 +2973,8 @@ args = [
 ]
 
 [[tests]]
-# Primary package_id selects byte 3 (matching) and byte 6 (not) and is refused; the backup selects bytes 1..31, all matching, and boots.
+# Primary package_id selects byte 3 (matching) and byte 6 (not) and is refused; the backup selects
+# bytes 1..31, all matching, and boots.
 name = "sep_package_id_per_byte_variations_test"
 module = "rom_fw.sep_package_id_per_byte_variations_test"
 target = "rom_boot"
@@ -2987,16 +3008,7 @@ args = [
 ]
 
 [[tests]]
-# An invalid LC_STATE holds the SMC cores in reset and halts (SEP-ROM-FUSE-020).
-#
-# Raw 0x9 is outside every encoding the lifecycle controller decodes. The test
-# seeds SMC CPU_CTRL.RESET_CTRL and requires the ROM to clear exactly the four
-# active-low core resets at that register's address, with the testbench's SMC
-# address-decode counter still at zero.
-#
-# [S11] halts before boot-mode selection, so no SPI transport or entropy plusarg
-# is needed. Budget matches sep_firmware_sboot_dis_rsvd_terminal_test, which
-# halts later.
+# Raw LC 0x9 is invalid: the ROM must clear the four SMC core resets and halt (SEP-ROM-FUSE-020).
 name = "sep_rom_lc_state_invalid_test"
 module = "rom_fw.sep_rom_lc_state_invalid_test"
 target = "rom_boot"
@@ -3011,13 +3023,7 @@ args = [
 ]
 
 [[tests]]
-# A debug-locked TEST_DEV part refuses an unsigned image (SEP-ROM-SB-025).
-#
-# TEST_DEV with CHIPLET_DBG set in SIP_DIS, and both manifest slots' secure_boot
-# flag cleared, so the device's enforcement view decides alone. The refusal is
-# sep_firmware_cntl_secure_boot_flow_test's: both slots fail the signature-class
-# check, ahead of key selection and RSA. +esrc_noise_force for the same reason
-# as that entry: the ROM brings entropy up before it validates.
+# A debug-locked TEST_DEV part (CHIPLET_DBG in SIP_DIS) refuses an unsigned image (SEP-ROM-SB-025).
 name = "sep_rom_dbg_lock_sip_dis_refuse_test"
 module = "rom_fw.sep_rom_dbg_lock_sip_dis_refuse_test"
 target = "rom_boot"
@@ -3188,7 +3194,6 @@ args = [
 # LC_STATE raw 0x4 is INVALID to the lifecycle controller, which decodes
 # RMA_CHIPLET as 4'b011?, and the ROM must agree (SEP-ROM-FUSE-020). [S11] halts
 # before boot-mode selection, so no SPI transport or entropy plusarg is needed.
-# Budget matches sep_firmware_sboot_dis_rsvd_terminal_test, which halts later.
 name = "sep_rom_lc_state_invalid_0x4_test"
 module = "rom_fw.sep_rom_lc_state_invalid_0x4_test"
 target = "rom_boot"
@@ -3206,7 +3211,6 @@ args = [
 # LC_STATE raw 0x5 is INVALID to the lifecycle controller, which decodes
 # RMA_CHIPLET as 4'b011?, and the ROM must agree (SEP-ROM-FUSE-020). [S11] halts
 # before boot-mode selection, so no SPI transport or entropy plusarg is needed.
-# Budget matches sep_firmware_sboot_dis_rsvd_terminal_test, which halts later.
 name = "sep_rom_lc_state_invalid_0x5_test"
 module = "rom_fw.sep_rom_lc_state_invalid_0x5_test"
 target = "rom_boot"
@@ -3221,13 +3225,7 @@ args = [
 ]
 
 [[tests]]
-# A wedged secure DMA fails the boot instead of hanging it.
-#
-# +sep_dma_host_stall holds the DMA host port's response channel idle, so the
-# engine stays busy and reports neither DONE nor ERROR. The SMC-SRAM manifest read is the
-# first DMA transfer and that path makes one attempt, so the ROM must time the
-# transfer out, fail the slot with OCA_BOOT_ERR_DMA and halt with FAIL.
-# Same ROM build and SMC image as sep_rom_non_secure_boot_test.
+# A wedged secure DMA (+sep_dma_host_stall) must time out, fail the slot and halt with FAIL.
 name = "sep_rom_dma_stall_terminal_test"
 module = "rom_fw.sep_rom_dma_stall_terminal_test"
 target = "rom_boot"
@@ -3243,14 +3241,7 @@ args = [
 ]
 
 [[tests]]
-# A stalled HMAC message FIFO fails the ROM self-hash instead of hanging it.
-#
-# The test raises hmac_fifo_drain_stall_i once the ROM prints
-# CRYPTO_SELFTEST_OK, just before the [S17] self-hash, so the FIFO fills and
-# fifo_feed()'s bounded credit wait expires. The ROM must report SHA_FIFO_TIMEOUT and halt on
-# ROM_ERR_ROM_HASH_MISMATCH. [S17] precedes boot-mode selection, so no SPI
-# transport or entropy plusarg is needed. Budget matches
-# sep_firmware_sboot_dis_rsvd_terminal_test, which halts just after it.
+# A stalled HMAC FIFO during the [S17] self-hash must time out (SHA_FIFO_TIMEOUT) and halt.
 name = "sep_rom_hmac_fifo_stall_terminal_test"
 module = "rom_fw.sep_rom_hmac_fifo_stall_terminal_test"
 target = "rom_boot"

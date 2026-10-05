@@ -82,10 +82,9 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test(sep_demot
         assert (sel_bit, auth, bl2) == (1, 1, 0), (
             f"primary demotion_control=0x{dc:04x} decodes as BL1_VALID={sel_bit}, "
             f"BL1_ENABLE={auth}, BL2 request={bl2}; O2a needs (1, 1, 0). Any other "
-            f"triple is a different row of the decision table, and rows O2a and O2b "
-            f"differ only in the BL2 request -- which the ROM echoes as "
-            f"BL2_DEMOTE_DEC=, so getting it wrong here would fail on the console "
-            f"rather than silently, but the artefact is where the stimulus is proven"
+            f"triple is a different row of the decision table; rows O2a and O2b "
+            f"differ only in the BL2 request, which the ROM echoes as "
+            f"BL2_DEMOTE_DEC="
         )
         assert sb == 0, (
             f"primary secure_boot_control still asks for enforcement "

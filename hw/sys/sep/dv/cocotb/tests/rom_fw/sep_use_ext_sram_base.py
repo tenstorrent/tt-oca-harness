@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Shared assertions for the four manifest ``use_ext_sram`` testcases.
+"""Unsupported payload-destination scaffold and expected marker geometry.
 
-Checks that flag_args bit 29 selects SEP EXT SRAM or SMC SRAM staging. The TB writes the
-SMC window registers the ROM reads.
+The OCA manifest has no payload-destination selector, the ROM stages payloads into SEP
+SRAM, and shared payload helpers reject ``smc=True`` and ``stage_in_smc``. This file
+defines SEP- and SMC-SRAM marker geometry.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ SEP_PAYLOAD_DST = SEP_SRAM_BASE + SEP_PAYLOAD_OFFSET
 
 SMC_SRAM_BASE = 0x4006_0000
 
-# The window must clear the status ring buffer at the SMC SRAM base and stay 8-byte aligned.
+# The scaffolded SMC window is aligned above the status ring buffer.
 SMC_WINDOW_OFFSET = 0x0002_0000
 SMC_WINDOW_SIZE = 0x0002_0000
 SMC_PAYLOAD_DST = SMC_SRAM_BASE + SMC_WINDOW_OFFSET
@@ -27,7 +28,7 @@ USING_SEP = "USING_SEP_SRAM"
 USING_SMC = "USING_SMC_SRAM"
 WAIT_MARKER = "EXT_SRAM_INIT_WAIT"
 
-# SMC-arm refusals of an unusable window; none may appear when staging succeeds.
+# Expected refusal-marker geometry for the scaffolded SMC window.
 SMC_REFUSALS = (
     "SMC_WIN_OOB",
     "SMC_WIN_MISALIGNED",

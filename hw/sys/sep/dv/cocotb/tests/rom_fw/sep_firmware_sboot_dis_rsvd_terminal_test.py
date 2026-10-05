@@ -1,43 +1,22 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SBOOT_DIS reserved bits are a fuse-integrity fault, not a chicken bit (PyUVM).
+"""SBOOT_DIS reserved bits are a fuse-integrity fault, not a chicken bit.
 
-FEATURE UNDER TEST. ``SBOOT_DIS`` is ``disable_secure_boot[0]`` plus
-``rsvd[31:1]``, and ``rsvd`` is ``hw=rw`` in ``sep_efuse_map.rdl`` -- driven from
-the fuse array rather than tied off, so a real part can present a non-zero word
-without the chicken bit being blown. [S18] therefore masks to bit 0, and treats a
-non-zero ``rsvd`` as a fuse-integrity fault that stops the boot
-(``rom_sboot_dis_policy()`` in ``bootrom/prod/src/lifecycle.c``, SEP-ROM-SB-041).
+``SBOOT_DIS`` is ``disable_secure_boot[0]`` plus ``rsvd[31:1]``, and ``rsvd`` is ``hw=rw`` in
+``sep_efuse_map.rdl``, so a real part can present a non-zero word without the chicken bit blown.
+[S18] masks to bit 0 and treats a non-zero ``rsvd`` as a fuse-integrity fault that stops the boot
+(``rom_sboot_dis_policy()`` in ``bootrom/prod/src/lifecycle.c``, SEP-ROM-SB-041). This run
+presents PROD with word ``0x00000002``: reserved bit 0 set, chicken bit clear. The ROM must print
+``SBOOT_DIS_RSVD=`` and halt on ``ROM_ERR_SBOOT_DIS_RSVD_SET``. PROD makes the two answers differ:
+under TEST_DEV the lifecycle alone does not enforce secure boot.
 
-This run presents PROD with word ``0x00000002``: reserved bit 0 set, chicken bit
-clear. The ROM must print ``SBOOT_DIS_RSVD=`` and halt on
-``ROM_ERR_SBOOT_DIS_RSVD_SET``.
+Not pinned: the bit-0 masking is not independently observable, because the fault stops the boot
+before a manifest is read. ``FUSE: SBOOT_DIS:`` is forbidden: [S18] prints the masked value only
+after the integrity check passes.
 
-WHY PROD. Under TEST_DEV the lifecycle alone declines to enforce secure boot, so
-a reserved bit wrongly taken for the chicken bit would change nothing observable
-and the run would prove nothing. Under PROD the two answers differ.
-
-WHAT THIS TEST DOES *NOT* PIN, and why that is worth knowing. The defect this
-guards against had two halves: the old ``plat_is_secure_boot_disabled()`` tested
-the whole word, so any of 31 fuse-driven bits reported "secure boot disabled",
-while ``rom_main.c`` masked correctly and recorded the opposite in ``bl0_state``
-and in the slot-1 boot-state measurement. The masking half is not *independently*
-observable here, because the integrity fault stops the boot before a manifest is
-ever consulted -- the evidence for it is negative (no ``SBOOT_OFF``, and the ROM
-never reaches a manifest). Should the fault ever be softened to a warning, the
-masking needs its own testcase: PROD + a reserved bit + an UNSIGNED manifest,
-required to be refused rather than booted.
-
-``FUSE: SBOOT_DIS:`` is forbidden rather than merely absent. ``[S18]`` prints the
-masked value only after the integrity check passes, so seeing it here would mean
-the ROM interpreted a word it should have rejected.
-
-The terminal outcome is a halt, so ``SepBootScoreboard`` is not used: it requires
-``fw_done`` with ``fw_pass``, and this path ends with the ROM's own FAIL verdict
-in cold_scratch[0] followed by a spin. No SPI flash is attached -- [S18] precedes
-boot-mode selection and SPI bring-up ([S21]), so a manifest transport is never
-chosen, and entropy bring-up is lazy (``oca_platform.c`` ``ENTROPY_PREREQ()``),
-first reached by a crypto callback well after this point.
+The run ends in a halt, so ``SepBootScoreboard`` is not used; the verdict is the ROM's
+cold_scratch[0] FAIL, then a spin. No SPI flash is attached: [S18] precedes boot-mode selection
+and SPI bring-up ([S21]), and entropy bring-up is lazy (``oca_platform.c`` ``ENTROPY_PREREQ()``).
 """
 
 from __future__ import annotations
@@ -291,7 +270,7 @@ class sep_firmware_sboot_dis_rsvd_terminal_test(sep_base_test):
             f"ROM kept printing after the terminal code, so it did not halt: {post_console}"
         )
         self.logger.info(
-            "CHK-SBOOT-RSVD-TERMINAL PASS: cold_scratch[1]=0x%08x, mailbox FAIL "
+            "CHK-SBOOT-RSVD-TERMINAL PASS: cold_scratch[1]=0x%08x, cold_scratch[0] FAIL "
             "(fw_pass=0), quiet for %d cycles",
             _STATUS_TERMINAL,
             _QUIESCE_CYCLES,

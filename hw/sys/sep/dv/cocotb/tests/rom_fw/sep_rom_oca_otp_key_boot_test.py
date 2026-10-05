@@ -1,31 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP ROM secure boot anchored on an OTP public-key hash, not a ROM digest (PyUVM).
+"""SEP ROM secure boot anchored on an OTP public-key hash, not on a ROM digest.
 
-``sep_rom_ot_secure_boot_test`` verifies a signature against a key whose digest is
-compiled into the ROM (``key_digests.c`` slot 0). This test verifies against a key
-the ROM has never seen, vouched for by a digest fused into OTP instead. Same RSA
-path, different trust anchor -- and the anchor is the part that decides whether a
-signature means anything.
+``sep_rom_ot_secure_boot_test`` authorizes the key against the compiled-in digest table
+(``bootrom/prod/include/key_digests.h``). Here ``bootrom/prod/configs/oca_otp_key_boot_test.yaml``
+selects bit 16 of ``public_key_select_classic``, so ``plat_is_key_authorized()``
+(``oca_platform.c``) reads ``CHIPLET_PUBK_HASH0`` through the eFuse sense path and
+compares it with SHA-256 of the manifest modulus. A mismatch is
+``OCA_FAIL_ROOT_KEY_UNAUTHORIZED``. The selector shares its bit map with
+``CHIPLET_PUBK_REVOKE`` (``sep_efuse_map.rdl``).
 
-The two branches live in ``plat_is_key_authorized()`` (oca_platform.c), selected by
-the manifest's ``public_key_select_classic``. That selector shares its bit map with
-``CHIPLET_PUBK_REVOKE`` (see sep_efuse_map.rdl:727): bits [7:0] are ROM classical
-keys, [16]/[17] are CHIPLET_PUBK_HASH0/1, [20] SIP_PUBK_HASH0, [22] SYS_PUBK_HASH,
-[24] SIP_PUBK_HASH1. ``configs/oca_otp_key_boot_test.yaml`` selects bit 16, so the
-ROM reads CHIPLET_PUBK_HASH0 and compares SHA-256 of the manifest's modulus against
-it. Anything not matching is ``OCA_FAIL_ROOT_KEY_UNAUTHORIZED``.
-
-Worth having in simulation and not only on the VP because the two branches read
-different hardware: the ROM-digest path is a memcmp against .rodata, this one is a
-real eFuse bank read through the sense path, subject to the same shadow/lock
-behaviour as any other OTP field.
-
-The digest below is SHA-256 over ROM key 0's RSA-3072 modulus -- the 384-byte MODULUS
-only, not the 388-byte RAW blob that carries the exponent. Word order matches
-``fuse_read_bytes()``: word[0] holds bits[31:0], so each word is four consecutive
-digest bytes read little-endian. Same table as
-``virtual_platform/tests/fuse_maps/oca_otp_key.yaml``.
+The digest below is SHA-256 over ROM key 0's 384-byte RSA-3072 modulus, not the 388-byte
+raw blob with the exponent. Word order matches ``fuse_read_bytes()``: word[0] holds
+bits[31:0], so each word is four consecutive digest bytes read little-endian.
 """
 
 from __future__ import annotations

@@ -1,26 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP ROM boot over the OpenTitan SPI host, SECURE_DMA drain (PyUVM).
+"""SEP ROM boot over the OpenTitan SPI host with the SECURE_DMA RX drain.
 
-Sibling of ``sep_rom_non_secure_boot_test`` with the same Boot ROM, BL1 payload and PASS
-criteria, but the manifest and payload come from a flash model over the OpenTitan SPI host
-instead of the behavioral SMC-SRAM responder.
+Sibling of ``sep_rom_non_secure_boot_test``: same Boot ROM, BL1 payload and PASS criteria,
+but the manifest and payload come from a flash model over the OpenTitan SPI host instead
+of the SMC-SRAM responder. ``boot_flash.h`` selects the RX FIFO drain at build time:
+SECURE_DMA (``BOOT_OT_SPI_USE_PIO=0``, the default ``build/`` image) or CPU PIO
+(``build_pio/``, ``sep_rom_ot_pio_boot_test``). ``+sep_boot_from_spi`` makes the testbench
+seed ``STRAPS_LO[25]`` (primary_chiplet), so the ROM takes its SPI branch; the SPI path
+markers are required. ``OcahSpiFlash`` serves the packed image from flash offset 0, and
+the primary manifest sits at ``PRIMARY_MANIFEST_OFFSET`` (0x1000). The SMC responder still
+supplies the straps, the DFX gate and the status ring.
 
-``boot_flash.h`` selects the RX FIFO drain at build time: SECURE_DMA
-(``BOOT_OT_SPI_USE_PIO=0``, the default ``build/`` image this test runs) or CPU PIO
-(``=1``, ``build_pio/``, covered by ``sep_rom_ot_pio_boot_test``). The two are different
-datapaths, so a passing DMA boot says nothing about the PIO one.
-
-  * ``+sep_boot_from_spi`` makes the testbench seed ``STRAPS_LO[25]`` (primary_chiplet) in
-    the SMC responder, so the ROM takes its SPI branch. Without it the ROM boots from SMC
-    SRAM, which is why the path markers below are required.
-  * ``OcahSpiFlash`` serves the packed image from flash offset 0; the packer places the
-    primary manifest at ``PRIMARY_MANIFEST_OFFSET`` (0x1000), so no fixups are needed.
-
-The SMC responder still supplies the straps, the DFX/mem-repair gate and the status ring.
-
-Exercised datapath: flash BFM -> MISO -> OT spi_host RX FIFO -> (RX-watermark
-lsio_trigger) -> Secure DMA -> SEP SRAM -> ROM SHA-256 validate -> BL1 jump.
+Datapath: flash BFM -> MISO -> OT spi_host RX FIFO -> RX-watermark lsio_trigger -> Secure
+DMA -> SEP SRAM -> ROM SHA-256 validate -> BL1 jump.
 """
 
 from __future__ import annotations
@@ -40,8 +33,8 @@ from sep_reg_meta import sym
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
 # Raw packed image for the flash BFM, from the DEFAULT build/ -- the packed
-# manifest+BL1 bytes are transport- and drain-agnostic, so all three ROM variants
-# (stub, OT+DMA, OT+PIO) read the same image and it is built once.
+# manifest+BL1 bytes are transport- and drain-agnostic, so both drain variants
+# (OT+DMA, OT+PIO) read the same image and it is built once.
 # NOT the .spi_preload variant: that is $readmemh text, while
 # OcahSpiFlash.preload() reads raw binary.
 # OCA boot manifests, built by `make oca-images`.
@@ -50,9 +43,9 @@ _FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "oca_non_secu
 SECURE_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "oca_secure_boot.bin")
 
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
-# A serial flash read of the manifest (1184 B) plus the BL1 payload (5136 B) at
-# the profile-0 SCK rate is far more sim time than the SMC-SRAM sibling's AXI
-# fetch, so this budget is well above that test's 4M.
+# A serial flash read of the manifest plus the BL1 payload at the profile-0 SCK
+# rate is far more sim time than the SMC-SRAM sibling's AXI fetch, so this budget
+# is well above that test's 4M.
 _MAX_RUN_CYCLES = 24_000_000
 _NO_BOOT_CYCLES = 200_000
 _PROGRESS_EVERY = 50_000
@@ -86,22 +79,21 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
     # Overridden by the signed sibling (sep_rom_ot_secure_boot_test), which reuses
     # this whole flow and only swaps the image and tightens the assertions.
     flash_image = _FLASH_IMAGE
-    # Console lines that must appear / must not appear. The subclass appends the
-    # RSA markers; keeping them as class data is what lets the two variants share
-    # one scenario without a copy.
     # Cycle budget for poll_boot. Class data so a test whose boot ends earlier --
     # a negative test that is refused before the payload is ever fetched -- can
     # trim it. poll_boot breaks out on fw_done, so this is normally a backstop;
     # it only becomes the runtime if the firmware neither passes nor reports.
     max_run_cycles = _MAX_RUN_CYCLES
+    # Console lines that must appear or must not appear. The signed subclass
+    # extends both tuples with the RSA markers.
     required_markers = (
         _SPI_PATH_MARKER,
         _MANIFEST_SRC_MARKER,
         _MANIFEST_OK_MARKER,
         _PAYLOAD_OK_MARKER,
     )
-    # Kept as a cheap guard, but it is NOT independent evidence: BOOT_SPI and
-    # WAIT_SMC_MANIFEST sit on complementary arms of the same predicate
+    # This is not independent evidence: BOOT_SPI and WAIT_SMC_MANIFEST sit on
+    # complementary arms of the same predicate
     # (boot_from_spi(straps)) within one boot, and there is no fallback edge -- if every
     # SPI manifest slot fails the ROM errors out rather than retrying via SMC. So given
     # the required BOOT_SPI marker passed, this forbid cannot fail. The non-entailed
@@ -171,10 +163,6 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
         # only FORCES the decorrelator inputs from this port -- it generates
         # nothing. Without a driver the port sits at 0, the repetition health test
         # trips, and the ROM correctly refuses to boot on a dead entropy source.
-        #
-        # Started for every SPI ROM test, not just the crypto ones: it is cheap,
-        # and a test that later grows a crypto dependency should not have to
-        # rediscover this.
         cocotb.start_soon(esrc_noise_task(dut, logger=self.logger))
 
         efuse_img = self.build_efuse_image()
@@ -192,9 +180,8 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
         )
         # Image at flash address 0: the packer's primary manifest lands at 0x1000
         # and the payload at 0x2000, matching the ROM's compiled-in offsets.
-        # Loaded as bytes so mutate_flash_image() can inject a defect; preload()
-        # accepts a buffer as readily as a path, so a negative testcase needs no
-        # build step and no new firmware profile.
+        # Loaded as bytes so mutate_flash_image() can inject a defect before
+        # preload() receives the buffer.
         with open(self.flash_image, "rb") as fh:
             image = bytearray(fh.read())
         loaded = bytes(self.mutate_flash_image(image))
@@ -224,7 +211,7 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
 
         # Positive evidence about WHICH path served this boot. The scoreboard's
         # fw_pass alone cannot tell the two manifest sources apart -- both end in
-        # the same BL1 mailbox magic -- so without these the test would still pass
+        # the same BL1 PASS verdict -- so without these the test would still pass
         # with the strap unset and prove nothing about SPI. The signed subclass
         # extends these tuples to also demand the RSA markers.
         # Guard the guards. An empty marker tuple or a dark console would otherwise

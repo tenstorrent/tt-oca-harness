@@ -85,9 +85,9 @@ class _primary_revoked_slot_mixin:
         expect_grafted = self._REVOKED_SLOT != 0
         assert grafted == expect_grafted, (
             f"slot {self._REVOKED_SLOT}: primary grafted={grafted}, expected "
-            f"{expect_grafted}. The shipped primary manifest no longer selects ROM "
-            f"slot 0 (configs/oca_secure_boot_test.yaml), so this member is no longer "
-            f"testing what its docstring claims"
+            f"{expect_grafted}. The shipped primary manifest does not select ROM "
+            f"slot 0 (configs/oca_secure_boot_test.yaml), so this member does not "
+            f"test what its docstring claims"
         )
         self._assert_outcome_shape(buf)
         self.logger.info(
@@ -112,8 +112,8 @@ class _primary_revoked_slot_mixin:
             f"{'TERMINAL' if self._BACKUP_ALSO_REVOKED else 'FAILOVER'} base which "
             f"requires {self._BACKUP_ALSO_REVOKED}. The outcome shape of this family "
             f"depends on both slots naming ROM key 0 "
-            f"(configs/oca_secure_boot_test.yaml); that is no longer "
-            f"true, so the member's expected outcome is wrong"
+            f"(configs/oca_secure_boot_test.yaml), which does not hold here, so the "
+            f"member's expected outcome is wrong"
         )
         self.logger.info(
             "CHK-STIMULUS-OUTCOME-SHAPE: backup selector 0x%04x, refused by bitmap "
@@ -158,7 +158,7 @@ class sep_primary_pubkey_rom_revoked_failover_base(
         "PUBK_ALGO_UNSUPPORTED",
         "RSA_PKCS1_FAIL",
     )
-    # Both attempts echo the same whole fuse word; only the error code is per slot.
+    # The backup selects ROM key slot 0.
     _BACKUP_SEL_ECHO = "PUBK_SEL=0x00000000"
 
     @classmethod
@@ -196,7 +196,8 @@ class sep_primary_pubkey_rom_revoked_failover_base(
             ordered=b_ordered,
             absent=(self._KEY_REVOKED_ECHO, self._PUBK_SEL_ECHO),
         )
-        # The fuse word is echoed once per slot attempt; the selector and verdict are the primary's.
+        # Both attempts echo the same whole fuse word, so it appears once per slot;
+        # the selector and the error code are the primary's.
         for marker, want_n in (
             (self._REVOKE_ECHO, 2),
             (self._PUBK_SEL_ECHO, 1),

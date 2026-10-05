@@ -3,7 +3,10 @@
 """Signed and encrypted OCA payload: RSA-3072, then AES-256-CBC.
 
 Boots from the ``sep_efuse_class_key.toml`` preload and checks that it holds the packer's
-32-byte encryption secret, so a drifted preload fails before the run.
+32-byte encryption secret, so a drifted preload fails before the run. The primary is the only
+slot attempted, and ``DECRYPT_OK`` comes after ``MANIFEST_OK`` and before ``PAYLOAD_OK``.
+``sep_rom_oca_encrypted_boot_test`` boots the same image with CLASS_KEY written into the
+default eFuse image and checks the console markers only.
 Needs ``+esrc_noise_force``: the ROM runs the real entropy chain before RSA and decryption.
 """
 
@@ -109,13 +112,17 @@ class sep_firmware_encrypted_boot_test(sep_rom_ot_secure_boot_test):
         return buf
 
     def log_transport(self, flash) -> None:
+        # Diagnostics only, logged at info: the base calls this hook before the
+        # marker checks and it must not raise. The verdict is PAYLOAD_OK (the
+        # plaintext TOC hashes) and check_transport(); the block compare below
+        # only says which decrypt input was wrong when that verdict fails.
         import cocotb
 
         word0 = int(self.rd(cocotb.top.sram_word0_probe_o))
         magic = (word0 & 0xFFFF_FFFF).to_bytes(4, "little")
         self.logger.info("CHK-PROBE: SRAM word0 = 0x%016x, low half = %r", word0, magic)
         if magic != b"OCAC":
-            self.logger.error(
+            self.logger.info(
                 "CHK-PROBE: SRAM word 0 is not the manifest magic -- this probe is "
                 "NOT reading the manifest/payload region, so the block comparison "
                 "below proves nothing about the ROM"
@@ -141,21 +148,21 @@ class sep_firmware_encrypted_boot_test(sep_rom_ot_secure_boot_test):
         if all(verdict):
             self.logger.info("CHK-DECRYPT-VERDICT: all three blocks correct")
         elif not verdict[0] and all(verdict[1:]):
-            self.logger.error(
+            self.logger.info(
                 "CHK-DECRYPT-VERDICT: block 0 WRONG, blocks 1-2 CORRECT. That is the "
                 "signature of the IV never reaching the engine: CBC chains later "
                 "blocks on the previous ciphertext, which does not depend on the IV. "
                 "Suspect the IV write in aes_driver.c, not the key."
             )
         elif not any(verdict):
-            self.logger.error(
+            self.logger.info(
                 "CHK-DECRYPT-VERDICT: ALL blocks wrong -- that is a wrong KEY (or a "
                 "wrong mode), not a lost IV; a lost IV would corrupt block 0 only. "
                 "Suspect the AES-256 key derived from CLASS_KEY and the 64-byte OCA "
                 "KDF context, rather than the IV path."
             )
         else:
-            self.logger.error(
+            self.logger.info(
                 "CHK-DECRYPT-VERDICT: mixed pattern %s -- matches "
                 "neither a lost IV nor a wrong key",
                 verdict,

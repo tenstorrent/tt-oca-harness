@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Shared stimulus and evidence for the three "manifest declares no payload images" rows.
+"""Shared stimulus and evidence for the three tests whose manifest declares no payload images.
 
 Plants ``toc->image_count = 0`` in a plaintext slot. The library refuses it with the
 silent ``OCA_FAIL_PAYLOAD_TOC`` after that slot's signature has verified.
@@ -34,9 +34,8 @@ ENTRY0_DIGEST_FIELD = (pm.toc_entry_at(0) + pm.E_HASH, 32)
 def assert_plaintext_image(buf: bytearray, image: str) -> None:
     for slot in ("primary", "backup"):
         assert not pm.is_encrypted(buf, slot), (
-            f"{slot} payload carries encrypted_payload = 1; these rows are the "
-            f"PLAINTEXT stimulus and the loaded image ({image}) is not the one they "
-            f"are about"
+            f"{slot} payload carries encrypted_payload = 1; these tests use the "
+            f"PLAINTEXT stimulus and the loaded image ({image}) is not plaintext"
         )
 
 
@@ -55,16 +54,16 @@ def plant_empty_image_list(logger, buf: bytearray, slot: str) -> bytes:
     # payload_hashed_length follows the header-only span, so count_zero is the only rule broken.
     was = pm.set_toc_image_count(buf, slot, EMPTY_IMAGE_COUNT, hashed_to_span=True)
     assert was > 0, (
-        f"{slot} TOC already declared {was} images before the mutation, so this row "
-        f"would not have changed the count the ROM reads"
+        f"{slot} TOC already declared {was} images before the mutation, so the "
+        f"mutation would not change the count the ROM reads"
     )
     p = pm.payload_base(buf, slot)
     stored = bytes(buf[p + off : p + off + size])
     # Pin literal zero: an over-large count returns the same code and is covered elsewhere.
     assert EMPTY_IMAGE_COUNT == 0 and stored == bytes(size), (
         f"{slot} TOC image_count was planted as {EMPTY_IMAGE_COUNT} and stored as "
-        f"{stored.hex()}; these rows are the ZERO half of the count bound, and the "
-        f"over-large half has cells of its own (sep_toc_defect.BAD_IMAGE_COUNT)"
+        f"{stored.hex()}; these tests cover a zero count; an over-large count is "
+        f"covered by sep_toc_defect.BAD_IMAGE_COUNT"
     )
     violations = pm.spec_rule_violations(buf, slot)
     assert violations == ["count_zero"], (

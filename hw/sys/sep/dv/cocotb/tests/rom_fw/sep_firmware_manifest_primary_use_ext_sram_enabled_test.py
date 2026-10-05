@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Primary asks for EXT SRAM staging; the ROM stages there and boots.
+"""Unsupported primary-set payload-destination scaffold.
 
-The shipped manifests already set use_ext_sram, so the test asserts the bit and the
-SEP EXT SRAM destination instead of mutating the image.
+The OCA manifest has no payload-destination selector, the ROM stages payloads into SEP
+SRAM, and shared payload helpers reject ``smc=True`` and ``stage_in_smc``. This file
+defines primary-set and SEP-marker geometry.
 """
 
 from __future__ import annotations
@@ -31,7 +32,7 @@ _REQUIRED, _FORBIDDEN = ues.sep_markers()
 
 @pyuvm.test()
 class sep_firmware_manifest_primary_use_ext_sram_enabled_test(sep_rom_ot_secure_boot_test):
-    """use_ext_sram=1 on the primary: payload staged in SEP EXT SRAM."""
+    """Primary-set and SEP-marker scaffold."""
 
     efuse_preload = _EFUSE_PRELOAD
     required_markers = (

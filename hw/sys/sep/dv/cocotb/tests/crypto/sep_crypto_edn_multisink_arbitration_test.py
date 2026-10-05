@@ -274,7 +274,7 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         await aes_task
         await kmac_task
         self.logger.info(
-            "CHK-BOTH-COMPLETE PASS: under contention AES block-0 ct==golden AND "
+            "CHK-BOTH-COMPLETE PASS: under contention every AES block ct==golden AND "
             "KMAC digest==golden"
         )
 

@@ -77,7 +77,7 @@ class sep_axi_id_routing_test(sep_base_test):
         )
         self.logger.info(
             "CHK-ID-OVERLAP PASS: %d reads outstanding at once, so every "
-            "aliasing ID pair (k, k+4) was in flight together",
+            "aliasing ID pair was in flight together",
             idr.max_outstanding,
         )
 

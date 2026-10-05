@@ -1,22 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Backup manifest naming an unassigned public-key source (PyUVM).
+"""Backup manifest names two ROM key slots at once; the ROM halts.
 
-The primary's ``manifest_identifier`` is corrupted to force failover, then the
-backup's ``public_key_sel.selection`` is set to 3 -- one of the three encodings
-(3, 6, 7) that name no key source. All three fall through the same ``default:`` arm; a fixed value makes the run reproducible and lets
-the test assert the exact ``PUBK_SEL=`` the ROM echoed.
+The primary's magic is broken to force failover. The backup's ``public_key_select``
+bitmap names slots 0 and 1, both provisioned, so the refusal can only be the
+ambiguity: the platform prints ``PUBK_SEL_AMBIGUOUS`` and returns
+``MANIFEST_ERR_KEY_UNAUTHORIZED``. A bad ROM key index is a different arm
+(``PUBK_SLOT_RESERVED``) and is forbidden.
 
-PLATFORM ADAPTATION.
-
-*Marker.* This ROM has no ``INVALID_KEY_INDEX`` status. The unassigned-selection
-arm prints ``PUBK_SEL_AMBIGUOUS`` and returns ``MANIFEST_ERR_KEY_UNAUTHORIZED``; a bad ROM key
-*index* is a different arm printing ``PUBK_SLOT_RESERVED``. This test follows the stimulus
-(a bad source, not a bad index) and requires ``PUBK_SEL_AMBIGUOUS``.
-
-``public_key_sel`` is at offset 166, inside the signed region, so the helper re-hashes. No
-re-sign: the selection is rejected before the signature is verified, and
-``RSA_EXEC`` is forbidden so that ordering is checked rather than assumed.
+The selector is inside the signed region, so the helper re-hashes. No re-sign: the
+selection is refused before the signature check, and ``RSA_EXEC`` is forbidden so
+that ordering is checked.
 """
 
 from __future__ import annotations
@@ -46,7 +40,7 @@ _AMBIGUOUS_SLOTS = (0, 1)
 
 @pyuvm.test()
 class sep_firmware_backup_invalid_public_key_selection_test(sep_backup_manifest_fail_base):
-    """Primary BAD_MAGIC -> failover -> backup names key source 3 -> terminal."""
+    """Primary BAD_MAGIC -> failover -> backup names two key slots -> terminal."""
 
     backup_defect_marker = "PUBK_SEL_AMBIGUOUS"
     expected_error = MANIFEST_ERR_KEY_UNAUTHORIZED
@@ -94,9 +88,9 @@ class sep_firmware_backup_invalid_public_key_selection_test(sep_backup_manifest_
     def _check(self, console, status_seq, fw_done, fw_pass, retired) -> None:
         super()._check(console, status_seq, fw_done, fw_pass, retired)
         # PUBK_SEL= is refused BEFORE it can be echoed: the ambiguity is detected
-        # inside the resolution loop, so no slot number is ever printed for this
-        # slot. Its absence for anything but the booting slot is therefore the
-        # positive evidence that resolution stopped rather than picked.
+        # inside the resolution loop, so no slot number is printed. The primary
+        # fails on its magic and never reaches selection, so no PUBK_SEL= line may
+        # appear in the run.
         sels = [line for line in console if "PUBK_SEL=" in line]
         assert not sels, (
             f"ROM echoed a resolved slot {sels}: an ambiguous bitmap must be "

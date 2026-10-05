@@ -1,26 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Recovery boot: PRIMARY_CHIPLET=1 + BOOT_RECOVERY=1 takes the SMC-SRAM path.
+"""Recovery boot: PRIMARY_CHIPLET=1 with BOOT_RECOVERY=1 must take the SMC-SRAM path.
 
-``boot_from_spi()`` is ``primary_chiplet && !boot_recovery``, so the recovery strap
-diverts a primary chiplet from flash to the SMC-SRAM manifest. The ROM's boot-mode
-branch has three arms and this testcase pins the middle one::
+``boot_from_spi()`` is ``primary_chiplet && !boot_recovery``, so the recovery strap diverts
+a primary chiplet from flash to the SMC-SRAM manifest. The ROM's boot-mode branch has
+three arms (``BOOT_SPI``, ``BOOT_RECOVERY``, ``BOOT_SECONDARY``) and this test requires
+the middle one. ``primary_chiplet`` is ``STRAPS_LO[25]`` and ``boot_recovery`` is
+``STRAPS_LO[19]``; the ROM echoes ``STRAPS_LO=0x02080000`` and ``STRAP primary=1
+recovery=1``, so the run shows the ROM saw the intended combination.
 
-    if (boot_from_spi(&straps))                                -> BOOT_SPI
-    else if (straps.primary_chiplet && straps.boot_recovery)   -> BOOT_RECOVERY
-    else                                                       -> BOOT_SECONDARY
-
-``primary_chiplet`` is ``STRAPS_LO[25]`` and ``boot_recovery`` is ``STRAPS_LO[19]``. The
-testbench builds that word from ``+sep_boot_from_spi`` and ``+sep_straps_lo``, and the ROM
-echoes it, so ``STRAPS_LO=0x02080000`` and ``STRAP primary=1 recovery=1`` show that the
-ROM saw the intended combination.
-
-``BOOT_SECONDARY`` is forbidden because both non-SPI arms wait for the same SMC manifest
-and print nearly identical consoles; without it, a recovery strap that did nothing would
-still pass.
-
-The ROM can drive the SPI host and the flash holds a bootable image, so zero flash reads
-shows that the ROM declined a working device.
+``BOOT_SECONDARY`` is forbidden: both non-SPI arms wait for the same SMC manifest and
+print nearly identical consoles. The flash holds a bootable image, so zero flash reads
+show that the ROM declined a working device.
 """
 
 from __future__ import annotations
@@ -34,22 +25,17 @@ _STRAPS_LO_RECOVERY = 0x0208_0000
 _BOOT_RECOVERY_BIT_LO = 19
 
 _STRAPS_LO_ECHO = f"STRAPS_LO=0x{_STRAPS_LO_RECOVERY:08x}"
-_STRAP_PRIMARY_ECHO = "STRAP primary=1"  # boot_straps.c:32
-_STRAP_RECOVERY_ECHO = " recovery=1"  # boot_straps.c:33
-_RECOVERY_MARKER = "BOOT_RECOVERY"  # rom_main.c:635
-_WAIT_SMC = "WAIT_SMC_MANIFEST"  #
-# smc_sram_base (0x4006_0000, sep_smc_interface.h:57,162-164) + the manifest
-# offset the responder publishes in SMC scratch[8] (0x1000).
-#
-# NOTE ON WHAT THE PROCEDURE SAYS: TP004 step 3 describes the offset as published
-# in "SMC scratch 13/14". This ROM does not read those -- SMC_SCRATCH_SEP_SAFE_
-# SRAM_START/SIZE (sep_smc_interface.h:103-104) are declared and never used --
-# and takes the offset from SMC_SCRATCH_MANIFEST_ADDR_IDX = 8
-# The implementation follows the ROM.
+_STRAP_PRIMARY_ECHO = "STRAP primary=1"  # boot_straps.c
+_STRAP_RECOVERY_ECHO = " recovery=1"  # boot_straps.c
+_RECOVERY_MARKER = "BOOT_RECOVERY"  # rom_main.c
+_WAIT_SMC = "WAIT_SMC_MANIFEST"
+# smc_sram_base (0x4006_0000, sep_get_smc_sram_base() in sep_smc_interface.h) plus
+# the manifest offset the responder publishes in SMC scratch[8] (0x1000). The ROM
+# reads the offset from SMC scratch[8] (SMC_SCRATCH_MANIFEST_ADDR_IDX).
 _SMC_MANIFEST_SRC = "MANIFEST_SRC=0x40061000"
 _MANIFEST_OK = "MANIFEST_OK"
 # Printed by BL1 after the handoff and by nothing in the ROM, so it is the
-# transfer-of-control evidence the procedure asks for ("BL1 reached"). The bare
+# transfer-of-control evidence ("BL1 reached"). The bare
 # string "BL1" is not the marker: the ROM itself prints BL1_COPIED and
 # BL1_JUMP=, so a substring match on it would be satisfied without any handoff.
 # The scoreboard's fw_done && fw_pass gate is the independent second half.
@@ -108,7 +94,7 @@ class sep_boot_recovery_test(sep_rom_ot_dma_boot_test):
 
         # CHK-RECOVERY-NO-SPI: the device side of the claim. The console can only
         # say the ROM intended the SMC path; this says the flash was never
-        # addressed, which is the procedure's "no SPI flash reads attempted".
+        # addressed: no SPI flash read is attempted.
         rds = ev.reads(txns)
         assert not rds, (
             f"the flash model served {len(rds)} read transaction(s) at "

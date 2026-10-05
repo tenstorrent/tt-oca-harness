@@ -109,7 +109,10 @@ class SepBootScoreboard(uvm_component):
                     "rejected"
                 )
         elif not self.fw_done:
-            errors.append("firmware never signaled completion (no PASS/FAIL magic at 0x80000000)")
+            errors.append(
+                "firmware never signaled completion (no PASS/FAIL magic in the "
+                "0x80000000 mailbox or in cold_scratch[0])"
+            )
         elif not self.fw_pass:
             errors.append("firmware signaled FAIL (0xDEADBEEF)")
         if self.expected_line and self.expected_line not in console:

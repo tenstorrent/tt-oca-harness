@@ -1,44 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""TP053-S: BL1 image size out of range, so the boot must reject before the copy.
+"""BL1 length zero in both slots must be refused before the copy, as a TOC violation.
 
-The SEP BL1 entry's ``length`` is set to zero in BOTH manifest slots. A
-zero-length TOC entry is a structural violation, so the validation library
-refuses each slot with ``OCA_FAIL_PAYLOAD_TOC`` while checking the payload: the
-primary fails, the backup is retried, it fails the same way, and the boot
-terminates without BL1 ever being copied or entered.
+A zero-length TOC entry authenticates nothing and cannot be launched, so the validation
+library refuses each slot with ``OCA_FAIL_PAYLOAD_TOC``. The primary fails, the backup
+fails the same way, and the boot terminates without a BL1 copy or jump. The exact
+``MANIFEST_ERR=`` code must appear once per slot; no console token is dedicated to it.
 
-WHERE THE REJECTION COMES FROM, AND WHY THAT IS THE POINT. A zero-length entry
-declares an image with no content. Its ``hash`` is the digest of the empty
-string, so it authenticates nothing; ``entry_point < length`` can never hold, so
-it can never be legally launched; and it satisfies both the extent bound and the
-overlap test trivially, so no other structural rule rejects it. A consumer that
-selected an image by type and then loaded ``length`` bytes would copy nothing and
-hand control to whatever already occupied ``load_addr``. The library rejects it so
-no consumer has to carry that guard itself, and this testcase is what holds it to
-that.
+``rom_bl1_check()`` (``rom_handoff.c``) also refuses a zero length (``BL1_SIZE``), but the
+library gates first, so ``BL1_SIZE`` is forbidden. ``NO_BL1_IMAGE`` is forbidden too: a
+mutation that lost the entry type would also end the boot.
 
-THE ROM'S OWN LENGTH ARM IS DELIBERATELY NOT WHAT THIS ASSERTS. ``rom_bl1_check``
-also refuses a zero length (``BL1_SIZE``), and keeps doing so, because the ROM
-must not depend on which library version it links. But the library gates first,
-so that arm is unreachable from a manifest -- and ``BL1_SIZE`` is therefore
-FORBIDDEN below. Its absence is the positive evidence that the structural rule
-ran ahead of hand-off rather than the ROM catching this late.
-
-WHICH OF THE PROCEDURE'S THREE SIZE CLASSES THIS COVERS. TP053-S names three:
-zero, larger than IRAM, and larger than the spec's maximum BL1 size. **Only the
-zero class is exercised here.** The other two would have to reach the ROM's
-placement arm, which needs ``length > 0x40000`` against the shipped
-``load_addr``; the library rejects ``offset + length > payload_length`` first, so
-the payload would have to grow past 128 KiB -- roughly 80 ms of extra simulated
-SPI transfer per slot, on both slots. ``sep_payload_mutate.set_bl1_zero_length``'s
-docstring records the analysis. A pass here does not cover those two.
-
-ATTRIBUTION. The rejection carries no dedicated console token, so the exact
-``MANIFEST_ERR=`` code is the discriminator, and it must appear once per slot.
-``NO_BL1_IMAGE`` is forbidden because a mutation that lost the entry's type
-instead of its length would also end the boot and would otherwise look the same
-from the outside.
+Only the zero-length class is covered. A BL1 larger than IRAM or than the spec maximum
+needs ``length > 0x40000``, which needs a payload above 128 KiB and is not exercised.
 """
 
 from __future__ import annotations
@@ -72,9 +46,8 @@ class sep_bl1_size_invalid_test(sep_bl1_image_invalid_base):
         was = pm.set_bl1_zero_length(buf, slot)
         assert was == before
         assert pm.bl1_field(buf, slot, pm.E_LENGTH) == 0
-        # The entry must still be a SEP BL1 entry: find_image() locates it by type,
-        # so a mutation that damaged the type would raise there rather than here,
-        # but stating it makes the "size is the only defect" claim explicit.
+        # The entry must still be a SEP BL1 entry, so length is the only defect;
+        # find_image() locates it by type and raises on a damaged type.
         # entry_type, not bl1_field: the type is a 16-byte string, and bl1_field
         # reads u64 fields.
         got_type = pm.entry_type(buf, pm.find_image(buf, slot))

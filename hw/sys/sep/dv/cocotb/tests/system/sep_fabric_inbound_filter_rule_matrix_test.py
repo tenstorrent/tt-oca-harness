@@ -177,7 +177,8 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         expected = [start + i * 4 for i in range(nbeats)]
         assert addrs == expected, (
             f"{tag}: Lite singles {[hex(a) for a in addrs]} != "
-            f"{[hex(a) for a in expected]} (fabric.adoc convert burst to single)"
+            f"{[hex(a) for a in expected]} (fabric.adoc: axi_to_axi_lite splits "
+            "bursts into individual transactions)"
         )
 
     async def _check_burst_dimension(self, mcfg: SepInboundFilterMatrixCfg) -> None:

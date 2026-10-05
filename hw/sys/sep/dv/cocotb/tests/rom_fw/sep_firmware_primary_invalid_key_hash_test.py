@@ -3,11 +3,9 @@
 """Primary manifest fails the public-key hash bind; the backup boots.
 
 One bit of the primary's RSA-3072 modulus is flipped and the signed region is re-hashed, so the
-slot fails only the SHA-256(modulus) comparison against the ROM's compiled-in digest for the
-selected slot. A wholesale overwrite could be caught by a coarser check; one bit is caught only
-by the hash comparison. The flipped modulus no longer matches its signature, so this shows that
-the bind fires before the verifier, not that the bind alone stops a self-consistent foreign
-key; a variant re-signed with another ROM key would show that.
+slot fails the SHA-256(modulus) comparison against the ROM's compiled-in digest for the selected
+slot. The flipped modulus does not match its signature; the test proves that the bind fires
+before the verifier.
 
 Key authorization runs before ``rsa_3072_verify``, so the stale signature is never examined and
 no ``RSA_EXEC`` may appear between the primary read and the backup read. The refusal returns to
@@ -40,9 +38,9 @@ _EFUSE_PRELOAD = (
 )
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
-_HASH_MISMATCH = "PUBK_UNAUTHORIZED"  #
-_CRYPTO_FAIL = f"MANIFEST_ERR=0x{MANIFEST_ERR_KEY_HASH_MISMATCH:08x}"  #
-_SLOT_ERR = f"MANIFEST_ERR=0x{MANIFEST_ERR_KEY_HASH_MISMATCH:08x}"  #
+_HASH_MISMATCH = "PUBK_UNAUTHORIZED"
+_CRYPTO_FAIL = f"MANIFEST_ERR=0x{MANIFEST_ERR_KEY_HASH_MISMATCH:08x}"
+_SLOT_ERR = f"MANIFEST_ERR=0x{MANIFEST_ERR_KEY_HASH_MISMATCH:08x}"
 _RSA_START = "RSA_EXEC"
 _RSA_VERIFY_OK = "RSA_VERIFY_OK"
 _MANIFEST_OK = "MANIFEST_OK"
@@ -100,8 +98,9 @@ class sep_firmware_primary_invalid_key_hash_test(sep_rom_ot_dma_boot_test):
         assert sboot_dis == 0, (
             f"SBOOT_DIS is {sboot_dis}: the crypto chain would be skipped entirely"
         )
-        # Both of these are evaluated before the key bind and would end the run
-        # first, making the verdict unattributable.
+        # Revocation and anti-rollback run after the key bind. With both fuses
+        # clear, a primary that passes the bind by mistake reaches RSA_EXEC before
+        # the backup read, which check_transport() catches.
         assert bl1_ver == 0, (
             f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: anti-rollback cannot reject a "
             f"manifest when the device carries no security flags, and that is what "
@@ -109,8 +108,8 @@ class sep_firmware_primary_invalid_key_hash_test(sep_rom_ot_dma_boot_test):
         )
         assert revoke == 0, (
             f"CHIPLET_PUBK_REVOKE is 0x{revoke:x}, expected 0: revocation runs "
-            f"before the hash bind, and the backup must "
-            f"be able to use slot 0"
+            f"after the hash bind, so a set bit could refuse a primary that wrongly "
+            f"passed the bind, and the backup must be able to use slot 0"
         )
         self.logger.info(
             "CHK-STIMULUS-EFUSE: LC raw=0x%x (PROD), SBOOT_DIS=%d, "

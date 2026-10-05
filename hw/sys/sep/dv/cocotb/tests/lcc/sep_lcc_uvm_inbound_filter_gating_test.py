@@ -213,7 +213,8 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         await self.start_seq(ctl_prod)
         self.assert_sb_judged(mark, "CHK-PROD-FEAT")
         assert ctl_prod.feat_ctrl == feat_prod, (
-            f"CHK-PROD-FEAT FAIL: FEAT_CTRL=0x{ctl_prod.feat_ctrl:016x} != golden 0x{feat_prod:016x}"
+            f"CHK-PROD-FEAT FAIL: FEAT_CTRL=0x{ctl_prod.feat_ctrl:016x} "
+            f"!= golden 0x{feat_prod:016x}"
         )
         assert ctl_prod.sep_debug == 0, (
             f"PROD sep_debug must be 0, got {ctl_prod.sep_debug} "

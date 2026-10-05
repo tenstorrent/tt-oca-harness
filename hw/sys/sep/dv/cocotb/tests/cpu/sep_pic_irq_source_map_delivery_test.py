@@ -160,7 +160,7 @@ class sep_pic_irq_source_map_delivery_test(sep_base_test):
             "are not a verdict on their own"
         )
         self.logger.info(
-            "CHK-RANDCFG PASS: MUST %s + extras %s (seed=%d); %d sources each "
+            "CHK-RANDCFG PASS: required %s + extras %s (seed=%d); %d sources each "
             "reported CHK-DELIVER / CHK-ONEHOT / CHK-IP-RW1C",
             list(cfg.must),
             list(cfg.extras),

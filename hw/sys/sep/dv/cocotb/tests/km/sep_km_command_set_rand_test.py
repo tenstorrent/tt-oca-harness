@@ -485,7 +485,7 @@ class sep_km_command_set_rand_test(sep_base_test):
         )
         self.logger.info(
             "CHK-SHRED PASS: rc=0 with dest echoed; engine re-keys to KAT_KEY_B's "
-            "golden and no longer produces KAT_KEY_A's ciphertext"
+            "golden and does not produce KAT_KEY_A's ciphertext"
         )
 
         # --- CHK-REVOKE / CHK-CLOSED: destroy a key, then fail closed ---------

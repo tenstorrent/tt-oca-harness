@@ -27,8 +27,8 @@ _EFUSE_PRELOAD = (
     / "sep_efuse_lc_prod.toml"
 )
 
-# Fixed rather than drawn at random, so the refusal is attributable to this
-# stimulus. See the docstring for why not 2.
+# Type 0 declares no signature, so the field-size check refuses it before key
+# selection.
 _BAD_SIG_TYPE = 0
 # The refusal is structural -- oca_check_crypto_field_sizes() rejects a type that
 # disagrees with the field sizes before plat_is_key_authorized() is called -- so
@@ -45,16 +45,14 @@ class sep_firmware_backup_invalid_signature_type_test(sep_backup_manifest_fail_b
     backup_defect_marker = _BAD_SIG_TYPE_ECHO
     expected_error = MANIFEST_ERR_SIG_TYPE_INVALID
     efuse_preload = _EFUSE_PRELOAD
-    # PUBK_SEL= is the load-bearing one: it is the very next thing
-    # the signature path prints, so its absence proves the
-    # type check ran FIRST rather than merely eventually. RSA_PKCS1_FAIL is the
-    # discriminator against the signature-VALUE sibling, which shares this error
-    # code. The rest are the later arms, none of which may be reached.
+    # PUBK_SEL= is the next thing the signature path prints, so its absence
+    # proves the type check ran first.
+    # RSA_PKCS1_FAIL is forbidden: only the signature-value sibling reaches the
+    # verifier. The rest are later arms, none of which may be reached.
     extra_forbidden = (
         "PUBK_SEL=",
-        # The whole of plat_is_key_authorized() is unreachable here, its own
-        # algorithm arm included: the structural check refuses first. Forbidding
-        # the arm this testcase used to require is what pins that.
+        # The structural check runs before plat_is_key_authorized(), including
+        # its algorithm arm.
         "PUBK_ALGO_UNSUPPORTED",
         "RSA_EXEC",
         "RSA_PKCS1_FAIL",
@@ -90,8 +88,8 @@ class sep_firmware_backup_invalid_signature_type_test(sep_backup_manifest_fail_b
         )
 
     def check_efuse(self, image) -> None:
-        # Both of these are evaluated before the signature path is even entered, so either being non-zero would end the
-        # run with a different verdict and make this testcase vacuous.
+        # Both are evaluated before the signature path, so either one non-zero
+        # would end the run with a different verdict and make this test vacuous.
         bl1_ver = image.field_int("BL1_VERSION")
         assert bl1_ver == 0, (
             f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: anti-rollback cannot reject a "

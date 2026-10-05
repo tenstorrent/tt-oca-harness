@@ -2,30 +2,16 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Both manifests fail the public-key hash bind: terminal, no boot.
 
-The terminal partner of ``sep_firmware_primary_invalid_key_hash_test``. There the
-backup was intact and the run recovered; here the SAME defect is planted in both
-slots, so there is nothing left to fall over to and the ROM must stop with
-``MANIFEST_ERR_KEY_HASH_MISMATCH``.
+The terminal partner of ``sep_firmware_primary_invalid_key_hash_test``: the same
+defect is in both slots, so the ROM stops with ``MANIFEST_ERR_KEY_HASH_MISMATCH``.
+The primary carries the same defect as the backup, not BAD_MAGIC, so
+``corrupt_primary`` and ``primary_expected_error`` are overridden.
 
-THIS IS THE ONE MEMBER OF THE FAMILY WHOSE PRIMARY DEFECT IS NOT BAD_MAGIC. The
-shared base corrupts the primary's magic word purely to force a failover, which
-keeps the trigger independent of the defect under test. That is impossible to
-keep here -- the scenario IS "both slots have the same fault class" (procedure
-manifest TP041-B) -- so ``corrupt_primary`` is overridden and
-``primary_expected_error`` follows it.
+Both slots print ``PUBK_UNAUTHORIZED``, so :meth:`check_defect_attribution`
+requires exactly two, one on each side of the backup read.
 
-THAT COSTS THE DEFAULT ATTRIBUTION, WHICH IS WHY IT IS REPLACED.
-``PUBK_UNAUTHORIZED`` now appears twice, so the base's rule ("its first
-occurrence must follow the backup read") no longer distinguishes anything: a run
-that rejected the primary and then never reached the backup at all would print it
-once, before the backup read, and simply fail -- but a run that printed it twice
-for the wrong reasons would need a stronger statement.
-:meth:`check_defect_attribution` therefore requires exactly two occurrences,
-straddling the backup read.
-
-Neither slot reaches RSA: the hash bind precedes it, so ``RSA_EXEC`` is forbidden and no
-``+esrc_noise_force`` is needed. If that ordering ever changed, this entry
-would go red rather than quietly start requiring the entropy chain.
+The hash bind precedes RSA, so ``RSA_EXEC`` is forbidden and no
+``+esrc_noise_force`` is needed.
 """
 
 from __future__ import annotations
@@ -48,7 +34,7 @@ _EFUSE_PRELOAD = (
     / "sep_efuse_lc_prod.toml"
 )
 
-_HASH_MISMATCH = "PUBK_UNAUTHORIZED"  #
+_HASH_MISMATCH = "PUBK_UNAUTHORIZED"
 
 
 @pyuvm.test()
@@ -80,8 +66,9 @@ class sep_firmware_backup_invalid_key_hash_test(sep_backup_manifest_fail_base):
         mm.corrupt_public_key(buf, "backup", offset=383)
 
     def check_efuse(self, image) -> None:
-        # Both run before the key bind and would terminate the run first, making
-        # the KEY_HASH_MISMATCH verdict unreachable and this test vacuous.
+        # Revocation and anti-rollback run after the key bind. With both fuses
+        # clear, a slot that passes the bind by mistake goes on to RSA_EXEC, which
+        # extra_forbidden catches.
         bl1_ver = image.field_int("BL1_VERSION")
         assert bl1_ver == 0, (
             f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: anti-rollback cannot reject a "
@@ -91,8 +78,8 @@ class sep_firmware_backup_invalid_key_hash_test(sep_backup_manifest_fail_base):
         revoke = image.field_int("CHIPLET_PUBK_REVOKE")
         assert revoke == 0, (
             f"CHIPLET_PUBK_REVOKE is 0x{revoke:x}, expected 0: revocation runs "
-            f"before the hash bind, so a set bit would "
-            f"make the rejection attributable to revocation instead"
+            f"after the hash bind, so a set bit would refuse a slot that wrongly "
+            f"passed the bind with KEY_REVOKED instead of letting it reach RSA_EXEC"
         )
 
     def check_defect_attribution(self, console, i_backup: int) -> None:

@@ -1,32 +1,21 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""An invalid LC_STATE halts the ROM with the SMC cores held in reset (PyUVM).
+"""An invalid LC_STATE must halt the ROM with the SMC cores held in reset.
 
-FEATURE UNDER TEST. [S11] validates the sensed lifecycle state against the set the
-lifecycle controller decodes (SEP-ROM-FUSE-020). On anything else it holds every
-SMC core in reset and fails fatally: an invalid state may mean a fuse attack or a
-hardware fault, and the SMU must not run in it.
+[S11] checks the sensed lifecycle state against the states the LCC decodes
+(SEP-ROM-FUSE-020). This run presents raw ``0x9``, stored with a complementary pair so the
+LCC integrity check passes and the value reaches the decode. The ROM must print
+``LC_STATE_INVALID=``, report ``SEP_MSG_LIFECYCLE_INVALID`` and halt on
+``ROM_ERR_LIFECYCLE_INVALID``. ``CPU_CTRL.RESET_CTRL`` bits [3:0] are active-low core
+resets. The register is seeded with its released value plus a pattern in the upper bits,
+and the ROM must clear exactly bits [3:0] at the real address. The SMC address-decode
+counter must stay at zero. ``lc_raw`` and ``efuse_preload`` are class data, so the 0x4
+and 0x5 members reuse this scenario.
 
-This run presents raw ``0x9``, outside every encoding the LCC decodes. The
-preload stores it differentially with a complementary pair, so the LCC's
-signal-integrity check passes and the value reaches the decode rather than a
-fault. [S11] must print ``LC_STATE_INVALID=``, report ``SEP_MSG_LIFECYCLE_INVALID``
-and halt on ``ROM_ERR_LIFECYCLE_INVALID``.
-
-THE SMC HOLD. ``CPU_CTRL.RESET_CTRL`` bits [3:0] are the per-core resets, active
-low. The SMC responder is a flat memory, so it cannot hold anything in reset
-itself; what it can show is what the ROM wrote and where. The test seeds the
-register with its released value plus a pattern in the bits above, and requires
-the ROM to have cleared exactly bits [3:0] at the register's real address. The
-testbench's SMC address-decode counter must stay at zero, which is what fails if
-the write goes anywhere else.
-
-``lc_raw`` and ``efuse_preload`` are class data so other invalid encodings can
-reuse the scenario.
-
-The terminal outcome is a halt before any manifest transport is chosen, so no
-SPI flash is attached and ``SepBootScoreboard`` is not used, as in
-``sep_firmware_sboot_dis_rsvd_terminal_test``.
+Difference from ``sep_lifecycle_invalid_smc_reset_test``: this test uses the
+``sep_efuse_lc_invalid_0x9.toml`` preload and checks that the halt makes no progress. The
+sibling uses ``sep_efuse_lc_invalid.toml``, checks the PC span after the verdict and
+parses the ``SMC_RESET_ON_INVALID_LC=`` value. No SPI flash is attached.
 """
 
 from __future__ import annotations

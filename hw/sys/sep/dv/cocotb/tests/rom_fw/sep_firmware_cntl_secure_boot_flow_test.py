@@ -2,16 +2,17 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Lifecycle outranks a manifest asking for non-secure boot: the part refuses.
 
-``secure_boot_decide`` (``validators/oca/lib/secure_boot.c``) takes the first input that settles
-the question: the manifest ``secure_boot_control`` enforced bit, a device ``SBOOT_DIS``, then the
-lifecycle. The stimulus is PROD, ``SBOOT_DIS = 0`` and both manifests with
-``secure_boot_control`` cleared from 0x03 to 0x00. With the enforced bit clear the parser
-requires every signing field to be zero (``OCA_FAIL_SECURE_BOOT_INVARIANT``), so the manifest is
-legally unsigned and a verified boot cannot be expressed. The lifecycle enforces secure boot with
-no signature class named, so both slots fail with ``OCA_FAIL_SIGNATURE_CLASS_CONTROL``, then
-``MANIFEST_ALL_FAILED``; the same image boots non-secure in TEST_DEV. The base forbids
-``SBOOT_OFF``. ``sep_firmware_device_cntl_non_secure_boot_flow_test`` swaps the roles: the device
-asks for non-secure boot and the manifest asks to be verified.
+``secure_boot_decide`` (``bootrom/prod/tools/tt-oca-manifest/validators/oca/lib/secure_boot.c``)
+takes the first input that settles the question: the manifest ``secure_boot_control`` enforced
+bit, a device ``SBOOT_DIS``, then the lifecycle. The stimulus is PROD, ``SBOOT_DIS = 0`` and both
+manifests with ``secure_boot_control`` cleared from 0x03 to 0x00. With the enforced bit clear the
+parser requires every signing field to be zero (``OCA_FAIL_SECURE_BOOT_INVARIANT``), so the
+manifest is legally unsigned and a verified boot cannot be expressed. The lifecycle enforces
+secure boot with no signature class named, so both slots fail with
+``OCA_FAIL_SIGNATURE_CLASS_CONTROL``, then ``MANIFEST_ALL_FAILED``; the same image boots
+non-secure in TEST_DEV. The base forbids ``SBOOT_OFF``.
+``sep_firmware_device_cntl_non_secure_boot_flow_test`` swaps the roles: the device asks for
+non-secure boot and the manifest asks to be verified.
 """
 
 from __future__ import annotations
@@ -58,10 +59,9 @@ class sep_firmware_cntl_secure_boot_flow_test(sep_backup_manifest_fail_base):
     # NOT the base's BAD_MAGIC default: the primary carries the same cleared flag
     # and is refused for the same reason, rather than being a failover trigger.
     primary_expected_error = MANIFEST_ERR_SIG_CLASS_CONTROL
-    # PUBK_SEL= is the load-bearing one. The refusal is inside
-    # oca_validate_manifest() ahead of key authorization, so neither slot may echo
-    # a selector -- its absence is what places the rejection before key selection
-    # rather than merely somewhere in the crypto chain. MANIFEST_OK would mean a
+    # The refusal is inside oca_validate_manifest() ahead of key authorization,
+    # so neither slot may echo PUBK_SEL=; its absence places the rejection before
+    # key selection, not only somewhere in the crypto chain. MANIFEST_OK would mean a
     # slot was accepted; the RSA pair would mean the verifier ran on an image that
     # carries no signature at all.
     extra_forbidden = (

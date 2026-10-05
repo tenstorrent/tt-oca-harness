@@ -1,9 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""A payload larger than the SMC-published window is refused; the backup boots.
+"""Unsupported oversized SMC-window payload-refusal scaffold.
 
-The length fits SEP SRAM and the flash slot, so only the window check can refuse it.
-Needs ``+sep_crypto_edn_force``: the backup runs RSA-3072 on OTBN.
+The OCA manifest has no payload-destination selector, the ROM stages payloads into SEP
+SRAM, and shared payload helpers reject ``smc=True`` and ``stage_in_smc``. This file
+defines seeded oversized-window stimulus and expected refusal, ordering, field-service,
+and no-fetch geometry.
+
+Needs ``+esrc_noise_force``: the backup runs RSA-3072 on OTBN.
 """
 
 from __future__ import annotations
@@ -23,7 +27,7 @@ ERR_PAYLOAD_NO_ROOM = 0x0003_001A
 ERR_PAYLOAD_TOO_LARGE = 0x0003_0007
 ERR_PAYLOAD_BAD_LOC = 0x0003_0012
 
-# Must match the +sep_smc_scratch13/14 values on this test's testlist entry.
+# Scaffolded SMC window geometry: 128 KiB at offset 128 KiB from the SMC SRAM base.
 WINDOW_OFFSET = ues.SMC_WINDOW_OFFSET
 WINDOW_SIZE = ues.SMC_WINDOW_SIZE
 
@@ -49,14 +53,14 @@ _LOCATION_TOKENS = (
 
 @pyuvm.test()
 class sep_firmware_payload_incorrect_smc_test(sep_primary_fail_backup_boot_base):
-    """Primary declares more than the SMC window holds -> refused -> backup boots."""
+    """Oversized-window refusal and backup marker scaffold."""
 
     flash_image = td.PLAINTEXT_IMAGE
     efuse_preload = td.PLAINTEXT_EFUSE
     primary_expected_error = ERR_PAYLOAD_NO_ROOM
     # The base would also require CRYPTO_FAIL=, so the token is in extra_required.
     primary_defect_marker = ""
-    # Refused inside the staging block, which runs before the crypto chain.
+    # The scaffold expects refusal before any crypto-chain activity.
     primary_expected_rsa_starts = 0
     primary_expected_sig_valids = 0
 
@@ -112,7 +116,7 @@ class sep_firmware_payload_incorrect_smc_test(sep_primary_fail_backup_boot_base)
             f"would refuse the slot with MANIFEST_ERR_PAYLOAD_TOO_LARGE before the "
             f"window is ever read, and the arm under test would not run"
         )
-        # The flash-slot bound also runs before staging; the draw must stay in the slot.
+        # The scaffold keeps the seeded declaration inside the flash slot.
         slot_start, slot_end = mm.slot_span(buf, "primary")
         payload_src = pm.payload_base(buf, "primary")
         assert payload_src + declared <= slot_end, (

@@ -1,24 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""TP053-E: BL1 ``entry_point`` outside the image, so BL0 must not jump to it.
+"""BL1 ``entry_point`` equal to ``length`` in both slots must be refused before the jump.
 
-the BL1 placement check rejects ``entry_point >= length``, and
-``validate_manifest_payload`` prints ``BL1_ENTRY_RANGE`` and returns
-``MANIFEST_ERR_BL1_BAD_ADDR``. Both slots carry the
-defect, so the ROM tries the primary, retries the backup and terminates.
+``rom_bl1_check()`` (``rom_handoff.c``) rejects ``entry_point >= length``, prints
+``BL1_ENTRY_RANGE`` and returns ``MANIFEST_ERR_BL1_BAD_ADDR``. Both slots carry the defect,
+so the ROM tries the primary, retries the backup and terminates.
 
-THE STIMULUS IS THE BOUNDARY VALUE. ``entry_point`` is set to exactly ``length``
--- the smallest value the condition rejects -- rather than something comfortably
-out of range. A ROM that had written ``>`` instead of ``>=`` would accept this and
-jump one byte past the image; a larger entry point would be rejected by both the
-correct and the incorrect comparison, and so could not tell them apart.
-
-WHY THE SIZE ARM CANNOT ALSO FIRE. The BL1 placement check tests SRAM containment
-first and only then the entry point, so this test must leave ``load_addr`` and
-``length`` untouched -- which it does; the mutation writes one field. That is why
-``BL1_ADDR_RANGE`` is in ``sibling_markers``: seeing it would mean the containment
-arm returned 1 and the entry-point arm was never evaluated, even though the
-run would still end on the same ``MANIFEST_ERR_BL1_BAD_ADDR`` code.
+The stimulus is the boundary value: a ROM that compared with ``>`` instead of ``>=``
+would accept it. The mutation writes only ``entry_point``, so ``load_addr`` and ``length``
+stay legal. ``BL1_ADDR_RANGE`` and ``BL1_SIZE`` are forbidden: those arms run before the
+entry-point arm, and the address arm returns the same error code.
 """
 
 from __future__ import annotations

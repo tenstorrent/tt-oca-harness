@@ -85,7 +85,7 @@ UPPER_LANE = LANE_BYTES
 
 # Logged with every observation the verdict does not use: the architecture
 # document does not state the rule.
-NOT_GRADED_NOTE = "not graded until #2822 specifies the rule"
+NOT_GRADED_NOTE = "not graded: no specification states the rule"
 
 # Vehicle cells: (name, op, addr, strobe). Strobes are AMBA's
 # (sep_spec_tables.axi_lane_strobe), not the adapter's own predicate, so each

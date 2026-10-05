@@ -1,27 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Warm dispatch, UNARMED: cold_scratch[7] == 0 must take the beqz early-out.
+"""Warm dispatch unarmed: cold_scratch[7] == 0 must take the ``beqz`` early-out to cold boot.
 
-Leg A of the four in ``vector.S``::
-
-    lw   t1, 0(t0)
-    beqz t1, cold_boot          # <- this one
-
-Every other rom_fw test runs with the register at 0 and so passes THROUGH this
-branch, but none asserts on it: they assert about SPI, manifests and BL1, all
-downstream. A ROM that mishandled the zero case -- jumped to 0, or hung -- would
-fail those tests for reasons that name something else entirely.
-
-"It cold booted" is the default outcome, so the check cannot be "a boot
-happened". The evidence is cold_boot's ``-1`` POISON of cold_scratch[7], written
-by exactly one instruction on exactly one path, so observing it places execution
-on the early-out rather than merely somewhere downstream. The absence of both
-WARM_RESET_JUMP and WARM_RESET_HANG is the second witness.
-
-The poison is -1, not 0: writing 0 would leave the register indistinguishable
-from "never armed", so a repeating watchdog with no handler would cold boot
-forever instead of failing the range check. CHK-POISON asserts the value, not
-just that it changed.
+This is leg A of the warm dispatch in ``vector.S`` (``beqz t1, cold_boot``). Other rom_fw
+tests pass through this branch but do not assert on it. A cold boot is the default
+outcome, so the evidence is ``cold_boot``'s ``-1`` poison of cold_scratch[7]: one
+instruction on one path writes it. The absence of WARM_RESET_JUMP and WARM_RESET_HANG is
+the second witness. The poison is -1, not 0, so a repeating watchdog with no handler fails
+the range check instead of cold booting forever. CHK-POISON asserts the value.
 """
 
 from __future__ import annotations

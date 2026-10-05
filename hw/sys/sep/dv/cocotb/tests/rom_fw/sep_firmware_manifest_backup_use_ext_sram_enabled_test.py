@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Backup asks for EXT SRAM staging after the primary is refused.
+"""Unsupported backup-set payload-destination scaffold.
 
-The primary is refused on its identifier before staging, so the single
-USING_SEP_SRAM event must be the backup's.
+The OCA manifest has no payload-destination selector, the ROM stages payloads into SEP
+SRAM, and shared payload helpers reject ``smc=True`` and ``stage_in_smc``. This file
+defines primary-refusal, backup-set, and SEP-marker geometry.
 """
 
 from __future__ import annotations
@@ -30,7 +31,7 @@ _REQUIRED, _FORBIDDEN = ues.sep_markers()
 
 @pyuvm.test()
 class sep_firmware_manifest_backup_use_ext_sram_enabled_test(sep_primary_fail_backup_boot_base):
-    """Primary refused on its identifier; the backup stages in SEP EXT SRAM."""
+    """Primary-refusal and backup-set marker scaffold."""
 
     efuse_preload = _EFUSE_PRELOAD
     primary_expected_error = _MANIFEST_ERR_BAD_MAGIC

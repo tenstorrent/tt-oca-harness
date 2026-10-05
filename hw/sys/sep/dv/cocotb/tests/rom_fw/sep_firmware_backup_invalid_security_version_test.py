@@ -1,21 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Backup manifest with a rolled-back security version (PyUVM).
+"""Backup manifest carries a rolled-back security version; the ROM halts.
 
-The primary's ``manifest_identifier`` is corrupted to force failover, then the
-backup's ``security_version`` is set to 3 against a ``BL1_VERSION`` fuse whose
-thermometer count is 8, so the backup asks to run an older version than the part
-accepts. The check is a single comparison (``manifest_ver < fuse_ver``,
-), so a fixed pair exercises the same code as a random
-one while letting the test assert the exact ``FUSE_VER=`` and ``MFST_VER=`` the ROM
-read.
+The primary's magic is broken to force failover. The backup's ``security_version``
+is 3 against a ``BL1_VERSION`` fuse with 8 bits set, so the backup lacks device
+flags. The check is the flag superset test ``(device & ~manifest) == 0``, so one
+fixed pair exercises it, and the test asserts the exact ``FUSE_VER=`` and
+``MFST_VER=`` the ROM read.
 
-``manifest_security_version`` is at offset 2042, inside the signed region, so the
-mutation invalidates ``manifest_hash`` and the helper re-hashes. It does NOT
-re-sign and does not need to: anti-rollback is checked before the signature, so
-the stale signature is never reached. That ordering is asserted, not assumed --
-``RSA_EXEC`` is forbidden, so a ROM that verified the signature first would
-fail this test loudly instead of passing on an unintended hash or signature error.
+The field is inside the signed region, so the helper re-hashes. No re-sign:
+anti-rollback runs before the signature, and ``RSA_EXEC`` is forbidden so that
+ordering is checked.
 """
 
 from __future__ import annotations
@@ -38,7 +33,7 @@ _EFUSE_PRELOAD = (
 )
 
 # Fuse thermometer count in the preload above, and the version planted in the
-# backup manifest. The ROM rejects when manifest < fuse.
+# backup manifest. 3 (0b11) lacks fuse flags 2..7, so the superset check refuses it.
 _FUSE_SECURITY_VERSION = 8
 _BACKUP_SECURITY_VERSION = 3
 
@@ -63,7 +58,7 @@ class sep_firmware_backup_invalid_security_version_test(sep_backup_manifest_fail
         mm.verify_layout(buf, "backup")
         self.logger.info(
             "CHK-STIMULUS-VERSION: backup security_version=%d vs fuse count %d "
-            "(reject expected because %d < %d), signed region re-hashed",
+            "(reject expected: %d lacks fuse flags that count %d sets), signed region re-hashed",
             _BACKUP_SECURITY_VERSION,
             _FUSE_SECURITY_VERSION,
             _BACKUP_SECURITY_VERSION,
@@ -72,12 +67,9 @@ class sep_firmware_backup_invalid_security_version_test(sep_backup_manifest_fail
 
     def check_efuse(self, image) -> None:
         bl1_ver = image.field_int("BL1_VERSION")
-        # The RAW word, kept for the console assertion below. The ROM echoes the
-        # fuse bit set itself, not a decoded count -- ``plat`` reads the bank and
-        # prints ``oca_flags_low32`` of it (``oca_platform.c``), because OCA's
-        # rollback test is the bit-superset ``manifest & device == device`` and
-        # eFuse bits only ever go 0 -> 1. So "no thermometer-to-count conversion
-        # belongs here", and the marker must be 0xff rather than 8.
+        # The ROM echoes the raw BL1_VERSION word, not a decoded count:
+        # oca_platform.c prints oca_flags_low32 because the rollback test is the
+        # bit-superset ``manifest & device == device``. The marker is 0xff, not 8.
         self._fuse_version_word = bl1_ver
         popcount = bin(bl1_ver).count("1")
         assert popcount == _FUSE_SECURITY_VERSION, (
@@ -95,9 +87,8 @@ class sep_firmware_backup_invalid_security_version_test(sep_backup_manifest_fail
 
     def _check(self, console, status_seq, fw_done, fw_pass, retired) -> None:
         super()._check(console, status_seq, fw_done, fw_pass, retired)
-        # The two values the ROM actually compared. Without these the test would
-        # accept a VERSION_ROLLBACK produced by any version pair, including one
-        # this stimulus did not create.
+        # The two values the ROM compared. They tie the rollback verdict to the
+        # version pair this stimulus created.
         fuse_marker = f"FUSE_VER=0x{self._fuse_version_word:08x}"
         mfst_marker = f"MFST_VER=0x{_BACKUP_SECURITY_VERSION:08x}"
         for marker in (fuse_marker, mfst_marker):

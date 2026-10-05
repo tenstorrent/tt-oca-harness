@@ -2,41 +2,18 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary manifest selects REVOKED ROM key slot 0 -> BOTH manifests refused.
 
-Member of the six-testcase primary-side revoke family. The stimulus, the per-slot
-derivations and every revocation assertion live once in
-``sep_pubkey_rom_revoked_primary_base``; this module chooses the slot and the
-outcome shape. Its OTP image is the whole of the rest of the stimulus:
-``sep_efuse_lc_prod_pubk_revoke0.toml`` is ``sep_efuse_lc_prod.toml`` plus exactly
-``CHIPLET_PUBK_REVOKE`` bit 0.
+The stimulus and assertions are in ``sep_pubkey_rom_revoked_primary_base``; this module picks
+the slot and the outcome. ``sep_efuse_lc_prod_pubk_revoke0.toml`` is ``sep_efuse_lc_prod.toml``
+plus only ``CHIPLET_PUBK_REVOKE`` bit 0. The shipped image selects ROM slot 0 in both slots
+(``configs/oca_secure_boot_test.yaml``, ``public_key_select_classic``), so bit 0 refuses both
+and the run ends in ``MANIFEST_ALL_FAILED``. This is the only terminal member.
 
-This is the only terminal member of the family, and the reason is structural. The
-shipped image gives BOTH slots ``rom_key_index: 0``
-(``configs/secure_boot_test.yaml:43-45`` primary, backup), so bit 0 refuses the primary
-AND the backup, the retry loop exhausts, and the run ends in ``MANIFEST_ALL_FAILED``.
-Slots 1-5 fail over and boot.
-
-IT IS ALSO THE STRICTEST MEMBER, not the awkward one. Slot 0 is the only populated
-digest (``key_digests.c``) and the slot the image is signed against, so the
-selector write is a NO-OP: the flash image this testcase runs is byte-identical to
-the shipped ``bootrom/prod/build/oca_secure_boot.bin``, and the base proves both slots
-still pass ``verify_sealed`` and ``verify_public_key`` before the run starts. Two
-provably valid, correctly signed, independently bootable manifests are refused by
-ONE fuse bit, and revocation is the only possible cause.
-
-Matched pair. ``sep_firmware_primary_rom_key_valid_test`` applies the IDENTICAL stimulus
--- ``select_primary_rom_slot(buf, 0)`` and nothing else -- and differs only in leaving
-``CHIPLET_PUBK_REVOKE`` clear. Same bytes, same signature, one fuse bit, opposite
-verdicts.
-
-Platform adaptation -- MARKER. This ROM *defines* ``SEP_MSG_REVOKED_KEY``
-(``bootrom/prod/include/status_values.h:13``) but never emits it -- there is no
-``report_status`` call for it anywhere under ``bootrom/prod/src`` -- so the architected
-ring carries only the generic terminal code. The dedicated error code
-``MANIFEST_ERR_KEY_REVOKED`` is unshared, and the console token the revocation error
-code is the per-reason evidence; both are required, once per slot for the token.
-
-No ``+esrc_noise_force``: revocation precedes the signature step, so OTBN is
-never driven and ``RSA_EXEC`` is forbidden.
+Slot 0 is the slot the shipped image is signed against, so the selector write is a no-op and
+both slots pass ``verify_sealed`` and ``verify_public_key`` before the run. One fuse bit
+refuses two valid manifests. ``sep_firmware_primary_rom_key_valid_test`` applies the same
+stimulus with the fuse clear and must boot. The per-slot ``MANIFEST_ERR=`` code
+(``MANIFEST_ERR_KEY_REVOKED``) is the evidence. No ``+esrc_noise_force``: revocation precedes
+the signature step, so ``RSA_EXEC`` is forbidden.
 """
 
 from __future__ import annotations

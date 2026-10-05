@@ -209,7 +209,7 @@ class sep_fuse_lock_base(sep_rom_ot_dma_boot_test):
         fd.assert_clean_key_fuses(image)
         self.logger.info(
             "CHK-FUSE-LOCK-STIMULUS: LC raw=0x%x (%s), SBOOT_DIS=%d, LOCKS=0 and "
-            "LOCKS_SPARE=0, so secure_boot_enabled() must return %s",
+            "LOCKS_SPARE=0, so the validator's secure_boot_enabled must be %s",
             lc,
             LC_MARKERS[self.expected_lc_raw],
             sboot_dis,

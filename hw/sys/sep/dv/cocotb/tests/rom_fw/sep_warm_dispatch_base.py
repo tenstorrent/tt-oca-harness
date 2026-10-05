@@ -2,23 +2,18 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared scaffolding for the warm-reset dispatch legs of ``vector.S``.
 
-``vector.S`` reads ``cold_scratch[7]`` before it touches DCCM or any fuse and
-takes one of four branches::
+``vector.S`` reads ``cold_scratch[7]`` before it touches DCCM or any fuse and takes one
+of four legs:
 
-    lw   t1, 0(t0)                                     # cold_scratch[7]
-    beqz t1, cold_boot                                 # A: zero -> cold boot
-    bltu t1, WARM_HANDLER_RANGE_BASE, warm_reset_hang  # B: below ICCM -> hang
-    bgeu t1, WARM_HANDLER_RANGE_END,  warm_reset_hang  # C: at/above end -> hang
-    <status WARM_RESET_JUMP>; jr t1                    # D: accept and jump
+* A: zero -> ``cold_boot``;
+* B: below ``WARM_HANDLER_ICCM_BASE`` and outside the SEP SRAM window -> ``warm_reset_hang``;
+* C: at or above ``WARM_HANDLER_ICCM_END`` -> ``warm_reset_hang``;
+* D: inside a permitted window -> status ``WARM_RESET_JUMP``, then ``jr t1``.
 
-Leg C is covered by ``sep_warm_reset_invalid_hang_test`` (which seeds
-``RANGE_END`` exactly) and leg D by ``sep_scratch_7_test``, both of which stand
-alone. The subclasses of this base cover the rest:
-
-* ``sep_warm_reset_below_range_hang_test``     -- leg B
-* ``sep_warm_reset_unarmed_cold_boot_test``    -- leg A
-* ``sep_warm_reset_bad_target_exception_test`` -- leg D into a target that holds
-  no instruction
+Subclasses cover leg B (``sep_warm_reset_below_range_hang_test``), leg A
+(``sep_warm_reset_unarmed_cold_boot_test``) and leg D into a non-instruction
+(``sep_warm_reset_bad_target_exception_test``). ``sep_warm_reset_invalid_hang_test``
+(leg C) and ``sep_scratch_7_test`` (leg D) do not use this base.
 """
 
 from __future__ import annotations
@@ -35,12 +30,13 @@ from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
-# The dispatch runs before any transport is selected, so the SPI build variant is
-# irrelevant; reuse the OT one rather than adding a firmware profile.
+# The dispatch runs before any transport is selected, so the SPI build variant
+# is irrelevant.
 _FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
-# WARM_HANDLER_RANGE_BASE / _END in vector.S, named by symbol rather than line.
+# These bounds must match WARM_HANDLER_ICCM_BASE and WARM_HANDLER_ICCM_END in
+# vector.S.
 RANGE_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 RANGE_END = RANGE_BASE + sym("SEP_ICCM_MEM_SIZE")
 

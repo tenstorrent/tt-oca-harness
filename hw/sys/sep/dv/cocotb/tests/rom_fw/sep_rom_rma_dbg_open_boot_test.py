@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""An RMA_SiP part with chiplet debug open boots an unsigned image (PyUVM).
+"""An RMA_SiP part with chiplet debug open boots an unsigned image.
 
 The negative control for the RMA debug-lock tests. With both disable vectors
 clear and nothing read-locked, an RMA part stays manifest-optional

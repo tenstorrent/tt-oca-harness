@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""A TEST_DEV part with CHIPLET_DBG disabled by SYS_DIS refuses an unsigned image (PyUVM).
+"""A TEST_DEV part with CHIPLET_DBG disabled by SYS_DIS refuses an unsigned image.
 
 The SYS_DIS half of SEP-ROM-SB-025: either disable vector alone locks debug.
 Same stimulus and checks as ``sep_rom_dbg_lock_sip_dis_refuse_test``, with

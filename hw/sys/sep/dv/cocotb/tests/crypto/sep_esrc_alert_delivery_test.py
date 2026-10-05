@@ -101,7 +101,7 @@ class sep_esrc_alert_delivery_test(sep_base_test):
             st_after = await esrc.read_intr()
             assert (st_after & bm) == 0, (
                 f"CHK-INTR-TEST FAIL: {name} did not clear on W1C "
-                f"(INTR_STATUS=0x{st_after:08x}); a singlepulse source must not re-latch"
+                f"(INTR_STATUS=0x{st_after:08x}); a single-pulse source must not re-latch"
             )
             assert self._irq_bit() == 0, (
                 f"CHK-INTR-TEST FAIL: {name} cleared INTR_STATUS but "

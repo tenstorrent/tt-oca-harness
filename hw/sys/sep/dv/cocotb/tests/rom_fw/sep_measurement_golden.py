@@ -96,7 +96,8 @@ def assert_boot_pcr(
     return got
 
 
-# KAT captured from BL1's BL0S_BOOT_PCR= in a sep_rom_ot_secure_boot_test run.
+# Known-answer vector for the shipped secure-boot image: TEST_DEV, demotion
+# decision 2, secure boot on, SBOOT_DIS clear. BL1 prints the PCR as BL0S_BOOT_PCR=.
 _KAT_MANIFEST_HASH = bytes.fromhex(
     "975638FD2835ECDCD3DAD738EF26B2C1497982F54535F86076325326A63914C4"
 )

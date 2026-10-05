@@ -47,11 +47,11 @@ class sep_firmware_cleartext_image_corrupt_hash_test(sep_primary_fail_backup_boo
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
         for slot in ("primary", "backup"):
             assert not pm.is_encrypted(buf, slot), (
-                f"{slot} payload carries encrypted_payload = 1; this row is the "
+                f"{slot} payload carries encrypted_payload = 1; this test is the "
                 f"CLEARTEXT stimulus and the loaded image ({self.flash_image}) is "
                 f"not the one it is about. For an encrypted payload "
                 f"payload_hashed_length spans the whole ciphertext rather than the "
-                f"TOC region, so the geometry this row depends on would differ"
+                f"TOC region, so the geometry this test depends on would differ"
             )
         self._payload_offset = pm.payload_base(buf, "primary") - mm.slot_base("primary")
         return super().mutate_flash_image(buf)
@@ -59,7 +59,7 @@ class sep_firmware_cleartext_image_corrupt_hash_test(sep_primary_fail_backup_boo
     def corrupt_primary(self, buf: bytearray) -> None:
         entries = pm.toc_entries(buf, "primary")
         assert len(entries) == 1, (
-            f"primary TOC declares {len(entries)} images; this row plants the digest "
+            f"primary TOC declares {len(entries)} images; this test plants the digest "
             f"of the single shipped image, and entry {_ENTRY_INDEX} is only the whole "
             f"list when the payload carries one"
         )
@@ -91,7 +91,7 @@ class sep_firmware_cleartext_image_corrupt_hash_test(sep_primary_fail_backup_boo
             "image BODY left exactly as shipped and NOTHING re-sealed. "
             "payload_hashed_length is %d, so payload_hash covers the field at "
             "payload offset %d, and the mutator proved offline that the ROM's own "
-            "sha256(payload[:%d]) no longer matches the stored payload_hash while "
+            "sha256(payload[:%d]) does not match the stored payload_hash while "
             "manifest_hash and the RSA signature still verify. The field sits at "
             "flash 0x%06x and the device must serve %s there",
             _ENTRY_INDEX,

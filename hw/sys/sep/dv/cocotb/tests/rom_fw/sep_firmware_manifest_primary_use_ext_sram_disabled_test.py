@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Primary asks for SMC SRAM staging; the ROM waits, reads the window, stages there.
+"""Unsupported primary-clear payload-destination scaffold.
 
-use_ext_sram lies outside the signed region, so clearing it needs no re-seal; the
-payload must land at smc_sram_base + scratch[13].
+The OCA manifest has no payload-destination selector, the ROM stages payloads into SEP
+SRAM, and shared payload helpers reject ``smc=True`` and ``stage_in_smc``. This file
+defines primary-clear and SMC-window marker geometry.
 """
 
 from __future__ import annotations
@@ -31,7 +32,7 @@ _REQUIRED, _FORBIDDEN = ues.smc_markers()
 
 @pyuvm.test()
 class sep_firmware_manifest_primary_use_ext_sram_disabled_test(sep_rom_ot_secure_boot_test):
-    """use_ext_sram=0 on the primary: payload staged in the SMC SRAM window."""
+    """Primary-clear and SMC-marker scaffold."""
 
     efuse_preload = _EFUSE_PRELOAD
     required_markers = (
@@ -69,7 +70,7 @@ class sep_firmware_manifest_primary_use_ext_sram_disabled_test(sep_rom_ot_secure
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
         mm.set_flag_args_bit(buf, "primary", mm.FLAG_ARGS_BIT_USE_EXT_SRAM, False)
         ues.assert_stimulus(self.logger, buf, "primary", want_set=False)
-        # The slot must stay valid so that only the staging path differs.
+        # The scaffold preserves the slot signature after the nominal mutation.
         mm.verify_public_key(buf, "primary")
         return buf
 

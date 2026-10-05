@@ -11,19 +11,13 @@ Boot completion alone does not prove that key selection ran, so four channels ar
   * ``RSA_EXEC``, ``RSA_VERIFY_OK`` and ``MANIFEST_OK`` in that order after the selector echo.
   * No SPI read inside the backup slot span: a silent failover also reaches ``MANIFEST_OK``.
 
-The flash image is byte-identical to that of
-``sep_firmware_primary_pubkey_rom_0_revoked_key_test``: ``select_primary_rom_slot(buf, 0)``
-is a no-op on the shipped primary, so the only difference is bit 0 of ``CHIPLET_PUBK_REVOKE``.
-
-Compared with ``sep_rom_ot_secure_boot_test``, this run uses a PROD preload and adds the
-key-selection echoes and the backup-span check. The shipped primary also sets the manifest's
-secure-boot enforced bit, so enforcement is not attributed to the lifecycle;
-``sep_firmware_enforced_secure_boot_flow_test`` covers that.
-
-The ROM emits no architected status code for the ROM-key path, so the console echoes carry
-the key-selection evidence.
-
-Needs ``+esrc_noise_force``: the primary runs a full RSA-3072 modexp.
+The flash image is byte-identical to ``sep_firmware_primary_pubkey_rom_0_revoked_key_test``'s
+(``select_primary_rom_slot(buf, 0)`` is a no-op on the shipped primary); only bit 0 of
+``CHIPLET_PUBK_REVOKE`` differs. Against ``sep_rom_ot_secure_boot_test`` this run adds a PROD
+preload, the key-selection echoes and the backup-span check. The shipped primary sets the
+manifest's secure-boot enforced bit, so enforcement is not attributed to the lifecycle
+(``sep_firmware_enforced_secure_boot_flow_test``). Needs ``+esrc_noise_force``: the primary runs a
+full RSA-3072 modexp.
 """
 
 from __future__ import annotations
@@ -57,7 +51,7 @@ _REVOKE_ECHO = "PUBK_REVOKE=0x00000000"
 _LC_PROD = "LC=PROD"
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
-_RSA_START = "RSA_EXEC"  #
+_RSA_START = "RSA_EXEC"
 _RSA_VERIFY_OK = "RSA_VERIFY_OK"
 _BL1_COPIED = "BL1_COPIED"  # rom_handoff.c
 _BL1_JUMP = "BL1_JUMP="  # rom_handoff.c

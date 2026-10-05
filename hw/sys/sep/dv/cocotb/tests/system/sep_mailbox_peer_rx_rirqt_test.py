@@ -217,7 +217,7 @@ class sep_mailbox_peer_rx_rirqt_test(sep_base_test):
         )
         assert got != _hi(_E0), (
             f"CHK-HIGH-HALF-LOSS FAIL: high-half read returned E0's high word "
-            f"0x{got:08x}. fabric.adoc says reading both halves consumes two "
+            f"0x{got:08x}. mailbox.adoc says reading both halves consumes two "
             "entries and the discarded half is lost; this DUT reassembled one "
             "64-bit entry from two 32-bit reads instead."
         )

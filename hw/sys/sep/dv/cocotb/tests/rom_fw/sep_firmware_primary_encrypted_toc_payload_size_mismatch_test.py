@@ -2,9 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary's ENCRYPTED TOC payload_length disagrees with the manifest; the backup boots.
 
-The value must sit within one AES block below the manifest's, but the library does not
-compare the decrypted length, so the DUT accepts 0x2000 and this test fails.
-Needs ``+esrc_noise_force``: two RSA-3072 modexps and AES decryptions.
+The decrypted TOC payload_length must sit within one AES block below the manifest's, so 0x2000
+must be refused with ``OCA_FAIL_PAYLOAD_TOC``. Needs ``+esrc_noise_force``: two RSA-3072 modexps
+and AES decryptions.
 """
 
 from __future__ import annotations

@@ -1,18 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Single SPI flash detected at the primary address (PyUVM).
+"""Single SPI flash detected at the primary address: the primary boots with no failover.
 
-This ROM has no SPI device-detect step -- ``ot_spi_init`` only writes CSRs and
-polls ``STATUS.READY`` (``src/sep_ot_spi.c:166-179``), and
-``SEP_MSG_SPI_DETECTED_DEFAULT`` (``include/status_values.h:43``) is referenced
-nowhere in the repo. Detection is therefore asserted operationally: the device
-answered at ``PRIMARY_MANIFEST_OFFSET`` with the ``OCAC`` magic and the ROM reached
-``MANIFEST_OK``. Do not "fix" this by asserting a detect status -- the ROM cannot
-print one.
-
-Forbidding every backup-span read and every ``MANIFEST_ERR=`` is what separates
-this from the primary-fail/backup-success sibling; a silent failover also reaches
-``MANIFEST_OK``.
+The ROM has no SPI device-detect step: ``ot_spi_init()`` (``bootrom/prod/src/sep_ot_spi.c``)
+writes CSRs and polls ``STATUS.READY``, and no code reports
+``SEP_MSG_SPI_DETECTED_DEFAULT``. Detection is asserted operationally: the device answers
+at ``PRIMARY_MANIFEST_OFFSET`` with the ``OCAC`` magic and the ROM reaches ``MANIFEST_OK``.
+Every backup-span read and every ``MANIFEST_ERR=`` is forbidden, because a silent
+failover also reaches ``MANIFEST_OK``.
 """
 
 from __future__ import annotations
@@ -22,7 +17,8 @@ from env import sep_manifest_mutate as mm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
-# rom_spi_init() failure makes the ROM skip the primary slot outright, so the subject of this test never happens.
+# A rom_spi_init() failure makes the ROM skip the primary slot outright, so the
+# subject of this test never happens.
 _SPI_INIT_OK = "SPI_INIT_OK"
 _SPI_INIT_ERR = "SPI_INIT_ERR="
 
@@ -85,7 +81,8 @@ class sep_spi_detect_success_test(sep_rom_ot_dma_boot_test):
             magic,
         )
 
-        # Without this, the primary-fail/backup-success run would also pass here.
+        # A silent failover also reaches MANIFEST_OK; an unread backup span proves
+        # that the primary served the boot.
         backup_hits = ev.slot_read_indices(rds, "backup", image_len)
         assert not backup_hits, (
             f"device served {len(backup_hits)} read(s) inside the backup slot span "
