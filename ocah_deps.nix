@@ -92,7 +92,7 @@ in {
       # Build Tools
       gnumake
       bender-patched
-      verilator-patched
+      verilator
       sv-lang
       gcc
       ccache
