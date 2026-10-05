@@ -98,6 +98,36 @@ released, so read the captured levels through the GPIO control registers after
 reset release, as described in <<smc-gpio-straps>>. `strap_valid` indicates
 that a pin supports capture, not that reset has completed.
 
+[[sep-reset-overview]]
+==== Reset Overview
+
+SEP and Key Manager firmware can request the resets below. The cryptographic
+engine resets drain and isolate the engines' AXI paths in hardware before the
+reset takes effect. A debugger can also drive the SEP reset ports through
+<<dtp-ic-reset-overrides>>.
+
+[[sep-reset-table]]
+[cols="2,3,2,2",options="header"]
+.SEP software-requested resets
+|===
+|Reset |Control |Requested by |Sequence
+
+|Cryptographic engines, TRNG and Key Manager
+|`SEP_RESET_CTRL.SW_RESET_N`
+|SEP firmware
+|<<sep-software-reset>>
+
+|Key Manager restart
+|`0x53525354` written to Key Manager `SOFT_RST_CODE`
+|Key Manager firmware
+|<<sep-software-reset>>
+
+|SEP CPU on watchdog bite
+|SEP watchdog bite threshold
+|SEP firmware arms it; an unserviced watchdog triggers it
+|<<sep-watchdog>>
+|===
+
 [[sep-software-reset]]
 ==== Software Reset of the Cryptographic Engines
 

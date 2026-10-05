@@ -116,8 +116,15 @@ class Structure(unittest.TestCase):
                 "../../../hw/sys/smc/bootrom/prod/doc/index.adoc",
                 "../../../hw/sys/sep/bootrom/prod/doc/index.adoc",
                 "../../../hw/ip/key_manager/doc/firmware.adoc",
-                "../modules/aou/partials/pdf/software-operation.adoc",
             ],
+        )
+        self.assertLess(
+            pg.index("include::dtp-programming.adoc[]"),
+            pg.index("include::../modules/aou/partials/pdf/software-operation.adoc[]"),
+        )
+        self.assertLess(
+            pg.index("include::../modules/aou/partials/pdf/software-operation.adoc[]"),
+            pg.index("[appendix]"),
         )
         self.assertFalse((ROOT / "doc/trm/src/aou-software-operation.adoc").exists())
         self.assertNotIn("software-operation", nav)

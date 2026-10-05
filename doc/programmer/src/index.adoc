@@ -8,8 +8,8 @@
 :sectnums:
 :toclevels: 3
 :source-highlighter: highlight.js
-:revnumber: 0.0.3
-:revdate: 2026-10-03
+:revnumber: 0.0.4
+:revdate: 2026-10-05
 :title-page-background-image: image:../assets/TT_Cover_Image.png[fit=cover]
 
 [WARNING]
@@ -33,17 +33,19 @@ itself, and this guide links to it for register and block details.
 
 The guide is organized as follows:
 
-* <<smc-programming-guide>> covers SMC bring-up and its peripherals.
+* <<smc-programming-guide>> covers SMC bring-up and its peripherals, and
+  <<smc-reset-overview>> lists the resets SMC software can request.
 * <<sep-programming-guide>> covers SEP bring-up, entropy, the cryptographic
-  engines and the security procedures.
+  engines and the security procedures, and <<sep-reset-overview>> lists the
+  resets SEP software can request.
 * <<sep-smc-common-blocks-communication>> covers the address remapping,
   filters, mailboxes and reference counter that both subsystems share.
 * <<dtp-programming-guide>> covers cross-trigger configuration and the debug
   host procedures.
-* <<reset-control>> lists every software- and debugger-requested reset and
-  where its sequence is described.
-* The appendices document the production SMC and SEP Boot ROMs, the Key
-  Manager Application ROM and the AoU software operation.
+* <<aou-software-operation-guide>> covers the AXI-over-UCIe bridge registers,
+  debug features, the activation and deactivation flows and the core reset.
+* The appendices document the production SMC and SEP Boot ROMs and the Key
+  Manager Application ROM.
 
 ifndef::release[]
 include::revision.adoc[leveloffset=+1]
@@ -57,7 +59,17 @@ include::sep-smc-common.adoc[]
 
 include::dtp-programming.adoc[]
 
-include::resets.adoc[]
+// The AoU partial sets imagesdir for its own figures and ends mid-paragraph,
+// so the restore below needs the blank line before it.
+:pg-imagesdir: {imagesdir}
+ifdef::backend-pdf[]
+include::../modules/aou/partials/pdf/software-operation.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::aou:partial$software-operation.adoc[]
+endif::backend-html5[]
+
+:imagesdir: {pg-imagesdir}
 
 [appendix]
 ifdef::backend-pdf[]
@@ -81,12 +93,4 @@ include::../../../hw/ip/key_manager/doc/firmware.adoc[leveloffset=1]
 endif::backend-pdf[]
 ifdef::backend-html5[]
 include::ip:partial$key_manager/doc/firmware.adoc[leveloffset=1]
-endif::backend-html5[]
-
-[appendix]
-ifdef::backend-pdf[]
-include::../modules/aou/partials/pdf/software-operation.adoc[]
-endif::backend-pdf[]
-ifdef::backend-html5[]
-include::aou:partial$software-operation.adoc[]
 endif::backend-html5[]

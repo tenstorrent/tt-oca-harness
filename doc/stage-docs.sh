@@ -238,7 +238,7 @@ programmer)
   # The guide publishes the software operation section alone, so its links into
   # the architecture chapter resolve in the Technical Reference Manual.
   sed -E \
-    -e "s/Appendix C\./AoU/" \
+    -e "s/^== Appendix C\..*/== AoU Programming Guide/" \
     -e "s@xref:\\{aou-architecture-xref\\}#@xref:ocah-docs:ROOT:aou-architecture.adoc#@g" \
     "$AOU_DOC/software-operation.adoc" \
     >"$MOD/aou/partials/software-operation.adoc"

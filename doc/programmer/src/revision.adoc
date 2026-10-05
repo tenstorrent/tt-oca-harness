@@ -24,4 +24,7 @@ and added C examples and sequence diagrams.
 |0.0.3 |2026-10-03 |Alessandro Ottaviano |Added the Reset Control chapter,
 the SMC core reset pulse and subsystem reset sequences, and the SMC watchdog
 escalation to warm reset.
+|0.0.4 |2026-10-05 |Alessandro Ottaviano |Made the AoU software operation
+guide the AoU Programming Guide chapter. Split the Reset Control chapter into
+SMC and SEP reset overviews and an AoU core reset section.
 |=======================================================================
