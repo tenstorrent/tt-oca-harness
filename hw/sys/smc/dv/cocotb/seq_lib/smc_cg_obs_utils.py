@@ -57,6 +57,12 @@ ZEROER_CTRL_DEST_ADDR = _addr.ZEROER_CTRL_DEST_ADDR
 ZEROER_CTRL_SIZE = _addr.ZEROER_CTRL_SIZE
 ZEROER_CTRL_STATUS = _addr.ZEROER_CTRL_STATUS
 
+#: `clk_rst.adoc`: the cool-reset pin passes a 32-sample reference-clock
+#: de-glitcher before it reaches the primary reset. The pin falls between two
+#: samples, so the assertion completes within one more reference cycle.
+COOL_RESET_DEGLITCH_REF_CYCLES = 32
+COOL_RESET_ASSERT_BOUND_REF_CYCLES = COOL_RESET_DEGLITCH_REF_CYCLES + 1
+
 
 def sample_bit(dut, name: str) -> int:
     handle = getattr(dut, name)
@@ -238,6 +244,27 @@ async def wait_gated_off(
     raise AssertionError(
         f"TIMEOUT waiting {gated_clk_name} off: last_toggle_at={last_toggle_at} hyst={hyst} {diag}"
     )
+
+
+async def wait_reset_asserted(dut, rst_name: str, *, ref_cycles: int, ref_period_ns: float) -> int:
+    """Wait for an active-low reset output to read 0, sampling every SMC rise.
+
+    The bound is ``ref_cycles`` reference-clock periods of simulation time, so
+    it holds at any SMC-to-reference clock ratio. Expiry is a FAILURE
+    ([TIMEOUT-MUST-FAIL]). Returns the SMC cycles waited.
+    """
+    sig = getattr(dut, rst_name)
+    start_ns = get_sim_time("ns")
+    cycles = 0
+    while int(sig.value) != 0:
+        if get_sim_time("ns") - start_ns >= ref_cycles * ref_period_ns:
+            raise AssertionError(
+                f"TIMEOUT waiting {rst_name} assert within {ref_cycles} reference-clock "
+                f"cycles ({cycles} smc cycles)"
+            )
+        await RisingEdge(dut.clk_smc_i)
+        cycles += 1
+    return cycles
 
 
 async def wait_enabled(

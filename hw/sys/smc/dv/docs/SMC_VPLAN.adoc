@@ -268,7 +268,8 @@ feature rows.
 |`smc_cpu_to_sep_axi_test` |Run the CPU-control to SEP-facing CSR reachability precheck.
 |`smc_deadspace_decode_test` |Probe wrap-period offsets past PeakRDL SIZE and watch live CSRs.
 |`smc_dual_base_addressing_test` |`LOCAL_BASE` is read-only at 0xC000_0000, `GLOBAL_BASE` takes and returns a pattern, `REGION_SIZE` reads its 16 MiB reset.
-|`smc_filter_config_field_sweep_test` |Every FILTER_CONFIG field cycled to all-ones and all-zeros on all 32 entries, then the write-once lock set and the locked entry shown to refuse further configuration writes.
+|`smc_filter_config_field_sweep_test` |Every FILTER_CONFIG field cycled to all-ones and all-zeros on all 32 entries, then the write-once lock set and the locked entry shown to refuse further configuration writes with DECERR.
+|`smc_filter_lock_window_test` |Two FILTER_CONFIG writes queued directly behind the write that locks filter 15 of each bank are answered DECERR and the entry reads its reset word plus `locked`.
 |`smc_filter_region_span_test` |A filter region spanning two granules on every outbound entry, with one of them enabled and enforced against a DMA copy.
 |`smc_dma_decouple_rw_test` |DMA transfers with CONFIG.DECOUPLE_RW set -- a scatter and a gather -- and two descriptors queued back to back.
 |`smc_gpio_data_ctrl_field_test` |Each software-writable DATA_CTRL field of one idle GPIO instance driven on its own, with the pad left in its reset drive state throughout.
@@ -4066,7 +4067,7 @@ Drive `smc_zeroer_axiclk_cg_test_seq`. Each checker below is a named compare the
 |`CHK-ZAXI-BUSY-ENABLE` |Zeroer busy re-enables the gated AXI clock within one cycle and the clock toggles on every cycle of the post-resume window; a late resume or a missing edge fails
 |`CHK-ZAXI-DISABLE-CG` |With the Zeroer AXI clock gate disabled the clock toggles on every cycle of the observation window
 |`CHK-ZAXI-GATE-OFF-IDLE` |With the gate enabled and the zeroer idle the AXI clock gates off within one cycle and shows zero toggles across the idle observation window
-|`CHK-ZAXI-RESET-OVERRIDE` |With the zeroer held in reset the gated AXI clock toggles on every cycle of the observation window; the reset override defeats the gate
+|`CHK-ZAXI-RESET-OVERRIDE` |The primary reset asserts within the 32-sample reference-clock de-glitcher window of the cool-reset pin falling (`clk_rst.adoc`), and with the zeroer held in reset the gated AXI clock toggles on every cycle of the observation window; the reset override defeats the gate
 |`CHK-ZEROER-AXICLK-COMPLETION` |Named compare in `smc_zeroer_axiclk_cg_test_seq.py`; the run fails if it mismatches
 |`CHK-ZEROER-AXICLK-NOGLITCH` |Named compare in `smc_zeroer_axiclk_cg_test_seq.py`; the run fails if it mismatches
 |===
@@ -4137,7 +4138,7 @@ Drive `smc_zeroer_regclk_cg_test_seq`. Each checker below is a named compare the
 |`CHK-ZREG-ACTIVITY-ENABLE` |A register access re-enables the gated register clock within one cycle and the clock toggles on every cycle of the post-resume window; a late resume or a missing edge fails
 |`CHK-ZREG-DISABLE-CG` |With the Zeroer register clock gate disabled the clock toggles on every cycle of the observation window
 |`CHK-ZREG-GATE-OFF-IDLE` |With the gate enabled and no register access the register clock gates off within one cycle and shows zero toggles across the idle observation window
-|`CHK-ZREG-RESET-OVERRIDE` |With the zeroer held in reset the register clock's enabled edges fill the whole observation window, against the gated idle count measured earlier in the same run
+|`CHK-ZREG-RESET-OVERRIDE` |The primary reset asserts within the 32-sample reference-clock de-glitcher window of the cool-reset pin falling (`clk_rst.adoc`), and with the zeroer held in reset the register clock's enabled edges fill the whole observation window, against the gated idle count measured earlier in the same run
 |===
 
 
@@ -9395,7 +9396,7 @@ Drive `smc_gpio_intf_regblock_sweep_test_seq`. Each checker below is a named com
 
 * Each of the 16 inbound and 16 outbound entries takes the all-ones and all-zeros pattern of every software-writable FILTER_CONFIG field through half-register writes and is restored to its RDL reset.
 * The ones pattern sets `entry_enabled` in the same write as `read_allowed` and `write_allowed`, and leaves `START_ADDR`/`END_ADDR` at their reset, so an armed entry admits rather than blocks.
-* The write-once `locked` field is set on every entry after all field cycles have completed, and the locked entry then refuses both a write of 0 over that bit and a write of the other half.
+* The write-once `locked` field is set on every entry after all field cycles have completed, and the locked entry then answers both a write of 0 over that bit and a write of the other half with DECERR, the response `filter_ctrl.rdl` specifies for a write to a locked entry. The entry addresses are registered with the SEP_IN monitor only once the field cycles are over, so a DECERR during them still fails the leaf.
 * The sequence leaves all 32 entries locked; only a reset clears the field.
 
 *Test Procedure*:
@@ -9408,7 +9409,7 @@ Drive `smc_filter_config_field_sweep_test_seq`. Each checker below is a named co
 |===
 |Checker |Description
 |`CHK-FILTER-CONFIG-FIELD-SWEEP` |All 32 entries read their RDL reset, carried the all-ones and all-zeros pattern of their software-writable fields after each half-register write, drove no bit outside the fields the RDL declares, held the reset of the bits software cannot write, and returned to that reset
-|`CHK-FILTER-CONFIG-LOCK-WOSET` |On all 32 entries the write-once `locked` field went from clear to set on a write of 1 and the entry then refused both later configuration writes with an error response while still reading the locked word, so the refused writes took no effect; the accepted writes of the field cycle on the same addresses are the live control
+|`CHK-FILTER-CONFIG-LOCK-WOSET` |On all 32 entries the write-once `locked` field went from clear to set on a write of 1 and the entry then refused both later configuration writes with DECERR while still reading the locked word, so the refused writes took no effect; the accepted writes of the field cycle on the same addresses are the live control
 |===
 
 *Pass Criteria*: `CHK-FILTER-CONFIG-FIELD-SWEEP`, `CHK-FILTER-CONFIG-LOCK-WOSET` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
@@ -11840,7 +11841,7 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 
 * `LOG_REGION_ADDR` points at the refusing address and one `LOG_CTRL` element asks for a log. `INTR_STATUS.LOG_FETCH_ERR` must set and `LOG_WRITE_ERR` must not.
 * `INTR_ENABLE.LOG_FETCH_ERR` is set. The wrapper's interrupt line must be low before the error and high after it. The status bit must then clear on its written one, and the line must drop. The line also carries the 16550's interrupt, so the UART is set up with its interrupts disabled.
-* The error does not stop the engine: the fetched word is still handed to the write side and the log runs to its end, and only then does the engine clear the element's `LOG_CTRL` length, which retires its arbiter request. The leaf waits for that hardware clear, drains the UART, and only then disables the engine. Disabling the engine or zeroing the length first withdraws a request the arbiter has not granted, which the vendored `prim_arbiter_tree` forbids (`ReqStaysHighUntilGranted0_M` and `LockArbDecision_A`, `prim_arbiter_tree.sv:237,240`); a simulator that evaluates those assertions fails the run.
+* The error does not stop the engine: the fetched word is still handed to the write side and the log runs to its end, and only then does the engine clear the element's `LOG_CTRL` length, which retires its arbiter request. The leaf waits for that hardware clear, reads all eight bytes of the log back from the looped-back UART (`LSR.TEMT` reports the transmitter empty before the receiver has the last byte, so the drain runs on the count and then requires the transmitter idle), and only then disables the engine. Disabling the engine or zeroing the length first withdraws a request the arbiter has not granted, which the vendored `prim_arbiter_tree` forbids (`ReqStaysHighUntilGranted0_M` and `LockArbDecision_A`, `prim_arbiter_tree.sv:237,240`); a simulator that evaluates those assertions fails the run.
 * A starved write side. The engine fetches one word at a time into a FIFO that runs ahead of the UART, so from local memory the next word is always waiting when a word's last byte leaves. A sixteen-byte log is placed in the output-fabric window, and the output responder's R channel is held once the first fetch has returned. The engine writes that word's eight bytes and then waits for a word its FIFO does not have. When all eight bytes have come back through the loopback, exactly one fetch may have returned. The hold is then released, and all sixteen bytes must arrive in order with no error status.
 * `LOG_WRITE_ERR` has no bus to come from. The engine's write port reaches only its own wrapper's UART register blocks (`uart_log_engine_wrap.sv`), which answer every address without error. Its status is set instead through `INTR_TEST` (`sw = w`, `singlepulse`), with only `INTR_ENABLE.LOG_WRITE_ERR` set. The status must set alone, the interrupt line must rise, and the written one must clear the status and drop the line.
 
@@ -11849,7 +11850,7 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 [arabic]
 . Set up UART0 as the transfer leaf does, and point the engine's region at the refusing address.
 . Start one element, wait for `LOG_FETCH_ERR` and check the line.
-. Wait for `LOG_CTRL[0]` to clear, drain the UART, stop the engine, and clear the status.
+. Wait for `LOG_CTRL[0]` to clear, read the eight bytes back from the UART, stop the engine, and clear the status.
 . Open the outbound filter, preload two words in the output-fabric window, start a sixteen-byte log from there, hold the responder's R channel after the first fetch returns, read eight bytes from the UART and check that one fetch returned, release the hold, read the other eight, and compare all sixteen.
 . Enable only the write-error interrupt, force it through `INTR_TEST`, check the line, and clear the status.
 
@@ -11858,7 +11859,7 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-LOG-ENGINE-FETCH-ERR` |A refused fetch set `LOG_FETCH_ERR` alone and raised the interrupt line with the interrupt enabled; the engine still finished the log and cleared `LOG_CTRL[0]`, and the status cleared on its written one with the line dropping
+|`CHK-LOG-ENGINE-FETCH-ERR` |A refused fetch set `LOG_FETCH_ERR` alone and raised the interrupt line with the interrupt enabled; the engine still finished the log, all eight bytes of the errored word reaching the looped-back UART, and cleared `LOG_CTRL[0]`, and the status cleared on its written one with the line dropping
 |`CHK-LOG-ENGINE-STARVED-FETCH` |With the second fetch held until the first word's bytes had left, a sixteen-byte log from the output-fabric window still reached the UART complete and in order, with no error status
 |`CHK-LOG-ENGINE-WRITE-ERR-TEST` |`INTR_TEST.LOG_WRITE_ERR` set the write status alone, which raised the line with only its interrupt enabled; its written one cleared it and the line dropped
 |===
@@ -12438,6 +12439,37 @@ Drive `smc_jtag_axi_shape_test_seq` on the SEP_IN AXI sequencer; the JTAG legs g
 
 '''''
 
+[[sec-263-smc_filter_lock_window_test]]
+===== 263 `smc_filter_lock_window_test`
+
+*Source Module*: `smc_filter_lock_window_test`
+
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN)
+
+*Objective*: Writes queued right behind the write that locks a filter are refused and change nothing.
+
+*Test Coverage*:
+
+* `filter_ctrl.rdl` makes `FILTER_CONFIG.locked` (bit 63) `woset`: "Lock filter configurations. Write once register", and once it is set every later write to the entry's registers "is steered to the AXI error subordinate and terminates with a DECERR response; reads still return the locked configuration". No other field of the block carries a write enable, so the lock is enforced outside the register block by each filter's inner demux.
+* The demux stores its port select with the AW. `locked` updates on the clock edge that arms B, so each filter port holds the next AW until that B is accepted and the select is sampled with `locked` already set.
+* Arm leg: filter 15 of the outbound bank, then of the inbound bank, reads its reset word with `locked` and `entry_enabled` clear, and the locking write (reset word plus `locked`) is answered OKAY.
+* Two `FILTER_CONFIG` writes queued in the same outstanding group directly behind the locking write, carrying `src_id` 5 and 6. Both must be answered DECERR, and `FILTER_CONFIG` must then read the reset word plus `locked`. The entry's address is registered with the SEP_IN monitor as the one place a DECERR is expected, so a DECERR anywhere else in the run, the locking write included, still fails the leaf. `entry_enabled` stays clear throughout, so filter 15 filters no traffic. Each bank emits `CHK-FILTER-LOCK-WINDOW`.
+
+*Test Procedure*:
+
+Drive `smc_filter_lock_window_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FILTER-LOCK-WINDOW` |Both writes queued behind the locking write were answered DECERR, the locking write OKAY, and `FILTER_CONFIG` read exactly the reset word plus `locked`
+|===
+
+*Pass Criteria*: both banks answer the two writes queued behind the locking write with DECERR, and each `FILTER_CONFIG` reads the reset word plus `locked`. Enrolled in `all` and `hosted` from `fabric.toml`.
+'''''
+
 [[smc-formal-plan]]
 === Formal Verification Plan
 
@@ -12748,37 +12780,6 @@ returns. Both run from `fabric.toml` in `all` and `hosted`.
 Every one carries an arm leg that must pass before its defect leg is scored.
 Without that, a stuck-at field or a dead probe would satisfy the defect leg for
 the wrong reason.
-
-[[sec-263-smc_filter_lock_window_test]]
-===== 263 `smc_filter_lock_window_test`
-
-*Source Module*: `smc_filter_lock_window_test`
-
-*BFM / Model*: ocah_axi_vip (AXI, SEP_IN)
-
-*Objective*: Writes queued right behind the write that locks a filter are refused and change nothing.
-
-*Test Coverage*:
-
-* `filter_ctrl.rdl` makes `FILTER_CONFIG.locked` (bit 63) `woset`: "Lock filter configurations. Write once register". No other field of the block carries a write enable, so the lock is enforced outside the register block. Each filter's inner demux sends a write to the error slave when `locked` is set.
-* The demux stores its port select with the AW. `locked` updates on the clock edge that arms B, so each filter port holds the next AW until that B is accepted and the select is sampled with `locked` already set.
-* Arm leg: filter 15 of the outbound bank, then of the inbound bank, reads its reset word with `locked` and `entry_enabled` clear, and the locking write (reset word plus `locked`) is answered OKAY.
-* Two `FILTER_CONFIG` writes queued in the same outstanding group directly behind the locking write, carrying `src_id` 5 and 6. Both must be refused, and `FILTER_CONFIG` must then read the reset word plus `locked`. `entry_enabled` stays clear throughout, so filter 15 filters no traffic. Each bank emits `CHK-FILTER-LOCK-WINDOW`.
-
-*Test Procedure*:
-
-Drive `smc_filter_lock_window_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
-
-*Checkers*:
-
-[cols="1,2",options="header",]
-|===
-|Checker |Description
-|`CHK-FILTER-LOCK-WINDOW` |Both writes queued behind the locking write were refused, and `FILTER_CONFIG` read the reset word plus `locked`
-|===
-
-*Pass Criteria*: both banks refuse the two writes queued behind the locking write, and each `FILTER_CONFIG` reads the reset word plus `locked`. Enrolled in `all` and `hosted` from `fabric.toml`.
-'''''
 
 [[sec-293-smc_isolate_req_smc_lane_test]]
 ===== 293 `smc_isolate_req_smc_lane_test`

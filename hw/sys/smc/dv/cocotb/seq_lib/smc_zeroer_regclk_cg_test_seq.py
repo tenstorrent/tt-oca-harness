@@ -637,12 +637,12 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
             diag_names=("tb_zeroer_cg_en",),
         )
         dut.rst_cool_ni.value = 0
-        for _ in range(BUSY_TIMEOUT_SMC):
-            if int(dut.rst_primary_smc_clk_no.value) == 0:
-                break
-            await RisingEdge(dut.clk_smc_i)
-        else:
-            raise AssertionError("TIMEOUT waiting rst_primary_smc_clk_no assert")
+        await cg.wait_reset_asserted(
+            dut,
+            "rst_primary_smc_clk_no",
+            ref_cycles=cg.COOL_RESET_ASSERT_BOUND_REF_CYCLES,
+            ref_period_ns=self.cfg.ref_clk_period_ns,
+        )
         edges = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_reg_clk", IDLE_OBSERVE)
         assert edges == IDLE_OBSERVE, f"reg_clk gated during reset: edges={edges}"
         # The token carries the two measured edge counts: S4 with reset
