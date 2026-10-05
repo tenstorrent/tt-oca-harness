@@ -3,9 +3,8 @@
 """Primary's ENCRYPTED TOC payload_length disagrees with the manifest; the backup boots.
 
 The decrypted TOC payload_length must sit within one AES block below the manifest's, so 0x2000
-must be refused with ``OCA_FAIL_PAYLOAD_TOC``. The encrypted payload path does not compare the
-decrypted payload_length with the manifest's, so the slot is accepted. Needs
-``+esrc_noise_force``: two RSA-3072 modexps and AES decryptions.
+must be refused with ``OCA_FAIL_PAYLOAD_TOC``. Needs ``+esrc_noise_force``: two RSA-3072 modexps
+and AES decryptions.
 """
 
 from __future__ import annotations

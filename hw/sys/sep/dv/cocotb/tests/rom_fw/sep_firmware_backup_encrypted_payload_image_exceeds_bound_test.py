@@ -3,8 +3,7 @@
 """Backup's ENCRYPTED TOC entry 0 starts inside the TOC; the ROM halts.
 
 The payload format places every image after the TOC, so the slot must be refused with
-``OCA_FAIL_PAYLOAD_TOC``. No check refuses a TOC entry whose image starts inside the TOC, so
-the slot is accepted. Needs ``+esrc_noise_force``: an RSA-3072 modexp and an AES decryption.
+``OCA_FAIL_PAYLOAD_TOC``. Needs ``+esrc_noise_force``: an RSA-3072 modexp and an AES decryption.
 """
 
 from __future__ import annotations

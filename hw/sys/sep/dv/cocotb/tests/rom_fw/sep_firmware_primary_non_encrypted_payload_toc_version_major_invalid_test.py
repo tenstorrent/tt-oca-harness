@@ -3,8 +3,7 @@
 """Primary's PLAINTEXT TOC declares major_version 2; the backup boots.
 
 The spec supports TOC major version 1 only, so the slot must be refused with
-``OCA_FAIL_PAYLOAD_TOC``. The library and the ROM do not compare toc_version_major, so the slot
-is accepted. Needs ``+esrc_noise_force``: two RSA-3072 modexps.
+``OCA_FAIL_PAYLOAD_TOC``. Needs ``+esrc_noise_force``: two RSA-3072 modexps.
 """
 
 from __future__ import annotations

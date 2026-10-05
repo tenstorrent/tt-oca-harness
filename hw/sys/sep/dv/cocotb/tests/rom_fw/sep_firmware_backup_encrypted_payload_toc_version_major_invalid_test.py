@@ -3,8 +3,7 @@
 """Backup's ENCRYPTED TOC declares major_version 2; the ROM halts.
 
 The spec supports TOC major version 1 only, so the slot must be refused with
-``OCA_FAIL_PAYLOAD_TOC``. The library and the ROM do not compare toc_version_major, so the slot
-is accepted. Needs ``+esrc_noise_force``: an RSA-3072 modexp and an AES decryption.
+``OCA_FAIL_PAYLOAD_TOC``. Needs ``+esrc_noise_force``: an RSA-3072 modexp and an AES decryption.
 """
 
 from __future__ import annotations
