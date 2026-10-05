@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-04T14:04:54+00:00",
+  "generated_at": "2026-10-05T04:05:45+00:00",
   "points": [
     {
       "failed_tests": 0,
@@ -1563,6 +1563,133 @@
             "fsm_state": 86.22,
             "functional": 100.0,
             "line": 94.75,
+            "toggle": 81.36
+          },
+          "status": "PASS",
+          "target": "default",
+          "threshold_met": true,
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 0,
+      "flaky_tests": 0,
+      "flow_pass_rate": 100.0,
+      "generated_at": "2026-10-05T04:05:45+00:00",
+      "id": "1c33dbc0a0b637d8",
+      "per_dut": [
+        {
+          "comparison_key": "COVCMP-7139d9ef77eab687",
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "branch": 90.04,
+            "condition": 79.92,
+            "fsm_state": 88.36,
+            "functional": 100.0,
+            "line": 94.86,
+            "toggle": 82.51
+          },
+          "flow": "sep",
+          "framework": "cocotb",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {},
+            "by_disposition": {},
+            "by_metric": {},
+            "by_status": {},
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 0,
+            "observations_complete": false,
+            "open": 0,
+            "unclassified": 0
+          },
+          "raw_metrics": {
+            "branch": 87.59,
+            "condition": 77.4,
+            "fsm_state": 85.87,
+            "functional": 100.0,
+            "line": 94.81,
+            "toggle": 81.3
+          },
+          "status": "PASS",
+          "target": "default",
+          "threshold_met": true,
+          "tool": "vcs"
+        },
+        {
+          "comparison_key": "COVCMP-b3a6f27749d6bd0b",
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "branch": 52.71,
+            "condition": 25.07,
+            "fsm_state": 37.09,
+            "functional": 10.27,
+            "line": 67.26,
+            "toggle": 15.22
+          },
+          "flow": "sep",
+          "framework": "uvm",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {},
+            "by_disposition": {},
+            "by_metric": {},
+            "by_status": {},
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 0,
+            "observations_complete": false,
+            "open": 0,
+            "unclassified": 0
+          },
+          "raw_metrics": {
+            "branch": 51.32,
+            "condition": 24.28,
+            "fsm_state": 36.04,
+            "functional": 10.27,
+            "line": 67.25,
+            "toggle": 15.0
+          },
+          "status": "PASS",
+          "target": "default",
+          "threshold_met": true,
+          "tool": "vcs"
+        },
+        {
+          "comparison_key": "COVCMP-d71bdac8d2eb0ada",
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "branch": 90.04,
+            "condition": 79.94,
+            "fsm_state": 88.73,
+            "functional": 100.0,
+            "line": 94.86,
+            "toggle": 82.57
+          },
+          "flow": "sep",
+          "framework": "",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {},
+            "by_disposition": {},
+            "by_metric": {},
+            "by_status": {},
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 0,
+            "observations_complete": false,
+            "open": 0,
+            "unclassified": 0
+          },
+          "raw_metrics": {
+            "branch": 87.64,
+            "condition": 77.42,
+            "fsm_state": 86.22,
+            "functional": 100.0,
+            "line": 94.83,
             "toggle": 81.36
           },
           "status": "PASS",
