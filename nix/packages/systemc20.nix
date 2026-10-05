@@ -32,6 +32,9 @@ in
       hash = "sha256-v/PcQu0m/7zyx2TtpZrLFbHtknahgVCkzcRi3lgrRGw=";
     };
 
+    # nixpkgs' postPatch hard-codes SC_CPLUSPLUS to 201703L.
+    postPatch = "";
+
     cmakeFlags = (old.cmakeFlags or []) ++ ["-DCMAKE_CXX_STANDARD=20"];
     configureFlags = (old.configureFlags or []) ++ ["CXXFLAGS=\"-std=c++20\""];
   })
