@@ -3,13 +3,14 @@
 
 // Accept AXI control traffic in an iDMA register frontend and emit 1-D iDMA requests.
 //
-// Each control interface has its own chain: an axi_cut, an axi_dw_converter to 32-bit AXI, an
-// axi_to_reg_v2 bridge to a 32-bit register interface, the idma_reg64_2d register frontend, a
-// stream_fifo that buffers 2-D requests between the register frontend and the 2-D midend, and
-// an idma_nd_midend that splits each 2-D request into 1-D requests. An idma_transfer_id_gen per interface issues transfer IDs
-// and retires one on each midend completion. NUM_CTRL_INTERFACES and NUM_CTRL_STREAMS must be
-// >= 1. F2M_FIFO_DEPTH is passed unchanged to the stream_fifo DEPTH and is the FIFO depth in
-// requests; fifo_v3 asserts DEPTH > 0.
+// Each control interface has its own chain: an axi_cut, an axi_dw_converter to 32-bit AXI, a
+// second axi_cut, an axi_to_reg_v2 bridge to a 32-bit register interface, the idma_reg64_2d
+// register frontend, a stream_fifo that buffers 2-D requests between the register frontend and
+// the 2-D midend, and an idma_nd_midend that splits each 2-D request into 1-D requests. An
+// idma_transfer_id_gen per interface issues transfer IDs and retires one on each midend
+// completion. NUM_CTRL_INTERFACES and NUM_CTRL_STREAMS must be >= 1. F2M_FIFO_DEPTH is passed
+// unchanged to the stream_fifo DEPTH and is the FIFO depth in requests; fifo_v3 asserts
+// DEPTH > 0.
 
 module idma_frontend_wrapper #(
   parameter int unsigned NUM_CTRL_INTERFACES = 1,           // Independent control ports, each with
@@ -27,6 +28,9 @@ module idma_frontend_wrapper #(
 
   parameter bit BYPASS_DMA_CTRL_FLOPS = 1'b0,               // When set, the control-port axi_cut is
                                                             // a pass-through with no registers.
+                                                            // The axi_cut between the width
+                                                            // converter and axi_to_reg_v2 is
+                                                            // always registered.
 
   parameter int unsigned NUM_DIM = 2,                       // Transfer dimension count of the
                                                             // midend; the 2-D register frontend and
@@ -116,6 +120,8 @@ module idma_frontend_wrapper #(
   slv_axi_resp_t [NUM_CTRL_INTERFACES-1:0] slv_axi_resps_flopped;
   reg_axi_req_t [NUM_CTRL_INTERFACES-1:0] reg_axi_reqs;
   reg_axi_resp_t [NUM_CTRL_INTERFACES-1:0] reg_axi_resps;
+  reg_axi_req_t [NUM_CTRL_INTERFACES-1:0] reg_axi_reqs_flopped;
+  reg_axi_resp_t [NUM_CTRL_INTERFACES-1:0] reg_axi_resps_flopped;
 
   // setup channel types for REG interface
   `REG_BUS_TYPEDEF_REQ(reg_req_t, ctrl_addr_t, reg_data_t, reg_strb_t)
@@ -204,6 +210,27 @@ module idma_frontend_wrapper #(
       .mst_resp_i(reg_axi_resps[i])
     );
 
+    // axi_to_reg_v2 drives AR ready combinationally from R ready, and the downsizer drives
+    // R ready combinationally from AR ready; connected directly, they form a combinational loop.
+    // This cut must stay registered regardless of BYPASS_DMA_CTRL_FLOPS.
+    axi_cut #(
+      .Bypass    (1'b0),
+      .aw_chan_t (slv_axi_aw_chan_t),
+      .w_chan_t  (reg_axi_w_chan_t),
+      .b_chan_t  (slv_axi_b_chan_t),
+      .ar_chan_t (slv_axi_ar_chan_t),
+      .r_chan_t  (reg_axi_r_chan_t),
+      .axi_req_t (reg_axi_req_t),
+      .axi_resp_t(reg_axi_resp_t)
+    ) u_dma_ctrl_reg_axi_cut (
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .slv_req_i (reg_axi_reqs[i]),
+      .slv_resp_o(reg_axi_resps[i]),
+      .mst_req_o (reg_axi_reqs_flopped[i]),
+      .mst_resp_i(reg_axi_resps_flopped[i])
+    );
+
     axi_to_reg_v2 #(
       .AxiAddrWidth(CTRL_ADDR_WIDTH),
       .AxiDataWidth(DmaCtrlRegDataW),
@@ -218,8 +245,8 @@ module idma_frontend_wrapper #(
       .clk_i (clk_i),
       .rst_ni(rst_ni),
 
-      .axi_req_i(reg_axi_reqs[i]),
-      .axi_rsp_o(reg_axi_resps[i]),
+      .axi_req_i(reg_axi_reqs_flopped[i]),
+      .axi_rsp_o(reg_axi_resps_flopped[i]),
       .reg_req_o(reg_reqs[i]),
       .reg_rsp_i(reg_resps[i]),
       .reg_id_o (/* NOT CONNECTED */),
