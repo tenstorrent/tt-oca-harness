@@ -44,6 +44,7 @@ from env.smc_probe_liveness import reset_probe_ledger, watch_probe_liveness
 from env.smc_protocol_vip_item import SmcProtocolVipItem, SmcProtocolVipKind
 from env.smc_virt_console import VirtConsole
 from ocah_axi_vip import OcahAxiSlaveAgent
+from ocah_lib import require_file_plusargs
 from seq_lib._one_shot import _OneShot
 
 # Test-class-name -> protocol VIP kind for the auto-record at the end of
@@ -1083,6 +1084,23 @@ class _EvidenceRecorder:
         return check_id in cls.BASE_IDS or check_id.startswith(cls.BASE_PREFIXES)
 
 
+# Every file-path plusarg the SMC bench and its models consume: the
+# path_plusarg_guard list of tb/tb_top.sv plus +smc_efuse_hex, which the eFuse
+# image leaves write during the run and opt out of through
+# ``run_written_file_plusargs``.
+FILE_PLUSARGS: tuple[str, ...] = (
+    "rom_bin64",
+    "rom_hex",
+    "smc_rom_hex",
+    "smc_scratch_ram_hex",
+    "bfm_rom_hex",
+    "bfm_rom_bin64",
+    "smc_efuse_hex",
+    "smc_shadow_reg_preload",
+    "occp_payload_bin",
+)
+
+
 class smc_base_test(uvm_test):
     """Shared SMC OSS test: env build, clock/reset bring-up, scenario hook.
 
@@ -1136,11 +1154,15 @@ class smc_base_test(uvm_test):
     # SMC_DV_ALLOW_STALE_MODEL=1 is the only opt-out.
     require_clean_tree = True
 
+    # Names from FILE_PLUSARGS whose file this test writes during the run.
+    run_written_file_plusargs: tuple[str, ...] = ()
+
     @staticmethod
     def random_seed() -> int:
         return int(os.environ.get("RANDOM_SEED", "1"), 0)
 
     def build_phase(self) -> None:
+        require_file_plusargs(FILE_PLUSARGS, exclude=self.run_written_file_plusargs)
         self._evidence = _EvidenceRecorder()
         self._evidence.install()
         self.cfg = SmcEnvCfg("cfg")

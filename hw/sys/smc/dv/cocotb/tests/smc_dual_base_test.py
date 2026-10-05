@@ -29,7 +29,8 @@ from env.smc_env_cfg import (
     pll_sys_clk_period_ns,
 )
 from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiSlaveAgent, OcahAxiSlaveSequence
-from smc_base_test import _EvidenceRecorder, log_build_model_identity
+from ocah_lib import require_file_plusargs
+from smc_base_test import FILE_PLUSARGS, _EvidenceRecorder, log_build_model_identity
 
 _DV_ROOT = Path(__file__).resolve().parents[2]
 _EFUSE_DIR = _DV_ROOT / "efuse_preload"
@@ -678,6 +679,7 @@ def dual_test(
     def register(leaf: Callable[[SmcDualHarness], Awaitable[None]]) -> Test:
         @functools.wraps(leaf)
         async def run(_dut: object) -> None:
+            require_file_plusargs(FILE_PLUSARGS)
             harness = SmcDualHarness(test_name=leaf.__name__, required_evidence=required_evidence)
             await leaf(harness)
             harness.finalize_evidence()

@@ -24,6 +24,7 @@ plus a noun.
 | `ocah_ref_model #(OBS, EXP)` | `uvm_subscriber` | per-feature predictor: observed stream in, expected items out on `expected_ap`; no comparison, no verdict |
 | `ocah_test_cfg`, `ocah_env_cfg` | `uvm_object` | the two configuration levels |
 | `ocah_knobs`, `ocah_rng` | none | plusarg accessor; seed salting and directed patterns |
+| `ocah_path_plusargs` | none | file-path plusarg guard: every present `+<name>=<path>` in a bench's list is opened at time 0 and a missing file ends the run with one line naming the plusarg |
 
 `uvm/` is the SystemVerilog realization (`ocah_lib_pkg`, entered through
 `uvm/sources.toml` ahead of the protocol VIP manifests). `cocotb/` is the
@@ -40,6 +41,7 @@ The two realizations differ only where the language forces it:
 | Aspect | cocotb (`cocotb/`) | SV-UVM (`uvm/`) |
 |---|---|---|
 | Knob transport | environment variables (`OcahKnobs`) | plusargs (`ocah_knobs`) |
+| File-path plusarg guard | `require_file_plusargs(names)`, first statement of the bench base test's `build_phase` | `ocah_require_file_plusargs(names)` from an undelayed `initial` in the bench top, which `` `include ``s `ocah_path_plusargs.svh` |
 | Seed source | `RANDOM_SEED`, read once by `OcahTest.base_seed` | `+ntb_random_seed`, read once by `ocah_test::base_seed` |
 | Per-pass randomness | `OcahSequence.rng(label)`: one `random.Random` per helper, seeded by `OcahRng.salted_seed` | `seed_scenario_rng()` seeds the `body()` process once; helpers draw from `$urandom` |
 | Looped scenario | `run_looped_scenario()` over the same hooks, plus `start_looped_seq(seq_cls, ...)` since a class is a value | `run_looped_scenario()` over `create_scenario_seq()` |

@@ -465,3 +465,12 @@ install. See [Prerequisites](#prerequisites).
 **`No module named tt_boot_manifest`** — the manifest packer submodule is not
 checked out; only affects Boot ROM builds. See
 [`docs/SEP_TB_ARCH.adoc`](docs/SEP_TB_ARCH.adoc#_boot_rom_firmware_builds).
+
+**`[ocah_path_plusargs] +<name>=<path> is not a readable file`** at time 0 —
+every file-path plusarg the bench consumes (`+sep_boot_rom_hex`, `+km_rom_hex`,
+`+sep_efuse_hex`, `+sep_shadow_reg_preload`, ...) is opened before any clock or
+image load, by `ocah_require_file_plusargs` (`hw/common/dv/vip/ocah_lib/uvm/`
+`ocah_path_plusargs.svh`) from `tb/tb_top.sv` and by `require_file_plusargs`
+(`ocah_lib`) from `sep_base_test.build_phase`, so a stale or mistyped path fails
+the run at once rather than after the boot timeout. Fix the path in the testlist
+entry or run mode; an absent plusarg is not an error.

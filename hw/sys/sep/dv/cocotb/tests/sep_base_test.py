@@ -44,6 +44,7 @@ from cocotb.triggers import (
     with_timeout,
 )
 from ocah_axi_vip import OcahAxiLiteMasterAgent, OcahAxiSlaveAgent
+from ocah_lib import require_file_plusargs
 from pyuvm import ConfigDB, uvm_test
 
 # The cocotb runner only puts the test dir on sys.path. Make the cocotb root
@@ -115,6 +116,19 @@ class _EvidenceFilter(logging.Filter):
         for check_id, _status in self._CHK.findall(message):
             self.seen.add(check_id)
         return True
+
+
+# Every file-path plusarg the SEP bench and its models consume, the
+# path_plusarg_guard list of tb/tb_top.sv.
+FILE_PLUSARGS: tuple[str, ...] = (
+    "sep_boot_rom_hex",
+    "sep_sram_hex",
+    "km_rom_hex",
+    "sep_efuse_hex",
+    "sep_efuse_shadow_hex",
+    "sep_shadow_reg_preload",
+    "sep_smc_mem_hex",
+)
 
 
 class sep_base_test(uvm_test):
@@ -228,6 +242,7 @@ class sep_base_test(uvm_test):
             pass
 
     def build_phase(self) -> None:
+        require_file_plusargs(FILE_PLUSARGS)
         # Installed before anything can log, so no evidence predates the filter.
         self._evidence = _EvidenceFilter()
         self._install_evidence_filter(self._evidence)

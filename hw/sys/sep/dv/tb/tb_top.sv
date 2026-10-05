@@ -890,6 +890,17 @@ module sep_uvm_top
     end
 `endif
 
+    // Every file-path plusarg this bench and its models consume; a present one
+    // whose file cannot be opened ends the run at time 0.
+    `include "ocah_path_plusargs.svh"
+    initial begin : path_plusarg_guard
+        static string names[] = '{
+            "sep_boot_rom_hex", "sep_sram_hex", "km_rom_hex", "sep_efuse_hex",
+            "sep_efuse_shadow_hex", "sep_shadow_reg_preload", "sep_smc_mem_hex"
+        };
+        ocah_require_file_plusargs(names);
+    end
+
     // Image loads into the ROM/SRAM macros at t=0. Honor the plusarg first, else
     // the CWD default filename (tests that stage a committed hex into the sim
     // CWD without a plusarg still get it -- e.g. sep_boot_rom_smoke_test relies
