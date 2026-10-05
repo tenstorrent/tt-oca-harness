@@ -75,10 +75,10 @@ extern "C" {
  * i2c_acq_fifo_stretch_reset at 5.58 ms. 20000 iterations is ~23 ms, roughly
  * 4x that worst case, and finite.
  */
-/* SMC I2C FIFO depths, transcribed from the specification: the I2C IP's
- * parameter table (hw/ip/i2c/doc/interface.adoc, CTRL_TX/CTRL_RX/TGT_TX depth
- * 64, TGT_RX default 268) and the SMC integration override table
- * (hw/sys/smc/doc/periphs.adoc, I2C_TARGET_RX_FIFO_DEPTH 268 -> 64). No
+/* SMC I2C FIFO depths, transcribed from the specification: the OpenTitan I2C
+ * parameter list that hw/ip/i2c/doc/index.adoc adopts (FifoDepth 64 for the
+ * FMT, RX and TX FIFOs, AcqFifoDepth 268) and the SMC integration override
+ * table (hw/sys/smc/doc/periphs.adoc, I2cTargetRxFifoDepth 268 -> 64). No
  * generated C export carries them, so keep this table in step with those two
  * documents; the IP default of 268 must not be assumed at the SMC level. */
 #define I2C_CONTROLLER_TX_FIFO_DEPTH 64u

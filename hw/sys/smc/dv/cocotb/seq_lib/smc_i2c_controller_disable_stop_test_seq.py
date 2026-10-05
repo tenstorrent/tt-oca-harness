@@ -3,40 +3,31 @@
 """The STOP the I2C0 controller makes on its own when its enable is cleared.
 
 A controller that has started a transaction owns the bus until it gives a
-STOP. If software clears `CTRL.ENABLEHOST` with the transaction still open,
-`i2c_controller_fsm.sv` generates that STOP itself, from two states:
+STOP. The OpenTitan I2C theory of operation, which `hw/ip/i2c/doc/index.adoc`
+adopts for controller behaviour, states what clearing `CTRL.ENABLEHOST` does
+to an open transaction: software may "end the current transaction by setting
+CTRL.ENABLEHOST to 1'b0", and "if a NACK handling timeout occurs or
+CTRL.ENABLEHOST is cleared, then the FSM will halt again after the STOP
+condition is sent. The STOP condition terminates the transaction, leaving the
+FSM halted in the 'bus idle' state, with SDA and SCL released." Two open
+transactions are driven to that STOP:
 
-* **IDLE, parked.** When the format FIFO runs dry without a STOP, the
-  controller waits in `IDLE` holding SCL low, with `STATUS.HOSTIDLE` clear.
-  Clearing the enable there makes the STOP.
-* **POP_FMT_FIFO.** Between two entries the controller passes through
-  `POP_FMT_FIFO` for exactly one cycle of its clock. The enable has to be seen
-  low on that cycle.
+* **Parked.** The format FIFO runs dry without a STOP: `STATUS.FMTEMPTY` sets,
+  `STATUS.HOSTIDLE` stays clear and the controller holds SCL low. Clearing
+  the enable there must make the STOP.
+* **Halted on a NACK.** The address nobody on the bench bus answers is NACKed.
+  The theory of operation says the controller then "stops immediately
+  following the (N)ACK bit's hold time after the SCL falling edge, and SCL
+  remains asserted low", with `CONTROLLER_EVENTS.NACK` set and
+  `INTR_STATE.CONTROLLER_HALT` raised. Clearing the enable there is the case
+  the specification describes.
 
-Both arms test `trans_started && !host_enable_i`, and `trans_started` is a
-flop that clears on the cycle after the enable is seen low. In `IDLE` the
-controller stays put, so a parked controller always takes the arm. Anywhere
-else in a transfer the flop is already clear by the time the controller
-reaches either arm, and it returns to idle without a STOP. So in the
-`POP_FMT_FIFO` leg a STOP on the pads is proof the enable fell on that one
-cycle; no other disable time produces one.
-
-The `POP_FMT_FIFO` cycle is found on the bus. The transfer is a START and
-address, an offset byte and a data byte with a STOP, so the controller goes
-from the address acknowledge through `POP_FMT_FIFO` into the offset byte.
-Counting from the eighth SCL rise after the START, the disable is written a
-chosen number of SMC clock cycles later, and each try ends one of three ways:
-a STOP (the disable was seen in `POP_FMT_FIFO`); SCL released after the
-acknowledge with no STOP (seen before it, so the address byte was the last);
-or the whole offset byte clocked out first (seen after it). Bisection on the offset between an
-early and a late try closes on the cycle between them. The write crosses from
-the SMC clock into the I2C clock, whose phases are not locked, so the landing
-cycle of one offset can differ by one between tries; the offsets either side
-of where the bisection closes are therefore tried again until one lands.
-
-`INTR_STATE.CMD_COMPLETE` is raised only when the controller finishes a STOP
-or a repeated START (`i2c.rdl`), so it is the register witness that the STOP
-was the controller's; the bench target counts the STOP on the pads.
+`INTR_STATE.CMD_COMPLETE` is raised only when the controller finishes a STOP or
+a repeated START (`i2c.rdl`), so it is the register witness that the STOP was
+the controller's; the bench target counts the STOP on the pads, and both pads
+must read released afterwards. The enable cleared between two format entries
+of a transfer in flight is not driven: no document states whether a STOP
+follows there.
 """
 
 from __future__ import annotations
@@ -46,7 +37,7 @@ from cocotb.triggers import ClockCycles, Timer
 
 from .smc_addr_map import I2C_CG_EN, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
-from .smc_i2c_field_masks import I2C_STATUS_FMTEMPTY
+from .smc_i2c_field_masks import I2C_CONTROLLER_EVENTS_NACK, I2C_STATUS_FMTEMPTY
 from .smc_i2c_master_target_test_seq import (
     CLOCK_GATE_CONTROL,
     I2C0_CONTROLLER_EVENTS,
@@ -64,7 +55,6 @@ from .smc_i2c_master_target_test_seq import (
     I2C_CONTROLLER_EVENTS_ALL,
     I2C_CTRL_ENABLEHOST,
     I2C_FDATA_START,
-    I2C_FDATA_STOP,
     I2C_FIFO_CTRL_RXRST_FMTRST,
     I2C_OVRD_OFF,
     I2C_STATUS_HOSTIDLE,
@@ -77,45 +67,29 @@ from .smc_i2c_master_target_test_seq import (
     _pack_timing3,
     _pack_timing4,
 )
-from .smc_i2c_protocol_vip import SmcI2cEepromSlave, SmcI2cMasterVip
+from .smc_i2c_protocol_vip import SmcI2cEepromSlave
 
 EEPROM_ADDR = 0x50
+#: An address no device on the bench bus answers, so its acknowledge slot
+#: carries a NACK and the controller halts.
+ABSENT_ADDR = 0x51
 EEPROM_OFFSET = 0x70
-DATA_BYTE = 0x3C
 
 I2C0_INTR_STATE = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 0)
 INTR_CMD_COMPLETE = _i2c_u32("I2C__INTR_STATE__CMD_COMPLETE_bm")
+INTR_CONTROLLER_HALT = _i2c_u32("I2C__INTR_STATE__CONTROLLER_HALT_bm")
 INTR_ALL = 0xFFFF_FFFF
-
-#: The SCL rise the disable offset counts from: the last address bit. The
-#: acknowledge follows, then `POP_FMT_FIFO`.
-ANCHOR_RISE = 8
-#: SCL rises after the anchor when the address byte was the last: the
-#: acknowledge, and the release when the controller returns to idle with no
-#: transaction open. The offset byte adds nine more.
-EARLY_RISES = 2
-LATE_RISES = EARLY_RISES + 9
-#: The offset search range, in SMC clock cycles after the anchor. The upper
-#: end is past the offset byte's first bit at this leaf's timing, which the
-#: search checks rather than assumes.
-OFFSET_LATE = 1024
-#: How many times the offsets either side of where the bisection closes are
-#: tried again, and how far either side.
-DITHER_PASSES = 4
-DITHER_SPAN = 3
 
 POLL_CYCLES = 100
 IDLE_POLLS = 2000
 PARK_SETTLE_CYCLES = 400
 STOP_WAIT_CYCLES = 20_000
-EDGE_WAIT_CYCLES = 200_000
 
 
 class _PadWatch:
-    """Counts SCL rises and STOPs on the `tb_i2c0_*` pads while it runs."""
+    """Counts STOPs on the `tb_i2c0_*` pads while it runs."""
 
     def __init__(self) -> None:
-        self.rises = 0
         self.stops = 0
         self._task = cocotb.start_soon(self._run())
 
@@ -128,8 +102,6 @@ class _PadWatch:
             await ClockCycles(cocotb.top.clk_smc_i, 1)
             scl = int(scl_pad.value)
             sda = int(sda_pad.value)
-            if scl and not prev_scl:
-                self.rises += 1
             if scl and prev_scl and sda and not prev_sda:
                 self.stops += 1
             prev_scl = scl
@@ -140,13 +112,11 @@ class _PadWatch:
 
 
 class smc_i2c_controller_disable_stop_test_seq(SmcCsrSeq):
-    """Clear the enable with a transaction open, in `IDLE` and in `POP_FMT_FIFO`."""
+    """Clear the enable with a transaction open, parked and halted on a NACK."""
 
     def __init__(self, name: str = "smc_i2c_controller_disable_stop_test_seq") -> None:
         super().__init__(name)
         self.slave: SmcI2cEepromSlave | None = None
-        self.injector: SmcI2cMasterVip | None = None
-        self.tries: list[tuple[int, str]] = []
 
     @staticmethod
     def _pads() -> tuple[int, int]:
@@ -170,49 +140,43 @@ class smc_i2c_controller_disable_stop_test_seq(SmcCsrSeq):
             f"{label}: INTR_STATE.CMD_COMPLETE is still set before the leg starts (0x{intr:08x})"
         )
 
-    async def _wait_hostidle(self, label: str) -> int:
+    async def _poll_status(self, label: str, want_set: int, message: str) -> int:
         status = 0
         for _ in range(IDLE_POLLS):
-            status = await self.csr_read(f"{label}_IDLE", I2C0_STATUS)
-            if status & I2C_STATUS_HOSTIDLE:
+            status = await self.csr_read(f"{label}_STATUS", I2C0_STATUS)
+            if status & want_set:
                 return status
             await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES)
-        raise AssertionError(
-            f"{label}: STATUS.HOSTIDLE never set after the enable was cleared "
-            f"(STATUS=0x{status:08x})"
+        raise AssertionError(f"{label}: {message} (STATUS=0x{status:08x})")
+
+    async def _wait_hostidle(self, label: str) -> int:
+        return await self._poll_status(
+            label, I2C_STATUS_HOSTIDLE, "STATUS.HOSTIDLE never set after the enable was cleared"
         )
 
-    async def _wait_stop(self, label: str, watch: _PadWatch, before: int) -> bool:
+    async def _wait_stop(self, watch: _PadWatch) -> bool:
         for _ in range(STOP_WAIT_CYCLES):
-            if watch.stops > before:
+            if watch.stops > 0:
                 return True
             await ClockCycles(cocotb.top.clk_smc_i, 1)
         return False
 
-    async def _recover_bus(self, label: str) -> None:
-        """Return the bus and the bench target to idle.
-
-        A transfer that ends without a STOP leaves the target part-way through
-        a byte. Clocking SCL until it releases SDA, then a START and a STOP,
-        returns it to idle whatever phase it was in.
-        """
-        assert self.injector is not None
-        half = self.injector._half_ns
-        for _ in range(18):
-            if int(cocotb.top.tb_i2c0_sda.value):
-                break
-            self.injector._pull_scl(True)
-            await Timer(half, unit="ns")
-            self.injector._pull_scl(False)
-            await Timer(half, unit="ns")
-        self.injector._pull_sda(True)
-        await Timer(half, unit="ns")
-        self.injector._pull_sda(False)
-        await Timer(4 * half, unit="ns")
-        assert self._pads() == (1, 1), f"{label}: the bus did not return to idle"
-
-    async def _check_stop_witness(self, label: str, stops_before: int) -> None:
+    async def _clear_enable_for_stop(self, label: str, where: str) -> None:
+        """Clear `CTRL.ENABLEHOST` and require one controller STOP on the pads."""
         assert self.slave is not None
+        intr = await self.csr_read(f"{label}_INTR_OPEN", I2C0_INTR_STATE)
+        assert intr & INTR_CMD_COMPLETE == 0, (
+            f"{label}: INTR_STATE.CMD_COMPLETE is set before any STOP (0x{intr:08x})"
+        )
+        stops_before = self.slave.stops
+        watch = _PadWatch()
+        await self.csr_write(f"{label}_CLEAR_ENABLE", I2C0_CTRL, 0)
+        stopped = await self._wait_stop(watch)
+        watch.stop()
+        assert stopped, (
+            f"{label}: no STOP appeared on the pads within {STOP_WAIT_CYCLES} cycles of "
+            f"CTRL.ENABLEHOST being cleared with the controller {where}"
+        )
         intr = await self.csr_read(f"{label}_INTR_STOP", I2C0_INTR_STATE)
         assert intr & INTR_CMD_COMPLETE, (
             f"{label}: a STOP appeared on the pads but INTR_STATE.CMD_COMPLETE is clear "
@@ -222,25 +186,20 @@ class smc_i2c_controller_disable_stop_test_seq(SmcCsrSeq):
             f"{label}: the bench target counted {self.slave.stops - stops_before} STOPs "
             f"after the enable was cleared, not 1"
         )
-        await self._wait_hostidle(label)
-        assert self._pads() == (1, 1), f"{label}: the bus is not idle after the STOP"
+        await ClockCycles(cocotb.top.clk_smc_i, PARK_SETTLE_CYCLES)
+        assert self._pads() == (1, 1), (
+            f"{label}: the pads read {self._pads()} after the STOP; SDA and SCL are released "
+            f"once the STOP terminates the transaction"
+        )
 
-    async def _idle_leg(self) -> None:
-        """Park the controller in `IDLE` mid-transaction, then clear the enable."""
-        assert self.slave is not None
+    async def _parked_leg(self) -> None:
+        """Let the format FIFO run dry mid-transaction, then clear the enable."""
         label = "PARKED"
         await self._configure(label)
         await self.csr_write(f"{label}_ENABLEHOST", I2C0_CTRL, I2C_CTRL_ENABLEHOST)
         await self.csr_write(f"{label}_ADDR", I2C0_FDATA, _fdata(EEPROM_ADDR << 1, I2C_FDATA_START))
         await self.csr_write(f"{label}_OFFSET", I2C0_FDATA, _fdata(EEPROM_OFFSET))
-        status = 0
-        for _ in range(IDLE_POLLS):
-            status = await self.csr_read(f"{label}_STATUS", I2C0_STATUS)
-            if status & I2C_STATUS_FMTEMPTY:
-                break
-            await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES)
-        else:
-            raise AssertionError(f"{label}: the format FIFO never drained (0x{status:08x})")
+        await self._poll_status(label, I2C_STATUS_FMTEMPTY, "the format FIFO never drained")
         await ClockCycles(cocotb.top.clk_smc_i, PARK_SETTLE_CYCLES)
         status = await self.csr_read(f"{label}_PARKED_STATUS", I2C0_STATUS)
         assert not status & I2C_STATUS_HOSTIDLE, (
@@ -249,105 +208,62 @@ class smc_i2c_controller_disable_stop_test_seq(SmcCsrSeq):
         )
         scl, _ = self._pads()
         assert scl == 0, f"{label}: SCL is released while the controller is parked"
-        intr = await self.csr_read(f"{label}_INTR_PARKED", I2C0_INTR_STATE)
-        assert intr & INTR_CMD_COMPLETE == 0, (
-            f"{label}: INTR_STATE.CMD_COMPLETE is set before any STOP (0x{intr:08x})"
-        )
-        stops_before = self.slave.stops
-        watch = _PadWatch()
-        await self.csr_write(f"{label}_CLEAR_ENABLE", I2C0_CTRL, 0)
-        stopped = await self._wait_stop(label, watch, 0)
-        watch.stop()
-        assert stopped, (
-            f"{label}: no STOP appeared on the pads within {STOP_WAIT_CYCLES} cycles of "
-            f"CTRL.ENABLEHOST being cleared with the controller parked mid-transaction"
-        )
-        await self._check_stop_witness(label, stops_before)
+        await self._clear_enable_for_stop(label, "parked with its format FIFO empty")
+        await self._wait_hostidle(label)
         cocotb.log.info(
-            "CHK-I2C-CTRL-DISABLE-STOP-IDLE: with the controller parked in IDLE holding SCL "
-            "low and STATUS.HOSTIDLE clear, clearing CTRL.ENABLEHOST made one STOP on the "
-            "pads, raised INTR_STATE.CMD_COMPLETE and returned the controller to idle"
+            "CHK-I2C-CTRL-DISABLE-STOP-IDLE: with the controller parked mid-transaction, "
+            "holding SCL low with STATUS.FMTEMPTY set and STATUS.HOSTIDLE clear, clearing "
+            "CTRL.ENABLEHOST made one STOP on the pads, raised INTR_STATE.CMD_COMPLETE, "
+            "released both pads and returned the controller to idle"
         )
 
-    async def _try(self, offset: int) -> str:
-        """One transfer, with the enable cleared `offset` cycles after the anchor."""
-        assert self.slave is not None
-        label = f"POP_{offset}"
+    async def _halted_leg(self) -> None:
+        """Halt the controller on a NACKed address, then clear the enable."""
+        label = "HALTED"
         await self._configure(label)
-        await self.csr_write(f"{label}_ADDR", I2C0_FDATA, _fdata(EEPROM_ADDR << 1, I2C_FDATA_START))
-        await self.csr_write(f"{label}_OFFSET", I2C0_FDATA, _fdata(EEPROM_OFFSET))
-        await self.csr_write(f"{label}_DATA", I2C0_FDATA, _fdata(DATA_BYTE, I2C_FDATA_STOP))
-        stops_before = self.slave.stops
-        watch = _PadWatch()
         await self.csr_write(f"{label}_ENABLEHOST", I2C0_CTRL, I2C_CTRL_ENABLEHOST)
-        for _ in range(EDGE_WAIT_CYCLES):
-            if watch.rises >= ANCHOR_RISE:
+        await self.csr_write(f"{label}_ADDR", I2C0_FDATA, _fdata(ABSENT_ADDR << 1, I2C_FDATA_START))
+        await self.csr_write(f"{label}_OFFSET", I2C0_FDATA, _fdata(EEPROM_OFFSET))
+        events = 0
+        for _ in range(IDLE_POLLS):
+            events = await self.csr_read(f"{label}_EVENTS", I2C0_CONTROLLER_EVENTS)
+            if events & I2C_CONTROLLER_EVENTS_NACK:
                 break
-            await ClockCycles(cocotb.top.clk_smc_i, 1)
+            await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES)
         else:
-            raise AssertionError(f"{label}: SCL rise {ANCHOR_RISE} never appeared")
-        at_anchor = watch.rises
-        await ClockCycles(cocotb.top.clk_smc_i, offset)
-        await self.csr_write(f"{label}_CLEAR_ENABLE", I2C0_CTRL, 0)
-        stopped = await self._wait_stop(label, watch, 0)
-        after = watch.rises - at_anchor
-        if stopped:
-            watch.stop()
-            await self._check_stop_witness(label, stops_before)
-            outcome = "stop"
-        else:
-            await self._wait_hostidle(label)
-            await ClockCycles(cocotb.top.clk_smc_i, PARK_SETTLE_CYCLES)
-            after = watch.rises - at_anchor
-            watch.stop()
-            intr = await self.csr_read(f"{label}_INTR_NOSTOP", I2C0_INTR_STATE)
-            assert intr & INTR_CMD_COMPLETE == 0, (
-                f"{label}: INTR_STATE.CMD_COMPLETE is set with no STOP on the pads (0x{intr:08x})"
+            raise AssertionError(
+                f"{label}: CONTROLLER_EVENTS.NACK never set after the address nobody answers "
+                f"(CONTROLLER_EVENTS=0x{events:08x})"
             )
-            if after == EARLY_RISES:
-                outcome = "early"
-            elif after == LATE_RISES:
-                outcome = "late"
-            else:
-                raise AssertionError(
-                    f"{label}: {after} SCL rises followed the anchor with no STOP; a disable "
-                    f"before POP_FMT_FIFO leaves {EARLY_RISES}, one after it {LATE_RISES}"
-                )
-            await self._recover_bus(label)
-        self.tries.append((offset, outcome))
-        cocotb.log.info("%s: %s after %d SCL rises past the anchor", label, outcome, after)
-        return outcome
-
-    async def _pop_leg(self) -> int:
-        """Find the `POP_FMT_FIFO` cycle by bisection on the disable offset."""
-        lo, hi = 0, OFFSET_LATE
-        first = await self._try(lo)
-        if first == "stop":
-            return lo
-        assert first == "early", (
-            f"offset {lo}: the disable already landed after POP_FMT_FIFO; the anchor is too late"
+        await ClockCycles(cocotb.top.clk_smc_i, PARK_SETTLE_CYCLES)
+        status = await self.csr_read(f"{label}_HALTED_STATUS", I2C0_STATUS)
+        assert not status & I2C_STATUS_HOSTIDLE, (
+            f"{label}: STATUS.HOSTIDLE is set while the controller is halted on the NACK "
+            f"(0x{status:08x})"
         )
-        last = await self._try(hi)
-        if last == "stop":
-            return hi
-        assert last == "late", f"offset {hi}: the disable still landed before POP_FMT_FIFO"
-        while hi - lo > 1:
-            mid = (lo + hi) // 2
-            got = await self._try(mid)
-            if got == "stop":
-                return mid
-            if got == "early":
-                lo = mid
-            else:
-                hi = mid
-        for _ in range(DITHER_PASSES):
-            for offset in range(max(0, lo - DITHER_SPAN), hi + DITHER_SPAN + 1):
-                if await self._try(offset) == "stop":
-                    return offset
-        raise AssertionError(
-            f"no disable offset produced a STOP: offset {lo} landed before POP_FMT_FIFO and "
-            f"{hi} after it, and {DITHER_PASSES} passes over offsets {lo - DITHER_SPAN}.."
-            f"{hi + DITHER_SPAN} never landed on it; tries: {self.tries}"
+        assert not status & I2C_STATUS_FMTEMPTY, (
+            f"{label}: the format FIFO is empty (0x{status:08x}); the halted controller still "
+            f"holds the byte queued behind the address, so this is a halt and not a park"
+        )
+        intr = await self.csr_read(f"{label}_INTR_HALTED", I2C0_INTR_STATE)
+        assert intr & INTR_CONTROLLER_HALT, (
+            f"{label}: INTR_STATE.CONTROLLER_HALT is clear with CONTROLLER_EVENTS.NACK set "
+            f"(0x{intr:08x})"
+        )
+        scl, _ = self._pads()
+        assert scl == 0, f"{label}: SCL is released while the controller is halted on the NACK"
+        await self._clear_enable_for_stop(label, "halted on a NACKed address")
+        await self.csr_write(
+            f"{label}_EVENTS_RELEASE", I2C0_CONTROLLER_EVENTS, I2C_CONTROLLER_EVENTS_ALL
+        )
+        await self.csr_write(f"{label}_FIFO_RST", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_RXRST_FMTRST)
+        await self._wait_hostidle(label)
+        cocotb.log.info(
+            "CHK-I2C-CTRL-DISABLE-STOP-HALTED: with the controller halted on a NACKed "
+            "address, holding SCL low with CONTROLLER_EVENTS.NACK set, STATUS.HOSTIDLE clear "
+            "and a byte still queued, clearing CTRL.ENABLEHOST made one STOP on the pads, "
+            "raised INTR_STATE.CMD_COMPLETE and released both pads; the controller returned "
+            "to idle once the halt events were cleared"
         )
 
     async def body(self) -> None:
@@ -357,24 +273,7 @@ class smc_i2c_controller_disable_stop_test_seq(SmcCsrSeq):
         await self.csr_write("I2C0_WRAP_HOST", I2C0_WRAP_CTRL, I2C_WRAP_ENABLE_CONTROLLER)
         await self.wait_i2c0_lsio_ready("I2C0_DISABLE_STOP")
         self.slave = SmcI2cEepromSlave(addr=EEPROM_ADDR, name="smc_i2c0_disable_stop_eeprom")
-        self.injector = SmcI2cMasterVip(speed=1_000_000, name="smc_i2c0_disable_stop_recovery")
         await Timer(1, unit="us")
 
-        await self._idle_leg()
-        hit = await self._pop_leg()
-        early = sum(1 for _, o in self.tries if o == "early")
-        late = sum(1 for _, o in self.tries if o == "late")
-        assert early >= 1 and late >= 1, (
-            f"the search saw {early} early and {late} late tries; both sides of POP_FMT_FIFO "
-            f"have to be seen for the STOP to single it out"
-        )
-        cocotb.log.info(
-            "CHK-I2C-CTRL-DISABLE-STOP-POP: clearing CTRL.ENABLEHOST %d cycles after the last "
-            "address bit made one STOP on the pads and raised INTR_STATE.CMD_COMPLETE; %d tries "
-            "at smaller offsets ended after the address byte and %d at larger ones clocked "
-            "out the offset byte, all without a STOP (%d tries)",
-            hit,
-            early,
-            late,
-            len(self.tries),
-        )
+        await self._parked_leg()
+        await self._halted_leg()
