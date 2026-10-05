@@ -1,28 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Warm dispatch, ACCEPTED but NON-BOOTABLE target: the ROM must fault cleanly.
+"""Warm dispatch to an accepted but non-bootable target: the ROM must fault cleanly.
 
-``sep_scratch_7_test`` covers the accept arm with a target that HOLDS a valid
-instruction and keys off the retired PC. This covers the other case: the address
-passes the range check and the target is not code, which is what a corrupted
-handler slot looks like.
+The handler address passes the range check, but the target holds no instruction, as a
+corrupted handler slot would. ``sep_scratch_7_test`` covers the accept arm with a valid
+instruction at the target.
 
-The trap lands in ``trap_vector_early``, not ``trap_vector``: ``_start`` points
-``mtvec`` at the stack-free early handler, and the swap to the stack-using one
-happens inside ``cold_boot``, which the warm path jumps away from first. That
-handler writes status, ``mcause``, ``mtval``, ``mepc`` and status again into
-cold_scratch[1], and the testbench samples that register every cycle, so this
-test can require ``mepc == the seeded address`` -- proof that control reached
-exactly the seeded handler rather than faulting on the way.
-
-THE TARGET MUST HOLD NO INSTRUCTION, WHICH TAKES TWO THINGS. No
-``+sep_iccm_word`` is passed, AND ``stage_tcm`` is off. The second is not
-optional: ``sep_itcm.hex`` is the ROM's OWN .text, so pulsing ``tcm_load_i``
-leaves a copy of the ROM in ICCM and the jump lands in the middle of real ROM
-code, which faults for some other reason. With staging off, ICCM keeps its
-default fill of 0 with valid ECC, an all-zero word is an illegal instruction in
-RISC-V, and the fault is on the INSTRUCTION. The warm dispatch needs no TCM image
-anyway: the ROM runs from Boot ROM and decides before DCCM is touched.
+The trap lands in ``trap_vector_early`` (``vector.S``): the warm path jumps away before
+``cold_boot`` installs the stack-using handler. That handler writes status, ``mcause``,
+``mtval``, ``mepc`` and status again into cold_scratch[1], which the testbench samples on
+every cycle, so the test requires ``mepc`` to equal the seeded address. No
+``+sep_iccm_word`` is passed and ``stage_tcm`` is off: ``sep_itcm.hex`` is the ROM's own
+.text, so staging would put real code at the target. ICCM then keeps its all-zero default
+with valid ECC, and an all-zero word is an illegal RISC-V instruction.
 """
 
 from __future__ import annotations
@@ -106,7 +96,7 @@ class sep_warm_reset_bad_target_exception_test(sep_warm_dispatch_base):
         self.logger.info("CHK-ACCEPT PASS: cold_scratch[1] = 0x%08x", STATUS_WARM_JUMP)
 
         # CHK-EXCEPTION: the jump landed on a non-instruction and the early trap
-        # handler reported it. Same status word the reference requires.
+        # handler reported it.
         assert STATUS_GENERAL_EXCEPTION in status_seq, (
             f"cold_scratch[1] never held 0x{STATUS_GENERAL_EXCEPTION:08x} "
             f"(STATUS_ENCODE(ERROR, SEP_MSG_GENERAL_EXCEPTION)); observed "
@@ -126,8 +116,7 @@ class sep_warm_reset_bad_target_exception_test(sep_warm_dispatch_base):
 
         # CHK-MEPC: control reached EXACTLY the seeded address. trap_vector_early
         # writes status, mcause, mtval, mepc, status -- so the seeded address must
-        # appear in the sequence AFTER the exception status. This is the check the
-        # reference's log-string match cannot make.
+        # appear in the sequence AFTER the exception status.
         after_exc = status_seq[status_seq.index(STATUS_GENERAL_EXCEPTION) :]
         assert _BAD_TARGET in after_exc, (
             f"cold_scratch[1] never carried mepc = 0x{_BAD_TARGET:08x} after the "

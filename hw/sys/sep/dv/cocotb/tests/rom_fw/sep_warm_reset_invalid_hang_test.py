@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """An out-of-range warm-reset handler in cold_scratch[7] must hang the ROM, not be jumped to.
 
-The seed is ``WARM_HANDLER_RANGE_END``, the smallest address the upper bound rejects: zero
+The seed is ``WARM_HANDLER_ICCM_END``, the smallest address the upper bound rejects: zero
 takes the cold-boot early-out, and 0xFFFFFFFF is the poison cold_boot writes itself.
 """
 
@@ -25,7 +25,7 @@ _SEP_ROOT = str(Path(__file__).resolve().parents[4])
 _FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
-# Must match WARM_HANDLER_RANGE_BASE / _END in vector.S: the SEP ICCM base and base + size.
+# Must match WARM_HANDLER_ICCM_BASE / _END in vector.S: the SEP ICCM base and base + size.
 _RANGE_BASE = 0xC000_0000
 _RANGE_END = 0xC004_0000
 # Must match +sep_cold_scratch7 in the testlist.

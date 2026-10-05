@@ -5,7 +5,7 @@
 One bit of the primary's RSA-3072 modulus is flipped and the signed region is re-hashed, so the
 slot fails only the SHA-256(modulus) comparison against the ROM's compiled-in digest for the
 selected slot. A wholesale overwrite could be caught by a coarser check; one bit is caught only
-by the hash comparison. The flipped modulus no longer matches its signature, so this shows that
+by the hash comparison. The flipped modulus does not match its signature, so this shows that
 the bind fires before the verifier, not that the bind alone stops a self-consistent foreign
 key; a variant re-signed with another ROM key would show that.
 
@@ -39,9 +39,9 @@ _EFUSE_PRELOAD = (
 )
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
-_HASH_MISMATCH = "PUBK_UNAUTHORIZED"  #
-_CRYPTO_FAIL = f"MANIFEST_ERR=0x{MANIFEST_ERR_KEY_HASH_MISMATCH:08x}"  #
-_SLOT_ERR = f"MANIFEST_ERR=0x{MANIFEST_ERR_KEY_HASH_MISMATCH:08x}"  #
+_HASH_MISMATCH = "PUBK_UNAUTHORIZED"
+_CRYPTO_FAIL = f"MANIFEST_ERR=0x{MANIFEST_ERR_KEY_HASH_MISMATCH:08x}"
+_SLOT_ERR = f"MANIFEST_ERR=0x{MANIFEST_ERR_KEY_HASH_MISMATCH:08x}"
 _RSA_START = "RSA_EXEC"
 _RSA_VERIFY_OK = "RSA_VERIFY_OK"
 _MANIFEST_OK = "MANIFEST_OK"

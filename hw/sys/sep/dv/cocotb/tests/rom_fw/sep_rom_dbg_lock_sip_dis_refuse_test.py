@@ -1,30 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""A debug-locked TEST_DEV part refuses an unsigned image (PyUVM).
+"""A debug-locked TEST_DEV part must refuse an unsigned image.
 
-FEATURE UNDER TEST. In TEST_DEV, secure boot is enforced when chiplet-scope debug
-is disabled -- ``CHIPLET_DBG`` set in ``SIP_DIS`` or ``SYS_DIS``, or either
-vector read-locked (SEP-ROM-SB-025). The ROM latches that at [S18]
-(``rom_chiplet_dbg_policy()`` in ``bootrom/prod/src/lifecycle.c``) and
-``plat_is_secure_boot_active()`` adds it to the lifecycle's enforcement view.
+In TEST_DEV, secure boot is enforced when chiplet-scope debug is disabled: ``CHIPLET_DBG``
+set in ``SIP_DIS`` or ``SYS_DIS``, or either vector read-locked (SEP-ROM-SB-025).
+``rom_chiplet_dbg_policy()`` (``lifecycle.c``) latches that at [S18], and
+``plat_is_secure_boot_active()`` adds it to the enforcement view. This run sets
+``SIP_DIS.CHIPLET_DBG``, leaves ``SBOOT_DIS`` clear, and clears ``secure_boot_control`` on
+both slots. The image is legally unsigned, so with secure boot in force the validator
+refuses both slots with ``OCA_FAIL_SIGNATURE_CLASS_CONTROL``. ``SBOOT_DBG_LOCK`` is
+required: [S18] prints it only when the lock makes the part enforce.
 
-This run presents TEST_DEV with ``SIP_DIS.CHIPLET_DBG`` set and ``SBOOT_DIS``
-clear, and the manifest's ``secure_boot_control`` cleared on both slots. So the
-manifest declines to enforce, the device does not disable, and the device's
-enforcement view decides alone; SEP-ROM-SB-025 is what puts a debug-locked
-TEST_DEV part into that view.
-
-THE OUTCOME IS A REFUSAL, for the reason ``sep_firmware_cntl_secure_boot_flow_test``
-explains: a manifest with the enforced bit clear is legally unsigned, so with
-secure boot in force the validator finds no signature class to verify with and
-refuses both slots with ``OCA_FAIL_SIGNATURE_CLASS_CONTROL``. That test is the
-PROD form of this one and supplies the stimulus and the checks; this one swaps
-the lifecycle posture that does the enforcing.
-
-The refusal is attributable to the debug lock because the same image boots in
-TEST_DEV with debug open, as ``sep_rom_non_secure_boot_test`` does. On top of the
-refusal it requires ``SBOOT_DBG_LOCK``, which [S18] prints only when the lock is
-what makes a TEST_DEV part enforce.
+Stimulus and checks come from ``sep_firmware_cntl_secure_boot_flow_test`` (the PROD form).
+The same image boots in TEST_DEV with debug open (``sep_rom_non_secure_boot_test``).
 """
 
 from __future__ import annotations

@@ -2,8 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary's PLAINTEXT TOC declares major_version 2; the backup boots.
 
-Expects ``OCA_FAIL_PAYLOAD_TOC`` for a TOC major version above 1, but no check compares the
-field, so the DUT accepts the slot. Needs ``+esrc_noise_force``: two RSA-3072 modexps.
+The spec supports TOC major version 1 only, so the slot must be refused with
+``OCA_FAIL_PAYLOAD_TOC``. Known gap: neither the library nor the ROM compares the field, so the
+DUT accepts the slot and this test fails. Needs ``+esrc_noise_force``: two RSA-3072 modexps.
 """
 
 from __future__ import annotations

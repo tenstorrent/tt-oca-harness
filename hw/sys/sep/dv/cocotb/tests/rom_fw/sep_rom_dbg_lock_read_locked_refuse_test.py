@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""A TEST_DEV part with SIP_DIS read-locked refuses an unsigned image (PyUVM).
+"""A TEST_DEV part with SIP_DIS read-locked refuses an unsigned image.
 
 A read-locked efuse field returns a sentinel instead of its value, so the ROM
 cannot see whether chiplet debug is open. SEP-ROM-SB-025 counts the lock as debug

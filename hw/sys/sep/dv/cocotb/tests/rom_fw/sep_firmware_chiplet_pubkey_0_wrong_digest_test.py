@@ -2,104 +2,27 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The chiplet fuse holds the WRONG digest -> both slots refused, terminally.
 
-**THIS TESTCASE CLOSES THE DIGEST-SOURCE CLASS THAT
-``rom_fw/sep_chiplet_pubkey_base.py`` leaves open**, and it does so without a
-second private key.
+Both slots select ``PUBK_SEL_FUSE_KEY_0`` and are re-signed with dev0 by the same
+``select_chiplet_fuse_key`` call as ``sep_firmware_chiplet_pubkey_0_test``, so the flash images
+are byte-identical. ``sep_efuse_lc_prod_chiplet_key0_wrong_digest.toml`` puts a decoy in
+``CHIPLET_PUBK_HASH0`` and the real dev0 digest in ``CHIPLET_PUBK_HASH1``. A correct ROM fails the
+digest bind on both slots and ends in ``MANIFEST_ALL_FAILED`` with
+``MANIFEST_ERR_KEY_HASH_MISMATCH``. A ROM that compares against the compiled-in table
+(``public_key_digests[0]``) or reads the wrong chiplet fuse boots, and this test fails. The
+sibling ``sep_firmware_chiplet_pubkey_0_test`` tells those two apart. This fuse image matches
+``sep_efuse_lc_prod_chiplet_key1.toml``, so ``sep_firmware_chiplet_pubkey_1_test`` is the
+fuse-side pair: one fuse image, opposite verdicts.
 
-============================================================================
-THE GAP, AND WHY IT DOES NOT NEED A SECOND SIGNING KEY
-============================================================================
+Not caught: a fuse-digest base 0x10 below ``CHIPLET_PUBK_HASH0`` reads a digest that matches
+nothing and gives the same ``PUBK_UNAUTHORIZED`` result. The positive members catch a malformed
+address.
 
-Every chiplet member boots the image signed by ROM key 0
-(``bootrom/prod/tests/signing_keys/rsa_private_key.rom_key0.pem``), so its fuse digest
-must EQUAL the ROM's compiled-in ``public_key_digests[0]`` (``key_digests.c``) or the
-image could not verify at all. Five more RSA keys ship, so a member signed by a
-dedicated fused key is buildable now; none is, and the consequence below is why that
-costs this family something. The consequence, stated in that base's docstring: a ROM
-that took the fused arm, tested the right revocation bit, read the right fuse
-address and then compared the modulus against ``public_key_digests[0]`` instead
-of the fuse it had just read would boot in
-``sep_firmware_chiplet_pubkey_0_test`` and be refused in
-``sep_firmware_chiplet_pubkey_0_revoke_test``, exactly as expected, and nothing
-in that family could see it.
-
-Batch R3 judged that closing this needed a second committed private KEY. It does
-not. It needs the FUSE to differ from ``public_key_digests[0]``, plus a NEGATIVE
-assertion:
-
-  * **correct ROM:** the fuse-digest read returns the decoy, the key-authorization check
-    fails on it, both slots are refused,
-    ``MANIFEST_ALL_FAILED``, ``MANIFEST_ERR=`` carrying the unauthorized-key code;
-  * **ROM comparing against the compiled-in table:** the modulus matches, the
-    image verifies, the part **boots** -- and this testcase FAILS.
-
-**IT ALSO CATCHES THE WRONG-FUSE-ADDRESS CLASS, BECAUSE THE UNSELECTED FUSE
-HOLDS THE REAL DIGEST.** ``sep_efuse_lc_prod_chiplet_key0_wrong_digest.toml``
-puts the decoy in ``CHIPLET_PUBK_HASH0`` -- the fuse ``PUBK_SEL_FUSE_KEY_0``
-selects -- and leaves the REAL dev0 digest in ``CHIPLET_PUBK_HASH1``. A ROM that
-read the wrong chiplet fuse would therefore find a digest that matches, verify,
-and boot, so this testcase fails on that defect too. An earlier draft used two
-different decoys and was corrected: two decoys catch only the compiled-in-table
-class, and leaving the real digest in the unselected fuse is strictly more
-sensitive. The cost is attribution, not detection -- a failure here does not by
-itself say which wrong source was used, and the sibling
-``sep_firmware_chiplet_pubkey_0_test`` (HASH0 real, HASH1 decoy) is what
-separates them.
-
-Those three fuse values are byte-identical to ``sep_efuse_lc_prod_chiplet_key1.toml``'s,
-which makes this testcase and ``sep_firmware_chiplet_pubkey_1_test`` a Matched pair on
-the FUSE side: one fuse image, two manifests differing only in ``public_key_sel``,
-opposite verdicts. That is the mirror of the matched-pair-on-one-image shape batches R1
-and R2 used.
-
-**WHAT IT DOES NOT CATCH, stated because R07 overstates this and the
-overstatement was inherited.** R07 cites  -- which
-records that the fuse-key digest addresses were once derived as
-``CHIPLET_PUBK_REVOKE + 0x100/0x120`` instead of ``+0x110/0x130`` -- as "exactly
-the shape a digest-source test discriminates". It is not. That base lands
-``0x10`` BELOW ``CHIPLET_PUBK_HASH0``, so the fuse-digest read returns four
-unrelated non-zero words followed by HASH0's first four: a digest that matches
-nothing, producing ``PUBK_UNAUTHORIZED`` and the unauthorized-key code -- the outcome this
-testcase REQUIRES. **A revival of that specific historical bug would pass here.**
-The class this testcase closes is "the ROM compared against the wrong SOURCE",
-not "the ROM read a malformed address"; the second is covered by the positive
-members, which would fail on it.
-
-============================================================================
-WHAT MAKES THE REJECTION ATTRIBUTABLE
-============================================================================
-
-Both slots select ``PUBK_SEL_FUSE_KEY_0`` and are re-signed with dev0 by
-``select_chiplet_fuse_key`` -- **the same two calls, on the same shipped image,
-that the positive member ``sep_firmware_chiplet_pubkey_0_test`` makes**, so the
-flash images of the two testcases are byte-identical and the ONLY difference
-between "boots" and "refused" is the two fuse words. That is the matched-pair
-shape batches R1 and R2 established, applied to the digest instead of to a
-revocation bit.
-
-Revocation must not be what refuses this image, or the digest comparison is never
-reached. Under OCA the two are SEPARATE callbacks and authorization runs first, so
-a digest mismatch returns before revocation is consulted at all. That inverts the
-evidence: ``PUBK_REVOKE=`` is required to be ABSENT, because printing it would mean
-a slot got past the digest bind. ``CHIPLET_PUBK_REVOKE`` bits 16 and 17 are CLEAR
-so revocation could not refuse the image even had it run, and ``KEY_REVOKED`` is
-forbidden outright.
-
-Bit 0 -- ROM development key 0 -- is blown, as in every member of this family.
-It is the ROM-key-arm counterfactual: inert on a correct ROM, but a ROM that
-ignored ``public_key_sel.selection`` and took the ROM-key arm with index 0 would
-print the revocation error code and refuse the image for the wrong reason.
-Forbidding ``KEY_REVOKED`` catches that too.
-
-``RSA_EXEC`` and ``RSA_VERIFY_OK`` are forbidden: the digest bind precedes
-``rsa_3072_verify`` ( then), so a run that
-reached the verifier did not fail where this testcase says it failed. No
-``+esrc_noise_force`` is passed, and none is needed.
-
-``PUBK_HASH_TIMEOUT`` is forbidden as well, and it is not decoration:
-the key-authorization check returns ``MANIFEST_ERR_SIG_FAILED`` on a SHA-256 timeout and ``MANIFEST_ERR_KEY_HASH_MISMATCH`` only on a
-real mismatch, so requiring the unauthorized-key code already excludes the
-timeout path -- but the console token names it directly.
+Authorization runs before revocation, so ``PUBK_REVOKE=`` must be absent, ``CHIPLET_PUBK_REVOKE``
+bits 16 and 17 are clear, and ``KEY_REVOKED`` is forbidden. Bit 0 (ROM dev key 0) is blown: a ROM
+that ignored the selector and took the ROM-key arm would refuse with ``KEY_REVOKED``. ``RSA_EXEC``
+and ``RSA_VERIFY_OK`` are forbidden, because the digest bind precedes ``rsa_3072_verify``; no
+``+esrc_noise_force`` is needed. ``PUBK_HASH_TIMEOUT`` is forbidden, so the SHA-256 timeout path
+is named on the console.
 """
 
 from __future__ import annotations
@@ -130,11 +53,11 @@ _CHIPLET_KEY = 0
 # slot number -- outside [0, 8), the range the ROM classical arm serves, so this
 # value cannot be produced by a ROM-key selection.
 _PUBK_SEL_VALUE = mm.key_slot_for(mm.PUBK_SEL_FUSE_KEY_0)
-_PUBK_SEL_ECHO = f"PUBK_SEL=0x{_PUBK_SEL_VALUE:08x}"  #
-# Only ROM dev key 0. Bits 16/17 (CHIPLET_PUBK_HASH0/1, sep_efuse_map.rdl:727) are
-# deliberately clear -- see the docstring.
+_PUBK_SEL_ECHO = f"PUBK_SEL=0x{_PUBK_SEL_VALUE:08x}"
+# Only ROM dev key 0. Bits 16/17 (CHIPLET_PUBK_HASH0/1, sep_efuse_map.rdl
+# CHIPLET_PUBK_REVOKE description) are clear -- see the docstring.
 _REVOKE_BITMAP = 1 << 0
-_HASH_MISMATCH = "PUBK_UNAUTHORIZED"  #
+_HASH_MISMATCH = "PUBK_UNAUTHORIZED"
 
 
 @pyuvm.test()

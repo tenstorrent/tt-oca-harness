@@ -1,19 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""A debug-locked TEST_DEV part boots a validly signed image (PyUVM).
+"""A debug-locked TEST_DEV part boots a validly signed image.
 
-The positive half of SEP-ROM-SB-025: enforcement on a debug-locked TEST_DEV part
-refuses unsigned code, and still boots signed code through the full RSA-3072
-chain. ``sep_rom_ot_secure_boot_test`` with the OTP swapped for TEST_DEV plus
-``SIP_DIS.CHIPLET_DBG``.
+This is the positive half of SEP-ROM-SB-025: ``sep_rom_ot_secure_boot_test`` with the OTP
+set to TEST_DEV plus ``SIP_DIS.CHIPLET_DBG``. The part must boot signed code through the
+full RSA-3072 chain, and [S18] must report the lock.
 
-WHAT THIS DOES NOT ESTABLISH. The shipped image sets ``secure_boot_control``, and
-the manifest's own request settles the precedence before the device is asked, so
-the crypto chain running is not evidence of the debug lock (see
-``sep_firmware_enforced_secure_boot_flow_test`` for the same caveat under PROD).
-The refusal members, which clear that flag, are the evidence. What this adds is
-that a debug-locked part is not simply unbootable, and that [S18] reports the
-lock on a boot that succeeds.
+Not established: the debug lock as the cause of enforcement. The shipped image sets
+``secure_boot_control``, and that request settles the precedence before the device is
+asked. The refusal members, which clear that flag, carry that evidence.
 """
 
 from __future__ import annotations

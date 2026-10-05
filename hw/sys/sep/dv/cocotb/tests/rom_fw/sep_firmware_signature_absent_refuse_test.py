@@ -1,15 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""PROD refuses a manifest that asks for secure boot but carries no signature (PyUVM).
+"""PROD refuses a manifest that asks for secure boot but carries no signature.
 
 The enforced bit and the public key are left as shipped. The signature field and
-``signature_size`` are zeroed, and the manifest hash is recomputed over the
-changed size field. ``oca_check_crypto_field_sizes()`` (``parser.c``) refuses a
-secure manifest whose classical signature size is zero, so both slots fail with
-``OCA_FAIL_CRYPTO_FIELD_SIZE`` before key selection.
+``signature_size`` are zeroed, and the manifest hash is recomputed over the changed size field.
+``oca_check_crypto_field_sizes()``
+(``bootrom/prod/tools/tt-oca-manifest/validators/oca/lib/parser.c``) refuses a secure manifest
+whose classical signature size is zero, so both slots fail with ``OCA_FAIL_CRYPTO_FIELD_SIZE``
+before key selection.
 
-``sep_firmware_signature_zeroed_refuse_test`` keeps the size and lets the zeroed
-signature reach the verifier.
+``sep_firmware_signature_zeroed_refuse_test`` keeps the size and lets the zeroed signature reach
+the verifier.
 """
 
 from __future__ import annotations

@@ -1,39 +1,20 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Both slot addresses blank -> terminal error and hang (PyUVM).
+"""Both manifest slots blank: the ROM must report a terminal error and hang.
 
-STIMULUS. Both slot spans are erased to 0xFF, so the single device answers at both
-addresses but neither holds a boot slot. See the "slot erasure" section of
-``env/sep_manifest_mutate.py`` for why erasure rather than field corruption.
+Both slot spans are erased to 0xFF (see ``erase_slot()`` in ``env/sep_manifest_mutate.py``),
+so the device answers at both addresses but neither holds a manifest. After both slots
+fail, the ROM reports ``SEP_MSG_MANIFEST_LOAD_FAILED`` and prints ``MANIFEST_ALL_FAILED``
+(``oca_boot.c``), then ``rom_err_fail()`` writes the FAIL verdict to cold_scratch[0] and
+the ROM waits in ``wfi``. Both status words are required: each slot's rejection
+``0x0f010006`` (``SEP_MSG_INVALID_MANIFEST_ID``) and the loop verdict ``0x0f010213``.
+The ROM has no SPI-detect step, so no SPI-not-detected status is expected.
 
-``SepBootScoreboard`` is NOT used: it asserts ``fw_done and fw_pass``
-(``env/sep_boot_scoreboard.py:79-84``), while the correct outcome here is
-``fw_done`` with ``fw_pass == 0``. Disabling a checker to accommodate an expected
-failure would invalidate the pass, so the poll loop below samples the boot
-observables directly and asserts the terminal outcome positively.
-
-This ROM has no SPI-detect status to emit -- ``SEP_MSG_SPI_NOT_DETECTED_DEFAULT``
-(``include/status_values.h:77``) is referenced nowhere in the repo -- and no
-SPI-detect step (``src/sep_ot_spi.c:166-179``). What it emits on this edge, after
-both slots fail, is ``report_status(STATUS_TYPE_ERROR,
-SEP_MSG_MANIFEST_LOAD_FAILED)`` and ``MANIFEST_ALL_FAILED``
-(``src/oca_boot.c``), then ``rom_err_fail()`` -> the FAIL verdict in
-cold_scratch[0] -> ``for(;;) wfi`` (``src/rom_main.c``, ``include/errors.h``). Both
-status words are required below: each slot's rejection ``0x0f010006``
-(``SEP_MSG_INVALID_MANIFEST_ID``, which ``status_for_result()`` maps
-``OCA_FAIL_MAGIC`` to) and the loop verdict ``0x0f010213``.
-
-READING cold_scratch[1]. The register is not a log: every ``report_status`` write
-is followed by ``status_ring_buffer_insert()``, which overwrites it with
-``SEP_MSG_STATUS_REPORTING_INVALID`` whenever the ring descriptor is unusable --
-and the SEP DV environment leaves ``num_entries`` at 0, so that happens on every
-status. The ring-invalid writes are therefore filtered out before asking what the
-ROM last reported.
-
-``SPI_INIT_OK`` is required and ``"SPI init failed, using backup manifest"``
-forbidden, so the controller demonstrably came up and BOTH addresses were really
-read. Without those, a dead controller would skip the primary outright
-and still reach a terminal error.
+``SepBootScoreboard`` is not used: it requires ``fw_pass``. The poll loop checks
+``fw_done`` with ``fw_pass == 0`` directly. Ring-invalid writes to cold_scratch[1]
+(``SEP_MSG_STATUS_REPORTING_INVALID``; the environment leaves ``num_entries`` at 0) are
+filtered out. ``SPI_INIT_OK`` is required and the SPI-init-failed fallback is forbidden,
+so both addresses were really read.
 """
 
 from __future__ import annotations
@@ -58,8 +39,7 @@ _FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build")
 _FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "oca_non_secure_boot.bin")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
-#  -- an erased slot fails the identifier check in
-# the magic check, before the hash check.
+# An erased slot fails the magic check, before the hash check.
 MANIFEST_ERR_BAD_MAGIC = mm.boot_err("OCA_FAIL_MAGIC")
 # status_values.h, errors.h -> STATUS_ENCODE(STATUS_TYPE_ERROR, x).
 SEP_MSG_MANIFEST_LOAD_FAILED = 0x213
@@ -211,7 +191,7 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
                     )
 
             # The hang is part of the expected result. Breaking out the cycle the
-            # mailbox is written would show the ROM reported a failure but not that
+            # verdict is written would show the ROM reported a failure but not that
             # it stayed stopped.
             if fw_done:
                 lines_at_done = len(console)
@@ -278,8 +258,7 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
         )
 
         # A failed controller also reaches a terminal error, by skipping the
-        # primary outright, without reading either
-        # address.
+        # primary outright, without reading either address.
         assert any(_SPI_INIT_OK in line for line in console), (
             f"ROM never printed {_SPI_INIT_OK}: the SPI controller did not come "
             f"up, so the terminal error is a controller failure and not a "

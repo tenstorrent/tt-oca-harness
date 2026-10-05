@@ -2,16 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Prove the boot gate's MBIST arm rejects a part that failed MBIST.
 
-WHY THIS EXISTS SEPARATELY FROM sep_firmware_mbist_fail_test.
-
-That test injects 0xFFFFFFFD -- every bit except mem_repair_success -- so it
-fails the gate's FIRST arm, memory repair, and returns without the MBIST check
-ever running. It proves the repair arm rejects; it says nothing about MBIST.
-Without this test the MBIST arm (`sep-boot-flow.puml:58-67`) is code no testcase
-reaches: a gate shown to ACCEPT a healthy part and never shown to REJECT an
-unhealthy one.
-
-THE INJECTION IS THE WHOLE POINT. 0x00000012 is:
+``sep_firmware_mbist_fail_test`` injects 0xFFFFFFFD, so it fails the gate's first arm, memory
+repair, and the MBIST check never runs. This test reaches the MBIST arm. The injection is
+0x00000012:
 
     bit 1  mem_repair_success  SET    -> the repair arm passes, so control
                                          reaches the MBIST arm at all
@@ -19,15 +12,10 @@ THE INJECTION IS THE WHOLE POINT. 0x00000012 is:
                                          polling and the verdict is valid
     bit 8  mbist_pass          CLEAR  -> and the verdict is FAIL
 
-Every one of those three is load-bearing and the shape check below enforces all
-three. Clearing mem_repair_success would fail on the repair arm and prove
-nothing new; leaving mbist_done clear would exercise the poll timeout instead,
-which is a different path reaching the same handler.
-
-WHAT A PASS HERE MEANS, AND WHAT IT DOES NOT. It means the MBIST verdict alone
-can stop the boot. It does not cover the poll timeout, the abort bit, or either
-bypass strap -- those are separate injections against the same shared failure
-handler (`dft_gate_failed` in bootrom/prod/src/vector.S).
+The shape check enforces all three: a clear mem_repair_success fails on the repair arm, and a
+clear mbist_done exercises the poll timeout instead. A pass means the MBIST verdict alone can stop
+the boot. It does not cover the poll timeout, the abort bit or either bypass strap, which reach
+the same handler (``dft_gate_failed`` in ``bootrom/prod/src/vector.S``).
 """
 
 from __future__ import annotations
@@ -35,7 +23,8 @@ from __future__ import annotations
 import pyuvm
 from rom_fw.sep_firmware_mbist_fail_test import sep_firmware_mbist_fail_test
 
-# bootrom/prod/include/sep_smc_interface.h and dfx_ctrl_status.rdl.
+# bootrom/prod/include/sep_smc_interface.h and
+# hw/sys/smc/regs/blocks/dfx_ctrl_status/dfx_ctrl_status.rdl.
 _MEM_REPAIR_SUCCESS_BIT = 1
 _MBIST_DONE_BIT = 4
 _MBIST_PASS_BIT = 8

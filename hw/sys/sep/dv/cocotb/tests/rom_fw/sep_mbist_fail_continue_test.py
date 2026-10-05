@@ -1,58 +1,20 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""TP008: MEM_REPAIR reports failure but the bypass fuse is blown, so BL0 continues.
+"""MEM_REPAIR reports failure but the bypass fuse is blown, so BL0 warns and continues.
 
-The fuse arm of the gate in ``bootrom/prod/src/vector.S``, and the one neither
-``sep_firmware_mbist_fail_test`` nor ``sep_firmware_mbist_pass_test`` covers --
-both of those say so in their own docstrings. The gate, by label::
+This is the fuse arm of the DFT gate in ``bootrom/prod/src/vector.S``. The injected
+0xFFFFFFFD has ``mem_repair_success`` (bit 1) clear, so the gate fails on the repair arm
+and the MBIST arm is not reached. ``STATUS_RPT`` bit 2 (``STATUS_RPT_SKIP_MEM_CHECK`` in
+``vector.S``) is blown, so the failure handler must publish the raw status to SMC
+scratch[10], write the WARN word 0x08010219 (WARN + SEP_MSG_MBIST_FAIL) to cold_scratch[1],
+and then continue to the C runtime and an ordinary boot. Bit 2 is inside ``reserved[31:2]``
+in ``sep_efuse_map.rdl``; the register model does not declare it.
 
-    lw   t1, (SMC_DFX_CTRL_STATUS_SMU)      # smc_base + 0xB800 (smc_addr.h)
-    # arm 1: memory repair, skipped entirely if BYPASS_SRAM_REPAIR is strapped
-    and  t2, straps_lo, STRAP_BYPASS_SRAM_REPAIR
-    bnez t2, 1f
-    andi t2, t1, DFT_MEM_REPAIR_SUCCESS     # bit 1 clear -> dft_gate_failed
-    beqz t2, dft_gate_failed                #   <-- THIS RUN LEAVES HERE
-1:  # arm 2: MBIST, skipped if MBIST_BYPASS is strapped; polls mbist_done, then
-    #        checks mbist_abort / timeout / mbist_pass -- not reached by this test
-    dft_gate_failed:
-      sw   t1, (SMC_SCRATCH_MBIST_FAIL)     # publish raw value, scratch 10
-      sw   0x08010219, (SEP_COLD_SCRATCH_1) # WARN + SEP_MSG_MBIST_FAIL
-      lw   t3, (SEP_EFUSE_STATUS_RPT)       # bypass fuse
-      andi t4, t3, STATUS_RPT_SKIP_MEM_CHECK # (1 << 2) blown -> continue
-    mem_repair_fail_hang:
-      sw   0x0f01d001, (SEP_COLD_SCRATCH_1) # ERROR + ROM_ERR_DFT_GATE_BLOCKED
-      wfi, then spin
-
-This testcase drives the failure injection AND blows the bypass, so the run must
-take the failure branch, publish the raw status, record the WARN, and then
-continue -- reaching the C runtime and completing an ordinary boot.
-
-THE BYPASS FUSE. It is not the ``MBIST_NO_HANG`` fuse the procedure names -- no
-such fuse exists anywhere in the tree -- but ``STATUS_RPT`` bit 2, which
-``vector.S`` calls ``STATUS_RPT_SKIP_MEM_CHECK``. Bit 2 is inside
-``reserved[31:2]`` in ``sep_efuse_map.rdl``, so the ROM's use of it is undeclared
-in the register model; the bit is readable and the ROM branches on it.
-
-TWO WORDS, NOT A STRING. The procedure expects "a WARNING: MBIST_FAIL_NO_HANG (or
-equivalent) to scratch 1". The gate runs before the C runtime, so ``simputs()``
-does not exist yet and no string is emitted; the equivalent is the status WORD
-0x08010219 = STATUS_ENCODE(WARN, SEP_MSG_MBIST_FAIL). It is also TRANSIENT --
-every later ``report_status()`` overwrites cold_scratch[1] -- so it is sampled
-continuously rather than read at the end, which is why a monitor coroutine exists
-here at all.
-
-WHICH ARM THIS ACTUALLY EXERCISES, AND IT IS NOT THE MBIST ONE. The gate has two
-arms (``vector.S``): memory repair, then MBIST. The injected 0xFFFFFFFD has
-``mem_repair_success`` (bit 1) CLEAR, so it fails on the FIRST arm and the MBIST
-check is never reached -- even though the same word has ``mbist_pass`` SET.
-
-What this testcase therefore proves is the FUSE POLICY on the shared failure
-handler: a failed gate plus ``SKIP_MEM_CHECK`` blown means the boot continues.
-That policy is common to both arms, so the result carries over. But this is NOT
-coverage of "MBIST failed and the boot continued", which needs
-``+sep_dft_status=00000012`` plus the fuse.
-
-The gate reads ``mbist_done`` and ``mbist_pass``.
+The gate runs before the C runtime, so it prints no string. The WARN word is transient:
+every later ``report_status()`` overwrites cold_scratch[1], so a monitor samples it on
+every cycle. This test covers the fuse policy of the shared failure handler. It does not
+cover "MBIST failed and the boot continued", which needs ``+sep_dft_status=00000012`` and
+the fuse.
 """
 
 from __future__ import annotations
@@ -68,12 +30,12 @@ from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 # injection: this testcase differs from sep_firmware_mbist_fail_test in the FUSE,
 # not in the stimulus, which is what isolates the bypass as the cause.
 _DFT_STATUS_FAIL = 0xFFFF_FFFD
-# bootrom/prod/include/sep_smc_interface.h:64-65.
+# bootrom/prod/include/sep_smc_interface.h (DFT_STATUS_MEM_REPAIR_*_BIT).
 _MEM_REPAIR_DONE_BIT = 0
 _MEM_REPAIR_SUCCESS_BIT = 1
-# dfx_ctrl_status.rdl. The ROM's second arm reads this bit; it is
-# asserted below to show that this run never gets that far, having already left on
-# the repair arm.
+# hw/sys/smc/regs/blocks/dfx_ctrl_status/dfx_ctrl_status.rdl. The ROM's second
+# arm reads this bit; it is asserted below to show that this run never gets that
+# far, having already left on the repair arm.
 _MBIST_PASS_BIT = 8
 
 # STATUS_RPT_SKIP_MEM_CHECK in vector.S.
@@ -88,12 +50,12 @@ _STATUS_PRESTART_DONE = 0x8001_0056
 
 # C-runtime console markers. The gate stops the ROM before C on the blocked arm,
 # so requiring these is how "it continued" is established.
-#   SMC_MEM_CHK  rom_main.c:190
-#   CHIP_ID=     rom_main.c:562
+#   SMC_MEM_CHK  rom_main.c
+#   CHIP_ID=     rom_main.c
 _POST_GATE_MARKERS = ("SMC_MEM_CHK", "CHIP_ID=")
-# The procedure's "boot reaches at least START_MANIFEST_VALIDATION". This ROM
-# names that checkpoint MANIFEST_SRC= / MANIFEST_OK, both already required by the
-# base class, so the gate-specific addition is the C-runtime pair above.
+# The boot must reach manifest validation. The base class already requires
+# MANIFEST_SRC= and MANIFEST_OK, so the gate-specific addition is the C-runtime
+# pair above.
 
 
 @pyuvm.test()
@@ -214,7 +176,7 @@ class sep_mbist_fail_continue_test(sep_rom_ot_dma_boot_test):
         cocotb.start_soon(self._gate_monitor())
         # Boots, and asserts the SPI path markers plus fw_done/fw_pass. Reaching
         # the end of this call is the "boot continued" half of the result, and it
-        # covers the procedure's "scratch 0 != 0xdeadbeef at end of test".
+        # requires the cold_scratch[0] PASS verdict.
         await super().run_scenario()
 
         status_hex = [hex(v) for v in self._status_seq]
@@ -272,8 +234,8 @@ class sep_mbist_fail_continue_test(sep_rom_ot_dma_boot_test):
             _STATUS_MBIST_WARN,
         )
 
-        # CHK-MBIST-PUBLISH: the raw status reached SMC scratch[10]. The procedure
-        # calls this out specifically, and it is durable -- unlike the WARN word,
+        # CHK-MBIST-PUBLISH: the raw status reached SMC scratch[10]. It is
+        # durable -- unlike the WARN word,
         # nothing else writes scratch[10], so it survives to the end of the boot.
         assert _DFT_STATUS_FAIL in self._s10_seq, (
             f"SMC scratch[10] never held the failing DFT status "

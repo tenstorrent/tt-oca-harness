@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""PROD refuses a secure manifest whose signature bytes are all zero (PyUVM).
+"""PROD refuses a secure manifest whose signature bytes are all zero.
 
 The enforced bit, public key and ``signature_size`` are left as shipped and only
 the 512-byte signature field is zeroed. That field sits outside the signed

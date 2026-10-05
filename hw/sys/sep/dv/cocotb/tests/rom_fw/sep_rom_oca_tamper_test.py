@@ -1,34 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP ROM refuses a tampered OCA manifest, in both slots (PyUVM).
+"""SEP ROM refuses a signed OCA manifest with one tampered byte in both slots.
 
-The first manifest-negative test in this environment. Every other ROM test proves
-the ROM accepts something it should; this one proves it rejects something it must,
-which is the half that actually carries the security claim. A ROM that validated
-nothing at all would pass all of the others.
+The test flips byte 64 of both manifest copies. The byte is inside CHIPLET_ID (bytes
+40..71) and inside the signed region, which the manifest hash and the RSA signature both
+cover. Both slots are tampered, so the backup cannot rescue the boot and the ROM prints
+``MANIFEST_ALL_FAILED``. Integrity is checked before interpretation, so each slot must
+fail with exactly ``OCA_FAIL_MANIFEST_HASH`` (13); a bad-magic or length refusal does not
+satisfy the test. ``MANIFEST_OK`` and ``PAYLOAD_OK`` are forbidden, and the
+cold_scratch[0] verdict must be FAIL.
 
-The image is the signed one, with a single byte flipped inside the signed region
-of **both** manifest copies. Both matters: the ROM keeps a primary at 0x1000 and a
-backup at 0x41000 and rotates to the backup when the primary fails, so corrupting
-only the primary would still boot -- correctly -- and prove nothing about refusal.
-Corrupting both is what forces the ROM to run out of options and say so.
-
-The flip lands at offset 64, inside CHIPLET_ID (bytes 40..71) -- a real identity
-field rather than padding, so the mutation is the shape of an actual attack:
-retargeting a signed manifest at a part it was not issued for. It sits well inside
-the signed region [0, 3172), which is covered by BOTH the manifest hash and the RSA
-signature.
-
-The expected verdict is OCA_FAIL_MANIFEST_HASH (13). Integrity is checked before
-interpretation, so the corrupted body is caught by the hash before either the
-signature or the identity constraint gets a chance to object. Asserting that
-specific code is deliberate: a test that only looked for "some failure" would pass
-just as happily if the ROM rejected the image for a bad magic or a truncated
-length, which would mean the tamper detection under test never ran at all.
-
-No new image target: OcahSpiFlash.preload() accepts a bytes-like object, so the
-mutation happens in memory here rather than in the Makefile. That keeps the
-tampering visible next to the assertion it justifies.
+The tamper is applied in memory, next to the assertion it justifies.
 """
 
 from __future__ import annotations
@@ -45,7 +27,7 @@ _BACKUP_MANIFEST_OFFSET = mm.BACKUP_MANIFEST_OFFSET
 # flip would change nothing the hash covers and the boot would succeed.
 _TAMPER_OFFSET = 64
 
-# The staged body no longer hashes to manifest_hash; reported per slot.
+# The staged body does not hash to manifest_hash; reported per slot.
 _MANIFEST_ERR = f"MANIFEST_ERR=0x{mm.boot_err('OCA_FAIL_MANIFEST_HASH'):08x}"
 # Printed once both slots have been tried and rejected.
 _ALL_FAILED = "MANIFEST_ALL_FAILED"
@@ -102,16 +84,7 @@ class sep_rom_oca_tamper_test(sep_rom_ot_secure_boot_test):
         return bytes(buf)
 
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
-        """Inject the tamper through the base's own hook.
-
-        The base reads ``flash_image`` as a PATH and routes the bytes through
-        this method, which is the seam a negative testcase is meant to use.
-        Rebinding ``self.flash_image`` to bytes instead -- as this test did --
-        left the base's own ``open()`` holding a bytes object and failed the run
-        at 0.00 ns with ``ValueError: embedded null byte``. The comment defending
-        it described an older base that passed the attribute straight to
-        ``preload()``.
-        """
+        """Tamper through the base's mutate hook; ``flash_image`` stays a path."""
         original = bytes(buf)
         tampered = self._tamper(original)
         assert tampered != original, "tamper produced an identical image"

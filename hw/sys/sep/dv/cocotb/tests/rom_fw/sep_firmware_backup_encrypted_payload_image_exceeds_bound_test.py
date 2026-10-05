@@ -2,8 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Backup's ENCRYPTED TOC entry 0 starts inside the TOC; the ROM halts.
 
-Images follow the TOC, but no spec rule or library check enforces it, so this row fails.
-Needs ``+esrc_noise_force``: an RSA-3072 modexp and an AES decryption.
+The payload format places every image after the TOC, so the slot must be refused with
+``OCA_FAIL_PAYLOAD_TOC``. Known gap: no library check enforces the placement, so the DUT accepts
+the slot and this test fails. Needs ``+esrc_noise_force``: an RSA-3072 modexp and an AES
+decryption.
 """
 
 from __future__ import annotations

@@ -22,21 +22,20 @@ from rom_fw.sep_backup_manifest_fail_base import sep_backup_manifest_fail_base
 _EFUSE_DIR = Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations"
 _EFUSE_LC_PROD = _EFUSE_DIR / "sep_efuse_lc_prod.toml"
 
-#  -- the ROM labels the slot and then prints its offset.
+# The ROM prints the slot label, then MANIFEST_SRC= with the slot offset.
 _PRIMARY_SRC = "MANIFEST_SRC=0x00001000"
 _BACKUP_SRC = "MANIFEST_SRC=0x00041000"
 
-#  -- printed once per slot whose crypto chain passed.
-# the ROM -- both slots were tried and both failed.
+# Printed after both slots were tried and refused.
 _ALL_FAILED = "MANIFEST_ALL_FAILED"
 _SBOOT_OFF = "SBOOT_OFF"
 
-# rom_handoff.c -- anything from here on means BL1 was copied or entered. The
-# procedures' "BL0 does NOT attempt to copy BL1 into IRAM" / "does NOT jump to the
-# invalid entry address" is exactly the absence of these.
-# "LOAD=" and "LEN=" are deliberately NOT used:  prints
-# "PAYLOAD=", which contains "LOAD=" as a substring, so a marker check would
-# false-positive on an ordinary payload report.
+# rom_handoff.c -- anything from here on means BL1 was copied or entered. "BL0
+# does not copy BL1 into IRAM" and "BL0 does not jump to the invalid entry
+# address" are exactly the absence of these.
+# "LOAD=" and "LEN=" are deliberately NOT used: "LEN=" is a substring of
+# "DMA_LEN=" and "SRAM_SCRUB_LEN=", so a marker check would false-positive on an
+# ordinary transfer report.
 _BL1_PROGRESS = (
     "BL1_TYPE=",
     "COPY_SRC=",
@@ -49,8 +48,8 @@ _BL1_PROGRESS = (
 
 # Every OTHER rejection the payload validator can emit. A negative test is only
 # worth its verdict if the image failed for the reason it planted and for no
-# other, and each of these would be a different reason -- most of them the
-# signature that a re-seal went wrong (a stale image digest, a stale payload
+# other, and each of these would be a different reason -- most of them signs
+# that a re-seal went wrong (a stale image digest, a stale payload
 # hash, a payload length left inconsistent with the TOC).
 _OTHER_REJECTIONS = (
     "PLD_HASH_TIMEOUT",
@@ -78,11 +77,12 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
     efuse_preload = _EFUSE_LC_PROD
 
     # --- subclass contract ---------------------------------------------------
-    # ``backup_defect_marker`` is inherited: the console marker the BL1 placement check /
-    # validate_manifest_payload must print. Here it applies to both slots, so
-    # check_defect_attribution() below requires it twice rather than once.
+    # ``backup_defect_marker`` is inherited: the console marker the BL1 placement
+    # check (rom_bl1_check() in rom_handoff.c) or the payload validator must
+    # print. Here it applies to both slots, so check_defect_attribution() below
+    # requires it twice rather than once.
     # Rejections this scenario's own defect must NOT produce, on top of the
-    # shared list -- used to separate the two BL1 arms from one another.
+    # shared list. They separate the two BL1 arms from one another.
     sibling_markers: tuple[str, ...] = ()
 
     def mutate_bl1(self, buf: bytearray, slot: str) -> None:
@@ -159,7 +159,7 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
         i_backup = index_of(_BACKUP_SRC)
 
         # CHK-FAILOVER: both slots were read, in order. Ordering is the substance
-        # of the retry half of the procedure; two markers in any order would also
+        # of the retry; two markers in any order would also
         # be satisfied by a ROM that read the backup first.
         assert i_primary >= 0, (
             f"ROM never read the primary slot ({_PRIMARY_SRC}). Console: {console}"
@@ -255,7 +255,7 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
         assert not fw_pass, "ROM signalled PASS: it booted an image it was supposed to reject"
         log.info("CHK-TERMINAL PASS: mailbox FAIL (fw_pass=0)")
 
-        # CHK-NO-HANDOFF: the procedures' central claim -- BL0 rejected the image
+        # CHK-NO-HANDOFF: the central contract -- BL0 rejected the image
         # BEFORE attempting to copy or enter BL1.
         for marker in _BL1_PROGRESS:
             assert not any(marker in line for line in console), (

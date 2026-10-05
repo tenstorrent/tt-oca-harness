@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""LC_STATE raw 0x5 is invalid, not RMA_CHIPLET (PyUVM).
+"""LC_STATE raw 0x5 is invalid, not RMA_CHIPLET.
 
 The other encoding in the ``4'b010?`` gap between RMA_SiP and RMA_CHIPLET. Same
 scenario and checks as ``sep_rom_lc_state_invalid_0x4_test``.

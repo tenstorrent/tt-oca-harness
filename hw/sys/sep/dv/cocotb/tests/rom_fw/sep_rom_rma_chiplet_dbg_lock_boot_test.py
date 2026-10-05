@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""A debug-locked RMA_CHIPLET part still boots an unsigned image (PyUVM).
+"""A debug-locked RMA_CHIPLET part still boots an unsigned image.
 
 SEP-ROM-SB-025 applies the chiplet debug lock to TEST_DEV and RMA_SiP only:
 ``lc_state_follows_debug_lock()`` (``bootrom/prod/src/lifecycle.c``) excludes

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""A debug-locked RMA_SiP part boots a validly signed image (PyUVM).
+"""A debug-locked RMA_SiP part boots a validly signed image.
 
 The positive half of the RMA_SiP debug-lock rule (SEP-ROM-SB-025): enforcement
 does not make the part unbootable, and the full RSA-3072 chain still admits signed

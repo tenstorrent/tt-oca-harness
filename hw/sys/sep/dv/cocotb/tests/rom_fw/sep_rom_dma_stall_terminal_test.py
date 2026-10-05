@@ -1,23 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""A wedged secure DMA fails the boot instead of hanging it (PyUVM).
+"""A wedged secure DMA must fail the boot instead of hanging it.
 
-FEATURE UNDER TEST. ``dma_transfer()`` (``bootrom/prod/src/sep_dma.c``) bounds its
-completion poll with a budget scaled to the transfer length. An engine that
-reports neither DONE nor ERROR within it is aborted, and the transfer returns the
-DMA error its callers handle.
+``dma_transfer()`` (``bootrom/prod/src/sep_dma.c``) bounds its completion poll with a
+budget scaled to the transfer length and aborts an engine that reports neither DONE nor
+ERROR. ``+sep_dma_host_stall`` holds the DMA host port's response channel idle, so the
+engine stays busy. The boot takes the SMC-SRAM manifest path, which makes a single
+attempt, and its first DMA transfer is the manifest read.
 
-``+sep_dma_host_stall`` holds the DMA host port's response channel idle, so the
-engine can never issue a request and stays busy. The boot takes the SMC-SRAM
-manifest path, whose first DMA transfer is the manifest read, and that path makes a
-single attempt. So the ROM must report ``SEP_MSG_DMA_TIMEOUT``, print
-``DMA_TIMEOUT_STS=``, fail the slot with ``OCA_BOOT_ERR_DMA``, report
-``SEP_MSG_MANIFEST_LOAD_FAILED`` and halt with a FAIL verdict. The timeout status is
-what tells a stalled engine apart from one that reported an error. A ROM whose
-completion poll is unbounded never reaches a verdict, and the run times out.
-
-The terminal outcome is a halt, so ``SepBootScoreboard`` is not used, as in
-``sep_firmware_sboot_dis_rsvd_terminal_test``.
+The ROM must report ``SEP_MSG_DMA_TIMEOUT``, print ``DMA_TIMEOUT_STS=``, fail the slot
+with ``OCA_BOOT_ERR_DMA``, report ``SEP_MSG_MANIFEST_LOAD_FAILED`` and halt with a
+cold_scratch[0] FAIL verdict. The timeout status separates a stalled engine from one that
+reported an error. ``SepBootScoreboard`` is not used: the outcome is a halt.
 """
 
 from __future__ import annotations

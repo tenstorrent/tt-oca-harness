@@ -1,48 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""An OTBN that never executed must not report a verified signature (PyUVM).
+"""An OTBN that never executed must not report a verified signature.
 
-FEATURE UNDER TEST. The OTBN RSA application uses ONE DMEM buffer for both the
-signature it is given and the modexp result it produces (``inout``, DMEM
-``0x600``). If the block never runs, that buffer still holds the signature, and
-``verify_pkcs1_v15()`` compares the signature against itself. Nothing else the
-ROM reads distinguishes the two cases: ``STATUS`` reads IDLE, which is the state
-OTBN was already in, and ``ERR_BITS`` reads 0, because nothing ran to fail.
+The OTBN RSA application uses one DMEM buffer (``inout``, DMEM ``0x600``) for both the
+signature and the modexp result. If OTBN never runs, ``verify_pkcs1_v15()`` compares the
+signature against itself, and ``STATUS`` (IDLE) and ``ERR_BITS`` (0) cannot show it. The
+test writes the literal PKCS#1 v1.5 block (``forge_pkcs1_signature()``) into both slots and
+``+sep_otbn_cmd_drop`` holds ``reg2hw.cmd.qe`` low, so OTBN ignores every command.
 
-So a caller who authors the signature field as the literal PKCS#1 v1.5 block the
-checker expects -- ``00 01 FF*330 00 || DigestInfo || SHA256(signed region)`` --
-gets ``RSA_VERIFY_OK`` on an image whose signature was never checked. No private
-key is needed: every byte of that block is public.
-
-THIS TEST PLANTS EXACTLY THAT AND DROPS THE COMMAND. ``+sep_otbn_cmd_drop``
-holds ``reg2hw.cmd.qe`` low so OTBN ignores every command while staying powered,
-idle and error-free, and ``forge_pkcs1_signature()`` writes the block into both
-slots. Against the ROM this testcase was written for, the run must refuse the
-image; against the ROM before the fix, it boots it.
-
-WHY THE FAULT IS WORTH INJECTING AT ALL, given it is a glitch in the abstract.
-Strip the attacker out and the same state arrives by accident: clock or reset
-mis-sequencing, an unseeded entropy chain, a block wedged during bring-up. Any
-of those produce ``MANIFEST_OK`` on an unverified image, which is a false pass in
-the one property the ROM exists to provide.
-
-WHAT THE ROM MUST DO, and which layer is expected to catch it (SEP-ROM-SB-120).
-``otbn_execute()`` clears ``INTR_STATE.done`` before writing ``CMD`` and requires
-it afterwards, so it returns ``OTBN_ERR_NOT_STARTED`` and ``rsa_3072_verify()``
-prints ``OTBN_NOT_STARTED`` then ``RSA_EXEC_FAIL``. ``rsa_verify.c`` carries a
-second, independent refusal for the same condition -- the result buffer being
-bit-identical to the signature it wrote (``RSA_INOUT_UNCHANGED``) -- which this
-run does NOT reach, because the first layer returns before the read. It is not
-forbidden below: reaching it would mean the done bit lied, and refusing there is
-still correct. Only ``RSA_VERIFY_OK`` is forbidden, because that is the bypass.
-
-The signature sits outside the signed region, so the manifest hash still matches
-and the run reaches signature verification rather than being refused earlier by
-a structural check -- the same reason ``flip_signature_byte()`` needs no rehash.
-
-Both slots are forged, so the backup cannot rescue the boot and the run ends
-terminal. ``SepBootScoreboard`` is not used: it requires ``fw_done`` with
-``fw_pass``, and the expected outcome is ``fw_done`` with ``fw_pass == 0``.
+The ROM must refuse the image (SEP-ROM-SB-120): ``otbn_execute()`` requires
+``INTR_STATE.done`` after ``CMD``, so the ROM prints ``OTBN_NOT_STARTED`` then
+``RSA_EXEC_FAIL``. ``RSA_VERIFY_OK`` is forbidden. The second refusal layer,
+``RSA_INOUT_UNCHANGED`` (``rsa_verify.c``), is not reached and is not forbidden. The
+signature is outside the signed region, so the manifest hash still matches. Both slots
+are forged, so the run is terminal: ``fw_done`` with ``fw_pass == 0`` in cold_scratch[0].
 """
 
 from __future__ import annotations

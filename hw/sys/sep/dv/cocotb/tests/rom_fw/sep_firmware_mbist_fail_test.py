@@ -1,68 +1,24 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP Boot ROM MEM_REPAIR / MBIST boot gate, failure arm (PyUVM).
+"""SEP Boot ROM MEM_REPAIR / MBIST boot gate, failure arm.
 
-FEATURE UNDER TEST. Before the ROM boots anything it asks the SMC whether memory
-repair succeeded, and refuses to continue if it did not. The gate lives in
-``bootrom/prod/src/vector.S``, immediately before the DCCM scrub::
+Before it boots anything, the ROM asks the SMC whether memory repair succeeded and halts if it did
+not. The gate is in ``bootrom/prod/src/vector.S``, before the DCCM scrub; the gate listing is the
+comment above ``_DFT_STATUS_FAIL``. This test covers the fail + no-bypass arm only. The injected
+word is 0xFFFFFFFD, every bit set except mem_repair_success, so only a ROM that reads bit 1
+passes.
 
-    lw   t1, (SMC_DFX_CTRL_STATUS_SMU)      # smc_base + 0xB800 (smc_addr.h)
-    # arm 1: memory repair, skipped entirely if BYPASS_SRAM_REPAIR is strapped
-    and  t2, straps_lo, STRAP_BYPASS_SRAM_REPAIR
-    bnez t2, 1f
-    andi t2, t1, DFT_MEM_REPAIR_SUCCESS     # bit 1 clear -> dft_gate_failed
-    beqz t2, dft_gate_failed                #   <-- THIS RUN LEAVES HERE
-1:  # arm 2: MBIST, skipped if MBIST_BYPASS is strapped; polls mbist_done, then
-    #        checks mbist_abort / timeout / mbist_pass -- not reached by this test
-    dft_gate_failed:
-      sw   t1, (SMC_SCRATCH_MBIST_FAIL)     # publish raw value, scratch 10
-      sw   0x08010219, (SEP_COLD_SCRATCH_1) # WARN + SEP_MSG_MBIST_FAIL
-      lw   t3, (SEP_EFUSE_STATUS_RPT)       # bypass fuse
-      andi t4, t3, STATUS_RPT_SKIP_MEM_CHECK # (1 << 2) blown -> continue
-    mem_repair_fail_hang:
-      sw   0x0f01d001, (SEP_COLD_SCRATCH_1) # ERROR + ROM_ERR_DFT_GATE_BLOCKED
-      wfi, then spin
+The gate runs before C, so the lifecycle is never computed into memory whose integrity is
+unestablished, and there is no virtual console: an empty console is evidence that the gate ran
+first. The status word matches the C path (``0x0f01d001``). The halt writes cold_scratch only. The
+mailbox at 0x80000000 is in the external SMU aperture, and a halt path must not reach outside SEP,
+so the test ends on the terminal word in cold_scratch[1], not on ``fw_done``;
+``SepBootScoreboard`` is not used.
 
-This covers the fail + no-bypass arm only. The bypass and pass arms are separate
-items and are NOT exercised here.
-
-THE GATE RUNS BEFORE C, AND THAT SHAPES THIS TEST. It precedes the DCCM scrub, so
-the lifecycle -- the input deciding whether secure boot is enforced -- is never
-computed into memory whose integrity is unestablished; ``LC_STATE_TEST_DEV`` is
-0x0, so a corrupted value would bias toward the permissive answer. It also means
-**there is no virtual console on this path**: ``simputs()`` needs the C runtime.
-This test therefore reads register evidence, and an empty console is itself proof
-the gate ran ahead of C.
-
-The status word matches what the C path emits (``0x0f01d001``) and must stay in
-step with it, so that assertion pins the same contract on both.
-
-NO MAILBOX ON THIS PATH, SO NO ``fw_done``. The halt writes cold_scratch and
-nothing else. The mailbox sits at 0x80000000, inside the external SMU aperture,
-and whether an SoC maps anything there is an integration property -- on a part
-that does not, the store would take a bus error, the bus error would raise NMI,
-and a clean halt would become an NMI loop. A halt path must not reach outside
-SEP. This test therefore ends on the terminal status word appearing in
-cold_scratch[1], not on ``fw_done``.
-
-The injected value is 0xFFFFFFFD -- every bit set except mem_repair_success.
-Injecting 0 would also pass against a ROM that gated on any-bit-clear, on a zero
-word, or on the wrong bit entirely, so it would not test what it claims.
-All-ones-but-one can only pass if the ROM reads bit 1 specifically.
-
-BYPASS. The escape from a check that RAN AND FAILED is the eFuse ``STATUS_RPT``
-bit 2, left unblown here. It is a fuse, so this particular escape cannot be
-arranged at run time by holding a pin. Bit 2 is inside ``reserved[31:2]`` in
-``sep_efuse_map.rdl``, so its use there is undeclared in the register model.
-
-That is a claim about the FUSE, not about the gate. Two STRAPS skip their arm
-outright -- ``BYPASS_SRAM_REPAIR`` (``STRAPS_LO[13]``, pin 13) and
-``MBIST_BYPASS`` (``STRAPS_HI[22]``, pin 54) -- so anyone able to hold a pin can
-still stop the corresponding check from being evaluated at all. That is the
-straps' documented purpose in OCAH-MAS, and neither arm has a testcase.
-
-The terminal outcome is a silent halt, so ``SepBootScoreboard`` is not used: it
-expects a firmware completion signal that this path never sends.
+The escape from a check that ran and failed is eFuse ``STATUS_RPT`` bit 2, unblown here; it is
+inside ``reserved[31:2]`` in ``sep_efuse_map.rdl``. Two straps skip their arm outright,
+``BYPASS_SRAM_REPAIR`` (``STRAPS_LO[13]``, pin 13) and ``MBIST_BYPASS`` (``STRAPS_HI[22]``, pin
+54), which is their documented purpose.
 """
 
 from __future__ import annotations
@@ -87,6 +43,25 @@ _SEP_ROOT = str(Path(__file__).resolve().parents[4])
 _FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
+# The gate in bootrom/prod/src/vector.S, as this test drives it:
+#
+#     lw   t1, (SMC_DFX_CTRL_STATUS_SMU)      # smc_base + 0xB800 (hw/sys/smc/regs/gen/c/smc_addr.h)
+#     # arm 1: memory repair, skipped entirely if BYPASS_SRAM_REPAIR is strapped
+#     and  t2, straps_lo, STRAP_BYPASS_SRAM_REPAIR
+#     bnez t2, 1f
+#     andi t2, t1, DFT_MEM_REPAIR_SUCCESS     # bit 1 clear -> dft_gate_failed
+#     beqz t2, dft_gate_failed                #   <-- THIS RUN LEAVES HERE
+#     1:  # arm 2: MBIST, skipped if MBIST_BYPASS is strapped; polls mbist_done, then
+#         #        checks mbist_abort / timeout / mbist_pass -- not reached by this test
+#     dft_gate_failed:
+#       sw   t1, (SMC_SCRATCH_MBIST_FAIL)     # publish raw value, scratch 10
+#       sw   0x08010219, (SEP_COLD_SCRATCH_1) # WARN + SEP_MSG_MBIST_FAIL
+#       lw   t3, (SEP_EFUSE_STATUS_RPT)       # bypass fuse
+#       andi t4, t3, STATUS_RPT_SKIP_MEM_CHECK # (1 << 2) blown -> continue
+#     mem_repair_fail_hang:
+#       sw   0x0f01d001, (SEP_COLD_SCRATCH_1) # ERROR + ROM_ERR_DFT_GATE_BLOCKED
+#       wfi, then spin
+#
 # The injected DFX_CTRL_STATUS word. Must match +sep_dft_status in the testlist.
 _DFT_STATUS_FAIL = 0xFFFF_FFFD
 # bootrom/prod/include/sep_smc_interface.h: DFT_STATUS_MEM_REPAIR_SUCCESS_BIT 1.
@@ -315,9 +290,9 @@ class sep_firmware_mbist_fail_test(sep_base_test):
             len(console),
         )
 
-        # CHK-DFT-PUBLISH: the raw value reached SMC scratch[10]. The procedure
-        # calls this out specifically -- it is the JTAG-readable evidence that the
-        # ROM stopped *because* of MEM_REPAIR, available on a part that is hung.
+        # CHK-DFT-PUBLISH: the raw value reached SMC scratch[10], the JTAG-readable
+        # evidence that the ROM stopped because of MEM_REPAIR on a hung part. It
+        # reads the same scratch[10] samples as CHK-DFT-READ.
         assert self.dft_status_injected in scratch10_seq, (
             f"SMC scratch[10] never held the failing DFT status "
             f"0x{self.dft_status_injected:08x}; observed {s10_hex}"

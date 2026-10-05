@@ -2,16 +2,17 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Lifecycle outranks a manifest asking for non-secure boot: the part refuses.
 
-``secure_boot_decide`` (``validators/oca/lib/secure_boot.c``) takes the first input that settles
-the question: the manifest ``secure_boot_control`` enforced bit, a device ``SBOOT_DIS``, then the
-lifecycle. The stimulus is PROD, ``SBOOT_DIS = 0`` and both manifests with
-``secure_boot_control`` cleared from 0x03 to 0x00. With the enforced bit clear the parser
-requires every signing field to be zero (``OCA_FAIL_SECURE_BOOT_INVARIANT``), so the manifest is
-legally unsigned and a verified boot cannot be expressed. The lifecycle enforces secure boot with
-no signature class named, so both slots fail with ``OCA_FAIL_SIGNATURE_CLASS_CONTROL``, then
-``MANIFEST_ALL_FAILED``; the same image boots non-secure in TEST_DEV. The base forbids
-``SBOOT_OFF``. ``sep_firmware_device_cntl_non_secure_boot_flow_test`` swaps the roles: the device
-asks for non-secure boot and the manifest asks to be verified.
+``secure_boot_decide`` (``bootrom/prod/tools/tt-oca-manifest/validators/oca/lib/secure_boot.c``)
+takes the first input that settles the question: the manifest ``secure_boot_control`` enforced
+bit, a device ``SBOOT_DIS``, then the lifecycle. The stimulus is PROD, ``SBOOT_DIS = 0`` and both
+manifests with ``secure_boot_control`` cleared from 0x03 to 0x00. With the enforced bit clear the
+parser requires every signing field to be zero (``OCA_FAIL_SECURE_BOOT_INVARIANT``), so the
+manifest is legally unsigned and a verified boot cannot be expressed. The lifecycle enforces
+secure boot with no signature class named, so both slots fail with
+``OCA_FAIL_SIGNATURE_CLASS_CONTROL``, then ``MANIFEST_ALL_FAILED``; the same image boots
+non-secure in TEST_DEV. The base forbids ``SBOOT_OFF``.
+``sep_firmware_device_cntl_non_secure_boot_flow_test`` swaps the roles: the device asks for
+non-secure boot and the manifest asks to be verified.
 """
 
 from __future__ import annotations

@@ -2,55 +2,22 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary manifest with a corrupted RSA signature; the backup boots.
 
-One bit of the PRIMARY signature's byte 0 is flipped. The single-bit flip is the
-point: a manifest correct in every other respect -- right magic, length, hash, key
-slot, key digest and version -- must still fail authentication. A larger corruption
-would be a weaker test, because something else would also catch it.
+``mm.flip_signature_byte(buf, "primary", byte_index=0, xor_mask=0x01)`` flips one bit of signature
+byte 0. The manifest is correct in every other respect (magic, length, hash, key slot, key digest,
+version), so only authentication can refuse it. The backup boots.
 
-``mm.flip_signature_byte(buf, "primary", byte_index=0, xor_mask=0x01)`` is the same
-byte, the same mask and the same stage of the flow.
+This is the one member of the group whose primary must reach the verifier, so
+``primary_expected_rsa_starts = 1``: the primary's ``RSA_EXEC`` sits between the primary read and
+the primary error, and the run total is exactly 2. The verdict is the console token
+``RSA_PKCS1_FAIL`` (``rsa_verify.c``, padding or digest mismatch after the modexp).
 
-The expected outcome is A Completed boot.
+``sep_firmware_primary_invalid_signature_type_test`` ends at a different code. The console also
+separates them: ``PUBK_AUTHORIZED`` appears twice here and once (the backup's) there, and
+``RSA_PKCS1_FAIL`` is required here and forbidden there.
 
-**THIS IS THE ONE MEMBER OF THIS GROUP WHOSE PRIMARY MUST REACH THE VERIFIER**, so
-it declares ``primary_expected_rsa_starts = 1``. The base then requires the
-primary's own ``RSA_EXEC`` to sit between the primary read and the primary error,
-and the total across the run to be exactly 2 -- the primary's failing modexp and
-the backup's successful one. Every other member of the group declares 0 and the
-base requires the first occurrence to follow the backup read. Asserting only that
-"RSA ran at some point" would let this testcase pass on a run where the primary was
-refused earlier and the backup alone verified.
-
-**HOW THIS IS TOLD APART FROM ``sep_firmware_primary_invalid_signature_type_test``,
-AND WHY THE ERROR CODE CANNOT DO IT.** Both end at
-``OCA_BOOT_ERR_RESULT(OCA_FAIL_SIGNATURE)``, which several refusal arms share. The
-console separates them in both directions and both halves are asserted here:
-
-  * ``PUBK_AUTHORIZED`` is pinned to **two** occurrences -- one per manifest slot
-    -- proving BOTH manifests' keys resolved and were anchored
-    (``oca_platform.c``). The sibling shows **one**, because there the algorithm
-    arm refuses the primary before its key is authorized. That count alone makes
-    the two mutually exclusive on any single log;
-  * ``PUBK_ALGO_UNSUPPORTED`` is forbidden here and expected there, and
-    ``RSA_EXEC_FAIL`` is required here and forbidden there.
-
-Platform adaptation -- MARKER. This ROM *defines* ``SEP_MSG_INVALID_SIGNATURE`` but
-never EMITS it: there is no ``report_status`` call for it anywhere under
-``bootrom/prod/src``, so the architected status ring carries only the generic code and
-the console token ``RSA_PKCS1_FAIL`` (``rsa_verify.c:175``, reached only when the
-recovered padding and digest do not match) is the per-reason evidence.
-
-The signature field sits OUTSIDE the region the manifest hash covers
-(``sep_manifest_mutate.OFF_SIGNATURE`` == ``SIGNED_REGION_END``), so this needs neither
-a re-hash nor a re-sign -- and ``mm.verify_layout`` is asserted afterwards to prove
-the hash is still intact, because a mutation that invalidated it would be rejected
-before the verifier ever ran.
-
-Needs ``+esrc_noise_force``: TWO full RSA-3072 modexps run on OTBN here, which
-parks in UrndRefresh until EDN grants entropy. The ROM brings the real
-ESRC -> CSRNG -> EDN chain up itself, so only the noise source is forced and the
-RSA assertions are untouched -- ``RSA_PKCS1_FAIL`` still means the signature
-genuinely failed and ``RSA_VERIFY_OK`` that the backup's genuinely verified.
+The signature is outside the hashed region (``OFF_SIGNATURE == SIGNED_REGION_END``), so no re-hash
+or re-sign is needed; ``mm.verify_layout`` checks the hash is intact. Needs ``+esrc_noise_force``:
+two RSA-3072 modexps run on OTBN, which stalls until EDN grants entropy.
 """
 
 from __future__ import annotations
@@ -72,12 +39,9 @@ _EFUSE_PRELOAD = (
     / "sep_efuse_lc_prod.toml"
 )
 
-# Both slots keep the shipped selector, ROM key slot 0
-# Both slots select the same ROM key, so the marker is identical for both and
-# only the COUNT distinguishes this testcase. PUBK_AUTHORIZED is the OCA
-# evidence that a slot's key resolved and was anchored: there is no
-# "PUBK_SEL=<value>" echo, because the selector is a 128-bit bitmap rather than
-# a small index.
+# Both slots keep the shipped selector, ROM key slot 0, so the marker is the same
+# for both and only the COUNT distinguishes this test. PUBK_AUTHORIZED is the OCA
+# evidence that a slot's key resolved and was anchored.
 _KEY_AUTHORIZED = "PUBK_AUTHORIZED"
 
 
@@ -85,9 +49,9 @@ _KEY_AUTHORIZED = "PUBK_AUTHORIZED"
 class sep_firmware_primary_invalid_signature_test(sep_primary_fail_backup_boot_base):
     """Primary signature fails RSA -> failover -> backup verifies and boots."""
 
-    # rsa_verify.c:175 -- the modexp ran and the PKCS#1 padding/digest did not
-    # match. That is the verdict this testcase is about, and it is a different
-    # marker from RSA_EXEC_FAIL (:164), which means the OTBN execution itself
+    # rsa_verify.c -- the modexp ran and the PKCS#1 padding/digest did not
+    # match. That is the verdict this test is about, and it is a different
+    # marker from RSA_EXEC_FAIL, which means the OTBN execution itself
     # failed: an engine fault, not a signature verdict. RSA_EXEC_FAIL is
     # forbidden below for exactly that reason.
     primary_defect_marker = "RSA_PKCS1_FAIL"
@@ -98,9 +62,7 @@ class sep_firmware_primary_invalid_signature_test(sep_primary_fail_backup_boot_b
     extra_required = (_KEY_AUTHORIZED,)
     # Every refusal plat_is_key_authorized() can report (oca_platform.c). Reaching
     # any of them would mean a slot was refused before the verifier ran, so the
-    # verdict would not be a signature verdict. PUBK_ALGO_UNSUPPORTED is also the
-    # discriminator against the signature-TYPE sibling, which shares this error
-    # code.
+    # verdict would not be a signature verdict.
     #
     # Key revocation and anti-rollback need no marker here: they report through
     # MANIFEST_ERR=<code>, and the base already requires this member's exact code,

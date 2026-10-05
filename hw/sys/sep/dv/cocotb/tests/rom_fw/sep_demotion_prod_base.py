@@ -1,88 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Shared PROD-lifecycle stimulus for the [S25] demotion-decision family.
+"""Shared PROD-lifecycle stimulus for the [S25] demotion-decision members.
 
-The mechanism, the seven-outcome collapse map and the disclosed gaps are written
-out once in ``rom_fw/sep_demotion_decision_base.py``. **Read that first.** This
-module adds only what the four PROD members share and the two PROD_END members
-cannot use:
+The outcome table is the comment block in ``sep_demotion_decision_base.py``. This module
+adds the ``+SECURE_BOOT_DIS`` stimulus, the PROD lifecycle narrowing and
+:func:`outcome_for`, the non-PROD_END arm of the ``rom_main.c`` decision as code. Each
+member declares its own expected outcome, and :meth:`_demotion_prod_mixin.__init_subclass__`
+requires that declaration to match :func:`outcome_for`.
 
-  * the ``+SECURE_BOOT_DIS`` stimulus, on BOTH of the surfaces it drives;
-  * the PROD lifecycle narrowing and the console-marker skeleton that goes with
-    a secure-boot-OFF boot;
-  * :func:`outcome_for`, the non-PROD_END arm of the decision table transcribed
-    from ``rom_main.c`` as executable code.
-
-============================================================================
-WHY THE FOUR MEMBERS SHARE A BASE AND WHAT IS *NOT* SHARED
-============================================================================
-
-Every one of the four drives the same three-line stimulus preamble and boots the
-same way, so writing it four times would be four chances to get one of them
-subtly wrong. What is deliberately NOT derived is the expected OUTCOME: each
-member writes its own ``demotion_required``, ``demotion_values``,
-``expect_demote_1`` and ``expect_demote_2`` explicitly, with citations, because
-"parameterise the scenario, never parameterise the evidence" is the rule three
-earlier batches of this run were graded against.
-
-:meth:`_demotion_prod_mixin.__init_subclass__` then cross-checks those four written
-declarations against :func:`outcome_for` applied to the member's own three input bits.
-Agreement is not proof of correctness and is not claimed as such; it is two independent
-transcriptions of one table having to match.
-
-============================================================================
-``+SECURE_BOOT_DIS`` DRIVES TWO SURFACES, AND THEY ARE COUPLED
-============================================================================
-
-This is the single most expensive thing the VP half of this run learned, and it is
-inherited here rather than rediscovered.
-
-  * sets ``secure_boot: 0``, which the packer
-    turns into TWO packed-field changes, not one -- see below;
-  * **and** burns the ``sboot_dis`` eFuse, constrained to equal the plusarg.
-
-Both are ported. The eFuse preload ``sep_efuse_lc_prod_sboot_dis.toml`` burns the
-fuse, and :func:`apply_secure_boot_dis` writes both manifest fields:
-
-  * ``secure_boot_control`` bit 0 cleared -- the signed enforcement request the
-    validator's precedence reads first (``secure_boot.c``). It sits INSIDE the
-    signed region, so clearing it re-hashes;
-  * ``signature_type`` forced to ``NO_SIGNATURE`` (0), because the packer forces
-    exactly that whenever a config sets ``secure_boot: 0``
-    (value from ``pack_images_constants.py``). The primary is therefore
-    genuinely unsigned, rather than a signed image with one flag cleared.
-
-**The coupling is what makes the port non-vacuous.** With ``signature_type = 0``
-the primary can boot only because the fuse is burned: with the manifest asking for
-nothing, ``plat_is_secure_boot_disabled()`` (``oca_platform.c``) is what answers, and
-it overrides the PROD lifecycle. Drop the fuse and PROD enforces secure boot, the
-unsigned primary is refused as a format violation, and the ROM
-fails over to the signed backup -- which carries no demotion stimulus and would
-produce outcome **O5** under whichever name the testcase happened to have. That
-substitution is made loud rather than silent: ``PUBK_ALGO_UNSUPPORTED``, the backup
-manifest source and ``LC=PROD_END`` are forbidden, ``FUSE: SBOOT_DIS: 1``
-(``rom_main.c``) and ``SBOOT_OFF`` (``rom_main.c``) are required, and
-the base's :meth:`~sep_demotion_decision_base._check_primary_served` additionally
-proves from the DEVICE side that no read touched the backup span.
-
-The primary keeps its stale dev0 signature bytes rather than a blank field.
-
-The BACKUP is re-signed and stays fully valid; only its ``life_cycle_states`` is
-narrowed. That is what makes the forbidden backup read meaningful rather than
-trivially satisfied by an unusable backup.
-
-============================================================================
-WHAT THE SHARED SKELETON DOES NOT COVER
-============================================================================
-
-``sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test`` (the O2a
-member) predates this module and performs the same three ``mm`` calls inline. It is
-deliberately NOT refactored onto :func:`apply_secure_boot_dis`: it is an approved,
-passing row whose docstring is its own evidence record, and rewriting it would put that
-row's provenance at risk to remove three duplicated lines. Both copies are anchored by
-the same two assertions (``signature_type == NO_SIGNATURE`` and ``secure_boot_control``
-bit 0 clear), so a change that broke one would fail the other loudly rather than
-silently.
+``+SECURE_BOOT_DIS`` drives two surfaces. The preload ``sep_efuse_lc_prod_sboot_dis.toml``
+burns the ``sboot_dis`` fuse. :func:`apply_secure_boot_dis` clears the signed
+``secure_boot_control`` request and sets ``signature_type`` to ``NO_SIGNATURE``. The
+unsigned primary boots only because the fuse is burned. Without the fuse, PROD refuses the
+primary and the signed backup boots, so ``PUBK_ALGO_UNSUPPORTED``, the backup source and
+``LC=PROD_END`` are forbidden, and ``FUSE: SBOOT_DIS: 1`` and ``SBOOT_OFF`` are required.
 """
 
 from __future__ import annotations
@@ -99,7 +30,7 @@ from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 # forbid below is inert.
 _LC_PROD = "LC=PROD"  # lifecycle.c
 _LC_PROD_END = "LC=PROD_END"  # lifecycle.c
-_SBOOT_DIS_FUSE = "FUSE: SBOOT_DIS: 1"  # rom_main.c
+_SBOOT_DIS_FUSE = "FUSE: SBOOT_DIS: 1"  # lifecycle.c
 _SBOOT_OFF = "SBOOT_OFF"  # rom_main.c
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
@@ -113,13 +44,11 @@ PROD_SBOOT_DIS_PRELOAD = EFUSE_DIR / "sep_efuse_lc_prod_sboot_dis.toml"
 
 
 def apply_secure_boot_dis(test, buf: bytearray, slot: str = "primary") -> None:
-    """Port ``+SECURE_BOOT_DIS``'s two MANIFEST surfaces onto one slot.
+    """Apply the two manifest surfaces of ``+SECURE_BOOT_DIS`` to one slot.
 
-    The third surface -- the ``sboot_dis`` eFuse -- is the preload's job and is
-    asserted separately by
+    The ``sboot_dis`` eFuse is the preload's job, asserted by
     :meth:`sep_demotion_decision_base.build_efuse_image` through
-    ``expected_sboot_dis``. All three are needed; see this module's docstring for
-    why reading only one of them produced the VP half's worst error.
+    ``expected_sboot_dis``.
 
     Clearing the signed request is what lets the device disable take effect at
     all: the validator checks ``secure_boot_control`` before any device input, so
@@ -151,21 +80,20 @@ def outcome_for(sel: int, auth: int, bl2: int) -> dict:
 
     Transcribed from the ROM's own control flow, not from any run:
 
-      * ``rom_main.c`` ``if (dc & OCA_DEMOTE_BL1_VALID)`` ->
-        ``demotion_reg = flags[0]``  and ``BL1_DEMOTE=``;
-        ``lock_demotion`` keeps its initialiser, so writes
+      * ``rom_main.c`` ``if (dc & OCA_DEMOTE_BL1_VALID)`` -> ``demotion_reg``
+        takes BL1_DEMOTION_ENABLE and the ROM prints ``BL1_DEMOTE=``;
+        ``lock_demotion`` keeps its initialiser, so the deferred write sets
         DEMOTE_1 ``(demote = auth, lock = 1)``;
-      * ``else if (bl2_demote)`` -> ``lock_demotion = false``
-        and ``DEMOTE: BL2 deferred, unlocked``. is then false,
-        so ``lc_write_demotion`` is never called and DEMOTE_1 is left at its reset
-        value -- the ONLY outcome of the seven with that property;
-      * ``else`` -> ``DEMOTE: BL2 deferred, lock non-demoted``,
-        ``demotion_reg`` still false, ``lock_demotion`` still true, so
-        writes ``(0, 1)``;
-      * prints ``BL2_DEMOTE_DEC=`` on all three of those arms, carrying
-        the ``demotion_control`` BL2 request unconditionally;
-      * ``lc_write_demotion_2`` is called only, i.e. only at PROD_END,
-        so DEMOTE_2 is never written on any arm here.
+      * ``else if (bl2_demote)`` -> ``lock_demotion = false`` and
+        ``DEMOTE: BL2 deferred, unlocked``. ``lc_write_demotion`` is never
+        called, so DEMOTE_1 keeps its reset value: the only outcome of the
+        seven with that property;
+      * ``else`` -> ``DEMOTE: BL2 deferred, lock non-demoted``; ``demotion_reg``
+        stays false and ``lock_demotion`` stays true, so the write is ``(0, 1)``;
+      * ``rom_main.c`` prints ``BL2_DEMOTE_DEC=`` on all three arms, carrying the
+        ``demotion_control`` BL2 request;
+      * ``lc_write_demotion_2()`` is called only at PROD_END, so DEMOTE_2 is
+        never written on any arm here.
 
     Returns the four things a member must declare, so that a member's own
     declarations can be cross-checked against this one place.
@@ -337,8 +265,9 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
     def check_manifest_stimulus(self, buf: bytearray) -> None:
         """Read all five mutated fields back out of the packed image.
 
-        Not duplication of the console. The ROM echoes ``demotion_control`` BL1_DEMOTION_ENABLE only when the
-        BL1_DEMOTION_VALID is set and never echoes VALID itself, so on three
+        Not duplication of the console. The ROM echoes BL1_DEMOTION_ENABLE
+        (``BL1_DEMOTE=``) only when BL1_DEMOTION_VALID is set and never echoes
+        VALID itself, so on three
         of the four members at least one input is invisible in the log and a
         stimulus that silently failed to land would produce exactly the log a
         correct run produces. The stimulus is asserted, not only the outcome.

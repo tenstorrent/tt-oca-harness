@@ -1,41 +1,21 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP ROM boot from an AES-256-CBC encrypted OCA payload (PyUVM).
+"""SEP ROM boot from an AES-256-CBC encrypted OCA payload, with an OTP-derived key.
 
-The signed sibling (``sep_rom_ot_secure_boot_test``) proves the ROM verifies a
-manifest. This one proves it can *decrypt* the payload that manifest describes,
-which is a different set of hardware entirely: the HMAC core running the OCA KDF
-and the AES engine running CBC, neither of which any other DV test drives.
+The image is also signed: the format forbids encryption without secure boot. After
+manifest validation, ``plat_decrypt_payload()`` (``oca_platform.c``) reads the CLASS_KEY
+eFuse secret, derives the key on the HMAC core (``kdf.c``, SP 800-108r1 CTR-HMAC-SHA-256),
+decrypts with ``aes_cbc_decrypt()`` (``aes_driver.c``) and strips the PKCS#7 padding. The
+library then hashes the plaintext, so ``PAYLOAD_OK`` holds only for a bit-exact key.
 
-Everything the signed test does still happens -- this image is signed too, since
-the format forbids encryption without secure boot
-(``OCA_FAIL_ENCRYPTION_REQUIRES_SECURE_BOOT``). The addition is the stretch
-between manifest validation and payload validation:
+Difference from ``sep_firmware_encrypted_boot_test``: this test writes CLASS_KEY into the
+default eFuse image (``set_words``) and checks the console markers only. The sibling boots
+the same image from the ``sep_efuse_class_key.toml`` preload and also checks the attempt
+order.
 
-    oca_payload_encryption_info()      -- manifest says encrypted, names a secret
-      -> plat_decrypt_payload()        -- oca_platform.c
-        -> CLASS_KEY eFuse read        -- the secret, by 1-based index
-        -> oca_derive_payload_key()    -- kdf.c: SP 800-108r1 CTR-HMAC-SHA-256
-             over header|KM_CLASS_BL|kdf_input|entropy, on the HMAC core
-        -> aes_cbc_decrypt()           -- aes_driver.c: AES-256, key via KEY_SHARE0
-        -> aes_pkcs7_strip()
-    oca_check_payload_at()             -- hash chain over the PLAINTEXT
-
-That last line is what makes this test meaningful rather than merely green. The
-library hashes the ciphertext before calling us and the plaintext after, so a
-decryption that "succeeded" with the wrong key cannot reach BL1 -- it fails the
-hash chain instead. A passing run therefore means the derived key was bit-exact,
-which in turn means the KDF block construction, the HMAC key-length and
-endianness handling, and the AES one-hot KEY_LEN encoding are all right in RTL.
-Those last two were latent driver bugs found during this integration and fixed
-against the VP model only; this is the first time they are exercised in
-simulation.
-
-The CLASS_KEY words below must match ``configs/oca_encrypted_boot_test.yaml``'s
-encryption_secret. Get the word order wrong and the KDF still "succeeds", just
-with a different key -- the failure then surfaces as a payload hash-chain error
-naming nothing about keys, which is a slow thing to debug. See the identical
-table in ``virtual_platform/tests/fuse_maps/oca_encrypted.yaml``.
+The CLASS_KEY words must match ``encryption_secret`` in
+``bootrom/prod/configs/oca_encrypted_boot_test.yaml``. A wrong word order still derives a
+key, and the failure then shows as a payload hash-chain error.
 """
 
 from __future__ import annotations

@@ -1,89 +1,28 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP Boot ROM MEM_REPAIR / MBIST boot gate, PASS arm (PyUVM).
+"""SEP Boot ROM MEM_REPAIR / MBIST boot gate, PASS arm.
 
-The pass-side partner of ``sep_firmware_mbist_fail_test``. Same gate, same
-injection mechanism, opposite stimulus and opposite expectation.
+The pass-side partner of ``sep_firmware_mbist_fail_test``, whose comment above
+``_DFT_STATUS_FAIL`` lists the gate in ``bootrom/prod/src/vector.S``.
+``hw/sys/smc/regs/blocks/dfx_ctrl_status/dfx_ctrl_status.rdl`` declares ``mem_repair_done[0]``,
+``mem_repair_success[1]``, ``mem_repair_abort[2]``, ``mbist_done[4]``, ``mbist_pass[8]`` and
+``mbist_abort[12]``. The gate keys on ``mem_repair_success`` and ``mbist_pass``, after it waits
+for ``mbist_done``. ``hw/sys/smc/regs/gen/c/smc_addr.h`` places
+``SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR`` at 0xC000_B800, seen from SEP as 0x4000_B800. The SMC
+responder is a flat memory, so this test cannot fail on the address; ``tb_top.sv`` flags an access
+outside a declared window through ``smc_addr_violations_o``.
 
-THE REGISTER, FROM THE RTL. Encoding:
-``hw/sys/smc/regs/blocks/dfx_ctrl_status/dfx_ctrl_status.rdl`` declares
-``mem_repair_done[0]``, ``mem_repair_success[1]``, ``mem_repair_abort[2]``,
-``mbist_done[4]``, ``mbist_pass[8]`` and ``mbist_abort[12]``; the gate keys on
-``mem_repair_success`` AND ``mbist_pass``, after waiting for ``mbist_done``.
-Location: ``smc_addr.h`` places ``SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR`` at
-0xC000_B800, seen from SEP as 0x4000_B800. 0x4000_F800 is unmapped here -- the gap
-between ``DFX_CTRL_DEBUG_BUS_MUX`` (0xC000_B810) and ``SMC_BASE_CONFIG``
-(0xC001_0000) -- so a ROM reading it would see only the flat responder's answer.
+The pass path emits nothing (no C runtime yet), so the checks assert that execution continued and
+that no failure-arm observable appeared. ``+sep_dft_status=00000112`` is exactly bits 1, 4 and 8.
+The testbench default 0x113 also boots, so the injection is what makes the run a test. 0x112 hangs
+a gate on ``mem_repair_done``, on the whole word equal to 0x113, or on a required abort bit. "Any
+bit set" is ruled out by the fail tests: 0xFFFFFFFD must block on repair and 0x12 must block on
+MBIST.
 
-Note what this testcase does NOT do, because it shapes how much the run
-below proves: the SMC responder is a flat memory that answers at whatever
-address the ROM presents, so every candidate offset "works" and no test in
-this suite can fail on the address. ``tb_top.sv`` carries an address-decode
-check (``smc_addr_violations_o``) that errors on any SEP->SMC access outside
-a window declared in ``smc_addr.h``, so the class of defect is detectable
--- but this test does not target the address itself.
-
-THE GATE THIS ARM EXERCISES. A gate reading ``mem_repair_success`` alone would be a
-memory-repair gate wearing an MBIST name, and the pass/fail pair would not notice:
-its pass arm boots with ``mbist_pass`` CLEAR. The injection is therefore 0x112, not
-0x02, so both arms are load-bearing.
-
-The gate is two arms (``bootrom/prod/src/vector.S``)::
-
-    # arm 1: memory repair, skipped entirely if BYPASS_SRAM_REPAIR is strapped
-    and  t2, straps_lo, STRAP_BYPASS_SRAM_REPAIR
-    bnez t2, 1f
-    andi t2, t1, DFT_MEM_REPAIR_SUCCESS       # bit 1
-    beqz t2, dft_gate_failed
-1:  # arm 2: MBIST, skipped if MBIST_BYPASS is strapped
-    and  t2, straps_hi, STRAP_MBIST_BYPASS_HI
-    bnez t2, 4f
-    <poll for mbist_done, abort or timeout -> dft_gate_failed>
-    andi t2, t1, DFT_MBIST_PASS               # bit 8
-    bnez t2, 4f                               # taken -> fall through to the scrub
-
-WHAT THE ROM EMITS ON THE PASS PATH. Nothing.
-On the taken branch there is no console write (no C runtime exists yet), no
-status word, and no SMC scratch publication -- every one of those sits on the
-*failure* arm below the branch. So a pass-arm testcase cannot assert a marker the
-ROM prints; it must assert that execution CONTINUED, and that none of the failure
-arm's observables ever appeared. That is what the checks below do, and it is why
-the injected value carries the whole weight of the test.
-
-THE INJECTION IS THE TEST. ``+sep_dft_status=00000112`` is exactly the three bits
-the gate requires -- ``mem_repair_success`` (1), ``mbist_done`` (4),
-``mbist_pass`` (8) -- and NOTHING else. The testbench default is 0x113, which
-also boots, so injecting nothing would prove only that the default boots. 0x112
-additionally rules out the plausible wrong implementations:
-
-  * a gate on ``mem_repair_done`` (bit 0) would hang, because bit 0 is clear;
-  * a gate on the whole word equalling the default 0x113 would hang;
-  * a gate that treats ``mem_repair_abort`` (2) or ``mbist_abort`` (12) as
-    required would hang, because both are clear;
-  * a gate on "any bit set" is not distinguished by this value alone, but IS
-    distinguished by the fail arms: 0xFFFFFFFD has 31 bits set and must still
-    block on repair, and 0x12 must still block on MBIST. The three together pin
-    the ROM to bits 1, 4 and 8.
-
-WHAT A PASS HERE DOES NOT COVER. Five paths through this gate are outside this
-test:
-
-  1. the ``BYPASS_SRAM_REPAIR`` strap arm (arm 1 skipped entirely);
-  2. the ``MBIST_BYPASS`` strap arm (arm 2 skipped entirely);
-  3. the ``mbist_abort`` branch;
-  4. the poll back edge and its timeout exit;
-  5. MBIST verdict FAIL followed by a blown ``SKIP_MEM_CHECK`` fuse. The fuse arm
-     itself is covered by ``sep_mbist_fail_continue_test``, but that test enters
-     it from the REPAIR failure; no test reaches the fuse from an MBIST failure.
-
-Item 4 is reachable with ``+sep_dft_status=00000002``: ``mbist_done`` stays
-clear, so the loop runs its full 10000 iterations and times out, exercising the
-back edge and the timeout exit in one run (roughly 300K cycles). Items 1 and 2
-are reachable with ``+sep_straps_lo`` / ``+sep_straps_hi``.
-
-This test also says nothing about SPI vs SMC-SRAM transport -- the gate is
-upstream of that split -- it merely reuses the OT-SPI boot as the "and then it
-booted" evidence, so the run has a definite end.
+Not covered: the ``BYPASS_SRAM_REPAIR`` and ``MBIST_BYPASS`` strap arms, the ``mbist_abort``
+branch, the poll timeout, and an MBIST failure followed by a blown ``SKIP_MEM_CHECK`` fuse
+(``sep_mbist_fail_continue_test`` enters the fuse arm from the repair failure). The OT-SPI boot
+gives the run a definite end; the gate is upstream of the transport choice.
 """
 
 from __future__ import annotations
@@ -111,7 +50,8 @@ from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 # fail_test cannot do that job: its 0xFFFFFFFD fails the repair arm first and
 # never reaches the MBIST check.
 _DFT_STATUS_PASS = 0x0000_0112
-# bootrom/prod/include/sep_smc_interface.h:64-65 and dfx_ctrl_status.rdl.
+# bootrom/prod/include/sep_smc_interface.h and
+# hw/sys/smc/regs/blocks/dfx_ctrl_status/dfx_ctrl_status.rdl.
 _MEM_REPAIR_DONE_BIT = 0
 _MEM_REPAIR_SUCCESS_BIT = 1
 _MBIST_DONE_BIT = 4
@@ -124,25 +64,23 @@ _MBIST_ABORT_BIT = 12
 # one contract from both sides.
 _STATUS_MBIST_WARN = 0x0801_0000 | 0x219  # WARN + SEP_MSG_MBIST_FAIL
 _STATUS_DFT_GATE_BLOCKED = 0x0F01_0000 | 0xD001  # ERROR + ROM_ERR_DFT_GATE_BLOCKED
-# Written by vector.S immediately BEFORE the gate: the
+# Written by vector.S immediately before the gate: the
 # STATUS_ENCODE(STATUS_TYPE_DEBUG, SEP_MSG_BOOTROM_PRESTART_DONE) store, the last
 # thing that runs ahead of the `lw` of DFX_CTRL_STATUS_SMU. Its presence places
-# execution at the gate's
-# doorstep, so "the boot completed" is a statement about this gate rather than
-# about some path that never reached it.
+# execution at the gate, so "the boot completed" is a statement about this gate.
 _STATUS_PRESTART_DONE = 0x8001_0056
 
 # C-runtime console markers. The failure arm forbids these because the gate stops
 # the ROM before C exists; the pass arm must therefore require them, or "the gate
 # let it through" would rest on the boot result alone.
-#   SMC_MEM_CHK  rom_main.c:190
-#   CHIP_ID=     rom_main.c:562
+#   SMC_MEM_CHK  rom_main.c
+#   CHIP_ID=     rom_main.c
 _POST_GATE_MARKERS = ("SMC_MEM_CHK", "CHIP_ID=")
 
 
 @pyuvm.test()
 class sep_firmware_mbist_pass_test(sep_rom_ot_dma_boot_test):
-    """mem_repair_success set and nothing else: the ROM boots straight through."""
+    """Exactly mem_repair_success, mbist_done and mbist_pass set: the ROM boots straight through."""
 
     required_markers = sep_rom_ot_dma_boot_test.required_markers + _POST_GATE_MARKERS
 

@@ -39,14 +39,14 @@ _EFUSE_PRELOAD = (
 )
 
 # Fixed rather than drawn at random, so the refusal is attributable to this
-# stimulus. See the docstring for why not 2.
+# stimulus.
 _BAD_SIG_TYPE = 0
 # The refusal is structural -- oca_check_crypto_field_sizes() rejects a type that
 # disagrees with the field sizes before plat_is_key_authorized() is called -- so
 # there is no PUBK_* token to key on and the error code IS the defect marker.
 _BAD_SIG_TYPE_ECHO = f"MANIFEST_ERR=0x{MANIFEST_ERR_SIG_TYPE_INVALID:08x}"
 # The backup keeps the shipped selector: ROM key slot 0
-# (configs/secure_boot_test.yaml:112-114).
+# (configs/oca_secure_boot_test.yaml, public_key_select_classic).
 _BACKUP_SEL_ECHO = "PUBK_SEL=0x00000000"
 
 
@@ -62,10 +62,9 @@ class sep_firmware_primary_invalid_signature_type_test(sep_primary_fail_backup_b
     # The backup's selector, so "the backup booted" is tied to slot 0 rather than
     # to an unread selection.
     extra_required = (_BACKUP_SEL_ECHO,)
-    # RSA_PKCS1_FAIL is the discriminator against the signature-VALUE sibling,
-    # which shares this error code. The rest are the later arms of
-    # the signature path: the primary dies at the first arm and the backup is
-    # valid, so none of them may fire on either slot.
+    # RSA_PKCS1_FAIL is forbidden: only the signature-value sibling reaches the
+    # verifier. The rest are later arms of the signature path: the primary dies
+    # at the first arm and the backup is valid, so none may fire on either slot.
     extra_forbidden = (
         # plat_is_key_authorized() is unreachable on the primary, its algorithm arm
         # included: the structural check refuses before the callback runs. The
@@ -110,8 +109,8 @@ class sep_firmware_primary_invalid_signature_type_test(sep_primary_fail_backup_b
         )
 
     def check_efuse(self, image) -> None:
-        # Both precede the signature path, so either being non-zero would end the run with a
-        # different verdict.
+        # Both precede the signature path, so either one non-zero would end the
+        # run with a different verdict.
         bl1_ver = image.field_int("BL1_VERSION")
         assert bl1_ver == 0, (
             f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: anti-rollback cannot reject a "
@@ -138,13 +137,12 @@ class sep_firmware_primary_invalid_signature_type_test(sep_primary_fail_backup_b
         i_bsrc = index_of(f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}")
         i_bsel = index_of(_BACKUP_SEL_ECHO)
 
-        # CHK-SIGTYPE-PREEMPTS-KEYSEL: this is the discriminating check of the
-        # testcase. PUBK_SEL= is printed, one statement
-        # after the type check, so the primary must NOT have echoed a
-        # selector at all -- the only occurrence in the run belongs to the booting
-        # backup, and it must follow the backup read. A count of 2 would mean the
-        # type check did not preempt key selection, which is precisely what
-        # separates this testcase from its signature-VALUE sibling.
+        # CHK-SIGTYPE-PREEMPTS-KEYSEL: the discriminating check of this test.
+        # PUBK_SEL= is printed at key selection, after the type check, so the
+        # primary must not echo a selector. The only occurrence belongs to the
+        # booting backup and must follow the backup read. A count of 2 means the
+        # type check did not preempt key selection, which is what separates this
+        # test from its signature-value sibling.
         n_sel = sum(1 for line in console if "PUBK_SEL=" in line)
         assert n_sel == 1, (
             f"PUBK_SEL= appeared {n_sel} times, expected exactly 1 (the backup's). "

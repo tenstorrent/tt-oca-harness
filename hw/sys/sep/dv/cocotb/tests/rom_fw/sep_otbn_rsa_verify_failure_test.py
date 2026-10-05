@@ -2,8 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """A corrupted RSA signature in both slots is rejected by the OTBN verify itself.
 
-Each slot must print ``RSA_EXEC`` then ``RSA_PKCS1_FAIL``. Needs ``+esrc_noise_force``: OTBN
-stalls without EDN entropy. The plusarg forces the ESRC noise input; the ROM brings up the entropy chain.
+Each slot must print ``RSA_EXEC`` then ``RSA_PKCS1_FAIL``. Needs ``+esrc_noise_force``:
+OTBN stalls without EDN entropy. The plusarg forces the ESRC noise input; the ROM brings
+up the entropy chain.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_backup_manifest_fail_base import (
+    MANIFEST_ERR_KEY_REVOKED,
     MANIFEST_ERR_SIG_FAILED,
     sep_backup_manifest_fail_base,
 )
@@ -44,7 +46,7 @@ _OTHER_SIG_VERDICTS = (
     "PUBK_OTP_EMPTY",
     "PUBK_HASH_TIMEOUT",
     "PUBK_UNAUTHORIZED",
-    "the revocation error code",
+    f"MANIFEST_ERR=0x{MANIFEST_ERR_KEY_REVOKED:08x}",
 )
 
 # One bit per slot at different indices, so each write is independently attributable.

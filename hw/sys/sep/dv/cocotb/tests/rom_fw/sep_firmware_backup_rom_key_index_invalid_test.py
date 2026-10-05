@@ -2,37 +2,20 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Backup manifest names a reserved key slot -> terminal.
 
-The primary's ``manifest_identifier`` is corrupted to force failover, then the
-backup's ``public_key_select`` names slot 26. The format reserves ``[31:26]``, so
-the platform refuses it with ``PUBK_SLOT_RESERVED`` before looking for an anchor.
+The primary's magic is broken to force failover. The backup's ``public_key_select`` names slot 26,
+which the format reserves (``[31:26]``), so the platform refuses it with ``PUBK_SLOT_RESERVED``
+before it looks for an anchor. Slot 26 is ``OCA_KEY_SLOT_MAX + 1``, the smallest slot the bound
+must refuse, so only this value catches ``>=`` written for ``>``. Slot 25 is a fuse-held chiplet
+key and is accepted.
 
-WHY 26 AND NOT 31. Twenty-six is ``OCA_KEY_SLOT_MAX + 1`` exactly -- the smallest
-slot the bound must refuse. A larger value would pass just as well against a ROM
-that had written ``>=`` instead of ``>``, so only the boundary pins the
-comparison. Slot 25 is a fuse-held chiplet key and would be accepted, which is
-what makes this the boundary rather than merely a large number.
+``sep_firmware_backup_invalid_public_key_selection_test`` names two slots and is refused for
+ambiguity. Both return ``MANIFEST_ERR_KEY_UNAUTHORIZED``, so the console token is the only
+discriminator: ``PUBK_SLOT_RESERVED`` is required and ``PUBK_SEL_AMBIGUOUS`` is forbidden.
 
-THIS IS A DIFFERENT ARM FROM ``sep_firmware_backup_invalid_public_key_selection_test``.
-That testcase names TWO slots and is refused for ambiguity, before any slot
-number is resolved. This one names exactly one slot, which is resolved and
-echoed, and then refused for being reserved. Both return
-``MANIFEST_ERR_KEY_UNAUTHORIZED``, so ``PUBK_SEL_AMBIGUOUS`` is forbidden here and
-``PUBK_SLOT_RESERVED`` is required -- the console token is the only discriminator.
-
-THE LOAD-BEARING FORBID IS ``PUBK_REVOKE=``. The reserved-range check runs inside
-``is_key_authorized``, which the validator calls BEFORE the revocation check, and
-that ordering is a security property rather than a detail: revocation indexes its
-bitmap by slot number, so a reserved slot the bound let through would consult a
-bit belonging to no key. Forbidding the fuse echo proves the bound stopped it
-first. ``PUBK_SLOT_UNPROVISIONED`` is forbidden for the same reason one step
-later: a reserved slot must never reach the anchor lookup.
-
-``public_key_select`` is inside the signed region, so the helper re-hashes. No
-re-sign: the slot is rejected before the verifier runs, so the stale signature
-is never examined, and ``RSA_EXEC`` is forbidden to check that rather than
-assume it.
-
-No ``+esrc_noise_force``: OTBN is never driven on either slot.
+The reserved-range check runs before revocation, which indexes its bitmap by slot number.
+``PUBK_REVOKE=`` and ``PUBK_SLOT_UNPROVISIONED`` are forbidden, so the bound must stop the slot
+first. The selector is inside the signed region, so the helper re-hashes; ``RSA_EXEC`` is
+forbidden, so the stale signature is never examined. No ``+esrc_noise_force``.
 """
 
 from __future__ import annotations
@@ -62,7 +45,7 @@ _PUBK_SEL_ECHO = f"PUBK_SEL=0x{_PUBK_SEL_VALUE:08x}"
 
 @pyuvm.test()
 class sep_firmware_backup_rom_key_index_invalid_test(sep_backup_manifest_fail_base):
-    """Primary BAD_MAGIC -> failover -> backup names ROM key index 6 -> terminal."""
+    """Primary BAD_MAGIC -> failover -> backup names reserved key slot 26 -> terminal."""
 
     backup_defect_marker = "PUBK_SLOT_RESERVED"
     expected_error = MANIFEST_ERR_KEY_UNAUTHORIZED

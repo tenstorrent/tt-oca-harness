@@ -1,21 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Backup manifest with a rolled-back security version (PyUVM).
+"""Backup manifest carries a rolled-back security version; the ROM halts.
 
-The primary's ``manifest_identifier`` is corrupted to force failover, then the
-backup's ``security_version`` is set to 3 against a ``BL1_VERSION`` fuse whose
-thermometer count is 8, so the backup asks to run an older version than the part
-accepts. The check is a single comparison (``manifest_ver < fuse_ver``,
-), so a fixed pair exercises the same code as a random
-one while letting the test assert the exact ``FUSE_VER=`` and ``MFST_VER=`` the ROM
-read.
+The primary's magic is broken to force failover. The backup's ``security_version``
+is 3 against a ``BL1_VERSION`` fuse with 8 bits set, so the backup lacks device
+flags. The check is the flag superset test ``(device & ~manifest) == 0``, so one
+fixed pair exercises it, and the test asserts the exact ``FUSE_VER=`` and
+``MFST_VER=`` the ROM read.
 
-``manifest_security_version`` is at offset 2042, inside the signed region, so the
-mutation invalidates ``manifest_hash`` and the helper re-hashes. It does NOT
-re-sign and does not need to: anti-rollback is checked before the signature, so
-the stale signature is never reached. That ordering is asserted, not assumed --
-``RSA_EXEC`` is forbidden, so a ROM that verified the signature first would
-fail this test loudly instead of passing on an unintended hash or signature error.
+The field is inside the signed region, so the helper re-hashes. No re-sign:
+anti-rollback runs before the signature, and ``RSA_EXEC`` is forbidden so that
+ordering is checked.
 """
 
 from __future__ import annotations

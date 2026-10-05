@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The primary's payload_offset names the backup slot's payload; the backup boots.
 
-``payload_offset`` is unsigned and the backup payload equals the primary's, so only the
-location bound can refuse the slot, with ``OCA_FAIL_PAYLOAD_LOCATION``.
+``payload_offset`` is outside the signed region and the backup payload equals the primary's, so
+only the location bound can refuse the slot, with ``OCA_FAIL_PAYLOAD_LOCATION``.
 """
 
 from __future__ import annotations

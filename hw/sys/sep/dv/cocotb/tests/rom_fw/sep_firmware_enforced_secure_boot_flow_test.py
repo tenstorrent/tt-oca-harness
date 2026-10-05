@@ -1,28 +1,20 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Enforced secure boot under the PROD lifecycle (PyUVM).
+"""Enforced secure boot under the PROD lifecycle.
 
-A signed image authenticating and booting under PROD: full RSA-3072 chain, then
-handoff to BL1.
+A signed image authenticates and boots under PROD: full RSA-3072 chain, then handoff to BL1.
 
-WHAT THIS DOES NOT ESTABLISH -- read before extending. It does not exercise a
-distinct "enforce arm". The manifest's own secure-boot control is sufficient by itself:
-with it SET the validator enforces the crypto chain on every lifecycle, so
-``plat_is_secure_boot_active()`` (``oca_platform.c``) never decides. The instruction path
-is therefore the same one ``sep_rom_ot_secure_boot_test`` takes under TEST_DEV, so
-no lifecycle-precedence claim may be made from a pass. The sibling
-``sep_firmware_cntl_secure_boot_flow_test`` clears the flag and isolates that.
+It does not exercise a distinct enforce arm. With the manifest's secure-boot control set, the
+validator enforces the crypto chain on every lifecycle, so ``plat_is_secure_boot_active()``
+(``oca_platform.c``) never decides. The instruction path is the one
+``sep_rom_ot_secure_boot_test`` takes under TEST_DEV, so no lifecycle-precedence claim follows
+from a pass; ``sep_firmware_cntl_secure_boot_flow_test`` isolates that.
 
-What it does add: the PROD path through ``rom_lifecycle_policy`` (LC decode,
-validation, and the production feature-control masking it applies) and the PROD bit
-of the manifest's ``life_cycle_states`` constraint.
-The lifecycle assertion in :meth:`build_efuse_image` keeps that honest -- without
-it the OTP could silently be TEST_DEV again.
-
-The image already permits PROD: ``life_cycle_states = 0x7`` with the selector bit
-set, and ``security_version = 0`` against a zero BL1_VERSION fuse, so no
-usage-constraint or rollback rejection is expected. Read from
-``build/oca_secure_boot.bin``, not assumed.
+It adds the PROD path through ``rom_lifecycle_policy`` (LC decode, validation and the production
+feature-control masking) and the PROD bit of the manifest's ``life_cycle_states``.
+:meth:`build_efuse_image` asserts PROD, so the OTP cannot be TEST_DEV. The shipped image permits
+PROD (``life_cycle_states = 0x7``) and carries ``security_version = 0`` against a zero BL1_VERSION
+fuse, so no usage-constraint or rollback rejection is expected.
 """
 
 from __future__ import annotations

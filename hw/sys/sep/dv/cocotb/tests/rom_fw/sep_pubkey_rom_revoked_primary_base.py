@@ -163,7 +163,7 @@ class sep_primary_pubkey_rom_revoked_failover_base(
         "PUBK_ALGO_UNSUPPORTED",
         "RSA_PKCS1_FAIL",
     )
-    # Both attempts echo the same whole fuse word; only the error code is per slot.
+    # The backup selects ROM key slot 0.
     _BACKUP_SEL_ECHO = "PUBK_SEL=0x00000000"
 
     @classmethod
@@ -201,7 +201,8 @@ class sep_primary_pubkey_rom_revoked_failover_base(
             ordered=b_ordered,
             absent=(self._KEY_REVOKED_ECHO, self._PUBK_SEL_ECHO),
         )
-        # The fuse word is echoed once per slot attempt; the selector and verdict are the primary's.
+        # Both attempts echo the same whole fuse word, so it appears once per slot;
+        # the selector and the error code are the primary's.
         for marker, want_n in (
             (self._REVOKE_ECHO, 2),
             (self._PUBK_SEL_ECHO, 1),

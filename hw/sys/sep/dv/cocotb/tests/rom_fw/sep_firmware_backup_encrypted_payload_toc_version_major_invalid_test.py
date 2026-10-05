@@ -2,8 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Backup's ENCRYPTED TOC declares major_version 2; the ROM halts.
 
-The spec supports major 1 only; the library and ROM do not compare it, so this row fails.
-Needs ``+esrc_noise_force``: an RSA-3072 modexp and an AES decryption.
+The spec supports TOC major version 1 only, so the slot must be refused with
+``OCA_FAIL_PAYLOAD_TOC``. Known gap: neither the library nor the ROM compares the field, so the
+DUT accepts the slot and this test fails. Needs ``+esrc_noise_force``: an RSA-3072 modexp and an
+AES decryption.
 """
 
 from __future__ import annotations

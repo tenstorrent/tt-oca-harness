@@ -214,7 +214,7 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
             while True:
                 await RisingEdge(dut.clk_i)
                 cycle += _SAMPLE_EVERY
-                # rd() returns 0 for an unresolved probe; a 4-state simulator needs X handling.
+                # rd() raises on an unknown bit; samples before reset are skipped.
                 try:
                     cur = self._sample_demote(dut)
                 except Exception:  # noqa: BLE001 - X before reset is not a sample

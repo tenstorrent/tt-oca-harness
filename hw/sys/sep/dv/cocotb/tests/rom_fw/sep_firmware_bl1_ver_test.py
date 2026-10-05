@@ -2,33 +2,18 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """BL1 security version carrying every device flag -> accepted, the primary boots.
 
-The accept boundary of anti-rollback. ``manifest_security_version`` is a 128-flag
-bitmap, not a counter: a manifest is refused when it omits a flag the device holds,
-``(device & ~manifest) != 0``. Both slots are written with exactly the device's flags
-and re-sealed, so equality is the boundary under test and one flag fewer would reject.
+The accept boundary of anti-rollback. ``manifest_security_version`` is a 128-flag bitmap: a
+manifest is refused when ``(device & ~manifest) != 0``. Both slots carry exactly the device's
+flags and are re-sealed, so one flag fewer would reject. The reject side is
+``sep_firmware_backup_invalid_security_version_test`` and
+``sep_firmware_primary_invalid_security_version_test``; those also show the comparison exists,
+which an accept-only test cannot.
 
-The reject side is covered by ``sep_firmware_backup_invalid_security_version_test``
-and ``sep_firmware_primary_invalid_security_version_test``; this is the accept side.
-
-Where anti-rollback sits, and why both halves are asserted here. The check runs after
-the root key is authorized and BEFORE the signature. The key-selection family relies
-on reaching the key decision before this check can reject, and the reject siblings
-rely on a rolled-back manifest never being handed to the verifier, so the ordering is
-pinned here rather than inherited: ``PUBK_SEL=`` then ``FUSE_VER=`` then ``RSA_EXEC``.
-
-The flags are spread across all four words the platform reads -- the low 16 bytes of
-the ``BL1_VERSION`` bank -- each word distinct and non-empty. A read that truncated
-to one word, repeated a word, or mis-indexed would change the verdict rather than
-pass, which a preload concentrating its bits in word 0 could not show.
-
-The device flags are read TWICE per slot: the library re-runs the check after the
-signature as fault-injection hardening, so ``FUSE_VER=`` appears twice on the one
-slot attempted and a count of one would mean the recheck did not happen.
-
-An accept-only test cannot exclude a ROM whose comparison has been deleted while the
-two echoes remain: printing both operands does not show the comparison ran, and
-ordering is sequence rather than comparison. The two reject siblings are what
-establish that the comparison exists.
+The check runs after root-key authorization and before the signature, so the order ``PUBK_SEL=``
+then ``FUSE_VER=`` then ``RSA_EXEC`` is asserted. The flags are spread across the four words the
+platform reads (the low 16 bytes of ``BL1_VERSION``), so a truncated, repeated or mis-indexed read
+changes the verdict. The library re-runs the check after the signature, so ``FUSE_VER=`` appears
+twice on the one slot attempted.
 
 Needs ``+esrc_noise_force``: the primary is valid, so a real RSA-3072 modexp runs.
 """
@@ -70,8 +55,8 @@ _MFST_VER_ECHO = f"MFST_VER=0x{_DEVICE_FLAGS & 0xFFFF_FFFF:08x}"
 _LC_PROD = "LC=PROD"
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
-_PUBK_SEL = "PUBK_SEL="  #
-_RSA_START = "RSA_EXEC"  #
+_PUBK_SEL = "PUBK_SEL="
+_RSA_START = "RSA_EXEC"
 _RSA_VERIFY_OK = "RSA_VERIFY_OK"
 
 _CRYPTO_OK = "MANIFEST_OK"

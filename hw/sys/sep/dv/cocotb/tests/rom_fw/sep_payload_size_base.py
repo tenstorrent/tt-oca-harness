@@ -326,7 +326,7 @@ class PayloadSizeRefusedTest(_PayloadSizeTest):
             f"backup. Console: {console}"
         )
         primary, backup = attempts
-        # The payload must lie within its slot window (rom.adoc Flash Layout).
+        # The payload must lie within its slot window (bootrom/prod/doc/rom.adoc, Flash Layout).
         p_ordered = _SIGNED_ACCEPT + (_LOC_FAIL, err)
         oc.assert_attempt(
             primary,

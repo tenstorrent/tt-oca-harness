@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP ROM non-secure boot test (PyUVM) -- real Boot ROM, SMC-SRAM manifest.
+"""SEP ROM non-secure boot test -- real Boot ROM, SMC-SRAM manifest.
 
 The core resets to ``SEP_BOOT_ROM_MEM_BASE_ADDR`` and runs the production Boot ROM from
 ``boot_rom.vmem`` (``+sep_boot_rom_hex``). Without ``+sep_boot_from_spi`` the ROM takes
@@ -38,8 +38,7 @@ _MAX_RUN_CYCLES = 4_000_000
 # a report of intent. Requiring it also catches a build whose insert-rom-sha256.py
 # step was skipped -- that leaves the embedded hash all zeros, which fails the parse.
 #
-# They now cover strictly more: the OCA library checks the
-# payload hash chain and every TOC entry hash, not just the payload hash.
+# PAYLOAD_OK covers the payload hash, the hash chain and every TOC entry hash.
 #
 # The pair at the end is what evidences the transfer of control: those two strings
 # exist only in the BL1 source, nowhere in the boot-ROM sources. The two hash
@@ -75,11 +74,11 @@ class sep_rom_non_secure_boot_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         # This BL1 (bl1_pass_test) prints "BL1"/"OBF"/"GO!" on the SCRATCH2 virt
-        # console (decoded by _scratch2_console below), NOT the mailbox byte
-        # console the scoreboard's banner check reads -- so disable that banner
-        # check. PASS is gated on the real criteria: fw_done && fw_pass (the BL1
-        # 0xA5A55A5A->0xCAFEBABE mailbox magic) plus EL2 PC-advance. The ROM+BL1
-        # boot markers (BL1/OBF/FUSE_OK/GO!) are visible in the scratch2 console log.
+        # console, NOT the mailbox byte console the scoreboard's banner check
+        # reads -- so disable that banner check. PASS is gated on fw_done &&
+        # fw_pass from the cold_scratch[0] verdict plus EL2 PC-advance. The
+        # ROM+BL1 boot markers (BL1/OBF/FUSE_OK/GO!) are visible in the scratch2
+        # console log.
         self.sb.expected_line = ""
         self._rom_markers: list[str] = []
         # The ROM's rom_lifecycle_policy validates the eFuse LC_STATE, so real
@@ -91,8 +90,8 @@ class sep_rom_non_secure_boot_test(sep_base_test):
         cocotb.start_soon(rom_console_task(self.logger, sink=self._rom_markers))
         try:
             # No TCM staging: the ROM runs from Boot ROM (+sep_boot_rom_hex) and
-            # pulls BL1 off SPI into ICCM itself, so there is no firmware image for
-            # the tcm_load_i backdoor to place. Valid ECC comes from the vector.S
+            # pulls BL1 from the SMC-SRAM manifest into ICCM itself, so there is no
+            # firmware image for the tcm_load_i backdoor to place. Valid ECC comes from the vector.S
             # scrub for DCCM and from the DMA that loads BL1 for ICCM, within the
             # loaded image only.
             await self.bring_up_cpu_boot(_ROM_BASE >> 1, run_pulse_cycles=40)
@@ -107,7 +106,7 @@ class sep_rom_non_secure_boot_test(sep_base_test):
             # them. Without this the whole virtual console could go dark -- a
             # dropped -DDEBUG, a broken cold_scratch write, a dead probe tap --
             # and the run would still be green, because the PASS gate is fed from
-            # the outbound mailbox, a different target entirely.
+            # the cold_scratch[0] verdict, a different target entirely.
             missing = [m for m in _REQUIRED_ROM_MARKERS if m not in self._rom_markers]
             assert not missing, (
                 f"ROM/BL1 stage markers missing from the scratch console: {missing}; "

@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary holds 0x5A at an unselected package_id byte; the backup boots.
 
-``boot-manifest.adoc`` requires an unselected identity byte to be MANIFEST_UNUSED_BYTE, so
+The OCA format requires an unselected identity byte to be MANIFEST_UNUSED_BYTE, so
 ``oca_check_identity`` refuses the primary with ``OCA_FAIL_PACKAGE_ID`` before key selection.
 """
 

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""LC_STATE raw 0x4 is invalid, not RMA_CHIPLET (PyUVM).
+"""LC_STATE raw 0x4 is invalid, not RMA_CHIPLET.
 
 The lifecycle controller decodes RMA_CHIPLET as ``4'b011?``
 (``hw/sys/sep/rtl/sep_lifecycle_ctrl.sv``), so raw ``0x4`` and ``0x5`` fall to its

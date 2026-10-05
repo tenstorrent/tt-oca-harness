@@ -1,36 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""The manifest handed to BL1 must still parse after a successful boot (PyUVM).
+"""The manifest handed to BL1 must still hold the OCA magic after a successful boot.
 
-FEATURE UNDER TEST. ``bl0_state.sep_sram_manifest_addr`` points BL1 at the
-manifest BL0 authenticated, and ``doc/memory-security.adoc`` and
-``doc/bl1-handoff.adoc`` both say BL1 consumes it. That is a contract about the
-bytes in SEP SRAM at hand-off, and nothing inside the ROM re-reads them, so it
-holds only if something checks.
+``bl0_state.sep_sram_manifest_addr`` points BL1 at the manifest that BL0 authenticated
+(``bootrom/prod/doc/memory-security.adoc``, ``bootrom/prod/doc/bl1-handoff.adoc``), and
+``oca_boot.c`` stages that manifest body at SEP SRAM word 0. The ``[S29]`` ICCM ECC pad
+runs after staging and validation. Its ``sep_dma_zero()`` fill must not take its source
+from SEP SRAM word 0. The test reads ``sram_word0_probe_o`` (``tb_top.sv``) after the boot
+and requires the OCA magic there.
 
-WHY IT DID NOT HOLD. ``sep_dma_zero()`` needs a source address even for a fill,
-and it used to take the first word of SEP SRAM -- which is exactly where
-``oca_boot.c`` stages the manifest body. The comment claimed the word was
-"consumed before any payload is staged there", true of the ``[S16]`` ICCM clear
-and false of the ICCM ECC pad at ``[S29]``, which runs after staging and
-validation and is in the default build. So an ordinary successful boot zeroed
-``body[0..3]`` -- the OCA magic -- and handed BL1 a manifest returning
-``OCA_FAIL_MAGIC``. The ROM reported a clean boot throughout.
-
-WHAT MAKES THIS TESTABLE WITHOUT BL1 COOPERATION. ``sram_word0_probe_o``
-(``tb_top.sv``) is a continuous assign from SEP SRAM word 0, the 64 bits holding
-the magic. Reading it after the boot completes asks the memory what BL1 would
-read, without needing a BL1 that parses manifests.
-
-``ICCM_PAD=`` IS REQUIRED, NOT INCIDENTAL. It is printed only when the ``[S29]``
-pad actually runs, which needs ``ROM_ICCM_CLEAR_ENABLE=1``,
-``ROM_ICCM_CLEAR_FULL=0`` and a BL1 that lands in ICCM. Without that marker this
-testcase would pass on a build where the destructive path was compiled out, and
-would be asserting nothing. It is listed first for that reason.
-
-The non-secure image is deliberate: the defect is in the hand-off fill, not in
-the crypto, and the signed image would add an RSA-3072 modexp to every run of a
-testcase that does not exercise it.
+``ICCM_PAD=`` is required: the ROM prints it only when the ``[S29]`` pad runs, so the test
+cannot pass on a build that compiles the pad out. The non-secure image keeps the RSA
+modexp out of the run; the contract is the hand-off fill, not the crypto.
 """
 
 from __future__ import annotations
@@ -41,7 +22,7 @@ from env import sep_manifest_mutate as mm
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
 # Printed by rom_handoff.c only when the [S29] ICCM ECC pad runs -- the call
-# site whose fill used to land on the staged manifest.
+# site that runs after the manifest is staged.
 _ICCM_PAD = "ICCM_PAD="
 # Printed immediately before the jump, so the pad is known to have run as part
 # of a hand-off rather than of an aborted attempt.

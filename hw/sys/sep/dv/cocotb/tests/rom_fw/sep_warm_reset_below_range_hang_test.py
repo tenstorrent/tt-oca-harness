@@ -1,25 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Warm dispatch, LOWER-bound reject: a handler below ICCM base must hang.
+"""Warm dispatch lower-bound reject: a handler address below the ICCM base must hang.
 
-Leg B of the four in ``vector.S``::
-
-    bltu t1, WARM_HANDLER_RANGE_BASE, warm_reset_hang
-
-``sep_warm_reset_invalid_hang_test`` drives the UPPER bound alone -- it seeds
-``RANGE_END``. A ROM that dropped the ``bltu`` entirely would still pass that
-test and would then jump to any address below ICCM, which is where the boot ROM
-and every peripheral live.
-
-THE SEED IS A BOUNDARY VALUE, for the same reason its upper-bound sibling's is.
-``RANGE_BASE - 4`` is the LARGEST address the lower bound must reject, so it
-pins the ROM's ``bltu`` against a mistaken ``bleu``: the latter would accept
-this address and jump into the last word below ICCM. A seed far below the base
-would be rejected by either encoding and prove nothing about which one is there.
-
-Both legs converge on the same ``warm_reset_hang`` label, so the evidence has
-the same shape as the upper-bound test. What separates the two runs is the
-STIMULUS: ``CHK-SEED`` shows the register really held an address below the base.
+This is leg B of the warm dispatch in ``vector.S``. ``sep_warm_reset_invalid_hang_test``
+drives only the upper bound. The seed is ``RANGE_BASE - 4``, the last word below
+``WARM_HANDLER_ICCM_BASE``. It is also above ``WARM_HANDLER_SRAM_END``, so neither window
+accepts it and the ROM must reach ``warm_reset_hang``. Both bound legs end at that label,
+so ``CHK-SEED`` shows the register held an address below the ICCM base.
 """
 
 from __future__ import annotations

@@ -1,41 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""ROTATE_UPDATE strap swaps the primary and backup manifest slots (PyUVM).
+"""The ROTATE_UPDATE strap swaps the order in which the ROM tries the manifest slots.
 
-FEATURE. ``STRAPS_HI[26]`` tells the ROM to try the
-slots in the opposite order. ``rom_manifest_boot`` keeps the offset table fixed
-and rotates the INDEX instead (``oca_boot.c``)::
+``STRAPS_HI[26]`` makes ``rom_manifest_boot()`` (``oca_boot.c``) rotate the slot index,
+so the first attempt reads ``BACKUP_MANIFEST_OFFSET`` (0x41000) and prints
+``MANIFEST_BACKUP``; the label follows the slot. The primary slot is erased, so a ROM that
+ignored the strap would still boot after a BAD_MAGIC failover. The order is therefore
+asserted three ways: ``MANIFEST_SRC=0x00041000`` appears and ``MANIFEST_SRC=0x00001000``
+does not; ``MANIFEST_BACKUP`` appears and ``MANIFEST_PRIMARY`` and ``MANIFEST_ERR=`` do
+not; and no flash read lands in the primary slot's span. ``STRAPS_HI=0x04000000`` is
+required, so the run is attributable to this strap.
 
-    uint32_t slot = retry;
-    if (straps->rotate_update) slot ^= 1u;
-
-so on a rotated boot the FIRST attempt -- ``retry == 0`` -- reads
-``BACKUP_MANIFEST_OFFSET`` (0x41000). The slot label follows the slot, not the
-retry counter, so that first attempt prints ``MANIFEST_BACKUP``: the label and
-``MANIFEST_SRC`` name the same slot.
-
-WHY THE PRIMARY SLOT IS ERASED. If both slots held a valid image, a ROM that
-ignored the strap would boot from 0x1000 and a ROM that honoured it would boot
-from 0x41000, and both would be green unless the test looked at addresses. With
-0x1000 blank the broken case does not even fail: it would be rejected as
-BAD_MAGIC and then fall over to 0x41000 and boot anyway. So the ordering evidence
-is the whole test, and it is asserted three independent ways:
-
-  * ``MANIFEST_SRC=0x00041000`` appears and ``MANIFEST_SRC=0x00001000`` never
-    does -- the ROM's own statement of which address it read;
-  * ``MANIFEST_BACKUP`` appears and ``MANIFEST_PRIMARY`` never does, and no
-    ``MANIFEST_ERR=`` is printed. A ROM ignoring the strap would print both
-    labels and an error, because its first attempt would read the erased slot;
-  * on the device side, no read transaction lands anywhere in the primary slot's
-    flash span, which is measured at the flash model rather than inferred.
-
-``STRAPS_HI=0x04000000`` is required as well: it is the ROM echoing the word it
-actually read, so the run is attributable to this stimulus and not to a strap
-that happened to be set some other way.
-
-The image is the unsigned one and the OTP is the inherited TEST_DEV.
-Slot selection is upstream of the crypto chain, so adding secure boot here would
-only introduce failure modes that say nothing about rotation.
+The image is unsigned and the OTP is the inherited TEST_DEV: slot selection runs before
+the crypto chain.
 """
 
 from __future__ import annotations
@@ -51,13 +28,11 @@ _ROTATE_UPDATE_BIT = 26
 
 _SPI_PATH_MARKER = "BOOT_SPI"
 _STRAPS_HI_ECHO = f"STRAPS_HI=0x{_STRAPS_HI_ROTATE:08x}"
-_ROTATE_ECHO = "SPI_ROTATE=1"  # rom_main.c:321
-_STRAP_ROTATE_ECHO = " rotate=1"  # boot_straps.c:34
+_ROTATE_ECHO = "SPI_ROTATE=1"  # rom_main.c
+_STRAP_ROTATE_ECHO = " rotate=1"  # boot_straps.c
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 _MANIFEST_OK = "MANIFEST_OK"
-# The ROM prints this only for the second attempt, so its absence is what
-# says the rotated slot was the FIRST attempt and not a fallback.
 # The slot label, which follows the slot rather than the retry counter, so on a
 # rotated boot the first attempt is the backup. MANIFEST_PRIMARY appearing would
 # mean the ROM read 0x1000, which this test erased.

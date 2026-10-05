@@ -261,7 +261,7 @@ class sep_fuse_lock_base(sep_rom_ot_dma_boot_test):
             f"constraint would share the slot and could refuse it"
         )
         secure_boot = mm.secure_boot_control(buf, slot)
-        enforced = (secure_boot >> mm.SECURE_BOOT_ENFORCED_BIT) & 1
+        enforced = int(bool(secure_boot & mm.SECURE_BOOT_ENFORCED_BIT))
         assert enforced == int(self._secure_expected()), (
             f"{slot} secure_boot_control is 0x{secure_boot:02x}: the secure cells need "
             f"the enforced bit so TEST_DEV verifies, and the non-secure cells need it "

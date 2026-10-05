@@ -42,7 +42,7 @@ _BAD_INDEX = mm.KEY_SLOT_FIRST_RESERVED
 _BAD_PUBK_SEL_VALUE = _BAD_INDEX
 _PRIMARY_SEL_ECHO = f"PUBK_SEL=0x{_BAD_PUBK_SEL_VALUE:08x}"
 # The backup keeps the shipped selector: ROM key slot 0
-# (configs/secure_boot_test.yaml:112-114).
+# (configs/oca_secure_boot_test.yaml, public_key_select_classic).
 _BACKUP_SEL_ECHO = "PUBK_SEL=0x00000000"
 _REVOKE_ECHO = "PUBK_REVOKE="
 
@@ -138,10 +138,9 @@ class sep_firmware_primary_rom_key_index_invalid_test(sep_primary_fail_backup_bo
         )
 
         # CHK-BOUND-PREEMPTS-REVOKE: the ordering security property. The revocation
-        # bitmap is consulted, four statements after the
-        # bound, so the primary must NOT have reached it -- the single
-        # occurrence in the run belongs to the booting backup and must follow the
-        # backup read. An out-of-range index reaching `1u << index`
+        # bitmap is consulted after the bound, so the primary must not reach it:
+        # the single occurrence in the run belongs to the booting backup and must
+        # follow the backup read. An out-of-range index reaching `1u << index`
         # would consult a bit belonging to no ROM slot.
         n_revoke = sum(1 for line in console if _REVOKE_ECHO in line)
         assert n_revoke == 1, (

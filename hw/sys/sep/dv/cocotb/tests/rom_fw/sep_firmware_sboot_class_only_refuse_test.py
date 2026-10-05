@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""PROD refuses an unsigned manifest that still names a signature class (PyUVM).
+"""PROD refuses an unsigned manifest that still names a signature class.
 
 ``sep_firmware_cntl_secure_boot_flow_test`` clears ``secure_boot_control`` to
 ``0x00``, so the lifecycle's enforcement finds no class to verify with and the
