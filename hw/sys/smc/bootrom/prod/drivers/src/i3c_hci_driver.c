@@ -4,18 +4,13 @@
 /*============================================================================
  *  i3c_hci_driver.c — ROM driver for the OCA i3c-core (MIPI I3C HCI / I3CCSR)
  *
- *  Implements the SAME public API as the Cadence driver (i3c_target_driver.h)
- *  but re-expressed against the HCI programming model (PIO command/response/
- *  data ports + DAT + DCT). Drop-in: select exactly ONE of {the nonfree
- *  Cadence strong override, this file} per build via I3C_CORE=chipsalliance.
+ *  Implements i3c_target_driver.h against the HCI programming model (PIO
+ *  command/response/data ports + DAT + DCT). Select this implementation with
+ *  I3C_CORE=chipsalliance.
  *
  *  This whole file is gated by I3C_USE_HCI_CORE so adding it to the build list
- *  is a no-op until that flag is defined (keeps the default ROM build intact:
- *  the weak stubs in i3c_target_driver.c, or the nonfree Cadence override,
- *  provide the driver instead).
- *
- *  Every register sequence below mirrors the proven cocotb controller driver
- *  (nonfree dv tb_wrap_cocotb common/i3c_api_smc.py, green on this RTL).
+ *  is a no-op until that flag is defined. Otherwise the weak stubs or a
+ *  platform implementation provide the driver.
  *
  *  v1 scope: controller mode, POLLED (no IBI).
  *==========================================================================*/
@@ -118,15 +113,13 @@ static inline uint32_t hr(uint8_t id, uint64_t abs0) {
 #define R_TTI_TX_DESC (I3C0_CSR_BASE + 0x278u)   /* TTI TX_DESC_QUEUE_PORT */
 #define R_TTI_DBTC (I3C0_CSR_BASE + 0x290u)      /* TTI DATA_BUFFER_THLD_CTRL */
 #define R_TTI_QTC (I3C0_CSR_BASE + 0x28Cu)       /* TTI QUEUE_THLD_CTRL */
-/* TTI_QUEUE_STATUS: level/empty/full of the target queues (NOT edge-gated, unlike the
- * INTERRUPT_STATUS threshold bits) — used to drive RX draining like the Cadence fill-level read. */
+/* TTI_QUEUE_STATUS reports queue levels rather than edge-gated interrupt thresholds. */
 #define R_TTI_QUEUE_STATUS (I3C0_CSR_BASE + 0x210u)
 #define TTI_RX_DESC_QUEUE_EMPTY (1u << 1) /* QUEUE_STATUS.RX_DESC_QUEUE_EMPTY */
 #define TTI_TX_DESC_QUEUE_FULL (1u << 2)  /* QUEUE_STATUS.TX_DESC_QUEUE_FULL  */
 #define TTI_TX_DATA_QUEUE_FULL (1u << 6)  /* QUEUE_STATUS.TX_DATA_QUEUE_FULL  */
 #define TTI_RX_DATA_QUEUE_EMPTY (1u << 5) /* QUEUE_STATUS.RX_DATA_QUEUE_EMPTY */
-/* TTI_DATA_QUEUE_DEPTH: current DWORD (32-bit) entry counts of the target data queues — a true
- * level status (sw=r), the OCA analog of the Cadence RX_FIFO_STATUS.rx_fifo_fill_lvl. */
+/* TTI_DATA_QUEUE_DEPTH reports the current DWORD entry counts of the target data queues. */
 #define R_TTI_DATA_QUEUE_DEPTH (I3C0_CSR_BASE + 0x218u)
 #define TTI_RX_DATA_QUEUE_DEPTH(d) ((d)&0xFFu) /* RX_DATA_QUEUE_DEPTH[7:0], in DWORDs */
 
@@ -163,9 +156,8 @@ static size_t g_i3c_rx_pending[I3C_MAX_DEVICES];
  * BEFORE the frame's descriptor has been written (the core writes the RX descriptor
  * only at frame END, descriptor_rx.sv transfer_ended). Draining while waiting serves two
  * purposes: (1) the wait becomes idle-based -- only polls where NOTHING arrives count
- * toward the timeout, matching the Cadence NO_DATA_THRESHOLD "consecutive empty polls"
- * semantics (a frame still in flight on the bus keeps resetting the window instead of
- * spuriously timing out mid-frame); (2) frames larger than the 64-DWORD (256 B) TTI RX
+ * toward the timeout, so a frame still in flight keeps resetting the window instead of
+ * spuriously timing out mid-frame; (2) frames larger than the 64-DWORD (256 B) TTI RX
  * data queue no longer overflow-drop in RTL, because firmware keeps the queue drained
  * while the frame streams in. FIFO order guarantees the drained bytes are the HEAD of the
  * frame whose descriptor we are waiting for (staging only starts when the frame ledger is
@@ -183,7 +175,7 @@ static uint8_t g_i3c_rx_stage_owner; /* controller id the staged frame belongs t
 #define ATTR_REGULAR 0x0u     /* regular transfer (data in TX/RX data port) */
 #define ATTR_IMMEDIATE 0x1u   /* immediate data transfer (<=4 B in cmd_hi) */
 #define ATTR_ADDR_ASSIGN 0x2u /* address-assignment CCC (e.g. SETDASA) */
-/* cmd_lo bit fields (mirrors i3c_api_smc.py) */
+/* cmd_lo bit fields */
 #define CMD_RNW (1u << 29)
 #define CMD_WROC (1u << 30)
 #define CMD_TOC (1u << 31)
@@ -201,7 +193,6 @@ typedef union {
 
 /*--------------------------------------------------------------------------
  *  Wait for a command's RESPONSE_PORT and decode the error.
- *  Replaces the Cadence MST_STATUS0.idle + CMDR poll.
  *------------------------------------------------------------------------*/
 static I3C_Status hci_wait_response(uint8_t id, uint32_t *resp_out) {
     for (uint32_t i = 0; i < I3C_POLL_LIMIT; i++) {
@@ -237,9 +228,8 @@ void i3c_release_reset(uint8_t i3c_controller) {
 }
 
 /*--------------------------------------------------------------------------
- *  cfg_ps — kept for API parity. The HCI controller does not use the Cadence
- *  PINSTRAPS flow; role/PID are set via STBY_CR + the DAT/own-address in
- *  init_i3c_ctrl / I3C_Start. No-op placeholder (documented).
+ *  cfg_ps — kept for API compatibility. The HCI controller sets role/PID via
+ *  STBY_CR + the DAT/own-address in init_i3c_ctrl / I3C_Start.
  *------------------------------------------------------------------------*/
 void cfg_ps(uint8_t i3c_controller, uint8_t device_id, I3C_Role role) {
     (void)i3c_controller;
@@ -248,8 +238,7 @@ void cfg_ps(uint8_t i3c_controller, uint8_t device_id, I3C_Role role) {
 }
 
 /*--------------------------------------------------------------------------
- *  init_i3c_ctrl — release reset (full controller bring-up is in I3C_Start,
- *  mirroring the Cadence init/start split).
+ *  init_i3c_ctrl — release reset; full controller bring-up is in I3C_Start.
  *------------------------------------------------------------------------*/
 void init_i3c_ctrl(uint8_t controller_id, uint64_t device_id, I3C_Role role) {
     (void)device_id;
@@ -271,8 +260,7 @@ static I3C_Status I3C_Init(I3C_Driver *drv, uint8_t controller_id, uint64_t devi
 }
 
 /*--------------------------------------------------------------------------
- *  Open-drain bus timing (shared by controller + target start). Mirrors
- *  i3c_api_smc.py configure_timing_od_i3c() — required to drive/track SCL.
+ *  Open-drain bus timing shared by controller and target start.
  *------------------------------------------------------------------------*/
 static void hci_program_od_timing(uint8_t id) {
     hw(id, R_T_R, 0);
@@ -295,9 +283,8 @@ static void hci_program_od_timing(uint8_t id) {
 }
 
 /*--------------------------------------------------------------------------
- *  TARGET (subordinate / TTI) bring-up.  Mirrors the proven cocotb
- *  I3CTargetSMC.initialize()/configure_thresholds() (i3c_api_smc.py).
- *  occp.c inits the i3c as SUBORDINATE, so this is the path it exercises.
+ *  TARGET (subordinate / TTI) bring-up. occp.c initializes I3C as
+ *  SUBORDINATE, so this is the path it exercises.
  *------------------------------------------------------------------------*/
 static I3C_Status hci_target_start(I3C_Driver *drv) {
     uint8_t id = drv->ctx.controller_id;
@@ -310,9 +297,8 @@ static I3C_Status hci_target_start(I3C_Driver *drv) {
     hw(id, R_HC_CONTROL, HC_BUS_ENABLE);
     /* static address + valid */
     hw(id, R_STBY_DEV_ADDR, STBY_STATIC_ADDR(g_i3c_static_addr[id]) | STBY_STATIC_ADDR_VALID);
-    /* Standby Controller Mode = SCM_RUNNING; accept SETDASA *and* ENTDAA (the OCCP master uses
-     * ENTDAA to assign the target's dynamic address), enable target transactions. The cocotb
-     * reference only used SETDASA, hence ENTDAA was missing -> the master's ENTDAA NACKed (M2). */
+    /* Standby Controller Mode = SCM_RUNNING; accept SETDASA and ENTDAA because the OCCP master
+     * uses ENTDAA to assign the target's dynamic address, then enable target transactions. */
     hw(id, R_STBY_CR,
        STBYCR_SCM_RUNNING | STBYCR_DAA_SETDASA_EN | STBYCR_DAA_ENTDAA_EN | STBYCR_TARGET_XACT);
     /* bus timing (must match the controller's) */
@@ -388,7 +374,7 @@ static I3C_Status hci_target_tx(I3C_Driver *drv, const uint8_t *data, size_t len
         written += n;
     }
     if (!desc_written) {
-        hw(id, R_TTI_TX_DESC, (uint32_t)length << 16); /* byte count (== Cadence pr_pl) */
+        hw(id, R_TTI_TX_DESC, (uint32_t)length << 16); /* response byte count */
     }
     return I3C_OK;
 }
@@ -400,9 +386,9 @@ static I3C_Status hci_target_tx(I3C_Driver *drv, const uint8_t *data, size_t len
  * waiting for a second descriptor that never comes (the body bytes sit in the RX DATA queue;
  * TTI_INTERRUPT_STATUS.RX_DESC_THLD is write-edge-gated and cannot re-assert for a tail).
  *
- * Instead (mirrors the Cadence target's fill-level read): pop the RX descriptor ONCE per frame
- * to learn its byte count, remember the remainder across calls (g_i3c_rx_pending), and drain the
- * RX DATA queue using TTI_QUEUE_STATUS (a true level/empty status, not the edge-gated IRQ).
+ * Pop the RX descriptor ONCE per frame to learn its byte count, remember the remainder across
+ * calls (g_i3c_rx_pending), and drain the RX DATA queue using TTI_QUEUE_STATUS (a true
+ * level/empty status, not the edge-gated IRQ).
  * Only wait for a new descriptor when the current frame is fully consumed. Bounded polls so a
  * short/aborted transfer returns I3C_ERR_INCOMPLETE instead of hanging. */
 static I3C_Status hci_target_rx(I3C_Driver *drv, uint8_t *buffer, size_t buffer_length, size_t *got,
@@ -410,9 +396,8 @@ static I3C_Status hci_target_rx(I3C_Driver *drv, uint8_t *buffer, size_t buffer_
     uint8_t id = drv->ctx.controller_id;
     I3C_Status err = I3C_OK;
     size_t out = 0;
-    /* Cadence-contract parity: honor the caller's timeout as the empty-wait poll bound,
-     * exactly like the Cadence driver (NO_DATA_THRESHOLD = timeout; each poll = one CSR read).
-     * timeout==0 keeps the legacy bound (non-stream API has no timeout in its signature). */
+    /* Honor the caller's timeout as the empty-wait poll bound; each poll is one CSR read.
+     * timeout==0 keeps the legacy bound because the non-stream API has no timeout parameter. */
     uint32_t poll_limit = (timeout != 0u) ? timeout : I3C_POLL_LIMIT;
 
     if (is_flush) {
@@ -504,10 +489,9 @@ static I3C_Status hci_target_rx(I3C_Driver *drv, uint8_t *buffer, size_t buffer_
 
     /* NORMAL receive: the RX descriptor's length is the ACTUAL received byte count ->
      * undersize-safe (a short transfer yields fewer bytes than the OCCP header claimed, so the
-     * caller sees out < buffer_length and returns INCOMPLETE, exactly like the Cadence
-     * xferred_bytes path). One descriptor per i3c frame; g_i3c_rx_pending carries the remainder
-     * across the OCCP header-then-body reads so a multi-call read of one frame never re-waits
-     * mid-frame. */
+     * caller sees out < buffer_length and returns INCOMPLETE). One descriptor per i3c frame;
+     * g_i3c_rx_pending carries the remainder across the OCCP header-then-body reads so a
+     * multi-call read of one frame never re-waits mid-frame. */
     /* Byte-exact oversize detection: the RX DATA queue is popped in 4-byte FIFO words, but
      * a read may want a non-word-multiple count (e.g. JUMP body=10). When `out` reaches
      * buffer_length mid-word, the remaining REAL frame bytes of that popped word are discarded
@@ -525,8 +509,8 @@ static I3C_Status hci_target_rx(I3C_Driver *drv, uint8_t *buffer, size_t buffer_
              * outlast any fixed poll window (a plain poll bound can expire mid-frame -> spurious
              * INCOMPLETE -> an unsolicited error response desyncs the OCCP response stream;
              * smc_occp_invalid_cmd_test). Instead, drain arriving data words into the staging
-             * buffer while waiting -- each drained word RESETS the window (Cadence "consecutive
-             * empty polls" semantics) and, as a bonus, keeps the 256 B TTI RX data queue from
+             * buffer while waiting -- each drained word RESETS the idle window and, as a bonus,
+             * keeps the 256 B TTI RX data queue from
              * overflow-dropping on frames larger than the queue (smc_occp_unsecure_boot_test,
              * 1036 B bootcode writes). Only truly idle polls (no descriptor, nothing to drain)
              * count toward the timeout. */
@@ -564,11 +548,9 @@ static I3C_Status hci_target_rx(I3C_Driver *drv, uint8_t *buffer, size_t buffer_
             }
             uint32_t desc = hr(id, R_TTI_RX_DESC);
             g_i3c_rx_pending[id] = TTI_RXDESC_LEN(desc);
-            /* Cadence-contract parity: a descriptor error flag means the frame lost bytes
-             * (RX queue overflow drop) -> the data is truncated. Report I3C_ERR_INCOMPLETE like
-             * the Cadence short-read path. I3C_ERR_CMD_FAILED is NOT in occp's status map
-             * (only OK/INCOMPLETE/OVERFLOW/TIMEOUT are) and would fall through as an interface
-             * error instead of triggering the transport-recovery path. */
+            /* A descriptor error flag means the frame lost bytes to an RX queue overflow.
+             * Report I3C_ERR_INCOMPLETE because I3C_ERR_CMD_FAILED is not in occp's status map
+             * and would bypass the transport-recovery path. */
             if (TTI_RXDESC_ERR(desc) != 0u) {
                 err = I3C_ERR_INCOMPLETE;
             }
@@ -631,15 +613,15 @@ static I3C_Status hci_target_rx(I3C_Driver *drv, uint8_t *buffer, size_t buffer_
         excess_in_word += (inword - wrote); /* real frame bytes popped past buffer_length */
     }
 
-    /* Oversize body / excess-byte contract (mirrors the Cadence driver): when the caller does
-     * NOT expect the frame to continue (expect_excess_bytes=0, i.e. this read should consume the
+    /* Oversize body / excess-byte contract: when the caller does NOT expect the frame to
+     * continue (expect_excess_bytes=0, i.e. this read should consume the
      * frame exactly), any remaining frame remainder means the wire carried MORE bytes than the
      * protocol layer declared (oversize). If this parameter were ignored, the excess would stay
      * in g_i3c_rx_pending with no error and no flush (the command "succeeded"), so the NEXT
      * command's header would be consumed against a stale remainder and parsed shifted ->
      * OCCP_CORRUPT_HEADER (smc_occp_oversize_body_test). Discard the excess (it is already fully
      * resident: the RX descriptor is only written at frame end), clear the remainder, and report
-     * OVERFLOW so the OCCP layer runs its transport-error recovery like the Cadence path does.
+     * OVERFLOW so the OCCP layer runs its transport-error recovery.
      * expect_excess_bytes=1 (e.g. a header read with the body still to come) keeps the remainder
      * across calls -- that is the undersize-safe mechanism, unchanged. */
     if (!expect_excess_bytes && (err == I3C_OK) &&
@@ -670,9 +652,7 @@ static I3C_Status hci_target_rx(I3C_Driver *drv, uint8_t *buffer, size_t buffer_
 }
 
 /*--------------------------------------------------------------------------
- *  Controller bring-up.  (== Cadence I3C_Start)
- *  Mirrors i3c_api_smc.py initialize() + configure_timing_od_i3c() +
- *  configure_thresholds(). Polled: signal-enable is optional, but we set the
+ *  Controller bring-up. Polled: signal-enable is optional, but we set the
  *  status-enable bits so PIO_INTR_STATUS reflects tx/rx/resp/cmd-queue.
  *------------------------------------------------------------------------*/
 static I3C_Status I3C_Start(I3C_Driver *drv) {
@@ -709,8 +689,8 @@ static I3C_Status I3C_Start(I3C_Driver *drv) {
 }
 
 /*--------------------------------------------------------------------------
- *  DAT entry. (new vs Cadence; controller transfers reference a DAT index,
- *  not an inline address.)  Mirrors i3c_api_smc.py set_dat_entry.
+ *  DAT entry. Controller transfers reference a DAT index rather than an
+ *  inline address.
  *------------------------------------------------------------------------*/
 static void set_dat_entry(uint8_t id, uint8_t idx, uint8_t static_addr, uint8_t dynamic_addr) {
     uint32_t dat_lo =
@@ -720,7 +700,7 @@ static void set_dat_entry(uint8_t id, uint8_t idx, uint8_t static_addr, uint8_t 
 }
 
 /*--------------------------------------------------------------------------
- *  SETDASA (static -> dynamic).  Mirrors i3c_api_smc.py send_setdasa.
+ *  SETDASA (static -> dynamic).
  *------------------------------------------------------------------------*/
 static I3C_Status hci_setdasa(I3C_Driver *drv, uint8_t static_addr, uint8_t dynamic_addr,
                               uint8_t dat_idx) {
@@ -754,8 +734,8 @@ static I3C_Status I3C_ProcessDevices(I3C_Driver *drv, I3C_DeviceInfo *devices, s
 }
 
 /*--------------------------------------------------------------------------
- *  Private write. Mirrors i3c_api_smc.py private_write:
- *  regular write descriptor (attr=0, data_len in cmd_hi[31:16]) + push bytes
+ *  Private write: regular write descriptor (attr=0, data_len in
+ *  cmd_hi[31:16]) + push bytes
  *  to TX_DATA_PORT while TX_THLD has space, then read RESPONSE_PORT.
  *------------------------------------------------------------------------*/
 static I3C_Status hci_write_xfer(I3C_Driver *drv, uint8_t dat_idx, const uint8_t *data,
@@ -794,8 +774,8 @@ static I3C_Status hci_write_xfer(I3C_Driver *drv, uint8_t dat_idx, const uint8_t
         }
     }
 
-    /* Cadence-contract parity: if no RESPONSE ever arrives, return I3C_ERR_TIMEOUT like
-     * the Cadence wait_command path. resp=0 is a legal descriptor value, so a poll-exhaust must
+    /* If no RESPONSE ever arrives, return I3C_ERR_TIMEOUT. resp=0 is a legal descriptor value,
+     * so a poll-exhaust must
      * not fall through RESP_ERR(0)==0 into a false I3C_OK. */
     uint32_t resp = 0;
     bool have_resp = false;
@@ -817,8 +797,8 @@ static I3C_Status hci_write_xfer(I3C_Driver *drv, uint8_t dat_idx, const uint8_t
 }
 
 /*--------------------------------------------------------------------------
- *  Private read. Mirrors i3c_api_smc.py private_read controller side:
- *  regular read descriptor (rnw=1, data_len in cmd_hi) + drain RX_DATA_PORT;
+ *  Private read: regular read descriptor (rnw=1, data_len in cmd_hi) +
+ *  drain RX_DATA_PORT;
  *  the true byte count is RESPONSE_PORT.data_length.
  *------------------------------------------------------------------------*/
 static I3C_Status hci_read_xfer(I3C_Driver *drv, uint8_t dat_idx, uint8_t *buffer, size_t length,
@@ -836,8 +816,8 @@ static I3C_Status hci_read_xfer(I3C_Driver *drv, uint8_t dat_idx, uint8_t *buffe
     hw(id, R_CMD_PORT, cmd_lo);
     hw(id, R_CMD_PORT, cmd_hi);
 
-    /* Cadence-contract parity: the TRUE byte count of a read is RESPONSE_PORT.data_length
-     * (== Cadence xferred_bytes). Blindly draining RX_PORT until `read == length` on RESP_READY
+    /* The true byte count of a read is RESPONSE_PORT.data_length. Blindly draining RX_PORT until
+     * `read == length` on RESP_READY
      * would pop an empty queue (stale words) on a short/target-terminated read and make `got`
      * always equal `length`, so callers could never detect a short read. Stream RX words while
      * the transfer runs; once the RESPONSE arrives, pop it FIRST, then drain exactly
@@ -900,7 +880,7 @@ static I3C_Status hci_read_xfer(I3C_Driver *drv, uint8_t dat_idx, uint8_t *buffe
 }
 
 /*--------------------------------------------------------------------------
- *  Public API bodies (same signatures as the Cadence driver).
+ *  Public API bodies.
  *  da is the target's dynamic address; we map it 1:1 to DAT index 0 for v1
  *  (single-target ROM use). Multi-target: extend with a da->dat_idx table.
  *------------------------------------------------------------------------*/
@@ -927,13 +907,13 @@ static I3C_Status I3C_Read(I3C_Driver *drv, uint8_t da, uint8_t *buffer, size_t 
     return I3C_OK;
 }
 
-/* fifo_write/fifo_read: thin shims over the transfer helpers (HCI has no
- * separately-addressable FIFO outside a command, unlike Cadence). */
+/* fifo_write/fifo_read are thin shims over the transfer helpers because HCI has no
+ * separately-addressable FIFO outside a command. */
 static I3C_Status fifo_write(I3C_Driver *drv, const uint8_t *data, size_t length) {
     if (drv == NULL || !drv->ctx.initialized) {
         return I3C_ERR_HW;
     }
-    /* target mode: arm a read-response over the TTI (== Cadence target fifo_write) */
+    /* target mode: arm a read-response over the TTI */
     if (drv->ctx.role == SUBORDINATE) {
         return hci_target_tx(drv, data, length);
     }
@@ -968,14 +948,13 @@ static uint32_t I3C_CheckRxFifo(I3C_Driver *drv) {
     }
     uint8_t id = drv->ctx.controller_id;
     if (drv->ctx.role == SUBORDINATE) {
-        /* target: report the CURRENT RX data fill as a LEVEL, mirroring the Cadence driver's
-         * RX_FIFO_STATUS.rx_fifo_fill_lvl read (and hci_target_rx's QUEUE_STATUS use).
+        /* Target mode reports the current RX data fill as a level, as hci_target_rx does.
          * INTERRUPT_STATUS.RX_DESC_THLD|RX_DATA_THLD are write-edge-gated watermark bits: after
          * the OCCP layer flushes the RX FIFO and/or the target sends an error response, the edge
          * does NOT re-assert for the next inbound command, so an edge-based gate returns 0
          * forever and the OCCP command loop wedges. RX_DATA_QUEUE_DEPTH is a true level
          * (current DWORD entries), re-readable and non-destructive; x4 -> bytes to match the
-         * byte-count semantics the OCCP flush loop and the Cadence driver expect. */
+         * byte-count semantics the OCCP flush loop expects. */
         uint32_t rx_dwords = TTI_RX_DATA_QUEUE_DEPTH(hr(id, R_TTI_DATA_QUEUE_DEPTH));
         return rx_dwords * 4u;
     }
@@ -1013,17 +992,15 @@ static I3C_Status I3C_ReceivePayloadStream(I3C_Driver *drv, uint8_t *buffer, siz
     return hci_read_xfer(drv, 0u, buffer, buffer_length, bytes_received);
 }
 
-/* set_payload_length: the OCCP layer calls this before fifo_write to advertise the
- * read-response byte count. On the Cadence core that programs SLV_CTRL.pr_pl; on the
- * HCI core the equivalent count is written as the TTI TX descriptor inside fifo_write()
- * (hci_target_tx), so there is nothing to program here. */
+/* The HCI implementation writes the response byte count in the TTI TX descriptor inside
+ * fifo_write(), so set_payload_length has nothing to program. */
 static void I3C_SetPayloadLength(I3C_Driver *drv, uint16_t length) {
     (void)drv;
     (void)length;
 }
 
 /*--------------------------------------------------------------------------
- *  Driver instance factory (same shape as the Cadence driver).
+ *  Driver instance factory.
  *------------------------------------------------------------------------*/
 I3C_Driver *I3C_GetDriverInstance(uint8_t controller_id) {
     static I3C_Driver instances[I3C_MAX_DEVICES];

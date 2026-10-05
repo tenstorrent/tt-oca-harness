@@ -205,20 +205,13 @@ static bool enable_i3c_gpio_overrides(uint32_t controller_id) {
     (void)controller_id;
 
 #ifdef I3C_USE_HCI_CORE
-    /* I3C_CORE=chipsalliance (OCA/HCI i3c-core as the OCCP target): the OCA core reaches the i3c
-     * pads via the gpio LSIO path (lsio_interface_select, driven by smc_padring), NOT the
-     * smc_ip_integration hw2_ovrd override path that the Cadence core uses. Setting hw2_ovrd here
-     * would force the gpio_shim onto the override path, whose drive/input-enable signals are gated
-     * OFF for the OCA instance (SwapI3cCore=1) -> the pad INPUT buffer stays disabled and the OCA
-     * target never sees the bus (root cause of the ENTDAA M2 timeout). So leave hw2_ovrd=0 (reset
-     * default) for the i3c GPIOs; the OCA core's LSIO routing then serves the shared bus (mirrors
-     * the cocotb OCA target).
+    /* The OCA/HCI core reaches the I3C pads through the GPIO LSIO path. Enabling hw2_ovrd would
+     * select a path whose drive and input-enable signals are gated off when SwapI3cCore=1,
+     * disabling the pad input buffer. Leave hw2_ovrd at its reset value for these GPIOs.
      */
     return true;
 #else
-    /* Mirror the proven bring-up sequence used by i3c_loop_back:
-     * enable hw2_ovrd on all I3C-related GPIOs so the I3C HW function reaches the pads.
-     */
+    /* Enable hw2_ovrd on all I3C-related GPIOs so the I3C hardware reaches the pads. */
     bool ok = true;
     enable_gpio_hw_override(SMC_I3C_0_SCL_GPIO); /* I3C0 SCL */
     enable_gpio_hw_override(SMC_I3C_0_SDA_GPIO); /* I3C0 SDA */
@@ -1907,14 +1900,9 @@ static int smc_occp_flush_interface_fifo(interface_driver_t drv, driver_type_t d
         I3C_Driver *i3c_drv = (I3C_Driver *)drv;
         const uint32_t MAX_FLUSH_BYTES = OCCP_MAX_MSG_SIZE + 32; /* Conservative limit */
 
-        /* Frame-aware flush: let the DRIVER decide how much belongs to dead frames and
-         * report it per 4-byte step; got==0 means its frame ledger is clean -> done. The previous
-         * loop drained anything that appeared within a TRANSPORT_TIMEOUT quiet window (and reset
-         * the window on every byte), so a NEW command sent by a compliant controller right after
-         * our error response was swallowed whole -> both sides waited forever
-         * (smc_occp_zero_length_rw_test). The swap/HCI driver drains by its frame accounting
-         * (exact, instant when clean); the Cadence driver's stream read keeps its own
-         * fill-level/timeout behavior inside the same call, so its net behavior is unchanged. */
+        /* Let the driver decide how much belongs to dead frames and report it per 4-byte step;
+         * got==0 means its frame ledger or implementation-specific receive state is clean. This
+         * prevents the flush from consuming a new command sent after the error response. */
         while (flush_count < MAX_FLUSH_BYTES) {
             uint8_t dummy_data[4]; /* I3C reads are typically 4-byte aligned */
             size_t got = 0;
