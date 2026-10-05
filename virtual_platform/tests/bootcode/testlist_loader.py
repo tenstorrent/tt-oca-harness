@@ -103,6 +103,24 @@ _TESTCASE_FIELDS = {
 # Placeholder for the measurement digest, which is computed from the generated image.
 MEASUREMENT_DIGEST_TOKEN = "{measurement_golden}"
 _MEASUREMENT_TOKENS = (MEASUREMENT_DIGEST_TOKEN,)
+# Image quantities a testlist names instead of numbers that move whenever the BL1 build does.
+IMAGE_FACTS = frozenset(
+    {"image_end"}
+    | {
+        f"{slot}.{fact}"
+        for slot in ("primary", "backup")
+        for fact in (
+            "payload_start",
+            "payload_end",
+            "bl1_start",
+            "bl1_len",
+            "bl1_copy_len",
+            "bl1_copy_src",
+        )
+    }
+)
+_TERM_RE = re.compile(r"\s*([+-])?\s*(0x[0-9a-fA-F]+|[0-9]+|[a-z_]+(?:\.[a-z0-9_]+)?)\s*")
+_IMAGE_PLACEHOLDER_RE = re.compile(r"\{([^{}]+)\}")
 _MEASUREMENT_FIELDS = {
     "slot",
     "lc_state",
@@ -124,10 +142,21 @@ _SMC_SRAM_FIELDS = (
     "smc_sram_manifest_at",
 )
 _SPI_SPAN_FIELDS = {"name", "range", "exact", "min", "max"}
-_IMAGE_ASSERT_FIELDS = {"range", "all", "same_as", "differs_from", "xor", "field", "toc_field"}
-_IMAGE_ASSERT_MODES = ("all", "same_as", "differs_from", "field", "toc_field")
-_FIELD_ASSERT_KEYS = {"name", "slot", "size", "value"}
-_TOC_FIELD_ASSERT_KEYS = {"name", "slot", "entry", "size", "value"}
+_IMAGE_ASSERT_FIELDS = {
+    "range",
+    "all",
+    "same_as",
+    "differs_from",
+    "xor",
+    "field",
+    "toc_field",
+    "decrypt_pad",
+}
+_IMAGE_ASSERT_MODES = ("all", "same_as", "differs_from", "field", "toc_field", "decrypt_pad")
+_RANGELESS_MODES = ("field", "toc_field", "decrypt_pad")
+_FIELD_ASSERT_KEYS = {"name", "slot", "size"}
+_TOC_FIELD_ASSERT_KEYS = {"name", "slot", "entry", "size"}
+_FIELD_VALUE_KEYS = ("value", "value_from")
 _STATUS_ASSERTION_RE = re.compile(r"^\S+ 0x[0-9a-fA-F]{4}$")
 
 
@@ -138,13 +167,25 @@ class InitWrite:
 
 
 @dataclass(frozen=True)
+class ValueFrom:
+    """The same field read from a prebuilt image, in TOC entry ``entry`` for a TOC field."""
+
+    image: str
+    entry: int | None = None
+
+
+@dataclass(frozen=True)
 class FieldAssert:
-    """A manifest field, named by its ``OFF_`` symbol, that must hold ``value`` in ``slot``."""
+    """A manifest field, named by its ``OFF_`` symbol, that must hold ``value`` in ``slot``.
+
+    ``value`` is an integer or an image-fact expression; ``value_from`` replaces it.
+    """
 
     name: str
     slot: str
     size: int
-    value: int
+    value: int | str | None
+    value_from: ValueFrom | None = None
 
 
 @dataclass(frozen=True)
@@ -155,7 +196,16 @@ class TocFieldAssert:
     slot: str
     entry: int
     size: int
-    value: int
+    value: int | str | None
+    value_from: ValueFrom | None = None
+
+
+@dataclass(frozen=True)
+class DecryptPad:
+    """Whether ``slot``'s payload, decrypted as the ROM would, ends in a valid PKCS#7 pad."""
+
+    slot: str
+    valid: bool
 
 
 @dataclass(frozen=True)
@@ -164,17 +214,19 @@ class ImageAssert:
 
     ``differs_from`` is the negative control of ``same_as``; ``same_as`` with ``xor``
     requires every byte to be the reference byte XOR that mask. A ``field`` or
-    ``toc_field`` check ignores ``low`` and ``high``.
+    ``toc_field`` check ignores ``low`` and ``high``. A bound given as an image-fact
+    expression must resolve to the same offset in a ``same_as``/``differs_from`` reference.
     """
 
-    low: int
-    high: int | None
+    low: int | str
+    high: int | str | None
     all_byte: int | None
     same_as: str | None
     differs_from: str | None
     field: FieldAssert | None = None
     xor: int | None = None
     toc_field: TocFieldAssert | None = None
+    decrypt_pad: DecryptPad | None = None
 
 
 @dataclass(frozen=True)
@@ -221,7 +273,7 @@ class RomTestCase:
     spi_read_order: tuple[str, ...]
     image_asserts: tuple[ImageAssert, ...]
     smc_sram_image: str | None
-    smc_sram_source: tuple[int, int] | None
+    smc_sram_source: tuple[int | str, int | str] | None
     smc_sram_offset: int | None
     smc_sram_manifest_at: int | None
     measurement_golden: MeasurementGolden | None
@@ -244,6 +296,86 @@ def _string_tuple(entry: dict, field: str, name: str) -> tuple[str, ...]:
     ):
         raise ValueError(f"testcase {name!r} {field} must be an array of non-empty strings")
     return tuple(values)
+
+
+def _expression_terms(text: str) -> list[tuple[int, str]]:
+    """The signed terms of ``fact``, ``fact + 8`` or ``4092 - primary.bl1_len``; [] if malformed."""
+    terms, at = [], 0
+    while at < len(text):
+        match = _TERM_RE.match(text, at)
+        if match is None or (terms and match.group(1) is None):
+            return []
+        terms.append((-1 if match.group(1) == "-" else 1, match.group(2)))
+        at = match.end()
+    return terms
+
+
+def _symbolic(value: object, where: str) -> int | str:
+    """An integer, or an expression over IMAGE_FACTS that the run resolves from the image."""
+    if type(value) is int:
+        return value
+    terms = _expression_terms(value) if isinstance(value, str) else []
+    facts = [term for _sign, term in terms if not term[0].isdigit()]
+    if not facts:
+        raise ValueError(
+            f"{where} must be an integer or an expression over image facts such as "
+            "'primary.payload_end' or '4092 - primary.bl1_len'"
+        )
+    unknown = next((fact for fact in facts if fact not in IMAGE_FACTS), None)
+    if unknown is not None:
+        raise ValueError(
+            f"{where} names unknown image fact {unknown!r}; known: {sorted(IMAGE_FACTS)}"
+        )
+    return value.strip()
+
+
+def evaluate(value: int | str, facts: Mapping[str, int]) -> int:
+    """Resolve an integer or image-fact expression against one image's facts."""
+    if type(value) is int:
+        return value
+    return sum(
+        sign * (int(term, 0) if term[0].isdigit() else facts[term])
+        for sign, term in _expression_terms(value)
+    )
+
+
+def image_placeholders(token: str) -> list[str]:
+    """The image facts a console token names as ``{fact}``."""
+    return [name for name in _IMAGE_PLACEHOLDER_RE.findall(token) if name in IMAGE_FACTS]
+
+
+def check_spi_spans(name: str, spans: tuple[SpiReadSpan, ...]) -> None:
+    """Refuse empty or overlapping spans once every bound is a number."""
+    for span in spans:
+        if span.low >= span.high:
+            raise ValueError(
+                f"testcase {name!r} spi_reads[{span.name!r}] range is empty: "
+                f"[0x{span.low:x},0x{span.high:x})"
+            )
+    for index, first in enumerate(spans):
+        for second in spans[index + 1 :]:
+            if first.low < second.high and second.low < first.high:
+                raise ValueError(
+                    f"testcase {name!r} spi_reads spans {first.name!r} and "
+                    f"{second.name!r} overlap; a read's bucket would depend on order"
+                )
+
+
+def check_smc_sram_source(name: str, low: int, high: int, offset: int, manifest_at: int) -> None:
+    """Refuse a staged SMC window that is empty, does not fit, or cannot hold the manifest."""
+    if low >= high:
+        raise ValueError(f"testcase {name!r} smc_sram_source range is empty")
+    if offset + (high - low) > SMC_SRAM_SIZE_BYTES:
+        raise ValueError(
+            f"testcase {name!r} smc_sram_source does not fit at smc_sram_offset "
+            f"0x{offset:x}; the platform would refuse the image and the ROM would read "
+            "an erased window"
+        )
+    if manifest_at + 4 > high - low:
+        raise ValueError(
+            f"testcase {name!r} smc_sram_manifest_at 0x{manifest_at:x} lies past the "
+            f"0x{high - low:x} staged bytes"
+        )
 
 
 def _init_writes(entry: dict, name: str) -> tuple[InitWrite, ...]:
@@ -300,14 +432,14 @@ def _spi_reads(entry: dict, name: str) -> tuple[SpiReadSpan, ...]:
         if (
             not isinstance(bounds, list)
             or len(bounds) != 2
-            or any(type(edge) is not int or not 0 <= edge <= 0xFFFFFFFF for edge in bounds)
+            or any(type(edge) is int and not 0 <= edge <= 0xFFFFFFFF for edge in bounds)
         ):
             raise ValueError(
                 f"testcase {name!r} spi_reads[{span!r}] range must be two 32-bit addresses"
             )
-        low, high = bounds
-        if low >= high:
-            raise ValueError(f"testcase {name!r} spi_reads[{span!r}] range is empty")
+        low, high = (
+            _symbolic(edge, f"testcase {name!r} spi_reads[{span!r}] range") for edge in bounds
+        )
         counts = {key: value[key] for key in ("exact", "min", "max") if key in value}
         if not counts:
             raise ValueError(
@@ -338,20 +470,46 @@ def _spi_reads(entry: dict, name: str) -> tuple[SpiReadSpan, ...]:
             f"testcase {name!r} spi_reads has two spans named {duplicate!r}; "
             "their counts would merge"
         )
-    for index, first in enumerate(spans):
-        for second in spans[index + 1 :]:
-            if first.low < second.high and second.low < first.high:
-                raise ValueError(
-                    f"testcase {name!r} spi_reads spans {first.name!r} and "
-                    f"{second.name!r} overlap; a read's bucket would depend on order"
-                )
+    if all(type(edge) is int for span in spans for edge in (span.low, span.high)):
+        check_spi_spans(name, tuple(spans))
     return tuple(spans)
+
+
+def _expected_field_value(
+    value: dict, where: str, toc: bool
+) -> tuple[int | str | None, ValueFrom | None]:
+    """A field check's ``value`` (integer or image-fact expression) or ``value_from``."""
+    if "value" in value:
+        expected = _symbolic(value["value"], f"{where} value")
+        if type(expected) is int and not 0 <= expected < 1 << (8 * value["size"]):
+            raise ValueError(f"{where} value must fit in {value['size']} byte(s)")
+        return expected, None
+    source = value["value_from"]
+    keys = {"image", "entry"} if toc else {"image"}
+    if not isinstance(source, dict) or set(source) != keys:
+        raise ValueError(f"{where} value_from must contain exactly {' and '.join(sorted(keys))}")
+    if not isinstance(source["image"], str) or not source["image"].strip():
+        raise ValueError(f"{where} value_from image must name a prebuilt image")
+    entry = source.get("entry")
+    if toc and (type(entry) is not int or entry < 0):
+        raise ValueError(f"{where} value_from entry must be a non-negative TOC entry index")
+    return None, ValueFrom(source["image"], entry)
+
+
+def _field_keys(value: object, keys: set[str], where: str) -> None:
+    if (
+        not isinstance(value, dict)
+        or set(value) - set(_FIELD_VALUE_KEYS) != keys
+        or sum(key in value for key in _FIELD_VALUE_KEYS) != 1
+    ):
+        raise ValueError(
+            f"{where} must contain exactly {', '.join(sorted(keys))} and one of value or value_from"
+        )
 
 
 def _field_assert(value: object, name: str, index: int) -> FieldAssert:
     where = f"testcase {name!r} image_asserts[{index}] field"
-    if not isinstance(value, dict) or set(value) != _FIELD_ASSERT_KEYS:
-        raise ValueError(f"{where} must contain exactly name, slot, size and value")
+    _field_keys(value, _FIELD_ASSERT_KEYS, where)
     symbol = value["name"]
     if (
         not isinstance(symbol, str)
@@ -363,16 +521,13 @@ def _field_assert(value: object, name: str, index: int) -> FieldAssert:
         raise ValueError(f"{where} slot must be one of {list(_SLOTS)}")
     if type(value["size"]) is not int or value["size"] not in (1, 2, 4, 8):
         raise ValueError(f"{where} size must be 1, 2, 4 or 8")
-    expected = value["value"]
-    if type(expected) is not int or not 0 <= expected < 1 << (8 * value["size"]):
-        raise ValueError(f"{where} value must fit in {value['size']} byte(s)")
-    return FieldAssert(symbol, value["slot"], value["size"], expected)
+    expected, source = _expected_field_value(value, where, toc=False)
+    return FieldAssert(symbol, value["slot"], value["size"], expected, source)
 
 
 def _toc_field_assert(value: object, name: str, index: int) -> TocFieldAssert:
     where = f"testcase {name!r} image_asserts[{index}] toc_field"
-    if not isinstance(value, dict) or set(value) != _TOC_FIELD_ASSERT_KEYS:
-        raise ValueError(f"{where} must contain exactly name, slot, entry, size and value")
+    _field_keys(value, _TOC_FIELD_ASSERT_KEYS, where)
     symbol = value["name"]
     if not isinstance(symbol, str) or not symbol.startswith("OFF_TOC_ENTRY_"):
         raise ValueError(f"{where} name must be an OFF_TOC_ENTRY_ field symbol")
@@ -383,10 +538,19 @@ def _toc_field_assert(value: object, name: str, index: int) -> TocFieldAssert:
         raise ValueError(f"{where} entry must be a non-negative TOC entry index")
     if type(value["size"]) is not int or value["size"] not in (1, 2, 4, 8):
         raise ValueError(f"{where} size must be 1, 2, 4 or 8")
-    expected = value["value"]
-    if type(expected) is not int or not 0 <= expected < 1 << (8 * value["size"]):
-        raise ValueError(f"{where} value must fit in {value['size']} byte(s)")
-    return TocFieldAssert(symbol, value["slot"], entry, value["size"], expected)
+    expected, source = _expected_field_value(value, where, toc=True)
+    return TocFieldAssert(symbol, value["slot"], entry, value["size"], expected, source)
+
+
+def _decrypt_pad(value: object, name: str, index: int) -> DecryptPad:
+    where = f"testcase {name!r} image_asserts[{index}] decrypt_pad"
+    if not isinstance(value, dict) or set(value) != {"slot", "valid"}:
+        raise ValueError(f"{where} must contain exactly slot and valid")
+    if value["slot"] not in _SLOTS:
+        raise ValueError(f"{where} slot must be one of {list(_SLOTS)}")
+    if type(value["valid"]) is not bool:
+        raise ValueError(f"{where} valid must be a boolean")
+    return DecryptPad(value["slot"], value["valid"])
 
 
 def _image_asserts(entry: dict, name: str) -> tuple[ImageAssert, ...]:
@@ -407,21 +571,23 @@ def _image_asserts(entry: dict, name: str) -> tuple[ImageAssert, ...]:
         if len(modes) != 1:
             raise ValueError(
                 f"testcase {name!r} image_asserts[{index}] must name exactly one of "
-                "all, same_as, differs_from, field or toc_field"
+                "all, same_as, differs_from, field, toc_field or decrypt_pad"
             )
         if "xor" in value and modes != ["same_as"]:
             raise ValueError(f"testcase {name!r} image_asserts[{index}] xor needs same_as")
-        if modes in (["field"], ["toc_field"]):
+        if modes[0] in _RANGELESS_MODES:
             if "range" in value:
                 raise ValueError(
                     f"testcase {name!r} image_asserts[{index}] {modes[0]} check cannot "
                     "carry a range"
                 )
-            field = toc_field = None
+            field = toc_field = decrypt_pad = None
             if modes == ["field"]:
                 field = _field_assert(value["field"], name, index)
-            else:
+            elif modes == ["toc_field"]:
                 toc_field = _toc_field_assert(value["toc_field"], name, index)
+            else:
+                decrypt_pad = _decrypt_pad(value["decrypt_pad"], name, index)
             checks.append(
                 ImageAssert(
                     low=0,
@@ -431,6 +597,7 @@ def _image_asserts(entry: dict, name: str) -> tuple[ImageAssert, ...]:
                     differs_from=None,
                     field=field,
                     toc_field=toc_field,
+                    decrypt_pad=decrypt_pad,
                 )
             )
             continue
@@ -438,15 +605,14 @@ def _image_asserts(entry: dict, name: str) -> tuple[ImageAssert, ...]:
         if not isinstance(bounds, list) or len(bounds) != 2:
             raise ValueError(f"testcase {name!r} image_asserts[{index}] range must be [low, high]")
         low, high = bounds
-        if type(low) is not int or low < 0:
+        if type(low) is int and low < 0:
             raise ValueError(
                 f"testcase {name!r} image_asserts[{index}] low bound must be a non-negative integer"
             )
-        if high != "end" and type(high) is not int:
-            raise ValueError(
-                f"testcase {name!r} image_asserts[{index}] high bound must be an integer or 'end'"
-            )
-        if high != "end" and low >= high:
+        low = _symbolic(low, f"testcase {name!r} image_asserts[{index}] low bound")
+        if high != "end":
+            high = _symbolic(high, f"testcase {name!r} image_asserts[{index}] high bound")
+        if type(low) is int and type(high) is int and low >= high:
             raise ValueError(f"testcase {name!r} image_asserts[{index}] range is empty")
 
         all_byte = value.get("all")
@@ -521,14 +687,12 @@ def _smc_sram(
     if (
         not isinstance(bounds, list)
         or len(bounds) != 2
-        or any(type(edge) is not int or edge < 0 for edge in bounds)
+        or any(type(edge) is int and edge < 0 for edge in bounds)
     ):
         raise ValueError(
             f"testcase {name!r} smc_sram_source must be two non-negative offsets into {image!r}"
         )
-    low, high = bounds
-    if low >= high:
-        raise ValueError(f"testcase {name!r} smc_sram_source range is empty")
+    low, high = (_symbolic(edge, f"testcase {name!r} smc_sram_source") for edge in bounds)
 
     offset = entry["smc_sram_offset"]
     if type(offset) is not int or not 0 <= offset < SMC_SRAM_SIZE_BYTES:
@@ -540,12 +704,6 @@ def _smc_sram(
             f"testcase {name!r} smc_sram_offset must be 4-byte aligned; the ROM DMAs the "
             "manifest from it"
         )
-    if offset + (high - low) > SMC_SRAM_SIZE_BYTES:
-        raise ValueError(
-            f"testcase {name!r} smc_sram_source does not fit at smc_sram_offset "
-            f"0x{offset:x}; the platform would refuse the image and the ROM would read "
-            "an erased window"
-        )
 
     manifest_at = entry["smc_sram_manifest_at"]
     if type(manifest_at) is not int or manifest_at < 0:
@@ -555,11 +713,8 @@ def _smc_sram(
         )
     if manifest_at % 4:
         raise ValueError(f"testcase {name!r} smc_sram_manifest_at must be 4-byte aligned")
-    if manifest_at + 4 > high - low:
-        raise ValueError(
-            f"testcase {name!r} smc_sram_manifest_at 0x{manifest_at:x} lies past the "
-            f"0x{high - low:x} staged bytes"
-        )
+    if type(low) is int and type(high) is int:
+        check_smc_sram_source(name, low, high, offset, manifest_at)
     return image, (low, high), offset, manifest_at
 
 
@@ -631,6 +786,24 @@ def _measurement_golden(
         secure_boot=spec["secure_boot"],
         sboot_dis=spec["sboot_dis"],
     )
+
+
+def _check_image_placeholders(name: str, image: str | None, tokens: list[str]) -> None:
+    """Refuse a ``{name}`` the run cannot fill in from the boot image."""
+    for token in tokens:
+        for placeholder in _IMAGE_PLACEHOLDER_RE.findall(token):
+            if f"{{{placeholder}}}" in _MEASUREMENT_TOKENS:
+                continue
+            if placeholder not in IMAGE_FACTS:
+                raise ValueError(
+                    f"testcase {name!r} token {token!r} names unknown image fact "
+                    f"{placeholder!r}; known: {sorted(IMAGE_FACTS)}"
+                )
+            if image is None:
+                raise ValueError(
+                    f"testcase {name!r} token {token!r} names an image fact but the "
+                    "testcase boots no image"
+                )
 
 
 def _spi_read_order(entry: dict, name: str, spans: tuple[SpiReadSpan, ...]) -> tuple[str, ...]:
@@ -857,7 +1030,12 @@ def _parse_testcase(
     expect_status = _status_tuple(entry, "expect_status", name)
     forbid_status = _status_tuple(entry, "forbid_status", name)
     expect_counts = _expect_counts(entry, name)
+    _check_image_placeholders(name, image, [*expect, *forbid, *expect_counts])
     spi_reads = _spi_reads(entry, name)
+    if image is None and any(
+        type(edge) is str for span in spi_reads for edge in (span.low, span.high)
+    ):
+        raise ValueError(f"testcase {name!r} spi_reads names an image fact but boots no image")
     spi_read_order = _spi_read_order(entry, name, spi_reads)
     image_asserts = _image_asserts(entry, name)
     if image_asserts and image is None:

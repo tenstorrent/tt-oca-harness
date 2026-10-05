@@ -47,23 +47,19 @@ def test_sep_rom_testlist(rom_testcase, vp, bootcode_elf, oca_images, tmp_path):
     missing = boot_images.missing_prebuilt(rom_testcase, oca_images)
     if missing:
         pytest.skip(f"prebuilt images not present: {missing}; build them or drop --no-build")
-    boot_image = measurement = None
+    boot_image = None
     if rom_testcase.image is not None:
         boot_image = boot_images.materialize_boot_image(rom_testcase.image, oca_images, tmp_path)
         boot_images.check_image_asserts(rom_testcase, boot_image, oca_images)
-        if rom_testcase.measurement_golden is not None:
-            measurement = boot_images.measurement_tokens(rom_testcase, boot_image)
+    testcase = boot_images.resolve_case(rom_testcase, boot_image, oca_images)
     try:
         testlist_adapter.run_testlist_case(
-            rom_testcase,
+            testcase,
             vp,
             bootcode_elf,
             boot_image=boot_image,
-            fuse_map=testlist_adapter.materialize_fuse_map(rom_testcase, tmp_path),
-            smc_sram_image=boot_images.materialize_smc_sram_image(
-                rom_testcase, oca_images, tmp_path
-            ),
-            measurement=measurement,
+            fuse_map=testlist_adapter.materialize_fuse_map(testcase, tmp_path),
+            smc_sram_image=boot_images.materialize_smc_sram_image(testcase, oca_images, tmp_path),
         )
     except UnjudgeableError as error:
         # An xfail(raises=JudgeError) sentinel must not absorb an output-provenance failure.

@@ -13,6 +13,7 @@ from pathlib import Path
 
 import untrusted_signing_key
 import yaml
+from boot_image_mutations import IMAGE_END_VALUE, IMAGE_OFFSET_PATH
 from sepvp import paths
 
 _SLOT_COMBOS = ("primary", "backup")
@@ -71,10 +72,25 @@ def _slots(edit) -> tuple[str | None, ...]:
     return _SLOT_COMBOS if edit.slot == "both" else (edit.slot,)
 
 
-def _value(value: int | str) -> int | str:
-    if isinstance(value, str) and value in PLACEHOLDERS:
+def _value(edit, config: object, bundle: Path | None) -> int | str:
+    value = edit.value
+    if not isinstance(value, str):
+        return value
+    if value in PLACEHOLDERS:
         return PLACEHOLDERS[value]()
-    return value
+    end = IMAGE_END_VALUE.fullmatch(value)
+    if end is None:
+        return value
+    index = IMAGE_OFFSET_PATH.fullmatch(edit.path).group(1)
+    # The packer runs in the ROM tree and resolves image paths from there.
+    image = paths.BOOTCODE_DIR / _lookup(config, f"payload_images.{index}.path", bundle.name)
+    offset = int(end.group(1), 0) - image.stat().st_size
+    if offset < 0:
+        raise ValueError(
+            f"{bundle.name} {edit.path} = {value!r}: {image.name} is {image.stat().st_size} "
+            "bytes, longer than the payload it must end"
+        )
+    return offset
 
 
 def _derive(base: Path, out: Path, edits: Sequence[tuple[str, int | str]]) -> Path:
@@ -136,7 +152,8 @@ def repack(
     by_slot: dict[str | None, list[tuple[str, int | str]]] = {}
     for edit in edits:
         for slot in _slots(edit):
-            by_slot.setdefault(slot, []).append((edit.path, _value(edit.value)))
+            bundle = None if slot is None else combos[slot][1]
+            by_slot.setdefault(slot, []).append((edit.path, _value(edit, configs[slot], bundle)))
 
     output_dir.mkdir(parents=True, exist_ok=True)
     image_edits = list(by_slot.pop(None, []))

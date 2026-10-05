@@ -1068,3 +1068,153 @@ def test_dir_rejects_a_missing_family_file(tmp_path):
     (tmp_path / "golden.toml").unlink()
     with pytest.raises(ValueError, match="golden.toml"):
         load_testlist_dir(tmp_path, known_images={"signed"})
+
+
+def _with(tmp_path, family, extra):
+    path = _write(tmp_path, family, "a")
+    path.write_text(path.read_text() + extra + "\n")
+    return path
+
+
+def test_image_fact_bounds_and_values_load_as_expressions(tmp_path):
+    path = _with(
+        tmp_path,
+        "payload_metadata",
+        "image_asserts = [\n"
+        '  { range = ["primary.payload_end", "end"], same_as = "signed" },\n'
+        '  { range = [0x2138, "primary.bl1_start"], all = 0 },\n'
+        '  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 0, '
+        'size = 8, value = "4092 - primary.bl1_len" } },\n'
+        '  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 0, '
+        'size = 8, value_from = { image = "multi", entry = 2 } } },\n'
+        '  { field = { name = "OFF_PAYLOAD_LENGTH", slot = "backup", size = 8, '
+        'value_from = { image = "toc_cap" } } },\n'
+        "]\n"
+        'spi_reads = [{ name = "p", range = [0x2000, "primary.payload_end"], min = 1 }]\n'
+        'forbid = ["LEN={primary.bl1_len}", "COPY_SRC={backup.bl1_copy_src}"]',
+    )
+    (case,) = load_testlist(path, known_images={"signed"})
+    ranges, fill, offset, moved, length = case.image_asserts
+    assert (ranges.low, ranges.high, fill.high) == (
+        "primary.payload_end",
+        None,
+        "primary.bl1_start",
+    )
+    assert offset.toc_field.value == "4092 - primary.bl1_len"
+    assert moved.toc_field.value_from == testlist_loader.ValueFrom("multi", 2)
+    assert length.field.value_from == testlist_loader.ValueFrom("toc_cap")
+    assert case.spi_reads[0].high == "primary.payload_end"
+    assert case.forbid == ("LEN={primary.bl1_len}", "COPY_SRC={backup.bl1_copy_src}")
+
+
+def test_smc_sram_source_may_end_at_the_image_end(tmp_path):
+    path = tmp_path / "testlist.toml"
+    path.write_text(_SMC_SRAM_ENTRY.replace("[0x1000, 0x41000]", '[0x0, "image_end"]'))
+    (case,) = load_testlist(path, known_images={"signed"})
+    assert case.smc_sram_source == (0, "image_end")
+
+
+@pytest.mark.parametrize(
+    "value, message",
+    [
+        ('"primary.bogus"', "unknown image fact 'primary.bogus'"),
+        ('"primary.payload_end +"', "expression over image facts"),
+        ('"primary.payload_end 8"', "expression over image facts"),
+        ('"4092"', "expression over image facts"),
+        ("1.5", "expression over image facts"),
+    ],
+)
+def test_malformed_image_fact_expressions_are_refused(tmp_path, value, message):
+    path = _with(
+        tmp_path,
+        "payload_metadata",
+        f'image_asserts = [{{ range = [{value}, "end"], same_as = "signed" }}]',
+    )
+    with pytest.raises(ValueError, match=re.escape(message)):
+        load_testlist(path, known_images={"signed"})
+
+
+@pytest.mark.parametrize(
+    "check, message",
+    [
+        (
+            '{ field = { name = "OFF_X", slot = "primary", size = 8, value = 1, '
+            'value_from = { image = "signed" } } }',
+            "one of value or value_from",
+        ),
+        (
+            '{ field = { name = "OFF_X", slot = "primary", size = 8 } }',
+            "one of value or value_from",
+        ),
+        (
+            '{ field = { name = "OFF_X", slot = "primary", size = 8, '
+            'value_from = { image = "signed", entry = 0 } } }',
+            "value_from must contain exactly image",
+        ),
+        (
+            '{ toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 0, '
+            'size = 8, value_from = { image = "signed" } } }',
+            "value_from must contain exactly entry and image",
+        ),
+        (
+            '{ toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 0, '
+            'size = 8, value_from = { image = "signed", entry = -1 } } }',
+            "value_from entry",
+        ),
+        (
+            '{ toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 0, '
+            'size = 8, value = "primary.payload" } }',
+            "unknown image fact",
+        ),
+    ],
+)
+def test_invalid_field_value_sources_are_refused(tmp_path, check, message):
+    path = _with(tmp_path, "payload_metadata", f"image_asserts = [{check}]")
+    with pytest.raises(ValueError, match=message):
+        load_testlist(path, known_images={"signed"})
+
+
+def test_a_token_may_name_only_a_known_image_fact(tmp_path):
+    path = _with(tmp_path, "manifest", 'forbid = ["LEN={primary.bl1_length}"]')
+    with pytest.raises(ValueError, match="unknown image fact 'primary.bl1_length'"):
+        load_testlist(path, known_images={"signed"})
+
+
+def test_an_image_fact_needs_a_boot_image(tmp_path):
+    path = tmp_path / "testlist.toml"
+    for extra, message in (
+        ('expect = ["LEN={primary.bl1_len}"]', "boots no image"),
+        ('spi_reads = [{ name = "p", range = [0x0, "image_end"], min = 1 }]', "boots no image"),
+    ):
+        path.write_text(
+            '[[testcase]]\nname = "a"\nfamily = "manifest"\nclassification = "vp-equivalent"\n'
+            f'expect_verdict = "PASSED"\n{extra}\n'
+        )
+        with pytest.raises(ValueError, match=message):
+            load_testlist(path)
+
+
+def test_decrypt_pad_image_assert(tmp_path):
+    path = _with(
+        tmp_path,
+        "encryption",
+        'image_asserts = [{ decrypt_pad = { slot = "primary", valid = false } }]',
+    )
+    (case,) = load_testlist(path, known_images={"signed"})
+    assert case.image_asserts[0].decrypt_pad == testlist_loader.DecryptPad("primary", False)
+
+
+@pytest.mark.parametrize(
+    "check, message",
+    [
+        ('{ decrypt_pad = { slot = "primary" } }', "exactly slot and valid"),
+        ('{ decrypt_pad = { slot = "third", valid = false } }', "slot"),
+        ('{ decrypt_pad = { slot = "primary", valid = 0 } }', "boolean"),
+        ('{ range = [0, 4], decrypt_pad = { slot = "primary", valid = false } }', "range"),
+        ('{ decrypt_pad = { slot = "primary", valid = false }, all = 0 }', "exactly one"),
+    ],
+)
+def test_invalid_decrypt_pad_image_asserts_are_refused(tmp_path, check, message):
+    path = _with(tmp_path, "encryption", f"image_asserts = [{check}]")
+    with pytest.raises(ValueError, match=message):
+        load_testlist(path, known_images={"signed"})

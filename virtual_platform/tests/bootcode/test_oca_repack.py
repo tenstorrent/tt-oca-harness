@@ -153,3 +153,32 @@ def test_a_pack_config_without_primary_and_backup_combos_is_refused(ready, tmp_p
         oca_repack.repack(
             "o", "oca_odd", [bim.PackEdit("bundle", "primary", "x", 1)], [], tmp_path / "out"
         )
+
+
+def _payload_image_end(target: str):
+    return [bim.PackEdit("bundle", "primary", "payload_images.0.offset", target)]
+
+
+def test_an_image_end_value_ends_the_payload_at_the_target(ready, tmp_path):
+    bundle = paths.BOOTCODE_CONFIGS / "oca_toc_cap_boot_test.yaml"
+    bl1 = paths.BOOTCODE_DIR / oca_repack._lookup(
+        oca_repack.yaml.safe_load(bundle.read_text()), "payload_images.0.path", bundle.name
+    )
+    out = oca_repack.repack(
+        "end", "oca_toc_cap_boot", _payload_image_end("4092 - {image_len}"), [], tmp_path
+    )
+    data = out.read_bytes()
+    slot = L.PRIMARY_OFFSET
+    payload = slot + int.from_bytes(data[slot + L.OFF_PAYLOAD_OFFSET :][:8], "little")
+    entry = payload + L.TOC_HEADER_SIZE
+    assert int.from_bytes(data[slot + L.OFF_PAYLOAD_LENGTH :][:8], "little") == 4092
+    assert int.from_bytes(data[entry + L.C.OFF_TOC_ENTRY_OFFSET :][:8], "little") == (
+        4092 - bl1.stat().st_size
+    )
+
+
+def test_an_image_end_before_the_image_fits_is_refused(ready, tmp_path):
+    with pytest.raises(ValueError, match="longer than the payload"):
+        oca_repack.repack(
+            "short", "oca_toc_cap_boot", _payload_image_end("100 - {image_len}"), [], tmp_path
+        )

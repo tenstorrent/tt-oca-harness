@@ -254,12 +254,12 @@ expect = [
   "MANIFEST_OK",
   "PAYLOAD_OK",
   "LOAD=0xc0000000",
-  "LEN=0x00000734",
+  "LEN={primary.bl1_len}",
   "ENTRY=0x00000000",
   "BL1_DST=ICCM",
-  "COPY_SRC=0x100021d8",
+  "COPY_SRC={primary.bl1_copy_src}",
   "COPY_DST=0xc0000000",
-  "COPY_LEN=0x00000734",
+  "COPY_LEN={primary.bl1_copy_len}",
   "BL1_COPIED",
   "BL1_JUMP=0xc0000000",
   "PRE_JUMP",
@@ -277,21 +277,21 @@ forbid = [
   "BL1_ENTRY_RANGE",
   "SBOOT_OFF",
 ]
-expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1, "COPY_SRC=0x100021d8" = 1 }
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1, "COPY_SRC={primary.bl1_copy_src}" = 1 }
 expect_status = ["INFO 0x0212", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x020e", "INFO 0x020f", "INFO 0x0054"]
 forbid_status = ["ERROR 0x0014", "ERROR 0x0213"]
 spi_reads = [
   { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
   { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
-  { name = "primary_payload", range = [0x2000, 0x390c], min = 1 },
-  { name = "primary_tail", range = [0x390c, 0x40000], exact = 0 },
+  { name = "primary_payload", range = [0x2000, "primary.payload_end"], min = 1 },
+  { name = "primary_tail", range = ["primary.payload_end", 0x40000], exact = 0 },
   { name = "backup", range = [0x40000, 0x80000], exact = 0 },
   { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
 ]
 spi_read_order = ["primary_manifest", "primary_payload"]
 markers = [
-  "COPY_SRC is the discriminating assertion: the TOC is [BLMEMMAP, _VENDOR1, BLSTAGE1] over three copies of one binary, so a ROM that took entry 0 or 1 would still reach GO! but copy from 0x10001368 or 0x10001aa0.",
-  "0x100021d8 is the staged payload base (SEP SRAM + the 4096-byte body, already 8-byte aligned) plus entry[2].offset 0x11d8, read from the packed TOC rather than from a run.",
+  "COPY_SRC is the discriminating assertion: the TOC is [BLMEMMAP, _VENDOR1, BLSTAGE1] over three copies of one binary, so a ROM that took entry 0 or 1 would still reach GO! but copy from that entry's offset.",
+  "COPY_SRC is the staged payload base (SEP SRAM + the 4096-byte body, already 8-byte aligned) plus entry[2].offset, read from the packed TOC rather than from a run.",
   "Uses the prebuilt multi image as packed, as the DV member does; the image bodies stay in ascending offset order, so this exercises the type search, not an ordering rule.",
   "Nothing loads the BLMEMMAP or _VENDOR1 entries; this says nothing about their handling.",
 ]
@@ -333,10 +333,10 @@ expect = [
   "MANIFEST_OK",
   "PAYLOAD_OK",
   "LOAD=0xc0000000",
-  "LEN=0x00000734",
-  "COPY_SRC=0x100021d8",
+  "LEN={backup.bl1_len}",
+  "COPY_SRC={backup.bl1_copy_src}",
   "COPY_DST=0xc0000000",
-  "COPY_LEN=0x00000734",
+  "COPY_LEN={backup.bl1_copy_len}",
   "BL1_COPIED",
   "BL1_JUMP=0xc0000000",
   "PRE_JUMP",
@@ -353,7 +353,7 @@ forbid = [
   "SBOOT_OFF",
   "SPI init failed, using backup manifest",
 ]
-expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030008" = 1, "PUBK_AUTHORIZED" = 1, "RSA_EXEC" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1, "COPY_SRC=0x100021d8" = 1 }
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030008" = 1, "PUBK_AUTHORIZED" = 1, "RSA_EXEC" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1, "COPY_SRC={backup.bl1_copy_src}" = 1 }
 expect_status = ["INFO 0x0212", "INFO 0x004c", "WARN 0x0022", "INFO 0x0212", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0054"]
 forbid_status = ["ERROR 0x0022", "ERROR 0x0213"]
 spi_reads = [
@@ -362,15 +362,15 @@ spi_reads = [
   { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
   { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
   { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
-  { name = "backup_payload", range = [0x42000, 0x4390c], min = 1 },
-  { name = "backup_tail", range = [0x4390c, 0x80000], exact = 0 },
+  { name = "backup_payload", range = [0x42000, "backup.payload_end"], min = 1 },
+  { name = "backup_tail", range = ["backup.payload_end", 0x80000], exact = 0 },
   { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
 ]
 spi_read_order = ["primary_manifest", "backup_manifest", "backup_payload"]
 markers = [
-  "COPY_SRC is the discriminating assertion: the backup TOC is [BLMEMMAP, _VENDOR1, BLSTAGE1], and the backup body is staged at the same SEP SRAM base as the primary's, so BL1 is copied from 0x10001000 + entry[2].offset 0x11d8.",
+  "COPY_SRC is the discriminating assertion: the backup TOC is [BLMEMMAP, _VENDOR1, BLSTAGE1], and the backup body is staged at the same SEP SRAM base as the primary's, so BL1 is copied from 0x10001000 + entry[2].offset.",
   "The primary refusal is the means of reaching the backup, not the subject; it matches the DV member's package-identity arm.",
-  "The backup payload is 0x190c bytes, so its span ends at 0x4390c rather than the single-image 0x4286c.",
+  "The backup span ends at the multi-image payload end, past where a single-image payload would.",
   "Nothing loads the BLMEMMAP or _VENDOR1 entries; this says nothing about their handling.",
 ]
 
@@ -493,15 +493,15 @@ forbid_status = ["WARN 0x0009", "ERROR 0x0213"]
 spi_reads = [
   { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
   { name = "primary_body", range = [0x1000, 0x2000], min = 1 },
-  { name = "primary_payload", range = [0x2000, 0x286c], min = 1 },
-  { name = "primary_tail", range = [0x286c, 0x40000], exact = 0 },
+  { name = "primary_payload", range = [0x2000, "primary.payload_end"], min = 1 },
+  { name = "primary_tail", range = ["primary.payload_end", 0x40000], exact = 0 },
   { name = "backup", range = [0x40000, 0x80000], exact = 0 },
   { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
 ]
 spi_read_order = ["primary_body", "primary_payload"]
 markers = [
   "Shares its bytes with rom_ot_secure_boot_golden: v1.0 with manifest_length 4096 is the packer's own output, so the fields are pinned by image_asserts rather than written.",
-  "The span bounds are the DV member's read check: every read falls in the 4096-byte body or the 0x86c-byte payload, and the backup is never read.",
+  "The span bounds are the DV member's read check: every read falls in the 4096-byte body or the payload, and the backup is never read.",
   "OCA has one length rule, manifest_length == the body size the magic selects, at every minor; there is no exact-match versus range split to accept here.",
 ]
 

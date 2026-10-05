@@ -193,6 +193,6 @@ spi_reads = [
 spi_read_order = ["primary_manifest", "backup_manifest", "backup_payload"]
 markers = [
   "Follows DV sep_firmware_payload_overlaps_manifest_test: the primary carries the overlap and the backup boots; DV draws an 8-aligned offset in [8, 4096) by seed, and this entry pins 4088, the last such offset, so the payload overlaps the body by its final 8 bytes.",
-  "The payload [0x1ff8, 0x2864) also crosses the body end at 0x2000, so this is the intersect arm at its boundary; sep_payload_overlaps_manifest_test covers an offset deep inside the body.",
+  "The payload starts at 0x1ff8 and so also crosses the body end at 0x2000, so this is the intersect arm at its boundary; sep_payload_overlaps_manifest_test covers an offset deep inside the body.",
   "payload_offset lies in the unsigned tail, so the byte patch keeps the signature valid; primary_manifest exact 18 and primary_payload exact 0 show no read was issued at 0x1ff8.",
 ]

@@ -59,27 +59,35 @@ def test_secure_profile_leaves_the_secrets_unlocked_at_power_on():
     assert otp["locks_lo"] == 0
 
 
-def test_measurement_tokens_are_substituted(tmp_path):
-    case = _case(tmp_path)
-    expect, counts = testlist_adapter.resolve_expect(
-        case, {"{measurement_golden}": "BL0S_BOOT_PCR=AB"}
-    )
-    assert expect[-1] == "BL0S_BOOT_PCR=AB" and counts == {"BL0S_BOOT_PCR=AB": 1}
+def _no_vp(config):
+    raise AssertionError("an unresolved testcase must be refused before the run")
 
 
-def test_measurement_needs_computed_tokens(tmp_path):
-    with pytest.raises(ValueError, match="measurement_golden"):
-        testlist_adapter.resolve_expect(_case(tmp_path), None)
+def test_an_unresolved_measurement_token_is_refused(tmp_path):
+    with pytest.raises(ValueError, match="resolve_case"):
+        testlist_adapter.run_testlist_case(
+            _case(tmp_path), _no_vp, tmp_path / "rom.elf", boot_image=tmp_path / "i.bin"
+        )
 
 
-def test_expect_without_a_measurement_spec_passes_through(tmp_path):
+@pytest.mark.parametrize(
+    "extra",
+    [
+        'expect = ["LEN={primary.bl1_len}"]',
+        'spi_reads = [{ name = "p", range = [0x2000, "primary.payload_end"], min = 1 }]',
+    ],
+)
+def test_an_unresolved_image_fact_is_refused(tmp_path, extra):
     path = tmp_path / "warm_reset.toml"
     path.write_text(
         '[[testcase]]\nname = "plain"\nfamily = "warm_reset"\nclassification = "partial"\n'
-        'expect = ["GO!"]\nexpect_counts = { "GO!" = 1 }\nexpect_verdict = "PASSED"\n'
+        f'image = "signed"\nexpect_verdict = "PASSED"\n{extra}\n'
     )
-    case = load_testlist(path)[0]
-    assert testlist_adapter.resolve_expect(case, None) == (("GO!",), {"GO!": 1})
+    case = load_testlist(path, known_images={"signed"})[0]
+    with pytest.raises(ValueError, match="resolve_case"):
+        testlist_adapter.run_testlist_case(
+            case, _no_vp, tmp_path / "rom.elf", boot_image=tmp_path / "i.bin"
+        )
 
 
 def test_image_and_smc_image_must_match_the_entry(tmp_path):

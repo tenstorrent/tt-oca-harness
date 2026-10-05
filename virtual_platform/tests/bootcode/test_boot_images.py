@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+import dataclasses
 import importlib.util
+import re
 
 import boot_image_mutations as bim
 import boot_images
@@ -9,13 +11,16 @@ import dv_env
 import oca_layout as L
 import pytest
 from sepvp import paths
+from sepvp.judges import SpiReadSpan
 from testlist_loader import (
     MEASUREMENT_DIGEST_TOKEN,
+    DecryptPad,
     FieldAssert,
     ImageAssert,
     MeasurementGolden,
     RomTestCase,
     TocFieldAssert,
+    ValueFrom,
 )
 
 pytestmark = pytest.mark.hostonly
@@ -91,12 +96,13 @@ def _span(low, high, *, all_byte=None, same_as=None, differs_from=None, xor=None
     return ImageAssert(low, high, all_byte, same_as, differs_from, xor=xor)
 
 
-def _field(name, slot, size, value):
-    return ImageAssert(0, None, None, None, None, field=FieldAssert(name, slot, size, value))
+def _field(name, slot, size, value, value_from=None):
+    check = FieldAssert(name, slot, size, value, value_from)
+    return ImageAssert(0, None, None, None, None, field=check)
 
 
-def _toc_field(name, slot, entry, size, value):
-    check = TocFieldAssert(name, slot, entry, size, value)
+def _toc_field(name, slot, entry, size, value, value_from=None):
+    check = TocFieldAssert(name, slot, entry, size, value, value_from)
     return ImageAssert(0, None, None, None, None, toc_field=check)
 
 
@@ -250,7 +256,7 @@ def test_a_toc_field_assert_follows_the_producer_entry_layout(golden, tmp_path, 
         ),
     )
     boot_images.check_image_asserts(ok, out, _IMAGES)
-    assert boot_images._toc_entry_field_at(ok, 0, data) == (
+    assert boot_images._toc_entry_field_at(ok, 0, data, 0) == (
         pm.toc_entries(data, "primary")[0] + pm.E_OFFSET
     )
     bad = _case(
@@ -274,7 +280,7 @@ def test_a_toc_field_assert_resolves_every_entry_of_a_multi_image_toc(specs):
     )
     case = _case(image="multi", image_asserts=checks)
     boot_images.check_image_asserts(case, _IMAGES["multi"], _IMAGES)
-    assert [boot_images._toc_entry_field_at(case, i, data) for i in range(3)] == [
+    assert [boot_images._toc_entry_field_at(case, i, data, i) for i in range(3)] == [
         entry + pm.E_OFFSET for entry in pm.toc_entries(data, "backup")
     ]
 
@@ -461,3 +467,209 @@ def test_missing_prebuilt_names_only_the_images_the_case_reads(tmp_path, specs):
     assert boot_images.missing_prebuilt(_case(image="toc_cap"), images) == ["toc_cap"]
     smc = _case(smc_sram_image="toc_cap", image_asserts=(_span(0, 4, differs_from="rom_key4"),))
     assert boot_images.missing_prebuilt(smc, images) == ["rom_key4", "toc_cap"]
+
+
+def _u64(data, at):
+    return int.from_bytes(data[at : at + 8], "little")
+
+
+def _slot_layout(data, slot_offset):
+    """Payload start, payload end and BL1 entry 0 of a slot, read straight from the layout."""
+    payload = slot_offset + _u64(data, slot_offset + L.OFF_PAYLOAD_OFFSET)
+    entry = payload + L.TOC_HEADER_SIZE
+    return (
+        payload,
+        payload + _u64(data, slot_offset + L.OFF_PAYLOAD_LENGTH),
+        _u64(data, entry + L.C.OFF_TOC_ENTRY_OFFSET),
+        _u64(data, entry + L.C.OFF_TOC_ENTRY_LENGTH),
+    )
+
+
+def test_image_facts_read_the_slot_payload_and_its_bl1_entry(golden):
+    facts = boot_images.ImageFacts(golden)
+    payload, end, offset, length = _slot_layout(golden, L.BACKUP_OFFSET)
+    assert facts["backup.payload_start"] == payload
+    assert facts["backup.payload_end"] == end
+    assert facts["backup.bl1_start"] == payload + offset
+    assert facts["backup.bl1_len"] == length
+    assert facts["backup.bl1_copy_len"] == (length + 3) & ~3
+    assert facts["backup.bl1_copy_src"] == 0x1000_0000 + payload - L.BACKUP_OFFSET + offset
+    assert facts["image_end"] == len(golden)
+
+
+def test_image_facts_refuse_the_bl1_of_an_encrypted_slot():
+    if not _IMAGES["encrypted"].is_file():
+        pytest.skip("oca-images not built")
+    data = _IMAGES["encrypted"].read_bytes()
+    facts = boot_images.ImageFacts(data)
+    assert facts["primary.payload_end"] == _slot_layout(data, L.PRIMARY_OFFSET)[1]
+    with pytest.raises(AssertionError, match="encrypted"):
+        facts["primary.bl1_len"]
+
+
+def test_resolve_case_fills_image_fact_tokens_and_spans(golden, specs):
+    specs()
+    payload, end, offset, length = _slot_layout(golden, L.PRIMARY_OFFSET)
+    case = _case(
+        image="signed",
+        expect=("LEN={primary.bl1_len}", "COPY_SRC={primary.bl1_copy_src}"),
+        forbid=("COPY_LEN={backup.bl1_copy_len}0",),
+        expect_counts={"LEN={primary.bl1_len}": 1},
+        spi_reads=(
+            SpiReadSpan("payload", payload, "primary.payload_end", minimum=1),
+            SpiReadSpan("tail", "primary.payload_end", 0x40000, exact=0),
+        ),
+    )
+    resolved = boot_images.resolve_case(case, _IMAGES["signed"], _IMAGES)
+    src = 0x1000_0000 + payload - L.PRIMARY_OFFSET + offset
+    assert resolved.expect == (f"LEN=0x{length:08x}", f"COPY_SRC=0x{src:08x}")
+    assert resolved.forbid == (f"COPY_LEN=0x{(length + 3) & ~3:08x}0",)
+    assert resolved.expect_counts == {f"LEN=0x{length:08x}": 1}
+    assert [(s.low, s.high) for s in resolved.spi_reads] == [(payload, end), (end, 0x40000)]
+
+
+def test_resolve_case_refuses_a_span_that_resolves_empty(golden, specs):
+    specs()
+    span = SpiReadSpan("payload", L.PRIMARY_OFFSET + 0x1000, "primary.payload_start", minimum=1)
+    with pytest.raises(ValueError, match="range is empty"):
+        boot_images.resolve_case(
+            _case(image="signed", spi_reads=(span,)), _IMAGES["signed"], _IMAGES
+        )
+
+
+def test_resolve_case_substitutes_the_measurement_token(golden, specs):
+    specs()
+    dv = _dv_measurement()
+    case = _case(
+        image="signed",
+        expect=("GO!", MEASUREMENT_DIGEST_TOKEN),
+        expect_counts={MEASUREMENT_DIGEST_TOKEN: 1},
+        measurement_golden=MeasurementGolden("primary", **dv._KAT_INPUTS),
+    )
+    (token,) = boot_images.measurement_tokens(case, _IMAGES["signed"]).values()
+    resolved = boot_images.resolve_case(case, _IMAGES["signed"], _IMAGES)
+    assert resolved.expect == ("GO!", token) and resolved.expect_counts == {token: 1}
+
+
+def test_resolve_case_leaves_a_case_without_image_facts_unchanged(specs):
+    specs()
+    case = _case(expect=("GO!",), expect_counts={"GO!": 1})
+    assert boot_images.resolve_case(case, None, _IMAGES) == case
+
+
+def test_resolve_case_ends_the_smc_window_at_the_smc_image_end(golden, tmp_path, specs):
+    specs()
+    case = dataclasses.replace(_smc_case(L.PRIMARY_OFFSET), smc_sram_source=(0, "image_end"))
+    resolved = boot_images.resolve_case(case, None, _IMAGES)
+    assert resolved.smc_sram_source == (0, len(golden))
+    out = boot_images.materialize_smc_sram_image(resolved, _IMAGES, tmp_path)
+    assert out.read_bytes() == golden
+
+
+def _payload_end(golden):
+    return _slot_layout(golden, L.PRIMARY_OFFSET)[1]
+
+
+def test_a_fact_bound_compares_the_bytes_past_the_payload(golden, tmp_path, specs):
+    end = _payload_end(golden)
+    specs(
+        inside=f'base = "signed"\npatch = [{{ offset = {end - 1}, xor = 0x01 }}]\n',
+        past=f'base = "signed"\npatch = [{{ offset = {end}, xor = 0x01 }}]\n',
+    )
+    check = _span("primary.payload_end", None, same_as="signed")
+    out = boot_images.materialize_boot_image("inside", _IMAGES, tmp_path)
+    boot_images.check_image_asserts(_case(image="inside", image_asserts=(check,)), out, _IMAGES)
+    out = boot_images.materialize_boot_image("past", _IMAGES, tmp_path)
+    with pytest.raises(AssertionError, match="differs from 'signed'"):
+        boot_images.check_image_asserts(_case(image="past", image_asserts=(check,)), out, _IMAGES)
+
+
+def test_a_fact_bound_must_sit_at_the_same_offset_in_the_reference(golden, tmp_path, specs):
+    length_byte = L.PRIMARY_OFFSET + L.OFF_PAYLOAD_LENGTH
+    specs(longer=f'base = "signed"\npatch = [{{ offset = {length_byte}, xor = 0x10 }}]\n')
+    out = boot_images.materialize_boot_image("longer", _IMAGES, tmp_path)
+    case = _case(
+        image="longer", image_asserts=(_span("primary.payload_end", None, same_as="signed"),)
+    )
+    with pytest.raises(AssertionError, match="moved the region"):
+        boot_images.check_image_asserts(case, out, _IMAGES)
+
+
+def test_a_field_value_may_be_an_image_fact_expression(golden, specs):
+    specs()
+    length = "primary.payload_end - primary.payload_start"
+    ok = _case(image="signed", image_asserts=(_field("OFF_PAYLOAD_LENGTH", "primary", 8, length),))
+    boot_images.check_image_asserts(ok, _IMAGES["signed"], _IMAGES)
+    bad = _case(
+        image="signed",
+        image_asserts=(_field("OFF_PAYLOAD_LENGTH", "primary", 8, f"{length} + 1"),),
+    )
+    with pytest.raises(AssertionError, match=re.escape(f"({length} + 1)")):
+        boot_images.check_image_asserts(bad, _IMAGES["signed"], _IMAGES)
+
+
+def test_value_from_reads_the_entry_the_permutation_moved(tmp_path, specs):
+    if not _IMAGES["multi"].is_file():
+        pytest.skip("oca-images not built")
+    specs(
+        permuted='base = "multi"\nops = [{ op = "permute_toc_entries", slot = "primary", '
+        "args = { order = [2, 1, 0] } }]\n",
+        unpermuted=f'base = "multi"\npatch = [{{ offset = {L.BACKUP_OFFSET + 0x20}, xor = 0x01 }}]\n',
+    )
+    checks = (
+        _toc_field("OFF_TOC_ENTRY_OFFSET", "primary", 0, 8, None, ValueFrom("multi", 2)),
+        _toc_field("OFF_TOC_ENTRY_OFFSET", "primary", 2, 8, None, ValueFrom("multi", 0)),
+    )
+    out = boot_images.materialize_boot_image("permuted", _IMAGES, tmp_path)
+    boot_images.check_image_asserts(_case(image="permuted", image_asserts=checks), out, _IMAGES)
+    out = boot_images.materialize_boot_image("unpermuted", _IMAGES, tmp_path)
+    with pytest.raises(AssertionError, match="as in 'multi'"):
+        boot_images.check_image_asserts(
+            _case(image="unpermuted", image_asserts=checks), out, _IMAGES
+        )
+
+
+def test_value_from_names_only_a_comparable_image(golden, specs):
+    specs()
+    check = _field("OFF_PAYLOAD_LENGTH", "primary", 8, None, ValueFrom("multi"))
+    with pytest.raises(AssertionError, match="not a base image"):
+        boot_images.check_image_asserts(
+            _case(image="signed", image_asserts=(check,)), _IMAGES["signed"], _IMAGES
+        )
+
+
+def _decrypt_pad(slot, valid):
+    return ImageAssert(0, None, None, None, None, decrypt_pad=DecryptPad(slot, valid))
+
+
+def test_decrypt_pad_reports_whether_the_wrong_key_leaves_a_valid_pad(tmp_path, specs):
+    if not _IMAGES["encrypted"].is_file():
+        pytest.skip("oca-images not built")
+    pm = dv_env.load("sep_payload_mutate")
+    golden = pm.manifest_kdf_input(_IMAGES["encrypted"].read_bytes(), "primary")
+    wrong = next(
+        bytes([golden[0] ^ flip]) + golden[1:]
+        for flip in range(1, 256)
+        if not pm.rom_view_decrypt(
+            _IMAGES["encrypted"].read_bytes(),
+            "primary",
+            kdf_input=bytes([golden[0] ^ flip]) + golden[1:],
+        )[0]
+    )
+    specs(
+        wrong_kdf='base = "encrypted"\nops = [{ op = "set_encryption_kdf_input", slot = "primary", '
+        f'args = {{ kdf_input = "{wrong.hex()}" }} }}]\n'
+    )
+    out = boot_images.materialize_boot_image("wrong_kdf", _IMAGES, tmp_path)
+    invalid = _case(image="wrong_kdf", image_asserts=(_decrypt_pad("primary", False),))
+    boot_images.check_image_asserts(invalid, out, _IMAGES)
+    with pytest.raises(AssertionError, match="decrypts to an invalid PKCS#7 pad"):
+        boot_images.check_image_asserts(
+            _case(image="wrong_kdf", image_asserts=(_decrypt_pad("primary", True),)), out, _IMAGES
+        )
+    with pytest.raises(AssertionError, match="decrypts to a valid PKCS#7 pad"):
+        boot_images.check_image_asserts(
+            _case(image="encrypted", image_asserts=(_decrypt_pad("primary", False),)),
+            _IMAGES["encrypted"],
+            _IMAGES,
+        )

@@ -112,6 +112,33 @@ def test_repack_may_not_rewrite_combo_config_paths(tmp_path):
         )
 
 
+def test_an_image_end_value_moves_a_payload_image(tmp_path):
+    m = _spec(
+        tmp_path,
+        'pack_config = "oca_toc_cap_boot"\n'
+        'set = [{ target = "bundle", slot = "primary", path = "payload_images.0.offset", '
+        'value = "4092 - {image_len}" }]\n',
+    )
+    assert m.set[0].value == "4092 - {image_len}"
+
+
+@pytest.mark.parametrize(
+    "edit",
+    [
+        'target = "bundle", slot = "primary", path = "payload_images.0.load_addr", '
+        'value = "4092 - {image_len}"',
+        'target = "image", path = "payload_images.0.offset", value = "4092 - {image_len}"',
+        'target = "bundle", slot = "primary", path = "payload_images.0.offset", '
+        'value = "4092-{image_len}"',
+        'target = "bundle", slot = "primary", path = "payload_images.0.offset", '
+        'value = "{image_len} - 4092"',
+    ],
+)
+def test_an_image_end_value_is_refused_outside_a_payload_image_offset(tmp_path, edit):
+    with pytest.raises(ValueError, match="image_len"):
+        _spec(tmp_path, f'pack_config = "oca_toc_cap_boot"\nset = [{{ {edit} }}]\n')
+
+
 def test_bundle_edit_needs_a_slot(tmp_path):
     with pytest.raises(ValueError, match="slot"):
         _spec(

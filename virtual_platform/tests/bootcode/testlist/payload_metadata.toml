@@ -108,7 +108,7 @@ image_asserts = [
   { range = [0x1af7, 0x1c64], same_as = "encrypted" },
   { range = [0x1de4, 0x1e64], same_as = "encrypted" },
   { range = [0x1e84, 0x2010], same_as = "encrypted" },
-  { range = [0x2870, "end"], same_as = "encrypted" },
+  { range = ["primary.payload_end", "end"], same_as = "encrypted" },
 ]
 expect = [
   "MANIFEST_PRIMARY",
@@ -296,7 +296,7 @@ image_asserts = [
   { range = [0x41af7, 0x41c64], same_as = "encrypted" },
   { range = [0x41de4, 0x41e64], same_as = "encrypted" },
   { range = [0x41e84, 0x42010], same_as = "encrypted" },
-  { range = [0x42870, "end"], same_as = "encrypted" },
+  { range = ["backup.payload_end", "end"], same_as = "encrypted" },
 ]
 expect = [
   "MANIFEST_PRIMARY",
@@ -477,7 +477,7 @@ image_asserts = [
   { range = [0x1b3f, 0x1c64], same_as = "encrypted" },
   { range = [0x1de4, 0x1e64], same_as = "encrypted" },
   { range = [0x1e84, 0x2030], same_as = "encrypted" },
-  { range = [0x2870, "end"], same_as = "encrypted" },
+  { range = ["primary.payload_end", "end"], same_as = "encrypted" },
 ]
 expect = [
   "MANIFEST_PRIMARY",
@@ -661,7 +661,7 @@ image_asserts = [
   { range = [0x41b3f, 0x41c64], same_as = "encrypted" },
   { range = [0x41de4, 0x41e64], same_as = "encrypted" },
   { range = [0x41e84, 0x42030], same_as = "encrypted" },
-  { range = [0x42870, "end"], same_as = "encrypted" },
+  { range = ["backup.payload_end", "end"], same_as = "encrypted" },
 ]
 expect = [
   "MANIFEST_PRIMARY",
@@ -817,7 +817,7 @@ spi_reads = [
 spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
 markers = [
   "An op, not a repack: neither packer config declares toc.payload_length, and a byte patch would leave payload_hash stale so the run would stop at 0x00030012 first.",
-  "0x2000 is the DV value and exceeds the manifest payload_length of both goldens (0x86c plaintext, 0x870 ciphertext).",
+  "0x2000 is the DV value and exceeds the manifest payload_length of both goldens, a one-entry TOC plus BL1.",
   "check_cleartext_payload() refuses a TOC payload_length other than the manifest payload_length after payload_hash and the span check pass.",
 ]
 
@@ -842,7 +842,7 @@ image_asserts = [
   { range = [0x1b3f, 0x1c64], same_as = "encrypted" },
   { range = [0x1de4, 0x1e64], same_as = "encrypted" },
   { range = [0x1e84, 0x2000], same_as = "encrypted" },
-  { range = [0x2870, "end"], same_as = "encrypted" },
+  { range = ["primary.payload_end", "end"], same_as = "encrypted" },
 ]
 expect = [
   "MANIFEST_PRIMARY",
@@ -912,7 +912,7 @@ spi_reads = [
 spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
 markers = [
   "An op, not a repack: neither packer config declares toc.payload_length, and a byte patch would leave payload_hash stale so the run would stop at 0x00030012 first.",
-  "0x2000 is the DV value and exceeds the manifest payload_length of both goldens (0x86c plaintext, 0x870 ciphertext).",
+  "0x2000 is the DV value and exceeds the manifest payload_length of both goldens, a one-entry TOC plus BL1.",
   "The TOC payload_length check compares the decrypted TOC field with the ciphertext length, which may exceed it by one PKCS#7 block at most.",
   "The edited field sits in ciphertext, so the image_asserts bound the first changed AES block and DECRYPT_OK places the check after decryption.",
 ]
@@ -1001,7 +1001,7 @@ spi_reads = [
 spi_read_order = ["primary_peek", "backup_manifest", "backup_payload"]
 markers = [
   "An op, not a repack: neither packer config declares toc.payload_length, and a byte patch would leave payload_hash stale so the run would stop at 0x00030012 first.",
-  "0x2000 is the DV value and exceeds the manifest payload_length of both goldens (0x86c plaintext, 0x870 ciphertext).",
+  "0x2000 is the DV value and exceeds the manifest payload_length of both goldens, a one-entry TOC plus BL1.",
   "check_cleartext_payload() refuses a TOC payload_length other than the manifest payload_length after payload_hash and the span check pass.",
   "The primary magic is broken with a plain byte patch, so the backup is the only slot that reaches its TOC.",
 ]
@@ -1029,7 +1029,7 @@ image_asserts = [
   { range = [0x41b3f, 0x41c64], same_as = "encrypted" },
   { range = [0x41de4, 0x41e64], same_as = "encrypted" },
   { range = [0x41e84, 0x42000], same_as = "encrypted" },
-  { range = [0x42870, "end"], same_as = "encrypted" },
+  { range = ["backup.payload_end", "end"], same_as = "encrypted" },
 ]
 expect = [
   "MANIFEST_PRIMARY",
@@ -1098,7 +1098,7 @@ spi_reads = [
 spi_read_order = ["primary_peek", "backup_manifest", "backup_payload"]
 markers = [
   "An op, not a repack: neither packer config declares toc.payload_length, and a byte patch would leave payload_hash stale so the run would stop at 0x00030012 first.",
-  "0x2000 is the DV value and exceeds the manifest payload_length of both goldens (0x86c plaintext, 0x870 ciphertext).",
+  "0x2000 is the DV value and exceeds the manifest payload_length of both goldens, a one-entry TOC plus BL1.",
   "The TOC payload_length check compares the decrypted TOC field with the ciphertext length, which may exceed it by one PKCS#7 block at most.",
   "The edited field sits in ciphertext, so the image_asserts bound the first changed AES block and DECRYPT_OK places the check after decryption.",
   "The primary magic is broken with a plain byte patch, so the backup is the only slot that reaches its TOC.",
@@ -1782,7 +1782,7 @@ image_asserts = [
   { range = [0x1b3f, 0x1c64], same_as = "encrypted" },
   { range = [0x1de4, 0x1e64], same_as = "encrypted" },
   { range = [0x1e84, 0x2000], same_as = "encrypted" },
-  { range = [0x2870, "end"], same_as = "encrypted" },
+  { range = ["primary.payload_end", "end"], same_as = "encrypted" },
 ]
 expect = [
   "MANIFEST_PRIMARY",
@@ -1870,7 +1870,7 @@ image_asserts = [
   { range = [0x41b3f, 0x41c64], same_as = "encrypted" },
   { range = [0x41de4, 0x41e64], same_as = "encrypted" },
   { range = [0x41e84, 0x42000], same_as = "encrypted" },
-  { range = [0x42870, "end"], same_as = "encrypted" },
+  { range = ["backup.payload_end", "end"], same_as = "encrypted" },
 ]
 expect = [
   "MANIFEST_PRIMARY",
@@ -1949,9 +1949,9 @@ observation = "complete"
 timeout = 180
 expect_verdict = "PASSED"
 pytest_markers = ["needs_debug"]
-# Entry offsets after the edit: entry 0 = 4568 (BLSTAGE1), entry 1 = 880 (_VENDOR1), entry 2 = 872 (BLMEMMAP); each length is 1844.
+# Entry offsets after the edit: entry 0 is the shipped entry 2 (BLSTAGE1), entry 1 = 880 (_VENDOR1) starts inside entry 2 = 872 (BLMEMMAP).
 image_asserts = [
-  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 0, size = 8, value = 4568 } },
+  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 0, size = 8, value_from = { image = "multi", entry = 2 } } },
   { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 1, size = 8, value = 880 } },
   { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 2, size = 8, value = 872 } },
   { range = [0x2150, 0x2152], differs_from = "multi" },
@@ -2025,10 +2025,10 @@ observation = "complete"
 timeout = 180
 expect_verdict = "PASSED"
 pytest_markers = ["needs_debug"]
-# Entry offsets after the permutation: entry 0 = 4568 (BLSTAGE1), entry 1 = 2720 (_VENDOR1), entry 2 = 872 (BLMEMMAP); the shipped order is 872, 2720, 4568.
+# The permutation reverses the shipped entries: BLSTAGE1 moves to entry 0, _VENDOR1 stays entry 1 and BLMEMMAP (872) moves to entry 2.
 image_asserts = [
-  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 0, size = 8, value = 4568 } },
-  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 1, size = 8, value = 2720 } },
+  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 0, size = 8, value_from = { image = "multi", entry = 2 } } },
+  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 1, size = 8, value_from = { image = "multi", entry = 1 } } },
   { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 2, size = 8, value = 872 } },
   { range = [0x2038, 0x203a], differs_from = "multi" },
   { range = [0x2268, 0x226a], differs_from = "multi" },
@@ -2048,10 +2048,10 @@ expect = [
   "MANIFEST_OK",
   "PAYLOAD_OK",
   "LOAD=0xc0000000",
-  "LEN=0x00000734",
+  "LEN={primary.bl1_len}",
   "ENTRY=0x00000000",
   "BL1_DST=ICCM",
-  "COPY_SRC=0x100021d8",
+  "COPY_SRC={primary.bl1_copy_src}",
   "BL1_COPIED",
   "BL1_JUMP=0xc0000000",
   "GO!",
@@ -2069,7 +2069,7 @@ forbid = [
   "DECRYPT_OK",
   "SBOOT_OFF",
 ]
-expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "COPY_SRC=0x100021d8" = 1, "BL1_COPIED" = 1 }
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "COPY_SRC={primary.bl1_copy_src}" = 1, "BL1_COPIED" = 1 }
 expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x020e", "INFO 0x0054"]
 forbid_status = ["WARN 0x000f", "ERROR 0x000f", "ERROR 0x0213"]
 spi_reads = [
@@ -2082,7 +2082,7 @@ spi_reads = [
 spi_read_order = ["primary_manifest", "primary_payload"]
 markers = [
   "validate_toc_structure checks offset alignment, non-zero length, bounds and pairwise overlap but no order, and check_payload_hash_chain_and_entries chains entries in stored order, so a resealed descending TOC is legal and the primary boots.",
-  "find_bl1 selects BL1 by type: it is entry 0 here and entry 2 in the shipped image, and COPY_SRC=0x100021d8 is the staged payload base 0x10001000 plus its offset 4568 either way.",
+  "find_bl1 selects BL1 by type: it is entry 0 here and entry 2 in the shipped image, and COPY_SRC is the staged payload base 0x10001000 plus its TOC offset either way.",
   "Pairs with the overlap entries of this name: those carry DV images_overlapping, this one DV images_descending_order, so the reordering in their stimulus is shown legal on every run.",
 ]
 
@@ -2097,10 +2097,10 @@ observation = "complete"
 timeout = 180
 expect_verdict = "FAILED"
 pytest_markers = ["needs_debug"]
-# Entry offsets after the edit: entry 0 = 4568 (BLSTAGE1), entry 1 = 880 (_VENDOR1), entry 2 = 872 (BLMEMMAP); each length is 1844.
+# Entry offsets after the edit: entry 0 is the shipped entry 2 (BLSTAGE1), entry 1 = 880 (_VENDOR1) starts inside entry 2 = 872 (BLMEMMAP).
 image_asserts = [
   { range = [0x1000, 0x1004], all = 0x99 },
-  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "backup", entry = 0, size = 8, value = 4568 } },
+  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "backup", entry = 0, size = 8, value_from = { image = "multi", entry = 2 } } },
   { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "backup", entry = 1, size = 8, value = 880 } },
   { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "backup", entry = 2, size = 8, value = 872 } },
   { range = [0x42150, 0x42152], differs_from = "multi" },
@@ -2191,7 +2191,7 @@ image_asserts = [
   { range = [0x1b3f, 0x1c64], same_as = "encrypted_multi" },
   { range = [0x1de4, 0x1e64], same_as = "encrypted_multi" },
   { range = [0x1e84, 0x2020], same_as = "encrypted_multi" },
-  { range = [0x3910, "end"], same_as = "encrypted_multi" },
+  { range = ["primary.payload_end", "end"], same_as = "encrypted_multi" },
 ]
 expect = [
   "MANIFEST_PRIMARY",
@@ -2281,7 +2281,7 @@ image_asserts = [
   { range = [0x41b3f, 0x41c64], same_as = "encrypted_multi" },
   { range = [0x41de4, 0x41e64], same_as = "encrypted_multi" },
   { range = [0x41e84, 0x42020], same_as = "encrypted_multi" },
-  { range = [0x43910, "end"], same_as = "encrypted_multi" },
+  { range = ["backup.payload_end", "end"], same_as = "encrypted_multi" },
 ]
 expect = [
   "MANIFEST_PRIMARY",

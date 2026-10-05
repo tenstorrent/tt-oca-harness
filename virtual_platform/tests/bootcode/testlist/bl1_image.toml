@@ -155,7 +155,7 @@ observation = "complete"
 timeout = 180
 expect_verdict = "FAILED"
 pytest_markers = ["needs_debug"]
-# BL1 is TOC entry 0, whose length field starts at payload 0x40; the shipped length is 0x734.
+# BL1 is TOC entry 0, whose length field starts at payload 0x40.
 image_asserts = [
   { toc_field = { name = "OFF_TOC_ENTRY_LENGTH", slot = "primary", entry = 0, size = 8, value = 0 } },
   { toc_field = { name = "OFF_TOC_ENTRY_LENGTH", slot = "backup", entry = 0, size = 8, value = 0 } },
@@ -243,10 +243,10 @@ observation = "complete"
 timeout = 180
 expect_verdict = "FAILED"
 pytest_markers = ["needs_debug"]
-# BL1 is TOC entry 0, whose entry_point field starts at payload 0x60; 0x734 is the BL1 length.
+# BL1 is TOC entry 0, whose entry_point field starts at payload 0x60.
 image_asserts = [
-  { toc_field = { name = "OFF_TOC_ENTRY_ENTRY_POINT", slot = "primary", entry = 0, size = 8, value = 0x734 } },
-  { toc_field = { name = "OFF_TOC_ENTRY_ENTRY_POINT", slot = "backup", entry = 0, size = 8, value = 0x734 } },
+  { toc_field = { name = "OFF_TOC_ENTRY_ENTRY_POINT", slot = "primary", entry = 0, size = 8, value = "primary.bl1_len" } },
+  { toc_field = { name = "OFF_TOC_ENTRY_ENTRY_POINT", slot = "backup", entry = 0, size = 8, value = "backup.bl1_len" } },
   { range = [0x2060, 0x2062], differs_from = "signed" },
   { range = [0x42060, 0x42062], differs_from = "signed" },
   { range = [0x0, 0x1ad7], same_as = "signed" },

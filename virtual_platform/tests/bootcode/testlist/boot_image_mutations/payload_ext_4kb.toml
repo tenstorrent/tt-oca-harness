@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# Moves the primary BL1 behind a fill so the payload is 4092 bytes, the nearest to 4 KiB.
+# Moves the primary BL1 behind a fill so it ends the payload at 4092 bytes, the nearest to 4 KiB.
 pack_config = "oca_toc_cap_boot"
 set = [
-  { target = "bundle", slot = "primary", path = "payload_images.0.offset", value = 2248 },
+  { target = "bundle", slot = "primary", path = "payload_images.0.offset", value = "4092 - {image_len}" },
 ]

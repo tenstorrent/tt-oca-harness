@@ -37,6 +37,10 @@ _SLOTS = {"primary": L.PRIMARY_OFFSET, "backup": L.BACKUP_OFFSET}
 _EDIT_SLOTS = ("primary", "backup", "both")
 _TARGETS = ("image", "bundle")
 _COMBO_CONFIG = re.compile(r"combos\.\d+\.config")
+# "<end> - {image_len}" places a payload image so it ends at <end> whatever size its build gives it.
+IMAGE_LEN = "{image_len}"
+IMAGE_END_VALUE = re.compile(r"(0x[0-9a-fA-F]+|[0-9]+) - \{image_len\}")
+IMAGE_OFFSET_PATH = re.compile(r"payload_images\.(\d+)\.offset")
 _PACK_CONFIG = re.compile(r"oca_[A-Za-z0-9_]+")
 
 
@@ -220,6 +224,20 @@ def _parse_edit(entry: object, name: str, kind: str) -> PackEdit:
     value = entry["value"]
     if type(value) not in (int, str):
         raise ValueError(f"mutation {name!r} {kind} value must be an integer or a string")
+    if (
+        type(value) is str
+        and IMAGE_LEN in value
+        and not (
+            kind == "set"
+            and target == "bundle"
+            and IMAGE_OFFSET_PATH.fullmatch(path)
+            and IMAGE_END_VALUE.fullmatch(value)
+        )
+    ):
+        raise ValueError(
+            f"mutation {name!r} {kind} value {value!r}: {IMAGE_LEN} is only for a bundle set of "
+            "payload_images.<n>.offset, written '<end> - {image_len}'"
+        )
     return PackEdit(target, slot, path, value)
 
 

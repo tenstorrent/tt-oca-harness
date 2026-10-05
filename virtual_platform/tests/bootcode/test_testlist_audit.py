@@ -3,8 +3,11 @@
 
 from pathlib import Path
 
+import boot_images
 import pytest
+import testlist_adapter
 import testlist_audit
+from sepvp import paths
 from testlist_loader import load_testlist
 
 pytestmark = pytest.mark.hostonly
@@ -93,8 +96,20 @@ def test_a_real_negative_contract_is_not_flagged(tmp_path):
     assert testlist_audit.audit(testcase, _GOLDEN_OUTPUT) == []
 
 
+def _resolved(testcase, tmp_path):
+    """The testcase with its image facts filled in from the image it boots."""
+    if testlist_adapter.unresolved(testcase) is None:
+        return testcase
+    image = None
+    if testcase.image is not None:
+        image = boot_images.materialize_boot_image(
+            testcase.image, paths.OCA_IMAGE_PATHS, tmp_path / testcase.name
+        )
+    return boot_images.resolve_case(testcase, image, paths.OCA_IMAGE_PATHS)
+
+
 @pytest.mark.skipif(not GOLDEN_LOG.is_file(), reason="needs a full bootcode regression's logs")
-def test_no_testcase_passes_for_the_wrong_reason():
+def test_no_testcase_passes_for_the_wrong_reason(tmp_path):
     from test_sep_rom_testlist import TESTCASES
 
     golden_output = GOLDEN_LOG.read_text(errors="replace")
@@ -102,7 +117,7 @@ def test_no_testcase_passes_for_the_wrong_reason():
         finding
         for testcase in TESTCASES
         if testcase.classification != "retired"
-        for finding in testlist_audit.audit(testcase, golden_output)
+        for finding in testlist_audit.audit(_resolved(testcase, tmp_path), golden_output)
         if not (
             finding.kind == "shares_golden_stimulus"
             and finding.testcase in testlist_audit.SHARES_GOLDEN_STIMULUS

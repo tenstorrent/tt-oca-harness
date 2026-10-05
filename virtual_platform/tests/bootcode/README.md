@@ -51,9 +51,9 @@ If `make vp` stops at `check-cxx`, follow the compiler fix it prints. If step 3 
 | Path | Role |
 |---|---|
 | `testlist_loader.py` | Parses and validates the testlist into `RomTestCase`; owns `FAMILY_ORDER`, the allowed fields and every cross-field rule |
-| `testlist_adapter.py` | Converts a `RomTestCase` into a `SimConfig`, builds the fuse map, resolves `{measurement_golden}`, runs the case and calls `sepvp.judges.judge` |
+| `testlist_adapter.py` | Converts a resolved `RomTestCase` into a `SimConfig`, builds the fuse map, runs the case and calls `sepvp.judges.judge` |
 | `test_sep_rom_testlist.py` | The pytest entry point; one parametrized case per non-retired testcase |
-| `boot_images.py` | Produces the image a testcase names (prebuilt, byte patch, ops or repack), runs `image_asserts`, cuts the SMC SRAM bytes, computes the measurement token |
+| `boot_images.py` | Produces the image a testcase names (prebuilt, byte patch, ops or repack), runs `image_asserts`, cuts the SMC SRAM bytes, and resolves image facts and the measurement token (`resolve_case`) |
 | `boot_image_mutations.py` | Loads and validates mutation specs; applies byte patches; defines `SEPVP_TESTLIST_DIR` handling |
 | `oca_image_ops.py` | Whitelist `OPS` of DV mutation helpers a spec may run, with the re-sign rules |
 | `oca_repack.py` | Rebuilds an image from a packer config plus field edits, through the manifest venv |
@@ -149,12 +149,20 @@ Pre-run image checks (`image_asserts`, needs `image`). Each entry names exactly 
   `same_as`.
 - `{ field = { name = "OFF_...", slot = "primary"|"backup", size = 1|2|4|8, value = <int> } }`:
   a manifest field, named by its `OFF_` symbol (not `OFF_TOC_`), holds the value. A field check
-  has no `range`.
+  has no `range`. `value` may be an image-fact expression, or `value_from` may replace it.
 - `{ toc_field = { name = "OFF_TOC_ENTRY_...", slot, entry = <index>, size, value } }`: a field
   of a cleartext TOC entry holds the value. The offset is the slot's payload base plus
   `TOC_HEADER_SIZE + entry * TOC_ENTRY_SIZE` plus the field offset, all from the producer
   constants, so the check follows a change of the TOC layout. An encrypted payload, a payload
   without the `PTOC` magic or an entry past `image_count` fails the check. It has no `range`.
+  `value` may be an image-fact expression, or `value_from` may replace it.
+- `{ decrypt_pad = { slot, valid = true|false } }`: the slot's payload, decrypted with its own IV
+  and KDF input under the class key the images are packed with, ends in a valid or an invalid
+  PKCS#7 pad. A wrong key leaves a valid pad for about 1 ciphertext in 256, so an entry that
+  expects `AES_PAD_BAD` proves its stimulus with `valid = false`. It has no `range`.
+- `value_from = { image = "<prebuilt>" }` (`{ image, entry = <index> }` in a `toc_field`): the
+  field must hold what the same field holds in that image, in TOC entry `entry`. The image must
+  be one the case can be compared with.
 
 A byte patch or an op image can be compared only with the image it edited. A repack can be
 compared with any prebuilt image.
@@ -168,6 +176,25 @@ Measurement golden:
   `BL0S_BOOT_PCR=<hex>`, computed from the slot's manifest hash in the generated image and the
   declared scalars. The digest is never read from a run. The spec and the placeholder must be
   used together; the entry needs `observation = "complete"`.
+
+Image facts:
+
+- A value that follows from the BL1 build, such as its length, where it lands or where the
+  payload ends, is named instead of written as a number, because a compiler change moves it.
+- `image_end` is the image length. Per slot, `primary.` or `backup.` prefixes `payload_start`,
+  `payload_end` (payload start plus the manifest `payload_length`, the ciphertext length when
+  encrypted), `bl1_start` (image offset of BL1), `bl1_len`, `bl1_copy_len` (rounded up to a word,
+  as the ROM copies it) and `bl1_copy_src` (the SEP SRAM address the ROM copies BL1 from). The
+  BL1 facts need a cleartext slot.
+- An expression is a fact plus or minus integers and other facts, for example
+  `"primary.payload_end"` or `"4092 - primary.bl1_len"`. It can replace an integer in an
+  `image_asserts` range bound or `field`/`toc_field` value, an `spi_reads` bound and
+  `smc_sram_source`. Facts come from the image the case boots, and for `smc_sram_source` from
+  `smc_sram_image`.
+- A range bound given as a fact in a `same_as` or `differs_from` check must resolve to the same
+  offset in the reference image; otherwise the two ranges are not the same region.
+- `{<fact>}` inside an `expect`, `forbid` or `expect_counts` token is replaced by the value as
+  eight hex digits, for example `"COPY_SRC={backup.bl1_copy_src}"`.
 
 Known failures:
 
@@ -229,6 +256,9 @@ hashes and signatures cover the change. A repack carries no `base` or `ops`.
   loudly if the packer config drifts.
 - Edits go through the ROM tree's `derive_pack_config.py`. It refuses a key the base config does
   not declare; use an op for such a field.
+- A bundle `set` of `payload_images.<n>.offset` may take `"<end> - {image_len}"`, which places
+  that image so it ends at `<end>`; `{image_len}` is the size of the file the config names. The
+  packer refuses an offset that is not 8-byte aligned.
 - The placeholders `{untrusted_signing_key}` (key file path) and
   `{untrusted_signing_key_name}` can be used as a `set` value. They select the key described in
   the file map.
@@ -335,6 +365,10 @@ A testcase is done when all applicable items are true:
 - `image_asserts` prove, before the run, that the generated image carries the stimulus (`all`,
   `field`, `toc_field`, `same_as` with `xor`, or `differs_from`) and that untouched regions
   survive (`same_as`).
+- No expected value is a number that follows from the BL1 build; the entry names the image
+  fact. `test_testlist_toolchain_independence.py` repacks the images with BL1 16 bytes longer
+  and fails an entry that still pins such a number; it needs the built images and the manifest
+  venv, and skips without them.
 - A failure entry also forbids the success tokens.
 - A failover entry forbids `ERROR 0x0213` and does not forbid every `ERROR`, because a
   rejected slot still emits status ERROR lines when the backup succeeds.

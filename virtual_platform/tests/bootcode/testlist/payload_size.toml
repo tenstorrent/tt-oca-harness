@@ -15,9 +15,10 @@ pytest_markers = ["needs_debug"]
 # The fill between the one-entry TOC, which ends at payload 0x138, and BL1 is zero.
 image_asserts = [
   { field = { name = "OFF_PAYLOAD_LENGTH", slot = "primary", size = 8, value = 4092 } },
-  { field = { name = "OFF_PAYLOAD_LENGTH", slot = "backup", size = 8, value = 70964 } },
-  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 0, size = 8, value = 2248 } },
-  { range = [0x2138, 0x28c8], all = 0x00 },
+  { field = { name = "OFF_PAYLOAD_LENGTH", slot = "backup", size = 8, value_from = { image = "toc_cap" } } },
+  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 0, size = 8, value = "4092 - primary.bl1_len" } },
+  { toc_field = { name = "OFF_TOC_ENTRY_LENGTH", slot = "primary", entry = 0, size = 8, value_from = { image = "toc_cap", entry = 0 } } },
+  { range = [0x2138, "primary.bl1_start"], all = 0x00 },
   { range = [0x2ffc, 0x40000], all = 0xFF },
   { range = [0x2038, 0x203b], differs_from = "toc_cap" },
   { range = [0x0, 0x1000], same_as = "toc_cap" },
@@ -33,9 +34,9 @@ expect = [
   "MANIFEST_OK",
   "PAYLOAD_OK",
   "LOAD=0xc0000000",
-  "LEN=0x00000734",
-  "COPY_SRC=0x100018c8",
-  "COPY_LEN=0x00000734",
+  "LEN={primary.bl1_len}",
+  "COPY_SRC={primary.bl1_copy_src}",
+  "COPY_LEN={primary.bl1_copy_len}",
   "BL1_COPIED",
   "BL1_JUMP=0xc0000000",
   "GO!",
@@ -52,7 +53,7 @@ forbid = [
   "BL1_ADDR_RANGE",
   "SBOOT_OFF",
 ]
-expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "COPY_SRC=0x100018c8" = 1, "BL1_COPIED" = 1 }
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "COPY_SRC={primary.bl1_copy_src}" = 1, "BL1_COPIED" = 1 }
 expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0054"]
 forbid_status = ["WARN 0x007a", "ERROR 0x0213"]
 spi_reads = [
@@ -65,8 +66,8 @@ spi_reads = [
 ]
 spi_read_order = ["primary_manifest", "primary_payload"]
 markers = [
-  "The payload is 4092 bytes, 4 short of 4 KiB: the packer ends the payload at BL1 (1844 bytes) and entry offsets must be 8-aligned, so 4096 is not reachable; DV writes exactly 4096 with repack_payload, which is not a whitelisted op.",
-  "The repack moves BL1 to TOC entry offset 2248 behind a zero fill, so COPY_SRC=0x100018c8 (SEP SRAM payload 0x10001000 + 2248) shows the ROM located BL1 from the TOC entry rather than the shipped offset 312.",
+  "The payload is 4092 bytes, 4 short of 4 KiB: the packer ends the payload at BL1 and entry offsets must be 8-aligned, so with a BL1 of 4 mod 8 bytes 4096 is not reachable, and the packer refuses the repack if BL1 ever breaks that; DV writes exactly 4096 with repack_payload, which is not a whitelisted op.",
+  "The repack moves BL1 behind a zero fill to the TOC entry offset that ends it at 4092, so COPY_SRC (SEP SRAM payload 0x10001000 + that offset) shows the ROM located BL1 from the TOC entry rather than the shipped offset 312.",
   "The read count is derived from ot_dma_read_once: 16-byte-aligned bulk in 256-byte DMA segments plus one PIO read for the 12-byte remainder; primary_tail exact 0 shows the fetch stopped at payload_length.",
   "Built from the oca_toc_cap_boot packer config, the only one that declares payload_images.0.offset; its backup slot is the unchanged TOC-cap bundle and is never read.",
   "DV places BL1 right after the TOC and zero-fills the rest; here the fill precedes BL1. Both make payload_hash cover bytes outside the TOC and the image, so a short fetch fails either way.",
@@ -86,9 +87,10 @@ pytest_markers = ["needs_debug"]
 # The fill between the one-entry TOC, which ends at payload 0x138, and BL1 is zero.
 image_asserts = [
   { field = { name = "OFF_PAYLOAD_LENGTH", slot = "primary", size = 8, value = 29692 } },
-  { field = { name = "OFF_PAYLOAD_LENGTH", slot = "backup", size = 8, value = 70964 } },
-  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 0, size = 8, value = 27848 } },
-  { range = [0x2138, 0x8cc8], all = 0x00 },
+  { field = { name = "OFF_PAYLOAD_LENGTH", slot = "backup", size = 8, value_from = { image = "toc_cap" } } },
+  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 0, size = 8, value = "29692 - primary.bl1_len" } },
+  { toc_field = { name = "OFF_TOC_ENTRY_LENGTH", slot = "primary", entry = 0, size = 8, value_from = { image = "toc_cap", entry = 0 } } },
+  { range = [0x2138, "primary.bl1_start"], all = 0x00 },
   { range = [0x93fc, 0x40000], all = 0xFF },
   { range = [0x2038, 0x203b], differs_from = "toc_cap" },
   { range = [0x0, 0x1000], same_as = "toc_cap" },
@@ -104,9 +106,9 @@ expect = [
   "MANIFEST_OK",
   "PAYLOAD_OK",
   "LOAD=0xc0000000",
-  "LEN=0x00000734",
-  "COPY_SRC=0x10007cc8",
-  "COPY_LEN=0x00000734",
+  "LEN={primary.bl1_len}",
+  "COPY_SRC={primary.bl1_copy_src}",
+  "COPY_LEN={primary.bl1_copy_len}",
   "BL1_COPIED",
   "BL1_JUMP=0xc0000000",
   "GO!",
@@ -123,7 +125,7 @@ forbid = [
   "BL1_ADDR_RANGE",
   "SBOOT_OFF",
 ]
-expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "COPY_SRC=0x10007cc8" = 1, "BL1_COPIED" = 1 }
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "COPY_SRC={primary.bl1_copy_src}" = 1, "BL1_COPIED" = 1 }
 expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0054"]
 forbid_status = ["WARN 0x007a", "ERROR 0x0213"]
 spi_reads = [
@@ -137,7 +139,7 @@ spi_reads = [
 spi_read_order = ["primary_manifest", "primary_payload"]
 markers = [
   "The payload is 29692 bytes, 4 short of 29 KiB, for the same alignment reason as the 4 KiB row; both rows stay inside the 0x3E000-byte slot window, so neither touches a bound.",
-  "The repack moves BL1 to TOC entry offset 27848 behind a zero fill, so COPY_SRC=0x10007cc8 (SEP SRAM payload 0x10001000 + 27848) shows the ROM located BL1 from the TOC entry rather than the shipped offset 312.",
+  "The repack moves BL1 behind a zero fill to the TOC entry offset that ends it at 29692, so COPY_SRC (SEP SRAM payload 0x10001000 + that offset) shows the ROM located BL1 from the TOC entry rather than the shipped offset 312.",
   "The read count is derived from ot_dma_read_once: 16-byte-aligned bulk in 256-byte DMA segments plus one PIO read for the 12-byte remainder; primary_tail exact 0 shows the fetch stopped at payload_length.",
   "Built from the oca_toc_cap_boot packer config, the only one that declares payload_images.0.offset; its backup slot is the unchanged TOC-cap bundle and is never read.",
   "DV places BL1 right after the TOC and zero-fills the rest; here the fill precedes BL1. Both make payload_hash cover bytes outside the TOC and the image, so a short fetch fails either way.",

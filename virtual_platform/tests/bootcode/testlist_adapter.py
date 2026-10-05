@@ -4,7 +4,6 @@
 """Convert SEP ROM testlist entries into sep-vp run inputs and judge the run."""
 
 import re
-from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -14,7 +13,7 @@ from preloaded_test_programs import PROGRAMS
 from sepvp.config import SMC_SRAM_DEFAULT_OFFSET, SimConfig
 from sepvp.harness import SEP_STATUS_ERROR_RE
 from sepvp.judges import judge
-from testlist_loader import RomTestCase
+from testlist_loader import MEASUREMENT_DIGEST_TOKEN, RomTestCase, image_placeholders
 
 
 @dataclass(frozen=True)
@@ -60,20 +59,19 @@ def materialize_fuse_map(testcase: RomTestCase, output_dir: Path) -> Path | None
     return output
 
 
-def resolve_expect(
-    testcase: RomTestCase, measurement: Mapping[str, str] | None
-) -> tuple[tuple[str, ...], Mapping[str, int]]:
-    """The entry's expected tokens and counts with computed measurement values substituted."""
-    if testcase.measurement_golden is None:
-        return testcase.expect, testcase.expect_counts
-    if measurement is None:
-        raise ValueError(
-            f"testcase {testcase.name!r} declares measurement_golden but was given "
-            "no computed measurement tokens"
-        )
-    expect = tuple(measurement.get(token, token) for token in testcase.expect)
-    counts = {measurement.get(token, token): n for token, n in testcase.expect_counts.items()}
-    return expect, counts
+def unresolved(testcase: RomTestCase) -> str | None:
+    """A value the run cannot judge until boot_images.resolve_case fills it in, if any."""
+    for token in (*testcase.expect, *testcase.forbid, *testcase.expect_counts):
+        if token == MEASUREMENT_DIGEST_TOKEN or image_placeholders(token):
+            return f"token {token!r}"
+    for span in testcase.spi_reads:
+        if type(span.low) is str or type(span.high) is str:
+            return f"spi_reads span {span.name!r}"
+    if testcase.smc_sram_source is not None and any(
+        type(edge) is str for edge in testcase.smc_sram_source
+    ):
+        return "smc_sram_source"
+    return None
 
 
 def build_sim_config(
@@ -142,9 +140,14 @@ def run_testlist_case(
     boot_image: Path | None = None,
     fuse_map: Path | None = None,
     smc_sram_image: Path | None = None,
-    measurement: Mapping[str, str] | None = None,
 ) -> None:
-    """Run one testcase and hold it to its declared console, status and device contract."""
+    """Run one resolved testcase and hold it to its console, status and device contract."""
+    pending = unresolved(testcase)
+    if pending is not None:
+        raise ValueError(
+            f"testcase {testcase.name!r} {pending} still names a value computed from the "
+            "image; pass it through boot_images.resolve_case first"
+        )
     config = build_sim_config(
         testcase,
         bootcode_elf,
@@ -152,7 +155,6 @@ def run_testlist_case(
         fuse_map=fuse_map,
         smc_sram_image=smc_sram_image,
     )
-    expect, expect_counts = resolve_expect(testcase, measurement)
     test = vp(config)
 
     if testcase.observation == "complete":
@@ -160,9 +162,9 @@ def run_testlist_case(
         liveness = [init_write_witness(address, value) for address, value in config.init_writes]
         judge(
             result,
-            expect=expect,
+            expect=testcase.expect,
             forbid=testcase.forbid,
-            expect_counts=expect_counts,
+            expect_counts=testcase.expect_counts,
             terminal_token=testcase.terminal_token,
             expect_silence=testcase.expect_silence,
             liveness=liveness,
@@ -182,6 +184,6 @@ def run_testlist_case(
         witness = init_write_witness(final.address, final.value)
         test.expect(re.escape(witness), error_patterns=errors, timeout=testcase.timeout)
 
-    for token in expect:
+    for token in testcase.expect:
         test.expect(re.escape(token), error_patterns=errors, timeout=testcase.timeout)
     test.close()

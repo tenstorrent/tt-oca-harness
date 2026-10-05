@@ -212,7 +212,7 @@ expect_verdict = "PASSED"
 pytest_markers = ["needs_debug"]
 # The bare signed bundle the SMC would receive: manifest at 0, payload at its payload_offset 0x1000.
 smc_sram_image = "smc_bundle"
-smc_sram_source = [0x0, 0x186c]
+smc_sram_source = [0x0, "image_end"]
 smc_sram_offset = 0x2000
 smc_sram_manifest_at = 0x0
 expect = [

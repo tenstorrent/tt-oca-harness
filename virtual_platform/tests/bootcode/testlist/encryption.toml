@@ -251,7 +251,8 @@ expect_verdict = "PASSED"
 pytest_markers = ["needs_debug"]
 efuse = { class_key = [0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c] }
 image_asserts = [
-  { field = { name = "OFF_ENCRYPTION_KDF_INPUT", slot = "primary", size = 1, value = 0x5A } },
+  { field = { name = "OFF_ENCRYPTION_KDF_INPUT", slot = "primary", size = 1, value = 0xA4 } },
+  { decrypt_pad = { slot = "primary", valid = false } },
   { range = [0x1113, 0x1114], differs_from = "encrypted" },
   { range = [0x1c64, 0x1de4], differs_from = "encrypted" },
   { range = [0x0, 0x1113], same_as = "encrypted" },
@@ -313,7 +314,8 @@ spi_reads = [
 ]
 spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
 markers = [
-  "KDF input byte 0 flipped as DV does; the derivation succeeds on a wrong context and the wrong key leaves an invalid PKCS#7 pad, so the primary ends at AES_PAD_BAD and OCA_FAIL_DECRYPT before DECRYPT_OK.",
+  "KDF input byte 0 is changed as in DV; the derivation succeeds on a wrong context and the wrong key leaves an invalid PKCS#7 pad, so the primary ends at AES_PAD_BAD and OCA_FAIL_DECRYPT before DECRYPT_OK.",
+  "decrypt_pad proves the invalid pad before the run, as DV asserts on its stimulus: a wrong key leaves a valid pad for about 1 ciphertext in 256, and the ROM then refuses the slot at the TOC instead. DV writes byte 0 as 0x5a, which leaves a valid pad on some BL1 builds, so this entry uses 0xa4.",
   "The op re-signs over the new KDF input, so RSA_VERIFY_OK twice shows the refusal followed authentication.",
   "The backup is the encrypted golden slot and decrypts in the same run; DECRYPT_OK once is the backup's, and INFO 0x0040 twice shows both slots entered decryption.",
 ]
@@ -340,11 +342,11 @@ image_asserts = [
   { range = [0x1af7, 0x1c64], same_as = "encrypted" },
   { range = [0x1de4, 0x1e64], same_as = "encrypted" },
   { range = [0x1e84, 0x2010], same_as = "encrypted" },
-  { range = [0x2870, 0x41ad7], same_as = "encrypted" },
+  { range = ["primary.payload_end", 0x41ad7], same_as = "encrypted" },
   { range = [0x41af7, 0x41c64], same_as = "encrypted" },
   { range = [0x41de4, 0x41e64], same_as = "encrypted" },
   { range = [0x41e84, 0x42010], same_as = "encrypted" },
-  { range = [0x42870, "end"], same_as = "encrypted" },
+  { range = ["backup.payload_end", "end"], same_as = "encrypted" },
 ]
 expect = [
   "MANIFEST_PRIMARY",
