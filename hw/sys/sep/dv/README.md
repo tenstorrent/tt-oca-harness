@@ -78,7 +78,7 @@ evidence from `results.xml`. A clean simulator exit is not evidence.
 | uv | every stage, including `--items smoke` | Must be on `PATH`. `run_dv.py` runs itself again inside the locked DV environment (root `uv.lock`, `dv` group). A missing binary exits 2 before any stage runs |
 | Bender | filelist (`--stage flist`) | Must be on `PATH` |
 | ccache | Verilator object cache | `[build.verilator] ccache = true`. A missing binary fails the C++ compile |
-| RISC-V GCC + picolibc | `--stage c_compile` (TCM firmware, Boot ROM, KM `rom_main`) | A host GCC without `--specs=picolibc.specs` falls back to the OCAH toolchain container (`scripts/docker-run.sh`, built from `nix/container.nix`). Not needed for `--items smoke` |
+| RISC-V GCC + picolibc | `--stage c_compile` (TCM firmware, Boot ROM, KM `rom_main`) | A host GCC without `--specs=picolibc.specs` falls back to the `ocah-container` image (`scripts/docker-run.sh`, built from `nix/container.nix`). Not needed for `--items smoke` |
 | VCS | graded `--cov` and SV-UVM | `VCS_HOME`, the simulator license variable and any library path your VCS install needs (site layer, `tools/dv/doc/run-dv.adoc`) |
 
 | Variable | When it is needed |
