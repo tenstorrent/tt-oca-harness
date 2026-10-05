@@ -5,17 +5,17 @@
 //
 // Rule provenance: every rule below is implemented from the public AMBA AXI4
 // specification (ARM IHI 0022) rule DESCRIPTIONS. No third-party protocol
-// checker source (including ARM's Axi4PC) was consulted or copied; all rule
-// names are OCAH-original. Reviewers: verify additions cite an IHI 0022
-// section, never another checker implementation.
+// checker source was consulted or copied; all rule names are OCAH-original.
+// Reviewers: verify additions cite an IHI 0022 section, never another
+// checker implementation.
 //
 // Shape: a module with explicit flat ports so it can be instantiated at TB
 // scope next to flattened DUT nets (the DTP integration) or bound into a
 // hierarchy (`bind <module> ocah_axi_sva #(...) u_sva (...)`).
 // Set IS_LITE=1 for AXI4-Lite: burst/ID/exclusive rules are excluded and the
 // Lite response-legality rules are included. `en_i` is a runtime suppress
-// knob (tie to 1'b1, or drive from a TB interface bit for legitimate
-// suppression windows); every concurrent rule is qualified by it.
+// knob (tie to 1'b1, or drive from a TB interface bit for suppression
+// windows); every concurrent rule is qualified by it.
 //
 // Each concurrent rule belongs to the side that drives its signals: the
 // master drives the AW, W and AR channels and the B and R readies, the slave
@@ -47,11 +47,11 @@
 // FORMAL elaboration of a licensed backend. The X-hygiene rules and the
 // covers use `OCAH_RULE (ocah_sva_macros.svh) / `OCAH_COVER
 // (ocah_assert.svh): live only where OCAH_INC_ASSERT is defined, i.e. on a
-// four-state simulator or a licensed
-// backend. Not synthesizable: the tracking state uses queues and associative
-// arrays, so it stays under SIMULATION. The open-source formal frontend
-// reads none of the concurrent operators here; ocah_axi_fv.sv beside this
-// file carries the boolean-subset rules for that path.
+// four-state simulator or a licensed backend. Not synthesizable: the tracking
+// state uses queues and associative arrays, so it stays under SIMULATION. The
+// open-source formal frontend reads none of the concurrent operators here;
+// ocah_axi_fv.sv beside this file carries the boolean-subset rules for that
+// path.
 
 `include "ocah_assert.svh"
 `include "ocah_sva_macros.svh"

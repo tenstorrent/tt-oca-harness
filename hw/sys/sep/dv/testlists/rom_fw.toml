@@ -2106,10 +2106,8 @@ target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 21600
-tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut", "rtl_issue"]
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
-expect_fail = "The OCA library and the ROM do not compare toc_version_major, so a TOC major version above 1 is accepted"
-expect_fail_match = "slot attempts read \\['0x00001000'\\], expected \\['0x00001000', '0x00041000'\\]: a failover is the primary then the backup, once each\\. Console: "
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
@@ -2126,10 +2124,8 @@ target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
-tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut", "rtl_issue"]
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
-expect_fail = "The OCA library and the ROM do not compare toc_version_major, so a TOC major version above 1 is accepted"
-expect_fail_match = "MANIFEST_ALL_FAILED@\\[\\] is not once after the backup error@\\d+: the ROM did not give up after evaluating the backup \\(backup attempt accepted, BL1_JUMP= printed 1x\\)"
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
@@ -2145,10 +2141,8 @@ target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 21600
-tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut", "rtl_issue"]
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
-expect_fail = "The OCA library and the ROM do not compare toc_version_major, so a TOC major version above 1 is accepted"
-expect_fail_match = "slot attempts read \\['0x00001000'\\], expected \\['0x00001000', '0x00041000'\\]: a failover is the primary then the backup, once each\\. Console: "
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
@@ -2165,10 +2159,8 @@ target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
-tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut", "rtl_issue"]
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
-expect_fail = "The OCA library and the ROM do not compare toc_version_major, so a TOC major version above 1 is accepted"
-expect_fail_match = "MANIFEST_ALL_FAILED@\\[\\] is not once after the backup error@\\d+: the ROM did not give up after evaluating the backup \\(backup attempt accepted, BL1_JUMP= printed 1x\\)"
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
@@ -2487,10 +2479,8 @@ target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 21600
-tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut", "rtl_issue"]
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
-expect_fail = "No check refuses a TOC entry whose image starts inside the TOC, so the slot is accepted"
-expect_fail_match = "slot attempts read \\['0x00001000'\\], expected \\['0x00001000', '0x00041000'\\]: a failover is the primary then the backup, once each\\. Console: "
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
@@ -2507,10 +2497,8 @@ target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
-tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut", "rtl_issue"]
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
-expect_fail = "No check refuses a TOC entry whose image starts inside the TOC, so the slot is accepted"
-expect_fail_match = "MANIFEST_ALL_FAILED@\\[\\] is not once after the backup error@\\d+: the ROM did not give up after evaluating the backup \\(backup attempt accepted, BL1_JUMP= printed 1x\\)"
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
@@ -2527,10 +2515,8 @@ target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 21600
-tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut", "rtl_issue"]
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
-expect_fail = "No check refuses a TOC entry whose image starts inside the TOC, so the slot is accepted"
-expect_fail_match = "slot attempts read \\['0x00001000'\\], expected \\['0x00001000', '0x00041000'\\]: a failover is the primary then the backup, once each\\. Console: "
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
@@ -2547,10 +2533,8 @@ target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
-tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut", "rtl_issue"]
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
-expect_fail = "No check refuses a TOC entry whose image starts inside the TOC, so the slot is accepted"
-expect_fail_match = "MANIFEST_ALL_FAILED@\\[\\] is not once after the backup error@\\d+: the ROM did not give up after evaluating the backup \\(backup attempt accepted, BL1_JUMP= printed 1x\\)"
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
@@ -2567,10 +2551,8 @@ target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 21600
-tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut", "rtl_issue"]
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
-expect_fail = "The encrypted payload path never compares the decrypted TOC payload_length with the manifest's, so a mismatch is accepted"
-expect_fail_match = "slot attempts read \\['0x00001000'\\], expected \\['0x00001000', '0x00041000'\\]: a failover is the primary then the backup, once each\\. Console: "
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
@@ -2587,10 +2569,8 @@ target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
-tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut", "rtl_issue"]
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
-expect_fail = "The encrypted payload path never compares the decrypted TOC payload_length with the manifest's, so a mismatch is accepted"
-expect_fail_match = "MANIFEST_ALL_FAILED@\\[\\] is not once after the backup error@\\d+: the ROM did not give up after evaluating the backup \\(backup attempt accepted, BL1_JUMP= printed 1x\\)"
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",

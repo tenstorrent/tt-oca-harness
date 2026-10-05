@@ -16,7 +16,6 @@ class dtp_jtag2axi_robustness_base_test extends dtp_base_test;
     super.new(name, parent);
   endfunction
 
-  // Scenario selector consumed by create_scenario_seq().
   virtual function string scenario_name();
     return "";
   endfunction

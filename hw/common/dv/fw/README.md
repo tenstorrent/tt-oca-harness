@@ -80,10 +80,12 @@ macros from the generated address headers).
   - *I3C wrap* — open surface is `oca_i3c_wrap`; the third-party controller's wrap
     names are not emitted.
 
-  Adopter overlay headers can be force-included locally without committing them:
+  `FW_EXTRA_CFLAGS` adds compiler flags to every library and test object of a
+  subsystem build, for example `-include <header>` to force-include a local
+  header that is not committed:
 
   ```
-  make ocah-dv-fw-libs TARGET=smc FW_EXTRA_CFLAGS="-include /path/to/smc_rename_stub.h"
+  make ocah-dv-fw-libs TARGET=smc FW_EXTRA_CFLAGS="-include /path/to/local.h"
   ```
 
 This tree does not fetch a toolchain, bundle picolibc, or generate ROM

@@ -15,7 +15,7 @@ scenarios, knobs, evidence, and coverage modules.
 
 ```bash
 python3 tools/dv/run_dv.py --dut dtp --build-only                    # filelist and Verilator build
-python3 tools/dv/run_dv.py --dut dtp --items smoke                   # TAP FSM and IDCODE gate
+python3 tools/dv/run_dv.py --dut dtp --items smoke                   # one basic scenario per feature area
 python3 tools/dv/run_dv.py --dut dtp --items all                     # every scenario, cocotb on Verilator
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke    # the same scenarios, SV-UVM on VCS
 python3 tools/dv/run_dv.py --dut dtp --mode formal                   # the formal smoke group

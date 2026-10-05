@@ -6,8 +6,10 @@
 // Scenario virtual sequences (dtp_base_test_seq family) run on it and start
 // reusable sequences on the handle each step needs: JTAG operations on
 // m_jtag_seqr, CSR AXI-Lite operations on m_xtrig_seqr, responder backdoor
-// and injection through the slave sequences. The cocotb twin is
-// env/dtp_virtual_sequencer.py.
+// and injection through the slave sequences. In the cocotb realization the
+// scenario runs on the primary-TAP JTAG sequencer and reaches the responder
+// memories and the XTRIG master through the env configuration that
+// dtp_base_test.plumb_scenario_seq hands it.
 
 class dtp_virtual_sequencer extends ocah_sequencer;
   `uvm_component_utils(dtp_virtual_sequencer)

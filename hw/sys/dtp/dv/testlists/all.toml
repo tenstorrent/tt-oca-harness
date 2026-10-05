@@ -9,8 +9,15 @@ includes = ["jtag.toml", "jtag2axi.toml", "debug_tdr.toml", "scan.toml", "xtrig.
 
 [[groups]]
 name = "smoke"
-expected_count = 2
-tests = ["dtp_sanity_test", "dtp_jtag_idcode_test"]
+expected_count = 6
+tests = [
+    "dtp_sanity_test",
+    "dtp_jtag_idcode_test",
+    "dtp_jtag_tmp_status_register_smoke_test",
+    "dtp_ijtag_sib_all_on_test",
+    "dtp_jtag2axi_smc_axi_single_write_read_test",
+    "dtp_xtrig_wire_or_test",
+]
 
 [[groups]]
 name = "basic_jtag"
@@ -154,8 +161,8 @@ tests = [
 ]
 
 # Debug-disable closure group: the two per-gate matrices plus the directed
-# tests that carry the per-field gating contract for all eleven
-# sep_lifecycle_ctrl_pkg::dbg_disable_t fields.
+# tests that carry the per-field gating contract for every
+# sep_lifecycle_ctrl_pkg::dbg_disable_t field.
 [[groups]]
 name = "dbg_disable"
 expected_count = 19

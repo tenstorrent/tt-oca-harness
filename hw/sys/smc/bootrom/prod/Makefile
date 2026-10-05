@@ -78,10 +78,9 @@ BUILD_DIR  := $(PROD_DIR)/build
 # ROM_PADDING_SELFTEST=1 jumps into EBREAK padding; =2 executes a generic EBREAK.
 ROM_PADDING_SELFTEST ?=
 # I3C_CORE selects which I3C block the ROM programs, so the two selections need
-# separate output trees: the adopter flow builds the Cadence selection and the
-# open DV flow builds the HCI one, from the same checkout. Sharing one directory
-# lets whichever ran last decide what the other links. The default selection
-# keeps the unsuffixed path.
+# separate output trees. Sharing one directory would let whichever selection ran
+# last decide what the other links. The default selection keeps the unsuffixed
+# path.
 ifeq ($(I3C_CORE),chipsalliance)
     OUT_VARIANT := _hci
 else
@@ -204,12 +203,11 @@ ifneq ($(ROM_PADDING_SELFTEST),)
     DEFINES += -DROM_PADDING_SELFTEST=$(ROM_PADDING_SELFTEST)
 endif
 
-# I3C_CORE knob (default cadence): select the OCA i3c-core (MIPI HCI) driver
-# (i3c_hci_driver.c) instead of the platform Cadence override. All driver .c
-# files are always compiled; the define picks exactly one implementation (the
-# HCI driver body is #ifdef'd in, the Cadence override and the weak-stub
-# receive paths stay untouched otherwise). Inherited from the environment, so
-# `I3C_CORE=chipsalliance make ...` (or the DV build) propagates it here.
+# I3C_CORE=chipsalliance selects the OCA i3c-core (MIPI HCI) driver in
+# i3c_hci_driver.c. The source is always compiled; the define enables its
+# implementation while the default build uses the weak stubs or a platform
+# implementation. The value is inherited from the environment so the DV build
+# can propagate it here.
 ifeq ($(I3C_CORE),chipsalliance)
     DEFINES += -DI3C_USE_HCI_CORE
 endif

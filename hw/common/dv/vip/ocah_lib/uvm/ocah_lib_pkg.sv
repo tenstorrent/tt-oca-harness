@@ -16,9 +16,8 @@
 // come last because they reference the others.
 //
 // The pass banner and the step formats are methods on ocah_test and
-// ocah_sequence (no report server or report catcher). SV interfaces cannot
-// inherit, so each bench's base test owns bring_up() through its own
-// <dut>_tb_if (no shared reset ladder).
+// ocah_sequence. SV interfaces cannot inherit, so each bench's base test
+// owns bring_up() through its own <dut>_tb_if.
 
 `timescale 1ns / 1ps
 

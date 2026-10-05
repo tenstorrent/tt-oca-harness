@@ -22,7 +22,7 @@ data. The dashboard workflow itself renders no HTML.
 
 == Architecture
 
-image::dv-dashboard-pipeline.drawio.svg[Current static dashboard data pipeline,scaledwidth=95.0%]
+image::dv-dashboard-pipeline.drawio.svg[Static dashboard data pipeline,scaledwidth=95.0%]
 
 The four subcommands communicate only through files:
 

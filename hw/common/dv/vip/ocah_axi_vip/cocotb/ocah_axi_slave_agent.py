@@ -22,8 +22,9 @@ from .ocah_axi_slave_sequence import OcahAxiSlaveSequence
 
 __all__ = ["OcahAxiSlaveAgent"]
 
-# Accepted and ignored for signature compatibility; geometry is taken from
-# the bus signals themselves.
+# Caller kwargs the driver does not take: it reads the bus geometry from the
+# bus signals and rejects unknown keyword arguments, so these are dropped
+# before it is built.
 _INFORMATIONAL_KEYS = ("id_width", "addr_width", "data_width", "strb_width", "start")
 
 
