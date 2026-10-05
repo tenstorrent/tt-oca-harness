@@ -4067,7 +4067,7 @@ Drive `smc_zeroer_axiclk_cg_test_seq`. Each checker below is a named compare the
 |`CHK-ZAXI-BUSY-ENABLE` |Zeroer busy re-enables the gated AXI clock within one cycle and the clock toggles on every cycle of the post-resume window; a late resume or a missing edge fails
 |`CHK-ZAXI-DISABLE-CG` |With the Zeroer AXI clock gate disabled the clock toggles on every cycle of the observation window
 |`CHK-ZAXI-GATE-OFF-IDLE` |With the gate enabled and the zeroer idle the AXI clock gates off within one cycle and shows zero toggles across the idle observation window
-|`CHK-ZAXI-RESET-OVERRIDE` |The primary reset asserts within the 32-sample reference-clock de-glitcher window of the cool-reset pin falling (`clk_rst.adoc`), and with the zeroer held in reset the gated AXI clock toggles on every cycle of the observation window; the reset override defeats the gate
+|`CHK-ZAXI-RESET-OVERRIDE` |The primary reset asserts within 33 reference-clock cycles of the cool-reset pin falling: the 32-sample de-glitcher of `clk_rst.adoc` plus one cycle for the phase at which the pin falls, and with the zeroer held in reset the gated AXI clock toggles on every cycle of the observation window; the reset override defeats the gate
 |`CHK-ZEROER-AXICLK-COMPLETION` |Named compare in `smc_zeroer_axiclk_cg_test_seq.py`; the run fails if it mismatches
 |`CHK-ZEROER-AXICLK-NOGLITCH` |Named compare in `smc_zeroer_axiclk_cg_test_seq.py`; the run fails if it mismatches
 |===
@@ -4138,7 +4138,7 @@ Drive `smc_zeroer_regclk_cg_test_seq`. Each checker below is a named compare the
 |`CHK-ZREG-ACTIVITY-ENABLE` |A register access re-enables the gated register clock within one cycle and the clock toggles on every cycle of the post-resume window; a late resume or a missing edge fails
 |`CHK-ZREG-DISABLE-CG` |With the Zeroer register clock gate disabled the clock toggles on every cycle of the observation window
 |`CHK-ZREG-GATE-OFF-IDLE` |With the gate enabled and no register access the register clock gates off within one cycle and shows zero toggles across the idle observation window
-|`CHK-ZREG-RESET-OVERRIDE` |The primary reset asserts within the 32-sample reference-clock de-glitcher window of the cool-reset pin falling (`clk_rst.adoc`), and with the zeroer held in reset the register clock's enabled edges fill the whole observation window, against the gated idle count measured earlier in the same run
+|`CHK-ZREG-RESET-OVERRIDE` |The primary reset asserts within 33 reference-clock cycles of the cool-reset pin falling: the 32-sample de-glitcher of `clk_rst.adoc` plus one cycle for the phase at which the pin falls, and with the zeroer held in reset the register clock's enabled edges fill the whole observation window, against the gated idle count measured earlier in the same run
 |===
 
 
@@ -12305,7 +12305,7 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 *Test Coverage*:
 
 * Each instance is brought up as the active controller the way the OCCP controller firmware does it: bus enabled in PIO mode, `STBY_CR_CONTROL.STBY_CR_ENABLE_INIT` at the active-controller value, open-drain bus timing, queue thresholds, the PIO status enables and the PIO queues running. `T_IDLE` is shortened so the bus is available within the leg. DAT entry 0 is programmed with address 0x50 in its `STATIC_ADDRESS` and `DYNAMIC_ADDRESS` fields (`DAT_structure.rdl`) and read back, and cleared again afterwards.
-* One HCI Immediate Data Transfer writes one byte to DAT entry 0, whose address nothing on the single build answers. The command descriptor is the sequence's own field table (`CMD_ATTR`, `TID`, `DEV_INDEX`, `DTT`, `WROC`, `TOC`; the DV OCCP controller driver builds its descriptors from the same table). The response descriptor's `ERR_STATUS` reports an address NACK as 0x5, and the response must carry that status and the command's `TID`.
+* One HCI Immediate Data Transfer writes one byte to DAT entry 0, whose address nothing on the single build answers. The command descriptor is the sequence's own field table (`CMD_ATTR`, `TID`, `DEV_INDEX`, `DTT`, `WROC`, `TOC`; the DV OCCP controller driver's descriptor macros carry the same bit layout). The response descriptor's `ERR_STATUS` reports an address NACK as 0x5, and the response must carry that status and the command's `TID`.
 * On I3C0 the controller has to drive SDA low at least once during the transfer.
 
 *Test Procedure*:
@@ -12453,7 +12453,7 @@ Drive `smc_jtag_axi_shape_test_seq` on the SEP_IN AXI sequencer; the JTAG legs g
 * `filter_ctrl.rdl` makes `FILTER_CONFIG.locked` (bit 63) `woset`: "Lock filter configurations. Write once register", and once it is set every later write to the entry's registers "is steered to the AXI error subordinate and terminates with a DECERR response; reads still return the locked configuration". No other field of the block carries a write enable, so the lock is enforced outside the register block by each filter's inner demux.
 * The demux stores its port select with the AW. `locked` updates on the clock edge that arms B, so each filter port holds the next AW until that B is accepted and the select is sampled with `locked` already set.
 * Arm leg: filter 15 of the outbound bank, then of the inbound bank, reads its reset word with `locked` and `entry_enabled` clear, and the locking write (reset word plus `locked`) is answered OKAY.
-* Two `FILTER_CONFIG` writes queued in the same outstanding group directly behind the locking write, carrying `src_id` 5 and 6. Both must be answered DECERR, and `FILTER_CONFIG` must then read the reset word plus `locked`. The entry's address is registered with the SEP_IN monitor as the one place a DECERR is expected, so a DECERR anywhere else in the run, the locking write included, still fails the leaf. `entry_enabled` stays clear throughout, so filter 15 filters no traffic. Each bank emits `CHK-FILTER-LOCK-WINDOW`.
+* Two `FILTER_CONFIG` writes queued in the same outstanding group directly behind the locking write, carrying `src_id` 5 and 6. Both must be answered DECERR, and `FILTER_CONFIG` must then read the reset word plus `locked`. The entry's address is registered with the SEP_IN monitor as the one place a DECERR is expected, so a DECERR anywhere else in the run fails the leaf; a DECERR on the locking write itself, which the monitor excuses at that address, fails through the scoreboard's OKAY expectation and the sequence's response assert. `entry_enabled` stays clear throughout, so filter 15 filters no traffic. Each bank emits `CHK-FILTER-LOCK-WINDOW`.
 
 *Test Procedure*:
 
