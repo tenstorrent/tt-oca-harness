@@ -3351,9 +3351,8 @@ def run_flow(
                 "selection",
                 f"{kind}={len(names)} framework={flow.framework} tests={','.join(names)}",
             )
-    # Reported on its own line rather than folded into the loop above: this one
-    # is keyed on the SIMULATOR, not on the framework, so it carries tool= and
-    # would say the wrong thing with framework=.
+    # This skip is keyed on the simulator, not the framework, so its line carries tool=
+    # rather than framework=.
     skipped_wrong_tool = list(getattr(args, "_skipped_wrong_tool", []) or [])
     if skipped_wrong_tool:
         console.event(

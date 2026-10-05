@@ -99,9 +99,9 @@ class TestlistToolValidation(unittest.TestCase):
         self.assertIn("empty", str(ctx.exception))
 
     def test_unbound_scenario_is_not_gated_by_this_view(self):
-        # A framework view that never runs the scenario has no business rejecting the
-        # tools it would need -- and a framework overlay may declare a narrower tool list
-        # than the scenario names. This is the sep (uvm) view over a cocotb-only test.
+        # A view with no binding for the scenario never runs it, so it does not check the
+        # scenario's `tools`: a framework overlay may declare a narrower tool list than the
+        # scenario names. Here the cocotb view sees a scenario bound only to uvm.
         flow = make_dut(
             inline_raw(SMOKE, [{"name": "t1", "module": {"uvm": "m"}, "tools": ["vcs"]}])
         )

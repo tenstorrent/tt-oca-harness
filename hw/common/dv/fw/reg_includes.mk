@@ -8,8 +8,8 @@
 ifndef ocah_fw_reg_includes_mk
 ocah_fw_reg_includes_mk := 1
 
-# The overlay dirs come first: where a vendor variant of a header exists, it is
-# the one that resolves the proprietary shims and must shadow the open copy.
+# The overlay dirs come first so that a header of the same name placed there
+# shadows the open copy.
 ocah_fw_reg_includes = $(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_$(1)) \
   -I$(OCAH_ROOT)/hw/common/dv/fw \
   -I$(OCAH_ROOT)/hw/sys/$(1)/regs/gen/c -I$(OCAH_ROOT)/hw/sys/$(1)/regs/gen/c/blocks \

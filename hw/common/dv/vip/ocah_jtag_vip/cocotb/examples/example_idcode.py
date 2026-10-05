@@ -43,10 +43,8 @@ from ocah_jtag_vip import (
 async def example_ptap_idcode(dut):
     """Read IDCODE from the Primary TAP (PTAP)."""
 
-    # Start the clock: 10 ns = 100 MHz.
     cocotb.start_soon(Clock(dut.tck, 10, units="ns").start())
 
-    # Construct the TAP driver for the PTAP.
     tap = OcahJtagMasterDriver(
         dut.jtag_ptap_if,  # JTAG interface handle in the testbench
         name="ptap",
@@ -121,7 +119,6 @@ async def example_ptap_idcode(dut):
     assert len(observed_ir) >= 1, "Monitor did not see any IR transactions"
     assert len(observed_dr) >= 1, "Monitor did not see any DR transactions"
 
-    # The last IR transaction should have shifted in IDCODE_OPCODE.
     last_ir = observed_ir[-1]
     assert last_ir.tdi_value == IDCODE_OPCODE, (
         f"Expected IR tdi=0x{IDCODE_OPCODE:X}, got 0x{last_ir.tdi_value:X}"

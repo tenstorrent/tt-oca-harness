@@ -8,8 +8,9 @@
 // low. With `pair` set, a second read of pair_addr launches while the
 // first response is held (the VIP's two-outstanding read), and pair_result
 // carries its item. Started by dtp_xtrig_base_test_seq::csr_read(),
-// csr_read_hold(), and read_pair_hold(). The cocotb twin is
-// seq_lib/dtp_axi_csr_read_seq.py.
+// csr_read_hold(), and read_pair_hold(). In the cocotb realization,
+// dtp_xtrig_base_test_seq calls the VIP master sequence's read_result,
+// read_hold_result and read_pair_hold_result itself.
 
 class dtp_axi_csr_read_seq extends ocah_axi_master_sequence;
   `uvm_object_utils(dtp_axi_csr_read_seq)

@@ -8,8 +8,9 @@
 // DtpJ2aSeriesLaunchCycles TCK cycles for the op to launch in the system
 // domain. Returns the captured word (read data and, in with-status mode,
 // the status bit above the payload). Started by
-// dtp_jtag2axi_base_test_seq::series_data_*(). The cocotb twin is
-// seq_lib/dtp_jtag2axi_series_data_seq.py.
+// dtp_jtag2axi_base_test_seq::series_data_*(). The cocotb realization
+// shifts series data from dtp_jtag2axi_base_test_seq.series_data_incr,
+// series_data_no_incr and series_data_with_status.
 
 class dtp_jtag2axi_series_data_seq extends dtp_jtag_op_seq;
   `uvm_object_utils(dtp_jtag2axi_series_data_seq)

@@ -1024,9 +1024,10 @@ included. The analysis starts from the merged database of the commercial-path
 `all` regression (<<dtp-fcov-evidence-paths>>), so it targets the points that
 regression left uncovered, and it runs in the checkout that produced that
 database, because the formal model and the seed must describe one RTL. The
-analysis is the `dtp_cov_vcf` item of the runner's formal mode in the
-companion's DTP formal configuration; a reader without the companion runs
-their own unreachability tool over the same database with the same
+analysis runs as a formal-mode item of the runner, from the formal
+configuration the site layer names for `dtp` (`run-dv.adoc`, Formal
+verification); the open tree carries no such item, so a reader without one
+runs their own unreachability tool over the same database with the same
 environment and writes the same URG exclusion format.
 
 The `pass:[[[native_files]]]` entry of `cov/config/vcs/coverage_policy.toml`
