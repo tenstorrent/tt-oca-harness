@@ -64,6 +64,8 @@ if __package__ in (None, ""):  # run directly, not imported as env.sep_payload_m
 
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from sep_reg_meta import sym
+
 from env import sep_aes_golden as aes
 from env import sep_manifest_mutate as mm
 
@@ -608,7 +610,7 @@ TOC_OFF_MAJOR_VERSION = 4
 TOC_MAJOR_VERSION = 1
 TOC_MAX_IMAGE_COUNT = 256
 IMAGE_TYPE_SEP_BL2 = b"OCAHSEP BLSTAGE2"
-SEP_SRAM_BASE = 0x1000_0000
+SEP_SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 SEP_SRAM_SIZE = 0x0004_0000
 
 
@@ -1222,7 +1224,7 @@ def _selftest_stimulus() -> None:
     enc_buf = bytearray(Path(BUILD_DIR / "oca_encrypted_boot.bin").read_bytes())
     enc_toc_plen = _u64(_rom_plaintext(enc_buf, "primary"), TOC_OFF_PAYLOAD_LENGTH)
     set_toc_payload_length(enc_buf, "primary", enc_toc_plen - 8)
-    assert spec_rule_violations(enc_buf, "primary") == ["out_of_bounds"]
+    assert spec_rule_violations(enc_buf, "primary") == ["out_of_bounds", "toc_plen_mismatch"]
 
     multi_golden = Path(BUILD_DIR / "oca_multi_image_boot.bin").read_bytes()
     clear_toc_plen = _u64(

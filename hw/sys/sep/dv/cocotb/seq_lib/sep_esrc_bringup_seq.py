@@ -184,7 +184,8 @@ class SepEntropyCfg:
     """
 
     sample_clk_div: int = 7  # DECORRELATOR_CTRL.SAMPLE_CLK_DIV (=div-1; 7 => /8)
-    byte_mask: int = 0xFF  # decorrelator byte mask (DUT reset default; not programmed)
+    # Decorrelator byte mask: the DUT reset value; not programmed.
+    byte_mask: int = ENTROPY_SOURCE.fields("DECORRELATOR_MASK")["ENTROPY_BYTE_MASK"]["reset"]
     bypass: bool = False  # decorrelator feedback bypass
     sha_whitening: bool = True  # ESRC_CTRL.SHA256_WHITENING_ENABLE
     glen: int = 32  # EDN/CSRNG Generate length (128b genbits blocks)

@@ -25,6 +25,7 @@ from pathlib import Path
 import pyuvm
 from env import sep_manifest_mutate as mm
 from env import sep_spi_slot_evidence as ev
+from env.sep_efuse_image import SBOOT_DIS_MASK
 from rom_fw.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE, sep_rom_ot_dma_boot_test
 
 # A key whose digest does not match its anchor is unauthorized, not revoked.
@@ -89,7 +90,7 @@ class sep_firmware_primary_invalid_key_hash_test(sep_rom_ot_dma_boot_test):
         assert os.path.isfile(_EFUSE_PRELOAD), f"eFuse preload missing: {_EFUSE_PRELOAD}"
         image = self.select_efuse_image(default_preload=_EFUSE_PRELOAD)
         lc = image.lc_raw()
-        sboot_dis = image.field_int("SBOOT_DIS") & 0x1
+        sboot_dis = image.field_int("SBOOT_DIS") & SBOOT_DIS_MASK
         bl1_ver = image.field_int("BL1_VERSION")
         revoke = image.field_int("CHIPLET_PUBK_REVOKE")
         assert lc == 0x1, (

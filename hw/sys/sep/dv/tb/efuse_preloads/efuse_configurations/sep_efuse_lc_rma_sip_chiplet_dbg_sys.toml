@@ -16,6 +16,5 @@
   value = 0xD2
 
 [SYS_DIS]
-  # Whole-vector write, as for SIP_DIS. CHIPLET_DBG is bit 1.
-  [SYS_DIS.fields.sys_dis]
-  value = 0x2
+  [SYS_DIS.fields.chiplet_dbg]
+  value = 1

@@ -14,6 +14,7 @@ from pathlib import Path
 import cocotb
 from cocotb.triggers import RisingEdge
 from env import sep_manifest_mutate as mm
+from env.sep_efuse_image import SBOOT_DIS_MASK
 from env.sep_esrc_noise import esrc_noise_task
 from env.sep_rom_console import log_scratch_cold, rom_console_task
 from env.sep_verdict import decode_verdict
@@ -106,7 +107,7 @@ class sep_backup_manifest_fail_base(sep_base_test):
             f"LC_STATE raw is 0x{lc:x}, expected 0x{self.expected_lc_raw:x}: secure "
             f"boot must be enforced or the crypto verdict under test is never reached"
         )
-        assert image.field_int("SBOOT_DIS") & 0x1 == 0, (
+        assert image.field_int("SBOOT_DIS") & SBOOT_DIS_MASK == 0, (
             "SBOOT_DIS is set, which disables the entire crypto chain"
         )
         self.check_efuse(image)

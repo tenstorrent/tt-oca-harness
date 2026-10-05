@@ -105,6 +105,11 @@ _ALLOWED_KEYS = frozenset(("value", "fields", "regwidth"))
 _LOCK_KEYS = frozenset(("read_locked", "write_locked"))
 
 
+# The generator emits one bitfield struct per RDL register type, so an instance
+# whose type has another name is looked up through that type.
+_REG_TYPE = {"SIP_DIS": "LC_DISABLE", "SYS_DIS": "LC_DISABLE"}
+
+
 def _bitfields(reg_name: str) -> Optional[Dict[str, Tuple[int, int]]]:
     """``{field_name: (lsb, width)}`` for ``reg_name``, or None if the generated
     header declares no bitfields for it.
@@ -113,11 +118,12 @@ def _bitfields(reg_name: str) -> Optional[Dict[str, Tuple[int, int]]]:
     generator emits them, so the running total IS the field's lsb.
 
     None means "wider than the generator emits a struct for" (the 256-bit keys,
-    digests, UIDs and SPARE regions, plus 64-bit SIP_DIS/SYS_DIS). Those declare
-    exactly one full-width field in the RDL, so ``_apply_register`` accepts a
-    single field entry for them and treats it as the whole register.
+    digests, UIDs and SPARE regions). Those declare exactly one full-width field
+    in the RDL, so ``_apply_register`` accepts a single field entry for them and
+    treats it as the whole register.
     """
-    struct = getattr(sep_reg, f"SEP_EFUSE_MAP_{reg_name}_reg_t", None)
+    reg_type = _REG_TYPE.get(reg_name, reg_name)
+    struct = getattr(sep_reg, f"SEP_EFUSE_MAP_{reg_type}_reg_t", None)
     if struct is None:
         return None
     out: Dict[str, Tuple[int, int]] = {}
@@ -350,8 +356,8 @@ def _selftest() -> int:
     print("\n-- registers not exercised by any live config --")
     wide = (
         "[TRANSIENT_RMA_EN]\n  [TRANSIENT_RMA_EN.fields.transient_rma_en]\n  value = 0x1\n"
-        "[SIP_DIS]\n  [SIP_DIS.fields.sip_dis]\n  value = 0xdeadbeafdeadbeaf\n"
-        "[SYS_DIS]\n  [SYS_DIS.fields.sys_dis]\n  value = 0xbadcab1ebadcab1e\n"
+        "[SIP_DIS]\n  value = 0xdeadbeafdeadbeaf\n"
+        "[SYS_DIS]\n  value = 0xbadcab1ebadcab1e\n"
         "[RMA_SIP_TOKEN_DIGEST]\n  [RMA_SIP_TOKEN_DIGEST.fields.token]\n"
         "  value = 0x123456789abcdef\n"
         "[RMA_CHIPLET_TOKEN_DIGEST]\n  [RMA_CHIPLET_TOKEN_DIGEST.fields.token]\n"
@@ -374,9 +380,22 @@ def _selftest() -> int:
     ):
         ok(f"{reg} round-trips", wide, want, lambda i, r=reg: i.field_int(r))
 
+    ok(
+        "SIP_DIS/SYS_DIS fields resolve through their LC_DISABLE type",
+        "[SIP_DIS]\n  [SIP_DIS.fields.chiplet_dbg]\n  value = 1\n"
+        "[SYS_DIS]\n  [SYS_DIS.fields.sip_debug]\n  value = 1\n",
+        (0x2, 1 << 24),
+        lambda i: (i.field_int("SIP_DIS"), i.field_int("SYS_DIS")),
+    )
+
     print("\n-- a stale or wrong config fails loud --")
     err("unknown register", "[NOT_A_REG]\nvalue = 1\n", "unknown eFuse register")
     err("unknown field", "[ROM_CTL]\n  [ROM_CTL.fields.nope]\n  value = 1\n", "has no field")
+    err(
+        "unknown SIP_DIS field",
+        "[SIP_DIS]\n  [SIP_DIS.fields.sip_dis]\n  value = 2\n",
+        "has no field",
+    )
     err("unknown per-register key", "[LC_STATE]\nnope = 1\n", "unknown key")
     err(
         "lock key rejected rather than ignored",
