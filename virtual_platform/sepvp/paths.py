@@ -11,6 +11,7 @@ independent. Environment variables override the defaults:
   SEP_VP_BASE_INI  base accellera_config.ini to @include
   SEPVP_LOGS_DIR   per-run working-directory root (logs and staged inputs)
   SEPVP_MANIFEST_PYTHON  interpreter that imports tt_boot_manifest and ruamel.yaml
+  MANIFEST_PYTHON  the OCAH image's interpreter, used when SEPVP_MANIFEST_PYTHON is unset
 """
 
 import os
@@ -107,9 +108,14 @@ TESTLIST_ONLY_IMAGES = frozenset(
 # Packer inputs for images derived from a prebuilt config.
 BOOTCODE_CONFIGS = BOOTCODE_DIR / "configs"
 DERIVE_PACK_CONFIG = BOOTCODE_DIR / "scripts" / "derive_pack_config.py"
-# Interpreter that imports tt_boot_manifest and ruamel.yaml (env SEPVP_MANIFEST_PYTHON wins).
+# Interpreter that imports tt_boot_manifest and ruamel.yaml: env SEPVP_MANIFEST_PYTHON wins,
+# then the OCAH image's MANIFEST_PYTHON. The bootrom Makefile's own MANIFEST_PYTHON can be a
+# command line rather than a path, so that one counts only when it names a file.
+_IMAGE_MANIFEST_PYTHON = os.environ.get("MANIFEST_PYTHON", "")
 MANIFEST_VENV_PYTHON = Path(
-    os.environ.get("SEPVP_MANIFEST_PYTHON", VP_DIR / "local" / "manifest-venv" / "bin" / "python")
+    os.environ.get("SEPVP_MANIFEST_PYTHON")
+    or (_IMAGE_MANIFEST_PYTHON if Path(_IMAGE_MANIFEST_PYTHON).is_file() else "")
+    or VP_DIR / "local" / "manifest-venv" / "bin" / "python"
 )
 
 # --- SEP DV firmware engine ---------------------------------------------------

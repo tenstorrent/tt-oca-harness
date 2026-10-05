@@ -16,6 +16,7 @@ TOOLS = (
     "riscv64-unknown-elf-gcc",
     "riscv64-unknown-elf-objcopy",
     "riscv64-unknown-elf-objdump",
+    "riscv64-unknown-elf-ld",
 )
 ABI = ("-march=rv32im_zicsr", "-mabi=ilp32")
 
@@ -62,14 +63,17 @@ def assemble(spec: ProgramSpec) -> tuple[list[int], str]:
             [TOOLS[0], *ABI, "-nostdlib", "-c", spec.source, "-o", obj],
             check=True,
         )
+        # A picolibc-configured gcc driver adds its own linker script, whose memory
+        # regions do not cover the load address, so the link goes to ld directly.
         subprocess.run(
             [
-                TOOLS[0],
-                *ABI,
-                "-nostdlib",
-                "-Wl,--build-id=none",
-                f"-Wl,-Ttext={spec.load_address:#x}",
-                f"-Wl,-e,{spec.entry}",
+                TOOLS[3],
+                "-m",
+                "elf32lriscv",
+                "--build-id=none",
+                f"-Ttext={spec.load_address:#x}",
+                "-e",
+                spec.entry,
                 obj,
                 "-o",
                 elf,

@@ -69,7 +69,7 @@ first to pull the published image instead.
 | `dv_env.py` | Loads the SEP DV cocotb helper modules (`sep_payload_mutate`, `sep_manifest_mutate`) without importing cocotb |
 | `boot_measurement_golden.py` | Computes the expected `BL0S_BOOT_PCR=` token from the boot-state record |
 | `preloaded_test_programs.py`, `warm_handler_stub.S`, `warm_fault_stub.S`, `*_words.py`, `gen_warm_stub.py` | Executable stubs deposited through init writes before the run; `gen_warm_stub.py` regenerates the checked-in words from the `.S` sources |
-| `untrusted_signing_key.py`, `keys/` | RSA-3072 signing key whose modulus digest is in no ROM key slot; generated with `openssl genrsa` on first use and git-ignored |
+| `untrusted_signing_key.py`, `keys/` | RSA-3072 signing key whose modulus digest is in no ROM key slot; generated on first use and git-ignored |
 | `testlist_audit.py` | Flags entries that a healthy boot would also satisfy |
 | `reference/oca_rom_tokens.md` | The console tokens and result codes the OCA ROM and BL1 print; a reference, not a source of expected values |
 | `testlist/<family>.toml` | One file per family; the file name must be in `FAMILY_ORDER` and every entry's `family` must equal it |
@@ -291,7 +291,8 @@ declare.
   only testlist entries.
 - The `tt-oca-manifest` submodule at `hw/sys/sep/bootrom/prod/tools/tt-oca-manifest`.
 - The manifest venv, which repack specs use. `SEPVP_MANIFEST_PYTHON` can point to another
-  interpreter that imports `tt_boot_manifest.pack_images` and `ruamel.yaml`. Step 4 of the
+  interpreter that imports `tt_boot_manifest.pack_images` and `ruamel.yaml`; inside the OCAH
+  container the image's `MANIFEST_PYTHON` is used instead. Step 4 of the
   quick start creates the default one; `PLAT` is empty on a host whose glibc is 2.34 or newer.
   Check it with:
 
@@ -299,7 +300,6 @@ declare.
   virtual_platform/local/manifest-venv/bin/python -c "import tt_boot_manifest.pack_images, ruamel.yaml; print('ok')"
   ```
 - A built `sep-vp` (`make -C virtual_platform vp`), unless the case is host-only.
-- `openssl` on `PATH`, for the untrusted key.
 - `TMPDIR` set to a roomy scratch directory.
 
 ## Run

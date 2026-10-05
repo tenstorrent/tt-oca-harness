@@ -158,6 +158,16 @@ runs:
       shell: bash
       run: make -C virtual_platform vp-py-deps
 
+    # The bootcode repack specs run the manifest packer from its own venv. The
+    # container leg uses the image's MANIFEST_PYTHON instead.
+    - name: Create the manifest venv
+      if: inputs.mode == 'native'
+      shell: bash
+      run: |
+        UV_PROJECT_ENVIRONMENT="$PWD/virtual_platform/local/manifest-venv" \
+          uv sync --project "$PWD" --locked --no-default-groups --group manifest
+        virtual_platform/local/manifest-venv/bin/python -c "import tt_boot_manifest.pack_images, ruamel.yaml"
+
     # The published tag is the same flake content hash docker-run.sh computes,
     # so a pull either matches this tree exactly or misses and falls through.
     - name: Log in to GHCR
