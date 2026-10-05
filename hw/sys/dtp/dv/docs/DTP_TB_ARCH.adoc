@@ -427,7 +427,7 @@ each scenario pass from its per-pass seed.
 [cols=",",options="header",]
 |===
 |Area |Strategy
-|Smoke |Verify TAP FSM traversal and IDCODE readout through focused JTAG tests
+|Smoke |Verify one basic scenario per feature area: TAP FSM traversal and IDCODE readout, TMP_STATUS readback, an iJTAG scan with every SIB open, an SMC fabric JTAG2AXI write and read-back, and CTP wire-OR routing
 |Basic JTAG |Verify primary TAP instruction decode, bypass variants, reset behavior, and compact BSR loopback smoke behavior
 |Debug TDR |Verify TMP_STATUS, IC_RESET, DEBUG_CONTROL, JTAG_CAPS, and JTAG2AXI_CAPS with decoded logs, deterministic loops, seeded random patterns, and read-only sweeps
 |JTAG2AXI write |Shift a single-op write request, poll completion, check the responder memory
