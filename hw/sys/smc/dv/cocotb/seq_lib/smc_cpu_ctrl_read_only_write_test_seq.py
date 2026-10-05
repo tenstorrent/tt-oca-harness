@@ -59,9 +59,10 @@ _WRITE_PATTERN = 0xFFFF_FFFF_FFFF_FFFF
 _ACCESSES_PER_READ_ONLY = 3
 _ACCESSES_FOR_WDT = 4
 _MUTEX = "smc_cpu_ctrl/MUTEX"
-# Accesses one mutex costs: four reads that each take it, two half writes while
-# held, a full write carrying a one, two half writes while free, and the release.
-_ACCESSES_PER_MUTEX = 10
+# Accesses one mutex costs: six reads that each take it, two half writes while
+# held, a full write carrying a one, a full-width release, two half writes while
+# free, and the last full-width release.
+_ACCESSES_PER_MUTEX = 13
 
 
 class smc_cpu_ctrl_read_only_write_test_seq(SmcCsrSeq):
@@ -69,7 +70,7 @@ class smc_cpu_ctrl_read_only_write_test_seq(SmcCsrSeq):
 
     def __init__(self, name: str = "smc_cpu_ctrl_read_only_write_test_seq") -> None:
         super().__init__(name)
-        self.mutexes_held = 0
+        self.mutexes_driven = 0
         self.read_only_registers = 0
         self.pulse_count_before = -1
         self.pulse_count_after = -1
@@ -101,7 +102,10 @@ class smc_cpu_ctrl_read_only_write_test_seq(SmcCsrSeq):
         low half selects it, one at the upper half does not. Each write while
         held must give the mutex back, which the read after it shows by taking
         it again; each write while free must leave it free. A one is also
-        carried on the bit's lane, which the releases elsewhere never do.
+        carried on the bit's lane, which the releases elsewhere never do. The
+        leg's last release is read back the same way, so every release the leg
+        claims is one the DUT showed; that read leaves the mutex taken, and
+        nothing after it uses the register.
         """
         half = width // 2
         name = f"MUTEX{index}"
@@ -120,15 +124,21 @@ class smc_cpu_ctrl_read_only_write_test_seq(SmcCsrSeq):
             "lane, but any write releases it",
         )
         await self.csr_write(f"{name}_RELEASE_ONE", addr, 1, length=width)
+        await take(
+            "AFTER_RELEASE_ONE",
+            "after a full-width write carrying a one on its lane while held; any write releases it",
+        )
+        await self.csr_write(f"{name}_RELEASE", addr, 0, length=width)
         await self.csr_write(f"{name}_FREE_LOW", addr, 1, length=4)
         await self.csr_write(f"{name}_FREE_UPPER", addr + half, 0, length=4)
         await take(
             "AFTER_FREE",
-            "after a low-half and an upper-half write while free; neither may take it, so "
-            "it had to still be free",
+            "after a full-width release and then a low-half and an upper-half write while "
+            "free; the release had to land and neither write may take it",
         )
-        await self.csr_write(f"{name}_RELEASE", addr, 0, length=width)
-        self.mutexes_held += 1
+        await self.csr_write(f"{name}_RELEASE_LAST", addr, 0, length=width)
+        await take("AFTER_RELEASE_LAST", "after the leg's last full-width release")
+        self.mutexes_driven += 1
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
@@ -183,16 +193,17 @@ class smc_cpu_ctrl_read_only_write_test_seq(SmcCsrSeq):
         mutexes = rdl_array(_MUTEX)
         for index, reg in enumerate(mutexes):
             await self._mutex_leg(index, reg.addr, reg.width_bytes)
-        assert self.mutexes_held == len(mutexes), (
-            f"{self.mutexes_held} of {len(mutexes)} mutexes driven"
+        assert self.mutexes_driven == len(mutexes), (
+            f"{self.mutexes_driven} of {len(mutexes)} mutexes driven"
         )
         cocotb.log.info(
             "CHK-CPU-CTRL-MUTEX-HALF-WRITE: each of the %d CPU_CTRL mutexes took a "
             "four-byte write at the half its bit occupies and at the half it does not, "
-            "both while held and while free, and a one on its bit's lane; every write while "
-            "held gave the mutex back, shown by the next read taking it again, every write "
-            "while free left it free, and every mutex this leaf took was given back",
-            self.mutexes_held,
+            "both while held and while free, and a full-width write carrying a one on its "
+            "bit's lane while held; every write while held gave the mutex back, shown by the "
+            "next read taking it again, the writes while free left it free, and the leg's "
+            "last release was shown the same way, by the read after it taking the mutex",
+            self.mutexes_driven,
         )
 
         cocotb.log.info(

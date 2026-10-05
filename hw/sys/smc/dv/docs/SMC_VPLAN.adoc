@@ -9799,7 +9799,7 @@ Drive `smc_efuse_lock_guard_test_seq`. Each checker below is a named compare the
 * `RESET_CTRL` is not written. It carries the per-core and uncore reset levels and the four core reset-pulse starts, which is why `smc_rdl_field_sweep_test` excludes it, and a write of ones into it would reset the running bench.
 
 * The four `MUTEX` registers are 64 bits wide with the mutex in bit 0, so a four-byte write at the low half selects that byte lane and one at the upper half does not. `cpu_ctrl.rdl` describes the field as "HW mutex. Reads will attempt to acquire mutex, 1 on success. If the mutex is already acquired, the read will return 0. To release the mutex, write any value to the register", so a read is the only way to see it, a read takes it, and any write gives it back whichever half it selects.
-* Each mutex is taken through every combination of its bit and its lane. It is read first and has to come back free, which fails if anything else holds it. While held it takes a low-half write and then, once retaken, an upper-half write; each must give it back, which the read after it shows by taking it again. It is then released with a full-width write carrying a one on its lane, and while free takes a low-half write carrying a one and an upper-half write, neither of which may take it -- the read after them has to find it still free. Every mutex the leaf takes is released, and all four end the leaf free.
+* Each mutex is taken through every combination of its bit and its lane. It is read first and has to come back free, which fails if anything else holds it. While held it takes a low-half write and then, once retaken, an upper-half write; each must give it back, which the read after it shows by taking it again. It is then released with a full-width write carrying a one on its lane, which the read after it shows by taking it again; released again, it takes a low-half write carrying a one and an upper-half write while free, neither of which may take it -- the read after them has to find it still free. The leg's last full-width release is read back the same way, so every release it claims is one the DUT showed; that read leaves the mutex taken, and nothing after it uses the register.
 
 *Test Procedure*:
 
@@ -9812,7 +9812,7 @@ Drive `smc_cpu_ctrl_read_only_write_test_seq`. Each checker below is a named com
 |Checker |Description
 |`CHK-CPU-CTRL-READ-ONLY-WRITE` |All six CPU_CTRL registers every field of which the RDL makes `sw = r` read the same word after a write of all ones at their address as before it
 |`CHK-CPU-CTRL-WDT-ZERO-WRITE` |A full-width write of 0 into the four singlepulse reset fields of WDT_TIMEOUT_RESET left the register reading 0, so nothing it carried was stored, and CORE_RESET_PULSE_COUNT read the same word either side with no core reset in progress when the second read landed
-|`CHK-CPU-CTRL-MUTEX-HALF-WRITE` |Each of the four CPU_CTRL mutexes took four-byte writes at the half its bit occupies and at the half it does not, both while held and while free, and a one on its bit's lane; every write while held gave the mutex back, shown by the next read taking it again, every write while free left it free, and every mutex taken was released
+|`CHK-CPU-CTRL-MUTEX-HALF-WRITE` |Each of the four CPU_CTRL mutexes took four-byte writes at the half its bit occupies and at the half it does not, both while held and while free, and a full-width write carrying a one on its bit's lane while held; every write while held gave the mutex back, shown by the next read taking it again, the writes while free left it free, and the leg's last release was shown the same way, by the read after it taking the mutex
 |===
 
 *Pass Criteria*: `CHK-CPU-CTRL-MUTEX-HALF-WRITE`, `CHK-CPU-CTRL-READ-ONLY-WRITE`, `CHK-CPU-CTRL-WDT-ZERO-WRITE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
@@ -10757,7 +10757,7 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 * `VAL`, which holds the last sixteen oversampled levels of SCL and SDA, read with the bus idle on every instance: a released bus reads all ones in both halves.
 * `TARGET_NACK_COUNT` at the top of its range. The field is writable, so it is preset to its top value and one more NACK is provoked; `i2c.rdl` gives the counter as "saturating at 255", so it has to hold there, and the read that returns it has to clear it.
 * A repeated START inside a transaction, on I2C0. In a healthy transaction it is recorded as a restart entry. Inside one the target has already refused -- the stretch allowance ran out on its first data byte -- `CTRL.NACK_ADDR_AFTER_TIMEOUT` decides the answer: clear, the target acknowledges every address but has already given up, so only the address is acknowledged; set, it refuses the address itself. Either way it is still one refused transaction, counted once, with no restart recorded.
-* `TARGET_EVENTS` as a register rather than a flag. The outgoing leg sets `CTRL.TX_STRETCH_CTRL_EN`, so the target records the read it stretched for in `TARGET_EVENTS.TX_PENDING`; a word of zeros and a byte-sized write to the far end of the register, which leaves the lane carrying the bit disabled, must both leave it set, and only a written one clears it. Each read is compared against the mask from the generated header.
+* `TARGET_EVENTS` as a register rather than a flag. The outgoing leg sets `CTRL.TX_STRETCH_CTRL_EN`, so the target records the read it stretched for in `TARGET_EVENTS.TX_PENDING`; a word of zeros and a word of ones that strobes only the top byte lane, so the lane carrying the bit is disabled while carrying a one, must both leave it set, and only a written one clears it. Each read is compared against the mask from the generated header.
 
 *Test Procedure*:
 
@@ -10775,7 +10775,7 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 |Checker |Description
 |`CHK-I2C-TGT-NACK-TIMEOUT-RX` |The allowance ran out at a held incoming byte: the byte was NACKed, the transaction counted once, and the stream closed with a NACK-stop entry
 |`CHK-I2C-TGT-NACK-TIMEOUT-TX` |The allowance ran out with nothing to transmit: SDA was released so the bench read all ones, the transaction counted once, and the stream closed with a NACK-stop entry
-|`CHK-I2C-TGT-EVENTS-RETAIN` |`TARGET_EVENTS.TX_PENDING`, set by the target on the read it stretched for, survived a word of zeros and a byte write that left its lane disabled, and cleared only on a written one
+|`CHK-I2C-TGT-EVENTS-RETAIN` |`TARGET_EVENTS.TX_PENDING`, set by the target on the read it stretched for, survived a word of zeros and a word of ones that strobed only the top byte lane, so its own lane carried a one it was not enabled to take, and cleared only on a written one
 |`CHK-I2C-VAL-IDLE` |`VAL` read all ones on every instance with the bus idle
 |`CHK-I2C-TGT-NACK-COUNT-SATURATES` |A NACK taken with `TARGET_NACK_COUNT` preset to its top value left it there rather than wrapping, and the read that returned it cleared it
 |`CHK-I2C-TGT-RESTART` |A repeated START in a healthy transaction was recorded as a restart entry; inside a transaction the target had already refused, the new address was acknowledged and nothing after it with `NACK_ADDR_AFTER_TIMEOUT` clear, and refused with it set, with the transaction counted once and no restart recorded
@@ -10960,7 +10960,7 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 * A NACK left unhandled. `i2c.rdl` describes `HOST_NACK_HANDLER_TIMEOUT` as the limit on how long software may leave the controller halted on an unexpected NACK; past it `CONTROLLER_EVENTS.UNHANDLED_NACK_TIMEOUT` is raised beside the NACK. Every other leaf clears a NACK as soon as it sees one.
 * A read split across two format entries, the first carrying `FDATA.RCONT`. The flag makes the controller acknowledge that entry's last byte rather than NACK it and carry on reading from the next entry, so the three bytes come back as one read with one start pair and one stop.
 * A read count of zero. `i2c.rdl` gives `FBYTE` of zero with `READB` as a 256-byte read -- one more than any nonzero count can express, and four times the depth of the controller's receive FIFO, so software drains `RDATA` while it runs. The controller's bit period is shortened for this leg so the read costs a few hundred microseconds; the bench target samples on the SMC clock, far faster.
-* `CONTROLLER_EVENTS` clears on a written one, so two writes that must *not* clear it are made first: a word of zeros over a set bit, and a byte-sized write to the far end of the register, which leaves the lane carrying the bit disabled. The bit is read back set after each, and only a written one clears it. Both set fields are checked this way.
+* `CONTROLLER_EVENTS` clears on a written one, so two writes that must *not* clear it are made first: a word of zeros over a set bit, and a word of ones that strobes only the top byte lane, so the lane carrying the bit is disabled while carrying a one. The bit is read back set after each, and only a written one clears it. Both set fields are checked this way.
 
 The controller's third ending, the automatic stop it makes when `CTRL.ENABLEHOST` is cleared with a transaction still open, is driven by `smc_i2c_controller_disable_stop_test`.
 
@@ -10970,7 +10970,7 @@ The controller's third ending, the automatic stop it makes when `CTRL.ENABLEHOST
 . Bring up I2C0 as a host with the bench EEPROM target on the pads.
 . Queue a write of an offset, a repeated start and a one-byte read *without* a stop, then a further write with a stop. Require the byte read back, the later write at the target, and one stop.
 . Arm `HOST_NACK_HANDLER_TIMEOUT`, queue a write to an address no device answers, and wait for `CONTROLLER_EVENTS.NACK` and then `UNHANDLED_NACK_TIMEOUT`.
-. For each set field: write zeros, read it back set; write a byte to the far end of the register, read it back set; write a one, read it back clear.
+. For each set field: write zeros, read it back set; write a word of ones with only the top byte lane strobed, read it back set; write a one, read it back clear.
 
 *Checkers*:
 
@@ -10979,7 +10979,7 @@ The controller's third ending, the automatic stop it makes when `CTRL.ENABLEHOST
 |Checker |Description
 |`CHK-I2C-CTRL-READ-CONTINUES` |A read whose last byte carried no stop returned to the format FIFO, the entry behind it reached the target, and the target saw a single stop
 |`CHK-I2C-CTRL-NACK-TIMEOUT` |A NACK left unhandled past the programmed limit raised `UNHANDLED_NACK_TIMEOUT` beside it
-|`CHK-I2C-CTRL-EVENTS-RETAIN` |Both set fields survived a word of zeros and a byte write that left their lane disabled, and cleared only on a written one
+|`CHK-I2C-CTRL-EVENTS-RETAIN` |Both set fields survived a word of zeros and a word of ones that strobed only the top byte lane, so their own lane carried a one it was not enabled to take, and cleared only on a written one
 |`CHK-I2C-CTRL-READ-RCONT` |A read split across two format entries, the first carrying `RCONT`, came back as one continuous read inside a single transaction
 |`CHK-I2C-CTRL-READ-256` |A read with a count of zero returned 256 bytes, the target's whole memory in order
 |===
@@ -11255,8 +11255,8 @@ Drive `smc_cpuif_external_stall_test_seq`. Each checker below is a named compare
 *Test Coverage*:
 
 * Each SMC register block decodes an address together with a direction: a read-only register's decode term is the address and a read, a write-only one's is the address and a write. The half of each term that pairs the address with the other direction -- a write at a read-only register, a read at a write-only one -- had never been driven, and neither had a read of the few registers no leaf reads at all.
-* The expected answer comes from the generated block the RDL compiles to: a write to a read-only register is answered OKAY and takes no effect, and a read of a write-only register is answered OKAY and returns zero because the register has no readable field. Every write must be answered, and where the register holds still at idle and reading it has no side effect it must read the same value before and after; every write-only read must return zero; and around each block's accesses the block's probe register must read the same value, so no wrong-direction write aliased onto something writable.
-* Registers that need care: `RDATA`, `ACQDATA` and `AVS_READBACK` pop a FIFO when read, so they are written but not read back and their block's FIFO level register is read either side instead. `TIMER_COUNT_LO` and `TIMER_COUNT_HI` run freely, so they rely on the probe guard. `LSR` and `MSR` clear their error bits and deltas on any read, so each is read once to settle those before the baseline. `TARGET_NACK_COUNT` clears when read but holds zero at idle, so the read clears nothing and must return zero. `TARGET_ACK_CTRL` takes a write of zero at idle, where hardware holds its `NBYTES` write enable off and a zero on the write-only `NACK` is no NACK.
+* The expected answer comes from the generated block the RDL compiles to: a write to a read-only register is answered OKAY and takes no effect, and a read of a write-only register is answered OKAY and returns zero because the register has no readable field. Every write must be answered, and where the register holds still at idle and reading it has no side effect it must read the same value before and after a write of the complement of that value, so a write that reached any field would show in every bit; every write-only read must return zero; and around each block's accesses the block's probe register must read the same value, so no wrong-direction write aliased onto something writable.
+* Registers that need care: `RDATA`, `ACQDATA` and `AVS_READBACK` pop a FIFO when read, so they are written but not read back and their block's FIFO level register is read either side instead. `TIMER_COUNT_LO` and `TIMER_COUNT_HI` run freely, so they rely on the probe guard. `LSR` and `MSR` clear their error bits and deltas on any read, so each is read once to settle those before the baseline. `TARGET_NACK_COUNT` clears when read but holds zero at idle, so the read clears nothing and must return zero. `TARGET_ACK_CTRL` takes a write of zero at idle, where hardware holds its `NBYTES` write enable off and a zero on the write-only `NACK` is no NACK; the write carries nothing the register could take, so it is answered but not counted among the writes shown to take no effect.
 * Three UART rows are not driven because the UART's own demux never presents those accesses to the block they belong to: `uart_16550.sv` routes every write at the `THR` and `FCR` addresses to the write-only block, so the main block never sees a write at `RBR` or `IIR`, and it routes no read to the write-only block, so that block never sees a read at `FCR`.
 
 *Test Procedure*:
@@ -11268,7 +11268,7 @@ Drive `smc_cpuif_wrong_direction_test_seq`. Each checker below is a named compar
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-CPUIF-WRITE-READ-ONLY` |Every write at a read-only register was answered and took no effect -- each register that holds still at idle read the same before and after, each FIFO whose data register pops on read kept its level -- and no block's probe register moved
+|`CHK-CPUIF-WRITE-READ-ONLY` |Every write at a read-only register was answered and took no effect -- each register that holds still at idle read the same before and after a write of the complement of what it held, each FIFO whose data register pops on read kept its level -- and no block's probe register moved; the write of zero at `TARGET_ACK_CTRL` was answered and is not counted among them
 |`CHK-CPUIF-READ-WRITE-ONLY` |Every read of a write-only register was answered and returned zero, and every register no leaf had read returned its RDL reset at idle
 |===
 
@@ -11290,7 +11290,7 @@ Drive `smc_cpuif_wrong_direction_test_seq`. Each checker below is a named compar
 * Arbitration loss as a target. `i2c_core.sv:623` detects it as the target transmitting while the SDA it released reads low with SCL high. The transmit FIFO holds all ones, so every bit the target sends is released, and a second driver pulls SDA low inside the SCL high window of the second data bit, counted in SCL rises from the START so the pull lands in the same bit every run. The SDA level just before the pull is required to be a one, so the conflict is measured rather than assumed.
 * `TIMING3.THD_DAT` is raised to twenty core clocks for that leg. The pull is also an SDA edge with SCL high, which the bus monitor takes for a START once it has lasted `THD_DAT`, and the target's override block (`i2c_target_fsm.sv:1028`) gives a START priority over arbitration loss. Twenty core clocks is still well inside the START the bench issues itself.
 * A bus timeout while the target has a read to answer. `TIMEOUT_CTRL` is armed in bus mode, the target acknowledges its read address, and the bench holds SCL low for several times the limit. `i2c_target_fsm.sv:652` records it as a bus timeout on a read.
-* Both flags are then checked as a register: a word of zeros over the set bit and a byte-sized write to the far end of `TARGET_EVENTS`, which leaves the lane carrying the bit disabled, must both leave it set, and only a written one clears it. `TARGET_NACK_COUNT` is the second witness for arbitration loss, since the target refuses the transaction on the same edge and counts it once.
+* Both flags are then checked as a register: a word of zeros over the set bit and a word of ones that strobes only the top byte lane of `TARGET_EVENTS`, so the lane carrying the bit is disabled while carrying a one, must both leave it set, and only a written one clears it. `TARGET_NACK_COUNT` is the second witness for arbitration loss, since the target refuses the transaction on the same edge and counts it once.
 
 *Test Procedure*:
 
@@ -11307,7 +11307,7 @@ Drive `smc_cpuif_wrong_direction_test_seq`. Each checker below is a named compar
 |Checker |Description
 |`CHK-I2C-TGT-ARBITRATION-LOST` |SDA pulled low under a one the target was sending raised `ARBITRATION_LOST`, and the target refused the rest of the transaction, counting it once
 |`CHK-I2C-TGT-READ-BUS-TIMEOUT` |SCL held low past the bus timeout during a read raised `BUS_TIMEOUT`
-|`CHK-I2C-TGT-EVENTS-RETAIN-ABORT` |Both flags, set by the target itself, survived a word of zeros and a byte write that left their lane disabled, and cleared only on a written one
+|`CHK-I2C-TGT-EVENTS-RETAIN-ABORT` |Both flags, set by the target itself, survived a word of zeros and a word of ones that strobed only the top byte lane, so their own lane carried a one it was not enabled to take, and cleared only on a written one
 |===
 
 *Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
@@ -11328,7 +11328,7 @@ Drive `smc_cpuif_wrong_direction_test_seq`. Each checker below is a named compar
 * SCL pulled low while the controller holds a clock pulse high is clock synchronisation: `INTR_STATE.SCL_INTERFERENCE` is raised and the transfer carries on. Driven in the START hold, the acknowledge pulse, a read data pulse and the pulse of the acknowledge the controller drives itself.
 * SCL falling while a repeated START or the STOP is being set up, or both lines low while the STOP is held, means the controller could not issue its control symbol before another device took the bus; the design reports it as arbitration loss through `ctrl_symbol_failed`. The STOP hold lasts only until the controller sees SDA rise, so that leg takes SDA on the STOP's setup rise and keeps it low when the controller releases it, then takes SCL as well once past the setup.
 * SCL held low across a rise the controller expects is a stretch: in the setup of a first START, the setup of a repeated START, the pulse of its own acknowledge and the setup of the STOP. Each transfer then has to complete with the target's data intact and no event raised.
-* SCL held low past `TIMEOUT_CTRL` in bus mode halts the controller with `CONTROLLER_EVENTS.BUS_TIMEOUT`, which is then checked as a register: a word of zeros and a byte write that leaves its lane disabled must both leave it set, and only a written one clears it.
+* SCL held low past `TIMEOUT_CTRL` in bus mode halts the controller with `CONTROLLER_EVENTS.BUS_TIMEOUT`, which is then checked as a register: a word of zeros and a word of ones that strobes only the top byte lane, so its own lane carries a one it is not enabled to take, must both leave it set, and only a written one clears it.
 * The controller disabled while held in the setup of a repeated START: the restart it was about to issue is still pending, and it must not reach the bus. The bench target has to see one START for the transfer, not two.
 * Every point is placed by counting edges on the pads -- the START, the Nth SCL rise, or the fall after it -- so each lands in the same state on every run. Each leg re-enables the controller from scratch and returns the bus to idle afterwards, clocking the target out of any byte a halted transfer left it in.
 

@@ -17,6 +17,11 @@ from .smc_addr_map import (
 from .smc_base_test_seq import smc_base_test_seq
 from .smc_efuse_vip_utils import EFUSE_BLOCKED_READ_DATA
 
+#: A one on every bit of a 32-bit word.
+ALL_ONES_WORD = 0xFFFF_FFFF
+#: Strobe that enables only the top byte lane of a 32-bit word.
+TOP_BYTE_LANE = 0b1000
+
 
 class SmcCsrSeq(smc_base_test_seq):
     """Base sequence with compact SEP_IN AXI CSR helpers."""
@@ -55,6 +60,28 @@ class SmcCsrSeq(smc_base_test_seq):
         item.addr = addr
         item.length = length
         item.wdata = data
+        item.prot = prot
+        await self.start_item(item)
+        await self.finish_item(item)
+        self.accesses += 1
+
+    async def csr_write_strobed(
+        self, name: str, addr: int, data: int, wstrb: int, length: int = 4, prot: int = 0
+    ) -> None:
+        """Write `data` at `addr` with only the byte lanes `wstrb` selects enabled.
+
+        `data` is presented on every lane of the `length`-byte transfer, so a
+        lane the strobe disables still carries its byte of `data`, where the
+        strobe `csr_write` derives from the address puts zeros. A field on a
+        disabled lane whose byte of `data` would change it therefore tells a
+        strobe the register honoured from one it ignored.
+        """
+        item = SmcSysAxiItem(f"wr_{name}")
+        item.op = SmcSysAxiOp.WRITE
+        item.addr = addr
+        item.length = length
+        item.wdata = data
+        item.wstrb = wstrb
         item.prot = prot
         await self.start_item(item)
         await self.finish_item(item)
