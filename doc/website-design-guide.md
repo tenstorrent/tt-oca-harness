@@ -106,10 +106,9 @@ Book titles in each `antora.yml` omit the "Open Chiplet Atlas (OCA) Harness" pre
 
 ### Breadcrumbs
 
-`doc/ui-supplemental/partials/breadcrumbs.hbs` overrides the stock partial so a book's trail starts from Home, mirroring Home's own trail (`Open Chiplet Atlas (OCA) Harness / Home / …`):
-`Open Chiplet Atlas (OCA) Harness / Guides / Starting with OCAH / Starting as a user / Environment Setup`.
-The second and third crumbs are the Home sidebar's `Guides` entry and its child that links to the book's start page, which stands in for the book's own start-page crumb; a book must therefore be listed in Home's `nav.adoc` for its trail to name it.
-Home pages keep the stock trail.
+`doc/ui-supplemental/partials/breadcrumbs.hbs` overrides the stock partial so every trail starts at one of the Home sidebar's two groups, without the component title in front.
+Home pages read `Home / Feature Overview`; book pages read `Guides / Starting with OCAH / Starting as a user / Environment Setup`.
+A book's first two crumbs are the Home sidebar's `Guides` entry and its child that links to the book's start page, which stands in for the book's own start-page crumb; a book must therefore be listed in Home's `nav.adoc` for its trail to name it.
 
 Below the navigation tree sits a collapsible panel (`.nav-panel-explore`, toggled via the `.context-bar` strip) — Antora's native book/version switcher. 
 It lists every component known to the combined playbook automatically, including Home; adding a new component to `content.sources` is the only thing needed to make it appear here, no additional code.
