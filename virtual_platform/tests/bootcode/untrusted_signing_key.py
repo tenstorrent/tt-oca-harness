@@ -4,8 +4,10 @@
 """An RSA-3072 signing key whose modulus digest is in no ROM key slot, generated on demand."""
 
 import hashlib
-import subprocess
 from pathlib import Path
+
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 KEY_DIR = Path(__file__).parent / "keys"
 KEY_PATH = KEY_DIR / "rsa_private_key.untrusted.pem"
@@ -18,33 +20,27 @@ def ensure() -> Path:
     if KEY_PATH.is_file():
         return KEY_PATH
     KEY_DIR.mkdir(parents=True, exist_ok=True)
-    result = subprocess.run(
-        ["openssl", "genrsa", "-out", str(KEY_PATH), str(_MODULUS_BITS)],
-        capture_output=True,
-        text=True,
+    key = rsa.generate_private_key(public_exponent=65537, key_size=_MODULUS_BITS)
+    pem = key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption(),
     )
-    if result.returncode != 0 or not KEY_PATH.is_file():
-        raise RuntimeError(
-            f"could not generate {KEY_PATH.name} with openssl genrsa:\n{result.stderr}"
-        )
-    KEY_PATH.chmod(0o600)
+    KEY_PATH.touch(mode=0o600)
+    KEY_PATH.write_bytes(pem)
     return KEY_PATH
 
 
 def modulus_digest(key: Path) -> bytes:
     """SHA-256 of *key*'s RSA modulus (384 bytes big-endian), the form the ROM key slots hold."""
-    result = subprocess.run(
-        ["openssl", "rsa", "-in", str(key), "-noout", "-modulus"],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0 or "=" not in result.stdout:
-        raise RuntimeError(f"could not read the modulus of {key}:\n{result.stderr}")
-    modulus = bytes.fromhex(result.stdout.strip().split("=", 1)[1])
-    if len(modulus) != _MODULUS_BITS // 8:
+    private = serialization.load_pem_private_key(key.read_bytes(), password=None)
+    if not isinstance(private, rsa.RSAPrivateKey):
+        raise RuntimeError(f"{key.name} is not an RSA private key")
+    if private.key_size != _MODULUS_BITS:
         raise RuntimeError(
-            f"{key.name} is a {len(modulus) * 8}-bit key; the ROM verifies RSA-{_MODULUS_BITS} only"
+            f"{key.name} is a {private.key_size}-bit key; the ROM verifies RSA-{_MODULUS_BITS} only"
         )
+    modulus = private.public_key().public_numbers().n.to_bytes(_MODULUS_BITS // 8, "big")
     return hashlib.sha256(modulus).digest()
 
 
