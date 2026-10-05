@@ -1513,7 +1513,7 @@ class CoordinatorTest(unittest.TestCase):
             parsed = original(argv)
             # The verilator model a parallel cocotb run builds first is not part of dispatch.
             if self.prebuilt:
-                parsed._cocotb_prebuilt_targets = {"default"}
+                parsed._built_targets = {"default"}
             return parsed
 
         console = io.StringIO()
@@ -2169,7 +2169,16 @@ class SchedulerBuildTest(CoordinatorTest):
             )
         )
         self.assertEqual(leaf_manifest["target_build"]["target"], "default")
+        self.assertEqual(leaf_manifest["target_build"]["fingerprint"], "fp-default")
         self.assertEqual(self.leaf_statuses(summary), {item: "PASS" for item in self.items})
+        for leaf in self.leaves(summary):
+            record_path = Path(leaf["result_json"])
+            record = json.loads(
+                (record_path if record_path.is_absolute() else REPO_ROOT / record_path).read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(record["target_build"]["fingerprint"], "fp-default", leaf["item"])
 
     def test_a_failed_build_blocks_its_leaves(self) -> None:
         self.scenario()

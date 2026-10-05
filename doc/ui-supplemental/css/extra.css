@@ -10,9 +10,19 @@
 /* Hide placeholder navbar items (upstream demo content only: any leftover
    Home/Products/Services/Download not otherwise replaced) -- explicit
    exceptions for every real item we've added. */
-.navbar-end > .navbar-item.has-dropdown:not(.guides-menu):not(.downloads-menu):not(.datasheets-menu),
-.navbar-end > .navbar-item:not(.navbar-brand):not(.tt-link):not(.guides-menu):not(.downloads-menu):not(.datasheets-menu) {
+.navbar-end > .navbar-item.has-dropdown:not(.guides-menu):not(.downloads-menu):not(.datasheets-menu):not(.versions-menu),
+.navbar-end > .navbar-item:not(.navbar-brand):not(.tt-link):not(.guides-menu):not(.downloads-menu):not(.datasheets-menu):not(.versions-menu) {
     display: none !important;
+}
+
+/* version-menu.js reveals the menu once versions.json lists a release */
+.navbar-end .navbar-item.versions-menu {
+    display: none !important;
+}
+
+.navbar-end .navbar-item.versions-menu.is-ready {
+    display: flex !important;
+    align-items: center;
 }
 
 /* Guides / Downloads / Datasheets dropdowns -- keep visible, style to match navbar */

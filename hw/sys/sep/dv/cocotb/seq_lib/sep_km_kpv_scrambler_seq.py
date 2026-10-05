@@ -91,7 +91,7 @@ class SepKpvScramblerReport:
         key_b_pair: tuple[int, int],
         round_trip: int,
         key_unlocked: int,
-        key_readback: int,
+        rekey_round_trip: int,
         post_lock_round_trip: int,
         refused_round_trip: int,
         ctrl_after_refused: int,
@@ -101,7 +101,7 @@ class SepKpvScramblerReport:
         self.key_b_pair = key_b_pair
         self.round_trip = round_trip
         self.key_unlocked = key_unlocked
-        self.key_readback = key_readback
+        self.rekey_round_trip = rekey_round_trip
         self.post_lock_round_trip = post_lock_round_trip
         self.refused_round_trip = refused_round_trip
         self.ctrl_after_refused = ctrl_after_refused
@@ -138,12 +138,9 @@ class SepKpvScrambler:
     async def _next_word(self, what: str, *, timeout: int = 20_000, poll_cycles: int = 20) -> int:
         """Read one reported word, bounded and attributed.
 
-        The budget is sized against the ROM's longest silence -- the two
-        whole-file scans before the first report -- with room to spare, and
-        well inside the leaf's own timeout. A bound that outlives
-        the leaf is not a bound: the runner would kill the run first and the
-        attributed message below would never be printed, which is the whole
-        reason for polling with a limit rather than waiting forever.
+        The budget covers the ROM's longest silence (the two whole-file scans
+        before the first report) and stays inside the leaf's own timeout, so
+        this message is printed before the runner kills the run.
         """
         for _ in range(timeout):
             if not (await self._rd(KM_MBOX_STATUS) & (1 << KM_STATUS_OUTBOUND_EMPTY)):
@@ -175,7 +172,7 @@ class SepKpvScrambler:
         key_b_value = await self._next_word("the second-key value")
         round_trip = await self._next_word("the round-trip word")
         key_unlocked = await self._next_word("the unlocked key readback")
-        key_readback = await self._next_word("the locked key readback")
+        rekey_rt = await self._next_word("the round-trip under ~key B while unlocked")
         post_lock = await self._next_word("the post-lock round-trip word")
         refused_rt = await self._next_word("the round-trip after the refused writes")
         ctrl_after = await self._next_word("KPV_SCRAMBLER_CTRL after the refused write")
@@ -185,7 +182,7 @@ class SepKpvScrambler:
             (key_b_index, key_b_value),
             round_trip,
             key_unlocked,
-            key_readback,
+            rekey_rt,
             post_lock,
             refused_rt,
             ctrl_after,

@@ -61,9 +61,11 @@ await tap.reset_tap()
 await tap.step_tms(0)  # enter RUN_TEST_IDLE
 ```
 
-`assert_trst(tck_cycles=1)` asserts the bound TRST net and holds TMS high for
-`tck_cycles`, re-baselining the tracked state to `TEST_LOGIC_RESET`.
-`release_trst(tck_cycles=0)` releases the net.
+`assert_trst(tck_cycles=1, tms=1)` asserts the bound TRST net and holds TMS at
+`tms` for `tck_cycles`, re-baselining the tracked state to `TEST_LOGIC_RESET`.
+TMS high is the Test-Logic-Reset self-loop; TMS low never enters
+Test-Logic-Reset, so a test that wants Test-Logic-Reset reached by the reset
+alone clocks with `tms=0`. `release_trst(tck_cycles=0, tms=1)` releases the net.
 After a reset applied outside the TAP pins (a power-on reset, a reset pin
 that is not bound as TRST), declare the resulting state with
 `sync_model(OcahJtagState.TEST_LOGIC_RESET)` so `goto_state()` plans from the

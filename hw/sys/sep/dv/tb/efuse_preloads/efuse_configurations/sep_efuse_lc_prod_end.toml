@@ -13,19 +13,20 @@
 # sep_firmware_demotion_decision_no_flag_prod_end_sel_bit_set_test.
 # All three produce the SAME outcome, because rom_main.c returns before any
 # manifest demotion input is read; they differ only in the stimulus they plant
-# and therefore in what a failure would mean. See rom_fw/sep_demotion_prod_end_base.py.
+# and therefore in what a failure would mean. See
+# hw/sys/sep/dv/cocotb/tests/rom_fw/sep_demotion_prod_end_base.py.
 #
 # 0x78 is the differential encoding {~raw[3:0], raw[3:0]} of raw state 0x8. The
 # authority for both halves is the register map and the RTL, not the ROM's own
-# header: sep_efuse_map.rdl:565-566 gives the encoding rule and
-# hw/ip/efuse/rtl/efuse_pkg.sv:51-59 gives LC_PROD_END = 4'b1000. The shadow
-# regenerates {~raw, raw} from the sensed nibble itself
-# (hw/ip/efuse/rtl/efuse_shadow_regs.sv:538-544), so only [3:0] reaches the DUT;
+# header: the LC_STATE description in sep_efuse_map.rdl gives the encoding rule
+# and LC_PROD_END in hw/ip/efuse/rtl/efuse_pkg.sv gives 4'b1000. The shadow
+# regenerates {~raw, raw} from the sensed nibble itself (the lc_state_diff_d
+# path in hw/ip/efuse/rtl/efuse_shadow_regs.sv), so only [3:0] reaches the DUT;
 # the full byte is written here to match the convention of every sibling file.
 #
 # Secure boot is ENFORCED in PROD_END exactly as in PROD (lifecycle.c), so a
-# test using this preload runs the full crypto chain and needs
-# +sep_crypto_edn_force if its manifest is meant to verify.
+# test using this preload and a signed manifest needs +esrc_noise_force under
+# Verilator. The ROM brings up the full entropy chain from that raw-noise input.
 
 [LC_STATE]
   [LC_STATE.fields.lc_state]

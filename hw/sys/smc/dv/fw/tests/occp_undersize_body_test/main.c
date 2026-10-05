@@ -29,10 +29,16 @@ int main(void) {
     ctx.exp_response_code = OCCP_INCOMPLETE_MSG;
     execute_random_commands(&ctx, 10);
 
-    if (!is_secure_mode()) {
-        occp_send_jump_command(&ctx, ctx.slave_addr, OCCP_TEST_BASE_ADDR);
+    if (!is_secure_mode() &&
+        occp_send_jump_command(&ctx, ctx.slave_addr, OCCP_TEST_BASE_ADDR) != OCCP_SUCCESS) {
+        simputs("FAIL: JUMP did not return the expected error\n");
+        ctx.overall_result = false;
     }
-    occp_send_validate_boot_command(&ctx, ctx.slave_addr, OCCP_TEST_BASE_ADDR);
+    if (occp_send_validate_boot_command(&ctx, ctx.slave_addr, OCCP_TEST_BASE_ADDR) !=
+        OCCP_SUCCESS) {
+        simputs("FAIL: VALIDATE_BOOT did not return the expected error\n");
+        ctx.overall_result = false;
+    }
 
     ctx.inject_undersize_body_err = false;
     ctx.exp_response_code = OCCP_ERROR_NONE;

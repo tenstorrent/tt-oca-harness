@@ -202,7 +202,6 @@ class OcahSepSpiFlash(OcahSpiFlash):
             self.log.info("%s: REBAR asserted — resetting flash state machine", self.name)
             self._on_rebar_assert()
 
-            # Wait for REBAR to deassert before re-arming.
             await RisingEdge(self._rebar_o)
             self.log.info("%s: REBAR deasserted — flash resumed", self.name)
             if self._rebar_i is not None:
@@ -238,12 +237,10 @@ class OcahSepSpiFlash(OcahSpiFlash):
             if int(cs_n.value) != 0:
                 return False
 
-            # Only drive if controller is not driving the DQ bus.
             if self._dq_oe_n is not None:
                 oe_val = int(self._dq_oe_n.value)
                 # oe_val bit 0 corresponds to DQ0.  Low = controller driving.
                 if not (oe_val & 0x1):
-                    # Controller is driving DQ0; skip (avoid contention).
                     continue
 
             bit = (byte_val >> bit_idx) & 0x1

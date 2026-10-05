@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""PIC source 40 claim + mask for the token-comparator redundancy fault.
+"""A token-comparator fault reaches the CPU on PIC source 40, and masking meie[40] stops re-entry.
 
 cpu mode. Firmware arms PIC source 40 and presents a SEC_DISABLE token.
 The host injects a collapse on that comparator after READY (tb port; no
@@ -47,7 +47,7 @@ _READY_POLL = 200_000
 
 @pyuvm.test()
 class sep_efuse_token_match_fault_pic_test(sep_base_test):
-    """Boot EL2; inject SEC_DISABLE collapse; firmware claims and masks PIC 40."""
+    """The injected SEC_DISABLE collapse is claimed as PIC 40, sets the sticky bit, and masks."""
 
     build_env = False
 

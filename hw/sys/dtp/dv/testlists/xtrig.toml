@@ -34,7 +34,7 @@ name = "dtp_xtrig_wire_or_test"
 module = { cocotb = "dtp_xtrig_wire_or_test", uvm = "dtp_xtrig_wire_or_test" }
 seed = 1
 timeout_sec = 1800
-tags = ["xtrig"]
+tags = ["smoke", "ci", "xtrig"]
 run_modes = ["xtrig"]
 
 [[tests]]
@@ -104,6 +104,14 @@ run_modes = ["xtrig"]
 [[tests]]
 name = "dtp_xtrig_axi_channel_skew_read_decode_backpressure_test"
 module = { cocotb = "dtp_xtrig_axi_channel_skew_read_decode_backpressure_test", uvm = "dtp_xtrig_axi_channel_skew_read_decode_backpressure_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["xtrig"]
+run_modes = ["xtrig"]
+
+[[tests]]
+name = "dtp_xtrig_axi_outstanding_test"
+module = { cocotb = "dtp_xtrig_axi_outstanding_test", uvm = "dtp_xtrig_axi_outstanding_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["xtrig"]

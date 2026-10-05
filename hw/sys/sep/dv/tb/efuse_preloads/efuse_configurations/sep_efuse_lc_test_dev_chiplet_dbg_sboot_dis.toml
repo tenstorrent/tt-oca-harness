@@ -16,9 +16,8 @@
   value = 0xF0
 
 [SIP_DIS]
-  # Whole-vector write. CHIPLET_DBG is bit 1.
-  [SIP_DIS.fields.sip_dis]
-  value = 0x2
+  [SIP_DIS.fields.chiplet_dbg]
+  value = 1
 
 [SBOOT_DIS]
   [SBOOT_DIS.fields.disable_secure_boot]

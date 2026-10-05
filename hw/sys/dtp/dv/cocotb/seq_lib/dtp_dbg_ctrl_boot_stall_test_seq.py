@@ -60,8 +60,8 @@ class dtp_dbg_ctrl_boot_stall_test_seq(dtp_debug_tdr_base_test_seq):
         self.log_step(1, "Reset TAP and verify boot-stall reset value")
         await self.reset_to_tlr()
         # The DEBUG_CONTROL reset check below includes the live cla_clock_stop
-        # status bit, which mirrors the xtrig_clk_stop_req TB input: clear it
-        # explicitly instead of relying on one-time bring-up state.
+        # status bit, which mirrors the xtrig_clk_stop_req TB input, so that
+        # input must be zero before the read.
         await self.set_clk_stop_requests(0)
 
         reset_value = await self.read_debug_control()
@@ -97,19 +97,22 @@ class dtp_dbg_ctrl_boot_stall_test_seq(dtp_debug_tdr_base_test_seq):
                 context=f"independent#{idx}",
             )
 
-        self.log_step(4, "Check boot-stall fields are independent of other DEBUG_CONTROL bits")
+        self.log_step(4, "Check boot-stall fields are independent of the clock-stop bits")
         interaction_cases = [
             {"jtag_clock_stop": 1, "cla_clock_stop_en": 0},
             {"jtag_clock_stop": 0, "cla_clock_stop_en": 1},
             {"jtag_clock_stop": 1, "cla_clock_stop_en": 1},
         ]
-        for idx, extras in enumerate(interaction_cases, start=1):
-            await self.check_boot_stall_combo(
-                boot_stall_ovrd=1,
-                boot_stall=1,
-                context=f"interaction#{idx}",
-                **extras,
-            )
+        interaction_count = 0
+        for boot_stall_ovrd, boot_stall in combinations:
+            for extras in interaction_cases:
+                interaction_count += 1
+                await self.check_boot_stall_combo(
+                    boot_stall_ovrd=boot_stall_ovrd,
+                    boot_stall=boot_stall,
+                    context=f"interaction#{interaction_count}",
+                    **extras,
+                )
 
         self.log_step(5, "Reset the TAP over a seeded nonzero DEBUG_CONTROL[3:0]")
         # Capture-DR returns the reset register, 0x00, not the stale value
@@ -138,7 +141,7 @@ class dtp_dbg_ctrl_boot_stall_test_seq(dtp_debug_tdr_base_test_seq):
         self.log_summary(
             "Boot-stall complete",
             combination_count=len(combinations),
-            interaction_count=len(interaction_cases),
+            interaction_count=interaction_count,
             stale=f"0x{stale:x}",
         )
         await self.finalize_family_checker()

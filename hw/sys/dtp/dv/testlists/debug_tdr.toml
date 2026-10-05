@@ -8,7 +8,7 @@ name = "dtp_jtag_tmp_status_register_smoke_test"
 module = { cocotb = "dtp_jtag_tmp_status_register_smoke_test", uvm = "dtp_jtag_tmp_status_register_smoke_test" }
 seed = 1
 timeout_sec = 1800
-tags = ["debug_tdr", "tmp", "jtag"]
+tags = ["smoke", "ci", "debug_tdr", "tmp", "jtag"]
 run_modes = ["debug_tdr"]
 
 [[tests]]

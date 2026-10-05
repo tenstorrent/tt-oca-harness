@@ -1,10 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-schema_version = 1
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# Daily regression policy: run the cpu_stub and cpu groups separately,
-# `python3 tools/dv/run_dv.py --dut sep --items <cpu_stub|cpu> --regress`. Tests with run_modes=["no_cpu"]
-# select target="lsu_stub_all_live"; CPU firmware tests omit target and use the
-# full-CPU default model.
+schema_version = 1
 
 [[tests]]
 name = "sep_efuse_sense_test"
@@ -15,14 +12,13 @@ tags = ["smoke", "efuse", "ci"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
-# Pin the committed default preload (bare +sep_efuse_preload, no path) so the two
-# tests cover both sources: preload+backdoor here vs random+AXI in the image test.
+# Pin the committed default preload (bare +sep_efuse_preload, no path): preload here,
+# random image in sep_efuse_image_test.
 [tests.overrides.cocotb]
 args = ["+sep_efuse_preload"]
 
-# The eFuse bank model loads the same committed preload; the sequence compares
-# the sensed shadow with its committed expected shadow
-# (cocotb/env/sep_efuse_default_shadow.py writes it).
+# Same committed preload; the sequence compares the sensed shadow with the
+# committed expected shadow (written by cocotb/env/sep_efuse_default_shadow.py).
 [tests.overrides.uvm]
 args = [
   "+sep_efuse_hex={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_default.hex",
@@ -46,11 +42,9 @@ timeout_sec = 1800
 tags = ["lcc", "subsystem", "efuse"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-# Program-failure injection is a one-shot per reset. count=1 fails the first
-# bank write after each reset, which is the floor the retry check requires.
-# percent stays 0: a second probabilistic failure is the same PROGRAM_DONE+ERR
-# the secure-TM guard produces, so it cannot be told apart from the guard.
-# The model's LFSR seed is still passed so the one-shot is reproducible.
+# count=1 fails the first bank write after each reset, the floor the retry check
+# needs. percent stays 0: a random failure looks the same as the secure-TM guard
+# refusal. The LFSR seed keeps the one-shot reproducible.
 args = [
     "+sep_efuse_prog_fail_count=1",
     "+sep_efuse_prog_fail_percent=0",
@@ -58,10 +52,8 @@ args = [
 ]
 
 [[tests]]
-# TEST_DEV JTAG allow leg for the two windows the PROD mux test denies.
-# Real fuse sense (no +skip_fuse_sense): the JTAG gate reads the sensed
-# LC_STATE. TEST_DEV is not PROD or RMA_SIP, so shadow and
-# EFUSE_PROGRAM_CTRL answer OKAY.
+# TEST_DEV JTAG allow leg for the two windows the PROD mux test denies. Real
+# fuse sense: the JTAG gate reads the sensed LC_STATE.
 name = "sep_efuse_jtag_window_allow_test"
 module = "efuse.sep_efuse_jtag_window_allow_test"
 seed = 1
@@ -71,15 +63,8 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# eFuse JTAG-AXIL + EL2-CPU mux arbitration (the reference suite's
-# sep_efuse_jtag_axil_el2_cpu_mux_test). EL2 firmware loops eFuse-MMR traffic while cocotb drives the real
-# axil_sep_otp_jtag port (j_axi_* AxiLiteMaster) concurrently; both arbitrate at the
-# eFuse AXI-Lite mux. Real-sensed PROD image makes the JTAG path LC-restricted, so a
-# single image proves allowed-MMR coexistence AND the LC-gated shadow deny
-# (0xbadcab1e) with no backdoor force. cpu run mode + REAL fuse sense (NO
-# +skip_fuse_sense -- the JTAG LC gate depends on the sensed lc_state).
-# PROD/RMA_SIP JTAG may reach the MMR token block (TOKEN_I / TOKEN_EOP /
-# MATCH) and must DECERR on shadow and the program/read interface.
+# eFuse JTAG AXI-Lite and EL2 CPU arbitration at the eFuse mux, plus the PROD shadow
+# deny. Real fuse sense: the JTAG lifecycle gate reads the sensed LC_STATE.
 name = "sep_efuse_jtag_axil_el2_cpu_mux_test"
 module = "efuse.sep_efuse_jtag_axil_el2_cpu_mux_test"
 firmware = "efuse_jtag_el2_mux_test"
@@ -89,25 +74,35 @@ tags = ["efuse", "jtag", "mux", "cpu", "subsystem"]
 run_modes = ["cpu"]
 
 [[tests]]
-# eFuse program x write-lock on every legal spare field (never LC_STATE).
-# RAND-REP: unlocked program + write-lock reject on SPARE0..SPARE8 every seed;
-# the seed selects only the bit offsets inside each spare. Real fuse sense.
-# Clear-after-program.
+# eFuse program x write-lock on SPARE0..SPARE8 (never LC_STATE). RAND-REP.
 name = "sep_efuse_program_lock_matrix_test"
 module = "efuse.sep_efuse_program_lock_matrix_test"
 seed = 1
-# No reseed: the walk visits SPARE0..SPARE8 every run, so slot coverage does not
-# depend on how many seeds CI draws. Only the bit offsets within each spare are
-# seed-selected.
+# No reseed: every run walks SPARE0..SPARE8; the seed selects only bit offsets.
 timeout_sec = 1800
 tags = ["efuse", "lock", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# Lifecycle demote product: LC x DEMOTE_1/2 x a small DIS subset. RAND-REP.
-# feat_ctrl vs spec golden and one live inbound-filter gate per cell. Real fuse
-# sense. The stitch test stays the LC->feat_ctrl e2e.
+# Program with and without EFUSE_PROGRAM_CTRL.efuse_program_read_back. count=2
+# drops the first two bank writes, so each leg sees one dropped and one kept write.
+name = "sep_efuse_program_read_back_select_test"
+module = "efuse.sep_efuse_program_read_back_select_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = [
+    "+sep_efuse_prog_fail_count=2",
+    "+sep_efuse_prog_fail_percent=0",
+    "+sep_efuse_prog_fail_seed={seed}",
+]
+
+[[tests]]
+# Lifecycle demote product: LC x DEMOTE_1/2 x a small DIS subset vs the FEAT_CTRL
+# golden. RAND-REP.
 name = "sep_lcc_demote_feat_ctrl_matrix_test"
 module = "lcc.sep_lcc_demote_feat_ctrl_matrix_test"
 seed = 1
@@ -117,11 +112,8 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# eFuse shadow write-policy sweep: every otp_fuse_controller.adoc fuse-field row
-# except LC_STATE. RANDCFG: set-only rows OR-merge; SW-writable rows
-# overwrite. LOCK is both RDL windows after the other rows. Word index
-# and bit patterns come from the run seed.
-# Real fuse sense. Program x lock stays a different mechanism.
+# eFuse shadow write policy on every otp_fuse_controller.adoc fuse-field row
+# except LC_STATE: set-only rows OR-merge, SW-writable rows overwrite. RANDCFG.
 name = "sep_efuse_set_only_monotonicity_test"
 module = "efuse.sep_efuse_set_only_monotonicity_test"
 seed = 1
@@ -131,20 +123,9 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# SEC_DIS token-match override. RAND-NONE. Real fuse sense. tb_top binds
-# SEP_SEC_DISABLE_TOKEN to SHA-256 of the all-zero token. Before any match
-# the sep_reset_n override releases the sense-gated reset and leaves
-# FEAT_CTRL closed. The match is before sense-done: the reset stays held and
-# FEAT_CTRL opens. The override then releases that reset again, and clearing
-# it holds the reset. A LC_STATE shadow-map read in that window must return
-# AXI OKAY. The match stops the sense. A rst_ni pulse keeps the token
-# digest, so SEC_DIS stays active, sense stays stopped, the map stays open
-# and the override still releases the reset. token=1 drops SEC_DIS and a
-# second pulse runs a full sense, which must finish inside the stuck window.
-# After sense, zero opens FEAT_CTRL; token=1 mismatches and restores
-# fail-closed PROD. Does not force sec_dis. Clearing the override resets
-# the crypto engines without isolation, so the crypto EDN request-hold
-# checks are off.
+# SEC_DIS token match, mismatch and the sep_reset_n override. RAND-NONE. The
+# override resets the crypto engines without isolation, so
+# +sep_edn_jtag_reset_waive turns the crypto EDN request-hold checks off.
 name = "sep_sec_dis_override_test"
 module = "efuse.sep_sec_dis_override_test"
 seed = 1
@@ -155,13 +136,9 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# SEP reachable through the IC_RESET TDR before sense finishes. RAND-NONE.
-# Real fuse sense. No token. The TDR is jtag_ic_reset_reg sized to the SEP
-# slice. Override pins stay 0. SW_RESET_N returns its reset default once the
-# TDR releases sep_reset_n. Restoring the TDR enable holds the reset again, and
-# sense-done releases it. FEAT_CTRL stays the withheld profile before sense and
-# reads the PROD golden after it. The TDR re-hold resets the crypto engines
-# without isolation, so the crypto EDN request-hold checks are off.
+# SEP reset reached through the IC_RESET TDR before sense finishes. RAND-NONE.
+# The TDR re-hold resets the crypto engines without isolation, so
+# +sep_edn_jtag_reset_waive turns the crypto EDN request-hold checks off.
 name = "sep_sec_dis_reset_reach_test"
 module = "efuse.sep_sec_dis_reset_reach_test"
 seed = 1
@@ -172,10 +149,8 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# RMA token match vs mismatch -> LC update, then the comparator redundancy
-# fault path (collapse / disagree / common-mode / sticky IRQ). RANDCFG: token
-# values from the run seed; SIP and CHIPLET both walk match and mismatch.
-# Real fuse sense. Does not stretch the stitch e2e.
+# RMA token match and mismatch -> LC update, then the comparator redundancy
+# fault path. RANDCFG.
 name = "sep_efuse_rma_token_rand_test"
 module = "efuse.sep_efuse_rma_token_rand_test"
 seed = 1
@@ -185,8 +160,8 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# Frontdoor RMA-SIP hashes drive both latch-enable events. The testbench force
-# reaches only the otherwise tied-low digest test_en input for scan-freeze.
+# RMA-SIP token digest latch: capture, idle hold and the test-enable freeze. The
+# only force is on the tied-low digest test_en input.
 name = "sep_efuse_digest_latch_fault_test"
 module = "efuse.sep_efuse_digest_latch_fault_test"
 seed = 1
@@ -196,10 +171,8 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# Locked-field shadow access pulses sep_internal_interrupts[33]. RAND-REP:
-# write-lock and read-lock every seed. RANDCFG: which SPARE0..8 fields carry
-# write-lock, read-lock, and the unlocked contrast. Real fuse sense, LC_PROD.
-# Shadow aperture, not OTP program. Pulse-only combinational IRQ. no_cpu.
+# Locked-field shadow access pulses sep_internal_interrupts[33]. RAND-REP and
+# RANDCFG.
 name = "sep_locked_field_access_irq_path_test"
 module = "efuse.sep_locked_field_access_irq_path_test"
 seed = 1
@@ -210,10 +183,8 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# KM public-ID OTP readout. RANDCFG: the three SEP_*_ID values and which one
-# carries its eFuse read lock. Real fuse sense, LC_PROD. The KM ROM image copies
-# the KMCSR OTP_SEP_*_ID words to KM SRAM, sets the KM-side OTP_READ_LOCK bits
-# and copies them again. no_cpu.
+# KM public-ID OTP readout and both read locks. RANDCFG. The km_rom_otp_id image
+# copies the KMCSR OTP_SEP_*_ID words before and after OTP_READ_LOCK.
 name = "sep_efuse_km_public_id_test"
 module = "efuse.sep_efuse_km_public_id_test"
 firmware = { name = "km_rom_otp_id", mode = "km_rom_blob" }
@@ -226,17 +197,10 @@ target = "lsu_stub_all_live"
 args = ["+km_rom_hex=km_rom_otp_id.parhex"]
 
 [[tests]]
-# SECURE_TM shadow-write lock. The field map marks LOCKS/LOCKS_SPARE, LC_STATE,
-# SIP_DIS and SYS_DIS SecureTmLock, so a shadow write to them is refused while
-# the latched TEST_EN strap is high. Each field takes the same seeded payload
-# twice: strap low, where it must land, and strap high, where the value must not
-# move and the locked-field interrupt must pulse. A SecureTmUnlock spare stays
-# writable with the strap up, so the deny is the lock and not a dead write path.
-# Real fuse sense, LC_PROD, no_cpu.
-#
-# Plusarg-selected variant: the module is the locked-field leaf, and
-# +secure_tm_lock selects this scenario, so the module does not end in this
-# entry name. See Naming Rules in docs/SEP_VPLAN.adoc.
+# SECURE_TM shadow-write lock: a SecureTmLock field refuses a shadow write while
+# the latched TEST_EN strap is high.
+# Plusarg-selected variant: +secure_tm_lock selects this scenario in the
+# locked-field module. See Naming Rules in docs/SEP_VPLAN.adoc.
 name = "sep_efuse_secure_tm_write_lock_test"
 module = "efuse.sep_locked_field_access_irq_path_test"
 seed = 1
@@ -248,15 +212,8 @@ target = "lsu_stub_all_live"
 args = ["+secure_tm_lock"]
 
 [[tests]]
-# Both eFuse FSMs fail closed from an illegal state. read_state_q and
-# program_state_q are two bits whose legal encodings are 2'b01 and 2'b10; no
-# frontdoor stimulus can produce 2'b00 or 2'b11, so the recovery the RTL
-# asserts on them is unreachable without injection. Forces one illegal encoding
-# for one cycle, on each FSM, for both illegal values, and grades the recovery
-# on DUT outputs: back to idle, no command to the bank, error+done set,
-# and the read-back data is not the sensed control word. A live read precedes
-# and follows
-# the injections, so the refusal is not a dead block. Real fuse sense, LC_PROD.
+# Both eFuse FSMs fail closed from an illegal state encoding. No frontdoor
+# stimulus reaches 2'b00 or 2'b11, so the test forces each for one cycle.
 name = "sep_efuse_illegal_state_fail_closed_test"
 module = "efuse.sep_efuse_illegal_state_fail_closed_test"
 seed = 1
@@ -266,21 +223,13 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# LC_STATE next state on the shadow write-1-to-set path -- the writer the
-# lifecycle stitch walk does not drive (that one programs an OTP bit and
-# re-senses). The OTP image is a t=0 deposit that survives reset, so each
-# sensed starting state is its own leaf: +lc_start selects the walk and must
-# agree with the image dv_sim_prestage.py stages for that leaf name. The test
-# reads the sensed nibble off the DUT and fails if they disagree.
-# Every cell value-checks the LC_STATE shadow word AND the LCC FEAT_CTRL decode
-# of the same state. RANDCFG: tokens and the LC_STATE[31:8] pattern come from
-# the seed; the cells within a leaf are fixed, so no contract is seed-selected.
-# Real fuse sense, no_cpu.
-#
-# The seven sep_lcc_lc_state_w1s_* entries are plusarg-selected variants of one
-# module, sep_lcc_lc_state_transition_matrix_test: +lc_start=N picks the start
-# state, so none of them ends the module name. See Naming Rules in
-# docs/SEP_VPLAN.adoc.
+# LC_STATE next state on the shadow write-1-to-set path. The OTP image is a t=0
+# deposit that survives reset, so each sensed start state is its own leaf:
+# +lc_start must agree with the image dv_sim_prestage.py stages for that leaf
+# name, and the test fails if the sensed nibble disagrees. RANDCFG: tokens and
+# LC_STATE[31:8] only; the cells within a leaf are fixed.
+# The seven sep_lcc_lc_state_w1s_* entries are plusarg-selected variants of
+# sep_lcc_lc_state_transition_matrix_test. See Naming Rules in docs/SEP_VPLAN.adoc.
 #
 # PROD: W1S no-clear, the RMA_SIP token gate, the RMA_CHIPLET ordering gate
 # (with its token gate already open), then the authorized advance to RMA_SIP.
@@ -335,10 +284,10 @@ target = "lsu_stub_all_live"
 args = ["+lc_start=6"]
 
 [[tests]]
-# PROD_END: every reachable set lands outside the named encodings, which is the
-# chapter's "the only permitted transition is to INVALID". One sensed start
-# allows one exit, so the two exits are two leaves: the ungated bit 0 here,
-# the RMA_SIP-matched bit 1 in the next entry.
+# PROD_END: every reachable set lands outside the named encodings ("the only
+# permitted transition is to INVALID", hw/sys/sep/doc/lifecycle_controller.adoc).
+# One sensed start allows one exit, so the two exits are two leaves: the ungated
+# bit 0 here, the RMA_SIP-matched bit 1 in the next entry.
 name = "sep_lcc_lc_state_w1s_prod_end_test"
 module = "lcc.sep_lcc_lc_state_transition_matrix_test"
 seed = 1

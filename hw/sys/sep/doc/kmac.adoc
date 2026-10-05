@@ -41,12 +41,12 @@ interrupts: `done`, `fifo_empty`, and `err`.
 
 The Key Manager delivers a 256-bit KMAC key as eight words per share, in the
 ifdef::backend-html5[]
-format given in xref:sep:crypto.adoc#km-key-delivery[Key Manager Key Delivery]. Software shall set `CFG_SHADOWED.sideload`
+format given in xref:sep:crypto.adoc#km-key-delivery[Key Manager Key Delivery]. In KMAC, `CFG_SHADOWED.sideload`
 endif::backend-html5[]
 ifdef::backend-pdf[]
-format given in <<km-key-delivery>>. Software shall set `CFG_SHADOWED.sideload`
+format given in <<km-key-delivery>>. In KMAC, `CFG_SHADOWED.sideload`
 endif::backend-pdf[]
-to select the delivered key; while that bit is 0 the engine uses its software
+selects the delivered key; while that bit is 0 the engine uses its software
 key registers. Unlike AES and HMAC, software does not declare a key length for
 a delivered key: the engine applies the delivered key's length automatically
 and ignores its key-length register for that operation. Beginning a keyed
@@ -55,7 +55,16 @@ error instead of producing a digest; OTBN also reports an invalid key error.
 
 Consult the
 https://opentitan.org/book/hw/ip/kmac/index.html[OpenTitan KMAC
-documentation] for the authoritative core functionality of the IP. The
+documentation] for the authoritative core functionality of the IP.
+The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-kmac[programming guidance]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-kmac[programming guidance]
+endif::backend-pdf[]
+for this block.
+The
 ifdef::backend-html5[]
 register map follows below.
 endif::backend-html5[]

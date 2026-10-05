@@ -3,10 +3,16 @@
 //
 // dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test — cross-bridge robustness scenario
 // iterating all three JTAG2AXI bridges (smc_axi, smc_otp, sep_otp).
-// A SINGLE_OP write completed with SLVERR, then two adjacent
-// system-reset pulses with seeded spacing on every bridge; the SLVERR
-// survives the resets, and recovery write and read accesses prove the
-// bridges come back clean after repeated CDC clears.
+// A SINGLE_OP write completed with SLVERR, then a system reset placed in a
+// seeded phase of the ACLK-side clear sequence a reset with TCK idle
+// restarted, then two adjacent system-reset pulses with seeded spacing on
+// every bridge; the SLVERR survives the resets, and recovery write and
+// read accesses prove the bridges come back clean after repeated CDC
+// clears. After the bridges, TRST in the one TCK cycle the TCK-side
+// four-phase receivers wait for their isolate acknowledge after a system
+// reset, and a system reset in the one system clock cycle the ACLK-side
+// receivers wait after TRST, each followed by the clear, an idle status
+// poll and a recovery write and read on every bridge.
 
 class dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test extends dtp_jtag2axi_robustness_base_test;
   `uvm_component_utils(dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test)
@@ -39,6 +45,8 @@ class dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test extends dtp_jtag2axi_
     ids.push_back("CHK-AXI-RDATA");
     ids.push_back("CHK-AXI-WMEM");
     ids.push_back(DtpJ2aCdcClearCheckId);
+    ids.push_back(DtpJ2aCdcPhaseCheckId);
+    ids.push_back(DtpJ2aAbortFsmCheckId);
     ids.push_back(DtpJ2aAbortRecoveryCheckId);
   endfunction
 

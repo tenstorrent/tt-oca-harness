@@ -44,6 +44,8 @@ localparam int unsigned SMC_CLUSTER_CORE0_WDT_CTRL_REG_OFFSET                   
 localparam int unsigned SMC_CLUSTER_CORE0_WDT_CTRL_REG_ADDR                                                       = 32'hC0000000;
 localparam int unsigned SMC_CLUSTER_CORE0_WDT_COUNT_REG_OFFSET                                                    = 32'h00000008;
 localparam int unsigned SMC_CLUSTER_CORE0_WDT_COUNT_REG_ADDR                                                      = 32'hC0000008;
+localparam int unsigned SMC_CLUSTER_CORE0_WDT_COUNT_HI_REG_OFFSET                                                 = 32'h0000000C;
+localparam int unsigned SMC_CLUSTER_CORE0_WDT_COUNT_HI_REG_ADDR                                                   = 32'hC000000C;
 localparam int unsigned SMC_CLUSTER_CORE0_WDT_SCALED_COUNT_REG_OFFSET                                             = 32'h00000010;
 localparam int unsigned SMC_CLUSTER_CORE0_WDT_SCALED_COUNT_REG_ADDR                                               = 32'hC0000010;
 localparam int unsigned SMC_CLUSTER_CORE0_WDT_FEED_REG_OFFSET                                                     = 32'h00000018;
@@ -67,6 +69,8 @@ localparam int unsigned SMC_CLUSTER_CORE1_WDT_CTRL_REG_OFFSET                   
 localparam int unsigned SMC_CLUSTER_CORE1_WDT_CTRL_REG_ADDR                                                       = 32'hC0000400;
 localparam int unsigned SMC_CLUSTER_CORE1_WDT_COUNT_REG_OFFSET                                                    = 32'h00000008;
 localparam int unsigned SMC_CLUSTER_CORE1_WDT_COUNT_REG_ADDR                                                      = 32'hC0000408;
+localparam int unsigned SMC_CLUSTER_CORE1_WDT_COUNT_HI_REG_OFFSET                                                 = 32'h0000000C;
+localparam int unsigned SMC_CLUSTER_CORE1_WDT_COUNT_HI_REG_ADDR                                                   = 32'hC000040C;
 localparam int unsigned SMC_CLUSTER_CORE1_WDT_SCALED_COUNT_REG_OFFSET                                             = 32'h00000010;
 localparam int unsigned SMC_CLUSTER_CORE1_WDT_SCALED_COUNT_REG_ADDR                                               = 32'hC0000410;
 localparam int unsigned SMC_CLUSTER_CORE1_WDT_FEED_REG_OFFSET                                                     = 32'h00000018;
@@ -90,6 +94,8 @@ localparam int unsigned SMC_CLUSTER_CORE2_WDT_CTRL_REG_OFFSET                   
 localparam int unsigned SMC_CLUSTER_CORE2_WDT_CTRL_REG_ADDR                                                       = 32'hC0000800;
 localparam int unsigned SMC_CLUSTER_CORE2_WDT_COUNT_REG_OFFSET                                                    = 32'h00000008;
 localparam int unsigned SMC_CLUSTER_CORE2_WDT_COUNT_REG_ADDR                                                      = 32'hC0000808;
+localparam int unsigned SMC_CLUSTER_CORE2_WDT_COUNT_HI_REG_OFFSET                                                 = 32'h0000000C;
+localparam int unsigned SMC_CLUSTER_CORE2_WDT_COUNT_HI_REG_ADDR                                                   = 32'hC000080C;
 localparam int unsigned SMC_CLUSTER_CORE2_WDT_SCALED_COUNT_REG_OFFSET                                             = 32'h00000010;
 localparam int unsigned SMC_CLUSTER_CORE2_WDT_SCALED_COUNT_REG_ADDR                                               = 32'hC0000810;
 localparam int unsigned SMC_CLUSTER_CORE2_WDT_FEED_REG_OFFSET                                                     = 32'h00000018;
@@ -113,6 +119,8 @@ localparam int unsigned SMC_CLUSTER_CORE3_WDT_CTRL_REG_OFFSET                   
 localparam int unsigned SMC_CLUSTER_CORE3_WDT_CTRL_REG_ADDR                                                       = 32'hC0000C00;
 localparam int unsigned SMC_CLUSTER_CORE3_WDT_COUNT_REG_OFFSET                                                    = 32'h00000008;
 localparam int unsigned SMC_CLUSTER_CORE3_WDT_COUNT_REG_ADDR                                                      = 32'hC0000C08;
+localparam int unsigned SMC_CLUSTER_CORE3_WDT_COUNT_HI_REG_OFFSET                                                 = 32'h0000000C;
+localparam int unsigned SMC_CLUSTER_CORE3_WDT_COUNT_HI_REG_ADDR                                                   = 32'hC0000C0C;
 localparam int unsigned SMC_CLUSTER_CORE3_WDT_SCALED_COUNT_REG_OFFSET                                             = 32'h00000010;
 localparam int unsigned SMC_CLUSTER_CORE3_WDT_SCALED_COUNT_REG_ADDR                                               = 32'hC0000C10;
 localparam int unsigned SMC_CLUSTER_CORE3_WDT_FEED_REG_OFFSET                                                     = 32'h00000018;
@@ -9682,15 +9690,6 @@ localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_MEM_SIZE        
 
 
 //==============================================================================
-// Memory: ecam_region
-//==============================================================================
-
-localparam int unsigned ECAM_REGION_MEM_BASE_ADDR                                                                 = 32'hC0800000;
-localparam int unsigned ECAM_REGION_MEM_SIZE                                                                      = 32'h00800000;
-
-
-
-//==============================================================================
 // Memory: mmode_region
 //==============================================================================
 
@@ -10759,6 +10758,7 @@ localparam int unsigned SMC_CLUSTER_ERROR_DEVICE_MEM_SIZE                       
 
 localparam longint unsigned WDT_CTRL_REG_DEFAULT                                                                  = 32'h00000000;
 localparam longint unsigned WDT_COUNT_REG_DEFAULT                                                                 = 32'h00000000;
+localparam longint unsigned WDT_COUNT_HI_REG_DEFAULT                                                              = 32'h00000000;
 localparam longint unsigned WDT_SCALED_COUNT_REG_DEFAULT                                                          = 32'h00000000;
 localparam longint unsigned WDT_FEED_REG_DEFAULT                                                                  = 32'h00000000;
 localparam longint unsigned WDT_KEY_REG_DEFAULT                                                                   = 32'h00000000;
@@ -11321,6 +11321,9 @@ localparam int unsigned WDT_CTRL_RSVD3_SHIFT                                    
 
 localparam int unsigned WDT_COUNT_WDOGCOUNT_MASK                                                                  = 32'h7FFFFFFF;
 localparam int unsigned WDT_COUNT_WDOGCOUNT_SHIFT                                                                 = 0;
+
+localparam int unsigned WDT_COUNT_HI_WDOGCOUNTHI_MASK                                                             = 32'hFFFFFFFF;
+localparam int unsigned WDT_COUNT_HI_WDOGCOUNTHI_SHIFT                                                            = 0;
 
 localparam int unsigned WDT_SCALED_COUNT_WDOGS_MASK                                                               = 32'hFFFF;
 localparam int unsigned WDT_SCALED_COUNT_WDOGS_SHIFT                                                              = 0;
@@ -17086,6 +17089,12 @@ typedef struct packed {
 typedef struct packed {
     logic [30:0]   wdogcount ;
 } wdt_count_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   wdogcounthi ;
+} wdt_count_hi_reg_t;
 
 
 

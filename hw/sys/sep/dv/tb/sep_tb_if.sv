@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP-local TB interface for the SV-UVM flow: the three harness clock
+// SEP-local TB interface for the SV-UVM flow: the four harness clock
 // periods, the test-sequenced primary reset and boot/run controls, the
 // fabric-release and reset observables the sequences and the scoreboard
 // read, the reset assertion counter the scoreboard predictors re-baseline
 // on, the observation probes the scenario checks read, and the AXI SVA
-// enable. Separate from the shared ocah_axi_if, which
-// carries generic AXI pins only. Sequences, checkers, and the scoreboard
+// enable. Separate from the shared ocah_axi_if, which carries generic AXI
+// pins only. Sequences, checkers, and the scoreboard
 // reach DUT-local signals only through this interface. The cocotb
 // realization exposes the same pins as tb_top ports driven from
 // sep_base_test.

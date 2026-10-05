@@ -100,14 +100,15 @@ class SepKmacCfg:
     """Single source of truth for one KMAC-engine cell: drives BOTH the DUT
     programming (CFG + KEY_LEN + PREFIX + key + message tail) AND the golden
     (env/sep_kmac_golden.kmac_family_words). ``mode`` in {sha3,shake,cshake,kmac};
-    ``sec`` is the keccak strength (128/256/512); ``outlen_bytes`` the digest size."""
+    ``sec`` is the keccak strength (a KMAC_STRENGTH key); ``outlen_bytes`` the
+    digest size."""
 
     mode: str
     sec: int
     msg_words: list[int]
     outlen_bytes: int
     key_words: list[int] | None = None  # KMAC only (len = key_bits/32)
-    key_bits: int | None = None  # KMAC only (128/256)
+    key_bits: int | None = None  # KMAC only (a KMAC_KEYLEN key)
     n: bytes = b""  # cSHAKE function-name (usually empty)
     s: bytes = b""  # cSHAKE/KMAC customization string
 
@@ -116,8 +117,8 @@ class SepKmacCfg:
         return self.mode == "kmac"
 
     def mode_val(self) -> int:
-        # KMAC is programmed as mode=cSHAKE + kmac_en=1 (kmac programmers_guide.md
-        # §"Initialization": "configure CFG_SHADOWED.mode to cSHAKE"). This is the
+        # KMAC is programmed as mode=cSHAKE + kmac_en=1 (OpenTitan KMAC Programmer's
+        # Guide, Initialization: "configure CFG_SHADOWED.mode to cSHAKE"). This is the
         # spec-correct KMAC mode. Do not program mode=SHAKE for keyed KMAC.
         return KMAC_MODE["cshake" if self.mode == "kmac" else self.mode]
 
@@ -183,6 +184,28 @@ class SepKmac(SepAxiRegDriver):
         """Run one keyed KMAC-256 over msg_words; return the 8-word digest
         (STATE share0 ^ share1). sideload=1 uses the KM key; sideload=0 uses
         sw_key written to KEY_SHARE0 (KEY_SHARE1=0)."""
+        await self._program_keyed(sideload=sideload, sw_key=sw_key)
+        await self._wr(KMAC_CMD, KMAC_CMD_START)
+        # Message words, then the 3-byte right_encode(256) tail as an exact byte
+        # string: a full 32-bit beat would absorb a stray 0x00 into the message.
+        msg = b"".join((w & 0xFFFF_FFFF).to_bytes(4, "little") for w in msg_words)
+        await self._push_msg_bytes(msg + right_encode(KMAC_KEYED_OUT_BITS))
+        await self._wr(KMAC_CMD, KMAC_CMD_PROCESS)
+        await self._wait_squeeze()
+
+        # Masking on -> digest = share0 ^ share1 (reading one share alone is a mask).
+        digest = []
+        for i in range(KMAC_DIGEST_WORDS):
+            s0 = await self._rd(KMAC_STATE_S0 + i * 4)
+            s1 = await self._rd(KMAC_STATE_S1 + i * 4)
+            digest.append((s0 ^ s1) & 0xFFFF_FFFF)
+
+        await self._wr(KMAC_CMD, KMAC_CMD_DONE)
+        await self._wait_idle("post-done")
+        return digest
+
+    async def _program_keyed(self, *, sideload: bool, sw_key: list[int] | None) -> None:
+        """KEY_LEN, PREFIX, the SW key (sideload=0 only) and CFG for keyed KMAC-256."""
         # KEY_LEN must precede CmdStart (CFG_REGWEN locks after Start).
         await self._wr(KMAC_KEY_LEN, KMAC_KEY_LEN_256)
         # PREFIX: encode_string("KMAC") || encode_string(""), remaining words zero.
@@ -204,24 +227,24 @@ class SepKmac(SepAxiRegDriver):
         await self._wr(KMAC_CFG_SHADOWED, cfg)
         await self._wait_idle("pre-start")
 
+    async def start_sideload_keyed_err(
+        self, polls: int, *, poll_cycles: int = 20
+    ) -> tuple[int, int]:
+        """Start a keyed KMAC-256 on the delivered key and poll for its error.
+
+        Returns ``(INTR_STATE, ERR_CODE)`` at the first poll that shows
+        ``kmac_err``, or at the end of the window. The engine is left in its
+        error state: the caller must not run another KMAC operation after this.
+        """
+        await self._program_keyed(sideload=True, sw_key=None)
         await self._wr(KMAC_CMD, KMAC_CMD_START)
-        # Message words, then the 3-byte right_encode(256) tail as an exact byte
-        # string: a full 32-bit beat would absorb a stray 0x00 into the message.
-        msg = b"".join((w & 0xFFFF_FFFF).to_bytes(4, "little") for w in msg_words)
-        await self._push_msg_bytes(msg + right_encode(KMAC_KEYED_OUT_BITS))
-        await self._wr(KMAC_CMD, KMAC_CMD_PROCESS)
-        await self._wait_squeeze()
-
-        # Masking on -> digest = share0 ^ share1 (reading one share alone is a mask).
-        digest = []
-        for i in range(KMAC_DIGEST_WORDS):
-            s0 = await self._rd(KMAC_STATE_S0 + i * 4)
-            s1 = await self._rd(KMAC_STATE_S1 + i * 4)
-            digest.append((s0 ^ s1) & 0xFFFF_FFFF)
-
-        await self._wr(KMAC_CMD, KMAC_CMD_DONE)
-        await self._wait_idle("post-done")
-        return digest
+        intr = 0
+        for _ in range(polls):
+            intr = await self._rd(KMAC_INTR_STATE)
+            if intr & KMAC_INTR_KMAC_ERR:
+                break
+            await ClockCycles(cocotb.top.clk_i, poll_cycles)
+        return intr, await self._rd(KMAC_ERR_CODE)
 
     async def _write_prefix(self, prefix: bytes) -> None:
         """Program PREFIX_0..10 from encode_string(N)||encode_string(S) bytes (LE

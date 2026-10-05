@@ -12,8 +12,7 @@ SEP_BOOTROM_DIR := $(abspath $(FW_DIR)/../../bootrom/prod)
 include $(FW_DIR)/../../../../common/dv/fw/preamble.mk
 
 # Runtime sources. Tests supply their own main() and link against libsep.a.
-# fw_build_id.c is outside drivers/. Keep it explicit so the same source
-# inventory works with the companion checkout.
+# fw_build_id.c is outside drivers/, so it is listed explicitly.
 FW_C_SRCS   := $(wildcard $(FW_DIR)/drivers/*.c) $(FW_DIR)/fw_build_id.c
 FW_ASM_SRCS := $(wildcard $(FW_DIR)/startup/*.s $(FW_DIR)/startup/*.S $(FW_DIR)/drivers/*.S)
 FW_INCLUDES := -I$(FW_DIR)/include
@@ -38,10 +37,10 @@ FW_TEST_COMMON_SRCS := $(FW_DIR)/tests/common/sha256.c
 # hardware reports against the one computed at build time, so the image has to
 # be assembled here rather than checked in. Each app becomes a generated
 # <app>_otbn.c (memory arrays + CRC) and <app>_otbn.h (DMEM symbol addresses)
-# that the test links against. Upstream drives this from one Makefile per test;
-# this tree builds every test from the shared engine, so the app inventory
-# lives here and each app is produced by a recursive make on common_otbn's
-# otbn_app.mk - the same entry point upstream uses for its own multi-app test.
+# that the test links against. OpenTitan drives this from one Makefile per
+# test. This tree builds every test from the shared engine, so the app
+# inventory lives here. A recursive make on common_otbn/otbn_app.mk produces
+# each app.
 FW_BUILD_DIR    ?= $(FW_DIR)/build
 
 # Build identity. fw_src_digest.py hashes every source directory the images can
@@ -60,7 +59,7 @@ FW_INCLUDES += -I$(FW_BUILD_DIR)
 OTBN_APP_MK     := $(FW_DIR)/tests/common_otbn/otbn_app.mk
 OTBN_BUILD_ROOT := $(FW_BUILD_DIR)/otbn
 
-# The RSA app remains open because the production boot ROM consumes it.
+# The production boot ROM also links the RSA-3072 app (target dv-fw-otbn-apps).
 OTBN_APP_DIR_rsa_3072_app          := otbn_rsa_3072_verify_test
 OTBN_APP_SRCS_rsa_3072_app         := gcd.s modexp.s montmul.s mul.s rsa_keygen.s \
                                       rsa_modinv_f4.s rsa_primality.s run_rsa_mem.s run_rsa.s

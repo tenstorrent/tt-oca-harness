@@ -107,3 +107,13 @@ is synchronised into the CPU clock domain for software reads, and software may
 write the CSR to reload the counter, after which it resumes counting from the
 loaded value. Both subsystems share the same implementation
 (`prim_refclk_count_w_cdc`) and behave identically.
+
+A reload crosses into the reference-clock domain through a one-entry
+asynchronous FIFO, and a second write issued before the first has crossed is
+dropped without an error indication. The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-smc-reference-counter[reload sequence].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-reference-counter[reload sequence].
+endif::backend-pdf[]

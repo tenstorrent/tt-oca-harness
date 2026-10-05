@@ -6,16 +6,17 @@ Companion to :mod:`sep_manifest_mutate`, which owns the manifest body. Everythin
 concerns what the manifest points AT -- the payload TOC, the images it lists, and
 the two digests plus one signature that seal the pair together.
 
-WHAT SEALING MEANS HERE. Four things have to agree or the ROM rejects the slot
+WHAT SEALING MEANS HERE. Three seals have to hold or the ROM rejects the slot
 before any planted defect is reached:
 
   1. each TOC entry's ``hash`` is SHA-256 over ``payload[offset:offset+length]``;
-  2. the manifest's ``payload_hash`` covers the stored bytes the consumer
-     authenticates first -- the whole ciphertext when encrypted, the TOC bytes
-     otherwise, which is what ``payload_hashed_length`` spans in each case;
-  2b. the manifest's ``payload_hash_chain`` is the iterative chain
-     ``h = SHA-256(TOC bytes)``, then ``h = SHA-256(h || SHA-256(image))`` per
-     entry, which anchors the recovered plaintext back to the manifest;
+  2. the two payload digests:
+     a. the manifest's ``payload_hash`` covers the stored bytes the consumer
+        authenticates first -- the whole ciphertext when encrypted, the TOC bytes
+        otherwise, which is what ``payload_hashed_length`` spans in each case;
+     b. the manifest's ``payload_hash_chain`` is the iterative chain
+        ``h = SHA-256(TOC bytes)``, then ``h = SHA-256(h || SHA-256(image))`` per
+        entry, which anchors the recovered plaintext back to the manifest;
   3. the manifest's ``signature_classic`` is RSA-3072 PKCS#1-v1.5-SHA256 over the
      signed region, and ``manifest_hash`` is SHA-256 of that same region.
 
@@ -28,7 +29,7 @@ against ``manifest_hash`` without re-reading the region, and why
 :func:`verify_sealed` asserts all three, and :func:`reseal` re-establishes them in
 that order -- innermost first, because each outer digest covers the one inside it.
 
-RE-SIGNING IS POSSIBLE ON THIS TREE. The six ROM signing keys live in
+RE-SIGNING. The six ROM test signing keys live in
 ``bootrom/prod/tests/signing_keys/rsa_private_key.rom_key{0..5}.pem`` and each
 one's modulus hashes to the matching ``digest_rom_key<N>`` in the generated
 ``key_digests.c`` -- checked by :func:`verify_signing_key`. So a mutation inside
@@ -38,12 +39,10 @@ broken seal.
 
 BOTH PAYLOAD DIGESTS COME FROM THE PACKER. ``oca.payload.compute_payload_hashes``
 computes them, so this module does not restate the chain construction and cannot
-drift from it. A digest this layer computed itself would be a second opinion on
-something the packer already owns, and a reseal that got it wrong produces an
-image the ROM rejects for a field :func:`verify_sealed` called sound.
+drift from it.
 
-The signer is stdlib-only, by necessity rather than preference: the DV virtualenv
-has no ``cryptography``. It is PKCS#1 v1.5 over SHA-256 with a 384-byte modulus,
+The signer is stdlib-only: the DV virtualenv has no ``cryptography``. It is
+PKCS#1 v1.5 over SHA-256 with a 384-byte modulus,
 which is the one signature type this ROM accepts (SEP-ROM-SB-090).
 
 Run ``python3 sep_payload_mutate.py`` to check every packed image against all three
@@ -63,6 +62,8 @@ if __package__ in (None, ""):  # run directly, not imported as env.sep_payload_m
     import sys
 
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from sep_reg_meta import sym
 
 from env import sep_aes_golden as aes
 from env import sep_manifest_mutate as mm
@@ -436,17 +437,13 @@ def slot_signing_key(buf, slot: str) -> tuple[int, int, int]:
 
 
 def signing_key_for_slot(buf, slot: str) -> int:
-    """The ROM key slot whose private key signed this slot, found from the modulus.
-
-    Not from ``public_key_sel``. A manifest names the anchor the CONSUMER should
-    check it against, which is not always a ROM slot: a fused-key manifest selects
-    slot 16 or 17, where the anchor is a digest in a chiplet fuse and no private
-    key exists in the tree. The modulus the slot carries is what a re-seal has to
-    sign with, and it is a ROM key in every image this tree packs.
-
-    So this matches the embedded modulus against the ROM signing keys rather than
-    trusting the selector, which is correct for both: for a ROM-slot manifest the
-    two agree, and for a fused-key manifest only this one has an answer.
+    """The ROM key slot whose private key signed this slot, found from the
+    modulus rather than from ``public_key_sel``. A manifest names the anchor the
+    consumer checks it against, which is not always a ROM slot: a fused-key
+    manifest selects slot 16 or 17, where the anchor is a digest in a chiplet
+    fuse and no private key exists in the tree. The modulus the slot carries is
+    what a re-seal has to sign with, and it is a ROM key in every image this
+    tree packs.
     """
     modulus = mm.public_key_modulus(buf, slot)
     digest = hashlib.sha256(modulus).digest()
@@ -608,7 +605,7 @@ TOC_OFF_MAJOR_VERSION = 4
 TOC_MAJOR_VERSION = 1
 TOC_MAX_IMAGE_COUNT = 256
 IMAGE_TYPE_SEP_BL2 = b"OCAHSEP BLSTAGE2"
-SEP_SRAM_BASE = 0x1000_0000
+SEP_SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 SEP_SRAM_SIZE = 0x0004_0000
 
 
@@ -810,7 +807,7 @@ def _seal_plaintext_toc(
 
 
 def _clear_toc(buf: bytes | bytearray, slot: str) -> tuple[int, bytearray]:
-    """Compatibility name returning the plaintext TOC for either storage form."""
+    """Return ``(payload_base, plaintext payload)`` for either storage form."""
     return _payload_plaintext(buf, slot)
 
 
@@ -1222,7 +1219,7 @@ def _selftest_stimulus() -> None:
     enc_buf = bytearray(Path(BUILD_DIR / "oca_encrypted_boot.bin").read_bytes())
     enc_toc_plen = _u64(_rom_plaintext(enc_buf, "primary"), TOC_OFF_PAYLOAD_LENGTH)
     set_toc_payload_length(enc_buf, "primary", enc_toc_plen - 8)
-    assert spec_rule_violations(enc_buf, "primary") == ["out_of_bounds"]
+    assert spec_rule_violations(enc_buf, "primary") == ["out_of_bounds", "toc_plen_mismatch"]
 
     multi_golden = Path(BUILD_DIR / "oca_multi_image_boot.bin").read_bytes()
     clear_toc_plen = _u64(

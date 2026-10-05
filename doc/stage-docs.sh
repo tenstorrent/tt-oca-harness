@@ -30,7 +30,13 @@ COMMON_ASSETS="$DOC/trm/assets"
 AOU_DOC="$ROOT/vendor/tenstorrent/aou/upstream/DOC/MAS"
 AOU_INTEGRATION_GUIDE="$ROOT/vendor/tenstorrent/aou/upstream/DOC/integration_guide"
 
-SUBSYSTEMS="smc sep dtp smc/bootrom/prod sep/bootrom/prod"
+SUBSYSTEMS="smc sep dtp"
+# The ROM manuals are Programmer's Guide appendices.
+if [ "$(basename "$PRODUCT")" = programmer ]; then
+  SUBSYSTEMS="$SUBSYSTEMS smc/bootrom/prod sep/bootrom/prod"
+else
+  rm -rf "${MOD:?}/smc-bootrom-prod" "${MOD:?}/sep-bootrom-prod"
+fi
 # The SMU chapter links into the TRM's ROOT module. Other products retain
 # their existing subsystem pages and the independent ROOT SMU port partial.
 if [ "${OCAH_DOC_PRODUCT_INCLUDE_SMU:-0}" = "1" ]; then
@@ -178,7 +184,7 @@ mkdir -p "$MOD/aou/pages" "$MOD/aou/partials" "$MOD/aou/assets/images"
 case "$(basename "$PRODUCT")" in
 trm)
   mkdir -p "$MOD/aou/partials/pdf"
-  for page in overview architecture interrupts-errors ppa-appendices software-operation; do
+  for page in overview architecture interrupts-errors ppa-appendices; do
     sed -E 's/(xref:(figure|table)-[0-9]+)\[(Figure|Table) [0-9]+\]/\1[]/g' "$AOU_DOC/$page.adoc" \
       >"$MOD/aou/partials/$page.adoc"
     # The PDF inherits book numbering instead of the standalone specification's numbers.
@@ -192,7 +198,7 @@ trm)
     >"$MOD/aou/partials/records-of-changes.adoc"
   sed -n '/^\[\[appendix-b-referenced-documents\]\]/,$p' "$AOU_DOC/ppa-appendices.adoc" \
     >"$MOD/aou/partials/referenced-documents.adoc"
-  aou_pages="overview architecture interrupts-errors ppa-appendices records-of-changes referenced-documents software-operation"
+  aou_pages="overview architecture interrupts-errors ppa-appendices records-of-changes referenced-documents"
   for page in $aou_pages; do
     # Published fragments land beside the link to their owning topic page.
     {
@@ -208,12 +214,35 @@ trm)
         "$MOD/aou/partials/$page.adoc"
     done
   ) "$MOD"/aou/partials/{overview,architecture,interrupts-errors,ppa-appendices,records-of-changes,referenced-documents}.adoc
+  # The software operation section is published by the Programmer's Guide.
+  # The upstream activation links name a numbered heading ID that the
+  # section does not define.
+  aou_pg_links() {
+    local id
+    for id in $(sed -nE 's/^\[\[([^],]+)\]\]$/\1/p' "$AOU_DOC/software-operation.adoc"); do
+      printf 's@xref:(#|ocah-docs:ROOT:aou-software-operation\\.adoc#|\\{aou-software-xref\\}#)%s\\[@%s#%s[@g\n' \
+        "$id" "$1" "$id"
+    done
+  }
+  sed -i -E 's/#aou-73-activation-deactivation-flow\[/#aou-activation-deactivation-flow[/g' \
+    "$MOD"/aou/partials/interrupts-errors.adoc "$MOD"/aou/partials/pdf/interrupts-errors.adoc
+  sed -i -E -f <(aou_pg_links 'xref:ocah-programmer-guide::index.adoc') "$MOD"/aou/partials/*.adoc
+  sed -i -E -f <(aou_pg_links 'https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html') \
+    "$MOD"/aou/partials/pdf/*.adoc
   ;;
 integrator)
   cp -f "$AOU_INTEGRATION_GUIDE/integrator.adoc" "$MOD/aou/partials/"
   ;;
 programmer)
-  cp -f "$AOU_DOC/software-operation.adoc" "$MOD/aou/partials/"
+  mkdir -p $MOD/aou/partials $MOD/aou/partials/pdf
+  # The guide publishes the software operation section alone, so its links into
+  # the architecture chapter resolve in the Technical Reference Manual.
+  sed -E \
+    -e "s/Appendix C\./AoU/" \
+    -e "s@xref:\\{aou-architecture-xref\\}#@xref:ocah-docs:ROOT:aou-architecture.adoc#@g" \
+    "$AOU_DOC/software-operation.adoc" \
+    >"$MOD/aou/partials/software-operation.adoc"
+  cp $MOD/aou/partials/software-operation.adoc $MOD/aou/partials/pdf/
   ;;
 esac
 
@@ -244,7 +273,7 @@ cross_trigger_network cross_trigger_port cross_trigger_matrix
 avsbus_controller axi_lite_mailbox_unit efuse gpio i2c system_timer_octs
 telemetry_receiver uart_16550 log_engine i3ccore_wrap
 drbg entropy_source key_manager scrambler"
-IP_FRAGMENTS="architecture.adoc interface.adoc memmap.adoc programming.adoc firmware.adoc"
+IP_FRAGMENTS="architecture.adoc interface.adoc memmap.adoc firmware.adoc"
 for ip in $IP_PAGE_OWNERS; do
   src="$MOD/ip/pages/$ip/doc"
   dst="$MOD/ip/partials/$ip/doc"

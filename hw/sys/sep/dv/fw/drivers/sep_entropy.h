@@ -11,8 +11,8 @@
 //   2. sep_entropy_start_generators()-- enable the ring-osc generators.
 //   3. (allow time for the first seed to accumulate)
 //   4. sep_entropy_enable_edn()      -- PHASE-B: lock ESRC config, enable EDN last.
-// Under Verilator the ESRC ring oscillators do not self-oscillate, so the tb-side
-// +esrc_noise_force supplies the raw noise; the DRBG/CSRNG/EDN math below is real.
+// Under Verilator the ESRC ring oscillators do not self-oscillate, so
+// +esrc_noise_force supplies the raw noise.
 // CSRNG/EDN sit behind a 64-bit lane adapter; an aligned 32-bit store at the
 // register byte address lands on the correct lane.
 // Addresses and field masks come from generated sep_addr.h / entropy_source.h /
@@ -69,10 +69,8 @@
 #define SEP_CMD_RESEED 0x00000902u
 #define SEP_CMD_GENERATE_GLEN32 0x00020903u
 
-// DECORRELATOR_CTRL.SAMPLE_CLK_DIV is bits [31:12] and division = field+1, so
-// div64 is 63<<12. 63 in the low bits lands 0x3F0 in the field instead --
-// divide-by-1009, 16x slower than the register's own reset value, which pushes
-// one 2048-sample health window past any reasonable simulation budget.
+// DECORRELATOR_CTRL.SAMPLE_CLK_DIV is bits [31:12] and division = field + 1,
+// so divide-by-64 is 63 << 12. This is also the field reset value.
 #define SEP_DECOR_CTRL_DIV64 \
     (63u << ENTROPY_SOURCE__DECORRELATOR_CTRL__SAMPLE_CLK_DIV_bp) // 0x0003F000
 
@@ -85,7 +83,7 @@
 #define SEP_MAIN_SM_ALERT ENTROPY_SOURCE__MAIN_SM_STATUS__ALERT_bm
 
 // One boot health-test window is 2048 samples at the div64 rate, ~131k core
-// cycles; each poll here is an uncached AXI read, so a few thousand covers it.
+// cycles; each poll here is an uncached AXI read, so 20000 polls cover it.
 #define SEP_BOOT_PHASE_POLL_ITERS 20000u
 
 #define SEP_ENTROPY_OK 0
@@ -154,16 +152,14 @@ static inline int sep_entropy_wait_boot_phase(void) {
 
 // PHASE-B: enable EDN last (auto+boot). Call after a seed has accumulated; EDN
 // then auto-issues Instantiate+Generate and streams genbits to the KM. Lock the
-// now-proven ESRC configuration before exposing entropy to consumers.
+// ESRC configuration before exposing entropy to consumers.
 static inline void sep_entropy_enable_edn(void) {
     sep_entropy_wr(SEP_ESRC_FIPS_LOCK, ENTROPY_SOURCE__FIPS_LOCK__LOCK_bm);
     sep_entropy_wr(SEP_EDN_CTRL, SEP_EDN_CTRL_AUTO);
 }
 
-// Full bring-up, for a test that needs entropy to exist rather than one that is
-// testing the bring-up itself. Idempotent by inspection: if the boot gate is
-// already open the stack is running, and re-running PHASE-A would pulse
-// CTRL.RESET and tear down a source a consumer may already be drawing from.
+// Full bring-up for an entropy consumer. If the boot gate is open, return
+// without pulsing CTRL.RESET, which would tear down a source in use.
 static inline int sep_entropy_bringup(void) {
     if (sep_entropy_boot_phase_done()) {
         sep_entropy_enable_edn();

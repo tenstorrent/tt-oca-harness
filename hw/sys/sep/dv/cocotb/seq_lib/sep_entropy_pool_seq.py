@@ -3,9 +3,9 @@
 """Entropy-pool aperture driver (sep_entropy_pool_aperture_test).
 
 64-bit AXI-Lite drain of the fabric Entropy Pool target
-(``memory_map.adoc`` EPOOL). Live offsets: status ``0x00``, irq-cause
-``0x08``, pop ``0x10``; every other in-window offset and every write is
-SLVERR (``fabric.adoc``).
+(``hw/sys/sep/doc/memory_map.adoc`` EPOOL). Live offsets: status ``0x00``,
+irq-cause ``0x08``, pop ``0x10``; every other in-window offset and every write
+is SLVERR (``hw/sys/sep/doc/fabric.adoc``).
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_esrc_bringup_seq import EDN_CTRL, EDN_CTRL_AUTO, ESRC_CTRL
 
-# Aperture from memory_map.adoc EPOOL. Occupancy and pool_low are graded
+# Aperture from hw/sys/sep/doc/memory_map.adoc EPOOL. Occupancy and pool_low are graded
 # from the live status / aggregator flags, not from a FIFO watermark.
 POOL_BASE = window("EPOOL").base
 POOL_STATUS = sym("ENTROPY_POOL_STATUS_REG_ADDR")
@@ -77,7 +77,7 @@ _ALIAS_UNMAPPED = (
     0x8000,  # -> status  0x00 if [14:0] only
 )
 # Upper 32-bit word of each live register.
-# hw/sys/sep/regs/include/sep_entropy_pool.rdl declares every register
+# hw/sys/sep/regs/blocks/sep_entropy_pool/sep_entropy_pool.rdl declares every register
 # `regwidth = 64; accesswidth = 64;`, so a 32-bit beat at +4 is not a legal
 # access to that register and must be refused without a side effect.
 HALF_UPPER = (
@@ -191,7 +191,7 @@ def _selftest() -> None:
     assert cfg.alias_offs == _ALIAS_UNMAPPED
     assert cfg.unmapped_offs == (0x18, 0x40, 0x80)
     assert 1 <= cfg.extra_pops <= 4
-    # The three pinned testlist seeds must all still walk the alias set.
+    # Each of the three pinned testlist seeds walks the full alias set.
     for pinned in (1, 2, 3):
         pinned_cfg = SepEntropyPoolCfg(pinned)
         assert pinned_cfg.alias_offs == _ALIAS_UNMAPPED

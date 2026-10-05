@@ -98,7 +98,7 @@ class sep_firmware_demotion_bl1_disable_secure_prod_test(
             f"Any other triple is a different row of the decision table measured "
             f"under this testcase's name"
         )
-        assert secure_boot & (1 << mm.SECURE_BOOT_ENFORCED_BIT), (
+        assert secure_boot & mm.SECURE_BOOT_ENFORCED_BIT, (
             f"primary secure_boot_control is 0x{secure_boot:08x} and does not "
             f"request signed OCA secure boot"
         )

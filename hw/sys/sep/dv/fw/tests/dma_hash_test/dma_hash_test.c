@@ -55,9 +55,8 @@ void __attribute__((interrupt("machine"))) dma_isr(void) {
 #define SHA384_DIGEST_WORDS 12
 #define SHA384_DIGEST_BYTES 48
 
-// FIPS 180-4 two-block SHA-2 test message and its published digests. Chosen
-// over the one-block "abc" vector because the DMA transfers whole 4-byte words,
-// and 56 is a multiple of 4 where 3 is not.
+// FIPS 180-4 two-block SHA-2 test message and published digests. The DMA
+// transfers whole 4-byte words, so the message length is a multiple of 4.
 static const char kFips1804Msg[] = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
 #define FIPS_MSG_LEN 56
 static const char kFips1804Sha384Hex[] =
@@ -96,7 +95,6 @@ static void digest_to_hex(const uint8_t *digest, size_t n, char *out) {
 }
 
 int main(void) {
-    // Initialize outbound filter to allow testpass mailbox access
     sep_outbound_filter_init();
 
     pic_register_handler(EXT_INT_DMA_DONE, dma_isr);
@@ -139,7 +137,7 @@ int main(void) {
     WRITE_REG(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, range_valid.w);
     printf("  RANGE_VALID = 0x%x\n", READ_REG(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR));
 
-    // The source data lives in SRAM rather than on the stack.
+    // Stage the source in SRAM, outside the DCCM destination region.
     printf("  Generating random data in SRAM...\n");
     volatile uint32_t *src_ptr = (volatile uint32_t *)SEP_TOP_SEP_SRAM_BASE_ADDR;
     for (int i = 0; i < TEST_DATA_SIZE / 4; i++) {
@@ -299,7 +297,7 @@ int main(void) {
     // Second pass: inline SHA-384 over the FIPS 180-4 test message.
     printf("\n=== Secure DMA SHA-384 (FIPS 180-4 vector) ===\n");
 
-    // Stage the fixed message in SRAM, where the SHA-256 pass left random data.
+    // Stage the source in SRAM, outside the DCCM region written by the copy.
     volatile uint8_t *msg_ptr = (volatile uint8_t *)SEP_TOP_SEP_SRAM_BASE_ADDR;
     for (int i = 0; i < FIPS_MSG_LEN; i++) {
         msg_ptr[i] = (uint8_t)kFips1804Msg[i];
@@ -385,21 +383,37 @@ int main(void) {
     WRITE_REG(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, FIPS_MSG_LEN);
     WRITE_REG(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, FIPS_CHUNK_LEN);
 
+    // mc_chunks counts only polls that ended on CHUNK_DONE or DONE; a poll that
+    // runs out of budget is a failure and is never counted as a chunk. The poll
+    // budget matches the other DMA polls in this test: 100000 status reads stay
+    // inside the testbench run budget, so an expired poll reports its ERROR line
+    // instead of ending as a run-cycle timeout.
     uint32_t mc_status = 0;
     uint32_t mc_chunks = 0;
+    uint32_t mc_chunk_done = 0;
+    int mc_timed_out = 0;
     uint32_t mc_initial = SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm;
     for (uint32_t guard = 0; guard < 16u; guard++) {
         secure_dma__CONTROL_t mc_ctrl = {.f = {.OPCODE = OPCODE_SHA256, .DIGEST_SWAP = 1, .GO = 1}};
         WRITE_REG(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, mc_ctrl.w | mc_initial);
 
-        int t = 200000;
+        int t = 100000;
         do {
             mc_status = READ_REG(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
         } while (!(mc_status & (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm |
                                 SECURE_DMA__STATUS__CHUNK_DONE_bm)) &&
                  --t > 0);
         if (mc_status & SECURE_DMA__STATUS__ERROR_bm) break;
+        if (!(mc_status & (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__CHUNK_DONE_bm))) {
+            printf("  ERROR: multi-chunk SHA-256 poll %u timed out with no CHUNK_DONE or DONE "
+                   "(status 0x%x)\n",
+                   (unsigned)mc_chunks, mc_status);
+            errors++;
+            mc_timed_out = 1;
+            break;
+        }
         mc_chunks++;
+        if (mc_status & SECURE_DMA__STATUS__CHUNK_DONE_bm) mc_chunk_done++;
         if (mc_status & SECURE_DMA__STATUS__DONE_bm) break;
         // Clear chunk_done and continue the same transfer.
         WRITE_REG(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, SECURE_DMA__STATUS__CHUNK_DONE_bm);
@@ -407,7 +421,9 @@ int main(void) {
     }
 
     uint32_t mc_err = READ_REG(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
-    if (!(mc_status & SECURE_DMA__STATUS__DONE_bm) || mc_err != 0) {
+    if (mc_timed_out) {
+        // Already scored above.
+    } else if (!(mc_status & SECURE_DMA__STATUS__DONE_bm) || mc_err != 0) {
         printf("  ERROR: multi-chunk SHA-256 did not complete (status 0x%x err 0x%x "
                "chunks %u)\n",
                mc_status, mc_err, (unsigned)mc_chunks);
@@ -426,7 +442,8 @@ int main(void) {
         }
         char mc_hex[2 * SHA256_DIGEST_BYTES + 1];
         digest_to_hex((const uint8_t *)hw256, SHA256_DIGEST_BYTES, mc_hex);
-        printf("  Chunks        = %u\n", (unsigned)mc_chunks);
+        printf("  Chunks        = %u (CHUNK_DONE seen %u)\n", (unsigned)mc_chunks,
+               (unsigned)mc_chunk_done);
         printf("  Computed (HW) = %s\n", mc_hex);
         printf("  Expected (NIST) = %s\n", kFips1804Sha256Hex);
         if (strcmp(mc_hex, kFips1804Sha256Hex) != 0) {
@@ -519,7 +536,6 @@ int main(void) {
         test_fail(errors);
     }
 
-    // Keep CPU alive after signaling completion.
     while (1) {
         __asm__("wfi");
     }

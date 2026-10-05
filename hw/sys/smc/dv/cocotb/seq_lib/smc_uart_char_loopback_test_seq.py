@@ -27,9 +27,9 @@ port and checks the registers that move, on all four wrappers:
   names (`0x2`), and once RBR is drained it has to report no interrupt pending
   again. `IIR.INTERRUPT_PENDING` is active low, which is why the pending case
   is the 0.
-* **Modem status under loopback.** `hw/ip/uart/uart_16550/doc/programming.adoc`
-  says that with `MCR.LOOP` set "MSR is fed internally from the MCR bits (CTS
-  from RTS, DSR from DTR, RI from OUT1, DCD from OUT2)", so raising the four
+* **Modem status under loopback.** `doc/programmer/src/smc-programming.adoc`
+  says that with `MCR.LOOP` set "`MSR` is fed from the `MCR` bits" (CTS from
+  RTS, DSR from DTR, RI from OUT1, DCD from OUT2), so raising the four
   MCR outputs must raise exactly those four MSR levels, and dropping them must
   clear them. The sticky delta bits separate on the same two legs: DCTS, DDSR
   and DDCD set on either edge, while TERI sets only when RI goes from 1 to 0,

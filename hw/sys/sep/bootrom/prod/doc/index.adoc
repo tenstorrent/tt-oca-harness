@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= SEP Production ROM
+[[sep-boot-rom]]
+= SEP Boot ROM
 :toc: left
 :toclevels: 3
 :sectnums:
@@ -50,8 +51,15 @@ Successful BL0 execution does not return and does not report a BL0 pass.
 verdict. A terminal BL0 error records its status and parks the hart in `wfi`
 until reset.
 
-xref:rom.adoc[SEP ROM Boot Architecture] specifies the complete boot flow
-and its requirements.
+The
+ifdef::backend-html5[]
+xref:ocah-docs:sep:rom.adoc#sep-rom[SEP Boot ROM chapter]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/sep/rom.html#sep-rom[SEP Boot ROM chapter]
+endif::backend-pdf[]
+of the Technical Reference Manual specifies the boot flow requirements that
+this firmware implements.
 
 include::boot-flow.adoc[]
 

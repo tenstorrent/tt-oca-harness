@@ -1,47 +1,46 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2024-2026 Tenstorrent USA, Inc.
-#
-# sep_entropy_golden.py
-#
-# End-to-end SEP entropy-datapath golden FACADE. Chains the five self-tested
-# stage models into one stream-oriented model that a
-# cocotb scoreboard can compare against DUT probes:
-#
-#   noise (12b/cyc)  ->  decorrelator (96b/decor-valid)
-#                     ->  BIW compress (32b/decor-valid)
-#                     ->  SHA-256 conditioner (whitening: 16:1 -> 8x32b digest)
-#                     ->  seed accumulate (12 words -> 384b es_bits)
-#                     ->  CTR_DRBG instantiate+generate (glen x 128b genbits)
-#                     ->  EDN->KM slice (each 128b block -> 4x32b beats)
-#
-# This module REUSES the stage models verbatim; it does not reimplement them:
-#   EntropyNoiseModel      (standalone self-test noise source)
-#   EntropyDecorrelatorModel (12-lane 29b SR decorrelator)
-#   EntropyBiwModel        (12 bytes -> 32b BIW word)
-#   EntropySha256Model     (16x32b -> 8x32b digest)
-#   sep_ctr_drbg_golden.SepCtrDrbgGolden (AES-256 no-df CTR_DRBG)
-#
-# In simulation, SepDrbgScoreboard does not use these internal sources for the
-# DUT/golden correlation. It drives tb_top.esrc_noise_ext_i directly and calls
-# feed_noise() / feed_decor_sample() from DUT-observed strobes, so the DUT and
-# golden consume the same externally-driven raw-noise sequence.
-#
-# Inter-stage framing (matches the reference scoreboard):
-#   - sample_clk_div=7 (/8): each lane emits a byte every 8 cycles; the 12 lane
-#     bytes pack into a 96b decor word (lane0 -> [7:0]) on a decor-valid event.
-#   - one BIW 32b word per decor-valid event (out[0] -> word[31:24]).
-#   - whitening ON: 16 BIW words -> one SHA block -> 8x32b digest words.
-#   - seed: accumulate 12 consecutive 32b compressor-output words (post-SHA when
-#     whitening) -> 384b es_bits (word0 -> bits[31:0]). ``ingress_skip`` words are
-#     dropped before seed accumulation. It defaults to 0: the seed adapter takes
-#     one 32-bit word per valid cycle directly from the entropy source, with no
-#     upstream routing or distribution FIFO (hw/ip/drbg/doc/architecture.adoc,
-#     Seed Assembly), so no word is absorbed ahead of the packer.
-#   - CTR_DRBG: first 384b seed -> instantiate; generate glen 128b blocks.
-#   - EDN->KM: each 128b block -> 4x32b beats, LSW-first
-#     beat0=block[31:0], beat1=[63:32], beat2=[95:64], beat3=[127:96].
-#     (Documented; scoreboard confirms against the DUT probe and may flip to
-#     MSW-first via ``km_word_order``.)
+"""End-to-end SEP entropy-datapath golden facade.
+
+Chains the five self-tested stage models into one stream-oriented model that a
+cocotb scoreboard can compare against DUT probes:
+
+  noise (12b/cyc)  ->  decorrelator (96b/decor-valid)
+                    ->  BIW compress (32b/decor-valid)
+                    ->  SHA-256 conditioner (whitening: 16:1 -> 8x32b digest)
+                    ->  seed accumulate (12 words -> 384b es_bits)
+                    ->  CTR_DRBG instantiate+generate (glen x 128b genbits)
+                    ->  EDN->KM slice (each 128b block -> 4x32b beats)
+
+This module REUSES the stage models verbatim; it does not reimplement them:
+  EntropyNoiseModel      (standalone self-test noise source)
+  EntropyDecorrelatorModel (12-lane 29b SR decorrelator)
+  EntropyBiwModel        (12 bytes -> 32b BIW word)
+  EntropySha256Model     (16x32b -> 8x32b digest)
+  sep_ctr_drbg_golden.SepCtrDrbgGolden (AES-256 no-df CTR_DRBG)
+
+In simulation, SepDrbgScoreboard does not use these internal sources for the
+DUT/golden correlation. It drives tb_top.esrc_noise_ext_i directly and calls
+feed_noise() / feed_decor_sample() from DUT-observed strobes, so the DUT and
+golden consume the same externally-driven raw-noise sequence.
+
+Inter-stage framing (matches ``SepDrbgScoreboard``):
+  - sample_clk_div=7 (/8): each lane emits a byte every 8 cycles; the 12 lane
+    bytes pack into a 96b decor word (lane0 -> [7:0]) on a decor-valid event.
+  - one BIW 32b word per decor-valid event (out[0] -> word[31:24]).
+  - whitening ON: 16 BIW words -> one SHA block -> 8x32b digest words.
+  - seed: accumulate 12 consecutive 32b compressor-output words (post-SHA when
+    whitening) -> 384b es_bits (word0 -> bits[31:0]). ``ingress_skip`` words are
+    dropped before seed accumulation. It defaults to 0: the seed adapter takes
+    one 32-bit word per valid cycle directly from the entropy source, with no
+    upstream routing or distribution FIFO (hw/ip/drbg/doc/architecture.adoc,
+    Seed Assembly), so no word is absorbed ahead of the packer.
+  - CTR_DRBG: first 384b seed -> instantiate; generate glen 128b blocks.
+  - EDN->KM: each 128b block -> 4x32b beats, LSW-first
+    beat0=block[31:0], beat1=[63:32], beat2=[95:64], beat3=[127:96].
+    (Documented; scoreboard confirms against the DUT probe and may flip to
+    MSW-first via ``km_word_order``.)
+"""
 
 from collections import deque
 
@@ -305,8 +304,8 @@ class SepEntropyGolden:
 
 
 # ===========================================================================
-# Offline self-test (plain python3, NO simulator):
-#   cd .../dv/cocotb/env && python3 sep_entropy_golden.py
+# Offline self-test (no simulator), from hw/sys/sep/dv:
+#   python3 cocotb/env/run_golden_selftests.py
 # ===========================================================================
 if __name__ == "__main__":
     GLEN = 32
@@ -335,11 +334,11 @@ if __name__ == "__main__":
         g.step_cycle()
     assert g.n_seeds >= TARGET_SEEDS, f"only {g.n_seeds} seeds after {g.cycle} cycles"
 
-    # ----- (a) decor-valid cadence is /8 -----
+    # ----- (a) decor-valid rate is /8 -----
     # First valid at cycle 8 (init clk_divider=7 -> 7 decrements then sample),
     # every 8 thereafter. We count: total decor-valids over elapsed cycles.
     assert g.n_decor_valid >= 1, "no decor-valid events"
-    # Timing-cadence proof on a fresh model: collect the cycle indices of valids.
+    # Timing-rate proof on a fresh model: collect the cycle indices of valids.
     probe = SepEntropyGolden()
     valids = []
     for c in range(1, 200):

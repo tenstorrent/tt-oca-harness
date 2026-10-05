@@ -247,6 +247,120 @@ args = [
 ]
 
 [[tests]]
+# PROD refuses an unsigned manifest that still names the classical signature
+# class (secure_boot_control = 0x02): the ROM's key authorization refuses it
+# with PUBK_NO_SIGNATURE on both slots. Otherwise as
+# sep_firmware_cntl_secure_boot_flow_test.
+name = "sep_firmware_sboot_class_only_refuse_test"
+module = "rom_fw.sep_firmware_sboot_class_only_refuse_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "lifecycle", "negative", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# PROD refuses a signed manifest whose secure-boot enforced bit alone is
+# cleared: the invariant rejects signing material on a non-secure manifest
+# (OCA_FAIL_SECURE_BOOT_INVARIANT) on both slots.
+name = "sep_firmware_sboot_flag_cleared_signed_refuse_test"
+module = "rom_fw.sep_firmware_sboot_flag_cleared_signed_refuse_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "lifecycle", "negative", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# PROD refuses a secure manifest with its signature and signature_size
+# zeroed (OCA_FAIL_CRYPTO_FIELD_SIZE) on both slots, before key selection.
+name = "sep_firmware_signature_absent_refuse_test"
+module = "rom_fw.sep_firmware_signature_absent_refuse_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "lifecycle", "negative", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# PROD refuses a secure manifest whose signature bytes are all zero: the key
+# is authorized, the modexp runs, and RSA_INOUT_UNCHANGED refuses both slots.
+name = "sep_firmware_signature_zeroed_refuse_test"
+module = "rom_fw.sep_firmware_signature_zeroed_refuse_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+# 21600 rather than 14400 for the reason sep_firmware_primary_invalid_signature_test
+# gives: TWO RSA-3072 modexps, one per slot, and the 4 h cap ends the run inside
+# the second.
+timeout_sec = 21600
+tags = ["boot", "rom", "spi", "secure", "crypto", "lifecycle", "negative", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# PROD refuses a secure manifest with its public key and public_key_size
+# zeroed (OCA_FAIL_CRYPTO_FIELD_SIZE) on both slots, before key selection.
+name = "sep_firmware_public_key_absent_refuse_test"
+module = "rom_fw.sep_firmware_public_key_absent_refuse_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "lifecycle", "negative", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# PROD refuses a secure manifest whose public key bytes are all zero: the
+# digest compare refuses both slots with PUBK_UNAUTHORIZED.
+name = "sep_firmware_public_key_zeroed_refuse_test"
+module = "rom_fw.sep_firmware_public_key_zeroed_refuse_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "lifecycle", "negative", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+esrc_noise_force",
+]
+
+[[tests]]
 # Primary rejected; the backup signature fails RSA-3072 verification on OTBN.
 name = "sep_firmware_backup_invalid_signature_test"
 module = "rom_fw.sep_firmware_backup_invalid_signature_test"
@@ -1996,10 +2110,8 @@ target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 21600
-tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut", "rtl_issue"]
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
-expect_fail = "B1_toc_version_major_not_rejected.md: the OCA library and the ROM do not compare toc_version_major, so a TOC major version above 1 is accepted"
-expect_fail_match = "slot attempts read \\['0x00001000'\\], expected \\['0x00001000', '0x00041000'\\]: a failover is the primary then the backup, once each\\. Console: "
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
@@ -2015,10 +2127,8 @@ target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
-tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut", "rtl_issue"]
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
-expect_fail = "B1_toc_version_major_not_rejected.md: the OCA library and the ROM do not compare toc_version_major, so a TOC major version above 1 is accepted"
-expect_fail_match = "MANIFEST_ALL_FAILED@\\[\\] is not once after the backup error@\\d+: the ROM did not give up after evaluating the backup \\(backup attempt accepted, BL1_JUMP= printed 1x\\)"
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
@@ -2034,10 +2144,8 @@ target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 21600
-tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut", "rtl_issue"]
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
-expect_fail = "B1_toc_version_major_not_rejected.md: the OCA library and the ROM do not compare toc_version_major, so a TOC major version above 1 is accepted"
-expect_fail_match = "slot attempts read \\['0x00001000'\\], expected \\['0x00001000', '0x00041000'\\]: a failover is the primary then the backup, once each\\. Console: "
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
@@ -2053,10 +2161,8 @@ target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
-tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut", "rtl_issue"]
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
-expect_fail = "B1_toc_version_major_not_rejected.md: the OCA library and the ROM do not compare toc_version_major, so a TOC major version above 1 is accepted"
-expect_fail_match = "MANIFEST_ALL_FAILED@\\[\\] is not once after the backup error@\\d+: the ROM did not give up after evaluating the backup \\(backup attempt accepted, BL1_JUMP= printed 1x\\)"
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
@@ -2361,10 +2467,8 @@ target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 21600
-tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut", "rtl_issue"]
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
-expect_fail = "B7_image_may_overlap_toc.md: no check refuses a TOC entry whose image starts inside the TOC, so the slot is accepted"
-expect_fail_match = "slot attempts read \\['0x00001000'\\], expected \\['0x00001000', '0x00041000'\\]: a failover is the primary then the backup, once each\\. Console: "
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
@@ -2380,10 +2484,8 @@ target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
-tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut", "rtl_issue"]
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
-expect_fail = "B7_image_may_overlap_toc.md: no check refuses a TOC entry whose image starts inside the TOC, so the slot is accepted"
-expect_fail_match = "MANIFEST_ALL_FAILED@\\[\\] is not once after the backup error@\\d+: the ROM did not give up after evaluating the backup \\(backup attempt accepted, BL1_JUMP= printed 1x\\)"
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
@@ -2399,10 +2501,8 @@ target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 21600
-tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut", "rtl_issue"]
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
-expect_fail = "B7_image_may_overlap_toc.md: no check refuses a TOC entry whose image starts inside the TOC, so the slot is accepted"
-expect_fail_match = "slot attempts read \\['0x00001000'\\], expected \\['0x00001000', '0x00041000'\\]: a failover is the primary then the backup, once each\\. Console: "
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
@@ -2418,10 +2518,8 @@ target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
-tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut", "rtl_issue"]
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
-expect_fail = "B7_image_may_overlap_toc.md: no check refuses a TOC entry whose image starts inside the TOC, so the slot is accepted"
-expect_fail_match = "MANIFEST_ALL_FAILED@\\[\\] is not once after the backup error@\\d+: the ROM did not give up after evaluating the backup \\(backup attempt accepted, BL1_JUMP= printed 1x\\)"
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
@@ -2437,10 +2535,8 @@ target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 21600
-tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut", "rtl_issue"]
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
-expect_fail = "B2_encrypted_toc_payload_length_unchecked.md: the encrypted payload path never compares the decrypted TOC payload_length with the manifest's, so a mismatch is accepted"
-expect_fail_match = "slot attempts read \\['0x00001000'\\], expected \\['0x00001000', '0x00041000'\\]: a failover is the primary then the backup, once each\\. Console: "
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
@@ -2456,10 +2552,8 @@ target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
-tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut", "rtl_issue"]
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
-expect_fail = "B2_encrypted_toc_payload_length_unchecked.md: the encrypted payload path never compares the decrypted TOC payload_length with the manifest's, so a mismatch is accepted"
-expect_fail_match = "MANIFEST_ALL_FAILED@\\[\\] is not once after the backup error@\\d+: the ROM did not give up after evaluating the backup \\(backup attempt accepted, BL1_JUMP= printed 1x\\)"
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
@@ -3011,6 +3105,82 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_test_dev_chiplet_dbg_sboot_dis.toml",
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# A debug-locked RMA_SiP part refuses an unsigned image (SEP-ROM-SB-025).
+# CHIPLET_DBG in SYS_DIS, the vector RMA_SiP does not apply to feature
+# control. Otherwise as sep_rom_dbg_lock_sys_dis_refuse_test.
+name = "sep_rom_rma_sip_dbg_lock_refuse_test"
+module = "rom_fw.sep_rom_rma_sip_dbg_lock_refuse_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "lifecycle", "negative", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_rma_sip_chiplet_dbg_sys.toml",
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# The chiplet debug lock does not apply in RMA_CHIPLET (SEP-ROM-SB-025): with
+# CHIPLET_DBG set in SIP_DIS, the unsigned image sep_rom_ot_dma_boot_test boots
+# still boots, with SBOOT_OFF and without SBOOT_DBG_LOCK.
+name = "sep_rom_rma_chiplet_dbg_lock_boot_test"
+module = "rom_fw.sep_rom_rma_chiplet_dbg_lock_boot_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "spi", "lifecycle", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_rma_chiplet_chiplet_dbg_sip.toml",
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# A debug-locked RMA_SiP part still boots a validly signed image, here with
+# CHIPLET_DBG in SIP_DIS. Same image and budget as
+# sep_rom_dbg_lock_secure_boot_test.
+name = "sep_rom_rma_dbg_lock_secure_boot_test"
+module = "rom_fw.sep_rom_rma_dbg_lock_secure_boot_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "lifecycle", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_rma_sip_chiplet_dbg_sip.toml",
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# RMA_SiP with chiplet debug open boots the unsigned image
+# sep_rom_ot_dma_boot_test boots, with SBOOT_OFF and without SBOOT_DBG_LOCK:
+# the negative control for the RMA debug-lock refusals.
+name = "sep_rom_rma_dbg_open_boot_test"
+module = "rom_fw.sep_rom_rma_dbg_open_boot_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "spi", "lifecycle", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_rma_sip.toml",
   "+esrc_noise_force",
 ]
 

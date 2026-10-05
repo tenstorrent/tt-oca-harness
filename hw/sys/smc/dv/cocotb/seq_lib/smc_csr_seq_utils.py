@@ -11,11 +11,18 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 from .smc_addr_map import (
     GPIO_INTF_STRIDE,
     I2C_CG_EN,
+    gpio_intf_u32,
     smc_addr,
     smc_indexed_addr,
 )
 from .smc_base_test_seq import smc_base_test_seq
 from .smc_efuse_vip_utils import EFUSE_BLOCKED_READ_DATA
+from .smc_pad_table import pad_index
+
+#: A one on every bit of a 32-bit word.
+ALL_ONES_WORD = 0xFFFF_FFFF
+#: Strobe that enables only the top byte lane of a 32-bit word.
+TOP_BYTE_LANE = 0b1000
 
 
 class SmcCsrSeq(smc_base_test_seq):
@@ -60,6 +67,28 @@ class SmcCsrSeq(smc_base_test_seq):
         await self.finish_item(item)
         self.accesses += 1
 
+    async def csr_write_strobed(
+        self, name: str, addr: int, data: int, wstrb: int, length: int = 4, prot: int = 0
+    ) -> None:
+        """Write `data` at `addr` with only the byte lanes `wstrb` selects enabled.
+
+        `data` is presented on every lane of the `length`-byte transfer, so a
+        lane the strobe disables still carries its byte of `data`, where the
+        strobe `csr_write` derives from the address puts zeros. A field on a
+        disabled lane whose byte of `data` would change it therefore tells a
+        strobe the register honoured from one it ignored.
+        """
+        item = SmcSysAxiItem(f"wr_{name}")
+        item.op = SmcSysAxiOp.WRITE
+        item.addr = addr
+        item.length = length
+        item.wdata = data
+        item.wstrb = wstrb
+        item.prot = prot
+        await self.start_item(item)
+        await self.finish_item(item)
+        self.accesses += 1
+
     async def rw_coresident(
         self,
         entries: list[tuple[str, int, int, int]],
@@ -98,14 +127,19 @@ class SmcCsrSeq(smc_base_test_seq):
     ERR_SLAVE_SIGNATURE = EFUSE_BLOCKED_READ_DATA
 
     async def csr_read_err_signature(
-        self, name: str, addr: int, length: int = 4, prot: int = 0
+        self,
+        name: str,
+        addr: int,
+        length: int = 4,
+        prot: int = 0,
+        resp: int | None = None,
     ) -> int:
         """Read a window terminated by an AXI error slave and
         DETERMINISTICALLY assert its known error signature: the access must
-        complete with an error response (SLVERR/DECERR) AND return
-        ``ERR_SLAVE_SIGNATURE``, the data word the eFuse architecture document
-        specifies for a blocked request. Used for TB-side terminators (e.g. DTP
-        CSR) and design-side error slaves that return that signature."""
+        complete with an error response (SLVERR/DECERR, or exactly ``resp``
+        when the scenario states the code) AND return ``ERR_SLAVE_SIGNATURE``,
+        the data word every error slave in the design returns. Used for TB-side
+        terminators (e.g. DTP CSR) and design-side error slaves."""
         mask = (1 << (length * 8)) - 1
         item = SmcSysAxiItem(f"rd_{name}")
         item.op = SmcSysAxiOp.READ
@@ -113,6 +147,7 @@ class SmcCsrSeq(smc_base_test_seq):
         item.length = length
         item.allow_error = True
         item.expect_error = True  # scoreboard also enforces the error response
+        item.expected_resp = resp  # and the exact code when one is stated
         item.prot = prot
         await self.start_item(item)
         await self.finish_item(item)
@@ -120,6 +155,10 @@ class SmcCsrSeq(smc_base_test_seq):
         assert item.resp_code is not None and item.resp_code > 1, (
             f"{name} @ 0x{addr:08x}: expected an error-slave response "
             f"(SLVERR/DECERR), got resp={item.resp_code} (rdata=0x{item.rdata:x})"
+        )
+        assert resp is None or item.resp_code == resp, (
+            f"{name} @ 0x{addr:08x}: expected resp={resp}, got resp={item.resp_code} "
+            f"(rdata=0x{item.rdata:x})"
         )
         got = item.rdata & mask
         assert got == (self.ERR_SLAVE_SIGNATURE & mask), (
@@ -138,13 +177,12 @@ class SmcCsrSeq(smc_base_test_seq):
         """Read a window that must complete with an AXI error response
         (SLVERR/DECERR) and an all-zero data word.
 
-        The zero is a DV-owned expectation, not a document-cited value: an
-        error response carries no payload, so a terminator that hands back a
-        neighbouring register's contents or a stale bus word fails here. Two
-        sequences call it: ``smc_gpio_ctrl_full_sweep_test_seq`` (the external
-        GPIO_CTRL windows) relies on this DV-owned zero alone;
-        ``smc_sideband_protocol_smoke_test_seq`` reads AVS_READBACK on an empty
-        FIFO, where memmap.adoc does fix the zero, and cites it at the call."""
+        The zero is the word a register block that is not an error slave
+        returns alongside its error: ``smc_sideband_protocol_smoke_test_seq``
+        and ``smc_avsbus_interrupt_sources_test_seq`` read AVS_READBACK on an
+        empty FIFO, where memmap.adoc fixes the zero and the call cites it.
+        A window terminated by an error slave returns ``ERR_SLAVE_SIGNATURE``
+        instead; use ``csr_read_err_signature`` there."""
         mask = (1 << (length * 8)) - 1
         item = SmcSysAxiItem(f"rd_{name}")
         item.op = SmcSysAxiOp.READ
@@ -183,9 +221,16 @@ class SmcCsrSeq(smc_base_test_seq):
         return item.rdata
 
     async def csr_write_expect_error(
-        self, name: str, addr: int, data: int, length: int = 4, prot: int = 0
+        self,
+        name: str,
+        addr: int,
+        data: int,
+        length: int = 4,
+        prot: int = 0,
+        resp: int | None = None,
     ) -> int:
-        """Write a register that must refuse it with an AXI error response.
+        """Write a register that must refuse it with an AXI error response
+        (SLVERR/DECERR, or exactly ``resp`` when the scenario states the code).
 
         Returns the response code so the caller can report which refusal the
         DUT gave. The caller pairs this with a readback proving the refused
@@ -197,6 +242,7 @@ class SmcCsrSeq(smc_base_test_seq):
         item.wdata = data
         item.allow_error = True
         item.expect_error = True  # scoreboard also enforces the error response
+        item.expected_resp = resp  # and the exact code when one is stated
         item.prot = prot
         await self.start_item(item)
         await self.finish_item(item)
@@ -204,6 +250,9 @@ class SmcCsrSeq(smc_base_test_seq):
         assert item.resp_code is not None and item.resp_code > 1, (
             f"{name} @ 0x{addr:08x}: expected an error response (SLVERR/DECERR), "
             f"got resp={item.resp_code}"
+        )
+        assert resp is None or item.resp_code == resp, (
+            f"{name} @ 0x{addr:08x}: expected resp={resp}, got resp={item.resp_code}"
         )
         return item.resp_code
 
@@ -339,16 +388,14 @@ class SmcCsrSeq(smc_base_test_seq):
             self._I2C0_PAD_STABLE_CYCLES,
         )
 
-    # I2C0 pads 37..40 (SCL/SDA/ALERT/SUS). DATA_CTRL stride 0x10 from GPIO0.
+    # The integrator pad table (`doc/integrator/meta/ocah_gpio_table.csv`) gives
+    # each I2C instance four consecutive pads, SCL, SDA, SMB_A and SMB_D, with
+    # instance `i` starting at its "I2C[i] SCL" row. DATA_CTRL stride from GPIO0.
     _GPIO_INTF0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
     _GPIO_INTF_STRIDE = GPIO_INTF_STRIDE
-    _I2C0_SCL_PAD = 37
-    _GPIO_LSIO_SELECT = 1 << 17
-
-    # Pads per I2C instance in the padring: SCL, SDA, SMBALERT#, SMBSUS#, with
-    # instance `i` starting at `_I2C0_SCL_PAD + 4 * i` (tb_top.sv records the
-    # same 37 + 4*i mapping over its I2C pad localparams).
-    _I2C_PADS_PER_INSTANCE = 4
+    _I2C0_SCL_PAD = pad_index("I2C[0] SCL")
+    _GPIO_LSIO_SELECT = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_SELECT_bm")
+    _I2C_PADS_PER_INSTANCE = pad_index("I2C[1] SCL") - pad_index("I2C[0] SCL")
 
     async def arm_i2c_gpio_lsio(self, idx: int, label: str) -> None:
         """Force the I2C``idx`` pad group onto LSIO via GPIO DATA_CTRL.lsio_select.
@@ -359,7 +406,11 @@ class SmcCsrSeq(smc_base_test_seq):
         at 0. Software ``lsio_select`` is the supported override (same as
         gpio_intf.rdl) and restores pad sense without touching RTL.
         """
-        first = self._I2C0_SCL_PAD + idx * self._I2C_PADS_PER_INSTANCE
+        first = pad_index(f"I2C[{idx}] SCL")
+        assert first == self._I2C0_SCL_PAD + idx * self._I2C_PADS_PER_INSTANCE, (
+            f"the integrator pad table places I2C[{idx}] SCL on pad {first}, off the "
+            f"{self._I2C_PADS_PER_INSTANCE}-pad stride from I2C[0] SCL ({self._I2C0_SCL_PAD})"
+        )
         for pad in range(first, first + self._I2C_PADS_PER_INSTANCE):
             addr = self._GPIO_INTF0_DATA_CTRL + pad * self._GPIO_INTF_STRIDE
             cur = await self.csr_read(f"{label}_GPIO{pad}_SAVE", addr)

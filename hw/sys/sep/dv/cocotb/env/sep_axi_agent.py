@@ -39,7 +39,7 @@ class SepAxiOp(Enum):
 
 
 class SepAxiItem(uvm_sequence_item):
-    """A single AXI access on the CPU LSU bus."""
+    """A single AXI access on s_axi (CPU-LSU) or m_axi (SMN-inbound)."""
 
     def __init__(self, name: str = "SepAxiItem") -> None:
         super().__init__(name)
@@ -79,11 +79,13 @@ class SepAxiItem(uvm_sequence_item):
         # Independent of allow_timeout: an expect_error probe still requires a real
         # error response, not a wedge, unless allow_timeout is also set.
         self.expect_error: bool = False
-        # Read-data X/Z policy. The driver packs rdata from the VIP's bytes,
-        # which carry X/Z as 0, so the unknown bits are checked on the bus by
-        # SepAxiMonitor: an OKAY/EXOKAY beat with an X/Z bit in a lane this
-        # read accesses fails the run. Set True only for a read whose data is
-        # legitimately partly unknown; the monitor then skips its lane check.
+        # Read-data X/Z policy. cocotbext-axi converts each R beat with int(),
+        # which raises on any X/Z bit, so a read through this driver fails at
+        # the read when RDATA carries an unknown bit in any lane. SepAxiMonitor
+        # checks the accessed lanes on the bus independently: an OKAY/EXOKAY
+        # beat with an X/Z bit in a lane this read accesses fails the run. True
+        # skips only that monitor lane check for this read; it does not stop
+        # cocotbext-axi from raising on an X/Z bit.
         self.allow_unknown_rdata: bool = False
         # Packed AWUSER/ARUSER. The inbound filter matches FILTER_CONFIG.src_id
         # against user[3:0] (SRC_ID_USER_BIT_START=0, SRC_ID_WIDTH=4).
@@ -92,12 +94,17 @@ class SepAxiItem(uvm_sequence_item):
         # except the inbound-filter burst checkers, which opt in with INCR and
         # a multi-beat length so AxLEN != 0.
         self.burst: int | None = None
-        # AXI AxID. Every access defaults to 0, which is what the whole suite
-        # used before this field existed, so the transaction ID is not a
-        # dimension a test gets for free -- it opts in. The crossbars prepend
-        # the master index to it, and the demux keeps one outstanding counter
-        # per ID, so an access that never leaves 0 exercises one ID slot.
+        # AXI AxID. Defaults to 0, so the transaction ID is a dimension a test
+        # opts into. The crossbars prepend the master index to it, and the demux
+        # keeps one outstanding counter per ID, so an access that never leaves 0
+        # exercises one ID slot.
         self.axi_id: int = 0
+        # AxPROT. None keeps the VIP default (data, non-secure, unprivileged).
+        # The inbound filter matches prot[1] against FILTER_CONFIG.allow_ns.
+        self.prot: int | None = None
+        # AxLOCK / AxCACHE / AxQOS / AxREGION, and WUSER on a write. An absent
+        # key keeps the VIP default (normal access, cache 0b0011, 0, 0, 0).
+        self.attrs: dict[str, int] = {}
         # Filled in by the driver. resp_ok defaults False (fail closed): only a
         # confirmed OKAY response sets it True. resp_code is the worst (max) AXI
         # response code observed (OKAY=0, EXOKAY=1, SLVERR=2, DECERR=3), or -1 if
@@ -111,6 +118,9 @@ class SepAxiItem(uvm_sequence_item):
         # HOW MANY beats carried an error -- a caller crediting a monitor per
         # beat needs the list.
         self.resp_list: tuple[int, ...] = ()
+        # BID / RID (the last read beat's) as sampled on the bus, or None when
+        # the bus carries no ID.
+        self.resp_id: int | None = None
         self.timed_out: bool = False
 
     def __str__(self) -> str:
@@ -178,12 +188,14 @@ class SepAxiDriver(uvm_driver):
             "size": item.size,
             "burst": item.burst,
             "id": item.axi_id,
-            "prot": None,
+            "prot": item.prot,
             "check_response": False,
             "timeout_ns": self.cfg.axi_timeout_ns,
             "allow_timeout": item.allow_timeout,
             "user": item.user,
         }
+        if item.attrs:
+            common["attrs"] = dict(item.attrs)
         if item.op is SepAxiOp.READ:
             exempt = item.allow_unknown_rdata and self.monitor is not None
             if item.allow_unknown_rdata and self.monitor is None:
@@ -204,8 +216,8 @@ class SepAxiDriver(uvm_driver):
                 if self.monitor is not None:
                     self.monitor.forget_pending_reads(item.axi_id)
                 return
-            # X/Z bits arrive here as 0; SepAxiMonitor fails the run on an
-            # OKAY beat with X/Z in an accessed lane unless allow_unknown_rdata.
+            # cocotbext-axi raised already if any RDATA bit of the read was X/Z,
+            # so the bytes here are known values.
             item.rdata = (
                 int.from_bytes(result.data_bytes, "little") if result.data_bytes else result.data
             )
@@ -238,6 +250,7 @@ class SepAxiDriver(uvm_driver):
         item.resp_ok = result.ok
         item.resp_code = result.resp
         item.resp_list = tuple(getattr(result, "resp_list", ()) or ())
+        item.resp_id = getattr(result, "observed_id", None)
         if result.timed_out:
             self.logger.info(
                 "AXI %s @ 0x%08x timed out (allowed by this sequence)",

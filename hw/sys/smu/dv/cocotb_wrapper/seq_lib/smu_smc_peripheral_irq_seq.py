@@ -5,18 +5,18 @@
 The two raw peripheral interrupt vectors port_table.adoc brings out of the
 wrapper, each raised through the SMC register that owns its source.
 
-S1  GPIO. The GPIO programming guide (``hw/ip/gpio/doc/programming.adoc``,
-    "LSIO Interface Operation") gives a hardware LSIO peripheral first claim
-    on a pad while its interface select is asserted and ``DATA_CTRL.LSIO_DISABLE``
-    is clear, and the pad table (``doc/integrator/meta/ocah_gpio_table.csv``)
-    assigns pad 0 to ``SPI.DATA[0]``, so the pad starts under LSIO ownership and
-    ``DATA_CTRL.LSIO_ENABLE`` reads back that state. The interrupt is captured
-    only while ``DATA_CTRL.INTERRUPT_ENABLE`` is set and the pad level is
-    mirrored in ``DATA_CTRL.PAD2CORE`` (``gpio_intf`` RDL field descriptions).
-    The leaf takes the pin away from the LSIO first -- which
-    ``DATA_CTRL.LSIO_ENABLE`` reads back -- then drives the pad and requires
-    both the interrupt output and the ``DATA_CTRL.PAD2CORE`` mirror to follow
-    it up and down.
+S1  GPIO. The Programmer's Guide GPIO section
+    (``doc/programmer/src/smc-programming.adoc``, "Selecting and Reclaiming LSIO")
+    gives a hardware LSIO peripheral first claim on a pad while its interface select
+    is asserted and ``DATA_CTRL.LSIO_DISABLE`` is clear, and the pad table
+    (``doc/integrator/meta/ocah_gpio_table.csv``) assigns pad 0 to ``SPI.DATA[0]``,
+    so the pad starts under LSIO ownership and ``DATA_CTRL.LSIO_ENABLE`` reads back
+    that state. The interrupt is captured only while ``DATA_CTRL.INTERRUPT_ENABLE``
+    is set and the pad level is mirrored in ``DATA_CTRL.PAD2CORE`` (``gpio_intf``
+    RDL field descriptions). The leaf takes the pin away from the LSIO first --
+    which ``DATA_CTRL.LSIO_ENABLE`` reads back -- then drives the pad and requires
+    both the interrupt output and the ``DATA_CTRL.PAD2CORE`` mirror to follow it up
+    and down.
 
     The interrupt flop only updates while the enable is set, so the pad is
     released before the enable is cleared.

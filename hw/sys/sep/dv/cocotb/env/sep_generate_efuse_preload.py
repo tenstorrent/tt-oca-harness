@@ -10,9 +10,8 @@ time 0. The DUT knows nothing about register names, so something has to turn
 Placement is NOT described here. Register offsets and widths come from
 ``SepEfuseImage``'s field table (derived from the generated register header, in
 turn generated from ``sep_efuse_map.rdl``), and bit ranges within a register come
-from that header's ctypes bitfield structs. Nothing here restates the fuse map:
-a hand-maintained copy placed by TOML iteration order would let a reordered
-config file silently move every field after the edit.
+from that header's ctypes bitfield structs. Nothing here restates the fuse map,
+so the key order in a config never affects placement.
 
 ``apply_toml()`` is called TWICE per simulation, from two processes:
 ``dv_sim_prestage.stage()`` before the simulator launches, to write the array the
@@ -30,9 +29,8 @@ Config format (every key optional; anything unstated stays 0)::
     value = 0x54e01f1d...
 
 An unknown register name, an unknown field name, or a value too wide for its
-field is a hard error. That is the property an opaque committed ``.hex`` cannot
-have: when the RDL moves a field, a stale config fails loudly here instead of
-staging a plausible-looking image that no longer means what its filename says.
+field is a hard error, so a stale config fails here when the RDL moves a field
+instead of staging a plausible-looking image.
 
 Run directly for the two human-facing jobs, neither needed for a normal test run:
 
@@ -95,14 +93,18 @@ WORD_BITS = 32
 # the config still loads and the author's intent is quietly dropped.
 #   value    -- whole register, little-endian
 #   fields   -- named bitfields
-#   regwidth -- present in reference-suite configs; the RDL fixes the width, so the
-#               key is accepted and never affects placement
+#   regwidth -- accepted for configs that carry it; the RDL fixes the width, so
+#               the key never affects placement
 _ALLOWED_KEYS = frozenset(("value", "fields", "regwidth"))
 
-# Lock keys are rejected, not modelled. The reference config format carries
-# per-register read_locked/write_locked; rejecting them loudly means a config copied
-# from the reference cannot appear to set a lock that never lands.
+# Lock keys (read_locked/write_locked) are rejected, not modelled, so a config
+# cannot appear to set a lock that never lands.
 _LOCK_KEYS = frozenset(("read_locked", "write_locked"))
+
+
+# The generator emits one bitfield struct per RDL register type, so an instance
+# whose type has another name is looked up through that type.
+_REG_TYPE = {"SIP_DIS": "LC_DISABLE", "SYS_DIS": "LC_DISABLE"}
 
 
 def _bitfields(reg_name: str) -> Optional[Dict[str, Tuple[int, int]]]:
@@ -113,11 +115,12 @@ def _bitfields(reg_name: str) -> Optional[Dict[str, Tuple[int, int]]]:
     generator emits them, so the running total IS the field's lsb.
 
     None means "wider than the generator emits a struct for" (the 256-bit keys,
-    digests, UIDs and SPARE regions, plus 64-bit SIP_DIS/SYS_DIS). Those declare
-    exactly one full-width field in the RDL, so ``_apply_register`` accepts a
-    single field entry for them and treats it as the whole register.
+    digests, UIDs and SPARE regions). Those declare exactly one full-width field
+    in the RDL, so ``_apply_register`` accepts a single field entry for them and
+    treats it as the whole register.
     """
-    struct = getattr(sep_reg, f"SEP_EFUSE_MAP_{reg_name}_reg_t", None)
+    reg_type = _REG_TYPE.get(reg_name, reg_name)
+    struct = getattr(sep_reg, f"SEP_EFUSE_MAP_{reg_type}_reg_t", None)
     if struct is None:
         return None
     out: Dict[str, Tuple[int, int]] = {}
@@ -350,8 +353,8 @@ def _selftest() -> int:
     print("\n-- registers not exercised by any live config --")
     wide = (
         "[TRANSIENT_RMA_EN]\n  [TRANSIENT_RMA_EN.fields.transient_rma_en]\n  value = 0x1\n"
-        "[SIP_DIS]\n  [SIP_DIS.fields.sip_dis]\n  value = 0xdeadbeafdeadbeaf\n"
-        "[SYS_DIS]\n  [SYS_DIS.fields.sys_dis]\n  value = 0xbadcab1ebadcab1e\n"
+        "[SIP_DIS]\n  value = 0xdeadbeafdeadbeaf\n"
+        "[SYS_DIS]\n  value = 0xbadcab1ebadcab1e\n"
         "[RMA_SIP_TOKEN_DIGEST]\n  [RMA_SIP_TOKEN_DIGEST.fields.token]\n"
         "  value = 0x123456789abcdef\n"
         "[RMA_CHIPLET_TOKEN_DIGEST]\n  [RMA_CHIPLET_TOKEN_DIGEST.fields.token]\n"
@@ -374,9 +377,22 @@ def _selftest() -> int:
     ):
         ok(f"{reg} round-trips", wide, want, lambda i, r=reg: i.field_int(r))
 
+    ok(
+        "SIP_DIS/SYS_DIS fields resolve through their LC_DISABLE type",
+        "[SIP_DIS]\n  [SIP_DIS.fields.chiplet_dbg]\n  value = 1\n"
+        "[SYS_DIS]\n  [SYS_DIS.fields.sip_debug]\n  value = 1\n",
+        (0x2, 1 << 24),
+        lambda i: (i.field_int("SIP_DIS"), i.field_int("SYS_DIS")),
+    )
+
     print("\n-- a stale or wrong config fails loud --")
     err("unknown register", "[NOT_A_REG]\nvalue = 1\n", "unknown eFuse register")
     err("unknown field", "[ROM_CTL]\n  [ROM_CTL.fields.nope]\n  value = 1\n", "has no field")
+    err(
+        "unknown SIP_DIS field",
+        "[SIP_DIS]\n  [SIP_DIS.fields.sip_dis]\n  value = 2\n",
+        "has no field",
+    )
     err("unknown per-register key", "[LC_STATE]\nnope = 1\n", "unknown key")
     err(
         "lock key rejected rather than ignored",
@@ -407,7 +423,7 @@ def _selftest() -> int:
     )
 
     # Loading each live config is the floor: these are what the DUT senses at
-    # t=0, so one that no longer parses -- because the RDL renamed a field, say
+    # t=0, so one that fails to parse -- because the RDL moved or dropped a field, say
     # -- must fail here and not in a long simulation. The byte-compare applies only
     # to configs with a committed .hex image (the plusargs name the .toml and the
     # array is generated, so a committed image is the exception). Count them and

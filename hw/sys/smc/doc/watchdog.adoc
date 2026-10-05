@@ -25,6 +25,32 @@ reset is triggered.
 Watchdog monitoring can be disabled during debugging to prevent false
 triggers, supporting uninterrupted development and troubleshooting.
 
+The watchdog interrupt is `CTRL.wdogip0`. Hardware sets it on every cycle the
+scaled count is at or above `CMP`, so it cannot be cleared while that holds.
+Feeding the watchdog resets the count but leaves `wdogip0` set. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-watchdog-clear[watchdog interrupt clear sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-watchdog-clear[watchdog interrupt clear sequence]
+endif::backend-pdf[]
+is in the Programmer's Guide.
+
+=== Register Access
+
+Each watchdog is locked out of reset, and a write to any register other
+than KEY locks it again. Software changes one register at a time:
+
+. Write `0x51F15E` to KEY. KEY reads 1 while the watchdog is unlocked.
+. Write the target register. The watchdog locks again on this write, so
+  the next write needs a new KEY write first.
+
+A write acts only when its byte enables cover the register's width, and a
+narrower write completes with an OKAY response without changing anything,
+so software cannot detect a dropped write from the response. Software uses
+32-bit stores for every register except CTRL, which accepts byte writes.
+The Detailed Register Map below gives the width each register requires.
+
 == Memory Map and Register Reference
 
 ifdef::backend-html5[]

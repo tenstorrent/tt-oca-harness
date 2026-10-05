@@ -27,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from runlib import worker  # noqa: E402
 from runlib.config import default_target_name  # noqa: E402
 from runlib.models import StageResult  # noqa: E402
+from runlib.stages import _leaf_target_build  # noqa: E402
 
 EXIT_CODES = {"PASS": 0, "FAIL": 1, "ERROR": 2, "TIMEOUT": 124, "UNKNOWN": 5}
 
@@ -86,12 +87,21 @@ def fake_run_stage(
                     "artifact": str(build_dir),
                     "executor": "fake",
                     "status": status,
+                    "fingerprint": f"fp-{target}",
                 },
             },
             target=target,
         )
     status = scripted_status(str(item), attempt)
     stamp = datetime.now(UTC).isoformat()
+    # The identity a real sim leaf reports: the build's when one was handed down, else its own.
+    target_build = _leaf_target_build(
+        args,
+        target_name=target,
+        tool=tool,
+        build_dir=run_dir / "stages" / stage / target / tool,
+        fingerprint=f"own-{target}",
+    )
     return StageResult(
         stage=stage,
         item=item,
@@ -105,7 +115,12 @@ def fake_run_stage(
         failure_buckets=[],
         reason="" if status == "PASS" else f"scripted {status}",
         parser={"name": "fake"},
-        metadata={"seed": seed_override, "attempt": attempt, "fake_worker": True},
+        metadata={
+            "seed": seed_override,
+            "attempt": attempt,
+            "fake_worker": True,
+            "target_build": target_build,
+        },
         target=getattr(args, "target", None),
     )
 

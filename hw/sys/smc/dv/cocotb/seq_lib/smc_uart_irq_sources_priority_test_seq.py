@@ -295,7 +295,7 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
     async def _single_deltas(self) -> None:
         """Each modem-status delta raised on its own, from one MCR output in loopback.
 
-        The UART's programming guide (``uart_16550/doc/programming.adoc``) has
+        The Programmer's Guide UART section (``doc/programmer/src/smc-programming.adoc``) has
         system loopback feed DSR from DTR, RI from OUT1 and DCD from OUT2. DDSR
         and DDCD mark any change and TERI only RI's trailing edge, so OUT1 is
         set first, which must raise no delta, and then cleared.
@@ -345,6 +345,10 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
                 (_INTR_THRE, _INTR_MODEM),
             ),
             ("TO_vs_RDR", IER_ERBFI, ITR_TRBFI | ITR_TRTI, (_INTR_TIMEOUT, _INTR_RDR)),
+            # Reception Timeout needs IER.ERBFI (its only enable, see the
+            # MAP-TIMEOUT leg); no RDR source is forced here, so the two
+            # contenders are LSR and TIMEOUT alone.
+            ("LSR_vs_TO", IER_ELSI | IER_ERBFI, ITR_TLSI | ITR_TRTI, (_INTR_LSR, _INTR_TIMEOUT)),
             ("FIFO_vs_LSR", IER_ELSI | IER_EFEI, ITR_TLSI | ITR_TFEI, (_INTR_FIFO_ERR, _INTR_LSR)),
         ]
         for name, ier, itr, contenders in pairs:

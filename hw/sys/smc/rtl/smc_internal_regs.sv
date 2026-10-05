@@ -418,8 +418,37 @@ module smc_internal_regs #(
     smc_pkg::smc_axil_32_64_req_t filter_reg_req, locked_reg_req;
     smc_pkg::smc_axil_32_64_resp_t filter_reg_resp, locked_reg_resp;
 
-    // If filter is locked, block writes but allow reads
-    wire filter_reg_aw_select = outbound_filter_ctrl_o[f].FILTER_CONFIG.locked.value && (outbound_filter_axi_lite_reqs[f].aw_valid || outbound_filter_axi_lite_reqs[f].w_valid);
+    // The demux spill stores the port select with the AW. locked updates on the
+    // clock edge that arms B, so the next AW waits until that B is accepted and
+    // the select is sampled with locked already set. Reads are not held.
+    smc_pkg::smc_axil_32_64_req_t  gated_req;
+    smc_pkg::smc_axil_32_64_resp_t gated_resp;
+    logic aw_valid, aw_ready;
+    logic filter_reg_aw_select;
+
+    stream_throttle #(
+      .MaxNumPending(1)
+    ) u_outbound_filter_aw_throttle (
+      .clk_i       (outbound_filter_clk),
+      .rst_ni      (rst_primary_smc_clk_ni),
+      .req_valid_i (outbound_filter_axi_lite_reqs[f].aw_valid),
+      .req_valid_o (aw_valid),
+      .req_ready_i (gated_resp.aw_ready),
+      .req_ready_o (aw_ready),
+      .rsp_valid_i (gated_resp.b_valid),
+      .rsp_ready_i (outbound_filter_axi_lite_reqs[f].b_ready),
+      .credit_i    (1'b1)
+    );
+
+    always_comb begin
+      gated_req                                  = outbound_filter_axi_lite_reqs[f];
+      gated_req.aw_valid                         = aw_valid;
+      outbound_filter_axi_lite_resps[f]          = gated_resp;
+      outbound_filter_axi_lite_resps[f].aw_ready = aw_ready;
+      // If filter is locked, block writes but allow reads
+      filter_reg_aw_select = outbound_filter_ctrl_o[f].FILTER_CONFIG.locked.value
+                             && (gated_req.aw_valid || gated_req.w_valid);
+    end
 
     // Demux between filter control register and axilite error slave (for locked filters)
     axi_lite_demux #(
@@ -444,8 +473,8 @@ module smc_internal_regs #(
       .clk_i            (outbound_filter_clk),
       .rst_ni           (rst_primary_smc_clk_ni),
       .test_i           (test_en_i),
-      .slv_req_i        (outbound_filter_axi_lite_reqs[f]),
-      .slv_resp_o       (outbound_filter_axi_lite_resps[f]),
+      .slv_req_i        (gated_req),
+      .slv_resp_o       (gated_resp),
 
       .slv_aw_select_i  (filter_reg_aw_select),
       .slv_ar_select_i  (1'b0), // Always pass through reads
@@ -582,7 +611,37 @@ module smc_internal_regs #(
     smc_pkg::smc_axil_32_64_req_t filter_reg_req, locked_reg_req;
     smc_pkg::smc_axil_32_64_resp_t filter_reg_resp, locked_reg_resp;
 
-    wire filter_reg_aw_select = inbound_filter_ctrl_o[f].FILTER_CONFIG.locked.value && (inbound_filter_axi_lite_reqs[f].aw_valid || inbound_filter_axi_lite_reqs[f].w_valid);
+    // The demux spill stores the port select with the AW. locked updates on the
+    // clock edge that arms B, so the next AW waits until that B is accepted and
+    // the select is sampled with locked already set. Reads are not held.
+    smc_pkg::smc_axil_32_64_req_t  gated_req;
+    smc_pkg::smc_axil_32_64_resp_t gated_resp;
+    logic aw_valid, aw_ready;
+    logic filter_reg_aw_select;
+
+    stream_throttle #(
+      .MaxNumPending(1)
+    ) u_inbound_filter_aw_throttle (
+      .clk_i       (inbound_filter_clk),
+      .rst_ni      (rst_primary_smc_clk_ni),
+      .req_valid_i (inbound_filter_axi_lite_reqs[f].aw_valid),
+      .req_valid_o (aw_valid),
+      .req_ready_i (gated_resp.aw_ready),
+      .req_ready_o (aw_ready),
+      .rsp_valid_i (gated_resp.b_valid),
+      .rsp_ready_i (inbound_filter_axi_lite_reqs[f].b_ready),
+      .credit_i    (1'b1)
+    );
+
+    always_comb begin
+      gated_req                                 = inbound_filter_axi_lite_reqs[f];
+      gated_req.aw_valid                        = aw_valid;
+      inbound_filter_axi_lite_resps[f]          = gated_resp;
+      inbound_filter_axi_lite_resps[f].aw_ready = aw_ready;
+      // If filter is locked, block writes but allow reads
+      filter_reg_aw_select = inbound_filter_ctrl_o[f].FILTER_CONFIG.locked.value
+                             && (gated_req.aw_valid || gated_req.w_valid);
+    end
 
     // Demux between filter control register and axilite error slave (for locked filters)
     axi_lite_demux #(
@@ -607,8 +666,8 @@ module smc_internal_regs #(
       .clk_i            (inbound_filter_clk),
       .rst_ni           (rst_primary_smc_clk_ni),
       .test_i           (test_en_i),
-      .slv_req_i        (inbound_filter_axi_lite_reqs[f]),
-      .slv_resp_o       (inbound_filter_axi_lite_resps[f]),
+      .slv_req_i        (gated_req),
+      .slv_resp_o       (gated_resp),
 
       .slv_aw_select_i  (filter_reg_aw_select),
       .slv_ar_select_i  (1'b0), // Always pass through reads
@@ -727,8 +786,8 @@ module smc_internal_regs #(
     .test_i          (test_en_i),
     .slv_req_i       (axil_mR_ctrl_req_i),
     .slv_resp_o      (axil_mR_ctrl_resp_o),
-    .slv_aw_select_i (axil_mR_ctrl_req_i.aw.addr[MmodeRemapSelEndIdx:MmodeRemapSelStartIdx]), // 0x8 spacing: use bits [5:3] for 8 regions
-    .slv_ar_select_i (axil_mR_ctrl_req_i.ar.addr[MmodeRemapSelEndIdx:MmodeRemapSelStartIdx]), // 0x8 spacing: use bits [5:3] for 8 regions
+    .slv_aw_select_i (axil_mR_ctrl_req_i.aw.addr[MmodeRemapSelEndIdx:MmodeRemapSelStartIdx]),
+    .slv_ar_select_i (axil_mR_ctrl_req_i.ar.addr[MmodeRemapSelEndIdx:MmodeRemapSelStartIdx]),
     .mst_reqs_o      (axil_mR_ctrl_reqs),
     .mst_resps_i     (axil_mR_ctrl_resps)
   );
@@ -740,7 +799,7 @@ module smc_internal_regs #(
 
       .s_axil_awready (axil_mR_ctrl_resps[i].aw_ready),
       .s_axil_awvalid (axil_mR_ctrl_reqs[i].aw_valid),
-      .s_axil_awaddr  ({1'b0, axil_mR_ctrl_reqs[i].aw.addr[2:0]}),
+      .s_axil_awaddr  ({1'b0, axil_mR_ctrl_reqs[i].aw.addr[MmodeRemapSelStartIdx-1:0]}),
       .s_axil_awprot  (axil_mR_ctrl_reqs[i].aw.prot),
       .s_axil_wready  (axil_mR_ctrl_resps[i].w_ready),
       .s_axil_wvalid  (axil_mR_ctrl_reqs[i].w_valid),
@@ -751,7 +810,7 @@ module smc_internal_regs #(
       .s_axil_bresp   (axil_mR_ctrl_resps[i].b.resp),
       .s_axil_arready (axil_mR_ctrl_resps[i].ar_ready),
       .s_axil_arvalid (axil_mR_ctrl_reqs[i].ar_valid),
-      .s_axil_araddr  ({1'b0, axil_mR_ctrl_reqs[i].ar.addr[2:0]}),
+      .s_axil_araddr  ({1'b0, axil_mR_ctrl_reqs[i].ar.addr[MmodeRemapSelStartIdx-1:0]}),
       .s_axil_arprot  (axil_mR_ctrl_reqs[i].ar.prot),
       .s_axil_rready  (axil_mR_ctrl_reqs[i].r_ready),
       .s_axil_rvalid  (axil_mR_ctrl_resps[i].r_valid),
@@ -799,7 +858,7 @@ module smc_internal_regs #(
   localparam int unsigned XvisorRemapSelStartIdx = $clog2(
       smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_SIZE
   );
-  localparam int unsigned XvisorRemapSelEndIdx = MmodeRemapSelStartIdx + smc_pkg::XvisorRemapSelW - 1;
+  localparam int unsigned XvisorRemapSelEndIdx = XvisorRemapSelStartIdx + smc_pkg::XvisorRemapSelW - 1;
 
   smc_pkg::smc_axil_32_64_req_t  [smc_pkg::NumXvisorOutputRemapRegions-1:0] axil_xR_ctrl_reqs;
   smc_pkg::smc_axil_32_64_resp_t [smc_pkg::NumXvisorOutputRemapRegions-1:0] axil_xR_ctrl_resps;
@@ -826,8 +885,8 @@ module smc_internal_regs #(
     .test_i          (test_en_i),
     .slv_req_i       (axil_xR_ctrl_req_i),
     .slv_resp_o      (axil_xR_ctrl_resp_o),
-    .slv_aw_select_i (axil_xR_ctrl_req_i.aw.addr[XvisorRemapSelEndIdx:XvisorRemapSelStartIdx]), // 0x8 spacing: use bits [5:3] for 8 regions
-    .slv_ar_select_i (axil_xR_ctrl_req_i.ar.addr[XvisorRemapSelEndIdx:XvisorRemapSelStartIdx]), // 0x8 spacing: use bits [5:3] for 8 regions
+    .slv_aw_select_i (axil_xR_ctrl_req_i.aw.addr[XvisorRemapSelEndIdx:XvisorRemapSelStartIdx]),
+    .slv_ar_select_i (axil_xR_ctrl_req_i.ar.addr[XvisorRemapSelEndIdx:XvisorRemapSelStartIdx]),
     .mst_reqs_o      (axil_xR_ctrl_reqs),
     .mst_resps_i     (axil_xR_ctrl_resps)
   );
@@ -839,7 +898,7 @@ module smc_internal_regs #(
 
       .s_axil_awready (axil_xR_ctrl_resps[i].aw_ready),
       .s_axil_awvalid (axil_xR_ctrl_reqs[i].aw_valid),
-      .s_axil_awaddr  ({1'b0, axil_xR_ctrl_reqs[i].aw.addr[2:0]}),
+      .s_axil_awaddr  ({1'b0, axil_xR_ctrl_reqs[i].aw.addr[XvisorRemapSelStartIdx-1:0]}),
       .s_axil_awprot  (axil_xR_ctrl_reqs[i].aw.prot),
       .s_axil_wready  (axil_xR_ctrl_resps[i].w_ready),
       .s_axil_wvalid  (axil_xR_ctrl_reqs[i].w_valid),
@@ -850,7 +909,7 @@ module smc_internal_regs #(
       .s_axil_bresp   (axil_xR_ctrl_resps[i].b.resp),
       .s_axil_arready (axil_xR_ctrl_resps[i].ar_ready),
       .s_axil_arvalid (axil_xR_ctrl_reqs[i].ar_valid),
-      .s_axil_araddr  ({1'b0, axil_xR_ctrl_reqs[i].ar.addr[2:0]}),
+      .s_axil_araddr  ({1'b0, axil_xR_ctrl_reqs[i].ar.addr[XvisorRemapSelStartIdx-1:0]}),
       .s_axil_arprot  (axil_xR_ctrl_reqs[i].ar.prot),
       .s_axil_rready  (axil_xR_ctrl_reqs[i].r_ready),
       .s_axil_rvalid  (axil_xR_ctrl_resps[i].r_valid),
@@ -926,8 +985,8 @@ module smc_internal_regs #(
     .test_i           (test_en_i),
     .slv_req_i        (axil_aR_ctrl_req_i),
     .slv_resp_o       (axil_aR_ctrl_resp_o),
-    .slv_aw_select_i  (axil_aR_ctrl_req_i.aw.addr[AliasRemapSelEndIdx:AliasRemapSelStartIdx]),  // 0x20 spacing: use bits [7:5] for 8 regions
-    .slv_ar_select_i  (axil_aR_ctrl_req_i.ar.addr[AliasRemapSelEndIdx:AliasRemapSelStartIdx]),  // 0x20 spacing: use bits [7:5] for 8 regions
+    .slv_aw_select_i  (axil_aR_ctrl_req_i.aw.addr[AliasRemapSelEndIdx:AliasRemapSelStartIdx]),
+    .slv_ar_select_i  (axil_aR_ctrl_req_i.ar.addr[AliasRemapSelEndIdx:AliasRemapSelStartIdx]),
     .mst_reqs_o       (axil_aR_ctrl_reqs),
     .mst_resps_i      (axil_aR_ctrl_resps)
   );
@@ -939,7 +998,7 @@ module smc_internal_regs #(
 
       .s_axil_awready (axil_aR_ctrl_resps[i].aw_ready),
       .s_axil_awvalid (axil_aR_ctrl_reqs[i].aw_valid),
-      .s_axil_awaddr  (axil_aR_ctrl_reqs[i].aw.addr[4:0]),  // 0x20 spacing: bits [4:0] for register offset
+      .s_axil_awaddr  (axil_aR_ctrl_reqs[i].aw.addr[AliasRemapSelStartIdx-1:0]),
       .s_axil_awprot  (axil_aR_ctrl_reqs[i].aw.prot),
       .s_axil_wready  (axil_aR_ctrl_resps[i].w_ready),
       .s_axil_wvalid  (axil_aR_ctrl_reqs[i].w_valid),
@@ -950,7 +1009,7 @@ module smc_internal_regs #(
       .s_axil_bresp   (axil_aR_ctrl_resps[i].b.resp),
       .s_axil_arready (axil_aR_ctrl_resps[i].ar_ready),
       .s_axil_arvalid (axil_aR_ctrl_reqs[i].ar_valid),
-      .s_axil_araddr  (axil_aR_ctrl_reqs[i].ar.addr[4:0]),  // 0x20 spacing: bits [4:0] for register offset
+      .s_axil_araddr  (axil_aR_ctrl_reqs[i].ar.addr[AliasRemapSelStartIdx-1:0]),
       .s_axil_arprot  (axil_aR_ctrl_reqs[i].ar.prot),
       .s_axil_rready  (axil_aR_ctrl_reqs[i].r_ready),
       .s_axil_rvalid  (axil_aR_ctrl_resps[i].r_valid),

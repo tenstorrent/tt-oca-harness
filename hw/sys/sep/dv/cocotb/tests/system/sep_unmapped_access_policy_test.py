@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Unmapped-access policy at the points no other leaf probes.
+"""Holes, reserved rows and extent ends next to live registers answer the generated map's policy.
 
-no_cpu / +skip_fuse_sense. RAND-NONE: every address comes from the generated
+Run mode: no_cpu with +skip_fuse_sense. RAND-NONE: every address comes from the generated
 register export and is walked on every run.
 
 The SEP components view of the SystemRDL memory map
@@ -57,9 +57,9 @@ read data: a 32-bit RDL rdata on either bus half, and the upper word of a
 64-bit rdata for address bit 2. The tail words where the map and the RDL
 allocation disagree are graded by CHK-ARRAY-TAIL only and logged as
 UNMAPPED-MAP-DISAGREE. Past the efuse_interface_ctrl and spi_controller
-extents, reads cover both 32-bit lanes of the bus. The monitor lane-checks the read data of every error response for
-X/Z, so an unknown payload fails instead of reading as zero; every such read
-must have been lane-checked.
+extents, reads cover both 32-bit lanes of the bus. The monitor lane-checks the
+read data of every error response for X/Z, so an unknown payload fails instead
+of reading as zero; every such read must have been lane-checked.
 
 CHK-UNMAPPED-NO-ALIAS: no refused read returns a programmed value, no probe
 write moves a watched live word, and a closing re-read of every live word

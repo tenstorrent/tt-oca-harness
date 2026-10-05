@@ -5,12 +5,34 @@
 = Immutable ROM FW Integration
 
 OCAH contains three immutable ROM FW images: the SMC production ROM FW, the
-SEP production ROM FW, and the Key Manager production ROM FW. Each image has
+SEP production ROM FW, and the Key Manager application ROM FW. Each image has
 two integration contracts. The adopter connects and configures the
 corresponding ROM macro, and the final ROM FW image must be present before its
 processor leaves reset. Where ROM FW must initialize or access an
 adopter-owned peripheral outside OCAH, the image may also expose build-time
 integration hooks.
+
+The firmware itself is described in the Programmer's Guide appendices: the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-boot-rom[SMC Boot ROM],
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM],
+endif::backend-pdf[]
+the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-boot-rom[SEP Boot ROM],
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-boot-rom[SEP Boot ROM],
+endif::backend-pdf[]
+and the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#km-application-rom[Key Manager Application ROM].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-application-rom[Key Manager Application ROM].
+endif::backend-pdf[]
 
 [[rom-fw-override-method]]
 == Weak-symbol override method
@@ -94,7 +116,7 @@ adopter override inventory are not yet documented here.
 == Key Manager ROM FW integration
 
 The Key Manager exposes the `km_rom_mem` interface through SEP for its
-production ROM FW image. The detailed ROM-macro configuration, image-loading
+application ROM FW image. The detailed ROM-macro configuration, image-loading
 contract, and adopter override inventory are not yet documented here.
 
 .Key Manager ROM FW override inventory

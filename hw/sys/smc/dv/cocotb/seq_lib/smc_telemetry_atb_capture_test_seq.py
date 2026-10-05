@@ -2,7 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Telemetry receiver 0: capture one ATB message, then both flush paths.
 
-``hw/ip/telemetry_receiver/doc/programming.adoc`` gives the three software
+The Programmer's Guide Telemetry Receiver section
+(``doc/programmer/src/smc-programming.adoc``) gives the three software
 procedures this sequence drives, and each leg checks the observable that
 procedure names:
 

@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 #
-# KM (PicoRV32) ROM firmware for the SEP OSS dual-CPU eFuse AXI-lite mux
-# coexistence test (reference sep_efuse_km_axil_cpu_mux_coexist_test).
+# KM (PicoRV32) ROM firmware for the SEP DV dual-CPU eFuse AXI-lite mux
+# coexistence test (cocotb/tests/km/sep_efuse_km_axil_cpu_mux_coexist_test.py).
 #
 # The Key Manager contends with the EL2 host at the shared eFuse AXI-lite mux:
 # after a mailbox handshake with the EL2 it free-runs eFuse MMR writes so the EL2
 # can observe KM progress, owner-tag attribution, and ordering through the mux.
 #
-# Protocol (MUST match km_efuse_coexist.c + the cocotb observer):
+# Protocol (shared with km_efuse_coexist.c and the cocotb observer):
 #   - send  KM_READY_TOKEN (0xA11FE5EE) to the EL2 over the KM<->SEP mailbox;
 #   - wait for the EL2's GO word (any inbound word; the EL2 only sends GO);
 #   - free-run: payload = counter & 0x00FFFFFF; write MMR1 (lead) = 0x5A000000 |

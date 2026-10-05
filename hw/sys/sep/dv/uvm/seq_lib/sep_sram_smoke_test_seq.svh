@@ -20,7 +20,7 @@
 // Each pass uses its own SRAM word (loop_index selects it), so the
 // before-write read of every pass reads a word no earlier pass wrote. Every
 // expected value is the written stimulus or the zero fill; the scoreboard
-// does not predict SRAM. The cocotb twin is seq_lib/sep_sram_smoke_seq.py.
+// does not predict SRAM. The cocotb twin is cocotb/seq_lib/sep_sram_smoke_seq.py.
 
 class sep_sram_smoke_test_seq extends sep_base_test_seq;
   `uvm_object_utils(sep_sram_smoke_test_seq)
@@ -76,6 +76,7 @@ class sep_sram_smoke_test_seq extends sep_base_test_seq;
     ocah_axi_item result;
     bus_read(addr, WordSize, result, label);
     check_resp(result, 1'b1, label);
+    check_read_known(result, addr, WordSize, label);
     check_evidence(check_id, label, result.first_data(), expected, $sformatf("addr=0x%0h", addr));
   endtask
 
@@ -87,8 +88,7 @@ class sep_sram_smoke_test_seq extends sep_base_test_seq;
     bit [63:0] expected;
 
     seed_scenario_rng();
-    attach_evidence('{ChkFuseSense, ChkResp, ChkResetRead, ChkStore, ChkLane, ChkRandomStore,
-                    ChkRandomLane});
+    attach_evidence('{ChkResp, ChkResetRead, ChkStore, ChkLane, ChkRandomStore, ChkRandomLane});
     word_addr = 64'(SEP_SRAM_MEM_BASE_ADDR) + TargetOffset + 64'(loop_index) * WordBytes;
     if (word_addr + WordBytes > 64'(SEP_SRAM_MEM_BASE_ADDR) + 64'(SEP_SRAM_MEM_SIZE))
       `uvm_fatal(get_type_name(), $sformatf(

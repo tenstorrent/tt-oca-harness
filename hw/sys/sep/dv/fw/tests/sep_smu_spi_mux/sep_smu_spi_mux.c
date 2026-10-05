@@ -2,9 +2,8 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * sep_smu_spi_mux — excluded from the firmware build (`FW_TEST_EXCLUDE_NAMES`).
- * The SPI pad select this test name refers to is outside the OCAH hierarchy,
- * so this image only parks in the pass loop. No SPI select exists in OCAH: the
+ * sep_smu_spi_mux - excluded from the firmware build (`FW_TEST_EXCLUDE_NAMES`).
+ * This image only parks in the pass loop. No SPI select exists in OCAH: the
  * OT SPI host reaches the pads only on the SMC LSIO primary plane.
  */
 

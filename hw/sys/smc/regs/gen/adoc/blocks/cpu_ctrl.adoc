@@ -70,14 +70,14 @@ Per-core reset control and status, reset timing, chip configuration, mailbox, an
 | 23:9 | `Reserved` | - | - a| Reserved
 | 8 | `uncore_reset_n_n0_scan` | RW | 0x1 a| Cluster Uncore Reset, active low. Writing this register will only reset the uncore portion in the chipyard cluster.
 WARNING: using this can cause any outstanding axi requests to and from the cluster to cause timeouts/exceptions.
-| 7 | `core3_reset_pulse_start_n0_scan` | RW | 0x0 a| Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.
-This pulse is ANDed with core_reset_n[3] so a 0 in core_reset_n[3] will override the pulse.
-| 6 | `core2_reset_pulse_start_n0_scan` | RW | 0x0 a| Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.
-This pulse is ANDed with core_reset_n[2] so a 0 in core_reset_n[2] will override the pulse.
-| 5 | `core1_reset_pulse_start_n0_scan` | RW | 0x0 a| Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.
-This pulse is ANDed with core_reset_n[1] so a 0 in core_reset_n[1] will override the pulse.
-| 4 | `core0_reset_pulse_start_n0_scan` | RW | 0x0 a| Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.
-This pulse is ANDed with core_reset_n[0] so a 0 in core_reset_n[0] will override the pulse.
+| 7 | `core3_reset_pulse_start_n0_scan` | RW | 0x0 a| Writing a 1 to this register triggers a core reset pulse on core 3, timed by CORE_RESET_PULSE_COUNT.
+A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.
+| 6 | `core2_reset_pulse_start_n0_scan` | RW | 0x0 a| Writing a 1 to this register triggers a core reset pulse on core 2, timed by CORE_RESET_PULSE_COUNT.
+A 0 in core2_reset_n_n0_scan holds the core in reset for the whole pulse.
+| 5 | `core1_reset_pulse_start_n0_scan` | RW | 0x0 a| Writing a 1 to this register triggers a core reset pulse on core 1, timed by CORE_RESET_PULSE_COUNT.
+A 0 in core1_reset_n_n0_scan holds the core in reset for the whole pulse.
+| 4 | `core0_reset_pulse_start_n0_scan` | RW | 0x0 a| Writing a 1 to this register triggers a core reset pulse on core 0, timed by CORE_RESET_PULSE_COUNT.
+A 0 in core0_reset_n_n0_scan holds the core in reset for the whole pulse.
 | 3 | `core3_reset_n_n0_scan` | RW | 0x1 a| Reset control for the CPU, active low.
 | 2 | `core2_reset_n_n0_scan` | RW | 0x1 a| Reset control for the CPU, active low.
 | 1 | `core1_reset_n_n0_scan` | RW | 0x1 a| Reset control for the CPU, active low.
@@ -92,8 +92,8 @@ This pulse is ANDed with core_reset_n[0] so a 0 in core_reset_n[0] will override
 | Bits | Field | Access | Reset | Description
 | 63:36 | `Reserved` | - | - a| Reserved
 | 35:32 | `core_resets_done` | R | 0xF a| Logic low while performing core reset, logic high otherwise.
-| 31:16 | `post_reset_count` | RW | 0x10 a| Core reset pulse count post-reset. The duration of the pulse is the set value + 1.
-| 15:0 | `pre_reset_count` | RW | 0x8 a| Core reset pulse count pre-reset. The duration of the pulse is the set value + 1.
+| 31:16 | `post_reset_count` | RW | 0x10 a| Cycles (clk_smc), minus one, that a core reset pulse holds the core in reset.
+| 15:0 | `pre_reset_count` | RW | 0x8 a| Cycles (clk_smc), minus one, from the start of a core reset pulse to reset assertion.
 |===
 
 [#reg-{regmap-instance}-cpu_ctrl-RESET_TIMEOUT]
@@ -121,7 +121,10 @@ for drain) before timeout. 0 = disabled, wait indefinitely.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `rc` | RW | 0x0 a| Reference counter for the CPU
+| 63:0 | `rc` | RW | 0x0 a| Reference counter for the CPU. Write once, then poll this register until
+the readback reflects the written value before writing again. The counter
+keeps advancing, so the readback is at or just above the written value
+rather than equal to it.
 |===
 
 [#reg-{regmap-instance}-cpu_ctrl-WDT_TIMEOUT]

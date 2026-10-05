@@ -32,15 +32,14 @@ The two orderings the fabric cannot present are covered at the module's own
 port by `sep_drbg_axil_adapter_port_arbitration_test`, which drives a
 TB-instantiated instance of the same adapter directly.
 
-Calibration also shows the overlap needs no timing manipulation: with plain
-untimed traffic AW and AR land in the same cycle whenever a store and a load
-are in flight together.
+With plain untimed traffic AW and AR land in the same cycle whenever a store
+and a load are in flight together, so the overlap needs no timing manipulation.
 
 ONE ordering per lane per simulation so a wedge cannot contaminate a later
 cell. Driving one scenario per leaf is what makes each verdict independent.
 
-Delays are not guessed, they are CALIBRATED. The walk first issues a lone
-write and a lone read and measures when AW, W and AR actually arrive at the
+Delays are calibrated: the walk first issues a lone write and a lone read and
+measures when AW, W and AR arrive at the
 adapter port through the crossbar and axi_to_axi_lite. The target ordering is
 then placed using those measured latencies, and fired once. A calibration
 that cannot reach the ordering is reported as unreachable rather than fired
@@ -344,6 +343,7 @@ class SepAxiConcurrentRw:
         A closed gate would fail the cell on its prime write and read as an
         arbitration defect, so the caller checks the path before driving.
         """
+        # allow_timeout is ignored on the sequencer path; a timeout fails the access.
         resp, _data = await self._rd(addr, allow_timeout=True)
         return -1 if resp is None else resp
 
@@ -614,7 +614,7 @@ class SepAxiConcurrentRw:
             )
 
         # The named leaf is covered only when THIS ordering is what the port
-        # presented. A different overlap after an RTL fix would pass the
+        # presented. An overlap other than the named one would pass the
         # arbitration contract on a different cell than the leaf name claims.
         if self.presented != cfg.order or obs.overlap_cycles == 0:
             self.unreachable = (

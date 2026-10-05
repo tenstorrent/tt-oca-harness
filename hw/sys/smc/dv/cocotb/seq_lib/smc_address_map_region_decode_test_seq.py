@@ -35,6 +35,7 @@ from .smc_addr_map import (
     SPM_MEMORY_BASE,
     SPM_MEMORY_SIZE,
     generated_decoded_extent,
+    generated_past_extent_resp,
     generated_unit_at,
     generated_window,
     smc_addr,
@@ -114,6 +115,9 @@ assert generated_decoded_extent("dma_ctrl") == smc_addr("SMC_TOP_DMA_CTRL_SIZE")
 assert generated_decoded_extent("zeroer_ctrl") == smc_addr("SMC_TOP_ZEROER_CTRL_SIZE")
 assert generated_unit_at(DMA_PAST_LAST - LOCAL_BASE_RESET) is None
 assert generated_unit_at(ZEROER_PAST_LAST - LOCAL_BASE_RESET) is None
+# The RDL answers a read and a write past either block's extent with DECERR.
+assert generated_past_extent_resp("dma_ctrl") == ("DECERR", "DECERR")
+assert generated_past_extent_resp("zeroer_ctrl") == ("DECERR", "DECERR")
 
 # --- I3C: six CSR windows -----------------------------------------------------------------
 I3C_NUM = smc_addr("SMC_TOP_OCA_I3C_WRAP_I3C_CSR_NUM")
@@ -142,8 +146,8 @@ OCTS_CTRL = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR")
 DFX_STATUS_SMU = smc_addr("SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR")
 DFX_DEBUG_BUS_MUX = smc_addr("SMC_TOP_DFX_CTRL_DEBUG_BUS_MUX_BASE_ADDR")
 # The DFX block is the last one the generated map declares below the fabric
-# control registers at 0xC001_0000. The first address past its 2 KiB aperture
-# in the generated memory map belongs to no block.
+# control registers at 0xC001_0000. The first address past the aperture the
+# RDL reserves for it (ocah_aperture_size, 2 KiB) belongs to no block.
 DFX_REGION_BEYOND = LOCAL_BASE_RESET + generated_window("dfx_ctrl")[1] + 1
 assert generated_unit_at(DFX_REGION_BEYOND - LOCAL_BASE_RESET) is None
 assert DFX_REGION_BEYOND < smc_addr("SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR")

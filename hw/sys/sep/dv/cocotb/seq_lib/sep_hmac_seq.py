@@ -37,9 +37,6 @@ HMAC_DIGEST_0 = sym("HMAC_DIGEST_0__REG_ADDR")
 HMAC_MSG_FIFO = sym("HMAC_MSG_FIFO_MEM_BASE_ADDR")
 HMAC_NUM_PUBLIC_KEY = 32
 
-# CFG keyed HMAC-SHA256, 256-bit key (vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc): hmac_en[0]=1, sha_en[1]=1,
-# digest_size SHA2_256 -> bit5, key_length 256 -> bit10 (field [14:9]=2);
-# endian_swap/digest_swap = 0 (digest word0 = MSB == standard big-endian digest).
 HMAC_CMD_HASH_START = HMAC.field_mask("CMD", "hash_start")
 HMAC_CMD_HASH_PROCESS = HMAC.field_mask("CMD", "hash_process")
 
@@ -59,12 +56,9 @@ HMAC_DIGEST_WORDS = {256: 8, 384: 12, 512: 16}
 # be greater than the block size: up to 1024-bit for SHA-2 384/512 and up to
 # 512-bit for SHA-2 256."
 HMAC_BLOCK_BITS = {256: 512, 384: 1024, 512: 1024}
-# Keyed cells the register specification blocks, derived from that rule rather
-# than listed: hmac.adoc states a start with KEY_LENGTH = Key_1024 while
-# DIGEST_SIZE = SHA2_256 "is blocked and an error is signalled to SW". Deriving
-# it keeps the legal set the specification's, not the design's -- an RTL bound
-# that disagreed with the block-size rule would now drive a cell this set calls
-# legal.
+# Keyed cells hmac.adoc blocks: a start with KEY_LENGTH = Key_1024 while
+# DIGEST_SIZE = SHA2_256 "is blocked and an error is signalled to SW". The set
+# follows the block-size rule above, so it is the specification's legal set.
 HMAC_ILLEGAL_KEYED = {
     (sha_bits, key_bits)
     for sha_bits in HMAC_DIGEST_SIZE
@@ -101,6 +95,11 @@ def build_cfg(
     return cfg & 0xFFFF_FFFF
 
 
+# CFG keyed HMAC-SHA256, 256-bit key
+# (vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc):
+# hmac_en[0]=1, sha_en[1]=1, digest_size SHA2_256 -> bit5, key_length 256 -> bit10
+# (field [14:9]=2); endian_swap/digest_swap = 0 (digest word0 = MSB == standard
+# big-endian digest).
 HMAC_CFG_KEYED_256 = build_cfg(hmac_en=True, sha_bits=256, key_bits=256)
 HMAC_CFG_SHA256 = build_cfg(hmac_en=False, sha_bits=256)
 
@@ -160,13 +159,9 @@ class SepHmac(SepAxiRegDriver):
         """Read the 32 public KEY CSRs, plus a positive control.
 
         These key registers are declared write-only and the generated register
-        block ties their read data to a constant '0. Reading them back as zero is
-        therefore NOT evidence that the sideloaded key is unexposed -- they read
-        zero whether the key is protected, mirrored elsewhere, or never delivered.
-        What the readback can do is catch the day they become readable. (The KMAC
-        sibling can demonstrate this directly, because it writes a decoy to its key
-        registers earlier in the run; nothing writes these HMAC ones, so here the
-        claim rests on the generated register block rather than on an observation.)
+        block ties their read data to '0, so a zero readback is not by itself
+        evidence that the sideloaded key is unexposed; it catches only a register
+        that becomes readable. Nothing in this run writes them.
 
         For that to be worth anything the read path must be known alive, so this
         also returns STATUS, a readable register in the same window over the same

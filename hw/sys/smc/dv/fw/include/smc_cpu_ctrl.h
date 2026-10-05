@@ -10,10 +10,8 @@
 
 /* The OCCP master-BFM tests address the scratch window through per-register
  * symbols; the generated headers expose it as an indexed base macro, so these
- * aliases map one onto the other.
- * Scratch registers are 64-bit strided, matching write_scratch/read_scratch. */
-#define SMC_CPU_CTRL_SCRATCH_N__REG_ADDR(n) \
-    (SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(0) + ((n) * sizeof(uint64_t)))
+ * aliases map one onto the other. */
+#define SMC_CPU_CTRL_SCRATCH_N__REG_ADDR(n) SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR((n))
 
 #define SMC_CPU_CTRL_SCRATCH_0__REG_ADDR SMC_CPU_CTRL_SCRATCH_N__REG_ADDR(0)
 #define SMC_CPU_CTRL_SCRATCH_1__REG_ADDR SMC_CPU_CTRL_SCRATCH_N__REG_ADDR(1)
@@ -32,13 +30,9 @@
 #define SMC_CPU_CTRL_SCRATCH_14__REG_ADDR SMC_CPU_CTRL_SCRATCH_N__REG_ADDR(14)
 #define SMC_CPU_CTRL_SCRATCH_15__REG_ADDR SMC_CPU_CTRL_SCRATCH_N__REG_ADDR(15)
 
-/* Aliases for the registers occp_register_access_test walks. GLOBAL_BASE lives
- * in the BASE_CONFIG block, not CPU_CTRL, so its alias points outside the
+/* GLOBAL_BASE lives in the BASE_CONFIG block, not CPU_CTRL, so this alias points outside the
  * CPU_CTRL map. */
-#define SMC_CPU_CTRL_DUMMY_ROM_0_REG_ADDR SMC_TOP_SMC_CPU_CTRL_DUMMY_ROM_0_BASE_ADDR
 #define SMC_CPU_CTRL_GLOBAL_BASE_REG_ADDR SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR
-#define SMC_MISC_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR \
-    SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
 #define SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_REG_ADDR \
     SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_BASE_ADDR
 
@@ -67,17 +61,15 @@ static inline uint64_t read_smc_reg(uint64_t offset) {
 }
 
 static inline void write_scratch(uint8_t scratch_num, uint32_t value) {
-    volatile uint32_t *addr =
-        (volatile uint32_t *)(uintptr_t)(SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(0) +
-                                         (scratch_num * sizeof(uint64_t)));
+    volatile uint64_t *addr =
+        (volatile uint64_t *)(uintptr_t)SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR((scratch_num));
     *addr = value;
 }
 
 static inline uint32_t read_scratch(uint8_t scratch_num) {
-    volatile uint32_t *addr =
-        (volatile uint32_t *)(uintptr_t)(SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(0) +
-                                         (scratch_num * sizeof(uint64_t)));
-    return *addr;
+    volatile uint64_t *addr =
+        (volatile uint64_t *)(uintptr_t)SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR((scratch_num));
+    return (uint32_t)*addr;
 }
 
 static inline void write_postcode(uint32_t value) {

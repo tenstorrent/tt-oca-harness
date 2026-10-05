@@ -2,11 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO wrap 0 mux: register interface outranks a LIVE lsio_select competitor.
 
-Wrap 0's LSIO function is SPI DQ0 (`smc_padring.sv:200-203` wires
-`lsio_core2pad_en_n[0] = spi_dq_oe_n_i[0]` and `lsio_core2pad_data[0] =
-spi_txd_i[0]`), and the base test parks the whole SPI octal pad group
-not-driving. This sequence therefore drives DQ0 through the top-level TB pins
-before the mux legs, so that:
+The integrator pad table (`doc/integrator/meta/ocah_gpio_table.csv`) gives pad
+0 the function SPI.DATA[0], and the bench drives the SMC's SPI data lanes
+through its `tb_spi_dq_oe_n` / `tb_spi_txd` pins (`tb/tb_top.sv`), parked
+not-driving by the base test. This sequence therefore drives data lane 0
+through those pins before the mux legs, so that:
 
   * `lsio_select` alone is shown to ROUTE the LSIO function to the pad -- the
     positive control that separates a live select bit from one tied to 0, since
@@ -14,6 +14,15 @@ before the mux legs, so that:
   * the priority leg runs against a competitor that is actually contributing a
     different value, so "interface_enable wins" is a distinguishable outcome
     rather than one both hypotheses satisfy.
+
+The expectations are the GPIO ownership table
+(`hw/ip/gpio/doc/architecture.adoc`, "Data and Direction Ownership"): a
+hardware LSIO request outranks everything, the register interface outranks a
+software-forced `lsio_select`, and a software-forced `lsio_select` routes the
+same LSIO inputs to the pad. `DATA_CTRL.lsio_enable` "reports the hardware
+request after the disable gate", so it is read back clear in every leg to
+show the first row is not in play and the routing the LSIO leg measures is
+the software-forced one.
 
 No force, no deposit: the LSIO source is driven through the same `tb_spi_*`
 input pins the SPI pad testcases use, and restored afterwards.
@@ -26,13 +35,15 @@ from cocotb.triggers import RisingEdge
 
 from .smc_addr_map import gpio_intf_u32, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_pad_table import pad_index
 
-#: Wrap index under test. The register instance, the `core2pad_en_o` bit and
-#: the SPI DQ lane that feeds this wrap's LSIO function are all derived from
-#: this one value, so they cannot drift apart. `smc.sv:105` maps GPIO wrap i to
-#: `core2pad_en_o[i]`, and `smc_padring.sv:200-203` maps SPI DQ lane i to the
-#: LSIO inputs of wrap i for i < 8.
-_WRAP = 0
+#: The SPI data lane the bench drives as the LSIO source, and the wrap the
+#: integrator pad table assigns that lane to. One `gpio` controller serves one
+#: pad and `core2pad_en_o` carries one bit per wrap (`architecture.adoc`,
+#: `port_table.adoc`), so the register instance and the enable bit are both
+#: this index.
+_SPI_DATA_LANE = 0
+_WRAP = pad_index(f"SPI.DATA[{_SPI_DATA_LANE}]")
 _WRAP0_BIT = 1 << _WRAP
 
 GPIO0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", _WRAP)
@@ -41,6 +52,7 @@ _CORE2PAD = gpio_intf_u32("GPIO_INTF__DATA_CTRL__CORE2PAD_bm")
 _TX_ENABLE = 1 << gpio_intf_u32("GPIO_INTF__DATA_CTRL__ENABLE_RX_TX_bp")
 _IF_ENABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERFACE_ENABLE_bm")
 _LSIO_SELECT = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_SELECT_bm")
+_LSIO_ENABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_ENABLE_bm")
 _PAD2CORE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__PAD2CORE_bm")
 
 #: DATA_CTRL bits a readback may differ in: PAD2CORE is a live pad
@@ -120,6 +132,11 @@ class smc_gpio_p0_mux_test_seq(SmcCsrSeq):
         PAD2CORE is excluded because it is a live pad status bit, not storage.
         """
         got = await self.csr_read(name, GPIO0_DATA_CTRL)
+        assert (got & _LSIO_ENABLE) == 0, (
+            f"{name}: DATA_CTRL.lsio_enable reads set (0x{got:08x}); a hardware LSIO request "
+            f"owns wrap {_WRAP}, so the legs below would measure that request and not the "
+            f"register and lsio_select fields they program"
+        )
         assert (got & _CTRL_STORED_MASK) == (written & _CTRL_STORED_MASK), (
             f"{name}: DATA_CTRL stored 0x{got & _CTRL_STORED_MASK:08x}, wrote "
             f"0x{written & _CTRL_STORED_MASK:08x} (mask 0x{_CTRL_STORED_MASK:08x})"
@@ -128,20 +145,16 @@ class smc_gpio_p0_mux_test_seq(SmcCsrSeq):
 
     @staticmethod
     def _drive_lsio_source(dut, *, driving: bool, data: int) -> None:
-        """Drive wrap 0's LSIO function (SPI DQ0) through top-level TB pins.
+        """Drive the wrap's LSIO function (SPI data lane 0) through bench pins.
 
-        `spi_enable_i` is left at 0. `smc_padring.sv:199-205`
-        assigns `lsio_interface_select_o[s] = spi_enable_i` but wires the LSIO
-        data / output-enable inputs unconditionally, and `gpio.sv:166` computes
-        `lsio_active = (lsio_interface_select_i || reg__lsio_select) &&
-        ~reg__lsio_disable`. Keeping `spi_enable_i` low therefore makes
-        `lsio_active` equal to `reg__lsio_select` alone, which is exactly the
-        bit under test: with the source driving, a live select bit routes it to
-        the pad and a dead one does not.
+        The bench's SPI enable pin stays low, so no hardware LSIO request is
+        raised: `DATA_CTRL.lsio_enable` is read back clear in every leg. With
+        the source driving, a live `lsio_select` bit routes it to the pad and a
+        dead one does not.
         """
-        dq_oe_n = 0xFF & ~(1 << _WRAP) if driving else 0xFF
+        dq_oe_n = 0xFF & ~(1 << _SPI_DATA_LANE) if driving else 0xFF
         dut.tb_spi_dq_oe_n.value = dq_oe_n
-        dut.tb_spi_txd.value = (data & 1) << _WRAP
+        dut.tb_spi_txd.value = (data & 1) << _SPI_DATA_LANE
 
     async def body(self) -> None:
         dut = cocotb.top
@@ -209,10 +222,9 @@ class smc_gpio_p0_mux_test_seq(SmcCsrSeq):
 
         # LSIO ROUTING, the positive control for the select bit itself.
         # interface_enable is cleared and CORE2PAD is left at 0, so the register
-        # path contributes en=0 / data=0. `lsio_active` equals
-        # `reg__lsio_select` alone (spi_enable_i is 0), and the LSIO source is
-        # driving, so a live select bit gives en=1 and a select bit tied to 0
-        # gives en=0.
+        # path contributes en=0 / data=0. No hardware LSIO request is raised
+        # (lsio_enable reads clear), and the LSIO source is driving, so a live
+        # select bit gives en=1 and a select bit tied to 0 gives en=0.
         await self.csr_write("GPIO0_LSIO", GPIO0_DATA_CTRL, OUT_LSIO_ONLY)
         await self._await_en_bit(dut, 1, "LSIO")
         await self._check_ctrl_readback("GPIO0_LSIO_RB", OUT_LSIO_ONLY)

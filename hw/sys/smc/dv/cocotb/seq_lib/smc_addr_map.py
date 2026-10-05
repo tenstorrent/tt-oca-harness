@@ -11,6 +11,7 @@ from ``smc_base_config.h`` / ``dma_ctrl.h``), never hand-copied in tests.
 from __future__ import annotations
 
 import re
+import sys
 from functools import lru_cache
 from pathlib import Path
 
@@ -191,80 +192,68 @@ def reg_reset_word(header: Path, block: str, reg: str) -> int:
 GLOBAL_BASE_RESET = reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "GLOBAL_BASE")
 LOCAL_BASE_RESET = reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "LOCAL_BASE")
 
-# The window table the register generator writes from the RDL address map and
-# `doc/memmap.adoc` includes: one row per unit, `|BASE + <lo> - BASE + <hi> |...`.
-# Rows are keyed by their ``BASE + <lo>`` offset, not the trailing label column:
-# that column shows the addrmap's RDL `name` where one is set and its instance
-# name otherwise, so it is not a stable key.
-_MEMORY_MAP_ADOC = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "adoc" / "memory_map.adoc"
-_WINDOW_ROW = re.compile(
-    r"^\|BASE \+ (0x[0-9A-Fa-f]+) [-\u2013] BASE \+ (0x[0-9A-Fa-f]+) \|[^|]*\|[^|]*\|[^|]+\|"
-)
+# The component view of the generated memory map
+# (``regs/gen/py/smc_memory_map.py``, written by the register generator from
+# the same RDL address map as ``smc_addr.h``): one row per ``smc_top`` unit,
+# with the absolute ``base`` and ``end`` of the aperture the RDL reserves for
+# it (``ocah_aperture_size``), the ``occupied_size`` the fabric decodes and the
+# ``past_response`` an access past that extent receives
+# (``ocah_past_extent_resp``). A unit with instances has one row for the whole
+# array. Offsets below are from the map's ``BASE``, ``LOCAL_BASE``.
+_SMC_REG_PY = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "py"
+if str(_SMC_REG_PY) not in sys.path:
+    sys.path.insert(0, str(_SMC_REG_PY))
+
+from smc_memory_map import VIEWS as _MEMORY_MAP_VIEWS  # noqa: E402
+
+_COMPONENT_ROWS = _MEMORY_MAP_VIEWS["smc-components"]["rows"]
 
 
-def _unit_base_offset(unit: str) -> int:
-    """Offset from the map's ``BASE`` (``LOCAL_BASE``) at which ``unit``'s window starts.
+def _component_row(unit: str) -> dict:
+    """The generated component row of ``unit``, keyed by its ``smc_top`` instance name.
 
-    The adoc keys each row by ``BASE + <offset>``; the C header gives the same
-    window as an absolute ``SMC_TOP_<unit>_BASE_ADDR``. Both derive from the one
-    RDL address map, so the offset is the absolute address minus ``LOCAL_BASE``.
-    A unit with instances has an indexed ``SMC_TOP_<unit>_BASE_ADDR(idx)`` macro
-    and one row for the whole array, so it is keyed by instance 0.
+    The row's ``base`` has to equal the unit's ``SMC_TOP_<unit>_BASE_ADDR`` in
+    ``smc_addr.h`` (instance 0 of an indexed macro), so the two generated
+    artifacts cannot drift apart unnoticed.
     """
+    for row in _COMPONENT_ROWS:
+        if row["key"].rsplit(":", 1)[-1] == unit:
+            break
+    else:
+        raise KeyError(f"{unit} has no component row in the generated memory map")
     symbol = f"SMC_TOP_{unit.upper()}_BASE_ADDR"
     try:
-        return smc_addr(symbol) - LOCAL_BASE_RESET
+        base = smc_addr(symbol)
     except KeyError:
-        pass
-    try:
-        return smc_indexed_addr(symbol, 0) - LOCAL_BASE_RESET
-    except KeyError as exc:
-        raise KeyError(
-            f"{unit} has neither SMC_TOP_*_BASE_ADDR nor SMC_TOP_*_BASE_ADDR(idx) in {_SMC_ADDR_H}"
-        ) from exc
+        base = smc_indexed_addr(symbol, 0)
+    assert row["base"] == base, f"{unit}: map base {row['base']:#x}, {symbol} {base:#x}"
+    return row
 
 
 def generated_window(unit: str) -> tuple[int, int]:
-    """Return ``(first, last)`` offsets of the window the generated memory map gives ``unit``."""
-    want = _unit_base_offset(unit)
-    for line in _MEMORY_MAP_ADOC.read_text().splitlines():
-        m = _WINDOW_ROW.match(line)
-        if m and int(m.group(1), 16) == want:
-            return int(m.group(1), 16), int(m.group(2), 16)
-    raise KeyError(f"{unit} (BASE + {want:#x}) has no window row in {_MEMORY_MAP_ADOC}")
-
-
-# Component rows carry the decoded extent too:
-# `|BASE + <lo> - BASE + <hi> |<size> |<decoded extent> |<unit> |...`. The
-# fabric refuses an offset past the decoded extent (memmap.adoc), so the
-# decoded extent, not the aperture, bounds the addresses a unit answers.
-_COMPONENT_ROW = re.compile(
-    r"^\|BASE \+ (0x[0-9A-Fa-f]+) [-\u2013] BASE \+ (0x[0-9A-Fa-f]+) \|[^|]*\|([^|]*)\|([^|]+)\|"
-)
-_EXTENT_UNIT_BYTES = {"B": 1, "KiB": 1 << 10, "MiB": 1 << 20, "GiB": 1 << 30}
+    """``(first, last)`` offsets from ``LOCAL_BASE`` of the aperture the map gives ``unit``."""
+    row = _component_row(unit)
+    return row["base"] - LOCAL_BASE_RESET, row["end"] - LOCAL_BASE_RESET
 
 
 def generated_decoded_extent(unit: str) -> int:
-    """Return the byte count of the ``Decoded Extent`` the generated memory map gives ``unit``."""
-    want = _unit_base_offset(unit)
-    for line in _MEMORY_MAP_ADOC.read_text().splitlines():
-        m = _COMPONENT_ROW.match(line)
-        if m and int(m.group(1), 16) == want:
-            count, suffix = m.group(3).split()
-            return int(count) * _EXTENT_UNIT_BYTES[suffix]
-    raise KeyError(f"{unit} (BASE + {want:#x}) has no component row in {_MEMORY_MAP_ADOC}")
+    """Byte count of the decoded extent the generated memory map gives ``unit``."""
+    return _component_row(unit)["occupied_size"]
+
+
+def generated_past_extent_resp(unit: str) -> tuple[str, str]:
+    """``(rresp, bresp)`` names the RDL gives an access past ``unit``'s decoded extent."""
+    past = _component_row(unit)["past_response"]
+    assert past is not None, f"{unit}'s decoded extent fills its aperture; nothing lies past it"
+    return past["rresp"], past["bresp"]
 
 
 def generated_unit_at(offset: int) -> str | None:
-    """Unit whose decoded extent contains ``offset`` (from BASE), or None if the fabric refuses it."""
-    for line in _MEMORY_MAP_ADOC.read_text().splitlines():
-        m = _COMPONENT_ROW.match(line)
-        if not m:
-            continue
-        first = int(m.group(1), 16)
-        count, suffix = m.group(3).split()
-        if first <= offset < first + int(count) * _EXTENT_UNIT_BYTES[suffix]:
-            return m.group(4).strip()
+    """Unit whose decoded extent contains ``offset`` (from ``LOCAL_BASE``), else None."""
+    addr = LOCAL_BASE_RESET + offset
+    for row in _COMPONENT_ROWS:
+        if row["base"] <= addr < row["base"] + row["occupied_size"]:
+            return row["label"]
     return None
 
 
@@ -338,6 +327,7 @@ UART_CG_EN = _field_mask(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__
 TELEMETRY_CG_EN = _field_mask(
     _SMC_BASE_CFG_H, "SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__TELEMETRY_CG_EN_bm"
 )
+AVS_CG_EN = _field_mask(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__AVS_CG_EN_bm")
 
 # GPIO_INTF meta from PeakRDL.
 GPIO_INTF_NUM = smc_addr("SMC_TOP_GPIO_INTF_NUM")
@@ -415,16 +405,6 @@ def uart_16550_dl_u32(symbol: str) -> int:
 def uart_16550_dl_offset(symbol: str) -> int:
     """Register offset inside the divisor-latch window from ``uart_16550_dl_addr.h``."""
     return _field_mask(_UART_16550_DL_ADDR_H, symbol)
-
-
-_GPIO_POC_H = (
-    _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "gpio_poc_pbias_ctrl.h"
-)
-
-
-def gpio_poc_u32(symbol: str) -> int:
-    """Field mask/reset from generated ``gpio_poc_pbias_ctrl.h``."""
-    return _field_mask(_GPIO_POC_H, symbol)
 
 
 _SMC_EFUSE_MAP_H = (

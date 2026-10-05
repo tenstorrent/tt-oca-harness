@@ -1,12 +1,26 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM mailbox handover: inhibit contract, then a SRAM load and warm-reset exec.
+"""KM handover commands honour the inhibit epoch, and a loaded SRAM image is accepted for exec.
 
 no_cpu / real fuse-sense / +km_rom_hex=rom_main.rom.parhex.
 
-The 14-word blob is the KM IP ``mutable_fw_blob_small`` image. After a
-successful ``CMD_SRAM_LOAD_EXEC`` stream and a warm reset, ``CMD_SRAM_EXEC``
-returns success. KMCSR ``TEST_SIGNATURE`` is not SEP-visible.
+The 14-word blob is a minimal mutable firmware image for KM SRAM at 0x8000;
+image plus CRC fits the 16-word FIFO. After a successful ``CMD_SRAM_LOAD_EXEC``
+stream and a warm reset, ``CMD_SRAM_EXEC`` returns success. KMCSR
+``TEST_SIGNATURE`` is not SEP-visible.
+
+Checkers:
+  CHK0            rom_main boots and announces RESP_KM_READY.
+  CHK-EMPTY       CMD_SRAM_EXEC with no image returns RC_INVALID_ARG.
+  CHK-ARG         FW_WORDS=0 and a set reserved[31:16] each return RC_INVALID_ARG.
+  CHK-INHIBIT     the first CMD_EXEC_ROM returns rc=0; the later handover
+                  commands in the same epoch return RC_FAILURE.
+  CHK-INHIBIT-RST a warm reset clears the inhibit; CMD_EXEC_ROM returns rc=0.
+  CHK-LOAD        CMD_SRAM_LOAD_EXEC returns rc=0, then the image and CRC-32C
+                  stream in.
+  CHK-EXEC        CMD_SRAM_EXEC returns rc=0 after a warm reset. It grades the
+                  firmware response only; the loaded image's execution is not
+                  observed.
 """
 
 from __future__ import annotations
@@ -27,8 +41,8 @@ from seq_lib.sep_km_mailbox_seq import (
     crc32c,
 )
 
-# mutable_fw_blob_small -- a minimal mutable firmware image loaded at 0x8000;
-# 14 words so image+CRC fits the 16-word FIFO.
+# Minimal mutable firmware image loaded at 0x8000; 14 words so image+CRC fits
+# the 16-word FIFO.
 _MUTABLE_FW_BLOB_SMALL = (
     0x0140006F,
     0x00000013,

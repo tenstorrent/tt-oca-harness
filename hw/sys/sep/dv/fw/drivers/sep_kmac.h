@@ -86,7 +86,8 @@ static inline void sep_kmac_cfg_write(uint32_t value) {
 // cSHAKE prefix, using software entropy. Returns 0 on success (the unmasked
 // digest share0^share1 is written to digest_out[8]), 1 on idle-timeout,
 // 2 on done-timeout, 3 on a nonzero KMAC ERR_CODE, 4 if the done status did not
-// RW1C-clear.
+// RW1C-clear, 5 if the done status did not still read set on a second read
+// after the poll.
 static inline int sep_kmac128_sw_smoke(uint32_t digest_out[8]) {
     int t = SEP_KMAC_TIMEOUT;
     while ((t-- > 0) &&
@@ -130,6 +131,11 @@ static inline int sep_kmac128_sw_smoke(uint32_t digest_out[8]) {
     if (t <= 0) {
         return 2;
     }
+    // A read has no side effect on the done event, so it must still be set here.
+    // That rules out a bit that clears on read or drops by itself, and credits
+    // the clear below to the write-one.
+    int sticky_fail =
+        (sep_kmac_rd(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR) & KMAC__INTR_STATE__KMAC_DONE_bm) ? 0 : 1;
     sep_kmac_wr(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm);
     int rw1c_fail =
         (sep_kmac_rd(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR) & KMAC__INTR_STATE__KMAC_DONE_bm) ? 1 : 0;
@@ -143,6 +149,9 @@ static inline int sep_kmac128_sw_smoke(uint32_t digest_out[8]) {
 
     int err = (sep_kmac_rd(SEP_TOP_KMAC_ERR_CODE_BASE_ADDR) != 0);
     sep_kmac_wr(SEP_TOP_KMAC_CMD_BASE_ADDR, SEP_KMAC_CMD_DONE);
+    if (sticky_fail) {
+        return 5;
+    }
     if (rw1c_fail) {
         return 4;
     }

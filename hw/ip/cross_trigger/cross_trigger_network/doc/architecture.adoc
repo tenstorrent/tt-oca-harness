@@ -21,42 +21,14 @@ reaches a package pin, which makes the trigger visible outside the package and
 could accept an external trigger; a package pin is impractical for
 point-to-point signalling.
 
-<<sip-cross-trigger-ctm-programming-table>> lists the CTM routing that each
-chiplet programs for this topology.
-
-[[sip-cross-trigger-ctm-programming-table]]
-[cols="<16,<84",options="header"]
-.CTM programming for the example SiP
-|===
-|Chiplet |CTM forwarding
-
-|0
-|From Chiplets 1 and 2 through the wire-OR CTP to the local CLAs and Chiplets 3 and 4. +
-From Chiplet 3 to the local CLAs, the wire-OR CTP and Chiplet 4. +
-From Chiplet 4 to the local CLAs, the wire-OR CTP and Chiplet 3. +
-From the local CLAs to the wire-OR CTP and Chiplets 3 and 4.
-
-|1
-|From Chiplets 0 and 2 through the wire-OR CTP to the local CLAs. +
-From the local CLAs to the wire-OR CTP.
-
-|2
-|From Chiplets 0 and 1 through the wire-OR CTP to the local CLAs. +
-From the local CLAs to the wire-OR CTP.
-
-|3
-|From Chiplet 0 to the local CLAs and Chiplet 5. +
-From Chiplet 5 to the local CLAs and Chiplet 0. +
-From the local CLAs to Chiplets 0 and 5.
-
-|4
-|From Chiplet 0 to the local CLAs. +
-From the local CLAs to Chiplet 0.
-
-|5
-|From Chiplet 3 to the local CLAs. +
-From the local CLAs to Chiplet 3.
-|===
+The Programmer's Guide lists the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#dtp-ctn-sip-example[CTM routing that each chiplet programs]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ctn-sip-example[CTM routing that each chiplet programs]
+endif::backend-pdf[]
+for this topology.
 
 No route leads from a CTP back to itself, but a CTP in wire-OR mode also
 receives the falling edge that it drives onto the shared wire. A trigger that
@@ -253,14 +225,25 @@ The CTM is programmed at runtime via firmware or debug transactions. Proper
 configuration of the CTMs in each chiplet will minimize trigger latency and
 prevent loops in the SiP cross trigger network. Configuration is accomplished
 via CSRs. The CTM register interface is described in the <<ctn-memory-map,CTN Memory Map>>
-section below, and <<ctn-programming>> gives the order in which to program the
-CTPs and the CTM.
+section below, and the Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#dtp-ctn-init[order in which to program the CTPs and the CTM].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ctn-init[order in which to program the CTPs and the CTM].
+endif::backend-pdf[]
 
 === Address Map
 
 The CTN provides a unified CSR address space accessed via a single AXI-Lite
 subordinate port. An internal AXI-Lite crossbar (`axi_lite_xbar`) routes
-transactions to the CTM and external CTPs based on address decoding.
+transactions to the CTM and external CTPs based on address decoding. The
+crossbar registers all five channels at the subordinate port, so no
+combinational path runs from the port's inputs to its outputs, and each
+channel adds one cycle of latency. Each channel's register holds up to two
+beats and keeps its READY high while it holds fewer than two. The crossbar
+serves one CSR access at a time, so the port can accept a second request on
+a channel while the crossbar is still serving the first.
 
 <<ctn-address-allocation-table>> lists the CTM and external-CTP address ranges.
 

@@ -1,16 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""FIXED and WRAP bursts into SEP SRAM are either refused or performed as named.
+"""The SRAM target refuses a multi-beat FIXED or WRAP burst with SLVERR.
 
-no_cpu / +skip_fuse_sense. RAND-NONE: one directed FIXED and one directed WRAP
+Run mode: no_cpu with +skip_fuse_sense. RAND-NONE: one directed FIXED and one directed WRAP
 burst, 4 beats of 8 bytes each, on the CPU-LSU master.
 
-``hw/sys/sep/doc/fabric.adoc`` specifies the SEP interconnect as an AXI4
-fabric, and the SRAM row of ``hw/sys/sep/doc/memory_map.adoc`` is a slave on
-it. AXI4 defines the beat addresses of each burst type (see
-``seq_lib/sep_sram_burst_type_seq.py``). Two outcomes are lawful for a
-burst type the slave does not implement: an error response with SRAM
-unchanged, or OKAY with the beats at the addresses the burst type names.
+``hw/sys/sep/doc/fabric.adoc#sep-sram-target`` specifies that the SRAM target
+serves INCR bursts of every length and single-beat bursts of every type, and
+refuses a multi-beat FIXED or WRAP burst before it reaches the memory: the
+write terminates with BRESP=SLVERR and leaves SRAM unchanged, and every beat
+of the read returns RRESP=SLVERR. Any other response code, and an OKAY-served
+burst, fails. The AXI4 beat addresses of each burst type (see
+``seq_lib/sep_sram_burst_type_seq.py``) are diagnostic only.
 
 CHK-BT-STIM: the AW / AR handshake on the testbench port carries the start
 address, AxLEN, AxSIZE and AxBURST of the case, so the verdict below is about
@@ -19,13 +20,12 @@ the named burst type and not a master that fell back to INCR.
 CHK-BT-CONTROL: single-beat writes of a distinct background to every word in
 the region read back, so the region can show where a burst landed.
 
-CHK-BT-WRITE: after the write burst, the region equals the background (the
-burst was refused, BRESP non-OKAY) or the AXI4 image of the named burst type
-(BRESP OKAY). Any other image fails, and the log names the INCR image when
-that is what the DUT produced.
+CHK-BT-WRITE: the write burst answers BRESP=SLVERR and the region still equals
+the background. Any other response or image fails, and the log names the AXI4
+or INCR image when that is what the DUT produced.
 
-CHK-BT-READ: over a known image, a read burst either answers non-OKAY on every
-beat or returns, on OKAY beats, the words the named burst type addresses.
+CHK-BT-READ: over a known image, the read burst answers RRESP=SLVERR on every
+beat.
 """
 
 from __future__ import annotations
@@ -35,6 +35,7 @@ from sep_base_test import sep_base_test
 from seq_lib.sep_sram_burst_type_seq import (
     BURST_INCR,
     RESP_OKAY,
+    RESP_SLVERR,
     SepSramBurstType,
     background,
     beat_addrs,
@@ -74,7 +75,7 @@ def _which(case, v: int) -> str:
 
 @pyuvm.test()
 class sep_sram_burst_type_test(sep_base_test):
-    """A FIXED or WRAP burst into SRAM is refused or honoured, never run as INCR."""
+    """A multi-beat FIXED or WRAP burst into SRAM is refused with SLVERR."""
 
     required_evidence = ("CHK-BT-STIM", "CHK-BT-CONTROL", "CHK-BT-WRITE", "CHK-BT-READ")
 
@@ -139,8 +140,8 @@ class sep_sram_burst_type_test(sep_base_test):
                         f"wrote beat{hits[-1]} d{hits[-1]}={_w(golden[a])} (AXI4 target of "
                         f"beats {','.join(str(i) for i in hits)}; the last beat stays)"
                     )
-                exp = golden[a] if resp == RESP_OKAY else bg[a]
-                note = "" if resp == RESP_OKAY else f" (BRESP={resp}, refused)"
+                exp = bg[a]
+                note = f" (background; BRESP={resp})"
                 ok = after[a] == exp
                 (self.logger.info if ok else self.logger.error)(
                     "CHK-BT-WRITE %s 0x%08x: %s | read back %s (%s) | expected %s%s %s",
@@ -155,28 +156,32 @@ class sep_sram_burst_type_test(sep_base_test):
                 )
             if timed_out:
                 verdict = "timed out"
-            elif resp != RESP_OKAY and after == bg:
-                verdict = None
-            elif resp == RESP_OKAY and after == golden:
+            elif resp == RESP_SLVERR and after == bg:
                 verdict = None
             else:
-                shape = (
-                    "the INCR image"
-                    if after == incr
-                    else ("the background" if after == bg else "neither image")
-                )
+                if after == bg:
+                    shape = "the background"
+                elif after == golden:
+                    shape = "the AXI4 image"
+                elif after == incr:
+                    shape = "the INCR image"
+                else:
+                    shape = "no known image"
                 diff = " ".join(
-                    f"0x{a:08x}:got=0x{after[a]:016x},axi4=0x{golden[a]:016x}"
+                    f"0x{a:08x}:got=0x{after[a]:016x},bg=0x{bg[a]:016x}"
                     for a in case.region
-                    if after[a] != golden[a]
+                    if after[a] != bg[a]
                 )
-                verdict = f"BRESP={resp} and SRAM holds {shape} ({diff})"
+                verdict = f"BRESP={resp} (want SLVERR={RESP_SLVERR}) and SRAM holds {shape}" + (
+                    f" ({diff})" if diff else ""
+                )
             if verdict is None:
                 self.logger.info(
-                    "CHK-BT-WRITE PASS: %s write burst %s (BRESP=%d)",
+                    "CHK-BT-WRITE PASS: %s write burst refused, BRESP=%d (SLVERR), "
+                    "%d words unchanged",
                     case.name,
-                    "refused, SRAM unchanged" if resp != RESP_OKAY else "landed at AXI4 addresses",
                     resp,
+                    len(case.region),
                 )
             else:
                 fails.append(f"CHK-BT-WRITE {case.name}: {verdict}")
@@ -208,36 +213,34 @@ class sep_sram_burst_type_test(sep_base_test):
                 for i, (b, w, e, r) in enumerate(
                     zip(beat_addrs(case.burst, case.start), words, want, resps)
                 ):
-                    ok = r != RESP_OKAY or w == e
+                    ok = r == RESP_SLVERR
                     (self.logger.info if ok else self.logger.error)(
-                        "CHK-BT-READ %s beat%d: expected word @0x%08x = %s | returned %s (%s) "
-                        "RRESP=%d %s",
+                        "CHK-BT-READ %s beat%d: RRESP=%d (want SLVERR=%d) | AXI4 word "
+                        "@0x%08x = %s | returned %s (%s) %s",
                         case.name,
                         i,
+                        r,
+                        RESP_SLVERR,
                         b,
                         _w(e),
                         _w(w),
                         _which(case, w),
-                        r,
                         "PASS" if ok else "FAIL",
                     )
-                bad = [
-                    f"beat{i}=0x{w:016x} want 0x{e:016x}"
-                    for i, (w, e, r) in enumerate(zip(words, want, resps))
-                    if r == RESP_OKAY and w != e
-                ]
-                mixed = any(r == RESP_OKAY for r in resps) and any(r != RESP_OKAY for r in resps)
-                if bad or mixed:
-                    read_fail = f"CHK-BT-READ {case.name}: RRESP={resps} " + (
-                        " ".join(bad) if bad else "mixed OKAY and error beats"
+                bad = [f"beat{i} RRESP={r}" for i, r in enumerate(resps) if r != RESP_SLVERR]
+                if bad:
+                    served = [i for i, r in enumerate(resps) if r == RESP_OKAY]
+                    read_fail = (
+                        f"CHK-BT-READ {case.name}: RRESP={resps}, want SLVERR={RESP_SLVERR} on "
+                        f"every beat: {' '.join(bad)}"
+                        + (f"; OKAY beats {served}" if served else "")
                     )
                 else:
                     self.logger.info(
-                        "CHK-BT-READ PASS: %s read burst %s",
+                        "CHK-BT-READ PASS: %s read burst refused, RRESP=%s (SLVERR on all %d beats)",
                         case.name,
-                        "refused on every beat"
-                        if all(r != RESP_OKAY for r in resps)
-                        else "returned the AXI4 beat words",
+                        resps,
+                        len(resps),
                     )
             if read_fail is not None:
                 fails.append(read_fail)
@@ -246,6 +249,6 @@ class sep_sram_burst_type_test(sep_base_test):
         if fails:
             raise AssertionError(f"{len(fails)} burst-type check(s) failed: " + "; ".join(fails))
         self.logger.info(
-            "burst-type summary: FIXED and WRAP are refused or performed at their "
-            "AXI4 beat addresses, on write and on read"
+            "burst-type summary: multi-beat FIXED and WRAP are refused with SLVERR, "
+            "on write and on read"
         )

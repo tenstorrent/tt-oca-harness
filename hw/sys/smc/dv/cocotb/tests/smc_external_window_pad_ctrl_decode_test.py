@@ -7,8 +7,8 @@ SMC-EXTWIN-MAND.S2 (memmap.adoc: AXI-Lite External Window): the supplementary
 region's control blocks and the first, second and last of the 65 per-pad
 control blocks are read at their generated-map addresses; each access
 must drive the adopter external AXI-Lite port while in flight and complete
-with a decode error carrying zero data, the DV-owned answer for an address
-nothing behind the window decodes.
+with a decode error carrying the error-slave word 0xBADCAB1E, the terminator's
+answer for an address nothing behind the window decodes.
 
 Run:
     CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smc \\

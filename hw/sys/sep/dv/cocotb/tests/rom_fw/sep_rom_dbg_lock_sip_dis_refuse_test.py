@@ -32,15 +32,17 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
+from env.sep_efuse_image import SBOOT_DIS_MASK
 from rom_fw.sep_firmware_cntl_secure_boot_flow_test import (
     sep_firmware_cntl_secure_boot_flow_test,
 )
+from sep_reg_meta import RegBlock
 
 _EFUSE_DIR = Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations"
 
-_CHIPLET_DBG_BIT = 0x2
-_SIP_DIS_READ_LOCK_BIT = 0x80
-_SYS_DIS_READ_LOCK_BIT = 0x200
+_CHIPLET_DBG_BIT = RegBlock("SEP_EFUSE_MAP").field_mask("LC_DISABLE", "chiplet_dbg")
+_SIP_DIS_READ_LOCK_BIT = RegBlock("SEP_EFUSE_MAP").field_mask("LOCKS", "sip_dis_read_lock")
+_SYS_DIS_READ_LOCK_BIT = RegBlock("SEP_EFUSE_MAP").field_mask("LOCKS", "sys_dis_read_lock")
 
 # [S18]'s value print, and the marker it emits when the lock is what makes this
 # TEST_DEV part enforce.
@@ -73,15 +75,16 @@ class sep_rom_dbg_lock_sip_dis_refuse_test(sep_firmware_cntl_secure_boot_flow_te
 
     def check_efuse(self, image) -> None:
         lc = image.lc_raw()
-        sboot_dis = image.field_int("SBOOT_DIS") & 0x1
+        sboot_dis = image.field_int("SBOOT_DIS") & SBOOT_DIS_MASK
         bl1_ver = image.field_int("BL1_VERSION")
         revoke = image.field_int("CHIPLET_PUBK_REVOKE")
         sip_dis = image.field_int("SIP_DIS")
         sys_dis = image.field_int("SYS_DIS")
         locks = image.field_int("LOCKS")
-        assert lc == 0x0, (
-            f"LC_STATE raw is 0x{lc:x}, expected 0x0 (TEST_DEV). In PROD the "
-            f"lifecycle enforces regardless and the debug lock would be untested"
+        assert lc == self.expected_lc_raw, (
+            f"LC_STATE raw is 0x{lc:x}, expected 0x{self.expected_lc_raw:x} "
+            f"({self.lc_marker}). In PROD the lifecycle enforces regardless and the "
+            f"debug lock would be untested"
         )
         self.check_disable_vectors(sip_dis, sys_dis, locks)
         assert sboot_dis == 0, (
@@ -91,9 +94,10 @@ class sep_rom_dbg_lock_sip_dis_refuse_test(sep_firmware_cntl_secure_boot_flow_te
         assert bl1_ver == 0, f"BL1_VERSION is 0x{bl1_ver:x}, expected 0 (rollback would mask this)"
         assert revoke == 0, f"CHIPLET_PUBK_REVOKE is 0x{revoke:x}, expected 0"
         self.logger.info(
-            "CHK-DBG-LOCK-STIMULUS: OTP LC raw=0x%x (TEST_DEV), SIP_DIS=0x%x, "
+            "CHK-DBG-LOCK-STIMULUS: OTP LC raw=0x%x (%s), SIP_DIS=0x%x, "
             "SYS_DIS=0x%x, LOCKS=0x%x, SBOOT_DIS=%d",
             lc,
+            self.lc_marker,
             sip_dis,
             sys_dis,
             locks,
@@ -109,7 +113,8 @@ class sep_rom_dbg_lock_sip_dis_refuse_test(sep_firmware_cntl_secure_boot_flow_te
             )
         self.logger.info(
             "CHK-DBG-LOCK-ENFORCES: %s and %s, and both slots refused -- the debug "
-            "lock put secure boot in force on a TEST_DEV part",
+            "lock put secure boot in force under %s",
             DBG_LOCK_VALUE,
             DBG_LOCK_MARKER,
+            self.lc_marker,
         )

@@ -63,6 +63,17 @@ The clock-gate enable synchronisers carry each enable into the ungated clock
 of the gate it controls. `u_ndmreset_request_sync` has no source clock:
 `ndmreset_request_i` is asynchronous.
 
+Each of the five peripheral enables also steers that peripheral's leg of
+the register crossbar into an error slave (`u_avsbus_access_gate`,
+`u_i2c_access_gate`, `u_uart_access_gate`, `u_telemetry_access_gate` and
+`u_i3c_access_gate` in `u_smc_peripherals`, all on `clk_smc_i`): while the
+enable is set, a read of the gated peripheral's window completes with
+`SLVERR` and data `0xBADCAB1E` and a write completes with `SLVERR`, instead
+of waiting on a register block whose clock has stopped. The leg is
+redirected as soon as the `CLOCK_GATE_CONTROL` write completes; an access
+the peripheral has already accepted finishes there, since its clock stops
+only after the enable has crossed into its domain.
+
 The AVSBus clock starts at `u_avs_clk_ref_gater` and
 `u_avs_clk_periph_gater`, which drive the `clk_ref_i` and `clk_reg_i` ports of
 `u_avsbus_controller`. Inside it, `u_refclk_clkgate` and `u_apbclk_clkgate`
@@ -315,19 +326,24 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-. Program the isolation masks and both FLR timing registers before enabling
-  requests. The count values cross from SMC to the reference domain through
-  handshaked synchronizers; readback in the SMC domain does not acknowledge
-  arrival in the reference domain.
-. `ISOLATE_REQ_FLR_COUNTER_VALUE` selects the pre-reset countdown; zero allows
-  assertion without that countdown. `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE`
-  selects the cool-reset hold count and must be nonzero to start the timed flow.
-. On a synchronized FLR edge, the sequencer counts in reference-clock cycles,
-  asserts cool reset, then releases it after the hold countdown. Destination
-  reset synchronizers add their release latency. The sequencer is not a queue
-  of overlapping FLR requests; coordinate requests and recovery in the integration.
-. Re-establish the affected subsystem's state and satisfy its isolation-release
-  requirements before clearing the FLR isolation latch or software requests.
+The FLR count values cross from SMC to the reference domain through handshaked
+synchronizers; readback in the SMC domain does not acknowledge arrival in the
+reference domain. `ISOLATE_REQ_FLR_COUNTER_VALUE` selects the pre-reset
+countdown; zero allows assertion without that countdown.
+`ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` selects the cool-reset hold count, and
+must be nonzero to start the timed flow.
+
+On a synchronized FLR edge, the sequencer counts in reference-clock cycles,
+asserts cool reset, then releases it after the hold countdown. Destination
+reset synchronizers add their release latency. The sequencer is not a queue of
+overlapping FLR requests. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-flr-isolation[FLR preparation and recovery sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-flr-isolation[FLR preparation and recovery sequence]
+endif::backend-pdf[]
+is in the Programmer's Guide.
 
 A zero hold count disables the timed reset sequence, but does not prevent the
 SMC-domain FLR edge from setting the isolation latch. `ISOLATE_REQ_VIS` reports
@@ -399,6 +415,7 @@ cold reset while the pin is high, so the isolation holds across it.
 .GPIO-driven FLR isolation
 image::smc-flr-isolation-gpio.svg[alt="The FLR isolation drawing with step 1, the board ISOLATE_REQ through GPIO 53 and the isolation OR to the chiplet tiles, and step 2, the board BP_RESET_N into both primary resets, highlighted",width=100%,pdfwidth=100%]
 
+[[smc-subsystem-controls]]
 == Subsystem Controls and Clock Gating
 
 ifdef::backend-html5[]
@@ -416,12 +433,24 @@ to the receiving subsystem, whose implementation defines the retained state.
 `SS_CONFIG_LOCK` and `SS_COLD_RESET_LOCK` mask writes to the corresponding
 configuration and cold-reset bits. `SS_RESET_COMPLETE` samples the return vector
 through a three-stage synchronizer; the unit does not sequence releases from it.
+The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-subsystem-resets[subsystem reset sequences]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-subsystem-resets[subsystem reset sequences]
+endif::backend-pdf[]
+are in the Programmer's Guide.
 
 SMC blocks have their own clock-gating enables, activity detection and hysteresis
 controls. For example, DMA uses a six-bit hysteresis input and bus-aware wakeup.
 A gate suppresses clock transitions; it does not itself create a power island or
 establish that outstanding bus traffic is drained. Follow the owning block's
-quiescence requirements before reset, isolation or clock changes.
+quiescence requirements before reset, isolation or clock changes. The I2C,
+UART, I3C, AVSBus and telemetry windows answer `SLVERR` with read data
+`0xBADCAB1E` while their `CLOCK_GATE_CONTROL` enable is set, so software can
+detect an access to a gated peripheral rather than stall on it; the other gated
+blocks wake on bus activity and need no such response.
 
 == Memory Map and Register Reference
 

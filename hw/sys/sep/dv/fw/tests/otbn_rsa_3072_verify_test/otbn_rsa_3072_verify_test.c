@@ -123,7 +123,7 @@ static void fail_and_halt(int code, const char *msg) {
  */
 static int otbn_wait_for_idle(void) {
     int timeout = 1000000; // Large timeout for simulation environments
-    int print_counter = 0; // Debug: print every 100k iterations
+    int print_counter = 0;
 
     while (timeout-- > 0) {
         uint32_t status = READ_REG(SEP_TOP_OTBN_STATUS_BASE_ADDR);
@@ -153,13 +153,11 @@ static int otbn_wait_for_idle(void) {
 static int otbn_dmem_zero_init(void) {
     printf("Manually initializing OTBN DMEM with zeros\n");
 
-    // Wait for OTBN to be idle before starting
     if (otbn_wait_for_idle() != 0) {
         printf("ERROR: OTBN not idle before DMEM initialization\n");
         return -1;
     }
 
-    // Zero out all visible DMEM locations
     // DMEM has 768 visible 32-bit words (3KB) over the bus interface
     const uint32_t dmem_size_words = 768;
     const uint32_t zero_value = 0x00000000;
@@ -170,7 +168,8 @@ static int otbn_dmem_zero_init(void) {
         OTBN_DMEM_WRITE(addr, zero_value);
     }
 
-    // Reset the checksum register to 0 after DMEM initialization
+    // The zero writes feed LOAD_CHECKSUM; clear it so the later CRC covers only
+    // the program load.
     printf("  Resetting LOAD_CHECKSUM register to 0...\n");
     WRITE_REG(SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR, 0x00000000);
 
@@ -182,7 +181,6 @@ static int otbn_dmem_zero_init(void) {
  * Load OTBN instruction memory with RSA-3072 program
  */
 static int otbn_load_program(void) {
-    // Load IMEM (instruction memory)
     size_t imem_words = otbn_rsa_3072_app_imem_words;
     printf("Loading OTBN IMEM: %zu words\n", imem_words);
 
@@ -190,7 +188,6 @@ static int otbn_load_program(void) {
         OTBN_IMEM_WRITE(i, otbn_rsa_3072_app_imem[i]);
     }
 
-    // Load DMEM (data memory)
     size_t dmem_words = otbn_rsa_3072_app_dmem_words;
     printf("Loading OTBN DMEM: %zu words (includes RSA constants)\n", dmem_words);
 
@@ -198,7 +195,6 @@ static int otbn_load_program(void) {
         OTBN_DMEM_WRITE(i, otbn_rsa_3072_app_dmem[i]);
     }
 
-    // Verify the checksum if available
     if (OTBN_RSA_3072_APP_EXPECTED_CRC != 0) {
         uint32_t actual_crc = READ_REG(SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR);
         printf("Expected CRC: 0x%08x\n", OTBN_RSA_3072_APP_EXPECTED_CRC);
@@ -221,7 +217,6 @@ static int otbn_load_program(void) {
  */
 static int otbn_write_dmem(uint32_t offset, const uint32_t *data, size_t word_count) {
     for (size_t i = 0; i < word_count; i++) {
-        // Calculate word address in DMEM
         uint32_t word_addr = (offset >> 2) + i;
         uint32_t word = *(data + i);
         OTBN_DMEM_WRITE(word_addr, word);
@@ -234,7 +229,6 @@ static int otbn_write_dmem(uint32_t offset, const uint32_t *data, size_t word_co
  */
 static int otbn_read_dmem(uint32_t offset, uint32_t *data, size_t word_count) {
     for (size_t i = 0; i < word_count; i++) {
-        // Calculate word address in DMEM
         uint32_t word_addr = (offset >> 2) + i;
         *(data + i) = OTBN_DMEM(word_addr);
     }
@@ -280,21 +274,18 @@ static int compare_arrays(const uint32_t *expected, const uint32_t *actual, size
 static int setup_rsa_verification_inputs(void) {
     printf("Setting up RSA-3072 verification inputs...\n");
 
-    // 1. Write RSA modulus (n) - 96 words
     printf("WRITING MODULUS\n");
     if (otbn_write_dmem(DMEM_N_OFFSET, test_modulus, RSA_3072_NUM_WORDS) != 0) {
         printf("FAILED TO WRITE MODULUS\n");
         return -1;
     }
 
-    // 2. Write signature (96 words) to inout buffer
     printf("WRITING SIG\n");
     if (otbn_write_dmem(DMEM_INOUT_OFFSET, test_signature, RSA_3072_NUM_WORDS) != 0) {
         printf("FAILED TO WRITE SIG\n");
         return -1;
     }
 
-    // 3. Write operation mode (RSA-3072 modexp with F4 exponent)
     static const uint32_t mode[1] = {MODE_RSA_3072_MODEXP_F4};
     printf("WRITING MODE\n");
     if (otbn_write_dmem(DMEM_MODE_OFFSET, mode, 1) != 0) {
@@ -314,7 +305,6 @@ static int verify_rsa_input_data(void) {
 
     int errors = 0;
 
-    // 1. Verify RSA modulus
     uint32_t readback_modulus[RSA_3072_NUM_WORDS];
     if (otbn_read_dmem(DMEM_N_OFFSET, readback_modulus, RSA_3072_NUM_WORDS) != 0) {
         printf("ERROR: Failed to read back modulus\n");
@@ -324,7 +314,6 @@ static int verify_rsa_input_data(void) {
         errors++;
     }
 
-    // 2. Verify signature
     uint32_t readback_signature[RSA_3072_NUM_WORDS];
     if (otbn_read_dmem(DMEM_INOUT_OFFSET, readback_signature, RSA_3072_NUM_WORDS) != 0) {
         printf("ERROR: Failed to read back signature\n");
@@ -334,7 +323,6 @@ static int verify_rsa_input_data(void) {
         errors++;
     }
 
-    // 3. Verify mode
     uint32_t readback_mode;
     if (otbn_read_dmem(DMEM_MODE_OFFSET, &readback_mode, 1) != 0) {
         printf("ERROR: Failed to read back mode\n");
@@ -365,25 +353,20 @@ static int verify_rsa_input_data(void) {
 static int execute_verification(void) {
     printf("Executing OTBN RSA-3072 verification...\n");
 
-    // Debug: Check status before sending command
     uint32_t status_before = READ_REG(SEP_TOP_OTBN_STATUS_BASE_ADDR);
     printf("  [DEBUG] OTBN status before execute: 0x%02x\n", status_before);
     printf("  [DEBUG] Writing 0x%02x to OTBN_CMD_REG (addr=0x%08x)\n", OTBN_CMD_EXECUTE,
            SEP_TOP_OTBN_CMD_BASE_ADDR);
 
-    // Send execute command
     WRITE_REG(SEP_TOP_OTBN_CMD_BASE_ADDR, OTBN_CMD_EXECUTE);
 
-    // Debug: Check status after sending command
     uint32_t status_after = READ_REG(SEP_TOP_OTBN_STATUS_BASE_ADDR);
     printf("  [DEBUG] OTBN status after execute: 0x%02x\n", status_after);
 
-    // Wait for completion
     if (otbn_wait_for_idle() != 0) {
         return -1;
     }
 
-    // Check for errors
     uint32_t err_bits = READ_REG(SEP_TOP_OTBN_ERR_BITS_BASE_ADDR);
     if (err_bits != 0) {
         printf("ERROR: OTBN execution failed with error bits: 0x%08x\n", err_bits);
@@ -430,7 +413,6 @@ static int check_rsa_verification_results(void) {
         printf("  [%d] 0x%08x\n", i, test_message_digest[i]);
     }
 
-    // Compare extracted digest with expected message digest
     if (compare_arrays(test_message_digest, extracted_digest, SHA256_DIGEST_WORDS,
                        "Message Digest")) {
         printf("\nSUCCESS: RSA-3072 signature verification PASSED!\n");
@@ -465,12 +447,10 @@ int main(void) {
         fail_and_halt(1, "OTBN DMEM zero initialization failed");
     }
 
-    // Load OTBN RSA program
     if (otbn_load_program() != 0) {
         fail_and_halt(2, "Could not load OTBN program");
     }
 
-    // Setup RSA verification inputs
     if (setup_rsa_verification_inputs() != 0) {
         fail_and_halt(3, "Could not setup verification inputs");
     }
@@ -479,13 +459,11 @@ int main(void) {
         fail_and_halt(4, "Input data verification failed");
     }
 
-    // Execute verification
     printf("Starting OTBN execution...\n");
     if (execute_verification() != 0) {
         fail_and_halt(5, "OTBN execution failed");
     }
 
-    // Check results
     if (check_rsa_verification_results() != 0) {
         fail_and_halt(6, "Verification result check failed");
     }

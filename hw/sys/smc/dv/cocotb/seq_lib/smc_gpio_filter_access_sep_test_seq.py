@@ -8,17 +8,17 @@ state, each paired with a privileged access as its positive control:
   * READ half -- an unprivileged read is refused with DECERR and the error-slave
     signature 0xBADCAB1E, while the privileged read returns the programmed word.
   * WRITE half -- an unprivileged write of the value that would DISARM the
-    filter is refused, and a privileged read afterwards shows the register
-    unchanged, so the refusal is proven to have taken no effect. The refusal
-    code is asserted as "an error response" rather than an exact code: the GPIO
-    programming guide (`hw/ip/gpio/doc/programming.adoc`, "Filter
-    Configuration") specifies DECERR for a blocked transaction, which is what
-    the read half requires, while the write half is observed at the SEP_IN AXI
-    port as SLVERR and no document this bench can cite fixes how the SMC fabric
-    forwards a write-channel refusal.
+    filter is refused with DECERR, the code the Programmer's Guide GPIO section
+    (`doc/programmer/src/smc-programming.adoc`, "Configuring Access Filtering") specifies for a
+    blocked transaction, and a privileged read afterwards shows the register
+    unchanged.
   * SWEEP -- each of the eight AxPROT requirement values is programmed in turn
     and every AxPROT value is then driven against it on both halves; only the
     value equal to the requirement is admitted, every other one is refused.
+    Each refused write carries the word that would move the requirement to
+    its own AxPROT value, so a write that landed would re-target the filter
+    and the readback with the admitted value would differ from the
+    programmed word.
     The RDL describes the requirement fields as "only allow accesses with this
     prot value", and the filter compares the whole 3-bit field, so the
     admitted set is exactly one value, not a privilege threshold.
@@ -46,9 +46,7 @@ GPIO1_FILTER = smc_indexed_addr("SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 1)
 
 # Address, reset default and every field mask come from the SAME generated
 # block, `gpio_intf` -- the block whose ACCESS_FILTER register these addresses
-# select. `gpio_poc_pbias_ctrl` is a separately generated block with its own
-# ACCESS_FILTER register and no exported address in `smc_addr.h`
-# ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
+# select ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
 _FILTER_RESET = GPIO_INTF_ACCESS_FILTER_REG_DEFAULT
 _FILTER_LOCK = (
     _FILTER_RESET
@@ -87,16 +85,12 @@ class smc_gpio_filter_access_sep_test_seq(SmcCsrSeq):
         )
 
     async def _write_denied(self, name: str, addr: int, data: int, prot: int = _PROT_UNPRIV) -> int:
-        """Unprivileged ACCESS_FILTER write must be refused on the B channel.
+        """Unprivileged ACCESS_FILTER write must be refused with DECERR.
 
-        The expectation is "an error response", not an exact code: the GPIO
-        programming guide specifies DECERR for a blocked transaction, which the
-        read half of this same filter requires exactly, while the write half is
-        observed at the SEP_IN AXI port as SLVERR and no document this bench can
-        cite fixes how the SMC fabric forwards a write-channel refusal. The
-        caller pairs this leg with the property that carries the security
-        claim: the refused write must not take effect, proven by a privileged
-        readback afterwards.
+        DECERR is the code the GPIO programming guide specifies for a blocked
+        transaction. The caller pairs this leg with the property that carries
+        the security claim: the refused write must not take effect, proven by
+        a privileged readback afterwards.
         """
         item = SmcSysAxiItem(f"wr_{name}")
         item.op = SmcSysAxiOp.WRITE
@@ -109,9 +103,9 @@ class smc_gpio_filter_access_sep_test_seq(SmcCsrSeq):
         await self.start_item(item)
         await self.finish_item(item)
         self.accesses += 1
-        assert item.resp_code is not None and item.resp_code > 1, (
+        assert item.resp_code == AXI_RESP_DECERR, (
             f"{name} @ 0x{addr:08x}: an AxPROT={prot} write to a write-filtered "
-            f"register must be refused with an error response, got "
+            f"register must be refused with DECERR, got "
             f"resp={item.resp_code} ({_RESP_NAME.get(item.resp_code, '?')})"
         )
         self.denied_resps.append(item.resp_code)
@@ -120,8 +114,8 @@ class smc_gpio_filter_access_sep_test_seq(SmcCsrSeq):
     async def _read_denied_decerr(self, name: str, addr: int, prot: int = _PROT_UNPRIV) -> int:
         """Unprivileged ACCESS_FILTER read must DECERR with 0xBADCAB1E.
 
-        DECERR is the code the GPIO programming guide
-        (`hw/ip/gpio/doc/programming.adoc`, "Filter Configuration") specifies
+        DECERR is the code the Programmer's Guide GPIO section
+        (`doc/programmer/src/smc-programming.adoc`, "Configuring Access Filtering") specifies
         for a transaction whose protection bits do not match the filter.
         """
         item = SmcSysAxiItem(f"rd_{name}")
@@ -151,8 +145,11 @@ class smc_gpio_filter_access_sep_test_seq(SmcCsrSeq):
         Each requirement value is programmed with a write the previous
         requirement admits, then all eight AxPROT values are driven on both
         halves: the read and the write whose AxPROT equals the requirement must
-        succeed, every other one must be refused, and a readback with the
-        admitted value proves the refused writes left the register unchanged.
+        succeed, every other one must be refused. A refused write carries the
+        filter word for its own AxPROT value, the value the register would
+        hold had the write landed, so the readback with the admitted value
+        that closes each requirement distinguishes a refused write from one
+        that took effect.
         Returns the AWPROT value the filter admits when the sweep ends.
         """
         admitted = 0
@@ -169,7 +166,7 @@ class smc_gpio_filter_access_sep_test_seq(SmcCsrSeq):
                     admitted += 2
                 else:
                     await self._read_denied_decerr(f"{tag}_RD", addr, prot=prot)
-                    await self._write_denied(f"{tag}_WR", addr, word, prot=prot)
+                    await self._write_denied(f"{tag}_WR", addr, self._filter_word(prot), prot=prot)
                     denied += 2
             await self.csr_read(
                 f"GPIO0_FILTER_REQ{requirement}_AFTER", addr, expected=word, prot=requirement
@@ -177,7 +174,9 @@ class smc_gpio_filter_access_sep_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-GPIO-FILTER-SWEEP: GPIO0 ACCESS_FILTER admitted %d and refused %d "
             "accesses over %d requirement values x %d AxPROT values on both halves; "
-            "each requirement admits exactly the AxPROT value equal to it",
+            "each requirement admits exactly the AxPROT value equal to it, and the "
+            "register still read the programmed word after refused writes that "
+            "carried a different requirement",
             admitted,
             denied,
             len(_PROT_VALUES),

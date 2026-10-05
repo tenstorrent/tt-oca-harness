@@ -354,14 +354,18 @@
 `SMU_TB_OUT(logic, obs_smu_axi_awready_o)
 `SMU_TB_OUT(logic, obs_xtrig_src_req0_o)
 // Secondary-TAP and iJTAG scan-chain hosts. smu_wrapper is the scan master
-// on all of them, so the bench has to supply the client side; tb_top.sv
-// closes each chain with scan_in <- scan_out and this does the same, so a
-// shift through the primary TAP leaves the wrapper at its boundary pins and
-// re-enters there. The select and TDO-enable taps are what separates
-// "the chain shifted" from "the host was never selected".
+// on all of them, so the bench has to supply the client side: the STAP and
+// BSR chains close with scan_in <- scan_out, and each iJTAG chain through one
+// bench scan cell, so a shift through the primary TAP leaves the wrapper at
+// its boundary pins and re-enters there. The select, scan-out and TDO-enable
+// taps are what separates "the chain shifted" from "the host was never
+// selected".
 `SMU_TB_OUT(logic, tb_dfd_select)
 `SMU_TB_OUT(logic, tb_dft_select)
 `SMU_TB_OUT(logic, tb_dft_secure_select)
+`SMU_TB_OUT(logic, tb_dfd_scan_out)
+`SMU_TB_OUT(logic, tb_dft_scan_out)
+`SMU_TB_OUT(logic, tb_dft_secure_scan_out)
 `SMU_TB_OUT(logic, tb_stap_host_select)
 `SMU_TB_OUT(logic, tb_stap_io_tms)
 `SMU_TB_OUT(logic, tb_stap_io_tdo)

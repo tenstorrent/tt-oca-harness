@@ -9,8 +9,15 @@ includes = ["jtag.toml", "jtag2axi.toml", "debug_tdr.toml", "scan.toml", "xtrig.
 
 [[groups]]
 name = "smoke"
-expected_count = 2
-tests = ["dtp_sanity_test", "dtp_jtag_idcode_test"]
+expected_count = 6
+tests = [
+    "dtp_sanity_test",
+    "dtp_jtag_idcode_test",
+    "dtp_jtag_tmp_status_register_smoke_test",
+    "dtp_ijtag_sib_all_on_test",
+    "dtp_jtag2axi_smc_axi_single_write_read_test",
+    "dtp_xtrig_wire_or_test",
+]
 
 [[groups]]
 name = "basic_jtag"
@@ -154,8 +161,8 @@ tests = [
 ]
 
 # Debug-disable closure group: the two per-gate matrices plus the directed
-# tests that carry the per-field gating contract for all eleven
-# sep_lifecycle_ctrl_pkg::dbg_disable_t fields.
+# tests that carry the per-field gating contract for every
+# sep_lifecycle_ctrl_pkg::dbg_disable_t field.
 [[groups]]
 name = "dbg_disable"
 expected_count = 19
@@ -183,7 +190,7 @@ tests = [
 
 [[groups]]
 name = "xtrig"
-expected_count = 29
+expected_count = 30
 tests = [
     "dtp_xtrig_reg_stall_test",
     "dtp_xtrig_rand_deterministic_csr_sweep_test",
@@ -198,6 +205,7 @@ tests = [
     "dtp_xtrig_axi_channel_skew_test",
     "dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test",
     "dtp_xtrig_axi_channel_skew_read_decode_backpressure_test",
+    "dtp_xtrig_axi_outstanding_test",
     "dtp_ctm_wire_or_cla_to_ctp_test",
     "dtp_ctm_wire_or_ctp_to_cla_test",
     "dtp_ctm_wire_or_cla_to_cla_test",
@@ -220,7 +228,7 @@ tests = [
 name = "all"
 # Exact nightly inventory; must match the VPLAN's scenario-expanded test-case
 # count. The loader errors when the list and this count diverge.
-expected_count = 154
+expected_count = 155
 tests = [
     "dtp_sanity_test",
     "dtp_jtag_bypass_test",
@@ -360,6 +368,7 @@ tests = [
     "dtp_xtrig_axi_channel_skew_test",
     "dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test",
     "dtp_xtrig_axi_channel_skew_read_decode_backpressure_test",
+    "dtp_xtrig_axi_outstanding_test",
     "dtp_ctm_wire_or_cla_to_ctp_test",
     "dtp_ctm_wire_or_ctp_to_cla_test",
     "dtp_ctm_wire_or_cla_to_cla_test",

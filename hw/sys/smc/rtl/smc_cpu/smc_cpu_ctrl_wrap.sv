@@ -540,9 +540,19 @@ module smc_cpu_ctrl_wrap #(
     reset_ctrl_reg_value_n0_scan.core0_reset_n_n0_scan
   };
 
+  logic [MaxCPUCores-1:0] core_reset_pulse_or_reg_n;
+
+  prim_and2 #(
+    .Width(MaxCPUCores)
+  ) u_core_reset_pulse_and (
+    .in0_i (core_reset_pulse_out),
+    .in1_i (core_reset_reg_n),
+    .out_o (core_reset_pulse_or_reg_n)
+  );
+
   for (genvar i = 0; i < MaxCPUCores; i++) begin : gen_core_reset_mux
     prim_rst_mux2_hf_n u_core_reset_mux (
-      .rst0_ni (core_reset_pulse_out[i]),
+      .rst0_ni (core_reset_pulse_or_reg_n[i]),
       .rst1_ni (core_reset_reg_n[i]),
       .sel_i   (core_reset_pulse_done[i]),
       .rst_no  (int_core_reset_n[i])

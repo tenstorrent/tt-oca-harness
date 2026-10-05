@@ -94,12 +94,10 @@ def long_beat(index: int) -> int:
 
 
 LONG_BURST_PAYLOAD = sum(long_beat(i) << (64 * i) for i in range(LONG_BURST_BEATS))
-# Last page of ecam_region: a generated-map region with no block behind it,
-# which the fabric error slave answers with DECERR on the write channel as on
-# the read channel the error-depth test proves.
-UNIMPLEMENTED_ADDR = (
-    smc_addr("SMC_TOP_ECAM_REGION_BASE_ADDR") + smc_addr("SMC_TOP_ECAM_REGION_SIZE") - 0x1000
-)
+# Last page of the unmapped gap below mmode_region, which the fabric error
+# slave answers with DECERR on the write channel as on the read channel the
+# error-depth test proves.
+UNIMPLEMENTED_ADDR = smc_addr("SMC_TOP_MMODE_REGION_BASE_ADDR") - 0x1000
 AXI_RESP_DECERR = 3
 
 # Accesses this sequence issues over SEP_IN, before the NARROW_REJECT_SHAPES
@@ -327,8 +325,7 @@ class smc_sep_in_axi_shape_test_seq(SmcCsrSeq):
             ", ".join(f"{k}=resp {v}" for k, v in self.shape_resps.items()),
         )
         cocotb.log.info(
-            "CHK-SEP-IN-DECERR-WRITE: SEP_IN write to the unimplemented ecam_region page 0x%08x "
-            "answered DECERR",
+            "CHK-SEP-IN-DECERR-WRITE: SEP_IN write to the unmapped page 0x%08x answered DECERR",
             UNIMPLEMENTED_ADDR,
         )
         cocotb.log.info(

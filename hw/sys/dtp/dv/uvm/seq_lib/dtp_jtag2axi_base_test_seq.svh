@@ -513,6 +513,40 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     note_tdr_access(single_op_len(t), $sformatf("%s single_op request", t.name));
   endtask
 
+  // Load the target's SINGLE_OP instruction and shift `op` in as one raw TMS
+  // walk that stops with the TAP in Update-DR and TCK idle. The bridge
+  // latches the operation on the TCK edge that leaves Update-DR, so the
+  // caller's next step is the edge that launches it. No intent is armed: the
+  // caller discards the operation before it reaches the bus.
+  task scan_single_to_update_dr(dtp_j2a_target_t t, dtp_j2a_op_e op, bit [63:0] addr,
+                                bit [63:0] data, bit [7:0] wstrb, int unsigned size);
+    bit dr[];
+    bit tms[];
+    bit tdi[];
+    int unsigned len;
+    dtp_j2a_pack_single_op(t, op, addr, data, wstrb, size, dr);
+    len = dr.size();
+    `uvm_info(get_type_name(),
+              $sformatf(
+                  "%s SINGLE_OP %s addr=0x%0h data=0x%0h wstrb=0x%0h size=%0d held in Update-DR",
+                  t.name, op.name(), addr, data, wstrb, size), UVM_MEDIUM)
+    load_ir(IrWidth'(t.single_op_instr));
+    // Select-DR, Capture-DR, Shift-DR, the image LSB first with its last bit
+    // moving to Exit1-DR, then Update-DR.
+    tms = new[len + 4];
+    tdi = new[len + 4];
+    tms[0] = 1'b1;
+    foreach (dr[i]) begin
+      tms[3+i] = (i == len - 1);
+      tdi[3+i] = dr[i];
+    end
+    tms[len+3] = 1'b1;
+    raw_walk(tms, tdi);
+    check_state(UPDATE_DR, "jtag2axi_scan_chk", "SINGLE_OP held in Update-DR");
+    check_last_scan_length(1'b0, len, $sformatf("%s single_op held in Update-DR", t.name));
+    note_scan(1'b0, len);
+  endtask
+
   // One SINGLE_OP status capture (shifting zeros): the bridge's status and
   // data field as this poll saw them.
   task single_status_once(dtp_j2a_target_t t, output dtp_j2a_status_e status,
@@ -759,7 +793,7 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     end else begin
       write_target_single_and_check(t, addr, data, status, size, full_wstrb(size), {
                                     context_s, ".recover_write"});
-      // CHK-AXI-WMEM against the STIMULUS intent (non-circular).
+      // CHK-AXI-WMEM: the responder memory against the stimulus intent.
       check_target_memory(t, addr, data, size, {context_s, ".recover_write"});
     end
   endtask
@@ -1226,6 +1260,16 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
 
   function void clear_target_backpressure(dtp_j2a_target_t t);
     responder(t).disable_backpressure();
+  endfunction
+
+  // Arms the target's responder so the W beat of the next write is accepted
+  // while its AW waits against a stalled AWREADY (the cocotb RAM responder's
+  // order); later writes take AW first. Call it with the write channels idle.
+  function void arm_target_w_before_aw(dtp_j2a_target_t t);
+    dtp_axi_slave_driver drv;
+    if (!$cast(drv, responder(t).responder))
+      `uvm_fatal(get_type_name(), $sformatf("%s responder is not a dtp_axi_slave_driver", t.name))
+    drv.w_before_aw = 1'b1;
   endfunction
 
   // --- request-activity evidence (security gating) -----------------------

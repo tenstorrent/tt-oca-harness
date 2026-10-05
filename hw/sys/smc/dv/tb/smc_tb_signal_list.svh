@@ -494,6 +494,7 @@
 `SMC_TB_OUT(logic, tb_cpu_reset_timeout)
 `SMC_TB_OUT(logic, tb_cpu_reset_applied)
 `SMC_TB_OUT(logic, tb_cpu_uncore_reset_n)
+`SMC_TB_OUT(logic [3:0], tb_cpu_core_resets_n)
 `SMC_TB_OUT(logic, tb_cpu_l2_isolated)
 `SMC_TB_OUT(logic [3:0], tb_cpu_l2_pending_aw)
 `SMC_TB_OUT(logic [3:0], tb_cpu_l2_pending_w)

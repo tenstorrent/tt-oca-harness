@@ -13,14 +13,16 @@
 //                   with STATUS BUSY/REQ_OUT/ACK_IN/REQ_IN/ACK_OUT read at
 //                   every phase
 //   reset           per-CTP config-reset recovery from a deadlocked P2P
-//                   handshake, then a system reset landing on an active
+//                   handshake with a received request held across the
+//                   reset, then a system reset landing on an active
 //                   inverted wire-OR pulse and a held P2P receive: reset
 //                   window, CSR defaults, fresh route
 //   random          seeded CTP configuration mix (mode/invert/stretch)
 //                   proving route, isolation, width, and pad polarity per
-//                   draw
+//                   draw, a P2P draw in both directions
 //   dst_port_sweep  one seeded internal source swept across every CTM
-//                   destination port
+//                   destination port, then every CTP routed to itself in
+//                   point-to-point mode
 //
 // Every scenario draws its ports per pass from the seeded scenario RNG (per
 // spec, every CTP and internal CT is interchangeable), so the 16-pass floor
@@ -95,11 +97,11 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
     bit [31:0] listener_outputs = '0;
     bit [31:0] transmit_predicted, transmit_intent;
     `uvm_info(get_type_name(), "XTRIG CTPs on one shared wire-OR wire", UVM_LOW)
-    // Seeded per pass: the members of the wire, their common sense and
-    // stretch, the transmitter, the internal source that triggers it, and
-    // one internal output per member.
+    // Seeded per pass: the members of the wire, their stretch, the
+    // transmitter, the internal source that triggers it, and one internal
+    // output per member. The passes alternate the sense of the wire.
     pick_distinct(XtrigNumCtp, $urandom_range(4, 2), members);
-    invert = bit'($urandom_range(1));
+    invert = loop_index[0];
     stretch = 16'($urandom_range(7));
     pick_distinct(XtrigNumIntCt, members.size() + 1, ints);
     int_src = ints.pop_front();
@@ -287,7 +289,9 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
     int unsigned ctp_port = external_ctp_port(ctp_idx);
     int unsigned int_port = internal_ct_port(int_idx);
     bit [31:0] mask = 32'd1 << ctp_idx;
+    bit [31:0] inverted;
     string held[$] = {"xtrig_ctp_req_out_dout", "xtrig_ctp_ack_out_dout", "xtrig_ctp_busy"};
+    string rx_names[$] = {"xtrig_ctp_ack_out_dout"};
     `uvm_info(get_type_name(), "XTRIG CTP reset recovery", UVM_LOW)
     // Seeded per-pass ports: each loop deadlocks and recovers a
     // different CTP, and system-resets a different second CTP.
@@ -304,9 +308,27 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
     pulse_ctm_dst_req(32'd1 << int_idx, 2);
     wait_signal_mask("xtrig_ctp_req_out_dout", mask, pad_level(mask, 1'b1), 60, "reset.stuck_req");
     check_status(ctp_idx, "reset.before_config_reset", .busy(1), .req_out(1));
-    program_ctp(ctp_idx, CtpModeP2p, 1'b0, 1'b1);
+    // CONFIG.RESET resets the sender alone: a request the port receives keeps
+    // CT_Ack_out asserted through the reset until CT_Req_in drops.
+    drive_p2p_req_in(ctp_idx, 1'b1);
+    wait_signal_mask("xtrig_ctp_ack_out_dout", mask, pad_level(mask, 1'b1), 60, "reset.rx_held");
+    start_activity_window_on(rx_names);
+    csr_write(ctp_config_addr(ctp_idx), pack_ctp_config(CtpModeP2p, 1'b0, 1'b1), 4'hF, $sformatf(
+              "ctp%0d.config_reset", ctp_idx));
     wait_signal_mask("xtrig_ctp_req_out_dout", mask, pad_level(mask, 1'b0), 60,
                      "reset.config_reset_clear");
+    check_status(ctp_idx, "reset.config_reset_rx_held", .busy(1), .req_out(0), .req_in(1),
+                 .ack_out(1));
+    stop_activity_window();
+    inverted = p_sequencer.m_xtrig_ctp_shadow.invert_mask();
+    check_evidence(ChkSignal, "reset.config_reset.rx_kept",
+                   64'(((window_hold["xtrig_ctp_ack_out_dout"] & ~inverted) |
+                        (~window_activity["xtrig_ctp_ack_out_dout"] & inverted)) & mask),
+                   64'(mask), $sformatf("cycles=%0d", window_cycles));
+    drive_p2p_req_in(ctp_idx, 1'b0);
+    wait_signal_mask("xtrig_ctp_ack_out_dout", mask, pad_level(mask, 1'b0), P2pPhaseMaxCycles,
+                     "reset.rx_released");
+    program_ctp(ctp_idx, CtpModeP2p, 1'b0, 1'b1);
     check_status(ctp_idx, "reset.config_reset", .busy(0), .req_out(0));
     // The window opens once STATUS has read BUSY=0, because the registered
     // busy flop clears a cycle after RESET forces the sender idle.
@@ -345,15 +367,38 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
 
   protected task run_random();
     `uvm_info(get_type_name(), "XTRIG seeded random CTP configuration", UVM_LOW)
-    // The first two iterations take one mode each, so every pass records a
-    // stretch width and a P2P handshake; the rest draw the mode at random.
     for (int unsigned idx = 0; idx < random_count; idx++) begin
       int unsigned ctp_idx = $urandom_range(XtrigNumCtp - 1);
-      int unsigned mode    = (idx == 0) ? CtpModeWireOr : (idx == 1) ? CtpModeP2p : $urandom_range(1);
+      int unsigned mode    = $urandom_range(1);
       bit          invert  = bit'($urandom_range(1));
       bit [15:0]   stretch = 16'($urandom_range(7));
-      int unsigned int_idx = $urandom_range(XtrigNumIntCt - 1);
+      int unsigned int_idx;
       string label = $sformatf("random.%0d", idx);
+      // The first iterations: every pass runs a point-to-point port at both
+      // pad polarities and an inverted wire-OR port at the single-cycle width
+      // and a stretched one.
+      case (idx)
+        0: begin
+          mode = CtpModeWireOr;
+          invert = 1'b1;
+          stretch = 16'd0;
+        end
+        1: begin
+          mode = CtpModeP2p;
+          invert = 1'b0;
+        end
+        2: begin
+          mode = CtpModeWireOr;
+          invert = 1'b1;
+          stretch = 16'($urandom_range(7, 1));
+        end
+        3: begin
+          mode = CtpModeP2p;
+          invert = 1'b1;
+        end
+        default: ;
+      endcase
+      int_idx = $urandom_range(XtrigNumIntCt - 1);
       `uvm_info(get_type_name(), $sformatf(
                 "Iteration %0d/%0d: ctp=%0d mode=%0d invert=%0d stretch=%0d internal=%0d",
                 idx + 1,
@@ -374,6 +419,11 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
       program_route(internal_ct_port(int_idx), 32'd1 << external_ctp_port(ctp_idx), label);
       run_route_window(32'd1 << internal_ct_port(int_idx), 32'd1 << external_ctp_port(ctp_idx),
                        CtpModeP2p, label);
+      // The same port receives: CT_Req_in at the port's polarity reaches the
+      // internal CT through the reverse route.
+      program_route(external_ctp_port(ctp_idx), 32'd1 << internal_ct_port(int_idx), {label, ".rx"});
+      run_route_window(32'd1 << external_ctp_port(ctp_idx), 32'd1 << internal_ct_port(int_idx),
+                       CtpModeP2p, {label, ".rx"});
     end
   endtask
 
@@ -393,6 +443,15 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
       verify_route(input_port, 32'd1 << output_port, CtpModeWireOr, $sformatf(
                    "dst_sweep.port%0d", output_port));
       if (!is_ctp_port(output_port)) pulse_ctm_src_ack(32'd1 << int_idx_from_port(output_port), 1);
+    end
+    // Every CTP routed to itself: in point-to-point mode its request and
+    // acknowledge pads differ on each side, so the trigger it receives leaves
+    // on its own CT_Req_out once, without feeding back.
+    for (int unsigned ctp_idx = 0; ctp_idx < XtrigNumCtp; ctp_idx++) begin
+      int unsigned port = external_ctp_port(ctp_idx);
+      `uvm_info(get_type_name(), $sformatf(
+                "Iteration %0d/%0d: CTP %0d -> itself", ctp_idx + 1, XtrigNumCtp, ctp_idx), UVM_LOW)
+      verify_route(port, 32'd1 << port, CtpModeP2p, $sformatf("dst_sweep.self%0d", ctp_idx));
     end
   endtask
 

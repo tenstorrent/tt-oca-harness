@@ -339,9 +339,9 @@ def sym(name: str) -> int:
 
     For call sites that want a block base or a single register address by its
     generated name, e.g. ``sym("AES_REG_MAP_BASE_ADDR")``. Raises rather than
-    returning a wrong value if the register flow renames or drops the symbol, so a
-    map change surfaces as an import-time error instead of a silently stale
-    constant.
+    returning a wrong value if the register flow changes the name of or drops the
+    symbol, so a map change surfaces as an import-time error instead of a silently
+    stale constant.
 
     NOT every hex literal in the DV is an address -- SHA round constants, KAT key
     vectors and CSR bitmasks must stay literal. Only use this where the value is
@@ -474,28 +474,40 @@ def _ipxact_access() -> dict[int, RegAccess]:
 
 
 @lru_cache(maxsize=1)
-def _ipxact_unreset_words() -> dict[int, bool]:
-    """32-bit word address -> whether a field in that word has no RDL reset.
+def _ipxact_unreset_words() -> dict[int, int]:
+    """32-bit word address -> bits of that word held by fields with no RDL reset.
 
     PeakRDL IP-XACT emits a ``resets`` element exactly for a field that the RDL
     gives a reset value. The generated ``_REG_DEFAULT`` reads 0 for a field with
     none (``tools/regs/common/regcollect.py``), so it cannot answer this.
     """
-    out: dict[int, bool] = {}
+    out: dict[int, int] = {}
     for addr, width, fields in _iter_ipxact_registers():
-        spans = []
+        bits = 0
         for one in fields:
+            if one.find(_IPXACT_NS + "resets") is not None:
+                continue
             lsb = _ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0
             width_f = _ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1
-            spans.append((lsb, lsb + width_f, one.find(_IPXACT_NS + "resets") is None))
+            bits |= ((1 << width_f) - 1) << lsb
         for word in range(max(width // 32, 1)):
-            lo = word * 32
-            out[addr + 4 * word] = any(
-                unreset for lsb, msb, unreset in spans if lsb < lo + 32 and msb > lo
-            )
+            out[addr + 4 * word] = (bits >> (32 * word)) & 0xFFFF_FFFF
     if not out:
         raise RuntimeError(f"{_GEN_IPXACT} yielded no registers")
     return out
+
+
+def word_unreset_mask(addr: int) -> int:
+    """Bits of the 32-bit word at ``addr`` held by fields with no RDL reset value.
+
+    Those bits have no defined value before their first write, and the generated
+    ``_REG_DEFAULT`` holds a 0 placeholder for them, so a reset compare must leave
+    them out. Raises ``KeyError`` for an address the IP-XACT gives no register.
+    """
+    words = _ipxact_unreset_words()
+    if addr not in words:
+        raise KeyError(f"0x{addr:08x} is not a register word in {_GEN_IPXACT.name}")
+    return words[addr]
 
 
 def word_has_unreset_field(addr: int) -> bool:
@@ -505,10 +517,97 @@ def word_has_unreset_field(addr: int) -> bool:
     that write grades nothing and reads X on a 4-state simulator. Raises
     ``KeyError`` for an address the IP-XACT gives no register.
     """
-    words = _ipxact_unreset_words()
-    if addr not in words:
-        raise KeyError(f"0x{addr:08x} is not a register word in {_GEN_IPXACT.name}")
-    return words[addr]
+    return word_unreset_mask(addr) != 0
+
+
+@dataclass(frozen=True)
+class FieldMeta:
+    """One RDL field of a register, as the generated IP-XACT declares it."""
+
+    name: str
+    lsb: int
+    width: int
+    # IP-XACT access: `read-write`, `read-only` or `write-only`.
+    access: str
+    # RDL reset value, or None when the field declares none.
+    reset: int | None
+    # IP-XACT modifiedWriteValue `oneToSet` (RDL `onwrite = woset`): a written
+    # 1 sets the bit and a written 0 leaves it.
+    one_to_set: bool
+
+    @property
+    def mask(self) -> int:
+        return ((1 << self.width) - 1) << self.lsb
+
+
+@lru_cache(maxsize=1)
+def _ipxact_fields() -> dict[int, tuple[int, tuple[FieldMeta, ...]]]:
+    out: dict[int, tuple[int, tuple[FieldMeta, ...]]] = {}
+    for addr, width, fields in _iter_ipxact_registers():
+        metas = []
+        for one in fields:
+            reset = one.find(f"{_IPXACT_NS}resets/{_IPXACT_NS}reset/{_IPXACT_NS}value")
+            metas.append(
+                FieldMeta(
+                    name=one.findtext(_IPXACT_NS + "name") or "",
+                    lsb=_ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0,
+                    width=_ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1,
+                    access=one.findtext(_IPXACT_NS + "access") or "read-write",
+                    reset=None if reset is None else _ipxact_num(reset.text),
+                    one_to_set=(one.findtext(_IPXACT_NS + "modifiedWriteValue") == "oneToSet"),
+                )
+            )
+        out[addr] = (width, tuple(metas))
+    if not out:
+        raise RuntimeError(f"{_GEN_IPXACT} yielded no registers")
+    return out
+
+
+@lru_cache(maxsize=1)
+def _ipxact_reset_words() -> dict[int, int]:
+    """32-bit word address -> reset value assembled from the IP-XACT field resets.
+
+    Covers registers wider than 32 bits word by word, which the generated
+    ``_REG_DEFAULT`` symbols do not (a 256-bit field has none). A field with no
+    ``resets`` element contributes 0; ``word_reset`` refuses such a word.
+    """
+    out: dict[int, int] = {}
+    for addr, width, fields in _iter_ipxact_registers():
+        value = 0
+        for one in fields:
+            lsb = _ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0
+            width_f = _ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1
+            node = one.find(f"{_IPXACT_NS}resets/{_IPXACT_NS}reset/{_IPXACT_NS}value")
+            if node is not None:
+                value |= (_ipxact_num(node.text) & ((1 << width_f) - 1)) << lsb
+        for word in range(max(width // 32, 1)):
+            out[addr + 4 * word] = (value >> (32 * word)) & 0xFFFF_FFFF
+    if not out:
+        raise RuntimeError(f"{_GEN_IPXACT} yielded no registers")
+    return out
+
+
+def register_fields(addr: int) -> tuple[int, tuple[FieldMeta, ...]]:
+    """``(width_bits, fields)`` of the register at absolute ``addr``.
+
+    Bits outside every field are reserved. Raises ``KeyError`` for an address
+    the IP-XACT gives no register.
+    """
+    regs = _ipxact_fields()
+    if addr not in regs:
+        raise KeyError(f"0x{addr:08x} is not a register in {_GEN_IPXACT.name}")
+    return regs[addr]
+
+
+def word_reset(addr: int) -> int:
+    """RDL reset value of the 32-bit word at ``addr``, from the IP-XACT.
+
+    Raises ``KeyError`` for an address the IP-XACT gives no register, and
+    ``ValueError`` for a word with a field that has no RDL reset.
+    """
+    if word_has_unreset_field(addr):
+        raise ValueError(f"0x{addr:08x} holds a field with no RDL reset value")
+    return _ipxact_reset_words()[addr]
 
 
 # The shape of ordinary read-write storage, and the default for a hand-built
@@ -529,6 +628,9 @@ class RegInfo:
     mask_all: int
     # Access shape from the IP-XACT; see _STORAGE_ACCESS for the default.
     access: RegAccess = _STORAGE_ACCESS
+    # Bits held by fields with no RDL reset (word_unreset_mask). ``reset`` is a
+    # 0 placeholder on these bits, not a POR value.
+    unreset: int = 0
 
     @property
     def reserved(self) -> int:
@@ -553,11 +655,9 @@ def indexed_block_count(prefix: str) -> int:
     """How many ``<prefix>_<n>_`` blocks the generated header declares.
 
     The filter banks are RDL arrays -- ``outbound_filter_ctrl[32]`` and
-    ``inbound_filter_ctrl[16]`` in ``hw/sys/sep/regs/sep.rdl`` -- so the entry
-    count belongs to the register export, not to a sequence. Two sweeps that
-    each carry their own literal will disagree the moment the array changes, and
-    the one that is short simply never reaches the tail entries: a sweep that
-    selects from 16 of 32 entries reports a clean pass over half the bank.
+    ``inbound_filter_ctrl[16]`` in ``hw/sys/sep/regs/sep.rdl``. The entry count
+    comes from the register export, not from a sequence, so every sweep reaches
+    the tail entries.
 
     Indices must be contiguous from zero. A gap means the header and the RDL
     disagree, and a sweep built on the count would silently skip the hole.
@@ -756,8 +856,7 @@ def iter_register_walk() -> RegisterWalk:
     * ``duplicate``     -- the ``(block, register)`` pair was already walked: a
       generator that emits an instance twice lands here.
 
-    Reporting one figure would let a change of cause pass unnoticed, so the
-    three are kept apart and ``nometa`` sums them.
+    The three causes are counted apart; ``nometa`` sums them.
     """
     names = block_names()
     access = _ipxact_access()
@@ -799,7 +898,9 @@ def iter_register_walk() -> RegisterWalk:
         if shape is None:
             unjoined.append(f"{block}.{reg} @{addr:#010x}")
             continue
-        found.append(RegInfo(block, reg, addr, reset, mask, mask_all, shape))
+        found.append(
+            RegInfo(block, reg, addr, reset, mask, mask_all, shape, word_unreset_mask(addr))
+        )
     if unjoined:
         raise RuntimeError(
             f"{len(unjoined)} inventory register(s) have no IP-XACT entry at their "
@@ -830,8 +931,8 @@ def reg_hw_updating(block: str) -> frozenset[str]:
     * a dead-space store compare on one measures the same drift and reports it
       as an aliased write.
 
-    Default is "hardware may change it", so a newly added ``sw = r`` register is
-    excluded until someone shows it is constant -- the safe direction.
+    A ``sw = r`` register not named in ``_CONSTANT_RO`` is treated as
+    hardware-updating.
     """
     readonly = reg_sw_readonly(block)
     constant = _CONSTANT_RO.get(block, frozenset())
@@ -924,10 +1025,9 @@ AP_OUTPUT_REMAP_CTRL_0 = RegBlock("AP_OUTPUT_REMAP_CTRL_0_")
 def _selftest() -> int:
     """Assert the accessor against values read directly out of sep_cpu_ctrl.rdl.
 
-    These are not a second copy of the register map — they are a handful of
-    tripwires that fail loudly if the generated header stops matching the RDL
-    (or if the generator changes its naming), which would otherwise silently
-    weaken every source-derived checker built on this module.
+    Tripwires: they fail when the generated header stops matching the RDL or the
+    generator changes its naming, which would otherwise silently weaken every
+    source-derived checker built on this module.
     """
     cpu = SEP_CPU_CTRL
     checks = [
@@ -957,9 +1057,10 @@ def _selftest() -> int:
     # type's shape via _TYPE_ALIAS. Both masks are pinned, and the pair is what
     # makes this a tripwire for the reserved-field exclusion itself: the lone field
     # is declared `sw=rw; hw=r` but named
-    # `reserved` (sep_cpu_ctrl.rdl:76-80), so it is real STORAGE (mask_all 0x1)
-    # that is NOT software-usable (mask 0x0). If the generator ever renames the
-    # field, or the exclusion regex stops matching it, these disagree and fail.
+    # `reserved` (sep_cpu_ctrl.rdl, reg TIMEOUT_COUNT), so it is real STORAGE
+    # (mask_all 0x1) that is NOT software-usable (mask 0x0). If the generator
+    # changes the field name, or the exclusion regex stops matching it, these
+    # disagree and fail.
     # The alias table also carries entries for other blocks, so this walk takes
     # the SEP_CPU_CTRL instances by their shared type rather than the whole table.
     for name in (n for n, t in _TYPE_ALIAS.items() if t == "TIMEOUT_COUNT"):
@@ -1078,12 +1179,12 @@ def _selftest() -> int:
         failures.append(f"entropy_source size {hex(ot_reg_map_size('entropy_source'))} != 0x17c")
 
     # Pin the access shapes, not just the OFFSET join. The join counts stay
-    # green if the IP-XACT renames its `access` or `resets` child: a missing
-    # access reads as read-write and a missing resets makes every read-only
+    # green if the IP-XACT changes the name of its `access` or `resets` child: a
+    # missing access reads as read-write and a missing resets makes every read-only
     # look hardware-driven, so a sweep filtering on either one silently
     # filters the wrong set. Without these four the next generator change can
     # walk those rows back into a reset compare against a DEFAULT the RDL never
-    # declared, or drop the 154 read-only rows that carry a real one.
+    # declared, or drop the read-only rows that carry a real one.
     shapes = iter_register_walk().regs
     hw_driven = sorted(f"{i.block}.{i.name}" for i in shapes if i.access.hw_driven)
     expect_hw_driven = [
@@ -1140,6 +1241,19 @@ def _selftest() -> int:
         shape = readable.get(name)
         if shape is None or shape.access != frozenset({"read-only"}) or not shape.declared_reset:
             failures.append(f"{name} is no longer read-only with a declared reset: {shape}")
+
+    # Unreset-field masks, read off the IP-XACT `resets` elements. HMAC CFG
+    # leaves hmac_en/sha_en without a reset and resets its other fields;
+    # DIGEST_0 is one 32-bit field with none. A reset sweep masks the first and
+    # skips the second, so a generator change that moves either fails here.
+    unreset = {f"{i.block}.{i.name}": i.unreset for i in shapes}
+    for name, want in (
+        ("HMAC.CFG", 0x3),
+        ("HMAC.DIGEST_0_", 0xFFFF_FFFF),
+        ("SEP_CPU_CTRL.SEP_VERSION_ID", 0x0),
+    ):
+        if unreset.get(name) != want:
+            failures.append(f"{name} unreset mask {unreset.get(name)} != 0x{want:x}")
 
     if failures:
         for line in failures:

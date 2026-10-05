@@ -19,8 +19,9 @@ addrmap system_timer_octs {
             sw = rw;
             hw = r;
             singlepulse;
-            desc = "Start the system timer. Asserts the sync_load signal to start synchronization (only does anything if primary mode). Ensure
-                    both primary and secondary are out of reset.";
+            desc = "Start the system timer. In PRIMARY mode, a write of 1 loads the preset and pulses the sync-load output for PULSE_WIDTH cycles.
+                    In SECONDARY mode, the write has no effect; a secondary starts on the primary's sync-load pulse, which is what loads its preset.
+                    Ensure both primary and secondary are out of reset.";
         } START[0:0] = 0x0;
     };
 
@@ -58,7 +59,7 @@ addrmap system_timer_octs {
         field {
             sw = r;
             hw = w;
-            desc = "Timer is currently enabled and running";
+            desc = "Timer is enabled and its count is nonzero.";
         } RUNNING[4:4] = 0x0;
     };
 

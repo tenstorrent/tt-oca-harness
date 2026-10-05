@@ -7,14 +7,17 @@ schema_version = 1
 # at it so `--items` and `--tag` resolve across every leaf list.
 #
 # `all` is every test this VPLAN grades and the set a coverage run measures.
-# Three class groups partition it by what the leaf needs to build, with no
-# overlap and nothing left over:
+# `expected_count` on the group below is the membership gate; these class
+# groups select by what a leaf needs to build and do not between them cover
+# `all`:
 #
 #   hosted  toolchain-free, single-instance model  -- the scheduled nightly and
 #           weekly tiers on the hosted GitHub runners (three seeds)
 #   fw      firmware images built in the c_compile stage (RISC-V GCC with
-#           picolibc, or scripts/docker-run.sh)
-#   sanity  the SMC_DUAL elaboration, loading a ROM or firmware image
+#           picolibc, or scripts/docker-run.sh). Not every firmware leaf is
+#           here: the mmio-wedge pair is enrolled through `cpu`
+#   sanity  the SMC_DUAL elaboration, loading a ROM or firmware image. Held out
+#           of `all`, which elaborates one target per run
 #
 # Leaves outside `all` are either in holdout.toml, with the reason recorded
 # there, or in the `occp_rom` group selected explicitly from smc_rom.toml.
@@ -46,13 +49,14 @@ includes = [
 ]
 
 [[groups]]
-# The package regression: hosted + fw + sanity. It is not every test the package
-# defines -- holdout.toml and the on-demand `occp_rom` group hold the rest.
+# The package regression. It is not every test the package defines --
+# holdout.toml, the `sanity` dual-SMC set and the on-demand `occp_rom` group
+# hold the rest.
 # Guarded by expected_count, as dtp and sep are: the loader errors when this
 # list and the count diverge, so a leaf cannot be added to a feature testlist
 # and silently miss the regression.
 name = "all"
-expected_count = 316
+expected_count = 317
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -72,6 +76,7 @@ tests = [
     "smc_avsbus_retry_exhaust_test",
     "smc_avsbus_retry_suppressed_test",
     "smc_avsbus_sanity_test",
+    "smc_periph_cg_access_error_test",
     "smc_avsbus_slave_reply_test",
     "smc_avsbus_status_depth_test",
     "smc_axi_error_response_depth_test",
@@ -151,13 +156,12 @@ tests = [
     "smc_dma_cg_activity_test",
     "smc_dma_decouple_rw_test",
     "smc_zeroer_size_corners_test",
+    "smc_zeroer_unaligned_test",
     "smc_dma_backpressure_test",
     "smc_dma_reg_byte_enable_error_test",
     "smc_dma_reserved_stream_banks_test",
     "smc_dma_sanity_test",
-    "smc_dual_axi_sram_probe_test",
     "smc_dual_base_addressing_test",
-    "smc_dual_elaboration_test",
     "smc_ecc_codeword_ded_test",
     "smc_ecc_codeword_sec_test",
     "smc_ecc_dfd_dbs_sanity_test",
@@ -184,6 +188,7 @@ tests = [
     "smc_external_window_pad_ctrl_decode_test",
     "smc_filter_config_field_sweep_test",
     "smc_filter_field_sweep_test",
+    "smc_filter_lock_window_test",
     "smc_filter_multi_entry_test",
     "smc_filter_region_span_test",
     "smc_flr_sanity_test",
@@ -282,6 +287,7 @@ tests = [
     "smc_irq_observe_test",
     "smc_jtag_axi_shape_test",
     "smc_jtag_boot_stall_sanity_test",
+    "smc_jtag_dm_cmderr_command_test",
     "smc_jtag_dmi_smoke_test",
     "smc_jtag_reset_ctrl_test",
     "smc_jtag_reset_proxy_test",
@@ -302,7 +308,6 @@ tests = [
     "smc_mutex_semaphore_test",
     "smc_ndm_reset_test",
     "smc_occp_sanity_secure_error_test",
-    "smc_occp_sanity_test",
     "smc_octs_credit_expired_test",
     "smc_octs_primary_start_test",
     "smc_octs_dual_sync_test",
@@ -379,7 +384,7 @@ name = "hosted"
 # RISC-V toolchain; the per-PR gate stays on the 3-leaf `smoke`. Guarded by
 # expected_count so a leaf cannot join `all` and silently miss the hosted set.
 # The two MMIO isolate-flush leaves stay out: they build mmio_wedge.
-expected_count = 296
+expected_count = 300
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -399,6 +404,7 @@ tests = [
     "smc_avsbus_retry_exhaust_test",
     "smc_avsbus_retry_suppressed_test",
     "smc_avsbus_sanity_test",
+    "smc_periph_cg_access_error_test",
     "smc_avsbus_slave_reply_test",
     "smc_avsbus_status_depth_test",
     "smc_axi_error_response_depth_test",
@@ -476,6 +482,7 @@ tests = [
     "smc_dma_cg_activity_test",
     "smc_dma_decouple_rw_test",
     "smc_zeroer_size_corners_test",
+    "smc_zeroer_unaligned_test",
     "smc_dma_backpressure_test",
     "smc_dma_reg_byte_enable_error_test",
     "smc_dma_reserved_stream_banks_test",
@@ -507,6 +514,7 @@ tests = [
     "smc_external_window_pad_ctrl_decode_test",
     "smc_filter_config_field_sweep_test",
     "smc_filter_field_sweep_test",
+    "smc_filter_lock_window_test",
     "smc_filter_multi_entry_test",
     "smc_filter_region_span_test",
     "smc_flr_sanity_test",
@@ -590,6 +598,7 @@ tests = [
     "smc_irq_observe_test",
     "smc_jtag_axi_shape_test",
     "smc_jtag_boot_stall_sanity_test",
+    "smc_jtag_dm_cmderr_command_test",
     "smc_jtag_dmi_smoke_test",
     "smc_jtag_reset_ctrl_test",
     "smc_jtag_reset_proxy_test",

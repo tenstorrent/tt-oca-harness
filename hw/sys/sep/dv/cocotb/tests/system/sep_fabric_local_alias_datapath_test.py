@@ -176,9 +176,6 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
             dest_data,
         )
 
-        # Config report, not a checker. The seed picks one region of the bank,
-        # and a bound on an index the same seed generated cannot fail. What this
-        # entry proves is asserted above, against the DUT.
         self.logger.info(
             "local-alias config: region=%d of %d src=0x%08x dest=0x%08x seed %d",
             cfg.region,

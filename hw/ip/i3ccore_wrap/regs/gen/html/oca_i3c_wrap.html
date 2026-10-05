@@ -178,7 +178,7 @@
 <tr><td>0xC - 0x500C</td><td><a href="#i3c_csr_6_.I3CBase.HC_CAPABILITIES">i3c_csr[6].I3CBase.HC_CAPABILITIES</a></td><td>R</td><td>Reports the host-controller capabilities implemented by this instance.</td></tr>
 <tr><td>0x10 - 0x5010</td><td><a href="#i3c_csr_6_.I3CBase.RESET_CONTROL">i3c_csr[6].I3CBase.RESET_CONTROL</a></td><td>RW</td><td>Requests a controller soft reset or selective PIO queue and FIFO resets. Reset requests are self-clearing.</td></tr>
 <tr><td>0x14 - 0x5014</td><td><a href="#i3c_csr_6_.I3CBase.PRESENT_STATE">i3c_csr[6].I3CBase.PRESENT_STATE</a></td><td>R</td><td>Reports current controller state, including active-controller bus ownership.</td></tr>
-<tr><td>0x20 - 0x5020</td><td><a href="#i3c_csr_6_.I3CBase.INTR_STATUS">i3c_csr[6].I3CBase.INTR_STATUS</a></td><td>RW</td><td>Reports host-controller error and exceptional-condition status. Implemented status fields are write-one-to-clear.</td></tr>
+<tr><td>0x20 - 0x5020</td><td><a href="#i3c_csr_6_.I3CBase.INTR_STATUS">i3c_csr[6].I3CBase.INTR_STATUS</a></td><td>RW</td><td>Reports host-controller error and exceptional-condition status.</td></tr>
 <tr><td>0x24 - 0x5024</td><td><a href="#i3c_csr_6_.I3CBase.INTR_STATUS_ENABLE">i3c_csr[6].I3CBase.INTR_STATUS_ENABLE</a></td><td>RW</td><td>Enables individual host-controller interrupt status sources.</td></tr>
 <tr><td>0x28 - 0x5028</td><td><a href="#i3c_csr_6_.I3CBase.INTR_SIGNAL_ENABLE">i3c_csr[6].I3CBase.INTR_SIGNAL_ENABLE</a></td><td>RW</td><td>Routes enabled host-controller interrupt sources to the interrupt output.</td></tr>
 <tr><td>0x2C - 0x502C</td><td><a href="#i3c_csr_6_.I3CBase.INTR_FORCE">i3c_csr[6].I3CBase.INTR_FORCE</a></td><td>W</td><td>Forces host-controller interrupts for software testing.</td></tr>
@@ -198,15 +198,15 @@
 <tr><td>0x88 - 0x5088</td><td><a href="#i3c_csr_6_.PIOControl.TX_DATA_PORT">i3c_csr[6].PIOControl.TX_DATA_PORT</a></td><td>W</td><td>Writes transmit data to the TX FIFO. This port shares its address with the read-only RX data port.</td></tr>
 <tr><td>0x88 - 0x5088</td><td><a href="#i3c_csr_6_.PIOControl.RX_DATA_PORT">i3c_csr[6].PIOControl.RX_DATA_PORT</a></td><td>R</td><td>Reads received data from the RX FIFO. This port shares its address with the write-only TX data port.</td></tr>
 <tr><td>0x8C - 0x508C</td><td><a href="#i3c_csr_6_.PIOControl.IBI_PORT">i3c_csr[6].PIOControl.IBI_PORT</a></td><td>R</td><td>Returns IBI status and payload data. Payload data is padded to a 4-byte boundary.</td></tr>
-<tr><td>0x90 - 0x5090</td><td><a href="#i3c_csr_6_.PIOControl.QUEUE_THLD_CTRL">i3c_csr[6].PIOControl.QUEUE_THLD_CTRL</a></td><td>RW</td><td>Configures command, response, and IBI queue thresholds.</td></tr>
-<tr><td>0x94 - 0x5094</td><td><a href="#i3c_csr_6_.PIOControl.DATA_BUFFER_THLD_CTRL">i3c_csr[6].PIOControl.DATA_BUFFER_THLD_CTRL</a></td><td>RW</td><td>Configures TX and RX start and ready thresholds, encoded as powers of two.</td></tr>
+<tr><td>0x90 - 0x5090</td><td><a href="#i3c_csr_6_.PIOControl.QUEUE_THLD_CTRL">i3c_csr[6].PIOControl.QUEUE_THLD_CTRL</a></td><td>RW</td><td>Configures command, response, and IBI queue thresholds as raw entry counts.</td></tr>
+<tr><td>0x94 - 0x5094</td><td><a href="#i3c_csr_6_.PIOControl.DATA_BUFFER_THLD_CTRL">i3c_csr[6].PIOControl.DATA_BUFFER_THLD_CTRL</a></td><td>RW</td><td>Configures TX and RX start and ready thresholds, each encoding 2^(N+1) entries.</td></tr>
 <tr><td>0x98 - 0x5098</td><td><a href="#i3c_csr_6_.PIOControl.QUEUE_SIZE">i3c_csr[6].PIOControl.QUEUE_SIZE</a></td><td>R</td><td>Reports command, response, IBI, TX, and RX queue depths.</td></tr>
 <tr><td>0x9C - 0x509C</td><td><a href="#i3c_csr_6_.PIOControl.ALT_QUEUE_SIZE">i3c_csr[6].PIOControl.ALT_QUEUE_SIZE</a></td><td>R</td><td>Reports extended IBI and alternate response queue sizes.</td></tr>
 <tr><td>0xA0 - 0x50A0</td><td><a href="#i3c_csr_6_.PIOControl.PIO_INTR_STATUS">i3c_csr[6].PIOControl.PIO_INTR_STATUS</a></td><td>RW</td><td>Reports PIO queue-threshold and transfer-event interrupt status.</td></tr>
 <tr><td>0xA4 - 0x50A4</td><td><a href="#i3c_csr_6_.PIOControl.PIO_INTR_STATUS_ENABLE">i3c_csr[6].PIOControl.PIO_INTR_STATUS_ENABLE</a></td><td>RW</td><td>Enables individual PIO interrupt status sources.</td></tr>
 <tr><td>0xA8 - 0x50A8</td><td><a href="#i3c_csr_6_.PIOControl.PIO_INTR_SIGNAL_ENABLE">i3c_csr[6].PIOControl.PIO_INTR_SIGNAL_ENABLE</a></td><td>RW</td><td>Routes enabled PIO interrupt sources to the interrupt output.</td></tr>
 <tr><td>0xAC - 0x50AC</td><td><a href="#i3c_csr_6_.PIOControl.PIO_INTR_FORCE">i3c_csr[6].PIOControl.PIO_INTR_FORCE</a></td><td>W</td><td>-</td></tr>
-<tr><td>0xB0 - 0x50B0</td><td><a href="#i3c_csr_6_.PIOControl.PIO_CONTROL">i3c_csr[6].PIOControl.PIO_CONTROL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xB0 - 0x50B0</td><td><a href="#i3c_csr_6_.PIOControl.PIO_CONTROL">i3c_csr[6].PIOControl.PIO_CONTROL</a></td><td>RW</td><td>Controls run/stop and forced abort of enqueued commands.</td></tr>
 <tr><td>0x100 - 0x5100</td><td><a href="#i3c_csr_6_.I3C_EC.SecFwRecoveryIf.EXTCAP_HEADER">i3c_csr[6].I3C_EC.SecFwRecoveryIf.EXTCAP_HEADER</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x104 - 0x5104</td><td><a href="#i3c_csr_6_.I3C_EC.SecFwRecoveryIf.PROT_CAP_0">i3c_csr[6].I3C_EC.SecFwRecoveryIf.PROT_CAP_0</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x108 - 0x5108</td><td><a href="#i3c_csr_6_.I3C_EC.SecFwRecoveryIf.PROT_CAP_1">i3c_csr[6].I3C_EC.SecFwRecoveryIf.PROT_CAP_1</a></td><td>R</td><td>-</td></tr>
@@ -247,7 +247,7 @@
 <tr><td>0x1A8 - 0x51A8</td><td><a href="#i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_INTR_SIGNAL_ENABLE">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_INTR_SIGNAL_ENABLE</a></td><td>RW</td><td>When set to 1&#x27;b1, and the corresponding interrupt status field is set in register<br>STBY_CR_INTR_STATUS, the Host Controller shall assert an interrupt to the Host.</td></tr>
 <tr><td>0x1AC - 0x51AC</td><td><a href="#i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_INTR_FORCE">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_INTR_FORCE</a></td><td>RW</td><td>For software testing, when set to 1&#x27;b1, forces the corresponding interrupt<br>to be sent to the Host, if the corresponding fields are set in register<br>STBY_CR_INTR_SIGNAL_ENABLE</td></tr>
 <tr><td>0x1B0 - 0x51B0</td><td><a href="#i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_CCC_CONFIG_GETCAPS">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_CCC_CONFIG_GETCAPS</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x1B4 - 0x51B4</td><td><a href="#i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_CCC_CONFIG_RSTACT_PARAMS">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_CCC_CONFIG_RSTACT_PARAMS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1B4 - 0x51B4</td><td><a href="#i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_CCC_CONFIG_RSTACT_PARAMS">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_CCC_CONFIG_RSTACT_PARAMS</a></td><td>RW</td><td>Reports the defining byte of the last RSTACT CCC received and configures the reset recovery times.</td></tr>
 <tr><td>0x1B8 - 0x51B8</td><td><a href="#i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_VIRT_DEVICE_ADDR">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_VIRT_DEVICE_ADDR</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x1BC - 0x51BC</td><td><a href="#i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_MWL">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_MWL</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x1C0 - 0x51C0</td><td><a href="#i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_MRL">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_MRL</a></td><td>R</td><td>-</td></tr>
@@ -291,7 +291,7 @@
 <tr><td>0x300 - 0x5300</td><td><a href="#i3c_csr_6_.I3C_EC.SoCMgmtIf.EXTCAP_HEADER">i3c_csr[6].I3C_EC.SoCMgmtIf.EXTCAP_HEADER</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x304 - 0x5304</td><td><a href="#i3c_csr_6_.I3C_EC.SoCMgmtIf.SOC_MGMT_CONTROL">i3c_csr[6].I3C_EC.SoCMgmtIf.SOC_MGMT_CONTROL</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x308 - 0x5308</td><td><a href="#i3c_csr_6_.I3C_EC.SoCMgmtIf.SOC_MGMT_STATUS">i3c_csr[6].I3C_EC.SoCMgmtIf.SOC_MGMT_STATUS</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x30C - 0x530C</td><td><a href="#i3c_csr_6_.I3C_EC.SoCMgmtIf.REC_INTF_CFG">i3c_csr[6].I3C_EC.SoCMgmtIf.REC_INTF_CFG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x30C - 0x530C</td><td><a href="#i3c_csr_6_.I3C_EC.SoCMgmtIf.REC_INTF_CFG">i3c_csr[6].I3C_EC.SoCMgmtIf.REC_INTF_CFG</a></td><td>RW</td><td>Configures the recovery interface and signals payload completion to the recovery handler.</td></tr>
 <tr><td>0x310 - 0x5310</td><td><a href="#i3c_csr_6_.I3C_EC.SoCMgmtIf.REC_INTF_REG_W1C_ACCESS">i3c_csr[6].I3C_EC.SoCMgmtIf.REC_INTF_REG_W1C_ACCESS</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x314 - 0x5314</td><td><a href="#i3c_csr_6_.I3C_EC.SoCMgmtIf.SOC_MGMT_RSVD_2">i3c_csr[6].I3C_EC.SoCMgmtIf.SOC_MGMT_RSVD_2</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x318 - 0x5318</td><td><a href="#i3c_csr_6_.I3C_EC.SoCMgmtIf.SOC_MGMT_RSVD_3">i3c_csr[6].I3C_EC.SoCMgmtIf.SOC_MGMT_RSVD_3</a></td><td>RW</td><td>-</td></tr>
@@ -329,7 +329,7 @@
 <tr><td>0x39C - 0x539C</td><td><a href="#i3c_csr_6_.I3C_EC.CtrlCfg.CONTROLLER_CONFIG">i3c_csr[6].I3C_EC.CtrlCfg.CONTROLLER_CONFIG</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x3A0 - 0x53A0</td><td><a href="#i3c_csr_6_.I3C_EC.TERMINATION_EXTCAP_HEADER">i3c_csr[6].I3C_EC.TERMINATION_EXTCAP_HEADER</a></td><td>R</td><td>Register after the last EC must advertise ID == 0.<br>Termination register is added to guarantee that the discovery mechanism<br>reaches termination value.</td></tr>
 <tr><td>0x400 - 0x57F8</td><td><a href="#i3c_csr_6_.DAT.DAT_MEMORY_128_">i3c_csr[6].DAT.DAT_MEMORY[128]</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x800 - 0x5FF0</td><td><a href="#i3c_csr_6_.DCT.DCT_MEMORY_128_">i3c_csr[6].DCT.DCT_MEMORY[128]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x800 - 0x5FF0</td><td><a href="#i3c_csr_6_.DCT.DCT_MEMORY_128_">i3c_csr[6].DCT.DCT_MEMORY[128]</a></td><td>R</td><td>Holds one Device Characteristic Table entry per device enumerated by ENTDAA.</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
 <h3 id="i3c_csr_6_.I3CBase.HCI_VERSION">i3c_csr[6].I3CBase.HCI_VERSION</h3>

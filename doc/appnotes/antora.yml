@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 name: ocah-appnotes
-title: Open Chiplet Atlas Harness (OCAH) Application Notes
+title: Open Chiplet Atlas (OCA) Harness Application Notes
 version: latest
 start_page: index.adoc
 nav:
@@ -10,6 +10,7 @@ nav:
 asciidoc:
   attributes:
     source-highlighter: highlight.js
+    xrefstyle: short
     sectanchors: ''
     sectlinks: ''
     sectnums: ''

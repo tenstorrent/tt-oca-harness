@@ -50,12 +50,16 @@ At reset, `SEP_GLOBAL_BASE_ADDR` is `0x0000_0000` and the SMC's
 `[0x0000_0000, 0x0100_0000)` for SEP and
 `[0x4000_0000, 0x4100_0000)` for SMC.
 
-During early boot, firmware must program the global base addresses and
-region sizes to match the chiplet's assigned system address map before
-other chiplets access these resources. The apertures must not overlap.
-The hardware does not derive these CSR values from a chiplet ID: any
-chiplet-ID-based address assignment is a platform policy that firmware
-must implement.
+The global base addresses and region sizes are software-programmed and must
+not overlap. The hardware does not derive them from a chiplet ID. The
+Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-smc-address-remapping[aperture programming sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-address-remapping[aperture programming sequence]
+endif::backend-pdf[]
+for early boot.
 
 Register tables throughout this manual report each field's software access as a
 compact token in their *Access* column; xref:register-field-access.adoc#trm-register-field-access[Register Field Access Notation]

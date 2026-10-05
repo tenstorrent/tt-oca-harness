@@ -64,6 +64,15 @@ def pad_index(function: str) -> int:
         ) from exc
 
 
+def pad_function(index: int) -> str:
+    """Function the Integrator Guide assigns GPIO pad ``index``."""
+    assert 0 <= index < gpio_pad_count(), f"pad {index} is not a GPIO interface the RDL declares"
+    with _GPIO_TABLE_CSV.open(encoding="utf-8", newline="") as fh:
+        rows = [row for row in csv.DictReader(fh) if int(row["Index"].strip()) == index]
+    assert len(rows) == 1, f"{_GPIO_TABLE_CSV}: expected one row for pad {index}, found {len(rows)}"
+    return rows[0]["Function"].strip()
+
+
 BOOT_STALL_PAD = pad_index("Boot Stall")
 AVS_CLOCK_PAD = pad_index("AVS.CLOCK")
 AVS_MDATA_PAD = pad_index("AVS.MDATA")

@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# PROD lifecycle with a rollback floor that rejects the image under test.
+# PROD lifecycle whose BL1_VERSION holds security-version flags 0-7.
 #
-# BL1_VERSION is the minimum security version SEP ROM will load. 0xff is set
-# above the version the test image carries, so the ROM must refuse it; the test
-# fails if the image boots. Used by
-# sep_firmware_backup_invalid_security_version_test.
+# The ROM accepts a manifest only if its security_version carries every flag set
+# here (see sep_efuse_lc_prod_secver1.toml). The test image carries none of
+# them, so the ROM must refuse both slots; the test fails if the image boots.
+# Used by sep_firmware_backup_invalid_security_version_test.
 
 [LC_STATE]
   [LC_STATE.fields.lc_state]

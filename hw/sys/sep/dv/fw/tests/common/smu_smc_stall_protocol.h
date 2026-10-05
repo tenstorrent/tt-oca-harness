@@ -3,40 +3,34 @@
 /*
  * smu_smc_stall_sep  --  shared protocol contract (single source of truth).
  *
- * Included by both firmwares (SMC hold/release + SEP GO-poll) and parsed by the
- * cocotb checker so DUT stimulus and DV expectations share one contract.
- * Keep every value a plain integer/hex #define so the Python parser can read it.
+ * Included by the SMC firmware hw/sys/smc/dv/fw/tests/smu_smc_stall_sep/main.c.
+ * Keep every value a plain integer/hex #define so a parser can read it.
  *
  * Channels (SMC CPU_CTRL scratch array, 8-byte stride, base 0xC0039080):
  *   scratch0 : SMC status/progress markers (SMC -> observers)
- *   scratch1 : common CLA arm token (written by the SMC fw in this test to satisfy the SV liveness
- * monitor) scratch2 : SMC -> SEP command channel scratch3 : SEP -> SMC response channel SEP reaches
- * the SMC scratch through the SEP->SMC alias (subtract 0x4000_0000 then SMC local rebase to
- * 0xC000_0000): SEP 0x40039090 -> SMC scratch2, 0x40039098 -> scratch3.
+ *   scratch1 : CLA arm token (SMC -> observers, written after the CLA release values)
+ *   scratch2 : SMC -> SEP command channel
+ *   scratch3 : SEP -> SMC response channel
+ * The SEP reaches the SMC scratch through the SEP->SMC alias (subtract 0x4000_0000 then SMC
+ * local rebase to 0xC000_0000): SEP 0x40039090 -> SMC scratch2, 0x40039098 -> scratch3.
  */
 #ifndef SMU_SMC_STALL_PROTOCOL_H
 #define SMU_SMC_STALL_PROTOCOL_H
 
-/* common CLA arm token (scratch1) the SV real-CLA liveness monitor waits for */
+/* CLA arm token: the SMC firmware writes it to scratch1 after the CLA release values. */
 #define SMU_STALL_ARM_TOKEN 0x02200100
 
-/* Frontdoor SMC bring-up over the SEP->SMC port -- no net force, no ext_in master, and
- * NOT behind the SMC sys-INBOUND filter. (The SEP's own OUTBOUND egress filter IS
- * configured as required setup -- see open_sep_outbound_xbar_window; that is what "no
- * filter" excludes: only the SMC sys-inbound BLOCK_BY_DEFAULT filter, which this port does
- * not traverse.) The TB backdoor-preloads the SMC image into SRAM (accepted setup that
- * stands in for the SMC-ROM-loads-SRAM step; 004 does NOT verify the production SMC
- * secure-boot / manifest / BL1 flow). The real SEP firmware then, over the same alias
- * path used for scratch, (a) polls SMC SRAM until the exact preload cookie lands (fails
- * to S0_FAIL on timeout), (b) re-vectors all four SMC cores to the entry and pulses their
- * reset -- releasing them to run the image. SEP alias = SMC-internal - 0x8000_0000
- * (0xC0039000 -> 0x40039000, 0xC0060000 -> 0x40060000). SMU_STALL_SMC_ENTRY is the
- * SMC-internal reset-vector value; SMU_STALL_SMC_IMAGE_FIRST_WORD is the first image word
- * (both cocotb-drift-checked against the built image). */
+/* Frontdoor SMC bring-up over the SEP->SMC port: no net force and no ext_in
+ * master. The port does not traverse the SMC sys-inbound BLOCK_BY_DEFAULT
+ * filter; the SEP outbound egress filter is opened first. The testbench
+ * preloads the SMC image into SRAM; this test does not verify secure boot,
+ * manifest processing or BL1 handoff. SEP firmware polls for the image cookie,
+ * re-vectors all four SMC cores and pulses their reset. SEP alias =
+ * SMC-internal - 0x8000_0000. */
 #define SMU_STALL_SMC_SRAM_BASE_ALIAS 0x40060000  /* SEP-view of SMC SRAM base */
 #define SMU_STALL_SMC_IMAGE_FIRST_WORD 0x41014081 /* exact preload cookie (SRAM[0]) */
 #define SMU_STALL_S0_FAIL 0x00460FA1              /* SEP->scratch3: preload never landed */
-#define SMU_STALL_SMC_ENTRY 0x00000000C00601B2ULL /* RECONCILE vs built image */
+#define SMU_STALL_SMC_ENTRY 0x00000000C00601BEULL /* built SMC image entry */
 #define SMU_STALL_RESET_VECTOR_ALIAS 0x40039000   /* SEP-view of SMC RESET_VECTOR_0 */
 #define SMU_STALL_RESET_CTRL_ALIAS 0x40039020     /* SEP-view of SMC RESET_CTRL */
 #define SMU_STALL_RESET_CTRL_PULSE \
@@ -90,11 +84,11 @@
 /* CLA node0 EAP CSR values (verbatim literals matching smu_sep_cla_node0_eap_value):
  *   RELEASE = value(1,4,true)/value(4,4,false): fires actions [1] mpc_debug_run_req_i
  *             and [4] cpu_run_req_i (the standard run/resume pair).
- *   HALT    = value(0,0,false): fires action [0] mpc_debug_run_req_i's partner
- *             mpc_debug_HALT_req -- the VeeR MPC debug halt that actually stalls a
- *             RUNNING core. NOTE: action [3] cpu_halt_req_i does NOT halt a live
- *             core (the core keeps retiring and o_cpu_halt_status stays 0),
- *             so 004 halts via action [0] and resumes via the release actions [1]/[4]. */
+ *   HALT    = value(0,0,false): fires action [0] mpc_debug_halt_req_i, the VeeR MPC
+ *             debug halt that stalls a running core. Action [3] cpu_halt_req_i does
+ *             not halt a live core (the core keeps retiring and o_cpu_halt_status
+ *             stays 0), so this test halts via action [0] and resumes via the release
+ *             actions [1]/[4]. */
 #define SMU_STALL_CLA_CTRLSTATUS_EXPECT 0x60
 #define SMU_STALL_CLA_EAP0_RELEASE 0x341FBFC000ULL
 #define SMU_STALL_CLA_EAP1_RELEASE 0x144FBFC000ULL

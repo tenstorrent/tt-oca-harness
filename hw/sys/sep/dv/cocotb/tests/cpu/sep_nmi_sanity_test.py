@@ -1,11 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP NMI sanity test (PyUVM).
+"""A WDT bark fires the NMI into the handler at SEP_NMI_VEC, and SEP_NMI_VEC locks sticky.
 
 The nmi_sanity firmware checks the NMI mechanism on bare ``sep``: trampoline alignment,
 SEP_NMI_VEC reset default / writeback / sticky lock, and that a WDT bark fires the NMI into the
-registered handler (sep.sv: ``nmi_int = intr_wdog_timer_bark``, ``nmi_vec`` from SEP_NMI_VEC),
-with no testbench injection. start.S emits PASS/FAIL magic from the error count, which the boot
+registered handler (hw/sys/sep/rtl/sep.sv connects ``nmi_int_i`` to ``intr_wdog_timer_bark``
+and ``nmi_vec_i`` to the SEP_NMI_VEC output), with no testbench injection.
+fw/startup/crt0.s emits PASS/FAIL magic from the error count, which the boot
 scoreboard gates on; a wedged NMI path reports FAIL or stalls into the scoreboard timeout.
 
 No fuse data is read, so the testlist entry uses ``+skip_fuse_sense``.
@@ -37,7 +38,7 @@ _BANNER = "SEP NMI sanity test"
 
 @pyuvm.test()
 class sep_nmi_sanity_test(sep_base_test):
-    """Boot VeeR EL2 and run the NMI sanity firmware (WDT bark -> NMI)."""
+    """The NMI vector CSR and the WDT bark -> NMI path pass their firmware checks."""
 
     build_env = False
 

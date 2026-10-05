@@ -20,8 +20,9 @@ short enough that nothing has to wait for it:
   SDA, which the bench reads as all ones. That leg also sets
   `CTRL.TX_STRETCH_CTRL_EN`, so the target records the read it stretched for
   in `TARGET_EVENTS.TX_PENDING`, and the register's own contract is checked
-  there: a word of zeros and a byte write that leaves the field's lane
-  disabled must both leave it set, and only a written one clears it.
+  there: a word of zeros and a word of ones that strobes only the top byte
+  lane, so the field's lane carries a one it is not enabled to take, must
+  both leave it set, and only a written one clears it.
 
 Every instance is driven. `+smc_i2c_shared_bus` puts all three on one
 open-drain bus, so the bench controller on I2C0's pads reaches each of them by
@@ -40,7 +41,7 @@ import cocotb
 from cocotb.triggers import ClockCycles, Timer
 
 from .smc_addr_map import I2C_CG_EN, smc_addr, smc_indexed_addr
-from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_csr_seq_utils import ALL_ONES_WORD, TOP_BYTE_LANE, SmcCsrSeq
 from .smc_i2c_field_masks import (
     I2C_ACQ_SIGNAL_ERROR,
     I2C_ACQ_SIGNAL_NONE,
@@ -375,10 +376,10 @@ class smc_i2c_target_nack_timeout_test_seq(SmcCsrSeq):
 
         The read above sets it: with `CTRL.TX_STRETCH_CTRL_EN` the target
         records the read command it stretched for. Two writes that must not
-        clear it are made first -- a word of zeros over the set bit, and a
-        byte-sized write to the far end of the register, which leaves the lane
-        carrying the bit disabled -- and each is read back against the mask
-        from the generated header.
+        clear it are made first -- a word of zeros over the set bit, and a word
+        of ones that strobes only the top byte lane, so the lane carrying the
+        bit is disabled while carrying a one -- and each is read back against
+        the mask from the generated header.
         """
         set_by_dut = await self.csr_read(f"{label}_TXPEND", r["target_events"])
         assert set_by_dut & I2C_TARGET_EVENTS_TX_PENDING, (
@@ -391,11 +392,14 @@ class smc_i2c_target_nack_timeout_test_seq(SmcCsrSeq):
             f"{label}: TX_PENDING cleared on a word of zeros (0x{after_zero:08x}); the field "
             f"clears on a written one"
         )
-        await self.csr_write(f"{label}_TXPEND_LANE", r["target_events"] + 3, 0xFF, length=1)
+        await self.csr_write_strobed(
+            f"{label}_TXPEND_LANE", r["target_events"], ALL_ONES_WORD, wstrb=TOP_BYTE_LANE
+        )
         after_lane = await self.csr_read(f"{label}_TXPEND_AFTER_LANE", r["target_events"])
         assert after_lane & I2C_TARGET_EVENTS_TX_PENDING, (
-            f"{label}: TX_PENDING cleared on a byte write to the far end of the register "
-            f"(0x{after_lane:08x}); that write leaves its lane disabled"
+            f"{label}: TX_PENDING cleared on a word of ones that strobed only the top byte "
+            f"lane (0x{after_lane:08x}); its own lane was disabled, so the one it carried "
+            f"must not land"
         )
         await self.csr_write(
             f"{label}_TXPEND_CLEAR", r["target_events"], I2C_TARGET_EVENTS_TX_PENDING
@@ -492,7 +496,8 @@ class smc_i2c_target_nack_timeout_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-I2C-TGT-EVENTS-RETAIN: on %d instances TARGET_EVENTS.TX_PENDING, set by the "
             "target itself on the read it stretched for, survived a word of zeros written "
-            "over it and a byte write that left its lane disabled, and cleared only on a "
+            "over it and a word of ones that strobed only the top byte lane, so its own lane "
+            "carried a one it was not enabled to take, and cleared only on a "
             "written one: %s",
             len(self.retained),
             ", ".join(self.retained),

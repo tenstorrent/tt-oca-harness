@@ -288,7 +288,7 @@ tap = OcahJtagMasterDriver(
 | `from_bus(bus, ...)` | Construct from an existing `JTAGBus` |
 | `init_signals()` | Drive idle values before traffic |
 | `await reset_tap(cycles=10)` | Drive TAP to Test-Logic-Reset |
-| `await assert_trst(tck_cycles=1)` / `await release_trst(tck_cycles=0)` | Drive the bound TRST net, then hold TMS high for `tck_cycles`; asserting re-baselines the tracked state to Test-Logic-Reset |
+| `await assert_trst(tck_cycles=1, tms=1)` / `await release_trst(tck_cycles=0, tms=1)` | Drive the bound TRST net, then hold TMS at `tms` for `tck_cycles` (TMS 0 leaves the controller nothing but the reset to move it); asserting re-baselines the tracked state to Test-Logic-Reset |
 | `await step(tms, tdi=0)` / `await step_tms(tms)` | Drive one TCK cycle with the given TMS and TDI and return sampled TDO |
 | `sync_model(state, instruction=None)` | Declare the TAP state after movement the driver did not drive (a power-on reset, a reset pin outside the bound TAP) |
 | `await shift_ir(value, width=None, back_to_rti=False)` | Shift IR, return captured TDO |
@@ -395,7 +395,7 @@ PYTHONPATH=hw/common/dv/vip python3 hw/common/dv/vip/ocah_jtag_vip/cocotb/exampl
 | Errors and evidence | Monitors hold callback exceptions and re-raise them; `OcahJtagChecker.finalize()` fails on a held error, a failed check, zero checks, or a missing required ID; every harness selftest carries an in-band negative probe (cocotb), and `OCAH_JTAG_SELFTEST_NEGATIVE` (harness) or `DTP_JTAG_TAP_CHECKER_NEGATIVE` (DTP bench) forces a failing run in both flows | — |
 | Slave side | Reactive TAP device with IDCODE, BYPASS, undefined instructions as BYPASS, and a register map that latches on Update-DR, holding its shift registers across Pause-x and latching the captured value on a scan with no Shift-x cycle; simulator-free selftest | A DUT-specific register decode beyond the map |
 | Protocol checking | `sva/ocah_jtag_sva.sv` (TDO falling-edge timing, TLR via TMS and TRST, one-hot state legality with an exported state, X-hygiene on four-state simulators), bound in the `dv/` harness (state rules from the device's mirrored state in the cocotb shape, pin rules in the SV-UVM shape) and in the DTP, SMU, and SMC benches; `sva/ocah_jtag_fv.sv` carries the state, TDO and phase rules in the boolean subset a formal environment binds, the host side and the TAP side each asserted or assumed by parameter | State rules in the SV-UVM harness shape, where the device state stays inside the slave driver |
-| Coverage | `cov/ocah_jtag_cov.sv` covergroups through the SV-UVM `ocah_jtag_cov` subscriber (`en_cov`), sampled by the SV-UVM harness (`--dut ocah_jtag_vip --framework uvm --cov`); SVA cover properties on four-state simulators; Verilator line and branch coverage of the SVA through `--dut ocah_jtag_vip --cov`, graded by `dv/cov/config/verilator/coverage_policy.toml`, and through the DTP bench | Covergroups on Verilator |
+| Coverage | `cov/ocah_jtag_cov.sv` covergroups through the SV-UVM `ocah_jtag_cov` subscriber (`en_cov`), sampled by the SV-UVM harness (`--dut ocah_jtag_vip --framework uvm --cov`); SVA cover properties on four-state simulators; Verilator line and branch coverage of the SVA through `--dut ocah_jtag_vip --cov`, with holes classified by `dv/cov/config/verilator/coverage_policy.toml`, and through the DTP bench | Covergroups on Verilator |
 | Simulators | Verilator and the optional backends reported by `run_dv.py --list` | Backends outside the selected framework's allowlist |
 
 ## Scope

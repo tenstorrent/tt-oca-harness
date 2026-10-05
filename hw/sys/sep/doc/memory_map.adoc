@@ -80,10 +80,9 @@ does not decode offsets inside that window, so every access reaches the external
 TRNG slave. Intra-aperture decode is then an integrator constraint: when an
 adopter TRNG is connected, an address that owns no register must return an error
 and must not alias onto a live register. When no external TRNG is connected, the
-window is terminated with a DECERR slave; reads return DECERR, while writes
-return SLVERR because the AXI4-to-AXI-Lite conversion on the TRNG path forces an
-errored write response to SLVERR. Both refuse the access and never alias onto a
-live register. See the {sep-integrator-guide-ref}.
+window is terminated with a DECERR slave, so single-beat reads and writes both
+return DECERR, refuse the access and never alias onto a live register. See the
+{sep-integrator-guide-ref}.
 
 [[sep-register-single-beat]]
 == Single-Beat Register Access
@@ -152,7 +151,7 @@ endif::backend-pdf[]
 
 The SEP external-window model supplies the eFuse SHIM control register below.
 The `efuse_shim_ctrl` instance at offset `0x0` fixes where that block sits.
-`EFUSE_SHIM_SIZE` bytes from that base (`SEP_EFUSE_SHIM_SIZE` at the SMU,
+`EFUSE_SHIM_SIZE` bytes from that base (`CFG.SEP_EFUSE_SHIM_SIZE` at the SMU,
 default `0x4`) are routed to the eFuse controller, which forwards them
 unchanged on `efuse_bank_ctrl` to the adopter's SHIM rather than out the
 external port. An adopter external map must keep an `efuse_shim_ctrl`

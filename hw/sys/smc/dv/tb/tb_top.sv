@@ -388,6 +388,19 @@ module smc_uvm_top
     // target instance under SMC_DUAL) and exported on clk_*_o.
     logic clk_smc, clk_ref, clk_periph;
 
+    // Every file-path plusarg this bench and its models consume; a present one
+    // whose file cannot be opened ends the run at time 0.
+    // +smc_efuse_hex is not listed: the eFuse image leaves write that file
+    // during the run, so efuse_bank_model checks it when it reads it.
+    `include "ocah_path_plusargs.svh"
+    initial begin : path_plusarg_guard
+        static string names[] = '{
+            "rom_bin64", "rom_hex", "smc_rom_hex", "smc_scratch_ram_hex", "bfm_rom_hex",
+            "bfm_rom_bin64", "smc_shadow_reg_preload", "occp_payload_bin"
+        };
+        ocah_require_file_plusargs(names);
+    end
+
 `ifndef SMC_DUAL
     /* verilator public_module */
 
@@ -1570,6 +1583,7 @@ module smc_uvm_top
     assign tb_cpu_reset_timeout    = `SMC_CPU_CTRL.reset_timeout;
     assign tb_cpu_reset_applied    = `SMC_CPU_CTRL.reset_applied;
     assign tb_cpu_uncore_reset_n   = `SMC_CPU_WRAP.cluster_uncore_reset_n;
+    assign tb_cpu_core_resets_n    = `SMC_CPU_WRAP.core_reset_n;
     assign tb_cpu_l2_isolated      = `SMC_CPU.l2_frontend_isolated;
     assign tb_cpu_l2_pending_aw    = `SMC_L2_ISO.i_axi_isolate.pending_aw_q;
     assign tb_cpu_l2_pending_w     = `SMC_L2_ISO.i_axi_isolate.pending_w_q;

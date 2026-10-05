@@ -22,6 +22,14 @@ security-service firmware. This chapter describes the SEP configuration,
 local memories, reset vector and debug integration. The
 https://chipsalliance.github.io/Cores-VeeR-EL2/html/main/docs_rendered/html/index.html[EL2 Programmer's Reference Manual]
 defines the core programming model.
+The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-pic[programming guidance]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-pic[programming guidance]
+endif::backend-pdf[]
+for this block.
 
 <<sep-cpu-diagram>> shows the CPU subsystem and its instruction, data, and external
 memory interfaces.
@@ -163,7 +171,14 @@ adopter; firmware reads their values from the SMC strap registers
 
 BL0 uses platform configuration to select startup options, such as primary or
 secondary chiplet operation and normal or recovery boot. The board and boot
-firmware define the assignment of those options to pins.
+firmware define the assignment of those options to pins; the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-configuration-straps[configuration strap section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-configuration-straps[configuration strap section]
+endif::backend-pdf[]
+of the Programmer's Guide describes reading them.
 
 [[cpu-reset-vector]]
 === Reset Vector
@@ -174,12 +189,18 @@ Boot ROM base address on JTAG reset (TRST assertion or the Test-Logic-Reset
 TAP state). With that default vector, the CPU starts in the BL0 Root-of-Trust
 code.
 
-A debugger may redirect the first instruction fetch by shifting an alternate
-address into the TDR through JTAG while the SEP CPU is held in reset. The
-TDR stores address bits [31:1]; bit 0 is zero. The programmed value persists
-until it is rewritten or the TAP is reset; CPU reset alone does not restore
-the default. This supports bring-up and
-failure analysis flows that execute from a memory other than the Boot ROM.
+An alternate address shifted into the TDR while the SEP CPU is held in reset
+redirects the first instruction fetch, which supports bring-up and failure
+analysis flows that execute from a memory other than the Boot ROM. The TDR
+stores address bits [31:1]; bit 0 is zero. The programmed value persists until
+it is rewritten or the TAP is reset; CPU reset alone does not restore the
+default. The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#dtp-sep-reset-vector[redirect procedure].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-sep-reset-vector[redirect procedure].
+endif::backend-pdf[]
 
 
 == System Interfaces

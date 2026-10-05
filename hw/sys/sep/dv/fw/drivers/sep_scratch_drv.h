@@ -32,4 +32,4 @@ static inline uint32_t sep_scratch_rd(uint32_t idx) {
     return *(volatile uint32_t *)sep_scratch_addr(idx);
 }
 
-#endif // SEP_SCRATCH_H
+#endif // SEP_SCRATCH_DRV_H

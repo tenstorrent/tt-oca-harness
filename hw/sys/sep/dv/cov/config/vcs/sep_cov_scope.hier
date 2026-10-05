@@ -1,12 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+// Compile-time coverage scope of the SEP bench on VCS (`-cm_hier` with
+// `-lca -cm_common_hier`, from `[coverage.vcs]` in sep_sim_cfg.toml). A
+// `-tree` or `-module` line removes that hierarchy from the code-coverage
+// database. Everything else under u_dut stays graded.
+
 // ---------------------------------------------------------------------------
 // Testbench. SEP DV code states no SEP RTL contract, so its code is not in the
 // number. u_dut (sep_wrapper) and everything under it stays graded unless a
 // rule below removes it.
 //
-// sep_uvm_top body: the cocotb top (hw/sys/sep/dv/tb/tb_top.sv). Depth 1 drops
+// sep_uvm_top body: the shared bench top (hw/sys/sep/dv/tb/tb_top.sv). Depth 1 drops
 // the top's own code only; its child instances keep their own rules.
 -tree sep_uvm_top 1
 // u_mbx: sep_outbound_mbx (hw/sys/sep/dv/tb/sep_outbound_mbx.sv), the TB
@@ -21,7 +26,7 @@
 // register is in the JTAG PTAP, outside the SEP hierarchy, and the JTAG DV
 // grades it there.
 -tree sep_uvm_top.u_ic_reset_sep
-// Kept graded on purpose: u_tbadp_vehicle is a drbg_axil64_lane_adapter
+// u_tbadp_vehicle stays graded: it is a drbg_axil64_lane_adapter
 // (hw/ip/drbg/rtl) that the TB instantiates as a test vehicle.
 // sep_drbg_axil_adapter_port_arbitration_test drives its ports directly and
 // grades the adapter contract, so its coverage is SEP RTL coverage.
@@ -166,8 +171,9 @@
 //
 // The two wrapper error slaves are named by INSTANCE, not by module. `-module`
 // would also match TT-owned prim_axi_lite_err_slv instances elsewhere in SEP:
-// sep_efuse_wrapper.sv:277, sep_system_csr.sv:590, :709, :949, sep_io.sv:188,
-// sep_crypto.sv:653 and key_manager.sv:373. sep_axi_map_refuse_test, the
+// the prim_axi_lite_err_slv instances in sep_efuse_wrapper.sv,
+// sep_system_csr.sv, sep_io.sv, sep_crypto.sv and key_manager.sv.
+// sep_axi_map_refuse_test, the
 // dead-space decode tests and sep_km_otp_shim_unreachable_test grade those
 // refusals. The third-party axi_err_slv module is handled by
 // the ownership scope below.
@@ -188,7 +194,7 @@
 // has no instance and no state, so it can only ever score 0.00 and drags the
 // average with a denominator that represents no logic. axi_pkg also carries
 // one unnamed immediate assertion, inside wrap_boundary()
-// (vendor/pulp-platform/axi/upstream/src/axi_pkg.sv:134-142), on the length of
+// (vendor/pulp-platform/axi/upstream/src/axi_pkg.sv), on the length of
 // an AXI BURST_WRAP transfer. It is a protocol check on the caller's burst, not
 // SEP logic; the SEP burst-type tests that issue WRAP bursts grade the SEP
 // response at the bus.
@@ -210,10 +216,10 @@
 // imem and dmem). The pulp-platform AXI modules are not this set; the
 // ownership scope excludes them.
 //
-// Also held back on purpose: prim_carry_select_adder, which forms the remapped
+// prim_carry_select_adder stays graded because it forms the remapped
 // address in u_axi_alias_remap's AW and AR adders, so a wrong sum is a wrong
-// remap; and prim_diff_encode_multi / prim_diff_decode_multi, which carry the
-// lifecycle, class-key and chiplet-UID redundant encodings.
+// remap. prim_diff_encode_multi and prim_diff_decode_multi stay graded because
+// they carry the lifecycle, class-key and chiplet-UID redundant encodings.
 -module prim_bin2gray
 -module prim_gray2bin
 -module prim_rev_cell
@@ -227,7 +233,6 @@
 // carrying an abr_ prefix: abr_prim_buf/prim_buf, abr_prim_flop/prim_flop,
 // abr_prim_sec_anchor_buf/prim_sec_anchor_buf, abr_prim_slicer/prim_slicer,
 // abr_prim_count/prim_count, abr_prim_sparse_fsm_flop/prim_sparse_fsm_flop.
-// Grading the clone but not the original is an inconsistency, not a decision.
 //
 // abr_prim_lfsr is not library-class: its function is part of the accelerator.
 // The ownership scope below applies the same policy to it and the original.
@@ -254,9 +259,10 @@
 
 // The eFuse bank model's register block. `-module efuse_bank_model` above
 // drops that module's own body only; a child instance is a separate module and
-// keeps its own score, so u_efuse_bank_model.u_efuse_bank_reg stayed in the DUT
-// denominator. It is DV-model code under hw/ip/efuse/dv/models, states no SEP
-// contract, and belongs out of the number with its parent.
+// keeps its own score, so without this line
+// u_efuse_bank_model.u_efuse_bank_reg would stay in the DUT denominator. It is
+// DV-model code under hw/ip/efuse/dv/models, states no SEP contract, and
+// belongs out of the number with its parent.
 -module efuse_bank_reg
 
 // ===========================================================================
@@ -264,33 +270,22 @@
 //
 // Everything below is graded by its own upstream verification, not by SEP. This
 // is an OWNERSHIP decision, not an unreachability claim: the logic can fail, and
-// a hole here is not evidence that it cannot be reached. It follows the
-// precedent already set for the OTBN instruction set.
+// a hole here is not evidence that it cannot be reached.
 //
 // What stays graded: every TT wrapper, interconnect, register block and shim --
 // hw/sys/sep, hw/ip and hw/common -- because that is where SEP states its
 // contracts and where an integration defect is SEP's to fix.
 //
 // The cost, stated plainly: integration defects DO occur inside vendored RTL as
-// TT configures it. Issue #2253 was found exactly that way. Scoping these out
-// means the score no longer points at them; the tests that target them still
-// run and still fail.
+// TT configures it. Such a defect shows up as a failing test, not as a
+// coverage hole. Scoping these out means the score does not point at them; the
+// tests that target them still run and still fail.
 //
-// 248 modules and 4 SystemVerilog interfaces (the interfaces carry the
-// vendor's own bus and memory ports). urg writes a `(x)` suffix on a multi-instance module; that
-// suffix is stripped before the name is matched, or modules like kmac(x) and
-// axi_dw_downsizer(x) silently miss their -module line and stay in the score.
-//
-// MEASURED at the 248-module scope, 169-leaf `all` regression either side of
-// this block:
-//
-//              SCORE   LINE   COND  TOGGLE    FSM  BRANCH
-//   before     59.40  56.01  56.55   50.97  39.67   54.63   run 20260923_160542
-//   after      76.60  90.21  62.72   62.51  63.70   81.90   run 20260924_002726
-//
-// The two are NOT a delta: they measure different denominators. Every metric
-// rises because TT-owned logic is better covered than the third-party IP that
-// was dragging it down -- line most of all, 56.01 to 90.21.
+// 262 modules and 5 SystemVerilog interfaces (the interfaces carry the
+// third-party IP's own bus and memory ports). urg writes a `(x)` suffix on a
+// multi-instance module; that suffix is stripped before the name is matched,
+// or modules like kmac(x) and axi_dw_downsizer(x) silently miss their -module
+// line and stay in the score.
 // ===========================================================================
 
 // chipsalliance/adams-bridge -- 74 modules and 3 interfaces.
@@ -516,8 +511,8 @@
 -module spi_host_reg_top
 -module spi_host_window
 
-// pulp-platform/apb -- 1 modules.
-// pulp-platform APB infrastructure. Same reasoning as the AXI library above.
+// pulp-platform/apb -- 1 module.
+// pulp-platform APB infrastructure. Same reasoning as the pulp-platform AXI library below.
 -module apb_demux
 
 // pulp-platform/axi -- 36 modules and 1 interface.
@@ -573,3 +568,47 @@
 -module picorv32_pcpi_div
 -module picorv32_pcpi_mul
 -module picorv32_regs
+
+// lowRISC/opentitan TL-UL library -- 14 modules (hw/common/tlul/rtl).
+// The TL-UL bus cells the OpenTitan cores and the TT AXI-Lite-to-TL-UL bridges
+// use. Each file keeps the lowRISC header, "Copyright lowRISC contributors
+// (OpenTitan project)." at line 1. TT carries local edits in this copy (the
+// OCAH_OT_ASSERT macros, for example dataWidthOnly32_A in tlul_err.sv), but the header is not
+// Tenstorrent, so the logic is third-party by the same rule as the OpenTitan
+// block above. The TT bridges around these cells -- axi_lite_to_tlul and
+// tlul_to_axi_lite (hw/common/axi) -- stay graded.
+// lowRISC: hw/common/tlul/rtl/tlul_adapter_host.sv:1
+-module tlul_adapter_host
+// lowRISC: hw/common/tlul/rtl/tlul_adapter_reg.sv:1
+-module tlul_adapter_reg
+// lowRISC: hw/common/tlul/rtl/tlul_adapter_sram.sv:1
+-module tlul_adapter_sram
+// lowRISC: hw/common/tlul/rtl/tlul_cmd_intg_chk.sv:1
+-module tlul_cmd_intg_chk
+// lowRISC: hw/common/tlul/rtl/tlul_cmd_intg_gen.sv:1
+-module tlul_cmd_intg_gen
+// lowRISC: hw/common/tlul/rtl/tlul_data_integ_dec.sv:1
+-module tlul_data_integ_dec
+// lowRISC: hw/common/tlul/rtl/tlul_data_integ_enc.sv:1
+-module tlul_data_integ_enc
+// lowRISC: hw/common/tlul/rtl/tlul_err.sv:1
+-module tlul_err
+// lowRISC: hw/common/tlul/rtl/tlul_err_resp.sv:1
+-module tlul_err_resp
+// lowRISC: hw/common/tlul/rtl/tlul_fifo_sync.sv:1
+-module tlul_fifo_sync
+// lowRISC: hw/common/tlul/rtl/tlul_rsp_intg_chk.sv:1
+-module tlul_rsp_intg_chk
+// lowRISC: hw/common/tlul/rtl/tlul_rsp_intg_gen.sv:1
+-module tlul_rsp_intg_gen
+// lowRISC: hw/common/tlul/rtl/tlul_socket_1n.sv:1
+-module tlul_socket_1n
+// lowRISC: hw/common/tlul/rtl/tlul_sram_byte.sv:1
+-module tlul_sram_byte
+
+// chipsalliance/Cores-VeeR-EL2 -- 1 interface.
+// el2_mem_if is the VeeR memory-export interface. sep_cpu instantiates it (the
+// el2_mem_if instance in hw/sys/sep/rtl/sep_cpu.sv) outside u_el2_veer_wrapper,
+// so the -tree rule for the core above does not reach it. Same ownership decision as that rule.
+// Western Digital: vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/lib/el2_mem_if.sv:3
+-module el2_mem_if

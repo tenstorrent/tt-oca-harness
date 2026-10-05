@@ -18529,7 +18529,10 @@ Defaults to 7 on reset to match the 8B granule that applies while bursts are dis
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>rc</ipxact:name>
-              <ipxact:description>SEP REFERENCE COUNTER, counting after deassert of cold reset</ipxact:description>
+              <ipxact:description>SEP REFERENCE COUNTER, counting after deassert of cold reset. Write once,
+then poll this register until the readback reflects the written value before
+writing again. The counter keeps advancing, so the readback is at or just
+above the written value rather than equal to it.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>

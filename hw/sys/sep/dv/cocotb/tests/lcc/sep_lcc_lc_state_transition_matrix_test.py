@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""LC_STATE next state on the shadow write-1-to-set path (OSS).
+"""A frontdoor LC_STATE shadow write moves the state only as the W1S and token rules allow.
 
 No testlist entry carries this module's name. Seven entries in
 ``testlists/efuse_lcc.toml`` run it, each selecting a start state with
@@ -8,10 +8,11 @@ No testlist entry carries this module's name. Seven entries in
 sep_lcc_lc_state_w1s_prod_demote_test, sep_lcc_lc_state_w1s_rma_sip_test,
 sep_lcc_lc_state_w1s_rma_chiplet_test, sep_lcc_lc_state_w1s_prod_end_test,
 sep_lcc_lc_state_w1s_prod_end_rma_test (the two PROD_END exits, pinned with
-``+lc_prod_end_exit``) and sep_lcc_lc_state_w1s_transient_test. Run one of those names, not this one.
+``+lc_prod_end_exit``) and sep_lcc_lc_state_w1s_transient_test. Run one of those
+names, not this one.
 
 The lifecycle stitch walk covers the OTP-program path: burn a fuse bit, re-sense,
-check the decode. This test covers the OTHER writer of LC_STATE -- the frontdoor
+check the decode. This test covers the other writer of LC_STATE -- the frontdoor
 shadow write, whose setup phase computes the next lifecycle state in
 ``hw/ip/efuse/rtl/efuse_shadow_regs.sv``. Nothing else in this tree drives that
 path, so nothing else can fail on a wrong next state.
@@ -29,11 +30,11 @@ and no destination table:
 What the chapter says about destinations follows from those three: INVALID is
 end-of-life and terminal, and from PROD_END every reachable set lands outside
 the named encodings -- the chapter's "the only permitted transition is to
-INVALID". Demotion is NOT a term: the chapter calls it volatile debug state,
+INVALID". Demotion is not a term: the chapter calls it volatile debug state,
 distinct from RMA "whose state transitions are hardware-ordered", so a demoted
 part must transition exactly like a non-demoted one.
 
-ONE SENSED STARTING STATE PER LEAF. ``efuse_bank_model`` deposits the OTP image
+One sensed starting state per leaf. ``efuse_bank_model`` deposits the OTP image
 in a time-0 ``initial`` and a fuse survives reset, so a test cannot re-sense its
 way to a different starting state -- only a superset is reachable, by programming
 bits for real. Each starting state is therefore its own leaf, staged at t=0 by
@@ -48,13 +49,17 @@ only the shadow storage -- and for a state outside the named set it must read 0
 ("all features disabled by fail-closed default"), which no in-spec state
 produces under these disable vectors.
 
-Checkers, by leaf (``+lc_start`` value):
+Checkers, by leaf (``+lc_start`` value). Every leaf starts with CHK-START-SENSED
+(the sensed LC_STATE equals the staged start state) and ends with CHK-LEAF (the
+walked cells and the seed are logged).
 
   1 (PROD)
     * CHK-W1S-NO-CLEAR   a write of 0 clears nothing.
     * CHK-GATE-SIP       bit 1 without an RMA_SIP token match does not set.
     * CHK-GATE-CHIP-ORD  bit 2 with a CHIPLET match but no RMA_SIP does not set
                          -- the ordering gate, with the token gate already open.
+    * CHK-GATE-SIP-FAULT a collapsed SIP comparator reports the error code, and
+                         bit 1 then does not set (the gate fails closed).
     * CHK-SIP-ADVANCE    bit 1 with a match advances PROD -> RMA_SIP.
   1 + demote
     * CHK-DEMOTE-OPEN      DEMOTE_1+DEMOTE_2 in PROD is observable in FEAT_CTRL,
@@ -81,6 +86,8 @@ Checkers, by leaf (``+lc_start`` value):
                            the remaining lifecycle bits with both tokens matched
                            changes nothing.
   8 + transient RMA
+    * CHK-TRANSIENT-NO-TOKEN with TRANSIENT_RMA_EN armed and no token presented,
+                             the state holds at PROD_END.
     * CHK-TRANSIENT-INVALID  the transient path applies the same W1S and token
                              rules with no bus request, INVALID result included.
 
@@ -434,11 +441,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         )
 
     async def _walk_rma_sip(self) -> None:
-        # Read the preloaded state before touching it. Two things depend on
-        # this: nothing else asserts the image actually starts where the walk
-        # claims, and the coverage sampler only records an LC state on a real
-        # LC_STATE read -- every cell below writes first, so without this the
-        # start state is never observed.
+        # Read the preloaded state first (see _walk_prod).
         await self._cell(0x0, "CHK-START-SENSED", do_write=False, expect=LC_RMA_SIP_0)
         got = await self._cell(0x1, "CHK-RMA-BIT0")
         await self._prove_upper_write()
@@ -464,22 +467,14 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         )
 
     async def _walk_rma_chiplet(self) -> None:
-        # Read the preloaded state before touching it. Two things depend on
-        # this: nothing else asserts the image actually starts where the walk
-        # claims, and the coverage sampler only records an LC state on a real
-        # LC_STATE read -- every cell below writes first, so without this the
-        # start state is never observed.
+        # Read the preloaded state first (see _walk_prod).
         await self._cell(0x0, "CHK-START-SENSED", do_write=False, expect=LC_RMA_CHIP_0)
         got = await self._cell(0x1, "CHK-RMA-BIT0")
         await self._prove_upper_write()
         assert got == 0x7, f"RMA_CHIPLET is 4'b011X: 0x6 + bit0 must be 0x7, got 0x{got:x}"
 
     async def _walk_prod_end(self, exit_path: str) -> None:
-        # Read the preloaded state before touching it. Two things depend on
-        # this: nothing else asserts the image actually starts where the walk
-        # claims, and the coverage sampler only records an LC state on a real
-        # LC_STATE read -- every cell below writes first, so without this the
-        # start state is never observed.
+        # Read the preloaded state first (see _walk_prod).
         await self._cell(0x0, "CHK-START-SENSED", do_write=False, expect=LC_PROD_END)
         if exit_path == "rma_sip":
             # The RMA path, which the chapter forbids from PROD_END. The SIP

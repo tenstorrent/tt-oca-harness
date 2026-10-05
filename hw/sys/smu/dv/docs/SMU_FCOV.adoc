@@ -44,7 +44,7 @@ compares a golden.
 |Phase 1 cover properties |100 percent of the collected population, with no waiver |The `user` family on Verilator; urg's `Summary for Cover Properties` in `cov/report/asserts.txt` on VCS, graded under the `assertion` family
 |Phase 1 covergroups |100 percent of the GROUP score on `smu_wrapper_uvm_top.u_smu_*_fcov` |URG Group report of a `--tool vcs --cov` run, after `cov/config/vcs/smu_wrapper_group_exclusions.el`
 |Phase 2 |Named set at the end of this plan |Not collected
-|Toggle, line, condition, branch |Not a functional-coverage contract |`hw/sys/smu/doc/dv/SMU_COVERAGE_POLICY.adoc` states the targets
+|Toggle, line, condition, branch |Not a functional-coverage contract |`hw/sys/smu/dv/docs/SMU_COVERAGE_POLICY.adoc` states the targets
 |===
 
 The GROUP score counts only the `cov/sv` covergroups. The covergroups the
@@ -70,7 +70,7 @@ bring it back are recorded there.
 [cols="2,1,1,1,3",options="header",]
 |===
 |Module |Phase 1 points |Phase 2 points |SEP=0 only |Covergroups
-|`smu_xbar_fcov` |22 |3 |0 |`cg_sep_window`, `cg_axi_in_resp` (`u_cg_bresp`, `u_cg_rresp`), `cg_map_window`
+|`smu_xbar_fcov` |21 |4 |0 |`cg_sep_window`, `cg_axi_in_resp` (`u_cg_bresp`, `u_cg_rresp`), `cg_map_window`
 |`smu_boot_fcov` |20 |1 |0 |`cg_boot_stall`, `cg_lifecycle`
 |`smu_rst_fcov` |17 |0 |0 |`cg_block_release`
 |`smu_dbg_fcov` |13 |0 |0 |`cg_dbg_disable_slice`
@@ -80,13 +80,13 @@ bring it back are recorded there.
 |`smu_lc_fcov` |3 |0 |3 |`cg_lc_at_release`
 |`smu_clk_fcov` |3 |0 |0 |`cg_tel_rate`, `cg_wdt_rate`
 |`smu_clkstop_fcov` |3 |0 |0 |`cg_clk_stop_sources`
-|Total |101 |4 |4 |14 covergroups, 15 instances
+|Total |100 |5 |4 |14 covergroups, 15 instances
 |===
 
-The counts are the `OCAH_FCOV_COVER` invocations in each file. The four
+The counts are the `OCAH_FCOV_COVER` invocations in each file. The five
 Phase 2 points sit behind `ifdef SMU_FCOV_PHASE2`, which no configuration
 defines. The four SEP=0 points sit in `g_nosep` generate blocks, which the
-wrapper's single target does not elaborate, so 101 points enter the database.
+wrapper's single target does not elaborate, so 100 points enter the database.
 
 === Collection
 
@@ -177,14 +177,13 @@ traffic is never forwarded outbound.
 |`c_map_smc_size_reprogrammed` |`smc_region_size_o` moves a second time
 |`g_sep.c_map_sep_base_programmed`, `g_sep.c_map_sep_size_programmed` |`sep_global_base_o` / `sep_region_size_o` move after reset
 |`g_sep.c_map_sep_size_reprogrammed` |`sep_region_size_o` moves a second time
-|`g_sep.c_map_sep_size_zero` |`sep_region_size_o` programmed to zero
 |`c_axi_in_aw_accept`, `c_axi_in_aw_stall`, `c_axi_in_ar_accept`, `c_axi_in_ar_stall` |An inbound address phase accepted, and one held with ready low
 |`c_axi_in_w_last`, `c_axi_in_r_last` |The last beat of an inbound write and read
 |`c_axi_in_{b,r}resp_{okay,slverr,decerr}` |An inbound write and read answered with each legal response
 |`c_route_inbound_not_forwarded` |The inbound write count advances without the outbound one
 |`c_axil_external_active` |The external AXI-Lite window inside the wrapper is active
 |`c_no_route_ext_in_to_ext_out` |An inbound write answered with no outbound address phase since it was accepted
-|`cg_sep_window` |The SEP window unprogrammed, programmed, and programmed to zero. A zero is recorded only once the size has been programmed, so there is no unprogrammed zero state
+|`cg_sep_window` |The SEP window unprogrammed and programmed. The programmed-zero state is ignored: a zero-size SEP aperture cannot be programmed on this bench (<<smu-fcov-phase2>>)
 |`cg_axi_in_resp` |OKAY, SLVERR and DECERR on the inbound B and R channels. EXOKAY is ignored: no subordinate behind the crossbar has an exclusive monitor
 |`cg_map_window` |The SMC window unprogrammed and programmed. The zero window is ignored: `smc_base_config` requires a non-zero power of two
 |===
@@ -363,10 +362,12 @@ policy entry names them.
 |`c_axi_in_bresp_exokay`, `c_axi_in_rresp_exokay` |EXOKAY answers an exclusive access, and no subordinate behind the crossbar has an exclusive monitor: every AXI interconnect in the SEP and SMC is built without atomics and the memory adapters tie exokay off. `smu_axi_in_attribute_sweep_test` checks that an AxLOCK=1 access is answered OKAY |A subordinate behind the SMU crossbar with an exclusive monitor
 |`g_sep.c_lc_sigint_err` |`lc_sigint_err` rises only when the exported LC_STATE differential pair disagrees with itself. The eFuse shadow re-encodes the raw state, so the pair is valid unless corrupted in flight, which takes a fault injected inside the SEP; the SEP bench grades that path |A fault-injection hook on the exported LC_STATE pair in `tb/tb_wrapper_top.sv`
 |`c_map_smc_size_zero` |A zero SMC REGION_SIZE is illegal: `smc_base_config` requires a non-zero power of two, and zero leaves no reachable local aperture. The crossbar rule it forms has `start == end`, which the decoder's map check rejects |A specification change that makes a zero SMC window a legal state
+|`g_sep.c_map_sep_size_zero` |A zero SEP_REGION_SIZE forms a crossbar rule with `start == end` (`hw/sys/smu/rtl/smu_axi_xbar.sv` 72-74), and the decoder's map check accepts only `start < end` or `end == 0` (`vendor/pulp-platform/common_cells/upstream/src/addr_decode_dync.sv` 150), so a zero-size SEP aperture cannot be programmed on this bench: the check fails the run (#2605, closed on the design owner's contract that the size is not programmed to zero) |An aperture encoding the decoder accepts for zero size
 |===
 
 The covergroups carry the same facts as ignored bins: `cg_axi_in_resp`
-ignores EXOKAY and `cg_map_window` ignores the zero SMC window. The ignored
+ignores EXOKAY, `cg_map_window` ignores the zero SMC window and `cg_sep_window`
+ignores the programmed-zero SEP window. The ignored
 bins of `cg_lifecycle`, `cg_lc_at_release`, `cg_block_release`,
 `cg_tel_rate`, `cg_wdt_rate`, `cg_dbg_disable_slice`, `cg_smn_ids` and
 `cg_alias_path`, and the state `cg_sep_window` leaves out, are values the
@@ -382,6 +383,63 @@ its reads there return DECERR, and no specification text names SLVERR for
 them. The test checks the reads for DECERR and records the write responses
 without grading them. The claim comes back when the design answers those
 writes with DECERR or a specification states the code they return.
+
+[[smu-fcov-traceability]]
+=== VPLAN to FCOV Traceability
+
+Each row names a group of `SMU_VPLAN.adoc`'s Test Procedures and the `cov/sv`
+collectors that record that group's behaviour. The mapping is the plan's;
+which leaf lights each point is a property of a run and is measured in
+<<smu-fcov-owners>>.
+
+[cols=",",options="header",]
+|===
+|VPLAN group |Coverage
+|FABRIC |`smu_xbar_fcov` window programming and reprogramming, the inbound AXI handshake, all four response encodings, and inbound traffic not forwarded outbound; `smu_alias_fcov` the SEP-to-SMC dedicated port; `smu_ext_fcov` the external AXI boundary
+|RESET |`smu_rst_fcov` cold-reset assertion and release, per-domain order and powergood; `smu_boot_fcov` reset-release edges, boot-stall sources and release, and SRAM auto-init; `smu_ext_fcov` the external boot-sequence gate; `smu_dtp_fcov` on the DFT boot-stall leaves
+|MISC |`smu_clkstop_fcov` clock-stop request and grant; `smu_clk_fcov` the clock mirrors `tb/tb_wrapper_top.sv` exposes; `smu_dtp_fcov` XTRIG mode and the CTM path; `smu_dbg_fcov` the debug bridges a race leaf drives
+|JTAG |`smu_dbg_fcov` JTAG2AXI debug paths, security-disable and TAP state; `smu_dtp_fcov` the scan and STAP ports; `smu_boot_fcov` the JTAG boot-stall source
+|SEP |`smu_lc_fcov` lifecycle broadcast and demotion; `smu_boot_fcov` fuse sense and the lifecycle broadcast at reset release; `smu_rst_fcov` the SEP reset domain; `smu_dbg_fcov` SEP debug gating; `smu_alias_fcov` and `smu_ext_fcov` the SEP-side boundary
+|SMC |`smu_ext_fcov` the SMC-side external boundary; `smu_rst_fcov` the SMC reset domain; `smu_alias_fcov` the dedicated port's SMC end
+|SMU_WRAPPER |`smu_xbar_fcov`, `smu_dbg_fcov`, `smu_ext_fcov`, `smu_boot_fcov`, `smu_clk_fcov` and `smu_rst_fcov`: the composition, boundary-port and connectivity-matrix leaves walk the wrapper's whole observable surface, so most points carry one of them as their measured owner
+|===
+
+A group whose leaves own no point in <<smu-fcov-owners>> is not a group
+without coverage: the points are free-running cover properties, so the
+measured owner of a point is the leaf that hit it most, which on this bench
+is usually a long composition or firmware leaf rather than the directed leaf
+the point was written for. Read the mapping above for intent and the owners
+table for which leaf a point depends on.
+
+The covergroups under `ifndef VERILATOR` are the commercial `group` metric
+and are not in this table.
+
+[[smu-fcov-exclusion-files]]
+=== Exclusions and Limitations
+
+`cov/config/vcs/smu_wrapper_coverage_policy.toml` names three `-elfile` lists
+the VCS report applies. Each entry carries an ANNOTATION naming its class;
+`cov/config/vcs/README.md` is the fact table behind those classes, with what
+each one drops, the granularity it takes and what retires it. The
+compile-time scope, which decides what enters the database at all, is in the
+same README.
+
+[cols="2,3",options="header",]
+|===
+|File |Fact table
+|`smu_wrapper_toggle_exclusions.el` |README.md, "Port toggle exclusions": the wrapper port fields no SMU logic reads or writes, one class per fact, each with what retires it
+|`smu_toggle_exclusions.el` |README.md, "Block exclusions": the toggle points of `smu`, `smu_wrapper` and `smu_axi_xbar`, the lifecycle integrity-error condition rows, and the crossbar's zero-size aperture rule
+|`smu_wrapper_group_exclusions.el` |README.md, "Covergroups from vendored RTL": the covergroups the vendored RTL under `u_dut` declares, which another package grades
+|===
+
+Two limitations of the scope itself are stated where they bite and are
+repeated here so no reader credits the figure with more than it covers. The
+Verilator and VCS scopes keep different populations -- the Verilator figure is
+the wrapper and the `cov/sv` points, the VCS figure the SMU block under the
+shared rule -- so a number is quoted with its flow (README.md, "Two
+populations"). And `smu_wrapper_cov_scope.hier` is generated while
+`../verilator/smu_wrapper_cov_scope.vlt` is hand-maintained, so a
+regeneration of the first takes a review of the second; nothing compares them.
 
 === Closure Policy
 
@@ -400,7 +458,7 @@ evidence:
   configuration reaches becomes an ignored bin with the fact beside it.
 
 The covergroups declared inside vendored RTL are the only ones the group
-exclusion file drops; `gen_smu_wrapper_group_exclusions.py` names each class
+exclusion file drops; the companion's `gen_smu_wrapper_group_exclusions.py` names each class
 with its reason, and a covergroup under `u_dut` that no class names stops the
 generator.
 
@@ -415,7 +473,8 @@ generator.
   alone reaches depends on that leaf.
 . *`smu_fcov.py` sources no coverage claim.*
 . *No CI gate is set on these numbers.* `SMU_COVERAGE_POLICY.adoc` states the
-  targets and how a floor would be set from a measured database.
+  targets the figures are read against, and why no code-metric family carries
+  a floor.
 
 ==== Evidence
 

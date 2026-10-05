@@ -17,8 +17,8 @@ from smc_base_test import smc_base_test
 # accesses, every mailbox address an SMC_MAILBOX_OUTBOUND_MAILBOX_0_* symbol --
 #   3  CLOCK_GATE_CONTROL: read, write (mailbox_cg_en set), read-back
 #   2  MAILBOX_STATUS read + MAILBOX_ERROR_FLAGS read (exact idle expectations)
-#   1  CPU_CTRL.SMC_ATTRIBUTES read, the source of the WIRQT/RIRQT clamp
-#      expectation (min(written, MailboxDepth-1))
+#   1  CPU_CTRL.SMC_ATTRIBUTES read, compared with the documented MailboxDepth
+#      the WIRQT/RIRQT clamp expectation (min(written, MailboxDepth-1)) uses
 #   6  WIRQT / RIRQT / IRQEN write + read-back pairs
 #   6  the same three restored to 0, write + read-back pairs
 #   2  CLOCK_GATE_CONTROL restore write + read-back

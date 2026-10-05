@@ -4,117 +4,51 @@
 [[system-timer-octs-interface]]
 == Interface
 
-The System Timer OCTS IP provides interfaces supporting both PRIMARY and
-SECONDARY timer modes, with flexible support for either AXI4-Lite or
-APB4 bus protocols. All interface signals operate synchronously to the
-system clock.
+The System Timer OCTS IP has a 32-bit AXI4-Lite register interface. The
+`is_primary_i` input selects PRIMARY or SECONDARY mode at runtime. All
+signals are synchronous to `clk_i` except `timer_sync_load_i` and
+`timer_cnt_credit_i`, which are synchronized internally as described in
+<<octs-pulses>>.
 
-=== Configuration Parameters
+=== Ports
 
 ifdef::backend-html5[]
-The parameters and ports of `system_timer_octs` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/system_timer_octs/system_timer_octs.adoc[system_timer_octs].
+The ports of `system_timer_octs` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/system_timer_octs/system_timer_octs.adoc[system_timer_octs].
 endif::backend-html5[]
 ifndef::backend-html5[]
-The parameters and ports of `system_timer_octs` are listed in the HTML edition of this manual, under RTL Modules Reference.
+The ports of `system_timer_octs` are listed in the HTML edition of this manual, under RTL Modules Reference.
 endif::backend-html5[]
 
-The timer configuration is described in terms of a register interface
-protocol, `BUS_PROTOCOL` (AXI4-Lite or APB4, default AXI4-Lite), an address
-bus width, `ADDR_WIDTH` (default 32, 8 bits effective), and a data bus
-width, `DATA_WIDTH` (default 32).
-
-NOTE: Timer mode selection (PRIMARY vs SECONDARY) is controlled at runtime
-via the `is_primary_i` input signal, not through a compile-time parameter.
-
-=== Test Interface
-
-The test controls are `test_en_i`, an active-high test enable for
-manufacturing test mode and debug access, and `scan_rst_ni`, an active-low
-scan reset that gives the scan chain independent reset control for
-manufacturing test and ATPG.
+`system_timer_octs` has no parameters. Its AXI4-Lite request and response
+types, with 32-bit address and data, are defined in `system_timer_octs_pkg`.
 
 === OCTS Synchronization Interface
 
 When operating in PRIMARY mode, the timer generates synchronization
-pulses: `timer_sync_load_o` is asserted when the START register is
-written, and `timer_cnt_credit_o` is asserted periodically according to
-internal credit generation logic. Any synchronization input signals are
-ignored in PRIMARY mode. In contrast, SECONDARY mode relies on input
-from the PRIMARY: `timer_sync_load_i` directs the timer to initialize
-using a preset value, and `timer_cnt_credit_i` delivers credit pulses
-that allow continuous synchronization. In this mode, the outputs remain
-inactive.
+pulses: `timer_sync_load_o` is asserted for `CTRL.PULSE_WIDTH` cycles when
+the START register is written, and `timer_cnt_credit_o` is asserted for
+`CTRL.PULSE_WIDTH` cycles every `CTRL.CREDIT_VAL` cycles. Any
+synchronization input signals are ignored in PRIMARY mode. In contrast,
+SECONDARY mode relies on input from the PRIMARY: `timer_sync_load_i`
+directs the timer to initialize using a preset value, and
+`timer_cnt_credit_i` delivers credit pulses that allow continuous
+synchronization. In this mode, the outputs remain inactive.
 
-=== Timer Counter Interface
+=== Timer Count
 
-The step input, `timer_cnt_step_i`, is an 8-bit value used in SECONDARY
-mode.
+`timer_count_o` is the live 64-bit count, also readable through
+`TIMER_COUNT_LO` and `TIMER_COUNT_HI`. A PRIMARY advances it by one each
+`clk_i` cycle. A SECONDARY advances it by `CTRL.STEP` each cycle while
+credits remain.
 
-For SECONDARY timers, the step input (`timer_cnt_step_i`) enables
-granular control over the increment rate. Typically set to 1 for a
-standard per-cycle increment, this parameter can be tuned to adjust for
-differing clock ratios or calibration needs, but is only effective when
-credits are available (i.e., when the credit counter permits counting).
+[[octs-interface-timing]]
+=== Timing
 
-The timer's count output (`timer_count_o`) provides direct and
-continuous access to the current counter value, updating every clock
-cycle while the timer is running. This value is useful for timestamping,
-monitoring, or debugging, and can also be read from the COUNT_LO and
-COUNT_HI registers.
+The RTL defines no setup, hold or clock-to-output limit, maximum clock
+frequency or frequency ratio between OCTS clock domains. Clock frequency,
+jitter, reset timing and physical timing constraints must come from the
+integration timing specification.
 
-=== Timing Specifications
-
-All input signals are required to meet setup and hold times with respect
-to the rising edge of clk_i.
-
-<<octs-timing-requirements-table>> lists the stated setup and hold requirements by
-signal group.
-
-ifdef::backend-html5[]
-++++
-<div class="port-reference-scroll" role="region" aria-label="OCTS timing requirements" tabindex="0">
-++++
-endif::backend-html5[]
-
-[[octs-timing-requirements-table]]
-.OCTS Timing Requirements
-[cols="30,15,15,40",options="header",role="port-reference"]
-|=======================================================================
-|Signal Group |Setup Time |Hold Time |Notes
-|Register Interface |2.0 ns |0.5 ns |AXI4-Lite/APB4 protocol signals
-
-|Synchronization Inputs |N/A |N/A |Edge detection provides internal
-synchronization
-
-|Control Inputs |2.0 ns |0.5 ns |test_en_i, scan_rst_ni,
-timer_cnt_step_i
-
-|Timer Count Output |N/A |N/A |Output signal with 3.0 ns clock-to-output
-delay
-|=======================================================================
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
-endif::backend-html5[]
-
-The interface ensures that register outputs are valid within 3.0 ns of a
-rising clock edge, while the timer count output also updates within 3.0
-ns of the clock. Synchronization outputs are generated as pulses with
-programmable widths.
-
-Regarding clock domain crossing, the synchronization protocol relies on
-pulses wide enough to be reliably detected: each pulse should last for
-at least two destination clock cycles, and the maximum supported
-frequency ratio between domains is 10:1.
-
-Pulse events must be separated by at least 10 destination clock cycles.
-Edge detection logic ensures synchronization latency of 2–3 destination
-clock cycles and provides robust protection against metastability (using
-a 2FF synchronizer with closure on all relevant timing), with internal
-logic maintaining the width of each transmitted pulse.
-
-=== Reset Behavior and Initialization
-
-When reset is asserted asynchronously (`rst_ni`), all outputs
+Synchronization inputs cross into `clk_i` as described in <<octs-pulses>>;
+derive the required pulse high and low intervals from the destination clock
+and CDC analysis. Reset behavior is described in <<octs-reset>>.

@@ -172,7 +172,14 @@ domain includes the SEP-facing side of the mailbox, so the SEP host can still
 reach the mailbox during the reset.
 
 A soft reset requested through the Key Manager's `SOFT_RST_CODE` register
-takes the same warm path without isolation. None is needed: the Key Manager
+takes the same warm path without isolation; the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-software-reset[software reset section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-software-reset[software reset section]
+endif::backend-pdf[]
+of the Programmer's Guide covers both requests. None is needed: the Key Manager
 CPU is the only master on its key and eFuse paths and completes each access
 before issuing the next, so no transaction is in flight when it writes
 `SOFT_RST_CODE`.
@@ -205,9 +212,14 @@ sampler can flag a stream error. The SEP host must keep the Key Manager idle
 before asserting the TRNG reset. Holding KM in software reset is sufficient;
 hardware does not enforce the ordering.
 
-Following reset release, software reprograms the entropy source, waits for startup health
-testing, locks the certified configuration, instantiates CSRNG, and enables EDN.
-Consumers are released only after fresh endpoint/pool progress is observed.
+The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-trng-recovery[TRNG recovery sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-trng-recovery[TRNG recovery sequence]
+endif::backend-pdf[]
+in the Programmer's Guide gives the firmware steps around this reset.
 
 == Memory Map and Register Reference
 

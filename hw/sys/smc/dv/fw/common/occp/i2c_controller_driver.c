@@ -537,7 +537,7 @@ I2C_Status ctrlr_send_data_w_timeout(I2C_Driver *drv, const uint8_t *tx_buf, siz
         simputs("[I2C_CTRL][TX TIMEOUT] invalid args or controller\n");
         return I2C_ERR_HW;
     }
-    uint32_t effective_timeout = (timeout > 0) ? (uint32_t)timeout : I2C_DEFAULT_TIMEOUT;
+    uint32_t effective_timeout = (timeout < 0) ? I2C_DEFAULT_TIMEOUT : (uint32_t)timeout;
 
     if (tx_buf_len == 0) {
         return I2C_TX_BUF_UNDERRUN;
@@ -555,7 +555,6 @@ I2C_Status ctrlr_send_data_w_timeout(I2C_Driver *drv, const uint8_t *tx_buf, siz
     I2C_FDATA_reg_u addr_cmd = {.val = 0};
     addr_cmd.f.fbyte = compose_address_byte(g_target_addr[i2c_id], false);
     addr_cmd.f.start = 1;
-    addr_cmd.f.stop = (tx_buf_len == 0);
     write_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__FDATA_REG_OFFSET, addr_cmd.val);
     log_simputs("[I2C_CTRL][TX] addr_cmd=");
     log_simputshex16("", addr_cmd.val);

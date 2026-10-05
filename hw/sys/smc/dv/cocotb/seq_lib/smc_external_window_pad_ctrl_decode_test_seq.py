@@ -14,11 +14,11 @@ every access must drive ``smc_external_req_o`` (sampled as
 ``tb_axil_external_active`` on every ``clk_smc_i`` edge while the access is in
 flight) and complete with an error response rather than wedging or being
 answered by some other block. The data returned with that error is required to
-be zero for the same DV-owned reason ``csr_read_decerr_zero`` applies to every
-unmapped SMC hole: an error response carries no payload, so any non-zero data
-means a live responder answered in the terminator's place. The per-pad stride
-is taken from the header and checked against the spec's 0x20 before the first
-and last instance are probed.
+be the error-slave word ``0xBADCAB1E`` that every error slave in the design
+returns, so a live responder answering in the terminator's place fails on the
+data as well as on the response code. The per-pad stride is taken from the
+header and checked against the spec's 0x20 before the first and last instance
+are probed.
 """
 
 from __future__ import annotations
@@ -31,10 +31,10 @@ from .smc_decode_probe_utils import SmcDecodeProbeSeq
 # memmap.adoc: "Per-Pad GPIO Control | BASE + ... + (N x 0x20) | 65 instances".
 SPEC_PER_PAD_STRIDE = 0x20
 SPEC_PER_PAD_INSTANCES = 65
-# DV-owned expectation for the data lanes of an error response: an error
-# carries no payload, so a non-zero word means a live responder answered where
-# only the window terminator should. Same rule as `csr_read_decerr_zero`.
-TERMINATOR_RDATA = 0
+# The word the reference integration's window terminator returns with its
+# DECERR, shared by every error slave in the design; another word means a
+# live responder answered where only the terminator should.
+TERMINATOR_RDATA = SmcDecodeProbeSeq.ERR_SLAVE_SIGNATURE
 
 _CONTROL_BLOCKS = (
     ("controller-wrap-decode", "CONTROLLER_WRAP"),
@@ -60,14 +60,16 @@ class smc_external_window_pad_ctrl_decode_test_seq(SmcDecodeProbeSeq):
     async def _probe(self, cell: str, label: str, addr: int) -> None:
         rdata, hits = await self.read_external_routed(label, addr, decerr=True)
         assert rdata == TERMINATOR_RDATA, (
-            f"{label} @ 0x{addr:08x}: the error response carried data 0x{rdata:08x}; an error "
-            f"carries no payload, so another responder answered in the terminator's place"
+            f"{label} @ 0x{addr:08x}: the error response carried data 0x{rdata:08x} instead of "
+            f"the terminator's 0x{TERMINATOR_RDATA:08x}, so another responder answered in its "
+            f"place"
         )
         self.hits[label] = hits
         self.close_cell(
             cell,
             f"0x{addr:08x} was presented on smc_external_req_o as a read request for {hits} "
-            f"clk_smc_i cycle(s) and was answered DECERR/0 by the adopter-window terminator",
+            f"clk_smc_i cycle(s) and was answered DECERR/0x{TERMINATOR_RDATA:08X} by the "
+            f"adopter-window terminator",
         )
 
     async def body(self) -> None:
@@ -120,12 +122,14 @@ class smc_external_window_pad_ctrl_decode_test_seq(SmcDecodeProbeSeq):
             "CHK-EXTERNAL-WINDOW-PAD-CTRL-DECODE: %d control-block and %d per-pad addresses each "
             "reached the adopter external AXI-Lite port as a request carrying that address "
             "(request cycles %s) and completed DECERR "
-            "with zero data, the DV-owned answer for an address nothing behind the window "
-            "decodes; per-pad stride 0x%x, %d instances; a write to per-pad block 0 reached the "
-            "port as a write request for that address and was refused with resp=%s",
+            "with the error-slave word 0x%08X, the terminator's answer for an address nothing "
+            "behind the window decodes; per-pad stride 0x%x, %d instances; a write to per-pad "
+            "block 0 reached the port as a write request for that address and was refused with "
+            "resp=%s",
             len(_CONTROL_BLOCKS),
             3,
             sorted(self.hits.values()),
+            TERMINATOR_RDATA,
             stride,
             len(idxs),
             self.write_resp,

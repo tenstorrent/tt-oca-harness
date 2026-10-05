@@ -30,7 +30,7 @@
 <h3 id="MTIMECMP_4_">MTIMECMP[4]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>count</td><td>RW</td><td>-</td><td>Cycle count value to be used for comparison, triggers interrupt once count value matches this</td></tr>
+<tr><td>63:0</td><td>count</td><td>RW</td><td>-</td><td>Timer compare value. The core&#x27;s machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME.</td></tr>
 </table>
 <h3 id="MTIME">MTIME</h3>
 <table>

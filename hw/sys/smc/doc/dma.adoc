@@ -121,14 +121,15 @@ endif::backend-html5[]
 
 The generated map contains `NEXT_ID`, `STATUS` and `DONE` banks for 16 streams,
 but only bank 0 is functional in SMC. Reads of `NEXT_ID_1..15` complete with zero
-and launch nothing; their `STATUS` and `DONE` registers also read zero. Treat
-these banks as reserved. A read of `NEXT_ID_0` is a command, not a harmless
-status read; exclude it from diagnostic register dumps.
+and launch nothing; their `STATUS` and `DONE` registers also read zero. A read of
+`NEXT_ID_0` is a command, not a status read: any read whose bytes include
+`NEXT_ID_0`, such as a 64-bit read at `0x48`, launches a transfer; a 32-bit read
+of the unused word at `0x4C` does not.
 
-Source, destination, length, strides, repetitions and `CONFIG` are shared registers.
-Serialize their writes and the submission read between software contexts. There
-is no configuration-lock register. The 64-bit fields use low/high 32-bit register
-halves; do not assume the two halves are updated atomically by the register path.
+Source, destination, length, strides, repetitions and `CONFIG` are registers
+shared by all software contexts, with no configuration-lock register. The 64-bit
+fields use low/high 32-bit register halves, which the register path does not
+update atomically.
 
 [[smc-dma-transfer-parameters-table]]
 [cols="2,1,1,3",options="header"]
@@ -156,25 +157,24 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-For a linear copy, set `CONFIG.ENABLED_ND=1` and `NUM_REPETITIONS_LO=1` and `NUM_REPETITIONS_HI=0`. For a 2D copy, also
-program source/destination strides and the required repetition count. Strides
-can gather or scatter evenly spaced rows; there is no linked-list walker.
+A linear copy is one repetition with `CONFIG.ENABLED_ND` set; a 2D copy adds
+source/destination strides and a repetition count. Strides can gather or
+scatter evenly spaced rows; there is no linked-list walker.
 
-Set the combined length nonzero and `NUM_REPETITIONS_LO/HI` at least one. Clearing `CONFIG.ENABLED_ND` forces the
-midend repetition count to zero. A zero-repetition command produces an internal
+Clearing `CONFIG.ENABLED_ND` forces the midend repetition count to zero. A zero-repetition command produces an internal
 midend error response without data movement; that response still retires a
 transfer ID. The control aperture does not expose the error payload, so a
 retired ID alone is not proof that valid data was copied.
 
 The names above follow the published register map. The RTL frontend calls the
 configuration `conf`, the ND-enable field `enable_nd`, and the repetition pair
-`reps_2_low/high`; these refer to the same fields. Some generated CONFIG field
-descriptions say "Not used", but the frontend forwards the options described here.
+`reps_2_low/high`; these refer to the same fields.
 
 The frontend requests incrementing AXI bursts and sets the cache attribute to
 modifiable. `CONFIG` supplies decoupling, maximum burst-length and length-reduction
-options. The backend handles alignment and burst splitting; these mechanisms
-do not grant permission to access a filtered or otherwise invalid address.
+options; the `CONFIG` register description gives each field's effect. The backend
+handles alignment and burst splitting; these mechanisms do not grant permission
+to access a filtered or otherwise invalid address.
 
 == Submission and Completion
 
@@ -186,20 +186,14 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-. Establish exclusive ownership of the shared configuration. Prepare the source
-  data and destination ownership according to the platform's memory-ordering
-  and cache-maintenance requirements.
-. Program `CONFIG`, both address halves, length, strides and repetition count.
-  Check effective widths and address bounds before submission.
-. Ensure configuration writes are visible, then read `NEXT_ID_0` exactly once
-  to submit and record its returned transfer ID. This read can be backpressured
-  until the frontend accepts the request.
-. Use `DONE_0` to track retirement. For a single outstanding command, wait for
-  its ID; with multiple outstanding commands, maintain an ordered software
-  record so a later retirement does not make an earlier equality test wait forever.
-. Apply the platform's completion-ordering/cache rules before consuming the
-  destination. Handle a firmware timeout as a recovery decision; there is no
-  software abort register or state-preserving abort guarantee.
+The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-dma[DMA Engine section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-dma[DMA Engine section]
+endif::backend-pdf[]
+of the Programmer's Guide gives the submission and completion sequence.
 
 [[smc-dma-status-monitoring-and-control-table]]
 [cols="1,3",options="header"]
@@ -216,14 +210,10 @@ busy, routed to raw CPU vector bit 322 (PLIC ID 323). No local enable, mask or
 pending register; this is not one interrupt per submitted descriptor.
 |===
 
-Do not infer completion from frontend readiness or from a zero `STATUS` value.
+Frontend readiness and a zero `STATUS` value do not indicate completion.
 The transfer-ID generator resets `NEXT_ID` to 2 and `DONE` to 1 and skips zero
-on wrap. Use wrap-aware tracking for long-running queues; ordinary unsigned
-comparison is insufficient across rollover.
-
-The busy-falling pulse is a service hint. Use `DONE_0` to establish retirement
-and provide polling/timeout handling: PLIC gateway behavior does not turn
-successive completion pulses into a counted queue.
+on wrap. PLIC gateway behavior does not turn successive busy-falling pulses
+into a counted queue.
 
 == Memory Map and Register Reference
 

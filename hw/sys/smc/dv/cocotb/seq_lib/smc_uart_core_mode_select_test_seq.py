@@ -12,12 +12,12 @@ their reset or their setup value on any wrapper:
   paths the 16550 has: software reads "from RBR or FIFO". Every leaf enables the
   FIFOs, so the receiver buffer register itself -- the path a character takes
   when they are off -- has never held a character.
-* **DMA mode 1.** `programming.adoc` lists "Select DMA mode if using DMA
-  transfers" as a step of FIFO configuration and `uart_16550_main_wo.rdl` gives
-  FCR a `DMA_MODE_SELECT` bit, but no leaf writes it, so the receive and
-  transmit ready handshakes it selects have never run.
+* **DMA mode 1.** The Programmer's Guide UART FIFO section says "Set
+  `FCR.DMA_MODE_SELECT` only to use mode-1 DMA service indications" and
+  `uart_16550_main_wo.rdl` gives FCR a `DMA_MODE_SELECT` bit, but no leaf writes
+  it, so the receive and transmit ready handshakes it selects have never run.
 * **Line loopback.** `MCR.LINE_LOOPBACK` is the second of the two loopback modes
-  `programming.adoc` documents, and no leaf sets it.
+  the Programmer's Guide documents, and no leaf sets it.
 
 The leaf drives all three and checks what each one is specified to do.
 
@@ -38,7 +38,7 @@ report exactly that, and no interrupt pending once the character is read out.
 Four characters are then sent and read back in order, which is the same mode
 with the trigger level reached instead of timed out.
 
-**Line loopback.** `programming.adoc`: "With `MCR.LINE_LOOPBACK` set, the modem
+**Line loopback.** The Programmer's Guide: "With `MCR.LINE_LOOPBACK` set, the modem
 inputs are routed straight back out to the modem outputs and all four MSR level
 bits read `0`." The leaf sets it and requires those four bits to read 0. In this
 mode the receiver input is held idle, so a character written into THR must be
@@ -47,8 +47,11 @@ the transmitter drained and requires `LSR.DR` clear on every read up to that
 point.
 
 **The transmit FIFO under DMA mode 1.** Still in line loopback, the divisor is
-slowed and a burst longer than `smc_config_pkg::UartTxFifoDepth` is written
-into THR without polling, so the transmit FIFO reaches its full condition while
+slowed and a burst longer than the SMC UARTs' 32-entry transmit FIFO
+(`hw/sys/smc/doc/periphs.adoc`, peripheral parameter table: `UartTxFifoDepth`
+SMC value 32; `hw/ip/uart/uart_16550/doc/index.adoc`: "32-entry TX and RX
+FIFOs") is written into THR without polling, so the FIFO reaches its full
+condition while
 the transmitter is still draining the first characters. What the leaf checks is
 what the register map exposes: `LSR.THRE` clear straight after the burst, so the
 FIFO is holding characters, and `LSR.TEMT` and `LSR.THRE` both set once it has
@@ -126,9 +129,10 @@ _DMA_TRIGGER_PAYLOAD = (0x11, 0x22, 0x44, 0x88)
 _PARKED_BYTE = 0x69
 _LINE_LOOPBACK_BYTE = 0x5A
 
-# smc_config_pkg.sv gives the SMC UARTs UART_TX_FIFO_DEPTH = 32. The burst is
-# comfortably longer so the transmit FIFO reaches its full condition even if
-# the CSR port delivers a write every few cycles.
+# hw/sys/smc/doc/periphs.adoc (peripheral parameter table) and
+# hw/ip/uart/uart_16550/doc/index.adoc give the SMC UARTs a 32-entry transmit
+# FIFO. The burst is comfortably longer so the FIFO reaches its full condition
+# even if the CSR port delivers a write every few cycles.
 _TX_FIFO_DEPTH = 32
 _TX_BURST = tuple(range(64))
 # uart_16550_dl.rdl: "baud_rate = system_clock_frequency / (16 * (divisor +

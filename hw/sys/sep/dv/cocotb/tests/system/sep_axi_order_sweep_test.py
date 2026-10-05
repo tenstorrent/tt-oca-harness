@@ -1,13 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""AXI channel-ordering sweep: every legal AW/W ordering must land, everywhere.
+"""AXI channel-ordering sweep: every legal AW/W ordering at the s_axi ingress lands.
 
 no_cpu / +skip_fuse_sense. AXI write address and write data are independent
 channels with no ordering requirement between them (IHI 0022 A3.3), so all
 three orderings are legal stimulus and each must leave the written value in
-the addressed register. Each block behind the crossbar terminates AXI at its
-own register adapter, so the contract has to hold at every one of them rather
-than at one scratch word.
+the addressed register. The orderings are presented at the s_axi fabric
+ingress, and the contract is end to end: each one must land at every
+write-safe register of every swept block, not only at one scratch word. The
+crossbar in front of the block adapters can re-serialize a write (the CSRNG
+path delivers W one cycle after AW whatever the master presents), so this
+test does not claim that each adapter sees all three orderings. W-first and
+same-cycle orderings at an adapter port are covered for the DRBG lane adapter
+module by sep_drbg_axil_adapter_port_arbitration_test.
 
 The sweep configures all three orderings at every register the export
 establishes as write-safe storage, and crosses them with the 1/2/4-byte sizes
@@ -27,6 +32,10 @@ it reads the register that was written, not the neighbour that was corrupted.
 CHK-ORDER-XSIZE: all nine (ordering x size) cells produced a data compare, so
 the ordering axis is proven crossed with the lane axis and not only at the bus
 width.
+
+CHK-ORDER-STIM: the ordering each cell presented on the bus, read off the AW/W
+valid assertions, matches the ordering it requested, and all three orderings
+were presented.
 
 CHK-COVERAGE: the cell tally is logged, including every cell that could not run
 and why. A dropped cell is named rather than absorbed, so partial coverage

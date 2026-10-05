@@ -4,9 +4,9 @@
 // Shape pulse_in_i with programmable pre- and post-wait counts.
 //
 // pulse_start_i samples pulse_in_i and starts a sequence: drive the sampled level for
-// pre_pulse_wait_i + 1 cycles, assert pulse_out_o for post_pulse_wait_i cycles, then drive it
-// deasserted for one cycle and return to idle. A new pulse_start_i during the sequence
-// reloads the count of the current phase.
+// pre_pulse_wait_i + 1 cycles, assert pulse_out_o for post_pulse_wait_i + 1 cycles, then
+// return to idle. A new pulse_start_i during the sequence reloads the count of the current
+// phase.
 // IS_ACTIVE_HIGH sets the polarity of pulse_out_o.
 // pulse_done_o is high while idle and low for the whole sequence; pulse_out_o sits at its
 // asserted level while idle, so use it only while pulse_done_o is low.
@@ -22,7 +22,8 @@ module prim_pulse_signal #(
   input  logic      [COUNT_WIDTH-1:0] pre_pulse_wait_i,  // Cycles, minus one, of the sampled
                                                          // pulse_in_i level before pulse_out_o
                                                          // asserts.
-  input  logic      [COUNT_WIDTH-1:0] post_pulse_wait_i,  // Cycles pulse_out_o stays asserted.
+  input  logic      [COUNT_WIDTH-1:0] post_pulse_wait_i,  // Cycles, minus one, that pulse_out_o
+                                                          // stays asserted.
 
   input  logic                        pulse_in_i,  // Level sampled on pulse_start_i and driven
                                                    // during the pre-pulse wait.
@@ -131,10 +132,10 @@ module prim_pulse_signal #(
       end
 
       POST_RESET: begin  // hold pulse for some duration
+        pulse_done_o = 1'b0;
 
         if (pulse_start_i) begin  // new reset has arrived, restart the count
           pulse_out_o = IS_ACTIVE_HIGH;
-          pulse_done_o = 1'b0;
           pulse_set_cnt = post_pulse_wait_i;
           pulse_set = 1'b1;
           pulse_decr_en = 1'b1;
@@ -142,8 +143,7 @@ module prim_pulse_signal #(
           pulse_state_nxt = POST_RESET;
 
         end else if (~|pulse_count) begin  // count reached
-          pulse_out_o = ~IS_ACTIVE_HIGH;
-          pulse_done_o = 1'b0;
+          pulse_out_o = IS_ACTIVE_HIGH;
           pulse_set_cnt = '0;
           pulse_set = 1'b1;
           pulse_decr_en = 1'b0;
@@ -152,7 +152,6 @@ module prim_pulse_signal #(
 
         end else begin  // keep counting
           pulse_out_o = IS_ACTIVE_HIGH;
-          pulse_done_o = 1'b0;
           pulse_set_cnt = '0;
           pulse_set = 1'b0;
           pulse_decr_en = 1'b1;

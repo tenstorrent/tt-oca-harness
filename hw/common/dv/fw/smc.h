@@ -30,7 +30,6 @@
 #include "dfx_ctrl_status.h"
 #include "filter_ctrl.h"
 #include "gpio_wrap.h"
-#include "gpio_poc_pbias_ctrl.h"
 #include "pvt_wrap.h"
 #include "reset_unit.h"
 #include "alias_remap.h"

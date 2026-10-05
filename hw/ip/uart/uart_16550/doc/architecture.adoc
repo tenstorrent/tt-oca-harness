@@ -30,11 +30,12 @@ CTS. `LSR.THRE` means the TX FIFO/holding register is empty; `LSR.TEMT` also
 requires the serializer to be idle. Use TEMT when the final character must have
 left the transmitter before reconfiguration.
 
-The receiver synchronizes `rx_i` and uses a three-sample majority decision at
-16-times-baud sampling. Received parity, framing and break indications accompany
-characters; software reads line status before consuming their data. In FIFO
-mode, an overrun drops the newly received character; in non-FIFO mode an unread
-character can be overwritten in RBR. Frame format supports 5–8 data bits, selectable parity
+The receiver synchronizes `rx_i` and takes a majority of three consecutive
+`clk_i` samples, which rejects single-cycle glitches. It then samples each bit
+once, at the bit midpoint timed by the 16-times-baud tick. Received parity,
+framing and break indications accompany characters; software reads line status
+before consuming their data. In FIFO mode, an overrun drops the newly received
+character; in non-FIFO mode an unread character can be overwritten in RBR. Frame format supports 5–8 data bits, selectable parity
 and stop-bit configuration. `LCR.SET_BREAK` forces the transmit line low.
 
 === Baud Timing and Register Views
@@ -108,8 +109,8 @@ An IIR read does not repair or acknowledge an underlying parity failure.
 |3 |Receiver line status |Capture LSR error fields, then service receive data;
 controlled by `IER.ELSI`.
 |6 |Receive timeout |Read RBR to clear the latched timeout. It is generated in
-FIFO mode after roughly four character times without receive-FIFO occupancy
-change. In the current RTL this request is not gated by IER.
+FIFO mode when the receive FIFO holds data and its occupancy has not changed for
+roughly four character times. In the current RTL this request is not gated by IER.
 |2 |Received data ready |Drain RBR below the selected FIFO trigger, or consume
 the non-FIFO character; controlled by `IER.ERBFI`.
 |1 |Transmit holding register empty |Write THR, or read IIR while this is the
@@ -120,7 +121,14 @@ controlled by `IER.EDSSI`.
 |===
 
 `MCR.OUT2` does not gate `irq_o`; its modem and loopback uses are described
-in the programming section. The ITR
+in the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-uart-flow-control[UART modem status section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-uart-flow-control[UART modem status section]
+endif::backend-pdf[]
+of the Programmer's Guide. The ITR
 extension can force interrupt sources for testing. Clear test settings after
 use. Do not rely on clearing IER alone to silence the unmasked timeout source;
 use the subsystem interrupt controller when masking all delivery is required.

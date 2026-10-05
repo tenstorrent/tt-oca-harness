@@ -27,7 +27,6 @@ jobs:
 
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init --recursive
 
       - name: Classify the diff
@@ -210,7 +209,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -261,7 +259,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -293,7 +290,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -327,7 +323,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -400,7 +395,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -421,7 +415,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -500,7 +493,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -524,7 +516,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -555,15 +546,12 @@ jobs:
           fetch-depth: 0
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
-          sed -i 's|git@github.com:tenstorrent/|https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/|g' $GITHUB_WORKSPACE/.gitmodules
           git submodule update --init
           git config --global --add safe.directory $GITHUB_WORKSPACE/hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
       - name: Install Nix
         uses: cachix/install-nix-action@v31.11.1
         with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+          github_access_token: ${{ github.token }}
       - name: Run nix-fmt
         run: |
           set +e
@@ -589,7 +577,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -700,7 +687,6 @@ jobs:
       - name: Checkout submodules
         if: steps.scope.outputs.run == 'true'
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init
       - name: Install uv
         if: steps.scope.outputs.run == 'true'
@@ -753,7 +739,6 @@ jobs:
           fetch-depth: 0
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6

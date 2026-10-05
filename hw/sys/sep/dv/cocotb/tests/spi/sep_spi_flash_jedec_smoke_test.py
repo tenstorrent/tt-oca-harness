@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP OpenTitan SPI host JEDEC-ID smoke test."""
+"""The OpenTitan SPI host sends JEDEC ID (0x9F) on the pads and returns the flash ID in RXDATA.
+
+The flash BFM must log 0x9F as its last opcode, and RXDATA must equal the BFM's
+ID bytes (CHK-JEDEC). Run mode: no_cpu with +skip_fuse_sense.
+"""
 
 from __future__ import annotations
 
@@ -17,7 +21,7 @@ from seq_lib.sep_spi_flash_jedec_seq import (
 
 @pyuvm.test()
 class sep_spi_flash_jedec_smoke_test(sep_base_test):
-    """Issue JEDEC ID over the OpenTitan SPI host and OSS flash BFM."""
+    """The flash BFM sees opcode 0x9F, and RXDATA holds the BFM's JEDEC ID word."""
 
     async def run_scenario(self) -> None:
         dut = cocotb.top

@@ -18,7 +18,7 @@ name = "dtp_ijtag_sib_all_on_test"
 module = { cocotb = "dtp_ijtag_sib_all_on_test", uvm = "dtp_ijtag_sib_all_on_test" }
 seed = 1
 timeout_sec = 1800
-tags = ["scan"]
+tags = ["smoke", "ci", "scan"]
 run_modes = ["scan"]
 
 [[tests]]

@@ -74,7 +74,7 @@ early_trap_vector:
     li t5, SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(0)
     add t5, t5, t3
     li t6, 0xffffffff
-    sw t6, 0(t5)
+    sd t6, 0(t5)
 
     j early_trap_vector
     .cfi_endproc

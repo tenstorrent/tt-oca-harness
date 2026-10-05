@@ -10,38 +10,37 @@
 //
 // A1 NO-STALL applies only to a regblock whose generated cpuif hardwires
 // cpuif_req_stall_rd/cpuif_req_stall_wr to '0 ("Read & write latencies are
-// balanced. Stalls not required", e.g. sep_scratch_reg.sv:220-221). A1 IS NOT
-// APPLIED to a block with external registers, where the generator drives
-// stall from external_pending (efuse_mmr_reg.sv:85-86,
-// entropy_source_reg.sv:214-215, km_kpv_reg.sv:223-224): there the stall
-// moves.
+// balanced. Stalls not required", e.g. sep_scratch_reg.sv). A1 IS NOT APPLIED
+// to a block with external registers, where the generator drives stall from
+// external_pending (efuse_mmr_reg.sv, entropy_source_reg.sv, km_kpv_reg.sv):
+// there the stall moves.
 //
 // A2 NO-ERROR applies ONLY to the register spaces that decode no error. Their
 // decode always_comb sets is_valid_addr='1 and is_valid_rw='1 with the
 // generator's own comments "No valid address check" / "No valid RW check",
-// then decoded_err='0 (sep_scratch_reg.sv:242-248); cpuif_wr_err='0 (:311);
-// readback_err='0 and cpuif_rd_err=readback_err (:333,:338). With the response
+// then decoded_err='0, cpuif_wr_err='0, readback_err='0 and
+// cpuif_rd_err=readback_err (e.g. sep_scratch_reg.sv). With the response
 // buffer never loading a 1, s_axil_bresp/s_axil_rresp hold 2'b00 OKAY.
 //
 // The same A2 reasoning holds for an APB cpuif: s_apb_pslverr is
-// cpuif_rd_err | cpuif_wr_err (efuse_interface_ctrl_reg.sv:78), so it holds 0.
+// cpuif_rd_err | cpuif_wr_err (efuse_interface_ctrl_reg.sv), so it holds 0.
 // A block whose cpuif is an interface port (entropy_source_reg, axi4lite_intf)
 // gets A2 on its internal error nets only; the interface bresp/rresp are not
 // listed.
 //
-// A2 IS DELIBERATELY NOT APPLIED to the *_wrapper_key_reg blocks or the KM
-// km_csr/km_drbg_sampler/km_mailbox_* blocks. Those
-// DO decode errors --
+// A2 does not hold for the *_wrapper_key_reg blocks or the KM
+// km_csr/km_drbg_sampler/km_mailbox_* blocks. Those blocks decode errors:
 //   decoded_err = (~is_valid_addr | (is_valid_addr & ~is_valid_rw)) & decoded_req
-//   (aes_wrapper_key_reg.sv:260, cpuif_wr_err :385, readback_err :406;
-//    abr_wrapper_key_reg.sv:337,926,976)
-// -- and their SLVERR is reachable by an out-of-window or wrong-direction
-// access on the KM private key bus. Do not "complete" the set by adding them.
+//   and cpuif_wr_err / readback_err follow decoded_err
+//   (e.g. aes_wrapper_key_reg.sv, abr_wrapper_key_reg.sv)
+// Their SLVERR is reachable by an out-of-window or wrong-direction access on
+// the KM private key bus, so they are not listed.
 //
 // SEP returns SLVERR from the fabric -- the AXI-Lite demux default slave
-// (sep_system_csr.sv:227), the axi_filter datapath and the xbar decode error
-// slave -- and sep_axi_map_refuse_test grades those. This file waives the
-// bresp/rresp OUTPUT OF A LEAF REGBLOCK only, which is a different signal.
+// (the sep_pkg::ERR_SLV leg, u_err_slv in sep_system_csr.sv), the axi_filter
+// datapath and the xbar decode error slave -- and sep_axi_map_refuse_test
+// grades those. This file waives the bresp/rresp OUTPUT OF A LEAF REGBLOCK
+// only, which is a different signal.
 //==================================================
 
 

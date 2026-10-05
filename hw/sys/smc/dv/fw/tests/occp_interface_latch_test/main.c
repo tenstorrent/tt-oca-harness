@@ -100,12 +100,12 @@ int main(void) {
     simputs("Waiting for target to be ready...\n");
     {
         gpio_intf__DATA_CTRL_t gpio_control;
-        gpio_control.w = read_gpio(58, 0x0u);
+        gpio_control.w = read_gpio(58, GPIO_INTF_DATA_CTRL_BASE_ADDR);
         gpio_control.f.interface_enable = 1;
         gpio_control.f.enable_rx_tx = 2;
-        write_gpio(58, 0x0u, gpio_control.w);
+        write_gpio(58, GPIO_INTF_DATA_CTRL_BASE_ADDR, gpio_control.w);
         do {
-            gpio_control.w = read_gpio(58, 0x0u);
+            gpio_control.w = read_gpio(58, GPIO_INTF_DATA_CTRL_BASE_ADDR);
         } while (gpio_control.f.pad2core == 0);
     }
 

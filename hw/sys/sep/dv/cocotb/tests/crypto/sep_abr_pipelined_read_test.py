@@ -1,27 +1,25 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Pipelined reads of an ABR register from the SMN inbound master must return it.
+"""Pipelined reads of one ABR register from the SMN inbound master each return its value.
 
-Reproducer for issue #2253. It FAILS while the RTL carries that defect, and
-passes when it is fixed.
+no_cpu / +skip_fuse_sense.
 
-Driven from `m_axi`, the SoC-facing inbound port (`hw/sys/sep/rtl/sep.sv:98`),
-because that is a real master rather than a stand-in. The CPU-LSU splice is not
-used: `s_axi` exists only to present what the VeeR LSU would present, and the
-LSU serialises MMIO loads -- a firmware run of the same four reads keeps one
-transaction in flight and never enters the bridge's streaming state. Driving
-several reads at once on that port would be stimulus the port cannot carry in
-the real design, so it proves nothing.
-
-The inbound path has no such limit. It reaches the ABR aperture through the
-local crossbar (`sep.sv:415`, `ext_axi_req_i`) and the crypto interconnect, and
-an SoC master may legitimately hold several reads outstanding with distinct
-`ARID`s -- AXI places no restriction on that, and no SEP document places one on
-this aperture.
+The test drives concurrent single-beat reads of one read-only ABR register at
+depths 1, 2, 3, 4 and 8, one ARID each, on `m_axi`. That is the SoC-facing
+inbound port (`smn_inbound_axi_req_i` in `hw/sys/sep/rtl/sep.sv`), a real master
+that may hold several reads outstanding with distinct `ARID`s: AXI places no
+restriction on that, and no SEP document places one on this aperture. The path
+reaches the ABR aperture through an inbound-filter read window, the local
+crossbar (`u_sep_local_axi_xbar_wrapper.ext_axi_req_i` in `sep.sv`) and the
+crypto interconnect. An AXI-to-AHB bridge that drops HADDR[2:0] on streamed
+reads returns a wrong value from the third read in flight, so the sweep fails on
+that defect. `sep_abr_pipelined_read_matrix_test` runs the same depths on both
+masters, plus the identity-word orders.
 
 Single-beat reads only (`ARLEN = 0`): the crypto demux routes any `AxLEN != 0`
-to its error slave (`sep_crypto_axi_interconnect.sv:111-112`, `:175`, `:205`),
-which `hw/sys/sep/doc/crypto.adoc` states to software.
+to its error slave (`aw_is_burst` / `ar_is_burst` in
+`hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv`), which `hw/sys/sep/doc/crypto.adoc`
+states to software.
 
 The comparand is `MLDSA_VERSION1`, a read-only register. `abr_reg.rdl` gives
 it no reset and no SEP document gives its value, so the control read alone is
@@ -34,8 +32,10 @@ Checkers:
                    equal and turn the sweep vacuous
   CHK-ABR-PIPELINED-READ  every read, at every depth, returns that same value
                    and an OKAY response; a timeout counts as a failure
-
-Pass Criteria: every named checker PASSes. UVM_ERROR == 0.
+  CHK-ABR-PIPELINE-OVERLAP  at every depth, the m_axi pins accept all N ARs
+                   before the first R handshake, so N reads are in flight at
+                   once. Without it a path that serialised the reads would
+                   still return the right values and pass the compare above
 """
 
 from __future__ import annotations
@@ -45,6 +45,7 @@ from cocotb.triggers import with_timeout
 from env.sep_axi_agent import SepAxiOp
 from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
+from seq_lib.sep_abr_bus_seq import AbrBusWatch
 from seq_lib.sep_abr_keygen_seq import ABR_BASE, ABR_VERSION1
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_inbound_filter_rule_seq import SepInboundFilter, SepInboundFilterCfg
@@ -54,6 +55,8 @@ RESP_OKAY = 0
 # The address comes from the RDL via sep_abr_keygen_seq, never a literal.
 A_VERSION1 = ABR_VERSION1
 DEPTHS = (1, 2, 3, 4, 8)
+# The TB master bus whose AR/R handshakes the overlap check records.
+BUS = "m_axi"
 READ_TIMEOUT_NS = 20_000
 
 
@@ -69,7 +72,7 @@ def word(raw, addr: int) -> int:
 
 @pyuvm.test()
 class sep_abr_pipelined_read_test(sep_base_test):
-    """ABR reads at increasing depth from the inbound master."""
+    """Pipelined ABR reads from the inbound master return the register value at every depth."""
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
@@ -128,28 +131,48 @@ class sep_abr_pipelined_read_test(sep_base_test):
         axi = self.env.ext_axi_agent.driver.axi
         wrong: list[tuple[int, int, int | None]] = []
         bad_resp: list[tuple[int, int, int]] = []
+        # (depth, ARs accepted, ARs accepted before the first R, max outstanding)
+        overlap: list[tuple[int, int, int, int]] = []
         for depth in DEPTHS:
-            evs = [
-                axi.init_read(address=A_VERSION1, length=4, size=SIZE_4B, arid=i)
-                for i in range(depth)
-            ]
-            vals, lost = [], 0
-            for ev in evs:
-                try:
-                    await with_timeout(ev.wait(), READ_TIMEOUT_NS, "ns")
-                except Exception:
-                    lost += 1
-                    vals.append(None)
-                    continue
-                # worst_resp, not int(resp or 0): an unreadable response must
-                # not coerce to OKAY. It returns RESP_TIMEOUT instead.
-                code = worst_resp(getattr(ev.data, "resp", None))
-                if code != RESP_OKAY:
-                    # An error response is a different failure from silently
-                    # wrong data, and is recorded as such rather than folded
-                    # into the value compare.
-                    bad_resp.append((depth, len(vals), code))
-                vals.append(word(getattr(ev.data, "data", None), A_VERSION1))
+            # The watch records the AR and R handshakes on the m_axi pins, so
+            # the overlap is measured on the DUT port, not taken from the order
+            # in which this test called init_read.
+            watch = AbrBusWatch((BUS,))
+            watch.start()
+            try:
+                evs = [
+                    axi.init_read(address=A_VERSION1, length=4, size=SIZE_4B, arid=i)
+                    for i in range(depth)
+                ]
+                vals, lost = [], 0
+                for ev in evs:
+                    try:
+                        await with_timeout(ev.wait(), READ_TIMEOUT_NS, "ns")
+                    except Exception:
+                        lost += 1
+                        vals.append(None)
+                        continue
+                    # worst_resp, not int(resp or 0): an unreadable response must
+                    # not coerce to OKAY. It returns RESP_TIMEOUT instead.
+                    code = worst_resp(getattr(ev.data, "resp", None))
+                    if code != RESP_OKAY:
+                        # An error response is a different failure from silently
+                        # wrong data, and is recorded as such rather than folded
+                        # into the value compare.
+                        bad_resp.append((depth, len(vals), code))
+                    vals.append(word(getattr(ev.data, "data", None), A_VERSION1))
+            finally:
+                watch.stop()
+            rec = watch.rec[BUS]
+            overlap.append((depth, len(rec.ar), rec.ar_before_first_r, rec.max_rd_outstanding))
+            self.logger.info(
+                "m_axi depth=%d overlap: %d AR accepted, %d before the first R, "
+                "max %d reads outstanding",
+                depth,
+                len(rec.ar),
+                rec.ar_before_first_r,
+                rec.max_rd_outstanding,
+            )
             shown = ", ".join("timeout" if v is None else f"0x{v:08x}" for v in vals)
             self.logger.info(
                 "m_axi depth=%d @0x%08x: %s  [timeouts=%d]",
@@ -184,4 +207,20 @@ class sep_abr_pipelined_read_test(sep_base_test):
             "CHK-ABR-PIPELINED-READ PASS: every read at depths %s returned 0x%08x",
             ", ".join(str(d) for d in DEPTHS),
             alone,
+        )
+
+        serial = [o for o in overlap if not (o[1] == o[2] == o[3] == o[0])]
+        assert not serial, (
+            "CHK-ABR-PIPELINE-OVERLAP FAIL: "
+            + "; ".join(
+                f"depth {d}: {n} AR accepted, {before} before the first R, max {mx} outstanding"
+                for d, n, before, mx in serial
+            )
+            + ". Each depth must hold all of its reads in flight at once on the "
+            "m_axi pins; otherwise its value compare proves nothing about pipelining."
+        )
+        self.logger.info(
+            "CHK-ABR-PIPELINE-OVERLAP PASS: AR accepted before the first R / max "
+            "outstanding per depth: %s",
+            ", ".join(f"depth {d}: {before}/{mx}" for d, _n, before, mx in overlap),
         )

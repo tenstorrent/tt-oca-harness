@@ -247,7 +247,7 @@ static inline void bl1_outbound_filter_init(void) {
     __asm__ volatile("fence w, w" ::: "memory");
 
     mmio_write32(OBF_CONFIG, 0x01000013u);
-    mmio_write32(OBF_CONFIG + 4, 0x00000001u);
+    mmio_write32(OBF_CONFIG + 4, 0x00000000u);
 
     __asm__ volatile("fence w, w" ::: "memory");
 }

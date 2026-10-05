@@ -80,11 +80,13 @@ set avs_hier [cdc_inst u_smc_peripherals/u_avsbus_controller]
 # hierarchical, so the stops below only apply once technology mapping has turned
 # the gater and the post-divider mux into library cells. DC reports that failure
 # without raising a Tcl error, so an unguarded call fails in silence -- hence the
-# check. One gater pin stands for all of them: they become leaves together.
+# check. One gater pin stands for all of them: they become leaves together. The
+# sign-off (functional) scenario is exempt: VC accepts the stop on a hierarchical
+# pin, and without it the AVS clocks propagate to the GPIO pads.
 set avs_gate_cell [get_cells -quiet -of_objects \
     [get_pins -quiet "${avs_hier}/u_refclk_apbclk_mux/u_clk1_gate/clk_o"]]
-set avs_mapped [expr { [sizeof_collection $avs_gate_cell] \
-                       && [get_attribute -quiet $avs_gate_cell is_hierarchical] ne "true" }]
+set avs_mapped [expr { [cdc_ports_pinned] || ([sizeof_collection $avs_gate_cell] \
+                       && [get_attribute -quiet $avs_gate_cell is_hierarchical] ne "true") }]
 
 # Stamp each source's generated clock on its gater output.
 # `prim_ag_clk_mux` takes the peripheral clock on clk0_i and the reference clock

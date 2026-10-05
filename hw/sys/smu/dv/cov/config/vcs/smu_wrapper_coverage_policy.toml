@@ -10,13 +10,22 @@
 # cov/report/asserts.txt (`Summary for Cover Properties`, `Summary for
 # Assertions`); the runner reads the cover-property summary as the `user`
 # family. `user` is floored at 100: every collected point is hit by an enrolled
-# leaf of `all`. `assertion`, urg's ASSERT column over both, is floored at 80.
+# leaf of `all`, so the row fails on a point going dark rather than on a score.
 #
-# `toggle` is the runner's native family, urg's TOGGLE column: every bit of
-# every net of the units smu_wrapper_cov_scope.hier keeps -- smu_wrapper,
-# smu, smu_axi_xbar and the other SMU-owned units under
-# u_smu -- both directions, after the exclusions named below have left the
-# population. It is floored at 80.
+# No code-metric family carries a floor, the way DTP's policy
+# (hw/sys/dtp/dv/cov/config/vcs/coverage_policy.toml) and SEP's
+# (hw/sys/sep/dv/cov/config/vcs/coverage_policy.toml) set none: the runner
+# reports the family figures, a run's status comes from its tests, and
+# SMU_COVERAGE_POLICY.adoc states the targets the figures are read against. A
+# floor on `toggle` or on urg's ASSERT column would fail a run without saying
+# anything true -- a number moving is not a defect, and SMU has no formal
+# unreachability analysis to prove that what is left in the toggle denominator
+# is reachable at all.
+#
+# `toggle` is still collected and still reported: every bit of every net of the
+# units smu_wrapper_cov_scope.hier keeps -- smu_wrapper, smu, smu_axi_xbar and
+# the other SMU-owned units under u_smu -- both directions, after the
+# exclusions named below have left the population.
 #
 # Two DUTs share this DV root, so the policy is named per DUT rather than
 # discovered at cov/config/vcs/coverage_policy.toml.
@@ -32,23 +41,10 @@ metric_family = "user"
 population = "effective"
 minimum_percent = 100.0
 
-[[thresholds]]
-id = "assertion"
-tool = "vcs"
-metric_family = "assertion"
-population = "effective"
-minimum_percent = 80.0
-
-[[thresholds]]
-id = "toggle"
-tool = "vcs"
-metric_family = "toggle"
-population = "effective"
-minimum_percent = 80.0
-
 # Fields urg leaves out of the wrapper's port toggle, each class with its
 # reason in the file's ANNOTATION lines. Regenerated from urg's exclusion
-# template by gen_smu_wrapper_toggle_exclusions.py; README.md lists the classes.
+# template by the companion's gen_smu_wrapper_toggle_exclusions.py; README.md
+# lists the classes.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -60,7 +56,7 @@ args = ["-elfile", "{path}"]
 # the condition rows and branch arms two classes name, each class with its
 # fact in the file's ANNOTATION lines. Regenerated from urg's exclusion
 # templates and the raw report of an `all` run by
-# gen_smu_cov_toggle_exclusions.py; README.md lists the classes.
+# the companion's gen_smu_cov_toggle_exclusions.py; README.md lists the classes.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -72,7 +68,8 @@ args = ["-elfile", "{path}"]
 # not reach covergroups, so the vendored I3C controllers' groups would otherwise
 # sit in urg's GROUP score beside the wrapper's own cov/sv covergroups.
 # Regenerated from urg's group exclusion template by
-# gen_smu_wrapper_group_exclusions.py; README.md lists the classes.
+# the companion's gen_smu_wrapper_group_exclusions.py; README.md lists the
+# classes.
 [[native_files]]
 tool = "vcs"
 role = "exclude"

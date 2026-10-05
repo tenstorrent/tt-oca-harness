@@ -36,7 +36,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>23:12</td><td>BUFFER_THRESHOLD</td><td>RW</td><td>0x0</td><td>Telemetry Message Buffer Threshold. The Telemetry Buffer Threshold Interrupt is<br>asserted when the number of entries in the buffer is greater than this value.</td></tr>
+<tr><td>23:12</td><td>BUFFER_THRESHOLD</td><td>RW</td><td>0x0</td><td>Telemetry Message Buffer Threshold. The Telemetry Buffer Threshold Interrupt is<br>asserted when the number of entries in the buffer is greater than this value.<br>Only the low log2(queue depth)+1 bits are compared, so values alias modulo<br>twice the queue depth, and only values below the queue depth can assert the<br>interrupt.</td></tr>
 <tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>8</td><td>TELEMETRY_TX_FLUSH</td><td>RW</td><td>0x0</td><td>Telemetry Transmitter Flush. Writing `1` flushes all FIFOs in the telemetry<br>transmitter. The flushing is done via the ATB AF interface. This bit clears<br>itself after the flush completes.</td></tr>
 <tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>

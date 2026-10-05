@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# RMA_SiP with CHIPLET_DBG disabled by SIP_DIS, and SYS_DIS clear.
+#
+# A debug-locked RMA_SiP part enforces secure boot (SEP-ROM-SB-025), so the ROM
+# must still boot a validly signed image and report SBOOT_DBG_LOCK at [S18].
+#
+# Used by sep_rom_rma_dbg_lock_secure_boot_test.
+
+[LC_STATE]
+  # Differentially encoded {~raw[3:0], raw[3:0]}: raw 0x2 (RMA_SiP) stores as
+  # 0xD2. See the directory README.
+  [LC_STATE.fields.lc_state]
+  value = 0xD2
+
+[SIP_DIS]
+  [SIP_DIS.fields.chiplet_dbg]
+  value = 1

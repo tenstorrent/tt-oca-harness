@@ -5,11 +5,12 @@
 Importable from the pre-sim staging hook: no cocotb. The AXI driver lives in
 ``seq_lib/sep_locked_field_irq_seq.py``.
 
-Both leaves share this object. The constructor draws four distinct spares
-(write-lock, read-lock, unlocked contrast, SECURE_TM LOCKS_SPARE control)
-and ``image_fixed()`` stages ``SIP_DIS`` / ``SYS_DIS`` at 0 so the
-SECURE_TM payloads always change a bit. That is the seed-to-image map for
-``sep_locked_field_access_irq_path_test`` as well.
+``sep_locked_field_access_irq_path_test`` and its plusarg variant
+``sep_efuse_secure_tm_write_lock_test`` share this object. The constructor
+draws four distinct spares (write-lock, read-lock, unlocked contrast, SECURE_TM
+LOCKS_SPARE control) and ``image_fixed()`` stages ``SIP_DIS`` / ``SYS_DIS`` at 0
+so the SECURE_TM payloads always change a bit. ``dv_sim_prestage.py`` uses the
+same seed-to-image map.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ import re
 
 from sep_efuse_field_map import spec_secure_tm_blocked
 from sep_efuse_image import LOCK_BITS_PER_SLOT
-from sep_reg_meta import sep_reg  # the generated export, path set up by sep_reg_meta
+from sep_reg_meta import RegBlock, sep_reg  # the generated export, path set up by sep_reg_meta
 from sep_seeded_rng import SepSeededRng
 from sep_spec_tables import agg_from_pic
 
@@ -109,12 +110,16 @@ def _nonzero_pattern(rng: SepSeededRng, forbidden: set[int]) -> int:
 # (otp_fuse_controller.adoc). LOCKS and LOCKS_SPARE are one 96-bit LOCK field.
 SECURE_TM_LOCK_FIELDS = spec_secure_tm_blocked()
 
-# LC_STATE bytes [31:8] OR-merge as ordinary shadow bytes and do not disturb the
-# lifecycle nibble, so they are the safe payload for this field.
-LC_STATE_UPPER_MASK = 0xFFFF_FF00
+_EFUSE_MAP = RegBlock("SEP_EFUSE_MAP")
 
-# Lock slot 31 is SEP_SYS_ID (otp_fuse_controller.adoc); write-lock is bit 2n = 62.
-SEP_SYS_ID_WRITE_LOCK_BIT = 62
+# LC_STATE bytes [31:8] (the RDL rsvd field) OR-merge as ordinary shadow bytes
+# and do not disturb the lifecycle nibble, so they are the safe payload for
+# this field.
+LC_STATE_UPPER_MASK = _EFUSE_MAP.field_mask("LC_STATE", "rsvd")
+
+# Lock slot 31 is SEP_SYS_ID (otp_fuse_controller.adoc); its write-lock is the
+# LOCKS.SEP_SYS_ID_WRITE_LOCK field (bit 2n = 62).
+SEP_SYS_ID_WRITE_LOCK_BIT = _EFUSE_MAP.field_lsb("LOCKS", "sep_sys_id_write_lock")
 SEP_SYS_ID_WRITE_LOCK_WORD = SEP_SYS_ID_WRITE_LOCK_BIT // 32
 
 

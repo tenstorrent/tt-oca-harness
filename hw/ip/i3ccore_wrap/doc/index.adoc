@@ -64,9 +64,53 @@ output enable, which it drives only in target mode, is not used.
 
 `irq_o`, the five recovery signals and the DAT, DCT and reverse-lookup
 memory ports pass straight through to per-instance vectors on the
-`i3ccore_wrapper` boundary. In the SMC the recovery outputs are unconnected,
-`peripheral_reset_done_i` is tied low and the interrupts reach peripheral
-interrupts 12 to 17.
+`i3ccore_wrapper` boundary. In the SMC `recovery_payload_available_o`,
+`recovery_image_activated_o`, `peripheral_reset_o` and `escalated_reset_o` are
+left unconnected, `peripheral_reset_done_i` is tied low, and the interrupts
+reach peripheral interrupts 12 to 17.
+
+The register map below reproduces the upstream SystemRDL descriptions; those
+under `I3C_EC` are upstream's own rather than MIPI I3C HCI text. The fields below
+differ from or go beyond those descriptions.
+
+These read back the value written but reach no logic:
+
+* `PIOControl.PIO_CONTROL.ENABLE`: the PIO queues are always enabled.
+* `I3C_EC.StdbyCtrlMode.STBY_CR_CONTROL.TARGET_XACT_ENABLE`: target
+  transactions cannot be disabled.
+* `I3C_EC.StdbyCtrlMode.STBY_CR_CONTROL.RSTACT_DEFBYTE_02`: RSTACT with
+  defining byte 0x02 is always ACKed.
+* `I3C_EC.StdbyCtrlMode.STBY_CR_CCC_CONFIG_RSTACT_PARAMS.RESET_TIME_PERIPHERAL`
+  and `RESET_TIME_TARGET`: GET RSTACT with defining byte 0x81 or 0x82 returns
+  0xFF.
+* `I3C_EC.SoCMgmtIf.REC_INTF_CFG.REC_INTF_BYPASS`: `DISABLE_LOOPBACK` ties the
+  bypass off, so recovery always goes through the I3C core.
+
+These misreport the core:
+
+* `I3C_EC.StdbyCtrlMode.STBY_CR_CAPABILITIES.DAA_ENTDAA_SUPPORT` reads 0, but
+  ENTDAA is supported.
+* `I3C_EC.StdbyCtrlMode.STBY_CR_CONTROL.STBY_CR_ENABLE_INIT` mode `2'b11`
+  behaves as `2'b01` (active controller), not Hot-Join-then-standby.
+
+These behave as follows, which the descriptions leave unstated:
+
+* `I3C_EC.TTI.TARGET_ERR_CNT_TE3` counts parity errors on the ENTDAA-assigned
+  dynamic address; `TARGET_ERR_CNT_TE4` counts reserved bytes other than
+  `7'h7E` with R/W=1.
+* `I3C_EC.TTI.TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW` and
+  `TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW`: the enable in
+  `TARGET_ERR_CTRL` gates detection, so an overflow while it is clear is
+  neither counted nor interrupts.
+* `PIOControl.DATA_BUFFER_THLD_CTRL`: `RX_START_THLD` and `TX_BUF_THLD` test
+  free space, `TX_START_THLD` and `RX_BUF_THLD` stored entries; each encodes
+  `2^(N+1)` entries.
+* `PIOControl.QUEUE_THLD_CTRL`: raw entry counts, free for
+  `CMD_EMPTY_BUF_THLD` and stored for `RESP_BUF_THLD` and `IBI_STATUS_THLD`.
+  Only these ready thresholds are implemented; start thresholds are unconnected.
+* `DCT.DCT_MEMORY`: `PID_LO` holds the first two (most significant) ENTDAA PID
+  bytes and `PID_HI` the next four. `DYNAMIC_ADDRESS` holds the address in bits
+  7:1 and its odd parity in bit 0.
 
 Consult the https://github.com/chipsalliance/i3c-core[i3c-core documentation]
 for the controller. The register map of this wrapper follows.

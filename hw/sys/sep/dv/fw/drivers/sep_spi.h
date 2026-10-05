@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP OpenTitan SPI-host firmware helpers for the OSS tests. Header-only.
+// SEP OpenTitan SPI-host firmware helpers for the SEP DV tests. Header-only.
 // Addresses and field masks come from generated sep_addr.h / spi_controller.h
 // (via sep.h). Do not alias those symbols — call them by their PeakRDL names.
 
@@ -12,7 +12,7 @@
 
 #include "sep.h"
 
-// CFG: CPOL/CPHA = 0 (Mode 0). CS timing CSNIDLE/TRAIL/LEAD=2 matches the OSS
+// CFG: CPOL/CPHA = 0 (Mode 0). CS timing CSNIDLE/TRAIL/LEAD=2 matches the testbench
 // flash BFM (composed from generated field positions, not a packed hex constant).
 #define SPI_CFG_CSN_TIMING \
     ((2u << SPI_CONTROLLER__CONFIGOPTS__CSNIDLE_bp) | \

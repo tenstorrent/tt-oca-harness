@@ -18,8 +18,8 @@
 #
 # One of a family of six that differ by exactly one hex value, shared by the
 # BACKUP-side and PRIMARY-side revoke families; see
-# dv/cocotb/tests/rom_fw/sep_pubkey_rom_revoked_base.py and
-# dv/cocotb/tests/rom_fw/sep_pubkey_rom_revoked_primary_base.py.
+# hw/sys/sep/dv/cocotb/tests/rom_fw/sep_pubkey_rom_revoked_base.py and
+# hw/sys/sep/dv/cocotb/tests/rom_fw/sep_pubkey_rom_revoked_primary_base.py.
 
 [LC_STATE]
   [LC_STATE.fields.lc_state]

@@ -15,13 +15,20 @@
  * unambiguous: the register readback here and the demote state at the SMU
  * boundary.
  *
+ * Both demotes end set, so the lifecycle posture the bench compares at the
+ * consumers is the one the specification gives for a state with both demotes
+ * set. Each demote is locked after it is set; the lock reads back, and the
+ * demote bit stays set with it. A refused write is not provable here: demote
+ * is write-one-to-set, so once it is set no later write can change it, locked
+ * or not. The lock refusing a demote is proven by sep_smu_lcc_lock, which locks
+ * a register while it is still clear.
+ *
  * Stages, each with its own fail loop so a failure names the step:
- *   1. FEAT_CTRL is captured and DEMOTE_1 starts clear and unlocked.
+ *   1. FEAT_CTRL is captured and both DEMOTE registers start clear and unlocked.
  *   2. DEMOTE_1.demote takes and reads back.
  *   3. DEMOTE_2.demote takes and reads back.
- *   4. After DEMOTE_1 is locked, a write of zero leaves demote set. A register
- *      that stored whatever software wrote would fail here; demote is
- *      write-1-to-set, so this stage does not isolate the lock.
+ *   4. DEMOTE_1 and DEMOTE_2 lock with their demote bits set; each reads back
+ *      demote and lock both set.
  */
 
 #include <stdint.h>
@@ -34,8 +41,8 @@
 #define LCC_DEMOTE_1 SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_1_BASE_ADDR
 #define LCC_DEMOTE_2 SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_2_BASE_ADDR
 
-#define DEMOTE_BIT 0x1u
-#define LOCK_BIT 0x2u
+#define DEMOTE_BIT SEP_LIFECYCLE_CTRL__DEMOTE__DEMOTE_bm
+#define LOCK_BIT SEP_LIFECYCLE_CTRL__DEMOTE__LOCK_bm
 
 /* Results kept in SEP-local cold scratch so the flow is inspectable even when a
  * later stage fails. Cold scratch needs no outbound window, unlike the STDOUT
@@ -93,8 +100,6 @@ static inline void fence_io(void) {
 }
 
 int main(void) {
-    /* Keep the outbound window open like the other SMU SEP images, even though
-     * every result here goes to SEP-local scratch. */
     sep_outbound_filter_init();
     WRITE_REG(SC_STAGE, STAGE_ENTER);
     fence_io();
@@ -105,11 +110,9 @@ int main(void) {
     WRITE_REG(SC_FEAT_BASE_LO, feat_base);
     fence_io();
 
-    /* DEMOTE_1 must start clear and unlocked; a zero write cannot clear it. */
-    WRITE_REG(LCC_DEMOTE_1, 0u);
-    WRITE_REG(LCC_DEMOTE_2, 0u);
-    fence_io();
-    if ((READ_REG(LCC_DEMOTE_1) & (DEMOTE_BIT | LOCK_BIT)) != 0u) {
+    /* Both registers must start clear and unlocked. */
+    if ((READ_REG(LCC_DEMOTE_1) & (DEMOTE_BIT | LOCK_BIT)) != 0u ||
+        (READ_REG(LCC_DEMOTE_2) & (DEMOTE_BIT | LOCK_BIT)) != 0u) {
         sep_smu_lcc_flow_fail_readable_loop();
     }
 
@@ -131,12 +134,13 @@ int main(void) {
     WRITE_REG(SC_FEAT_D2_LO, READ_REG(LCC_FEAT_CTRL));
     fence_io();
 
-    /* Stage 4: after locking, a write of zero must leave demote set. */
-    WRITE_REG(LCC_DEMOTE_1, DEMOTE_BIT | LOCK_BIT);
+    /* Stage 4: each lock commits its demoted state; demote and lock read back
+     * set together. */
+    WRITE_REG(LCC_DEMOTE_1, LOCK_BIT);
+    WRITE_REG(LCC_DEMOTE_2, LOCK_BIT);
     fence_io();
-    WRITE_REG(LCC_DEMOTE_1, 0u);
-    fence_io();
-    if ((READ_REG(LCC_DEMOTE_1) & DEMOTE_BIT) == 0u) {
+    if ((READ_REG(LCC_DEMOTE_1) & (DEMOTE_BIT | LOCK_BIT)) != (DEMOTE_BIT | LOCK_BIT) ||
+        (READ_REG(LCC_DEMOTE_2) & (DEMOTE_BIT | LOCK_BIT)) != (DEMOTE_BIT | LOCK_BIT)) {
         sep_smu_lcc_flow_fail_lock_loop();
     }
 

@@ -181,7 +181,7 @@ Wrapper address map instantiating the per-controller I3C CSR blocks.
 | 0xC - 0x500C | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3CBase-HC_CAPABILITIES,i3c_csr[6].I3CBase.HC_CAPABILITIES>> | R a| Reports the host-controller capabilities implemented by this instance.
 | 0x10 - 0x5010 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3CBase-RESET_CONTROL,i3c_csr[6].I3CBase.RESET_CONTROL>> | RW a| Requests a controller soft reset or selective PIO queue and FIFO resets. Reset requests are self-clearing.
 | 0x14 - 0x5014 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3CBase-PRESENT_STATE,i3c_csr[6].I3CBase.PRESENT_STATE>> | R a| Reports current controller state, including active-controller bus ownership.
-| 0x20 - 0x5020 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3CBase-INTR_STATUS,i3c_csr[6].I3CBase.INTR_STATUS>> | RW a| Reports host-controller error and exceptional-condition status. Implemented status fields are write-one-to-clear.
+| 0x20 - 0x5020 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3CBase-INTR_STATUS,i3c_csr[6].I3CBase.INTR_STATUS>> | RW a| Reports host-controller error and exceptional-condition status.
 | 0x24 - 0x5024 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3CBase-INTR_STATUS_ENABLE,i3c_csr[6].I3CBase.INTR_STATUS_ENABLE>> | RW a| Enables individual host-controller interrupt status sources.
 | 0x28 - 0x5028 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3CBase-INTR_SIGNAL_ENABLE,i3c_csr[6].I3CBase.INTR_SIGNAL_ENABLE>> | RW a| Routes enabled host-controller interrupt sources to the interrupt output.
 | 0x2C - 0x502C | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3CBase-INTR_FORCE,i3c_csr[6].I3CBase.INTR_FORCE>> | W a| Forces host-controller interrupts for software testing.
@@ -201,15 +201,15 @@ Wrapper address map instantiating the per-controller I3C CSR blocks.
 | 0x88 - 0x5088 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-PIOControl-TX_DATA_PORT,i3c_csr[6].PIOControl.TX_DATA_PORT>> | W a| Writes transmit data to the TX FIFO. This port shares its address with the read-only RX data port.
 | 0x88 - 0x5088 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-PIOControl-RX_DATA_PORT,i3c_csr[6].PIOControl.RX_DATA_PORT>> | R a| Reads received data from the RX FIFO. This port shares its address with the write-only TX data port.
 | 0x8C - 0x508C | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-PIOControl-IBI_PORT,i3c_csr[6].PIOControl.IBI_PORT>> | R a| Returns IBI status and payload data. Payload data is padded to a 4-byte boundary.
-| 0x90 - 0x5090 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-PIOControl-QUEUE_THLD_CTRL,i3c_csr[6].PIOControl.QUEUE_THLD_CTRL>> | RW a| Configures command, response, and IBI queue thresholds.
-| 0x94 - 0x5094 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-PIOControl-DATA_BUFFER_THLD_CTRL,i3c_csr[6].PIOControl.DATA_BUFFER_THLD_CTRL>> | RW a| Configures TX and RX start and ready thresholds, encoded as powers of two.
+| 0x90 - 0x5090 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-PIOControl-QUEUE_THLD_CTRL,i3c_csr[6].PIOControl.QUEUE_THLD_CTRL>> | RW a| Configures command, response, and IBI queue thresholds as raw entry counts.
+| 0x94 - 0x5094 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-PIOControl-DATA_BUFFER_THLD_CTRL,i3c_csr[6].PIOControl.DATA_BUFFER_THLD_CTRL>> | RW a| Configures TX and RX start and ready thresholds, each encoding 2^(N+1) entries.
 | 0x98 - 0x5098 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-PIOControl-QUEUE_SIZE,i3c_csr[6].PIOControl.QUEUE_SIZE>> | R a| Reports command, response, IBI, TX, and RX queue depths.
 | 0x9C - 0x509C | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-PIOControl-ALT_QUEUE_SIZE,i3c_csr[6].PIOControl.ALT_QUEUE_SIZE>> | R a| Reports extended IBI and alternate response queue sizes.
 | 0xA0 - 0x50A0 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-PIOControl-PIO_INTR_STATUS,i3c_csr[6].PIOControl.PIO_INTR_STATUS>> | RW a| Reports PIO queue-threshold and transfer-event interrupt status.
 | 0xA4 - 0x50A4 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-PIOControl-PIO_INTR_STATUS_ENABLE,i3c_csr[6].PIOControl.PIO_INTR_STATUS_ENABLE>> | RW a| Enables individual PIO interrupt status sources.
 | 0xA8 - 0x50A8 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-PIOControl-PIO_INTR_SIGNAL_ENABLE,i3c_csr[6].PIOControl.PIO_INTR_SIGNAL_ENABLE>> | RW a| Routes enabled PIO interrupt sources to the interrupt output.
 | 0xAC - 0x50AC | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-PIOControl-PIO_INTR_FORCE,i3c_csr[6].PIOControl.PIO_INTR_FORCE>> | W a| -
-| 0xB0 - 0x50B0 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-PIOControl-PIO_CONTROL,i3c_csr[6].PIOControl.PIO_CONTROL>> | RW a| -
+| 0xB0 - 0x50B0 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-PIOControl-PIO_CONTROL,i3c_csr[6].PIOControl.PIO_CONTROL>> | RW a| Controls run/stop and forced abort of enqueued commands.
 | 0x100 - 0x5100 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3C_EC-SecFwRecoveryIf-EXTCAP_HEADER,i3c_csr[6].I3C_EC.SecFwRecoveryIf.EXTCAP_HEADER>> | R a| -
 | 0x104 - 0x5104 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3C_EC-SecFwRecoveryIf-PROT_CAP_0,i3c_csr[6].I3C_EC.SecFwRecoveryIf.PROT_CAP_0>> | R a| -
 | 0x108 - 0x5108 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3C_EC-SecFwRecoveryIf-PROT_CAP_1,i3c_csr[6].I3C_EC.SecFwRecoveryIf.PROT_CAP_1>> | R a| -
@@ -253,7 +253,7 @@ STBY_CR_INTR_STATUS, the Host Controller shall assert an interrupt to the Host.
 to be sent to the Host, if the corresponding fields are set in register
 STBY_CR_INTR_SIGNAL_ENABLE
 | 0x1B0 - 0x51B0 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3C_EC-StdbyCtrlMode-STBY_CR_CCC_CONFIG_GETCAPS,i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_CCC_CONFIG_GETCAPS>> | RW a| -
-| 0x1B4 - 0x51B4 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3C_EC-StdbyCtrlMode-STBY_CR_CCC_CONFIG_RSTACT_PARAMS,i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_CCC_CONFIG_RSTACT_PARAMS>> | RW a| -
+| 0x1B4 - 0x51B4 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3C_EC-StdbyCtrlMode-STBY_CR_CCC_CONFIG_RSTACT_PARAMS,i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_CCC_CONFIG_RSTACT_PARAMS>> | RW a| Reports the defining byte of the last RSTACT CCC received and configures the reset recovery times.
 | 0x1B8 - 0x51B8 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3C_EC-StdbyCtrlMode-STBY_CR_VIRT_DEVICE_ADDR,i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_VIRT_DEVICE_ADDR>> | RW a| -
 | 0x1BC - 0x51BC | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3C_EC-StdbyCtrlMode-STBY_CR_MWL,i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_MWL>> | R a| -
 | 0x1C0 - 0x51C0 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3C_EC-StdbyCtrlMode-STBY_CR_MRL,i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_MRL>> | R a| -
@@ -312,7 +312,7 @@ PENDING_IBI and PENDING_INTERRUPT track live conditions.
 | 0x300 - 0x5300 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3C_EC-SoCMgmtIf-EXTCAP_HEADER,i3c_csr[6].I3C_EC.SoCMgmtIf.EXTCAP_HEADER>> | R a| -
 | 0x304 - 0x5304 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3C_EC-SoCMgmtIf-SOC_MGMT_CONTROL,i3c_csr[6].I3C_EC.SoCMgmtIf.SOC_MGMT_CONTROL>> | RW a| -
 | 0x308 - 0x5308 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3C_EC-SoCMgmtIf-SOC_MGMT_STATUS,i3c_csr[6].I3C_EC.SoCMgmtIf.SOC_MGMT_STATUS>> | RW a| -
-| 0x30C - 0x530C | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3C_EC-SoCMgmtIf-REC_INTF_CFG,i3c_csr[6].I3C_EC.SoCMgmtIf.REC_INTF_CFG>> | RW a| -
+| 0x30C - 0x530C | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3C_EC-SoCMgmtIf-REC_INTF_CFG,i3c_csr[6].I3C_EC.SoCMgmtIf.REC_INTF_CFG>> | RW a| Configures the recovery interface and signals payload completion to the recovery handler.
 | 0x310 - 0x5310 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3C_EC-SoCMgmtIf-REC_INTF_REG_W1C_ACCESS,i3c_csr[6].I3C_EC.SoCMgmtIf.REC_INTF_REG_W1C_ACCESS>> | RW a| -
 | 0x314 - 0x5314 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3C_EC-SoCMgmtIf-SOC_MGMT_RSVD_2,i3c_csr[6].I3C_EC.SoCMgmtIf.SOC_MGMT_RSVD_2>> | RW a| -
 | 0x318 - 0x5318 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3C_EC-SoCMgmtIf-SOC_MGMT_RSVD_3,i3c_csr[6].I3C_EC.SoCMgmtIf.SOC_MGMT_RSVD_3>> | RW a| -
@@ -352,7 +352,7 @@ PENDING_IBI and PENDING_INTERRUPT track live conditions.
 Termination register is added to guarantee that the discovery mechanism
 reaches termination value.
 | 0x400 - 0x57F8 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-DAT-DAT_MEMORY-,i3c_csr[6].DAT.DAT_MEMORY[128]>> | RW a| -
-| 0x800 - 0x5FF0 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-DCT-DCT_MEMORY-,i3c_csr[6].DCT.DCT_MEMORY[128]>> | R a| -
+| 0x800 - 0x5FF0 | <<reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-DCT-DCT_MEMORY-,i3c_csr[6].DCT.DCT_MEMORY[128]>> | R a| Holds one Device Characteristic Table entry per device enumerated by ENTDAA.
 |===
 
 [#reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-I3CBase-HCI_VERSION]

@@ -82,13 +82,14 @@ class ManifestCase(unittest.TestCase):
         self.run_dir = Path(tempfile.mkdtemp(prefix="test-worker-", dir=build)).resolve()
         self.addCleanup(shutil.rmtree, self.run_dir, ignore_errors=True)
 
-    def task(self, attempt: int = 0, **kwargs) -> LeafTask:
-        leaf_dir = self.run_dir / self.item / "seed_11" / f"attempt_{attempt}"
+    def task(self, attempt: int = 0, item: str | None = None, **kwargs) -> LeafTask:
+        item = item or self.item
+        leaf_dir = self.run_dir / item / "seed_11" / f"attempt_{attempt}"
         return LeafTask(
             task_id=task_identifier("sim", 4, attempt, debug_only=kwargs.get("debug_only", False)),
             leaf_id=4,
             stage="sim",
-            item=self.item,
+            item=item,
             seed=11,
             attempt=attempt,
             run_dir=self.run_dir,
@@ -384,12 +385,91 @@ class WorkerMainTest(ManifestCase):
         self.assertEqual(called.kwargs, {"nest": True, "attempt": 0, "seed_override": 11})
         args = called.args[6]
         self.assertEqual(args.items, [self.item])
-        self.assertEqual(args._cocotb_prebuilt_targets, {"default"})
+        self.assertEqual(args._built_targets, {"default"})
         leaf = json.loads(task.result_json.read_text(encoding="utf-8"))
         self.assertEqual(leaf["status"], "PASS")
         done = json.loads(completion_path(self.run_dir, task.task_id).read_text(encoding="utf-8"))
         self.assertEqual((done["task_id"], done["status"]), (task.task_id, "PASS"))
         self.assertEqual(done["result_json"], str(task.result_json.relative_to(REPO_ROOT)))
+
+    def test_a_leaf_takes_its_build_identity_from_the_manifest(self) -> None:
+        for tool in ("verilator", "vcs"):
+            with self.subTest(tool=tool):
+                task = self.task()
+                target_build = {
+                    "target": "default",
+                    "tool": tool,
+                    "build_dir": str(self.run_dir / "model"),
+                    "fingerprint": "efba240c5e52",
+                }
+                path = self.write(task, tool=tool, target_build=target_build)
+                with mock.patch(
+                    "runlib.executors.manifest.run_stage", return_value=stage_result(task)
+                ) as run:
+                    code = run_worker(path)
+                self.assertEqual(code, 0)
+                args = run.call_args.args[6]
+                self.assertEqual(args._built_targets, {"default"})
+                self.assertEqual(args._handed_target_builds, {"default": target_build})
+
+    def test_a_vcs_leaf_reports_the_identity_its_manifest_hands_down(self) -> None:
+        """The leaf a cluster job runs: a native sim on a host whose own digest differs."""
+        flow = resolve_dut(REPO_ROOT, DUT, framework="uvm")
+        item = next(iter(load_test_catalog(flow, REPO_ROOT).tests))
+        task = self.task(item=item)
+        target_build = {
+            "target": "default",
+            "tool": "vcs",
+            "build_dir": str(self.run_dir / "model"),
+            "fingerprint": "efba240c5e52",
+        }
+        path = self.write(
+            task,
+            flow=flow,
+            tool="vcs",
+            argv=["--dut", DUT, "--framework", "uvm", "--tool", "vcs", "--items", item]
+            + ["--seed", "11"],
+            target_build=target_build,
+        )
+        elsewhere = self.run_dir / "elsewhere"
+        drifted = {
+            "target_name": "default",
+            "build_dir": elsewhere,
+            "fingerprint": "c670ed085301",
+            "simv": elsewhere / "simv",
+            "vcs_cfg": {},
+            "top": "dtp_uvm_top",
+            "elab_args": [],
+            "coverage_args": [],
+        }
+
+        def passing_sim(*call_args, **kwargs) -> int:
+            log_path = Path(call_args[7])
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            log_path.write_text(
+                "UVM TEST PASSED\n--- UVM Report Summary ---\nUVM_ERROR :    0\nUVM_FATAL :    0\n",
+                encoding="utf-8",
+            )
+            return 0
+
+        with (
+            mock.patch("runlib.stages.vcs_sim", side_effect=passing_sim),
+            mock.patch("runlib.stages._vcs_resolve_build", return_value=drifted),
+        ):
+            code = run_worker(path)
+        self.assertEqual(code, 0)
+        record = json.loads(task.result_json.read_text(encoding="utf-8"))
+        self.assertEqual(record["status"], "PASS", record.get("reason"))
+        self.assertEqual(
+            (record["target_build"]["build_dir"], record["target_build"]["fingerprint"]),
+            (str(self.run_dir / "model"), "efba240c5e52"),
+        )
+        self.assertEqual(record["metadata"]["provenance"]["build_fingerprint"], "efba240c5e52")
+        log = Path(record["log"])
+        log = log if log.is_absolute() else REPO_ROOT / log
+        self.assertRegex(
+            log.read_text(encoding="utf-8"), r"\nPROVENANCE .*build_fingerprint=efba240c5e52"
+        )
 
     def test_a_build_manifest_runs_the_stage_without_an_item(self) -> None:
         task = LeafTask(
@@ -423,7 +503,7 @@ class WorkerMainTest(ManifestCase):
         self.assertEqual(called.args[4:6], ("hdl_compile", None))
         args = called.args[6]
         self.assertEqual(args.build_jobs, 3)
-        self.assertFalse(hasattr(args, "_cocotb_prebuilt_targets"))
+        self.assertFalse(hasattr(args, "_built_targets"))
         fragment = json.loads(task.result_json.read_text(encoding="utf-8"))
         self.assertEqual((fragment["item"], fragment["status"]), ("", "PASS"))
         self.assertEqual(fragment["target_build"]["target"], "default")

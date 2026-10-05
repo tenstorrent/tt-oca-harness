@@ -15,7 +15,7 @@
 // documented negative-validation hook: the prediction is corrupted so the
 // scoreboard must fail on the first predicted read. No comparison and no
 // verdict live here. The cocotb twin is the expected-value check of
-// env/sep_scoreboard.py.
+// cocotb/env/sep_scoreboard.py.
 
 class sep_cpu_ctrl_csr_ref_model extends ocah_ref_model #(ocah_axi_item, ocah_axi_item);
   `uvm_component_utils(sep_cpu_ctrl_csr_ref_model)

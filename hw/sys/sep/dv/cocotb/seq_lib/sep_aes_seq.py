@@ -20,6 +20,7 @@ from dataclasses import dataclass
 
 import cocotb
 from cocotb.triggers import ClockCycles
+from env.sep_spec_tables import ot_rdl_named_codes
 from sep_reg_meta import AES, sym
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -34,18 +35,50 @@ AES_CTRL_SHADOWED = AES.addr("CTRL_SHADOWED")
 AES_TRIGGER = AES.addr("TRIGGER")
 AES_STATUS = AES.addr("STATUS")
 
-# CTRL_SHADOWED field encodings (vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc):
-#   OPERATION[1:0]=01 ENC, MODE[7:2]=000001 ECB, KEY_LEN[10:8]=100 AES-256,
-#   SIDELOAD[11], PRNG_RESEED_RATE[14:12]=100 PER_8K, MANUAL_OPERATION[15]=0.
-AES_OP_ENC = 0b01
-AES_OP_DEC = 0b10
-AES_MODE_ECB = 0b00_0001
-AES_MODE_CBC = 0b00_0010
-AES_MODE_CTR = 0b01_0000
-AES_KEY_LEN_128 = 0b001
-AES_KEY_LEN_192 = 0b010
-AES_KEY_LEN_256 = 0b100
-AES_PRS_RATE_PER_8K = 0b100
+# CTRL_SHADOWED field codes. The overlay aes.rdl declares no enum for these
+# fields and names only some codes in its field descriptions, so this table is
+# transcribed from the CTRL_SHADOWED enum lists of the OpenTitan register
+# description, vendor/lowRISC/opentitan/upstream/hw/ip/aes/data/aes.hjson
+# (operation, mode, key_len, prng_reseed_rate). _check_aes_ctrl_codes() below
+# requires every code the aes.rdl text does name to match this table, and every
+# code to be one-hot in its RDL field width, so a drift fails at import.
+_AES_CTRL_CODES = {
+    # field: {aes.hjson enum name: value}
+    "operation": {"AES_ENC": 0b01, "AES_DEC": 0b10},
+    "mode": {"AES_ECB": 0b00_0001, "AES_CBC": 0b00_0010, "AES_CTR": 0b01_0000},
+    "key_len": {"AES_128": 0b001, "AES_192": 0b010, "AES_256": 0b100},
+    "prng_reseed_rate": {"PER_1": 0b001, "PER_64": 0b010, "PER_8K": 0b100},
+}
+
+
+def _check_aes_ctrl_codes() -> None:
+    stated = ot_rdl_named_codes("aes", "CTRL_SHADOWED")
+    for field, codes in _AES_CTRL_CODES.items():
+        width = AES.field_width("CTRL_SHADOWED", field)
+        for name, value in codes.items():
+            if value >= 1 << width or bin(value).count("1") != 1:
+                raise ValueError(f"AES CTRL_SHADOWED.{field} {name}=0b{value:b} is not one-hot")
+            if name in stated and stated[name] != value:
+                raise ValueError(
+                    f"AES CTRL_SHADOWED.{field} {name}: DV table 0b{value:b}, "
+                    f"aes.rdl states 0b{stated[name]:b}"
+                )
+    missing = {"AES_ENC", "AES_256", "PER_1"} - stated.keys()
+    if missing:
+        raise ValueError(f"aes.rdl CTRL_SHADOWED no longer names {sorted(missing)}")
+
+
+_check_aes_ctrl_codes()
+
+AES_OP_ENC = _AES_CTRL_CODES["operation"]["AES_ENC"]
+AES_OP_DEC = _AES_CTRL_CODES["operation"]["AES_DEC"]
+AES_MODE_ECB = _AES_CTRL_CODES["mode"]["AES_ECB"]
+AES_MODE_CBC = _AES_CTRL_CODES["mode"]["AES_CBC"]
+AES_MODE_CTR = _AES_CTRL_CODES["mode"]["AES_CTR"]
+AES_KEY_LEN_128 = _AES_CTRL_CODES["key_len"]["AES_128"]
+AES_KEY_LEN_192 = _AES_CTRL_CODES["key_len"]["AES_192"]
+AES_KEY_LEN_256 = _AES_CTRL_CODES["key_len"]["AES_256"]
+AES_PRS_RATE_PER_8K = _AES_CTRL_CODES["prng_reseed_rate"]["PER_8K"]
 
 # mode name / key-bit-width -> CTRL_SHADOWED field encodings (aes.adoc).
 AES_MODE_CTRL = {"ecb": AES_MODE_ECB, "cbc": AES_MODE_CBC, "ctr": AES_MODE_CTR}
@@ -201,7 +234,7 @@ class SepAes(SepAxiRegDriver):
             await self._wr(AES_IV_0 + i * 4, word & 0xFFFF_FFFF)
 
     async def load_key_iv(self, key_words: list[int], iv_words: list[int] | None = None) -> None:
-        """Spec-ordered SW key + IV load (aes programmers_guide.md): a KEY write
+        """Spec-ordered SW key + IV load (OpenTitan AES Programmer's Guide, upstream): a KEY write
         kicks off a PRNG reseed, and any KEY/IV write while the unit is NOT idle is
         IGNORED. So wait for idle after the key before writing the IV, else CBC/CTR
         never receives its IV and the engine never starts. Caller configures
@@ -249,12 +282,10 @@ class SepAes(SepAxiRegDriver):
     async def read_public_key_shares(self) -> tuple[list[int], list[int], int]:
         """Read the public KEY_SHARE0/1 CSRs, plus a positive control.
 
-        These key registers are declared write-only, and the generated register
-        block ties their read data to zero. That has a consequence worth stating
-        plainly: reading them back as zero is NOT by itself evidence that the
-        sideloaded key is unexposed -- they would read zero even if the key were
-        mirrored somewhere else, and even if the transfer never happened. What
-        the readback can do is catch the day someone makes them readable.
+        These key registers are declared write-only and the generated register
+        block ties their read data to zero, so a zero readback is not by itself
+        evidence that the sideloaded key is unexposed; it catches only a
+        register that becomes readable.
 
         For that to be worth anything the read path has to be known alive, so we
         also return STATUS, a readable register in the same CSR window reached

@@ -334,8 +334,19 @@ localparam string DtpJ2aMemImageCheckId = "CHK-J2A-MEM-IMAGE";
 localparam string DtpJ2aAbortMidFlightCheckId = "CHK-J2A-ABORT-MIDFLIGHT";
 localparam string DtpJ2aAbortFsmCheckId = "CHK-J2A-ABORT-FSM";
 localparam string DtpJ2aCdcClearCheckId = "CHK-J2A-CDC-CLEAR";
+// A reset placed inside a CDC clear sequence lands in the phase the
+// scenario selected: the dtp_tb_if phase observable is set at the deposit.
+localparam string DtpJ2aCdcPhaseCheckId = "CHK-J2A-CDC-PHASE";
 localparam string DtpJ2aAbortEscapeCheckId = "CHK-J2A-ABORT-ESCAPE";
 localparam string DtpJ2aAbortRecoveryCheckId = "CHK-J2A-ABORT-RECOVERY";
+// TCK-side clear evidence with a request held on the fabric: the held
+// request reaches the fabric exactly once, in the clear phase the scenario
+// selects; its response never reaches the JTAG side; and a request of the
+// new session queued behind it completes after it with its own status and
+// data.
+localparam string DtpJ2aOrphanDrainCheckId = "CHK-J2A-ORPHAN-DRAIN";
+localparam string DtpJ2aOrphanDiscardCheckId = "CHK-J2A-ORPHAN-DISCARD";
+localparam string DtpJ2aOrphanOrderCheckId = "CHK-J2A-ORPHAN-ORDER";
 localparam int unsigned DtpJ2aSeriesStatusBeats = 4;
 // Increment flag per beat of the WITH_ERROR_STATUS streams (bit i = beat i):
 // the second beat re-writes the held address.

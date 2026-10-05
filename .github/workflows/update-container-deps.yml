@@ -28,15 +28,8 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GH_AW_GITHUB_TOKEN || github.token }}
 
-      # `nix flake update` refetches the flake's submodules itself, and it spells
-      # the .gitmodules remotes as ssh://git@github.com/..., so both forms need
-      # the rewrite or the runner falls back to an SSH key it does not have.
       - name: Checkout manifest submodule
-        run: |
-          url="https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/"
-          git config --global --add "url.${url}.insteadOf" "git@github.com:tenstorrent/"
-          git config --global --add "url.${url}.insteadOf" "ssh://git@github.com/tenstorrent/"
-          git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+        run: git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
 
       - name: Install Nix
         uses: cachix/install-nix-action@v31.11.1

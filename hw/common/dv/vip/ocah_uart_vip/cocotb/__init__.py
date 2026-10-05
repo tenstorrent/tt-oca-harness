@@ -8,9 +8,8 @@ configurable baud rate); the line engines model 5..9 data bits, none, even,
 or odd parity, and 1, 1.5, or 2 stop bits.
 
 The backend is native to this package: ``OcahUartMasterDriver`` drives
-frames onto a line and ``OcahUartLineMonitor`` reconstructs frames from one.
-No external UART library is required; ``OcahUartImportError`` is exported but
-never raised.
+frames onto a line and ``OcahUartLineMonitor`` reconstructs frames from one,
+both built on cocotb alone.
 
 Primary exports
 ---------------

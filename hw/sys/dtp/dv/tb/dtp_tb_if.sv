@@ -29,6 +29,17 @@ interface dtp_tb_if;
   logic por_rst_n;
   logic sys_rst_n;
 
+  // System reset armed on a JTAG2AXI read (driven by the reset-abort
+  // sequences): while bit t is set (0 smc_axi, 1 smc_otp, 2 sep_otp), tb_top
+  // asserts the system reset for sys_rst_on_ar_cycles clocks from the clock
+  // edge that completes bridge t's next AR handshake, once per arming.
+  logic [2:0] sys_rst_on_ar_arm    = '0;
+  logic [3:0] sys_rst_on_ar_cycles = 4'd1;
+
+  // The system reset the DUT and the AXI responders see (driven by tb_top):
+  // sys_rst_n with the read-armed pulse.
+  logic rst_n;
+
   // DFT controls of the DUT: test_en_i (test-mode enable for the JTAG2AXI
   // bridges and the CTN CSR crossbar) and scan_rst_ni (unused by the DUT),
   // both idle in functional mode; a DFT-mode scenario drives them here.
@@ -120,7 +131,7 @@ interface dtp_tb_if;
   logic [31:0] xtrig_axil_wvalid_count;
   logic [31:0] xtrig_axil_arvalid_count;
   // XTRIG CSR port stall counters (driven by tb_top): cycles with AWVALID,
-  // ARVALID, and WVALID held while the crossbar keeps the matching READY low.
+  // ARVALID, and WVALID held while the CSR port keeps the matching READY low.
   logic [31:0] xtrig_axil_aw_stall_count;
   logic [31:0] xtrig_axil_ar_stall_count;
   logic [31:0] xtrig_axil_w_stall_count;
@@ -149,10 +160,28 @@ interface dtp_tb_if;
   // XTRIG crossbar demux state behind the CSR port (driven by tb_top from
   // the AXI-Lite demux of the cross-trigger network): the AW lock flag,
   // which holds an AW presented to a master port whose AWREADY was low,
-  // and the W-pending flag, high from an accepted AW until its W beat
-  // passes the demux.
+  // and the W-pending flag, high while the demux's W-select queue holds the
+  // port of an AW whose W beat has not passed the demux.
   logic xtrig_demux_aw_lock;
   logic xtrig_demux_w_pending;
+
+  // XTRIG CSR port spill registers (driven by tb_top): cycles in which a
+  // spill register's input READY differs from holding fewer than two beats
+  // or its output VALID differs from holding a beat, and cycles in which the
+  // W and the R spill register hold two beats.
+  logic [31:0] xtrig_axil_spill_err_count;
+  logic [31:0] xtrig_axil_w_spill_full_count;
+  logic [31:0] xtrig_axil_r_spill_full_count;
+  // XTRIG crossbar demux counters (driven by tb_top): the port stall and
+  // occupancy counters above, taken at the demux handshakes behind the CSR
+  // port spill registers.
+  logic [31:0] xtrig_demux_aw_stall_count;
+  logic [31:0] xtrig_demux_w_stall_count;
+  logic [31:0] xtrig_demux_ar_stall_count;
+  logic [31:0] xtrig_demux_aw_open_stall_count;
+  logic [31:0] xtrig_demux_aw_open_accept_count;
+  logic [31:0] xtrig_demux_ar_open_stall_count;
+  logic [31:0] xtrig_demux_ar_open_accept_count;
 
   // Registered BUSY of every external cross-trigger port (driven by tb_top
   // from the CTP busy outputs); STATUS.BUSY reads the same flop.
@@ -181,6 +210,21 @@ interface dtp_tb_if;
   logic sep_otp_op_pending;
   logic sep_otp_cdc_clear_seen;
   logic cdc_clear_seen_clear = 1'b0;
+
+  // Phase of the JTAG2AXI bridges' CDC clear sequences (driven by tb_top
+  // from the smc_axi bridge's AW crossing): the ACLK-side initiator in
+  // CLEAR, WAIT_CLEAR_PHASE_ACK, POST_CLEAR or FINISHED, and the TCK-side
+  // and ACLK-side four-phase receivers in WAIT_DOWNSTREAM_ACK. The three
+  // bridges' controllers share rst_n_i, clk_i, TCK and the TAP's
+  // Test-Logic-Reset, and the CDC jitter model passes data through unless
+  // +cdc_instrumentation_enabled is set, so one crossing's phase is the
+  // phase of every crossing.
+  logic j2a_cdc_aclk_clear;
+  logic j2a_cdc_aclk_wait_clear_phase_ack;
+  logic j2a_cdc_aclk_post_clear;
+  logic j2a_cdc_aclk_finished;
+  logic j2a_cdc_tck_dst_wait_ack;
+  logic j2a_cdc_aclk_dst_wait_ack;
 
   // Errored-beat read word per JTAG2AXI bridge port (driven by the JTAG2AXI
   // sequences): tb_top drives it onto the DUT-facing RDATA of every R beat

@@ -1,17 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 schema_version = 1
 
 # Aggregate testlist: merges category/IP testlists. Leaf files define each test
 # once; tags provide custom subsets, and this file owns the regression groups.
 #
-# Pre-merge commands are in README.md. `rom_fw` is a separate owner and is
-# not a member of `all`.
+# Pre-merge commands are in the Regression Groups section of docs/SEP_VPLAN.adoc. `rom_fw` is not a member of `all`.
 #
 # no_cpu tests use target="lsu_stub_all_live" for the CPU-stubbed model. CPU
 # firmware tests omit target and use the full-CPU default model.
 # Keep group membership aligned with each test's first run_modes[] entry.
 #
-# Production Boot ROM firmware tests live in rom_fw.toml (ROM-FW owner). They run
+# Production Boot ROM firmware tests live in rom_fw.toml. They run
 # in the `rom_fw` group only -- not `cpu`, and not `all`; this VPLAN does not
 # grade them (see hw/sys/sep/dv/docs/SEP_VPLAN.adoc, ROM-FW ownership in Known
 # Limitations). They are still defined here through `includes` so a caller can
@@ -19,7 +20,7 @@ schema_version = 1
 includes = ["system.toml", "cpu.toml", "memory.toml", "km.toml", "crypto.toml", "efuse_lcc.toml", "spi.toml", "rom_fw.toml"]
 
 # CI smoke gate (`--items smoke`), matching the dtp/smc/smu convention so the
-# shared Jenkins/GitHub `items=smoke` parameter resolves for every DUT. One
+# shared CI `items=smoke` parameter resolves for every DUT. One
 # no_cpu test: it needs no RISC-V toolchain (no c_compile stage) and
 # no firmware image, so it runs on a bare hosted/CI runner and still proves the
 # whole flist -> hdl_compile -> sim chain plus the SEP AXI register map.
@@ -29,11 +30,21 @@ tests = ["sep_axi_smoke_test"]
 
 [[groups]]
 # Every test this VPLAN grades. `cpu_stub` (CPU-stub target) and `cpu`
-# (full-CPU target) are disjoint and together hold all 124. `rom_fw`
-# is not a member: a different owner, a third RTL target, and firmware rather
-# than hardware contracts. `all` is the coverage set. expected_count is 124.
+# (full-CPU target) are disjoint and together hold every member;
+# `expected_count` pins the size. `rom_fw` is not a member: it runs a third RTL
+# target and states firmware rather than hardware contracts. `all` is the
+# coverage set.
+#
+# Two members are pinned to one simulator, so a single-simulator run of `all`
+# logs the other as skipped_wrong_tool:
+# - sep_km_ic_reset_release_test, VCS only (km.toml). Its contract is the
+#   prim_rom noXOnCsI assertion. Verilator is two-state and prim_assert.sv
+#   compiles RTL assertions out under it, so that check cannot fail there.
+# - sep_abr_absent_decerr_test, Verilator only (crypto.toml). It needs the
+#   lsu_stub_abr_absent model, and the VCS coverage run elaborates only the
+#   `default` target, which keeps Adams Bridge.
 name = "all"
-expected_count = 124
+expected_count = 133
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -83,11 +94,14 @@ tests = [
     "sep_cpu_ifu_lsu_alias_remap_matrix_test",
     "sep_irq_simultaneous_fanin_no_alias_test",
     "sep_fabric_remap_filter_csr_bank_test",
+    "sep_fabric_slot_csr_strobe_rand_test",
     "sep_wdt_aon_timer_internals_test",
     "sep_axil_mailbox_iface_rand_test",
     "sep_mailbox_peer_rx_rirqt_test",
+    "sep_mailbox_datapath_walk_test",
     "sep_crypto_per_ip_reset_isolation_test",
     "sep_trng_reset_recovery_test",
+    "sep_reset_mid_transfer_recovery_test",
     "sep_fabric_inbound_filter_rule_matrix_test",
     "sep_sram_datapath_breadth_test",
     "sep_boot_rom_lsu_read_test",
@@ -107,6 +121,7 @@ tests = [
     "sep_otbn_compute_rand_test",
     "sep_clock_gate_control_test",
     "sep_efuse_program_lock_matrix_test",
+    "sep_efuse_program_read_back_select_test",
     "sep_efuse_set_only_monotonicity_test",
     "sep_lcc_demote_feat_ctrl_matrix_test",
     "sep_efuse_rma_token_rand_test",
@@ -126,6 +141,8 @@ tests = [
     "sep_km_handover_test",
     "sep_km_abr_seed_sideload_test",
     "sep_km_abr_mlkem_sideload_test",
+    "sep_km_abr_mldsa_kat_test",
+    "sep_km_sideload_share_walk_test",
     "sep_km_mailbox_protocol_rand_test",
     "sep_km_crc_pcpi_kat_test",
     "sep_km_kpv_scrambler_test",
@@ -138,6 +155,7 @@ tests = [
     "sep_axi_order_sweep_test",
     "sep_axi_order_sweep_m_axi_test",
     "sep_drbg_axil_adapter_port_arbitration_test",
+    "sep_drbg_axil_adapter_refusal_test",
     "sep_drbg_axil_concurrent_csrng_aw_then_ar_test",
     "sep_drbg_axil_concurrent_edn_aw_then_ar_test",
     "sep_entropy_pool_aperture_test",
@@ -154,15 +172,17 @@ tests = [
     "sep_abr_concurrent_rw_test",
     "sep_unmapped_access_policy_test",
     "sep_sram_burst_type_test",
+    "sep_sram_inbound_burst_attr_test",
     "sep_km_rom_write_err_test",
     "sep_km_otp_shim_unreachable_test",
+    "sep_km_drbg_sampler_timeout_reset_test",
     "sep_km_vrom_decerr_test",
     "sep_km_ic_reset_release_test",
     "sep_abr_absent_decerr_test",
 ]
 
 [[groups]]
-# Full-CPU daily regression: bounded sim fanout, single-threaded Verilator model.
+# Full-CPU class: the tests on the `default` target.
 name = "cpu"
 tests = [
     "sep_hello_world_test",
@@ -188,8 +208,8 @@ tests = [
 ]
 
 [[groups]]
-# CPU-stub daily regression: high sim fanout, single-threaded Verilator model.
-# The CPU is not alive (`sep_cpu` stub). Run mode stays `no_cpu`.
+# CPU-stub class: the no_cpu tests on lsu_stub_all_live. The CPU is not alive
+# (`sep_cpu` stub). Run mode stays `no_cpu`.
 name = "cpu_stub"
 tests = [
     "sep_axi_smoke_test",
@@ -219,7 +239,6 @@ tests = [
     "sep_irq_ip_to_aggregator_test",
     "sep_periph_bus_err_misaligned_test",
     "sep_drbg_real_sink_multi_km_aes_test",
-
     "sep_km_otbn_sideload_kat_test",
     "sep_km_aes_sideload_kat_test",
     "sep_km_hmac_sideload_kat_test",
@@ -227,11 +246,14 @@ tests = [
     "sep_lcc_uvm_inbound_filter_gating_test",
     "sep_irq_simultaneous_fanin_no_alias_test",
     "sep_fabric_remap_filter_csr_bank_test",
+    "sep_fabric_slot_csr_strobe_rand_test",
     "sep_wdt_aon_timer_internals_test",
     "sep_axil_mailbox_iface_rand_test",
     "sep_mailbox_peer_rx_rirqt_test",
+    "sep_mailbox_datapath_walk_test",
     "sep_crypto_per_ip_reset_isolation_test",
     "sep_trng_reset_recovery_test",
+    "sep_reset_mid_transfer_recovery_test",
     "sep_fabric_inbound_filter_rule_matrix_test",
     "sep_sram_datapath_breadth_test",
     "sep_spi_ot_host_csr_irq_rand_test",
@@ -245,6 +267,7 @@ tests = [
     "sep_otbn_compute_rand_test",
     "sep_clock_gate_control_test",
     "sep_efuse_program_lock_matrix_test",
+    "sep_efuse_program_read_back_select_test",
     "sep_efuse_set_only_monotonicity_test",
     "sep_lcc_demote_feat_ctrl_matrix_test",
     "sep_efuse_rma_token_rand_test",
@@ -264,6 +287,8 @@ tests = [
     "sep_km_handover_test",
     "sep_km_abr_seed_sideload_test",
     "sep_km_abr_mlkem_sideload_test",
+    "sep_km_abr_mldsa_kat_test",
+    "sep_km_sideload_share_walk_test",
     "sep_km_mailbox_protocol_rand_test",
     "sep_km_crc_pcpi_kat_test",
     "sep_km_kpv_scrambler_test",
@@ -276,6 +301,7 @@ tests = [
     "sep_axi_order_sweep_test",
     "sep_axi_order_sweep_m_axi_test",
     "sep_drbg_axil_adapter_port_arbitration_test",
+    "sep_drbg_axil_adapter_refusal_test",
     "sep_drbg_axil_concurrent_csrng_aw_then_ar_test",
     "sep_drbg_axil_concurrent_edn_aw_then_ar_test",
     "sep_entropy_pool_aperture_test",
@@ -292,24 +318,34 @@ tests = [
     "sep_abr_concurrent_rw_test",
     "sep_unmapped_access_policy_test",
     "sep_sram_burst_type_test",
+    "sep_sram_inbound_burst_attr_test",
     "sep_km_rom_write_err_test",
     "sep_km_otp_shim_unreachable_test",
+    "sep_km_drbg_sampler_timeout_reset_test",
     "sep_km_vrom_decerr_test",
     "sep_km_ic_reset_release_test",
     "sep_abr_absent_decerr_test",
 ]
 
 [[groups]]
+name = "rom_fw_smoke"
+expected_count = 5
+tests = [
+    "sep_rom_non_secure_boot_test",
+    "sep_rom_ot_dma_boot_test",
+    "sep_manifest_magic_survives_handoff_test",
+    "sep_rom_ot_pio_boot_test",
+    "sep_rom_ot_secure_boot_test",
+]
+
+[[groups]]
 # ROM firmware boot. Its own group because these are the only tests on the
 # `rom_boot` RTL target and the boot_rom* firmware profiles -- a different build
 # on both axes from cpu (default) and no_cpu (lsu_stub_all_live). Kept out of the
-# `cpu` group so a CPU class regression is one build target, and so the ROM-FW
-# owner can run
-# `python3 tools/dv/run_dv.py --dut sep --items rom_fw --regress`
-# without dragging in the SEP suite.
+# `cpu` group so a CPU class regression is one build target. Run it alone with
+# `python3 tools/dv/run_dv.py --dut sep --items rom_fw --regress`.
 # NOT a member of `all`: `all` is the set this VPLAN grades and the set a coverage
-# run measures, so a firmware class with another owner does not belong in it.
-# Reaching these tests means naming `rom_fw` (or the test) explicitly.
+# run measures. Reaching these tests means naming `rom_fw` (or the test) explicitly.
 name = "rom_fw"
 tests = [
     "sep_rom_non_secure_boot_test",
@@ -328,6 +364,14 @@ tests = [
     "sep_otbn_no_op_bypass_test",
     "sep_firmware_enforced_secure_boot_flow_test",
     "sep_firmware_cntl_secure_boot_flow_test",
+    # A PROD part refuses a manifest missing its secure-boot flag, signature or
+    # public key.
+    "sep_firmware_sboot_class_only_refuse_test",
+    "sep_firmware_sboot_flag_cleared_signed_refuse_test",
+    "sep_firmware_signature_absent_refuse_test",
+    "sep_firmware_signature_zeroed_refuse_test",
+    "sep_firmware_public_key_absent_refuse_test",
+    "sep_firmware_public_key_zeroed_refuse_test",
     "sep_firmware_backup_invalid_signature_test",
     "sep_firmware_backup_invalid_security_version_test",
     "sep_firmware_backup_invalid_public_key_selection_test",
@@ -492,6 +536,11 @@ tests = [
     "sep_rom_dbg_lock_read_locked_refuse_test",
     "sep_rom_dbg_lock_secure_boot_test",
     "sep_rom_dbg_lock_sboot_dis_boot_test",
+    # The same debug lock in the RMA states.
+    "sep_rom_rma_sip_dbg_lock_refuse_test",
+    "sep_rom_rma_chiplet_dbg_lock_boot_test",
+    "sep_rom_rma_dbg_lock_secure_boot_test",
+    "sep_rom_rma_dbg_open_boot_test",
     "sep_rom_lc_state_invalid_0x4_test",
     "sep_rom_lc_state_invalid_0x5_test",
     "sep_rom_dma_stall_terminal_test",

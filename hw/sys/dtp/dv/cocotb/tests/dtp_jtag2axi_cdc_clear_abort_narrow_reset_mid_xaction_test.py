@@ -17,6 +17,8 @@ class dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test(dtp_base_test):
     use_axi_scoreboard = True
     axi_checker_required_ids = (
         "CHK-AXI-RESP",
+        "CHK-AXI-RESP-EXPECTED",
+        "CHK-AXI-RDATA",
         "CHK-AXI-STRB",
         "CHK-AXI-WMEM",
         "CHK-AXI-COMPLETION",
@@ -30,6 +32,9 @@ class dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test(dtp_base_test):
         "CHK-J2A-CDC-CLEAR",
         "CHK-J2A-ABORT-ESCAPE",
         "CHK-J2A-ABORT-RECOVERY",
+        "CHK-J2A-ORPHAN-DRAIN",
+        "CHK-J2A-ORPHAN-DISCARD",
+        "CHK-J2A-ORPHAN-ORDER",
     )
     axi_checker_stream_minimums = {"smc_axi": 2, "smc_otp": 2, "sep_otp": 2}
 

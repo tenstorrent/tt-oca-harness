@@ -10,11 +10,10 @@ Direct-AXI R/W of the SEP System-block dual scratch banks over the CPU-LSU bus
     (``wdt_rst_ni_i``). See VPLAN ``sep_warm_cold_reset_scratch_test``.
 
 Each bank is 8 x 64-bit registers (sep_scratch.rdl), 0x8 stride, only the lower
-32 bits used; the reset value comes from the RDL metadata. The driver carries the per-index addresses and
-the distinct per-register patterns the bank sweep uses. This driver only issues
-CSR R/W; the reset
-stimulus (the ``wdt_rst_ni_i`` warm pulse / ``rst_ni`` cold resense) is driven by
-the test.
+32 bits used; the reset value comes from the RDL metadata. The driver carries
+the per-index addresses and the distinct per-register patterns the bank sweep
+uses. This driver only issues CSR R/W; the test drives the reset stimulus (the
+``wdt_rst_ni_i`` warm pulse / ``rst_ni`` cold resense).
 """
 
 from __future__ import annotations
@@ -40,10 +39,8 @@ if RegBlock("SEP_SCRATCH_WARM").reset32("SCRATCH_0_") != SCRATCH_RESET_DEFAULT:
 def _bank_addrs(bank: str) -> tuple[int, ...]:
     """Every SCRATCH register of one bank, in index order, from the register export.
 
-    The depth is the array the RDL declares, not a number a sequence carries: a
-    sweep with its own literal silently stops short of the tail the day
-    ``sep_scratch.rdl`` grows the array, and reports a clean pass over the part
-    it still reaches.
+    The depth is the array ``sep_scratch.rdl`` declares, read from the register
+    export so the sweep covers every register the RDL adds.
     """
     addrs: list[int] = []
     while True:

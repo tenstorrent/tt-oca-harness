@@ -4,12 +4,14 @@
 // Base XTRIG sequence — the SV analogue of the cocotb
 // dtp_xtrig_base_test_seq helper layer. A virtual sequence on the DTP
 // virtual sequencer whose CSR accesses are reusable AXI-Lite operations
-// (dtp_axi_csr_write_seq / dtp_axi_csr_read_seq) started on the XTRIG
-// master sequencer handle, with the DTP cross-trigger layer on top:
+// (dtp_axi_csr_write_seq / dtp_axi_csr_read_seq / dtp_axi_csr_pipeline_seq)
+// started on the XTRIG master sequencer handle, with the DTP cross-trigger
+// layer on top:
 //
 //   * the XTRIG CSR map (dtp_types: CTM CT_SRC select registers, CTP
 //     config/status/stretch registers) and typed write/read/check accessors,
-//     including the two-outstanding write and read pairs,
+//     including the two-outstanding write and read pairs and pipelined
+//     accesses with several in flight,
 //   * the CTM routing model (env dtp_xtrig_ctm_model, the cocotb
 //     DtpCtmRefModel twin) compared against the DUT output vector on every
 //     programmed route,
@@ -124,6 +126,9 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   localparam string ChkWire = "CHK-XTRIG-WIRE";
   localparam string ChkResetCount = "CHK-RESET-COUNT";
 
+  // One access of a pipelined CSR operation.
+  typedef dtp_axi_csr_pipeline_seq::op_t pipeline_op_t;
+
   // Selected by the test before start(); dispatch_scenario() switches on it.
   string scenario = "";
 
@@ -227,6 +232,10 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
     scenario_required_ids(scenario, ids);
     attach_xtrig_checker(ids);
     dispatch_scenario();
+    // Every CSR port spill register has kept READY and VALID matched to the
+    // beats it holds since the last system reset.
+    check_evidence(ChkAxil, "spill_contract_all", 64'(xtrig_pin("xtrig_axil_spill_err_count")),
+                   64'd0);
     finalize_xtrig_checker();
   endtask
 
@@ -249,6 +258,7 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
       "axi_channel_skew":     ids = {ChkCsr, ChkAxil};
       "axi_channel_skew_demux_aw_lock_release":     ids = {ChkAxil, ChkAwLock};
       "axi_channel_skew_read_decode_backpressure":  ids = {ChkAxil, ChkArStall};
+      "axi_outstanding":      ids = {ChkAxil, ChkAwLock, ChkArStall};
       "ctp_csr_sweep":        begin ids = route_ids; ids.push_back(ChkStretch); end
       "ctm_csr_sweep":        ids = route_ids;
       "ctm_all_source_select": ids = route_ids;
@@ -523,6 +533,61 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
     second = rd.pair_result;
   endtask
 
+  // A read or a write of a pipelined CSR operation (the cocotb
+  // OcahAxiPipelineOp.read and OcahAxiPipelineOp.write).
+  static function pipeline_op_t pipeline_read_op(bit [63:0] addr, int unsigned ar_valid_delay = 0,
+                                                 bit [2:0] prot = '0);
+    pipeline_op_t op;
+    op.direction      = OCAH_AXI_DIR_READ;
+    op.addr           = addr;
+    op.prot           = prot;
+    op.ar_valid_delay = ar_valid_delay;
+    return op;
+  endfunction
+
+  // A partial strobe moves the address to its lowest strobed byte, as the
+  // cocotb AXI-Lite master drives it.
+  static function pipeline_op_t pipeline_write_op(
+      bit [63:0] addr, bit [31:0] data, int unsigned aw_valid_delay = 0,
+      int unsigned w_valid_delay = 0, bit [2:0] prot = '0, bit [3:0] strb = 4'hF);
+    pipeline_op_t op;
+    op.direction      = OCAH_AXI_DIR_WRITE;
+    op.addr           = addr;
+    for (int unsigned lane = 0; lane < 4; lane++) begin
+      if (strb[lane]) begin
+        op.addr = addr + lane;
+        break;
+      end
+    end
+    op.data           = 64'(data);
+    op.strb           = 8'(strb);
+    op.prot           = prot;
+    op.aw_valid_delay = aw_valid_delay;
+    op.w_valid_delay  = w_valid_delay;
+    return op;
+  endfunction
+
+  // CSR accesses kept in flight together, BREADY and RREADY held for
+  // b_hold_cycles and r_hold_cycles after the first response; returns the
+  // VIP result item (aw/w/ar_stall_cycles) and the completed item of each op
+  // in issue order.
+  task pipeline_result(input pipeline_op_t ops[$], output ocah_axi_item result,
+                       output ocah_axi_item op_results[$], input int unsigned b_hold_cycles = 0,
+                       input int unsigned r_hold_cycles = 0, input bit check_response = 1'b1,
+                       input bit allow_timeout = 1'b0);
+    dtp_axi_csr_pipeline_seq pl = dtp_axi_csr_pipeline_seq::type_id::create("csr_pipeline");
+    if (p_sequencer.m_xtrig_seqr == null)
+      `uvm_fatal(get_type_name(), "dtp_virtual_sequencer.m_xtrig_seqr is null")
+    pl.ops            = ops;
+    pl.b_hold_cycles  = b_hold_cycles;
+    pl.r_hold_cycles  = r_hold_cycles;
+    pl.check_response = check_response;
+    pl.allow_timeout  = allow_timeout;
+    pl.start(p_sequencer.m_xtrig_seqr, this);
+    result     = pl.result;
+    op_results = pl.op_results;
+  endtask
+
   task csr_write(bit [63:0] addr, bit [31:0] data, bit [3:0] wstrb = 4'hF, string label = "");
     ocah_axi_item result;
     write_skewed_result(addr, 64'(data), result, .strb(8'(wstrb)));
@@ -731,6 +796,16 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
       "xtrig_axil_aw_open_accept_count": sampled = tb_vif.xtrig_axil_aw_open_accept_count;
       "xtrig_axil_ar_open_stall_count": sampled = tb_vif.xtrig_axil_ar_open_stall_count;
       "xtrig_axil_ar_open_accept_count": sampled = tb_vif.xtrig_axil_ar_open_accept_count;
+      "xtrig_axil_spill_err_count": sampled = tb_vif.xtrig_axil_spill_err_count;
+      "xtrig_axil_w_spill_full_count":    sampled = tb_vif.xtrig_axil_w_spill_full_count;
+      "xtrig_axil_r_spill_full_count":    sampled = tb_vif.xtrig_axil_r_spill_full_count;
+      "xtrig_demux_aw_stall_count": sampled = tb_vif.xtrig_demux_aw_stall_count;
+      "xtrig_demux_w_stall_count": sampled = tb_vif.xtrig_demux_w_stall_count;
+      "xtrig_demux_ar_stall_count": sampled = tb_vif.xtrig_demux_ar_stall_count;
+      "xtrig_demux_aw_open_stall_count": sampled = tb_vif.xtrig_demux_aw_open_stall_count;
+      "xtrig_demux_aw_open_accept_count": sampled = tb_vif.xtrig_demux_aw_open_accept_count;
+      "xtrig_demux_ar_open_stall_count": sampled = tb_vif.xtrig_demux_ar_open_stall_count;
+      "xtrig_demux_ar_open_accept_count": sampled = tb_vif.xtrig_demux_ar_open_accept_count;
       default: begin
         `uvm_fatal(get_type_name(), $sformatf("unknown xtrig observable %s", name))
         sampled = '0;

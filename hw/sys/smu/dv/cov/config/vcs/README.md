@@ -11,7 +11,23 @@ from the build filelists; regenerate it after a build and `--rebuild`, and
 fingerprinted, and VCS accepts a stale file silently.
 
     python3 tools/dv/run_dv.py --dut smu --items smoke      # any build
-    python3 hw/sys/smu/dv/cov/config/vcs/gen_smu_cov_scope.py
+    python3 nonfree/hw/sys/smu/dv/cov/config/vcs/gen_smu_cov_scope.py
+
+## Generators
+
+Every `.hier` and `.el` file in this directory is generated. The generators
+are the `hw/sys/smu/dv/cov/config/vcs/` scripts of the `nonfree` companion,
+which this README names by file name: `gen_smu_cov_scope.py`,
+`gen_smu_cov_toggle_exclusions.py`, `gen_smu_wrapper_toggle_exclusions.py` and
+`gen_smu_wrapper_group_exclusions.py`. The commands in this README run them
+from the repository root with the companion at `nonfree/`. Each takes
+`--check`, which exits 1 when the committed file differs from what it would
+write. The facts stay here: the class tables below state what each class
+excludes, why, and what retires it. A reader without the companion derives
+the same files from the same merged database: urg's `-dump full_exclusions`
+templates carry every checksum and signature, the run's raw report
+(`cov/report_raw/modinfo.txt`) marks which points are uncovered where a class
+is gated on it, and the class tables say which points each class takes.
 
 ## The rule
 
@@ -84,13 +100,13 @@ whether the committed file is stale.
 
 | Class | Fields | Why they are not the wrapper's to toggle | Retired by |
 |---|---|---|---|
-| `AXI-USER` | `aw/ar/w/r/b.user` on both crossbar ports | the SMU neither reads nor writes the user sideband: the 12-bit user word (`smu_axi_xbar_pkg.sv` 50) rides beside each channel through the pulp crossbar (`smu_axi_xbar.sv` 110-142) and the ID converters (`smu.sv` 1127-1173), and no SMU unit reads it | an SMU decode or remap that reads the user sideband |
-| `AXI-DATA` | `w.data`, `w.strb`, `r.data` on both crossbar ports | the data path passes through the crossbar (`smu_axi_xbar.sv` 110-142) and the ID converters (`smu.sv` 1127-1173) untouched; address and id stay graded because the crossbar decodes and remaps them | an SMU unit that inspects or rewrites data or strobe |
-| `ATB-PAYLOAD` | `telemetry_atdata_i`, `telemetry_atid_i` | `smu_wrapper.sv` (454-455) and `smu.sv` (835-836) connect both words straight to the SMC telemetry receivers, which consume them and are graded on the SMC bench | SMU logic that reads the ATB data or id, or the receivers moving out of the SMC |
+| `AXI-USER` | `aw/ar/w/r/b.user` on both crossbar ports | the SMU neither reads nor writes the user sideband: the 12-bit user word (`smu_axi_xbar_pkg.sv` 50) rides beside each channel through the pulp crossbar (`smu_axi_xbar.sv` 110-142) and the ID converters (`smu.sv` 1055-1101), and no SMU unit reads it | an SMU decode or remap that reads the user sideband |
+| `AXI-DATA` | `w.data`, `w.strb`, `r.data` on both crossbar ports | the data path passes through the crossbar (`smu_axi_xbar.sv` 110-142) and the ID converters (`smu.sv` 1055-1101) untouched; address and id stay graded because the crossbar decodes and remaps them | an SMU unit that inspects or rewrites data or strobe |
+| `ATB-PAYLOAD` | `telemetry_atdata_i`, `telemetry_atid_i` | `smu_wrapper.sv` (454-455) and `smu.sv` (763-764) connect both words straight to the SMC telemetry receivers, which consume them and are graded on the SMC bench | SMU logic that reads the ATB data or id, or the receivers moving out of the SMC |
 | `DFT` | `test_en_i`, `scan_rst_ni` | bench scope: `tb_wrapper_top.sv` (1322-1323) ties them to their functional values 0 and 1, and no leaf exercises scan insertion or the scan-mode reset bypass | a DFT bench that drives scan enable and scan reset |
-| `RTL-CONSTANT` | `lsio_interface_select_o` | driven from a constant inside the SMU: the LSIO select follows the SPI enable `smu.sv` (1193, 1195) takes from `sep_io_pkg::ot_spi_pad_map`, which sets it to 1 (`sep_io_pkg.sv` 81), with SEP present; `-cm_noconst` keeps it because the constant is assigned inside the SMU | the SPI enable becoming programmable |
+| `RTL-CONSTANT` | `lsio_interface_select_o` | driven from a constant inside the SMU: the LSIO select follows the SPI enable `smu.sv` (1121, 1123) takes from `sep_io_pkg::ot_spi_pad_map`, which sets it to 1 (`sep_io_pkg.sv` 81), with SEP present; `-cm_noconst` keeps it because the constant is assigned inside the SMU | the SPI enable becoming programmable |
 | `UNION-ALIAS` | `smc_shadow_regs_o.locks.*`, `smc_shadow_regs_o.fields.*` | `efuse_map_t` is a packed union (`smc_efuse_pkg.sv` 170-174); urg lists the same 8192 flops under three views, and `values` carries every bit once | `efuse_map_t` ceasing to be a union |
-| `SEP-OWNED` | `sep_cpu_trace_o`, `sep_lockstep_*`, `sep_ext_interrupts_i`, `entropy_rosc_sample_clk_i`, `lc_sigint_err_o` | `smu.sv` only routes them between `u_sep` and its ports (991-993, 1000, 1030, 1187); each is graded on the SEP bench. Bench scope beside that: the CPU trace moves only under SEP firmware that drives it, the lockstep pair is inert unless the SEP CPU is built with `RV_LOCKSTEP_ENABLE` (`sep_cpu.sv` 110-115), and `lc_sigint_err_o` needs a fault injected in the SEP (`LC-SIGINT-ENCODED` below) | SMU logic that consumes one of them |
+| `SEP-OWNED` | `sep_cpu_trace_o`, `sep_lockstep_*`, `sep_ext_interrupts_i`, `entropy_rosc_sample_clk_i`, `lc_sigint_err_o` | `smu.sv` only routes them between `u_sep` and its ports (919-921, 928, 958, 1115); each is graded on the SEP bench. Bench scope beside that: the CPU trace moves only under SEP firmware that drives it, the lockstep pair is inert unless the SEP CPU is built with `RV_LOCKSTEP_ENABLE` (`sep_cpu.sv` 110-115), and `lc_sigint_err_o` needs a fault injected in the SEP (`LC-SIGINT-ENCODED` below) | SMU logic that consumes one of them |
 | `REGISTER-WIDTH` | `sep_region_size_o[55:32]` | `sep_cpu_ctrl` SEP_REGION_SIZE carries its size in [31:0] and reserves [63:32], so the port's upper bits are zero-extension; `smu_toggle_exclusions.el` takes the same bits of `smu`'s port | SEP_REGION_SIZE.size widening past bit 31 |
 
 Everything else on the port list is graded per field, both directions, and a
@@ -99,16 +115,19 @@ field that stays uncovered is a stimulus gap for a leaf on this bench.
 ## Block exclusions
 
 `smu_toggle_exclusions.el` (`-elfile`, named by the policy's `[[native_files]]`)
-leaves out toggle points of `smu`, `smu_wrapper` and `smu_axi_xbar`, and the
-condition rows of the lifecycle integrity error, each for a stated fact. `gen_smu_cov_toggle_exclusions.py` writes
+leaves out toggle points of `smu`, `smu_wrapper` and `smu_axi_xbar`, the
+condition rows of the lifecycle integrity error, and the line block,
+condition row and branch arm of the crossbar's zero-size aperture rule, each
+for a stated fact. `gen_smu_cov_toggle_exclusions.py` writes
 it from urg's `-dump full_exclusions` templates of the merged database and the
 run's raw report, so every checksum and signature comes from urg, and
 `--check` tells whether the committed file is stale:
 
-    urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+cond+branch -report <dir>
-    python3 hw/sys/smu/dv/cov/config/vcs/gen_smu_cov_toggle_exclusions.py \
+    urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+line+cond+branch -report <dir>
+    python3 nonfree/hw/sys/smu/dv/cov/config/vcs/gen_smu_cov_toggle_exclusions.py \
         fullexclude_module.tgl <run dir>/cov/report_raw/modinfo.txt \
-        --cond fullexclude_module.cond --branch fullexclude_module.branch
+        --cond fullexclude_module.cond --branch fullexclude_module.branch \
+        --line fullexclude_module.line
 
 The file is generated from an `all` run, the coverage set: a point `all`
 leaves uncovered is uncovered in `hosted` too, so the file holds for both.
@@ -119,21 +138,23 @@ class names a direction for a bit window, only that direction); a partly
 uncovered multi-dimensional range is written index by index, as are the
 declared bits a report's "Other bits of" row stands for, and a class that
 names a bit window leaves such a range graded; a condition row or branch arm
-is taken only where the report says Not Covered. Fields
+is taken only where the report says Not Covered, and a line block only where
+the report covers none of its first line's statements. Fields
 `smu_wrapper_toggle_exclusions.el` already names are skipped.
 
 | Class | Fact | Retired by |
 |---|---|---|
 | `MEM-MACRO` | data, mask, strobe, parity and ECC words of the SMC and SEP RAM, ROM and TCM interfaces; `smu.sv` connects each such `u_smc`/`u_sep` port straight to its own port and `smu_wrapper.sv` connects that to `hw/top/smc_ip_integration.sv` or `hw/top/sep_ip_integration.sv`, where the macros are; no SMU logic reads or writes the words | an SMU process on these words, or the macros moving under `u_smu` |
-| `MEM-MACRO-CONTROL` | address, request, enable, write-enable, mode and handshake fields of the same interfaces; `smu.sv` (869-922, 1002-1043) connects each interface whole between `u_smc` or `u_sep` and its own port, `smu_wrapper.sv` carries it whole to the macros, and no SMU logic reads or drives a field; the rows left uncovered record which rows the owning CPU or controller touched, which the SMC and SEP benches grade | an SMU process on one of these interfaces, or a macro moving under `u_smu` |
+| `MEM-MACRO-CONTROL` | address, request, enable, write-enable, mode and handshake fields of the same interfaces; `smu.sv` (797-850, 930-971) connects each interface whole between `u_smc` or `u_sep` and its own port, `smu_wrapper.sv` carries it whole to the macros, and no SMU logic reads or drives a field; the rows left uncovered record which rows the owning CPU or controller touched, which the SMC and SEP benches grade | an SMU process on one of these interfaces, or a macro moving under `u_smu` |
 | `AXSIZE-BUS-WIDTH` | AxSIZE[2] of every AXI4 channel in scope: each carries a 64-bit data bus (`smu_axi_xbar_pkg.sv` 31 and the `smc_pkg`/`sep_pkg` channel types), and AXI4 allows no transfer size wider than the bus, so AxSIZE stays at or below 3 | an AXI4 channel wider than 64 bits |
 | `SEP-OTP-DBG-TIED` | the SMC and SEP OTP bridge terms of the SEP debug-disable vector in `smu`; `sep_lifecycle_ctrl.sv` (264-265) assigns both 1'b0 | `sep_lifecycle_ctrl` driving either term from the lifecycle state |
 | `EXT-TRNG-STREAM-TIED` | the external TRNG AXI-stream requests into the SEP; `hw/top/sep_ip_integration.sv` (773) assigns every stream `'{default: '0}` | an integration shell that connects an external TRNG stream source |
-| `SEP-DEBUG-LANES` | bits [383:0] of the external debug bus in `smu`, the SEP half: `sep.sv` (1186-1275) packs SEP-internal status into 24 sixteen-bit lanes and `smu.sv` (1384-1387) only concatenates it under the adopter's bits for the SMC debug mux; the SEP bench grades each source | SMU logic that reads a SEP debug lane |
-| `JTAG2AXI-FIXED` | the AXI attributes the DTP JTAG2AXI bridges drive as constants -- AxID 0, AxLEN 0, INCR, AxLOCK 0, AxCACHE 4'b0010, AxPROT 3'b000, AxQOS and AxREGION 0 (`jtag2axi.sv` 147-151, 1248-1283, and 84/112 for the AXI4-Lite prot outputs) -- on the nets `smu.sv` (712-717, 792-795, 965-966) connects straight from each bridge to its target; only the bits those constants hold at 0 are taken | a JTAG2AXI bridge that programs any of these attributes |
+| `SEP-DEBUG-LANES` | bits [383:0] of the external debug bus in `smu`, the SEP half: `sep.sv` (1186-1275) packs SEP-internal status into 24 sixteen-bit lanes and `smu.sv` (1312-1315) only concatenates it under the adopter's bits for the SMC debug mux; the SEP bench grades each source | SMU logic that reads a SEP debug lane |
+| `JTAG2AXI-FIXED` | the AXI attributes the DTP JTAG2AXI bridges drive as constants -- AxID 0, AxLEN 0, INCR, AxLOCK 0, AxCACHE 4'b0010, AxPROT 3'b000, AxQOS and AxREGION 0 (`jtag2axi.sv` 147-151, 1248-1283, and 84/112 for the AXI4-Lite prot outputs) -- on the nets `smu.sv` (640-645, 720-723, 893-894) connects straight from each bridge to its target; only the bits those constants hold at 0 are taken | a JTAG2AXI bridge that programs any of these attributes |
 | `AXI-USER` | the user sideband, which the pulp crossbar and the ID converters copy beside the channel | an SMU decode or remap that reads it |
 | `AXI-DATA` | write data, write strobe and read data of every AXI and AXI-Lite channel; the SMU decodes addresses and converts ids and passes data through | an SMU unit that inspects or rewrites data or strobe |
 | `RTL-CONSTANT` | `lsio_interface_select_o` following the SPI enable `smu.sv` takes from `sep_io_pkg::ot_spi_pad_map`, which sets it to 1 with SEP present | the SPI enable becoming programmable |
+| `RTL-CONSTANT` | the SEP SPI pad fields `sep_io_pkg::ot_spi_pad_map` (`sep_io_pkg.sv` 79-96) assigns a constant -- enable, txd[7:4], the dqs and dq[7:4] enables and the three mem_rebar pads -- on `sep_spi_*` and `gen_sep.sep_spi_pads.*` in `smu` (`smu.sv` 1120-1137); `-cm_noconst` does not see through the function call | `ot_spi_pad_map` driving one of these fields from a register or a port |
 | `UNION-ALIAS` | the `locks` and `fields` views of the packed-union eFuse shadow map; `values` stays graded | `efuse_map_t` ceasing to be a union |
 | `SEP-OWNED` | `sep_cpu_trace_o`, the lockstep pair, `sep_ext_interrupts_i` and `entropy_rosc_sample_clk_i`, which `smu.sv` only routes and the SEP bench grades | SMU logic consuming one of them |
 | `REGISTER-WIDTH` | bits [55:32] of `smu`'s `sep_region_size_o`: `sep_cpu_ctrl` SEP_REGION_SIZE carries its size in [31:0] and reserves [63:32], so the 56-bit port is that field zero-extended, and `smu.sv` hands the crossbar only [31:0] | SEP_REGION_SIZE.size widening past bit 31 |
@@ -146,7 +167,7 @@ is taken only where the report says Not Covered. Fields
 | `SEP-EXTERNAL-WINDOW` | address bits [31:29] of the SEP external aperture: the local crossbar sends only `0x2000_0000`-`0x3FFF_FFFF` there (`sep_local_axi_xbar.sv` 192-196), so bits 31:30 stay 0 and bit 29, 1 on every request, never falls; only that direction of bit 29 is taken | a local crossbar rule that widens the aperture |
 | `TRNG-WINDOW` | address bits [31:12] of the external TRNG window: the crypto interconnect sends only single-beat accesses to `0x1091_7000`-`0x1091_7FFF` there (`sep_crypto_pkg.sv` 113-121, `sep_crypto_axi_interconnect.sv` 205-214); a 0 bit of the base is taken in both directions, a 1 bit only falling | a TRNG window that moves or grows past 4 KiB |
 | `EFUSE-COMMAND-LENGTH` | bits [7:1] of the fuse-command word count on both fuse-command ports: the read and program interfaces ask for one word (`efuse_read_interface.sv` 144, `efuse_program_interface.sv` 158) and the sense for 256 (`efuse_shadow_regs.sv` 57, 428-429) | a fuse-command source that asks for another word count |
-| `ID-REMAP-TABLE` | ID bits [5:4] on the SEP and SMC inbound ports: each crossbar ID converter is built for 16 unique IDs (`smu.sv` 1130, 1154), so `axi_id_remap` drives its 4-bit table index zero-extended (`axi_id_remap.sv` 131, 198-200) | a converter built for more than 16 unique IDs |
+| `ID-REMAP-TABLE` | ID bits [5:4] on the SEP and SMC inbound ports: each crossbar ID converter is built for 16 unique IDs (`smu.sv` 1058, 1082), so `axi_id_remap` drives its 4-bit table index zero-extended (`axi_id_remap.sv` 131, 198-200) | a converter built for more than 16 unique IDs |
 | `SEP-EXTERNAL-ID` | ID bit 2 on the SEP external aperture port: the local crossbar prepends the initiator index above a 3-bit ID (`sep_local_axi_xbar_pkg.sv` 22-23, 141-145), and the load/store unit (bus-buffer index below four, `el2_lsu_bus_buffer.sv` 213), system bus and DMA (ID 0, `el2_dbg.sv` 736-770, `sep_dma_wrap.sv` 274-285) and the inbound remapper (four IDs, `sep_system_peripherals.sv` 642) never set it | an initiator of the external aperture with IDs of four or more |
 | `ZEROER-WRITE-ONLY` | read ID bit 3 on the SMC's outbound path: the data accelerator mux puts the accelerator index there (`smc_data_accelerator_wrap.sv` 234-249; the zeroer is 1, `smc_pkg.sv` 334-335), the other input-fabric ports zero-extend into it (`prim_axi_id_prepend_wrap.sv` 35, 54; `axi_lite_to_axi.sv` 57-64), and the zeroer never reads (`zeroer.sv` 445-446) | a data accelerator at index 1 that reads |
 | `EFUSE-SHIM-CSR-OKAY` | the response code of the eFuse bank-control CSR port: the shim answers from its register block (`efuse_interface_shim.sv` 78), which ties the write and readback errors to 0 (`efuse_shim_ctrl_reg.sv` 207-214, 307, 327, 332) | a shim register block that can report an access error |
@@ -164,6 +185,7 @@ is taken only where the report says Not Covered. Fields
 | `SMC-EXTERNAL-WINDOW` | address bits [29:23] of the SMC external window: the SMC peripheral crossbar sends only `0xC040_0000`-`0xC07F_FFFF` there (`smc_periph_axi_lite_xbar.sv` 145-149) | an SMC external window that moves or grows past 4 MiB |
 | `XBAR-CONNECTIVITY` | the crossbar output ID carries the input port index in bits [9:8]; `smu_axi_xbar_pkg.sv` (127-133) routes ext_in (port 2) nowhere near `ext_out` and smc_out (port 1) nowhere near `smc_in`, so bit 9 on `ext_out` and past it, and bit 8 on `smc_in` and past it, stay 0 | a connectivity matrix that adds either route |
 | `APERTURE-ALIGNMENT` | `smc_base_config.rdl` (38) requires GLOBAL_BASE and LOCAL_BASE to be aligned to REGION_SIZE; JTAG2AXI reaches BASE_CONFIG through the local window, so no size below 128 KiB can be followed by another setting, and base, rule start and rule end bits [16:0] stay 0; LOCAL_BASE is fixed at `0xC000_0000`, so REGION_SIZE[31] is never legal. Takes only those bits | a programmable LOCAL_BASE or a BASE_CONFIG path outside the local window |
+| `ZERO-APERTURE-REJECTED` | the zero-size arm of the aperture rule in `smu_axi_xbar.sv` (72-74), taken as its line block, the `size == '0` condition row and the branch arm: a zero region size forms a rule with `start == end`, and the address decoder's map check accepts only `start < end` or `end == 0` (`addr_decode_dync.sv` 150), so a zero-size SEP or SMC aperture cannot be programmed on this bench (#2605); the SEP point is Phase 2 in `SMU_FCOV.adoc` | an aperture encoding the decoder accepts for zero size |
 
 The SEP aperture takes no class: SEP firmware images program the region size
 and `smu_dtp_sep_dm_sba_test` walks the base and size. On the SEP's outbound
@@ -206,6 +228,20 @@ What remains in GROUP is the `u_smu_*_fcov::cg_*` set, the covergroup half of
 the wrapper's functional coverage; `cov/sv` cover properties are the other
 half and are read under `assertion`.
 
+## The companion bench's exclusion set
+
+The companion carries an SV-UVM bench for the SMU, and it grades a different
+top from the one `--dut smu` builds. That bench has its own coverage
+regression configuration and its own exclusion set, several of whose file
+names read like the classes here; this policy reads none of them, and the
+runner merges none of them with the files here. The two flows therefore
+answer over two populations, and the figure
+`hw/sys/smu/dv/docs/SMU_COVERAGE_POLICY.adoc` quotes is the `run_dv.py` one:
+scoped by `smu_wrapper_cov_scope.hier` at compile time and graded after the
+lists `smu_wrapper_coverage_policy.toml` names. A file under that bench whose
+name resembles a class here is not in this population, and an exclusion
+accepted on one flow argues nothing on the other.
+
 ## Reading a finished run
 
 ```
@@ -220,8 +256,8 @@ toolchain-free subset the workflows run and leaves that stimulus out.
 The runner compiles with the scope, runs the group, merges, writes the urg
 report with the exclusion files, and prints one `coverage` line with every
 family as raw/effective; `smu_wrapper_coverage_policy.toml` floors `user` at
-100 percent and `toggle` and `assertion` at 80 percent, and the result carries
-`coverage=PASS` or `FAIL`. Nothing else is run. `toggle` is urg's TOGGLE column
+100 percent and sets no code-metric floor, so the `coverage=PASS` or `FAIL`
+the result carries grades the cover-property population alone. Nothing else is run. `toggle` is urg's TOGGLE column
 after the exclusions; `user` is the cov/sv `cover property` points, which the
 runner reads from the cover-property summary of `cov/report/asserts.txt`;
 `assertion` is urg's ASSERT column, those points together with the

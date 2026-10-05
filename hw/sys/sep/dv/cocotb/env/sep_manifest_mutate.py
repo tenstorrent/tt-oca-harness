@@ -8,10 +8,9 @@ Python-only: no new firmware profile and no HDL rebuild.
 VARIANTS. The packer emits two: oca-classic (magic ``OCAC``) and oca-pqc
 (``OCAP``, a 36864-byte body). Geometry is resolved from the magic via the
 packer's own variant table, so :func:`slot_span` and :func:`slot_is_erased` work
-for both. Field-level mutation is classic-only: ``constants.py`` does not publish
-per-field PQC offsets yet ("added with the validator's PQC support"), and
-computing them here from the trailer shift would be the hardcoding this module
-exists to avoid. PQC field access raises.
+for both. Field-level mutation is classic-only: ``constants.py`` publishes no
+per-field PQC offsets, and computing them here from the trailer shift would be
+the hardcoding this module exists to avoid. PQC field access raises.
 
 LAYOUT AND THE SIGNED BOUNDARY. An OCA-classic body is 4096 bytes::
 
@@ -136,7 +135,7 @@ def require_classic(buf: bytes, slot: str):
     """Variant descriptor for ``slot``, refusing PQC.
 
     Field-level mutators call this. PQC bodies have a different field layout and
-    the packer does not publish those offsets yet, so a mutator that assumed the
+    the packer publishes no PQC field offsets, so a mutator that assumed the
     classic ones would write into the wrong bytes and still look like it worked.
     """
     v = variant_at(buf, slot_base(slot))
@@ -161,8 +160,8 @@ HASH_FIELD_SIZE = K.HASH_FIELD_SIZE
 
 # Erased-flash byte. Matches the BFM's backing store and its out-of-range read
 # value (ocah_spi_flash.py), so an erased region and an address past the end of
-# the image are indistinguishable to the ROM -- which is what makes 0xFF the
-# honest representation of "nothing is programmed here".
+# the image are indistinguishable to the ROM, so 0xFF stands for an unprogrammed
+# byte.
 ERASED_BYTE = 0xFF
 
 
@@ -212,10 +211,10 @@ def slot_span(image: bytes | int, slot: str) -> tuple[int, int]:
 def rom_key_image(index: int) -> Path:
     """Packed flash image whose BOTH slots are signed by ROM key slot ``index``.
 
-    Slot 0 is the shipped secure-boot image; slots 1-5 are the per-slot images
-    2166927ea added so an off-by-one in slot resolution cannot match a digest by
-    accident. Pair with :func:`graft_slot` to build a mixed image: one slot anchored
-    on a chosen key, the other left as it shipped.
+    Slot 0 is the shipped secure-boot image; slots 1-5 are per-slot images, so an
+    off-by-one in slot resolution cannot match a digest by accident. Pair with
+    :func:`graft_slot` to build a mixed image: one slot anchored on a chosen key,
+    the other left as it shipped.
     """
     if not 0 <= index < PUBK_SEL_NUM_ROM_KEYS:
         raise ValueError(f"ROM key slot {index} is outside 0..{PUBK_SEL_NUM_ROM_KEYS - 1}")
@@ -231,9 +230,7 @@ def graft_slot(dst: bytearray, src: bytes, slot: str) -> tuple[int, int]:
 
     A whole slot moves, manifest and payload together, so what lands is a slot that
     was signed as a unit by whichever key packed ``src`` -- it verifies rather than
-    going stale, which a field-level rewrite of the same selector cannot do. That is
-    the difference between proving the ROM refuses an authorized key it was told to
-    revoke and proving only that it refuses a key whose signature no longer checks.
+    going stale, which a field-level rewrite of the same selector cannot do.
 
     Both images must devote the same byte range to the slot, which the packer's
     shared combined layout guarantees; a payload offset is stored manifest-relative
@@ -304,9 +301,8 @@ def erase_slot(buf: bytearray, slot: str) -> tuple[int, int]:
     only presence test is the manifest magic, and an erased slot is therefore
     indistinguishable from an absent device.
 
-    The layout is verified BEFORE erasing, which is the point: it proves a valid
-    manifest really was at this address, so the test is removing a working slot
-    rather than erasing empty space and asserting on a no-op.
+    The layout is verified before erase, proving a valid manifest occupied the
+    address.
     """
     variant_at(buf, slot_base(slot))  # a valid manifest really is here
     start, end = slot_span(buf, slot)
@@ -336,10 +332,7 @@ def signature_size(buf: bytes, slot: str) -> int:
 def describe(buf: bytes, slot: str) -> str:
     """One-line summary of a slot, for test log lines. Works for either variant.
 
-    Reports an unrecognised magic rather than raising on it: a caller logging a
-    slot it has just corrupted on purpose needs the description in exactly that
-    case, and a diagnostic that refuses to describe a malformed image is of no
-    use where it matters most.
+    Reports an unrecognised magic so diagnostics can describe a corrupted slot.
     """
     base = slot_base(slot)
     magic = bytes(buf[base : base + 4])
@@ -416,9 +409,8 @@ def rom_status_for_result(boot_error: int) -> int:
     The console code and the status ring live in DIFFERENT spaces: the console
     carries ``OCA_BOOT_ERR_BASE | oca_result_t`` while the ring carries
     ``STATUS_ENCODE(type, SEP_MSG_*)``. ``status_for_result()`` in oca_boot.c is
-    the only bridge, so it is parsed rather than mirrored -- masking the console
-    code and calling the low half a status is how a test ends up asserting on a
-    value the ROM never reports.
+    the only bridge, so it is parsed rather than mirrored. The low half of a
+    console code is not a status.
 
     Only the RESULT range crosses that bridge. rom_manifest_boot() re-reports a
     slot's verdict through status_for_result() under
@@ -427,8 +419,7 @@ def rom_status_for_result(boot_error: int) -> int:
     refused storage read -- skip it entirely and reach the ring only as the
     generic ``SEP_MSG_MANIFEST_LOAD_FAILED`` that follows. This mirrors that
     guard rather than reproducing the arithmetic: a 0x000301xx code has no
-    oca_result_t to look up, and looking one up anyway is what made this raise
-    on sep_bl1_entry_invalid_test.
+    oca_result_t to look up.
     """
     import re
 
@@ -492,6 +483,8 @@ MANIFEST_MAJOR_VERSION = 1
 CONSUMER_BODY_SIZE = _c_define(
     _OCA_VALIDATOR_H.with_name("oca_layout_classic.h"), "OCA_CLASSIC_BODY_SIZE"
 )
+# Bytes the ROM reads from a slot before it knows the body size.
+MANIFEST_PEEK_MIN = _c_define(_OCA_VALIDATOR_H, "OCA_MANIFEST_PEEK_MIN")
 
 
 def manifest_version(buf: bytes, slot: str) -> tuple[int, int]:
@@ -578,11 +571,11 @@ def corrupt_manifest_hash(
 def break_magic(buf: bytearray, slot: str, value: bytes = b"\x99\x99\x99\x99") -> bytes:
     """Corrupt a slot's magic so the ROM refuses it. Returns what was written.
 
-    The standard primary->backup failover trigger. Deliberately does NOT rehash:
-    the magic leads the body and ``oca_peek_manifest`` reads it before anything
-    reads or hashes the rest, so the slot is rejected before the stale hash is
-    ever examined. Rehashing is also impossible after the fact -- every helper
-    here resolves the variant from the magic.
+    The standard primary->backup failover trigger. No rehash: the magic leads
+    the body and ``oca_peek_manifest`` reads it before anything reads or hashes
+    the rest, so the slot is rejected before the stale hash is examined;
+    rehashing is also impossible afterwards, since every helper resolves the
+    variant from the magic.
     """
     variant_at(buf, slot_base(slot))  # a valid manifest really was here
     if len(value) != 4:
@@ -942,17 +935,31 @@ def set_secure_boot_enforced(buf: bytearray, slot: str, value: bool) -> int:
     return field
 
 
+def set_secure_boot_control(buf: bytearray, slot: str, value: int) -> int:
+    """Write the whole ``secure_boot_control`` byte. Returns the previous value.
+
+    For stimuli that need a class bit without the enforced bit, which
+    :func:`set_secure_boot_enforced` cannot express because it preserves the
+    class bits it finds. Inside the signed region, so this rehashes.
+    """
+    require_classic(buf, slot)
+    if not 0 <= value <= 0xFF:
+        raise ValueError(f"secure_boot_control is one byte, got 0x{value:x}")
+    before = secure_boot_control(buf, slot)
+    buf[slot_base(slot) + OFF_SECURE_BOOT_CONTROL] = value
+    rehash(buf, slot)
+    return before
+
+
 def verify_usage_constraints_layout(buf: bytes, slot: str) -> None:
     """Assert the constraint fields satisfy the format's own invariants.
 
     A wrong offset lands on neighbouring bytes, which fail these masks -- but
-    only if those bytes are non-zero. The images this tree packs currently select
-    no constraints at all (selector_bits, all three lifecycle_states and
-    demotion_control are zero), so on them this is a weak anchor: it catches an
-    offset that lands on a populated field such as chiplet_id or a version
-    range, and not one that lands on other zeroes. It becomes a real check on the
-    images the demotion and lifecycle families need, which do select
-    constraints. Treat it as an invariant check, not a value anchor.
+    only if those bytes are non-zero. On an image that selects no constraints
+    (selector_bits, all three lifecycle_states and demotion_control zero) this is
+    a weak anchor: it catches an offset that lands on a populated
+    field such as chiplet_id or a version range, not one that lands on other
+    zeroes. Treat it as an invariant check, not a value anchor.
     """
     require_classic(buf, slot)
     bits = selector_bits(buf, slot)
@@ -1008,7 +1015,8 @@ ENCODING_RAW = K.OcaClassicSignatureEncoding.RAW_BYTES.value
 _BOOTROM_PROD = _SEP_ROOT / "bootrom" / "prod"
 # key_digests.c is generated into the ROM's build directory, so read it from
 # whichever variant this run built. BUILD_DIR selects the SPI transport, not the
-# anchors, so all three carry the same key set and the first present one answers.
+# anchors, so every build directory carries the same key set and the first present
+# one answers.
 _KEY_DIGESTS_BUILD_DIRS = ("build", "build_pio")
 _OCA_PLATFORM_C = _BOOTROM_PROD / "src" / "oca_platform.c"
 
@@ -1125,7 +1133,7 @@ def public_key_modulus(buf: bytes, slot: str) -> bytes:
     """The 384-byte big-endian RSA-3072 modulus, which the digests cover.
 
     A raw RSA public key is the modulus followed by a 4-byte exponent; only the
-    modulus is hashed, so the exponent is deliberately excluded here.
+    modulus is hashed, so the exponent is excluded.
     """
     require_classic(buf, slot)
     base = slot_base(slot) + OFF_PUBLIC_KEY
@@ -1218,15 +1226,56 @@ def corrupt_public_key(buf: bytearray, slot: str, *, offset: int = 0) -> int:
     return offset
 
 
+OFF_PUBLIC_KEY_SIZE = K.OFF_PUBLIC_KEY_SIZE_CLASSIC
+
+
+def remove_public_key(buf: bytearray, slot: str, *, keep_size: bool) -> None:
+    """Zero the classical public-key field, leaving the rest of the slot signed.
+
+    With ``keep_size`` the field still claims its encoded length, so the slot
+    passes the structural size check and reaches key authorization with an
+    all-zero modulus. Without it ``public_key_size`` is zeroed too, which is what
+    a manifest that never carried a key looks like, and the structural check
+    refuses it first. Inside the signed region, so this rehashes.
+    """
+    require_classic(buf, slot)
+    base = slot_base(slot)
+    buf[base + OFF_PUBLIC_KEY : base + OFF_PUBLIC_KEY + K.PUBLIC_KEY_CLASSIC_SIZE] = bytes(
+        K.PUBLIC_KEY_CLASSIC_SIZE
+    )
+    if not keep_size:
+        buf[base + OFF_PUBLIC_KEY_SIZE : base + OFF_PUBLIC_KEY_SIZE + 2] = bytes(2)
+    rehash(buf, slot)
+
+
+def remove_signature(buf: bytearray, slot: str, *, keep_size: bool) -> None:
+    """Zero the classical signature field.
+
+    With ``keep_size`` the slot reaches the verifier carrying an all-zero
+    signature. Without it ``signature_size``, which sits inside the signed region,
+    is zeroed as well and the structural size check refuses the slot first. The
+    signature field itself is outside the signed region; the rehash covers the
+    size field.
+    """
+    require_classic(buf, slot)
+    base = slot_base(slot)
+    buf[base + OFF_SIGNATURE : base + OFF_SIGNATURE + K.SIGNATURE_CLASSIC_SIZE] = bytes(
+        K.SIGNATURE_CLASSIC_SIZE
+    )
+    if not keep_size:
+        buf[base + OFF_SIGNATURE_SIZE : base + OFF_SIGNATURE_SIZE + 2] = bytes(2)
+    rehash(buf, slot)
+
+
 def flip_signature_byte(
     buf: bytearray, slot: str, *, byte_index: int = 0, xor_mask: int = 0x01
 ) -> int:
     """XOR one signature byte. Returns the byte's offset within the field.
 
-    No rehash: the signature sits outside the signed region, so the manifest hash
-    still matches and the run reaches signature verification -- which is the
-    point, since a hash mismatch would reject the image earlier and prove nothing
-    about the verifier.
+    No rehash: the signature sits outside the signed region, so the manifest
+    hash still matches and the run reaches signature verification; a hash
+    mismatch would reject the image earlier and prove nothing about the
+    verifier.
 
     The default is a single-bit flip. A minimal change is the stronger stimulus:
     it leaves the signature the right length and shape, so it exercises the
@@ -1252,7 +1301,7 @@ def forge_pkcs1_signature(buf: bytearray, slot: str) -> bytes:
     unverified boot reported as a verified one.
 
     Nothing secret is used to build it: the structure is public and the digest is
-    the manifest's own. That is the point. A device whose verifier actually runs
+    the manifest's own. A device whose verifier actually runs
     rejects this signature, because ``sig^e mod n`` of a block nobody signed is
     not that block.
 
@@ -1359,7 +1408,7 @@ def _selftest() -> int:
             verify_usage_constraints_layout(u, "primary")
 
             # break_magic makes the slot unrecognisable and leaves the hash
-            # stale on purpose, so nothing that resolves the variant works after.
+            # stale, so nothing that resolves the variant works after.
             b = bytearray(buf)
             break_magic(b, "primary")
             try:

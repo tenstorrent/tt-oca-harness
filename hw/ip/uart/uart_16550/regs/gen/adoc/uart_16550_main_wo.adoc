@@ -6,7 +6,8 @@
 [#regmap-{regmap-instance}-uart_16550_main_wo]
 == UART 16550 Main Write-Only Address Map
 
-Contains the write-only registers accessible only when `LCR.DLAB = 0`.
+Contains the write-only registers. THR is accessible only when `LCR.DLAB = 0`;
+FCR is writable for either `LCR.DLAB` value.
 
 [cols="1,4,1,6", options="header"]
 |===
@@ -35,7 +36,7 @@ single-byte Transmitter Holding Register.
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
 | 7:6 | `RCVR_TRIGGER` | W | 0x0 a| Receiver FIFO Trigger Level (Least Significant 2 Bits). To configure the most
-significant 2 bits, use the `CTRL.RCVR_TRIGGER_MS2B` register field. The
+significant 2 bits, use the `ECR.RCVR_TRIGGER_MS2B` register field. The
 configurations for the trigger levels are:
 * `0x0` -    1 character
 * `0x1` -    4 characters

@@ -7,7 +7,8 @@
 // the u_km_efuse_axi_lite_mux (slave port 0). After fuse-sense, the sensed
 // shadow registers (MAP block @ 0x1093_0000) are readable; the MMR block
 // (@ 0x1093_0500) holds plain RW scratch MMRs the KM owns. (Addresses are SEP
-// fabric facts; hw/sys/sep/regs efuse_interface_ctrl / efuse_mmr / sep_efuse_map.)
+// fabric facts; hw/ip/efuse/regs/efuse_interface_ctrl.rdl, efuse_mmr.rdl;
+// hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl.)
 
 #ifndef SEP_EFUSE_H
 #define SEP_EFUSE_H
@@ -16,15 +17,11 @@
 
 #include "sep.h"
 
-// eFuse MAP shadow block (sensed OTP). CHIPLET_UID's offset comes from the generated
-// map, not a literal: a hardcoded offset silently follows a stale layout when a
-// field is inserted ahead of it, and a model carrying the same stale copy hides it.
+// eFuse MAP shadow block (sensed OTP).
 #define SEP_EFUSE_MAP_BASE SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR
 #define SEP_EFUSE_CHIPLET_UID0 SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR
 
-// eFuse interface-control STATUS: bit0 = efuse_sense_done. Block base from the
-// generated map, not a literal, so a relocated block cannot leave this pointing
-// at whatever occupies its former address.
+// eFuse interface-control STATUS: bit0 = efuse_sense_done.
 #define SEP_EFUSE_IFC_STATUS SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR
 #define SEP_EFUSE_SENSE_DONE EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_SENSE_DONE_bm
 

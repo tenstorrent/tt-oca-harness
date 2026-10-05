@@ -1,10 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-schema_version = 1
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# Daily regression policy: run the cpu_stub and cpu groups separately,
-# `python3 tools/dv/run_dv.py --dut sep --items <cpu_stub|cpu> --regress`. Tests with run_modes=["no_cpu"]
-# select target="lsu_stub_all_live"; CPU firmware tests omit target and use the
-# full-CPU default model.
+schema_version = 1
 
 # Non-firmware tests for memory-style boundary responders. Firmware-owned DMA
 # tests stay in cpu.toml even when they exercise memory.
@@ -29,11 +26,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# SRAM datapath breadth (the reference suite sram byte_strobe/byte_pattern/data_pattern/
-# addr_boundary/write_read/sequential_access). Per-byte WSTRB lanes (neighbor-
-# preserved), data patterns, base + top-valid boundary words, and single-beat
-# sequential 64-bit words over the CPU-LSU AXI splice, each value-checked. The
-# SRAM port is single-beat/no-burst. no_cpu; +skip_fuse_sense. Memory subsystem.
+# SRAM byte-lane, data-pattern, boundary and sequential-word breadth over the CPU-LSU
+# splice.
 name = "sep_sram_datapath_breadth_test"
 module = "sram.sep_sram_datapath_breadth_test"
 seed = 1
@@ -44,16 +38,27 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# FIXED and WRAP bursts into SEP SRAM (fabric.adoc: AXI4 fabric). A burst
-# type the slave does not implement must be refused with SRAM unchanged, or
-# performed at the beat addresses AXI4 gives it. OKAY with INCR beat
-# addresses fails. The SRAM target refuses them with SLVERR (fabric.adoc,
-# "SRAM"). no_cpu; +skip_fuse_sense.
+# Multi-beat FIXED and WRAP bursts into SEP SRAM answer SLVERR and leave SRAM unchanged
+# (hw/sys/sep/doc/fabric.adoc#sep-sram-target).
 name = "sep_sram_burst_type_test"
 module = "sram.sep_sram_burst_type_test"
 seed = 1
 timeout_sec = 1800
 tags = ["sram", "memory", "negative", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# INCR bursts of 1 to 256 beats from the SMN-inbound master with seeded attributes. The
+# inbound filter decides on address, prot[1], user[3:0] and AxLEN only, so the data must
+# not change.
+name = "sep_sram_inbound_burst_attr_test"
+module = "sram.sep_sram_inbound_burst_attr_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["sram", "memory", "fabric", "inbound", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
@@ -69,13 +74,8 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense", "+sep_boot_rom_hex=rom_sanity_rom.hex"]
 
 [[tests]]
-# Boot ROM LSU data-read + write-ignored (the reference suite rom basic_read/sequential_read/
-# content_verify/addr_boundary/write_ignore). EL2 firmware does CPU LSU loads from
-# the boot ROM (0x1004_0000, on the dedicated lsu_rom_axi CPU port) value-checked
-# against a known preloaded image (+sep_boot_rom_hex=mem_rom_test_rom.hex), then
-# proves a store to a ROM word is silently ignored (content unchanged, NOT DECERR).
-# cpu REQUIRED (ROM unreachable by the no_cpu splice); +skip_fuse_sense. Distinct
-# from sep_rom_sanity_test (IFU-execute). Memory subsystem.
+# LSU reads of the boot ROM match the preloaded image; a store is ignored, NOT DECERR.
+# cpu mode is required: the no_cpu splice cannot reach the ROM.
 name = "sep_boot_rom_lsu_read_test"
 module = "cpu.sep_boot_rom_lsu_read_test"
 firmware = "rom_lsu_read_test"

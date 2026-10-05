@@ -21,7 +21,8 @@ fabric integration.
 |Address Range |0xC003_8200 - 0xC003_83FF (512 bytes)
 |Control Interface |AXI4 (5-bit address, 64-bit data, 8-bit ID), converted internally to
 AXI4-Lite for the registers
-|Data Interface |AXI4 Master (56-bit address, 64-bit data, 4-bit ID)
+|Data Interface |AXI4 Master (56-bit address, 64-bit data, 3-bit ID; 4-bit ID
+after the shared DMA/zeroer mux)
 |Maximum Burst Length |256 beats (`AWLEN = 255`)
 |Outstanding Transactions |Counted by a 32-bit counter; no 32-transaction
 issuance limit or counter-based back-pressure
@@ -118,7 +119,14 @@ address issuance. AXI `AWREADY` and `WREADY` provide downstream back-pressure.
 The response channel is consumed without checking `BRESP`. Completion means
 that all responses have arrived, not that every write succeeded. The internal
 error state handles an illegal state-machine encoding, not AXI bus errors.
-Software requiring verified clearing must use an independent verification path.
+The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-zeroer-general-use[Memory Zeroer procedure]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-zeroer-general-use[Memory Zeroer procedure]
+endif::backend-pdf[]
+in the Programmer's Guide covers validating a request and verifying a clear.
 
 === Dual Clock Domain Architecture
 
@@ -180,8 +188,6 @@ and start a zeroing operation.
 |SIZE |64-bit byte count for zeroing operation
 |CTRL_STATUS |Control and status register (trigger, busy status)
 |CTRL_STATUS.INT_EN |Enables the completion pulse
-|Validation |Software must validate destination, length, permissions, and
-address arithmetic before starting
 |===============================================================
 
 ==== Status Features

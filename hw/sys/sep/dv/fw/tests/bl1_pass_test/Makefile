@@ -10,7 +10,8 @@
 # port rejects sub-word ICCM accesses.  The blob therefore holds .text followed
 # by .data's ICCM load image, and _start copies that down to DCCM.  See bl1.ld.
 #
-# Self-contained: no RV_ROOT / OCH_ROOT / picolibc dependencies.
+# Builds with no picolibc and no crt0. It includes only the boot ROM bl0_state.h
+# and the generated sep_addr.h.
 # No crt0 needed — BL1 inherits CPU state (SP, PMA, mtvec) from the ROM, and
 # does its own .data copy and .bss clear at the top of _start.
 #

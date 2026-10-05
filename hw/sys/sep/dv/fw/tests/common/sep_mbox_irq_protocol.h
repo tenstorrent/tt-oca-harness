@@ -3,11 +3,11 @@
 /*
  * sep_mbox_irq  --  shared protocol contract (single source of truth).
  *
- * Included by BOTH firmwares (SEP producer sep_smc_mbox_irq.c + SMC consumer main.c).
+ * Included by the SMC consumer firmware hw/sys/smc/dv/fw/tests/sep_mbox_irq/main.c.
  * sep_mbox_golden.py derives the same mailbox offsets and masks from PeakRDL; it
  * does not parse this header.
  *
- * Anchor scope: the eight SEP mailbox channels' source
+ * Scope: the eight SEP mailbox channels' source
  * interrupts PACK one-hot onto SMC cpu_interrupts[263:256] (4-core NUM_EXT_INTERRUPTS=256), and
  * each channel's source IRQ is cleared with the full W1C/readback/no-refire contract. cmd/response
  * belongs to sep_interop; the SEP->SMC alias datapath belongs to smc_sep_xbar.
@@ -26,9 +26,10 @@
  * (SEP-view 0x4000_0000 -> SMC-local 0xC000_0000); the SMC accesses the same scratch locally.
  *   scratch2  (SMC-local 0xC0039090, alias 0x40039090) : SMC "up" marker (boot rendezvous)
  *   scratch12 (SMC-local 0xC00390E0, alias 0x400390E0) : SEP READY (SEP filters up)
- *   scratch3  (SMC-local 0xC0039098, alias 0x40039098) : SMC->SEP progress (armed + per-channel
- * done) scratch10 (SMC-local 0xC00390D0, alias 0x400390D0) : SMC final verdict (SMC_PASS /
- * SMC_FAIL) The SEP final verdict is on its own COLD scratch6 (SEP-local 0x10802030).
+ *   scratch3  (SMC-local 0xC0039098, alias 0x40039098) : SMC->SEP progress (armed +
+ *                                                          per-channel done)
+ *   scratch10 (SMC-local 0xC00390D0, alias 0x400390D0) : SMC final verdict (SMC_PASS / SMC_FAIL)
+ * The SEP final verdict is on its own cold scratch6 (SEP-local 0x10802030).
  */
 #ifndef SEP_MBOX_IRQ_PROTOCOL_H
 #define SEP_MBOX_IRQ_PROTOCOL_H
@@ -50,8 +51,8 @@
  * drifts from RDL lands at an address the golden does not expect and the
  * test fails. outbound[ch]=OUTBOUND_0+stride*ch, inbound[ch]=INBOUND_0+stride*ch;
  * stride = OUTBOUND_1-OUTBOUND_0 (= 2*MAILBOX_SIZE = 0x1000). */
-#ifdef SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR /* SEP fw: generated source of truth \
-                                                          */
+/* SEP fw: generated source of truth */
+#ifdef SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR
 #define SMU015_MBOX_OUTBOUND_BASE SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR
 #define SMU015_MBOX_INBOUND_BASE SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR
 #define SMU015_MBOX_CH_STRIDE \
@@ -165,8 +166,7 @@
 /* SEP inbound filter window over the WHOLE mailbox channel region so the SMC's pops/W1C/readbacks
  * at every inbound port reach the mailbox. DERIVED from the generated mailbox macros: START =
  * outbound base; END = last inbound channel (INBOUND_0 + 7*stride) + its register-block top
- * (REG_MAP_SIZE-1) = 0x10A0784F. allow_burst=0 -> the byte-granular END stores EXACTLY, as
- * smc_sep_xbar shows. */
+ * (REG_MAP_SIZE-1) = 0x10A0784F. With allow_burst=0 the END address is byte-granular. */
 #define SMU015_MBOX_FILTER_START ((unsigned long long)SMU015_MBOX_OUTBOUND_BASE)
 #define SMU015_MBOX_FILTER_END \
     ((unsigned long long)(SMU015_MBOX_INBOUND_BASE + 7 * SMU015_MBOX_CH_STRIDE + \
@@ -191,14 +191,14 @@
  * the SMC image
  * into SRAM, then the SEP re-vectors the four SMC cores to the SMC entry symbol and pulses their
  * reset. The SMC firmware is the STACKLESS consumer whose naked entry symbol is
- * `sep_mbox_irq_entry` (fw/smc/tests/sep_mbox_irq/src/main.c, SMC_STACKLESS_ENTRY).
+ * `sep_mbox_irq_entry` (hw/sys/smc/dv/fw/tests/sep_mbox_irq/main.c, SMC_STACKLESS_ENTRY).
  *
- * BOTH values below are image-dependent: reconcile them against the freshly BUILT image exactly
- * as sep_interop / smu_smc_stall_sep do (entry -> address of sep_mbox_irq_entry in out/test.dis
- * .sym; cookie ->
- * first data word at the SRAM base in out/test.preload.hex). Re-verify after any fw/linker change.
+ * Both values below depend on the built SMC image. Check them against the built image after any
+ * SMC firmware or linker change, as sep_interop / smu_smc_stall_sep do (entry -> address of
+ * sep_mbox_irq_entry in the built test.dis .sym; cookie -> first data word at the SRAM base in
+ * the built test.preload.hex).
  */
-#define SMU015_SMC_ENTRY 0x00000000C00601B2    /* RECONCILE vs built image */
-#define SMU015_SMC_IMAGE_FIRST_WORD 0x41014081 /* RECONCILE vs built image */
+#define SMU015_SMC_ENTRY 0x00000000C00601BE    /* built SMC image entry */
+#define SMU015_SMC_IMAGE_FIRST_WORD 0x41014081 /* built SMC image first word */
 
 #endif /* SEP_MBOX_IRQ_PROTOCOL_H */

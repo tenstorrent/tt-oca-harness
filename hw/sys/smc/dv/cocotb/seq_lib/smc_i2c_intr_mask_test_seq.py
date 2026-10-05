@@ -2,11 +2,18 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C `INTR_ENABLE` as an output mask.
 
-`hw/ip/i2c/rtl/i2c_core.sv` follows the vendored `prim_intr_hw` shape for its
-event-type interrupts: `INTR_STATE` latches an event whether or not the
-interrupt is enabled and clears only on W1C, and `irq_o` is the state ANDed
-with `INTR_ENABLE`. Two consequences follow, both scored here and both measured
-before either is allowed to raise:
+The I2C block carries the OpenTitan interrupt registers, whose contract the
+OpenTitan comportability specification states: `INTR_ENABLE` "enables/masks
+the output of INTR_STATE to create the wired interrupt signal", "the contents
+of the INTR_STATE register are not qualified by INTR_ENABLE, but rather show
+the raw state of all latched hardware interrupt events", an Event interrupt
+"can only be cleared by an acknowledgement from the handler (ack is a W1C
+operation to INTR_STATE)", and a Status interrupt follows its input with
+`INTR_STATE` read-only. `i2c.rdl` declares the same per field: an Event
+source is `woclr` in `INTR_STATE` with a `singlepulse` `INTR_TEST` field, a
+Status source is `sw = r` in `INTR_STATE` with a plain `rw` `INTR_TEST` field
+that "releases" it when written back to 0. Two consequences follow, both
+scored here and both measured before either is allowed to raise:
 
 * **Held.** Clearing `INTR_ENABLE` releases `irq_o` while `INTR_STATE` keeps
   the bit; only a W1C clears the state.
@@ -17,11 +24,12 @@ before either is allowed to raise:
 (`i2c.rdl`), so a write is a one-cycle event on the same line as the real
 event -- no bus traffic and no target model.
 
-Observation is `tb_i2c_irq[0]`, instance 0's bit of
-`peripheral_interrupts[25:23]` (`smc_peripherals.sv`). That bit carries
-only this I2C instance, so there is no sibling source to
-exclude -- but it is still required to read 0 before the run starts, so a
-stuck-high line from a previous phase cannot be read as this stimulus.
+Observation is `tb_i2c_irq[0]`, instance 0's bit of the three I2C peripheral
+interrupts (`hw/ip/i2c/doc/index.adoc` routes `i2c_irq_o` to peripheral
+interrupts 23 to 25). That bit carries only this I2C instance, so there is no
+sibling source to exclude -- but it is still required to read 0 before the run
+starts, so a stuck-high line from a previous phase cannot be read as this
+stimulus.
 """
 
 from __future__ import annotations
@@ -33,6 +41,7 @@ from cocotb.triggers import ClockCycles
 
 from .smc_addr_map import I2C_CG_EN, _field_mask, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_rdl_regmap import rdl_contract
 
 _I2C0 = 0
 
@@ -47,36 +56,41 @@ CMD_COMPLETE_STATE = _field_mask(_I2C_H, "I2C__INTR_STATE__CMD_COMPLETE_bm")
 CMD_COMPLETE_ENABLE = _field_mask(_I2C_H, "I2C__INTR_ENABLE__CMD_COMPLETE_bm")
 CMD_COMPLETE_TEST = _field_mask(_I2C_H, "I2C__INTR_TEST__CMD_COMPLETE_bm")
 
-# The twenty interrupt sources, split by how `i2c_core.sv` drives them, as
-# `i2c.rdl` declares them. A latched source has `INTR_STATE` `sw = rw` with
-# `woclr` and an `INTR_TEST` field that is `sw = w` with `singlepulse`: one
-# write raises it and only a W1C clears it. A level source has `INTR_STATE`
-# `sw = r` and an `INTR_TEST` field that is plain `rw`, so it follows that
-# field and is released by writing it back to 0.
-_LATCHED_SOURCES = (
-    "RX_OVERFLOW",
-    "SCL_INTERFERENCE",
-    "SDA_INTERFERENCE",
-    "STRETCH_TIMEOUT",
-    "SDA_UNSTABLE",
-    "CMD_COMPLETE",
-    "UNEXP_STOP",
-    "HOST_TIMEOUT",
-    "SMBALERT",
-    "CONTROLLER_TX_FIFO_ERROR",
-    "CONTROLLER_RX_FIFO_ERROR",
-    "TARGET_TX_FIFO_ERROR",
-    "TARGET_RX_FIFO_ERROR",
-)
-_LEVEL_SOURCES = (
-    "FMT_THRESHOLD",
-    "RX_THRESHOLD",
-    "ACQ_THRESHOLD",
-    "CONTROLLER_HALT",
-    "TX_STRETCH",
-    "TX_THRESHOLD",
-    "ACQ_STRETCH",
-)
+# The interrupt sources, split as the RDL declares them: an Event source has a
+# write-only (`singlepulse`) `INTR_TEST` field and a write-one-to-clear
+# `INTR_STATE` field, so one write raises it and only a W1C clears it; a Status
+# source has a read-write `INTR_TEST` field and a read-only `INTR_STATE` field,
+# so it follows that field and is released by writing it back to 0. The split
+# is read from the generated IP-XACT export of `i2c.rdl`, and both registers
+# must agree on every field.
+_INTR_TEST_CONTRACT = rdl_contract(f"smc_i2c_wrap/i2c[{_I2C0}]/INTR_TEST")
+_INTR_STATE_CONTRACT = rdl_contract(f"smc_i2c_wrap/i2c[{_I2C0}]/INTR_STATE")
+
+
+def _source_split() -> tuple[tuple[str, ...], tuple[str, ...]]:
+    state_by_name = {field.name: field for field in _INTR_STATE_CONTRACT.fields}
+    latched: list[str] = []
+    level: list[str] = []
+    for test in _INTR_TEST_CONTRACT.fields:
+        state = state_by_name.get(test.name)
+        assert state is not None, f"INTR_STATE declares no field {test.name}"
+        if test.access == "write-only":
+            assert state.modified_write == "oneToClear", (
+                f"{test.name}: INTR_TEST is write-only but INTR_STATE is not W1C "
+                f"({state.access}, {state.modified_write})"
+            )
+            latched.append(test.name)
+        else:
+            assert test.access == "read-write" and state.access == "read-only", (
+                f"{test.name}: INTR_TEST {test.access} with INTR_STATE {state.access} is "
+                f"neither the Event nor the Status shape"
+            )
+            level.append(test.name)
+    assert latched and level, f"the RDL split has no {'Event' if not latched else 'Status'} source"
+    return tuple(latched), tuple(level)
+
+
+_LATCHED_SOURCES, _LEVEL_SOURCES = _source_split()
 # Every source must reach the output on its own. A source the bench holds
 # asserted cannot be swept from a measured clear, so it is reported and
 # skipped; the sweep still has to carry most of the map.

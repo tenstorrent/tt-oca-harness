@@ -20,8 +20,15 @@ and four counters per message; these are elaboration parameters, not software
 settings. Threshold and missing-last-packet interrupts report service needs.
 
 Reception does not stop when the message queue fills: a new message replaces
-the oldest one. Software must account for this when reading a message through
-several registers. The receiver does not use `atid_i` to maintain separate
+the oldest one, including while software is reading it through several
+registers. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-telemetry-receiver[Telemetry Receiver section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-telemetry-receiver[Telemetry Receiver section]
+endif::backend-pdf[]
+of the Programmer's Guide gives the buffer, flush and interrupt procedures. The receiver does not use `atid_i` to maintain separate
 source contexts; producers sharing a receiver must serialize complete messages.
 
 [[telemetry-receiver-message-format]]
@@ -57,12 +64,6 @@ include::partial$telemetry_receiver/doc/interface.adoc[]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 include::interface.adoc[]
-endif::backend-pdf[]
-ifdef::backend-html5[]
-include::partial$telemetry_receiver/doc/programming.adoc[]
-endif::backend-html5[]
-ifdef::backend-pdf[]
-include::programming.adoc[]
 endif::backend-pdf[]
 ifdef::backend-html5[]
 include::partial$telemetry_receiver/doc/memmap.adoc[]

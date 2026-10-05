@@ -276,10 +276,10 @@ archives to 90 runs per DUT. Checked by the required `verilator-smoke (dtp)` and
 
 |Contributor environment: `pyproject.toml`, `uv.lock` (the `dv` dependency
 group resolves to the `ocah-dv` workspace package under `hw/common/dv`), and
-`.python-version`; `Bender.yml`; Verilator; the `ocah-toolchain` image from
-`tools/docker/Dockerfile` and `scripts/docker-run.sh`
-|The root project file and lockfile; the DV package manifest; the Dockerfile
-and its wrapper; the composite action for the hosted pins
+`.python-version`; `Bender.yml`; Verilator; the `ocah-container` image from
+`nix/container.nix` and `scripts/docker-run.sh`
+|The root project file and lockfile; the DV package manifest; the image
+definition and its wrapper; the composite action for the hosted pins
 |Runner bootstrap, the composite action, the firmware build engine
 `hw/common/dv/fw/compile.mk`
 |The lockfile is the environment: the runner re-executes through
@@ -336,9 +336,8 @@ reaches the dashboard.
 
 |Contributor host
 |The GitHub-hosted `ubuntu-latest` image, on which every smoke and
-regression job runs unless the `DV_LARGE_RUNNER` repository variable
-promotes its row to a larger GitHub-hosted label, and a Linux or macOS
-developer host that meets the same pins
+regression job runs, and a Linux or macOS developer host that meets the
+same pins
 (xref:run-dv.adoc#runner-environment-matrix[Supported environments]).
 |Licensed simulators run on self-hosted runners. The `sep` tree's private
 submodule is checked out in hosted CI with a repository secret; a public
@@ -348,8 +347,8 @@ that selection only.
 |Formal collateral
 |Property and bind files, `sby` task files, the formal config with the `sby`
 app, and the `native-formal` profile.
-|A licensed formal backend is a site-layer tool table plus a companion-owned
-formal config named by `[duts.<dut>] formal_cfg`
+|A licensed formal backend is a site-layer tool table plus a formal config
+outside the open tree, named by `[duts.<dut>] formal_cfg`
 (xref:run-dv.adoc#runner-formal-licensed[Licensed backends and the companion boundary]).
 
 |Vendor VIP
@@ -357,9 +356,9 @@ formal config named by `[duts.<dut>] formal_cfg`
 `OCAH_<PROTO>_VENDOR_IF` defines. The tree ships no vendor header.
 |An adopter overlay adds the include directories, defines, tool flags,
 runtime arguments, and environment the vendor package needs. A site-layer
-`[duts.<dut>] sim_cfg` replaces the DUT's simulation view with a
-companion-owned one instead, and `[duts.<dut>] tools` adds a licensed
-simulator to the open views
+`[duts.<dut>] sim_cfg` replaces the DUT's simulation view with one outside
+the open tree instead, and `[duts.<dut>] tools` adds a licensed simulator
+to the open views
 (xref:run-dv.adoc#runner-site-layer[Site-local override layer]).
 
 |Companion repository
@@ -375,9 +374,9 @@ effective percentages from accepted waivers.
 changes a hole's classification, not the percentage.
 
 |Firmware toolchain
-|`ocah-toolchain` is built locally from the Dockerfile and published to no
-registry. Its base image is digest-pinned; the packages installed on top
-float with the distribution.
+|`ocah-container` is built from the Nix flake (`nix/container.nix`), whose
+`flake.lock` pins its package set, and CI publishes it to
+`ghcr.io/tenstorrent/ocah-container`.
 |`OCAH_DOCKER_CACHE_DIR` names an optional shared tarball cache, and
 `OCAH_TOOLCHAIN_ROOTFS` selects a bubblewrap sandbox instead of a container
 engine. Both are unset in a bare clone.
@@ -415,11 +414,6 @@ and fails a required tool below its table's `min_version`. With `--items` or
 |`gh workflow run regress.yml -f tier=nightly` or `-f tier=weekly`
 |Scheduled tiers are never cancelled; a dispatch of the same tier queues
 behind the one in flight.
-
-|Move the regression rows to a larger runner
-|`gh variable set DV_LARGE_RUNNER --body <runner-label>`
-|A repository variable, not a workflow edit. A label with no matching runner
-queues until the job times out.
 
 |Publish or backfill a weekly
 |`gh workflow run dashboard.yml -f run_id=<regress run id>`

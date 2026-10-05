@@ -33,6 +33,7 @@ TIMEOUT_FORCE = TIMEOUT_MODE | TIMEOUT_CYCLES
 
 WEDGE_READS = 4
 WEDGE_BYTES = 64
+WEDGE_WRITE_BEATS = WEDGE_BYTES // 8
 WEDGE_READ_BASE = SPM_BASE + 0x20_000
 WEDGE_WRITE_ADDR = SPM_BASE + 0x21_000
 RECOVERY_PROBE_ADDR = SPM_BASE + 0x22_000
@@ -209,6 +210,29 @@ class _CpuIsolateFlushSeq(output_fabric_pass_all_cfg_seq):
                 cocotb.log.info("%s handshook after %d clk_smc_i cycle(s)", label, cycle)
                 return
         raise AssertionError(f"{label} did not handshake within {bound} clk_smc_i cycles")
+
+    async def _count_w_beats(self, bound: int, label: str) -> int:
+        """Count SEP_IN W handshakes up to and including the beat carrying WLAST."""
+        dut = cocotb.top
+        beats = 0
+        for cycle in range(1, bound + 1):
+            await RisingEdge(dut.clk_smc_i)
+            valid = self._value(dut.s_axi_wvalid, "s_axi_wvalid")
+            ready = self._value(dut.s_axi_wready, "s_axi_wready")
+            if valid and ready:
+                beats += 1
+                if self._value(dut.s_axi_wlast, "s_axi_wlast"):
+                    cocotb.log.info(
+                        "%s: %d W beat(s) handshook, WLAST after %d clk_smc_i cycle(s)",
+                        label,
+                        beats,
+                        cycle,
+                    )
+                    return beats
+        raise AssertionError(
+            f"{label}: {beats} W beat(s) handshook within {bound} clk_smc_i cycles and no "
+            f"WLAST was accepted"
+        )
 
     async def _wait_addr_handshake(
         self,
@@ -662,6 +686,11 @@ class smc_cpu_l2_write_wedge_test_seq(_CpuIsolateFlushSeq):
             assert request_task is not None, "blocked reset request task was not started"
             await self._wait_task(request_task, STATE_BOUND, "reset-control request")
             w_channel.pause = False
+            late_beats = await self._count_w_beats(STATE_BOUND, "late L2 write beats")
+            assert late_beats == WEDGE_WRITE_BEATS, (
+                f"the released wedge write handshook {late_beats} W beat(s) before WLAST, not "
+                f"the {WEDGE_WRITE_BEATS} it was issued with"
+            )
             await self._hold_value(
                 "tb_cpu_l2_pending_w",
                 0,
@@ -671,7 +700,8 @@ class smc_cpu_l2_write_wedge_test_seq(_CpuIsolateFlushSeq):
             self._record(
                 "late_write_beats_absorbed",
                 "CHK-CPU-ISO-FLUSH-LATE-W-ABSORBED",
-                "late L2 W beats left the pending W count at 0",
+                f"the {late_beats} withheld W beats of the flushed write were accepted at "
+                f"SEP_IN after release and left the pending W count at 0",
             )
 
             await self._release_reset(reset_ctrl)

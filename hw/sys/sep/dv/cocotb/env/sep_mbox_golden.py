@@ -61,25 +61,48 @@ CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
 CLOCK_GATE_IMPL_MASK = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
 
 MAILBOX_DEPTH = mailbox_depth()
-# Read-from-empty / write-only readback, from the mailbox interface.adoc.
+# Read-from-empty / write-only readback, from
+# hw/ip/axi_lite_mailbox_unit/doc/interface.adoc.
 READ_EMPTY_SENTINEL = mailbox_empty_sentinel()
 WRITE_DATA_RD_SENTINEL = mailbox_write_data_rd_sentinel()
 RESP_OKAY = 0
 RESP_SLVERR = 2
 
 
+def wirqt_halves(depth: int = MAILBOX_DEPTH) -> tuple[tuple[str, int, int], ...]:
+    """The legal write thresholds [1, depth-1] split into a low and a high half,
+    as (name, first, last). A threshold of 0 makes any fill "above" and one of
+    depth can never be exceeded, so neither end is a threshold test."""
+    return (("low", 1, depth // 2 - 1), ("high", depth // 2, depth - 1))
+
+
 class SepMboxCfg:
     """Config object: seeded WIRQT + message payloads. Single source of truth for
     DUT programming and golden expectations. Regression mode can sweep this via
-    TOML ``reseed = N``."""
+    TOML ``reseed = N``.
 
-    def __init__(self, seed: int = 1, *, depth: int = MAILBOX_DEPTH) -> None:
+    ``wirqt_range`` (inclusive) bounds the threshold draw; the default is every
+    legal threshold. ``rng`` lets several configs share one seeded stream."""
+
+    def __init__(
+        self,
+        seed: int = 1,
+        *,
+        depth: int = MAILBOX_DEPTH,
+        wirqt_range: tuple[int, int] | None = None,
+        half: str = "any",
+        rng: SepSeededRng | None = None,
+    ) -> None:
         self.seed = seed
         self.depth = depth
-        rng = SepSeededRng(seed)
-        # RANDOM write threshold in [1, depth-1]: "exceeds threshold" is reachable and
-        # a full FIFO always trips it.
-        self.wirqt = rng.randrange(1, depth)
+        self.half = half
+        rng = SepSeededRng(seed) if rng is None else rng
+        lo, hi = (1, depth - 1) if wirqt_range is None else wirqt_range
+        if not 1 <= lo <= hi <= depth - 1:
+            raise ValueError(f"WIRQT range [{lo}, {hi}] is outside [1, {depth - 1}]")
+        # RANDOM write threshold in [lo, hi] within [1, depth-1]: "exceeds
+        # threshold" is reachable and a full FIFO always trips it.
+        self.wirqt = rng.randrange(lo, hi + 1)
         # RANDOM "message length" for the first fill batch: enough to cross WIRQT but
         # not necessarily fill (the test then tops up to full for the overflow check).
         self.first_batch = rng.randrange(self.wirqt + 1, depth + 1)
@@ -91,9 +114,23 @@ class SepMboxCfg:
             if v != 0 and v not in self.payloads:
                 self.payloads.append(v)
 
+    @classmethod
+    def per_half(cls, seed: int, *, depth: int = MAILBOX_DEPTH) -> list["SepMboxCfg"]:
+        """One config per half of the legal thresholds, in seeded order, drawn
+        from one stream. A run then programs a low and a high threshold on
+        every seed instead of one threshold whose half the seed decides."""
+        rng = SepSeededRng(seed)
+        halves = list(wirqt_halves(depth))
+        if rng.getrandbits(1):
+            halves.reverse()
+        return [
+            cls(seed, depth=depth, wirqt_range=(lo, hi), half=name, rng=rng)
+            for name, lo, hi in halves
+        ]
+
     def summary(self) -> str:
         return (
-            f"seed={self.seed} depth={self.depth} wirqt={self.wirqt} "
+            f"seed={self.seed} depth={self.depth} half={self.half} wirqt={self.wirqt} "
             f"first_batch={self.first_batch} payloads={len(self.payloads)} "
             f"(random data+threshold+batch)"
         )
@@ -103,10 +140,11 @@ class SepMboxGolden:
     """Golden depth model for the TX FIFO (outbound WRITE_DATA push side).
 
     Predicts the outbound-aperture STATUS bits + the write-threshold IRQ from the TX
-    occupancy. The RX side (READ_DATA) stays empty on bare-sep. Thresholds use
-    strict greater-than (``architecture.adoc``: fill level exceeds the configured
-    threshold). SepMboxCfg draws wirqt in [1, depth-1], so every threshold the config
-    can program is below depth and needs no clamp.
+    occupancy. The RX side (READ_DATA) stays empty in this testbench (no SMC-side
+    driver). Thresholds use strict greater-than
+    (``hw/ip/axi_lite_mailbox_unit/doc/architecture.adoc``: fill level exceeds the
+    configured threshold). SepMboxCfg draws wirqt inside [1, depth-1], so every threshold the
+    config can program is below depth and needs no clamp.
     """
 
     def __init__(self, cfg: SepMboxCfg) -> None:
@@ -129,7 +167,7 @@ class SepMboxGolden:
         return {
             "full": self.tx >= self.cfg.depth,
             "wlvl_above": self.tx > self.wirqt,
-            "empty": True,  # RX FIFO never filled on bare-sep
+            "empty": True,  # RX FIFO never filled: no SMC-side driver in this testbench
             "rlvl_above": False,
         }
 

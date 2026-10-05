@@ -29,7 +29,10 @@ WAIT_MARKER = "EXT_SRAM_INIT_WAIT"
 
 # SMC-arm refusals of an unusable window; none may appear when staging succeeds.
 SMC_REFUSALS = (
-    "SMC_WIN_OOB", "SMC_WIN_MISALIGNED", "PAYLOAD_NO_ROOM=", "PAYLOAD_DST_OT_OOB",
+    "SMC_WIN_OOB",
+    "SMC_WIN_MISALIGNED",
+    "PAYLOAD_NO_ROOM=",
+    "PAYLOAD_DST_OT_OOB",
 )
 
 
@@ -57,7 +60,10 @@ def assert_stimulus(logger, buf: bytes, slot: str, *, want_set: bool) -> None:
     )
     logger.info(
         "CHK-STIMULUS-USE-EXT-SRAM: %s flag_args=0x%08x, use_ext_sram=%d -> the "
-        "ROM must stage the payload in %s", slot, flags, bit,
+        "ROM must stage the payload in %s",
+        slot,
+        flags,
+        bit,
         "SEP EXT SRAM" if bit else "SMC SRAM",
     )
 
@@ -98,12 +104,20 @@ def assert_destination(logger, console: list[str], *, expect_smc: bool) -> None:
             "CHK-SMC-STAGING: %s@%d -> %s@%d -> %s@%d -- the ROM waited for the "
             "SMC window, then staged at smc_sram_base+0x%x, which is the offset "
             "scratch[13] published and not a value it could have assumed",
-            WAIT_MARKER, i_wait, chosen, i_branch, want_dst, i_dst,
+            WAIT_MARKER,
+            i_wait,
+            chosen,
+            i_branch,
+            want_dst,
+            i_dst,
             SMC_WINDOW_OFFSET,
         )
     else:
         logger.info(
             "CHK-SEP-STAGING: %s@%d -> %s@%d -- the ROM staged in its own SRAM "
             "and never entered the SMC arm, so bit 29 selected the destination",
-            chosen, i_branch, want_dst, i_dst,
+            chosen,
+            i_branch,
+            want_dst,
+            i_dst,
         )

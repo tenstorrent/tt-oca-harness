@@ -213,24 +213,20 @@ pointer-integrity check is not built in the current configuration, so this
 source is tied to zero and never asserts; the slot is assigned anyway so that
 enabling the check later does not renumber the map. When live it is
 level-sensitive and holds until a `TRNG_ENTROPY_CLEAR` pool scrub resets the
-pointers; there is no write-one-to-clear, so firmware must mask the source or
-scrub the pool rather than acknowledge it.
+pointers; there is no write-one-to-clear.
 
 |`40`
 |Token match fault
 |eFuse token comparator redundancy fault (fault). The OR of the three sticky
 `TOKEN_MATCH_FAULT` bits. Those bits are software-read-only and clear only on
-reset, so this source stays asserted. Firmware must mask PIC source 40 after
-it has observed the fault; there is no write-one-to-clear, and an unmasked
-handler re-enters.
+reset, so this source stays asserted; there is no write-one-to-clear.
 
 |`41`
 |DMA register-path bus error
 |A CPU access to a Secure DMA register returned a TL-UL error response
 (unmapped or misaligned offset). The faulting access also
 received SLVERR synchronously. Latched and held until firmware writes
-`DMA_BUS_ERR_CLEAR.clr`; unlike PIC source 40 this source is clearable, so
-firmware acknowledges it rather than masking it.
+`DMA_BUS_ERR_CLEAR.clr`.
 
 |`42`
 |DMA host-path integrity/bus fault
@@ -242,10 +238,9 @@ Cleared by the same `DMA_BUS_ERR_CLEAR.clr` write.
 |`43`
 |Peripheral register-bridge fault
 |The OR of the per-block register-bridge error bits for AES, HMAC, KMAC, OTBN,
-CSRNG, EDN and the watchdog timer. Read `PERIPH_BUS_ERR_STATUS` to identify
-which block faulted, and clear that block's bit in `PERIPH_BUS_ERR_CLEAR`;
-clears are per-block so acknowledging one cannot discard another block's
-fault. See
+CSRNG, EDN and the watchdog timer. `PERIPH_BUS_ERR_STATUS` identifies the
+block, and `PERIPH_BUS_ERR_CLEAR` clears one block's bit at a time, so
+acknowledging one cannot discard another block's fault. See
 ifdef::backend-html5[]
 xref:sep:crypto.adoc#sep-crypto-bridge-faults[Crypto Register-Bridge Faults].
 endif::backend-html5[]
@@ -345,24 +340,18 @@ threshold above 26 is clamped to 26. The requests from both counters are ORed
 into `mip[30]` (`MCEIP`) and delivered when `mie[30]` (`MCEIE`) and
 `mstatus.MIE` are both set, with `mcause` = `0x8000_001E`.
 
-Firmware is expected to:
-
-. *Program a threshold before enabling the interrupt.* Counters and thresholds
-both reset to zero, and a zero threshold raises the request on the very first
-corrected error, so enabling `MCEIE` without programming a threshold delivers
-an interrupt on error one.
-. *Enable* `mie[30]`. It is clear at reset. Until firmware sets it, corrected
-errors are counted silently and nothing is delivered -- which is the state
-today, as no SEP firmware enables it.
-. *Clear the counter in the handler.* Read both counters to attribute the
-error, then write the one that tripped. `MCEIP` is level-held and has no
-write-one-to-clear: it follows the threshold comparator directly, so returning
-without dropping the count below the threshold re-enters the handler
-immediately. To clear the count while keeping threshold `N`, write `N << 27`.
-
-The threshold trades interrupt rate against detection latency. A low threshold
-reports a degrading SRAM early at the cost of an interrupt per error; a high one
-lets transient flips accumulate before firmware is told.
+Counters and thresholds reset to zero, so a zero threshold raises the request
+on the first corrected error. `mie[30]` is clear at reset, and until it is set
+corrected errors are counted silently. `MCEIP` follows the threshold comparator
+and has no write-one-to-clear: it stays asserted until the count drops below the
+threshold. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-memory-errors[memory error handling section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-memory-errors[memory error handling section]
+endif::backend-pdf[]
+of the Programmer's Guide gives the enable and service sequence.
 
 ifdef::backend-html5[]
 ++++
@@ -404,10 +393,8 @@ separates them: on an access fault, `mscause` = `1` means uncorrectable ECC.
 A handler that does not read `mscause` cannot distinguish a software bug from
 failing hardware.
 
-Firmware is expected to treat these as fatal for the affected context. The
-faulting access cannot be completed, and retrying it re-reads the same corrupted
-location, so the handler must not resume the trapping instruction. Reset or
-quarantine the affected memory rather than attempting recovery in place.
+The faulting access cannot be completed, and retrying it re-reads the same
+corrupted location.
 
 An uncorrectable error on an externally initiated (DMA) access to either memory
 is not a CPU trap at all. It is returned as an error response on that
@@ -443,7 +430,15 @@ ID and no off-by-one applies: `meipl[7]` is source 7. That entry is reserved and
 has no hardware behind it -- the PIC decodes the address but ties the register
 off, so `+0x0000`, `+0x2000`, `+0x4000` and `+0x5000` read as zero and discard
 writes. It appears in the RDL, the generated headers and the UVM RAL only to
-preserve the indexing; firmware must never program it.
+preserve the indexing. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-pic[PIC section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-pic[PIC section]
+endif::backend-pdf[]
+of the Programmer's Guide gives the programming and per-source service
+rules.
 
 NOTE: Register tests that walk the whole PIC map must skip index 0 of `meipl`,
 `meie`, `meigwctrl` and `meigwclr`. The register model declares those entries

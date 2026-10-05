@@ -76,17 +76,11 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-. Assign one software producer and consumer per direction, or serialize shared
-  access. The register interface does not allocate FIFO ownership to clients.
-. Before sending, check the aperture's write-full status, then write `WRITE_DATA`.
-  Handle `SLVERR` if another writer consumed the space in between.
-. Before receiving, check read-empty status, then read `READ_DATA`. Each successful
-  read consumes one word; status and data accesses are not one atomic operation.
-. Read `ERROR_FLAGS` once to capture any access errors, then separately acknowledge
-  `IRQS[2]` if interrupt status was set. Avoid diagnostic reads that unintentionally
-  consume data or clear error information.
-
-To receive an interrupt for any available data, program `RIRQT=0`, service or
-acknowledge old status, and enable `IRQEN[1]`. Drain received words before
-acknowledging `IRQS[1]`; a remaining live condition can set it again. Coordinate
-FIFO flushes with the peer because a flush discards words already queued for it.
+The register interface does not allocate FIFO ownership to clients, and status
+and data accesses are not one atomic operation. The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-smc-mailbox-protocol[mailbox usage rules].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-mailbox-protocol[mailbox usage rules].
+endif::backend-pdf[]

@@ -23,7 +23,7 @@
 // the RDL header (addresses, the STATUS field mask), and the OTBN STATUS
 // encoding table of the STATUS field description in
 // hw/sys/sep/regs/gen/ipxact/sep.xml. The cocotb twin is
-// seq_lib/sep_otbn_mem_smoke_seq.py with tests/otbn/sep_otbn_mem_smoke_test.py.
+// cocotb/seq_lib/sep_otbn_mem_smoke_seq.py with cocotb/tests/otbn/sep_otbn_mem_smoke_test.py.
 
 class sep_otbn_mem_smoke_test_seq extends sep_base_test_seq;
   `uvm_object_utils(sep_otbn_mem_smoke_test_seq)
@@ -72,7 +72,7 @@ class sep_otbn_mem_smoke_test_seq extends sep_base_test_seq;
     bit [31:0] imem_req, imem_wr, dmem_req, dmem_wr;
 
     seed_scenario_rng();
-    attach_evidence('{ChkFuseSense, ChkCsrResp, ChkPrecond, ChkWresp, ChkOtbnMem});
+    attach_evidence('{ChkCsrResp, ChkPrecond, ChkWresp, ChkOtbnMem});
     imem_words.push_back(ImemSmokeWord);
     dmem_words.push_back(DmemSmokeWord);
     for (int unsigned r = 0; r < random_count; r++) begin

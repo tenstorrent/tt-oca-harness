@@ -13,7 +13,8 @@ process loads this module by file path, where cocotb and the ``env`` package do 
 import.
 
 The draw picks one of four outcome classes first and then solves for a stimulus in it,
-so no seed repeats what the directed ``pubkey_rom_{0..5}_revoked_key`` rows prove:
+so no seed repeats what the directed
+``sep_firmware_{primary,backup}_pubkey_rom_{0..5}_revoked_key_test`` tests prove:
 
   * ``clean_proceed`` -- ``bitmap == 0``: a part with nothing revoked is not refused;
   * ``noisy_proceed`` -- ``bitmap[p] == 0`` and ``bitmap != 0``: a set bit that is not
@@ -50,7 +51,7 @@ PUBK_SEL_NUM_ROM_KEYS = 6
 # classical key bitmap. [15:8] are PQC keys and 16+ are the fused keys, so
 # nothing here may be derived by counting past bit 7.
 REVOKE_BITMAP_WIDTH = 8
-ROM_SLOT_BIT_MASK = (1 << PUBK_SEL_NUM_ROM_KEYS) - 1          # 0x3f
+ROM_SLOT_BIT_MASK = (1 << PUBK_SEL_NUM_ROM_KEYS) - 1  # 0x3f
 INERT_BIT_MASK = ((1 << REVOKE_BITMAP_WIDTH) - 1) & ~ROM_SLOT_BIT_MASK  # 0xc0
 
 CLASS_CLEAN_PROCEED = "clean_proceed"
@@ -64,7 +65,7 @@ CLASSES: Tuple[str, ...] = (
     CLASS_BOTH_REVOKED_TERMINAL,
 )
 
-# The three observable outcomes. Two classes share PROCEED on purpose.
+# The three observable outcomes; clean and noisy proceed map to the same one.
 OUTCOME_PROCEED = "proceed"
 OUTCOME_FAILOVER = "failover"
 OUTCOME_TERMINAL = "terminal"
@@ -137,9 +138,7 @@ def coverage_bins(bitmap: int, primary_slot: int, backup_slot: int) -> Tuple[str
     cls = classify(bitmap, primary_slot, backup_slot)
     hit = [f"{cls}__p{primary_slot}"]
     if cls == CLASS_BOTH_REVOKED_TERMINAL:
-        hit.append(
-            BIN_TERMINAL_B_EQ_P if backup_slot == primary_slot else BIN_TERMINAL_B_NE_P
-        )
+        hit.append(BIN_TERMINAL_B_EQ_P if backup_slot == primary_slot else BIN_TERMINAL_B_NE_P)
     # The bit the ROM cannot see, set with no slot bit beside it: the only
     # stimulus that can show bits 6 and 7 are inert rather than untested.
     if (bitmap & ROM_SLOT_BIT_MASK) == 0 and (bitmap & INERT_BIT_MASK) != 0:
@@ -161,11 +160,7 @@ def all_bins() -> Tuple[str, ...]:
 
     Read :data:`CLOSURE_CAVEATS` before treating a full set as closure.
     """
-    grid = tuple(
-        f"{cls}__p{slot}"
-        for cls in CLASSES
-        for slot in range(PUBK_SEL_NUM_ROM_KEYS)
-    )
+    grid = tuple(f"{cls}__p{slot}" for cls in CLASSES for slot in range(PUBK_SEL_NUM_ROM_KEYS))
     return grid + (BIN_TERMINAL_B_EQ_P, BIN_TERMINAL_B_NE_P, BIN_INERT_NOISE_ONLY)
 
 

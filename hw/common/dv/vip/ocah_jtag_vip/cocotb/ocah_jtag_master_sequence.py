@@ -70,16 +70,16 @@ class OcahJtagMasterSequence:
         self.tap.sync_model(state, instruction=instruction)
         self.checker.ref_model.sync(state)
 
-    async def assert_trst(self, *, tck_cycles: int = 1) -> None:
-        """Assert TRST with ``tck_cycles`` of TMS high and re-baseline the reference model."""
-        await self.tap.assert_trst(tck_cycles=tck_cycles)
+    async def assert_trst(self, *, tck_cycles: int = 1, tms: int = 1) -> None:
+        """Assert TRST with ``tck_cycles`` of TMS at ``tms`` and re-baseline the reference model."""
+        await self.tap.assert_trst(tck_cycles=tck_cycles, tms=tms)
         self.checker.ref_model.reset()
 
-    async def release_trst(self, *, tck_cycles: int = 0) -> None:
-        """Release TRST, then step ``tck_cycles`` of TMS high through the reference model."""
-        await self.tap.release_trst(tck_cycles=tck_cycles)
+    async def release_trst(self, *, tck_cycles: int = 0, tms: int = 1) -> None:
+        """Release TRST, then step ``tck_cycles`` of TMS at ``tms`` through the reference model."""
+        await self.tap.release_trst(tck_cycles=tck_cycles, tms=tms)
         for _ in range(max(int(tck_cycles), 0)):
-            self.checker.ref_model.step(1)
+            self.checker.ref_model.step(int(tms) & 0x1)
 
     async def goto_state(self, state) -> None:
         """Navigate to a TAP state using a shortest TMS path."""

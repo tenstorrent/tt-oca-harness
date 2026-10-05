@@ -225,6 +225,7 @@ master = OcahAxiLiteMasterAgent(
 | `await master.read_hold_result(addr, hold_cycles, ...)` | `OcahAxiReadResult` | Read holding RREADY low after RVALID; `hold_stable` reports RDATA/RRESP stability (SV-UVM parity op) |
 | `await master.write_pair_skewed_result(addr_a, data_a, addr_b, data_b, *, aw_valid_delay, w_valid_delay, b_ready_delay, ...)` | `OcahAxiWritePairResult` | Two writes queued back to back, BREADY deferred after the first request phase; `aw_stall_cycles` / `aw_stable` observe the AW channel across the pair (SV-UVM parity op) |
 | `await master.read_pair_hold_result(addr_a, addr_b, hold_cycles, ...)` | `OcahAxiReadPairResult` | Two reads, the second AR presented while RREADY is held; `ar_stall_cycles` / `ar_stable` observe the AR channel across the pair (SV-UVM parity op) |
+| `await master.pipeline_result(ops, *, b_hold_cycles, r_hold_cycles, ...)` | `OcahAxiPipelineResult` | Single-beat reads and writes (`OcahAxiPipelineOp`) in flight together, each beat launched on its own cycle, BREADY/RREADY held after the first response; per-access results plus each request channel's stall cycles; the list is validated before its first access is issued, and an `allow_timeout=True` expiry marks only the unanswered accesses `timed_out` (SV-UVM parity op) |
 | `master.init_write(...)` / `master.init_read(...)` | cocotb event | Event-style access for explicit timeout flows |
 | `master.configure(**kwargs)` | `None` | Same keys as AXI4, minus ID/burst/size |
 | `master.get_statistics()` | `dict` | |
@@ -427,9 +428,13 @@ else the instance's `timeout_ns`, else the package default `DEFAULT_TIMEOUT_NS`
 (500 000 ns) or the `+OCAH_AXI_TIMEOUT_NS` plusarg. On expiry the operation
 raises `AssertionError` unless `allow_timeout=True`, in which case the result
 has `timed_out=True`, `ok=False`, and `resp=RESP_TIMEOUT` (-1). The AXI4-Lite
-`write_skewed_result()` / `read_hold_result()` operations bound each phase
-with `timeout_cycles` instead. `dv/` proves both on the wire harness
-(`ocah_axi_timeout_test`).
+`write_skewed_result()` / `read_hold_result()`, pair and `pipeline_result()`
+operations are bounded by `timeout_cycles` instead. A `pipeline_result()`
+expiry keeps the results of the accesses that completed and marks the
+others `timed_out`. `dv/` proves both bounds on the wire harness
+(`ocah_axi_timeout_test`), the partial pipeline expiry in
+`ocah_axi_pipeline_test`, and an AXI4 read whose beats stop before RLAST in
+`ocah_axi_pipeline_missing_rlast_test`.
 
 ---
 
@@ -453,13 +458,13 @@ replay of failures.
 
 | Area | This package provides | Outside this package |
 |---|---|---|
-| Transfers | AXI4 single-beat and burst reads and writes (`INCR`, `FIXED`, `WRAP`, up to 256 beats) at any `size` up to the bus width; byte-granular ranges through `write_bytes_result` / `read_bytes_result`; AXI4-Lite single-beat access with a contiguous partial `strb` | An explicit partial or non-contiguous `strb` on the AXI4 master (`check_strb` rejects it); exclusive (`LOCK`) transactions; `QOS`, `CACHE`, `REGION`, and `USER` values other than their idle defaults; more than the two outstanding single-beat transactions of the pair operations on the SV-UVM master |
-| Responses | `OKAY`, `EXOKAY`, `SLVERR`, `DECERR` on every result; a typed exception or an inspectable `resp` per `raise_on_error`; responders inject a one-shot `SLVERR`/`DECERR` per address and, on AXI4, a one-shot response-ID corruption | Persistent error regions on a responder; address policy belongs to the adopter's reference model (`OcahAxiRegionExpectation`) |
+| Transfers | AXI4 single-beat and burst reads and writes (`INCR`, `FIXED`, `WRAP`, up to 256 beats) at any `size` up to the bus width; byte-granular ranges through `write_bytes_result` / `read_bytes_result`; AXI4-Lite single-beat access with a contiguous partial `strb` | An explicit partial or non-contiguous `strb` on the AXI4 master (`check_strb` rejects it); exclusive (`LOCK`) transactions; `QOS`, `CACHE`, `REGION`, and `USER` values other than their idle defaults; bursts in a `pipeline_result` operation, which carries single-beat accesses only |
+| Responses | `OKAY`, `EXOKAY`, `SLVERR`, `DECERR` on every result; a typed exception or an inspectable `resp` per `raise_on_error`; responders inject a one-shot `SLVERR`/`DECERR` per address and, on AXI4, a one-shot response-ID corruption; the SV-UVM responder also withholds RLAST once at a programmed beat-aligned read address | Persistent error regions on a responder; address policy belongs to the adopter's reference model (`OcahAxiRegionExpectation`); a missing RLAST on the cocotb responders |
 | Backpressure | Responder READY stalls per channel (`enable_backpressure`); master `b_ready_*` / `r_ready_*` delay knobs; every stall bounded and deterministic | Random delays (opt-in, logged as a warning) |
 | Reset | `reset_active_level`, `wait_for_reset()`, idle payload from construction (`init_signals()`), responder channels held in reset until the reset input reads inactive; monitors given a `reset` flush in-flight requests while it is active, and an attached `OcahAxiScoreboard` releases their commit slots | A transaction cut by a mid-flight reset is the DUT bench's scenario; the VIP neither aborts nor replays it |
-| Timeout | Every blocking operation is bounded (`timeout_ns`, else `DEFAULT_TIMEOUT_NS` or `+OCAH_AXI_TIMEOUT_NS`); `allow_timeout=True` returns `RESP_TIMEOUT` | — |
+| Timeout | Every blocking operation is bounded (`timeout_ns`, else `DEFAULT_TIMEOUT_NS` or `+OCAH_AXI_TIMEOUT_NS`; `timeout_cycles` on the AXI4-Lite skew, hold, pair and pipeline operations); `allow_timeout=True` returns `RESP_TIMEOUT`, and a `pipeline_result` expiry keeps the results of its completed accesses | — |
 | Protocol checking | `OcahAxiChecker` item rules, the cycle-level watchers, and `sva/ocah_axi_sva.sv`, which the `dv/` harness binds to every VIP-driven bundle; `sva/ocah_axi_fv.sv` carries the handshake, reset, burst and ordering rules in the boolean subset a formal environment binds, each side asserted or assumed by parameter | Rules beyond the IHI 0022 A3/A5/A7/B1 subset listed in `MANUAL.md` |
-| Coverage | `cov/ocah_axi_cov.sv` covergroups, sampled by the SV-UVM harness through one `ocah_axi_cov_if` (`--dut ocah_axi_vip --framework uvm --cov`) together with the `OCAH_AXI_C_*` cover properties; `--cov` on `--dut ocah_axi_vip` collects Verilator line and branch coverage of the SV collateral, graded by `dv/cov/config/verilator/coverage_policy.toml` | Python components carry no simulator coverage metric; their evidence is the `CHK-*` matrix of `dv/` and the scoreboard selftest |
+| Coverage | `cov/ocah_axi_cov.sv` covergroups, sampled by the SV-UVM harness through one `ocah_axi_cov_if` (`--dut ocah_axi_vip --framework uvm --cov`) together with the `OCAH_AXI_C_*` cover properties; `--cov` on `--dut ocah_axi_vip` collects Verilator line and branch coverage of the SV collateral, with holes classified by `dv/cov/config/verilator/coverage_policy.toml` | Python components carry no simulator coverage metric; their evidence is the `CHK-*` matrix of `dv/` and the scoreboard selftest |
 | Simulators and protocols | Verilator and the optional backends reported by `run_dv.py --list`; AXI4 and AXI4-Lite | Backends outside the selected framework's allowlist; AXI-Stream; AXI5-only features |
 
 ---

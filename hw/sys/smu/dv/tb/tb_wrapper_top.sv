@@ -50,9 +50,25 @@ module smu_wrapper_uvm_top
 `undef SMU_TB_IN
 `undef SMU_TB_OUT
 
-  localparam int unsigned SepEnabled = 1;
-  localparam bit SepPresent = 1'b1;
   localparam smu_pkg::smu_cfg_t SmuBaseCfg = smu_pkg::DefaultCfg;
+
+  // SEP_SEC_DISABLE_TOKEN is the metal expected digest. Product RTL defaults it
+  // to 0, which no SHA-256 output matches; the SHA-256 of the all-zero 32-byte
+  // token stands in for the metal value so a frontdoor token can take the match.
+  localparam bit [255:0] SEC_DIS_TB_DIGEST =
+      256'h66687aad_f862bd77_6c8fc18b_8e9f8e20_08971485_6ee233b3_902a591d_0d5f2925;
+
+  // Every file-path plusarg this bench and its models consume; a present one
+  // whose file cannot be opened ends the run at time 0.
+  `include "ocah_path_plusargs.svh"
+  initial begin : path_plusarg_guard
+    static string names[] = '{
+      "rom_bin64", "rom_hex", "smc_scratch_ram_hex", "smc_efuse_hex", "sep_efuse_hex",
+      "sep_boot_rom_hex", "sep_itcm_hex", "sep_dtcm_hex", "smc_shadow_reg_preload",
+      "sep_shadow_reg_preload"
+    };
+    ocah_require_file_plusargs(names);
+  end
 
   // Same override tb_top.sv applies: exercise the most-significant configured
   // DTP cross-trigger mode bit while [1:0] stay SMC-reserved. Without it lane 7
@@ -61,6 +77,7 @@ module smu_wrapper_uvm_top
   function automatic smu_pkg::smu_cfg_t make_tb_cfg();
     smu_pkg::smu_cfg_t cfg = SmuBaseCfg;
     cfg.XTRIG_INT_CT_MODE = 8'h80;
+    cfg.SEP_SEC_DISABLE_TOKEN = SEC_DIS_TB_DIGEST;
     return cfg;
   endfunction
 
@@ -138,8 +155,7 @@ module smu_wrapper_uvm_top
   //   * only under +esrc_noise_force,
   //   * only dcor.noise_i on the 12 generator lanes,
   //   * downstream taps observe, never drive.
-  // The SEP TB's +sep_crypto_edn_force, which grants OTBN's EDN handshakes
-  // directly and bypasses the chain, has no counterpart here.
+  // Neither the SEP nor SMU bench forces downstream EDN responses.
   logic [11:0] esrc_noise_d;
   assign esrc_noise_d = esrc_noise_ext_i;
   assign esrc_noise_o = esrc_noise_d;
@@ -289,11 +305,16 @@ module smu_wrapper_uvm_top
   logic [31:0] smu_axi_in_awvalid_count, smu_axi_out_awvalid_count;
   logic tb_axil_external_active;
 
-  // Scan-chain closures. Each host's scan_in is its own scan_out, as
-  // tb_top.sv does for the same ports, so the path a shift takes runs out of
-  // the wrapper and back in.
+  // Scan-chain closures. The STAP and BSR hosts return their scan_out on
+  // their own scan_in. Each iJTAG host (DFD, DFT, secure DFT) returns through
+  // one bench scan cell instead: a one-bit prim_jtag_scan_reg on the host's
+  // scan control, which captures 0 at Capture-DR and shifts while the host
+  // select is set, so a shift through an open SIB is one TCK longer than
+  // through a closed one and the crossing of the boundary pins is visible at
+  // TDO.
   prim_jtag_pkg::jtag_scan_ctrl_t stap_scan_ctrl_w, dfd_ctrl_w, dft_ctrl_w, dft_sec_ctrl_w;
   logic stap_scan_loop, dfd_scan_loop, dft_scan_loop, dft_sec_scan_loop;
+  logic dfd_scan_ret, dft_scan_ret, dft_sec_scan_ret;
   logic stap_io_tdo_w, stap_io_tdo_oen_w;
   prim_jtag_pkg::jtag_tap_ctrl_t stap_extra_ctrl_w [0:0];
   logic stap_extra_tdi_w [0:0];
@@ -306,6 +327,39 @@ module smu_wrapper_uvm_top
   assign tb_dfd_select          = dfd_ctrl_w.select;
   assign tb_dft_select          = dft_ctrl_w.select;
   assign tb_dft_secure_select   = dft_sec_ctrl_w.select;
+  assign tb_dfd_scan_out        = dfd_scan_loop;
+  assign tb_dft_scan_out        = dft_scan_loop;
+  assign tb_dft_secure_scan_out = dft_sec_scan_loop;
+
+  prim_jtag_scan_reg #(
+    .WIDTH(1)
+  ) u_dfd_loop_cell (
+    .scan_ctrl_i(dfd_ctrl_w),
+    .scan_in_i  (dfd_scan_loop),
+    .scan_out_o (dfd_scan_ret),
+    .data_in_i  (1'b0),
+    .data_out_o ()
+  );
+
+  prim_jtag_scan_reg #(
+    .WIDTH(1)
+  ) u_dft_loop_cell (
+    .scan_ctrl_i(dft_ctrl_w),
+    .scan_in_i  (dft_scan_loop),
+    .scan_out_o (dft_scan_ret),
+    .data_in_i  (1'b0),
+    .data_out_o ()
+  );
+
+  prim_jtag_scan_reg #(
+    .WIDTH(1)
+  ) u_dft_sec_loop_cell (
+    .scan_ctrl_i(dft_sec_ctrl_w),
+    .scan_in_i  (dft_sec_scan_loop),
+    .scan_out_o (dft_sec_scan_ret),
+    .data_in_i  (1'b0),
+    .data_out_o ()
+  );
   assign tb_stap_io_tms         = stap_io_ctrl_w.tms;
   assign tb_stap_io_tdo         = stap_io_tdo_w;
   assign tb_stap_io_tdo_oen     = stap_io_tdo_oen_w;
@@ -485,7 +539,7 @@ module smu_wrapper_uvm_top
 
   // Cocotb observe ports that hw/top/smu_wrapper does not expose directly.
   assign dut_present_o = 1'b1;
-  assign sep_enabled_o = SepEnabled;
+  assign sep_enabled_o = SmuCfg.SEP;
   assign powergood_o   = powergood_i;
   assign rst_cold_n_o  = rst_cold_stable_ref_clk_n;
   assign rst_primary_smc_clk_n_o = rst_primary_smc_clk_n;
@@ -1185,16 +1239,8 @@ module smu_wrapper_uvm_top
   sep_pkg::sep_lockstep_ctrl_t   sep_lockstep_ctrl_i = '0;
   sep_pkg::sep_lockstep_status_t sep_lockstep_status_o;
 
-  // SEP_SEC_DISABLE_TOKEN is the metal expected digest. Product RTL defaults it
-  // to 0, which no SHA-256 output matches; the SHA-256 of the all-zero 32-byte
-  // token stands in for the metal value so a frontdoor token can take the match.
-  localparam bit [255:0] SecDisTbDigest =
-      256'h66687aad_f862bd77_6c8fc18b_8e9f8e20_08971485_6ee233b3_902a591d_0d5f2925;
-
   smu_wrapper #(
-    .CFG                   (SmuCfg),
-    .SEP                   (SepEnabled[0]),
-    .SEP_SEC_DISABLE_TOKEN (SecDisTbDigest)
+    .CFG (SmuCfg)
   ) u_dut (
     .entropy_rosc_sample_clk_i,
     .rst_cold_ni,
@@ -1225,15 +1271,15 @@ module smu_wrapper_uvm_top
     .jtag_stap_host_scan_out_o  (stap_scan_loop),
 
     .jtag_dfd_host_scan_ctrl_o (dfd_ctrl_w),
-    .jtag_dfd_host_scan_in_i   (dfd_scan_loop),
+    .jtag_dfd_host_scan_in_i   (dfd_scan_ret),
     .jtag_dfd_host_scan_out_o  (dfd_scan_loop),
 
     .jtag_dft_secure_host_scan_ctrl_o (dft_sec_ctrl_w),
-    .jtag_dft_secure_host_scan_in_i   (dft_sec_scan_loop),
+    .jtag_dft_secure_host_scan_in_i   (dft_sec_scan_ret),
     .jtag_dft_secure_host_scan_out_o  (dft_sec_scan_loop),
 
     .jtag_dft_host_scan_ctrl_o (dft_ctrl_w),
-    .jtag_dft_host_scan_in_i   (dft_scan_loop),
+    .jtag_dft_host_scan_in_i   (dft_scan_ret),
     .jtag_dft_host_scan_out_o  (dft_scan_loop),
 
     .dtp_stop_clks_o (dtp_stop_clks_o),
@@ -1392,7 +1438,7 @@ module smu_wrapper_uvm_top
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_boot_fcov #(
-    .SEP_PRESENT(SepPresent)
+    .SEP_PRESENT(SmuCfg.SEP)
   ) u_smu_boot_fcov (
     .clk_ref_i                   (clk_ref),
     .clk_smu_i                   (clk_smu),
@@ -1424,7 +1470,7 @@ module smu_wrapper_uvm_top
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_xbar_fcov #(
-    .SEP_PRESENT(SepPresent)
+    .SEP_PRESENT(SmuCfg.SEP)
   ) u_smu_xbar_fcov (
     .clk_smu_i                (clk_smu),
     .rst_cold_ni              (rst_cold_ni),
@@ -1453,7 +1499,7 @@ module smu_wrapper_uvm_top
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_rst_fcov #(
-    .SEP_PRESENT(SepPresent)
+    .SEP_PRESENT(SmuCfg.SEP)
   ) u_smu_rst_fcov (
     .clk_ref_i                   (clk_ref),
     .clk_smu_i                   (clk_smu),
@@ -1480,7 +1526,7 @@ module smu_wrapper_uvm_top
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_clk_fcov #(
-    .SEP_PRESENT(SepPresent)
+    .SEP_PRESENT(SmuCfg.SEP)
   ) u_smu_clk_fcov (
     .clk_smu_i               (clk_smu),
     .rst_primary_smc_clk_ni  (rst_primary_smc_clk_n_o),
@@ -1497,7 +1543,7 @@ module smu_wrapper_uvm_top
   );
 
   smu_lc_fcov #(
-    .SEP_PRESENT(SepPresent)
+    .SEP_PRESENT(SmuCfg.SEP)
   ) u_smu_lc_fcov (
     .clk_smu_i                (clk_smu),
     .rst_cold_ni              (rst_cold_ni),
@@ -1524,7 +1570,7 @@ module smu_wrapper_uvm_top
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_ext_fcov #(
-    .SEP_PRESENT(SepPresent)
+    .SEP_PRESENT(SmuCfg.SEP)
   ) u_smu_ext_fcov (
     .clk_smu_i                (clk_smu),
     .rst_cold_ni              (rst_cold_ni),
@@ -1569,7 +1615,7 @@ module smu_wrapper_uvm_top
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_dbg_fcov #(
-    .SEP_PRESENT(SepPresent)
+    .SEP_PRESENT(SmuCfg.SEP)
   ) u_smu_dbg_fcov (
     .clk_smu_i                   (clk_smu),
     .rst_primary_smc_clk_ni      (rst_primary_smc_clk_n_o),
@@ -1629,7 +1675,7 @@ module smu_wrapper_uvm_top
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_alias_fcov #(
-    .SEP_PRESENT(SepPresent)
+    .SEP_PRESENT(SmuCfg.SEP)
   ) u_smu_alias_fcov (
     .clk_smu_i                 (clk_smu),
     .rst_primary_smc_clk_ni    (rst_primary_smc_clk_n_o),

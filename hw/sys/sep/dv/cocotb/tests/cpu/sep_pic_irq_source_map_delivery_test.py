@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP PIC interrupt-source map + multi-source delivery test (PyUVM).
+"""Each interrupt source reaches the CPU on PIC source id = sep_internal_interrupts index + 1.
 
-Boots the VeeR EL2 core and runs the `pic_irq_source_map_test` firmware, which
-registers PIC ISRs for a MUST set plus a seeded INTR_TEST subset and proves the
-real source -> PIC source-id map plus ISR delivery to the CPU:
+The test boots the VeeR EL2 core and runs the `pic_irq_source_map_test` firmware, which
+registers PIC ISRs for every source in its catalog and proves the real
+source -> PIC source-id map plus ISR delivery to the CPU:
 
     mailbox[0]     sep_internal_interrupts[0]  -> PIC source 1   (real FIFO push)
     OTBN done      sep_internal_interrupts[29] -> PIC source 30  (INTR_TEST)
@@ -14,15 +14,17 @@ real source -> PIC source-id map plus ISR delivery to the CPU:
 PIC source id = sep_internal_interrupts index + 1 (VeeR EL2 extintsrc_req is
 1-based). The whole path is internal to bare `sep` -- no testbench injection.
 
-SepPicSrcCfg is the single source of truth: MUST sources walk every seed;
-two extras come from the run seed and are patched into the firmware param
-block. Distinct from `sep_mailbox_plic_test` (all eight mailbox channels) and from
+SepPicSrcCfg is the single source of truth: the required sources and all eight
+extras walk every seed, so every catalog source is graded in every run. The
+seed sets only the order of the extras, which is patched into the firmware
+param block. Distinct from `sep_mailbox_plic_test` (all eight mailbox channels) and from
 `sep_irq_ip_to_aggregator_test` (no_cpu, aggregate vector, no ISR).
 
 Firmware-self-checking: the firmware returns its error count and fw/startup/crt0.s emits
 the PASS / FAIL magic on the 0x8000_0000 mailbox, which the boot scoreboard
 gates on. Per source: CHK-DELIVER, CHK-IP-RW1C, CHK-ONEHOT; plus CHK-NONVAC,
-CHK-PIC-COMPLETE, and CHK-RANDCFG (patched list echoed).
+CHK-PIC-COMPLETE, CHK-DUMMY (no unregistered source is served) and CHK-RANDCFG
+(patched list echoed).
 
 cpu / +skip_fuse_sense (no fuse data is read).
 """
@@ -52,28 +54,26 @@ _PROGRESS_EVERY = 5_000
 _BANNER = "SEP PIC IRQ source map delivery test"
 
 _PARAM_MAGIC = 0x91C0A11C
-_SRC_MAX = 5
-# MUST every seed: mailbox, OTBN done, HMAC done.
+# Matches PIC_SRC_MAX in pic_irq_source_map_test.c: the required trio plus every
+# extra.
+_SRC_MAX = 11
+# Required first, in this order, every seed: mailbox, OTBN done, HMAC done.
 _MUST = (1, 30, 18)
-# Seed extras from the INTR_TEST catalog minus the MUST trio. HMAC-err shares
-# HMAC's INTR_ENABLE with MUST HMAC-done; arm_sources ORs those bits.
-# DMA chunk/error and HMAC-err are extras: aggregator CHK-AGG walks them every
-# seed; this leaf proves CPU claim when the seed draws them.
-_POOL = (9, 10, 11, 20, 21, 23, 24, 28)
+# The rest of the firmware catalog. HMAC-err shares HMAC's INTR_ENABLE with the
+# required HMAC-done, and the three DMA sources and the two KMAC sources share
+# theirs; arm_sources ORs those bits. Every extra walks every seed.
+_EXTRAS = (9, 10, 11, 20, 21, 23, 24, 28)
+assert len(_MUST) + len(_EXTRAS) == _SRC_MAX
 
 
-def _sample(rng: SepSeededRng, seq: tuple[int, ...], k: int) -> list[int]:
+def _shuffled(rng: SepSeededRng, seq: tuple[int, ...]) -> list[int]:
     pool = list(seq)
-    out: list[int] = []
-    for _ in range(k):
-        pick = pool.pop(rng.randrange(len(pool)))
-        out.append(pick)
-    return out
+    return [pool.pop(rng.randrange(len(pool))) for _ in range(len(seq))]
 
 
 @dataclass(frozen=True)
 class SepPicSrcCfg:
-    """Single source of truth for the PIC source-map RANDCFG walk."""
+    """Single source of truth for the PIC source-map walk: every source, seeded order."""
 
     seed: int
     must: tuple[int, ...]
@@ -82,7 +82,7 @@ class SepPicSrcCfg:
     @classmethod
     def from_seed(cls, seed: int) -> "SepPicSrcCfg":
         rng = SepSeededRng(seed)
-        extras = tuple(_sample(rng, _POOL, 2))
+        extras = tuple(_shuffled(rng, _EXTRAS))
         return cls(seed=seed, must=_MUST, extras=extras)
 
     @property
@@ -103,7 +103,7 @@ class SepPicSrcCfg:
 
 @pyuvm.test()
 class sep_pic_irq_source_map_delivery_test(sep_base_test):
-    """Boot VeeR EL2 and run the multi-source PIC source-map delivery firmware."""
+    """Every armed source is delivered on its mapped PIC id and its IP status clears by RW1C."""
 
     build_env = False
 

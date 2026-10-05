@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Per-IP SW-reset domain isolation across crypto engines.
+"""A crypto engine's SW reset clears its own result and leaves a sibling's held result intact.
 
 no_cpu host-AXI test that proves the SEP per-IP SW_RESET_N domains are isolated
-WHILE a neighbour engine holds a LIVE, golden-checked crypto RESULT in its
+while a neighbour engine holds a live, golden-checked crypto result in its
 datapath output registers: pulsing one engine's reset clears that engine's own
 result but leaves the sibling's held crypto result bit-exact intact. This is the
 SEP-level stateful-isolation property a single-IP tb structurally cannot observe;
@@ -16,12 +16,12 @@ result that survives re-reads):
     DIGEST_0..7 and value-checked against an independent hashlib golden.
   * AES  -- one ECB-256 encryption of a known block under a known SW key; the
     ciphertext is held in DATA_OUT_0..3 and value-checked against the FIPS-197
-    self-tested env/sep_aes_golden. AES is the "held/mid-encrypt" engine named in
-    the VPLAN card; its masking-PRNG reseed consumes the brought-up entropy.
+    self-tested env/sep_aes_golden. AES is the held-result engine in the
+    SEP_VPLAN row; its masking-PRNG reseed consumes the brought-up entropy.
 
 Entropy is brought up first (ESRC->DRBG->CSRNG->EDN) so the AES masking-PRNG
-reseed is served -- satisfying the card's "with entropy bring-up" requirement and
-exercising a real entropy-backed crypto op rather than a poked status bit.
+reseed is served, so the reset lands on an entropy-backed crypto op rather than
+a poked status bit.
 
 Isolation proof (both directions, then the remaining isolated bits):
   * CHK-NONVAC      both held results are golden-matched and survive a second
@@ -31,11 +31,15 @@ Isolation proof (both directions, then the remaining isolated bits):
                     (proves the pulse landed in that engine's domain).
   * CHK-NEIGHBOR-SURVIVES  the sibling's held crypto result is bit-exact intact.
   * CHK-REVERSE     roles swapped (AES-victim then HMAC-victim).
-  * CHK-KMAC / CHK-OTBN  KMAC SHA3-256 STATE and OTBN DMEM hold across a
-                    neighbour pulse. KMAC's own pulse returns STATUS to its
-                    register-map reset; OTBN LOAD_CHECKSUM (rst_ni CSR) clears
-                    to its register-map reset. DMEM is the cross-domain leak
-                    check (a neighbour must not wipe it). OTBN's own reset runs
+  * CHK-KMAC-SELF / CHK-KMAC-NEIGHBOR / CHK-OTBN  KMAC SHA3-256 STATE and
+                    OTBN DMEM hold across a neighbour pulse. KMAC's own pulse returns STATUS to its
+                    register-map reset on the fields the RDL resets, and to
+                    the idle 0 on sha3_absorb/sha3_squeeze/fifo_depth/
+                    fifo_full, which have no RDL reset. KMAC STATE reads 0
+                    after its own pulse; that expected value is RTL-derived
+                    (no spec states it). OTBN LOAD_CHECKSUM (rst_ni CSR)
+                    clears to its register-map reset. DMEM is the cross-domain
+                    leak check (a neighbour must not wipe it). OTBN's own reset runs
                     a secure wipe, so DMEM retention across that pulse is not
                     claimed. KM (bit 0) stays held at the reset default and is
                     not claimed.
@@ -46,7 +50,10 @@ Isolation proof (both directions, then the remaining isolated bits):
                     on the sibling port stays OKAY; SW_RESET_N readback shows
                     the HMAC bit low; after release DIGEST_0 is OKAY at its
                     reset value.
-  * CHK-DRAIN-ORDER  the HMAC reset does not assert until BOTH AXI-Lite paths
+  * CHK-<ENG>-DRAIN-OPEN  before each drained reset request, the host isolate
+                    bit reads 0 and the gated reset is still released, so the
+                    drain-order check below can fail.
+  * CHK-DRAIN-ORDER  the HMAC reset does not assert until both AXI-Lite paths
                     that domain depends on -- the SEP host path and the Key
                     Manager path -- report isolated. The host isolate bit
                     starts at 0 when the request is issued. The Key Manager
@@ -62,10 +69,14 @@ Isolation proof (both directions, then the remaining isolated bits):
                     request is seen, with an empty AR queue and its own AXI ID.
                     Its AR handshake on s_axi must fall while the request is up
                     and the gated reset is still released, and it must resolve;
-                    it may drain or terminate, but it may not hang. That the
-                    path is not left wedged is the existing CHK-ISOLATE-REOPEN
-                    beat after release.
-  * CHK-ABR-DRAIN-ORDER  the Adams Bridge reset does not assert until BOTH
+                    it may drain or terminate, but it may not hang.
+                    CHK-ISOLATE-REOPEN, after release, shows that the path is
+                    not wedged.
+  * CHK-KMAC-DRAIN-ORDER / CHK-KMAC-DRAIN-ARRIVAL  the same two contracts on the
+                    KMAC reset: it asserts only after the host and Key Manager
+                    paths both report isolated, and a read accepted in the
+                    drain window resolves OKAY or SLVERR.
+  * CHK-ABR-DRAIN-ORDER  the Adams Bridge reset does not assert until both
                     paths its domain depends on report isolated: the full-AXI
                     SEP host path and the shared Key Manager path. The host
                     isolate bit starts at 0 when the request is issued. The
@@ -122,15 +133,15 @@ Isolation proof (both directions, then the remaining isolated bits):
                     the endpoint FIFO; the empty read on the next cycle is
                     that pop, so it is not the arm.
 
-Reference: sep_clock_uvm_sw_reset_per_ip_test --
-the reference suite proves only the SW_RESET_N register -> sep_sw_rst_no output
-bit mapping (via an HDL backdoor); this test proves the reset actually lands in the
-IP and is domain-isolated at the level of a live crypto-datapath RESULT, frontdoor.
-no_cpu / +skip_fuse_sense (entropy + crypto are independent of OTP lifecycle) /
-+esrc_noise_force (deterministic ESRC ring-osc noise so the entropy stack is alive
-under sim -- required by bring_up_entropy, same as the km/crypto entropy tests).
+This test proves the reset actually lands in the IP and is domain-isolated at the level of a live
+crypto-datapath result, frontdoor.
 
-DELTA vs the card: the held state is a COMPLETED golden result resident in the
+Run mode: no_cpu with +skip_fuse_sense (entropy + crypto are independent of OTP
+lifecycle) and +esrc_noise_force (deterministic ESRC ring-osc noise so the entropy
+stack is alive under sim -- required by bring_up_entropy, same as the km/crypto
+entropy tests).
+
+Scope: the held state is a completed golden result resident in the
 engine's output registers (re-readable across the sibling's reset), not a paused
 mid-round micro-state. A cycle-accurate mid-round freeze and an all-pairs matrix
 are not covered here; the resident-result observation proves the reset-domain
@@ -149,7 +160,7 @@ from env.sep_aes_golden import aes256_ecb_encrypt_words
 from env.sep_kmac_golden import kmac_family_words
 from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
-from sep_reg_meta import KMAC
+from sep_reg_meta import register_fields
 from seq_lib.sep_abr_mlkem_seq import MLKEM_STATUS
 from seq_lib.sep_aes_seq import AES_DATA_OUT_0, AES_TRIGGER, AES_TRIGGER_PRNG_RESEED, SepAes
 from seq_lib.sep_crypto_reset_iso_seq import (
@@ -179,7 +190,7 @@ from seq_lib.sep_kmac_seq import (
 from seq_lib.sep_otbn_seq import OTBN_DMEM_RESULT_LO, OTBN_LOAD_CHECKSUM_RESET, SepOtbn
 from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT, SepSwReset
 
-# Directed known vectors (RAND-NONE).
+# Fixed known vectors (RAND-NONE).
 HMAC_MSG = [0x6A6F6232, 0xDEADBEEF, 0x0BADF00D, 0xFEEDFACE]
 AES_KEY = [
     0x03020100,
@@ -195,7 +206,17 @@ AES_PT = [0xAABBCCDD, 0x11223344, 0x55667788, 0x99001122]
 KMAC_MSG = [0x6A6F6232, 0xDEADBEEF]
 OTBN_CHECKSUM_MARK = 0xA11CED01
 OTBN_DMEM_MARK = 0xD3E00D3E
-KMAC_STATUS_RESET = KMAC.reset32("STATUS")
+# KMAC STATUS after its own SW_RESET_N pulse, in two parts read off the IP-XACT.
+# The RDL gives sha3_idle, fifo_empty and the two alert bits a reset value; that
+# part is the register-map reset. sha3_absorb, sha3_squeeze, fifo_depth and
+# fifo_full have no RDL reset, so the generated DEFAULT holds a 0 placeholder for
+# them. Their 0 here is the idle state their field descriptions define (not
+# absorbing, not squeezing, no FIFO entries, FIFO not full), and reserved bits
+# read 0. sha3_squeeze reads 1 before the pulse, so that leg discriminates.
+_KMAC_STATUS_FIELDS = register_fields(KMAC_STATUS)[1]
+KMAC_STATUS_RDL_MASK = sum(f.mask for f in _KMAC_STATUS_FIELDS if f.reset is not None)
+KMAC_STATUS_RDL_RESET = sum(f.reset << f.lsb for f in _KMAC_STATUS_FIELDS if f.reset is not None)
+KMAC_STATUS_IDLE_MASK = ~KMAC_STATUS_RDL_MASK & 0xFFFF_FFFF
 
 _ZERO_DIGEST = [0] * 8
 # s_axi ARIDs for the drain-window legs. Neither is ID 0, which the background
@@ -1432,10 +1453,11 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         self.aes = SepAes(self)
         await self._prove_edn_cancel_before_grant()
 
-        # Entropy up so the AES masking-PRNG reseed is served (card requirement).
+        # Entropy up so the AES masking-PRNG reseed is served.
         # strict=False / score_km=False: this test asserts on the held crypto
-        # results, not on the bit-exact DRBG golden stream; the scoreboard is used
-        # only to drive the deterministic ESRC noise + observe the AES EDN leg.
+        # results, not on the bit-exact DRBG golden stream. The scoreboard
+        # observes the AES and KMAC EDN legs, and its report() must pass at the
+        # end of the test.
         # OTBN stays in the reset taken above, so its cancelled URND request is
         # not granted when EDN starts.
         await self.bring_up_entropy(
@@ -1488,12 +1510,14 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         # ---- Case A: pulse AES (victim); HMAC (neighbor) must survive ----------
         # Self-reset evidence = the victim's held result is PERTURBED (it differs from
         # the value it held stably across the prior re-reads). For AES this is asserted
-        # as "!= C", not "== 0": the OpenTitan AES DATA_OUT registers are, per spec,
+        # as "!= C", not "== 0": the OpenTitan AES DATA_OUT description says
         # "Upon reset, these registers are cleared with pseudo-random data"
-        # (vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc),
-        # so an AES-domain reset replaces the ciphertext with PRNG
-        # data rather than a clean 0. DATA_OUT is fully inside aes_sw_rst_ni
-        # (sep_crypto.sv) so there is no out-of-domain ciphertext leak. (The 4-word
+        # (vendor/lowRISC/opentitan/upstream/hw/ip/aes/data/aes.hjson), so an
+        # AES-domain reset replaces the ciphertext with PRNG data rather than a
+        # clean 0. The SEP overlay register doc lists DATA_OUT reset 0x0; "!= C"
+        # holds under either reading. DATA_OUT is fully inside the AES gated
+        # reset (gated_rst_ni.aes, hw/sys/sep/rtl/sep_crypto.sv), so there is no
+        # out-of-domain ciphertext leak. (The 4-word
         # read is non-atomic -- interleaved with entropy-FIFO drains -- so individual
         # words may still read 0 mid-wipe; "!= the held C" is the seed-robust check.)
         # The unmasked HMAC DIGEST below has no SEC_WIPE and clears cleanly to 0.
@@ -1683,13 +1707,21 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         assert await self.kmac.read_digest() == k_digest, "KMAC STATE not held on re-read"
         await self._drain_kmac()
         kmac_status = await self.kmac.read_status()
-        assert kmac_status == KMAC_STATUS_RESET, (
-            f"KMAC STATUS not restored to register-map reset 0x{KMAC_STATUS_RESET:08x} "
-            f"after its own SW_RESET_N pulse: 0x{kmac_status:08x}"
+        assert kmac_status & KMAC_STATUS_RDL_MASK == KMAC_STATUS_RDL_RESET, (
+            f"KMAC STATUS not restored to register-map reset 0x{KMAC_STATUS_RDL_RESET:08x} "
+            f"under mask 0x{KMAC_STATUS_RDL_MASK:08x} after its own SW_RESET_N pulse: "
+            f"0x{kmac_status:08x}"
+        )
+        assert kmac_status & KMAC_STATUS_IDLE_MASK == 0, (
+            f"KMAC STATUS not idle after its own SW_RESET_N pulse: 0x{kmac_status:08x} "
+            f"has bits 0x{kmac_status & KMAC_STATUS_IDLE_MASK:08x} set under mask "
+            f"0x{KMAC_STATUS_IDLE_MASK:08x} (sha3_absorb/sha3_squeeze/fifo_depth/"
+            "fifo_full/reserved)"
         )
         kmac_after = await self.kmac.read_digest()
-        # STATE is a window, not a PeakRDL CSR, so it has no REG_DEFAULT. On this
-        # DUT a domain reset leaves share0^share1 as 0 (unlike AES DATA_OUT,
+        # STATE is a window, not a PeakRDL CSR, so it has no REG_DEFAULT, and no
+        # spec states its value after reset. The expected share0^share1 == 0 is
+        # RTL-derived: the KMAC domain reset leaves it 0 (unlike AES DATA_OUT,
         # which SEC_WIPE replaces with PRNG data). Assert that exact idle
         # presentation, not merely inequality against the held digest.
         assert kmac_after == _ZERO_DIGEST, (
@@ -1701,9 +1733,13 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             f"  before={[hex(w) for w in h_digest]}\n  after={[hex(w) for w in hmac_survived]}"
         )
         self.logger.info(
-            "CHK-KMAC-SELF PASS: KMAC STATUS=0x%08x (REG_DEFAULT), "
-            "STATE cleared to 0 (held[0]=0x%08x); HMAC DIGEST intact",
+            "CHK-KMAC-SELF PASS: KMAC STATUS=0x%08x: register-map reset 0x%08x under "
+            "mask 0x%08x, idle 0 under mask 0x%08x; STATE cleared to 0 "
+            "(held[0]=0x%08x); HMAC DIGEST intact",
             kmac_status,
+            KMAC_STATUS_RDL_RESET,
+            KMAC_STATUS_RDL_MASK,
+            KMAC_STATUS_IDLE_MASK,
             k_digest[0],
         )
 
@@ -1821,9 +1857,8 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         # anyway and the order could not fail.
         abr_rst = SepCryptoResetIso(self)
         # Host reads go out with the reset request, so the full-AXI isolate has
-        # accepted traffic to drain. This is the only full-AXI host isolate in the
-        # design; every other accelerator path is AXI-Lite, so
-        # TerminateTransaction and NumPending are exercised nowhere else.
+        # accepted traffic to drain. ABR's host path is the only full-AXI host
+        # isolate in the design; the other accelerator paths are AXI-Lite.
         rec = await self._drain_with_arrival(
             name="ABR",
             addr=MLKEM_STATUS,

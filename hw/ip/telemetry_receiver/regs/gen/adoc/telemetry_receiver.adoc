@@ -37,6 +37,9 @@ Configuration, status, and data-buffer registers for a single telemetry receiver
 | 31:24 | `Reserved` | - | - a| Reserved
 | 23:12 | `BUFFER_THRESHOLD` | RW | 0x0 a| Telemetry Message Buffer Threshold. The Telemetry Buffer Threshold Interrupt is
 asserted when the number of entries in the buffer is greater than this value.
+Only the low log2(queue depth)+1 bits are compared, so values alias modulo
+twice the queue depth, and only values below the queue depth can assert the
+interrupt.
 | 11:9 | `Reserved` | - | - a| Reserved
 | 8 | `TELEMETRY_TX_FLUSH` | RW | 0x0 a| Telemetry Transmitter Flush. Writing `1` flushes all FIFOs in the telemetry
 transmitter. The flushing is done via the ATB AF interface. This bit clears

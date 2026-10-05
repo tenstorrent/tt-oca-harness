@@ -44,6 +44,7 @@ from .executors.manifest import (
 from .models import ConfigError, StageResult
 from .paths import repo_rel
 from .results import exit_code_for_status, fragment_payload, write_result
+from .stages import mark_target_built
 
 ENVIRONMENT_ERROR_EXIT = 2
 
@@ -158,7 +159,7 @@ def run_manifest(path: Path) -> int:
             args._cluster_executor = True
     elif target:
         # The coordinator built the model before submitting; a worker never rebuilds it.
-        args._cocotb_prebuilt_targets = {target}
+        mark_target_built(args, target, data.get("target_build"))
 
     try:
         result, result_json = execute_attempt(
