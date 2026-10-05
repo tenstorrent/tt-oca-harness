@@ -2648,6 +2648,24 @@ args = [
   "+esrc_noise_force",
 ]
 
+# The OCA manifest has no payload-destination selector, and the ROM stages payloads into SEP SRAM.
+#
+# [[tests]]
+# name = "sep_firmware_payload_correct_smc_64kb_test"
+# module = "rom_fw.sep_firmware_payload_correct_smc_64kb_test"
+#
+# [[tests]]
+# name = "sep_firmware_payload_correct_smc_128kb_test"
+# module = "rom_fw.sep_firmware_payload_correct_smc_128kb_test"
+#
+# [[tests]]
+# name = "sep_firmware_payload_correct_smc_200kb_test"
+# module = "rom_fw.sep_firmware_payload_correct_smc_200kb_test"
+#
+# [[tests]]
+# name = "sep_firmware_payload_incorrect_smc_test"
+# module = "rom_fw.sep_firmware_payload_incorrect_smc_test"
+
 [[tests]]
 # Primary payload ends 1 KiB past its slot window (PAYLOAD_LOC_FAIL, 0x1B); backup boots.
 name = "sep_firmware_payload_exceeds_slot_window_fixed_test"
