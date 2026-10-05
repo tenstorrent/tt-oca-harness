@@ -2313,6 +2313,11 @@ args = [
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  # The JTAG sep_reset_n override this leaf drives resets the crypto engines
+  # without isolation, so an ungranted EDN request can drop with no endpoint
+  # cancel. tb_wrapper_top turns the crypto EDN request-hold checks off for
+  # it; the pool instance keeps its checks. See #2385 and #2891.
+  "+sep_edn_jtag_reset_waive",
 ]
 
 # sep_lifecycle_ctrl.sv hardwires dbg_disable.smc_otp_jtag2axi and
