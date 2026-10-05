@@ -151,7 +151,6 @@ static int test_verify_sram(void) {
 }
 
 int main(void) {
-    // Initialize outbound filter to allow testpass mailbox access
     sep_outbound_filter_init();
 
     printf("\n");
@@ -190,7 +189,6 @@ int main(void) {
         test_fail(fail_count);
     }
 
-    // Keep CPU alive after signaling completion
     while (1) {
         __asm__("wfi");
     }

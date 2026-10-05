@@ -7,8 +7,7 @@ eight 64-bit entries, and ``WRITE_DATA`` in one port pushes the FIFO that
 ``READ_DATA`` in the other port pops. A write of ``WRITE_DATA`` pushes one
 entry, with the bytes outside the write strobe pushed as zero.
 
-The other mailbox leaves grade one mailbox and a few values. This leaf grades
-the data path itself: for each mailbox and each direction it pushes a walking
+This leaf grades the data path itself: for each mailbox and each direction it pushes a walking
 one and a walking zero over all 64 bits, in FIFO-depth batches, and pops them
 on the other port. A stuck, swapped or crossed data bit on either port of any
 mailbox, a reordered FIFO, a lost or duplicated entry, or a push that lands in
@@ -52,10 +51,10 @@ read).
 CHK-MBX-NO-LEAK: after the walk every FIFO of every mailbox is empty again,
 so no push reached a mailbox other than its own.
 
-RUN-MODE: no_cpu (CPU-LSU master) + external SMN master. FUSE-MODE:
+Run mode: no_cpu (CPU-LSU master) with the external SMN master and
 +skip_fuse_sense (the mailbox has no OTP/LC dependency; the filter windows are
-programmed explicitly). RAND: mailbox order, the walk's start bit, the strobe
-runs and data, and every inbound request attribute come from SepSeededRng.
+programmed explicitly). The mailbox order, the walk's start bit, the strobe runs
+and data, and every inbound request attribute come from SepSeededRng.
 """
 
 from __future__ import annotations
@@ -88,7 +87,7 @@ def _chunks(seq: list[int], n: int) -> list[list[int]]:
 
 @pyuvm.test()
 class sep_mailbox_datapath_walk_test(sep_base_test):
-    """Walking-one / walking-zero and strobe pushes through all 8 mailboxes, both ways."""
+    """Every pushed entry pops in order and bit-exact on the other port, in all 8 mailboxes."""
 
     required_evidence = (
         "CHK-MBX-EMPTY",

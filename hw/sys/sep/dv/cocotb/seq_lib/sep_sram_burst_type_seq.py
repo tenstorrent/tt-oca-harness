@@ -136,6 +136,8 @@ class SepSramBurstType:
     async def write_burst(self, case: BurstCase) -> tuple[int, bool, dict | None]:
         data = b"".join(burst_word(case, i).to_bytes(BEAT_BYTES, "little") for i in range(BEATS))
         mon = self.test.env.axi_monitor
+        # Arm DECERR credits so a DUT that answers DECERR reaches the test's SLVERR
+        # grade instead of failing first in the bus monitor.
         mon.arm_expected_decerr(1)
         aw = cocotb.start_soon(capture_addr_handshake("aw"))
         seq = SepAxiAccessSeq(
@@ -157,6 +159,8 @@ class SepSramBurstType:
         """Beat data and the per-beat RRESP vector the monitor captured."""
         mon = self.test.env.axi_monitor
         mon.start_beat_capture()
+        # Arm DECERR credits so a DUT that answers DECERR reaches the test's SLVERR
+        # grade instead of failing first in the bus monitor.
         mon.arm_expected_decerr(BEATS)
         ar = cocotb.start_soon(capture_addr_handshake("ar"))
         seq = SepAxiAccessSeq(

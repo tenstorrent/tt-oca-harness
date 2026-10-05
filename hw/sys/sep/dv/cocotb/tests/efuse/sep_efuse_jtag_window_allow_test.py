@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""JTAG allow leg for the eFuse windows PROD denies.
+"""At TEST_DEV, JTAG reads of the eFuse windows that PROD denies return OKAY.
 
 ``sep_efuse_jtag_axil_el2_cpu_mux_test`` senses PROD, where the JTAG port
 may reach the MMR token block and must be refused (SLVERR or DECERR) on

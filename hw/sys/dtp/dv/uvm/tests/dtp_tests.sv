@@ -194,10 +194,9 @@ import dtp_seq_lib_pkg::*;
 `include "dtp_ctm_rand_cla_to_ctp_test.svh"
 `include "dtp_ctm_rand_ctp_to_cla_test.svh"
 
-// Adopter overlay hook: an external (non-OSS) build may append vendor-
-// specific test classes -- e.g. a commercial-VIP overlay -- by defining
-// DTP_OVERLAY_TESTS to the quoted name of an include file on its own
-// include path. Never defined by the OSS flists.
+// DTP_OVERLAY_TESTS, defined to the quoted name of an include file on the
+// include path, compiles that file into this manifest. The filelists in
+// this tree leave it undefined.
 `ifdef DTP_OVERLAY_TESTS
 `include `DTP_OVERLAY_TESTS
 `endif

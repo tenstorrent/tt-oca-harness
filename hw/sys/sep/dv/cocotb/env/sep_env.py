@@ -12,6 +12,8 @@ from .sep_scoreboard import SepScoreboard
 
 
 class SepEnv(uvm_env):
+    """Two AXI master agents, one passive monitor per bus, and the value scoreboard."""
+
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
         # Primary stimulus: CPU-LSU master (prefix s_axi, no inbound filter).

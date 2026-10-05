@@ -1,17 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 schema_version = 1
 
 # Aggregate testlist: merges category/IP testlists. Leaf files define each test
 # once; tags provide custom subsets, and this file owns the regression groups.
 #
-# Pre-merge commands are in README.md. `rom_fw` is a separate owner and is
-# not a member of `all`.
+# Pre-merge commands are in the Regression Groups section of docs/SEP_VPLAN.adoc. `rom_fw` is not a member of `all`.
 #
 # no_cpu tests use target="lsu_stub_all_live" for the CPU-stubbed model. CPU
 # firmware tests omit target and use the full-CPU default model.
 # Keep group membership aligned with each test's first run_modes[] entry.
 #
-# Production Boot ROM firmware tests live in rom_fw.toml (ROM-FW owner). They run
+# Production Boot ROM firmware tests live in rom_fw.toml. They run
 # in the `rom_fw` group only -- not `cpu`, and not `all`; this VPLAN does not
 # grade them (see hw/sys/sep/dv/docs/SEP_VPLAN.adoc, ROM-FW ownership in Known
 # Limitations). They are still defined here through `includes` so a caller can
@@ -19,7 +20,7 @@ schema_version = 1
 includes = ["system.toml", "cpu.toml", "memory.toml", "km.toml", "crypto.toml", "efuse_lcc.toml", "spi.toml", "rom_fw.toml"]
 
 # CI smoke gate (`--items smoke`), matching the dtp/smc/smu convention so the
-# shared Jenkins/GitHub `items=smoke` parameter resolves for every DUT. One
+# shared CI `items=smoke` parameter resolves for every DUT. One
 # no_cpu test: it needs no RISC-V toolchain (no c_compile stage) and
 # no firmware image, so it runs on a bare hosted/CI runner and still proves the
 # whole flist -> hdl_compile -> sim chain plus the SEP AXI register map.
@@ -29,12 +30,13 @@ tests = ["sep_axi_smoke_test"]
 
 [[groups]]
 # Every test this VPLAN grades. `cpu_stub` (CPU-stub target) and `cpu`
-# (full-CPU target) are disjoint and together hold all 133. `rom_fw`
-# is not a member: a different owner, a third RTL target, and firmware rather
-# than hardware contracts. `all` is the coverage set. expected_count is 133.
+# (full-CPU target) are disjoint and together hold every member;
+# `expected_count` pins the size. `rom_fw` is not a member: it runs a third RTL
+# target and states firmware rather than hardware contracts. `all` is the
+# coverage set.
 #
 # Two members are pinned to one simulator, so a single-simulator run of `all`
-# runs 132 and logs the other as skipped_wrong_tool:
+# logs the other as skipped_wrong_tool:
 # - sep_km_ic_reset_release_test, VCS only (km.toml). Its contract is the
 #   prim_rom noXOnCsI assertion. Verilator is two-state and prim_assert.sv
 #   compiles RTL assertions out under it, so that check cannot fail there.
@@ -180,7 +182,7 @@ tests = [
 ]
 
 [[groups]]
-# Full-CPU daily regression: bounded sim fanout, single-threaded Verilator model.
+# Full-CPU class: the tests on the `default` target.
 name = "cpu"
 tests = [
     "sep_hello_world_test",
@@ -206,8 +208,8 @@ tests = [
 ]
 
 [[groups]]
-# CPU-stub daily regression: high sim fanout, single-threaded Verilator model.
-# The CPU is not alive (`sep_cpu` stub). Run mode stays `no_cpu`.
+# CPU-stub class: the no_cpu tests on lsu_stub_all_live. The CPU is not alive
+# (`sep_cpu` stub). Run mode stays `no_cpu`.
 name = "cpu_stub"
 tests = [
     "sep_axi_smoke_test",
@@ -237,7 +239,6 @@ tests = [
     "sep_irq_ip_to_aggregator_test",
     "sep_periph_bus_err_misaligned_test",
     "sep_drbg_real_sink_multi_km_aes_test",
-
     "sep_km_otbn_sideload_kat_test",
     "sep_km_aes_sideload_kat_test",
     "sep_km_hmac_sideload_kat_test",
@@ -341,13 +342,10 @@ tests = [
 # ROM firmware boot. Its own group because these are the only tests on the
 # `rom_boot` RTL target and the boot_rom* firmware profiles -- a different build
 # on both axes from cpu (default) and no_cpu (lsu_stub_all_live). Kept out of the
-# `cpu` group so a CPU class regression is one build target, and so the ROM-FW
-# owner can run
-# `python3 tools/dv/run_dv.py --dut sep --items rom_fw --regress`
-# without dragging in the SEP suite.
+# `cpu` group so a CPU class regression is one build target. Run it alone with
+# `python3 tools/dv/run_dv.py --dut sep --items rom_fw --regress`.
 # NOT a member of `all`: `all` is the set this VPLAN grades and the set a coverage
-# run measures, so a firmware class with another owner does not belong in it.
-# Reaching these tests means naming `rom_fw` (or the test) explicitly.
+# run measures. Reaching these tests means naming `rom_fw` (or the test) explicitly.
 name = "rom_fw"
 tests = [
     "sep_rom_non_secure_boot_test",

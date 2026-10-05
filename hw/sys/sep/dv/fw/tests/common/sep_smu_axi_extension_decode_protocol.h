@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 /*
- * smu_sep_axi_extension_decode_test  -- shared protocol.
+ * smu_sep_axi_extension_decode -- SMC firmware <-> SMU testbench protocol
+ * (hw/sys/smc/dv/fw/tests/smu_sep_axi_extension_decode).
  *
- * The page at 0x2000_0000 is the eFuse shim; EXT_SPI_CTRL is the generated
- * 0x20001000 (sep_addr.h / sep_addrmap_pkg.sv). Firmware and the monitor use
- * the generated base.
+ * The page at 0x2000_0000 is the eFuse shim; the EXT_SPI_CTRL page is at
+ * 0x20001000.
  * XIP physical word is generated XIP base + 0x4000 (0x30004000).
  *
  * PASS token on SEP cold scratch6 is written only after the XIP load

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM DRBG sampler: read timeout, warm reset of a pending read, and the live control.
+"""A KM DRBG sampler read times out after CFG.TIMEOUT cycles; a warm reset cancels a pending read.
 
 no_cpu / +skip_fuse_sense / +esrc_noise_force /
 +km_rom_hex=km_rom_drbg_sampler.parhex. Directed: the image carries one

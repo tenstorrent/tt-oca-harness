@@ -7,7 +7,7 @@
 // downstream IDCODE and DS_TDR readback through the selected STAP, the
 // downstream register frozen in Test-Logic-Reset while the port is gated,
 // and recovery against real downstream state. The host-port temporal windows
-// remain as corroboration.
+// corroborate that evidence.
 // (looped runner with per-pass family evidence, 16-pass floor).
 
 class dtp_3dcr_stap_sel_extra_test extends dtp_base_test;

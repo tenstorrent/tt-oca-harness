@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""PERIPH_BUS_ERR_STATUS and DMA_BUS_ERR_STATUS on a misaligned offset.
+"""A misaligned beat to HMAC or the Secure DMA gets SLVERR and latches that block's error bit.
 
-sep_cpu_ctrl.rdl and doc/interrupts.adoc require a misaligned offset to receive
+sep_cpu_ctrl.rdl and hw/sys/sep/doc/interrupts.adoc require a misaligned offset to receive
 SLVERR and latch the owning block's bit: the HMAC bit of PERIPH_BUS_ERR_STATUS
 for an HMAC register, and reg_path_err of DMA_BUS_ERR_STATUS for a Secure DMA
 register.
@@ -29,7 +29,7 @@ from seq_lib.sep_irq_aggregator_seq import (
 
 # Two bytes at a word offset + 2 end on the word boundary, so the master issues
 # one beat. Four bytes would cross the word and go out as a two-beat burst,
-# which a burst-refusing path (doc/crypto.adoc "Single-Beat Access Only")
+# which a burst-refusing path (hw/sys/sep/doc/crypto.adoc "Single-Beat Access Only")
 # answers with DECERR before any beat reaches the block.
 _PROBE_BYTES = 2
 _RESP_OKAY = 0

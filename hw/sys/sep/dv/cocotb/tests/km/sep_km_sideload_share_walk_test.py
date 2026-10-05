@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM sideload: two keys per destination, an engine shred after each, every block.
+"""Each KM sideload destination uses exactly the delivered key, and a shred leaves it invalid.
 
 no_cpu / real fuse-sense / +km_rom_hex=rom_main.rom.parhex. RANDCFG.
 
 The Key Manager delivers a key as two XOR shares into the KEY_SHARE0 /
 KEY_SHARE1 words of a ``<engine>_wrapper_key_reg`` block, and KEY_CTRL.KEY_VALID
-qualifies it (doc/crypto.adoc, "Key Manager Key Delivery"). The share words are
+qualifies it (hw/sys/sep/doc/crypto.adoc, "Key Manager Key Delivery"). The share words are
 write-only and sit on the KM-private bus, so the delivered value is graded at
 the consumer. This leaf walks all eight delivery destinations -- AES, HMAC,
 KMAC, OTBN and the four ABR blocks -- through two rounds. Each round loads a
@@ -47,13 +47,14 @@ Checkers (``r`` is the round, 1 or 2):
                 that ignores its seed or message
   CHK-HMAC-CLR-r
                 with KEY_VALID clear HMAC uses its software key registers: the
-                digest == golden of the software key (doc/hmac.adoc)
+                digest == golden of the software key (hw/sys/sep/doc/hmac.adoc)
   CHK-OTBN-CLR-r
                 reading a key share whose key is not valid sets
-                ERR_BITS.KEY_INVALID and stops the program (doc/otbn.adoc)
+                ERR_BITS.KEY_INVALID and stops the program (hw/sys/sep/doc/otbn.adoc)
   CHK-ABR-CLR-r each ABR KV read on a shredded block fails: kv status ERROR ==
-                KV_READ_FAIL (doc/crypto.adoc km-key-delivery-summary, "Seed
-                read does not complete"; encoding from kv_def.rdl). D and Z
+                KV_READ_FAIL (hw/sys/sep/doc/crypto.adoc km-key-delivery-summary, "Seed
+                read does not complete"; encoding from
+                vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/kv_def.rdl). D and Z
                 have their own KEY_VALID and the D||Z read fails if either is
                 clear, so each is graded alone: after the shred only D is
                 delivered again and the read must fail (Z is clear); after a
@@ -63,12 +64,12 @@ Checkers (``r`` is the round, 1 or 2):
                 shown valid. The engine STATUS is logged, not graded: no SEP
                 document states it
   CHK-KMAC-CLR  a keyed operation on the delivered key with KEY_VALID clear
-                raises kmac_err with a non-zero ERR_CODE (doc/kmac.adoc). Both
+                raises kmac_err with a non-zero ERR_CODE (hw/sys/sep/doc/kmac.adoc). Both
                 read clear just before CMD_START, so the error belongs to that
                 start. Last KMAC operation: the engine is left in its error
                 state
   CHK-AES-CLR   with sideload selected and the key shredded, AES produces no
-                output in a bounded window. doc/aes.adoc defers core behaviour
+                output in a bounded window. hw/sys/sep/doc/aes.adoc defers core behaviour
                 to the OpenTitan AES documentation, which states the unit only
                 starts if the sideload key is valid ("System Key-Manager
                 Interface"). Last AES operation
@@ -81,7 +82,7 @@ Ordering that the compares rely on:
     so a stale share word changes the consumer output. AES, HMAC, KMAC and
     OTBN then fail their golden; ABR fails its KV-vs-direct compare.
   * Key Manager word i and ABR register index i carry the same dword
-    (doc/adams_bridge.adoc, abr-seed-word-order). Every ABR seed, message, D
+    (hw/sys/sep/doc/adams_bridge.adoc, abr-seed-word-order). Every ABR seed, message, D
     and Z has eight pairwise-distinct words, so a dword reversal or any other
     word permutation in KM-to-ABR delivery changes the engine input and fails
     the KV-vs-direct compare.
@@ -158,7 +159,7 @@ from seq_lib.sep_otbn_seq import SepOtbn
 
 ROUNDS = 2
 
-# Words per share per destination (doc/crypto.adoc, km-key-delivery-summary).
+# Words per share per destination (hw/sys/sep/doc/crypto.adoc, km-key-delivery-summary).
 DEST_WORDS = {
     KM_DEST_AES: 8,
     KM_DEST_HMAC: 8,
@@ -269,7 +270,7 @@ class SepKmShareWalkCfg:
 
 @pyuvm.test()
 class sep_km_sideload_share_walk_test(sep_base_test):
-    """Two seeded keys per KM sideload destination, shred after each round."""
+    """Every destination consumes exactly the delivered key; a shred leaves it invalid."""
 
     required_evidence = (
         *(

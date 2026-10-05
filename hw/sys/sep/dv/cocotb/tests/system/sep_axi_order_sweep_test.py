@@ -33,6 +33,10 @@ CHK-ORDER-XSIZE: all nine (ordering x size) cells produced a data compare, so
 the ordering axis is proven crossed with the lane axis and not only at the bus
 width.
 
+CHK-ORDER-STIM: the ordering each cell presented on the bus, read off the AW/W
+valid assertions, matches the ordering it requested, and all three orderings
+were presented.
+
 CHK-COVERAGE: the cell tally is logged, including every cell that could not run
 and why. A dropped cell is named rather than absorbed, so partial coverage
 never reads as a full sweep.

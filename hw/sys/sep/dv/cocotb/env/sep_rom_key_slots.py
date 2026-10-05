@@ -3,9 +3,9 @@
 """Bind either manifest slot to any ROM public-key slot 0-5, and re-sign it.
 
 The ROM checks a manifest's modulus against the digest compiled in for the slot it
-selects (``check_pubkey_hash``), so a manifest that must boot needs three writes: the
-selector, that slot's modulus, and a signature by that slot's private key. Otherwise
-the ROM stops at ``PUBK_HASH_MISMATCH``.
+selects (``plat_is_key_authorized()`` in ``oca_platform.c``), so a manifest that must
+boot needs three writes: the selector, that slot's modulus, and a signature by that
+slot's private key. Otherwise the ROM refuses the key (``PUBK_UNAUTHORIZED``).
 
 Keys come from ``bootrom/prod/tests/signing_keys/rsa_private_key.rom_key<N>.pem``, the
 PEMs the debug ROM's digest table is generated from; each modulus is checked against
@@ -47,7 +47,7 @@ def load_slot_key(index: int) -> Tuple[int, int, int, bytes]:
     """``(n, e, d, modulus_bytes)`` for ROM slot ``index``.
 
     Raises if the PEM modulus does not hash to the compiled-in digest, so a later
-    ``PUBK_HASH_MISMATCH`` cannot come from the stimulus.
+    ``PUBK_UNAUTHORIZED`` cannot come from the stimulus.
     """
     pem = slot_key_path(index)
     n, e_pub, d = pm.load_rsa_private_key(pem)
@@ -80,9 +80,9 @@ def bind_manifest_to_rom_slot(buf: bytearray, slot: str, index: int) -> Dict[str
     # Prove OFF_PUBLIC_KEY addresses the modulus by repeating the ROM's slot-0 digest
     # compare on the as-shipped image.
     mm.verify_public_key(buf, slot)
-    # And the local signer must reproduce the packer's signature byte for byte,
-    # or the signature written below is not a genuine one and the ROM's rejection
-    # would say SIG_FAILED rather than whatever is under test.
+    # And the shipped signature must verify under the PEM's modulus, or the
+    # signature written below is not a genuine one and the ROM's rejection would be
+    # OCA_FAIL_SIGNATURE rather than whatever is under test.
     pm.verify_signing_key(buf, slot)
 
     tbs_before = bytes(buf[base : base + mm.SIGNED_REGION_END])
@@ -93,8 +93,8 @@ def bind_manifest_to_rom_slot(buf: bytearray, slot: str, index: int) -> Dict[str
     tbs_changed = tbs_before != tbs_after
 
     if tbs_changed:
-        # The writes must land inside the signed region; a shipped dev0 signature that
-        # still verifies would mean they did not.
+        # The writes must land inside the signed region; a shipped ROM-slot-0 signature
+        # that still verifies would mean they did not.
         dev0_n, dev0_e, _dev0_d = pm.load_rsa_private_key(pm.rom_signing_key(0))
         stale = bytes(buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + pm.RSA_KEY_BYTES])
         if pm.verify_pkcs1v15_sha256(tbs_after, stale, dev0_n, dev0_e):
@@ -109,7 +109,8 @@ def bind_manifest_to_rom_slot(buf: bytearray, slot: str, index: int) -> Dict[str
     )
 
     # Prove offline what the ROM will prove in hardware. Without it a broken
-    # re-sign reaches the simulation as RSA_VERIFY_FAIL and reads like a DUT defect.
+    # re-sign reaches the simulation as an OCA_FAIL_SIGNATURE rejection and reads like
+    # a DUT defect.
     mm.verify_layout(buf, slot)
     sig = bytes(buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + pm.RSA_KEY_BYTES])
     if not pm.verify_pkcs1v15_sha256(bytes(buf[base : base + mm.SIGNED_REGION_END]), sig, n, e_pub):

@@ -9,8 +9,9 @@ RXDATA / opcode assertions live in the test; this sequence exposes ``rxdata``.
 
 Co-located with the SPI register-map constants so the test does not embed raw
 addresses. The SEP instantiates the upstream OpenTitan spi_host register block
-(the SPI_CONTROLLER symbols are generated from spi_host.hjson), so register
-names and field packing are the OpenTitan ones.
+(the SPI_CONTROLLER symbols are generated from the overlay spi_controller.rdl,
+which follows the upstream spi_host register map), so register names and field
+packing are the OpenTitan ones.
 """
 
 from __future__ import annotations

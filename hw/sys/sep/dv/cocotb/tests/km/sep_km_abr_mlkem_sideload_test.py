@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM -> ABR ML-KEM sideload: the three KV lanes the facade serves.
+"""Each ML-KEM KV lane delivers exactly the KM-sideloaded words, and the shared key writes back.
 
 no_cpu / real fuse-sense / +km_rom_hex=rom_main.rom.parhex.
 
 Adams Bridge pulls its ML-KEM inputs from a Caliptra Key Vault. SEP has no
 Caliptra KV: the KM pushes keys into a sideload CSR over its private key bus
 and ``sep_abr_kv_shim`` re-presents that CSR on the KV ports. The shim serves
-three read lanes and one write lane, and only the ML-DSA lane has a consumer
-elsewhere in this suite:
+three read lanes and one write lane. The ML-DSA read lane has its own leaf;
+this leaf grades the other three:
 
   * kv_read[1] -- ML-KEM seed, 16 dwords, D[0..7] then Z[0..7]. One lane
     carrying two separately-valid blocks, split on read_offset[3].
@@ -28,7 +28,7 @@ the seed leg grades Z at the engine: the read-only probe
 after the REF keygen and the ALT Z after the sideloaded keygen.
 
 Key Manager word i and register index i carry the same dword
-(doc/adams_bridge.adoc, abr-seed-word-order), so each sideloaded run must equal
+(hw/sys/sep/doc/adams_bridge.adoc, abr-seed-word-order), so each sideloaded run must equal
 the direct-register run of the same words in the same order. Every seed and
 message has eight pairwise-distinct words, and no word is shared between D and
 Z, so a dword reversal, any other word permutation or a D/Z mix-up fails.
@@ -234,11 +234,11 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
         contract of CHK-KEM-SK-CONFIDENTIAL, and the value read on a fully
         register-driven ENCAPS is the reference for CHK-KEM-SK-VALUE. The
         ML-KEM shared key is consumed directly by the Key Manager
-        (doc/crypto.adoc, "a gated ML-KEM shared-key interrupt consumed
-        directly by the Key Manager") and
-        shared-key storage is secret-bearing Class 2 logic
-        (doc/attack_countermeasures.adoc), so a key the vault sourced must not
-        be readable by software over the CSR aperture. This test establishes
+        (hw/sys/sep/doc/crypto.adoc, "a gated ML-KEM shared-key interrupt
+        consumed directly by the Key Manager") and shared-key storage is
+        secret-bearing Class 2 logic (hw/sys/sep/doc/attack_countermeasures.adoc),
+        so a key the vault sourced must not be readable by software over the
+        CSR aperture. This test establishes
         that it IS readable when every input came over the bus, and is withheld
         once an input came from the vault.
         """
@@ -504,7 +504,7 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
 
         # --- CHK-KEM-SK-VALUE: the posted words are the engine's shared key ---
         # MLKEM_SHARED_KEY.KEY[i] must hold the engine's own MLKEM_SHARED_KEY
-        # word i (doc/adams_bridge.adoc). The writeback ENCAPS ran on the same
+        # word i (hw/sys/sep/doc/adams_bridge.adoc). The writeback ENCAPS ran on the same
         # (ek, m) as the register-driven ENCAPS that read sk_alt back
         # (CHK-KEM-SK-WRITEBACK compared the ciphertexts), so sk_alt is the
         # expected key. The KM moves KEY[0..7] word for word into the KPV

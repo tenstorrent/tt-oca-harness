@@ -1,14 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-/*******************************************************************************
- * OCH SEP Common Header
+/*
+ * SEP DV common header.
  *
- * Register access macros for OCH SEP firmware and tests. WRITE_REG/READ_REG
+ * Register access macros for SEP DV firmware and tests. WRITE_REG/READ_REG
  * take the absolute addresses that sep.h / sep_addr.h provide; no base offset
  * is added.
- *
- ******************************************************************************/
+ */
 
 #ifndef OCH_SEP_COMMON_H
 #define OCH_SEP_COMMON_H
@@ -169,6 +168,11 @@ static inline int poll_reg_timeout(uintptr_t addr, uint32_t mask, uint32_t expec
 
 //==============================================================================
 // Address Validation (Optional - for debug builds)
+//
+// Debug-only guard. It traps on an address outside 0x4000_0000-0x4FFF_FFFF,
+// the first 256 MiB of the SMC row (0x4000_0000-0x7FFF_FFFF) of the SEP CPU
+// logical map. SEP-local register addresses are
+// outside that window, so the guard traps on them.
 //==============================================================================
 
 #ifdef OCH_SEP_DEBUG_REG_ACCESS

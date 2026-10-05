@@ -404,6 +404,7 @@ hw/sys/smc/rtl/smc_reset_unit/rtl/smc_reset_unit_pkg.sv
 hw/common/axi/axi4lite_intf.sv
 hw/common/axi/axi_cg_snoop.sv
 hw/common/ocah_prim/rtl/prim_axi_snoop.sv
+hw/common/ocah_prim/rtl/prim_clkmux4.sv
 hw/common/ocah_prim/rtl/prim_ag_clk_mux.sv
 hw/common/ocah_prim/rtl/prim_apb_arb.sv
 hw/common/ocah_prim/rtl/prim_axi_addr_fixer.sv
@@ -412,6 +413,7 @@ hw/common/ocah_prim/rtl/prim_axi_id_prepend_wrap.sv
 hw/common/ocah_prim/rtl/prim_axi_lite_err_slv.sv
 hw/common/ocah_prim/rtl/prim_axi_lite_to_apb_single.sv
 hw/common/ocah_prim/rtl/prim_axi_user_override.sv
+hw/common/ocah_prim/rtl/prim_axil_access_gate.sv
 hw/common/ocah_prim/rtl/prim_axil_addr_fixer.sv
 hw/common/ocah_prim/rtl/prim_axil_prot_filter.sv
 hw/common/ocah_prim/rtl/prim_bin2gray.sv
@@ -420,7 +422,6 @@ hw/common/ocah_prim/rtl/prim_cg_req.sv
 hw/common/ocah_prim/rtl/prim_clk_counter.sv
 hw/common/ocah_prim/rtl/prim_clk_counter_fifo_sync.sv
 hw/common/ocah_prim/rtl/prim_clk_gater_hysteresis.sv
-hw/common/ocah_prim/rtl/prim_clkmux4.sv
 hw/common/ocah_prim/rtl/prim_diff_decode_multi.sv
 hw/common/ocah_prim/rtl/prim_diff_encode_multi.sv
 hw/common/ocah_prim/rtl/prim_fair_rr_arb.sv
@@ -881,6 +882,7 @@ hw/sys/smc/rtl/smc_misc/rtl/smc_dfx_ctrl_status_wrap.sv
 hw/sys/smc/rtl/smc_misc/rtl/smc_misc_wrap.sv
 hw/sys/smc/rtl/smc_misc/rtl/smc_version_id_wrap.sv
 hw/sys/smc/rtl/smc_peripherals/efuse/smc_efuse_wrapper.sv
+hw/sys/smc/rtl/smc_peripherals/rtl/ext_boot_seq_done_qual.sv
 hw/sys/smc/rtl/smc_peripherals/rtl/smc_padring.sv
 hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv
 hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals_cdc.sv

@@ -1,12 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP Secure-DMA inline SHA-256 firmware-boot test (PyUVM).
+"""The Secure-DMA inline hash produces the correct SHA-256 and SHA-384 digests while it copies.
 
 The dma_hash firmware programs the Secure DMA to copy a buffer through the inline SHA-256 engine,
 waits for the DMA-done interrupt through the VeeR PIC (WFI + ISR), and checks the hardware digest
 against a software SHA-256, the copied data and the DMA error code. It returns its error count and
-start.S emits PASS (0xCAFEBABE) / FAIL (0xDEADBEEF) on the 0x8000_0000 mailbox, which the boot
-scoreboard gates on with the banner and ICCM-execution checks.
+fw/startup/crt0.s emits PASS (0xCAFEBABE) / FAIL (0xDEADBEEF) on the 0x8000_0000 mailbox, which the
+boot scoreboard gates on with the banner and ICCM-execution checks.
+
+The host also gates on CHK-SHA384, CHK-MULTICHUNK, CHK-DIGEST-SWAP, CHK-CFG, CHK-COMPLETE,
+CHK-COPY and CHK-SHA384-COPY, and compares the printed hardware and software digests itself
+(CHK-DIGEST).
 """
 
 from __future__ import annotations
@@ -40,7 +44,7 @@ _BANNER = "Secure DMA SHA-256 Hash Test"
 
 @pyuvm.test()
 class sep_dma_hash_test(sep_base_test):
-    """Boot VeeR EL2 and run the Secure-DMA inline SHA-256 firmware."""
+    """Inline SHA digests, copied data and the DMA status match their goldens."""
 
     build_env = False
 
@@ -65,8 +69,8 @@ class sep_dma_hash_test(sep_base_test):
         # The banner alone cannot tell a current image from a stale SHA-256-only
         # one: both print it. The firmware scores SHA-384, the multi-chunk pass
         # and the DIGEST_SWAP=0 comparison into its own error count, so gate on
-        # each leg's PASS line -- an image built before those legs existed
-        # reaches the PASS magic with three contracts never exercised.
+        # each leg's PASS line -- an image without those legs reaches the PASS
+        # magic with three contracts never exercised.
         console = self.sb.console_text()
         for needle, chk, what in (
             ("PASS: SHA-384 digest matches", "CHK-SHA384", "the SHA-384 FIPS 180-4 vector"),
@@ -91,7 +95,7 @@ class sep_dma_hash_test(sep_base_test):
         )
 
         # The SHA-256 pass legs are scored the same way: each prints the line the
-        # card's checker names, so a leg that did not run loses its line here
+        # VPLAN checker names, so a leg that did not run loses its line here
         # instead of hiding behind the PASS magic.
         for needle, chk, what in (
             (

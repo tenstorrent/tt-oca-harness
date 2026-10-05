@@ -24,16 +24,16 @@ also runnable for two jobs neither needed by a normal test run:
     sep_generate_efuse_preload.py --selftest      # wide registers + error paths
     sep_generate_efuse_preload.py --emit <cfg>    # write <cfg>.hex to inspect it
 
-Lock bits (`read_locked` / `write_locked` in the reference format) are not
-implemented, and those keys are rejected rather than ignored so a config copied
-from the reference cannot appear to set a lock that never lands.
+Lock bits (`read_locked` / `write_locked` keys) are not implemented. The
+loader rejects those keys rather than ignoring them, so a config cannot appear
+to set a lock that never lands.
 
 ## Conventions
 
-`LC_STATE.lc_state` is the **differentially encoded** byte `{~raw[3:0], raw[3:0]}`
-that the OTP physically holds, not the raw nibble — the same convention the
-reference suite uses. Only `[3:0]` is significant to the sense FSM, which
-regenerates the pair itself.
+`LC_STATE.lc_state` is the **differentially encoded** byte
+`{~raw[3:0], raw[3:0]}` that the OTP physically holds, not the raw nibble.
+Only `[3:0]` is significant to the sense FSM, which regenerates the pair
+itself.
 
 The loader writes that byte through verbatim and does NOT range-check it against
 the legal raw codes, so a config can hand the DUT an encoding the write path
@@ -54,7 +54,7 @@ Raw codes (`efuse_pkg::lc_state_raw_e`) and their encodings:
 | PROD_END     | 0x8 | 0x78    |
 
 Anything not stated in a config is zero. Registers and fields are validated
-against the generated register map, so a name the RDL no longer has is an error
+against the generated register map, so a name the RDL does not define is an error
 rather than a silently-zero field.
 
 ## Not generated from TOML

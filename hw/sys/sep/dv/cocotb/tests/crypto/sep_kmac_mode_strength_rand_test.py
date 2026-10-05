@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Standalone KMAC-engine mode x strength breadth, RAND-REP (KMAC mode/strength breadth).
+"""Each SHA-3, SHAKE, cSHAKE and KMAC mode and strength matches an independent Keccak golden.
 
-Drives the OpenTitan KMAC engine directly over the CPU-LSU AXI master (no_cpu, no
+RAND-REP. The test drives the OpenTitan KMAC engine directly over the CPU-LSU AXI master (no_cpu, no
 firmware) across the SHA-3 / SHAKE / cSHAKE / KMAC family the KM->KMAC
 sideload KAT (`sep_km_kmac_sideload_kat_test`, KMAC-256 keyed via keymgr,
 cross-check only) does not reach:
@@ -10,10 +10,8 @@ cross-check only) does not reach:
     SHA3-224/256/384/512, SHAKE-128/256, cSHAKE-128/256,
     KMAC-128/256 across all five key lengths  (13 cells).
 
-Reference parity: the reference SEP KMAC coverage is a keyed KMAC cross-check (no
-standalone SHA3/SHAKE/cSHAKE digest golden), so the independent pure-Python Keccak
-golden (env/sep_kmac_golden.py: SHA3/SHAKE cross-checked vs hashlib, cSHAKE/KMAC vs
-NIST SP800-185) is the reference here. DISTINCT from
+The independent pure-Python Keccak golden (env/sep_kmac_golden.py: SHA3/SHAKE cross-checked
+vs hashlib, cSHAKE/KMAC vs NIST SP800-185) is the reference. Distinct from
 `sep_km_kmac_sideload_kat_test` (KMAC-256 via sideload, cross-check) -- KMAC
 mode/strength breadth is standalone SW-key with an exact golden.
 
@@ -23,16 +21,16 @@ real ESRC->DRBG->EDN stack (+esrc_noise_force) or the engine stalls. OTBN/AES/HM
 are parked so KMAC is the only crypto EDN client: CHK1..CHK4 are bit-exact,
 CHK5_kmac is per-sink ROUTING golden. KM is unused.
 
-RAND-REP contract: a SepKmacCfg config object is the single source
-of truth for BOTH DUT programming (CFG + KEY_LEN + PREFIX + key + message tail)
-AND the golden. The discrete (mode, strength, key length) cells are WALKED DETERMINISTICALLY
-in one invocation; the seed randomizes only the legal continuous knobs (message,
-key content). The digest is read from STATE share0 ^ share1 (masking on).
+One SepKmacCfg object drives both the DUT programming (CFG, KEY_LEN, PREFIX, key,
+message tail) and the golden. The (mode, strength, key length) cells are walked on
+every seed. The seed sets only the message and key content. The digest is read
+from STATE share0 ^ share1 (masking on).
 
 Checkers:
-  CHK-DIGEST     per cell: engine digest == independent Keccak/SP800-185 golden
-  CHK-DONE-RW1C  per cell: INTR_STATE.kmac_done observed set -> W1C -> reads 0
-                 (proven in sep_kmac_seq.run_family), and CMD DONE returns to idle
+  CHK-CELL       per cell (one log line): engine digest == independent
+                 Keccak/SP800-185 golden
+  CHK-DONE-RW1C  per cell (sep_kmac_seq.run_family): INTR_STATE.kmac_done set ->
+                 W1C -> reads 0; CMD DONE returns to idle
   CHK-ERR        per cell: ERR_CODE == 0 and INTR_STATE.kmac_err == 0
   CHK1..CHK4     bit-exact entropy golden (strict scoreboard report)
   CHK5_kmac      post-adapter KMAC beats == AXIS1 in order (single live crypto sink)
@@ -78,13 +76,13 @@ assert {c[3] for c in CELLS if c[0] == "kmac"} == set(KMAC_KEY_LENGTHS)
 
 @pyuvm.test()
 class sep_kmac_mode_strength_rand_test(sep_base_test):
-    """Standalone KMAC-family SHA3/SHAKE/cSHAKE/KMAC x strengths (no_cpu, SW key)."""
+    """SHA3/SHAKE/cSHAKE/KMAC at every strength with a SW key each match the golden."""
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu(park=("otbn", "aes", "hmac"))
-        # Every other crypto-EDN client JTAG-held across rst_ni release, then parked in SW_RESET_N so CHK5_kmac golden
-        # routing is in-order (one live sink). KMAC stays released for the
-        # masking reseed.
+        # Every other crypto-EDN client is JTAG-held across rst_ni release, then
+        # parked in SW_RESET_N, so CHK5_kmac golden routing is in order (one live
+        # sink). KMAC stays released for the masking reseed.
         await self.bring_up_entropy(strict=True, score_km=False, score_sinks={"kmac": "golden"})
         # KMAC draws entropy once per operation rather than per block, so this
         # walk scores about six routed beats where the AES sweep scores over a
@@ -100,10 +98,8 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
         self.logger.info("KMAC mode x strength breadth: seed=%d", seed)
 
         # Collect each cell's DUT result so the matrix claim rests on observed
-        # output, not on the loop's own trip count. Comparing `walked` only to a
-        # product of file-scope constants asserts the test's own arithmetic.
-        # Distinct results additionally show the cells programmed different
-        # configurations.
+        # output, not on the loop's own trip count. Distinct results additionally
+        # show the cells programmed different configurations.
         results: dict[str, tuple[int, ...]] = {}
         for mode, sec, outb, key_bits, s in CELLS:
             # Key the cell by every dimension that distinguishes it, key length

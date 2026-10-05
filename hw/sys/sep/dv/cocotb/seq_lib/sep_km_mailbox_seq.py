@@ -30,9 +30,8 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 # --- mailbox register map (SEP/host side) ---------------------------------
 KM_MBOX_BASE = sym("KM_MAILBOX_SEP_REG_MAP_BASE_ADDR")
-# Offsets from the generated map, not literals: a register-flow rename or a
-# moved register then surfaces as an import-time error instead of a silently
-# stale constant that reads or writes the wrong port.
+# Offsets come from the generated map, so a register-flow rename or a moved
+# register fails at import.
 KM_MBOX_WRITE_DATA = sym("KM_MAILBOX_SEP_SEP_WRITE_DATA_REG_OFFSET")
 KM_MBOX_WRITE_SEPARATOR = sym("KM_MAILBOX_SEP_SEP_WRITE_SEPARATOR_REG_OFFSET")
 KM_MBOX_READ_DATA = sym("KM_MAILBOX_SEP_SEP_READ_DATA_REG_OFFSET")
@@ -90,10 +89,10 @@ KM_CTRL_INBOUND_OVERFLOW_RESP = _KM_MBOX("SEP_CTRL", "inbound_overflow_resp")
 KM_CTRL_OUTBOUND_UNDERFLOW_RESP = _KM_MBOX("SEP_CTRL", "outbound_underflow_resp")
 KM_CTRL_FLUSH = _KM_MBOX("SEP_CTRL", "flush")
 
-# Both FIFOs are 16 words deep. hw/ip/key_manager/doc/architecture.adoc
-# (mailbox) gives the inbound and outbound FIFOs a "minimum depth 16 words
-# each"; this DV-owned constant takes that minimum as the depth the full,
-# space-available and overflow goldens expect.
+# Both FIFOs are 16 words deep: hw/ip/key_manager/doc/architecture.adoc gives
+# each FIFO "at least 16 words" and states that SEP instantiates the KM with
+# MAILBOX_DEPTH = 16. The full, space-available and overflow goldens use that
+# depth.
 KM_MBOX_DEPTH = 16
 
 # --- commands / responses / destinations ----------------------------------
@@ -230,8 +229,9 @@ class SepKmMailbox:
         self.base = base
         self.log = logger if logger is not None else test.logger
         self.seq_num = 0  # next outbound command sequence number
-        self._resp_seq = 0  # next expected response sequence; the firmware bumps
-        # rom_resp_seq_num on EVERY frame, incl. boot RESP_KM_READY
+        # Next expected response sequence. The firmware increments
+        # rom_resp_seq_num on every frame, boot RESP_KM_READY included.
+        self._resp_seq = 0
 
     def reset_host_seq(self) -> None:
         """Resynchronize host counters with a KM that just reset its own.
@@ -404,10 +404,10 @@ class SepKmMailbox:
         """Snapshot the observables that say WHERE a KM boot stalled.
 
         A bare "no RESP_KM_READY" is unattributed: it cannot distinguish a KM held
-        in reset, a KM fetching from an empty/!loaded ROM, and a KM that booted but
+        in reset, a KM fetching from an empty or unloaded ROM, and a KM that booted but
         never posted. The ROM/SRAM request counters separate exactly those cases:
           rom_req == 0            -> the KM CPU never fetched (held in reset, or
-                                     unclocked) -- look at SW_RESET_N bit0.
+                                     unclocked) -- look at sep_reset_ctrl SW_RESET_N bit 0.
           rom_req > 0, sram_wr==0 -> fetching but not progressing (bad image /
                                      immediate fault on the first instructions).
           both > 0                -> firmware ran; the stall is later than boot.

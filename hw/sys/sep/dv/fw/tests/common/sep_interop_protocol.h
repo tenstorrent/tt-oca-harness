@@ -3,7 +3,7 @@
 /*
  * sep_interop  --  shared protocol contract (single source of truth).
  *
- * Included by BOTH firmwares (SMC producer main.c + SEP consumer sep_smc_interop.c).
+ * Included by the SMC producer firmware hw/sys/smc/dv/fw/tests/sep_interop/main.c.
  * Python goldens derive mailbox CSR facts independently from PeakRDL; they do
  * not parse this header.
  *
@@ -98,20 +98,20 @@
  * SEP-driven SMC bring-up (mirrors smu_smc_stall_sep) -- the TB backdoor-preloads the SMC image
  * into SRAM, then the SEP re-vectors the four SMC cores to the SMC entry symbol and pulses
  * their reset. The SMC firmware is the STACKLESS producer whose naked entry symbol is
- * `sep_interop_entry` (fw/smc/tests/sep_interop/src/main.c, SMC_STACKLESS_ENTRY).
+ * `sep_interop_entry` (hw/sys/smc/dv/fw/tests/sep_interop/main.c, SMC_STACKLESS_ENTRY).
  *
  * SEP_INTEROP_SMC_ENTRY            = SMC-local link address of sep_interop_entry (the value
  *                                    written into RESET_VECTOR_* to launch the SMC).
  * SEP_INTEROP_SMC_IMAGE_FIRST_WORD = first word of the preloaded SMC image (SRAM[0] cookie).
  *
- * BOTH are image-dependent: the human MUST reconcile them against the freshly BUILT image,
- * exactly as smu_smc_stall_sep reconciles SMU_STALL_SMC_ENTRY / SMU_STALL_SMC_IMAGE_FIRST_WORD:
- *   entry  -> address of `sep_interop_entry` in fw/smc/tests/sep_interop/out/test.dis (.sym)
- *   cookie -> first data word at the SRAM base in fw/smc/tests/sep_interop/out/test.preload.hex
- * The values below must match the current build; re-verify after any firmware/linker change.
+ * Both values depend on the built SMC image. Check them against the built image after any
+ * SMC firmware or linker change, as smu_smc_stall_sep does for SMU_STALL_SMC_ENTRY /
+ * SMU_STALL_SMC_IMAGE_FIRST_WORD:
+ *   entry  -> address of `sep_interop_entry` in the built test.dis (.sym) of that image
+ *   cookie -> first data word at the SRAM base in the built test.preload.hex of that image
  */
-#define SEP_INTEROP_SMC_ENTRY 0x00000000C00601B2    /* RECONCILE vs built image */
-#define SEP_INTEROP_SMC_IMAGE_FIRST_WORD 0x41014081 /* RECONCILE vs built image */
+#define SEP_INTEROP_SMC_ENTRY 0x00000000C00601B2    /* built SMC image entry */
+#define SEP_INTEROP_SMC_IMAGE_FIRST_WORD 0x41014081 /* built SMC image first word */
 
 /* SEP-view alias of SMC CPU_CTRL scratch12 (SMC-local 0xC00390E0): the SEP READY rendezvous. */
 #define SEP_INTEROP_SMC_SCRATCH12_ALIAS 0x400390E0

@@ -125,7 +125,6 @@ static int test_ns_secure_allow_deny_patterns(void) {
                 }
             }
 
-            // Non-secure access (simulated)
             if (test_axi_transaction(test_addr + 0x1000, 4, AXI_WRITE) != 0) {
                 if (allow_ns) {
                     printf("ERROR: NS access should be allowed\n");

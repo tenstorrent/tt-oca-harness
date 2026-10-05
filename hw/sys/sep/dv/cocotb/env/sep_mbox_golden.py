@@ -61,7 +61,8 @@ CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
 CLOCK_GATE_IMPL_MASK = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
 
 MAILBOX_DEPTH = mailbox_depth()
-# Read-from-empty / write-only readback, from the mailbox interface.adoc.
+# Read-from-empty / write-only readback, from
+# hw/ip/axi_lite_mailbox_unit/doc/interface.adoc.
 READ_EMPTY_SENTINEL = mailbox_empty_sentinel()
 WRITE_DATA_RD_SENTINEL = mailbox_write_data_rd_sentinel()
 RESP_OKAY = 0
@@ -139,9 +140,10 @@ class SepMboxGolden:
     """Golden depth model for the TX FIFO (outbound WRITE_DATA push side).
 
     Predicts the outbound-aperture STATUS bits + the write-threshold IRQ from the TX
-    occupancy. The RX side (READ_DATA) stays empty on bare-sep. Thresholds use
-    strict greater-than (``architecture.adoc``: fill level exceeds the configured
-    threshold). SepMboxCfg draws wirqt inside [1, depth-1], so every threshold the
+    occupancy. The RX side (READ_DATA) stays empty in this testbench (no SMC-side
+    driver). Thresholds use strict greater-than
+    (``hw/ip/axi_lite_mailbox_unit/doc/architecture.adoc``: fill level exceeds the
+    configured threshold). SepMboxCfg draws wirqt inside [1, depth-1], so every threshold the
     config can program is below depth and needs no clamp.
     """
 
@@ -165,7 +167,7 @@ class SepMboxGolden:
         return {
             "full": self.tx >= self.cfg.depth,
             "wlvl_above": self.tx > self.wirqt,
-            "empty": True,  # RX FIFO never filled on bare-sep
+            "empty": True,  # RX FIFO never filled: no SMC-side driver in this testbench
             "rlvl_above": False,
         }
 

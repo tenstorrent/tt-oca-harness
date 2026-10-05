@@ -4,10 +4,9 @@
 
 Writes a 256-bit token into the eFuse MMR input registers, pulses EOP, and
 polls the match status until it is a documented terminal code (match
-``6'b010101``, mismatch ``6'b101010``, or error ``6'b111111``). Token
-values come from the run seed. Digest
-compare is SHA-256 over the 32-byte big-endian token (same as the stitch
-walk). LC_STATE programming stays with ``sep_efuse_otp_program_seq``.
+``6'b010101``, mismatch ``6'b101010``, or error ``6'b111111``). Token values
+come from the run seed. Digest compare is SHA-256 over the 32-byte big-endian
+token (same as the stitch walk). LC_STATE programming stays with ``sep_efuse_otp_program_seq``.
 """
 
 from __future__ import annotations
@@ -144,10 +143,9 @@ class SepRmaTokenMatchSeq(uvm_sequence):
                     self.matched,
                 )
                 return
-        # Never settling is a DUT failure, not a mismatch. Recording it as
-        # matched=False would make a token block that answers nothing
-        # indistinguishable from one that correctly rejected a wrong token, so
-        # every "mismatch" check in every caller would pass on a dead comparator.
+        # A match status that never settles is a DUT failure, not a mismatch:
+        # graded as matched=False it is indistinguishable from a correct
+        # rejection in every caller.
         raise AssertionError(
             f"{token_name} token match status never settled after {_POLL_CYCLES} "
             f"cycles (last code=0x{self.match_code:02x}; expected one of "

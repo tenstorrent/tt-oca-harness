@@ -7,8 +7,8 @@ Register offsets come from the Caliptra ``abr_reg.rdl``. The RDL declares the
 ``MLDSA_NAME`` / ``MLDSA_VERSION`` identity words ``sw = r`` with no reset, and
 no SEP document gives their values, so this driver holds their addresses
 only. 32-bit beats (size=2) on the 64-bit port, one register per access;
-STATUS at +0x14 is an odd-word offset. ``[[abr-access-size]]`` in ``hw/sys/sep/doc/adams_bridge.adoc`` gives
-the rules for other access sizes.
+STATUS at +0x14 is an odd-word offset. ``[[abr-access-size]]`` in
+``hw/sys/sep/doc/adams_bridge.adoc`` gives the rules for other access sizes.
 """
 
 from __future__ import annotations
@@ -51,7 +51,7 @@ CMD_KEYGEN = abr_ctrl_cmd("MLDSA_CTRL", "KEYGEN")
 CMD_SIGN = abr_ctrl_cmd("MLDSA_CTRL", "SIGN")
 CMD_VERIFY = abr_ctrl_cmd("MLDSA_CTRL", "VERIFY")
 CTRL_ZEROIZE = abr_field_mask("MLDSA_CTRL", "ZEROIZE")
-# MLDSA_CTRL.EXTERNAL_MU. The vendored sigGen/sigVer vectors are the ACVP
+# MLDSA_CTRL.EXTERNAL_MU. The generated sigGen/sigVer vectors are the ACVP
 # external-mu groups, so the engine is handed mu directly instead of a message.
 CTRL_EXTERNAL_MU = abr_field_mask("MLDSA_CTRL", "EXTERNAL_MU")
 ST_READY = abr_field_mask("MLDSA_STATUS", "READY")

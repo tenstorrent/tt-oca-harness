@@ -2,19 +2,17 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // Debug-disable matrix over the eight scan-side gate fields — the SV
-// analogue of the cocotb dtp_dbg_disable_scan_matrix_test_seq. One compact
-// matrix instead of eight duplicate wrappers: deterministic one-hot rows,
-// the all-clear and all-disabled boundary masks, and seeded multi-hot
-// masks. Every row drives the full disable vector, then proves each
-// resource's allowed/blocked outcome with temporal windows and chain
+// analogue of the cocotb dtp_dbg_disable_scan_matrix_test_seq: deterministic
+// one-hot rows, the all-clear and all-disabled boundary masks, and seeded
+// multi-hot masks. Every row drives the full disable vector, then proves
+// each resource's allowed/blocked outcome with temporal windows and chain
 // readbacks: all three iJTAG SIBs requested open follow their gates; the
 // four STAPs are configured ungated in one composed pass, then the row
 // mask is asserted — gated ports stop forwarding (tms parked at the
 // stored tms_hold) and ignore a clearing update while ungated ports
-// accept it, and the extended host scan interface follows stap_host.
-// After the all_disabled row, releasing
-// every gate without reset must not replay any gated open attempt, and a
-// sanctioned all-clear row recovers.
+// accept it, and the extended host scan interface follows stap_host. After
+// the all_disabled row, releasing every gate without reset must not replay
+// any gated open attempt, and a sanctioned all-clear row recovers.
 //
 // The default 6 seeded multi-hot rows make 16 rows per pass (1 all_clear +
 // 8 one-hot + 6 multi-hot + 1 all_disabled), so one matrix pass meets the

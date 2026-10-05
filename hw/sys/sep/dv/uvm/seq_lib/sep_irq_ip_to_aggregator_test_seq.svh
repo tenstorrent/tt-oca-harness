@@ -29,8 +29,8 @@
 // undriven (X) bit cannot satisfy "== 0". Expected values come from the
 // generated register header (addresses, field masks), the DV-owned PIC
 // table below, and the stimulus. The cocotb twin is
-// tests/system/sep_irq_ip_to_aggregator_test.py with
-// seq_lib/sep_irq_aggregator_seq.py.
+// cocotb/tests/system/sep_irq_ip_to_aggregator_test.py with
+// cocotb/seq_lib/sep_irq_aggregator_seq.py.
 
 class sep_irq_ip_to_aggregator_test_seq extends sep_base_test_seq;
   `uvm_object_utils(sep_irq_ip_to_aggregator_test_seq)

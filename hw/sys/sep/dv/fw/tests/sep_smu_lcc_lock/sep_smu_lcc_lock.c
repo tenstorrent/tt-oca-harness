@@ -6,9 +6,9 @@
  *
  * DEMOTE_1 and DEMOTE_2 each carry a write-one-to-set demote bit and a
  * write-one-to-set lock bit; firmware can set demote only while lock is clear,
- * and both hold until SEP cold reset (lifecycle controller specification,
- * "Demote lock behavior"). A lock placed on a register whose demote is already
- * set cannot show a refusal, because a set-only bit has nothing left to refuse.
+ * and both hold until SEP cold reset (hw/sys/sep/doc/lifecycle_controller.adoc).
+ * A lock placed on a register whose demote is already set cannot show a
+ * refusal, because a set-only bit has nothing left to refuse.
  * This image therefore locks DEMOTE_1 while its demote bit is still clear and
  * then asks for the demote; the register must stay clear. DEMOTE_2, left
  * unlocked, takes the same write, which shows the write path is alive and the

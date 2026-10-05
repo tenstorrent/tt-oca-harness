@@ -1,15 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 #
-# KM (PicoRV32) ROM firmware for the SEP OSS ESRC -> DRBG -> CSRNG -> EDN -> KM
+# KM (PicoRV32) ROM firmware for the SEP DV ESRC -> DRBG -> CSRNG -> EDN -> KM
 # entropy alive smoke. The Key Manager's drbg_sampler only asserts TREADY on the
 # EDN->KM stream when its own CPU pulls entropy, so this firmware makes the KM
 # genuinely CONSUME one genbits word (a real tvalid && tready handshake).
 #
 # The DRBG-sampler DATA read blocks until a stream word is available; the
 # sampler's read-timeout (CFG.TIMEOUT, reset 256 cycles) would otherwise abort
-# the read long before the forced-noise entropy datapath produces a seed
-# (~78k cycles), so the timeout is disabled first by writing CFG = 0.
+# the read long before the forced-noise entropy datapath produces a seed, so
+# the timeout is disabled first by writing CFG = 0.
 #
 # Addresses come from the generated key_manager_addr.h (key_manager.rdl):
 #   DRBG sampler DATA  read consumes one EDN stream word

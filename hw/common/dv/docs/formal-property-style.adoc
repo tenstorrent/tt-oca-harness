@@ -9,7 +9,7 @@ placed so that one property file elaborates on the open-source path and on the
 licensed backends alike. The open-source path is SymbiYosys (`sby`) driving
 Yosys with the yosys-slang frontend (`read_slang`). Licensed backends run from
 separate integrations and read the same property files. The DTP DV root is the
-adopter of this style; no other DUT DV root carries formal collateral.
+reference implementation of this style (<<formal-style-example>>).
 
 [IMPORTANT]
 ====
@@ -357,10 +357,10 @@ the `bmc` depth is set to the same value.
 === Worked example: the DTP TAP controller
 
 `hw/sys/dtp/dv/formal/` holds the reference implementation. The IEEE 1149.1
-TAP controller inside the primary TAP is the first described block, with
-`dtp` as the formal top; the plan section of `hw/sys/dtp/dv/docs/DTP_VPLAN.adoc`
-adds eight more blocks over the `dtp`, `jtag2axi` and `cross_trigger_network`
-tops in the same shape.
+TAP controller inside the primary TAP is the block described here, with `dtp`
+as the formal top; the plan section of `hw/sys/dtp/dv/docs/DTP_VPLAN.adoc`
+lists the other described blocks over the `dtp`, `jtag2axi` and
+`cross_trigger_network` tops in the same shape.
 
 * `props/dtp_tap_props.sv`: assertions and covers on the TAP state register
   and its outputs, all in the boolean subset: one-hot state, the rule that

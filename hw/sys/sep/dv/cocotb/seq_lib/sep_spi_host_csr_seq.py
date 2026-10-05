@@ -90,10 +90,8 @@ CTRL_TX_WM_LSB = SPI_CONTROLLER.field_lsb("CONTROL", "tx_watermark")
 ERR_STATUS_MASK = SPI_CONTROLLER.mask32("ERROR_STATUS")
 INTR_STATE_MASK = SPI_CONTROLLER.mask32("INTR_STATE")
 
-# No FIFO depth constant lives here on purpose. The OVERFLOW and CMDBUSY
-# triggers find their boundary from STATUS (TXFULL, READY) and then write one
-# beat past it, so neither stimulus needs a depth the RDL does not carry and
-# neither is sized from the design's own source.
+# The OVERFLOW and CMDBUSY triggers find their boundary from STATUS (TXFULL,
+# READY) and write one beat past it, so they need no FIFO depth constant.
 
 # COMMAND fields, positioned from the generated export. COMMAND is write-only
 # upstream, so these compose stimulus; nothing reads the register back.

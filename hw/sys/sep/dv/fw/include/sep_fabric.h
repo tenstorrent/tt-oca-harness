@@ -6,11 +6,10 @@
 
 /* SEP fabric (alias/remap/filter) test helpers.
  *
- * Consolidates fabric inline stubs, cache-attribute encodings, and alias/remap
- * setup placeholders. The non-inline setup_* helpers are open no-op
- * placeholders for adopter-specific fabric programming, defined in
- * drivers/sep_fabric.c and linked from libsep.a; the fabric tests call them by
- * these names. */
+ * Holds fabric inline stubs, cache-attribute encodings, and alias/remap setup
+ * stubs. The non-inline setup_* helpers are no-op stubs defined in
+ * drivers/sep_fabric.c and linked from libsep.a. They program no hardware, so
+ * a test that calls them checks nothing. */
 
 #include <stdint.h>
 

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""DRBG real-sink multi-consumer: KM + AES concurrent.
+"""One DRBG stream partitions bit-exact into the KM and AES sinks while both draw concurrently.
 
 One real DRBG/ESRC/EDN stream feeds two real entropy sinks in one cocotb fork: the KM AXIS
 endpoint (KM firmware rom_main pulls the DRBG sampler) and the AES native crypto-EDN leg
@@ -23,7 +23,7 @@ Checkers:
   CSRNG/EDN error and recoverable-alert registers stay zero; AES STATUS shows no alert.
 
 Boot follows the KAT recipe (real fuse-sense, PROD OTP image, rom_main built with
-PROD_BOOT_WIPE=0). AES stays released through entropy bring-up so its masking-PRNG reseed is
+KM_BOOT_WIPE=0). AES stays released through entropy bring-up so its masking-PRNG reseed is
 served as EDN starts; OTBN/KMAC/HMAC are parked so KM and AES are the only sinks.
 """
 
@@ -51,11 +51,10 @@ AES_KEY = (
 AES_PT = (0x00112233, 0x44556677, 0x8899AABB, 0xCCDDEEFF)
 
 # Concurrent-window consumers: KM keygen DRBG pulls (KM AXIS sink) interleaved with
-# AES reseed+encrypt blocks (crypto-EDN sink). Bounded so KM boot + these stay
-# inside one CSRNG Generate (cfg.glen=32). Budget: each KM keygen ~6-7 genbits
-# blocks, each AES reseed+block ~2, KM boot ~13. KM_CMDS=1 and AES_BLOCKS=2
-# stay under glen (~24 blocks). Raising glen is not a substitute: a longer
-# Generate can drift the seed boundary on a longer firmware run.
+# AES reseed+encrypt blocks (crypto-EDN sink). KM_CMDS=1 and AES_BLOCKS=2 keep KM
+# boot plus the fork inside one CSRNG Generate (cfg.glen=32). Raising glen is not
+# a substitute: a longer Generate can drift the seed boundary on a longer
+# firmware run.
 KM_CMDS = 1
 AES_BLOCKS = 2
 
@@ -81,17 +80,17 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
         self.km = SepKmMailbox(self)
         self.aes = SepAes(self)
 
-        # OTBN/KMAC/HMAC JTAG-held across rst_ni release, then parked in SW_RESET_N. AES stays released so its
-        # masking-PRNG reseed is served as EDN starts, making AES a live
-        # crypto-EDN consumer.
+        # OTBN/KMAC/HMAC are JTAG-held across rst_ni release, then parked in
+        # SW_RESET_N. AES stays released so its masking-PRNG reseed is served as
+        # EDN starts, making AES a live crypto-EDN consumer.
 
         # Strict entropy bring-up. CHK1..CHK4 bit-exact golden anchors the one DRBG.
         # KM = "membership" (each KM AXIS word is a genbits-golden word; rom_main pull
         # order is firmware-driven so not order-scored) and AES = "golden" (bit-exact
         # per-sink ROUTING: each AES post-adapter beat == the next AXIS1 pre-adapter
         # word -- the single-active-crypto-sink in-order case). Both are chained to the
-        # CHK4 genbits golden in report() (the reference suite treats the AXIS1 tap as
-        # its own golden; here AXIS1 is anchored to genbits).
+        # CHK4 genbits golden in report() (AXIS1 is anchored to the CHK4 genbits
+        # golden).
         await self.bring_up_entropy(
             strict=True, score_km="membership", score_sinks={"aes": "golden"}
         )
@@ -140,10 +139,10 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
                 else:
                     assert any(w != 0 for w in ct), f"AES all-zero ciphertext (block {i})"
 
-        # TRUE FORK (cocotb analog of SV fork...join): both arms run as concurrent
-        # cocotb tasks, so the KM keygen DRBG pulls and the AES crypto-EDN pulls overlap
-        # and contend at the EDN arbiter in the same window (not interleaved by one
-        # coroutine). Bounded to one CSRNG Generate so the CHK4 golden stays bit-exact.
+        # Both arms run as concurrent cocotb tasks, so the KM keygen DRBG pulls and the
+        # AES crypto-EDN pulls both draw from the one DRBG stream in the same window
+        # (KM on its AXIS leg, AES on the crypto-EDN leg). Bounded to one CSRNG
+        # Generate so the CHK4 golden stays bit-exact.
         km_task = cocotb.start_soon(km_arm())
         aes_task = cocotb.start_soon(aes_arm())
         await km_task  # join (aes runs concurrently meanwhile)

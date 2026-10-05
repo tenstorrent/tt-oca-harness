@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP LCC sep_debug -> inbound-filter gating test (OSS).
+"""sep_debug gates the inbound filter: external AXI gets DECERR in PROD and OKAY in PROD_DBG_1.
 
 Proves that ``feat_ctrl.sep_debug`` gates the SEP inbound filter:
 external AXI is BLOCKED in PROD (sep_debug=0, filter active) and ALLOWED in
@@ -30,6 +30,8 @@ Checkers (each logs positive evidence):
   * CHK-PROD-FEAT  FEAT_CTRL == golden(PROD), sep_debug==0 (scoreboard value-check).
   * CHK-PROD-BLOCK external probe blocked with the specific DECERR response
     (resp=3); a timeout is a wedge and fails the test.
+  * CHK-DEMOTE-INDEP  DEMOTE_2 alone opens DBG_2 and leaves DBG_1 (and sep_debug)
+    closed; the external probe still answers DECERR.
   * CHK-DEMOTE     DEMOTE_1.demote write -> read-back == 1.
   * CHK-DBG-FEAT   FEAT_CTRL == golden(PROD_DBG_1), sep_debug==1 (scoreboard).
   * CHK-DBG-ALLOW  external probe reads BOTH FEAT_CTRL halves OKAY and returns
@@ -199,11 +201,9 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
             _SYS_DIS,
         )
 
-        # security_disable read from the DUT, not assumed. It asserts only after a
-        # SEC_DIS token match, which this no-token PROD flow never performs, so the
-        # expected value is 0 -- but "expected 0" and "observed 0" are different
-        # claims, and the probe makes it the second one. The exact 64-bit golden
-        # compare below remains the safety net either way.
+        # security_disable asserts only after a SEC_DIS token match, which this
+        # no-token PROD flow never performs; the golden takes the observed value and
+        # the exact 64-bit FEAT_CTRL compare below guards it.
         sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
 
         # ---- PROD: sep_debug=0, inbound filter active -> external blocked ----
@@ -320,13 +320,12 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
             ctl_dbg.feat_ctrl,
         )
 
-        # Read BOTH FEAT_CTRL halves over the external master. The DISTINCTIVE half is
-        # the LO word: demotion acts only on DBG_1, so the hi (Function) word is
-        # identical in PROD and PROD_DBG_1 and cannot distinguish them. The lo word
-        # is ~(SIP_DIS|SYS_DIS) over both debug groups = 0xf000f003 -- neither all-ones
-        # nor zero, so a dummy responder or any unrelated OKAY slave fails it, and
-        # matching it proves the external read actually reached the LCC FEAT_CTRL
-        # register. The hi word carries DBG_2 [47:24] as well as Function.
+        # Read both FEAT_CTRL halves over the external master. Only the lo word is
+        # graded as the distinctive value: it is ~(SIP_DIS|SYS_DIS) over both debug
+        # groups = 0xf000f003 -- neither all-ones nor zero, so a dummy responder or
+        # any unrelated OKAY slave fails it, and matching it proves the external
+        # read actually reached the LCC FEAT_CTRL register. The hi word carries part
+        # of DBG_2 and Function, and is compared to the same golden.
         exp_lo = feat_dbg & 0xFFFF_FFFF
         exp_hi = (feat_dbg >> 32) & 0xFFFF_FFFF
         probe_lo = SepExtAxiProbeSeq(LCC_FEAT_CTRL)

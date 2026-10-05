@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Adams Bridge ML-DSA-87 SIGN and VERIFY NIST KAT on the ABR aperture.
+"""ABR ML-DSA-87 SIGN returns the ACVP signature; VERIFY accepts the good case, rejects the bad.
 
 ``sep_abr_mldsa_keygen_kat_test`` owns KEYGEN (0x1). ``MLDSA_CTRL.CTRL`` also
 encodes SIGNING (0x2) and VERIFYING (0x3), and this leaf owns both, together
@@ -197,7 +197,7 @@ class sep_abr_mldsa_sign_verify_kat_test(sep_base_test):
         # Read the window CHK-SIGN just read live, so the open read and the
         # closed read are on the same signature. The signature read port is
         # gated on the valid register and ZEROIZE also clears the signature
-        # storage, so a zero window shows the signature is no longer readable,
+        # storage, so a zero window shows the signature is not readable,
         # NOT which of the two mechanisms closed it.
         st_z = await self._zeroize(abr, what="after sign")
         sig_z = await abr.read_words(ABR_SIGNATURE, SIG_WORDS)

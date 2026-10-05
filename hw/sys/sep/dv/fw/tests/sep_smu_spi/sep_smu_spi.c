@@ -4,18 +4,18 @@
 /*
  * sep_smu_spi - SMU-level SEP SPI command / address / receive test.
  *
- *   Run a minimal OpenTitan SPI command sequence in SMU SEP_RTL mode without
- *   requiring an external flash model, read the received word back out of the
- *   RX FIFO, then park the CPU in explicit pass/fail loops so the cocotb test
- *   can classify the result by SEP PC. The OT SPI host reaches the pads only
- *   on the SMC LSIO primary plane and no select steers it, so this image
- *   programs no pad path.
+ * Run a minimal OpenTitan SPI command sequence in SMU SEP_RTL mode without
+ * requiring an external flash model, read the received word back out of the
+ * RX FIFO, then park the CPU in explicit pass/fail loops so the cocotb test
+ * can classify the result by SEP PC. The OT SPI host reaches the pads only
+ * on the SMC LSIO primary plane and no select steers it, so this image
+ * programs no pad path.
  *
- *   The bench grades the pins: it counts the SCK edges and checks the chip
- *   select and output enables at the pads, and it drives the receive data pad
- *   with a seeded pattern and grades the received word this image pops. Keep
- *   the segment lengths, chip-select holds and transmit bytes in step with
- *   hw/sys/smu/dv/cocotb_wrapper/seq_lib/smu_sep_spi_seq.py.
+ * The bench grades the pins: it counts the SCK edges and checks the chip
+ * select and output enables at the pads, and it drives the receive data pad
+ * with a seeded pattern and grades the received word this image pops. Keep
+ * the segment lengths, chip-select holds and transmit bytes in step with
+ * hw/sys/smu/dv/cocotb_wrapper/seq_lib/smu_sep_spi_seq.py.
  */
 
 #include <stdint.h>

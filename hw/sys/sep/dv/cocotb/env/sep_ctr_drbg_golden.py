@@ -10,7 +10,7 @@ this has no dependency on pycryptodome/cryptography. Because the reference is
 the published NIST construction -- not observed DUT output -- a genbits mismatch
 is a real failure, not a tautology.
 
-Determined parameters:
+Parameters:
   * AES key size : 256 bits
   * BlkLen       : 128 bits
   * SeedLen      : 384 bits

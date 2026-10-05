@@ -9,25 +9,27 @@
 [cols=",",options="header"]
 |===
 |Field |Value
-|DUT |`sep_wrapper` (`hw/top/sep_wrapper.sv` + `sep_ip_integration.sv`)
+|DUT |`sep_wrapper` (`hw/top/sep_wrapper.sv` + `hw/top/sep_ip_integration.sv`)
 |Bare core |`sep` (`hw/sys/sep/rtl/sep.sv`)
 |Repository |`tt-oca-harness`
 |Project |OCAH
-|Framework |PyUVM on cocotb (Phase 1 to Phase 3); SystemVerilog UVM smoke set on the same top (`--framework uvm`, VCS)
+|Framework |PyUVM on cocotb; SystemVerilog UVM smoke set on the same top (`--framework uvm`, VCS)
 |Primary simulator |Verilator
-|Commercial simulator use |VCS / Xcelium for development iteration; Verilator is pre-merge acceptance
+|Supported simulator matrix |cocotb on `verilator` (default), `vcs` and `xcelium`; SV-UVM on `vcs` only, because Verilator has no SV-UVM support
+|Commercial simulator use |VCS / Xcelium for development iteration; VCS for graded coverage and the SV-UVM realization. Verilator is pre-merge acceptance
 |How to run |`README.md` (`tools/dv/run_dv.py --dut sep`)
 |===
 
-The OCAH open-source SEP testbench lives under `hw/sys/sep/dv/`. The directory
-layout is documented in `README.md`. It uses a PyUVM environment and the unified OCAH
+The OCAH open-source SEP testbench lives under `hw/sys/sep/dv/`. The Layout
+table of the DV `README.md` says what each directory holds, and its Getting
+Started section gives the runner commands. It uses a PyUVM environment and the unified OCAH
 BFM packages for AXI, SPI, and (where needed) JTAG. Sibling SMC and DTP envs
 share the same runner and cocotb/PyUVM idioms; this document describes *SEP*.
 
 eFuse image selection, memory/eFuse/SPI models, CPU-trace reconstruction,
 Boot ROM image builds, and Key Manager `rom_main` builds are covered in the
 sections below. Test contracts live in
-link:SEP_VPLAN.adoc[SEP_VPLAN.adoc].
+xref:SEP_VPLAN.adoc#sep-dv-verification-plan[SEP_VPLAN].
 
 === VIP Selection Policy
 
@@ -44,7 +46,7 @@ link:SEP_VPLAN.adoc[SEP_VPLAN.adoc].
 |SEP Interface |Preferred VIP |Modeling Approach |Notes
 |CPU-LSU AXI (no_cpu) |`ocah_axi_vip` via `SepAxiAgent` (`s_axi`) |Unified OCAH BFM |Primary stimulus; no inbound filter on this path
 |SMN-inbound AXI |Second `SepAxiAgent` (`m_axi`) |Unified OCAH BFM |Real DUT inbound port; traverses inbound filter (block-by-default)
-|SPI flash pads |`ocah_spi_vip` `OcahSpiFlash` |Unified OCAH BFM |Pads are scalar ports on `tb_top`; no select steers the OT SPI host
+|SPI flash pads |`ocah_spi_vip` `OcahSpiFlash` |Unified OCAH BFM |Pads are scalar ports on `tb_top`
 |JTAG (eFuse mux path) |`ocah_axi_vip` AXI-Lite master on the OTP JTAG2AXIL port (`j_axi_*`) |Unified OCAH BFM |eFuse JTAG–AXI-Lite coexistence tests
 |Entropy raw noise |`esrc_noise_ext_i` + Python goldens |DUT-local |Deterministic noise shared with the decorrelator golden
 |eFuse / OTP |Generic OSS eFuse bank model |Shared OSS model |No foundry OTP macros; staged via `+sep_efuse_hex`
@@ -108,14 +110,9 @@ bring-up helpers rather than re-implementing clock/reset:
 |`bring_up_entropy(...)` |Program ESRC/DRBG path with a shared config object
 |===
 
-=== Directory Structure
-
-The `dv/` directory layout is documented in `README.md`. This document describes the
-testbench architecture inside those paths.
-
+[[sep-hdl-top]]
 === HDL Top
 
-[[sep-hdl-top]]
 `tb/tb_top.sv` instantiates `sep_wrapper` as `sep_uvm_top` and adapts packed RTL
 structs to cocotb-friendly scalar/vector ports. It is ONE module with two
 shapes: by default the ANSI port list cocotb drives; under the bare `UVM`
@@ -138,8 +135,44 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |Entropy noise |`esrc_noise_ext_i` forces the decorrelator input (deterministic)
 |FW console |`sep_outbound_mbx` watches outbound mailbox stores (PASS/FAIL magic)
 |CPU trace |Exports EL2 `el2_trace_pkt_t` fields for `SepCpuTraceMonitor`
-|Observation probes |eFuse shadow, scratch, KM/OTBN counters, KM mailbox SEP-side write-error probes (`km_mbox_sep_wr_err_*`), KM SRAM read-latency probes (`km_sram_rd_*`), KM SRAM scrambled-write probes (`km_sram_scr_wr_*`), entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, local-crossbar `ext`-initiator handshakes (`xbar_ext_in_*`, owner `sep_unmapped_access_policy_test`), DRBG lane-adapter channel packs (`drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o`), KM internal AXI-Lite SVA bind, eFuse read/program interface retirement outputs and bank-request valids, eFuse SHIM `efuse_debug_bus_o`, crypto reset-sequencer probes (`*_gated_rst_n_probe_o`, `*_isolated_probe_o`, `*_host_isolate_req_probe_o`, `trng_reset_active_probe_o`), EDN and entropy-AXIS handshake probes (`crypto_edn_*`, `pool_edn_*`, `km_entropy_*`, `axis1_*`, `axis2_*`, `entropy_pool_packer_depth_o`), RMA-SIP token-digest latch probes (`token_digest_*`), KM OTP ID probes (`km_otp_sep_*_id_o`), SEP SRAM word probes (`sram_word0_probe_o` / `sram_payload_probe_o`), KM SRAM word probes (`km_sram_word0_o` / `km_sram_probe_o`, continuous reads of the KM SRAM macro array that carry the KM ROM images' result words), SEP reset probes (`dbg_sep_reset_n_o` / `sep_cpu_reset_n_o`), DMA/CPU SRAM overlap counter (`dma_cpu_sram_overlap_count_o`), SPI-to-DMA transmit pacing probes (`spi_tx_qd_probe_o`, `spi_lsio_trigger_probe_o`, `dma_busy_probe_o`, owner `sep_spi_ot_dma_tx_test`), Adams Bridge ML-KEM seed Z words (`abr_mlkem_seed_z_probe_o`), fabric-slot register-block W-channel counters (`fabric_slot_w_*`), the covergroup sampler's direct reads of the WDT bark interrupt (`intr_wdog_timer_bark`, owner `sep_nmi_sanity_test`) and the LSU read `ARSIZE` (owner `sep_axi_partial_lane_read_test`) — observation-only unless listed as an inject exception
+|Observation probes |Observation-only unless listed as an inject exception. The probe groups are listed below the table
 |===
+
+Observation probe groups:
+
+* eFuse shadow, scratch, and the KM and OTBN counters.
+* KM mailbox SEP-side write-error probes (`km_mbox_sep_wr_err_*`).
+* KM SRAM read-latency probes (`km_sram_rd_*`) and scrambled-write probes
+  (`km_sram_scr_wr_*`).
+* Entropy CHK probes and the IRQ aggregate.
+* AXI-Lite split handshakes.
+* Local-crossbar `ext`-initiator handshakes (`xbar_ext_in_*`). Owner:
+  `sep_unmapped_access_policy_test`.
+* DRBG lane-adapter channel packs (`drbg_csrng_axil_chan_o` /
+  `drbg_edn_axil_chan_o`).
+* The KM internal AXI-Lite SVA bind.
+* eFuse read and program interface retirement outputs and bank-request valids;
+  the eFuse SHIM `efuse_debug_bus_o`.
+* Crypto reset-sequencer probes (`*_gated_rst_n_probe_o`,
+  `*_isolated_probe_o`, `*_host_isolate_req_probe_o`,
+  `trng_reset_active_probe_o`).
+* EDN and entropy-AXIS handshake probes (`crypto_edn_*`, `pool_edn_*`,
+  `km_entropy_*`, `axis1_*`, `axis2_*`, `entropy_pool_packer_depth_o`).
+* RMA-SIP token-digest latch probes (`token_digest_*`).
+* KM OTP ID probes (`km_otp_sep_*_id_o`).
+* SEP SRAM word probes (`sram_word0_probe_o` / `sram_payload_probe_o`).
+* KM SRAM word probes (`km_sram_word0_o` / `km_sram_probe_o`): continuous reads
+  of the KM SRAM macro array that carry the KM ROM images' result words.
+* SEP reset probes (`dbg_sep_reset_n_o` / `sep_cpu_reset_n_o`).
+* The DMA/CPU SRAM overlap counter (`dma_cpu_sram_overlap_count_o`).
+* SPI-to-DMA transmit pacing probes (`spi_tx_qd_probe_o`,
+  `spi_lsio_trigger_probe_o`, `dma_busy_probe_o`). Owner:
+  `sep_spi_ot_dma_tx_test`.
+* Adams Bridge ML-KEM seed Z words (`abr_mlkem_seed_z_probe_o`).
+* Fabric-slot register-block W-channel counters (`fabric_slot_w_*`).
+* The covergroup sampler's direct reads of the WDT bark interrupt
+  (`intr_wdog_timer_bark`, owner `sep_nmi_sanity_test`) and the LSU read
+  `ARSIZE` (owner `sep_axi_partial_lane_read_test`).
 
 Exceptions (a closed set):
 
@@ -150,7 +183,7 @@ Exceptions (a closed set):
   `+cpu_boot` it forces `u_sep_cpu.lsu_axi_req` from the flat `s_axi_*` ports
   and holds `u_sep_cpu.lsu_axi_resp_raw` at zero, so the halted core sees no
   beats it did not issue. The VIP request enters after
-  `u_lsu_local_alias_remap`, so a card whose checked path includes the remap
+  `u_lsu_local_alias_remap`, so a test whose checked path includes the remap
   or the core names the build its evidence comes from. Owner: every no_cpu
   leaf graded on that build; each logs `LSU VIP force-splice active`.
 * *ESRC noise force* — `esrc_noise_ext_i` into the decorrelator.
@@ -162,7 +195,7 @@ Exceptions (a closed set):
   2'b01 and 2'b10, so the fail-closed recovery specified for 2'b00 and 2'b11
   has no frontdoor. Scope is those two registers and nothing else — never the
   error, data, busy or request outputs the checkers read. Owner:
-  `sep_efuse_illegal_state_fail_closed_test`; signed off 2026-09-11.
+  `sep_efuse_illegal_state_fail_closed_test`.
 * *RMA-SIP digest test-enable inject* — `token_digest_test_en_inject_i`
   forces the digest latch `test_en_i`. The production DFT input is tied low
   at this boundary, so the latch-freeze path has no frontdoor. The force
@@ -210,6 +243,60 @@ Exceptions (a closed set):
 * *Key Manager internal AXI-Lite SVA bind* — observation-only `bind` of
   `ocah_axi_sva` on `cpu_axil_*` / `rst_warm_sync_n`. No TB master can
   reach that port. Protocol, not data.
+
+[[sep-run-modes]]
+=== Run Modes and RTL Targets
+
+The run mode selects who owns the CPU master buses. The RTL target selects
+which CPU image is compiled. The testlist groups that pick the leaf set are in
+the "Regression Groups" section of xref:SEP_VPLAN.adoc#sep-dv-verification-plan[SEP_VPLAN].
+
+==== No-CPU AXI (`run_modes.no_cpu`)
+
+The CPU is held off (`mpc_reset_run_req=0`). Two masters can drive the DUT:
+
+* *LSU splice (`s_axi_*`).* The `lsu_stub_all_live` target swaps in
+  `shims/cpu/sep_cpu_stub.sv`. The stub is the sole driver of `lsu_axi_req`
+  and drives it from the `tb_top` net `lsu_req_drive` with a plain `assign`,
+  not a `force`. This path has no inbound filter. On a full-CPU VCS
+  `--target default` elaboration, a no_cpu test force-splices the same
+  post-remap node (see the exceptions under <<sep-hdl-top>>).
+* *SMN-inbound (`m_axi_*`).* A second `SepAxiAgent` on the real
+  `smn_inbound` port. It is idle unless the test starts an external sequence.
+  This path goes through `u_inbound_filter`, which blocks by default (DECERR
+  unless `feat_ctrl.sep_debug=1`).
+
+`sep_axi_smoke_test` is the smallest no_cpu test. It reads
+`sep_cpu_ctrl.SEP_LOCAL_BASE_ADDR` (`+0x0C8`) for its reset value, then walks a
+masked write and readback of `SEP_SW_DEBUG`, `SEP_NMI_VEC`, `PKA_CTRL` and
+`SEP_REGION_SIZE`.
+
+==== CPU firmware boot (`run_modes.cpu`)
+
+`+cpu_boot` runs the full-CPU build. The core owns its buses and runs firmware
+from the wrapper's real TCM macros, which `tb_backdoor_mem` in `tb/tb_top.sv`
+loads by backdoor. `--stage c_compile` builds the gitignored
+`fw/build/tests/<name>/{.itcm,.dtcm}.hex` images through `fw/fw.mk`.
+
+`sep_hello_world_test` is the smallest firmware test. It loads the
+`fw/tests/hello_world` image into ICCM and DCCM and passes
+`rst_vec=0xC0000000` to `tb_top.sv`, which drives the wrapper's reset-vector
+input before reset releases and sets `mpc_reset_run_req=1`. The test checks PC
+advance (`sep_cpu_trace`) and the firmware banner and PASS magic on the
+outbound mailbox (`tb/sep_outbound_mbx.sv`).
+
+Production Boot ROM firmware tests use the `rom_boot` target and their own
+`c_compile` profiles (<<_boot_rom_firmware_builds>>). Key Manager `rom_main`
+tests declare `firmware = { name = "rom_main", mode = "km_rom_main" }`
+(<<_km_rom_main_firmware_builds>>).
+
+==== Boot and fuse-sense invariants
+
+`ext_boot_seq_done_i` is held at 1. Fuse-sense policy is test metadata, not a
+run mode. Tests that do not grade the eFuse usually add `+skip_fuse_sense` to
+the `args` of their testlist entry to bypass the slow sense path. Real eFuse
+tests omit that bypass and let the RTL fuse-sense FSM finish against the
+generic eFuse model.
 
 === Environment Components
 
@@ -274,6 +361,27 @@ source, or left over from an older build, fails the check.
 `sep_reg_meta.py` imports generated PeakRDL headers under
 `hw/sys/sep/regs/gen/` so sequences prefer source-derived addresses and reset
 values over hand-kept literals.
+
+==== Sequence Library
+
+Stimulus lives in `cocotb/seq_lib/`. Prefer parameterized `uvm_sequence` classes
+with register-map constants co-located in the same module. Tests orchestrate
+bring-up / wait / check via `sep_base_test` helpers and start sequences with
+`start_seq` / `start_ext_seq`.
+
+[cols=",",options="header"]
+|===
+|Layer |Role
+|`sep_base_test` helpers |Bring-up, fuse image, entropy wait, boot firmware
+|Feature / IP sequences |DMA, SPI, inbound filter, eFuse, crypto KATs, fabric walks, …
+|Concrete `@pyuvm.test` |Scenario steps only — no raw clock/reset paste
+|===
+
+New leaf pattern: `seq_lib/sep_<feature>_seq.py` +
+`tests/<area>/sep_<scenario>_test.py`. Randomized tests use a config object as
+the single source of truth for DUT programming and golden expectations
+(`RAND-REP` / `RANDCFG` in the VPLAN).
+
 === eFuse Content Selection
 
 All eFuse tests select their contents through
@@ -333,7 +441,6 @@ delivery to the Key Manager — and do not replace the shadow-compare pair:
 `sep_fabric_inbound_filter_rule_matrix_test`, `sep_efuse_km_public_id_test`. The
 last reads the Key Manager's OTP input from the `km_otp_sep_*_id_o` ports.
 
-
 === Memory, eFuse, and SPI Models
 
 The memory and eFuse integration is RTL inside `sep_wrapper`
@@ -374,35 +481,12 @@ with `+sep_efuse_prog_fail_count`, `+sep_efuse_prog_fail_percent`, and
 Internal to the wrapper; its pads come out as scalar cocotb ports in `tb_top.sv`
 so tests can attach the Apache-2.0 `OcahSpiFlash` Python BFM.
 
-No select steers the OT SPI host: the pads are driven straight off the
-wrapper's struct port, so flash tests need no select step.
-
 ==== TB shims
 
 `shims/` holds the `sep_cpu` stub (no_cpu build) and the entropy
 ring-oscillator. `tb/sep_outbound_mbx.sv` (the fw
 console / PASS monitor) services a real wrapper output port,
 not a memory model.
-
-=== Sequence Library
-
-Stimulus lives in `cocotb/seq_lib/`. Prefer parameterized `uvm_sequence` classes
-with register-map constants co-located in the same module. Tests orchestrate
-bring-up / wait / check via `sep_base_test` helpers and start sequences with
-`start_seq` / `start_ext_seq`.
-
-[cols=",",options="header"]
-|===
-|Layer |Role
-|`sep_base_test` helpers |Bring-up, fuse image, entropy wait, boot firmware
-|Feature / IP sequences |DMA, SPI, inbound filter, eFuse, crypto KATs, fabric walks, …
-|Concrete `@pyuvm.test` |Scenario steps only — no raw clock/reset paste
-|===
-
-New leaf pattern: `seq_lib/sep_<feature>_seq.py` +
-`tests/<area>/sep_<scenario>_test.py`. Randomized reps use a config object as
-the single source of truth for DUT programming and golden expectations
-(`RAND-REP` / `RANDCFG` in the VPLAN).
 
 [[env-cpu-trace]]
 === Processor-State Monitoring and Firmware Stack Tracing
@@ -512,6 +596,7 @@ through real sense.
 |Named evidence |Test / sequence logs |`CHK-* PASS` lines required for audit
 |Regression parsing |Global DV parser |Positive cocotb / `results.xml` evidence — exit 0 alone is not enough
 |===
+
 RTL SVA participation depends on the backend. Under Verilator, first-party
 and OpenTitan concurrent macros expand to nothing because those headers test
 `VERILATOR`. The shared native profile also defines `COMMON_CELLS_ASSERTS_OFF`,
@@ -519,35 +604,33 @@ so PULP `common_cells` inline assertions are off on every backend. The checks
 above are the checking layer the Verilator acceptance path relies on: nothing
 else is watching there for a checker miss.
 
-
 === Coverage Strategy
 
 Verilator does not support SystemVerilog covergroups on the acceptance path
 (guard SV covergroups with `` `ifndef VERILATOR ``). Cocotb phases collect
-named checker evidence and the iconic-feature scorecard in
-link:SEP_VPLAN.adoc[SEP_VPLAN]. RTL code coverage is a different number from
-feature coverage and carries no threshold. `[coverage.verilator]` in
-`sep_sim_cfg.toml` instruments line, expression and user coverage (toggle off)
-and the scheduled `cpu_stub` regression collects it.
-`cov/config/vcs/coverage_policy.toml` is VCS report scope only — no thresholds
+named checker evidence and the traceability matrix in
+xref:SEP_VPLAN.adoc#iconic-scorecard[SEP_VPLAN Matrix]. RTL code coverage is a different number
+from feature coverage and carries no threshold. `[coverage.verilator]` in
+`sep_sim_cfg.toml` instruments line, expression and user coverage (toggle off).
+No scheduled CI tier collects coverage. The graded code-coverage number is the
+VCS run that xref:SEP_FCOV.adoc#sep-dv-functional-coverage[SEP_FCOV] describes, and
+`cov/config/vcs/coverage_policy.toml` is its report scope only — no thresholds
 and no run gate on a percentage. Do not mix the two numbers.
-
 
 === Canonical RTL and Shim Selection
 
 Bender targets are `["sep", "sep_el2", "sep_wrapper"]` only — never
-`"simulation"` (licensed I/O / padring). Verilator override shims under
-`shims/` are listed ahead of the Bender filelist so first-def-wins selects
-them (`sep_cpu` stub on no_cpu, entropy RO). Proprietary
-IPs stay out of the filelist rather than being
-blackbox-stubbed. Scoped `sep_public_scope.vlt` replaces global
+`"simulation"`. Excluded for OSS hygiene: proprietary IPs in nonfree. They stay
+out of the filelist rather than being blackbox-stubbed. Verilator override
+shims under `shims/` are listed ahead of the Bender filelist so first-def-wins
+selects them (`sep_cpu` stub on no_cpu, entropy RO). Scoped `sep_public_scope.vlt` replaces global
 `--public-flat-rw` so AXI ready/valid cones stay optimizable.
 
 [[_boot_rom_firmware_builds]]
 === Boot ROM Firmware Builds
 
-Production Boot ROM firmware tests (`sep_rom_non_secure_boot_test`,
-`sep_rom_ot_{dma,pio,secure}_boot_test`) live in `testlists/rom_fw.toml` and run
+Production Boot ROM firmware tests (`testlists/rom_fw.toml`, for example
+`sep_rom_non_secure_boot_test` and `sep_rom_ot_{dma,pio,secure}_boot_test`) run
 in the `rom_fw` group only -- naming that group, or the test, is the only way to
 reach them. They belong to the ROM-FW owner; the OSS suite
 grades ROM *hardware* access only (`sep_boot_rom_smoke_test`,
@@ -683,12 +766,12 @@ file, on the shared framework bases of `hw/common/dv/vip/ocah_lib/`:
   (`sep_axi_csr_write_seq`, `sep_axi_csr_read_seq`) and the scenario
   virtual sequences on `sep_base_test_seq`.
 . `uvm/tests/` — thin test classes named exactly like the scenario;
-  `uvm/tests/sep_tests.sv` is the include manifest `include`d by `tb_top.sv`
-  under `ifdef UVM (`+UVM_TESTNAME` selects the class).
+  `uvm/tests/sep_tests.sv` is the include manifest that `tb_top.sv` includes
+  under `` `ifdef UVM `` (`+UVM_TESTNAME` selects the class).
 
 Compile order is explicit and load-bearing: the library and VIP layers come
-from their manifests (`ocah_lib/uvm/sources.toml`,
-`ocah_axi_vip/uvm/sources.toml`, listed in
+from their manifests (`hw/common/dv/vip/ocah_lib/uvm/sources.toml`,
+`hw/common/dv/vip/ocah_axi_vip/uvm/sources.toml`, listed in
 `[frameworks.uvm.build].source_lists` and expanded ahead of the DUT's own
 sources), then the TB collateral both flows compile (the picorv32 KM core
 files, `sep_outbound_mbx`), `sep_tb_if`,
@@ -714,9 +797,11 @@ the UVM class name equals the scenario name (testlist
 `name = "sep_axi_smoke_test"`,
 `module = { cocotb = "system.sep_axi_smoke_test", uvm = "sep_axi_smoke_test" }`),
 so `--items <name>` selects the same scenario in either realization. The
-bound scenario is `sep_axi_smoke_test`: fuse-sense release, the
+"SystemVerilog UVM Smoke Set" section of
+xref:SEP_VPLAN.adoc#sep-dv-verification-plan[SEP_VPLAN] lists the bound scenarios. For `sep_axi_smoke_test` a
+pass covers fuse-sense release, the
 `SEP_LOCAL_BASE_ADDR` reset-value read, directed and seeded-random
-write/readback of `SEP_SW_DEBUG`, `SEP_NMI_VEC`, and `PKA_CTRL` through
+write/readback of `SEP_SW_DEBUG`, `SEP_NMI_VEC`, `PKA_CTRL` and `SEP_REGION_SIZE` through
 their generated field masks, and a restore to reset
 values, with the non-vacuity count of real CPU-LSU CSR accesses as
 evidence. Every looped UVM test runs at least 16 scenario passes
@@ -726,16 +811,62 @@ with the loop knobs `+SEP_<TEST>_LOOPS`, `+SEP_<GROUP>_LOOPS`,
 PASSED` is emitted only in the base test's `report_phase` when the global
 UVM_ERROR/UVM_FATAL counts are zero, matching the `uvm-log` parser policy.
 
-`--framework uvm` selects this `uvm/` shape on VCS. How to invoke it, including
-`+SEP_CSR_SCOREBOARD_NEGATIVE`, is in `README.md`.
+==== Running the realization
 
-To port another cocotb scenario: add `uvm/seq_lib/<name>_seq.svh` on
-`sep_base_test_seq` (operations through the `csr_*` wrappers or a new
-reusable `sep_<if>_<op>_seq`), a thin `uvm/tests/<name>.svh` on
-`sep_base_test`, list both in their package and manifest, and give the
-testlist entry its `uvm` binding.
+[source,bash]
+----
+# SV-UVM build only (VCS)
+python3 tools/dv/run_dv.py --dut sep --framework uvm --build-only
 
-=== Build and Run
+# PyUVM (cocotb) and SV-UVM, same logical scenario name
+python3 tools/dv/run_dv.py --dut sep --items sep_axi_smoke_test --seed 1
+python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_axi_smoke_test --seed 1
 
-How to build and run is `README.md` in this DV tree. `--framework uvm`
-selects the SystemVerilog UVM shape above.
+# Smoke group, UVM-implemented subset
+python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke
+
+# Negative validation: a corrupted scoreboard prediction must make the run FAIL
+python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_axi_smoke_test \
+  --plusarg +SEP_CSR_SCOREBOARD_NEGATIVE
+
+# Loop and volume knobs (specific-first): +SEP_AXI_SMOKE_TEST_LOOPS=N,
+# +SEP_SYSTEM_TEST_LOOPS=N, +SEP_TEST_LOOPS=N, +SEP_RANDOM_COUNT=N
+python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_axi_smoke_test \
+  --plusarg +SEP_TEST_LOOPS=4
+----
+
+A group runs its UVM-implemented subset. Naming a scenario that has no `uvm`
+entry is an error.
+
+=== Realization differences
+
+Both realizations share the testbench top, the testlist entries and the
+scenario names. They differ in the rows below.
+
+[cols="1,3,3",options="header"]
+|===
+|Element |cocotb realization |SV-UVM realization
+|Scenario set |Every test in the testlists |The scenarios with a `uvm` binding
+|Simulators |`verilator` (default), `vcs`, `xcelium` |`vcs` only
+|Stimulus masters |`SepAxiAgent` on the CPU-LSU splice (`s_axi`) and a second `SepAxiAgent` on SMN-inbound (`m_axi`) |The shared `ocah_axi_master_env` on the CPU-LSU splice; every other cocotb-driven pin is tied to the idle value `sep_base_test.drive_idle_defaults` uses
+|Scoreboard |`SepScoreboard` on the CPU-LSU agent: OKAY responses, exact `expected` values, and the `expect_error` inverse; `check_phase` needs at least one transaction |`sep_scoreboard` with one reference model per feature (`sep_cpu_ctrl_csr_ref_model`); a test that requires a feature fails when the feature recorded no comparison
+|Named evidence |`CHK-* PASS` lines that `sep_base_test` counts per leaf |`ocah_checker` (`CHECKER_SUMMARY name=sep_csr`) with required IDs per pass
+|Seeds and passes |One pass per seed; stimulus from `SepSeededRng(self.random_seed())` |At least 16 passes (`ocah_test.MinDefaultLoops`), each seeded `+ntb_random_seed` + pass index
+|Pass verdict |Positive evidence in `results.xml` |`UVM TEST PASSED` from the base test's `report_phase` when the UVM_ERROR and UVM_FATAL counts are zero
+|===
+
+=== Adding a Scenario to the SV-UVM Realization
+
+One VPLAN scenario, two implementations: the testlist entry's `module`
+binding map carries both, and the same `--items` name selects either
+realization. To add the SV-UVM twin of a cocotb scenario:
+
+[arabic]
+. *Sequence* — add `uvm/seq_lib/<name>_seq.svh` on `sep_base_test_seq`.
+  Start operations through the `csr_*` wrappers, or add a new reusable
+  `sep_<if>_<op>_seq`. Add the include line to `uvm/seq_lib/sep_seq_lib_pkg.sv`.
+. *Test* — add a thin `uvm/tests/<name>.svh` on `sep_base_test` (file, class
+  and scenario share the name). Add the include line to `uvm/tests/sep_tests.sv`.
+. *Testlist* — change the scenario's entry to
+  `module = { cocotb = "<module>", uvm = "<name>" }`. The `uvm` value drives
+  `+UVM_TESTNAME`.

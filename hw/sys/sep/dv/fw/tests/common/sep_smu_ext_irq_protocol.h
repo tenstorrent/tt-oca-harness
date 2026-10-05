@@ -1,22 +1,18 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 /*
- * smu_sep_external_irq_test -- shared protocol contract for the SMU wrapper
- * interrupt pin.
+ * sep_smu_ext_irq -- SEP firmware <-> SMU testbench protocol contract for the
+ * SMU wrapper interrupt pin.
  *
  * sep.sv concatenates the wrapper pin vector directly above the internal
  * slots, so wrapper bit N drives sep_interrupts[NUM_INTERNAL_IRQS + N], and
- * EL2 numbers PIC sources from 1. The source ID is that mapping, not a hedged
- * candidate window.
+ * EL2 numbers PIC sources from 1. The source ID follows from that mapping.
  *
  * SEP_NUM_INTERNAL_IRQS mirrors sep_pkg::NUM_INTERNAL_IRQS, which C cannot
- * read. It has moved twice already (34 -> 38 -> 43), and each move slides the
- * wrapper pin onto a different source: at 43, the stale 39 addresses the eFuse
- * token comparator fault instead. Arming the wrong source is not a visible
- * failure -- the pin pulse lands on a source nobody enabled, no ISR runs, and
- * the test waits forever. run_ext_irq() therefore bounds that wait and reports
- * which source did go pending, so the next parameter change fails with the
- * number it should have used rather than with a timeout.
+ * read. If the two differ, the pin pulse lands on a source that is not
+ * enabled and no ISR runs. run_ext_irq() therefore bounds the wait and
+ * publishes the source that went pending, so a mismatch fails with the number
+ * it should have used rather than with a timeout.
  */
 #ifndef SEP_SMU_EXT_IRQ_PROTOCOL_H
 #define SEP_SMU_EXT_IRQ_PROTOCOL_H

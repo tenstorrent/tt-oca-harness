@@ -1,11 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Self-contained Keccak / SHA-3 / SHAKE / cSHAKE / KMAC golden (FIPS-202 +
-SP800-185) for the KMAC mode x strength breadth test.
+SP800-185) for ``sep_kmac_mode_strength_rand_test``.
 
 Pure Python, with no third-party crypto dependency so the environment stays
-self-contained. A raw
-Keccak-f[1600] sponge implements the whole family; SHA-3 and SHAKE are ALSO
+self-contained. A raw Keccak-f[1600] sponge implements the whole family; SHA-3 and SHAKE are ALSO
 cross-checked against the Python stdlib (`hashlib.sha3_*`/`shake_*`) at import, so
 a transcription error in the permutation, padding, or rate fails loudly here
 rather than silently agreeing with a broken DUT. cSHAKE and KMAC

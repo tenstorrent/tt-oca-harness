@@ -13,9 +13,7 @@ The Boot ROM has no UART. It emits output through SEP cold_scratch[2] (probe wor
 
 All three must be decoded: the ROM prints every diagnostic number (mcause, mepc,
 error codes, sizes) with simputhex32, which emits the literal "0x" as ASCII and
-then TWO HEX16 words (high half first). A decoder that handles ASCII only prints
-"MC=0x" and silently drops the value -- which is exactly enough to see that a trap
-happened and not enough to know why.
+then two HEX16 words, high half first.
 
 The toggle bit flips when consecutive values are identical so a repeat still
 registers as a change; the decoder therefore samples on *change*, not every clock.

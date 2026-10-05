@@ -44,8 +44,7 @@ class SepLockedFieldIrq(SepAxiRegDriver):
         its returned data and the locked-field interrupt. A timed-out locked
         read still fails the scoreboard. Because a locked read may complete
         with an error response and its data is graded, the bus monitor also
-        lane-checks that beat for X/Z, which the driver would otherwise pass
-        on as 0.
+        lane-checks that beat for X/Z, independent of the driver.
         """
         check_error_data = locked and not write
         mon = self.test.env.axi_monitor if check_error_data else None

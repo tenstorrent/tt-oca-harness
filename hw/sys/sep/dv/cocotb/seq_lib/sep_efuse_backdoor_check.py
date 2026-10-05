@@ -3,9 +3,9 @@
 """Backdoor shadow-readout checker for the SEP eFuse OSS flow.
 
 Reads the sensed shadow-register array directly via the top-level
-``efuse_shadow_probe_o`` (a top-level port driven by an XMR in tb_top) and compares each word against
-the golden ``SepEfuseImage``. This is the default, fast (no-AXI) data-comparison
-path -- it catches sense-load bugs. The AXI front-door checker
+``efuse_shadow_probe_o`` (a top-level port driven by an XMR in tb_top) and
+compares each word against the golden ``SepEfuseImage``. This is the default,
+fast (no-AXI) data-comparison path -- it catches sense-load bugs. The AXI front-door checker
 (``sep_efuse_shadow_check_seq``) additionally exercises the real read datapath
 and runs in the eFuse frontdoor tests.
 """

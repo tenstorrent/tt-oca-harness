@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 /*
- * smu_cla_sep_cpu_debug_control_test  --  shared protocol contract.
+ * smu_cla_sep_cpu_debug  --  SMC firmware <-> SMU testbench protocol contract
+ * (hw/sys/smc/dv/fw/tests/smu_cla_sep_cpu_debug).
  *
  * Exhaustive CLA node0-EAP action -> SEP CPU control mapping/effect test. The SMC producer fw
  * fires each single custom action and the DV scoreboard checks the mapped SEP input + effect:
@@ -13,14 +14,15 @@
  * (CHK-PMU-HALT-DIAG) and is NOT required to freeze a busy core. action[2]
  * (mpc_reset_run_req_i, inverted) and action[5] (unmapped) are checked for mapping only.
  *
- * Included by BOTH firmwares + parsed by the cocotb checker. Plain integer/hex #defines only.
+ * Included by hw/sys/smc/dv/fw/tests/smu_cla_sep_cpu_debug/main.c and parsed
+ * by the cocotb checker. Plain integer/hex #defines only.
  * Channels: SMC CPU_CTRL scratch (base 0xC0039080, 8-byte stride); s0=SMC status, s1=CLA arm
  * token, s2=SMC->SEP cmd, s3=SEP->SMC rsp. SEP reaches them via the SEP->SMC alias 0x40039080+.
  */
 #ifndef SMU_CLA_SEP_CPU_DEBUG_PROTOCOL_H
 #define SMU_CLA_SEP_CPU_DEBUG_PROTOCOL_H
 
-/* common CLA arm token (scratch1) the SV real-CLA liveness monitor waits for */
+/* CLA arm token: the SMC firmware writes it to scratch1 after the CLA release values. */
 #define CLADBG_ARM_TOKEN 0x02200100
 
 /* Frontdoor boot (reuse the smu_smc_stall_sep mechanism): TB backdoor-preloads the SMC image;
@@ -28,7 +30,7 @@
  * brings the SMC up over sep_axi_in (common sep_smc_bringup.h). Entry/cookie are the built SMC
  * image's values (cocotb drift-checks both). */
 #define CLADBG_SMC_IMAGE_FIRST_WORD 0x41014081 /* SEP bring-up cookie; stale image -> S0_FAIL */
-#define CLADBG_SMC_ENTRY 0x00000000C00601B2ULL /* RECONCILE vs built .dis +SMC_RESET_SYMBOL */
+#define CLADBG_SMC_ENTRY 0x00000000C00601B2ULL /* SMC_RESET_SYMBOL image entry. */
 
 /* SEP-side alias addresses for the SMC status/command/response scratch registers */
 #define CLADBG_STATUS_ALIAS_ADDR 0x40039080

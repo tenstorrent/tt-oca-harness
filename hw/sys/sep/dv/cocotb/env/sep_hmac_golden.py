@@ -1,13 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""HMAC-SHA256 golden for the KM->HMAC sideload KAT.
+"""HMAC-SHA256 golden for ``sep_km_hmac_sideload_kat_test``.
 
 Independent reference for the keyed-MAC the OpenTitan HMAC engine produces from a
 KM-sideloaded key. Uses the Python standard library (`hmac` + `hashlib`), so the
 env has no third-party crypto dependency. The construction is validated at import
-against RFC 4231 Test
-Case 1, so a transcription error fails loudly rather than silently agreeing with
-a broken DUT.
+against RFC 4231 Test Case 1, so a transcription error fails loudly rather than
+silently agreeing with a broken DUT.
 
 Register byte/word/endian convention (defaults key_word_rev=1, key_be=1,
 msg_be=0):
@@ -62,8 +61,8 @@ def hmac_sha256_words(
 
 
 # --- Generic SHA-2 variant layer (SHA-256/384/512, keyed HMAC or plain SHA) ---
-# The standalone SW-key breadth test (HMAC SHA-variant breadth) covers all three SHA-2 variants in
-# both keyed-HMAC and plain-SHA modes. Map the CFG.digest_size selection (by SHA
+# ``sep_hmac_sha_variant_rand_test`` covers all three SHA-2 variants in both
+# keyed-HMAC and plain-SHA modes. Map the CFG.digest_size selection (by SHA
 # output bit-width) to the stdlib hash constructor and the count of valid 32-bit
 # DIGEST_* words the engine exposes: SHA-2 digest length / 32 (FIPS 180-4).
 # SHA-256 -> 8, SHA-384 -> 12, SHA-512 -> 16.
@@ -145,7 +144,7 @@ assert hmac_sha2_bytes(_RFC4231_TC1_KEY, _RFC4231_TC1_MSG, 512) == _RFC4231_TC1_
     "HMAC-SHA512 golden failed the RFC 4231 TC1 self-test"
 )
 
-# Plain SHA-2 FIPS-180-2 "abc" known-answer self-tests.
+# Plain SHA-2 FIPS 180-4 "abc" known-answer self-tests.
 _FIPS180_ABC = b"abc"
 assert sha2_bytes(_FIPS180_ABC, 256) == bytes.fromhex(
     "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"

@@ -10,7 +10,9 @@ The stimulus is the real ``jtag_ic_reset_reg`` in ``tb_top`` driving the SEP
 reset-control port. The port is ``km_jtag_rst_n``, the TDO-end port of the SEP
 slice (``doc/integrator/src/smu.adoc``). The TAP instruction that selects the
 TDR is outside this DUT. The walk is the IEEE 1149.1 section 17 order: stage
-the reset value with the override off, apply the override, release it.
+the reset value with the override off, apply the override, release it. The TDR
+field layout is the PTAP IC_RESET fields table in
+``hw/ip/jtag/jtag_ptap/doc/architecture.adoc``.
 
 Contract. The prim_rom request is a chip select and must never be X
 (``vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_rom.sv``
@@ -58,7 +60,7 @@ _MIN_WINDOW_FETCHES = 64
 
 @pyuvm.test()
 class sep_km_ic_reset_release_test(sep_base_test):
-    """Stage, apply and release the km_jtag_rst_n override while the KM runs."""
+    """The KM ROM request stays known through a km_jtag_rst_n stage, apply and release."""
 
     required_evidence = (
         "CHK-TDR-SELECT",

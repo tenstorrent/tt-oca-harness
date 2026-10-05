@@ -1,15 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""eFuse shadow write-policy sweep (anti-rollback monotonicity).
+"""Set-only eFuse shadow fields OR-merge and never clear; SW-writable fields overwrite.
 
-RANDCFG. Every seed walks every ``otp_fuse_controller.adoc`` fuse-field row except
-``LC_STATE``. Set-only rows OR-merge; SW-writable rows overwrite.
-``SIP_DIS`` and ``SYS_DIS`` stay on their function-group word. ``LOCK``
-is both RDL windows (``LOCKS`` word 0, ``LOCKS`` word 1, ``LOCKS_SPARE``)
-after the other rows, from a zero sense on assigned slots. The
-lifecycle nibble stays with the LC W1S leaves. Word index and bit
-patterns come from the run seed. Program x lock is a different
-mechanism.
+RANDCFG. Every seed walks every fuse-field row of
+``hw/sys/sep/doc/otp_fuse_controller.adoc`` except ``LC_STATE``. Set-only rows
+OR-merge and SW-writable rows overwrite. ``SIP_DIS`` and ``SYS_DIS`` stay on
+their function-group word. The ``LOCK`` row covers three RDL windows (``LOCKS``
+word 0, ``LOCKS`` word 1, ``LOCKS_SPARE``) and runs after the other rows, from a
+zero sense on the assigned slots. The seed selects the word index and bit
+patterns. The LC_STATE nibble is graded by
+lcc/sep_lcc_lc_state_transition_matrix_test, and program x lock by
+efuse/sep_efuse_program_lock_matrix_test.
 
 Real fuse sense. ``SepEfuseSetOnlyCfg`` is the single source of truth
 for the image pins and the checker goldens.

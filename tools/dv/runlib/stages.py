@@ -2755,7 +2755,7 @@ with scoped_public_scope(payload["public_scope_vlt"]), scoped_vcs_access(payload
     )
 
 
-# --- VCS (Synopsys) stages ----------------------------------------------------------------------
+# --- VCS stages ---------------------------------------------------------------------------------
 # Three-step UUM/UVM flow: vlogan (analyze) -> vcs (elaborate -> simv) -> simv (run). Two-step folds
 # analyze+elaborate into one `vcs -f <filelist>` build. The simv is the reusable build artifact, so
 # every seed in a regression runs the same simv (compile once, sim many) — the commercial analogue
@@ -3193,7 +3193,7 @@ def vcs_sim(
     )
 
 
-# --- Xcelium (Cadence) stages -------------------------------------------------------------------
+# --- Xcelium stages -----------------------------------------------------------------------------
 # Three-step flow: xmvlog (analyze) -> xmelab (elaborate -> snapshot) -> xmsim (simulate). The
 # elaborated snapshot is the reusable build artifact (the analogue of VCS simv): every seed in a
 # regression runs the same snapshot via `xmsim -svseed <seed>`. The combined two-step build is

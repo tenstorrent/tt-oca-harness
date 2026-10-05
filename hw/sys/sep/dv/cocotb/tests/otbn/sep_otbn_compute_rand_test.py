@@ -1,12 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""OTBN as a compute engine (RANDCFG).
+"""OTBN runs ADD, XOR and AND programs with ERR_BITS 0 and a DMEM result equal to the golden.
 
-Loads a tiny RV32I program into IMEM over the CPU-LSU AXI master, stages two
-seeded DMEM operands, issues EXECUTE, and checks ERR_BITS==0 plus DMEM result
-against an independent Python golden. Walks ADD, XOR, and AND in one
-invocation. Distinct from sep_otbn_mem_smoke_test (write/readback, no EXECUTE)
-and from the KM sideload key-dump (WSR reconstruct, no ALU golden).
+Loads a short OTBN base-ISA program into IMEM over the CPU-LSU AXI master,
+stages two seeded DMEM operands, issues EXECUTE, and checks ERR_BITS==0 plus
+the DMEM result against an independent Python golden. Walks ADD, XOR, and AND
+in one invocation (RANDCFG: the seed sets the operands). Distinct from
+sep_otbn_mem_smoke_test (write/readback, no EXECUTE) and from
+sep_km_otbn_sideload_kat_test (WSR reconstruct, no ALU golden).
 
 no_cpu + +skip_fuse_sense + +esrc_noise_force: post-reset secure wipe consumes
 OTBN URND, so the real entropy stack is brought up and other crypto-EDN
@@ -22,7 +23,7 @@ from seq_lib.sep_otbn_compute_seq import SepOtbnCompute, SepOtbnComputeCfg
 
 @pyuvm.test()
 class sep_otbn_compute_rand_test(sep_base_test):
-    """IMEM program + EXECUTE + ERR_BITS==0 + DMEM==golden."""
+    """Each walked op retires with ERR_BITS 0 and writes the golden result to DMEM."""
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu(park=("aes", "hmac", "kmac"))

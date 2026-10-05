@@ -118,7 +118,7 @@ class SepEfuseWritableField:
 
 
 class SepEfuseSetOnlyCfg:
-    """RANDCFG SSOT: walk every legal set-only field; patterns from the seed."""
+    """RANDCFG, one source for stimulus and golden: walk every legal set-only field."""
 
     def __init__(self, seed: int) -> None:
         self.seed = seed

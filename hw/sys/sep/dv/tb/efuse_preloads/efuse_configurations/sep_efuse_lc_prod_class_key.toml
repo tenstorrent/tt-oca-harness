@@ -4,7 +4,7 @@
 # PROD lifecycle carrying the encrypted-payload class key.
 #
 # sep_efuse_class_key.toml is the TEST_DEV version of this file, used by
-# sep_rom_oca_encrypted_boot_test. That test picks TEST_DEV so a
+# sep_firmware_encrypted_boot_test. That test picks TEST_DEV so a
 # signature failure cannot mask a decryption failure.
 #
 # sep_decryption_failure_terminal_test needs the opposite trade. Its stimulus is a
@@ -25,10 +25,9 @@
 # value below; sep_rom_oca_encrypted_boot_test programs the same bytes as
 # little-endian 32-bit words and that image decrypts, which is the cross-check.
 #
-# The value here used to be a 16-byte pre-OCA key left over from AES-128. The
-# ROM reads 32 bytes and this config is AES-256, so every payload decrypted to
-# garbage and stripped a random PKCS#7 pad: AES_PAD_BAD on BOTH slots, since the
-# two carry identical ciphertext.
+# The ROM reads a 32-byte class key and this config is AES-256. A shorter key
+# decrypts every payload to garbage and gives AES_PAD_BAD on both slots, because
+# the two slots carry identical ciphertext.
 #
 # SBOOT_DIS stays 0 so nothing can opt out of the crypto chain.
 
