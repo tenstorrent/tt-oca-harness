@@ -27,9 +27,10 @@ _EFUSE_PRELOAD = (
     / "efuse_configurations"
     / "sep_efuse_lc_prod.toml"
 )
-# Offsets stay 8-byte aligned and non-zero so the location check is the only rule broken.
+# Offsets stay 8-byte aligned so the location check is the only rule broken. They start
+# past the manifest peek, whose split read begins inside it and is not a payload fetch.
 _OFFSET_STEP = 8
-_OFFSET_MIN = _OFFSET_STEP
+_OFFSET_MIN = -(-mm.MANIFEST_PEEK_MIN // _OFFSET_STEP) * _OFFSET_STEP
 
 
 @pyuvm.test()
