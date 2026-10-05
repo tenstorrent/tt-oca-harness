@@ -333,7 +333,7 @@ they leave out; the checker table of each linked entry is the full set.
 |===
 |Requirement |Tests |Groups |Coverage |Checker evidence |Credit
 |Fabric reachability / address map |<<sep_axi_smoke_test,`sep_axi_smoke_test`>>, <<sep_address_map_test,`sep_address_map_test`>> |smoke, all, cpu_stub |`sep_axi_decode_cg` |`sep_axi_smoke_test`, `sep_address_map_test` (`sep_cpu_ctrl` + one CSR per LSU-reachable block, including ABR and entropy pool) |YES
-|Inbound filter (block-by-default, allow, `SEP_DBG`) |<<sep_lcc_uvm_inbound_filter_gating_test,`sep_lcc_uvm_inbound_filter_gating_test`>>, <<sep_fabric_inbound_filter_rule_matrix_test,`sep_fabric_inbound_filter_rule_matrix_test`>>, <<sep_fabric_inbound_filter_window_walk_test,`sep_fabric_inbound_filter_window_walk_test`>> |all, cpu_stub |`sep_inbound_filter_allow_cg` |`sep_lcc_uvm_inbound_filter_gating_test`, `sep_fabric_inbound_filter_rule_matrix_test`, `sep_fabric_inbound_filter_window_walk_test` (every entry, full 56-bit bounds). Firmware must keep CFG outside allow windows; the hardware applies the rules it is given and is correct as built. |YES on `sep_lcc_uvm_inbound_filter_gating_test`, `sep_fabric_inbound_filter_window_walk_test`; NO on `sep_fabric_inbound_filter_rule_matrix_test`, which fails `CHK-CONFIG-LOCK` (<<known-limitations>>)
+|Inbound filter (block-by-default, allow, `SEP_DBG`) |<<sep_lcc_uvm_inbound_filter_gating_test,`sep_lcc_uvm_inbound_filter_gating_test`>>, <<sep_fabric_inbound_filter_rule_matrix_test,`sep_fabric_inbound_filter_rule_matrix_test`>>, <<sep_fabric_inbound_filter_window_walk_test,`sep_fabric_inbound_filter_window_walk_test`>> |all, cpu_stub |`sep_inbound_filter_allow_cg` |`sep_lcc_uvm_inbound_filter_gating_test`, `sep_fabric_inbound_filter_rule_matrix_test`, `sep_fabric_inbound_filter_window_walk_test` (every entry, full 56-bit bounds). Firmware must keep CFG outside allow windows; the hardware applies the rules it is given and is correct as built. |YES on `sep_lcc_uvm_inbound_filter_gating_test`, `sep_fabric_inbound_filter_rule_matrix_test`, `sep_fabric_inbound_filter_window_walk_test`
 |Outbound filter / live remap |<<sep_fabric_output_remap_datapath_proxy_test,`sep_fabric_output_remap_datapath_proxy_test`>>, <<sep_fabric_outbound_remap_filter_walk_test,`sep_fabric_outbound_remap_filter_walk_test`>>, <<sep_fabric_remap_filter_csr_bank_test,`sep_fabric_remap_filter_csr_bank_test`>> |all, cpu_stub |`sep_axi_decode_cg` |`sep_fabric_output_remap_datapath_proxy_test` (live), `sep_fabric_outbound_remap_filter_walk_test` (every region and entry, full 56-bit width, valid pass-through); CSR bank on `sep_fabric_remap_filter_csr_bank_test` |YES
 |CPU alias window (LSU + IFU) |<<sep_cpu_ifu_lsu_alias_remap_matrix_test,`sep_cpu_ifu_lsu_alias_remap_matrix_test`>> |all, cpu |None |The checker table of each entry named. |YES
 |Mailbox → PIC |<<sep_mailbox_plic_test,`sep_mailbox_plic_test`>> |all, cpu |`sep_mailbox_pic_cg`, `sep_mailbox_channel_cg` |The checker table of each entry named. |YES
@@ -3647,8 +3647,6 @@ remapped routes to the error slave and never executes.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
-
-*Spec-vs-RTL gap*: `CHK-CONFIG-LOCK` fails on this RTL. The two writes to the locked `FILTER_CONFIG` do not answer DECERR, and the checker grades their codes after its 2-beat `allow_burst` read. Every other named checker passes. See <<known-limitations>>.
 
 *Scope*: the walk is inbound-filter entries 0 and 7, two address
 windows (`SEP_SW_DEBUG` and scratch-cold[0]), `{rw, read-only, write-only}` at
@@ -9475,9 +9473,6 @@ defect. Behaviour that this plan does not claim at all is in
 |===
 |Limitation |Impact
 
-|`FILTER_CONFIG.locked` write response (spec-vs-RTL gap). `hw/ip/axi_filter/regs/filter_ctrl.rdl` (`locked`) and `hw/ip/axi_filter/doc/index.adoc` ("Locking a Filter Entry") require DECERR on every write to a locked filter entry. On inbound-filter entry 15, with `allow_burst` set and the 4 KB page widen applied, `sep_fabric_inbound_filter_rule_matrix_test` writes the locked `FILTER_CONFIG` twice, and neither write answers DECERR.
-|`CHK-CONFIG-LOCK` fails, so `sep_fabric_inbound_filter_rule_matrix_test` fails in `all`. The leaf is not waived, and the inbound-filter row of the feature matrix (<<iconic-scorecard>>) takes no credit from it.
-
 |Token-comparator common-mode fault (documented design limitation). `hw/sys/sep/doc/token_processing.adoc` ("Matching Logic Countermeasures") states that the redundancy detector does not cover common-mode faults: if all three comparator instances flip the same way, a mismatch can read as a match (fail-open).
 |`sep_efuse_rma_token_rand_test` `CHK-COMMON-MODE-MATCH` grades that documented behaviour: a common-mode flip on a wrong RMA_SIP token gives the legal match code, no sticky bit and no interrupt. No check in the suite can detect such a fault.
 
@@ -9537,9 +9532,6 @@ defect. Behaviour that this plan does not claim at all is in
 
 |RTL assertions are backend-dependent. Under Verilator, `prim_assert.sv`, `abr_prim_assert.sv` and `ocah_assert.svh` all gate their macros on `VERILATOR`, so design and vendored-IP SVA expand to nothing, and the SEP Verilator targets pass no `--assert`, so the two-state `ocah_axi_sva` rules are dropped as well. Under VCS those macros are live. The shared native profile also defines `COMMON_CELLS_ASSERTS_OFF`, so the PULP `common_cells` inline assertions are off on every backend.
 |Where a checker proves a property, that checker is the whole of the proof on Verilator; no assertion layer sits underneath it there. `sep_km_ic_reset_release_test` is the exception by design: its contract is the `prim_rom` `noXOnCsI` assertion, so its testlist entry runs on VCS only, and a Verilator regression drops it.
-
-|Entropy-pool interrupt numbering (specification). `hw/sys/sep/doc/crypto.adoc` numbers the two entropy-pool interrupts one lower than the canonical table in `hw/sys/sep/doc/interrupts.adoc`. PIC source IDs are 1-based, so aggregation index 36/37 is PIC source 37/38.
-|Firmware that follows `crypto.adoc` enables and masks the wrong two sources. No checker asserts this. Do not mark it XFAIL.
 
 |CPU reset-vector TDR (specification). `hw/sys/sep/doc/cpu.adoc` documents a CPU reset-vector TDR selected by a JTAG opcode. The vendored tap implements no such register: the vector reaches the CPU through a direct wrapper input.
 |The testbench shifts that opcode on every CPU-boot run, and the sequence is inert. It is not evidence of the TDR.
