@@ -2,7 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 #
 # People who have contributed to tt-oca-harness, grouped by organisation and
-# sorted by surname. Add yourself in the same form with your first pull request.
+# sorted by surname. Add yourself in the same form with your first pull request;
+# scripts/update_contributors.py adds commit authors who are missing, and
+# .mailmap maps the other addresses someone has committed under to their entry.
 
 # Tenstorrent
 Jonathan Baker <jbaker@tenstorrent.com>
