@@ -12,7 +12,8 @@ from enum import Enum
 
 import cocotb
 from cocotb.handle import Immediate
-from cocotb.triggers import RisingEdge, SimTimeoutError, with_timeout
+from cocotb.triggers import Event, RisingEdge, SimTimeoutError, with_timeout
+from cocotbext.axi.axi_master import AxiWriteRespCmd
 from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiMasterSequence, clear_profile
 from pyuvm import (
     ConfigDB,
@@ -131,6 +132,12 @@ class SmcSysAxiItem(uvm_sequence_item):
         # `beats` > 1 drives AxLEN = beats - 1 and `wdata` / `rdata` carry the
         # whole burst little-endian, first beat in the low bytes.
         self.beats: int = 1
+        # Write strobe of a single-beat write, relative to `addr`: bit k enables
+        # the lane at `addr + k`. None lets the backend derive the strobe from
+        # `addr` and `length`. The backend puts zeros on the lanes it does not
+        # strobe; an explicit strobe presents `wdata` on every lane of the
+        # transfer, so a disabled lane still carries its byte of `wdata`.
+        self.wstrb: int | None = None
         # Channel timing for this access only (an ocah_axi_vip AxiTimingProfile).
         # The driver arms it before the transaction and returns the master to
         # the backend default after, so a profile never leaks into the next item.
@@ -148,10 +155,11 @@ class SmcSysAxiItem(uvm_sequence_item):
 
     def __str__(self) -> str:
         exp = "None" if self.expected is None else f"0x{self.expected:x}"
+        strb = "" if self.wstrb is None else f" wstrb=0x{self.wstrb:x}"
         return (
             f"{self.op.value} addr=0x{self.addr:014x} len={self.length} "
             f"beats={self.beats} burst={self.burst} "
-            f"wdata=0x{self.wdata:x} rdata=0x{self.rdata:x} exp={exp} "
+            f"wdata=0x{self.wdata:x}{strb} rdata=0x{self.rdata:x} exp={exp} "
             f"ok={self.resp_ok}"
         )
 
@@ -248,6 +256,8 @@ class SmcSysAxiDriver(uvm_driver):
                 prot=int(item.prot),
             )
         if item.op is SmcSysAxiOp.WRITE:
+            if item.wstrb is not None:
+                return self._start_strobed_write(item)
             return self.axi.init_write(
                 address=item.addr,
                 data=item.wdata.to_bytes(item.transfer_bytes, "little"),
@@ -256,6 +266,66 @@ class SmcSysAxiDriver(uvm_driver):
                 prot=int(item.prot),
             )
         raise ValueError(f"unknown SMC SYS AXI op {item.op}")
+
+    def _start_strobed_write(self, item: SmcSysAxiItem):
+        """Start a one-beat write whose W beat carries `item.wstrb`.
+
+        The backend derives WSTRB from the address and the payload length and
+        puts zeros on every lane it does not strobe, so it cannot present a
+        value on a disabled lane. The AW and W beats are issued on the
+        backend's own channels and the response is registered with its tag
+        context, so the B beat completes the returned event the way it does
+        for a write the backend built itself.
+        """
+        wif = self.axi.backend.write_if
+        lanes = wif.byte_lanes
+        size = self._axi_size(item.length)
+        assert item.beats == 1, "an explicit strobe applies to a single-beat write"
+        assert item.addr % item.length == 0, (
+            f"an explicit strobe needs a {item.length}-byte aligned address, got 0x{item.addr:x}"
+        )
+        transfer = (1 << item.length) - 1
+        assert 0 < item.wstrb <= transfer, (
+            f"wstrb 0x{item.wstrb:x} is empty or strobes outside the {item.length}-byte "
+            f"transfer at 0x{item.addr:x}"
+        )
+        shift = item.addr % lanes
+        data_mask = (1 << (item.length * 8)) - 1
+
+        event = Event()
+        awid = wif.cur_id
+        wif.cur_id = (wif.cur_id + 1) % wif.id_count
+        aw = wif.aw_channel._transaction_obj()
+        aw.awid = awid
+        aw.awaddr = item.addr
+        aw.awlen = 0
+        aw.awsize = size
+        aw.awburst = int(item.burst)
+        aw.awlock = 0
+        aw.awcache = 0b0011
+        aw.awprot = int(item.prot)
+        aw.awqos = 0
+        aw.awregion = 0
+        aw.awuser = 0
+        w = wif.w_channel._transaction_obj()
+        w.wdata = (item.wdata & data_mask) << (shift * 8)
+        w.wstrb = item.wstrb << shift
+        w.wlast = 1
+        w.wuser = 0
+        wif.in_flight_operations += 1
+        wif._idle.clear()
+        wif.active_id[awid] += 1
+
+        async def issue() -> None:
+            await wif.aw_channel.send(aw)
+            await wif.w_channel.send(w)
+            wif.tag_context_manager.start_cmd(
+                awid,
+                AxiWriteRespCmd(item.addr, item.length, size, 1, int(item.prot), [1], event),
+            )
+
+        cocotb.start_soon(issue())
+        return event
 
     async def _collect_transfer(self, item: SmcSysAxiItem, event) -> None:
         what = item.op.value
@@ -278,10 +348,11 @@ class SmcSysAxiDriver(uvm_driver):
             )
         else:
             self.logger.info(
-                "%s write 0x%014x <- 0x%x ok=%s%s",
+                "%s write 0x%014x <- 0x%x%s ok=%s%s",
                 self.bus_name,
                 item.addr,
                 item.wdata,
+                "" if item.wstrb is None else f" wstrb=0x{item.wstrb:x}",
                 item.resp_ok,
                 self._tolerated_note(_raw_ok, item.resp_code),
             )

@@ -12,7 +12,7 @@ external interrupt count and system AXI input ID width, and the generated
 `reset_unit` register header for `SS_CONFIG`. cocotb/seq_lib/smu_compose_helpers.py
 names the source of each constant. The SMN struct widths and the
 crossbar-side and SEP-side ID widths have no specification in this tree and
-are checked as untokened drift. The `SMU-<feature>.S<n>` ids the CHK-SMU-*
+are logged as observations, not compared. The `SMU-<feature>.S<n>` ids the CHK-SMU-*
 evidence tokens are named after are the ids the coverage policies' deferral
 rationales use; no document in this tree defines them.
 
