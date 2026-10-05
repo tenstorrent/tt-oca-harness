@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""eFuse program with and without the read-back verify, against a dropped write.
+"""Read-back verify reports a dropped eFuse program write; a plain program does not.
 
 no_cpu, real fuse sense, ``+sep_efuse_prog_fail_count=2``. RANDCFG: the seed
 selects one spare field and two distinct bits in it.

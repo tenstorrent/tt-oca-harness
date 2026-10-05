@@ -3,8 +3,8 @@
 """CSR reset / RW / RO / reserved sweep for sep_reg_bit_bash_rand_test.
 
 Walks the generated SystemRDL export in env/sep_reg_meta.py. Not a RAL model.
-SepRegBitBashCfg is the single source of truth for which registers are reset-
-checked, which take a write bash, and the seed-selected walk order.
+SepRegBitBashCfg is the single source of truth for which registers get a reset
+check, which take a write bash, and the seed-selected walk order.
 
 Exclusions are data: one reason string per entry. A silent skip is a bug.
 ``iter_register_walk`` counts OFFSET symbols that lack DEFAULT/struct
@@ -104,8 +104,9 @@ RESET_EXCLUDE_SUFFIX: dict[str, str] = {
     "ERROR_FLAGS": "read-clear",
     "GENBITS": "FIFO",
     "CMD": "trigger",
-    # spi_host COMMAND: write-only segment trigger (swaccess wo, hwext); reads
-    # return 0, so it is neither reset-checkable nor a storage touch.
+    # spi_controller COMMAND: write-only segment trigger (`sw = w`, `external` in
+    # spi_controller.rdl); reads return 0, so it is neither reset-checkable nor a
+    # storage touch.
     "COMMAND": "trigger",
     "CMD_REQ": "trigger",
 }
@@ -710,8 +711,8 @@ class SepRegBitBash:
             )
             if (~mask) & 0xFFFF_FFFF:
                 self.ro_ok += 1
-            # TIMEOUT_* placeholders: mask=0 and mask_all=1, so the lone
-            # reserved bit is real storage.
+            # The reserved-bit compare runs only when the register has a
+            # software-usable field and no field is masked out of the write mask.
             if mask != 0 and mask == info.mask:
                 reserved = after & info.reserved
                 assert reserved == 0, (

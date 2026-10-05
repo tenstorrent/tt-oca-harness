@@ -1,11 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""DV-owned apertures, PIC IDs, and mailbox constants.
+"""DV-owned specification tables and spec-source parsers.
 
 ``WINDOWS``, ``PIC``, mailbox sentinels, and ``OUTPUT_REMAP_REGIONS`` are
 the expectation. ABR offsets come from ``abr_reg.rdl``. OpenTitan field value
 codes that the overlay RDL states only in field descriptions come from
-``ot_rdl_table_code`` and ``ot_rdl_named_codes``.
+``ot_rdl_table_code`` and ``ot_rdl_named_codes``. The module also carries:
+
+* KV register fields, status fields and error codes, from ``kv_def.rdl``;
+* KPV scrambler control fields, from ``km_kpv.rdl``;
+* ESRC FIPS-locked fields, from ``entropy_source.rdl``;
+* aon_timer REGWEN gates and the wakeup prescaler rule;
+* the KMAC strength and key-length walk;
+* BIW lane packing, AXI lane strobes, and the eFuse error-slave read data.
 """
 
 from __future__ import annotations
@@ -162,8 +169,8 @@ OUTPUT_REMAP_REGIONS = 16
 # reads each return their own data, which holds at any depth. Deliberately not
 # read from a hardware slot count -- scoring "every read slot was occupied"
 # against the RTL's own slot count is the DUT agreeing with itself.
-# Eight is chosen because it is the most a single SEP master holds outstanding
-# on this path today; raising it only strengthens the stimulus.
+# Eight is the most a single SEP master holds outstanding on this path; a
+# larger value only strengthens the stimulus.
 CRYPTO_CONCURRENT_READS = 8
 
 # DV-owned BIW lane packing: out[i] = (b[i] * b[i+4]) + b[i+8]; out[0] is MSB.

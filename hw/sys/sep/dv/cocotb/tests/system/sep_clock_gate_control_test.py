@@ -1,17 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""CLOCK_GATE_CTRL placeholder representative.
+"""CLOCK_GATE_CTRL stores its one implemented bit, and that bit gates no IP.
 
 sep_cpu_ctrl.rdl implements one bit (pka_cg_enable[0:0]); RTL sinks it into an
-unused net. This test is the iconic clock-gate vehicle: it proves the
-implemented bit stores, that the register's unimplemented bits do not store,
-and that AES / HMAC / OTBN / SW_DEBUG CSRs read the same value with the bit
-set and clear. That is decode / stub-const, not a live per-IP gate -- no bit
-in this map clocks an IP off. Completing OKAY on both polarities is not the
-contract: a witness that moved with the enable would still answer.
+unused net. This test proves that the implemented bit stores, that the
+register's unimplemented bits do not store, and that AES / HMAC / OTBN /
+SW_DEBUG CSRs read the same value with the bit set and clear. That is decode /
+stub-const, not a live per-IP gate -- no bit in this map clocks an IP off.
+Completing OKAY on both polarities is not the contract: a witness that moved
+with the enable would still answer.
 
-no_cpu / +skip_fuse_sense. Distinct from sep_crypto_per_ip_reset_isolation_test
-(SW_RESET_N isolation) and from the address-map CLOCK_GATE_CTRL storage poke.
+Run mode: no_cpu with +skip_fuse_sense. Distinct from
+sep_crypto_per_ip_reset_isolation_test (SW_RESET_N isolation) and from
+sep_address_map_test (CLOCK_GATE_CTRL storage poke in sep_address_map_seq).
 """
 
 from __future__ import annotations
@@ -30,7 +31,7 @@ from seq_lib.sep_clock_gate_seq import (
 
 @pyuvm.test()
 class sep_clock_gate_control_test(sep_base_test):
-    """CLOCK_GATE_CTRL storage + stub-const witness reachability."""
+    """The implemented bit stores, other bits do not, and witness CSRs ignore the bit."""
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()

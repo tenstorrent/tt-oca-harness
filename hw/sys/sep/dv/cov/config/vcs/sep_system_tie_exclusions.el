@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //==================================================
-// SEP VCS coverage exclusions -- RTL-tied toggles in the CPU wrapper, reset control,
-// IO/SPI, watchdog and DMA wrappers, the CPU control regblock and the mailbox unit.
+// SEP VCS coverage exclusions -- RTL ties in the CPU wrapper, reset control,
+// IO/SPI, watchdog and DMA wrappers, the CPU control regblock and the mailbox
+// unit.
 // Format Version: 2
 //
 // Scope: the cocotb VCS elaboration of sep_uvm_top, target `default`.
 // TT-owned instances only. tlul_* and el2_mem_if submodules are a scope (.hier)
 // question and are not waived here.
 //
-// Each block waives toggle bits that an RTL constant, an elaborated parameter or a
-// single tied master holds on every path into the instance. The annotation names the
-// tie (file:line) and the fields that stay graded.
+// Each block waives toggle bits, condition vectors, branch arms or FSM states
+// that an RTL constant, an elaborated parameter or a single tied master fixes on
+// every path into the instance. The annotation names the tie (file:line) and
+// the fields that stay graded.
 //
 // Two rules keep this file honest:
 //   * A net that a master, the inbound SoC port, JTAG, an integrator port or

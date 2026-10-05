@@ -4,13 +4,14 @@
 
 Builds the 256-word (8192-bit) SEP fuse array as a ``$readmemh`` image the
 generic efuse bank model (``hw/ip/efuse/dv/models/efuse_bank_model.sv``)
-loads at t=0 via ``+sep_efuse_hex`` (staged pre-sim by dv_sim_prestage.py). The
-Write-policy and used-bit membership come from ``env/sep_efuse_field_map``.
-Offsets and widths come from the generated RDL header.
+loads at t=0 via ``+sep_efuse_hex`` (staged pre-sim by dv_sim_prestage.py).
+Write-policy and used-bit membership come from ``env/sep_efuse_field_map``;
+offsets and widths come from the generated RDL header.
 
 The same object is the golden reference for the shadow-readout checker:
-``expected_shadow(field)`` returns the value software should read back from the
-shadow-register block after fuse-sense, applying the hardware transforms (only
+``shadow_word(i)`` returns the value software should read back from the
+shadow-register block after fuse-sense. ``expected_field(name)`` returns the
+``(addr, expected)`` pairs for a field. Both apply the hardware transforms (only
 LC_STATE is transformed — differential-encoded ``{~raw, raw}`` — every other
 readable field reads back verbatim).
 """
@@ -89,16 +90,14 @@ LEGAL_LC_RAW: Tuple[int, ...] = (
 # SBOOT_DIS.disable_secure_boot, the chicken bit that turns secure boot off.
 SBOOT_DIS_MASK = RegBlock("SEP_EFUSE_MAP").field_mask("SBOOT_DIS", "disable_secure_boot")
 
-# Field schema: (name, byte_offset, n_words, kind). Offsets/widths come from the
-# generated `sep_reg` map imported above; contiguous and summing to 256 words.
+# Field schema: (name, byte_offset, n_words, kind). Offsets and lengths come from
+# the generated `sep_reg` map (contiguous, summing to 256 words); only the kind
+# lives here, so the layout cannot drift from the generated map.
 # kind drives randomization + the expected-shadow transform:
 #   "lc"       — LC_STATE: word holds raw code, shadow reads {~raw, raw}.
 #   "locks"    — LOCKS table: left unlocked by default so all fields read back.
 #   "data"     — freely randomizable keys/digests/UIDs/ctrl fields.
-# Kinds, keyed by generated register name. Everything not named here is "data":
-# freely randomizable. Only the semantics live here -- offsets and lengths are read
-# out of the generated map below. A hand-written copy of the map drifts when
-# the generated layout changes.
+# Every register not named here is "data".
 _LOCK_REGS = ("LOCKS", "LOCKS_SPARE")
 _LC_REGS = ("LC_STATE",)
 
@@ -110,7 +109,7 @@ _SECRET_REGS = sep_efuse_field_map.spec_secret_regs()
 # LOCKS_SPARE (32-bit, word 2) form one 96-bit field holding two bits per protected
 # field -- a write lock and a read lock -- across 41 slots (idx 0-40). locks[81:0] are
 # the meaningful pair bits; [95:82] are unassigned slots 41-47. Index 6'h3F is the
-# no-lock sentinel. otp_fuse_controller.adoc: 41 lockable fields; LOCKS_SPARE holds slots 32-40.
+# no-lock sentinel.
 LOCK_FIELD_BITS = 96
 LOCK_SLOTS = 41
 LOCK_BITS_PER_SLOT = 2
@@ -262,8 +261,8 @@ class SepEfuseImage:
 
     def load(self, path: str | Path) -> "SepEfuseImage":
         """Load a preload, auto-detecting the format: a declarative ``*.toml``
-        fuse configuration, a per-bit reference suite ``*.preload`` (one 0/1 per
-        line), or a 256-word hex image.
+        fuse configuration, a per-bit ``*.preload`` (one 0/1 per line), or a
+        256-word hex image.
 
         This method is the single entry both execution points use --
         ``dv_sim_prestage.stage()`` to write the array the RTL ``$readmemh`` reads
@@ -285,8 +284,8 @@ class SepEfuseImage:
         return self.load_hex(path)
 
     def load_hex(self, path: str | Path) -> "SepEfuseImage":
-        """Load a 256-word ``$readmemh`` image (our format, or a reference-suite
-        ``*_shadow_reg.preload`` -- same LSB-first word layout) as the golden.
+        """Load a 256-word ``$readmemh`` image (our format, or a
+        ``*_shadow_reg.preload`` with the same LSB-first word layout) as the golden.
 
         LC_STATE may be stored raw or differential-encoded in the file; either
         works because only the LC_STATE word's [3:0] (== the raw nibble) is significant.
@@ -301,7 +300,7 @@ class SepEfuseImage:
         return self
 
     def load_preload_bits(self, path: str | Path) -> "SepEfuseImage":
-        """Load a reference-suite OTP ``*.preload`` (one bit per line, LSB-first) as the
+        """Load a per-bit OTP ``*.preload`` (one bit per line, LSB-first) as the
         golden, packing 32 bits/word to match the fuse-array word layout."""
         path = Path(path)
         bits = [c for c in path.read_text(encoding="utf-8").split() if c in ("0", "1")]
@@ -315,14 +314,13 @@ class SepEfuseImage:
         """Set LC_STATE by raw code (must be legal).
 
         Stores the full differential encoding ``{~raw, raw}`` in LC_STATE[7:0],
-        matching the real OTP and the reference-suite preload.
+        matching the real OTP.
 
         Storing the encoded form is a convenience, not a requirement: only ``[3:0]``
         is significant. The sense FSM reads the raw nibble out of OTP and regenerates
         ``{~raw, raw}`` into the shadow itself, so a staged image carrying a bare nibble
-        still senses as a valid
-        pair. That is also why no staged image can present a BROKEN pair to the DUT.
-        The stitch test injects that fault by forcing the LCC decoder input.
+        still senses as a valid pair. That is also why no staged image can present a
+        BROKEN pair to the DUT. The stitch test injects that fault by forcing the LCC decoder input.
         """
         if raw not in LEGAL_LC_RAW:
             raise ValueError(f"illegal LC raw code 0x{raw:x}")
@@ -353,7 +351,7 @@ class SepEfuseImage:
     ) -> "SepEfuseImage":
         """Seeded randomization honoring the non-randomizable-field constraints.
 
-        Constraints (mirrors reference sep_efuse_item):
+        Constraints:
           * LC_STATE is restricted to the 7 legal raw codes (never an illegal
             encoding) — pinned via ``lc_raw`` or drawn from the legal set.
           * The map has no reserved tail: the whole range is real registers
@@ -375,7 +373,7 @@ class SepEfuseImage:
         # The vector holds TWO bits per protected field -- a write lock and a
         # read lock -- so 41 slots cover 82 bits. Index 6'h3F is the no-lock
         # sentinel. The shadow checkers do not check lock ENFORCEMENT (read-lock ->
-        # 0xbadcab1e, write-lock rejecting a program); expected_shadow() assumes
+        # 0xbadcab1e, write-lock rejecting a program); shadow_word() assumes
         # fields stay readable.
         lock_bits = 0
         if lock_prob > 0.0:

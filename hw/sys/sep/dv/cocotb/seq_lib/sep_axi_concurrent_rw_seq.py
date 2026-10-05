@@ -344,6 +344,7 @@ class SepAxiConcurrentRw:
         A closed gate would fail the cell on its prime write and read as an
         arbitration defect, so the caller checks the path before driving.
         """
+        # allow_timeout is ignored on the sequencer path; a timeout fails the access.
         resp, _data = await self._rd(addr, allow_timeout=True)
         return -1 if resp is None else resp
 
@@ -614,7 +615,7 @@ class SepAxiConcurrentRw:
             )
 
         # The named leaf is covered only when THIS ordering is what the port
-        # presented. A different overlap after an RTL fix would pass the
+        # presented. An overlap other than the named one would pass the
         # arbitration contract on a different cell than the leaf name claims.
         if self.presented != cfg.order or obs.overlap_cycles == 0:
             self.unreachable = (

@@ -6,16 +6,17 @@ Companion to :mod:`sep_manifest_mutate`, which owns the manifest body. Everythin
 concerns what the manifest points AT -- the payload TOC, the images it lists, and
 the two digests plus one signature that seal the pair together.
 
-WHAT SEALING MEANS HERE. Four things have to agree or the ROM rejects the slot
+WHAT SEALING MEANS HERE. Three seals have to hold or the ROM rejects the slot
 before any planted defect is reached:
 
   1. each TOC entry's ``hash`` is SHA-256 over ``payload[offset:offset+length]``;
-  2. the manifest's ``payload_hash`` covers the stored bytes the consumer
-     authenticates first -- the whole ciphertext when encrypted, the TOC bytes
-     otherwise, which is what ``payload_hashed_length`` spans in each case;
-  2b. the manifest's ``payload_hash_chain`` is the iterative chain
-     ``h = SHA-256(TOC bytes)``, then ``h = SHA-256(h || SHA-256(image))`` per
-     entry, which anchors the recovered plaintext back to the manifest;
+  2. the two payload digests:
+     a. the manifest's ``payload_hash`` covers the stored bytes the consumer
+        authenticates first -- the whole ciphertext when encrypted, the TOC bytes
+        otherwise, which is what ``payload_hashed_length`` spans in each case;
+     b. the manifest's ``payload_hash_chain`` is the iterative chain
+        ``h = SHA-256(TOC bytes)``, then ``h = SHA-256(h || SHA-256(image))`` per
+        entry, which anchors the recovered plaintext back to the manifest;
   3. the manifest's ``signature_classic`` is RSA-3072 PKCS#1-v1.5-SHA256 over the
      signed region, and ``manifest_hash`` is SHA-256 of that same region.
 
@@ -28,7 +29,7 @@ against ``manifest_hash`` without re-reading the region, and why
 :func:`verify_sealed` asserts all three, and :func:`reseal` re-establishes them in
 that order -- innermost first, because each outer digest covers the one inside it.
 
-RE-SIGNING IS POSSIBLE ON THIS TREE. The six ROM signing keys live in
+RE-SIGNING. The six ROM test signing keys live in
 ``bootrom/prod/tests/signing_keys/rsa_private_key.rom_key{0..5}.pem`` and each
 one's modulus hashes to the matching ``digest_rom_key<N>`` in the generated
 ``key_digests.c`` -- checked by :func:`verify_signing_key`. So a mutation inside
@@ -812,7 +813,7 @@ def _seal_plaintext_toc(
 
 
 def _clear_toc(buf: bytes | bytearray, slot: str) -> tuple[int, bytearray]:
-    """Compatibility name returning the plaintext TOC for either storage form."""
+    """Return ``(payload_base, plaintext payload)`` for either storage form."""
     return _payload_plaintext(buf, slot)
 
 

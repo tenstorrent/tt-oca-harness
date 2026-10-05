@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Adams Bridge ML-DSA-87 keyGen NIST KAT on the ABR aperture.
+"""ABR ML-DSA-87 keyGen returns the NIST ACVP public key, and ZEROIZE then clears it.
 
-no_cpu host-AXI. Software-written seed path only. Public key is
-compared word-for-word against the vendored NIST ACVP vector. Sensitivity:
-flip one seed bit and the key must differ. PIC [34] is proven live via
+no_cpu / +skip_fuse_sense, host AXI. Software-written seed path only. The public
+key is compared word-for-word against the NIST ACVP vector in
+``env/sep_abr_nist.py``. Sensitivity:
+flip one seed bit and the key must differ. Aggregator [34] is proven live via
 error_intr_trig (0->1, W1C -> 0) before the KAT, then stays low at
 completion; [35] rises on completion and is W1C-cleared. ZEROIZE must
 drop VALID, and the pubkey window must then read zero. ML-KEM,
@@ -12,7 +13,6 @@ sign/verify, and the key-vault seed path are not claimed, and neither is
 the ABR_ZEROIZE memory walk itself -- see CHK-ZEROIZE below.
 
 RANDCFG: masking entropy and the flipped seed bit come from the run seed.
-no_cpu / +skip_fuse_sense.
 """
 
 from __future__ import annotations
@@ -55,7 +55,7 @@ _POLL_GAP = 200
 
 @pyuvm.test()
 class sep_abr_mldsa_keygen_kat_test(sep_base_test):
-    """ML-DSA-87 keyGen: NIST pk match, sensitivity flip, PIC [34]/[35]."""
+    """ML-DSA-87 keyGen: NIST pk match, seed sensitivity, aggregator [34]/[35], ZEROIZE clears VALID."""
 
     async def _irq(self, idx: int) -> int:
         await RisingEdge(cocotb.top.clk_i)

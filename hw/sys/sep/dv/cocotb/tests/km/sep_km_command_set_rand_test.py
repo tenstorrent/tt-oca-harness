@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM mailbox command set: generate, transfer, revoke-or-shred, illegal-to-error.
+"""KM mailbox commands produce, move and destroy keys; illegal commands return their error codes.
 
 no_cpu / real fuse-sense / +km_rom_hex=rom_main.rom.parhex. RANDCFG.
 
@@ -33,8 +33,8 @@ Checkers:
               a dedicated CMD_KEY_TRANSFER of that same handle to the
               seed-selected dest (HMAC / KMAC / AES / OTBN) returns rc=0 and
               echoes the dest. Consume proof stays on the sideload KATs and
-              on CHK-XFER; this checker is the mailbox dest cell. One seed
-              writes this dest only; daily reseed accumulates
+              on CHK-XFER; this checker is the mailbox dest cell. Each seed
+              covers one dest; other seeds cover the other dests
   CHK-ABR-DEST
               a directed CMD_KEY_LOAD + CMD_KEY_TRANSFER of an 8-word
               seed to dest ABR ML-DSA seed (0x10) returns rc=0
@@ -84,19 +84,18 @@ Checkers:
 
 The mailbox is a TRANSPORT here, not the subject. Its register surface --
 STATUS depth and full/overflow/underflow, IRQ_STATUS, and SEP_CTRL's response
-modes and flush -- belongs to `sep_km_mailbox_protocol_rand_test`, which the
-plan holds as a separate entry. Proving those means deliberately reading an
-empty FIFO and overrunning a full one, which corrupts whatever frame is in
-flight; it does not compose with a leaf whose subject is the command stream.
+modes and flush -- belongs to `sep_km_mailbox_protocol_rand_test`. Proving those
+means deliberately reading an empty FIFO and overrunning a full one, which
+corrupts whatever frame is in flight; it does not compose with a leaf whose
+subject is the command stream.
 
-Scope deltas:
-  * The plan's DRBG-fault-during-command checker is not built here. The fault
-    status it names is KMCSR IRQ_STATUS bit 6, which sits on the KM-internal
-    bus and answers DECERR from the SEP fabric, and the reference suite
-    provokes the fault with testbench knobs that have no open equivalent. At
-    SEP level a DRBG fault is unrecoverable: the KM emits an unsolicited
-    RESP_UNRECOVERABLE_FAULT, so it also cannot be a return-code check.
-    Building it would need a backdoor.
+Not covered:
+  * A DRBG fault during a command is not graded here. The fault status is KMCSR
+    IRQ_STATUS bit 6, which sits on the KM-internal bus and answers DECERR from
+    the SEP fabric, and provoking the fault needs testbench knobs this bench
+    does not have. At SEP level a DRBG fault is unrecoverable: the KM emits an
+    unsolicited RESP_UNRECOVERABLE_FAULT, so it also cannot be a return-code
+    check. Building it would need a backdoor.
   * CHK-SHRED does not observe the shredded key material. The engine KEY_SHARE
     CSRs are write-only and read as zero, so the overwritten value has no
     frontdoor. The shred is proven by its return code plus the engine

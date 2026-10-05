@@ -1,19 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Crypto-EDN arbiter: two crypto-endpoint clients (AES + KMAC) contend.
+"""AES and KMAC contend at the crypto-EDN arbiter, and both compute correctly on routed DRBG words.
 
-Top-down integration edge: AES (crypto_edn[0]) and KMAC (crypto_edn[1]) BOTH pull
+AES (crypto_edn[0]) and KMAC (crypto_edn[1]) both pull
 the shared crypto-EDN leg (drbg_axis_edn_adapter -> u_axis_edn_crypto_s3c_scan round-robin
 arbiter, sep_crypto.sv) concurrently off ONE verified DRBG stream: TWO real
 crypto clients contend the crypto arbiter.
-`sep_drbg_real_sink_multi_km_aes_test` has AES as the SOLE crypto client (KMAC parked)
-and used KM (a different leg) as the second sink; the standalone AES/KMAC breadth
+`sep_drbg_real_sink_multi_km_aes_test` has AES as the sole crypto client (KMAC parked)
+and uses KM (a different leg) as the second sink; the standalone AES/KMAC breadth
 tests are single-engine KATs. DISTINCT from all of those -- do NOT re-prove
 single-sink routing here.
 
-Reference parity: re-expression of reference suite drbg/sep_drbg_real_sink_multi_
-rand_test at the crypto-endpoint arbiter (the reference suite's per-IP tb cannot reach the SEP
-integration where two crypto engines share one EDN adapter). No KM firmware / no
+Provenance: OCAH `sep_drbg_real_sink_multi_rand_test` (two real sinks off one DRBG),
+moved here to the crypto-endpoint arbiter, which a per-IP bench cannot reach: there two
+crypto engines share one EDN adapter. No KM firmware / no
 rom_main / no real fuse-sense (+skip_fuse_sense), so it follows the standalone
 crypto-engine bring-up style.
 
@@ -29,11 +29,14 @@ under it.
 Checkers:
   CHK1..CHK4     bit-exact golden (decor/compress/seed/CTR_DRBG genbits) -- strict;
                  the correctness anchor the AXIS1 routing stream draws from.
-  CHK-NONVAC     single-engine BASELINE: AES-alone ct == AES-256-ECB golden AND
-                 KMAC-alone digest == Keccak golden (each engine correct in
-                 isolation -- proves the both-beats check is not always-true).
-  CHK-BOTH-COMPLETE  under CONTENTION: AES block-0 ct == golden AND KMAC digest ==
-                 golden (both engines compute correctly while sharing the arbiter).
+  CHK-SINK-BIND  AES alone scores AES-named beats and the KMAC sink takes zero
+                 beats, so the sink map is bound independently of adapter order.
+  CHK-NONVAC     single-engine baseline: AES-alone ct == AES-256-ECB golden, and the
+                 KMAC sink takes zero beats while idle (proves the both-beats check
+                 is not always-true).
+  CHK-BOTH-COMPLETE  under contention: every contended AES block == golden and every
+                 KMAC digest == golden (both engines compute correctly while sharing
+                 the arbiter).
   CHK-BOTH-BEATS every engaged crypto sink (AES, KMAC) takes real post-adapter EDN
                  beats DURING the concurrent fork (per-sink beat delta > 0).
   CHK-OVERLAP    positive arbiter-CONTENTION proof: AES's and KMAC's crypto-EDN beat
@@ -96,7 +99,7 @@ KMAC_OPS_FORK = 2
 
 @dataclass
 class CryptoEdnMultisinkCfg:
-    """SSOT for the crypto-EDN multisink arbitration seeded payload policy.
+    """Single source for the crypto-EDN multisink arbitration seeded payload policy.
 
     Key material is fixed -- the test exercises the entropy datapath and the
     crypto-EDN arbiter, not a key contract -- while the seed randomizes the AES
@@ -144,7 +147,7 @@ class CryptoEdnMultisinkCfg:
 
 @pyuvm.test()
 class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
-    """AES + KMAC concurrent crypto-EDN clients off one real DRBG; dual-sink CHK5 routing."""
+    """Concurrent AES and KMAC each match their golden, and each beat routes the granted word."""
 
     def _aes_beats(self) -> int:
         """Live count of AES crypto-EDN post-adapter beats (public scoreboard accessor)."""
@@ -157,7 +160,7 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
 
-        # NB: do NOT park OTBN/HMAC via SW_RESET_N. Holding a crypto engine in
+        # Do not park OTBN/HMAC via SW_RESET_N. Holding a crypto engine in
         # reset while the crypto-EDN adapter is live wedges the AES masking reseed
         # (AES sits idle, no OUTPUT_VALID). OTBN/HMAC are
         # left released (SW_RESET_N reset 0x7E): OTBN does a one-shot post-reset
@@ -165,7 +168,7 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         # KMAC are the sustained clients contending the arbiter (the standalone
         # AES recipe likewise leaves all crypto released and drives AES on entropy).
 
-        # RANDCFG SSOT: one config object owns the seeded payload policy and logs
+        # RANDCFG single source: one config object owns the seeded payload policy and logs
         # every resolved value (reproducibility). Key material fixed; seed randomizes
         # the AES plaintext + KMAC message.
         cfg = CryptoEdnMultisinkCfg.randomize(self.random_seed())
@@ -240,8 +243,8 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
 
         async def aes_arm():
             """AES crypto-EDN pulls: each iteration re-loads the key (its key-write
-            reseed pulls a fresh crypto-EDN word) then runs an ECB block; block-0 ct
-            value-checked against the golden under contention."""
+            reseed pulls a fresh crypto-EDN word) then runs an ECB block; every block's ct
+            is value-checked against the golden under contention."""
             for i in range(cfg.aes_blocks_fork):
                 await self.aes.load_key_iv(list(cfg.aes_key))
                 ct = await self.aes.run_ecb_block(aes_pt)

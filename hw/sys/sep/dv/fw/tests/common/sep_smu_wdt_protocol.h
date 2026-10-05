@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 /*
- * smu_sep_wdt_reset_to_smc_test -- shared protocol contract.
+ * sep_smu_wdt_reset_to_smc -- SEP firmware <-> SMU testbench protocol contract.
  *
  * Included by SEP firmware and parsed by the cocotb checker. Plain integer/hex
- * #defines only. Thresholds match the VPLAN card (bark 0x200, bite 0x400).
- * SMC image is the existing smu_sep_boot shim (cookie/entry drift-checked).
+ * #defines only. Thresholds: bark 0x200, bite 0x400. The SMC image is
+ * hw/sys/smc/dv/fw/tests/smu_sep_boot (cocotb checks its entry and cookie).
  */
 #ifndef SEP_SMU_WDT_PROTOCOL_H
 #define SEP_SMU_WDT_PROTOCOL_H

@@ -159,11 +159,9 @@ _SIP_SYS_DIS_PINS_DBG_OPEN = {
 }
 
 # test name -> OTP image spec. mode "random" => randomize(seed+seed_offset, **kw);
-# mode "preload" => load(preload); mode "blank" => SepEfuseImage() unchanged. Mirrors each test's select_efuse_image(...).
+# mode "preload" => load(preload); mode "blank" => SepEfuseImage() unchanged.
+# Mirrors each test's select_efuse_image(...).
 EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
-    # Full-shadow proof + W1S persistence: seed-random with CHIPLET_UID pinned to 0
-    # (the test programs one bit of it after the first sense). Must match the test's
-    # select_efuse_image(fixed={"CHIPLET_UID": 0}).
     # Full-shadow proof + W1S persistence: seed-random with CHIPLET_UID pinned to 0
     # (the test programs one bit of it after the first sense). The disable vectors
     # stay random; feat_ctrl_nonvacuous_fixed() replaces them ONLY on a draw that

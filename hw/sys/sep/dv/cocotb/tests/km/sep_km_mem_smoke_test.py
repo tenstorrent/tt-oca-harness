@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP Key Manager memory smoke test.
+"""The KM fetches from ROM, round-trips SRAM through the scrambler, and stores no plaintext.
 
 no_cpu / +skip_fuse_sense / +km_rom_hex=km_rom.parhex. RAND-NONE.
 
@@ -65,7 +65,7 @@ _MAX_KM_CYCLES = 20_000
 
 @pyuvm.test()
 class sep_km_mem_smoke_test(sep_base_test):
-    """Boot a tiny KM ROM image and observe KM SRAM traffic."""
+    """KM ROM fetch, SRAM write, and the scrambled SRAM round trip and store transform."""
 
     async def run_scenario(self) -> None:
         dut = cocotb.top

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 /*
- * smu_sep_debug_bus_test -- shared protocol contract.
+ * sep_smu_debug_bus -- SEP/SMC firmware <-> SMU testbench protocol contract.
  *
  * Handshake: SMC clears scratch2/3 and publishes PH_CLEARED on
  * scratch4; SEP waits for PH_CLEARED, then publishes SEP_WAIT on scratch3 and

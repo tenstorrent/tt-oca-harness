@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Every legal AW/W/AR ordering at a drbg_axil64_lane_adapter port.
 
-no_cpu / +skip_fuse_sense. AW, W and AR are independent AXI channels
+Run mode: no_cpu with +skip_fuse_sense. AW, W and AR are independent AXI channels
 (IHI 0022 A3.3). In idle the adapter accepts each write half independently
 until that half is pending, and accepts a read only when neither write half
 is pending. Both accesses must retire under every ordering.
@@ -15,17 +15,17 @@ drives a TB-owned second instance of the same module at its port, so all
 three orderings are presentable to the cycle, and the vehicle's own reset
 keeps cells independent.
 
-Division of labour: this leaf grades the MODULE's arbitration,
+Division of labour: this leaf grades the module's arbitration,
 the fabric-driven leaves grade the SEP integration. Neither substitutes for
 the other, and this one does not claim the integration.
 
 CHK-PORT-ANCHOR: a plain read of the live CSRNG lane answers OKAY before the
-vehicle is touched. The vehicle is a TB-owned instance, so without this the
-leaf could pass against a DUT that never left reset, and the scoreboard --
-fed from the AXI agent -- would see no transaction and refuse a pass at all.
+vehicle is touched. This proves that the DUT lane is out of reset, and it gives
+the scoreboard (fed from the AXI agent) a transaction, without which the
+scoreboard refuses a pass.
 
 CHK-PORT-CONTROL: a lone write, a lone read, and a write whose AW and W are
-separated by the same gap the overlap cells use, all retire AND answer OKAY.
+separated by the same gap the overlap cells use, all retire and answer OKAY.
 The gapped leg is what excludes the channel separation itself as the cause of
 an overlap-cell failure; without it that exclusion would rest on reading the
 RTL. Both halves matter: an access the adapter rejects as unsupported is
@@ -64,7 +64,7 @@ from seq_lib.sep_drbg_adapter_port_seq import (
 
 @pyuvm.test()
 class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
-    """All three AW/W/AR orderings at the lane adapter's own port."""
+    """Under all three AW/W/AR orderings at the lane adapter's port, both accesses retire."""
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()

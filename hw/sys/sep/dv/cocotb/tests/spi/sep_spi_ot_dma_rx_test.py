@@ -1,12 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP OpenTitan-SPI RX -> Secure-DMA -> SRAM firmware-boot test (PyUVM).
+"""SPI flash data reaches SRAM through the RX FIFO and the Secure DMA without corruption.
 
 The spi_ot_dma_rx firmware arms the Secure DMA in hardware-handshake mode (SRC = SPI RXDATA
 fixed, DST = SRAM incrementing) and issues a SPI flash READ; each RX FIFO watermark crossing
 raises ``lsio_trigger`` and the DMA drains a chunk to SRAM. The flash BFM is preloaded with
 0xA5, and the firmware checks every DMA-written SRAM word against 0xA5A5A5A5, so a pass
-proves the data path, not only completion.
+proves the data path, not only completion. The host gates on the firmware verdict line:
+CHK-DATAPATH (the SRAM pattern) and CHK-RW1C (the DMA done status holds after the poll
+and clears on write-one-to-clear).
+
+Run mode: cpu with +skip_fuse_sense.
 """
 
 from __future__ import annotations
@@ -41,7 +45,7 @@ _RX_PATTERN = 0xA5
 
 @pyuvm.test()
 class sep_spi_ot_dma_rx_test(sep_base_test):
-    """Boot VeeR EL2 and run the SPI-RX -> DMA -> SRAM firmware."""
+    """The firmware verdict line reports both the SRAM pattern check and the RW1C check."""
 
     build_env = False
 
@@ -76,7 +80,7 @@ class sep_spi_ot_dma_rx_test(sep_base_test):
             )
             # The firmware's verdict line names both contracts it scored; gate on it
             # so a stale image that dropped one is visible instead of hiding behind
-            # the PASS magic, and emit the records the VPLAN card names.
+            # the PASS magic, and emit the CHK records the VPLAN row names.
             console = self.sb.console_text()
             verdict = next(
                 (ln for ln in console.splitlines() if ln.startswith(_VERDICT_PREFIX)),
@@ -102,15 +106,11 @@ class sep_spi_ot_dma_rx_test(sep_base_test):
                     f"checked. Line was: {verdict!r}"
                 )
                 self.logger.info("%s PASS: firmware reported %s", chk, what)
-            # Evidence is the firmware's own value-check (gated by the boot
-            # scoreboard's fw_pass magic): SRAM == 0xA5A5A5A5 can ONLY come from
-            # the BFM's preloaded flash streamed over MISO -> SPI RX FIFO ->
-            # lsio_trigger -> DMA -> SRAM, so a passing firmware run proves the
-            # full SPI->DMA datapath end-to-end. flash.get_transactions() is not
-            # evidence here: the BFM's open-ended 0x03 READ (_do_read loops
-            # `while cs_n==0`) blocks awaiting a final SCK edge after the host
-            # stops clocking, so the transaction is served on the wire but never
-            # reaches _log_transaction. flash.read_memory() only echoes the
-            # preload.
+            # Evidence is the firmware value-check, gated by the boot scoreboard's
+            # fw_pass magic. SRAM == 0xA5A5A5A5 can only come from the preloaded
+            # flash over MISO -> SPI RX FIFO -> lsio_trigger -> DMA -> SRAM. The
+            # BFM does not log the open-ended 0x03 READ (the host never clocks the
+            # final edge), and flash.read_memory() only echoes the preload, so
+            # neither is evidence.
         finally:
             await flash.stop()

@@ -13,7 +13,8 @@
 // sep_crypto (which consumes it). Nine signals each: tvalid, tdata[31:0] and
 // tstrb[3:0] for all three EXT_TRNG_NUM_AXIS slots.
 //
-// NOT waived, deliberately: the entropy source mux in sep_crypto.sv:933-955.
+// NOT waived, deliberately: the ext_trng_src_sel_i entropy source mux in
+// sep_crypto.sv.
 // Its select comes from a CSR, both arms are reachable, and the back-pressure
 // policy on each arm is a contract a test can state. Adding the mux here would
 // waive live logic.

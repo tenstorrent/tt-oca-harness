@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP WDT reset-input path test (PyUVM).
+"""wdt_rst_ni resets the SEP CPU only; sep_reset_n stays released.
 
 Verifies the SEP WDT reset-input path:
 
@@ -36,7 +36,7 @@ _SETTLE = 5
 
 @pyuvm.test()
 class sep_clock_uvm_wdt_rst_input_reset_path_test(sep_base_test):
-    """Drive wdt_rst_ni and verify the sep_cpu_reset_n path + isolation."""
+    """wdt_rst_ni drops and releases sep_cpu_reset_n, and sep_reset_n holds 1 throughout."""
 
     build_env = False
     required_evidence = ("CHK-BASELINE", "CHK-ASSERT", "CHK-ISOLATION", "CHK-RELEASE")

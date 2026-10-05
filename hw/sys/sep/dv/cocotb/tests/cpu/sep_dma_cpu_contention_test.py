@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP Secure-DMA vs CPU-LSU SRAM contention test (PyUVM).
+"""Secure-DMA and CPU-LSU traffic overlap at SRAM, and both land bit-exact with no DMA error.
 
 The dma_cpu_contention firmware starts a long SRAM->SRAM Secure-DMA copy and, while it runs, a CPU
 store loop into a disjoint SRAM region, so both masters arbitrate at the SRAM slave on the
 SEP-local xbar with no testbench injection. The firmware checks overlap (STATUS BUSY and not DONE
-mid-flight), DONE with no error, the STATUS RW1C clear, and bit-exact DMA and CPU data; start.S
-emits PASS/FAIL magic that the boot scoreboard gates on.
+mid-flight), DONE with no error, the STATUS RW1C clear, and bit-exact DMA and CPU data;
+fw/startup/crt0.s emits PASS/FAIL magic that the boot scoreboard gates on.
 
 The TB counts cycles where the CPU-LSU and DMA crossbar inputs both present an SRAM request on
 the same address channel; a positive count is the contention proof, which DMA BUSY alone is not.
@@ -36,8 +36,8 @@ _ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 _MAX_RUN_CYCLES = 4_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
-# The clauses of the firmware's single verdict line, one per card row. A stale image
-# that dropped a leg loses its clause, which fails here rather than at the PASS magic.
+# The clauses of the firmware's single verdict line, one per VPLAN checker. An image
+# without a leg loses its clause, which fails here rather than at the PASS magic.
 _VERDICT_CLAUSES = (
     (
         "overlap STATUS=0x00000001",
@@ -58,7 +58,7 @@ _BANNER = "SEP DMA/CPU contention test"
 
 @pyuvm.test()
 class sep_dma_cpu_contention_test(sep_base_test):
-    """Boot VeeR EL2 and run the Secure-DMA / CPU-LSU SRAM contention firmware."""
+    """DMA and CPU-LSU SRAM requests overlap, and both land bit-exact with no DMA error."""
 
     build_env = False
 
@@ -82,7 +82,7 @@ class sep_dma_cpu_contention_test(sep_base_test):
 
         # The firmware scores five contracts into one verdict line. The PASS magic
         # cannot say which of them ran, so gate on each clause the line carries and
-        # emit the record the VPLAN card names for it.
+        # emit the record the VPLAN row names for it.
         console = self.sb.console_text()
         verdict = next((ln for ln in console.splitlines() if ln.startswith("PASS: DMA(")), "")
         assert verdict, (

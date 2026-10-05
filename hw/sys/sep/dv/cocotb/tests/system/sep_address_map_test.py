@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP address-map register sweep test (PyUVM).
+"""The CPU-LSU decodes every LSU-reachable CSR block, and sep_cpu_ctrl holes read 0 without alias.
 
 Intention: prove the CPU-LSU can decode sep_cpu_ctrl and one safe CSR in every
 LSU-reachable CSR block (including ABR and the entropy pool), and that the
@@ -8,7 +8,9 @@ interior reserved span inside sep_cpu_ctrl completes (does not hang) and is
 not a live alias of the neighbouring registers. Not a full dead-space walk.
 
 Bring-up holds the CPU off. Expected offsets/resets/masks come from
-env/sep_reg_meta.py and the ABR / pool seq constants — see sep_address_map_seq.
+env/sep_reg_meta.py and the ABR / pool seq constants; see sep_address_map_seq.
+The eFuse-shim window boundary must select the shim port for its first word and
+leave SEP on the next word (CHK-EXT-DEMUX-BOUND).
 """
 
 from __future__ import annotations
@@ -32,7 +34,7 @@ EFUSE_SHIM_SIZE = sym("SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_SIZE")
 
 @pyuvm.test()
 class sep_address_map_test(sep_base_test):
-    """Register sweep of sep_cpu_ctrl over the CPU LSU bus."""
+    """sep_cpu_ctrl CSRs write back, holes read 0 without alias, and the shim boundary holds."""
 
     # Every graded contract this leaf owns. Dropping any one of them is the
     # failure mode a clean exit would otherwise hide.
@@ -175,11 +177,10 @@ class sep_address_map_test(sep_base_test):
             hole_ok,
         )
 
-        # CHK-EXT-DEMUX-BOUND. ext_demux_decode() in sep.sv is TT-owned decode
-        # on an adopter-owned aperture: the first word selects the eFuse shim
-        # port, the next word leaves SEP and is terminated by the extension
-        # error slave. Nothing else in the suite selects the shim port, so
-        # u_efuse_shim_demux has only ever seen one of its two master ports.
+        # CHK-EXT-DEMUX-BOUND. ext_demux_decode() in sep.sv is Tenstorrent-owned
+        # decode on an adopter-owned aperture: the first word selects the eFuse
+        # shim port, the next word leaves SEP and is terminated by the extension
+        # error slave. This leaf selects both master ports of u_efuse_shim_demux.
         # The two responses must differ. The value behind the shim is adopter
         # owned and is not graded -- only which port the decode chose.
         off = EFUSE_SHIM_BASE + EFUSE_SHIM_SIZE

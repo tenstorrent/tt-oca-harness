@@ -92,8 +92,9 @@ static const struct pic_src_desc k_catalog[] = {
      SEP_TOP_OTBN_INTR_TEST_BASE_ADDR, OTBN__INTR_STATE__DONE_bm, "OTBN"},
 };
 
-// [0]=magic [1]=n_src [2..12]=PIC source ids. Default is the MUST trio so an
-// unpatched image still runs the directed walk. Every k_catalog row fits.
+// [0]=magic [1]=n_src [2..12]=PIC source ids. Default is the mailbox, OTBN and
+// HMAC sources, so an unpatched image still runs the directed walk. Every
+// k_catalog row fits.
 volatile uint32_t g_pic_params[2 + PIC_SRC_MAX] = {PIC_PARAM_MAGIC, 3u, 1u, 30u, 18u};
 
 static struct pic_src_desc g_sel[PIC_SRC_MAX];

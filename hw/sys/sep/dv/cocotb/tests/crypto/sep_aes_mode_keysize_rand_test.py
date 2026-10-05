@@ -1,17 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Standalone AES mode x key-size breadth, RAND-REP (AES mode/key-size breadth).
+"""Each AES mode and key size encrypts and round-trips to an independent golden.
 
-Drives the OpenTitan AES engine directly over the CPU-LSU AXI master (no_cpu, no
+RAND-REP. The test drives the OpenTitan AES engine directly over the CPU-LSU AXI master (no_cpu, no
 firmware, SW key) across the full standalone matrix the KM->AES sideload
 KAT (`sep_km_aes_sideload_kat_test`, ECB-256 via keymgr) does not reach:
 
     {ECB, CBC, CTR} x {128, 192, 256}  (9 cells).
 
-Reference parity: the reference suite uvm_tests/aes suite is register/alert-centric
-with no standalone CBC/CTR/128/192 ciphertext golden, so the independent
-pure-Python golden (env/sep_aes_golden.py: FIPS-197 ECB 128/192/256 + SP800-38A
-CBC/CTR self-tested) is the reference here. DISTINCT from
+Provenance: the OCAH AES tests are register- and alert-centric and have no
+CBC/CTR/128/192 ciphertext golden, so the independent pure-Python golden
+(env/sep_aes_golden.py: FIPS-197 ECB 128/192/256 + SP 800-38A CBC/CTR, self-tested)
+is the reference here. Distinct from
 `sep_km_aes_sideload_kat_test` (ECB-256 via sideload) -- AES mode/key-size breadth
 is standalone SW-key across modes/sizes.
 
@@ -21,16 +21,14 @@ op or the engine stalls. OTBN/KMAC/HMAC are parked so AES is the only crypto
 EDN client: CHK1..CHK4 are bit-exact, CHK5_aes is per-sink ROUTING golden
 (each post-adapter beat equals the next AXIS1 word). KM is unused.
 
-RAND-REP contract: a SepAesCfg config object is the single source
-of truth for BOTH DUT programming (CTRL + key + IV + data) AND the golden. The 9
-discrete (mode, key-size) cells are WALKED DETERMINISTICALLY in one invocation;
-the seed randomizes only the legal continuous knobs (key, IV, plaintext content).
+One SepAesCfg object drives both the DUT programming (CTRL, key, IV, data) and
+the golden. The nine (mode, key-size) cells are walked on every seed. The seed
+sets only the key, IV and plaintext content.
 
-Checkers:
-  CHK-ENC      per cell: engine ciphertext == independent golden (2 blocks)
-  CHK-RT       per cell: round-trip recovers plaintext -- ECB/CBC via engine
-               DECRYPT, CTR via re-encrypt (stream self-inverse)
-  CHK-STATUS   per cell: no AES recoverable/fatal alert across enc + round-trip
+Checkers (CHK-CELL carries the ciphertext, round-trip and no-alert checks on one log line per cell):
+  CHK-CELL     per cell: engine ciphertext == independent golden (2 blocks);
+               round trip recovers the plaintext (ECB/CBC via engine DECRYPT, CTR
+               via re-encrypt); no AES recoverable/fatal alert across both
   CHK1..CHK4   bit-exact entropy golden (strict scoreboard report)
   CHK5_aes     post-adapter AES beats == AXIS1 in order (single live crypto sink)
   CHK-RAND-REP every discrete cell produced its own golden-matching ciphertext,
@@ -52,13 +50,13 @@ NUM_BLOCKS = 2  # 2 x 128-bit blocks per cell -> exercises CBC chaining / CTR in
 
 @pyuvm.test()
 class sep_aes_mode_keysize_rand_test(sep_base_test):
-    """Standalone AES ECB/CBC/CTR x 128/192/256 breadth (no_cpu, SW key)."""
+    """AES ECB/CBC/CTR x 128/192/256 with a SW key each match the golden and round-trip."""
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu(park=("otbn", "hmac", "kmac"))
-        # Every other crypto-EDN client JTAG-held across rst_ni release, then parked in SW_RESET_N so CHK5_aes golden
-        # routing is in-order (one live sink). AES stays released for the
-        # masking reseed.
+        # Every other crypto-EDN client is JTAG-held across rst_ni release, then
+        # parked in SW_RESET_N, so CHK5_aes golden routing is in order (one live
+        # sink). AES stays released for the masking reseed.
         await self.bring_up_entropy(strict=True, score_km=False, score_sinks={"aes": "golden"})
         # The default floor is one scored beat, which is far below what the
         # per-beat routing claim needs across the whole cell walk.
@@ -113,7 +111,7 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
         cfg = SepAesCfg(mode=mode, key_bits=key_bits, key_words=key, pt_words=pt, iv_words=iv)
         cell = f"AES-{mode.upper()}-{key_bits}"
 
-        # --- CHK-ENC: encrypt and value-check against the independent golden ---
+        # --- CHK-CELL (ciphertext): encrypt and value-check against the independent golden ---
         await self.aes.configure(
             mode=cfg.mode_ctrl(), key_len=cfg.keylen_ctrl(), operation=AES_OP_ENC
         )
@@ -125,9 +123,9 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
             f"  golden={[hex(w) for w in golden]}"
         )
 
-        await self.aes.check_status_clean(cell + "-enc")  # CHK-STATUS
+        await self.aes.check_status_clean(cell + "-enc")  # CHK-CELL (no alert)
 
-        # --- CHK-RT: recover the plaintext -----------------------------------
+        # --- CHK-CELL (round trip): recover the plaintext --------------------
         if mode in ("ecb", "cbc"):
             await self.aes.configure(
                 mode=cfg.mode_ctrl(), key_len=cfg.keylen_ctrl(), operation=AES_OP_DEC

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Fabric remap + filter CSR-bank R/W breadth.
+"""Fabric remap and filter CSR banks: field R/W, 64-bit upper words, a write-once lock, RO width.
 
 Combined-per-group CSR sweep over the SEP System-block fabric banks on the CPU-LSU
 AXI master (no_cpu): local-master alias-remap, AP/STEE output-remap, and the
@@ -8,21 +8,20 @@ inbound/outbound filter config banks. Proves field R/W + 64-bit upper-word acces
 the FILTER write-once-set lock (FILTER_CONFIG locked[63]) + the RO data_bus_width
 field. Every word the field sweep writes is read first, and the value written
 differs from that observed pre-write value, so each readback shows a change of
-DUT state on every seed; the alias START_lo write is also confined to its field. The alias-remap REGION_ATTRS valid[63] is plain R/W (clearable),
-not woset; only the filter locked bit is woset (CHK-VALID-RW vs CHK-WOSET). CSR
-layer only -- this entry does not prove live remap translation
-or outbound-filter drop.
+DUT state on every seed; the alias START_lo write is also confined to its field.
+The alias-remap REGION_ATTRS valid[63] is plain R/W (clearable), not woset; only
+the filter locked bit is woset (CHK-VALID-RW vs CHK-WOSET). CSR layer only --
+this entry does not prove live remap translation or outbound-filter drop.
 
-reference refs: sep_fabric_64bit_regwidth_test (64-bit + locked/valid
-woset), sep_outbound_filter_cfg_test (FILTER_CONFIG incl. RO
-data_bus_width=3), sep_cpuctrl_misc_regs_test, and the System-block
-subset of sep_reg_sanity_test. Distinct from
-sep_address_map_test (which only read-touched alias/AP remap for decode
-reachability -- no field R/W, no 64-bit upper word, no woset, no filter banks) and
-from the inbound-filter rule matrix test (real PROD fuse + external master; this is
-+skip_fuse_sense, CSR only).
+OCAH tests: sep_fabric_64bit_regwidth_test (64-bit + locked/valid woset),
+sep_outbound_filter_cfg_test (FILTER_CONFIG incl. RO data_bus_width=3),
+sep_cpuctrl_misc_regs_test, and the System-block subset of sep_reg_sanity_test.
+Distinct from sep_address_map_test (which only reads alias/AP remap words for
+decode reachability -- no field R/W, no 64-bit upper word, no woset, no filter
+banks) and from sep_fabric_inbound_filter_rule_matrix_test (real PROD fuse +
+external master; this is +skip_fuse_sense, CSR only).
 
-no_cpu / +skip_fuse_sense.
+Run mode: no_cpu with +skip_fuse_sense.
 """
 
 from __future__ import annotations
@@ -68,9 +67,9 @@ from seq_lib.sep_fabric_csr_bank_seq import (
 
 @pyuvm.test()
 class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
-    """R/W + 64-bit + woset + RO sweep over the fabric remap/filter CSR banks.
+    """Each written word reads back and changes; FILTER_CONFIG.locked is write-once; width is RO 3.
 
-    RANDOMIZED (SepFabricCsrCfg): which alias-remap region (R/W vs valid), AP/STEE
+    Randomized (SepFabricCsrCfg): which alias-remap region (R/W vs valid), AP/STEE
     region, and filter entry (fields vs the permanent woset lock) are exercised, plus
     masked-random field values. The R/W / 64-bit / woset / RO contract is fixed.
     """
@@ -104,9 +103,6 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
         await self._chk_filter_cfg_and_ro()
         await self._chk_bank_independence()
         await self._chk_woset()
-        # No CHK-ALL summary line: every facet above logs its own PASS, and a plan
-        # row keyed on a bare summary string would record coverage with no checker
-        # behind it.
 
     async def _chk_bank_independence(self) -> None:
         """CHK-BANK-INDEP over every R/W word of every alias and filter entry.
@@ -281,7 +277,8 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
     async def _chk_woset(self) -> None:
         """CHK-VALID-RW + CHK-WOSET on region/entry 1 (woset locks are permanent -> last).
 
-        Per reference sep_fabric_64bit_regwidth_test, woset is the FILTER FILTER_CONFIG[63]
+        Per filter_ctrl.rdl (FILTER_CONFIG.locked) and OCAH sep_fabric_64bit_regwidth_test,
+        woset is the FILTER FILTER_CONFIG[63]
         (locked) bit only; the alias-remap REGION_ATTRS valid[63] bit is plain R/W
         (set sticks, clear works), which this test confirms as a distinct contract.
         woset_probe returns (after_set, after_clear): (1,1)=woset, (1,0)=RW.

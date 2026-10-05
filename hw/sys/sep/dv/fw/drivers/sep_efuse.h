@@ -7,7 +7,8 @@
 // the u_km_efuse_axi_lite_mux (slave port 0). After fuse-sense, the sensed
 // shadow registers (MAP block @ 0x1093_0000) are readable; the MMR block
 // (@ 0x1093_0500) holds plain RW scratch MMRs the KM owns. (Addresses are SEP
-// fabric facts; hw/sys/sep/regs efuse_interface_ctrl / efuse_mmr / sep_efuse_map.)
+// fabric facts; hw/ip/efuse/regs/efuse_interface_ctrl.rdl, efuse_mmr.rdl;
+// hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl.)
 
 #ifndef SEP_EFUSE_H
 #define SEP_EFUSE_H

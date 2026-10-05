@@ -7,8 +7,9 @@ CPU-LSU master programs inbound FILTER_CONFIG allow-entries, then the EXTERNAL
 SMN master (m_axi, the only path through u_inbound_filter) probes them:
   * allowed address (covered by the entry, read_allowed/write_allowed set, src_id
     match) -> the access traverses the filter and reaches the SEP-local CSR
-    -> OKAY + exact value (no inbound global-to-local remap sits inside this
-    DUT, so the external master presents the SEP-local address);
+    -> OKAY + exact value (the external master presents the SEP-local address;
+    u_inbound_global_to_local_addr_remap passes addresses outside the global
+    window unchanged);
   * any other address (block-by-default) -> the filter's err-slave ->
     DECERR, and the read data is not the value staged at that address;
   * clearing read_allowed/write_allowed flips the matched read/write to DECERR.
@@ -264,7 +265,7 @@ class SepInboundFilterMatrixCfg:
     and one src-mismatch cell (src_id=5 / user=0xA, both allows set).
     Continuous knobs (window values) come from the run seed so a failing seed
     reproduces the staged data. Entry 0 / window A / rw / match-all is always
-    first so the allow-rule proof line still appears.
+    first, so the allow-rule proof line comes first in the log.
     """
 
     def __init__(

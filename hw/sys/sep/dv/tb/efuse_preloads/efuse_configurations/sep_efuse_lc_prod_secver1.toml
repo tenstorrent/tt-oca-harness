@@ -25,4 +25,4 @@
 
 [BL1_VERSION]
   [BL1_VERSION.fields.version]
-  value = 0x1    # thermometer count 1 -> minimum security version 1
+  value = 0x1    # flag 0 set

@@ -9,8 +9,8 @@ field. The alias-remap REGION_ATTRS valid[63] is plain R/W (clearable),
 NOT write-once-set -- only the filter locked bit is woset. CSR layer only --
 live remap translation and outbound-filter drop are not claimed here.
 
-All banks need the fabric clocks ungated first (CLOCK_GATE_CTRL);
-sep_address_map_seq writes the same value.
+CLOCK_GATE_CTRL has no per-block gates, so every bank is always clocked;
+ungate_clocks() writes its one implemented bit for CSR write-path coverage only.
 
 Bank map (see `hw/sys/sep/regs/gen/svh/sep_reg.svh`):
   Local-master alias-remap : base 0x10A1_0000, stride 0x20, 16 regions
@@ -209,7 +209,7 @@ class SepFabricCsrBank(SepAxiRegDriver):
     _DRIVER_TAG = "FAB"
 
     async def ungate_clocks(self) -> int:
-        """Ungate the fabric clocks; return the read-back CLOCK_GATE_CTRL."""
+        """Write the implemented CLOCK_GATE_CTRL bit; return the read-back value."""
         await self._wr(CLOCK_GATE_CTRL, CLOCK_GATE_UNGATE)
         return await self._rd(CLOCK_GATE_CTRL)
 
@@ -400,7 +400,7 @@ class SepFabricCsrBank(SepAxiRegDriver):
         """Prove a RO field ignores writes. Returns (orig_field, after_write_field)."""
         field_mask = (1 << width) - 1
         orig = (await self._rd(addr) >> lsb) & field_mask
-        # Try to write the field to its inverse while leaving other bits as-is-ish.
+        # Try to write the field to its inverse, and leave the other bits at their read value.
         cur = await self._rd(addr)
         await self._wr(addr, cur ^ (field_mask << lsb))
         after = (await self._rd(addr) >> lsb) & field_mask

@@ -39,7 +39,7 @@ class SepAxiOp(Enum):
 
 
 class SepAxiItem(uvm_sequence_item):
-    """A single AXI access on the CPU LSU bus."""
+    """A single AXI access on s_axi (CPU-LSU) or m_axi (SMN-inbound)."""
 
     def __init__(self, name: str = "SepAxiItem") -> None:
         super().__init__(name)
@@ -94,9 +94,8 @@ class SepAxiItem(uvm_sequence_item):
         # except the inbound-filter burst checkers, which opt in with INCR and
         # a multi-beat length so AxLEN != 0.
         self.burst: int | None = None
-        # AXI AxID. Every access defaults to 0, which is what the whole suite
-        # used before this field existed, so the transaction ID is not a
-        # dimension a test gets for free -- it opts in. The crossbars prepend
+        # AXI AxID. Every access defaults to 0. A test that wants the
+        # transaction ID as a dimension sets it. The crossbars prepend
         # the master index to it, and the demux keeps one outstanding counter
         # per ID, so an access that never leaves 0 exercises one ID slot.
         self.axi_id: int = 0

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// Minimal freestanding mem* implementations for the SEP OSS firmware (built
-// with -nostdlib). The C standard lets the compiler emit calls to memcpy /
+// Minimal freestanding mem* implementations for the SEP DV firmware, linked
+// from libsep.a. The C standard lets the compiler emit calls to memcpy /
 // memset / memcmp / memmove even under -ffreestanding, and SHA-256 + the tests
-// call them directly, so the firmware must provide them itself.
+// call them directly, so libsep.a provides them.
 
 #include <stddef.h>
 

@@ -1,6 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
+/* sep_smu_bidirect - SEP side of the SMU SEP<->SMC bidirectional alias test.
+ * It opens the aperture and filter windows, checks SMC scratch through the
+ * alias, then completes the SMC->SEP command/ack handshake on cold scratch0. */
+
 #include <stdint.h>
 
 #include "och_sep_common.h"

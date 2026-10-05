@@ -1,16 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 schema_version = 1
 
-# Daily regression policy: run the cpu_stub and cpu groups separately,
-# `python3 tools/dv/run_dv.py --dut sep --items <cpu_stub|cpu> --regress`. Tests with run_modes=["no_cpu"]
-# select target="lsu_stub_all_live"; CPU firmware tests omit target and use the
-# full-CPU default model.
-#
-# Production Boot ROM firmware tests (sep_rom_non_secure_boot_test,
-# sep_rom_ot_{dma,pio,secure}_boot_test) are not defined here -- they live in
-# rom_fw.toml (different RTL target and firmware profile). They run in the
-# `rom_fw` group only -- not `cpu`, and not `all`; this VPLAN grades ROM hardware
-# access only (see hw/sys/sep/dv/docs/SEP_VPLAN.adoc, ROM-FW ownership in Known Limitations).
+# Production Boot ROM firmware tests live in rom_fw.toml and run in the `rom_fw`
+# group only (see all.toml).
 
 [[tests]]
 name = "sep_hello_world_test"
@@ -23,10 +17,8 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Processor-state monitor audit: firmware runs a known noinline call chain and
-# takes one breakpoint trap with an installed handler, printing the CSR-true
-# mcause/mepc; the test cross-checks the trace monitor's trap record, shadow
-# call stack, and nm symbolization against that ground truth.
+# Cross-checks the trace monitor's trap record, shadow call stack and nm
+# symbolization against the mcause/mepc the firmware prints.
 name = "sep_cpu_trace_diag_test"
 module = "cpu.sep_cpu_trace_diag_test"
 firmware = "cpu_trace_diag_test"
@@ -47,11 +39,8 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Mailbox -> PIC -> CPU ISR delivery (the reference suite's sep_mailbox_plic_test): each of the
-# eight inbound mailbox channels raises sep_internal_interrupts[ch] -> VeeR EL2 PIC source
-# ch+1 -> CPU MEIP -> ISR; proves the PIC claim id == ch+1, ISR-before-timeout, and the IRQS/IRQP RW1C
-# clear. A closing outbound push must raise no PIC source and shows up on
-# smc_mailbox_interrupt_o instead, which is the direction sep.sv implements. cpu run mode; +skip_fuse_sense. CPU complex (the PIC lives inside the core).
+# Inbound mailbox channel ch -> PIC source ch+1 -> CPU ISR; an outbound push raises no PIC
+# source and asserts smc_mailbox_interrupt_o (OCAH `sep_mailbox_plic_test`).
 name = "sep_mailbox_plic_test"
 module = "cpu.sep_mailbox_plic_test"
 firmware = "mailbox_plic_test"
@@ -62,11 +51,8 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# NMI mechanism (the reference suite's sep_nmi_sanity_test): EL2 firmware verifies the NMI
-# trampoline alignment, SEP_NMI_VEC default/writeback/sticky-lock, and that a WDT
-# bark fires the NMI -> registered handler (sep.sv nmi_int = intr_wdog_timer_bark,
-# nmi_vec from the SEP_NMI_VEC CSR; all internal to bare sep). cpu run mode;
-# +skip_fuse_sense (no OTP/eFuse data is read). CPU complex (NMI is a CPU trap path).
+# WDT bark -> NMI -> registered handler, with SEP_NMI_VEC default, writeback and sticky
+# lock (OCAH `sep_nmi_sanity_test`).
 name = "sep_nmi_sanity_test"
 module = "cpu.sep_nmi_sanity_test"
 firmware = "nmi_sanity_test"
@@ -77,20 +63,10 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Multi-source PIC source-id map + ISR delivery. EL2 firmware registers PIC
-# ISRs for the MUST trio (mailbox[0]=src1, OTBN-done=src30, HMAC-done=src18)
-# plus all eight INTR_TEST extras (DMA done/chunk/error, HMAC-err, KMAC, CSRNG,
-# EDN, KMAC-err) on every seed; the seed sets only the order of the extras.
-# Proves the source->PIC-id map
-# (id == sep_internal_interrupts idx + 1) + real ISR claim + IP RW1C-clear
-# + one-hot isolation + no re-fire storm. mailbox via a real FIFO push;
-# others via INTR_TEST. cpu run mode; +skip_fuse_sense (no OTP read).
-# timeout_sec: under VCS with the coverage build (-cm line+cond+tgl+fsm+branch+assert)
-# the firmware's bounded STORM_CHECK_ITERS delay loop (pic_irq_source_map_test.c)
-# dominates the run time, so the budget is not tightened. A tighter
-# budget does not catch a non-returning ISR either: wait_isr() bounds itself at
-# ISR_WAIT_ITERS and the ISR masks mie.meie after UNEXPECTED_CLAIM_MAX claims,
-# so a stuck ISR fails the walk by name rather than hanging to the budget.
+# PIC source-id map and ISR delivery for the three required sources plus all eight
+# extras on every seed; the seed sets only the order of the extras.
+# timeout_sec: the bounded STORM_CHECK_ITERS loop (pic_irq_source_map_test.c) dominates the
+# VCS coverage-build run time. A stuck ISR fails by name (wait_isr() bounds at ISR_WAIT_ITERS).
 name = "sep_pic_irq_source_map_delivery_test"
 module = "cpu.sep_pic_irq_source_map_delivery_test"
 firmware = "pic_irq_source_map_test"
@@ -102,18 +78,9 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Secure-DMA basic breadth (the reference suite uvm_tests/dma reg_rw/reg_reset/cfg_regwen/
-# range_regwen/addr_fixed/addr_wrap/addr_combo/mem_copy/err_opcode). EL2 firmware
-# drives the DMA (sep_dma.h) over the CPU LSU for SRAM->SRAM copies: CSR reset
-# values, CFG_REGWEN HW busy-lock, RANGE_REGWEN rw0c lock + range gating,
-# FIXED/INCR/WRAP address modes (per-mode golden image + neighbor), 1B/2B/4B
-# widths, STATUS.done RW1C, one invalid-opcode error + recovery, and a
-# DMA-issued host-path command-integrity inject (exclusive host_path_err /
-# aggregator bit 41, CLEAR, recovery copy) and a fabric DECERR dest that
-# raises the same bit with the pin low. Src/dst offsets, copy length and
-# fill seed come from the run seed (3 seeds). Distinct from the DMA
-# trio (hash/contention/spi-rx). cpu run mode; +skip_fuse_sense (no OTP read).
-# DMA & data movement (cpu-fw bucket).
+# Secure-DMA control and copy breadth over the CPU LSU (OCAH DMA tests `reg_rw`,
+# `reg_reset`, `cfg_regwen`, `range_regwen`, `addr_fixed`, `addr_wrap`, `addr_combo`,
+# `mem_copy`, `err_opcode`).
 name = "sep_dma_basic_test"
 module = "cpu.sep_dma_basic_test"
 firmware = "dma_basic_test"
@@ -125,13 +92,9 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Reset-observable baseline and liveness for the CPU complex. Checks both reset
-# observables are released at rest, then drops and restores the CPU observable
-# from a real warm-reset source so it is live rather than stuck at one.
-# dbg_rstb_i isolation is NOT proven here: in lsu_stub_all_live the pin has no
-# netlist path to either observable, so pulsing it would be a vacuous check.
-# Proving it needs a run mode where dbg_rstb_i reaches sep_cpu.
-# no_cpu; +skip_fuse_sense (reset-observable only, no AXI/OTP). CPU complex.
+# Reset observables at rest and CPU-observable liveness under a real warm reset.
+# dbg_rstb_i isolation is NOT proven: in this build the pin has no netlist path to
+# either observable.
 name = "sep_cpu_dbg_reset_independence_test"
 module = "cpu.sep_cpu_dbg_reset_independence_test"
 seed = 1
@@ -142,13 +105,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Warm/cold reset scratch-bank domain partition (the reference suite
-# sep_clock_uvm_warm_reset_vs_cold_reset_test). A warm reset
-# (wdt_rst_ni low -> sep_cpu_reset_n) clears the WARM scratch bank (0x1080_2080)
-# but the COLD bank (0x1080_2000) survives; only a cold reset (rst_ni) clears
-# both. Reaches the banks over the CPU-LSU AXI splice and cross-checks the cold
-# bank against the scratch_cold_probe_o tap. no_cpu; +skip_fuse_sense (the reset
-# stimulus is the wdt_rst_ni_i/rst_ni primary inputs, no OTP read). CPU complex.
+# A warm reset clears the WARM scratch bank and keeps the COLD bank; a cold reset
+# clears both (OCAH `sep_clock_uvm_warm_reset_vs_cold_reset_test`).
 name = "sep_warm_cold_reset_scratch_test"
 module = "cpu.sep_warm_cold_reset_scratch_test"
 seed = 1
@@ -159,15 +117,9 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# CPU IFU/LSU local-alias-remap (the reference suite's
-# sep_cpu_ifu_lsu_alias_remap_matrix_test). EL2 firmware uses SEP_LOCAL_BASE
-# reset 0xD000_0000 and the fixed 768 MiB window in memory_map.adoc;
-# REGION_SIZE is not programmed. Proves
-# the CPU-side IFU + LSU local-alias-remap:
-# a fabric access to 0xD000_xxxx
-# remaps to physical SRAM 0x1000_xxxx. MUST be cpu mode -- the no_cpu AXI splice
-# is post-remap and would bypass the remap. +skip_fuse_sense (the alias remap
-# does not depend on sensed OTP). CPU complex (real CPU IFU/LSU).
+# CPU-side IFU and LSU alias remap of 0xD000_xxxx to physical SRAM 0x1000_xxxx (OCAH
+# `sep_cpu_ifu_lsu_alias_remap_matrix_test`). MUST be cpu mode: the no_cpu AXI splice is
+# post-remap and bypasses the remap.
 name = "sep_cpu_ifu_lsu_alias_remap_matrix_test"
 module = "cpu.sep_cpu_ifu_lsu_alias_remap_matrix_test"
 firmware = "cpu_alias_remap_test"
@@ -178,12 +130,8 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# PIC source 40 claim + mask for the token-comparator redundancy fault.
-# Firmware arms the source and presents a SEC_DISABLE token; the host injects
-# a collapse on that comparator (tb port). Proves claim id 40, the
-# SEC_DISABLE sticky bit, and that masking meie[40] stops re-entry.
-# Real fuse sense on a blank OTP image; the SEC_DISABLE compare is not
-# fuse-gated.
+# PIC claim id 40, the SEC_DISABLE sticky bit and the meie[40] mask for an injected
+# token-comparator collapse. Real fuse sense: the SEC_DISABLE compare is not fuse-gated.
 name = "sep_efuse_token_match_fault_pic_test"
 module = "efuse.sep_efuse_token_match_fault_pic_test"
 firmware = "token_match_fault_pic_test"

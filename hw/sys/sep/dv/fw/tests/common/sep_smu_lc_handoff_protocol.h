@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 /*
- * smu_lifecycle_security_handoff_test -- shared protocol.
+ * sep_smu_lc_handoff -- SEP/SMC firmware <-> SMU testbench protocol contract.
  *
  * Producer is real SEP eFuse/LCC (no Force). Demote CSRs are W1S. This image
- * sequences PROD blocked, DEMOTE_1, then DEMOTE_2 (d2-alone PVT is not claimed;
- * filtered is already 1 after d1). Corrupt / secdis stay separate images.
+ * holds a PROD window, then sets DEMOTE_1 and holds a second window. It does
+ * not cover DEMOTE_2, a corrupt LC_STATE or SEC_DIS.
  *
- * PVT consumer pad is BP_PVT_CLK_OBS after the 68->65 shrink (card GPIO57).
+ * The PVT consumer pad is BP_PVT_CLK_OBS.
  * Fallback hw2_ovrd on the dedicated obs GPIO_CTRL is forced inactive.
  *
  * SEP cannot frontdoor-program SMC PVT (0x4040_3000 traps on the SEP->SMC

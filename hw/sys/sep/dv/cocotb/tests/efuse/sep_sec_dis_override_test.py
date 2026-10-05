@@ -8,8 +8,8 @@ digest ``SEP_SEC_DISABLE_TOKEN``. ``tb_top`` binds that parameter to
 SHA-256 of the all-zero 32-byte token so a frontdoor write of zeros can
 match. A nonzero token still mismatches. On match, ``sec_dis`` asserts and
 ``FEAT_CTRL`` follows ``feat_ctrl_expected(..., sec_dis=1)`` (all features
-on). A later mismatch drops
-``sec_dis`` and restores the fail-closed PROD golden. The test does not
+on). A later mismatch drops ``sec_dis`` and restores the fail-closed PROD
+golden. The test does not
 force ``sec_dis``.
 
 hw/sys/sep/doc/security_disable.adoc: a match does not release the SEP
@@ -27,8 +27,8 @@ block that reset holds, and a shift of the IC_RESET TDR, are
 While SEC_DIS is active and sensing is still open, a read of the
 ``LC_STATE`` shadow-map word must return AXI OKAY.
 
-A match while sensing is still open stops the sense: the shim stream no
-longer reaches the shadow registers, so ``sep_fuse_sense_done_o`` stays 0.
+A match while sensing is still open stops the sense: the shim stream does
+not reach the shadow registers, so ``sep_fuse_sense_done_o`` stays 0.
 SEC_DIS is for a part whose sense is already broken, and the recovery
 flow is a reset after the token. The token digest and its valid bit are
 latches that ``rst_ni`` does not clear (hw/sys/sep/doc/security_disable.adoc:
@@ -94,7 +94,7 @@ class sep_sec_dis_override_test(sep_base_test):
         if sec_dis:
             # hw/sys/sep/doc/lifecycle_controller.adoc: SEC_DIS=1 forces
             # feat_ctrl to all ones. That constant is the contract, not a
-            # collapse. The fail-closed word above is the contrast.
+            # collapse. The fail-closed branch below is the contrast.
             assert feat == M64, f"{label} FAIL: override golden 0x{feat:016x} is not all ones"
         else:
             assert feat not in (0, M64), (

@@ -1,9 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 /*
- * smu_sep_ext_axi_combined_probe_test  --  shared protocol contract.
+ * smu_sep_ext_axi  --  SMC firmware <-> SMU testbench protocol contract
+ * (hw/sys/smc/dv/fw/tests/smu_sep_ext_axi).
  *
- * Included by both firmwares (the SEP and SMC outbound producers). Python
+ * Included by the SMC firmware hw/sys/smc/dv/fw/tests/smu_sep_ext_axi/main.c. Python
  * goldens derive CSR facts independently from PeakRDL; they do not parse this
  * header.
  *
@@ -58,7 +59,7 @@
  * The SEP fw opens its outbound egress filter over [SEP_OUT_ADDR, SEP_OUT_END]; DV asserts the
  * exact programmed window (canonicalized to the 4KB filter page) + policy. */
 #define EXTAXI_SEP_OUT_ADDR 0x80000000
-#define EXTAXI_SEP_OUT_END 0x800000FF /* sep_outbound_filter.h FILTER_END_ADDR */
+#define EXTAXI_SEP_OUT_END 0x800000FF /* = SEP_OUTBOUND_FILTER_WIN_END in sep_outbound_filter.h */
 #define EXTAXI_SEP_OUT_DATA0 0xA5A55A5A
 #define EXTAXI_SEP_OUT_DATA1 0xCAFEBABE
 
@@ -82,21 +83,21 @@
 /* ---- Built SMC image drift guards ----
  * The SEP firmware uses these to re-vector/release the SMC, while cocotb independently checks
  * them against the freshly built test.dis/test.preload.hex before loading the image. */
-#define EXTAXI_SMC_ENTRY 0xC00601BE /* RECONCILE vs built image */
+#define EXTAXI_SMC_ENTRY 0xC00601BE /* built SMC image entry */
 #define EXTAXI_SMC_IMAGE_FIRST_WORD 0x41014081
 
 /* ---- Aperture goldens (each firmware programs + reads back its OWN) ----
- * SEP inbound global->local remap (axi_window_remap, sep_system_peripherals.sv:432-435,
+ * SEP inbound global->local remap (axi_window_remap in sep_system_peripherals.sv,
  * target_base=0): local = global - sep_global_base, and the access must lie INSIDE the
  * alias window [sep_global_base, sep_global_base + sep_region_size). SEP cold scratch is
  * a LOCAL 0x108020xx register (the address the SEP CPU/internal fabric sees), so the
  * external global address MUST be sep_global_base + local = 0x04000000 + 0x108020xx =
  * 0x148020xx -- NOT 0x048020xx, which remaps to the non-existent local 0x008020xx and
  * DECERRs. The window must also cover local offset 0x1080203f:
- * region_size >= 0x1480203f - 0x04000000 + 1 = 0x10802040, so 0x01000000 is far too small.
+ * region_size >= 0x1480203f - 0x04000000 + 1 = 0x10802040.
  * 0x11000000 gives [0x04000000, 0x15000000), covering all SEP-local 0x10xxxxxx while
  * staying well below the 0x80000000 egress addresses. This same region also feeds the SMU
- * xbar sep_in addr_map (smu_axi_xbar.sv:94-95) so ext_in->SEP decodes to mst0.
+ * xbar sep_in addr_map (smu_axi_xbar.sv) so ext_in->SEP decodes to mst0.
  * (SMC differs: its remap target_base is nonzero so global 0x020390xx -> local 0x000390xx
  * is a valid SMC-fabric alias.) */
 #define EXTAXI_SEP_GLOBAL_BASE 0x04000000 /* SEP_CPU_CTRL.SEP_GLOBAL_BASE_ADDR */
@@ -186,7 +187,7 @@ _Static_assert(EXTAXI_SEP_COLD7_GLOBAL ==
 
 /* ---- Filter config words (axi_filter FILTER_CONFIG; only bits 0/1/4/8/24 used) ----
  * read_allowed[0] | write_allowed[1] | entry_enabled[4] | allow_ns[8] | allow_burst[24].
- * allow_ns is an EXACT match on AxPROT[1] gated by EN_NS_FILTER (traffic_filter.sv:54)
+ * allow_ns is an EXACT match on AxPROT[1] gated by EN_NS_FILTER (traffic_filter.sv pass_ns)
  * -> program a SECURE rule (allow_ns=0) AND an NS rule (allow_ns=1) over the same
  * range so the leg passes regardless of the initiator's security level.  src_id and
  * group_id are left 0 (ignored: !(|cfg) passes any initiator). */

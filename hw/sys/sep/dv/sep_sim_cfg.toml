@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 #
 # SEP OSS simulation config (native build/filelist manifest).
 # DUT = `sep_wrapper` (the bare `sep` core plus its IP integration); vendor-clean
@@ -64,8 +65,7 @@ top_file = "hw/sys/sep/dv/tb/tb_top.sv"
 # Extra tb sources compiled alongside tb_top: the outbound mailbox console/PASS
 # monitor. The sep_wrapper DUT, its IP-integration models, and the eFuse
 # models come from the Bender closure (`sep_wrapper` plus the `any(sep, smc)`
-# groups). The companion checkout is outside this open filelist. The wrapper
-# SPI uses struct ports, and the OT SPI host drives them with no select.
+# groups).
 sources = [
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_regs.sv",
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_pcpi_mul.sv",
@@ -100,12 +100,11 @@ sources = [
 #     fail elaboration -- and emits the survivors after it. The stub below is therefore inert
 #     under VCS, which is intended: the real entropy_ring_oscillator elaborates and simulates
 #     correctly there.
-# To make a stub bind under VCS too, drop the real file via `exclude_files`, the way the
-# abr_wrapper_key_reg stub above does.
+# To make a stub bind under VCS too, drop the real file through the target's `exclude_files`,
+# as the CPU-stub targets below do for sep_cpu.sv.
 #
-# SEP's two-stage synchronizers are OpenTitan prim_flop_2sync, which nothing stubs here. The analog entropy_ring_oscillator supplies
-# a defined idle value under Verilator, which ignores the `#1` stage delays the ring needs to
-# oscillate.
+# The analog entropy_ring_oscillator stub supplies a defined idle value under Verilator, which
+# ignores the `#1` stage delays the ring needs to oscillate.
 #
 # The sep_cpu stub is NOT prepended: it imports DUT packages (sep_pkg/el2_pkg) that are declared
 # only inside the bender filelist, so a prepended copy would reference them before declaration.
@@ -143,13 +142,12 @@ incdirs = [
 ]
 
 [build.options]
-# SEP is a large cold build (VeeR EL2 + OTBN + full crypto). Parallelize the
-# Verilator + C++ compile and split codegen into many TUs so g++ runs concurrently.
+# SEP is a large cold build (VeeR EL2 + OTBN + full crypto).
 #
-# Partition the build dir by input fingerprint so the two daily targets
-# (default / lsu_stub_all_live) coexist instead of clobbering one shared model on
-# every target switch. Each unchanged target then reuses its build; only a config
-# or source change rebuilds it.
+# Partition the build dir by input fingerprint so the targets that share a
+# build_dir coexist instead of clobbering one shared model on every target
+# switch. Each unchanged target then reuses its build; only a config or source
+# change rebuilds it.
 cache_enabled = true
 
 [build.verilator]
@@ -193,8 +191,8 @@ extra_args = ["-fno-dfg"]
 # (`-cm` + `-cm_dir {cov_dir}/simv.vdb`). Do not restate it here: an identical
 # list is a deprecated duplicate and the runner refuses the config.
 
-# Assertion coverage is collected and scored whatever the `-cm` list says: in
-# this VCS version `-cm assert` does not gate it, and the compile-time
+# Assertion coverage is collected and scored whatever the `-cm` list says:
+# `-cm assert` does not gate it, and the compile-time
 # `-cm_common_hier` below is what keeps it inside the graded hierarchy. So the
 # metric is dropped HERE, at report time, which is the only place that works.
 #
@@ -205,8 +203,8 @@ extra_args = ["-fno-dfg"]
 # and grading them reports the absence of traffic the stimulus policy forbids.
 #
 # This changes the SCORE only. Every assertion stays compiled, evaluating and
-# able to fail a test; nothing here touches checking. Restore `+assert` to the
-# metric list if SEP ever gains an illegal-stimulus environment.
+# able to fail a test; nothing here touches checking. The `-metric` list omits
+# `assert` while the stimulus policy is legal-only.
 #
 # Overrides the shared [vcs] report_cmd in hw/common/dv/configs/simulators.toml
 # by adding `-metric`; the rest of the command is copied from it verbatim.
@@ -227,17 +225,16 @@ compile_args = [
   # Extends the SAME scope file from code coverage to assertion coverage.
   # `-cm_hier` alone governs line/cond/fsm/tgl/branch only, so without this the
   # excluded hierarchy leaves the code metrics but remains graded for
-  # assertions. `-cm_common_hier` is a Limited Customer Availability feature;
-  # VCS refuses the compile without `-lca` ("The '-cm_common_hier' flow requires
-  # a special option"), which is the opt-in switch.
+  # assertions. `-cm_common_hier` needs `-lca`; VCS refuses the compile without
+  # it ("The '-cm_common_hier' flow requires a special option").
   "-lca",
   "-cm_common_hier",
 ]
 
 [coverage.verilator]
 # Not the graded number. Only [coverage.vcs] applies the compile-time scope.
-# `--cov --tool verilator` fails C++ compile on 5.046 (`__PVT__MLKEM_SHARED_KEY`
-# under `VM_COVERAGE=1`); 5.050 compiles.
+# `--cov --tool verilator` needs Verilator 5.050 or later; 5.046 fails the C++
+# compile under `VM_COVERAGE=1` (`__PVT__MLKEM_SHARED_KEY`).
 # Toggle stays off: on this model it is ~95% of the database (~0.5 GB per leaf)
 # and the costliest sim instrumentation. Replaces the simulator-default
 # `--coverage`.
@@ -266,7 +263,7 @@ cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 
 [frameworks.cocotb.coverage.vcs]
 # The cocotb VCS runner renders compile-time `{build_cov_dir}` at the
-# unfingerprinted coverage dir (`…/coverage/cov_build.vdb`). The default
+# unfingerprinted coverage dir (`.../coverage/cov_build.vdb`). The default
 # design_artifact (`{build_cov_dir}`) is next to `simv` under the fingerprint,
 # so the post-compile check looks in a directory the compile does not write.
 # Point the check at the database the compile actually writes. The SV-UVM
@@ -289,7 +286,7 @@ design_artifact = "{build_dir}/../cov_build.vdb"
 #
 # RISCV_TOOLCHAIN + RISCV_PREFIX is the ONLY toolchain contract the shared
 # engine accepts (hw/common/dv/fw/compile.mk). When RISCV_TOOLCHAIN is given
-# without RISCV_PREFIX we still probe that directory for both tool names.
+# without RISCV_PREFIX the stage still probes that directory for both tool names.
 #
 # PICOLIBC IS THE REAL GATE. compile.mk builds with --specs=picolibc.specs.
 # Use `run-here`, not `run`: `run` remaps the repo to /work, so
@@ -301,9 +298,8 @@ design_artifact = "{build_dir}/../cov_build.vdb"
 # binary and preamble.mk keeps it, so the rom_only post-process
 # (elf-to-vmem.py, which imports pyelftools) cannot use that path. Drop UV
 # and VIRTUAL_ENV, and keep uv's project environment, cache and interpreters
-# under local/. The container engine does not forward those variables; that
-# image has no uv, so this post-process still needs the sandbox uv on PATH
-# rather than python3.
+# under local/. The container image has no uv, so this post-process needs the
+# sandbox uv on PATH.
 cwd = "."
 argv = [
   "bash",
@@ -531,12 +527,7 @@ args = ["+cpu_boot"]
 
 # Compile and run settings for a target share one [targets.<name>] table.
 # Tool-specific flags live under [targets.<name>.tools.<tool>].
-# cocotb's runner forces a global --public-flat-rw. The runlib cocotb_public_scope() integration
-# drops it and substitutes the scoped public config in `public_scope` above: cocotb only needs
-# the top-level sep_uvm_top ports (clocks/reset/boot controls + the flat s_axi_* bus); the
-# CPU-LSU splice is SV-side inside tb_top (the no_cpu stub drives lsu_axi_req from lsu_req_drive;
-# the LSU response is read back by hierarchical name), so no internal-signal VPI access is
-# required. See [build.verilator] for the split_var constraint behind the scoping.
+# Verilator public access: see `public_scope` in [build.verilator].
 # -Wno-MODDUP/REDEFMACRO allow the override stubs to shadow real modules.
 #
 # NOTE: the common Verilator -Wno-fatal/UNOPTFLAT/... flags come from the profile's
@@ -550,9 +541,8 @@ args = ["+cpu_boot"]
 #   * default            (cpu_all_live)     : full VeeR CPU; m_axi + j_axi live.
 #   * lsu_stub_all_live  (CPU stubbed)      : no VeeR; m_axi + j_axi live.
 #
-# Daily commit/push validation is the two class regressions, not one mixed `all`
-# run. `rom_fw` is a separate owner's class, not a member of `all`; run it only
-# when Boot ROM firmware is in scope:
+# Regress the two runtime classes separately, not one mixed `all` run. `rom_fw` is
+# not a member of `all`; run it only when Boot ROM firmware is in scope:
 #   python3 tools/dv/run_dv.py --dut sep --items cpu_stub --regress \
 #       --tool verilator --stage flist --stage hdl_compile --stage sim
 #   python3 tools/dv/run_dv.py --dut sep --items cpu --regress \
@@ -561,9 +551,8 @@ args = ["+cpu_boot"]
 #       --tool verilator --stage flist --stage c_compile --stage hdl_compile --stage sim
 # Add `--stage c_compile` when the selected CPU firmware is stale, or run that
 # stage alone for a firmware-only rebuild.
-# The wrapper keeps build parallelism high for both, uses high sim fanout for
-# no_cpu, and bounds CPU firmware fanout while keeping the Verilator model
-# single-threaded by default.
+# Add `--sim-jobs N --build-jobs N` to fan the leaves out; bound N for the `cpu`
+# class.
 #
 # `default` is the FALLBACK target. On VCS the full CPU supports both run modes:
 # no_cpu force-splices the LSU VIP. Verilator no_cpu still selects

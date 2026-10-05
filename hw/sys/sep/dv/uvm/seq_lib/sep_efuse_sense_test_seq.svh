@@ -7,7 +7,7 @@
 //     (+sep_efuse_hex, from the testlist), and the real OTP sense runs (no
 //     +skip_fuse_sense);
 //   * wait for sep_fuse_sense_done_o, bounded by
-//     test_cfg.fuse_sense_timeout_cycles (20 000 system clocks, the cocotb
+//     test_cfg.fuse_sense_timeout_cycles (20_000 system clocks, the cocotb
 //     _MAX_SENSE_CYCLES), then the settle window;
 //   * require the shadow probe tb_vif.efuse_shadow and the committed expected
 //     shadow (+sep_efuse_shadow_hex) to each hold exactly ShadowWords 32-bit

@@ -95,13 +95,12 @@ WORD_BITS = 32
 # the config still loads and the author's intent is quietly dropped.
 #   value    -- whole register, little-endian
 #   fields   -- named bitfields
-#   regwidth -- present in reference-suite configs; the RDL fixes the width, so the
-#               key is accepted and never affects placement
+#   regwidth -- accepted for configs that carry it; the RDL fixes the width, so
+#               the key never affects placement
 _ALLOWED_KEYS = frozenset(("value", "fields", "regwidth"))
 
-# Lock keys are rejected, not modelled. The reference config format carries
-# per-register read_locked/write_locked; rejecting them loudly means a config copied
-# from the reference cannot appear to set a lock that never lands.
+# Lock keys (read_locked/write_locked) are rejected, not modelled, so a config
+# cannot appear to set a lock that never lands.
 _LOCK_KEYS = frozenset(("read_locked", "write_locked"))
 
 
@@ -426,7 +425,7 @@ def _selftest() -> int:
     )
 
     # Loading each live config is the floor: these are what the DUT senses at
-    # t=0, so one that no longer parses -- because the RDL renamed a field, say
+    # t=0, so one that fails to parse -- because the RDL moved or dropped a field, say
     # -- must fail here and not in a long simulation. The byte-compare applies only
     # to configs with a committed .hex image (the plusargs name the .toml and the
     # array is generated, so a committed image is the exception). Count them and

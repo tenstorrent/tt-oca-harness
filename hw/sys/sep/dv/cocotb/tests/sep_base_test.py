@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP UVM base test helpers.
+"""SEP PyUVM base test.
 
 Concrete tests inherit this class for common import setup, environment build,
 clock/reset bring-up, CPU hold/run controls, and fuse-sense synchronization.
@@ -97,8 +97,9 @@ class _EvidenceFilter(logging.Filter):
 
     _CHK = re.compile(r"\b(CHK-[A-Z0-9_-]+)\b\s*(?:\([^)]*\)\s*)?(PASS|OK)\b")
 
-    # IDs sep_base_test itself emits. Counted in `observed` but excluded from
-    # `own`, which is what a floor grades. Empty: bring-up logs no named CHK.
+    # IDs excluded from `own`, which is what a floor grades; `observed` counts
+    # them. Empty, so the CHK records the base-class helpers emit
+    # (CHK-FW-IDENTITY, CHK-VERDICT, CHK-FW-CONSOLE, ...) count as the leaf's own.
     BASE_IDS: frozenset[str] = frozenset()
 
     # Leaves allowed to pass with no own CHK record. A new entry hides a logging gap.
@@ -155,8 +156,8 @@ class sep_base_test(uvm_test):
     # class counts what this run actually emitted and fails a silent one.
     #
     #   required_evidence -- IDs this test must emit. Missing any one fails.
-    #   min_evidence      -- fewest distinct IDs of the test's OWN (records the
-    #                        base class emits do not count). 0 disables it.
+    #   min_evidence      -- fewest distinct IDs of the test's OWN (IDs not in
+    #                        _EvidenceFilter.BASE_IDS). 0 disables it.
     #
     # Both default to off. They tighten a leaf that already emits records; they
     # do not replace the unconditional floor in `_finalize_evidence`. A leaf
@@ -229,8 +230,8 @@ class sep_base_test(uvm_test):
     def rd_known(sig, mask: int | None = None) -> int:
         """Read a signal, raising if any bit selected by ``mask`` is not 0 or 1.
 
-        Same contract as ``rd`` with ``allow_unknown=False``. Kept as the
-        explicit name at zero-expecting compares.
+        Same contract as ``rd`` with ``allow_unknown=False``. The explicit name
+        for zero-expecting compares.
         """
         return sep_base_test.rd(sig, mask)
 
@@ -842,7 +843,7 @@ class sep_base_test(uvm_test):
     def write_efuse_image(self, image) -> str:
         """Write an eFuse OTP image to ``<run_cwd>/out/sep_efuse.hex``.
 
-        The responder loads that default path unless ``+sep_efuse_hex=<path>``
+        The efuse bank model loads that default path unless ``+sep_efuse_hex=<path>``
         overrides it for a special run. The image is also kept as
         the golden for the automatic post-sense shadow comparison.
         """
@@ -936,7 +937,8 @@ class sep_base_test(uvm_test):
 
         This master traverses the inbound filter (block-by-default; skipped only
         when feat_ctrl.sep_debug=1), so it is the path the inbound-filter-gating
-        test uses to prove external AXI is blocked (PROD) / allowed (PROD_DBG_1).
+        test uses to prove external AXI is blocked (PROD) / allowed (PROD with
+        DEMOTE_1).
         """
         await seq.start(self.env.ext_axi_agent.sequencer)
 
@@ -1533,8 +1535,8 @@ class sep_base_test(uvm_test):
         # that cannot be recovered after the fact.
         #
         # Hashed ONCE PER BUILD, not once per test. A regression reuses one
-        # binary across every leaf, and sha256 runs at ~45 MB/s here, so a
-        # 512 MiB VCS simv would cost ~11 s on every one of them. The digest is
+        # binary across every leaf, and sha256 of a large simv takes seconds, so
+        # every leaf would pay it. The digest is
         # a property of the binary, so it is cached beside it, keyed on size
         # and mtime; an unwritable or mismatched cache costs a rehash, never a
         # wrong answer. The line says which it was: `cached` is trusted on
@@ -1695,8 +1697,8 @@ class sep_base_test(uvm_test):
         Runs only after run_scenario() returns normally. A test that already
         failed raised, and this must not turn that into a different complaint.
 
-        `own` excludes the records sep_base_test emits itself, so a declared
-        floor grades what the leaf proved rather than what bring-up logged.
+        `own` excludes the IDs in ``_EvidenceFilter.BASE_IDS``. That set is empty,
+        so base-class CHK records count toward a declared floor.
         """
         seen = sorted(getattr(self, "_evidence", _EvidenceFilter()).seen)
         own = [c for c in seen if c not in _EvidenceFilter.BASE_IDS]

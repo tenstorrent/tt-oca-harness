@@ -6,7 +6,7 @@ no_cpu / +skip_fuse_sense / +km_rom_hex=km_rom_kpv_scrambler.parhex. RANDCFG.
 
 The key/policy vault hangs off the Key Manager's own crossbar, whose single
 slave port is wired to the KM CPU, so no host master can reach it and a
-dedicated ROM is the vehicle. It cannot be ``rom_main`` either: that image
+dedicated ROM drives it. It cannot be ``rom_main`` either: that image
 programs the scrambler key, enables it and takes the sticky lock during boot,
 so the enable toggle this test needs is already gone before the host can act.
 
@@ -84,7 +84,7 @@ from seq_lib.sep_km_mem_smoke_seq import sep_km_release_seq
 
 @pyuvm.test()
 class sep_km_kpv_scrambler_test(sep_base_test):
-    """KPV scrambler data transform, address tweak, keying, and lock."""
+    """The KPV scrambler transforms data and address, depends on its key, and locks the key."""
 
     async def run_scenario(self) -> None:
         cfg = SepKpvScramblerCfg(self.random_seed())

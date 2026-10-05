@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP eFuse image + shadow-readout + W1S-persistence test (OSS).
+"""The sensed eFuse shadow follows the image, and W1S programs persist across a resense.
 
 Before sense-done, AXI-reads ``FEAT_CTRL`` and requires the fail-closed
 zero vector (downstream shadow stays ``LcStateInvalid``). After sense,
@@ -12,6 +12,15 @@ PERSISTENT OTP image plus those newly write-one-to-set bits.
 Exercises the eFuse goals: sense + resense, specific-or-random init, field
 constraints, the generated sep_efuse_map, shadow-vs-loaded-mem comparison, and
 multi-bit W1S program persistence across a resense.
+
+Checkers:
+  CHK-PRE-SENSE-OPEN  FEAT_CTRL reads the fail-closed zero before sense-done and
+                      the image golden after it.
+  CHK-OTP-DIRECT      the burned bits read 1 in a direct OTP read before the resense.
+  CHK-W1S-NOCLOBBER   programming a second bit in a word keeps the first one set
+                      (the bank ORs, it does not overwrite).
+  CHK-W1S-PERSIST     after the resense the shadow equals the image plus every
+                      W1S bit.
 """
 
 from __future__ import annotations
@@ -42,7 +51,7 @@ _NUM_BURN = 10
 
 @pyuvm.test()
 class sep_efuse_image_test(sep_base_test):
-    """Sense a generated image, check shadow, burn 10 random bits, resense, re-check."""
+    """The shadow matches the image, and burned W1S bits persist in OTP and across a resense."""
 
     async def run_scenario(self) -> None:
         # One initial image with CHIPLET_UID pinned to 0 (the pre-sim efuse stage

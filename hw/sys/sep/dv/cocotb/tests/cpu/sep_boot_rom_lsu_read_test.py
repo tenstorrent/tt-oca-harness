@@ -1,22 +1,24 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP boot-ROM LSU data-read + write-ignored test (PyUVM).
+"""CPU LSU loads from the boot ROM return the staged image, and a store to a ROM word is ignored.
 
-Memory-subsystem rep boot-ROM LSU read. reference provenance: uvm_tests/rom
-sep_rom_uvm_basic_read / sequential_read / content_verify / addr_boundary /
-write_ignore. Boots the VeeR EL2 core and runs the rom_lsu_read firmware, which
-does CPU LSU data loads from the boot ROM (0x1004_0000, on the dedicated
-lsu_rom_axi CPU port -- unreachable by the no_cpu splice, so cpu-mode REQUIRED)
-and value-checks them against a known preloaded image, then proves a store to a
-ROM word is silently ignored (normal response, content unchanged -- NOT DECERR).
+Provenance: OCAH `sep_rom_uvm_basic_read_test`, `sep_rom_uvm_sequential_read_test`,
+`sep_rom_uvm_content_verify_test`, `sep_rom_uvm_addr_boundary_test` and
+`sep_rom_uvm_write_ignore_test` (ROM LSU reads and the ignored store). The test boots
+the VeeR EL2 core and runs the rom_lsu_read firmware. The firmware does CPU LSU data
+loads from the boot ROM (0x1004_0000, on the dedicated lsu_rom_axi CPU port). The
+no_cpu splice cannot reach that port, so the test needs cpu mode. The firmware
+value-checks the loads against a known preloaded image. Then it proves that a store
+to a ROM word is ignored: the response is normal (not DECERR) and the content does
+not change.
 
 Distinct from sep_rom_sanity_test (which proves the IFU *executes* from
-ROM): boot-ROM LSU read covers the LSU *data* read-port + the write-reject negative contract.
+ROM): this test covers the LSU *data* read port and the write-ignored negative contract.
 
 The boot ROM responder is preloaded with the known image via
 +sep_boot_rom_hex=mem_rom_test_rom.hex (committed alongside this test, same
 staging path as rom_sanity_rom.hex). Firmware-self-checking: main() returns its
-error count and start.S emits the PASS (0xCAFEBABE) / FAIL (0xDEADBEEF) magic on
+error count and fw/startup/crt0.s emits the PASS (0xCAFEBABE) / FAIL (0xDEADBEEF) magic on
 the 0x8000_0000 mailbox, which the boot scoreboard gates on (plus banner + ICCM
 execution). Each checker logs a positive PASS line.
 
@@ -49,7 +51,7 @@ _BANNER = "SEP boot ROM LSU read test"
 
 @pyuvm.test()
 class sep_boot_rom_lsu_read_test(sep_base_test):
-    """Boot VeeR EL2 and run the boot-ROM LSU read + write-ignored firmware."""
+    """Boot-ROM LSU loads match the staged image, and a ROM store leaves the content unchanged."""
 
     build_env = False
 

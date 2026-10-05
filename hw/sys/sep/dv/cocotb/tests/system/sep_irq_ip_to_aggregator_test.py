@@ -1,32 +1,33 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""IP-interrupt -> sep_internal_interrupts aggregator.
+"""Each covered IP interrupt sets only its own aggregator bit, and bridge faults set [40]/[42].
 
-reference ref: sep_irq_ip_to_aggregator_test (+ _seq, extends sep_irq_connectivity_
-test_seq). no_cpu: with the CPU held off, the host injects each covered IP
+Ports OCAH `sep_irq_ip_to_aggregator_test` (sequence extends
+`sep_irq_connectivity_test_seq`). no_cpu: with the CPU held off, the host injects each covered IP
 interrupt via its real INTR_TEST register and proves it propagates to the mapped
 bit of the sep_internal_interrupts aggregate vector that feeds the VeeR PIC --
-exercising the IP `intr_o` -> aggregator wiring (sep.sv:530-578), not merely that
+exercising the IP `intr_o` -> aggregator wiring (sep.sv, `sep_internal_interrupts`
+aggregation block), not merely that
 the IP raised its own status bit. HMAC error is Event-type (W1C). DMA done /
 chunk / error are Status-type (INTR_TEST=0 deasserts). HMAC/KMAC fifo_empty
 Status bits are idle-true and are not walked.
 
 The aggregate vector has no frontdoor CSR mirror and the PIC is on the CPU bus
 (unreachable with the CPU held off), so the test observes it through the tb_top
-`sep_internal_interrupts_probe_o` (observation-only XMR mirror; the OSS analog of
-the reference suite's sep_irq_probe_if wire-tap of sep_interrupts[idx]). The IP-
-local INTR_STATE RW1C contract is checked frontdoor over AXI.
+`sep_internal_interrupts_probe_o` (observation-only XMR mirror; the counterpart
+of the OCAH bench's `sep_irq_probe_if` wire-tap of sep_interrupts[idx]). The
+IP-local INTR_STATE RW1C contract is checked frontdoor over AXI.
 
 Per source (CSRNG bits 23..26, EDN bits 27..28, HMAC error bit 19, DMA done /
 chunk / error bits 8..10), the 3-phase check:
   CHK-BASE  clear INTR_TEST + W1C INTR_STATE -> aggregate bit reads 0
             (non-vacuity: a stuck-high aggregate bit fails here).
-  CHK-SET   INTR_ENABLE + INTR_TEST -> aggregate bit reads 1 AND INTR_STATE bit 1
-            (proves INTR_TEST -> intr_o -> sep_internal_interrupts[idx]); a stuck-
-            low / mis-wired aggregate bit fails here.
-  CHK-ISO   while this source is asserted, the OTHER 5 mapped bits stay 0
+  CHK-SET   INTR_ENABLE + INTR_TEST -> aggregate bit reads 1 and INTR_STATE bit 1
+            (proves INTR_TEST -> intr_o -> sep_internal_interrupts[idx]); a
+            stuck-low / mis-wired aggregate bit fails here.
+  CHK-ISO   while this source is asserted, the other mapped bits stay 0
             (one-hot aggregation -- catches an OR-network smear; stronger than
-            reference suite, which checks one source at a time).
+            the OCAH test, which checks one source at a time).
   CHK-CLR   Event: INTR_TEST=0 alone leaves the aggregate bit at 1 for
             _STICKY_HOLD clocks AND INTR_STATE bit 1 (the state is sticky); then
             W1C INTR_STATE -> aggregate bit returns 0 AND INTR_STATE bit 0.
@@ -39,7 +40,9 @@ each HMAC / KMAC / OTBN CSR gap:
   CHK-BUSERR-BASE   both STATUS words and aggregator [40]/[42] read 0
   CHK-BUSERR-DMA    DMA hole read is SLVERR; exclusive reg_path_err; [40]=1
   CHK-BUSERR-PERIPH each hole read is SLVERR; exclusive hmac / kmac / otbn; [42]=1
-  CHK-BUSERR-CLR    each matching CLEAR write returns STATUS and the PIC bit to 0
+  CHK-BUSERR-CLR    each matching CLEAR write returns STATUS and the aggregator bit to 0
+  CHK-BUSERR-DMA-WR a write to the DMA hole is BRESP SLVERR; exclusive
+                    reg_path_err; [40]=1, then cleared (CHK-BUSERR-DMA-WR-CLR)
 
 A beat past an adapter window is DECERR and never sets err_o. AES, CSRNG,
 EDN and WDT windows are packed to the last register. This leaf does not
@@ -79,7 +82,7 @@ _STICKY_HOLD = 32
 
 @pyuvm.test()
 class sep_irq_ip_to_aggregator_test(sep_base_test):
-    """CSRNG/EDN INTR_TEST -> sep_internal_interrupts aggregator (no_cpu)."""
+    """CSRNG/EDN/HMAC/DMA INTR_TEST and bridge faults set only their own aggregator bit."""
 
     async def _sample_agg_known(self, mask: int) -> int:
         """Sample the vector, requiring the bits in ``mask`` to be 0 or 1.
@@ -286,7 +289,7 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         self.logger.info("CHK-BUSERR-CLR PASS: DMA_BUS_ERR_CLEAR; STATUS=0; [40]=0")
 
         # The read leg above walks TL_GET_REQ/GET_ACK. A write to the same hole
-        # walks TL_PUT_REQ/PUT_ACK/AXI_B_RESP (axi_lite_to_tlul.sv:189-220), a
+        # walks the TL_PUT_REQ/PUT_ACK/AXI_B_RESP states of axi_lite_to_tlul.sv, a
         # separate FSM arm with its own opcode select, and raises the sticky
         # error from BRESP rather than RRESP.
         await self.irq.write_expect_slverr(dma_hole, 0xA5A5_1234)

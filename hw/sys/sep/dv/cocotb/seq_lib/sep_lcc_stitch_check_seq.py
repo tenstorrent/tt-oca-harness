@@ -13,8 +13,8 @@ checks each against the golden reference:
     from the LCC golden model (proves eFuse lc_state -> LCC decode -> feature
     control).
 
-Both checks are exact-value (caught by the scoreboard's value-check / uvm_error),
-so each fails on a broken decode rather than merely "no X".
+Both checks are exact-value (caught by the scoreboard value check, which fails
+the test at check_phase), so each fails on a broken decode rather than merely "no X".
 """
 
 from __future__ import annotations

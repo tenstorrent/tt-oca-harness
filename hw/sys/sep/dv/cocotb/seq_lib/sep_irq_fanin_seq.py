@@ -13,7 +13,7 @@ across these IPs. The CROSS-IP set spans four different
 IPs (HMAC, KMAC, CSRNG, EDN) at non-adjacent aggregator bits so the anti-alias
 check exercises a real OR-network fan-in, not adjacent bits of one IP.
 
-Aggregator bit = PIC source − 1 from hw/sys/sep/doc/interrupts.adoc.
+Aggregator bit = PIC source - 1 from hw/sys/sep/doc/interrupts.adoc.
 FANIN_SOURCES drives the four *_done bits (one per IP, so each IP's
 INTR_ENABLE/INTR_TEST is a single-bit write -- the SepIrqIp driver writes
 the whole register, so one bit per base avoids clobber). HMAC/KMAC INTR

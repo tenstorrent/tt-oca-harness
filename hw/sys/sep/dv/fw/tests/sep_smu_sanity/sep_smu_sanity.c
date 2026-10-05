@@ -159,7 +159,7 @@ static int kmac_sha3_256_abc(uint32_t digest_be[8]) {
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.kmac_en = 0;
     cfg.f.mode = 0x0;         /* SHA3 */
-    cfg.f.kstrength = 0x2;    /* L256 → SHA3-256 */
+    cfg.f.kstrength = 0x2;    /* L256 -> SHA3-256 */
     cfg.f.entropy_mode = 0x2; /* SW */
     cfg.f.msg_endianness = 0;
     cfg.f.state_endianness = 0;

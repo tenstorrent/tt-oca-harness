@@ -6,15 +6,16 @@
 // Format Version: 2
 // ExclMode: default
 //
-// Scope: the cocotb VCS elaboration of sep_uvm_top, target `default`, applied on top
-// of the other cov/config/vcs exclusion files and sep_cov_scope.hier. TOGGLE only, INSTANCE-scoped.
-// Only TT-owned instances carry entries; no entry is written inside a vendor module.
+// Scope: the cocotb VCS elaboration of sep_uvm_top, target `default`, applied on
+// top of the other cov/config/vcs exclusion files and sep_cov_scope.hier. TOGGLE
+// only, INSTANCE-scoped. Only TT-owned instances carry entries; no entry is
+// written inside a third-party module.
 //
 // Honesty rule 1: every block waives a bit that a constant, a parameter or a
 // width cast in SEP RTL fixes for every legal input. A bit that a test, a fault,
 // an error response, an illegal CSR value, an integrator, JTAG or a second master
 // can move is a test gap and is NOT in this file.
-// Honesty rule 2: this file was applied with urg -excl_strict, which refuses to
+// Honesty rule 2: the file passes urg -excl_strict, which refuses to
 // exclude any object some leaf already covered. A strict-mode refusal means the
 // reason is wrong; remove the entry, do not weaken the check.
 // Every ANNOTATION cites the tie as file:line.

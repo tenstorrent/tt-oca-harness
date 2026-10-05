@@ -4,7 +4,7 @@
 
 Drives each IP's INTR_ENABLE/INTR_TEST/INTR_STATE over the SEP AXI agent to
 inject a real interrupt via the standard OpenTitan INTR_TEST register and W1C-clear
-it, mirroring reference sep_irq_ip_to_aggregator_test_seq. The aggregated
+it, mirroring ``uvm/seq_lib/sep_irq_ip_to_aggregator_test_seq.svh``. The aggregated
 sep_internal_interrupts bit is observed by the test through the tb_top
 sep_internal_interrupts_probe_o mirror.
 
@@ -187,7 +187,7 @@ class IrqSrc:
 
 
 # CSRNG/EDN Event sources plus HMAC error (Event) and DMA done/chunk/error
-# (Status). agg_idx is PIC source − 1 from interrupts.adoc. HMAC/KMAC
+# (Status). agg_idx is PIC source - 1 from interrupts.adoc. HMAC/KMAC
 # fifo_empty Status bits are idle-true and are not in this table.
 IRQ_TABLE = (
     IrqSrc(

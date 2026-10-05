@@ -3,7 +3,7 @@
 //
 // SEP SV-UVM environment: composes, drives nothing, checks no protocol. It
 // reads sep_env_cfg and the SEP-local sep_tb_if from uvm_config_db, sets
-// the three harness clock periods on the TB interface, fills one shared-VIP
+// the four harness clock periods on the TB interface, fills one shared-VIP
 // config per port (interface, geometry, name_tag) and publishes it to that
 // agent's subtree, and builds:
 //

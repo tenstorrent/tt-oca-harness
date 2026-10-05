@@ -3,7 +3,8 @@
 """SEP OSS PyUVM environment package.
 
 Wraps ``ocah_axi_vip`` in a UVM hierarchy:
-config -> CPU-LSU AXI master agent (sequencer/driver) -> scoreboard -> env.
+config -> two AXI master agents (CPU-LSU s_axi, SMN-inbound m_axi) + one
+passive monitor per bus -> scoreboard -> env.
 
 Bus-idle determinism (the LSU splice must never see X from the external
 master) is guaranteed by the VIP itself: every OCAH AXI driver drives its

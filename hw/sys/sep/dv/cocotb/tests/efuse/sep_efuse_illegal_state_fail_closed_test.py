@@ -6,7 +6,7 @@
 state. ``hw/ip/efuse/doc/architecture.adoc`` names a two-state sequence
 (idle, then waiting for a bank response). No document names the encodings.
 The legal encodings, ``2'b01`` idle and ``2'b10`` wait, come from the
-signed-off state-inject record in ``tb/tb_top.sv``, which accepts them as the
+accepted state-inject record in ``tb/tb_top.sv``, which accepts them as the
 legal set for this leaf. The leaf injects the other two values for one cycle.
 Those two codes have no frontdoor.
 
@@ -17,6 +17,14 @@ The recovery this leaf grades is DV-owned:
   set, issues no command, and does not hand back the sensed fuse word;
 * an idle program interface recovers to a legal encoding without issuing a
   bank command. Its pre-settled retirement status is not graded.
+
+The leaf also grades the read-error lifecycle on the same interface:
+
+* a successful read clears read_error_o, a read that outlives
+  EFUSE_READ_REQ_TIMEOUT retires with the error set, and the next legal request
+  clears it (CHK-READ-ERR-CLEAR-SUCCESS, -TIMEOUT, -CLEAR-REQUEST);
+* with secure_tm latched, a read retires with the error set and zero data
+  (CHK-READ-ERR-BLOCKED).
 
 Failing closed is the point: an FSM that resumed a read from a corrupted state
 could return fuse data it never legitimately fetched.
@@ -42,19 +50,18 @@ from seq_lib.sep_efuse_direct_read_seq import sep_efuse_direct_read_seq
 from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
 
 # hw/ip/efuse/doc/architecture.adoc names a two-state sequence (idle, waiting)
-# and no encodings. The legal set below is the one the signed-off state-inject
+# and no encodings. The legal set below is the one the accepted state-inject
 # record in tb/tb_top.sv accepts. The injection walks its complement, and each
 # recovery must return the state register to a member of it.
 _ST_IDLE = 0b01
 _ST_WAIT_RESP = 0b10
 _ILLEGAL_STATES = tuple(v for v in range(4) if v not in (_ST_IDLE, _ST_WAIT_RESP))
 
-# The control read is a data spare, not LOCKS: an unlocked LOCKS word is 0,
-# so a recovery that returns 0 would match the staged value. Recovery must
-# not hand that sensed spare back. The JTAG AXI-Lite error-slave constant
-# is not this contract.
 _MAX_SENSE_CYCLES = 20_000
 
+# The control read is a data spare, not LOCKS: an unlocked LOCKS word is 0,
+# so a recovery that returns 0 would match it. A recovery must not hand the
+# sensed spare back.
 _CONTROL_FIELD = "SPARE0"
 
 # A SPARE word: programming one bit of it disturbs no graded field, and OTP is
@@ -95,7 +102,7 @@ _REQ_ERROR_CLEAR = EFUSE_INTERFACE_CTRL.field_mask(
     "EFUSE_INTERFACE_CTRL_STATUS", "efuse_req_error_clear"
 )
 
-# The bank takes ~30 cycles to retire a command. After an aborted operation,
+# The bank takes about 30 cycles to retire a command. After an aborted operation,
 # wait for the interface to go idle and then leave margin, so the next kick is
 # not swallowed by a channel that is still busy.
 _SETTLE_LIMIT = 400
@@ -341,7 +348,8 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         # NOTE: the shared channel is NOT idle at this point. An interface that
         # withdraws a command the shim has already accepted leaves the shim's
         # write FSM parked in its APB wait state, and it stays there until the
-        # next fuse resense -- see the observation recorded in the plan entry.
+        # next fuse resense -- see the sep_efuse_illegal_state_fail_closed_test
+        # section of hw/sys/sep/dv/docs/SEP_VPLAN.adoc.
         # This leaf waits on the interface outputs it grades, and the legs that
         # follow each resense before they need the channel.
         dut = cocotb.top
@@ -359,7 +367,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
 
         The watcher runs CONCURRENTLY with the register write. Kicking first and
         watching afterwards misses the window: the write retires through the AXI
-        sequencer, and by the time it returns the whole 29-cycle bank operation
+        sequencer, and by the time it returns the whole bank operation (about 30 cycles)
         can already be over, leaving nothing in flight to inject into.
         """
         dut = cocotb.top
@@ -459,9 +467,9 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
                 "not attributable to it"
             )
         else:
-            # Idle-window injection. Measured on this build: error_o and done_o are
-            # BOTH already 1 here, on the first injection as well as later ones --
-            # an idle interface has retired its last command and is reporting it.
+            # Idle-window injection. An idle interface has retired its last command
+            # and reports it, so error_o and done_o are both 1 here, on the first
+            # injection and on later ones.
             # busy/req are idle-low for the same reason, and the data term compares
             # the fixed refusal sentinel against an image word, which are never
             # equal. So every term of the 1/1/0 + data verdict is settled before
@@ -587,10 +595,9 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         cannot leave the OTP image disagreeing with the golden that the
         end-of-test resense compares against.
 
-        The image is randomized per seed, so these cannot be constants. Picking
-        them from one seed's image is what made this leaf fail under another:
-        a bit that happened to be set locally was clear in the regression's
-        image, and programming it moved the array.
+        The image is randomized per seed, so these cannot be constants: a bit
+        set in one seed's image can be clear in another's, and programming it
+        would move the array.
         """
         spare7 = img.field_int("SPARE7") & 0xFFFFFFFF
         bits = [b for b in range(32) if (spare7 >> b) & 1]
@@ -626,7 +633,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         for state, pg_bit in zip(_ILLEGAL_STATES, pg_bits[2:]):
             await self._inject("read", state, self._control_word * 32)
             # Idle window, not in flight. Aborting an ACCEPTED program parks the
-            # example shim's write FSM (see the plan entry's observation), and
+            # example shim's write FSM (see the VPLAN section of this test), and
             # every later leg that resenses would then read a corrupted shadow
             # word. The read leg is the one that observes a withdrawal.
             await self._inject(
@@ -636,7 +643,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         # The block still works afterwards: recovery returned it to service
         # rather than wedging it.
         await self._assert_read_alive("after")
-        # A fresh bit: OTP is write-once, so re-programming bit 0 would not
+        # A fresh bit: OTP is write-once, so programming pg_bits[0] again would not
         # issue a command and the control would fail for the wrong reason.
         await self._assert_program_alive(pg_bits[1])
 

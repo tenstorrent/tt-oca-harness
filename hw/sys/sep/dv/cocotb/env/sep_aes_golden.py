@@ -2,8 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Pure-Python AES golden: ECB/CBC/CTR encrypt and ECB/CBC decrypt at 128/192/256 bits.
 
-Used by the KM->AES sideload KAT and the AES mode x key-size test. Derived from FIPS-197, not
-from DUT output; it self-tests at import against FIPS-197 Appendix C and SP800-38A vectors.
+Used by ``sep_km_aes_sideload_kat_test`` and ``sep_aes_mode_keysize_rand_test``. Derived from
+FIPS-197, not from DUT output; it self-tests at import against FIPS-197 Appendix C and SP800-38A
+vectors.
 
 Register packing (OpenTitan AES, little-endian words): KEY_SHARE0_0 holds key bytes [3:0] with
 byte 0 as LSB, and DATA_IN/DATA_OUT/IV pack the same way. The ``*_words`` functions apply it.

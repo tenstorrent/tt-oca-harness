@@ -13,7 +13,8 @@ process loads this module by file path, where cocotb and the ``env`` package do 
 import.
 
 The draw picks one of four outcome classes first and then solves for a stimulus in it,
-so no seed repeats what the directed ``pubkey_rom_{0..5}_revoked_key`` rows prove:
+so no seed repeats what the directed
+``sep_firmware_{primary,backup}_pubkey_rom_{0..5}_revoked_key_test`` tests prove:
 
   * ``clean_proceed`` -- ``bitmap == 0``: a part with nothing revoked is not refused;
   * ``noisy_proceed`` -- ``bitmap[p] == 0`` and ``bitmap != 0``: a set bit that is not

@@ -10,11 +10,10 @@ Direct-AXI R/W of the SEP System-block dual scratch banks over the CPU-LSU bus
     (``wdt_rst_ni_i``). See VPLAN ``sep_warm_cold_reset_scratch_test``.
 
 Each bank is 8 x 64-bit registers (sep_scratch.rdl), 0x8 stride, only the lower
-32 bits used; the reset value comes from the RDL metadata. The driver carries the per-index addresses and
-the distinct per-register patterns the bank sweep uses. This driver only issues
-CSR R/W; the reset
-stimulus (the ``wdt_rst_ni_i`` warm pulse / ``rst_ni`` cold resense) is driven by
-the test.
+32 bits used; the reset value comes from the RDL metadata. The driver carries
+the per-index addresses and the distinct per-register patterns the bank sweep
+uses. This driver only issues CSR R/W; the test drives the reset stimulus (the
+``wdt_rst_ni_i`` warm pulse / ``rst_ni`` cold resense).
 """
 
 from __future__ import annotations

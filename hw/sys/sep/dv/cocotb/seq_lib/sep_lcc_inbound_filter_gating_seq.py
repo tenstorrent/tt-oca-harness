@@ -14,7 +14,7 @@ Contract:
 
 Buses:
   * CONTROL (CPU-LSU, ``s_axi``, unfiltered): reads FEAT_CTRL with an exact
-    ``expected`` value and writes DEMOTE_1 to move PROD -> PROD_DBG_1.
+    ``expected`` value and writes DEMOTE_1 to relax DBG_1 in PROD.
   * EXTERNAL (SMN-inbound, ``m_axi``, filtered): ``SepExtAxiProbeSeq`` issues one
     read; a blocked access is proven by DECERR, and a timeout is fatal by default.
 """

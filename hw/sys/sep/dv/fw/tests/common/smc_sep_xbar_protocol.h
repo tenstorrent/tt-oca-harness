@@ -3,7 +3,8 @@
 /*
  * smc_sep_xbar  --  shared protocol contract (single source of truth).
  *
- * Included by both firmwares (SEP consumer + SMC producer). Python goldens
+ * Included by the SMC producer firmware hw/sys/smc/dv/fw/tests/smc_sep_xbar/main.c and by
+ * the SEP driver header sep_outbound_filter.h. Python goldens
  * derive CSR facts independently from PeakRDL; they do not parse this header.
  *
  * Force-free SEP-driven bootstrap: the real SEP CPU boots
@@ -27,7 +28,7 @@
 /* ---- Frontdoor SMC bring-up over the SEP->SMC port (SEP-driven; no net force/ext_in) ---- */
 #define XBAR_SMC_SRAM_BASE_ALIAS 0x40060000  /* SEP-view of SMC SRAM base */
 #define XBAR_SMC_IMAGE_FIRST_WORD 0x41014081 /* exact preload cookie (SRAM[0]); drift-checked */
-#define XBAR_SMC_ENTRY 0x00000000C00601B2ULL /* RECONCILE vs built image (smc_sep_xbar_entry) */
+#define XBAR_SMC_ENTRY 0x00000000C00601B2ULL /* built SMC image entry (smc_sep_xbar_entry) */
 #define XBAR_RESET_VECTOR_ALIAS 0x40039000   /* SEP-view of SMC RESET_VECTOR_0 */
 #define XBAR_RESET_CTRL_ALIAS 0x40039020     /* SEP-view of SMC RESET_CTRL */
 #define XBAR_S0_FAIL 0x00460FA1              /* SEP->scratch12: preload never landed */
@@ -75,15 +76,16 @@
 #define XBAR_FW_POLL_LIMIT 200000
 
 /* CLA node0 EAP CSR values (verbatim, matching the real-CLA release; satisfies the SV
- * "Real CLA boot" liveness monitor at smc_chiplet_wrap_uvm_top.sv:805). */
+ * testbench real-CLA liveness monitor). */
 #define XBAR_CLA_CTRLSTATUS_EXPECT 0x60
 #define XBAR_CLA_EAP0_RELEASE 0x341FBFC000ULL
 #define XBAR_CLA_EAP1_RELEASE 0x144FBFC000ULL
 
 /* ---- CHK-SEP-HOLD-RELEASE fw ordering gate: SMC/SEP fuse-sense-done status CSRs ---- */
 /* SEP-local CPU_CTRL status CSRs (bit0). The SEP FW must observe the SMC's fuse-sense-done
- * (sep.sv:842 smc_fuse_sense_done_i -> this CSR) == 1 BEFORE its first sep_axi_in CPU_CTRL
- * write, so the SEP never drives the SMC before the SMC's fuse sense has completed. */
+ * (hw/sys/sep/rtl/sep.sv port smc_fuse_sense_done_i -> this CSR) == 1 BEFORE its first
+ * sep_axi_in CPU_CTRL write, so the SEP never drives the SMC before the SMC's fuse sense has
+ * completed. */
 #ifdef SEP_TOP_SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_BASE_ADDR
 #define XBAR_SMC_FUSE_STATUS_ADDR SEP_TOP_SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_BASE_ADDR
 #define XBAR_SEP_FUSE_STATUS_ADDR SEP_TOP_SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_BASE_ADDR
@@ -94,8 +96,7 @@
 #define XBAR_FUSE_SENSE_DONE_MASK 0x1u
 #endif
 
-/* ---- CHK-SETUP readback goldens (every programmed aperture/filter is read back & compared) ----
- */
+/* ---- CHK-SETUP readback goldens (each programmed aperture/filter is read back and compared) */
 /* SEP aperture + filter register bases/offsets are pulled from sep.h in the fw. */
 #define XBAR_SEP_REGION_SIZE_GOLDEN 0x20000000u       /* SEP_REGION_SIZE (32b) */
 #define XBAR_SEP_OUTBOUND_START 0x0000000040000000ULL /* SEP outbound egress filter */
@@ -133,8 +134,7 @@
 /* ---- SMC scratch0 progress markers (SMC-owned; ordered evidence, CHK-SETUP/CHK-BOTH-PASS) ---- */
 #define XBAR_SMC_SETUP_OK 0x0035E100u /* SMC: cleared + outbound filter programmed & read back */
 #define XBAR_SMC_CMD_SENT \
-    0x00C0DDE1u /* SMC: wrote CMD to SEP cold scratch0 (CHK-BOTH-PASS: CMD) \
-                 */
+    0x00C0DDE1u /* SMC: wrote CMD to SEP cold scratch0 (CHK-BOTH-PASS: CMD) */
 #define XBAR_SMC_DONE_SENT \
     0x00D0DDE1u /* SMC: wrote DONE to SEP cold scratch0 (CHK-BOTH-PASS: DONE) */
 

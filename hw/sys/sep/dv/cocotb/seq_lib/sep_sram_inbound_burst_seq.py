@@ -4,8 +4,8 @@
 
 ``hw/sys/sep/doc/fabric.adoc``: the SRAM target "serves INCR bursts of every
 length", and of the crossbar initiators only the System Interface (the
-external inbound master) may issue bursts. ``memory_map.adoc`` lists SRAM
-among the regions that accept bursts. AXI4 (IHI 0022, A3.4.3) gives the
+external inbound master) may issue bursts. ``hw/sys/sep/doc/memory_map.adoc``
+lists SRAM among the regions that accept bursts. AXI4 (IHI 0022, A3.4.3) gives the
 write-strobe rule the byte model applies: a byte whose strobe is low is not
 written.
 

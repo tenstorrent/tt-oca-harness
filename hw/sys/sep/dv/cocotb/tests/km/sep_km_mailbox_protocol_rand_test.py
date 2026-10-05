@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM mailbox as a SEP-side register surface: status, overflow/underflow, flush.
+"""KM mailbox STATUS, sticky errors, response modes, IRQ and flush follow the RDL with the KM held.
 
 no_cpu / +skip_fuse_sense. RANDCFG. KM stays in software reset.
 
-The command-set leaf uses the mailbox as a transport. A well-formed exchange
+``sep_km_command_set_rand_test`` uses the mailbox as a transport. A well-formed exchange
 never reads an empty outbound FIFO or overruns a full inbound one, so it
 cannot grade STATUS depth/full, the sticky error bits, IRQ_STATUS, or
 SEP_CTRL's response modes and flush. Those accesses smash a frame in flight
@@ -24,7 +24,7 @@ instead (tb_top probe km_mbox_sep_wr_err_count_o / _addr_o): it must refuse
 exactly one write, at the first offset past the RDL window, and the legal
 32-bit writes must not trip it. The SEP_CTRL value after the beat is logged
 and not graded (VPLAN known limitation "Dead-space per-beat refusal on
-writes"). SEP_CTRL is then rewritten with a 32-bit beat so the cells after it
+writes (AXI)"). SEP_CTRL is then rewritten with a 32-bit beat so the cells after it
 start from a known value.
 
 Checkers:
@@ -58,9 +58,9 @@ Checkers:
                it, so the outbound flush is not proven (VPLAN known
                limitation "KM mailbox outbound flush")
 
-Scope deltas:
+Not covered:
   * inbound_underflow, outbound_overflow, and flushed_by_km need the KM CPU
-    as the peer. They are graded on the KM IP mailbox vehicles, not here.
+    as the peer, so this test does not grade them.
   * STATUS.inbound_separator updates only when the KM pops inbound;
     STATUS.outbound_separator only when the SEP pops a KM-pushed word.
   * outbound_read_data_avail stays 0 because KM never pushes.
@@ -172,7 +172,7 @@ class SepKmMboxProtoCfg:
 
 @pyuvm.test()
 class sep_km_mailbox_protocol_rand_test(sep_base_test):
-    """Grade the SEP-side KM mailbox registers, not the command stream."""
+    """KM mailbox STATUS, sticky errors, response modes, IRQ and flush follow the RDL."""
 
     async def run_scenario(self) -> None:
         cfg = SepKmMboxProtoCfg(self.random_seed())
@@ -256,7 +256,7 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         # 64-bit beat at SEP_CTRL: its upper half is past the register file.
         # The beat has one BRESP, which cannot say which half was refused, so
         # only the response is graded (VPLAN known limitation "Dead-space
-        # per-beat refusal on writes"). The low word differs from ctrl_32 in
+        # per-beat refusal on writes (AXI)"). The low word differs from ctrl_32 in
         # one response-mode bit, so the logged readback shows whether it landed.
         ctrl_64_lo = ctrl_32 | (1 << KM_CTRL_INBOUND_OVERFLOW_RESP)
         # One credit: the monitor fails an unexpected DECERR in check_phase.

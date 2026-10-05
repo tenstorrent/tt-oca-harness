@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM -> AES sideload consume-proof KAT.
+"""AES encrypts with exactly the key the KM sideloads, matching an independent AES-256 golden.
 
 Real DRBG entropy boots the real KM firmware (rom_main). The host (CPU-LSU
 frontdoor AXI) provisions a KNOWN 256-bit key into a KPV handle via CMD_KEY_LOAD,
@@ -11,11 +11,12 @@ ECB-256 encryptions and proves the AES engine CONSUMED exactly that key:
   ct_swref = AES-ECB(known key via SW KEY_SHARE, PT)
   ct_dummy = AES-ECB(unrelated dummy SW key, PT)   (negative reference)
 
-AES KEY CSRs are write-only and AES is not programmable, so (unlike the OTBN KAT)
-the delivered key cannot be dumped back; the consume-proof is the encryption
-cross-check. ct_side / ct_swref are value-checked against an independent
-AES-256-ECB golden (env/sep_aes_golden.py, self-tested against FIPS-197 C.3) of
-the known key, so a truncated, word-swapped or share-defeated sideload fails.
+AES KEY CSRs are write-only and AES is not programmable, so (unlike
+km/sep_km_otbn_sideload_kat_test) the delivered key cannot be dumped back; the
+consume-proof is the encryption cross-check. ct_side / ct_swref are
+value-checked against an independent AES-256-ECB golden (env/sep_aes_golden.py,
+self-tested against FIPS-197 C.3) of the known key, so a truncated, word-swapped
+or share-defeated sideload fails.
 
 Checkers:
   CHK0     boot KM on real DRBG -> RESP_KM_READY
@@ -23,9 +24,10 @@ Checkers:
   CHK-NEG  ct_dummy == AES(dummy, PT): negative reference is a real encryption
   CHK-B    CMD_KEY_TRANSFER rc=0 to AES
   CHK-ISO  key-bus isolation: only AES released; OTBN/KMAC/HMAC parked in SW reset
-           so they cannot receive the key (same mechanism as the OTBN KAT)
-  PUB-OBS  AES public KEY_SHARE0/1 read zero after sideload while STATUS reads
-           non-zero on the same path; swaccess=wo makes the zero read alone
+           so they cannot receive the key (same mechanism as
+           km/sep_km_otbn_sideload_kat_test)
+  PUB-OBSERVATION  AES public KEY_SHARE0/1 read zero after sideload while STATUS
+           reads non-zero on the same path; swaccess=wo makes the zero read alone
            unfalsifiable
   CHK-F    ct_side == AES(known_key, PT) golden: sideload delivered the exact key
   CHK-RT   DEC(ct_side) with the SIDELOAD key == original PT: the sideloaded key
@@ -43,8 +45,9 @@ Limitations:
   * Key-bus isolation is proven by SW_RESET_N read-back, not by monitoring the
     key bus; CHK-F additionally proves AES got the correct key.
 
-Boot recipe matches the OTBN KAT (real fuse-sense, valid PROD OTP image; KM SRAM
-responder powers up zero+valid-parity; rom_main built PROD_BOOT_WIPE=0).
+Boot recipe matches km/sep_km_otbn_sideload_kat_test (real fuse-sense, valid PROD
+OTP image; KM SRAM responder powers up zero+valid-parity; rom_main built with
+KM_BOOT_WIPE=0).
 
 AES stays released through entropy bring-up so its masking-PRNG reseed is served
 as EDN starts; OTBN/KMAC/HMAC are parked so the KM owns the boot/seed stream and
@@ -91,7 +94,7 @@ AES_DUMMY_SW_KEY = (
 
 @pyuvm.test()
 class sep_km_aes_sideload_kat_test(sep_base_test):
-    """KM->AES sideload consume-proof (frontdoor, real rom_main, known key)."""
+    """The sideloaded key drives AES to the golden ciphertext and a full ENC/DEC round trip."""
 
     async def run_scenario(self) -> None:
         # --- Boot the real KM firmware on real entropy -------------------------
@@ -148,7 +151,8 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
 
         # CHK-ISO: key-bus isolation, positive evidence. Only AES (of the five KM
         # sideload targets) is released; OTBN/KMAC/HMAC are held in SW reset
-        # and cannot receive the key. OSS analog of the reference suite's per-engine key-bus AW count.
+        # and cannot receive the key. OCAH `sep_km_aes_sideload_kat_test` counts
+        # key-bus AW handshakes per engine; this test reads SW_RESET_N back instead.
         rst = await self.swrst.read_back()
         parked = (
             (1 << SW_RESET_N_BIT["otbn"])
@@ -168,8 +172,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         )
 
         # PUB-OBSERVATION: the public KEY_SHARE CSRs read zero, and the read path
-        # that produced those zeros is alive. Logged, not scored. The control is
-        # the only falsifiable half:
+        # that produced those zeros is alive. Both halves are asserted:
         # KEY_SHARE0/1 are write-only with read data tied to zero in the generated
         # register block, so on its own "reads zero" is unfalsifiable -- it holds
         # whether the key is protected, mirrored elsewhere, or never delivered.

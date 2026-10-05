@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP CPU reset-observable baseline and liveness (PyUVM).
+"""Both reset observables are released at rest, and a watchdog reset drops the CPU reset.
 
 Proves both reset observables are released at rest and that the CPU observable is live under a
 real reset source. ``dbg_rstb_i`` isolation is not covered: in ``lsu_stub_all_live`` the pin (a

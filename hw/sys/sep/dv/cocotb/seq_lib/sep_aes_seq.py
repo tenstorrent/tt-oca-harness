@@ -234,7 +234,7 @@ class SepAes(SepAxiRegDriver):
             await self._wr(AES_IV_0 + i * 4, word & 0xFFFF_FFFF)
 
     async def load_key_iv(self, key_words: list[int], iv_words: list[int] | None = None) -> None:
-        """Spec-ordered SW key + IV load (aes programmers_guide.md): a KEY write
+        """Spec-ordered SW key + IV load (OpenTitan AES Programmer's Guide, upstream): a KEY write
         kicks off a PRNG reseed, and any KEY/IV write while the unit is NOT idle is
         IGNORED. So wait for idle after the key before writing the IV, else CBC/CTR
         never receives its IV and the engine never starts. Caller configures

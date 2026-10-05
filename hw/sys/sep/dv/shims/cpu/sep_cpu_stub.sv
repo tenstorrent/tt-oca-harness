@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // DV-only compile-time STUB of sep_cpu (no VeeR EL2) for the no_cpu
 // lsu_stub_* targets: cocotb on Verilator and SV-UVM on VCS. The cocotb VCS
@@ -59,13 +60,11 @@ module sep_cpu
   input  logic cpu_halt_req_i,      // Async halt req to CPU
   output logic cpu_halt_ack_o,      // core response to halt
   output logic cpu_halt_status_o,   // 1'b1 indicates core is halted
-  output logic debug_mode_status_o, // Core to the PMU that core is in debug mode. When core is in debug mode, the PMU should refrain from sendng a halt or run request
+  output logic debug_mode_status_o, // Core to the PMU that core is in debug mode. When core is in debug mode, the PMU should refrain from sending a halt or run request
   input  logic cpu_run_req_i,       // Async restart req to CPU
   output logic cpu_run_ack_o,       // Core response to run req
 
-  // Excluding from coverage as usage is determined by the integrator of the VeeR core.
-  // Note: VeeR reset bypass (scan_rst_n) not exposed on the el2_veer_wrapper boundary.
-  input logic test_en_i,  // DFT test-enable
+  input logic test_en_i,  // DFT test-enable, passed to the LSU demux test_i
 
   // DMI port for uncore
   input  logic        dmi_core_enable_i,

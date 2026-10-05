@@ -1,23 +1,25 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP Secure-DMA basic-breadth firmware-boot test (PyUVM).
+"""Secure DMA CSRs, address modes, widths and error legs meet their contracts on SRAM copies.
 
-Reference provenance: the uvm_tests/dma reg_rw / reg_reset /
-cfg_regwen / range_regwen / addr_fixed / addr_wrap / addr_combo / mem_copy
-(width sweep) / err_opcode family. Boots the VeeR EL2 core and runs the
-dma_basic firmware, which drives the Secure DMA over the CPU LSU and proves the
-DMA CSR + copy-datapath basic contracts on bare sep (SRAM->SRAM transfers).
+Provenance: OCAH `sep_dma_uvm_reg_rw_test`, `sep_dma_uvm_reg_reset_test`,
+`sep_dma_uvm_cfg_regwen_test`, `sep_dma_uvm_range_regwen_test`, `sep_dma_uvm_addr_fixed_test`,
+`sep_dma_uvm_addr_wrap_test`, `sep_dma_uvm_addr_combo_test`, `sep_dma_uvm_mem_copy_test` (width
+sweep) and `sep_dma_uvm_err_opcode_test`. The test boots the VeeR EL2 core and runs the
+dma_basic firmware. The firmware drives the Secure DMA over the CPU LSU and checks the DMA CSR
+and copy-datapath contracts on bare sep (SRAM->SRAM transfers).
 
-Distinct from the DMA trio (sep_dma_hash inline SHA-256 + SRAM->DCCM +
-IRQ; sep_dma_cpu_contention mid-flight BUSY + dual-master; sep_spi_ot_dma_rx
-lsio handshake): DMA basic breadth adds the CSR/REGWEN breadth, the FIXED/INCR/WRAP address-
-mode matrix, the 1B/2B/4B transfer-width sweep, and one opcode-error path.
+Distinct from the other DMA tests (sep_dma_hash_test: inline SHA-256, SRAM->DCCM and IRQ;
+sep_dma_cpu_contention_test: mid-flight BUSY and dual master; sep_spi_ot_dma_rx_test: lsio
+handshake): this test adds the CSR/REGWEN breadth, the FIXED/INCR/WRAP mode matrix, the
+1B/2B/4B width sweep, the opcode/address/ASID/size error legs, the host-path integrity and
+fabric-error legs, and an SRAM->ICCM->SRAM round trip.
 
 SepDmaBasicCfg is the single source of truth for src/dst offsets, copy length
 and fill seed. Discrete mode/width cells stay walked every invocation; the
 continuous knobs come from the run seed (patched into the firmware param block).
 
-Firmware-self-checking: the firmware returns its error count and start.S emits
+Firmware-self-checking: the firmware returns its error count and fw/startup/crt0.s emits
 the PASS (0xCAFEBABE) / FAIL (0xDEADBEEF) magic on the 0x8000_0000 mailbox, which
 the boot scoreboard gates on. The firmware self-checks (each with a positive PASS
 line in the console log): CHK-RESET (reset values), CHK-CFG-REGWEN (HW busy-lock),
@@ -27,7 +29,8 @@ expected images + neighbor), CHK-WIDTH (1B/2B/4B), CHK-DONE-RW1C, CHK-ERR-OPCODE
 raising its ERROR_CODE bit exclusively, then a recovery copy), CHK-HOSTINTG
 (DMA-issued command under dma_host_intg_inject_i -> exclusive host_path_err
 + aggregator [41], CLEAR, recovery copy), CHK-HOSTFABRIC (fabric DECERR dest
--> exclusive host_path_err with the pin low, CLEAR, recovery). The
+-> exclusive host_path_err with the pin low, CLEAR, recovery), CHK-ERR-ASID (unencoded
+ASID), CHK-ERR-SIZE (unencoded width), CHK-ICCM (SRAM->ICCM->SRAM round trip). The
 scoreboard also checks the banner + ICCM execution.
 
 cpu / +skip_fuse_sense (no fuse data is read).
@@ -98,7 +101,7 @@ class SepDmaBasicCfg:
 
 @pyuvm.test()
 class sep_dma_basic_test(sep_base_test):
-    """Boot VeeR EL2 and run the Secure-DMA basic-breadth firmware."""
+    """DMA CSR, copy-mode, width and error-leg checks pass; a host-path error reaches sep_internal_interrupts[41] (PIC source 42)."""
 
     build_env = False
 

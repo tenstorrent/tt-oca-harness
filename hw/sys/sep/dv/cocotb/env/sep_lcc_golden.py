@@ -6,22 +6,21 @@ Pure-Python reference for what the SEP `sep_lifecycle_ctrl` block computes on it
 ``feat_ctrl`` output as a function of the eFuse-sensed lifecycle state and the
 DEMOTE / security-disable inputs. SECURE_TM does not qualify feature control.
 
-PROVENANCE -- read this before trusting a pass. This model is derived from Table 50
-("Per-LC-state feature control profile") of ``hw/sys/sep/doc/lifecycle_controller.adoc``,
+PROVENANCE -- read this before trusting a pass. This model is derived from the
+"Per-LC-state feature control profile" table of ``hw/sys/sep/doc/lifecycle_controller.adoc``,
 NOT transcribed from ``hw/sys/sep/rtl/sep_lifecycle_ctrl.sv``. That direction is
 deliberate and it matters: an expectation that shares a source with the thing it
 measures cannot disagree with it.
 
-Keep it that way. If a future decode change makes the RTL and the chapter
-disagree, follow the chapter and let the test fail; do not transcribe the RTL.
+Keep it that way. When the RTL and the chapter disagree, follow the chapter and
+let the test fail; do not transcribe the RTL.
 
 Also holds the lifecycle-state encoding / transition model: legal encoding, W1S
 monotonicity, the two RMA token gates, the observed-transition predicate, and the
 per-write next-state function. These express the lifecycle walk rules in a
 value-driven form. There is no lifecycle SVA state checker in this repository,
-and assertions are compiled out of the acceptance build in any case, so these
-validators are the only thing enforcing the rules here -- feed them DUT-observed
-codes, never the codes the test programmed.
+so these validators are the only thing enforcing the rules here -- feed them
+DUT-observed codes, never the codes the test programmed.
 """
 
 from __future__ import annotations

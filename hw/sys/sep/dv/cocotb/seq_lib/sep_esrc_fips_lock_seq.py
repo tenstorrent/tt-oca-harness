@@ -8,17 +8,17 @@ RANDCFG: every seed walks every field ``entropy_source.rdl`` marks ``swwel``
 of the walk, so its lock belongs to the reset-recovery vehicle. ``_WALK_FIELDS``
 below declares what this walk covers and is reconciled against the RDL at
 import, so a lock added or dropped in the RDL fails here instead of silently
-leaving the walk short. Continuous
-knobs (which legal pre-lock value and which rejected poke) come from the
-run seed. ``SepEsrcFipsLockCfg`` is the SSOT for both programming and
-the post-lock golden. The lock also freezes the debug-pin mux, which the walk
-covers like any other locked register, and the two observe-tap enables
-(``BIW_OBS_CTRL.RAW_ENABLE``, ``NOISE_OBS_CTRL.RAW_ENABLE``). Those two are
-single-bit, so the two-value walk cannot reach them; ``SepEsrcFipsLockCfg``
-holds one at 1 and the other at 0 across the lock, picked by the seed, so each
-seed grades a rejected clear and a rejected set. ``NOISE_OBS_CTRL.LANE_SEL``
-stays writable under the lock. Reserved ``CTRL.RSVD0`` is RAZ/WI; the shared
-TRNG reset and ``rst_ni`` clear the lock.
+leaving the walk short. Continuous knobs (which legal pre-lock value and which
+rejected poke) come from the run seed. ``SepEsrcFipsLockCfg`` is the single
+source of truth for both programming and the post-lock golden. The lock also
+freezes the debug-pin mux, which the walk covers like any other locked register,
+and the two observe-tap enables (``BIW_OBS_CTRL.RAW_ENABLE``,
+``NOISE_OBS_CTRL.RAW_ENABLE``). Those two are single-bit, so the two-value walk
+cannot reach them; ``SepEsrcFipsLockCfg`` holds one at 1 and the other at 0
+across the lock, picked by the seed, so each seed grades a rejected clear and a
+rejected set. ``NOISE_OBS_CTRL.LANE_SEL`` stays writable under the lock.
+Reserved ``CTRL.RSVD0`` is RAZ/WI; the shared TRNG reset and ``rst_ni`` clear
+the lock.
 """
 
 from __future__ import annotations

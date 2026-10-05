@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 /*
- * smu_cla_sep_cpu_debug_control_test  --  shared protocol contract.
+ * smu_cla_sep_cpu_debug  --  SMC firmware <-> SMU testbench protocol contract
+ * (hw/sys/smc/dv/fw/tests/smu_cla_sep_cpu_debug).
  *
  * Exhaustive CLA node0-EAP action -> SEP CPU control mapping/effect test. The SMC producer fw
  * fires each single custom action and the DV scoreboard checks the mapped SEP input + effect:
@@ -28,7 +29,7 @@
  * brings the SMC up over sep_axi_in (common sep_smc_bringup.h). Entry/cookie are the built SMC
  * image's values (cocotb drift-checks both). */
 #define CLADBG_SMC_IMAGE_FIRST_WORD 0x41014081 /* SEP bring-up cookie; stale image -> S0_FAIL */
-#define CLADBG_SMC_ENTRY 0x00000000C00601B2ULL /* RECONCILE vs built .dis +SMC_RESET_SYMBOL */
+#define CLADBG_SMC_ENTRY 0x00000000C00601B2ULL /* built SMC image entry (.dis +SMC_RESET_SYMBOL) */
 
 /* SEP-side alias addresses for the SMC status/command/response scratch registers */
 #define CLADBG_STATUS_ALIAS_ADDR 0x40039080

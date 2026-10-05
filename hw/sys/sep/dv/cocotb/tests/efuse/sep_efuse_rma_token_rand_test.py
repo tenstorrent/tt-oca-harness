@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""RMA token match vs mismatch -> LC update (standalone RANDCFG).
+"""An RMA token match updates LC_STATE; a mismatch and a comparator fault do not.
+
+RANDCFG.
 
 A matching token authorizes the LC_STATE OTP bit and the resense shows the
 new lifecycle code plus the spec-derived FEAT_CTRL. A mismatch does not
@@ -8,16 +10,19 @@ match, the program is rejected, and LC/FEAT_CTRL stay at the pre-attempt
 golden. Token values come from the run seed. Both SIP and CHIPLET kinds
 walk match and mismatch.
 
-After that walk, the same vehicle covers the token-comparator redundancy
+After that walk, the same test covers the token-comparator redundancy
 fault path: common-mode invert of a match (legal mismatch, no sticky),
-common-mode invert of a mismatch (legal match, no sticky — the fail-open
+common-mode invert of a mismatch (legal match, no sticky -- the fail-open
 hole), collapsed pair, two-instance disagreement, 6'b111111 on the match
 status, sticky bit / IRQ survive a valid-token retry, and
 ``sep_internal_interrupts[39]`` (PIC source 40). Collapse and disagreement
-have no frontdoor; the tb injects them on the RMA_SIP comparator rails.
+have no frontdoor; the tb injects them on the RMA_SIP comparator rails. A cold
+reset clears the sticky fault bits and the interrupt, and the detector re-arms
+after it (CHK-FAULT-RESET). At RMA_CHIP_1 a JTAG read of TOKEN_MATCH_FAULT
+equals the AXI read (CHK-JTAG-FAULT).
 
-Does not stretch the stitch e2e. Real fuse sense. Starts in PROD
-so the SIP then CHIPLET walk is W1S-legal.
+The end-to-end LC stitch is graded by lcc/sep_efuse_lcc_lc_state_stitch_test.
+Real fuse sense. Starts in PROD so the SIP then CHIPLET walk is W1S-legal.
 """
 
 from __future__ import annotations

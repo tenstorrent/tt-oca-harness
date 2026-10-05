@@ -2,12 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Intra-block dead-space decode: a wrap past a block's extent must be refused.
 
-no_cpu / +skip_fuse_sense. RANDCFG: known wrap-offset anchors every seed,
+Run mode: no_cpu with +skip_fuse_sense. RANDCFG: known wrap-offset anchors every seed,
 plus seed-selected dead offsets inside each block window.
 
 A write or read past a block's allocated size must be refused (DECERR
-or SLVERR; this test grades refusal only, not the code), and no live
-register in that block may change. A checker that only inspects the
+or SLVERR; the general probes grade refusal only, not the code; the TRNG
+and crypto-burst checks below grade DECERR), and no live register in that
+block may change. A checker that only inspects the
 response would pass the day the RTL starts answering DECERR while
 still writing the register, so every probe reads back the window's live
 registers as well. ``memory_map.adoc`` states the rule: the fabric refuses an
@@ -27,14 +28,15 @@ graded against that code.
 
 CHK-DEADSPACE-BEAT and CHK-DEADSPACE-BURST grade bursts in the crypto region
 only. ``memory_map.adoc`` ("Single-Beat Register Access") limits register
-regions to single beats and lets the later beats of a burst to one error or
-alias, so a burst into any other register region is outside the specification
-and is not graded. The crypto region is the exception: ``crypto.adoc``
-("Single-Beat Access Only") answers every access whose AxLEN is non-zero with
-DECERR on every beat, and no beat reaches an accelerator. For each block window
-in that region the test issues a four-beat INCR read burst and, where the
-window takes writes, a four-beat INCR write burst, across the extent where the
-window allows it and at the window base otherwise.
+regions to single beats and lets the later beats of a burst to a register region
+answer an error or alias onto other registers, so a burst into any other
+register region is outside the specification and is not graded. The crypto
+region is the exception: ``crypto.adoc`` ("Single-Beat Access Only") answers
+every access whose AxLEN is non-zero with DECERR on every beat, and no beat
+reaches an accelerator. For each block window in that region the test issues a
+four-beat INCR read burst and, where the window takes writes, a four-beat INCR
+write burst, across the extent where the window allows it and at the window base
+otherwise.
 
 CHK-DEADSPACE-BEAT: the bus monitor's per-beat RRESP vector of every read
 burst is DECERR on every beat, inside the extent as well as past it.

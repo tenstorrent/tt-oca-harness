@@ -178,9 +178,9 @@ class SepEntropyCfg:
     DECORRELATOR_CTRL /64 against a golden default of sample_clk_div=7 => /8)
     unless every test overrides both consistently.
 
-    Defaults = the fast alive-smoke policy (/8 raw sampling, small health window,
-    SHA-256 whitening on, internal DRBG). The conditioning math is identical to
-    FIPS defaults; /8 + small window only trades sample count for wall-clock.
+    Defaults = the fast alive-smoke policy (/8 raw sampling, the 2048-sample reset
+    health window, SHA-256 whitening on, internal DRBG). The conditioning math is
+    identical to FIPS defaults; /8 only trades sample count for wall-clock.
     """
 
     sample_clk_div: int = 7  # DECORRELATOR_CTRL.SAMPLE_CLK_DIV (=div-1; 7 => /8)

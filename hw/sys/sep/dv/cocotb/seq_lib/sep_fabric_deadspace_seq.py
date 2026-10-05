@@ -459,8 +459,8 @@ class SepDeadspace:
         boundary, which is what normally makes a refused address unreachable. An
         extent that does not end on a 4 KB boundary breaks that: a burst begun in
         the last live words is routed wholly to this block, and its later beats
-        land past ``REG_MAP_SIZE`` -- the span `memory_map.adoc` says is
-        refused at the fabric and never reaches a unit.
+        land past ``REG_MAP_SIZE`` -- the span ``hw/sys/sep/doc/memory_map.adoc``
+        says is refused at the fabric and never reaches a unit.
 
         ``start`` overrides the first address, for a window with no burst that
         crosses its extent; the caller then grades the burst rule alone.
@@ -608,7 +608,9 @@ class SepDeadspace:
     async def restore(self, win, snap: dict[int, int]) -> None:
         """Put the allocated image back after a probe disturbed it.
 
-        Write-one-to-clear registers are skipped, and the skip is reported. On a
+        Write-destructive registers (woclr/woset; only the windows that watch
+        entropy_source registers populate ``write_destructive``) are skipped,
+        and the skip is reported. On a
         W1C field, writing the sampled value back does not restore it -- every
         bit that READ as 1 is CLEARED in the DUT, so the restore would destroy
         the live status it claims to put back. entropy_source has 15 such
@@ -700,7 +702,7 @@ class SepDeadspace:
                 item.addr,
                 expect_error=True,
             )
-            # `memory_map.adoc` says an address past the extent a unit
+            # `hw/sys/sep/doc/memory_map.adoc` says an address past the extent a unit
             # allocates is refused at the fabric and never reaches a unit. The
             # second half holds whatever the response flavour was, so the
             # alias compare is not gated on OKAY -- a refused read that still
@@ -742,13 +744,16 @@ class SepDeadspace:
         # read-to-clear field without returning anything that matches the
         # snapshot.
         #
-        # The change compare covers software-WRITABLE registers only. A field
-        # declared `sw = r` has no bus write path -- the generated regblock
-        # answers a write to one with OKAY and no error (entropy_source_reg.sv
-        # `is_valid_rw = '1'`, `cpuif_wr_err = '0'`) and stores nothing -- so
-        # such an address can never hold evidence of a store, aliased or
-        # otherwise. It stays in `snap` for the read-alias compare above.
-        # Leaving it in this compare instead measures the entropy source's own
+        # The change compare skips the window's hardware-updating registers
+        # (`hw_updating`, from sep_reg_meta.reg_hw_updating). Only the windows
+        # that watch entropy_source registers populate that set; in every other
+        # window each watched register is compared. A field declared `sw = r`
+        # has no bus write path -- the generated regblock answers a write to one
+        # with OKAY and no error (entropy_source_reg.sv `is_valid_rw = '1'`,
+        # `cpuif_wr_err = '0'`) and stores nothing -- so such an address can
+        # never hold evidence of a store, aliased or otherwise. It stays in
+        # `snap` for the read-alias compare above. Leaving the entropy source's
+        # hardware-updating registers in this compare instead measures its own
         # health-test counters advancing over the microseconds the readback
         # takes, and reports that drift as a wrap. Every `sw = rw` register
         # stays armed, so an access that aliases onto a control register is

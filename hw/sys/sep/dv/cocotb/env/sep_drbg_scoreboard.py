@@ -1,19 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2024-2026 Tenstorrent USA, Inc.
-#
-# sep_drbg_scoreboard.py
-#
-# Cocotb scoreboard for the SEP entropy datapath CHK1..CHK5 golden-vs-probe comparison.
-#
-# The scoreboard drives deterministic per-lane noise into esrc_noise_ext_i and feeds the
-# same sequence into a golden chain (sep_entropy_golden), so the decorrelator golden is
-# aligned by construction. Each CHKn expected value is the golden output of CHKn-1, and
-# the golden decorrelator shifts a lane only on cycles esrc_ro_enable_o enables it.
-#
-# Each stage compares its Nth DUT item to the golden's Nth item, after a short CHK1 warmup
-# for the decorrelator SR-fill / enable-edge transient.
-#
-# strict=False logs mismatches and dumps the first N pairs; strict=True makes report() raise.
+"""Cocotb scoreboard for the SEP entropy datapath CHK1..CHK5 golden-vs-probe comparison.
+
+The scoreboard drives deterministic per-lane noise into esrc_noise_ext_i and feeds the
+same sequence into a golden chain (sep_entropy_golden), so the decorrelator golden is
+aligned by construction. Each CHKn expected value is the golden output of CHKn-1, and
+the golden decorrelator shifts a lane only on cycles esrc_ro_enable_o enables it.
+
+Each stage compares its Nth DUT item to the golden's Nth item, after a short CHK1 warmup
+for the decorrelator SR-fill / enable-edge transient.
+
+strict=False logs mismatches and dumps the first N pairs; strict=True makes report() raise.
+"""
 
 from __future__ import annotations
 
@@ -192,9 +190,9 @@ class SepDrbgScoreboard:
         # CHK4 protocol-check state (genbits FIPS flag + Generate segmentation).
         # glen is the length the SEQUENCE commands; it is not a global invariant,
         # because the other EDN endpoints raise their own requests with their own
-        # lengths. Callers that know the full set can pin it via
-        # golden_kwargs["legal_gen_lengths"]; otherwise segments are only bounds-
-        # checked (see report()).
+        # lengths. Callers that know the full set pin it via
+        # golden_kwargs["legal_gen_lengths"]; otherwise the set is the sequence's
+        # own glen (see report()).
         self.glen = int(self._gk.get("glen", 32))
         # Default the legal set to the sequence's own commanded glen, so the
         # segmentation check in report() is always an exact membership test.
@@ -361,7 +359,7 @@ class SepDrbgScoreboard:
                 self._tasks.append(cocotb.start_soon(self._mon_edn_sink_membership(idx, name)))
         if golden_sinks:
             self._tasks.append(cocotb.start_soon(self._mon_edn_sinks_routed(golden_sinks)))
-        # Pool sink (EDN endpoint [2]): one native client behind u_axis_edn_pool.
+        # Pool sink (EDN endpoint [2]): one native client behind u_axis_edn_pool_s3c_scan.
         if self.sink_mode["pool"] == "observe":
             self._tasks.append(
                 cocotb.start_soon(
@@ -700,7 +698,7 @@ class SepDrbgScoreboard:
 
     async def _mon_axis2_tap(self):
         """Capture every accepted AXIS2 beat (entropy-pool pre-adapter word stream,
-        entropy_muxed_req[2]). Sole client of u_axis_edn_pool, so pool native beats
+        entropy_muxed_req[2]). Sole client of u_axis_edn_pool_s3c_scan, so pool native beats
         equal this stream 1:1. Also stashed for the genbits-chain membership tally."""
         d = self.dut
         while True:
@@ -906,12 +904,11 @@ class SepDrbgScoreboard:
         the golden rather than caught by it. Every block VALUE is still predicted
         independently from the (key, V) chain, so a wrong block, a missing Update
         or an extra Update all still mismatch; what the value compare cannot see
-        is gen_last itself landing on the wrong beat. report() bounds-checks the
-        resulting segment lengths, and a caller that knows its endpoints' request
-        sizes should pin them via golden_kwargs["legal_gen_lengths"] to close the
-        gap. Predicting the boundary outright would mean modelling EDN
-        arbitration, or probing the commanded glen inside the vendored
-        csrng_cmd_stage generate block.
+        is gen_last itself landing on the wrong beat. report() checks each segment
+        length against legal_gen_lengths (the sequence glen unless the caller pins
+        the full set via golden_kwargs["legal_gen_lengths"]). Predicting the
+        boundary outright would mean modelling EDN arbitration, or probing the
+        commanded glen inside the vendored csrng_cmd_stage generate block.
 
         Protocol: every emitted block must carry genbits_fips_o==1.
         """

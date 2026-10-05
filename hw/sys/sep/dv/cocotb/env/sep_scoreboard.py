@@ -24,6 +24,8 @@ from .sep_axi_agent import SepAxiItem, SepAxiOp
 
 
 class SepScoreboard(uvm_subscriber):
+    """Response check on every completed CPU-LSU AXI access; value check on reads that carry an expected value."""
+
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.errors: list[str] = []

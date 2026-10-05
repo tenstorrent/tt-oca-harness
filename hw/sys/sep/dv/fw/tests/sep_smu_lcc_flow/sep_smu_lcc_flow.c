@@ -24,7 +24,7 @@
  * a register while it is still clear.
  *
  * Stages, each with its own fail loop so a failure names the step:
- *   1. FEAT_CTRL is captured and DEMOTE_1 starts clear and unlocked.
+ *   1. FEAT_CTRL is captured and both DEMOTE registers start clear and unlocked.
  *   2. DEMOTE_1.demote takes and reads back.
  *   3. DEMOTE_2.demote takes and reads back.
  *   4. DEMOTE_1 and DEMOTE_2 lock with their demote bits set; each reads back

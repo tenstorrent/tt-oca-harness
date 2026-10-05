@@ -6,11 +6,11 @@
 # Target CPU: VeeR EL2 (RV32IMC + Zicsr/Zifencei/Zb*), ilp32 ABI. picolibc via
 # --specs=picolibc.specs, provided by the Docker toolchain (not bundled).
 #
-# Zb* is absent from the default. GCC emits sh2add and
-# rev8 for ordinary C, and those trap as illegal instructions on the EL2 config
-# this testbench runs, so all but a handful of tests are built without the
-# bit-manip extensions. FW_ARCH_BITMANIP is the opt-in for the tests that are
-# built with them; see FW_TEST_BITMANIP in fw.mk.
+# Zb* is absent from the default. GCC emits sh2add and rev8 for ordinary C,
+# and those trap as illegal instructions on the EL2 config this testbench runs,
+# so all but a handful of tests are built without the bit-manip extensions.
+# FW_ARCH_BITMANIP is the opt-in for the tests that are built with them; see
+# FW_TEST_BITMANIP in fw.mk.
 FW_ARCH          ?= rv32imc_zicsr_zifencei
 FW_ARCH_BITMANIP ?= rv32imc_zicsr_zifencei_zba_zbb_zbc
 FW_LD_ARCH       ?= rv32imac

@@ -8,10 +8,9 @@ Python-only: no new firmware profile and no HDL rebuild.
 VARIANTS. The packer emits two: oca-classic (magic ``OCAC``) and oca-pqc
 (``OCAP``, a 36864-byte body). Geometry is resolved from the magic via the
 packer's own variant table, so :func:`slot_span` and :func:`slot_is_erased` work
-for both. Field-level mutation is classic-only: ``constants.py`` does not publish
-per-field PQC offsets yet ("added with the validator's PQC support"), and
-computing them here from the trailer shift would be the hardcoding this module
-exists to avoid. PQC field access raises.
+for both. Field-level mutation is classic-only: ``constants.py`` publishes no
+per-field PQC offsets, and computing them here from the trailer shift would be
+the hardcoding this module exists to avoid. PQC field access raises.
 
 LAYOUT AND THE SIGNED BOUNDARY. An OCA-classic body is 4096 bytes::
 
@@ -136,7 +135,7 @@ def require_classic(buf: bytes, slot: str):
     """Variant descriptor for ``slot``, refusing PQC.
 
     Field-level mutators call this. PQC bodies have a different field layout and
-    the packer does not publish those offsets yet, so a mutator that assumed the
+    the packer publishes no PQC field offsets, so a mutator that assumed the
     classic ones would write into the wrong bytes and still look like it worked.
     """
     v = variant_at(buf, slot_base(slot))
@@ -212,10 +211,10 @@ def slot_span(image: bytes | int, slot: str) -> tuple[int, int]:
 def rom_key_image(index: int) -> Path:
     """Packed flash image whose BOTH slots are signed by ROM key slot ``index``.
 
-    Slot 0 is the shipped secure-boot image; slots 1-5 are the per-slot images
-    2166927ea added so an off-by-one in slot resolution cannot match a digest by
-    accident. Pair with :func:`graft_slot` to build a mixed image: one slot anchored
-    on a chosen key, the other left as it shipped.
+    Slot 0 is the shipped secure-boot image; slots 1-5 are per-slot images, so an
+    off-by-one in slot resolution cannot match a digest by accident. Pair with
+    :func:`graft_slot` to build a mixed image: one slot anchored on a chosen key,
+    the other left as it shipped.
     """
     if not 0 <= index < PUBK_SEL_NUM_ROM_KEYS:
         raise ValueError(f"ROM key slot {index} is outside 0..{PUBK_SEL_NUM_ROM_KEYS - 1}")
@@ -427,8 +426,7 @@ def rom_status_for_result(boot_error: int) -> int:
     refused storage read -- skip it entirely and reach the ring only as the
     generic ``SEP_MSG_MANIFEST_LOAD_FAILED`` that follows. This mirrors that
     guard rather than reproducing the arithmetic: a 0x000301xx code has no
-    oca_result_t to look up, and looking one up anyway is what made this raise
-    on sep_bl1_entry_invalid_test.
+    oca_result_t to look up.
     """
     import re
 
@@ -964,13 +962,11 @@ def verify_usage_constraints_layout(buf: bytes, slot: str) -> None:
     """Assert the constraint fields satisfy the format's own invariants.
 
     A wrong offset lands on neighbouring bytes, which fail these masks -- but
-    only if those bytes are non-zero. The images this tree packs currently select
-    no constraints at all (selector_bits, all three lifecycle_states and
-    demotion_control are zero), so on them this is a weak anchor: it catches an
-    offset that lands on a populated field such as chiplet_id or a version
-    range, and not one that lands on other zeroes. It becomes a real check on the
-    images the demotion and lifecycle families need, which do select
-    constraints. Treat it as an invariant check, not a value anchor.
+    only if those bytes are non-zero. The shipped images select no constraints
+    (selector_bits, all three lifecycle_states and demotion_control are zero), so
+    on them this is a weak anchor: it catches an offset that lands on a populated
+    field such as chiplet_id or a version range, not one that lands on other
+    zeroes. Treat it as an invariant check, not a value anchor.
     """
     require_classic(buf, slot)
     bits = selector_bits(buf, slot)
@@ -1026,7 +1022,8 @@ ENCODING_RAW = K.OcaClassicSignatureEncoding.RAW_BYTES.value
 _BOOTROM_PROD = _SEP_ROOT / "bootrom" / "prod"
 # key_digests.c is generated into the ROM's build directory, so read it from
 # whichever variant this run built. BUILD_DIR selects the SPI transport, not the
-# anchors, so all three carry the same key set and the first present one answers.
+# anchors, so every build directory carries the same key set and the first present
+# one answers.
 _KEY_DIGESTS_BUILD_DIRS = ("build", "build_pio")
 _OCA_PLATFORM_C = _BOOTROM_PROD / "src" / "oca_platform.c"
 

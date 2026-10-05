@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Adams Bridge ML-KEM-1024 keyGen / encaps / decaps NIST KAT on the ABR aperture.
+"""ABR ML-KEM-1024 keyGen, encaps and decaps return the ACVP values, including implicit rejection.
 
 The ML-DSA leaves own MLDSA_CTRL. ML-KEM is a separate register block in the
 same aperture with its own MLKEM_CTRL command field, and this leaf owns it: the
@@ -22,10 +22,16 @@ The rejecting decaps case is the load-bearing half. An engine that skipped
 implicit rejection, or that returned a cached shared key, passes the accepting
 case and fails that one.
 
-Two false-pass hazards this leaf has to handle, both from the vendor register
-description: MLKEM_CTRL is writable only while STATUS.READY is set, so a command
+Two false-pass hazards this leaf has to handle, both from the Adams Bridge register
+description (``abr_reg.rdl``): MLKEM_CTRL is writable only while STATUS.READY is set, so a command
 issued to a busy engine is dropped silently; and the key/ciphertext read ports
 are gated on the valid register, so they read zero before a command completes.
+
+After the KAT, the leaf holds a live encaps result across a sibling HMAC SW reset
+(it must survive, CHK-ABR-NEIGHBOR-SURVIVES), then across the ABR SW_RESET_N bit:
+the host path answers SLVERR while the bit is held (CHK-ABR-ISOLATE), and VALID is
+clear after release (CHK-ABR-SELF-RESET). CHK-KEM-ZEROIZE checks that ZEROIZE
+clears the shared-key window.
 
 ML-DSA, the key-vault seed path and KEYGEN+DECAPS (0x4) are not claimed here.
 

@@ -29,9 +29,9 @@
  * reach it.  The stack is NOT described here: BL1 inherits the ROM's sp, which
  * starts just below that same reserve and grows down toward this data.
  *
- * IMPORTANT: .text.init MUST come first — _start lives there.
+ * .text.init comes first: _start lives there.
  *
- * The binary MUST be 4-byte aligned (copy width = 4 bytes).
+ * The image is a multiple of 4 bytes (the copy width).
  */
 
 OUTPUT_ARCH("riscv")

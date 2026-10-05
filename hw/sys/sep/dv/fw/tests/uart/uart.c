@@ -15,7 +15,7 @@ int main(void) {
     uint32_t wr_data, rd_data;
     int rc = 0;
 
-    srand(1234); // TODO: Replace with dynamic seeding
+    srand(1234); // Fixed seed: the register walk must replay identically.
 
     // Register sanity test
     printf("Checking register interface connectivity...\n");

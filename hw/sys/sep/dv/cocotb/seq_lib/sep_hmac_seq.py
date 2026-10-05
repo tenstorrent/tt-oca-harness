@@ -37,9 +37,6 @@ HMAC_DIGEST_0 = sym("HMAC_DIGEST_0__REG_ADDR")
 HMAC_MSG_FIFO = sym("HMAC_MSG_FIFO_MEM_BASE_ADDR")
 HMAC_NUM_PUBLIC_KEY = 32
 
-# CFG keyed HMAC-SHA256, 256-bit key (vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc): hmac_en[0]=1, sha_en[1]=1,
-# digest_size SHA2_256 -> bit5, key_length 256 -> bit10 (field [14:9]=2);
-# endian_swap/digest_swap = 0 (digest word0 = MSB == standard big-endian digest).
 HMAC_CMD_HASH_START = HMAC.field_mask("CMD", "hash_start")
 HMAC_CMD_HASH_PROCESS = HMAC.field_mask("CMD", "hash_process")
 
@@ -63,7 +60,7 @@ HMAC_BLOCK_BITS = {256: 512, 384: 1024, 512: 1024}
 # than listed: hmac.adoc states a start with KEY_LENGTH = Key_1024 while
 # DIGEST_SIZE = SHA2_256 "is blocked and an error is signalled to SW". Deriving
 # it keeps the legal set the specification's, not the design's -- an RTL bound
-# that disagreed with the block-size rule would now drive a cell this set calls
+# that disagreed with the block-size rule would then drive a cell this set calls
 # legal.
 HMAC_ILLEGAL_KEYED = {
     (sha_bits, key_bits)
@@ -101,6 +98,11 @@ def build_cfg(
     return cfg & 0xFFFF_FFFF
 
 
+# CFG keyed HMAC-SHA256, 256-bit key
+# (vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc):
+# hmac_en[0]=1, sha_en[1]=1, digest_size SHA2_256 -> bit5, key_length 256 -> bit10
+# (field [14:9]=2); endian_swap/digest_swap = 0 (digest word0 = MSB == standard
+# big-endian digest).
 HMAC_CFG_KEYED_256 = build_cfg(hmac_en=True, sha_bits=256, key_bits=256)
 HMAC_CFG_SHA256 = build_cfg(hmac_en=False, sha_bits=256)
 

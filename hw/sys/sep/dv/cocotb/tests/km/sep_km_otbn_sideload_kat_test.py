@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM -> OTBN sideload consume-proof KAT.
+"""OTBN receives exactly the key the KM sideloads, with non-degenerate 2-share masking.
 
 Real DRBG entropy boots the real KM firmware (rom_main). The host (CPU-LSU
 frontdoor AXI) provisions a KNOWN 384-bit key into a KPV handle via CMD_KEY_LOAD,
@@ -10,8 +10,9 @@ writes the 384-bit result to DMEM. The host asserts DMEM == the exact known key.
 
 This is a fully FRONTDOOR consume-proof: because the host loaded the key value
 itself, the expected value is known without reading the wrapper shares (which are
-write-only / on the KM-private bus). The reference suite generates a random key
-and reconstructs it by a read-only backdoor of the wrapper shares. Here the 12
+write-only / on the KM-private bus). OCAH `sep_km_otbn_sideload_kat_test`
+generates a random key and reconstructs it by a read-only backdoor of the wrapper
+shares. Here the 12
 distinct key words make an exact compare catch any truncation, word-swap, or
 share-defeat bug.
 
@@ -19,6 +20,8 @@ Checkers:
   CHK0       boot KM on real DRBG -> RESP_KM_READY
   CHK-A      CMD_KEY_LOAD known key (frontdoor; wrapper shares are write-only)
   CHK-B      CMD_KEY_TRANSFER rc=0 to OTBN
+  CHK-ISO    key-bus isolation by SW_RESET_N read-back: only OTBN of the four
+             non-ABR sideload engines released; AES/KMAC/HMAC parked
   CHK-C      OTBN EXECUTE -> IDLE, ERR_BITS == 0
   CHK-D/E    DMEM == exact known key; result_hi pad == 0
   CHK-F      mask non-degeneracy: OTBN dumps its own KEY_S0/S1 WSRs (raw shares) to
@@ -34,17 +37,17 @@ Checkers:
                  drbg_axis_edn_adapter -> crypto_edn[3]); OTBN's post-op secure wipe
                  refreshes URND from the crypto EDN leg; score_sinks={"otbn_urnd":"observe"}.
                  Proves the crypto leg delivers real entropy, not only the KM leg.
-Key-bus isolation (other sideload targets idle) is covered by construction: the transfer
-dest mask is OTBN-only and AES/KMAC/HMAC are held parked in SW reset, so they cannot
+Key-bus isolation (other sideload targets idle): the transfer dest mask is OTBN-only,
+and CHK-ISO grades that AES/KMAC/HMAC are held parked in SW reset, so they cannot
 receive the key; CHK-D (exact distinct key) further proves OTBN consumed the correct
 sideloaded key, not stale/zero/another engine's. There is no RW1C done-status bit on
 this consume path (OTBN completion is the STATUS->IDLE state + ERR_BITS==0).
 
-Boot recipe, required to clear the SRAM scrambler cold-boot without a parity
-fault: rom_main built with PROD_BOOT_WIPE=0 / PROD_UNREC_WIPE=0,
-and the KM SRAM macro is backdoor-filled to zero+valid-parity by tb_backdoor_mem
-(tb/tb_top.sv). Real fuse-sense (no +skip_fuse_sense): the KM
-firmware reads OTP/lifecycle at boot, so a valid PROD-lifecycle image is staged.
+Boot recipe (the SRAM scrambler cold boot needs it to avoid a parity fault):
+rom_main built with KM_BOOT_WIPE=0 / KM_UNREC_WIPE=0, and the KM SRAM macro is
+backdoor-filled to zero+valid-parity by tb_backdoor_mem (tb/tb_top.sv). Real
+fuse-sense (no +skip_fuse_sense): the KM firmware reads OTP/lifecycle at boot,
+so a valid PROD-lifecycle image is staged.
 """
 
 from __future__ import annotations
@@ -76,7 +79,7 @@ KAT_KEY = (
 
 @pyuvm.test()
 class sep_km_otbn_sideload_kat_test(sep_base_test):
-    """KM->OTBN sideload consume-proof (frontdoor, real rom_main, known key)."""
+    """OTBN dumps exactly the sideloaded known key, and its two shares are non-degenerate."""
 
     async def run_scenario(self) -> None:
         # --- Boot the real KM firmware on real entropy -------------------------
@@ -89,10 +92,10 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         self.km = SepKmMailbox(self)
         self.otbn = SepOtbn(self)
 
-        # AES/KMAC/OTBN JTAG-held across rst_ni release, then parked in SW_RESET_N so they never sit as ungranted
-        # crypto-EDN requesters through fuse sense. HMAC is parked too for
-        # key-bus isolation. KM owns CSRNG/EDN once entropy is up; OTBN is
-        # released later for the transfer.
+        # AES/KMAC/OTBN are JTAG-held across rst_ni release, then parked in
+        # SW_RESET_N, so they never sit as ungranted crypto-EDN requesters
+        # through fuse sense. HMAC is parked too for key-bus isolation. KM owns
+        # CSRNG/EDN once entropy is up; OTBN is released later for the transfer.
 
         # Shared entropy bring-up with the STRICT golden scoreboard so this test
         # proves CHK1..CHK4 itself (decorrelator/compressor/seed/genbits), not just

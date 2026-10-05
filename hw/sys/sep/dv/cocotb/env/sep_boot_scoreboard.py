@@ -24,6 +24,8 @@ _MIN_DISTINCT_PCS = 16
 
 
 class SepBootScoreboard(uvm_component):
+    """PC advance, console banner when set, and the expected PASS or refusal verdict."""
+
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
         # Trace evidence lives in the CPU trace monitor (built by sep_base_test
@@ -94,7 +96,7 @@ class SepBootScoreboard(uvm_component):
             )
         if not self.expect_fw_pass:
             # The gate is on fw_pass, not on fw_done. A refused boot still
-            # completes: rom_err_fail() reports the failure through the mailbox,
+            # completes: rom_err_fail() writes the FAIL verdict to cold_scratch[0],
             # so fw_done asserts with fw_pass low. That is the ROM behaving
             # correctly, and requiring fw_done to stay low would fail a boot that
             # was refused exactly as intended. What must not happen is a PASS,

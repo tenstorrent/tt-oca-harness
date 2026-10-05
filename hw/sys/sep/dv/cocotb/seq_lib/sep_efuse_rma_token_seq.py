@@ -4,10 +4,9 @@
 
 Writes a 256-bit token into the eFuse MMR input registers, pulses EOP, and
 polls the match status until it is a documented terminal code (match
-``6'b010101``, mismatch ``6'b101010``, or error ``6'b111111``). Token
-values come from the run seed. Digest
-compare is SHA-256 over the 32-byte big-endian token (same as the stitch
-walk). LC_STATE programming stays with ``sep_efuse_otp_program_seq``.
+``6'b010101``, mismatch ``6'b101010``, or error ``6'b111111``). Token values
+come from the run seed. Digest compare is SHA-256 over the 32-byte big-endian
+token (same as the stitch walk). LC_STATE programming stays with ``sep_efuse_otp_program_seq``.
 """
 
 from __future__ import annotations

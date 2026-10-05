@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM -> HMAC sideload consume-proof KAT.
+"""HMAC computes with exactly the key the KM sideloads, not the software decoy key.
 
 Real DRBG entropy boots the real KM firmware (rom_main). The host (CPU-LSU
 frontdoor AXI) provisions a KNOWN 256-bit key into a KPV handle via CMD_KEY_LOAD,
@@ -16,25 +16,25 @@ the SW key and once with the sideload key is not possible. The decoy leg takes
 its place: after the sideload, the host writes a seeded software decoy key to
 the public KEY CSRs, then runs the keyed MAC. The digest must equal the golden
 of the KM key and differ from the golden of the decoy, so an engine that takes
-the CSR key over the sideloaded key fails. This port is a FRONTDOOR known-key
-variant:
-the reference suite generates a random key, reconstructs it by a read-only backdoor of the
-wrapper shares, then SEARCHES 8 byte/word representations for the one that
-reproduces the engine digest; here the key is known a priori and the digest is
-checked directly against the golden under key_word_rev=1, key_be=1,
-msg_be=0,
-so a truncated/word-swapped/wrong-key sideload changes the digest and fails.
+the CSR key over the sideloaded key fails.
 
-VPLAN-parity checkers:
+Provenance: OCAH `sep_km_hmac_sideload_kat_test` generates a random key,
+reconstructs it by a read-only backdoor of the wrapper shares, then searches 8
+byte/word representations for the one that reproduces the engine digest. Here
+the key is known a priori and the digest is checked directly against the golden
+under key_word_rev=1, key_be=1, msg_be=0, so a truncated, word-swapped or
+wrong-key sideload changes the digest and fails.
+
+Checkers:
   CHK0      boot KM on real DRBG -> RESP_KM_READY
   CHK-A     CMD_KEY_LOAD known key (frontdoor; wrapper shares are write-only)
   CHK-ISO   key-bus isolation by SW_RESET_N read-back: only HMAC of the four
             non-ABR sideload engines released; AES/KMAC/OTBN parked
   CHK-B     CMD_KEY_TRANSFER rc=0 to HMAC
-  PUB-OBS   HMAC public KEY CSRs read back zero after the sideload. NOT a checker:
-            hmac.hjson declares KEY swaccess=wo, so the read returns zero whether the
-            key is protected, mirrored elsewhere, or never delivered. CHK-SIDE and
-            CHK-MAC carry the key-protection evidence that can fail.
+  PUB-OBSERVATION  HMAC public KEY CSRs read back zero after the sideload. NOT a
+            checker: hmac.hjson declares KEY swaccess=wo, so the read returns zero
+            whether the key is protected, mirrored elsewhere, or never delivered.
+            CHK-DECOY and CHK-MAC carry the key-protection evidence that can fail.
   CHK-DECOY engine keyed digest != HMAC-SHA256(decoy_key, msg) golden, where the
             decoy is a seeded SW key written to the public KEY CSRs after the
             sideload and before the MAC (the engine did not use the CSR key)
@@ -47,19 +47,20 @@ VPLAN-parity checkers:
             CHK5_km beat count taken just before CMD_KEY_LOAD is lower than
             the count taken after the CMD_KEY_TRANSFER response
 
-Scope deltas vs the reference suite:
-  * known-key golden value-compare under key_word_rev=1 / key_be=1
-    (proves the exact key flowed). The HMAC-wrapper-internal SHARE0 *mask*
-    non-degeneracy is
-    out of frontdoor scope (covered frontdoor by the OTBN KAT's CHK-F, as for the
-    AES sideload KAT).
-  * key-bus isolation uses SW_RESET_N read-back (no OSS frontdoor analog of the reference suite's
-    key-bus AW monitor); CHK-MAC additionally proves HMAC got the correct key.
+Scope:
+  * The known-key golden compare under key_word_rev=1 / key_be=1 proves the exact
+    key flowed. The HMAC-wrapper-internal SHARE0 mask non-degeneracy is out of
+    frontdoor scope; km/sep_km_otbn_sideload_kat_test CHK-F covers it frontdoor,
+    as for km/sep_km_aes_sideload_kat_test.
+  * Key-bus isolation is graded by SW_RESET_N read-back (OCAH
+    `sep_km_hmac_sideload_kat_test` counts key-bus AW handshakes per engine
+    instead); CHK-MAC also proves HMAC got the correct key.
 
-Boot recipe matches the OTBN/AES KATs (real fuse-sense, valid PROD OTP image;
-rom_main built PROD_BOOT_WIPE=0). HMAC is not an EDN consumer, so (unlike AES) it
-is parked through KM boot/load for clean isolation and released just before the
-transfer (like OTBN), keeping the EDN stream dedicated to the KM.
+Boot recipe matches km/sep_km_otbn_sideload_kat_test and
+km/sep_km_aes_sideload_kat_test (real fuse-sense, valid PROD OTP image; rom_main
+built with KM_BOOT_WIPE=0 / KM_UNREC_WIPE=0). HMAC is not an EDN consumer, so
+(unlike AES) it is parked through KM boot/load for clean isolation and released
+just before the transfer (like OTBN), keeping the EDN stream dedicated to the KM.
 """
 
 from __future__ import annotations
@@ -84,7 +85,7 @@ KAT_KEY = (
     0xFEDCBA98,
 )
 
-# Fixed message (reference HMAC_MSG): bytes 0x00..0x1f as 8 little-endian words.
+# Fixed message: 8 words 0x00010203..0x1C1D1E1F; msg_be=0 feeds each word little-endian.
 HMAC_MSG = (
     0x00010203,
     0x04050607,
@@ -99,7 +100,7 @@ HMAC_MSG = (
 
 @pyuvm.test()
 class sep_km_hmac_sideload_kat_test(sep_base_test):
-    """KM->HMAC sideload consume-proof (frontdoor, real rom_main, known key)."""
+    """The sideloaded known key gives the golden HMAC digest and not the decoy digest."""
 
     async def run_scenario(self) -> None:
         # --- Boot the real KM firmware on real entropy -------------------------
@@ -138,7 +139,7 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
 
         # Release HMAC before the transfer: CMD_KEY_TRANSFER has the KM write the HMAC
         # wrapper key CSRs, which sit in the hmac sw-reset domain; parked -> the write
-        # never lands. (reference releases HMAC right after keygen, before the transfer.)
+        # never lands.
         await self.swrst.release("hmac")
 
         # CHK-ISO: only HMAC (of the four non-ABR sideload engines) is released; AES/KMAC/OTBN
@@ -181,10 +182,10 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
             km_beats_at_xfer,
         )
 
-        # PUB-OBSERVATION: the public KEY CSRs read zero. Logged, not scored --
-        # hmac.hjson declares them swaccess=wo, so "reads zero" holds on any RTL.
-        # The falsifiable half is the positive control below: a dead read path, or
-        # these registers becoming readable and leaking, still fails.
+        # PUB-OBSERVATION: the public KEY CSRs read zero. Both halves are asserted.
+        # hmac.hjson declares them swaccess=wo, so "reads zero" holds on any RTL
+        # that follows it. The positive control below makes the pair fail on a
+        # dead read path, and the zero check fails if these registers leak.
         pub, ctl_pub = await self.hmac.read_public_key()
         assert ctl_pub != 0, (
             "PUB-OBSERVATION positive control failed: HMAC STATUS read back 0 over the same "

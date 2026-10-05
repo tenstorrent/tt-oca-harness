@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 #
-# KM (PicoRV32) ROM firmware for the SEP OSS ESRC -> DRBG -> CSRNG -> EDN -> KM
+# KM (PicoRV32) ROM firmware for the SEP DV ESRC -> DRBG -> CSRNG -> EDN -> KM
 # entropy alive smoke. The Key Manager's drbg_sampler only asserts TREADY on the
 # EDN->KM stream when its own CPU pulls entropy, so this firmware makes the KM
 # genuinely CONSUME one genbits word (a real tvalid && tready handshake).

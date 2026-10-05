@@ -16,7 +16,7 @@
 // own nets, from the VeeR boundary through the window remaps and demuxes.
 //
 // Two rules keep this file honest:
-//   * A port that the inbound SoC port, the JTAG bridge or a second master can
+//   * A port that the SMN inbound port, the JTAG bridge or a second master can
 //     reach is NOT listed. Those fields are an integrator's to drive, so a hole
 //     there is a stimulus gap.
 //   * A tied field that any leaf moved (for example, the no_cpu TB force on the

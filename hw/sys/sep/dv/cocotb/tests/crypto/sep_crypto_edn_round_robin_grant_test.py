@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Crypto-EDN round-robin grant: two adapter clients held requesting at once.
+"""The crypto-EDN adapter grants two clients that request at once, and every client is served.
 
 ``sep_crypto_edn_multisink_arbitration_test`` proves AES and KMAC complete and
 that their beat time-spans overlap. It cannot create a same-cycle dual
@@ -17,8 +17,9 @@ The grant monitor starts only after the ESRC seed is ready so the dual-req
 window is not sampled during ``wait_seed_ready``. CHK1..CHK4 stay bit-exact
 on that bring-up.
 
-OTBN RND (crypto_edn[2]) is the adapter's fourth client and joins after the
-alternation proof rather than inside it: RND only requests while an OTBN
+OTBN RND (crypto_edn[2]) joins after the alternation proof as the third client
+driven, and KMAC (crypto_edn[1]) follows as the fourth. RND is not inside the
+alternation proof: RND only requests while an OTBN
 program is blocked on the RND CSR, and OTBN cannot execute until its
 post-reset secure wipe has consumed URND, which already needs EDN enabled. So
 this test drives it as its own client -- a program that reads RND four times
@@ -27,6 +28,16 @@ this test drives it as its own client -- a program that reads RND four times
 Four crypto sinks are live (AES, KMAC, OTBN URND and OTBN RND) plus the entropy
 pool, so CHK5 is five-sink ROUTING: each post-adapter beat equals the AXIS1 word
 the adapter granted that cycle.
+
+Checkers:
+  CHK-DUAL-REQ     AES and URND hold crypto_edn_req high together.
+  CHK-NO-STARVE    both requesting clients get edn_ack.
+  CHK-GRANT-ALT    the post-adapter grants share and alternate (see the limit above).
+  CHK-RND-REQ      OTBN raises its RND request bit.
+  CHK-RND-CONSUME  the RND CSR reads retire with ERR_BITS=0.
+  CHK-KMAC-CLIENT  a keyed KMAC-256 on the KMAC client matches the Keccak golden.
+  CHK-FOUR-CLIENT  all four adapter clients are granted in one run.
+  CHK1..CHK4, CHK-ROUTING  bit-exact entropy golden and five-sink routing.
 
 Probes: ``tb_top.crypto_edn_req_o`` / ``crypto_edn_ack_o`` (observation
 ports).
@@ -117,7 +128,7 @@ def _ack() -> int:
 
 @pyuvm.test()
 class sep_crypto_edn_round_robin_grant_test(sep_base_test):
-    """Hold AES + OTBN URND edn_req together, then prove the arbiter grants both."""
+    """AES and OTBN URND, requesting together, are both granted; all four clients are served."""
 
     async def run_scenario(self) -> None:
         dut = cocotb.top

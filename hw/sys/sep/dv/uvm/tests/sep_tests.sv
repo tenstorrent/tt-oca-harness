@@ -24,14 +24,16 @@ import sep_seq_lib_pkg::*;
 `include "sep_axi_smoke_test.svh"
 `include "sep_address_map_test.svh"
 
-// Memory scenarios on the CPU-LSU AXI4 splice.
+// Memory and bus-error scenarios on the CPU-LSU AXI4 splice.
 `include "sep_sram_smoke_test.svh"
 `include "sep_periph_bus_err_misaligned_test.svh"
 
-// Reset-path scenarios driven and observed through sep_tb_if.
+// Reset-path scenario driven and observed through sep_tb_if.
 `include "sep_clock_uvm_wdt_rst_input_reset_path_test.svh"
+// Interrupt and OTBN memory scenarios on the CPU-LSU AXI4 splice.
 `include "sep_irq_ip_to_aggregator_test.svh"
 `include "sep_otbn_mem_smoke_test.svh"
+// eFuse sense scenario, observed through sep_tb_if with no AXI access.
 `include "sep_efuse_sense_test.svh"
 
 // Key Manager memory scenario (KM ROM image, tb_top KM probes).

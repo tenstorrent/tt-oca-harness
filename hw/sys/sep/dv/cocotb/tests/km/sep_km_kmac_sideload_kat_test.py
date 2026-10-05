@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM -> KMAC sideload consume-proof KAT.
+"""KMAC computes with exactly the key the KM sideloads, matching the SW-key digest and the golden.
 
 Real DRBG entropy boots the real KM firmware (rom_main). The host (CPU-LSU
 frontdoor AXI) provisions a KNOWN 256-bit key into a KPV handle via CMD_KEY_LOAD,
@@ -20,8 +20,8 @@ Checkers:
   CHK-ISO   key-bus isolation by SW_RESET_N read-back: only KMAC of the four
             non-ABR sideload engines released; AES/HMAC/OTBN parked
   CHK-B     CMD_KEY_TRANSFER rc=0 to KMAC
-  PUB-OBS   public KMAC KEY_SHARE0/1 read back zero after sideload. NOT a checker:
-            kmac.hjson declares them swaccess=wo, so the read cannot fail
+  PUB-OBSERVATION  public KMAC KEY_SHARE0/1 read back zero after sideload. NOT a
+            checker: kmac.hjson declares them swaccess=wo, so the read cannot fail
   CHK-SIDE  sideload digest != dummy digest (the sideloaded key drives the output)
   CHK-MAC   sideload digest == SW-key(KNOWN key) digest (consume-proof: KMAC used
             exactly the KM-delivered known key)
@@ -34,19 +34,20 @@ Checkers:
   CHK-ERR   KMAC ERR_CODE == 0
   CHK1..CHK4 strict DRBG golden + CHK5_km observed (KM boot/load consumer)
 
-Scope deltas vs the reference suite:
+Scope:
   * The consume-proof is the sideload-vs-SW cross-check. The SW-key digest is
-    also compared against the bit-exact KMAC golden (CHK-MAC-GOLDEN), which the
-    reference suite does not do.
-    The OSS port strengthens it with a KNOWN distinct-word key (vs the reference suite's
-    backdoor-reconstructed KM-generated key), so no backdoor and no key/mask
-    non-degeneracy guards are needed (the known key is non-degenerate by
-    construction; the wrapper-internal SHARE0 mask non-degeneracy is out of
-    frontdoor scope, covered by the OTBN sideload KAT, as for the AES / HMAC KATs).
-  * key-bus isolation uses SW_RESET_N read-back (no OSS frontdoor analog of the reference suite's
-    key-bus AW monitor); CHK-MAC additionally proves KMAC got the correct key.
+    also compared against the bit-exact KMAC golden (CHK-MAC-GOLDEN). The key is
+    KNOWN and distinct-word, so no backdoor and no key/mask non-degeneracy guard
+    is needed (OCAH `sep_km_kmac_sideload_kat_test` instead reconstructs a
+    KM-generated key by backdoor). The wrapper-internal SHARE0 mask
+    non-degeneracy is out of frontdoor scope; km/sep_km_otbn_sideload_kat_test
+    covers it, as for the AES and HMAC sideload KATs.
+  * Key-bus isolation is graded by SW_RESET_N read-back (OCAH
+    `sep_km_kmac_sideload_kat_test` counts key-bus AW handshakes per engine
+    instead); CHK-MAC also proves KMAC got the correct key.
 
-Boot recipe matches the OTBN/AES/HMAC KATs (real fuse-sense, valid PROD OTP image).
+Boot recipe matches the OTBN, AES and HMAC sideload KATs (real fuse-sense, valid
+PROD OTP image).
 KMAC IS an EDN consumer (masking entropy), so it is parked through KM boot/load for
 clean isolation + entropy dedication, then released before the transfer,
 after which its keyed ops pull real EDN masking entropy (scored via CHK5_kmac).
@@ -73,7 +74,7 @@ KAT_KEY = (
     0xFEDCBA98,
 )
 
-# Fixed message (reference KMAC_MSG): bytes 0x00..0x1f as 8 words.
+# Fixed message: bytes 0x00..0x1f as 8 words.
 KMAC_MSG = (
     0x00010203,
     0x04050607,
@@ -100,7 +101,7 @@ KMAC_DUMMY_KEY = (
 
 @pyuvm.test()
 class sep_km_kmac_sideload_kat_test(sep_base_test):
-    """KM->KMAC sideload consume-proof (frontdoor, real rom_main, known key)."""
+    """The sideload digest equals the SW-key digest of the known key and differs from the dummy."""
 
     async def run_scenario(self) -> None:
         # --- Boot the real KM firmware on real entropy -------------------------
@@ -144,10 +145,9 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         )
         # c_dummy is the negative reference CHK-SIDE compares against, so it has to be
         # a real observation before that comparison means anything: an all-zero garbage
-        # read would satisfy `a_side != c_dummy` while proving nothing. There is no
-        # bit-exact KMAC golden wired up here (see the module docstring), so this is an
-        # alive-check, not a value check. An all-zero dummy digest would make CHK-SIDE
-        # vacuous.
+        # read would satisfy `a_side != c_dummy` while proving nothing. The dummy
+        # digest is not value-compared, so this is an alive-check: an all-zero dummy
+        # digest would make CHK-SIDE vacuous.
         assert any(w != 0 for w in c_dummy), (
             "dummy-key KMAC returned an all-zero digest -- the negative reference is "
             f"not a real observation, so CHK-SIDE below would be vacuous: {[hex(w) for w in c_dummy]}"
@@ -182,8 +182,9 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         assert rc == 0, f"CMD_KEY_TRANSFER returned rc={rc} (expected 0)"
         self.logger.info("CHK-B CMD_KEY_TRANSFER PASS: rc=0 (key sideloaded to KMAC)")
 
-        # PUB-OBSERVATION: the public KEY_SHARE CSRs read zero. Logged, not scored
-        # -- kmac.hjson declares them swaccess=wo, so "reads zero" holds on any RTL.
+        # PUB-OBSERVATION: the public KEY_SHARE CSRs read zero. Asserted, but
+        # kmac.hjson declares them swaccess=wo, so "reads zero" holds on any RTL
+        # that follows it.
         s0_pub, s1_pub, ctl_pub = await self.kmac.read_public_key_shares()
         assert all(w == 0 for w in s0_pub + s1_pub), (
             "KMAC public KEY_SHARE0/1 not all zero after sideload (key leak): "

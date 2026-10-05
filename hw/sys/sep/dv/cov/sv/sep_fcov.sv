@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP OSS functional-coverage sampler (docs/SEP_FCOV.adoc). VCS covergroups only.
+// SEP OSS functional-coverage sampler (docs/SEP_FCOV.adoc). SystemVerilog
+// covergroups only, compiled where VERILATOR is not defined.
 //
 // One passive instance in tb_top (`u_sep_fcov`). It drives nothing.
 //
@@ -10,7 +11,7 @@
 // Sampling that bus (not the flat ports) is what makes a bin reachable in BOTH
 // run modes: under `+cpu_boot` the EL2 owns the bus and the flat request ports
 // are idle, so a port-side sampler would see no firmware traffic at all. The
-// external inbound master is the real `m_axi_*` DUT port. Everything else is an
+// external inbound master is the real `m_axi_*` DUT port. Everything else is a
 // named probe port of tb_top. No new hierarchy reach.
 //
 // WHAT A BIN MEANS. A bin records an interface event: a completed AXI
@@ -180,7 +181,7 @@ module sep_fcov (
 
   // ML-KEM is a separate register block in the same aperture: its own CTRL and
   // STATUS, so a ML-DSA command can never score an ML-KEM cell. Offsets from
-  // the Caliptra abr_reg.rdl MLKEM block.
+  // the adams-bridge abr_reg.rdl MLKEM block.
   localparam logic [31:0] KemCtrl = AbrBase + 32'h9010;
   localparam logic [31:0] KemStatus = AbrBase + 32'h9014;
   localparam logic [31:0] KemCmdKeygen = 32'h1;  // MLKEM_CTRL.CTRL = KEYGEN
@@ -241,11 +242,11 @@ module sep_fcov (
 
   // aon_timer INTR_STATE: wkup_timer_expired[0], wdog_timer_bark[1]. The
   // vendored block exports no field symbol into sep_reg.svh; the position is
-  // the one seq_lib/sep_wdt_aon_seq.py resolves from the register metadata.
+  // the one cocotb/seq_lib/sep_wdt_aon_seq.py resolves from the register metadata.
   localparam logic [31:0] WdtBarkMask = 32'h2;
 
   // LC_STATE shadow word: bits[7:0] hold the differential {~raw, raw}
-  // (env/sep_efuse_image.py lc_encode). Legal raw codes are
+  // (cocotb/env/sep_efuse_image.py lc_encode). Legal raw codes are
   // efuse_pkg::lc_state_raw_e.
   localparam logic [3:0] LcTestDev = 4'h0;
   localparam logic [3:0] LcProd = 4'h1;
@@ -255,7 +256,7 @@ module sep_fcov (
   localparam logic [3:0] LcRmaChip1 = 4'h7;
   localparam logic [3:0] LcProdEnd = 4'h8;
 
-  // KM mailbox frame (seq_lib/sep_km_mailbox_seq.py):
+  // KM mailbox frame (cocotb/seq_lib/sep_km_mailbox_seq.py):
   //   header = {crc8[31:24], payload_len[23:16], cmd_id[15:8], seq_num[7:0]}
   //   RESP_CMD payload = [cmd_seq, cmd_id, rc, arg]
   localparam logic [7:0] KmRespCmd = 8'h00;
@@ -283,7 +284,7 @@ module sep_fcov (
 
   // ------------------------------------------------------------------
   // AXI transaction model. Reset is treated as "not a known 1" so the
-  // bring-up window before cocotb drives rst_ni scores nothing.
+  // bring-up window before the bench drives rst_ni scores nothing.
   // ------------------------------------------------------------------
   wire in_reset = (rst_ni !== 1'b1);
 
@@ -379,8 +380,8 @@ module sep_fcov (
   // One value per LSU-reachable register block in sep_reg.svh. SRAM and the
   // boot ROM have their own groups. The PIC is inside the VeeR core and never
   // reaches the LSU bus, and SEP_EXTERNAL is the outbound port, not a SEP
-  // block, so neither has a value. TRNG has none either: no all leaf makes an
-  // OKAY read of it.
+  // block, so neither has a value. TRNG has none either: no leaf of the `all`
+  // regression makes an OKAY read of it.
   typedef enum logic [4:0] {
     BLK_NONE,
     BLK_CPU_CTRL,
@@ -846,10 +847,11 @@ module sep_fcov (
   wire dma_status_done = rd_ev && (ar_addr_q == SECURE_DMA_STATUS_REG_ADDR) &&
       ((rd_data & SECURE_DMA_STATUS_DONE_MASK) != 32'h0);
   // A DMA transfer can report completion two ways, and the suite uses both:
-  // dma_basic_test polls STATUS, while dma_hash_test enables INTR_ENABLE.DMA_DONE,
-  // WFIs, and its handler clears STATUS.done before software ever reads it -- so
+  // sep_dma_basic_test polls STATUS, while sep_dma_hash_test enables
+  // INTR_ENABLE.DMA_DONE, WFIs, and its handler clears STATUS.done before
+  // software ever reads it -- so
   // on that path no STATUS read with the DONE bit ever appears on the bus. The
-  // interrupt (sep.sv:535 sep_internal_interrupts[8] = intr_dma_done) is the
+  // interrupt (sep.sv, sep_internal_interrupts[8] = intr_dma_done) is the
   // completion event there. Rising edge: the aggregated bit is a level.
   logic irq_dma_done_q;
   wire  dma_irq_done = !in_reset && (irq_dma_done_i === 1'b1) && !irq_dma_done_q;
@@ -1075,9 +1077,9 @@ module sep_fcov (
 
   // --- eFuse FSM fail-closed ---------------------------------------------
   // Both machines encode idle as 2'b01 and wait-for-response as 2'b10, so
-  // 2'b00 and 2'b11 are unreachable by design. sep_efuse_illegal_state_fail
-  // _closed_test injects them; ordinary traffic scores nothing here because
-  // the legal encodings land in no bin.
+  // 2'b00 and 2'b11 are unreachable by design.
+  // sep_efuse_illegal_state_fail_closed_test injects them; ordinary traffic
+  // scores nothing here because the legal encodings land in no bin.
   localparam logic [1:0] EfuseStIdle = 2'b01;
   localparam logic [1:0] EfuseStWait = 2'b10;
   wire efuse_rd_illegal = !in_reset &&
@@ -1087,9 +1089,10 @@ module sep_fcov (
 
   // --- Lifecycle feature control ------------------------------------------
   // FEAT_CTRL is 64-bit, read as two 32-bit halves. Aggregate the DEFINED
-  // debug bits into none/partial/full the way the reference coverage does:
+  // debug bits into none/partial/full:
   // DBG_1 = sep_debug, chiplet_dbg, sep_fuse_dbg, smc_fuse_dbg (bits 0..3) and
-  // DBG_2 = sip_debug (bit 24). env/sep_lcc_golden.py is the layout authority.
+  // DBG_2 = sip_debug (bit 24). cocotb/env/sep_lcc_golden.py is the layout
+  // authority.
   // There is no DFT/test group in this layout, and SECURE_TM does not qualify
   // feature control, so neither is crossed with the debug aggregate.
   localparam logic [31:0] FeatDbg1Mask = 32'h0000_000F;  // bits 3:0
@@ -1807,8 +1810,8 @@ module sep_fcov (
       bins sha2_256 = {HmacSha256}; bins sha2_384 = {HmacSha384}; bins sha2_512 = {HmacSha512};
     }
     // SHA-256 with a 1024-bit key is illegal (hmac.sv), so the suite walks
-    // fourteen of the fifteen keyed cells; the excluded one is named in the
-    // plan rather than binned here.
+    // fourteen of the fifteen keyed cells; the excluded one is named in
+    // docs/SEP_FCOV.adoc rather than binned here.
     x_digest_key: cross cp_digest, cp_key_length{
       ignore_bins illegal_256_1024 = binsof (cp_digest.sha2_256) && binsof (cp_key_length.k1024);
     }
@@ -1831,7 +1834,8 @@ module sep_fcov (
     cp_cshake: coverpoint strength iff (!en && (mode == KmacCshake)) {
       bins s128 = {KmacL128}; bins s256 = {KmacL256};
     }
-    // KMAC is mode cSHAKE with kmac_en=1 (kmac programmers_guide).
+    // KMAC is mode cSHAKE with kmac_en=1 (kmac_en in
+    // vendor/lowRISC/opentitan/upstream/hw/ip/kmac/data/kmac.hjson).
     cp_kmac: coverpoint strength iff (en && (mode == KmacCshake)) {
       bins s128 = {KmacL128}; bins s256 = {KmacL256};
     }
@@ -1918,8 +1922,8 @@ module sep_fcov (
     // The acks are per-endpoint state machines, not arbiter grants, so two can
     // assert in the same cycle; a one-hot coverpoint would land in no bin and
     // lose BOTH grants, which reads afterwards as a client the test never
-    // drove. This is the leaf that must fill all four, and simultaneous acks
-    // are likeliest exactly here.
+    // drove. sep_crypto_edn_round_robin_grant_test must fill all four, and
+    // simultaneous acks are likeliest there.
     cp_edn_aes: coverpoint crypto_edn_ack_i[0] iff (!in_reset) {
       bins aes = {1'b1};
     }
@@ -2162,9 +2166,9 @@ module sep_fcov (
     cp_done: coverpoint fuse_sense {bins sense_done = {1'b1};}
     // First sense after cold-reset release vs a later re-sense: programming a
     // fuse and re-sensing is a distinct episode. Producers are
-    // sep_efuse_otp_program_seq and sep_lcc_demote_matrix_seq; the scratch
-    // leaf cannot, because it passes +skip_fuse_sense, which disqualifies the
-    // sense bin above.
+    // sep_efuse_otp_program_seq and sep_lcc_demote_matrix_seq;
+    // sep_warm_cold_reset_scratch_test cannot, because it passes
+    // +skip_fuse_sense, which disqualifies the sense bin above.
     cp_episode: coverpoint fuse_sense_episode iff (fuse_sense) {
       bins first_sense = {1'b0}; bins re_sense = {1'b1};
     }
@@ -2308,7 +2312,8 @@ module sep_fcov (
     cp_alone: coverpoint sec_dis iff (released) {
       bins override_closed = {1'b0};
     }
-    // A refused read is an error path (Phase 2), so only OKAY is a cell.
+    // A refused read is an error path that this group does not grade, so only
+    // OKAY is a cell.
     cp_map_resp: coverpoint map_resp iff (map_hit) {
       bins okay = {AxiOkay};
     }

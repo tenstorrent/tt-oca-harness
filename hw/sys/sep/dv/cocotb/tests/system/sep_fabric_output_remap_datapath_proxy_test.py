@@ -1,16 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Live AP/STEE output-remap plus outbound-filter drop.
+"""An AP/STEE output-remap region translates a live beat, and the outbound filter drops the rest.
 
 RANDCFG. Programs one output-remap region so an AP or STEE window beat is
 rewritten to 0x8000_0000 (the outbound mailbox responder) and allow-lists
 only that remapped address in the outbound filter. A CPU-LSU access of the
 programmed window returns OKAY (translated beat). A second region, left
 invalid so its beat passes through untranslated, returns DECERR (forbidden
-beat). The CSR-bank R/W test is not
-re-run as the proof.
+beat). Disabling the allow entry turns the same translated access DECERR
+(CHK-FILTER-DISABLE), and a same-region neighbour outside the one-beat allow
+answers DECERR. CSR R/W stays in sep_fabric_remap_filter_csr_bank_test.
 
-no_cpu, +skip_fuse_sense: remap and the outbound filter do not depend on
+Run mode: no_cpu with +skip_fuse_sense: remap and the outbound filter do not depend on
 sense. Outbound filter skip is tied off in RTL.
 """
 

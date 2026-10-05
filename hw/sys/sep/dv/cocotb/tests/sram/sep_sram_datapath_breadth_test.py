@@ -1,33 +1,34 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP external-SRAM datapath-breadth test (PyUVM).
+"""Every SRAM byte lane, data pattern, boundary word and address bit reads back exactly.
 
-Memory-subsystem SRAM datapath breadth. reference provenance: uvm_tests/sram
-sep_sram_uvm_byte_strobe / byte_pattern / data_pattern / addr_boundary /
-write_read / sequential_access. Exercises the external scratch SRAM
+Provenance: OCAH `sep_sram_uvm_byte_strobe`, `..._byte_pattern`, `..._data_pattern`,
+`..._addr_boundary`, `..._write_read`, `..._sequential_access`. Exercises the external scratch SRAM
 (0x1000_0000, 256 KiB) over the CPU-LSU AXI splice (no_cpu) beyond the
 smoke (a single 64-bit R/W + one 32-bit partial).
 
 `[RANDCFG]` -- ``SepSramBreadthCfg`` is the single source of truth for both the
 DUT programming and the golden expectations. Required coverage is walked
-DETERMINISTICALLY so one seed never skips a cell; only legal knobs are
+deterministically so one seed never skips a cell; only legal knobs are
 seed-randomized:
   * deterministic required cells: all 36 contiguous WSTRB masks (all 8 one-hot
-    lanes + every contiguous multi-byte run); the 6 required data patterns; the
+    lanes + every contiguous multi-byte run); the required data patterns
+    (0xAAAA/0x5555, walking one, walking zero, one fixed mixed word); the
     base + top-valid boundary words; a sequential window of >= 4 words.
   * randomized legal knobs: WSTRB mask order, the SRAM region offsets, the
     init/new/pattern data values, the sequential-window length, plus a few extra
     random data patterns -- all masked so they read back exactly.
 
-The SRAM port is 64-bit SINGLE-BEAT (no multi-beat burst feature; the reference suite's burst
-tests are audit-only AWLEN=0/ARLEN=0). WSTRB=0x00 is excluded (undefined). NON-
-contiguous WSTRB masks (e.g. 0x05) are not walked: cocotbext-axi derives the
+This leaf drives single-beat accesses only. INCR bursts are
+sep_sram_inbound_burst_attr_test, and refused FIXED/WRAP bursts are
+sep_sram_burst_type_test. WSTRB=0x00 is excluded (undefined). Non-contiguous
+WSTRB masks (e.g. 0x05) are not walked: cocotbext-axi derives the
 strobe from addr+length (contiguous only), and this master has no explicit-strobe
 write.
 
 Checks (each value-compares an exact read-back against the cfg golden + logs a
 positive PASS line):
-  CHK-WSTRB    : every contiguous WSTRB mask changes ONLY its byte lanes; all
+  CHK-WSTRB    : every contiguous WSTRB mask changes only its byte lanes; all
                  neighbor lanes preserved (independent ``apply_wstrb`` golden).
   CHK-PATTERN  : each cfg data pattern reads back exactly: 0xAAAA/0x5555, a
                  walking one and a walking zero over all 64 bit positions, and
@@ -42,7 +43,7 @@ positive PASS line):
                  selects distinct storage; the offsets at or above 0x1_0000
                  are the upper 192 KiB of the 256 KiB SRAM.
 
-no_cpu / +skip_fuse_sense (SRAM reached via the xbar sram port; no OTP read).
+Run mode: no_cpu with +skip_fuse_sense (SRAM reached via the xbar sram port; no OTP read).
 """
 
 from __future__ import annotations
@@ -59,7 +60,7 @@ from seq_lib.sep_sram_breadth_seq import (
 
 @pyuvm.test()
 class sep_sram_datapath_breadth_test(sep_base_test):
-    """RANDCFG SRAM R/W breadth: byte-strobe, patterns, boundary, sequential."""
+    """Each RANDCFG cell (strobe, pattern, boundary, sequence, address line) reads back exactly."""
 
     async def run_scenario(self) -> None:
         self.scfg = SepSramBreadthCfg(self.random_seed())

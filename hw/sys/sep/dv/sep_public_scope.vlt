@@ -1,29 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 `verilator_config
 // SEP cocotb/Verilator public-signal scope.
 // (Comment lines must NOT start with the word "verilator" -- the lexer would treat
 //  "// verilator ..." as a metacomment directive and fail to parse this file.)
 //
-// cocotb's runner forces a global --public-flat-rw, which marks every signal in the
-// design public. That defeats Verilator's split_var optimisation: the split_var
-// pragmas already present in the AXI fabric cells (rr_arb_tree, lzc, axi_demux) are
-// silently disabled on public signals, so Verilator cannot break the false
-// combinational ready/valid SCCs in axi_demux / axi_burst_splitter / id_fifo. The
-// result is a model-wide input-combinational (ICO) settle blow-up that wedges
-// the Verilator runtime.
-//
-// The SEP cocotb env only drives the tb top sep_uvm_top (root handle + its top-level
-// ports: clocks/reset/boot controls + the flat s_axi_* bus). The CPU-LSU splice is
-// SV-side inside the tb (the no_cpu stub drives lsu_axi_req from lsu_req_drive; the
-// LSU response is read back by hierarchical name), not a cocotb VPI access. So cocotb
-// needs public exposure of sep_uvm_top ONLY -- not the DUT fabric internals.
-//
-// Scoping public_flat_rw to sep_uvm_top (instead of the whole design) lets the fabric
-// split_var pragmas activate again, and the model runs instead of wedging. No
-// DUT/fabric RTL change is required.
-//
-// This file must be paired with dropping the runner's global --public-flat-rw (see
-// the repo-controlled cocotb runner wrapper in the SEP DV flow).
+// cocotb's runner forces a global --public-flat-rw, which disables the split_var
+// pragmas in the AXI fabric cells and wedges the Verilator runtime in the
+// input-combinational settle. This file exposes the tb top only (cocotb drives only
+// its ports; the CPU-LSU splice is SV-side), so the fabric internals stay private.
+// It works only with the global flag removed: cocotb_public_scope() in
+// tools/dv/runlib/stages.py removes it and injects this file.
 public_flat_rw -module "sep_uvm_top" -var "*"
 
 // The shared AXI VIP interface on the SEP->SMC boundary (rom_boot target):
@@ -48,8 +35,3 @@ public_flat_rw -module "ram_16384x39" -var "ram_core"
 // access to the leaf register storage, which sits outside the fabric AXI
 // ready/valid combinational cones.
 public_flat_rw -module "sep_scratch_reg" -var "field_storage"
-
-// Do not add abr_wrapper_key_reg to this public list. The PeakRDL block is on
-// the Bender filelist and tests reach it frontdoor. Also, no comment line here
-// may START with the word "verilator" -- the .vlt lexer treats
-// "// verilator ..." as a metacomment directive and errors out.

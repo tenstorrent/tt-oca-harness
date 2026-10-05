@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
+/* AES software-reset release helper. */
+
 #ifndef SEP_AES_INIT_H
 #define SEP_AES_INIT_H
 

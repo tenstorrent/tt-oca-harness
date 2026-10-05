@@ -4,25 +4,26 @@
 
 ``sep_axil_mailbox_iface_rand_test`` drives the SEP-host aperture
 (outbound_mailbox_0 @ 0x10A0_0000) and proves the TX half. It cannot fill the
-receive FIFO, so three contracts had no vehicle in this tree: a data round-trip
-readback, the read threshold (``RIRQT`` / ``STATUS.read_level_above``), and the
-32-bit-read-of-a-64-bit-entry behaviour the architecture document specifies.
+receive FIFO. This test grades the three contracts that need a filled FIFO: a
+data round-trip readback, the read threshold (``RIRQT`` /
+``STATUS.read_level_above``), and the 32-bit-read-of-a-64-bit-entry behaviour
+that ``hw/sys/sep/doc/mailbox.adoc`` specifies.
 
 The receive side is fed from the peer aperture (inbound_mailbox_0 @ 0x10A0_0800),
 which only the external SMN-inbound master reaches. The inbound filter blocks by
 default, so an allow window over the peer aperture is programmed from the CPU-LSU
 side first, exactly as the m_axi order sweep does.
 
-``fabric.adoc`` is the contract for the read half: registers sit on an 8-byte
+``mailbox.adoc`` is the contract for the read half: registers sit on an 8-byte
 stride and a register's low and high halves alias to the same register, so "a
 read of READ_DATA at either half pops one FIFO entry. The mailbox drives the
 whole entry; the CPU keeps the half selected by address bit 2 and discards the
 other. Reading both halves consumes two entries." That last sentence is what
 this test grades, and it is the opposite of the intuitive reading -- two 32-bit
-reads do NOT reassemble one 64-bit entry, they consume two entries and lose the
+reads do not reassemble one 64-bit entry, they consume two entries and lose the
 high half of the first.
 
-RUN-MODE: no_cpu (CPU-LSU master) + external SMN master. FUSE-MODE:
+Run mode: no_cpu (CPU-LSU master) with the external SMN master and
 +skip_fuse_sense (the mailbox has no OTP/LC dependency; the filter window is
 programmed explicitly rather than inherited from a debug state).
 """
@@ -106,9 +107,12 @@ class sep_mailbox_peer_rx_rirqt_test(sep_base_test):
     async def _host_read_half(
         self, half_offset: int, *, expect_error: bool = False
     ) -> tuple[int, int]:
-        """One 4-byte READ_DATA beat on the host aperture. half_offset is 0 for the
-        low half and 4 for the high half (address bit 2). expect_error declares the
-        read-empty SLVERR to the bus scoreboard; the caller still asserts the code."""
+        """Issue one 4-byte READ_DATA beat on the host aperture.
+
+        half_offset is 0 for the low half and 4 for the high half (address bit 2).
+        expect_error declares the read-empty SLVERR to the bus scoreboard; the
+        caller still asserts the code.
+        """
         seq = SepAxiAccessSeq(
             "mbox_host_read_half",
             op=SepAxiOp.READ,
@@ -188,7 +192,7 @@ class sep_mailbox_peer_rx_rirqt_test(sep_base_test):
         self.logger.info("peer pushed E0=0x%016x and E1=0x%016x; RX non-empty", _E0, _E1)
 
         # --- CHK-PEER-RX: the data round trip ---------------------------------
-        # First host read, low half. fabric.adoc: the half is selected by address
+        # First host read, low half. mailbox.adoc: the half is selected by address
         # bit 2, so this returns E0's low word.
         resp, got = await self._host_read_half(0)
         assert resp == RESP_OKAY, (
@@ -245,8 +249,8 @@ class sep_mailbox_peer_rx_rirqt_test(sep_base_test):
         )
 
         # --- CHK-RIRQT: the read half of the threshold pair -------------------
-        # Thresholds compare strictly greater-than, matching the write half the
-        # TX rep already grades.
+        # Thresholds compare strictly greater-than, matching the write half that
+        # sep_axil_mailbox_iface_rand_test grades.
         await self.mb.wr_csr(RIRQT, _RIRQT)
         rb = await self.mb.rd_csr(RIRQT)
         assert rb == _RIRQT, f"CHK-RIRQT FAIL: RIRQT read back 0x{rb:x}, wrote 0x{_RIRQT:x}"

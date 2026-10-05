@@ -69,10 +69,8 @@
 #define SEP_CMD_RESEED 0x00000902u
 #define SEP_CMD_GENERATE_GLEN32 0x00020903u
 
-// DECORRELATOR_CTRL.SAMPLE_CLK_DIV is bits [31:12] and division = field+1, so
-// div64 is 63<<12. 63 in the low bits lands 0x3F0 in the field instead --
-// divide-by-1009, 16x slower than the register's own reset value, which pushes
-// one 2048-sample health window past any reasonable simulation budget.
+// DECORRELATOR_CTRL.SAMPLE_CLK_DIV is bits [31:12] and division = field + 1,
+// so divide-by-64 is 63 << 12. This is also the field reset value.
 #define SEP_DECOR_CTRL_DIV64 \
     (63u << ENTROPY_SOURCE__DECORRELATOR_CTRL__SAMPLE_CLK_DIV_bp) // 0x0003F000
 
@@ -85,7 +83,7 @@
 #define SEP_MAIN_SM_ALERT ENTROPY_SOURCE__MAIN_SM_STATUS__ALERT_bm
 
 // One boot health-test window is 2048 samples at the div64 rate, ~131k core
-// cycles; each poll here is an uncached AXI read, so a few thousand covers it.
+// cycles; each poll here is an uncached AXI read, so 20000 polls cover it.
 #define SEP_BOOT_PHASE_POLL_ITERS 20000u
 
 #define SEP_ENTROPY_OK 0

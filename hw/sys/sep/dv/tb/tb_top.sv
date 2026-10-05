@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP OSS DV testbench top, shared by the native cocotb / PyUVM flow and
 // the SystemVerilog UVM flow. ONE module, two shapes:
@@ -13,34 +14,29 @@
 // expanded into the selected shape by the SEP_TB_* macros below.
 //
 // Wraps the `sep_wrapper` DUT (hw/top/sep_wrapper.sv, which instantiates the bare
-// `sep` core from hw/sys/sep/rtl/sep.sv) for the OSS cocotb flow: brings
-// clocks/reset/boot controls out as top-level ports and ties every unused DUT
-// port to a benign idle value. Stimulus is injected on the SEP CPU's own LSU AXI
-// master bus: the core (VeeR EL2) is held off (`mpc_reset_run_req=0`) and an
-// external cocotbext-axi AxiMaster is spliced onto the CPU's LSU AXI master
-// ``SEP_CORE.u_sep_cpu.lsu_axi_req` / `lsu_axi_resp`, sep_32_64_3_12
-// (addr32/data64/id3/user12). The stub build (`SEP_CPU_STUB`) is the sole
-// driver of that bus and drives lsu_axi_req from the tb's assembled request
-// (`assign`, no `force`; see shims/cpu/sep_cpu_stub.sv). On the full-CPU VCS
-// build a no_cpu test force-splices the same post-remap `lsu_axi_req` and
-// holds `lsu_axi_resp_raw` idle. The tb reads lsu_axi_resp back by name.
-// Driving the demux slave-side LSU bus reaches the SEP-local fabric through the
-// same ROM/xbar routing point as the core would, so the external SMN inbound
-// filter is NOT in the path. Every other DUT port is tied to a benign idle
-// value so nothing X-props.
+// `sep` core from hw/sys/sep/rtl/sep.sv). Clocks, reset and boot controls are
+// top-level ports. Every unused DUT port is tied to a benign idle value so
+// nothing X-props.
 //
-// A flat cocotb AXI interface is spliced onto these same CPU master ports.
-// The CPU LSU splice is the primary stimulus
-// path. `smn_inbound` is additionally brought out as the flat `m_axi_*` master
-// (the DUT's real external inbound port, which traverses the inbound filter);
-// it idles unless a test drives it, and is used by the inbound-filter-gating
-// test to prove external AXI is blocked/allowed by feat_ctrl.sep_debug.
+// The primary stimulus path is the SEP CPU's own LSU AXI master bus
+// `SEP_CORE.u_sep_cpu.lsu_axi_req` / `lsu_axi_resp`, sep_32_64_3_12
+// (addr32/data64/id3/user12). A cocotbext-axi AxiMaster drives it through the
+// flat `s_axi_*` ports. This path reaches the SEP-local fabric through the
+// same ROM/xbar routing point as the core, so the external SMN inbound filter
+// is NOT in the path. `smn_inbound` is brought out as the flat `m_axi_*`
+// master: the DUT's real external inbound port, which traverses the inbound
+// filter. It idles unless a test drives it. The inbound-filter-gating test
+// uses it to prove that feat_ctrl.sep_debug blocks or allows external AXI.
 //
 // Two run modes, selected by the `+cpu_boot` plusarg:
-//   * no-CPU (default): the core is held off (mpc_reset_run_req=0) and cocotb
-//     drives the SEP fabric over s_axi. The stub build presents that request
-//     on the LSU master (`assign`). The full-CPU VCS build force-splices the
-//     same post-remap net. Verilator no_cpu stays on the stub.
+//   * no-CPU (default): the core (VeeR EL2) is held off
+//     (mpc_reset_run_req=0) and cocotb drives the SEP fabric over s_axi. The
+//     stub build (`SEP_CPU_STUB`) is the sole driver of lsu_axi_req and
+//     assigns it from the tb's assembled request (`assign`, no `force`; see
+//     shims/cpu/sep_cpu_stub.sv). The full-CPU VCS build force-splices the
+//     same post-remap `lsu_axi_req` and holds `lsu_axi_resp_raw` idle.
+//     Verilator no_cpu stays on the stub. The tb reads lsu_axi_resp back by
+//     name.
 //   * CPU firmware boot (+cpu_boot): runs on the full-CPU build, the core owns all of
 //     its master buses, fetches firmware out of the wrapper's real TCM macros, and
 //     runs. The boot test backdoor-loads the TCM (tb_backdoor_mem, on tcm_load_i),
@@ -103,9 +99,8 @@ module sep_uvm_top
     // DUT-flavor XMR roots. The DUT is `sep_wrapper`, so sep-internal state lives
     // under u_dut.u_sep and the OSS IP integration (memory macros, generic efuse
     // model) under u_dut.u_sep_ip_integration. The OpenTitan SPI host is inside
-    // the `sep` core. Every
-    // sep-internal XMR read routes through `SEP_CORE / `SEP_IPI so one probe text
-    // is used throughout.
+    // the `sep` core. Every sep-internal XMR read routes through `SEP_CORE /
+    // `SEP_IPI so one probe text is used throughout.
     // ------------------------------------------------------------------
     `define SEP_CORE u_dut.u_sep
     `define SEP_IPI  u_dut.u_sep_ip_integration
@@ -331,8 +326,8 @@ module sep_uvm_top
             $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
                 .gen_ep[3].AxisEdnReqStableUnlessEndpointCancelled_A);
         end
-        // entropy_source.sv:1348 FipsWindowFloor_A -- fips_lock |-> window >= 1024.
-        // sep_drbg_esrc_fips_lock_test writes FIPS_LOCK.LOCK, so a locked
+        // entropy_source.sv FipsWindowFloor_A -- fips_lock |-> window >= 1024.
+        // sep_esrc_fips_lock_test writes FIPS_LOCK.LOCK, so a locked
         // out-of-spec window must fail rather than be swept up by the line above.
         $asserton(0, `SEP_ESRC.FipsWindowFloor_A);
         // SHA-256-only prim_sha2_32 (MultimodeEn=0) ties inner digest_mode_i to
@@ -374,7 +369,7 @@ module sep_uvm_top
 
     end
 
-    // otbn_rnd.sv:233 UrndNoReseedOnReset_A cannot pass on this instance. It arms
+    // otbn_rnd.sv UrndNoReseedOnReset_A cannot pass on this instance. It arms
     // only while OTBN is in reset -- disable iff (rst_ni !== '0) -- and its guard
     // reads CURRENT rst_ni while the property body reads SAMPLED rst_ni. SEP
     // asserts OTBN's reset ON a clk_i edge: the reset is a posedge clk_i flop
@@ -386,7 +381,7 @@ module sep_uvm_top
     // whatever the DUT does.
     //
     // This holds the property off for the WHOLE RUN, not just that edge, so no
-    // in-reset cycle is checked in any test. The flop at otbn_rnd.sv:205-213
+    // in-reset cycle is checked in any test. The seed_en_q flop in otbn_rnd.sv
     // covers the same contract: seed_en_q is asynchronously cleared by the same
     // rst_ni the property checks it against, which is what stops a reseed
     // request held high through reset from starting one mid-reset.
@@ -414,8 +409,9 @@ module sep_uvm_top
     assign dbg_disable_sep_otp_jtag2axi_o   = dbg_disable_w.sep_otp_jtag2axi;
     assign dbg_disable_all_o                = dbg_disable_w;
 
-    // TB-owned JTAG pins used to program the EL2 reset-vector TDR in +cpu_boot
-    // mode. They remain at the idle TAP-reset values for no-CPU tests.
+    // TB-owned JTAG pins. In +cpu_boot mode the TB shifts a reset-vector TDR
+    // sequence that the vendored VeeR TAP ignores (see init_reset_vector_tdr).
+    // They remain at the idle TAP-reset values for no-CPU tests.
     logic jtag_tck   = 1'b0;
     logic jtag_tms   = 1'b0;
     logic jtag_tdi   = 1'b0;
@@ -481,14 +477,13 @@ module sep_uvm_top
     // shifts into a nonexistent register and is inert. The reset vector reaches
     // the CPU through the wrapper's direct `rst_vec` input (connected from
     // rst_vec_i in the DUT instantiation below).
-    // The OSS top has no external JTAG client. Program RSTVEC while the primary
-    // reset is asserted, before the cocotb CPU-boot flow releases reset. Poll on the
-    // clock edge rather than a bare level `wait`: a cocotb (VPI)-driven rst_vec_i
-    // update does not reliably re-trigger a `wait` under Verilator, so the one-shot
-    // could fire late (after reset release) and latch a stale/zero vector. Program
-    // exactly once on the first clock where reset is asserted and rst_vec_i is a
-    // known non-zero entry (clocks start while rst_ni is still low, so the window is
-    // always seen). RSTVEC stores PC[31:1] = rst_vec_i.
+    // The one-shot runs while the primary reset is asserted, before the cocotb
+    // CPU-boot flow releases reset. It polls on the clock edge rather than a
+    // bare level `wait`: a cocotb (VPI)-driven rst_vec_i update does not
+    // reliably re-trigger a `wait` under Verilator, so the one-shot could fire
+    // late (after reset release). It fires exactly once on the first clock where
+    // reset is asserted and rst_vec_i is a known non-zero entry (clocks start
+    // while rst_ni is still low, so the window is always seen).
     initial begin : init_reset_vector_tdr
         if ($test$plusargs("cpu_boot")) begin
             forever begin
@@ -606,7 +601,7 @@ module sep_uvm_top
         .cpu_halt_req_i               (1'b0),
         .cpu_run_req_i                (i_cpu_run_req_i),
 
-        // DFT: functional mode (see the bare-sep note below on test_en_i).
+        // DFT: functional mode.
         .test_en_i                    (1'b0),
         .scan_rst_ni                  (1'b1),
         .ext_boot_seq_done_i          (ext_boot_seq_done_i),
@@ -1020,7 +1015,7 @@ module sep_uvm_top
     // Inject: assemble the LSU req struct from the flat cocotb master inputs into
     // `lsu_req_drive` (always_comb). The sep_cpu stub reads this by upward
     // reference and drives its lsu_axi_req from it (single driver, plain assign,
-    // no force — see shims/cpu/sep_cpu_stub.sv). Whole-signal only; no per-field
+    // no force -- see shims/cpu/sep_cpu_stub.sv). Whole-signal only; no per-field
     // drive. The no_cpu build replaces the core with a stub, so the bus is
     // single-driven and driven rather than forced.
     // ------------------------------------------------------------------
@@ -1183,8 +1178,8 @@ module sep_uvm_top
     // ------------------------------------------------------------------
     // PC advance: surface the EL2 retired-instruction trace. cpu_run_ack_o is not
     // a port on bare `sep` (and ext_debug_bus_o is only [383:0]), so tap it by XMR
-    // from the CPU wrapper — the same hierarchical-read style used for the LSU
-    // response above.
+    // from the CPU wrapper -- the same hierarchical-read style as the LSU
+    // response read below.
     assign cpu_trace_valid_o = cpu_trace_w.trace_rv_i_valid_ip;
     assign cpu_trace_addr_o  = cpu_trace_w.trace_rv_i_address_ip;
     // Full retirement record for the cocotb CPU-trace monitor: the instruction
@@ -1203,13 +1198,14 @@ module sep_uvm_top
 
     // IP-interrupt aggregate vector feeding the PIC (sep.sv sep_internal_interrupts):
     // observation-only mirror for the IP->aggregator test. CSRNG INTR sources
-    // map to bits [23:26], EDN to [27:28] (sep.sv:548-553).
+    // map to bits [26:23], EDN to [28:27] (the sep_internal_interrupts
+    // assignment in sep.sv).
     assign sep_internal_interrupts_probe_o = `SEP_CORE.sep_internal_interrupts;
 
     // CPU/DMA SRAM contention. BUSY is a job-level status and does not prove
     // that both masters requested the SRAM together; no CSR mirrors per-cycle
-    // crossbar arbitration. Count cycles
-    // where both local-crossbar inputs present the same SRAM address channel.
+    // crossbar arbitration. Count cycles where both local-crossbar inputs
+    // present the same SRAM address channel.
     // This monitor observes requests only and drives no DUT signal.
     logic cpu_lsu_sram_aw_pending;
     logic cpu_lsu_sram_ar_pending;
@@ -1700,18 +1696,8 @@ module sep_uvm_top
         end
     end
     // ------------------------------------------------------------------
-    // eFuse read/program FSM fail-closed observability and fault injection.
-    //
-    // Forcing an illegal FSM encoding is the only way to provoke the
-    // fail-closed behaviour `efuse_read_interface` and
-    // `efuse_program_interface` assert on it. Both states are two bits whose
-    // legal encodings are 2'b01 and 2'b10, and no frontdoor stimulus can
-    // produce 2'b00 or 2'b11 -- the design is what guarantees that. The force
-    // targets the state register only, for one cycle. Seeing the injected
-    // encoding on *_state_o confirms the force landed. After release the
-    // recovered encoding must be a legal idle/wait value. Command withdraw
-    // and the error/done/busy/data terms are claimed only on the in-flight
-    // leg. Same clock-reissued force/release convention as the digest hook
+    // eFuse read/program FSM fail-closed probes and one-cycle illegal-state
+    // inject. Same clock-reissued force/release convention as the digest hook
     // above.
     // ------------------------------------------------------------------
 `define EFUSE_CTRL `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller
@@ -1729,7 +1715,6 @@ module sep_uvm_top
     assign efuse_program_done_o = `EFUSE_PG.program_done_o;
     assign efuse_program_busy_o = `EFUSE_PG.program_busy_o;
     assign efuse_program_read_back_data_o = `EFUSE_PG.program_read_back_data_o;
-    // SIGNED OFF 2026-09-11 by yenhenglai, SEP TB owner.
     // ------------------------------------------------------------------
     // Only legal encodings of these two FSMs are 2'b01 and 2'b10, and the
     // sense and frontdoor paths can never present another, so the fail-closed
@@ -1743,9 +1728,8 @@ module sep_uvm_top
     // 2'b10 wait are taken from the design's state encoding, because no
     // document names them; this leaf grades recovery against that set and
     // injects its complement. Owner: sep_efuse_illegal_state_fail_closed_test.
-    // Approved against ad4ae87ec, the commit that set both encodings.
-    // Review at the next change to the state encoding in
-    // efuse_read_interface.sv or efuse_program_interface.sv.
+    // Re-check when the state encoding in efuse_read_interface.sv or
+    // efuse_program_interface.sv changes.
     //
     // The registers are enum-typed and the injected encodings are, by
     // construction, not members of those enums -- that is the property under
@@ -1785,8 +1769,9 @@ module sep_uvm_top
     // dma_host_intg_inject_i=1, force the host-adapter checker input
     // (tlul_cmd_intg_chk.u_chk.data_i) to 0 so the real decoder computes
     // err_o. err_o stays gated on a_valid. STATUS / PIC source 42 (vector
-    // bit [41]) / CLEAR stay frontdoor or the aggregate interrupt probe. Re-issue every clock
-    // (Verilator snapshots a force RHS). Release when the port drops.
+    // bit [41]) / CLEAR stay frontdoor or the aggregate interrupt probe.
+    // Re-issue every clock (Verilator snapshots a force RHS). Release when the
+    // port drops.
     // Default 0; outside the AXI ready/valid cones.
 `define DMA_HOST_CMD_INTG_DI \
     `SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma \
@@ -1848,8 +1833,8 @@ module sep_uvm_top
     // the 12 noise lanes never toggle. Under +esrc_noise_force, drive them from the
     // cocotb-controlled raw-noise port so the real decorrelator/compressor/SHA/
     // CSRNG/EDN math runs on a sequence the Python golden predicts bit-exactly.
-    // This is the one permitted force (raw noise at the source); the downstream
-    // drbg_axis/edn nets below are read-only observation taps, never forced.
+    // The downstream drbg_axis/edn nets below are read-only observation taps,
+    // never forced.
     logic [11:0] esrc_noise_d;
 
     assign esrc_noise_d = esrc_noise_ext_i;
@@ -1892,10 +1877,10 @@ module sep_uvm_top
     // This is the "the CMD store never landed" case: what an instruction-skip
     // glitch on the store produces deliberately, and what clock or reset
     // mis-sequencing produces by accident. It is worth injecting because the
-    // block is indistinguishable from a completed run on the two registers the
-    // ROM used to consult -- STATUS reads IDLE (the state it was already in) and
-    // ERR_BITS reads 0 (nothing ran to fail). INTR_STATE.done is the only signal
-    // that separates them, which is what otbn_execute() now requires.
+    // block is indistinguishable from a completed run on STATUS (reads IDLE,
+    // the state it was already in) and ERR_BITS (reads 0, nothing ran to
+    // fail). INTR_STATE.done is the only signal that separates them, and
+    // otbn_execute() requires it.
     logic otbn_cmd_drop_on;
     initial begin
         otbn_cmd_drop_on = $test$plusargs("sep_otbn_cmd_drop");
@@ -1906,7 +1891,7 @@ module sep_uvm_top
     end
 
 // reg2hw.cmd.qe is the write-enable otbn.sv decodes CmdExecute from
-// (otbn.sv:852-854), so holding it low drops commands without disturbing
+// (the CmdExecute case in otbn.sv), so holding it low drops commands without disturbing
 // anything else the block reports.
 `define OTBN_CMD_QE \
     `SEP_CORE.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan.u_otbn.reg2hw.cmd.qe
@@ -1952,9 +1937,9 @@ module sep_uvm_top
     // drbg_axil64_lane_adapter arbitration, sampled at each DUT adapter's
     // own AXI-Lite-64 port:
     // {ar_ready, w_ready, aw_ready, ar_valid, w_valid, aw_valid}.
-    // Observation-only. No CSR mirrors
-    // the three-ready interlock, and a frontdoor timeout names only that the
-    // access did not retire. Outside the tb s_axi / m_axi ready/valid cones.
+    // Observation-only. No CSR mirrors the three-ready interlock, and a
+    // frontdoor timeout names only that the access did not retire. Outside
+    // the tb s_axi / m_axi ready/valid cones.
     assign drbg_csrng_axil_chan_o = {
         `SEP_DRBG.u_csrng_axil_adapter.axil64_rsp_o.ar_ready,
         `SEP_DRBG.u_csrng_axil_adapter.axil64_rsp_o.w_ready,
@@ -2454,10 +2439,9 @@ module sep_uvm_top
 
     // ------------------------------------------------------------------
     // Key Manager internal AXI-Lite, CPU side. Every access KM firmware makes
-    // to KPV, KMCSR, the DRBG
-    // sampler and the mailbox crosses this one port: the KM crossbar has a
-    // single slave port wired to the internal picorv32, so no testbench
-    // master can reach it.
+    // to KPV, KMCSR, the DRBG sampler and the mailbox crosses this one port:
+    // the KM crossbar has a single slave port wired to the internal picorv32,
+    // so no testbench master can reach it.
     //
     // Bound rather than instantiated, so the port names resolve in the Key
     // Manager's own scope. Passive: it needs no stimulus and adds none.
@@ -2525,7 +2509,7 @@ module sep_uvm_top
 
 `ifdef UVM
     // ------------------------------------------------------------------
-    // SV-UVM harness (`--dut sep --framework uvm`): the three clocks, the
+    // SV-UVM harness (`--dut sep --framework uvm`): the four clocks, the
     // shared-VIP interface instances on the CPU-LSU splice, quiescent
     // tie-offs for every other cocotb-driven stimulus pin, uvm_config_db
     // publication, and run_test(). Compiled only when the native uvm flow
@@ -2878,12 +2862,12 @@ module sep_uvm_top
         .crypto_edn_ack_i      (crypto_edn_ack_o),
         .km_entropy_tvalid_i   (km_entropy_tvalid_o),
         .km_entropy_tready_i   (km_entropy_tready_o),
-        // sep.sv:534 assembles the SEP AXI mailbox onto
+        // sep.sv assembles the SEP AXI mailbox onto
         // sep_internal_interrupts[7:0] and km_mbox_irq onto [14]. They are
         // different sources with different owning tests, so both are wired.
         .irq_mailbox_i         (sep_internal_interrupts_probe_o[7:0]),
         .irq_km_mbox_i         (sep_internal_interrupts_probe_o[14]),
-        // sep.sv:535 intr_dma_done. dma_hash_test completes through the ISR,
+        // sep.sv intr_dma_done. sep_dma_hash_test completes through the ISR,
         // which clears STATUS.done before software reads it.
         .irq_dma_done_i        (sep_internal_interrupts_probe_o[8]),
         // Sensed LC nibble out of the shadow probe. The W1S leaves verify
