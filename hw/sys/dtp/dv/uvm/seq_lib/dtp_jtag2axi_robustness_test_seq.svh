@@ -22,15 +22,26 @@
 //     return to IDLE, the CDC's TCK-side clear, the absence of an escaped
 //     write, and the recovery status are recorded per bridge and the pass
 //     is judged once every bridge has left its evidence; the narrow-reset
-//     scenario then holds a SINGLE_OP read or write on the fabric by a READY
+//     scenario then lands a reset with the TAP holding Update-DR of a
+//     SINGLE_OP, so the CDC's clear returns the state machine from its
+//     address state with no request in the crossing and SINGLE_OP reads
+//     DECERR, and then holds a SINGLE_OP read or write on the fabric by a READY
 //     stall across a TCK-side clear (TRST, or a TMS walk into
 //     Test-Logic-Reset), released inside the clear, after it, after it with
 //     a request of the new session queued behind it, or a swept number of
 //     system cycles around the TRST assertion; the held request lands
 //     exactly once, its response never reaches the JTAG side, and the next
 //     operation reports its own response;
-//   * cdc_clear_abort_back_to_back_reset — two adjacent reset pulses with
-//     seeded spacing, then recovery write and read on every bridge;
+//   * cdc_clear_abort_back_to_back_reset — per bridge, a system reset placed
+//     in a seeded phase of the ACLK-side clear sequence a reset with TCK
+//     idle restarted (the phase read through dtp_tb_if, the pulse deposited
+//     on the following system clock edge), then two adjacent reset pulses
+//     with seeded spacing and a recovery write and read; after the bridges,
+//     TRST in the one TCK cycle the TCK-side four-phase receivers wait for
+//     their isolate acknowledge after a system reset, and a system reset in
+//     the one system clock cycle the ACLK-side receivers wait after TRST,
+//     each followed by the clear, an idle status poll and a recovery write
+//     and read on every bridge;
 //   * decode_error_decerr_{write,read} / decode_error_mixed — one-shot
 //     DECERR injections per bridge (the DTP boundary has no address
 //     decoder: each target's responder injects the response) with OKAY
@@ -673,6 +684,167 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
                  "%s: %s did not report the discarded read as DECERR", label, stuck))
   endtask
 
+  // System reset with the TAP holding Update-DR of a SINGLE_OP, so the CDC's
+  // clear reaches the bridge in the one TCK cycle its state machine spends in
+  // the address state. The pulse lands with TCK idle. The bridge latches the
+  // operation on the first TCK edge after it and moves onto the address path
+  // on the second; the clear, two TCK edges behind the reset through the
+  // CDC's synchronizer, returns the state machine to idle on the third with
+  // no request pushed into the crossing. SINGLE_OP then reads DECERR, with a
+  // zero data field for a read. `recovered` is 1 when the discard was
+  // reported and the recovery access ran.
+  protected task reset_abort_address_phase(dtp_j2a_target_t t, bit is_read,
+                                           int unsigned reset_cycles, int unsigned addr_idx,
+                                           string context_s, output bit recovered);
+    int unsigned size = t.default_size;
+    bit [63:0] addr = robust_addr(t, addr_idx);
+    bit [63:0] word = rand_nonzero_data(t) & data_mask(size);
+    string direction = is_read ? "read" : "write";
+    bit [63:0] prior_word;
+    int unsigned aw0, w0, ar0;
+    int unsigned aw1, w1, ar1;
+    bit on_path, pending, quiet;
+    dtp_j2a_status_e st;
+    bit [63:0] rdata;
+    if (is_read) write_target_mem_int(t, addr, word, size);
+    prior_word = read_target_mem_int(t, addr, size);
+    scan_single_to_update_dr(t, is_read ? DTP_J2A_OP_READ : DTP_J2A_OP_WRITE, addr,
+                             is_read ? '0 : word, is_read ? '0 : full_wstrb(size), size);
+    clear_cdc_clear_seen();
+    pulse_system_reset(reset_cycles);
+    // The reset clears the port's request counters: quiet means no request
+    // counted since the pulse.
+    sample_activity(t, aw0, w0, ar0);
+    step(1'b0);
+    step(1'b0);
+    on_path = bridge_fsm_on_path(t, is_read);
+    pending = bridge_op_pending(t);
+    sample_activity(t, aw1, w1, ar1);
+    quiet = (aw1 == aw0) && (w1 == w0) && (ar1 == ar0);
+    void'(record_abort_check(
+        DtpJ2aAbortMidFlightCheckId,
+        {
+          context_s, ".mid_flight"
+        },
+        64'(on_path && pending && quiet),
+        64'd1,
+        $sformatf(
+            "%s_path=%0d pending=%0d port_quiet=%0d in the address state",
+            direction,
+            on_path,
+            pending,
+            quiet)
+    ));
+    step(1'b0);
+    void'(record_abort_check(
+        DtpJ2aAbortFsmCheckId,
+        {
+          context_s, ".fsm_idle"
+        },
+        64'(bridge_fsm_idle(
+            t
+        ) && !bridge_op_pending(
+            t
+        )),
+        64'd1,
+        "one TCK edge after the address state"
+    ));
+    void'(record_abort_check(
+        DtpJ2aCdcClearCheckId,
+        {
+          context_s, ".cdc_clear"
+        },
+        64'(cdc_clear_seen(
+            t
+        )),
+        64'd1,
+        "tck-side isolate-and-clear"
+    ));
+    repeat (AbortCdcClearTck) step(1'b0);
+    sample_activity(t, aw1, w1, ar1);
+    quiet = (aw1 == aw0) && (w1 == w0) && (ar1 == ar0);
+    void'(record_abort_check(
+        DtpJ2aAbortEscapeCheckId,
+        {
+          context_s, ".no_request"
+        },
+        64'(quiet),
+        64'd1,
+        "no AW, W or AR reached the port"
+    ));
+    void'(record_abort_check(
+        DtpJ2aAbortEscapeCheckId,
+        {
+          context_s, ".no_escape"
+        },
+        read_target_mem_int(
+            t, addr, size
+        ),
+        prior_word,
+        $sformatf(
+            "addr=0x%0h", addr)
+    ));
+    poll_single(t, st, rdata, {context_s, ".recovery"}, AbortRecoveryPolls);
+    recovered = record_abort_check(
+        DtpJ2aAbortRecoveryCheckId,
+        {
+          context_s, ".recovery_status"
+        },
+        64'(st),
+        64'(DTP_J2A_DECERR),
+        $sformatf(
+            "status=%s max_captures=%0d after the address-phase reset",
+            st.name(),
+            AbortRecoveryPolls)
+    );
+    if (is_read)
+      void'(record_abort_check(
+          DtpJ2aAbortRecoveryCheckId,
+          {
+            context_s, ".discarded_read_data"
+          },
+          rdata & bit_mask(
+              t.data_width
+          ),
+          64'd0,
+          "data field of the discarded read"
+      ));
+    status = st;
+    if (recovered)
+      recover_target(t, addr + 64'h200, random_distinct_word(t, '{word}), is_read, context_s,
+                     status);
+    operation_count++;
+  endtask
+
+  protected task run_address_phase_aborts(string label, int unsigned reset_cycles_hi,
+                                          int unsigned addr_offset);
+    string stuck = "";
+    for (int unsigned leg = 0; leg < 2 * NumTargets; leg++) begin
+      dtp_j2a_target_t t = select_target(leg / 2);
+      bit is_read = bit'(leg % 2);
+      string direction = is_read ? "read" : "write";
+      bit recovered;
+      `uvm_info(get_type_name(), $sformatf(
+                "[%0d/%0d] target=%s %s: system reset with the %s in its address state",
+                leg + 1,
+                2 * NumTargets,
+                t.name,
+                label,
+                direction
+                ), UVM_LOW)
+      reset_abort_address_phase(t, is_read, $urandom_range(reset_cycles_hi, 1),
+                                leg + 1 + addr_offset, $sformatf(
+                                "%s.%s.%s", label, t.name, direction), recovered);
+      if (!recovered) stuck = {stuck, (stuck == "") ? "" : ", ", t.name, ".", direction};
+    end
+    if (stuck != "")
+      `uvm_error("jtag2axi_abort_chk", $sformatf(
+                 "%s: %s did not report the operation discarded in its address state as DECERR",
+                 label,
+                 stuck
+                 ))
+  endtask
+
   // System reset while a series write beat is held on the W channel: the
   // reset discards the series operation, so SERIES_CTRL reads DECERR and
   // keeps the held beat's address, since the beat never completed. After
@@ -804,6 +976,25 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
                  ))
   endtask
 
+  // Phases of the ACLK-side clear sequence a system reset is placed in while
+  // the sequence runs: a bridge's pass takes the phase at its loop index plus
+  // the scenario seed, so the passes visit every phase on every bridge.
+  localparam int unsigned B2bClearPhases = 4;
+  // TCK cycles stepped in Run-Test/Idle while waiting for the phase, and
+  // after the reset for the restarted sequence to complete: the four phase
+  // handshakes each cost a few cycles of each clock, and TCK is the slower
+  // one.
+  localparam int unsigned B2bPhaseTck = 64;
+  // TCK or system clock edges after the other side's reset at which a
+  // four-phase receiver spends one cycle waiting for its isolate
+  // acknowledge: the request crosses two synchronizer stages, and the
+  // acknowledge flop loads on the third edge while the receiver samples the
+  // value before it.
+  localparam int unsigned B2bReceiverWaitEdges = 3;
+  // First slot of the recovery accesses after the receiver legs; the
+  // per-bridge loop takes the slots below it.
+  localparam int unsigned B2bRecoverySlot = 20;
+
   protected task run_back_to_back_reset();
     for (int unsigned i = 0; i < NumTargets; i++) begin
       dtp_j2a_target_t t = select_target(i);
@@ -820,6 +1011,8 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
       write_target_single_expect_status(t, addr + 64'h100, data ^ 64'h5A5A, DTP_J2A_SLVERR,
                                         op_status, t.default_size, full_wstrb(t.default_size),
                                         $sformatf("back_to_back_reset.%s.prime", t.name));
+      reset_in_clear_phase(t, clear_phase_name(i + 1 + scenario_seed), $urandom_range(3, 1),
+                           $sformatf("back_to_back_reset.%s", t.name));
       clear_cdc_clear_seen();
       pulse_system_reset($urandom_range(2, 1));
       pulse_system_reset($urandom_range(3, 1));
@@ -836,6 +1029,7 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
           64'd1,
           "tck-side isolate-and-clear after two resets"
       ));
+      record_idle_bridge(t, $sformatf("back_to_back_reset.%s.fsm_idle", t.name));
       poll_single(t, st, rdata, $sformatf("back_to_back_reset.%s.status_kept", t.name),
                   AbortRecoveryPolls);
       void'(record_abort_check(
@@ -851,6 +1045,13 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
       verify_target_recovery(t, addr, data, 1'b0, $sformatf("back_to_back_reset.%s", t.name));
       recover_target(t, addr, data, 1'b1, $sformatf("back_to_back_reset_read.%s", t.name), status);
       operation_count++;
+    end
+    begin
+      bit seen;
+      tap_reset_in_receiver_wait(seen);
+      judge_receiver_leg("tck_wda", seen, B2bRecoverySlot);
+      system_reset_in_receiver_wait(seen);
+      judge_receiver_leg("aclk_wda", seen, B2bRecoverySlot + NumTargets);
     end
   endtask
 
@@ -913,6 +1114,208 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     ocah_axi_resp_e  resp;
     string           context_s;
   } orphan_leg_t;
+
+  protected function string clear_phase_name(int unsigned k);
+    case (k % B2bClearPhases)
+      0:       return "clear";
+      1:       return "wait_clear_phase_ack";
+      2:       return "post_clear";
+      default: return "finished";
+    endcase
+  endfunction
+
+  // The dtp_tb_if phase observable j2a_cdc_<name>.
+  protected function bit phase_flag(string name);
+    case (name)
+      "aclk_clear":                return tb_vif.j2a_cdc_aclk_clear;
+      "aclk_wait_clear_phase_ack": return tb_vif.j2a_cdc_aclk_wait_clear_phase_ack;
+      "aclk_post_clear":           return tb_vif.j2a_cdc_aclk_post_clear;
+      "aclk_finished":             return tb_vif.j2a_cdc_aclk_finished;
+      "tck_dst_wait_ack":          return tb_vif.j2a_cdc_tck_dst_wait_ack;
+      "aclk_dst_wait_ack":         return tb_vif.j2a_cdc_aclk_dst_wait_ack;
+      default: `uvm_fatal(get_type_name(), {"unknown phase observable ", name})
+    endcase
+    return 1'b0;
+  endfunction
+
+  protected task wait_clear_phase(string phase);
+    case (phase)
+      "clear":                @(posedge tb_vif.j2a_cdc_aclk_clear);
+      "wait_clear_phase_ack": @(posedge tb_vif.j2a_cdc_aclk_wait_clear_phase_ack);
+      "post_clear":           @(posedge tb_vif.j2a_cdc_aclk_post_clear);
+      default:                @(posedge tb_vif.j2a_cdc_aclk_finished);
+    endcase
+  endtask
+
+  // CHK-J2A-ABORT-FSM on a bridge that has nothing in flight: its state
+  // machine idle with no operation pending.
+  protected function void record_idle_bridge(dtp_j2a_target_t t, string name);
+    bit idle = bridge_fsm_idle(t);
+    bit pending = bridge_op_pending(t);
+    void'(record_abort_check(
+        DtpJ2aAbortFsmCheckId,
+        name,
+        64'(idle && !pending),
+        64'd1,
+        $sformatf(
+            "idle=%0d pending=%0d after the reset", idle, pending)
+    ));
+  endfunction
+
+  // Pulse the system reset for `cycles` system clocks from the falling
+  // system clock edge `edges` rising edges after the caller's trigger,
+  // sampling the dtp_tb_if phase observable `flag` at the deposit. The
+  // deposit lands half a cycle inside a state at least one cycle wide that
+  // begins on the rising edge.
+  protected task reset_after_edges(int unsigned edges, string flag, int unsigned cycles,
+                                   string context_s, output bit seen);
+    logic [31:0] before_count;
+    repeat (edges) @(posedge tb_vif.clk);
+    @(negedge tb_vif.clk);
+    seen = phase_flag(flag);
+    before_count = tb_vif.sys_rst_assert_count;
+    tb_vif.sys_rst_n <= 1'b0;
+    wait_sys_cycles(cycles);
+    tb_vif.sys_rst_n <= 1'b1;
+    wait_sys_cycles(cycles);
+    check_reset_counted("sys_rst_assert_count", before_count, tb_vif.sys_rst_assert_count,
+                        context_s);
+  endtask
+
+  // Pulse the system reset while the ACLK-side clear sequence, restarted by
+  // a pulse with TCK idle, is in `phase`, then step TCK until the restarted
+  // sequence completes. The watcher deposits the pulse once the phase is
+  // observed; the TCK stepper stops after the step in which it landed, so no
+  // JTAG item is cut short; a watcher that never fired is killed at its
+  // wait for the phase.
+  protected task reset_in_clear_phase(dtp_j2a_target_t t, string phase, int unsigned cycles,
+                                      string context_s);
+    bit seen = 1'b0;
+    bit fired = 1'b0;
+    bit landed = 1'b0;
+    process watcher = null;
+    `uvm_info(get_type_name(), $sformatf("%s: system reset in the %s phase, %0d cycles wide",
+                                         context_s, phase, cycles), UVM_LOW)
+    clear_cdc_clear_seen();
+    pulse_system_reset(1);
+    fork
+      begin
+        watcher = process::self();
+        wait_clear_phase(phase);
+        fired = 1'b1;
+        reset_after_edges(0, {"aclk_", phase}, cycles, {context_s, " in ", phase}, seen);
+        landed = 1'b1;
+      end
+    join_none
+    for (int unsigned i = 0; i < B2bPhaseTck && !landed; i++) step(1'b0);
+    if (fired) wait (landed);
+    else if (watcher != null) watcher.kill();
+    void'(record_abort_check(
+        DtpJ2aCdcPhaseCheckId,
+        {
+          context_s, ".phase.", phase
+        },
+        64'(seen),
+        64'd1,
+        $sformatf(
+            "system reset deposited in %s, landed=%0d", phase, landed)
+    ));
+    repeat (B2bPhaseTck) step(1'b0);
+  endtask
+
+  // TRST in the one TCK cycle the TCK-side four-phase receivers wait for
+  // their isolate acknowledge after a system reset with TCK idle; `seen` is
+  // the receiver observable sampled at the TRST deposit.
+  protected task tap_reset_in_receiver_wait(output bit seen);
+    int unsigned hold = $urandom_range(OrphanTrstHoldMax, 1);
+    `uvm_info(get_type_name(),
+              $sformatf(
+                  "TRST %0d TCK cycles after a system reset with TCK idle, held %0d TCK cycles",
+                  B2bReceiverWaitEdges, hold), UVM_LOW)
+    clear_cdc_clear_seen();
+    pulse_system_reset(1);
+    repeat (B2bReceiverWaitEdges) step(1'b0);
+    seen = tb_vif.j2a_cdc_tck_dst_wait_ack;
+    set_trst(1'b0, hold);
+    leave_tap_reset(1'b1, B2bPhaseTck);
+  endtask
+
+  // System reset in the one system clock cycle the ACLK-side four-phase
+  // receivers wait for their isolate acknowledge after TRST; `seen` is the
+  // receiver observable sampled at the deposit. TRST is deposited half a
+  // system cycle from any system clock edge, so the receivers' synchronizers
+  // take it on the next edge.
+  protected task system_reset_in_receiver_wait(output bit seen);
+    int unsigned cycles = $urandom_range(3, 1);
+    int unsigned hold = $urandom_range(OrphanTrstHoldMax, 1);
+    `uvm_info(
+        get_type_name(),
+        $sformatf(
+            "system reset %0d system clock edges after TRST, %0d cycles wide, TRST held %0d TCK",
+            B2bReceiverWaitEdges, cycles, hold), UVM_LOW)
+    clear_cdc_clear_seen();
+    @(negedge tb_vif.clk);
+    fork
+      begin
+        @(negedge jtag_vif.trst_n);
+        reset_after_edges(B2bReceiverWaitEdges, "aclk_dst_wait_ack", cycles,
+                          "back_to_back_reset.aclk_wda", seen);
+      end
+      set_trst(1'b0, hold);
+    join
+    leave_tap_reset(1'b1, B2bPhaseTck);
+  endtask
+
+  // Every bridge's evidence after a reset placed in its receivers' waiting
+  // cycle: the receiver observable at the deposit, the TCK-side clear, the
+  // idle state machine, the SINGLE_OP status at its reset value, and a
+  // recovery write and read at slot `slot` onwards.
+  protected task judge_receiver_leg(string leg, bit seen, int unsigned slot);
+    for (int unsigned i = 0; i < NumTargets; i++) begin
+      dtp_j2a_target_t t = select_target(i);
+      string context_s = $sformatf("back_to_back_reset.%s.%s", leg, t.name);
+      bit [63:0] addr = robust_addr(t, slot + i);
+      bit [63:0] data = rand_nonzero_data(t);
+      dtp_j2a_status_e st;
+      bit [63:0] rdata;
+      void'(record_abort_check(
+          DtpJ2aCdcPhaseCheckId,
+          {
+            context_s, ".phase"
+          },
+          64'(seen),
+          64'd1,
+          "receiver waiting for its isolate acknowledge at the reset"
+      ));
+      void'(record_abort_check(
+          DtpJ2aCdcClearCheckId,
+          {
+            context_s, ".cdc_clear"
+          },
+          64'(cdc_clear_seen(
+              t
+          )),
+          64'd1,
+          "tck-side isolate-and-clear after the reset"
+      ));
+      record_idle_bridge(t, {context_s, ".fsm_idle"});
+      load_ir(IrWidth'(t.single_op_instr));
+      poll_single(t, st, rdata, {context_s, ".status"}, AbortRecoveryPolls);
+      void'(record_abort_check(
+          DtpJ2aAbortRecoveryCheckId,
+          {
+            context_s, ".status"
+          },
+          64'(st),
+          64'(DTP_J2A_SUCCESS),
+          $sformatf(
+              "status=%s max_captures=%0d on an idle bridge", st.name(), AbortRecoveryPolls)
+      ));
+      verify_target_recovery(t, addr, data, 1'b0, context_s);
+      recover_target(t, addr, data, 1'b1, {context_s, "_read"}, status);
+      operation_count++;
+    end
+  endtask
 
   protected function string drain_label(dtp_j2a_drain_e drain);
     case (drain)
@@ -1909,6 +2312,7 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
       "cdc_clear_abort_narrow_reset_mid_xaction": begin
         run_reset_abort("narrow_reset", "aw", 1, 64'h2222, 8, 1'b1);
         run_read_response_abort("narrow_reset_read", 12);
+        run_address_phase_aborts("address_phase", 3, 27);
         run_tap_reset_orphans();
       end
       "cdc_clear_abort_back_to_back_reset": run_back_to_back_reset();
