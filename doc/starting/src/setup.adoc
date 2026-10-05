@@ -107,6 +107,11 @@ export OCAH_IMAGE_WITH_UV=true            # the variant CI publishes
 ./scripts/docker-run.sh verify           # pulls once; run/shell then reuse it
 ```
 
+The image is tagged with a hash of the Nix flake, which `docker-run.sh`
+evaluates before every command. Without Nix on the host it evaluates the hash in
+a throwaway `nixos/nix` container, which takes several minutes each time even
+when the image is already loaded; installing Nix keeps it fast.
+
 Published images are listed on the
 https://github.com/orgs/tenstorrent/packages/container/package/ocah-container[`ocah-container` package page].
 Build the image locally only when you are changing its definition. See
