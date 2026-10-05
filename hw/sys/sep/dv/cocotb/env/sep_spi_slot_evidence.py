@@ -4,13 +4,13 @@
 
 The console cannot establish which flash ADDRESS the ROM interrogated, what the
 device answered, or in what order -- ``MANIFEST_SRC=`` proves only what the ROM
-intended to read. Without the device side these testcases would be
-manifest-integrity tests wearing SPI names.
+intended to read.
 
 ``OcahSpiFlash.get_transactions()`` records are
-``{opcode, addr, data_out, data_in, ok}``, ``data_out`` holding the bytes the flash
-streamed back (``ocah_spi_flash.py:623-635``). ``stop()`` only kills the protocol
-task and logs a count (``:326-339``), so the history survives it.
+``{opcode, addr, data_out, data_in, ok, reason}``, ``data_out`` holding the bytes
+the flash streamed back (``ocah_spi_flash.py``, the transaction record dict).
+``stop()`` only kills the protocol task and logs a count, so the history survives
+it.
 
 Everything here matches on "the read whose span COVERS this address" rather than
 "addr EQUALS it": the driver may split one ROM request into several CS-framed
@@ -24,10 +24,10 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from env import sep_manifest_mutate as mm
 
-# ocah_spi_flash.py:55-56. The ROM's manifest and payload fetches are plain and
-# fast reads; the other opcodes the model decodes (JEDEC ID, status, program,
-# erase) are not part of a boot fetch and are excluded so a status poll cannot be
-# mistaken for a data read.
+# Opcodes per the ocah_spi_flash.py module docstring. The ROM's manifest and payload
+# fetches are plain and fast reads; the other opcodes the model decodes (JEDEC ID,
+# status, program, erase) are not part of a boot fetch and are excluded so a status
+# poll cannot be mistaken for a data read.
 READ_OPCODES = (0x03, 0x0B)
 
 Txn = Dict[str, Any]
@@ -74,9 +74,8 @@ def slot_read_indices(rds: Sequence[Txn], slot: str, image_len: int) -> List[int
 
     Uses the whole slot span, not just the manifest header, because a slot's
     payload is fetched at a manifest-relative offset inside the same span
-    (``oca_locate_payload()`` in ``oca_boot.c``) -- so payload traffic is still
-    evidence that this
-    address was the one being booted from.
+    (``oca_locate_payload()`` in ``oca_boot.c``) -- so payload traffic is also
+    evidence that this address was the one being booted from.
     """
     lo, hi = mm.slot_span(image_len, slot)
     out: List[int] = []

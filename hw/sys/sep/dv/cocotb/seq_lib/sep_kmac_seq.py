@@ -100,14 +100,15 @@ class SepKmacCfg:
     """Single source of truth for one KMAC-engine cell: drives BOTH the DUT
     programming (CFG + KEY_LEN + PREFIX + key + message tail) AND the golden
     (env/sep_kmac_golden.kmac_family_words). ``mode`` in {sha3,shake,cshake,kmac};
-    ``sec`` is the keccak strength (128/256/512); ``outlen_bytes`` the digest size."""
+    ``sec`` is the keccak strength (a KMAC_STRENGTH key); ``outlen_bytes`` the
+    digest size."""
 
     mode: str
     sec: int
     msg_words: list[int]
     outlen_bytes: int
     key_words: list[int] | None = None  # KMAC only (len = key_bits/32)
-    key_bits: int | None = None  # KMAC only (128/256)
+    key_bits: int | None = None  # KMAC only (a KMAC_KEYLEN key)
     n: bytes = b""  # cSHAKE function-name (usually empty)
     s: bytes = b""  # cSHAKE/KMAC customization string
 
@@ -116,8 +117,8 @@ class SepKmacCfg:
         return self.mode == "kmac"
 
     def mode_val(self) -> int:
-        # KMAC is programmed as mode=cSHAKE + kmac_en=1 (kmac programmers_guide.md
-        # §"Initialization": "configure CFG_SHADOWED.mode to cSHAKE"). This is the
+        # KMAC is programmed as mode=cSHAKE + kmac_en=1 (OpenTitan KMAC Programmer's
+        # Guide, Initialization: "configure CFG_SHADOWED.mode to cSHAKE"). This is the
         # spec-correct KMAC mode. Do not program mode=SHAKE for keyed KMAC.
         return KMAC_MODE["cshake" if self.mode == "kmac" else self.mode]
 

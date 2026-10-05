@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// VeeR EL2 NMI (non-maskable interrupt) firmware driver for the SEP OSS tests.
+// VeeR EL2 NMI (non-maskable interrupt) firmware driver for the SEP DV tests.
 // Header-only. Addresses and the vector reset come from generated sep_addr.h /
 // sep_cpu_ctrl.h (via sep.h).
 //

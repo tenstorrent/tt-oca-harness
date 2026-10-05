@@ -1,13 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""ESRC HT_WATERMARK arming (shared register, mode-aware clear).
+"""A MODULE_ENABLE pulse arms HT_WATERMARK for the selected mode; a selector write alone does not.
 
-no_cpu / +skip_fuse_sense / +esrc_noise_force. Does not stretch the
-ESRC->DRBG->EDN datapath smoke: HEALTH_TEST_CTRL.ENABLE stays 0 on every
-arming leg. RANDCFG walks every supported selector through MODULE_ENABLE,
-then an unsupported selector and one low-mode fall.
+no_cpu / +skip_fuse_sense / +esrc_noise_force. HEALTH_TEST_CTRL.ENABLE stays 0 on
+every arming leg. RANDCFG walks every supported selector through MODULE_ENABLE,
+then an unsupported selector and two low-mode falls (APT_LO, MARKOV_LO).
 
-SepHtWatermarkCfg is the SSOT for the walk and the seed-selected knobs.
+Contract (entropy_source.rdl HT_WATERMARK):
+  CHK-NO-REARM     a selector write alone does not move the watermark.
+  CHK-ARM-MEN      a MODULE_ENABLE pulse arms 0x0000 for a high-watermark mode and
+                   0xFFFF for a low-watermark mode.
+  CHK-UNSUPPORTED  an unsupported selector reads back as REPCNT_HI and arms as it.
+  CHK-LOW-FALL     a low-mode watermark falls from 0xFFFF once health tests run.
+
+SepHtWatermarkCfg holds the walk and the seed-selected knobs.
 """
 
 from __future__ import annotations
@@ -34,7 +40,7 @@ _FALL_POLL_EVERY = 64
 
 @pyuvm.test()
 class sep_esrc_ht_watermark_arming_test(sep_base_test):
-    """Arm HT_WATERMARK per selected mode on the MODULE_ENABLE clear path."""
+    """HT_WATERMARK arms per mode on MODULE_ENABLE, not on a selector write."""
 
     async def _force_polarity(self, ht: SepHtWatermark, *, high: bool) -> int:
         """Arm the opposite polarity so the next leg's expected value can fail."""

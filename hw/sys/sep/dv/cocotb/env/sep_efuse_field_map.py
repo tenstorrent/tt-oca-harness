@@ -3,8 +3,9 @@
 """DV-owned eFuse field map.
 
 Write-policy and ``SECURE_TM`` membership come from ``_FIELD_ROWS``
-(``hw/sys/sep/doc/otp_fuse_controller.adoc`` fuse-field table). Offsets and widths
-come from the generated RDL header. The set-only, lock, and writable
+(``hw/sys/sep/doc/otp_fuse_controller.adoc`` fuse-field table). Widths and used
+bits are transcribed from the same table. Offsets come from the generated RDL
+header. The set-only, lock, and writable
 walks together cover every row except ``LC_STATE``. ``LOCK`` is walked
 only when both RDL windows (``LOCKS`` and ``LOCKS_SPARE``) are written.
 ``REQUIRED_SIGNERS`` is writable and is not on the ``SecureTmLock``

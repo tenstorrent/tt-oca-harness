@@ -18,12 +18,14 @@ Register map (vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/aon_timer.rdl
   INTR_TEST   +0x30  wkup_expired[0] / wdog_bark[1] force (prim_intr_hw)
   WKUP_CAUSE  +0x34  wakeup-request; level-held, AON-domain, cleared by WRITING 0
                      once the count>=thold condition is gone
+
 WDOG_REGWEN gates WDOG_CTRL / WDOG_BARK_THOLD / WDOG_BITE_THOLD only
 (aon_timer.hjson regwen linkage, checked at the CHK-REGWEN-SCOPE site): the
 WKUP registers and WDOG_COUNT stay writable while the watchdog config is
 locked.
-The WDT runs on clk_wdt (~1000x slower than the core clock in this env); the block
-is always clocked (no CLOCK_GATE_CTRL ungate needed).
+
+The WDT runs on clk_wdt (4000x slower than clk_i in this testbench, see
+SepEnvCfg); the block is always clocked (no CLOCK_GATE_CTRL ungate needed).
 """
 
 from __future__ import annotations

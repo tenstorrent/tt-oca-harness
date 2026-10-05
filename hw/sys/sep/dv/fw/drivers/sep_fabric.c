@@ -3,8 +3,8 @@
 
 #include "sep_fabric.h"
 
-/* Open no-op placeholders for the SEP fabric alias/remap setup helpers;
- * adopter overlays can override these with implementation-specific setup. */
+/* No-op stubs for the SEP fabric alias/remap setup helpers. They program no
+ * hardware. */
 
 int write_alias_csr_register() {
     return 0;

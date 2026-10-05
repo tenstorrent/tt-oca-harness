@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM CRC co-processor KAT: all three modes against an independent golden.
+"""The KM CRC co-processor matches an independent golden in all three modes.
 
 no_cpu / +skip_fuse_sense / +km_rom_hex=km_rom_crc.parhex. RANDCFG.
 
@@ -65,7 +65,7 @@ from seq_lib.sep_km_mem_smoke_seq import sep_km_release_seq
 
 @pyuvm.test()
 class sep_km_crc_pcpi_kat_test(sep_base_test):
-    """Known-answer test for the KM CRC PCPI co-processor, all three modes."""
+    """All three KM CRC PCPI modes match the golden and the hardware cross-checks."""
 
     async def run_scenario(self) -> None:
         cfg = SepKmCrcCfg(self.random_seed())

@@ -29,16 +29,11 @@ from sep_reg_meta import CSRNG, EDN, ENTROPY_SOURCE, SEP_CPU_CTRL, SEP_RESET_CTR
 
 # --- register map -----------------------------------------------------------
 # sep_cpu_ctrl addresses come from the generated SystemRDL export, never literals.
-# CLOCK_GATE_CTRL is a placeholder in this repository's sep_cpu_ctrl.rdl with ONE
-# implemented bit (pka_cg_enable[0:0], itself marked "not yet implemented") -- there
-# is no entropy_fifo gate bit, so the ESRC/CSRNG/EDN CSRs are unconditionally
-# clocked. The write below is CSR write-path coverage only; it releases nothing.
+# No field of sep_cpu_ctrl.rdl CLOCK_GATE_CTRL gates the ESRC/CSRNG/EDN CSRs,
+# so this write releases nothing; it exercises the CSR write path only.
 #
-# It writes the register's RESET value, NOT `mask32()`. `mask32()` is the union of
-# implemented field bits, i.e. "set every field to all-ones" -- inert against a
-# placeholder (0x1) but tracking the RDL, so real clock-gate enables added there
-# would be silently asserted by this bring-up write. The reset value stays inert
-# by construction no matter how the register grows.
+# The reset value keeps this write inert however many clock-gate enables the RDL
+# adds to the register.
 CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
 CLOCK_GATE_CTRL_RESET = SEP_CPU_CTRL.reset("CLOCK_GATE_CTRL")
 EXT_TRNG_SRC_SEL = SEP_CPU_CTRL.addr("EXT_TRNG_SRC_SEL")
@@ -147,14 +142,12 @@ HEALTH_CTRL_DEFAULT = ENTROPY_SOURCE.value("HEALTH_TEST_CTRL", ENABLE=0x7, REPET
 
 # HEALTH_TEST_WINDOW_SIZE is LEFT AT ITS 2048-SAMPLE RESET.
 #
-# Do not "speed up" the bring-up by shrinking it. The APT and Markov thresholds are
-# SP 800-90B values sized for a full window, so a short window (0x40, for example)
-# fails them by construction. entropy_source gates the whole stream on
-# entropy_src_main_sm's boot_phase_done, ALERT_THRESHOLD resets to 4, and four
-# failing windows park the FSM permanently in AlertHang -- after which the
-# decorrelator keeps sampling but the SHA whitener never accepts a word and no seed
-# ever reaches CSRNG. That is a shrink which breaks the mechanism it is meant to
-# exercise, not a timing-only knob.
+# The APT and Markov thresholds are SP 800-90B values sized for a full window,
+# so a short window (0x40, for example) fails them by construction.
+# entropy_source gates the whole stream on entropy_src_main_sm's boot_phase_done,
+# ALERT_THRESHOLD resets to 4, and four failing windows park the FSM permanently
+# in AlertHang -- after which the decorrelator keeps sampling but the SHA
+# whitener never accepts a word and no seed ever reaches CSRNG.
 #
 # Cost at the /8 raw-sampling default: one window is 2048 samples x 8 core cycles
 # ~= 16.4k cycles, well inside wait_seed_ready()'s 60k budget.
@@ -172,15 +165,12 @@ def csrng_generate_cmd(glen: int) -> int:
 class SepEntropyCfg:
     """Single source of truth for the ESRC->DRBG->...->KM entropy policy.
 
-    ONE object derives BOTH the DUT register writes (via SepEsrcConfigSeq) AND the
-    golden-model configuration (via golden_kwargs() for SepEntropyGolden) -- never
-    two hand-kept copies, which can disagree (a sequence default of
-    DECORRELATOR_CTRL /64 against a golden default of sample_clk_div=7 => /8)
-    unless every test overrides both consistently.
+    One object derives both the DUT register writes (SepEsrcConfigSeq) and the
+    golden-model configuration (golden_kwargs() for SepEntropyGolden), so the
+    two cannot drift.
 
-    Defaults = the fast alive-smoke policy (/8 raw sampling, small health window,
-    SHA-256 whitening on, internal DRBG). The conditioning math is identical to
-    FIPS defaults; /8 + small window only trades sample count for wall-clock.
+    Defaults are the alive-smoke policy: /8 raw sampling, the 2048-sample reset
+    health window (window_size=None), SHA-256 whitening on, internal DRBG.
     """
 
     sample_clk_div: int = 7  # DECORRELATOR_CTRL.SAMPLE_CLK_DIV (=div-1; 7 => /8)
@@ -195,14 +185,11 @@ class SepEntropyCfg:
     # Generates (the segmentation contract).
     program_boot_generate: bool = False
     reseed_interval: int = 8  # EDN MAX_NUM_REQS_BETWEEN_RESEEDS
-    # Golden seed-accumulation skip: how many post-whitener words the DUT swallows
-    # before the CSRNG seed packer starts. ZERO for this DRBG --
-    # hw/ip/drbg/doc/architecture.adoc Seed Assembly: one 32-bit entropy word per
-    # valid cycle directly from the entropy source, no upstream routing or
-    # distribution FIFO, so nothing is absorbed and the golden must not skip.
-    # A skip of 12 would model a distribution FIFO this integration does not
-    # instantiate and shift the golden by 12 words: CHK3_seed (and so CHK4/CHK5)
-    # mismatch while CHK1/CHK2 match exactly.
+    # Golden seed-accumulation skip: post-whitener words the DUT swallows before
+    # the CSRNG seed packer starts. Zero for this DRBG:
+    # hw/ip/drbg/doc/architecture.adoc Seed Assembly feeds one 32-bit entropy
+    # word per valid cycle straight from the entropy source, with no distribution
+    # FIFO, so the golden must not skip.
     ingress_skip: int = 0
     internal_drbg: bool = True  # EXT_TRNG_SRC_SEL: every stream internal vs every stream external
     health_ctrl: int = HEALTH_CTRL_DEFAULT
@@ -239,11 +226,10 @@ class SepEntropyCfg:
     def esrc_ctrl_whiten(self) -> int:
         """ESRC_CTRL built from the generated field metadata.
 
-        Assembling this from named fields (rather than a literal) is what keeps
-        ``MODULE_ENABLE`` — which RESETS TO 1 — set. A hand-built
-        "just the whitening bit" value (0x1000_0000) clears it, which disables the
-        whole entropy source: the decorrelator keeps sampling but the SHA whitener
-        never accepts a word, so no seed ever reaches CSRNG.
+        Built from the generated field metadata so ``MODULE_ENABLE`` (reset 1)
+        stays set: clearing it disables the whole entropy source -- the
+        decorrelator keeps sampling but the SHA whitener never accepts a word
+        and no seed reaches CSRNG.
         """
         return ENTROPY_SOURCE.value("CTRL", SHA256_WHITENING_ENABLE=1 if self.sha_whitening else 0)
 

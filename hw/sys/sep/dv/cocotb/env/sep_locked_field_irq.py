@@ -5,11 +5,12 @@
 Importable from the pre-sim staging hook: no cocotb. The AXI driver lives in
 ``seq_lib/sep_locked_field_irq_seq.py``.
 
-Both leaves share this object. The constructor draws four distinct spares
-(write-lock, read-lock, unlocked contrast, SECURE_TM LOCKS_SPARE control)
-and ``image_fixed()`` stages ``SIP_DIS`` / ``SYS_DIS`` at 0 so the
-SECURE_TM payloads always change a bit. That is the seed-to-image map for
-``sep_locked_field_access_irq_path_test`` as well.
+``sep_locked_field_access_irq_path_test`` and its plusarg variant
+``sep_efuse_secure_tm_write_lock_test`` share this object. The constructor
+draws four distinct spares (write-lock, read-lock, unlocked contrast, SECURE_TM
+LOCKS_SPARE control) and ``image_fixed()`` stages ``SIP_DIS`` / ``SYS_DIS`` at 0
+so the SECURE_TM payloads always change a bit. ``dv_sim_prestage.py`` uses the
+same seed-to-image map.
 """
 
 from __future__ import annotations

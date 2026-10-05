@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The SRAM target refuses a multi-beat FIXED or WRAP burst with SLVERR.
 
-no_cpu / +skip_fuse_sense. RAND-NONE: one directed FIXED and one directed WRAP
+Run mode: no_cpu with +skip_fuse_sense. RAND-NONE: one directed FIXED and one directed WRAP
 burst, 4 beats of 8 bytes each, on the CPU-LSU master.
 
 ``hw/sys/sep/doc/fabric.adoc#sep-sram-target`` specifies that the SRAM target
@@ -11,8 +11,7 @@ refuses a multi-beat FIXED or WRAP burst before it reaches the memory: the
 write terminates with BRESP=SLVERR and leaves SRAM unchanged, and every beat
 of the read returns RRESP=SLVERR. Any other response code, and an OKAY-served
 burst, fails. The AXI4 beat addresses of each burst type (see
-``seq_lib/sep_sram_burst_type_seq.py``) are diagnostic only: a failing log
-names the AXI4 or the INCR image when that is what the DUT produced.
+``seq_lib/sep_sram_burst_type_seq.py``) are diagnostic only.
 
 CHK-BT-STIM: the AW / AR handshake on the testbench port carries the start
 address, AxLEN, AxSIZE and AxBURST of the case, so the verdict below is about

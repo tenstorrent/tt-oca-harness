@@ -1,6 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""RMA-SIP digest latch capture, hold, and test-enable freeze."""
+"""An RMA_SIP token presentation latches its SHA-256 digest, and test_en freezes the latch.
+
+no_cpu, real fuse sense (PROD image). A frontdoor RMA_SIP token presentation
+latches SHA-256 of the token into the sticky digest and sets valid. While
+test_en is injected, the valid and latch enables stay 0, and the sticky digest
+and valid hold their captured values through a full token operation.
+
+Checkers:
+  CHK-DIGEST-LATCH  the record for the whole contract above (DUT probes on the
+                    tb_top token_digest_* ports).
+"""
 
 from __future__ import annotations
 
@@ -20,10 +30,10 @@ _BOUND = 20_000
 
 @pyuvm.test()
 class sep_efuse_digest_latch_fault_test(sep_base_test):
-    """Frontdoor hashes capture normally and freeze under injected test_en."""
+    """The digest latch captures the token hash and holds it while test_en is injected."""
 
-    # The whole contract is one record, so name it: a refactor that stops
-    # reaching the freeze leg would otherwise still exit clean.
+    # The freeze leg logs the only evidence record, so a run that never reaches
+    # it fails here.
     required_evidence = ("CHK-DIGEST-LATCH",)
     min_evidence = 1
 

@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP CPU-trace diagnostics test (PyUVM): prove the processor-state monitor.
+"""The CPU trace port shows the one breakpoint trap and the call chain that the firmware reports.
 
-Boots fw/tests/cpu_trace_diag_test, which runs a known noinline call chain
+The test boots fw/tests/cpu_trace_diag_test, which runs a known noinline call chain
 (main -> diag_leaf1 -> diag_leaf2 -> diag_leaf3), takes exactly one breakpoint
 trap (uncompressed ebreak) inside the innermost frame, and prints the
 architectural mcause/mepc on the console. The test then cross-checks the
@@ -25,11 +25,8 @@ Standard boot-scoreboard checks (banner + firmware PASS + PC advance) apply on
 top. The firmware image is fw/build/tests/cpu_trace_diag_test/*.{itcm,dtcm}.hex,
 built by the c_compile stage (make dv-fw-tests TEST=cpu_trace_diag_test).
 
-Stimulus is deterministic: the reconstruction is auditable only
-against a known call chain and a known trap site, and the prebuilt image fixes
-both at compile time (same shape as every cpu firmware test here). The seeded
-clock-timing randomization from sep_base_test still applies on top, so the
-trace sampling is exercised across timing variation run-to-run.
+Stimulus is deterministic, because the checks need a known call chain and trap
+site. The seeded clock-timing randomization from sep_base_test still applies.
 """
 
 from __future__ import annotations
@@ -71,7 +68,7 @@ _PROGRESS_EVERY = 2_000
 
 @pyuvm.test()
 class sep_cpu_trace_diag_test(sep_base_test):
-    """Boot the trace-diag firmware and audit the CPU trace monitor against it."""
+    """The trace reconstruction of trap, chain and depth matches the firmware ground truth."""
 
     build_env = False
 

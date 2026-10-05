@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP reset-controller + WDT sanity test (PyUVM).
+"""SW_RESET_N clears only its own domain, fabric gaps raise a bus-error NMI, and the WDT bites.
 
 The reset_wdt_sanity firmware:
   * checks SW_RESET_N default 0x7E, that pulsing each crypto/TRNG/ABR reset bit clears that
@@ -10,8 +10,8 @@ The reset_wdt_sanity firmware:
     (count == 2);
   * exercises WDT bark -> NMI, pet, disable-freeze and re-bark, then lets the WDT run to BITE.
 
-start.S emits PASS/FAIL magic from main()'s return code. After PASS the test also observes the
-BITE reset request on the ``sep`` output ``wdt_timer_rst_req_o``.
+fw/startup/crt0.s emits PASS/FAIL magic from main()'s return code. After PASS the test also
+observes the BITE reset request on the ``sep`` output ``wdt_timer_rst_req_o``.
 
 No fuse data is read, so the testlist entry uses ``+skip_fuse_sense``. OTBN/AES/HMAC/KMAC are
 JTAG-held across ``rst_ni`` release and fuse sense so they raise no crypto ``edn_req`` while the
@@ -64,7 +64,7 @@ _BITE_POLL_CYCLES = 40_000
 
 @pyuvm.test()
 class sep_reset_wdt_sanity_test(sep_base_test):
-    """Boot VeeR EL2; verify reset_ctrl CSR + WDT bark/pet/disable + BITE reset."""
+    """reset_ctrl CSR, WDT bark/pet/disable legs pass, and the BITE raises wdt_timer_rst_req_o."""
 
     build_env = False
 
@@ -95,9 +95,9 @@ class sep_reset_wdt_sanity_test(sep_base_test):
         )
 
         # The firmware scores the reset_ctrl legs into its own error count, and the
-        # PASS magic alone cannot say which of them ran: an image built before a leg
-        # existed reaches PASS with that contract never exercised. Gate on the line
-        # each leg prints, and emit the record the VPLAN card names for it.
+        # PASS magic alone cannot say which of them ran: an image without a leg
+        # reaches PASS with that contract never exercised. Gate on the line each
+        # leg prints, and emit the record the VPLAN row names for it.
         console = self.sb.console_text()
         assert _BADADDR_LINE in console, (
             f"firmware console has no {_BADADDR_LINE!r} line, so the unmapped-gap "

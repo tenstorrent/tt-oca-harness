@@ -5,7 +5,7 @@
 // AXI4 transfer on the CPU-LSU master agent, returning the VIP result item
 // and the CSR value extracted from its byte lanes of the 64-bit beat.
 // Started by sep_base_test_seq::csr_read(). The cocotb twin is the READ op
-// of env/sep_axi_agent.py.
+// of cocotb/env/sep_axi_agent.py.
 
 class sep_axi_csr_read_seq extends ocah_axi_master_sequence;
   `uvm_object_utils(sep_axi_csr_read_seq)

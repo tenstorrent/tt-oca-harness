@@ -46,8 +46,8 @@ _WITHHELD_LC = 0xF
 # SYS_DIS bit 0 stays clear.
 _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0F
 _SYS_DIS = 0x00FF_00FF_00FF_00FF
-# Integrator Guide, SEP slice (TDI to TDO). The first name is nearest TDI.
-# doc/integrator/src/smu.adoc. reset_hold is the TDO-end bit and is not a port.
+# SEP slice of the IC_RESET chain, TDI to TDO (doc/integrator/src/smu.adoc).
+# The first name is nearest TDI; reset_hold is the TDO-end bit and is not a port.
 _SEP_SLICE_TDI_TO_TDO = (
     "abr_jtag_rst_n",
     "trng_jtag_rst_n",

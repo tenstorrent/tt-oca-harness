@@ -339,9 +339,9 @@ def sym(name: str) -> int:
 
     For call sites that want a block base or a single register address by its
     generated name, e.g. ``sym("AES_REG_MAP_BASE_ADDR")``. Raises rather than
-    returning a wrong value if the register flow renames or drops the symbol, so a
-    map change surfaces as an import-time error instead of a silently stale
-    constant.
+    returning a wrong value if the register flow changes the name of or drops the
+    symbol, so a map change surfaces as an import-time error instead of a silently
+    stale constant.
 
     NOT every hex literal in the DV is an address -- SHA round constants, KAT key
     vectors and CSR bitmasks must stay literal. Only use this where the value is
@@ -655,11 +655,9 @@ def indexed_block_count(prefix: str) -> int:
     """How many ``<prefix>_<n>_`` blocks the generated header declares.
 
     The filter banks are RDL arrays -- ``outbound_filter_ctrl[32]`` and
-    ``inbound_filter_ctrl[16]`` in ``hw/sys/sep/regs/sep.rdl`` -- so the entry
-    count belongs to the register export, not to a sequence. Two sweeps that
-    each carry their own literal will disagree the moment the array changes, and
-    the one that is short simply never reaches the tail entries: a sweep that
-    selects from 16 of 32 entries reports a clean pass over half the bank.
+    ``inbound_filter_ctrl[16]`` in ``hw/sys/sep/regs/sep.rdl``. The entry count
+    comes from the register export, not from a sequence, so every sweep reaches
+    the tail entries.
 
     Indices must be contiguous from zero. A gap means the header and the RDL
     disagree, and a sweep built on the count would silently skip the hole.
@@ -858,8 +856,7 @@ def iter_register_walk() -> RegisterWalk:
     * ``duplicate``     -- the ``(block, register)`` pair was already walked: a
       generator that emits an instance twice lands here.
 
-    Reporting one figure would let a change of cause pass unnoticed, so the
-    three are kept apart and ``nometa`` sums them.
+    The three causes are counted apart; ``nometa`` sums them.
     """
     names = block_names()
     access = _ipxact_access()
@@ -934,8 +931,8 @@ def reg_hw_updating(block: str) -> frozenset[str]:
     * a dead-space store compare on one measures the same drift and reports it
       as an aliased write.
 
-    Default is "hardware may change it", so a newly added ``sw = r`` register is
-    excluded until someone shows it is constant -- the safe direction.
+    A ``sw = r`` register not named in ``_CONSTANT_RO`` is treated as
+    hardware-updating.
     """
     readonly = reg_sw_readonly(block)
     constant = _CONSTANT_RO.get(block, frozenset())
@@ -1028,10 +1025,9 @@ AP_OUTPUT_REMAP_CTRL_0 = RegBlock("AP_OUTPUT_REMAP_CTRL_0_")
 def _selftest() -> int:
     """Assert the accessor against values read directly out of sep_cpu_ctrl.rdl.
 
-    These are not a second copy of the register map — they are a handful of
-    tripwires that fail loudly if the generated header stops matching the RDL
-    (or if the generator changes its naming), which would otherwise silently
-    weaken every source-derived checker built on this module.
+    Tripwires: they fail when the generated header stops matching the RDL or the
+    generator changes its naming, which would otherwise silently weaken every
+    source-derived checker built on this module.
     """
     cpu = SEP_CPU_CTRL
     checks = [
@@ -1061,9 +1057,10 @@ def _selftest() -> int:
     # type's shape via _TYPE_ALIAS. Both masks are pinned, and the pair is what
     # makes this a tripwire for the reserved-field exclusion itself: the lone field
     # is declared `sw=rw; hw=r` but named
-    # `reserved` (sep_cpu_ctrl.rdl:76-80), so it is real STORAGE (mask_all 0x1)
-    # that is NOT software-usable (mask 0x0). If the generator ever renames the
-    # field, or the exclusion regex stops matching it, these disagree and fail.
+    # `reserved` (sep_cpu_ctrl.rdl, reg TIMEOUT_COUNT), so it is real STORAGE
+    # (mask_all 0x1) that is NOT software-usable (mask 0x0). If the generator
+    # changes the field name, or the exclusion regex stops matching it, these
+    # disagree and fail.
     # The alias table also carries entries for other blocks, so this walk takes
     # the SEP_CPU_CTRL instances by their shared type rather than the whole table.
     for name in (n for n, t in _TYPE_ALIAS.items() if t == "TIMEOUT_COUNT"):
@@ -1182,12 +1179,12 @@ def _selftest() -> int:
         failures.append(f"entropy_source size {hex(ot_reg_map_size('entropy_source'))} != 0x17c")
 
     # Pin the access shapes, not just the OFFSET join. The join counts stay
-    # green if the IP-XACT renames its `access` or `resets` child: a missing
-    # access reads as read-write and a missing resets makes every read-only
+    # green if the IP-XACT changes the name of its `access` or `resets` child: a
+    # missing access reads as read-write and a missing resets makes every read-only
     # look hardware-driven, so a sweep filtering on either one silently
     # filters the wrong set. Without these four the next generator change can
     # walk those rows back into a reset compare against a DEFAULT the RDL never
-    # declared, or drop the 154 read-only rows that carry a real one.
+    # declared, or drop the read-only rows that carry a real one.
     shapes = iter_register_walk().regs
     hw_driven = sorted(f"{i.block}.{i.name}" for i in shapes if i.access.hw_driven)
     expect_hw_driven = [

@@ -2,9 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Concurrent reads on distinct AXI IDs, and where each response lands.
 
-Every access in this environment carried ``AxID = 0`` until ``SepAxiItem``
-gained an id field, so the transaction-ID dimension of the SEP crossbars was
-never presented. It is not decoration: the crossbar prepends the master index
+Every access defaults to ``AxID = 0`` (``SepAxiItem.axi_id``), so the
+transaction-ID dimension of the SEP crossbars is exercised only where a test
+sets it. That dimension matters: the crossbar prepends the master index
 to the incoming ID and the demux keeps one outstanding counter per ID, so the
 whole ID field is address-like state on the response path.
 
@@ -47,7 +47,10 @@ RESP_OKAY = 0
 
 
 def _bit(sig) -> bool:
-    """One signal bit, with X/Z read as 0 (two-state Verilator drives 0/1)."""
+    """One signal bit, with X/Z read as 0 (no handshake).
+
+    Used only for the outstanding-depth measurement.
+    """
     try:
         return bool(int(sig.value))
     except ValueError:

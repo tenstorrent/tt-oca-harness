@@ -16,8 +16,8 @@
 // ocah_checker, attached with the scenario's required IDs and finalized
 // after the scenario so a silently skipped check cannot report PASS. Every
 // draw in a pass follows seed_scenario_rng() (first statement of body()).
-// The cocotb twin is tests/sep_base_test.py (bring-up helpers) with
-// seq_lib/sep_axi_access_seq.py (operations).
+// The cocotb twin is cocotb/tests/sep_base_test.py (bring-up helpers) with
+// cocotb/seq_lib/sep_axi_access_seq.py (operations).
 
 class sep_base_test_seq extends ocah_sequence;
   `uvm_object_utils(sep_base_test_seq)

@@ -6,7 +6,7 @@
 // scoreboard features that must compare, and the negative-validation switch
 // the scoreboard predictor honors. The env fills the VIP configs from this
 // object and publishes the clock periods on sep_tb_if. Never randomized.
-// The cocotb twin is env/sep_env_cfg.py.
+// The cocotb twin is cocotb/env/sep_env_cfg.py.
 
 class sep_env_cfg extends ocah_env_cfg;
   `uvm_object_utils(sep_env_cfg)

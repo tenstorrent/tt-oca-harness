@@ -14,7 +14,7 @@
 //                 register and the CSR lanes of both beats must match.
 //
 // Accesses outside the predicted set carry no data contract here and are
-// skipped on the observed side. The cocotb twin is env/sep_scoreboard.py
+// skipped on the observed side. The cocotb twin is cocotb/env/sep_scoreboard.py
 // (its expected-value checks).
 
 `uvm_analysis_imp_decl(_sep_csr_observed)

@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""CLOCK_GATE_CTRL placeholder representative.
+"""CLOCK_GATE_CTRL placeholder driver.
 
 sep_cpu_ctrl.rdl implements one bit, pka_cg_enable[0:0], and RTL sinks it into
 an unused net. This driver is the single source of truth for that storage walk,
 for the unimplemented-bit readback of both 32-bit halves of the 64-bit register,
 and for the witness CSRs that stay reachable with the bit 0 and 1 -- a
-decode-only / stub-const contract, not a live per-IP gate.
+decode-and-storage contract, not a live per-IP gate.
 """
 
 from __future__ import annotations

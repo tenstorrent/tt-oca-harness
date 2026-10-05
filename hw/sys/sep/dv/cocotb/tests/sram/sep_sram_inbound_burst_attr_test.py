@@ -45,11 +45,11 @@ then fails once, naming each of CHK-SRAM-IN-READ, CHK-SRAM-IN-STRB and
 CHK-SRAM-IN-XPATH that saw a mismatch, with its count and first mismatch. A
 fault in one byte lane then shows on every data checker it reaches.
 
-RUN-MODE: no_cpu (CPU-LSU master) + external SMN master. FUSE-MODE:
-+skip_fuse_sense with no shadow preload, so LC_STATE is INVALID, FEAT_CTRL is
-zero and the inbound filter is in the m_axi path; that is why the test
-programs the filter window. RAND: window, lengths, starts, data, overlay, CPU-LSU
-words and every inbound request attribute come from SepSeededRng.
+Run mode: no_cpu (CPU-LSU master) with the external SMN master, and
++skip_fuse_sense with no shadow preload. LC_STATE is then INVALID, FEAT_CTRL is
+zero and the inbound filter is in the m_axi path, so the test programs the
+filter window. The window, lengths, starts, data, overlay, CPU-LSU words and
+every inbound request attribute come from SepSeededRng.
 """
 
 from __future__ import annotations
@@ -316,7 +316,8 @@ class sep_sram_inbound_burst_attr_test(sep_base_test):
             f"beat {c.beats} only"
         )
         self.n["rlast"] += 1
-        # The VIP folds the burst's RRESP into one code (any non-OKAY beat wins).
+        # resp_code folds the RRESP beats into one worst code, so grade each
+        # beat from resp_list.
         resps = list(seq.resp_list)
         assert resps and all(r in a.ok_resps() for r in resps), (
             f"CHK-SRAM-IN-READ FAIL: case {c.idx} read ({a}) of {c.beats} beats answered "

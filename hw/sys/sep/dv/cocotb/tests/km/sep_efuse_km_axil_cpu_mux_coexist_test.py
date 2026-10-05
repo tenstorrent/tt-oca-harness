@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP dual-CPU eFuse AXI-lite mux coexistence test (PyUVM).
+"""EL2 and KM traffic share the eFuse AXI-Lite mux: neither starves, and no read is corrupted.
 
 Two CPUs contend at the SEP eFuse AXI-lite mux ``u_km_efuse_axi_lite_mux``:
 
-  * the VeeR EL2 host boots ``km_efuse_coexist``: it senses CHIPLET_UID, releases
+  * the VeeR EL2 host boots ``km_efuse_coexist``: it reads the sensed CHIPLET_UID, releases
     the Key Manager (KM) from warm reset, handshakes over the KM<->SEP mailbox,
     then loops host CHIPLET_UID reads (integrity) and KM-owned MMR reads
     (tag/ordering/monotonicity) while the KM contends; and
@@ -73,7 +73,7 @@ _CONTENDED_LOOPS = 512
 
 @pyuvm.test()
 class sep_efuse_km_axil_cpu_mux_coexist_test(sep_base_test):
-    """Boot the EL2 host + KM and verify they coexist at the eFuse mux."""
+    """The EL2 host completes every contended loop; the KM makes at least half as many changes."""
 
     build_env = False
 
@@ -158,8 +158,9 @@ class sep_efuse_km_axil_cpu_mux_coexist_test(sep_base_test):
             f"(COUNT={count} != {_CONTENDED_LOOPS}) -- possible starvation"
         )
         # A floor, not just non-zero: a mux that starved the Key Manager down to a
-        # single write across 512 host iterations would otherwise pass. Half is well
-        # under the ~511 a healthy run records.
+        # single write across the host iterations would otherwise pass. Half the
+        # host iterations leaves a fair mux, which changes the payload on nearly
+        # every iteration, well clear of it.
         assert changes >= _CONTENDED_LOOPS // 2, (
             f"KM progress starved: {changes} payload changes across "
             f"{_CONTENDED_LOOPS} host iterations (expected >= {_CONTENDED_LOOPS // 2})"

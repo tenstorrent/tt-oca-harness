@@ -1,21 +1,23 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-# SEP OSS firmware
+# SEP DV firmware
 
-Self-contained boot firmware for the SEP OSS DV environment. Tests supply
+Self-contained boot firmware for the SEP DV environment. Tests supply
 `main()` and link against `libsep.a`. The shared DV firmware engine
 (`hw/common/dv/fw/compile.mk`, driven by `fw.mk`) emits the gitignored
 `.itcm` / `.dtcm` hex images under `fw/build/tests/<name>/`.
 
 ```
 fw/
-  fw.mk         dispatcher: make -f fw.mk dv-fw-tests TEST=<name>
-  toolchain.mk  RISC-V prefix / ISA
-  drivers/      device drivers (mailbox, DMA, SPI, PIC, eFuse, …)
-  include/      firmware-visible headers
-  link/         TCM linker scripts (`link/modes/tcm.ld`)
-  startup/      crt0
-  tests/        per-test C sources (hello_world, DMA, SPI, …)
-  build/        generated images (gitignored)
+  fw.mk             dispatcher: make -f fw.mk dv-fw-tests TEST=<name>
+  fw_build_id.c     FW-BUILD-ID string compiled into every image
+  fw_src_digest.py  digest of the firmware sources for FW-BUILD-ID
+  toolchain.mk      RISC-V prefix / ISA
+  drivers/          device drivers (mailbox, DMA, SPI, PIC, eFuse, …)
+  include/          firmware-visible headers
+  link/             TCM linker scripts (`link/modes/tcm.ld`)
+  startup/          crt0
+  tests/            per-test C sources (hello_world, DMA, SPI, …)
+  build/            generated images (gitignored)
 ```
 
 The production Boot ROM lives outside this tree, at `hw/sys/sep/bootrom/prod/`.

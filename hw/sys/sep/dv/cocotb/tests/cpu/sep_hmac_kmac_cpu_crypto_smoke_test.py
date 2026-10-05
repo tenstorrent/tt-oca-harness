@@ -1,11 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP HMAC + KMAC + AES CPU crypto smoke test (PyUVM).
+"""CPU-driven HMAC matches a software SHA-256, and AES round-trips the FIPS-197 vector via SRAM.
 
-OSS port combining the reference suite ``hmac_test`` and ``kmac_test`` (crypto
-engine datapath), plus the CPU-owned AES data path. Boots the VeeR EL2 core and
-runs the hmac_kmac firmware, which exercises three OpenTitan crypto engines over
-the real CPU->fabric path on bare ``sep``:
+The test boots the VeeR EL2 core and runs the hmac_kmac firmware, which exercises three
+OpenTitan crypto engines over the real CPU->fabric path on bare ``sep``:
 
   * HMAC (SHA-256 mode): hashes empty / "abc" / "Hello OTBN." and compares each
     HW digest against an independent software SHA-256 (fw/tests/common/sha256.c), plus
@@ -19,7 +17,7 @@ the real CPU->fabric path on bare ``sep``:
     ciphertext to SRAM where it is compared against the published vector; then
     it feeds that ciphertext back under DECRYPT and compares the recovered block
     against the plaintext re-read from SRAM. SRAM is on the path in both
-    directions, which is what the AXI mode walk cannot claim -- there the block
+    directions, which is what ``sep_aes_mode_keysize_rand_test`` cannot claim -- there the block
     never leaves the registers.
 
 The AES leg needs live entropy: masking reseeds its PRNG from crypto-EDN and
@@ -27,7 +25,7 @@ STATUS.IDLE never clears until that completes, so the firmware brings the stack
 up (sep_entropy.h) and this test drives the raw noise the ring oscillators
 cannot produce under Verilator.
 
-Firmware-self-checking: main() returns the error count and start.S emits the PASS
+Firmware-self-checking: main() returns the error count and fw/startup/crt0.s emits the PASS
 (0xCAFEBABE) / FAIL (0xDEADBEEF) magic on the 0x8000_0000 mailbox, which the boot
 scoreboard gates on, alongside the banner + ICCM-execution checks.
 
@@ -60,7 +58,7 @@ _BANNER = "SEP HMAC/KMAC crypto smoke test"
 
 @pyuvm.test()
 class sep_hmac_kmac_cpu_crypto_smoke_test(sep_base_test):
-    """Boot VeeR EL2 and run the HMAC + KMAC crypto smoke firmware."""
+    """HMAC, KMAC and AES firmware checks pass over the real CPU-to-fabric path."""
 
     build_env = False
 

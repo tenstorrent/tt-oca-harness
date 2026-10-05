@@ -1,24 +1,26 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""WDT / AON-timer internals.
+"""The AON timer wakeup counter, expiry status, watchdog pet and WDOG_REGWEN lock follow the spec.
 
 no_cpu host-AXI CSR test of the SEP WDT aon_timer internals separate from the
 bark/bite/NMI story: the WKUP (wakeup) timer + its INTR_STATE.wkup_expired RW1C
 status, the WDOG counter advance + pet, and the WDOG_REGWEN config-lock. The WKUP
 interrupt OUTPUT is unused in sep, so the expiry is proven via the polled
-INTR_STATE.wkup_expired CSR bit (full RW1C clear) -- no ISR/NMI needed.
+INTR_STATE.wkup_expired CSR bit (full RW1C clear) -- no ISR/NMI needed. The
+test also grades the prescaler divide (CHK-WKUP-PRESCALE), the sticky
+WKUP_CAUSE status (CHK-WKUP-CAUSE), INTR_TEST (CHK-INTR-TEST), the REGWEN lock
+scope (CHK-REGWEN-SCOPE) and SEP_CPU_CTRL.REFERENCE_COUNTER (CHK-REFCNT-RUNS,
+not an aon_timer register).
 
-reference refs: clock sep_clock_uvm_aon_timer_operation_test (: counter advance
-+ bark), fw wdt_cfg_lock_test (WDOG_REGWEN lock), wdt_wkup_timer_test (:
-AON wakeup timer), wdt_pet_reset_test. This test is frontdoor CSR + full RW1C
-clear (the reference suite reads WDOG_COUNT via
-uvm_hdl_read). Distinct from the bark->NMI vec/lock path and the bark/pet/disable/
-re-bark + bite->wdt_timer_rst_req_o path: this test proves the OTHER aon_timer
-internals (WKUP timer, REGWEN config-lock, plain counter/pet), NOT bark/bite/NMI.
+This test reads every counter frontdoor and clears with a full RW1C. Distinct from
+cpu/sep_nmi_sanity_test (bark -> NMI) and cpu/sep_reset_wdt_sanity_test
+(bark/pet/disable/re-bark and bite -> wdt_timer_rst_req_o): this test proves the
+other aon_timer internals (WKUP timer, REGWEN config-lock, plain counter/pet),
+not bark/bite/NMI.
 
-The WDT counters run on clk_wdt (~1000x slower than the core clock here), so the
-counter waits/poll budgets are sized in core cycles accordingly. The block is
-always clocked (no CLOCK_GATE_CTRL ungate). no_cpu / +skip_fuse_sense.
+This test runs clk_wdt at WDT_CLK_RATIO (8) core periods, so the counter waits
+and poll budgets are sized in core cycles accordingly. The block is always
+clocked (no CLOCK_GATE_CTRL ungate). Run mode: no_cpu with +skip_fuse_sense.
 """
 
 from __future__ import annotations
@@ -163,9 +165,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         await self._chk_wdog_pet()
         await self._chk_reference_counter()
         await self._chk_regwen_lock_and_nonvac()
-        # No CHK-ALL summary line: every facet above logs its own PASS, and a plan
-        # row keyed on a bare summary string would record coverage with no checker
-        # behind it.
+        # Each facet logs its own PASS line, and the plan rows key on those.
 
     async def _read_refcnt(self) -> int:
         """The 64-bit reference count, high half first.
@@ -210,15 +210,11 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             second,
         )
 
-        # CHK-REFCNT-LOAD is deliberately NOT claimed here. A software load of
-        # this counter can be lost when clk_i runs far faster than clk_ref_i.
-        # This bench drives clk_i at 1.25 ns and clk_ref_i at 10 ns. The update
-        # crosses on a depth-1 async FIFO whose own source comment says an
-        # update that arrives before the previous one has crossed is "dropped
-        # with no error indication", and the guard assertion in that primitive
-        # (CntUpdateAccepted_A) is compiled out of this build by
-        # COMMON_CELLS_ASSERTS_OFF, so the loss is silent. Claiming the load
-        # needs a measurement at this ratio.
+        # A software load of REFERENCE_COUNTER is not graded. The update crosses a
+        # depth-1 async FIFO that drops an update arriving before the previous one
+        # has crossed, with no error indication, and CntUpdateAccepted_A is compiled
+        # out by COMMON_CELLS_ASSERTS_OFF; with clk_i at 1.25 ns and clk_ref_i at
+        # 10 ns the loss is silent.
 
     async def _chk_wkup_count(self) -> None:
         """CHK-WKUP-COUNT: WKUP_COUNT advances on clk_wdt with a high (non-expiring) thold."""
@@ -272,7 +268,8 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
     async def _chk_wkup_prescale(self) -> None:
         """CHK-WKUP-PRESCALE: WKUP_CTRL.prescaler divides the wakeup count rate.
 
-        The OpenTitan AON Timer Technical Specification (Wakeup timer) states "The
+        The OpenTitan AON Timer Technical Specification (Wakeup timer; upstream
+        OpenTitan documentation, not vendored in this tree) states "The
         number of cycles per tick is one more than the 12-bit WKUP_CTRL.prescaler
         field", so the counter advances once per ``prescaler + 1`` ticks. That rate
         is carried by sep_spec_tables.aon_timer_wkup_ticks_per_count, not read back
@@ -337,9 +334,9 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         self.logger.info("CHK-WKUP-EXPIRE PASS (set): INTR_STATE.wkup_expired=1 (0x%08x)", val)
         await self.wdt.write(WKUP_CTRL, 0)  # disable the counter
 
-        # CHK-WKUP-CAUSE: the wakeup-request status WKUP_CAUSE.cause is a DISTINCT sticky
+        # CHK-WKUP-CAUSE: the wakeup-request status WKUP_CAUSE.cause is a distinct sticky
         # bit (set by HW on wkup expiry), separate from INTR_STATE. It is level-held while
-        # WKUP_COUNT >= WKUP_THOLD, so it reads set NOW (condition still true); to clear it
+        # WKUP_COUNT >= WKUP_THOLD, so it reads set here (condition still true); to clear it
         # we first remove the condition (reset WKUP_COUNT) then write 0 (not W1C).
         cause = await self.wdt.read(WKUP_CAUSE)
         assert cause & WKUP_CAUSE_BIT, f"WKUP_CAUSE.cause not set after wkup expiry (0x{cause:08x})"

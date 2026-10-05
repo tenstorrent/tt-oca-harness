@@ -4,7 +4,8 @@
 /*
  * VeeR EL2 PIC interrupt utilities
  *
- * PIC register addresses are derived from RDL (see el2_pic.rdl)
+ * PIC register addresses are derived from RDL (see
+ * hw/sys/sep/regs/blocks/el2_pic/el2_pic.rdl).
  * PIC base: SEP_TOP_PIC_BASE_ADDR = 0xC008_0000 (generated sep_addr.h, from
  * hw/sys/sep/regs/sep.rdl)
  */

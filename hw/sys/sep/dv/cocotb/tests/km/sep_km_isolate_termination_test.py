@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""What a Key Manager master transaction receives when its path is isolated.
+"""A Key Manager store to an isolated km_hmac path ends with AXI_SLVERR or AXI_DECERR.
 
 no_cpu host-AXI test with a KM-CPU firmware image
 (``+km_rom_hex=km_rom_iso.parhex``). Every other isolation check in this
 package drives the SEP host port, so it reaches the ``host_*`` AXI-Lite paths
 and never the ``km_*`` ones -- the Key Manager masters those, so only code
-running on the KM CPU can present a transaction to them. This entry is that
-vehicle for one path, ``km_hmac``.
+running on the KM CPU can present a transaction to them. This test does that
+for one path, ``km_hmac``.
 
 The ROM stores to the same HMAC wrapper key address three times, each leg
 preceded by a W1C of the two AXI error bits and a readback requiring them
@@ -21,7 +21,7 @@ clear, so the bit a leg reports belongs to that leg:
   * CHK-KM-ISO-REOPEN   HMAC released again: the same store is clean.
   * CHK-KM-ISO-PRECOND  every leg began with both error bits clear.
 
-The two clean legs cannot fail by themselves -- "no error" is also what a dead
+The two clean legs alone do not discriminate -- "no error" is also what a dead
 poll loop reports -- and they are not offered as evidence on their own. They
 are the controls that make CHK-KM-ISO-TERM discriminating: same instruction,
 same address, same image, differing only in whether the host holds HMAC in

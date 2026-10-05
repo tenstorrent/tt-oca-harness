@@ -15,7 +15,7 @@
  * Usage:
  *   1. Define your NMI handler function (can be in C or assembly)
  *   2. Call nmi_register_handler() to register it
- *   3. Set NMI vector via testbench mailbox using nmi_set_vector()
+ *   3. Set the NMI vector with nmi_set_vector_reg() (SEP_NMI_VEC CSR)
  *
  * Example:
  *   void my_nmi_handler(void) {
@@ -25,7 +25,7 @@
  *
  *   int main(void) {
  *       nmi_register_handler(my_nmi_handler);
- *       nmi_set_vector();
+ *       nmi_set_vector_reg();
  *       // ... enable NMI source ...
  *   }
  *
@@ -50,10 +50,9 @@ extern void _nmi_handler(void);
 /*
  * Register a custom NMI handler at runtime.
  *
- * The handler will be called when NMI fires. Note that NMI handlers
- * typically cannot return to normal execution - they should either:
- *   - Exit the test (call _finish or return to _finish)
- *   - Handle the NMI and continue with caution
+ * The handler is called when NMI fires. The crt0.s trampoline saves the
+ * caller-saved registers and returns with mret, so the handler may return
+ * normally.
  *
  * @param handler Function pointer to the custom NMI handler
  */
@@ -77,14 +76,10 @@ static inline uint32_t nmi_get_vector_addr(void) {
 }
 
 /*
- * Set the NMI vector via testbench mailbox.
+ * Write the LOAD_NMI_ADDR command to the STDOUT mailbox.
  *
- * This writes the LOAD_NMI_ADDR command to STDOUT mailbox,
- * which causes the testbench to update the nmi_vec signal.
- *
- * The NMI vector is set to the _nmi_handler trampoline address.
- * Make sure to call nmi_register_handler() first if you want
- * a custom handler.
+ * No SEP testbench decodes LOAD_NMI_ADDR, so this call does not change
+ * nmi_vec. Use nmi_set_vector_reg() to set the NMI vector.
  */
 static inline void nmi_set_vector(void) {
     uint32_t nmi_addr = nmi_get_vector_addr();
@@ -92,8 +87,6 @@ static inline void nmi_set_vector(void) {
      * Mailbox command format for LOAD_NMI_ADDR (0x81):
      *   bits [7:0]  = 0x81 (command)
      *   bits [31:8] = nmi_addr >> 8
-     *
-     * The testbench reconstructs: nmi_vec[31:1] = {mailbox[31:8], 7'b0}
      */
     uint32_t mailbox_cmd = ((nmi_addr >> 8) << 8) | LOAD_NMI_ADDR;
     WRITE_REG(STDOUT, mailbox_cmd);

@@ -1,6 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP OTBN memory smoke test."""
+"""OTBN IMEM and DMEM each take one 32-bit write over the CPU-LSU path and read it back exactly.
+
+The SRAM counters must show exactly one write and one read per memory, and the
+scoreboard must judge both readbacks with no rejection (CHK-OTBN-MEM).
+Run mode: no_cpu with +skip_fuse_sense.
+"""
 
 from __future__ import annotations
 
@@ -25,7 +30,7 @@ EXP_JUDGED_READS = 2
 
 @pyuvm.test()
 class sep_otbn_mem_smoke_test(sep_base_test):
-    """Load OTBN memories through the SEP CPU-LSU AXI frontdoor."""
+    """IMEM and DMEM return the written word and count one write and one read each."""
 
     async def run_scenario(self) -> None:
         dut = cocotb.top
@@ -64,8 +69,8 @@ class sep_otbn_mem_smoke_test(sep_base_test):
             f"OTBN DMEM SRAM requests {dmem_reqs}/{dmem_writes} != "
             f"expected {EXP_DMEM_REQS}/{EXP_DMEM_WRITES} (req/write)"
         )
-        # CHK-IMEM, CHK-DMEM and CHK-WRESP: no scoreboard rejection since the
-        # mark, and both readbacks judged against their written word.
+        # CHK-OTBN-MEM: no scoreboard rejection since the mark, and both
+        # readbacks judged against their written word.
         self.assert_sb_judged(mark, "CHK-OTBN-MEM")
         judged = self.env.scoreboard.value_checks - mark[1]
         assert judged == EXP_JUDGED_READS, (

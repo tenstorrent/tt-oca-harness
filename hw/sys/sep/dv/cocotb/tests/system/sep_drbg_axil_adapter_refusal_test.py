@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """drbg_axil64_lane_adapter answers an unsupported access SLVERR and forwards nothing.
 
-no_cpu / +skip_fuse_sense. hw/ip/drbg/doc/architecture.adoc ("Bus Protocol
+Run mode: no_cpu with +skip_fuse_sense. hw/ip/drbg/doc/architecture.adoc ("Bus Protocol
 Adaptation") states the graded contract: the adapter forwards only aligned
 single-lane accesses with WSTRB 0x0F or 0xF0, selects the 32-bit data lane by
 address bit 2, and answers every other access AXI SLVERR with no downstream
@@ -12,9 +12,10 @@ Graded refusals: a write whose strobe is not 0x0F or 0xF0 (a byte, a halfword,
 a full 64-bit beat, a zero strobe) and a write whose address is not 4-byte
 aligned. Driven only: a misaligned read, a legal strobe on the lane address
 bit 2 does not select, and the other lane of a supported read. Those three
-rules are in the adapter RTL header only (#2822). Their cells run on every seed
-for coverage; the response, data and forward probe are logged at info level as
-"not graded until #2822 specifies the rule" and do not enter the verdict.
+rules are stated only in the adapter RTL header, not in architecture.adoc.
+Their cells run on every seed for coverage; the response, data and forward
+probe are logged at info level with ``NOT_GRADED_NOTE``
+(seq_lib/sep_drbg_adapter_refusal_seq.py) and do not enter the verdict.
 
 Two halves, the same split as the port-arbitration leaf:
 
@@ -26,12 +27,13 @@ Two halves, the same split as the port-arbitration leaf:
   AXI-Lite-32 request (drbg_csrng_fwd_o / drbg_edn_fwd_o in tb/tb_top.sv),
   which must stay low on every cycle of the refused write, and through what the
   DUT shows: the register keeps its value, and the lane's PERIPH_BUS_ERR_STATUS
-  bit -- the bridge's sticky TL-UL error (hw/sys/sep/doc/crypto.adoc, "Crypto
-  Register-Bridge Faults") -- stays clear. No legal access sets the CSRNG or
+  bit -- the bridge's sticky TL-UL error (hw/sys/sep/doc/crypto.adoc, table "SEP
+  crypto alert and fault routing") -- stays clear. No legal access sets the CSRNG or
   EDN bit in this build: their crypto-demux windows end at the last register,
-  so an unmapped offset answers DECERR before the bridge
-  (seq_lib/sep_irq_aggregator_seq.py). The probe is therefore the observable
-  that a control shows live; the status bit is a second consequence only.
+  so an unmapped offset answers DECERR before the bridge (the same decode
+  sep_irq_ip_to_aggregator_test relies on, in seq_lib/sep_irq_aggregator_seq.py).
+  The probe is therefore the observable that a control shows live; the status
+  bit is a second consequence only.
 * The TB-owned instance ``u_tbadp_vehicle``, driven pin-level, for the refusal
   conditions one AXI master transfer cannot place at a DUT port (a full 64-bit
   beat, a zero strobe, a misaligned write address, and the driven-only

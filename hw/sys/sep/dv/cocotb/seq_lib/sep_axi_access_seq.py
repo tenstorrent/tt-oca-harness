@@ -97,9 +97,9 @@ class SepAxiAccessSeq(uvm_sequence):
         self._expect_error = expect_error
         # Packed AWUSER/ARUSER (inbound FILTER_CONFIG.src_id matches user[3:0]).
         self._user = user
-        # AXI AxBURST. None = VIP default (single beat).
+        # AXI AxBURST. None keeps the VIP default (INCR).
         self._burst = burst
-        # AXI AxID. Default 0 matches every pre-existing caller.
+        # AXI AxID. Default 0.
         self._axi_id = axi_id
         # AxPROT, and the lock/cache/qos/region/wuser attributes. None and an
         # empty dict keep the VIP defaults (SepAxiItem.prot / .attrs).

@@ -68,9 +68,8 @@ def feat_ctrl_nonvacuous_fixed(
         f"SIP_DIS=0x{sip:016x} SYS_DIS=0x{sys_dis:016x} still gives FEAT_CTRL=0"
     )
     base.update({"SIP_DIS": sip, "SYS_DIS": sys_dis})
-    # Say so. The image this seed now produces is NOT the one a plain
-    # randomize(seed) gives, and without this line a repaired run looks like an
-    # ordinary one to anyone reproducing it.
+    # A repaired seed produces an image a plain randomize(seed) does not; the
+    # log line lets a reproducing run see that.
     _log.info(
         "[efuse] seed %d drew SIP_DIS|SYS_DIS covering every Function bit, so "
         "post-sense FEAT_CTRL would be 0 and the fail-closed contrast vacuous; "

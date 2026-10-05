@@ -1,15 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP boot-ROM IFU sanity test (PyUVM).
+"""The IFU fetches and executes seven boot-ROM functions, and each returns its expected value.
 
-Boots VeeR EL2 from ICCM with the rom_sanity firmware, which calls seven hand-assembled functions
-in the boot-ROM (0x1004_0000) through function pointers, so the IFU fetches and executes them from
-ROM. Each return value is checked (42/123/100/0xDEADBEEF/55/77/42), covering I/U/R/J-type and
-NOP-sled sequential fetch.
+The test boots VeeR EL2 from ICCM with the rom_sanity firmware. The firmware calls seven
+hand-assembled functions in the boot-ROM (0x1004_0000) through function pointers, so the IFU
+fetches and executes them from ROM. Each return value is checked
+(42/123/100/0xDEADBEEF/55/77/42), covering I/U/R/J-type and NOP-sled sequential fetch.
 
 ``+sep_boot_rom_hex=rom_sanity_rom.hex`` preloads the boot-ROM responder with the committed ROM
-image. start.S emits PASS/FAIL magic from main()'s error count, which the boot scoreboard gates on
-with the banner and ICCM-execution checks.
+image. fw/startup/crt0.s emits PASS/FAIL magic from main()'s error count, which the boot
+scoreboard gates on with the banner and ICCM-execution checks.
 
 No fuse data is read, so the testlist entry uses ``+skip_fuse_sense``.
 """
@@ -30,10 +30,9 @@ _ITCM_HEX = os.path.join(_FW_DIR, "rom_sanity_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "rom_sanity_test.dtcm.hex")
 
 _ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
-# Seven short ROM calls + return-value checks; the run loop early-exits on
-# fw_done, so this is an upper bound.
-# Seven ROM-resident functions are called; the firmware prints one line each.
+# The firmware calls seven ROM functions and prints one line for each.
 _EXPECTED_IFU_CHECKS = 7
+# The run loop exits early on fw_done, so this is an upper bound.
 _MAX_RUN_CYCLES = 1_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
@@ -42,7 +41,7 @@ _BANNER = "SEP ROM IFU sanity test"
 
 @pyuvm.test()
 class sep_rom_sanity_test(sep_base_test):
-    """Boot VeeR EL2 and run the boot-ROM IFU sanity firmware."""
+    """Seven ROM-resident calls return their expected values, one IFU check line each."""
 
     build_env = False
 

@@ -3,7 +3,7 @@
 //
 // SEP SV-UVM environment: composes, drives nothing, checks no protocol. It
 // reads sep_env_cfg and the SEP-local sep_tb_if from uvm_config_db, sets
-// the three harness clock periods on the TB interface, fills one shared-VIP
+// the four harness clock periods on the TB interface, fills one shared-VIP
 // config per port (interface, geometry, name_tag) and publishes it to that
 // agent's subtree, and builds:
 //
@@ -19,7 +19,7 @@
 //     sep_scoreboard pairing each feature's expected stream with the
 //     observed one.
 //
-// The cocotb twin is env/sep_env.py.
+// The cocotb twin is cocotb/env/sep_env.py.
 
 class sep_env extends ocah_env;
   `uvm_component_utils(sep_env)

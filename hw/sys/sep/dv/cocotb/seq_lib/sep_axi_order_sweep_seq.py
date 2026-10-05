@@ -68,9 +68,9 @@ SIZE_CROSS_BLOCKS = ("SEP_SCRATCH_COLD", "SEP_SCRATCH_WARM")
 # about the register. Each entry states what a probe there would measure
 # instead of the ordering contract.
 BLOCK_EXCLUDE: dict[str, str] = {
-    # aon_timer runs on clk_wdt at 5000ns against a 5ns system clock, so one
-    # register access crosses into a domain 1000x slower and the AXI timeout
-    # of 50000ns spans about ten of its clock edges. Whether a round trip
+    # aon_timer runs on clk_wdt at 5000 ns against the 1.25 ns system clock, so
+    # one register access crosses into a domain 4000x slower, and the 50000 ns
+    # AXI timeout spans about ten of its clock edges. Whether a round trip
     # fits depends on the phase the access arrives on, so a probe here
     # measures CDC latency against the timeout, not whether AW and W were
     # delivered. sep_reg_bit_bash_rand_test covers the block's storage with a
@@ -82,16 +82,15 @@ BLOCK_EXCLUDE: dict[str, str] = {
 # for a reason that belongs to that path. Each entry names the RTL fact.
 BLOCK_EXCLUDE_M_AXI: dict[str, str] = {
     # Every INBOUND_FILTER_CTRL_<n>_ block IS the rule set that gates this bus.
-    # hw/sys/sep/doc/fabric.adoc (Traffic Filter Decode) states the inbound
+    # hw/sys/sep/doc/fabric.adoc (Filtering and Protection) states the inbound
     # filter has 16 entries and that each entry is one filter_ctrl register
     # triple -- FILTER_CONFIG, START_ADDR, END_ADDR -- so the swept registers are
-    # that entry's own address window. A
-    # sweep write there moves the address window of the access in flight, so the
-    # cell would measure filter reprogramming rather than an adapter's channel
-    # ordering. Reaching them from m_axi at all would also need an allow window
-    # over the filter CSR bank, which is the software hole
-    # sep_fabric_inbound_filter_rule_matrix_test asserts must stay shut. The
-    # CPU-LSU sweep covers these registers; that path has no inbound filter.
+    # that entry's own address window. A sweep write there moves the address window
+    # of the access in flight, so the cell would measure filter reprogramming rather
+    # than an adapter's channel ordering. Reaching them from m_axi at all would also
+    # need an allow window over the filter CSR bank, which is the software hole
+    # sep_fabric_inbound_filter_rule_matrix_test asserts must stay shut. The CPU-LSU
+    # sweep covers these registers; that path has no inbound filter.
     f"INBOUND_FILTER_CTRL_{n}_": "inbound-filter rule bank: the entry's own address window gates this "
     "bus, so a sweep write reprograms the path under the walk"
     for n in range(16)

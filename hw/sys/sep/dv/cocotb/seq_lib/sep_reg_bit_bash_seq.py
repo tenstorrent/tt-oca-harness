@@ -3,8 +3,8 @@
 """CSR reset / RW / RO / reserved sweep for sep_reg_bit_bash_rand_test.
 
 Walks the generated SystemRDL export in env/sep_reg_meta.py. Not a RAL model.
-SepRegBitBashCfg is the single source of truth for which registers are reset-
-checked, which take a write bash, and the seed-selected walk order.
+SepRegBitBashCfg is the single source of truth for which registers get a reset
+check, which take a write bash, and the seed-selected walk order.
 
 Exclusions are data: one reason string per entry. A silent skip is a bug.
 ``iter_register_walk`` counts OFFSET symbols that lack DEFAULT/struct
@@ -104,8 +104,9 @@ RESET_EXCLUDE_SUFFIX: dict[str, str] = {
     "ERROR_FLAGS": "read-clear",
     "GENBITS": "FIFO",
     "CMD": "trigger",
-    # spi_host COMMAND: write-only segment trigger (swaccess wo, hwext); reads
-    # return 0, so it is neither reset-checkable nor a storage touch.
+    # spi_controller COMMAND: write-only segment trigger (`sw = w`, `external` in
+    # spi_controller.rdl); reads return 0, so it is neither reset-checkable nor a
+    # storage touch.
     "COMMAND": "trigger",
     "CMD_REQ": "trigger",
 }
@@ -163,13 +164,10 @@ WRITE_SAFE_PREFIXES = (
 # admitting any register in one of them, the cfg raises instead of quietly
 # shipping a narrower sweep.
 #
-# AES's only candidate is CTRL_AUX_SHADOWED. touch_write detects the SHADOWED
-# name and issues the dual write the register requires, so it is a valid
-# storage touch; the deny list covers CTRL_SHADOWED / CFG_SHADOWED because
-# those are the shadowed *control* registers whose value has side effects.
-# HMAC, KMAC and OTBN contribute INTR_ENABLE only -- the generated interrupt
-# shim rather than IP-owned storage, so those rows are block decode/storage
-# evidence, not evidence about the engine.
+# A SHADOWED candidate takes the dual write touch_write issues, so it is a
+# valid storage touch; the shadowed control registers stay denied because
+# their value has side effects. An INTR_ENABLE row is evidence of block decode
+# and storage, not of the engine.
 TOUCH_BLOCKS: tuple[str, ...] = (
     "AES",
     "HMAC",
@@ -294,9 +292,7 @@ def write_mask(info: RegInfo) -> int:
     ``KM_MAILBOX_SEP.SEP_CTRL`` carries FLUSH inside the software-usable mask:
     the field is write-1 and hardware clears it when the flush completes, so it
     never reads back what a random ``x`` wrote. The two response bits beside it
-    are plain storage, so the register stays on the touch with the pulse masked
-    out rather than being denied whole -- the same treatment NOISE_OBS_CTRL's
-    write-only field would need if its peers were storage.
+    are plain storage, so only the pulse bit leaves the mask.
     """
     mask = info.mask
     if info.block == "KM_MAILBOX_SEP" and info.name == "SEP_CTRL":
@@ -710,8 +706,10 @@ class SepRegBitBash:
             )
             if (~mask) & 0xFFFF_FFFF:
                 self.ro_ok += 1
-            # TIMEOUT_* placeholders: mask=0 and mask_all=1, so the lone
-            # reserved bit is real storage.
+            # A register with no software-usable field (mask 0) skips the
+            # reserved compare: its RDL `reserved` field is sw=rw storage
+            # (TIMEOUT_COUNT_*) and reads back what was written. A register
+            # whose write mask drops a field skips it too.
             if mask != 0 and mask == info.mask:
                 reserved = after & info.reserved
                 assert reserved == 0, (

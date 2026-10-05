@@ -234,7 +234,7 @@ class SepAes(SepAxiRegDriver):
             await self._wr(AES_IV_0 + i * 4, word & 0xFFFF_FFFF)
 
     async def load_key_iv(self, key_words: list[int], iv_words: list[int] | None = None) -> None:
-        """Spec-ordered SW key + IV load (aes programmers_guide.md): a KEY write
+        """Spec-ordered SW key + IV load (OpenTitan AES Programmer's Guide, upstream): a KEY write
         kicks off a PRNG reseed, and any KEY/IV write while the unit is NOT idle is
         IGNORED. So wait for idle after the key before writing the IV, else CBC/CTR
         never receives its IV and the engine never starts. Caller configures
@@ -282,12 +282,10 @@ class SepAes(SepAxiRegDriver):
     async def read_public_key_shares(self) -> tuple[list[int], list[int], int]:
         """Read the public KEY_SHARE0/1 CSRs, plus a positive control.
 
-        These key registers are declared write-only, and the generated register
-        block ties their read data to zero. That has a consequence worth stating
-        plainly: reading them back as zero is NOT by itself evidence that the
-        sideloaded key is unexposed -- they would read zero even if the key were
-        mirrored somewhere else, and even if the transfer never happened. What
-        the readback can do is catch the day someone makes them readable.
+        These key registers are declared write-only and the generated register
+        block ties their read data to zero, so a zero readback is not by itself
+        evidence that the sideloaded key is unexposed; it catches only a
+        register that becomes readable.
 
         For that to be worth anything the read path has to be known alive, so we
         also return STATUS, a readable register in the same CSR window reached

@@ -13,8 +13,7 @@
  *
  * The last word of every frame is flagged by writing the WRITE_SEPARATOR CSR
  * before the data word; inbound frames are delimited by the STATUS separator
- * bit. This client mirrors the frame sequence sep_cpu_sram_aes_sram_test drives
- * inline and is shared by the KM sideload tests.
+ * bit. This client implements that frame format.
  *
  * Command / destination encodings match hw/ip/key_manager/approm/prod
  * (rom_defs.h rom_km_cmd_id_t / rom_km_dest_bits_t).
@@ -52,7 +51,7 @@
 #define KM_STATUS_OUT_EMPTY KM_MAILBOX_SEP__STATUS_REG__OUTBOUND_EMPTY_bm
 #define KM_STATUS_OUT_SEP KM_MAILBOX_SEP__STATUS_REG__OUTBOUND_SEPARATOR_bm
 
-/* Generous poll budget; the UVM FW_TEST_TIMEOUT is the real backstop. */
+/* Generous poll budget; the testbench run timeout is the real backstop. */
 #define KM_MBOX_TIMEOUT 2000000u
 
 /* Per-translation-unit frame sequence counters. */

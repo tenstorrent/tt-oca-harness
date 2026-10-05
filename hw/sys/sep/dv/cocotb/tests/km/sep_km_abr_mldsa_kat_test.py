@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM -> ABR ML-DSA-87 keyGen NIST KAT on the Key Manager path.
+"""ML-DSA-87 KEYGEN on a seed delivered only through the Key Manager returns the ACVP public key.
 
 no_cpu / real fuse-sense / +km_rom_hex=rom_main.rom.parhex.
 
@@ -10,7 +10,7 @@ Manager: CMD_KEY_LOAD + CMD_KEY_TRANSFER to dest ABR ML-DSA seed, then the KV
 seed read. It is never written to the ABR seed registers, so a public key equal
 to the ACVP public key can only come from the delivered seed. Key Manager word
 i is register index MLDSA_SEED[i], and index 0 holds the first four bytes of
-the FIPS 204 seed (doc/adams_bridge.adoc, abr-seed-word-order), so the seed
+the FIPS 204 seed (hw/sys/sep/doc/adams_bridge.adoc, abr-seed-word-order), so the seed
 words go to the Key Manager in the same order sep_abr_mldsa_keygen_kat_test
 writes them to the registers. The eight seed words are pairwise distinct, so a
 dword reversal or any other word permutation in delivery fails the compare.
@@ -20,7 +20,8 @@ Checkers:
   CHK-XFER    CMD_KEY_TRANSFER of the ACVP seed to dest ABR ML-DSA seed returns
               success and echoes the handle and dest
   CHK-KV      the KV seed read completes: kv_mldsa_seed_rd_status VALID with
-              ERROR == SUCCESS (kv_def.rdl encoding)
+              ERROR == SUCCESS (kv_def.rdl encoding, read from
+              vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/)
   CHK-KM-KAT  the KEYGEN public key equals the ACVP keyGen public key, all
               648 words
 

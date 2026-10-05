@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP OpenTitan-SPI DMA-TX test (PyUVM, cpu-firmware, randomized).
+"""SRAM data reaches the flash through the Secure DMA and SPI TX FIFO, paced by the TX watermark.
 
 SPI DMA-TX breadth: the TX complement of
 `sep_spi_ot_dma_rx_test` (SPI RX FIFO -> DMA -> SRAM). Here SRAM -> Secure DMA (hardware
@@ -8,14 +8,13 @@ handshake) -> OT SPI host TX FIFO -> flash: the OT SPI TX watermark drives
 lsio_trigger, which refills the TX FIFO from SRAM a 16-byte chunk at a time. RX is
 held quiescent so the single lsio_trigger (= tx_wm | rx_wm) is TX-watermark-driven.
 
-Beyond the reference spi_ot_dma_tx_test (raw-byte stream, done+no-error
-only): the DMA feeds a REAL flash PAGE PROGRAM stream (opcode 0x02 + 24-bit addr +
-data) from SRAM; the firmware then reads the flash back over SPI and value-checks
-it; and an independent cocotb BFM golden confirms the flash memory == the SRAM
-source. DISTINCT from `sep_spi_ot_dma_rx_test` (RX direction) -- reuses that
-test's lsio_trigger / DMA hardware-handshake bring-up.
+The DMA feeds a real flash PAGE PROGRAM stream (opcode 0x02 + 24-bit addr + data) from SRAM;
+the firmware then reads the flash back over SPI and value-checks it; and an
+independent cocotb BFM golden confirms the flash memory == the SRAM source. Distinct
+from `sep_spi_ot_dma_rx_test` (RX direction) -- reuses that test's lsio_trigger /
+DMA hardware-handshake bring-up.
 
-Randomization ([RAND-REP], SINGLE source of truth): SepSpiDmaTxCfg walks all
+Randomization ([RAND-REP], single source of truth): SepSpiDmaTxCfg walks all
 required discrete DMA length / trigger cells in one run (nwords={7,11,15}, all
 multi-chunk transfers) and randomizes only legal page-aligned flash addresses and
 payload words from the runner seed. The resolved table is patched into the
@@ -29,7 +28,7 @@ Checks:
     CHK-DMA-DONE  : DMA STATUS.done, error==0, ERROR_CODE==0; done still set on a
                     second read, then STATUS RW1C clears.
                     Handshake mode does not raise STATUS.chunk_done (RTL: only when
-                    hardware handshake is off); that status is `dma_basic_test`.
+                    hardware handshake is off); sep_dma_basic_test covers that status.
     CHK-SPI-IDLE  : OT SPI reaches idle, ERROR_STATUS==0.
     CHK-DMA-TX    : flash read-back == the DMA-fed data (SRAM->DMA->TXFIFO->flash).
     CHK-NONVAC    : the programmed data differs from the erased 0xFF (data landed).
@@ -39,8 +38,10 @@ Checks:
                     flow-control edge the watermark-paced DMA never reaches, so
                     nothing else in the test proves the host reports it.
   cocotb golden cross-check:
-    CHK-TRIGGER/BFM : the BFM saw WREN then PAGE PROGRAM at the random addr with the
-                      random data; BFM memory == the SRAM source pattern.
+    BFM golden (logged as "SPI DMA-TX breadth GOLDEN PASS"): the BFM saw at least
+                      _BREADTH_FLOOR WREN and PAGE PROGRAM transactions, one PAGE
+                      PROGRAM at each random addr with that case's data, and BFM
+                      memory == the SRAM source pattern.
     CHK-MULTICHUNK  : the TX watermark paced every DMA transfer. A watch-only
                       probe samples the DMA input trigger and the SPI TX FIFO depth
                       (TXQD) on each clock while DMA STATUS.busy is set. Per case,
@@ -50,9 +51,9 @@ Checks:
                       or a DMA that refills without waiting for the watermark,
                       fills the FIFO past that bound in one burst.
 
-main() returns the error count; start.S emits PASS (0xCAFEBABE) / FAIL (0xDEADBEEF).
+main() returns the error count; fw/startup/crt0.s emits PASS (0xCAFEBABE) / FAIL (0xDEADBEEF).
 
-cpu / +skip_fuse_sense.
+Run mode: cpu with +skip_fuse_sense.
 """
 
 from __future__ import annotations
@@ -178,7 +179,7 @@ class SepSpiDmaTxCfg:
 
 @pyuvm.test()
 class sep_spi_ot_dma_tx_test(sep_base_test):
-    """Boot VeeR EL2 and run the OT SPI DMA-TX firmware against the flash BFM."""
+    """Each DMA-fed PAGE PROGRAM lands in the flash BFM, paced by the TX watermark."""
 
     build_env = False
     required_evidence = ("CHK-FW-CONSOLE", "CHK-MULTICHUNK")

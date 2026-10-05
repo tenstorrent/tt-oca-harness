@@ -1,20 +1,20 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""axil_mailbox interface breadth (randomized-rep, TX path).
+"""axil_mailbox TX: STATUS and WIRQT follow the depth golden; read-empty and write-full give SLVERR.
 
-no_cpu host-AXI test of the SEP axil_mailbox MECHANICS over the CPU-LSU master,
+no_cpu host-AXI test of the SEP axil_mailbox mechanics over the CPU-LSU master,
 on the outbound_mailbox_0 aperture (0x10A0_0000) -- the SEP/CPU side of the
-two-port cross-FIFO, reachable with NO inbound filter. This is the TX-path test:
-with no CPU running the RX FIFO is always empty. Distinct from the
-outbound->PIC->CPU delivery path
-(sep_mailbox_plic_test).
+two-port cross-FIFO, reachable with no inbound filter. This is the TX-path test:
+with no CPU running the RX FIFO is always empty. Flush must drain the FIFO.
+Distinct from the inbound-mailbox -> PIC -> CPU delivery path (sep_mailbox_plic_test).
 
 A SepMboxCfg config object (seeded WIRQT + payloads) is the single source of truth
 for DUT programming and the golden depth model (env/sep_mbox_golden.py), which
 predicts the visible STATUS bits + the write-threshold IRQ from the TX occupancy
 (STATUS has no exact-depth field). Thresholds compare with strict greater-than
-(``architecture.adoc``: fill level exceeds the configured threshold). Seed is
-logged; regression mode can sweep this via TOML ``reseed = N``.
+(``hw/ip/axi_lite_mailbox_unit/doc/architecture.adoc``: occupancy strictly greater
+than the threshold). Seed is logged; regression mode can sweep this via TOML
+``reseed = N``.
 
 Every run executes the whole rep twice, once with a WIRQT from the low half of
 [1, depth-1] and once from the high half (``SepMboxCfg.per_half``). The seed
@@ -28,16 +28,14 @@ of its step when ``full`` or ``empty`` differs, so a threshold fault in one
 half of the range fails CHK-WIRQT by name. Each PASS line logs the register
 values it read.
 
-reference refs: fabric sep_mailbox_64bit_data_test, sep_mailbox_misc_regs_test,
-sep_fabric_mailbox_fifo_closure_test (one rep subsumes the TX FIFO/IRQ/error/flush family).
-RUN-MODE: no_cpu (CPU-LSU master). FUSE-MODE: +skip_fuse_sense (the local mailbox has
+One rep covers the TX FIFO, IRQ, error and flush contracts.
+Run mode: no_cpu (CPU-LSU master) with +skip_fuse_sense (the local mailbox has
 no OTP/LC dependency).
 
 Not covered here: (1) data round-trip readback and (2) read-threshold (RIRQT) need the
 RX FIFO filled from the peer side, which this aperture cannot do, so the read half of
-the threshold pair has no vehicle on this master. The rep is TX-only, like the
-reference test it ports; the peer path is reachable only from the external
-smn_inbound master.
+the threshold pair has no vehicle on this master. The rep is TX-only; the peer path
+is reachable only from the external smn_inbound master.
 """
 
 from __future__ import annotations
@@ -71,7 +69,7 @@ from seq_lib.sep_mailbox_iface_seq import SepMbox
 
 @pyuvm.test()
 class sep_axil_mailbox_iface_rand_test(sep_base_test):
-    """TX FIFO push/STATUS/threshold + read-empty/write-full error + flush."""
+    """STATUS and WIRQT track the golden, error pushes and pops give SLVERR, and flush drains."""
 
     required_evidence = (
         "CHK-NONVAC",
@@ -156,9 +154,6 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         await self._chk_64b_status_threshold()
         await self._chk_write_full_error()
         await self._chk_flush()
-        # No CHK-ALL summary: it asserted nothing, and every facet above already
-        # logs its own PASS line. A plan row keyed on a bare summary string would
-        # record coverage with no checker behind it.
 
     async def _chk_write_data_readback(self) -> None:
         """CHK-WDATA-RD: WRITE_DATA is push-only. A read of it returns the
@@ -245,8 +240,9 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         )
 
     async def _chk_64b_status_threshold(self) -> None:
-        """CHK-64B + CHK-STATUS + CHK-WIRQT: push 64-bit entries, STATUS tracks the
-        golden TX depth, write-threshold IRQ fires when tx>WIRQT (IRQP gated).
+        """CHK-64B + CHK-WIRQT: push 64-bit entries; STATUS matches the golden TX
+        depth after every push (graded under CHK-64B); the write-threshold IRQ fires
+        when tx>WIRQT (IRQP gated).
 
         Each WRITE_DATA access is a single native 64-bit beat (the CPU-LSU path is
         64-bit). The exact 64-bit value is carried per push and the FIFO fills 1
@@ -261,10 +257,9 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         for i in range(self.cfg_mb.first_batch):
             rc = await self.mb.push64(self.cfg_mb.payloads[i])
             assert rc == RESP_OKAY, f"CHK-64B FAIL: push {i} answered resp={rc}, expected OKAY"
-            # Advance the model. Not asserted: gold.push() only returns False when the
-            # model is already full, which a range(first_batch < depth) loop cannot
-            # reach, so asserting it tests the model's arithmetic rather than the DUT.
-            # _check_status below is what compares the model against the DUT.
+            # gold.push() returns False only when the model is already full, which
+            # range(first_batch < depth) cannot reach; _check_status compares the model
+            # against the DUT.
             self.gold.push()
             await self._check_status(f"push64 #{i + 1}", "CHK-64B")
             await self._check_wtirq(f"push64 #{i + 1}")
@@ -349,9 +344,6 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
             self.cfg_mb.first_batch,
             st,
         )
-        # No separate CHK-STATUS line: the STATUS comparison is _check_status, called
-        # after every push above, and a bare summary log with no assert behind it reads
-        # as a checker in a plan while enforcing nothing.
 
     async def _chk_write_full_error(self) -> None:
         """CHK-ERR-WR: a push to the full TX FIFO -> SLVERR +

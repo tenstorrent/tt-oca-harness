@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-/*******************************************************************************
+/*
  * Common helpers for SEP eFuse firmware tests.
- ******************************************************************************/
+ */
 
 #ifndef EFUSE_FW_TEST_COMMON_H
 #define EFUSE_FW_TEST_COMMON_H
@@ -68,9 +68,8 @@ static inline void efuse_clear_req_error(void) {
 }
 
 /*
- * efuse_config_program_clock() is implemented by adopter overlays that need a
- * macro programming clock; this helper provides only the OpenTitan
- * EFUSE_INTERFACE_CTRL surface.
+ * These helpers drive only the EFUSE_INTERFACE_CTRL interface
+ * (hw/ip/efuse/regs/efuse_interface_ctrl.rdl).
  */
 
 static inline int efuse_program_bit(uint32_t bit_addr) {
@@ -302,8 +301,8 @@ static inline int efuse_token_trigger_and_poll(uint32_t eop_mask, uint32_t match
     WRITE_REG(SEP_TOP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR, eop_mask);
 
     /*
-     * The UVM sequence waits 10 us after TOKEN_EOP. A short CPU-side delay
-     * prevents sampling a previous token result before SHA256/comparison reruns.
+     * A short CPU-side delay after TOKEN_EOP prevents sampling the previous
+     * token result before the SHA-256 compare reruns.
      */
     efuse_fw_delay(20000);
     return efuse_token_poll(match_addr, expected);

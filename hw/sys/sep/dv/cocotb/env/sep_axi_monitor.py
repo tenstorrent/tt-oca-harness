@@ -2,11 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Passive AXI protocol/integrity monitor for the SEP AXI buses.
 
-Snoops a top-level AXI bus directly (by signal prefix) -- independent of the
-cocotbext-axi master.
-This is the in-testbench substitute for the RTL SVA assertions, which the OSS
-Verilator build cannot run (gated off by ``VERILATOR``). It
-checks, per accepted bus beat:
+Snoops a top-level AXI bus directly (by signal prefix), independent of the
+cocotbext-axi master. The Verilator targets run without --assert, so the RTL
+SVA rules do not fire there. This monitor runs its read-data, decode and
+ready-wait checks on both simulators. It checks, per accepted bus beat:
 
   * **read-data integrity** -- an accepted R beat (``rvalid && rready``) that
     returns OKAY/EXOKAY must not carry an X/Z bit in the byte lanes the read

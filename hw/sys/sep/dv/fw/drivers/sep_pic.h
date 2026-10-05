@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // VeeR EL2 PIC (programmable interrupt controller) firmware driver for the SEP
-// OSS tests. Header-only (static inline). PIC register addresses come from
+// DV tests. Header-only (static inline). PIC register addresses come from
 // generated sep_addr.h (via sep.h).
 //
 // VeeR EL2 is built with fast_interrupt_redirect: on an external interrupt the

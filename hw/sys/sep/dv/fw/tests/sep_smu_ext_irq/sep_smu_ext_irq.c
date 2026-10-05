@@ -177,8 +177,8 @@ static int run_ext_irq(void) {
 
     sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), EXT_IRQ_ARMED);
     if (ext_irq_armed() != 0) {
-        /* The pin fired somewhere else: SEP_NUM_INTERNAL_IRQS no longer
-         * matches sep_pkg::NUM_INTERNAL_IRQS. Publish the source that did go
+        /* The pin fired somewhere else: SEP_NUM_INTERNAL_IRQS does not
+         * match sep_pkg::NUM_INTERNAL_IRQS. Publish the source that did go
          * pending so the correct constant is readable from the run. */
         sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(9), first_pending_source());
         sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3),

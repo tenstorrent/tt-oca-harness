@@ -27,7 +27,7 @@
 // in the cpu_ctrl_csr predicted set. Expected values are the RDL field
 // masks and reset values (sep_reg.svh) and SLVERR from the RDL field
 // descriptions. The cocotb twin is
-// tests/system/sep_periph_bus_err_misaligned_test.py.
+// cocotb/tests/system/sep_periph_bus_err_misaligned_test.py.
 
 class sep_periph_bus_err_misaligned_test_seq extends sep_base_test_seq;
   `uvm_object_utils(sep_periph_bus_err_misaligned_test_seq)

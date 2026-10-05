@@ -1,20 +1,40 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM key/policy vault: slot extent, SRAM write-lock, and the KPV seal.
+"""KPV slots honour extent and locks, SRAM write-locks drop stores, and erase retires a sealed slot.
 
 no_cpu / +skip_fuse_sense / +km_rom_hex=km_rom_vault.parhex. RANDCFG.
 Not ``rom_main``: KPV CTRL and SRAM_LOCK are on the KM CPU bus. The seal
 lives here rather than on the mailbox command set because no command
 seals a slot -- over the mailbox an erase always frees, so the retire
-path has no vehicle there. The host posts a seed-selected slot, SRAM
+path cannot be reached there. The host posts a seed-selected slot, SRAM
 region and seal/free slot pair through the mailbox; the ROM walks slot
 0, that slot, and slot 63, rejects a store past ``KM_KPV_SIZE``, locks
 the selected SRAM region and W1C-clears the violation / IRQ, then runs
 the seal contrast: the same erase retires a sealed slot and frees an
 unsealed one.
+
 Result flags in KM SRAM word0 (the ``km_sram_word0_o`` probe). The data of
 the refused ``lock_use`` read is in KM SRAM word1 (``km_sram_probe_o``), read
 with no unknown bits allowed.
+
+Checkers:
+  CHK-SLOT       CTRL lock_write sticks on slots 0 and 63 and the seed slot.
+  CHK-LOCKWR     a key-data store to a write-locked slot raises AXI_SLVERR; the
+                 same store before lock_write is clean (control).
+  CHK-LOCKUSE    a read of a lock_use slot raises SLVERR; before lock_use it reads
+                 back the stored word (control).
+  CHK-EXTENT     a store past KM_KPV_SIZE sets AXI_SLVERR and not AXI_DECERR.
+  CHK-DROP       a write to the locked SRAM region is dropped.
+  CHK-VIOL       SRAM_WRITE_LOCK_VIOLATION names only the locked region.
+  CHK-IRQ        IRQ_STATUS.SRAM_WRITE_LOCK_ERR is set.
+  CHK-W1C        the violation and the IRQ read back 0 after W1C.
+  CHK-SEAL       one CTRL write reads back exactly seal|lock_write.
+  CHK-RETIRE     an erase of a sealed slot leaves it retired.
+  CHK-RETSTICK   a second erase leaves the slot retired.
+  CHK-FREE       an erase of an unsealed slot clears CTRL.
+  CHK-ERASEDATA  the erase overwrites both preloaded key words with differing values.
+  CHK-IRQSET     IRQ_SET.DRBG_ERR_SET raises IRQ_STATUS.DRBG_ERR and W1C clears it.
+  CHK-RANDCFG    the ROM echoes a fold of the whole seeded config word.
 """
 
 from __future__ import annotations
@@ -51,7 +71,7 @@ _KM_SRAM_WORD1_MASK = 0xFFFF_FFFF << 32
 
 @pyuvm.test()
 class sep_km_key_policy_vault_test(sep_base_test):
-    """Legal KPV slot, out-of-window reject, SRAM write-lock W1C."""
+    """KPV extent and locks, SRAM write-lock W1C; erase retires sealed and frees unsealed slots."""
 
     async def run_scenario(self) -> None:
         cfg = SepKmVaultCfg(self.random_seed())

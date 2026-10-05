@@ -20,7 +20,7 @@
 // Each pass uses its own SRAM word (loop_index selects it), so the
 // before-write read of every pass reads a word no earlier pass wrote. Every
 // expected value is the written stimulus or the zero fill; the scoreboard
-// does not predict SRAM. The cocotb twin is seq_lib/sep_sram_smoke_seq.py.
+// does not predict SRAM. The cocotb twin is cocotb/seq_lib/sep_sram_smoke_seq.py.
 
 class sep_sram_smoke_test_seq extends sep_base_test_seq;
   `uvm_object_utils(sep_sram_smoke_test_seq)

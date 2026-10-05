@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM warm-reset recovery, then the SEP emergency wipe.
+"""The KM recovers from a warm reset, and a SEP wipe request makes it post the wipe_state fault.
 
 no_cpu / real fuse-sense / +km_rom_hex=rom_main.rom.parhex.
 
@@ -9,6 +9,14 @@ Warm-reset first: park and release the KM ``SW_RESET_N`` bit, wait for
 ``KM_WIPE_CTRL.wipe_state``. The KM posts ``RESP_UNRECOVERABLE_FAULT`` with
 the ``wipe_state`` fault code and aggregator bit 30 (PIC source 31) asserts.
 KPV-zero is not claimed -- those arrays have no SEP frontdoor.
+
+Checkers:
+  CHK0       rom_main boots and announces RESP_KM_READY.
+  CHK-PRE    CMD_KEY_LOAD returns a handle before the warm reset.
+  CHK-RESET  after a SW_RESET_N park and release the KM announces RESP_KM_READY
+             again and CMD_KEY_LOAD returns a non-null handle.
+  CHK-WIPE   a KM_WIPE_CTRL write posts RESP_UNRECOVERABLE_FAULT with the
+             wipe_state fault code, and the aggregator bit asserts.
 """
 
 from __future__ import annotations
@@ -51,7 +59,7 @@ _RESET_KEY = (
 
 @pyuvm.test()
 class sep_km_wipe_reset_test(sep_base_test):
-    """Recover the KM after a warm reset, then wipe it closed."""
+    """The KM serves a key load after a warm reset, then a wipe posts the unrecoverable fault."""
 
     async def run_scenario(self) -> None:
         image = self.select_efuse_image(lc_raw=0x1)

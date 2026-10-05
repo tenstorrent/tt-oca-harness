@@ -5,7 +5,8 @@
 no_cpu, real fuse sense, LC_PROD. Stages write-lock and read-lock on two
 seed-selected SPARE fields plus an unlocked contrast in the same OTP image,
 then accesses the *shadow* aperture. The interrupt is combinational and
-pulse-only: watch the probe during the beat. RAND-REP both flavours every seed.
+pulse-only: watch the probe during the beat. RAND-REP: every seed runs both the
+write-lock and the read-lock case.
 
 The specification (hw/sys/sep/doc/otp_fuse_controller.adoc, Shadow Register
 and JTAG Access Control) says only that a write-locked shadow is not writable
@@ -28,9 +29,8 @@ pulse. The strap-low half is the positive control: without it a DUT whose
 shadow writes never work at all would pass the deny half. LOCKS and
 LOCKS_SPARE are one field-map entry, so LOCKS_SPARE carries their shared
 positive control, and LOCKS takes its own on the slot-31 write-lock bit.
-LC_STATE is written in
-bytes [31:8], which OR-merge as ordinary shadow bytes and leave the lifecycle
-nibble alone.
+LC_STATE is written in bytes [31:8], which OR-merge as ordinary shadow bytes
+and leave the lifecycle nibble alone.
 """
 
 from __future__ import annotations

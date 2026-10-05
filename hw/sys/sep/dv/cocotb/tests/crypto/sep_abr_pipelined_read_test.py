@@ -1,27 +1,25 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Pipelined reads of an ABR register from the SMN inbound master must return it.
+"""Pipelined reads of one ABR register from the SMN inbound master each return its value.
 
-Reproducer for issue #2253. It FAILS while the RTL carries that defect, and
-passes when it is fixed.
+no_cpu / +skip_fuse_sense.
 
-Driven from `m_axi`, the SoC-facing inbound port (`hw/sys/sep/rtl/sep.sv:98`),
-because that is a real master rather than a stand-in. The CPU-LSU splice is not
-used: `s_axi` exists only to present what the VeeR LSU would present, and the
-LSU serialises MMIO loads -- a firmware run of the same four reads keeps one
-transaction in flight and never enters the bridge's streaming state. Driving
-several reads at once on that port would be stimulus the port cannot carry in
-the real design, so it proves nothing.
-
-The inbound path has no such limit. It reaches the ABR aperture through the
-local crossbar (`sep.sv:415`, `ext_axi_req_i`) and the crypto interconnect, and
-an SoC master may legitimately hold several reads outstanding with distinct
-`ARID`s -- AXI places no restriction on that, and no SEP document places one on
-this aperture.
+The test drives concurrent single-beat reads of one read-only ABR register at
+depths 1, 2, 3, 4 and 8, one ARID each, on `m_axi`. That is the SoC-facing
+inbound port (`smn_inbound_axi_req_i` in `hw/sys/sep/rtl/sep.sv`), a real master
+that may hold several reads outstanding with distinct `ARID`s: AXI places no
+restriction on that, and no SEP document places one on this aperture. The path
+reaches the ABR aperture through an inbound-filter read window, the local
+crossbar (`u_sep_local_axi_xbar_wrapper.ext_axi_req_i` in `sep.sv`) and the
+crypto interconnect. An AXI-to-AHB bridge that drops HADDR[2:0] on streamed
+reads returns a wrong value from the third read in flight, so the sweep fails on
+that defect. `sep_abr_pipelined_read_matrix_test` runs the same depths on both
+masters, plus the identity-word orders.
 
 Single-beat reads only (`ARLEN = 0`): the crypto demux routes any `AxLEN != 0`
-to its error slave (`sep_crypto_axi_interconnect.sv:111-112`, `:175`, `:205`),
-which `hw/sys/sep/doc/crypto.adoc` states to software.
+to its error slave (`aw_is_burst` / `ar_is_burst` in
+`hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv`), which `hw/sys/sep/doc/crypto.adoc`
+states to software.
 
 The comparand is `MLDSA_VERSION1`, a read-only register. `abr_reg.rdl` gives
 it no reset and no SEP document gives its value, so the control read alone is
@@ -38,8 +36,6 @@ Checkers:
                    before the first R handshake, so N reads are in flight at
                    once. Without it a path that serialised the reads would
                    still return the right values and pass the compare above
-
-Pass Criteria: every named checker PASSes. UVM_ERROR == 0.
 """
 
 from __future__ import annotations
@@ -76,7 +72,7 @@ def word(raw, addr: int) -> int:
 
 @pyuvm.test()
 class sep_abr_pipelined_read_test(sep_base_test):
-    """ABR reads at increasing depth from the inbound master."""
+    """Pipelined ABR reads from the inbound master return the register value at every depth."""
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()

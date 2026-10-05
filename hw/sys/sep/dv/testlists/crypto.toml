@@ -1,10 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 schema_version = 1
 
-# Daily regression policy: run the cpu_stub and cpu groups separately,
-# `python3 tools/dv/run_dv.py --dut sep --items <cpu_stub|cpu> --regress`. Tests with run_modes=["no_cpu"]
-# select target="lsu_stub_all_live"; CPU firmware tests omit target and use the
-# full-CPU default model.
+# Crypto and entropy scenarios. Each test contract is in docs/SEP_VPLAN.adoc.
 
 [[tests]]
 name = "sep_otbn_mem_smoke_test"
@@ -17,11 +16,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# OTBN compute RANDCFG. no_cpu direct-AXI: IMEM program, EXECUTE, ERR_BITS==0,
-# DMEM result == independent golden. Walks ADD/XOR/AND; operands from the run
-# seed. Entropy bring-up for post-reset URND wipe (+esrc_noise_force);
-# +skip_fuse_sense. Distinct from IMEM/DMEM smoke (no EXECUTE) and from the
-# KM sideload key-dump.
+# OTBN EXECUTE of ADD/XOR/AND against an independent golden. +esrc_noise_force
+# feeds the post-reset URND wipe.
 name = "sep_otbn_compute_rand_test"
 module = "otbn.sep_otbn_compute_rand_test"
 seed = 1
@@ -44,12 +40,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_entropy.parhex"]
 
 [[tests]]
-# Closed read path, same module as sep_esrc_e2e_smoke_test (+esrc_fifo_closed).
-# FIFO_CTRL.ENABLE=0 from the ESRC configuration on, set before FIPS_LOCK. The
-# DRBG still seeds: CHK2 scores the FIFO input tap, CHK3/CHK4 the seed and
-# genbits. FIFO_STATUS LEVEL and WPTR stay at reset while seed words cross, and
-# FIFO_RDATA pops of the empty FIFO set FIFO_UNDERFLOW; under the lock a write
-# of ENABLE=1 is refused.
+# Same module as sep_esrc_e2e_smoke_test, selected by +esrc_fifo_closed: the DRBG
+# still seeds with FIFO_CTRL.ENABLE=0, and the lock refuses ENABLE=1.
 name = "sep_esrc_e2e_fifo_closed_test"
 module = "system.sep_esrc_e2e_smoke_test"
 firmware = { name = "km_rom_entropy", mode = "km_rom_blob" }
@@ -61,10 +53,9 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_entropy.parhex", "+esrc_fifo_closed"]
 
 [[tests]]
-# Shared HT_WATERMARK arming (not the ESRC->DRBG datapath). RANDCFG walks every
-# supported selector on MODULE_ENABLE; seed picks the illegal selector and the
-# low-mode fall. HEALTH_TEST_CTRL.ENABLE stays 0 on arming legs.
-# +skip_fuse_sense; +esrc_noise_force only for the fall window.
+# Health-test watermark arming (not the ESRC->DRBG datapath).
+# HEALTH_TEST_CTRL.ENABLE stays 0 on arming legs; +esrc_noise_force drives only the
+# low-mode fall window.
 name = "sep_esrc_ht_watermark_arming_test"
 module = "crypto.sep_esrc_ht_watermark_arming_test"
 seed = 1
@@ -75,11 +66,7 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
-# ESRC FIPS_LOCK. RANDCFG walks every certified-configuration class and the
-# debug-pin mux every seed; lock sequencing is directed. Both observe-tap
-# enables are frozen under the lock, one held at 1 and one at 0, picked by the
-# seed. FIFO_CTRL.ENABLE is cleared before the lock and rejects a set under
-# it. Write-0 leaves LOCK=1; hardware reset clears it. +skip_fuse_sense.
+# ESRC FIPS_LOCK makes the certified configuration write-once.
 name = "sep_esrc_fips_lock_test"
 module = "crypto.sep_esrc_fips_lock_test"
 seed = 1
@@ -89,11 +76,9 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
-
 [[tests]]
-# ESRC persistent-failure alert to PIC source 16, then W1C-clear. RAND-NONE.
-# Short window plus stuck forced noise trips ALERT_THRESHOLD. Health-test
-# quality stays out of scope. +skip_fuse_sense; +esrc_noise_force.
+# ESRC persistent-failure alert to PIC source 16, then W1C clear. Health-test
+# quality is out of scope.
 name = "sep_esrc_alert_delivery_test"
 module = "crypto.sep_esrc_alert_delivery_test"
 seed = 1
@@ -104,11 +89,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
-# CHK4 Generate segmentation at glen=4. BOOT_GEN_CMD resets to glen=4095 and is
-# what BOOT_REQ issues; GENERATE_CMD alone never completes a command. This entry
-# programs both from SepEntropyCfg(glen=4, program_boot_generate=True). Leave
-# the other entropy tests' boot-generate length alone -- their CHK4 budgets
-# assume one open command.
+# CHK4 Generate segmentation at glen=4. Leave the other entropy tests'
+# boot-generate length alone: their CHK4 budgets assume one open command.
 name = "sep_drbg_gen_segmentation_test"
 module = "crypto.sep_drbg_gen_segmentation_test"
 firmware = { name = "km_rom_entropy", mode = "km_rom_blob" }
@@ -133,12 +115,8 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
-# Standalone KMAC-family mode x strength breadth (RAND-REP). no_cpu direct-AXI walk
-# over SHA3-224/256/384/512, SHAKE-128/256, cSHAKE-128/256 and KMAC-128/256
-# across all five key lengths; SepKmacCfg
-# is SSOT for CFG+KEY_LEN+PREFIX+key+msg and the Keccak golden. KMAC masking reseeds
-# from EDN, so entropy bring-up is required (+esrc_noise_force); +skip_fuse_sense.
-# Strict CHK1..CHK4 + CHK5_kmac routing golden (OTBN/AES/HMAC parked).
+# KMAC-family mode x strength breadth (RAND-REP). KMAC masking reseeds from EDN,
+# so entropy bring-up is required. CHK5 scores the KMAC sink only.
 name = "sep_kmac_mode_strength_rand_test"
 module = "crypto.sep_kmac_mode_strength_rand_test"
 seed = 1
@@ -149,11 +127,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
-# Standalone AES mode x key-size breadth (RAND-REP). no_cpu direct-AXI walk over
-# {ECB,CBC,CTR} x {128,192,256}; SepAesCfg is SSOT for CTRL+key+IV+data and
-# the golden. AES masking reseeds from crypto-EDN, so entropy bring-up is required
-# (+esrc_noise_force for deterministic ESRC noise); +skip_fuse_sense (no OTP need).
-# Strict CHK1..CHK4 + CHK5_aes routing golden (OTBN/KMAC/HMAC parked).
+# AES mode x key-size breadth (RAND-REP). AES masking reseeds from crypto-EDN, so
+# entropy bring-up is required. CHK5 scores the AES sink only.
 name = "sep_aes_mode_keysize_rand_test"
 module = "crypto.sep_aes_mode_keysize_rand_test"
 seed = 1
@@ -164,10 +139,7 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
-# Standalone HMAC SHA-variant breadth (RAND-REP). no_cpu direct-AXI walk over
-# {SHA256,384,512} x {keyed,plain} x legal key-length; SepHmacCfg is the SSOT
-# for CFG+key and the golden. Required cells walked deterministically in one run;
-# seed randomizes key+message. +skip_fuse_sense (HMAC needs no OTP/entropy).
+# HMAC SHA-variant breadth (RAND-REP). HMAC needs no OTP or entropy.
 name = "sep_hmac_sha_variant_rand_test"
 module = "crypto.sep_hmac_sha_variant_rand_test"
 seed = 1
@@ -178,15 +150,10 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# DRBG real-sink multi-consumer KM + AES concurrent: one real DRBG/EDN stream feeds two real sinks at once -- KM AXIS
-# (rom_main + interleaved CMD_KEY_GENERATE DRBG pulls) and AES native crypto-EDN
-# (ECB-256 reseed-per-block pulls). Strict CHK1..CHK4 bit-exact golden proves the
-# shared DRBG is correct. CHK5 scores AES golden (AES beats == AXIS1 order) and
-# KM membership (each KM word is a genbits-golden word). Dual-crypto-sink
-# bit-exact routing is sep_crypto_edn_multisink_arbitration_test's claim, not this test's.
-# no_cpu; REAL fuse-sense (KM rom_main reads OTP); +esrc_noise_force for the ring
-# oscillators under Verilator. c_compile builds rom_main.rom.parhex
-# (firmware mode km_rom_main; wipe defines off).
+# One DRBG/EDN stream feeds the KM and AES sinks at once. Dual-crypto-sink
+# bit-exact routing is sep_crypto_edn_multisink_arbitration_test's claim, not this
+# test's. Real fuse sense: KM rom_main reads OTP. c_compile builds
+# rom_main.rom.parhex (wipe defines off).
 name = "sep_drbg_real_sink_multi_km_aes_test"
 module = "crypto.sep_drbg_real_sink_multi_km_aes_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
@@ -198,13 +165,7 @@ target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 
 [[tests]]
-# Crypto-EDN arbiter contention: AES (crypto_edn[0]) + KMAC (crypto_edn[1]) BOTH
-# pull the shared crypto-EDN leg concurrently off one verified DRBG stream.
-# Two real crypto clients contend the round-robin arbiter (distinct from the KM+AES
-# test above: there AES was the sole crypto client + KM was the second leg). No KM
-# firmware / no rom_main / no real fuse-sense. CHK1..CHK4 bit-exact + dual-sink
-# CHK5 ROUTING (each AES/KMAC beat equals the AXIS1 grant) + both-beats +
-# both-KAT under contention. +esrc_noise_force (masking entropy) + +skip_fuse_sense.
+# AES and KMAC contend for the crypto-EDN leg off one verified DRBG stream.
 name = "sep_crypto_edn_multisink_arbitration_test"
 module = "crypto.sep_crypto_edn_multisink_arbitration_test"
 seed = 1
@@ -216,15 +177,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
-# Same-cycle dual crypto-EDN request: AES masking reseed + OTBN URND held before
-# EDN is enabled, then the real entropy chain is brought up so prim_arbiter_ppc
-# inside drbg_axis_edn_adapter has to grant both; sharing and an alternating
-# grant prefix are graded, round-robin order is not. Distinct from the AES+KMAC
-# time-span overlap test above, which cannot hold two edn_req bits together.
-# Then OTBN RND, the adapter's third scored client, is driven by a program
-# blocked on the RND CSR; its routing and consume are graded, not alternation.
-# Strict CHK1..CHK4 + CHK5 ROUTING on all four adapter clients and the entropy
-# pool (five scored streams).
+# Same-cycle dual crypto-EDN request across all four adapter clients; round-robin
+# order is not graded.
 name = "sep_crypto_edn_round_robin_grant_test"
 module = "crypto.sep_crypto_edn_round_robin_grant_test"
 seed = 1
@@ -236,11 +190,7 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
 # Adams Bridge ML-DSA-87 keyGen NIST KAT on the ABR aperture
-# (sep_crypto_pkg::AbrRegMapBaseAddr). Software-written seed only.
-# Public key matches the vendored ACVP vector; one seed-bit flip must
-# change the key. PIC [34] low / [35] high on completion. RANDCFG: masking
-# entropy and flip bit from the run seed. Sign/verify, ML-KEM, and the
-# key-vault seed path are not claimed. no_cpu; +skip_fuse_sense.
+# (sep_top_addrmap_pkg::SEP_TOP_ABR_BASE_ADDR, the sep_crypto_pkg::ABR_RULE window).
 name = "sep_abr_mldsa_keygen_kat_test"
 module = "crypto.sep_abr_mldsa_keygen_kat_test"
 seed = 1
@@ -251,15 +201,11 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Reads of one ABR register from the SMN inbound master at increasing numbers of
-# reads in flight. Every read targets the same read-only register, so every
-# response must carry the same value with an OKAY response; a bridge that drops
-# HADDR[2:0] on streamed reads answers zero from the third read in flight.
-#
-# Driven from m_axi deliberately. The CPU-LSU splice stands in for the VeeR LSU,
-# which serialises MMIO loads, so pipelining there would be stimulus the port
-# cannot carry in the real design. The inbound port is a real SoC master under no
-# such restriction.
+# Pipelined reads of one ABR register at depths 1, 2, 3, 4 and 8 from the SMN
+# inbound master (m_axi); each returns its value. m_axi is the port for this stimulus: the
+# CPU-LSU splice (s_axi) stands in for the VeeR LSU, which serialises MMIO loads, and the
+# inbound port is a SoC master under no such restriction. sep_abr_pipelined_read_matrix_test
+# also drives s_axi.
 name = "sep_abr_pipelined_read_test"
 module = "crypto.sep_abr_pipelined_read_test"
 seed = 1
@@ -270,14 +216,7 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Adams Bridge ML-DSA-87 sigGen and sigVer NIST KAT on the same aperture.
-# MLDSA_CTRL.CTRL SIGNING (0x2) and VERIFYING (0x3), external-mu ACVP groups.
-# Deterministic signing, so the signature is compared word-for-word against the
-# vendored vector. VERIFY is walked with the case that must verify and the case
-# that must not, and the two MLDSA_VERIFY_RES values must differ. ZEROIZE
-# between commands. RANDCFG: masking entropy from the run seed; the vectors are
-# fixed. KEYGEN_SIGN, ML-KEM and the key-vault seed path are not claimed.
-# no_cpu; +skip_fuse_sense.
+# Adams Bridge ML-DSA-87 sigGen and sigVer NIST KAT.
 name = "sep_abr_mldsa_sign_verify_kat_test"
 module = "crypto.sep_abr_mldsa_sign_verify_kat_test"
 seed = 1
@@ -289,15 +228,6 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 # Adams Bridge ML-KEM-1024 keyGen / encaps / decaps NIST KAT.
-# MLKEM_CTRL.CTRL KEYGEN (0x1), ENCAPS (0x2) and DECAPS (0x3), each compared
-# against the published ACVP value: keyGen ek and dk from the two seeds, encaps
-# ciphertext and shared key from (ek, m) written over the bus, and decaps walked
-# with both the valid case and the modified-ciphertext case. FIPS-203 implicit
-# rejection means the bad ciphertext yields a DIFFERENT published shared key
-# rather than an error, so that leg is a value compare too. ZEROIZE between
-# commands. No randomization: every input is a fixed vector. KEYGEN+DECAPS,
-# ML-DSA and the key-vault seed path are not claimed.
-# no_cpu; +skip_fuse_sense.
 name = "sep_abr_mlkem_kat_test"
 module = "crypto.sep_abr_mlkem_kat_test"
 seed = 1
@@ -308,14 +238,7 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Adams Bridge pipelined reads: several in flight, each returns its own word.
-# Concurrent single-beat reads of MLDSA_VERSION1 at depths 1/2/3/4/8, one ARID
-# each, on m_axi (through an inbound-filter read window) and on s_axi; the
-# ML-DSA identity words in several orders and on one ARID; both masters at
-# once. Every R beat is graded by its RID, and the AR/R handshakes on the pins
-# must show the reads overlapped. A bridge that drops HADDR[2:0] on streamed
-# reads fails from depth 3. RAND-NONE: the depths and orders are the cells.
-# no_cpu; +skip_fuse_sense.
+# Adams Bridge reads held outstanding together; each returns its own word.
 name = "sep_abr_pipelined_read_matrix_test"
 module = "crypto.sep_abr_pipelined_read_matrix_test"
 seed = 1
@@ -327,17 +250,7 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 # Adams Bridge access sizes and write strobes, the [[abr-access-size]] rules in
-# hw/sys/sep/doc/adams_bridge.adoc. 64-bit reads return {high word, low word}
-# of the two identity registers they cover; AxSIZE=3 at addr[2]=1 and byte /
-# halfword reads return the addressed bytes. On the global_intr_en_r /
-# error_intr_en_r pair and the 32-bit error-interrupt counter: full-strobe
-# 64-bit writes land both words, WSTRB 0x0F / 0xF0 land one word and leave the
-# other, every partial-word strobe answers SLVERR with the register unchanged,
-# and a 64-bit beat with one whole and one partial word writes the whole word
-# and answers SLVERR. Past the register map every access answers as the SEP
-# memory map states (the crypto demux refuses it) and moves no register.
-# RANDCFG: data values and two dead words from the run seed; every size, offset
-# and strobe is walked. no_cpu; +skip_fuse_sense.
+# hw/sys/sep/doc/adams_bridge.adoc.
 name = "sep_abr_access_size_test"
 module = "crypto.sep_abr_access_size_test"
 seed = 1
@@ -348,13 +261,7 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Adams Bridge concurrent reads and writes from s_axi and m_axi at once, several
-# outstanding on each, RREADY and BREADY throttled from the master side. Each
-# read-write register has one writing master on one AWID; reads are graded
-# against the owner's write window, identity words exactly, partial writes must
-# answer SLVERR, and every register must end at its owner's last write.
-# RANDCFG: op mix, data, depths and throttle patterns from the run seed.
-# no_cpu; +skip_fuse_sense.
+# Adams Bridge concurrent reads and writes from s_axi and m_axi at once.
 name = "sep_abr_concurrent_rw_test"
 module = "crypto.sep_abr_concurrent_rw_test"
 seed = 1
@@ -366,13 +273,10 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Adams Bridge compiled out (lsu_stub_abr_absent model, SEP_ABR_EN not
-# defined): host reads and writes of the ABR aperture answer DECERR, and KM
-# CPU stores and loads of the ABR wrapper key aperture set AXI_DECERR, with
-# live HMAC controls on both paths. no_cpu; +skip_fuse_sense.
-# Pinned to Verilator: VCS coverage runs elaborate one target, `default`,
-# which keeps Adams Bridge, so this leaf cannot run there. The checks grade
-# response codes, which the two-state simulator observes.
+# Adams Bridge compiled out: the ABR aperture and the KM ABR key aperture answer
+# DECERR. Pinned to Verilator: VCS coverage runs elaborate only `default`, which
+# keeps Adams Bridge. The checks grade response codes, which a two-state
+# simulator observes.
 name = "sep_abr_absent_decerr_test"
 module = "crypto.sep_abr_absent_decerr_test"
 firmware = { name = "km_rom_abr_absent", mode = "km_rom_blob" }

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP eFuse -> Lifecycle-Controller lc_state stitch test (OSS).
+"""The sensed eFuse lc_state reaches the lifecycle controller and decodes to the golden FEAT_CTRL.
 
 Walks the lifecycle state up the monotonic OTP W1S chain TEST_DEV -> PROD ->
 RMA_SIP_1 -> RMA_CHIP_1 and, at each step, proves the eFuse-sensed lc_state is
@@ -25,10 +25,11 @@ After the initial TEST_DEV sense (TEST_EN strap = 0) the test raises the
 frontdoor ``test_en_strap_i``, re-senses, and proves the latched
 ``secure_tm_o`` follows the strap while ``FEAT_CTRL`` stays on the same
 golden (SECURE_TM does not qualify feature control). The same legs also
-score ``dbg_disable.dft_secure`` against Case 3 of the DTP ladder: the
-strap is not a term, so the bit must not follow ``secure_tm``. The strap
-is then lowered; the rest of the walk runs at ``secure_tm=0`` so LC_STATE
-programming is not blocked by ``efuse_guard``.
+score ``dbg_disable.dft_secure`` against Case 3 of the DTP gating ladder
+(hw/sys/sep/dv/docs/SEP_VPLAN.adoc, "Debug-disable gating ladder"): the strap
+is not a term, so the bit must not follow ``secure_tm``. The strap is then
+lowered; the rest of the walk runs at ``secure_tm=0`` so LC_STATE programming
+is not blocked by ``efuse_guard``.
 
 ``lc_sigint_err`` has no legal OTP stimulus -- sense regenerates ``{~raw, raw}``.
 The test injects a broken pair at the LCC decoder input through the tb_top
@@ -70,9 +71,9 @@ from seq_lib.sep_lcc_stitch_check_seq import sep_lcc_stitch_check_seq
 
 _MAX_SENSE_CYCLES = 20_000
 
-# KM-secret fields named in otp_fuse_controller.adoc (Key Manager subset). The
-# SECURE_TM block list is LOCK / LC_STATE / SIP_DIS / SYS_DIS; these four
-# are the secrets the stitch grades for disconnect.
+# otp_fuse_controller.adoc names the Key Manager secret fields that the stitch
+# grades for disconnect; spec_secret_regs() returns them. (The SECURE_TM program
+# block list, LOCK / LC_STATE / SIP_DIS / SYS_DIS, is a different set.)
 _SECRET_FIELDS = spec_secret_regs()
 
 # Monotonic lifecycle chain exercised.
@@ -253,7 +254,7 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
 
 @pyuvm.test()
 class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
-    """Stitch eFuse lc_state through the LCC and verify decoded FEAT_CTRL."""
+    """At each lifecycle step, LC_STATE and FEAT_CTRL read back the golden decode."""
 
     async def _sense_initial_state(self, image: SepEfuseImage, raw: int) -> None:
         image.set_lc_state(raw)

@@ -1,17 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM -> ABR ML-DSA seed sideload: same PK as a direct software seed.
+"""ABR KEYGEN on a KM-sideloaded ML-DSA seed returns the same public key as a direct seed.
 
 no_cpu / real fuse-sense / +km_rom_hex=rom_main.rom.parhex.
 
 Loads an 8-word seed over the mailbox (dest ABR ML-DSA seed), pulls it
 through the KV seed-read control, and runs KEYGEN. The public key must match
 a direct-seed KEYGEN of the same words. Key Manager word i and register
-index MLDSA_SEED[i] carry the same dword (doc/adams_bridge.adoc,
+index MLDSA_SEED[i] carry the same dword (hw/sys/sep/doc/adams_bridge.adoc,
 abr-seed-word-order), and the eight seed words are pairwise distinct, so a
 delivery that permutes the words -- a dword reversal included -- changes the
-seed and fails the compare. Masking entropy is RANDCFG; the seed itself is
-directed so the two KEYGENs stay comparable.
+seed and fails the compare. RANDCFG: the seed selects the masking entropy;
+the seed words are directed so the two KEYGENs stay comparable.
 """
 
 from __future__ import annotations
@@ -53,8 +53,8 @@ _ABR_SEED = [
 ]
 
 # A second, distinct seed for the KM sideload leg. The sideload must not reuse
-# _ABR_SEED: the direct keygen above already wrote that value into
-# MLDSA_SEED, so a ZEROIZE that failed to clear the register would produce the
+# _ABR_SEED: the direct keygen writes that value into
+# MLDSA_SEED first, so a ZEROIZE that failed to clear the register would produce the
 # same public key and CHK-PK could not tell a working sideload from a stale
 # seed.
 _ABR_SEED_ALT = [

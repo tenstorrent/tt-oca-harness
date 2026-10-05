@@ -7,21 +7,23 @@
 // ExclMode: default
 //
 // Scope: the cocotb VCS elaboration of sep_uvm_top, target `default`, on top of
-// the other cov/config/vcs exclusion files. Instances: sep_local_axi_xbar_wrapper and its
+// the other cov/config/vcs exclusion files. Instances:
+// sep_local_axi_xbar_wrapper and its
 // sep_local_axi_xbar, sep_system_peripherals_xbar_wrapper and its
 // sep_system_peripherals_xbar, and sep_crypto_axi_interconnect.
 //
 // Each block waives request-side bits that cannot take a second value in any
 // legal system: a field every connected initiator ties in RTL, an initiator
 // index bit that no connected initiator sets, an address bit outside every
-// decode rule of a target port, or a direct copy of a port the base file waives.
+// decode rule of a target port, or a direct copy of a port that
+// sep_master_tie_exclusions.el waives.
 //
 // Two rules keep this file honest:
 //   * A field that the SMN inbound port, an integrator-driven target, or any
 //     free CPU/DMA field can reach is NOT listed. Those holes are stimulus gaps.
-//   * A bit that any leaf toggled in either direction is NOT listed. Every
-//     listed bit had no 0->1 and no 1->0 toggle in the merged database that
-//     supplies the checksums, and urg -excl_strict accepts the file.
+//   * A bit that any leaf toggles in either direction is NOT listed. No listed
+//     bit toggles in the merged database that supplies the checksums, and
+//     urg -excl_strict accepts the file.
 //
 // Checksums come from `urg -dump full_exclusions tgl` on the merged VDB.
 //==================================================

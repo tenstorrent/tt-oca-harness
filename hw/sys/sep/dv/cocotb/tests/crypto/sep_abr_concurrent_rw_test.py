@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Interleaved reads and writes on the Adams Bridge aperture from both masters.
+"""Interleaved ABR reads and writes from both masters each act on the address they name.
 
 no_cpu / +skip_fuse_sense.
 
@@ -21,8 +21,8 @@ returned. A read of an identity word must return that word exactly. The RDL
 and the SEP documents give no identity value, so ``CHK-ABR-ID-REF`` first reads
 each word alone and that capture is the reference. The identity words read are
 those whose captured value no other of them holds, so a response swapped
-between two of them is a mismatch. A 64-bit access is graded
-per word. Partial-word writes are mixed in and must answer SLVERR without
+between two of them is a mismatch. A 64-bit access is graded per word.
+Partial-word writes are mixed in and must answer SLVERR without
 moving their register.
 
 After both streams drain, every read-write register must hold the last value
@@ -217,7 +217,7 @@ class SepAbrConcurrentRwCfg:
 
 @pyuvm.test()
 class sep_abr_concurrent_rw_test(sep_base_test):
-    """Both masters' interleaved ABR reads and writes against a windowed scoreboard."""
+    """Interleaved ABR reads from both masters match the windowed expectation, and writes land."""
 
     required_evidence = (
         "CHK-ABR-ID-REF",

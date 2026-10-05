@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""eFuse program x write-lock matrix on every legal spare field.
+"""Each unlocked spare field programs, and each write-locked spare rejects a program.
 
 RAND-REP. Every seed walks both cells on SPARE0..SPARE8 (never LC_STATE):
 
@@ -13,7 +13,8 @@ Spares are walked in order, so a lock of spare k that also locks spare k+1
 fails the next unlocked-program cell. The seed selects only the bit offsets
 inside each spare.
 
-Real fuse sense. Clear-after-program on every program completion.
+Real fuse sense. The program sequence clears EFUSE_PROGRAM_CTRL after each
+program completion.
 """
 
 from __future__ import annotations
