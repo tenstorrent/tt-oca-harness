@@ -517,14 +517,15 @@ args = [
 # it (lc_state -> SMC, dbg_disable -> DTP, feat_ctrl). The sequence samples the
 # consumers before the SEP sense delivers the LC word and after
 # sep_fuse_sense_done_o, then the firmware drives the DEMOTE registers and the
-# sequence checks the posture moved at the consumers, not only inside the
-# register block. The write-once DEMOTE lock keeps the demote stages
-# non-vacuous.
+# sequence checks the outcome at the consumers, not only inside the register
+# block. The image locks DEMOTE_1 while it is clear and asks for the demote,
+# which the lock refuses at the register and at the SMU boundary; DEMOTE_2,
+# unlocked, takes the same write.
 [[tests]]
 name = "smu_sep_lcc_flow_test"
 module = "smu_sep_lcc_flow_test"
 target = "compile_smu_chiplet"
-firmware = { name = "sep_smu_lcc_flow", mode = "sep_dv_fw" }
+firmware = { name = "sep_smu_lcc_lock", mode = "sep_dv_fw" }
 seed = 1
 timeout_sec = 1800
 tags = ["firmware", "sep", "smc", "dtp", "real_rtl", "real_fw", "lifecycle"]
@@ -535,9 +536,9 @@ args = [
   # The SEP sense reads this image; its LC word (all-zero, raw 0x0) is TEST_DEV.
   "+sep_efuse_hex=sep_efuse_default.hex",
   "+sep_boot_rom_hex=smu_sep_boot_rom.hex",
-  "+sep_itcm_hex=sep_smu_lcc_flow.itcm.hex",
-  "+sep_dtcm_hex=sep_smu_lcc_flow.dtcm.hex",
-  "+sep_sym=sep_smu_lcc_flow.tcm.sym",
+  "+sep_itcm_hex=sep_smu_lcc_lock.itcm.hex",
+  "+sep_dtcm_hex=sep_smu_lcc_lock.dtcm.hex",
+  "+sep_sym=sep_smu_lcc_lock.tcm.sym",
   # Real fuse sense (no +skip_fuse_sense): the lc_state / dbg_disable posture the
   # checks observe is the SEP eFuse controller's own sense of +sep_efuse_hex.
 ]

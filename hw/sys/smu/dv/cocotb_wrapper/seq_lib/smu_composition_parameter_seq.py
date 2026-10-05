@@ -19,8 +19,8 @@ The bench binds CFG.SEP_SEC_DISABLE_TOKEN to the SHA-256 of the all-zero
 32-byte token in place of the metal digest, and the token the SEP eFuse
 controller carries is compared against that digest, computed here. No
 specification in this tree states the packed layout of the build
-configuration struct; the per-field `CFG` compares that go through
-`decode_cfg` are drift checks on the elaboration and carry no evidence token.
+configuration struct, so `CFG` is compared only as a whole between the
+wrapper and `smu`; each parameter is proven where an instance consumes it.
 """
 
 from __future__ import annotations
@@ -31,8 +31,6 @@ import cocotb
 from cocotb.triggers import ClockCycles
 
 from seq_lib.smu_compose_helpers import (
-    CFG_SPEC_DEFAULTS,
-    CFG_TOTAL_BITS,
     DTP_NUM_CLK_STOP_REQ,
     DTP_NUM_INT_CT,
     JTAG_NUM_EXTRA_STAPS,
@@ -45,7 +43,6 @@ from seq_lib.smu_compose_helpers import (
     XTRIG_SMC_INT_CT_LANES,
     GenerateScope,
     bit_width,
-    decode_cfg,
     hier,
     parse_plusarg_int,
     sample,
@@ -100,18 +97,9 @@ class smu_composition_parameter_seq:
             cfg_raw,
             evidence="CHK-SMU-NOSEP-S4",
         )
-
-        # Drift: the struct layout has no specification, so the decode and the
-        # per-field compares carry no token.
-        sb.expect_eq("smu.CFG packed width drift", bit_width(cfg_handle, "smu.CFG"), CFG_TOTAL_BITS)
-        fields = decode_cfg(cfg_raw)
-        expected = dict(CFG_SPEC_DEFAULTS)
-        expected["XTRIG_INT_CT_MODE"] = xtrig_mode
-        expected["SEP"] = expected_sep
-        expected["SEP_SEC_DISABLE_TOKEN"] = BENCH_SEC_DISABLE_DIGEST
-        for name, want in expected.items():
-            sb.expect_eq(f"CFG.{name} drift (SEP={expected_sep})", fields[name], want)
-        self.log.info("CFG decoded (SEP=%d): %s", expected_sep, fields)
+        self.log.info(
+            "OBSERVATION smu.CFG width=%d value=0x%x", bit_width(cfg_handle, "smu.CFG"), cfg_raw
+        )
 
         # SMU-NOSEP.S4, consumers: each parameter read where it is consumed is
         # the specified default, plus the SMC reservation where the

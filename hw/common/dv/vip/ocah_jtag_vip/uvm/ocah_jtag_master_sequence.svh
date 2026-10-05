@@ -155,27 +155,30 @@ class ocah_jtag_master_sequence extends uvm_sequence #(ocah_jtag_item);
   endtask
 
   // TRST level control through one TRST_LEVEL item: `tck_cycles` TCK cycles
-  // run with TMS high after the level change. Asserting resets the tracked
-  // model to Test-Logic-Reset; releasing steps it through the TMS-high cycles.
-  task assert_trst(int unsigned tck_cycles = 1);
-    trst_level_op(1'b1, tck_cycles);
+  // run with TMS at `tms` after the level change. TMS high is the
+  // Test-Logic-Reset self-loop; TMS low holds the controller where it is, so
+  // only the reset can move it. Asserting resets the tracked model to
+  // Test-Logic-Reset; releasing steps it through the cycles.
+  task assert_trst(int unsigned tck_cycles = 1, bit tms = 1'b1);
+    trst_level_op(1'b1, tck_cycles, tms);
     m_model.reset_model();
   endtask
 
-  task release_trst(int unsigned tck_cycles = 0);
-    trst_level_op(1'b0, tck_cycles);
-    repeat (tck_cycles) void'(m_model.step(1'b1));
+  task release_trst(int unsigned tck_cycles = 0, bit tms = 1'b1);
+    trst_level_op(1'b0, tck_cycles, tms);
+    repeat (tck_cycles) void'(m_model.step(tms));
   endtask
 
   function bit trst_asserted();
     return m_trst_asserted;
   endfunction
 
-  protected task trst_level_op(bit asserted, int unsigned tck_cycles);
+  protected task trst_level_op(bit asserted, int unsigned tck_cycles, bit tms = 1'b1);
     ocah_jtag_item it = ocah_jtag_item::type_id::create("trst_level");
     it.op              = OCAH_JTAG_TRST_LEVEL;
     it.trst_asserted   = asserted;
     it.trst_tck_cycles = tck_cycles;
+    it.trst_tms        = tms;
     do_jtag(it);
     m_trst_asserted = asserted;
   endtask
