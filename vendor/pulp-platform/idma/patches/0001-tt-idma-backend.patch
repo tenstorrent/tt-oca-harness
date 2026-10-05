@@ -1,0 +1,428 @@
+diff --git a/src/backend/idma_axi_read.sv b/src/backend/idma_axi_read.sv
+index 754dea438..af8b9dd8a 100644
+--- a/src/backend/idma_axi_read.sv
++++ b/src/backend/idma_axi_read.sv
+@@ -201,6 +201,12 @@ module idma_axi_read #(
+     //--------------------------------------
+     // State
+     //--------------------------------------
+-    `FF(first_r_q,     first_r_d,     '1, clk_i, rst_ni)
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            first_r_q <= '1;
++        end else begin
++            first_r_q <= first_r_d;
++        end
++    end
+ 
+ endmodule
+diff --git a/src/backend/idma_axi_write.sv b/src/backend/idma_axi_write.sv
+index ee27349d1..4cedbbdde 100644
+--- a/src/backend/idma_axi_write.sv
++++ b/src/backend/idma_axi_write.sv
+@@ -288,7 +288,20 @@ module idma_axi_write #(
+     //--------------------------------------
+     // State
+     //--------------------------------------
+-    `FF(w_cnt_valid_q, w_cnt_valid_d, '0, clk_i, rst_ni)
+-    `FF(w_num_beats_q, w_num_beats_d, '0, clk_i, rst_ni)
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            w_cnt_valid_q <= '0;
++        end else begin
++            w_cnt_valid_q <= w_cnt_valid_d;
++        end
++    end
++
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            w_num_beats_q <= '0;
++        end else begin
++            w_num_beats_q <= w_num_beats_d;
++        end
++    end
+ 
+ endmodule
+diff --git a/src/backend/idma_axis_write.sv b/src/backend/idma_axis_write.sv
+index ee5b0b171..0c25e2e68 100644
+--- a/src/backend/idma_axis_write.sv
++++ b/src/backend/idma_axis_write.sv
+@@ -143,9 +143,11 @@ module idma_axis_write #(
+         // not used signal
+         assign buffer_data_masked = '0;
+         // simpler: direct connection
+-        assign write_req_o.t      = aw_req_i.axis.t_chan;
+-        assign write_req_o.t.data = buffer_out_i;
+-        assign write_req_o.t.keep = dp_poison_i ? '0 : mask_out;
++        always_comb begin
++            write_req_o.t      = aw_req_i.axis.t_chan;
++            write_req_o.t.data = buffer_out_i;
++            write_req_o.t.keep = dp_poison_i ? '0 : mask_out;
++        end
+     end
+ 
+     // we are ready for the next transfer internally, once the w last signal is applied
+diff --git a/src/backend/idma_channel_coupler.sv b/src/backend/idma_channel_coupler.sv
+index 1491716a2..e0d5a5741 100644
+--- a/src/backend/idma_channel_coupler.sv
++++ b/src/backend/idma_channel_coupler.sv
+@@ -179,7 +179,13 @@ module idma_channel_coupler #(
+     assign busy_o = aw_valid;
+ 
+     // state
+-    `FF(aw_to_send_q, aw_to_send_d, '0, clk_i, rst_ni)
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            aw_to_send_q <= '0;
++        end else begin
++            aw_to_send_q <= aw_to_send_d;
++        end
++    end
+ 
+ 
+ endmodule
+diff --git a/src/backend/idma_dataflow_element.sv b/src/backend/idma_dataflow_element.sv
+index 00744710a..2b5d1c709 100644
+--- a/src/backend/idma_dataflow_element.sv
++++ b/src/backend/idma_dataflow_element.sv
+@@ -12,6 +12,8 @@ module idma_dataflow_element #(
+     parameter int unsigned BufferDepth = 32'd3,
+     /// The width of the buffer in bytes
+     parameter int unsigned StrbWidth = 32'd1,
++    /// Use a non-passthrough FIFO
++    parameter bit NotPassthroughFifo = 1'b0,
+     /// Print the info of the FIFO configuration
+     parameter bit PrintFifoInfo = 1'b0,
+     /// The strobe type
+@@ -34,22 +36,45 @@ module idma_dataflow_element #(
+ 
+     // buffer is implemented as an array of FIFOs
+     for (genvar i = 0; i < StrbWidth; i++) begin : gen_fifo_buffer
+-        passthrough_stream_fifo #(
+-            .type_t       ( byte_t        ),
+-            .Depth        ( BufferDepth   ),
+-            .PrintInfo    ( PrintFifoInfo )
+-        ) i_passthrough_stream_fifo (
+-            .clk_i,
+-            .rst_ni,
+-            .testmode_i,
+-            .flush_i      ( 1'b0        ),
+-            .data_i       ( data_i  [i] ),
+-            .valid_i      ( valid_i [i] ),
+-            .ready_o      ( ready_o [i] ),
+-            .data_o       ( data_o  [i] ),
+-            .valid_o      ( valid_o [i] ),
+-            .ready_i      ( ready_i [i] )
+-        );
++        if (NotPassthroughFifo == 1'b1) begin : gen_fifo_nonpassthrough
++            stream_fifo #(
++                .FALL_THROUGH   ( 1'b0 ),
++                .DEPTH          ( BufferDepth ),
++                .T              ( byte_t )
++            ) i_stream_fifo (
++                .clk_i,
++                .rst_ni,
++                .testmode_i,
++                .flush_i      ( 1'b0        ),
++                .data_i       ( data_i  [i] ),
++                .valid_i      ( valid_i [i] ),
++                .ready_o      ( ready_o [i] ),
++                .data_o       ( data_o  [i] ),
++                .valid_o      ( valid_o [i] ),
++                .ready_i      ( ready_i [i] ),
++                .usage_o      (             )
++            );
++        end else begin : gen_fifo_passthrough
++            passthrough_stream_fifo #(
++                .type_t       ( byte_t        ),
++                .Depth        ( BufferDepth   ),
++                .PrintInfo    ( PrintFifoInfo )
++            ) i_passthrough_stream_fifo (
++                .clk_i,
++                .rst_ni,
++                .testmode_i,
++                .flush_i      ( 1'b0        ),
++                .data_i       ( data_i  [i] ),
++                .valid_i      ( valid_i [i] ),
++                .ready_o      ( ready_o [i] ),
++                .data_o       ( data_o  [i] ),
++                .valid_o      ( valid_o [i] ),
++                .ready_i      ( ready_i [i] )
++            );
++        end
++
++
++
+     end : gen_fifo_buffer
+ 
+ endmodule
+diff --git a/src/backend/idma_error_handler.sv b/src/backend/idma_error_handler.sv
+index ad9abccea..2030cfea7 100644
+--- a/src/backend/idma_error_handler.sv
++++ b/src/backend/idma_error_handler.sv
+@@ -378,7 +378,21 @@ module idma_error_handler #(
+     //--------------------------------------
+     // State
+     //--------------------------------------
+-    `FF(state_q,         state_d, IDLE, clk_i, rst_ni)
+-    `FF(num_outst_q, num_outst_d,   '0, clk_i, rst_ni)
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            state_q <= IDLE;
++        end else begin
++            state_q <= state_d;
++        end
++    end
++
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            num_outst_q <= '0;
++        end else begin
++            num_outst_q <= num_outst_d;
++        end
++    end
++
+ 
+ endmodule
+diff --git a/src/backend/idma_obi_write.sv b/src/backend/idma_obi_write.sv
+index d79163c12..8d4bbba79 100644
+--- a/src/backend/idma_obi_write.sv
++++ b/src/backend/idma_obi_write.sv
+@@ -118,12 +118,13 @@ module idma_obi_write #(
+         // always_comb process implements masking of invalid data
+         always_comb begin : proc_mask
+             // defaults
+-            write_req_o.a.addr  = aw_req_i.obi.a_chan.addr;
+-            write_req_o.a.aid   = aw_req_i.obi.a_chan.aid;
+-            write_req_o.a.we    = 1'b1;
+-            write_req_o.a.wdata = '0;
+-            write_req_o.a.be    = '0;
+-            buffer_data_masked  = '0;
++            write_req_o.a.addr       = aw_req_i.obi.a_chan.addr;
++            write_req_o.a.aid        = aw_req_i.obi.a_chan.aid;
++            write_req_o.a.we         = 1'b1;
++            write_req_o.a.wdata      = '0;
++            write_req_o.a.be         = '0;
++	    write_req_o.a.a_optional = '0;
++            buffer_data_masked       = '0;
+             // control the write to the bus apply data to the bus only if data should be written
+             if (ready_to_write == 1'b1 & !dp_poison_i) begin
+                 // assign data from buffers, mask non valid entries
+@@ -139,14 +140,15 @@ module idma_obi_write #(
+ 
+     end else begin : gen_direct_connect
+         // assign meta data
+-        assign write_req_o.a.addr  = aw_req_i.obi.a_chan.addr;
+-        assign write_req_o.a.aid   = aw_req_i.obi.a_chan.aid;
+-        assign write_req_o.a.we    = 1'b1;
++        assign write_req_o.a.addr       = aw_req_i.obi.a_chan.addr;
++        assign write_req_o.a.aid        = aw_req_i.obi.a_chan.aid;
++        assign write_req_o.a.we         = 1'b1;
+         // not used signal
+-        assign buffer_data_masked  = '0;
++        assign buffer_data_masked       = '0;
+         // simpler: direct connection
+-        assign write_req_o.a.wdata = buffer_out_i;
+-        assign write_req_o.a.be    = dp_poison_i ? '0 : mask_out;
++        assign write_req_o.a.wdata      = buffer_out_i;
++        assign write_req_o.a.be         = dp_poison_i ? '0 : mask_out;
++	assign write_req_o.a.a_optional = '0;
+     end
+ 
+     // we are ready for the next transfer internally, once the w last signal is applied
+diff --git a/src/backend/idma_tilelink_read.sv b/src/backend/idma_tilelink_read.sv
+index f59c93856..06487dbd6 100644
+--- a/src/backend/idma_tilelink_read.sv
++++ b/src/backend/idma_tilelink_read.sv
+@@ -213,7 +213,20 @@ module idma_tilelink_read #(
+     //--------------------------------------
+     // State
+     //--------------------------------------
+-    `FF(first_r_q,     first_r_d,     '1, clk_i, rst_ni)
+-    `FF(counter_r_q, counter_r_d,     '0, clk_i, rst_ni)
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            first_r_q <= '1;
++        end else begin
++            first_r_q <= first_r_d;
++        end
++    end
++
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            counter_r_q <= '0;
++        end else begin
++            counter_r_q <= counter_r_d;
++        end
++    end
+ 
+ endmodule
+diff --git a/src/backend/idma_tilelink_write.sv b/src/backend/idma_tilelink_write.sv
+index 50c94b5e5..5aa7d0a26 100644
+--- a/src/backend/idma_tilelink_write.sv
++++ b/src/backend/idma_tilelink_write.sv
+@@ -272,7 +272,21 @@ module idma_tilelink_write #(
+     //--------------------------------------
+     // State
+     //--------------------------------------
+-    `FF(w_cnt_valid_q, w_cnt_valid_d, '0, clk_i, rst_ni)
+-    `FF(w_num_beats_q, w_num_beats_d, '0, clk_i, rst_ni)
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            w_cnt_valid_q <= '0;
++        end else begin
++            w_cnt_valid_q <= w_cnt_valid_d;
++        end
++    end
++
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            w_num_beats_q <= '0;
++        end else begin
++            w_num_beats_q <= w_num_beats_d;
++        end
++    end
++
+ 
+ endmodule
+diff --git a/src/backend/tpl/idma_backend.sv.tpl b/src/backend/tpl/idma_backend.sv.tpl
+index c5a2e1641..eaade4f47 100644
+--- a/src/backend/tpl/idma_backend.sv.tpl
++++ b/src/backend/tpl/idma_backend.sv.tpl
+@@ -25,6 +25,8 @@ module idma_backend_${name_uniqueifier} #(
+     /// - '2': minimal possible configuration
+     /// - '3': efficiently handle misaligned transfers (recommended)
+     parameter int unsigned BufferDepth      = 32'd2,
++    /// Use a non-passthrough FIFO in dataflow element
++    parameter bit NotPassthroughDataflowElement = 1'b0,
+     /// With of a transfer: max transfer size is `2**TFLenWidth` bytes
+     parameter int unsigned TFLenWidth       = 32'd24,
+     /// The depth of the memory system the backend is attached to
+@@ -689,23 +691,24 @@ _rsp_t ${protocol}_write_rsp_i,
+     // Transport Layer / Datapath
+     //--------------------------------------
+     idma_transport_layer_${name_uniqueifier} #(
+-        .NumAxInFlight               ( NumAxInFlight               ),
+-        .DataWidth                   ( DataWidth                   ),
+-        .BufferDepth                 ( BufferDepth                 ),
+-        .MaskInvalidData             ( MaskInvalidData             ),
+-        .PrintFifoInfo               ( PrintFifoInfo               ),
+-        .r_dp_req_t                  ( r_dp_req_t                  ),
+-        .w_dp_req_t                  ( w_dp_req_t                  ),
+-        .r_dp_rsp_t                  ( r_dp_rsp_t                  ),
+-        .w_dp_rsp_t                  ( w_dp_rsp_t                  ),
+-        .write_meta_channel_t        ( write_meta_channel_t        ),
++        .NumAxInFlight               ( NumAxInFlight                 ),
++        .DataWidth                   ( DataWidth                     ),
++        .BufferDepth                 ( BufferDepth                   ),
++        .NotPassthroughFifo          ( NotPassthroughDataflowElement ),
++        .MaskInvalidData             ( MaskInvalidData               ),
++        .PrintFifoInfo               ( PrintFifoInfo                 ),
++        .r_dp_req_t                  ( r_dp_req_t                    ),
++        .w_dp_req_t                  ( w_dp_req_t                    ),
++        .r_dp_rsp_t                  ( r_dp_rsp_t                    ),
++        .w_dp_rsp_t                  ( w_dp_rsp_t                    ),
++        .write_meta_channel_t        ( write_meta_channel_t          ),
+ % if not one_write_port:
+-        .write_meta_channel_tagged_t ( write_meta_channel_tagged_t ),
++        .write_meta_channel_tagged_t ( write_meta_channel_tagged_t   ),
+ % endif
+-        .read_meta_channel_t         ( read_meta_channel_t         )\
++        .read_meta_channel_t         ( read_meta_channel_t           )\
+ % if not one_read_port:
+ ,
+-        .read_meta_channel_tagged_t  ( read_meta_channel_tagged_t  )\
++        .read_meta_channel_tagged_t  ( read_meta_channel_tagged_t    )\
+ % endif
+ % for protocol in used_protocols:
+ ,
+@@ -824,7 +827,7 @@ w_req.decouple_aw || (w_req.w_dp_req.dst_protocol inside {\
+             .aw_req_i         (\
+ % if one_write_port:
+  w_req.aw_req                ),
+-% else:           
++% else:
+  w_meta_req_tagged           ),
+ % endif
+             .aw_valid_i       ( w_valid                     ),
+@@ -846,7 +849,7 @@ w_req.decouple_aw || (w_req.w_dp_req.dst_protocol inside {\
+         // Atleast one write protocol uses combined aw and w -> Need to buffer read meta requests
+         // As a write could depend on up to two reads
+         stream_fifo_optimal_wrap #(
+-            .Depth        ( 2                    ),
++            .Depth        ( NumAxInFlight        ),
+             .type_t       (\
+     % if one_write_port:
+  write_meta_channel_t ),
+diff --git a/src/backend/tpl/idma_legalizer.sv.tpl b/src/backend/tpl/idma_legalizer.sv.tpl
+index 777ee1bca..e53d0e067 100644
+--- a/src/backend/tpl/idma_legalizer.sv.tpl
++++ b/src/backend/tpl/idma_legalizer.sv.tpl
+@@ -657,10 +657,33 @@ ${database[protocol]['legalizer_write_data_path']}
+     //--------------------------------------
+     // State
+     //--------------------------------------
+-    `FF (opt_tf_q, opt_tf_d,           '0, clk_i, rst_ni)
+-    `FFL(r_tf_q,   r_tf_d,   r_tf_ena, '0, clk_i, rst_ni)
+-    `FFL(w_tf_q,   w_tf_d,   w_tf_ena, '0, clk_i, rst_ni)
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            opt_tf_q <= '0;
++        end else begin
++            opt_tf_q <= opt_tf_d;
++        end
++    end
++
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            r_tf_q <= '0;
++        end else begin
++            if (r_tf_ena) begin
++                r_tf_q <= r_tf_d;
++            end
++        end
++    end
+ 
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            w_tf_q <= '0;
++        end else begin
++            if (w_tf_ena) begin
++                w_tf_q <= w_tf_d;
++            end
++        end
++    end
+ 
+     //--------------------------------------
+     // Assertions
+diff --git a/src/backend/tpl/idma_transport_layer.sv.tpl b/src/backend/tpl/idma_transport_layer.sv.tpl
+index 91d27131c..67d7283c3 100644
+--- a/src/backend/tpl/idma_transport_layer.sv.tpl
++++ b/src/backend/tpl/idma_transport_layer.sv.tpl
+@@ -19,6 +19,8 @@ module idma_transport_layer_${name_uniqueifier} #(
+     /// - '2': minimal possible configuration
+     /// - '3': efficiently handle misaligned transfers (recommended)
+     parameter int unsigned BufferDepth = 32'd3,
++    /// Use a non-passthrough FIFO
++    parameter bit NotPassthroughFifo = 1'b0,
+     /// Mask invalid data on the manager interface
+     parameter bit MaskInvalidData = 1'b1,
+     /// Print the info of the FIFO configuration
+@@ -425,11 +427,12 @@ ${rendered_read_ports[read_port]}
+     //--------------------------------------
+ 
+     idma_dataflow_element #(
+-        .BufferDepth   ( BufferDepth   ),
+-        .StrbWidth     ( StrbWidth     ),
+-        .PrintFifoInfo ( PrintFifoInfo ),
+-        .strb_t        ( strb_t        ),
+-        .byte_t        ( byte_t        )
++        .BufferDepth        ( BufferDepth        ),
++        .StrbWidth          ( StrbWidth          ),
++        .NotPassthroughFifo ( NotPassthroughFifo ),
++        .PrintFifoInfo      ( PrintFifoInfo      ),
++        .strb_t             ( strb_t             ),
++        .byte_t             ( byte_t             )
+     ) i_dataflow_element (
+         .clk_i       ( clk_i                    ),
+         .rst_ni      ( rst_ni                   ),

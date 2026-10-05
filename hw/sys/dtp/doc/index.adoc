@@ -1,0 +1,93 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Debug & Test Ports (DTP)
+:description: DTP overview — purpose, composition and reading route.
+
+[[debug-test-ports,Debug and Test Ports (DTP)]]
+
+The Debug & Test Ports (DTP) module provides debug and test infrastructure. It
+integrates the JTAG Interface Unit (JIU) and the Cross Trigger Network (CTN)
+into a single instantiable subsystem that exposes a standard external JTAG
+port, internal debug bridges, and a configurable cross-trigger fabric.
+
+ifdef::backend-html5[]
+++++
+<p class="dashboard-badges">
+  <a href="../dashboard-block.html?flow=dtp&amp;framework=uvm&amp;tool=vcs"><img class="dashboard-badge" src="../data/badge-dtp-uvm-vcs-status.svg" alt="DTP (uvm, vcs) verification status"></a>
+  <a href="../dashboard-block.html?flow=dtp&amp;framework=uvm&amp;tool=vcs"><img class="dashboard-badge" src="../data/badge-dtp-uvm-vcs-tests.svg" alt="DTP (uvm, vcs) test pass rate"></a>
+  <a href="../dashboard-block.html?flow=dtp&amp;framework=uvm&amp;tool=vcs"><img class="dashboard-badge" src="../data/badge-dtp-uvm-vcs-coverage.svg" alt="DTP (uvm, vcs) coverage"></a>
+</p>
+++++
+endif::[]
+
+== Capabilities
+
+* *JTAG access* — IEEE 1149.1-2013 Primary TAP with configurable Secondary TAPs
+  for hierarchical multi-chiplet debug connectivity per IEEE 1838-2019 (3DIC).
+* *iJTAG chains* — IEEE 1687-2014 SIB-based chains for DFT secure, DFT
+  non-secure, and DFD instrumentation, plus SMC and SEP OTP debug bridges.
+* *JTAG2AXI bridges* — SMC fabric, SMC OTP and SEP OTP debug access without
+  system software.
+* *Cross-trigger fabric* — Configurable network (1–32 external CTPs, 0–32
+  internal cross triggers) supporting both wire-OR and point-to-point signalling
+ifdef::backend-html5[]
+  per the xref:ocah-docs:ROOT:referenced-documents.adoc#ref-occt[Open Chiplet Cross Triggering (OCCT) specification].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+  per the <<ref-occt,Open Chiplet Cross Triggering (OCCT) specification>>.
+endif::backend-pdf[]
+* *Clock stop* — Unified halt path combining JTAG DEBUG_CONTROL and CLA
+  clock-stop requests, with separate CLA-only readback for software observation.
+* *Lifecycle feature control* — SEP-driven enable polarity gates eleven debug and
+  test paths (five STAP/scan paths, three iJTAG chains and three JTAG2AXI bridges)
+  independently.
+
+ifdef::backend-html5[]
+== Reading Order
+
+* xref:overview.adoc[Overview]
+* xref:clk_rst.adoc[Clocks and Resets]
+* xref:jtag.adoc[JTAG Operation]
+* xref:cross_trigger.adoc[Cross-Trigger Operation]
+* xref:ip_reference.adoc[IP Reference]
+** JTAG: xref:ip:jtag_intf_unit/doc/index.adoc[JTAG Interface Unit], xref:ip:jtag_ptap/doc/index.adoc[PTAP], xref:ip:jtag_stap/doc/index.adoc[STAP].
+** Cross-Trigger: xref:ip:cross_trigger_network/doc/index.adoc[Network], xref:ip:cross_trigger_port/doc/index.adoc[Port], xref:ip:cross_trigger_matrix/doc/index.adoc[Matrix].
+* xref:reference.adoc[Configuration and Reference]
+endif::backend-html5[]
+
+ifdef::backend-html5[]
+++++
+<span id="dtp-overview"></span>
+<span id="dtp-jtag-integration"></span>
+<span id="dtp-clock-stop"></span>
+<span id="dtp-reference"></span>
+<span id="jtag-interface-unit"></span>
+<span id="jtag-intf-unit-architecture"></span>
+<span id="jtag-intf-unit-interface"></span>
+<span id="jtag-ptap"></span>
+<span id="ptap-architecture"></span>
+<span id="ptap-interface"></span>
+<span id="jtag-stap"></span>
+<span id="stap-architecture"></span>
+<span id="stap-interface"></span>
+<span id="cross-trigger-network"></span>
+<span id="cross-trigger-network-architecture"></span>
+<span id="cross-trigger-network-interface"></span>
+<span id="ctn-memory-map"></span>
+<span id="cross-trigger-port"></span>
+<span id="ctp-architecture"></span>
+<span id="ctp-interface"></span>
+<span id="cross-trigger-matrix"></span>
+<span id="ctm-architecture"></span>
+<span id="ctm-interface"></span>
+++++
+endif::backend-html5[]
+
+ifdef::backend-html5[]
+++++
+<span id="reading-route"></span>
+<span id="dtp-topic-pages"></span>
+<span id="ip-component-reference"></span>
+++++
+endif::backend-html5[]

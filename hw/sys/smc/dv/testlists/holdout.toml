@@ -1,0 +1,98 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+schema_version = 1
+
+# Leaves defined but outside `all`. `all` is the set the VPLAN grades and the
+# set a coverage run measures; every entry here is kept out of it for a reason
+# its comment states, stays selectable by name or by its group below, and is
+# documented as a hold-out in docs/SMC_VPLAN.adoc (Known Limitations,
+# "Held-out testcases"). Nothing here counts toward a PASS of the package.
+#
+# Three kinds of entry:
+#
+#   * `rtl_issue` -- reproducers for filed RTL defects, EXPECTED TO FAIL against
+#     current RTL. Each carries `expect_fail = "<reason>"`, which the runner
+#     grades (the observed FAIL is PASS, an observed PASS is FAIL with the
+#     reason "the defect is gone"), and `expect_fail_match`, the regex the
+#     failure message must match so a leaf failing for another reason is FAIL.
+#     The weekly tier runs the group on its own row (.github/workflows/
+#     regress.yml), green while the defects stand and red the week one is
+#     fixed; the leaf then moves back to its feature testlist without the
+#     `expect_fail` pair. No `ci` tag: a graded expected failure must never
+#     count in the hosted set. One test per defect. The group currently holds
+#     `smc_isolate_req_smc_lane_test`.
+#     `smc_deadspace_decode_test` and `smc_filter_lock_window_test` left it
+#     and run from `fabric.toml`.
+#   * `occp_boot` -- held out on runtime. The production ROM's whole
+#     reset-to-OCCP path (`run_modes = ["prod_rom"]`, 3600 s) runs on
+#     demand. The hours-long dual-SMC boot case belongs to `occp_rom`.
+#   * `held_out` -- leaves whose current failure is a comparison the leaf
+#     cannot make on this RTL until a ruling. smc_ref_clock_timer_rate_test
+#     fails the rate comparison it was written to make: clk_rst.adoc places
+#     the OCTS system timer in the reference clock domain and the RTL clocks
+#     it from clk_smc_i. A leaf whose blocker is a filed RTL defect goes here
+#     too, with the issue in its comment, and returns to its feature testlist,
+#     `all` and `hosted` when the fix merges.
+#
+# `ci` marks the leaves a hosted runner can run to PASS; no entry here carries
+# it.
+
+[[tests]]
+# ISOLATE_REQ_SMC_REG clears its FLR-latched request on any write with a byte
+# enable anywhere in the register, whatever the data (smc_cool_reset_wrap.sv:272-276);
+# reset_unit.rdl:130-135 makes the request a sw=rw field at bit 0.
+name = "smc_isolate_req_smc_lane_test"
+module = "smc_isolate_req_smc_lane_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "ISOLATE_REQ_SMC_REG: a write outside bit 0's byte lane clears the FLR-latched request"
+expect_fail_match = "cleared the FLR-latched request from a byte lane the field does not"
+
+[[tests]]
+name = "smc_prod_rom_occp_ready_test"
+module = "smc_prod_rom_occp_ready_test"
+seed = 1
+timeout_sec = 3600
+tags = ["occp_boot", "prod_rom"]
+run_modes = ["prod_rom"]
+firmware = { name = "prod_rom", mode = "bootrom" }
+# +smc_hold_cpu_boot: hold boot_stall from t=0 so the sequence programs
+# RESET_VECTOR before any core fetches (same first-boot path as SMC_002).
+# Real fuse sense (no +skip_fuse_sense): the ROM reads straps and fuses itself.
+args = [
+    "+rom_bin64=prod_rom.bin64",
+    "+smc_hold_cpu_boot",
+]
+
+[[tests]]
+name = "smc_ref_clock_timer_rate_test"
+module = "smc_ref_clock_timer_rate_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[groups]]
+# Filed-defect reproducers; the weekly tier's own row.
+name = "rtl_issue"
+expected_count = 1
+tests = [
+    "smc_isolate_req_smc_lane_test",
+]
+
+[[groups]]
+# Production boot ROM to its OCCP loop; on demand, about one hour.
+name = "occp_boot"
+tests = [
+    "smc_prod_rom_occp_ready_test",
+]
+
+[[groups]]
+# Leaves waiting on an RTL/spec ruling; run on demand to re-measure. Guarded so a
+name = "held_out"
+expected_count = 1
+tests = [
+    "smc_ref_clock_timer_rate_test",
+]

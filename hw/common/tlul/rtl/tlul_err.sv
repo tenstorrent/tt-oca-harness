@@ -1,0 +1,105 @@
+// Copyright lowRISC contributors (OpenTitan project).
+// Licensed under the Apache License, Version 2.0, see LICENSE for details.
+// SPDX-License-Identifier: Apache-2.0
+
+// Check TL-UL A-channel protocol encodings.
+//
+// Raise err_o combinationally when the incoming A channel carries an illegal opcode, size,
+// address alignment, or mask encoding for a 32-bit bus, an invalid instr_type encoding, or
+// a write marked as an instruction fetch. err_o is also high while a_valid is low, so it
+// is meaningful only with a_valid.
+
+module tlul_err
+  import tlul_pkg::*;
+(
+  input clk_i,           // Unused; the check is combinational.
+  input rst_ni,          // Unused; the check has no state.
+
+  input tl_h2d_t tl_i,   // A-channel request under check.
+
+  output logic err_o     // High when the A-channel request is illegal.
+);
+  `include "prim_assert.sv"
+
+  localparam int Iw = $bits(tl_i.a_source);
+  localparam int Szw = $bits(tl_i.a_size);
+  localparam int Dw = $bits(tl_i.a_data);
+  localparam int Mw = $bits(tl_i.a_mask);
+  localparam int SubAW = $clog2(Dw / 8);
+
+  logic opcode_allowed, a_config_allowed;
+
+  logic op_full, op_partial, op_get;
+  assign op_full    = (tl_i.a_opcode == PUT_FULL_DATA);
+  assign op_partial = (tl_i.a_opcode == PUT_PARTIAL_DATA);
+  assign op_get     = (tl_i.a_opcode == GET);
+
+  // An instruction type transaction cannot be write
+  logic instr_wr_err;
+  assign instr_wr_err = prim_mubi_pkg::mubi4_test_true_strict(
+      tl_i.a_user.instr_type
+  ) & (op_full | op_partial);
+
+  logic instr_type_err;
+  assign instr_type_err = prim_mubi_pkg::mubi4_test_invalid(tl_i.a_user.instr_type);
+
+  // Anything that doesn't fall into the permitted category, it raises an error
+  assign err_o = ~(opcode_allowed & a_config_allowed) | instr_wr_err | instr_type_err;
+
+  // opcode check
+  assign opcode_allowed = (tl_i.a_opcode == PUT_FULL_DATA)
+                        | (tl_i.a_opcode == PUT_PARTIAL_DATA)
+                        | (tl_i.a_opcode == GET);
+
+  // a channel configuration check
+  logic addr_sz_chk;    // address and size alignment check
+  logic mask_chk;       // inactive lane a_mask check
+  logic fulldata_chk;   // PUT_FULL_DATA should have size match to mask
+
+  localparam bit [Mw-1:0] MaskOne = 1;
+  logic [Mw-1:0] mask;
+
+  assign mask = MaskOne << tl_i.a_address[SubAW-1:0];
+
+  always_comb begin
+    addr_sz_chk  = 1'b0;
+    mask_chk     = 1'b0;
+    fulldata_chk = 1'b0; // Only valid when opcode is PUT_FULL_DATA
+
+    if (tl_i.a_valid) begin
+      unique case (tl_i.a_size)
+        'h0: begin  // 1 Byte
+          addr_sz_chk  = 1'b1;
+          mask_chk     = ~|(tl_i.a_mask & ~mask);
+          fulldata_chk = |(tl_i.a_mask & mask);
+        end
+
+        'h1: begin  // 2 Byte
+          addr_sz_chk  = ~tl_i.a_address[0];
+          // check inactive lanes if lower 2B, check a_mask[3:2], if uppwer 2B, a_mask[1:0]
+          mask_chk     = (tl_i.a_address[1]) ? ~|(tl_i.a_mask & 4'b0011)
+                       : ~|(tl_i.a_mask & 4'b1100);
+          fulldata_chk = (tl_i.a_address[1]) ? &tl_i.a_mask[3:2] : &tl_i.a_mask[1:0] ;
+        end
+
+        'h2: begin  // 4 Byte
+          addr_sz_chk  = ~|tl_i.a_address[SubAW-1:0];
+          mask_chk     = 1'b1;
+          fulldata_chk = &tl_i.a_mask[3:0];
+        end
+
+        default: begin  // else
+          addr_sz_chk  = 1'b0;
+          mask_chk     = 1'b0;
+          fulldata_chk = 1'b0;
+        end
+      endcase
+    end
+  end
+
+  assign a_config_allowed = addr_sz_chk & mask_chk & (op_get | op_partial | fulldata_chk);
+
+  // Only 32 bit data width for current tlul_err
+  `OCAH_OT_ASSERT_INIT(dataWidthOnly32_A, Dw == 32)
+
+endmodule

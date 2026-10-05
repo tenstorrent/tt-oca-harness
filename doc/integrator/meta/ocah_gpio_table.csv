@@ -1,0 +1,79 @@
+Index,Function,Recommended Pull,GPIO Notes
+0,SPI.DATA[0],PD,
+1,SPI.DATA[1],PD,
+2,SPI.DATA[2],PD,
+3,SPI.DATA[3],PD,
+4,SPI.DATA[4],PD,
+5,SPI.DATA[5],PD,
+6,SPI.DATA[6],PD,
+7,SPI.DATA[7],PD,
+8,SPI.CS,PU,
+9,SPI.CLK,PD,
+10,SPI.DQS,PD,
+11,UART[0].RX,PU,
+12,UART[0].TX,PU,
+13,UART[0].RTS,PD,
+14,UART[0].CTS,PD,
+15,UART[1].RX,PU,
+16,UART[1].TX,PU,
+17,UART[1].RTS,PD,
+18,UART[1].CTS,PD,
+19,UART[2].RX,PU,
+20,UART[2].TX,PU,
+21,UART[2].RTS,PD,
+22,UART[2].CTS,PD,
+23,UART[3].RX,PU,
+24,UART[3].TX,PU,
+25,UART[3].RTS,PD,
+26,UART[3].CTS,PD,
+27,I3C[0] SCL,PU,
+28,I3C[0] SDA,PU,
+29,I3C[2] SCL,PU,
+30,I3C[2] SDA,PU,
+31,I3C[3] SCL,PU,
+32,I3C[3] SDA,PU,
+33,I3C[4] SCL,PU,
+34,I3C[4] SDA,PU,
+35,I3C[5] SCL,PU,
+36,I3C[5] SDA,PU,
+37,I2C[0] SCL,PU,"Every I2C can be programmed to act as I2C, SMBus or PMBus"
+38,I2C[0] SDA,PU,
+39,I2C[0] SMB_A,PU,SMBus Alert
+40,I2C[0] SMB_D,PU,SMBus Suspend
+41,I2C[1] SCL,PU,
+42,I2C[1] SDA,PU,
+43,I2C[1] SMB_A,PU,SMBus Alert
+44,I2C[1] SMB_D,PU,SMBus Suspend
+45,I2C[2] SCL,PU,
+46,I2C[2] SDA,PU,
+47,I2C[2] SMB_A,PU,SMBus Alert
+48,I2C[2] SMB_D,PU,SMBus Suspend
+49,AVS.CLOCK,PU,
+50,AVS.MDATA,PU,
+51,AVS.SDATA,PU,
+52,Thermal Emergency N,PU,
+53,Isolate Request,PD,
+54,SPI DQS Loopback,PD,
+55,System Timer Sync Load,PD,
+56,System Timer Credit Count,PD,
+57,Boot Stall,PD,Stall after fuse sensing to override shadow register values. Boot will resume when this GPIO is released. This value can be overridden by the value specified over JTAG using the boot_stall_jtag_ovrd and boot_stall_jtag_val signals from DTP.
+58,OCCP Interface,PD,
+59,Reserved,PD,
+60,Reserved,PD,
+61,Cool Reset In,PU,Not packaged out
+62,Cool Reset Out,PU,Not packaged out
+63,I3C[1] SCL,PU,Not packaged out
+64,I3C[1] SDA,PU,Not packaged out
+65,PTAP TCK,,No dedicated interface in harness
+66,PTAP TRST,,No dedicated interface in harness
+67,PTAP TDI,,No dedicated interface in harness
+68,PTAP TMS,,No dedicated interface in harness
+69,PTAP TDO,,No dedicated interface in harness
+70,STAP TCK,,No dedicated interface in harness
+71,STAP TRST,,No dedicated interface in harness
+72,STAP TDI,,No dedicated interface in harness
+73,STAP TMS,,No dedicated interface in harness
+74,STAP TDO,,No dedicated interface in harness
+75,BP_REFCLK_VDD_SYS,,No dedicated interface in harness
+76,BP_RESETN,,No dedicated interface in harness
+77,BP_POWERGOOD,,No dedicated interface in harness

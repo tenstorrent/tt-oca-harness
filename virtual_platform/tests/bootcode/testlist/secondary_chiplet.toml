@@ -1,0 +1,175 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[testcase]]
+name = "sep_firmware_secondary_chiplet_bootcode_test"
+family = "secondary_chiplet"
+classification = "vp-equivalent"
+image = "signed"
+base_ini = "secure"
+boot = "secondary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# The secret 00..1f of configs/oca_encrypted_boot_test.yaml, as tests/fuse_maps/oca_encrypted.yaml provisions it.
+efuse = { class_key = [0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c] }
+smc_sram_image = "encrypted"
+smc_sram_source = [0x1000, 0x41000]
+smc_sram_offset = 0x2000
+smc_sram_manifest_at = 0x0
+expect = [
+  "STRAPS_LO=0x00000000",
+  "STRAP primary=0",
+  "LC=PROD",
+  "FUSE: SBOOT_DIS: 0",
+  "BOOT_SECONDARY",
+  "SMC_STATUS_TO_SEP=0x0000000f",
+  "MANIFEST_OFF=0x00002000",
+  "SMC_MANIFEST_ADDR=0x40062000",
+  "WAIT_SMC_MANIFEST",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x40062000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "PAYLOAD_OK",
+  "FUSE_SECRETS_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "BL1",
+  "FUSE_CHK",
+  "GO!",
+]
+forbid = [
+  "BOOT_SPI",
+  "BOOT_RECOVERY",
+  "STRAP primary=1",
+  ">>SPI_INIT",
+  "SPI_INIT_OK",
+  "SMC_COORD_NOT_READY",
+  "SMC_MANIFEST_OFF_INVALID",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ERR=",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "SBOOT_OFF",
+  "DECRYPT_NO_SECRET",
+  "DECRYPT_CLASS_KEY_EMPTY",
+  "KDF_FAIL",
+  "AES_DEC_FAIL",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "MANIFEST_SRC=0x40062000" = 1, "WAIT_SMC_MANIFEST" = 1, "DECRYPT_OK" = 1, "PAYLOAD_OK" = 1, "GO!" = 1 }
+expect_status = [
+  "DEBUG 0x0044",
+  "INFO 0x002a",
+  "INFO 0x007d",
+  "INFO 0x0212",
+  "INFO 0x0053",
+  "INFO 0x0040",
+  "INFO 0x0055",
+  "INFO 0x0054",
+]
+forbid_status = ["INFO 0x0023", "ERROR 0x0213"]
+spi_reads = [
+  { name = "whole_flash", range = [0x0, 0x1000000], exact = 0 },
+]
+markers = [
+  "The staged bytes are the encrypted image's primary slot, manifest at offset 0 and payload at its payload_offset 0x1000, which is where rom_manifest_boot resolves it from MANIFEST_ADDR; smc_bundle is the signed cleartext bundle and would never reach the decrypt arm.",
+  "DV stages the unsigned combined image at TEST_DEV with MANIFEST_ADDR 0x1000; here the part is PROD, so the full RSA chain and the class_key KDF run on the SMC arm.",
+  "The flash holds the bootable signed image and the device must serve zero reads; the strap alone diverts a boot flash could serve.",
+  "rom_manifest_boot sets num_retries = 0 off SPI, so MANIFEST_BACKUP is unreachable rather than merely absent; it is forbidden so a second attempt would fail this entry.",
+  "Not covered: how the manifest reached SMC SRAM; the platform stages it by backdoor and publishes MANIFEST_ADDR with all four ready flags at once.",
+]
+
+[[testcase]]
+name = "sep_firmware_secondary_chiplet_bootcode_primary_manifest_invalid_test"
+family = "secondary_chiplet"
+classification = "vp-equivalent"
+image = "signed"
+base_ini = "secure"
+boot = "secondary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+efuse = { class_key = [0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c] }
+# Staged from the image's start, so the published address holds the erased descriptor and
+# the real manifest sits 0x1000 past it.
+smc_sram_image = "encrypted"
+smc_sram_source = [0x0, 0x41000]
+smc_sram_offset = 0x2000
+smc_sram_manifest_at = 0x1000
+expect = [
+  "STRAPS_LO=0x00000000",
+  "STRAP primary=0",
+  "BOOT_SECONDARY",
+  "SMC_STATUS_TO_SEP=0x0000000f",
+  "MANIFEST_OFF=0x00002000",
+  "SMC_MANIFEST_ADDR=0x40062000",
+  "WAIT_SMC_MANIFEST",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x40062000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030002",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "BOOT_SPI",
+  "BOOT_RECOVERY",
+  "STRAP primary=1",
+  ">>SPI_INIT",
+  "SPI_INIT_OK",
+  "SMC_COORD_NOT_READY",
+  "SMC_MANIFEST_OFF_INVALID",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_SRC=0x40063000",
+  "MANIFEST_ERR=0x00030004",
+  "MANIFEST_ERR=0x0003001c",
+  "OCA_BODY=",
+  "MFST_VER=",
+  "PUBK_SEL=",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_OK",
+  "SBOOT_OFF",
+  "FUSE_SECRETS_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_SRC=0x40062000" = 1, "WAIT_SMC_MANIFEST" = 1, "MANIFEST_ERR=0x00030002" = 1, "MANIFEST_ALL_FAILED" = 1, "MANIFEST_BOOT_FAIL=0x00030002" = 1 }
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030002"
+expect_status = [
+  "DEBUG 0x0044",
+  "INFO 0x002a",
+  "INFO 0x007d",
+  "INFO 0x0212",
+  "WARN 0x0006",
+  "ERROR 0x0006",
+  "ERROR 0x0213",
+]
+forbid_status = ["INFO 0x0023", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x021b", "INFO 0x021c"]
+spi_reads = [
+  { name = "whole_flash", range = [0x0, 0x1000000], exact = 0 },
+]
+markers = [
+  "DV publishes MANIFEST_ADDR 0x5000 over a window holding no manifest; here the platform ties MANIFEST_ADDR to the staging offset, so the window is staged one slot early and the published address lands on the image's erased descriptor.",
+  "The pair with sep_firmware_secondary_chiplet_bootcode_test differs in smc_sram_source and smc_sram_manifest_at only; smc_sram_manifest_at = 0x1000 proves a valid manifest sits past the published address, and MANIFEST_SRC=0x40063000 is forbidden so a forward scan would fail this entry.",
+  "rom_manifest_boot sets num_retries = 0 off SPI, so the single BAD_MAGIC refusal is terminal; MANIFEST_BACKUP is forbidden.",
+  "OCA_BODY= and MFST_VER= are forbidden: the refusal is at the 20-byte peek, before the body is copied.",
+  "The flash holds the bootable signed image and the device serves zero reads, so the ROM does not fall back to flash after the SMC manifest is refused.",
+]

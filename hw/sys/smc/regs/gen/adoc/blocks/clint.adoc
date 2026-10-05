@@ -1,0 +1,53 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-clint]
+== CLINT Address Map
+
+Core-Local Interruptor: software-interrupt, timer-compare, and machine-time registers.
+
+[NOTE]
+======
+*Register Arrays:*
+
+* *MSIP[4]*: 4 registers, base 0x0, stride 0x4
+* *MTIMECMP[4]*: 4 registers, base 0x4000, stride 0x8
+======
+
+[cols="1,4,1,6", options="header"]
+|===
+| Address | Name | Access | Description
+| 0x0 - 0xC | <<reg-{regmap-instance}-clint-MSIP-,MSIP[4]>> | RW a| -
+| 0x4000 - 0x4018 | <<reg-{regmap-instance}-clint-MTIMECMP-,MTIMECMP[4]>> | RW a| -
+| 0xBFF8 | <<reg-{regmap-instance}-clint-MTIME,MTIME>> | RW a| -
+|===
+
+[#reg-{regmap-instance}-clint-MSIP-]
+=== MSIP[4]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd0` | R | 0x0 a| Reserved
+| 0 | `value` | RW | 0x0 a| MSIP bit for core
+|===
+
+[#reg-{regmap-instance}-clint-MTIMECMP-]
+=== MTIMECMP[4]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `count` | RW | - a| Timer compare value. The core's machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME.
+|===
+
+[#reg-{regmap-instance}-clint-MTIME]
+=== MTIME
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `count` | RW | - a| Cycle count (time) value
+|===

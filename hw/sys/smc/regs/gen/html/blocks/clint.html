@@ -1,0 +1,40 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-clint">CLINT Address Map</h2>
+<p>Core-Local Interruptor: software-interrupt, timer-compare, and machine-time registers.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>MSIP[4]</strong>: 4 registers, base 0x0, stride 0x4</li>
+<li><strong>MTIMECMP[4]</strong>: 4 registers, base 0x4000, stride 0x8</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0xC</td><td><a href="#MSIP_4_">MSIP[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4000 - 0x4018</td><td><a href="#MTIMECMP_4_">MTIMECMP[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xBFF8</td><td><a href="#MTIME">MTIME</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="MSIP_4_">MSIP[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd0</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>value</td><td>RW</td><td>0x0</td><td>MSIP bit for core</td></tr>
+</table>
+<h3 id="MTIMECMP_4_">MTIMECMP[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>count</td><td>RW</td><td>-</td><td>Timer compare value. The core&#x27;s machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME.</td></tr>
+</table>
+<h3 id="MTIME">MTIME</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>count</td><td>RW</td><td>-</td><td>Cycle count (time) value</td></tr>
+</table>
+</div>

@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Selects key slot 17 (CHIPLET_PUBK_HASH1) in both slots, signed with a key no ROM slot holds.
+pack_config = "oca_secure_boot"
+set = [
+  { target = "bundle", slot = "both", path = "public_key_select_classic", value = 0x20000 },
+  { target = "bundle", slot = "both", path = "signing_key_file", value = "{untrusted_signing_key}" },
+  { target = "bundle", slot = "both", path = "signing_key_name", value = "{untrusted_signing_key_name}" },
+]

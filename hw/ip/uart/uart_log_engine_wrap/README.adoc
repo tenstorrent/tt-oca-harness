@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= OCAH UART 16550 IP
+
+== Documentation
+
+The documentation is link:doc/uart_log_engine_wrap.adoc[here].
+
+== Generating the IP
+
+To generate the IP, run the following command:
+
+```bash
+python3 generate_ip.py -i <io-port-type>
+```
+
+Replace `<io-port-type>` with one of the following options:
+
+- `apb4`
+- `axi4-lite`
+- `apb4-flattened`
+- `axi4-lite-flattened`
+
+== Verification
+
+Block-level bench on the unified DV flow: link:dv/README.md[dv/README.md]
+(`python3 tools/dv/run_dv.py --dut uart_log_engine_wrap`). SMC-level scenarios live under
+`hw/sys/smc/dv/`.

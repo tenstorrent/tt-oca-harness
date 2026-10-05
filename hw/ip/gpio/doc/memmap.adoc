@@ -1,0 +1,69 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+ifdef::backend-html5[]
+++++
+<span id="address-space-organization"></span>
+++++
+endif::backend-html5[]
+
+[[gpio-memory-map]]
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-maps"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+The controller's interface bank contains `DATA_CTRL`, `DATA_CTRL_ENABLE`
+and `ACCESS_FILTER`; the shim's control bank contains `CONTROL`.
+The generated `gpio_intf` and `gpio_ctrl` maps in
+<<gpio-detailed-register-map>> define their register offsets, and `gpio_wrap`
+defines the bank placement within the composite aperture. The enclosing
+padring determines their system addresses.
+
+ifdef::backend-html5[]
+++++
+<span id="reset-behavior"></span>
+++++
+endif::backend-html5[]
+
+==== Reset Values
+
+`ACCESS_FILTER` resets to `0x00010100`: read and write filters are disabled,
+with each stored protection requirement set to `3'b001`. `DATA_CTRL` and
+`DATA_CTRL_ENABLE` software controls reset to zero. Default pad direction
+and post-reset LSIO ownership are described in <<gpio-ownership>> and
+<<gpio-reset-straps>>; zeroed software controls do not imply that every
+pad path is disabled.
+
+`CONTROL` resets its drive-strength field to `3'b010` and its software
+pull, conditioning, configuration-enable and secondary-override controls
+to zero. The read-only strap fields reflect `INPUT_BY_DEFAULT` and the
+captured input, so the complete value is not a single fixed reset word.
+
+ifdef::backend-html5[]
+++++
+<span id="detailed-register-map"></span>
+++++
+endif::backend-html5[]
+
+[[gpio-detailed-register-map]]
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::partial$gpio/regs/gen/html/gpio_intf.html[]
+include::partial$gpio/regs/gen/html/gpio_ctrl.html[]
+include::partial$gpio/regs/gen/html/gpio_wrap.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/gpio_intf.adoc[leveloffset=+2]
+include::../regs/gen/adoc/gpio_ctrl.adoc[leveloffset=+2]
+include::../regs/gen/adoc/gpio_wrap.adoc[leveloffset=+2]
+endif::backend-pdf[]

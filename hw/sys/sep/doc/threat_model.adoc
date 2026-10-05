@@ -1,0 +1,57 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Threat Model
+:description: Remote software, physical, and supply-chain threats considered by SEP.
+
+[[threat-model]]
+
+The threat model covers remote software attacks, physical attacks and
+supply chain attacks. Software attacks are universal and the primary
+vector against data center implementations while physical attacks are
+localized and require close proximity. They are relevant for automotive
+and robotics applications. Supply chain attacks involve modification of
+chips in production and provisioning.
+
+Software attacks include:
+
+* Malicious firmware modification in boot, overlay or application
+loading or updating
+* Modifying or exfiltrating private data e.g. ML model weights,
+cryptographic keys
+* Providing forged attestation to mimic legal device behavior
+
+Physical attacks include:
+
+* Fault injection to bypass security checks and differential
+cryptoanalysis for key recovery. This can include clock and voltage
+glitching, laser and EM energy injection, and thermal gradients.
+Logically induced faults such as Row Hammer DRAM attacks are also
+included in this category.
+* Side channel for key and other secret data extraction
+** We assume that the attacker has full view of SRAM and OTP data
+state
+* Hardware probing to observe or control data within a chiplet or
+communication between chiplets
+
+Supply chain attacks include:
+
+* Insider modification of design to disable or weaken security features
+and insert backdoors. Theft of hardware secrets such as security
+tokens
+* Modification of IC design masks to modify behavior and insert trojans.
+For example the BL0 boot ROM contents may be modified to disable secure
+boot.
+* Corruption of fuse provisioning to enable or disable features
+illegally and leak device unique secrets
+
+We however limit the scope of physical attacks we defend against and do
+not explicitly protect against the following:
+
+* Package internal inter-chiplet communications secure from hardware
+probing
+* Package internal chiplet hardware probing and certain physical attacks
+such as bias fault injection
+* Thermal gradients to influence entropy source and induce timing
+faults
+* Supply chain attacks

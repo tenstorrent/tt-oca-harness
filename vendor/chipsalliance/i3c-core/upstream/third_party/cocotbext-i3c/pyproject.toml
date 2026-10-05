@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cocotbext-i3c"
+dynamic = ["version"]
+requires-python = ">=3.11"
+dependencies = [
+    "cocotb >= 1.8.1, < 2.0.0",
+    "black >= 24.4.2",
+    "flake8 >= 7.0.0",
+    "isort >= 5.13.2",
+    "pyproject-flake8 >= 5.0.4",
+    "pytest >= 7.4.0",
+    "crc >= 7.0.0",
+]
+
+authors = [
+    {name="Krzysztof Boroński, Michał Czyż, Antmicro"},
+]
+
+description = "I3C simulation models for CocoTB"
+readme = "README.md"
+
+keywords = ["cocotb", "i3c"]
+
+[project.urls]
+Source = "https://github.com/antmicro/cocotbext-i3c"
+Tracker = "https://github.com/antmicro/cocotbext-i3c/issues"
+Changelog = "https://github.com/antmicro/cocotbext-i3c/releases"
+
+[tool.setuptools.dynamic]
+version = {attr = "cocotbext_i3c.__about__.__version__"}
+
+[tool.black]
+line-length = 100
+exclude = '''
+(
+  /(
+    | \.git
+    | \.gitignore
+    | \.gitmodules
+    | \.github
+    | \.nox
+    | \.pytest_cache
+    | __pycache__
+    | venv
+  )/
+)
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
+
+[tool.flake8]
+ignore = ["E203", "E501", "W503", "F403", "F405"]
+max-line-length = 100
+max-complexity = 27
+select = ["B","C","E","F","W","T4","B9"]
+exclude = [
+    ".git",
+    ".gitignore",
+    ".gitmodules",
+    ".github",
+    ".nox",
+    ".pytest_cache",
+    "__pycache__",
+    "venv",
+]
+count = true
+show-source = true
+statistics = true
+
+[tool.pytest.ini_options]
+pythonpath = [
+  ".", "src", "tests"
+]

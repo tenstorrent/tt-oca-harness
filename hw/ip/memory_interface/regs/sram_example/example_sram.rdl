@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef EXAMPLE_SRAM_RDL
+`define EXAMPLE_SRAM_RDL
+
+mem example_sram #(
+    longint unsigned NUM_ENTRIES = 1024,
+    longint unsigned WIDTH       = 32
+) {
+    desc = "Example SRAM Memory";
+
+    mementries = NUM_ENTRIES;
+    memwidth   = WIDTH;
+
+    // a single word of the memory
+    reg mem_word {
+        regwidth = 32;
+        field {
+           sw=rw;
+           hw=r;
+        } data[WIDTH-1:0];
+    };
+
+    // the entire memory is an array of memory words
+    mem_word mem_array[NUM_ENTRIES];
+
+};
+
+`endif
+
+

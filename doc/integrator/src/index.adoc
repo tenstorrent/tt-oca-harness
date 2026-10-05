@@ -1,0 +1,60 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+ifdef::backend-pdf[]
+= Open Chiplet Atlas Harness (OCAH): Integrator Guide
+endif::[]
+ifndef::backend-pdf[]
+= Integrator Guide
+endif::[]
+:doctype: book
+:sectanchors:
+:sectlinks:
+:sectnums:
+:source-highlighter: highlight.js
+:revnumber: 0.0.8
+:revdate: 2026-09-18
+:title-page-background-image: image:../assets/TT_Cover_Image.png[fit=cover]
+ifdef::backend-pdf[]
+:imagesdir: ../assets
+endif::backend-pdf[]
+
+[[integrator-guide-about]]
+== About this Guide
+
+This guide provides instructions and best practices for integrating OCA Harness
+subsystems into your chiplet design.
+
+The integrator guide is split into multiple chapters. Each of these chapters
+covers integration considerations, interfaces, and configuration requirements
+for the respective subsystem.
+
+ifdef::backend-html5[]
+== Documentation Overview
+
+* xref:initial.adoc[Initial SMU Integration] - Initial tasks for an SMU integrator
+* xref:checklist.adoc[SoC Integration Checklist] - Review the top-level integration gates
+* xref:smu.adoc[SMU Top-Level Integration] - Guidelines for integrating the SMU subsystems
+* xref:smn.adoc[SMN Integration] - Guidelines for integrating the System Management Network
+* xref:aou.adoc[AXI-over-UCIe Bridge (AoU) Integration] - Guidelines for integrating the AoU bridge
+* xref:defines.adoc[Project Defines] - Compile-time defines that apply OCAH-wide
+* xref:prim.adoc[Prim Cell Replacement] - Guidelines for how to define prim cells
+* xref:cdc.adoc[CDC Timing Constraints] - Timing constraints that ship with OCAH
+ifndef::release[]
+* xref:revision.adoc[Revision History] - Major revisions and updates to the OCAH Integrator Guide
+endif::release[]
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::initial.adoc[]
+include::checklist.adoc[]
+include::smu.adoc[]
+include::smn.adoc[]
+include::aou.adoc[]
+include::defines.adoc[]
+include::prim.adoc[]
+include::cdc.adoc[]
+ifndef::release[]
+include::revision.adoc[]
+endif::release[]
+endif::backend-pdf[]

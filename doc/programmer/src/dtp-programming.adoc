@@ -1,0 +1,379 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[dtp-programming-guide]]
+== DTP Programming Guide
+
+The Debug and Test Ports (DTP) are programmed from two sides: firmware or a
+debugger configures the cross-trigger network through its CSR window, and an
+external debugger drives the JTAG test access ports.
+
+[[dtp-cross-trigger]]
+=== Cross-Trigger Network
+
+Cross-trigger configuration is static. Software programs every external CTP
+from the SiP cross-trigger topology once per boot, then opens the CTM routes
+that use those ports, and leaves both unchanged for the rest of the session.
+Register offsets are relative to the CTN base address; the
+ifdef::backend-html5[]
+xref:ocah-docs:ip:cross_trigger_network/doc/index.adoc#ctn-address-allocation-table[CTN address allocation table]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/cross_trigger_network/doc/index.html#ctn-address-allocation-table[CTN address allocation table]
+endif::backend-pdf[]
+lists the CTM and CTP windows. Firmware and an external debugger share this
+window, and whichever of them programs cross triggers follows the sequence
+below.
+
+[[dtp-ctn-requirements]]
+==== Requirements
+
+* Both ends of a CTP link use the same protocol and polarity, and the board
+  determines both:
+** A shared wire-OR line with pull-ups uses `MODE` = 0 and `INVERT` = 0; with
+   pull-downs it uses `MODE` = 0 and `INVERT` = 1.
+** A point-to-point link with active-high signaling uses `MODE` = 1 and
+   `INVERT` = 0; with active-low signaling it uses `MODE` = 1 and `INVERT` = 1.
+* The configuration stays fixed for the session. Change a port whose routes
+  are already open only through the sequence in
+  <<dtp-ctn-reconfigure>>.
+* After reset every CTP is in wire-OR mode with `INVERT` = 0, and every CTM
+  output is disabled because each `CT_DST_SELECT` resets to zero. Until
+  software writes `CONFIG`, a CTP drives neither `CT_Req_out` nor
+  `CT_Ack_out`, so the board pulls set the level the far end sees on those
+  lines. Choose pulls that the far end reads as deasserted.
+* Internal CTPs have no registers. The `INT_CT_MODE` parameter fixes their
+  protocol.
+* The CTM configuration across the SiP is free of loops. A wire-OR CTP
+  receives its own assertion of the shared wire, so a route from a wire-OR
+  CTP back to the same CTP is a loop.
+
+[[dtp-ctn-init]]
+==== Initialization Sequence
+
+. For each external CTP `i` that the SiP uses:
+.. For a wire-OR port, write `STRETCH_MULT` with the pulse width the shared
+   wire requires, minus one.
+.. Write `CONFIG` with `MODE` and `INVERT` for the board in a single write,
+   with `RESET` = 0.
+. For each CTM output `n` that carries triggers, write
+  `CT_SRC[n].CONFIG_0.CT_DST_SELECT`. Setting bit `m` forwards the triggers
+  that port `m` receives to port `n`. The
+ifdef::backend-html5[]
+xref:ocah-docs:ip:cross_trigger_network/doc/index.adoc#ctn-matrix-port-indices-table[CTM port index table]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/cross_trigger_network/doc/index.html#ctn-matrix-port-indices-table[CTM port index table]
+endif::backend-pdf[]
+maps port indices to external and internal CTPs.
+
+The order matters. A CTM route delivers triggers to a CTP from the moment it
+is written. A CTP still in its reset-default wire-OR mode transmits a trigger
+by driving `CT_Req_out` to the asserted wire-OR level, which is low with
+`INVERT` = 0. A point-to-point far end built for active-low signaling reads
+that level as a request. Writing `MODE` and `INVERT` together keeps a port from
+running, even briefly, with one field set for the board and the other still
+at its reset value.
+
+The following example configures external CTP 0 for an active-low
+point-to-point link and external CTP 1 for a wire-OR line with pull-ups, then
+routes triggers between them.
+
+[source,sourceCode,c]
+----
+#define CTP_REG(i, reg)  (ctn_base + CROSS_TRIGGER_NETWORK_CTP_BASE_ADDR(i) + (reg))
+#define CTM_ROUTE(n)     (ctn_base + CROSS_TRIGGER_NETWORK_CTM_BASE_ADDR + \
+                          CROSS_TRIGGER_MATRIX_CT_SRC_CONFIG_0_BASE_ADDR(n))
+
+#define CONFIG_MODE_P2P  (1u << 0)
+#define CONFIG_INVERT    (1u << 1)
+#define CONFIG_RESET     (1u << 2)
+
+// Configure every port before opening any route.
+write32(CTP_REG(0, CROSS_TRIGGER_PORT_CONFIG_BASE_ADDR), CONFIG_MODE_P2P | CONFIG_INVERT);
+write32(CTP_REG(1, CROSS_TRIGGER_PORT_STRETCH_MULT_BASE_ADDR), 15); // 16-cycle pulses
+write32(CTP_REG(1, CROSS_TRIGGER_PORT_CONFIG_BASE_ADDR), 0);
+
+// Triggers received on port 1 go out on port 0, and the reverse.
+write32(CTM_ROUTE(0), 1u << 1);
+write32(CTM_ROUTE(1), 1u << 0);
+----
+
+[[dtp-ctn-sip-example]]
+==== Example SiP Routing
+
+The TRM's
+ifdef::backend-html5[]
+xref:ocah-docs:ip:cross_trigger_network/doc/index.adoc#sip-cross-trigger-topology-figure[example SiP cross-trigger topology]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/cross_trigger_network/doc/index.html#sip-cross-trigger-topology-figure[example SiP cross-trigger topology]
+endif::backend-pdf[]
+links six chiplets: Chiplets 0, 1 and 2 share a wire-OR line, and
+point-to-point pairs link Chiplet 0 with Chiplets 3 and 4, and Chiplet 3 with
+Chiplet 5. <<dtp-ctn-sip-example-table>> lists the CTM routing that each
+chiplet programs for that topology. No route leads from a CTP back to itself.
+
+[[dtp-ctn-sip-example-table]]
+[cols="<16,<84",options="header"]
+.CTM programming for the example SiP
+|===
+|Chiplet |CTM forwarding
+
+|0
+|From Chiplets 1 and 2 through the wire-OR CTP to the local CLAs and Chiplets 3 and 4. +
+From Chiplet 3 to the local CLAs, the wire-OR CTP and Chiplet 4. +
+From Chiplet 4 to the local CLAs, the wire-OR CTP and Chiplet 3. +
+From the local CLAs to the wire-OR CTP and Chiplets 3 and 4.
+
+|1
+|From Chiplets 0 and 2 through the wire-OR CTP to the local CLAs. +
+From the local CLAs to the wire-OR CTP.
+
+|2
+|From Chiplets 0 and 1 through the wire-OR CTP to the local CLAs. +
+From the local CLAs to the wire-OR CTP.
+
+|3
+|From Chiplet 0 to the local CLAs and Chiplet 5. +
+From Chiplet 5 to the local CLAs and Chiplet 0. +
+From the local CLAs to Chiplets 0 and 5.
+
+|4
+|From Chiplet 0 to the local CLAs. +
+From the local CLAs to Chiplet 0.
+
+|5
+|From Chiplet 3 to the local CLAs. +
+From the local CLAs to Chiplet 3.
+|===
+
+[[dtp-ctn-reconfigure]]
+==== Changing a Port's Configuration
+
+Changing `CONFIG` after routes are open is discouraged. When a link must
+change protocol or polarity, for example after both chiplets agree on a new
+topology, reconfigure port `p` as shown below. A poll that times out means
+the point-to-point far end never acknowledged; recover the port as described in
+<<dtp-ctn-deadlock>>.
+
+.Changing a CTP's configuration.
+[plantuml,ocah-ctn-reconfigure,svg,width=60%,align="center"]
+----
+@startuml
+start
+:Close every route involving port p:
+write 0 to CT_SRC[p] and clear bit p
+in every other CT_SRC[n];
+while (STATUS.BUSY of port p reads 1?) is (yes)
+  if (Poll timed out?) then (yes)
+    :Write CONFIG with RESET = 1,
+    then with RESET = 0;
+  else (no)
+  endif
+endwhile (no)
+:Write CONFIG with the new
+MODE and INVERT in one write;
+:Reopen the routes;
+stop
+@enduml
+----
+
+The CTP holds its point-to-point handshake idle while wire-OR mode is
+selected. After point-to-point mode is selected, the handshake ignores
+`CT_Req_in` and `CT_Ack_in` until their synchronized levels are valid.
+Closing the routes first keeps triggers from being sent or forwarded while
+the two ends of the link disagree.
+
+[[dtp-ctn-deadlock]]
+==== Handshake Deadlock Recovery
+
+A point-to-point sender waits for `CT_Ack_in` without a timeout. If the far
+end stops responding, `STATUS.REQ_OUT` and `STATUS.BUSY` stay 1, and the port
+transmits no further triggers.
+
+. Write `CONFIG` with `RESET` = 1, keeping `MODE` and `INVERT` unchanged.
+  `CT_Req_out` deasserts, and the port discards triggers delivered to it
+  while `RESET` is set.
+. Write `CONFIG` with `RESET` = 0.
+
+`RESET` does not affect the receiving side. A far end that holds `CT_Req_in`
+asserted keeps `STATUS.BUSY` at 1 until it releases the request.
+
+[[dtp-debug-host-procedures]]
+=== Debug Host Procedures
+
+These procedures are performed by an external debugger through the chiplet's
+JTAG port. An IR scan loads an instruction with the IR-Scan sequence; a DR scan
+shifts the selected test data register (TDR) with the DR-Scan sequence, least
+significant bit first. The TRM defines every instruction and TDR field.
+
+[[dtp-ptap-tdr-access]]
+==== Primary TAP Registers
+
+To read or write a primary TAP TDR:
+
+. Shift its instruction into the instruction register with an IR scan.
+. Shift the TDR with a DR scan, starting with the least significant bit.
+. Read the TDR contents shifted out on TDO.
+
+The TDRs differ in what the shifted-in bits do:
+
+* *IDCODE* and *JTAG_CAPS* are read-only. Shift in any pattern; the bits are
+  ignored. Read JTAG_CAPS to discover which instructions and ports an
+  instance enables before using them.
+* *DEBUG_CONTROL* captures the bits shifted into its read/write fields and
+  ignores those shifted into its read-only fields.
+* *Boundary scan* instructions that select the boundary-scan registers shift
+  their contents out on TDO. An instruction disabled in the instance behaves as
+  BYPASS.
+
+The
+ifdef::backend-html5[]
+xref:ocah-docs:ip:jtag_ptap/doc/index.adoc#ptap-debug-control-fields-table[DEBUG_CONTROL fields table]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/jtag_ptap/doc/index.html#ptap-debug-control-fields-table[DEBUG_CONTROL fields table]
+endif::backend-pdf[]
+and the
+ifdef::backend-html5[]
+xref:ocah-docs:ip:jtag_ptap/doc/index.adoc#ptap-jtag-caps-fields-table[JTAG_CAPS fields table]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/jtag_ptap/doc/index.html#ptap-jtag-caps-fields-table[JTAG_CAPS fields table]
+endif::backend-pdf[]
+define the fields.
+
+[[dtp-runbist]]
+==== Running BIST
+
+The PTAP adds no scan cell of its own to the RUNBIST path, so the attached
+iJTAG network defines the length and contents of the RUNBIST DR.
+
+. Shift RUNBIST into the instruction register with an IR scan.
+. Shift the configuration vector that the attached iJTAG network defines for
+  reaching the BIST TDR with a DR scan. A hierarchical network needs one DR scan
+  for each level of Segment Insertion Bits (SIBs) opened on the way.
+. Shift the BIST TDR contents, together with the bits of every SIB and register
+  still on the scan path, with a DR scan.
+. Read the captured contents of the same scan path on TDO.
+
+[[dtp-ijtag-access]]
+==== iJTAG Segment Access
+
+The JTAG Interface Unit's iJTAG network starts with three one-bit SIBs. With
+every SIB closed the DR is three bits long: bit 0 (nearest TDO, shifted in
+first) is the DFD SIB, bit 1 the DFT Non-Secure SIB and bit 2 the DFT Secure
+SIB. A SIB whose debug-disable field is set stays closed and captures 0.
+
+. Shift SELECT_IJTAG, or RUNBIST to run BIST, into the instruction register
+  with an IR scan.
+. Open the target SIB with a three-bit DR scan: `3'b100` for DFT Secure,
+  `3'b010` for DFT Non-Secure or `3'b001` for DFD. The target SIB's
+  debug-disable field must be clear.
+. Shift the lengthened DR with the target SIB's bit held at 1. With the DFT
+  Non-Secure SIB open and an N-bit segment, the DR is N + 3 bits long: bit 0 is
+  the DFD SIB, bits N to 1 are the segment with the bit nearest its scan output
+  at bit 1, bit N + 1 is the DFT Non-Secure SIB and bit N + 2 is the DFT Secure
+  SIB. The network attached to each segment defines its contents and length.
+. Read the captured contents of the same scan path on TDO.
+. Close the SIB by shifting the same DR with the target SIB's bit at 0.
+
+The
+ifdef::backend-html5[]
+xref:ocah-docs:ip:jtag_intf_unit/doc/index.adoc#jiu-ijtag-network[iJTAG network description]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/jtag_intf_unit/doc/index.html#jiu-ijtag-network[iJTAG network description]
+endif::backend-pdf[]
+gives the SIB bit map and segment ports.
+
+[[dtp-ic-reset-overrides]]
+==== IC_RESET Overrides
+
+Each IC_RESET port has an active-low `reset_control` value and a `reset_enable`
+select that is also active low: writing 0 hands the port to `reset_control`.
+Consumers select between the functional reset and `reset_control` with a
+hazard-free multiplexer, which holds its output only while the select moves
+alone. To assert an override:
+
+. Shift IC_RESET into the instruction register with an IR scan.
+. Write the port's `reset_control` with a DR scan, leaving `reset_enable` at 1.
+. Clear `reset_enable` in a second DR scan, so that its Update-DR moves only the
+  select.
+
+.Asserting an IC_RESET override.
+[plantuml,ocah-dtp-ic-reset-override,svg,width=90%,align="center"]
+----
+@startuml
+scale 20 as 120 pixels
+hide time-axis
+concise "IC_RESET DR scan" as DR
+binary "reset_control" as RC
+binary "reset_enable" as RE
+binary "Port reset (active low)" as R
+@0
+DR is Idle
+RC is high
+RE is high
+R is high
+@20
+DR is "Update-DR 1"
+RC is low
+@40
+DR is "Update-DR 2"
+RE is low
+R is low
+@60
+DR is Idle
+@enduml
+----
+
+Changing both in one Update-DR can pulse a reset on a port that neither source
+is resetting. Write `reset_hold` to 0 to keep the override asserted across
+Test-Logic-Reset; only TRST clears `reset_hold` itself. The
+ifdef::backend-html5[]
+xref:ocah-docs:dtp:clk_rst.adoc#dtp-ic-reset-overrides[IC_RESET override description]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/dtp/clk_rst.html#dtp-ic-reset-overrides[IC_RESET override description]
+endif::backend-pdf[]
+gives the TDR slice order.
+
+[[dtp-sep-reset-vector]]
+==== SEP Reset Vector Redirect
+
+The SEP CPU reset vector is held in a TDR of the EL2 debug TAP, reached through
+the SEP Core Debug STAP. To start the SEP CPU from a memory other than the Boot
+ROM for bring-up or failure analysis:
+
+. Hold the SEP CPU in reset, for example with the SEP main-reset IC_RESET
+  override (<<dtp-ic-reset-overrides>>).
+. Select the reset-vector TDR with JTAG instruction opcode `0x18` and shift in
+  the alternate address. The TDR stores address bits [31:1]; bit 0 is zero.
+. Release the reset.
+
+The value persists until it is rewritten or the TAP is reset (TRST or
+Test-Logic-Reset); CPU reset alone does not restore the Boot ROM default.
+
+[[dtp-smc-cmderr]]
+==== SMC Debug Module Abstract Command Errors
+
+The SMC Debug Module departs from the RISC-V External Debug Support
+specification: a `command` write while `abstractcs.cmderr` is nonzero replaces
+the stored command, and no abstract command executes until `cmderr` is cleared.
+A debugger therefore:
+
+. Reads `abstractcs` to capture the error code of a failed command before it
+  writes `command` again.
+. Clears `cmderr` by writing 1s to the field and confirms that it reads 0 before
+  issuing the next command.
+
+The
+ifdef::backend-html5[]
+xref:ocah-docs:smc:cpu.adoc#smc-debug-command-cmderr[SMC Debug Module description]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/smc/cpu.html#smc-debug-command-cmderr[SMC Debug Module description]
+endif::backend-pdf[]
+gives the full write behavior.

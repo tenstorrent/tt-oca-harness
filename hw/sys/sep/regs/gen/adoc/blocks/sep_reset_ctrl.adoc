@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-sep_reset_ctrl]
+== SEP Reset Control Address Map
+
+Software resets for KM, OTBN, AES, HMAC, KMAC, the internal TRNG, and Adams Bridge.
+
+[cols="1,4,1,6", options="header"]
+|===
+| Address | Name | Access | Description
+| 0x0 | <<reg-{regmap-instance}-sep_reset_ctrl-SW_RESET_N,SW_RESET_N>> | RW a| -
+|===
+
+[#reg-{regmap-instance}-sep_reset_ctrl-SW_RESET_N]
+=== SW_RESET_N
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:7 | `Reserved` | - | - a| Reserved
+| 6 | `abr_sw_rst_n` | RW | 0x1 a| Adams Bridge reset (0=assert, 1=release)
+| 5 | `trng_sw_rst_n` | RW | 0x1 a| Internal TRNG reset request (0=assert, 1=release). Hardware drains and isolates the entropy-source, CSRNG, and EDN AXI ports before asserting the shared TRNG reset.
+| 4 | `kmac_sw_rst_n` | RW | 0x1 a| KMAC reset (0=assert, 1=release)
+| 3 | `hmac_sw_rst_n` | RW | 0x1 a| HMAC reset (0=assert, 1=release)
+| 2 | `aes_sw_rst_n` | RW | 0x1 a| AES reset (0=assert, 1=release)
+| 1 | `otbn_sw_rst_n` | RW | 0x1 a| OTBN reset (0=assert, 1=release)
+| 0 | `km_sw_rst_n` | RW | 0x0 a| KM reset (0=assert, 1=release)
+|===

@@ -1,0 +1,251 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+// Key Manager Top-Level Address Map
+// SystemRDL 2.0 Register Definition
+//
+// Copyright 2026 Tenstorrent Inc.
+//
+// This file defines the complete memory map for the Key Manager subsystem,
+// including all register blocks and memory regions accessible by the KM CPU.
+//
+// Base Address: 0x0000_0000 (KM CPU address space)
+// Total Size: 0x0001_D000 (116KB)
+
+// Include all register block definitions
+`include "km_csr.rdl"
+`include "km_drbg_sampler.rdl"
+`include "km_mailbox_km.rdl"
+`include "km_kpv.rdl"
+`include "aes_wrapper_key.rdl"
+`include "kmac_wrapper_key.rdl"
+`include "hmac_wrapper_key.rdl"
+`include "otbn_wrapper_key.rdl"
+`include "abr_wrapper_key.rdl"
+`include "km_memory.rdl"
+// SEP eFuse register definitions — included from the shared SEP/peripheral
+// RDL trees so the KM-generated headers carry the OTP register constants at
+// the KM-local window addresses.  Hardware remaps addr[31:12] to the value
+// of the key_manager OTP_EFUSE_REMAP_BASE parameter before driving efuse_req_o;
+// the instantiation addresses below reflect the KM CPU view, not the SEP
+// absolute view.
+`include "sep_efuse_map.rdl"
+`include "efuse_interface_ctrl.rdl"
+`include "efuse_mmr.rdl"
+
+addrmap key_manager {
+    name = "Key Manager Top-Level Address Map";
+    desc = "Complete memory map for the Key Manager subsystem, including ROM, SRAM,
+            control/status registers, mailbox, and external crypto engine ports.
+            This address map is from the perspective of the KM CPU (PicoRV32).";
+
+    default regwidth = 32;
+    default sw = rw;
+    default hw = r;
+
+    //=========================================================================
+    // Memory Regions (Direct Memory Access - Not Register-Based)
+    //=========================================================================
+    // These regions are accessed via direct memory interfaces, not AXI-Lite.
+    // They are documented here for completeness of the memory map.
+
+    // ROM Region: 0x0000_0000 - 0x0000_3FFF (16KB)
+    // - Read-only memory for KM CPU boot code
+    // - Accessed via direct memory interface (not AXI-Lite)
+    // - Includes byte-wise parity checking
+    // - Size: 16KB (4096 words × 4 bytes)
+    external km_rom rom @ 0x0000_0000;
+
+    // Reserved: 0x0000_4000 - 0x0000_7FFF (16KB)
+    // - Unmapped; returns DECERR
+
+    // SRAM Region: 0x0000_8000 - 0x0000_FFFF (32KB)
+    // - Read/write memory for KM CPU data and stack
+    // - Accessed via direct memory interface (not AXI-Lite)
+    // - Includes byte-wise parity checking
+    // - Optional address/data scrambling (controlled by KMCSR)
+    // - Size: 32KB (8192 words × 4 bytes)
+    external km_sram sram @ 0x0000_8000;
+
+    //=========================================================================
+    // Register-Based Peripherals (AXI-Lite Access)
+    //=========================================================================
+
+    // Each window below is the power of two that covers its block's registers,
+    // so no register is reachable from a second address.
+
+    // KPV (Key and Policy Vault) - KM port
+    // Base Address: 0x0001_2000
+    // Size: 0x1108 of registers in an 8KB decode window
+    // 64 key entries (512b each), 64 control registers; lock_write/lock_use enforced in RTL
+    km_kpv kpv @ 0x0001_2000;
+
+    // KMCSR (Key Manager Control and Status Registers)
+    // Base Address: 0x0001_4000
+    // Size: 0x4C0 of registers in a 2KB (0x800) decode window
+    // Description: Control and status registers for the Key Manager subsystem
+    // Includes: VERSION, CTRL, STATUS, IRQ_STATUS, IRQ_ENABLE, IRQ_SET,
+    //           SCRAMBLER_KEY, SCRAMBLER_CTRL, Virtual UART, Test Protocol
+    km_csr kmcsr @ 0x0001_4000;
+
+    // DRBG Sampler
+    // Base Address: 0x0001_5000
+    // Size: 16 bytes (0x10), which is also the decode window
+    // Description: Bridges KM CPU reads to DRBG AXI-Stream; DATA, CFG, STATUS, PREFETCH_DATA
+    km_drbg_sampler drbg_sampler @ 0x0001_5000;
+
+    // Mailbox KM Side Interface
+    // Base Address: 0x0001_0000
+    // Size: 28 bytes (0x1C) of registers in a 32-byte (0x20) decode window
+    // Description: Register interface for KM CPU to access mailbox
+    // - WRITE_DATA: Write to outbound FIFO (KM→SEP messages)
+    // - READ_DATA: Read from inbound FIFO (SEP→KM messages)
+    // - STATUS: FIFO status (empty/full flags, depth counters, overflow/underflow)
+    // - IRQ_STATUS: Interrupt status (inbound data available, overflow, underflow)
+    // - IRQ_ENABLE: Interrupt enable/mask register
+    // - CTRL: Control register (overflow/underflow response configuration)
+    km_mailbox_km mailbox_km @ 0x0001_0000;
+
+    //=========================================================================
+    // Crypto Accelerator Key Storage (Private Key Bus)
+    //=========================================================================
+    // These register blocks are AXI4-Lite slaves on the KM CPU's private key
+    // bus. The KM CPU writes key shares and a valid flag into these CSRs,
+    // which then drive the keymgr_key_i sideload interface on the respective
+    // OpenTitan crypto core.
+    //
+    // Addresses match the KM memory map in the SEP specification (sep.adoc).
+
+    // OTBN Key Storage
+    // Base Address: 0x0001_8000
+    // Size: 100 bytes (0x64) in a 128-byte (0x80) decode window
+    // Description: Key storage for OTBN sideload interface (otbn_key_req_t).
+    //              2 × 384-bit key shares (12 words each) + valid flag.
+    otbn_wrapper_key otbn_wrapper_key @ 0x0001_8000;
+
+    // AES Key Storage
+    // Base Address: 0x0001_9000
+    // Size: 68 bytes (0x44) in a 128-byte (0x80) decode window
+    // Description: Key storage for AES sideload interface (hw_key_req_t).
+    //              2 × 256-bit key shares (8 words each) + valid flag.
+    aes_wrapper_key aes_wrapper_key @ 0x0001_9000;
+
+    // KMAC Key Storage
+    // Base Address: 0x0001_A000
+    // Size: 68 bytes (0x44) in a 128-byte (0x80) decode window
+    // Description: Key storage for KMAC sideload interface (hw_key_req_t).
+    //              2 × 256-bit key shares (8 words each) + valid flag.
+    kmac_wrapper_key kmac_wrapper_key @ 0x0001_A000;
+
+    // HMAC Key Storage
+    // Base Address: 0x0001_B000
+    // Size: 68 bytes (0x44) in a 128-byte (0x80) decode window
+    // Description: Key storage for HMAC sideload interface (hw_key_req_t).
+    //              2 × 256-bit key shares (8 words each) + valid flag.
+    hmac_wrapper_key hmac_wrapper_key @ 0x0001_B000;
+
+    // Adams Bridge Key Storage
+    // Base Address: 0x0001_C000
+    // Size: 1068 bytes (0x42C) in a 2KB (0x800) decode window
+    // Description: Key storage for the Adams Bridge sideload interface.
+    //              Five 256-bit sub-blocks (0x100 stride): MLDSA_SEED,
+    //              MLKEM_SEED_D, MLKEM_SEED_Z, MLKEM_MSG (dual-share write-only)
+    //              and MLKEM_SHARED_KEY (HW-write/SW-read).
+    abr_wrapper_key abr_wrapper_key @ 0x0001_C000;
+
+    //=========================================================================
+    // OTP / eFuse Pass-Through (AXI-Lite, KM-local view)
+    //=========================================================================
+    // Base Address: 0x0001_1000 (KM CPU view)
+    // SEP target:   OTP_EFUSE_REMAP_BASE (hardware remaps addr[31:12] on efuse_req_o)
+    // Size: 4KB decode window. Only the MAP, CTRL and MMR register maps below are
+    //       forwarded to SEP; any other offset in the window answers SLVERR.
+    //       efuse_shim_ctrl is intentionally excluded (not in the AXIL path).
+    //
+    // Instantiated as 'external' — no KM-side register RTL is generated.
+    // The generated address constants reflect the KM CPU view:
+    //   OTP_EFUSE_MAP  @ 0x0001_1000  (sep_efuse_map,      64-bit regwidth)
+    //   OTP_EFUSE_CTRL @ 0x0001_1400  (efuse_interface_ctrl, 32-bit)
+    //   OTP_EFUSE_MMR  @ 0x0001_1500  (efuse_mmr,            32-bit)
+    external sep_efuse_map        otp_efuse_map  @ 0x0001_1000;
+    external efuse_interface_ctrl otp_efuse_ctrl @ 0x0001_1400;
+    external efuse_mmr            otp_efuse_mmr  @ 0x0001_1500;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_aperture_size = 0x1D000;
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    mailbox_km->ocah_aperture_size = 0x20;
+    mailbox_km->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    otp_efuse_map->desc = "SEP eFuse shadow-register pass-through.";
+    otp_efuse_map->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::FORWARD, rdata: 0x0, bresp: ocah_resp_e::FORWARD};
+    otp_efuse_ctrl->ocah_aperture_size = 0x100;
+    otp_efuse_ctrl->desc = "SEP eFuse command and status pass-through.";
+    otp_efuse_ctrl->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::FORWARD, rdata: 0x0, bresp: ocah_resp_e::FORWARD};
+    otp_efuse_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
+    otp_efuse_mmr->ocah_aperture_size = 0x100;
+    otp_efuse_mmr->desc = "SEP eFuse security-token pass-through.";
+    otp_efuse_mmr->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::FORWARD, rdata: 0x0, bresp: ocah_resp_e::FORWARD};
+    otp_efuse_mmr->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
+    otp_efuse_mmr->ocah_following_gap_note = "This range is inside the OTP/eFuse window, which answers every offset outside its register maps with SLVERR and read data 0xBADCAB1E rather than DECERR.";
+    kpv->ocah_aperture_size = 0x2000;
+    kpv->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    kmcsr->ocah_aperture_size = 0x800;
+    kmcsr->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    otbn_wrapper_key->ocah_aperture_size = 0x80;
+    otbn_wrapper_key->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    aes_wrapper_key->ocah_aperture_size = 0x80;
+    aes_wrapper_key->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    kmac_wrapper_key->ocah_aperture_size = 0x80;
+    kmac_wrapper_key->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    hmac_wrapper_key->ocah_aperture_size = 0x80;
+    hmac_wrapper_key->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    abr_wrapper_key->ocah_aperture_size = 0x800;
+    abr_wrapper_key->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+`endif
+
+    //=========================================================================
+    // Memory Map Summary
+    //=========================================================================
+    //
+    // Address Range          | Size    | Description                    | Access
+    // -----------------------|---------|--------------------------------|--------
+    // 0x0000_0000-0x0000_3FFF| 16KB    | ROM (boot code)                | Direct Memory (R)
+    // 0x0000_4000-0x0000_7FFF| 16KB    | Reserved (future ROM growth)   | DECERR
+    // 0x0000_8000-0x0000_FFFF| 32KB    | SRAM (data/stack)              | Direct Memory (R/W)
+    // 0x0001_0000-0x0001_001F| 32B     | Mailbox KM Side                | AXI-Lite
+    // 0x0001_1000-0x0001_1FFF| 4KB     | OTP/eFuse (external, remapped) | AXI-Lite
+    // 0x0001_2000-0x0001_3FFF| 8KB     | KPV (Key and Policy Vault)     | AXI-Lite
+    // 0x0001_4000-0x0001_47FF| 2KB     | KMCSR (control/status)         | AXI-Lite
+    // 0x0001_5000-0x0001_500F| 16B     | DRBG Sampler                   | AXI-Lite
+    // 0x0001_8000-0x0001_807F| 128B    | OTBN Key Storage               | AXI-Lite
+    // 0x0001_9000-0x0001_907F| 128B    | AES Key Storage                | AXI-Lite
+    // 0x0001_A000-0x0001_A07F| 128B    | KMAC Key Storage               | AXI-Lite
+    // 0x0001_B000-0x0001_B07F| 128B    | HMAC Key Storage               | AXI-Lite
+    // 0x0001_C000-0x0001_C7FF| 2KB     | ABR Key Storage                | AXI-Lite
+    // Every other address    | -       | Reserved/Unmapped              | DECERR
+    //
+    // Addresses between two windows answer DECERR; an unmapped offset inside a
+    // window answers SLVERR.
+    //
+    //=========================================================================
+    // Access Notes
+    //=========================================================================
+    //
+    // Direct Memory Access (ROM/SRAM):
+    // - Accessed via PicoRV32 native memory interface (not AXI-Lite)
+    // - ROM: Read-only. A write completes with no error response, leaves the
+    //   ROM unchanged and sets KMCSR IRQ_STATUS.ROM_WRITE_ERR
+    // - SRAM: Read/write with optional scrambling (controlled by KMCSR)
+    // - Both include byte-wise parity checking
+    //
+    // AXI-Lite Access (Peripherals):
+    // - All register-based peripherals accessed via AXI-Lite crossbar
+    // - KM CPU is the single master on the crossbar
+    // - Crypto key storage blocks driven by KM CPU via private key bus
+    //
+    // Address Decoding:
+    // - Unmapped addresses return DECERR response
+    // - Mailbox overflow/underflow behavior configurable via CTRL register
+    //
+    //=========================================================================
+};

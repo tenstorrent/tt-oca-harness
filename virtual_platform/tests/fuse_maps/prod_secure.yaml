@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# PROD lifecycle, secure boot ENABLED (sboot_dis = 0).
+# Fields not listed inherit the base efuse_vp.ini defaults.
+# lc_state accepts a symbolic name (TEST_DEV/PROD/RMA_SIP/RMA_CHIPLET/INVALID/PROD_END)
+# or an int; it is mirrored to both sep_efuse.lc_state and lc_ctrl.lc_state.
+lc_state: PROD
+sboot_dis: 0
+# No secret is read-locked at power-on: BL0 reads class_key for the payload key and
+# lock_fuse_secrets() then sets these bits for BL1 onwards.
+locks_lo: 0x0
+chiplet_uid: [1, 2, 3, 4, 5, 6, 7, 8]

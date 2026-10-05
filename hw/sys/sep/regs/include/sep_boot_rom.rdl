@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef SEP_BOOT_ROM_RDL
+`define SEP_BOOT_ROM_RDL
+
+// This RDL defines an address space for the Boot ROM
+
+mem sep_boot_rom #(
+    longint unsigned NUM_ENTRIES = 0x2000,  // 64 KiB / 8 bytes = 0x2000 entries
+    longint unsigned WIDTH       = 64
+) {
+    desc = "SEP Boot ROM Memory";
+
+    mementries = NUM_ENTRIES;
+    memwidth   = WIDTH;
+
+    // a single word of the memory
+    reg mem_word {
+        regwidth = 64;
+        field {
+           sw=r;
+           hw=r;
+        } data[WIDTH-1:0];
+    };
+
+    // the entire memory is an array of memory words
+    mem_word mem_array[NUM_ENTRIES];
+
+};
+
+`endif

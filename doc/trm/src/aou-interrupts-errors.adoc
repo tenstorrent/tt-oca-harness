@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= AoU Interrupts and Errors
+:description: AoU interrupt sources, status reporting, and error handling.
+
+:sectnums!:
+
+include::aou:partial$interrupts-errors.adoc[]

@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Ordered SV compile manifest for the shared AXI VIP. Consumed by DUT sim configs via
+# [frameworks.uvm.build].source_lists — never hand-copy these paths into a DUT config, and
+# never add them to Bender or Verilator filelists. Order is load-bearing: interface and
+# bind collateral first, the UVM package last (importers compile after it). The manifest is
+# the complete VIP layer — the struct bridge ships even when a DUT wires no struct port.
+description = "OCAH AXI VIP SV-UVM compile layer (interface and struct bridge, sva/cov, UVM package)"
+
+incdirs = [
+  "hw/common/dv/vip/ocah_checker/uvm",
+  "hw/common/dv/vip/ocah_axi_vip/uvm",
+]
+
+sources = [
+  # Shared protocol-neutral evidence base (extended by this VIP's checker).
+  # Every dependent VIP manifest lists it; consuming several VIPs together
+  # dedup-merges the entry, so it compiles exactly once, first.
+  "hw/common/dv/vip/ocah_checker/uvm/ocah_checker_uvm_pkg.sv",
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
+  "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
+  "hw/common/dv/vip/ocah_axi_vip/cov/ocah_axi_cov.sv",
+  "hw/common/dv/vip/ocah_axi_vip/uvm/ocah_axi_uvm_pkg.sv",
+]

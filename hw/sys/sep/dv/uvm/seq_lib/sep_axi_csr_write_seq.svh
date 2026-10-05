@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+//
+// Reusable CPU-LSU operation: one 32-bit CSR write as a narrow single-beat
+// AXI4 transfer on the CPU-LSU master agent, returning the VIP result item
+// (response, timing, timeout). The CSR value is placed on its byte lanes of
+// the 64-bit beat with the matching strobes (raw-bus-word item semantics).
+// Started by sep_base_test_seq::csr_write(). The cocotb twin is the WRITE
+// op of cocotb/env/sep_axi_agent.py.
+
+class sep_axi_csr_write_seq extends ocah_axi_master_sequence;
+  `uvm_object_utils(sep_axi_csr_write_seq)
+
+  bit [63:0] addr;
+  bit [31:0] data;
+  bit [2:0]  prot = '0;
+  bit        check_response = 1'b1;
+  bit        allow_timeout  = 1'b0;
+  // Result item (response list, timed_out, timing).
+  ocah_axi_item result;
+
+  function new(string name = "sep_axi_csr_write_seq");
+    super.new(name);
+  endfunction
+
+  task body();
+    write_result(sep_csr_word_addr(addr), sep_csr_to_bus(addr, data), result,
+                 .strb(sep_csr_strb(addr)), .size(SepCsrSize), .prot(prot),
+                 .check_response(check_response), .allow_timeout(allow_timeout));
+  endtask
+
+endclass : sep_axi_csr_write_seq

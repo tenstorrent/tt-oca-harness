@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Refuses the primary on manifest_length, so a terminal MAGIC code can only be the backup's.
+base = "signed"
+ops = [
+  { op = "set_manifest_length", slot = "primary", args = { value = 4092 } },
+]
+patch = [
+  { field = "OFF_BOOT_MANIFEST_MAGIC", slot = "backup", le = 0x99999999, size = 4 },
+]

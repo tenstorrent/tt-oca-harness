@@ -1,0 +1,140 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef _AON_TIMER_RDL_DEFINED
+`define _AON_TIMER_RDL_DEFINED
+
+`include "opentitan_udps.rdl"
+
+addrmap aon_timer {
+    name = "Always-On Timer";
+    desc = "Wakeup and watchdog timers running on a low-power, always-on clock";
+    reg {
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Write 1 to trigger one alert event of this kind.";
+        } fatal_fault[0:0] = 0x0;
+    } external ALERT_TEST @ 0x0;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "When set to 1, the wakeup timer will count";
+        } enable[0:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            swmod = true;
+            desc = "Pre-scaler value for wakeup timer count";
+        } prescaler[12:1] = 0x0;
+    } WKUP_CTRL @ 0x4;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "The count at which a wakeup interrupt should be generated, top 32 bits.";
+        } threshold_hi[31:0] = 0x0;
+    } WKUP_THOLD_HI @ 0x8;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "The count at which a wakeup interrupt should be generated, bottom 32 bits.";
+        } threshold_lo[31:0] = 0x0;
+    } WKUP_THOLD_LO @ 0xC;
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            desc = "The current wakeup counter value, top 32 bits.";
+        } count_hi[31:0] = 0x0;
+    } WKUP_COUNT_HI @ 0x10;
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            desc = "The current wakeup counter value, bottom 32 bits.";
+        } count_lo[31:0] = 0x0;
+    } WKUP_COUNT_LO @ 0x14;
+    reg {
+        field {
+            sw = rw;
+            onwrite = wzc;
+            hw = na;
+            desc = "Once cleared, the watchdog configuration will be locked until the next reset.";
+        } regwen[0:0] = 0x1;
+    } WDOG_REGWEN @ 0x18;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "When set to 1, the watchdog timer will count.";
+        } enable[0:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "When set to 1, the watchdog timer will not count during sleep.";
+        } pause_in_sleep[1:1] = 0x0;
+    } WDOG_CTRL @ 0x1C;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "The count at which a watchdog bark interrupt should be generated.";
+        } threshold[31:0] = 0x0;
+    } WDOG_BARK_THOLD @ 0x20;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "The count at which a watchdog bite reset should be generated.";
+        } threshold[31:0] = 0x0;
+    } WDOG_BITE_THOLD @ 0x24;
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            desc = "The current watchdog counter value.";
+        } count[31:0] = 0x0;
+    } WDOG_COUNT @ 0x28;
+    reg {
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Raised if the wakeup timer has hit the specified threshold.";
+        } wkup_timer_expired[0:0] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Raised if the watchdog timer has hit the bark threshold.";
+        } wdog_timer_bark[1:1] = 0x0;
+    } INTR_STATE @ 0x2C;
+    reg {
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Write 1 to force wkup_timer_expired interrupt.";
+        } wkup_timer_expired[0:0];
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Write 1 to force wdog_timer_bark interrupt.";
+        } wdog_timer_bark[1:1];
+    } external INTR_TEST @ 0x30;
+    reg {
+        field {
+            sw = rw;
+            onwrite = wzc;
+            hw = rw;
+            desc = "AON timer requested wakeup, write 0 to clear.";
+        } cause[0:0] = 0x0;
+    } WKUP_CAUSE @ 0x34;
+};
+
+`endif // _AON_TIMER_RDL_DEFINED

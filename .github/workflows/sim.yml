@@ -1,0 +1,139 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+name: sim
+
+# Pull-request and push gate: each CI-qualified DUT's `smoke` group on
+# Verilator. The scheduled regression tiers live in regress.yml. Both run
+# the DV job through .github/actions/dv-run, so this file carries no tier
+# policy and a regression-tier change can never alter the gate.
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+# Superseded PR runs are cancelled; sim jobs are too heavy to let stale PR
+# pushes pile up. Only PR runs are ever auto-cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  diff-class:
+    runs-on: ubuntu-latest
+    outputs:
+      run_hardware_ci: ${{ steps.diff-class.outputs.run_hardware_ci }}
+    steps:
+      - name: Checkout
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout submodules
+        run: |
+          git submodule update --init --recursive
+
+      - name: Classify the diff
+        id: diff-class
+        run: |
+          case "${{ github.event_name }}" in
+            pull_request|push)
+              python3 scripts/ci/diff_class.py --github-output >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "run_hardware_ci=true" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+  verilator-smoke:
+    # Explicit name keeps the main-protection contexts
+    # `verilator-smoke (dtp)` / `verilator-smoke (sep)` stable if the matrix
+    # gains another axis.
+    name: verilator-smoke (${{ matrix.dut }})
+    runs-on: ${{ matrix.runner }}
+    needs: [diff-class]
+    # Budget per DUT: a Verilator cache miss (from-source build) plus the
+    # model build and the smoke group at --sim-jobs 2.
+    timeout-minutes: 60
+    permissions: { contents: read }
+    strategy:
+      fail-fast: false
+      matrix:
+        # One artifact and one run_dv.py invocation per CI-qualified DUT/tool
+        # pair. Extend this list only with combinations proven Verilator-clean
+        # at head; see "Continuous integration" in tools/dv/doc/run-dv.adoc.
+        #
+        # The composite action omits `--framework`, so each DUT runs its
+        # default framework (cocotb). Licensed SV-UVM jobs live outside hosted
+        # CI; enumerate (DUT, framework) pairs with `run_dv.py --list --json`
+        # instead of hardcoding names (see "Framework-aware CI matrices" in
+        # the same doc).
+        #
+        # The single-IP benches (cross_trigger, axi_hang_detector) are not in
+        # the gate: their smoke cost is one job of runner setup each for
+        # seconds of simulation, and none is a required context. regress.yml
+        # runs their full groups nightly.
+        #
+        # runner: the label this DUT's job runs on, and the only knob that sets
+        # build parallelism (--build-jobs "$(nproc)" follows it). Every row
+        # uses ubuntu-latest.
+        include:
+          - dut: dtp
+            runner: ubuntu-latest
+          - dut: sep
+            runner: ubuntu-latest
+          # `smu` carries the SMU regression (smu_wrapper.sv, one compile
+          # profile with the real SEP). It runs the default `smoke` group,
+          # which is toolchain-free by construction (its firmware smokes are
+          # `fw_boot`), which this runner -- Verilator and nothing else --
+          # needs.
+          - dut: smu
+            runner: ubuntu-latest
+          - dut: smc
+            runner: ubuntu-latest
+    env:
+      # Required check names (verilator-smoke (dtp/sep)) must still report,
+      # so this job always runs; RUN_HARDWARE_CI=false skips the sim work.
+      RUN_HARDWARE_CI: ${{ needs.diff-class.outputs.run_hardware_ci }}
+    steps:
+      - name: Skip documentation-only changes
+        if: env.RUN_HARDWARE_CI != 'true'
+        run: echo "Documentation-only diff; Verilator smoke is not run."
+
+      - name: Checkout
+        if: env.RUN_HARDWARE_CI == 'true'
+        uses: actions/checkout@v4
+
+      # Checkout is skipped for a documentation-only diff, so this runner has
+      # no git repository. Submodule update must follow that same condition.
+      - name: Checkout submodules
+        if: env.RUN_HARDWARE_CI == 'true'
+        run: |
+          git submodule update --init --recursive
+
+      # The SEP DV env reads src/oca/constants.py from the tt-oca-manifest
+      # submodule as the authority for the OCA manifest layout, so without it 54
+      # of 162 test modules fail to import and the run dies before any
+      # simulation.
+      - name: Check out the tt-oca-manifest submodule
+        if: env.RUN_HARDWARE_CI == 'true' && matrix.dut == 'sep'
+        run: |
+          git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+          # Fail here rather than 54 import errors deep into the run.
+          test -f hw/sys/sep/bootrom/prod/tools/tt-oca-manifest/src/oca/constants.py
+
+      # The run id keeps the recorded native run_dir unique per run; the
+      # tier segment keeps every tier's tree separate.
+      - name: Run smoke tier
+        if: env.RUN_HARDWARE_CI == 'true'
+        uses: ./.github/actions/dv-run
+        with:
+          dut: ${{ matrix.dut }}
+          tool: verilator
+          tier: smoke
+          items: ${{ matrix.items || 'smoke' }}
+          sim-jobs: 2
+          run-dir: build/ci/runs/${{ matrix.dut }}/verilator/smoke/${{ github.run_id }}

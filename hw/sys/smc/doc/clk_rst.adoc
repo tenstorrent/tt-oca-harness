@@ -1,0 +1,481 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Clocks and Resets
+:description: SMC clock domains, reset distribution and FLR isolation sequencing.
+
+[[clock-and-reset-management]]
+
+SMC separates CPU/fabric operation, peripheral timing, reference-clock reset
+control and incoming telemetry into distinct clock domains. Reset sources are
+combined before release is synchronized into each destination domain. Subsystem
+isolation and reset-retention controls require support in the receiving subsystem.
+
+== Clock Architecture
+
+ifdef::backend-html5[]
+++++
+<span id="the-reference-clock-domain"></span>
+<span id="the-smc-clock-domain"></span>
+<span id="the-telemetry-clock-domain"></span>
+++++
+endif::backend-html5[]
+
+[[smc-clock-tree]]
+.SMC clock tree and clock domains in u_smc_base
+image::smc-clock-distribution.svg[alt="Clock gates in u_smc_base and the instances each gated clock reaches, by RTL instance name",width=100%,pdfwidth=100%]
+
+[[smc-clock-tree-cpu-periph]]
+.SMC clock tree and clock domains in u_smc_cpu_wrapper and u_smc_peripherals
+image::smc-clock-distribution-cpu-periph.svg[alt="Clock inputs of u_smc_cpu_wrapper and u_smc_peripherals, their clock gates and gated instances, the synchronisers of u_smc_peripherals_cdc and the AVSBus clock chain",width=100%,pdfwidth=100%]
+
+The two figures split the SMC clock tree at its subsystem instances. Each
+clock input enters on the left in its own colour, with one arrow into each
+of `u_smc_base`, `u_smc_cpu_wrapper` and `u_smc_peripherals` that it
+reaches; an arrow into an instance means the clock reaches the logic inside
+it. Each box is an RTL instance, tinted with the colour of the clock that
+runs it, and a box split into bands runs on several clocks. A clock gate is
+drawn as a CG tab coloured by the clock it gates, with the gate's instance
+name in italics. A dashed arrow runs from the gate to every instance its
+gated clock reaches, branching at a junction dot. A count such as ×16 is the
+number of instances a generate loop creates. A box that no gate arrow
+reaches runs on the ungated clock.
+
+Most gates in `u_smc_base` are activity-based: each watches the AXI or
+AXI-Lite port of the logic it clocks and stops the clock once the port has
+been idle for the programmed hysteresis. Each filter and remap register gate
+clocks the AXI-Lite demux in front of its register set as well as the
+registers, and each filter gate also clocks the error slave that answers
+writes to a locked filter. `u_fabric_cg` and the instances inside the dashed
+outline exist only when `NO_ADDR_REMAP` is 0, the default in
+`smc_config_pkg`. `u_dfd_clk_gate` clocks the debug bus muxes, `u_dfd_top`
+and `u_ref_cnt_sync`, which receives the Gray-coded count of the reference
+counter beside `u_ref_rst_sync` and forms the CLA time tick. `u_axi_clk_gater`
+clocks logic written directly in `u_zeroer` rather than an instance.
+
+`u_debug_clock_gate` runs the debug module clock, the `debug_clock` port of
+`u_digital_top`, while the debugger holds `dmactive`. The I2C, UART, I3C,
+AVSBus and telemetry gates are controlled by `CLOCK_GATE_CONTROL` in
+`u_smc_base`. `u_smc_peripherals_cdc` is drawn as one row per synchroniser or
+CDC instance, or per group of instances that cross the same way, with the
+source clock on the left half and the destination clock on the right half.
+The clock-gate enable synchronisers carry each enable into the ungated clock
+of the gate it controls. `u_ndmreset_request_sync` has no source clock:
+`ndmreset_request_i` is asynchronous.
+
+Each of the five peripheral enables also steers that peripheral's leg of
+the register crossbar into an error slave (`u_avsbus_access_gate`,
+`u_i2c_access_gate`, `u_uart_access_gate`, `u_telemetry_access_gate` and
+`u_i3c_access_gate` in `u_smc_peripherals`, all on `clk_smc_i`): while the
+enable is set, a read of the gated peripheral's window completes with
+`SLVERR` and data `0xBADCAB1E` and a write completes with `SLVERR`, instead
+of waiting on a register block whose clock has stopped. The leg is
+redirected as soon as the `CLOCK_GATE_CONTROL` write completes; an access
+the peripheral has already accepted finishes there, since its clock stops
+only after the enable has crossed into its domain.
+
+The AVSBus clock starts at `u_avs_clk_ref_gater` and
+`u_avs_clk_periph_gater`, which drive the `clk_ref_i` and `clk_reg_i` ports of
+`u_avsbus_controller`. Inside it, `u_refclk_clkgate` and `u_apbclk_clkgate`
+feed the glitch-free mux `u_refclk_apbclk_mux`, selected by
+`avs_clock_select[1]`. The test mux `u_test_clkmux2_0` takes that output on
+`clk0_i` and the test clock input `clk_test_i` on `clk1_i`, and selects the
+test clock in test mode; `u_smc_peripherals` connects `clk_test_i` to
+`clk_periph_i`. The divider `u_clk_div`, used while `avs_clock_select[0]` is
+set, divides by a programmable value, 4 after reset, and `u_avs_bus_clkgate`
+stops the result on idle. The output, `avs_clock`, leaves through
+`u_smc_padring` on GPIO 49. `spi_clk_i` reaches only the SPI pad datapath in
+`u_smc_padring`.
+
+[cols="1,3",options="header"]
+.SMC clock-domain responsibilities
+|===
+|Clock |Logic and boundary
+|`clk_smc_i` |CPU cluster, local fabric, remapping/filtering, register crossbar,
+OCTS, and telemetry decoding/message storage. Individual blocks may gate this clock.
+|`clk_ref_i` |Power-good/reset conditioning, FLR countdowns, DFD local time tick
+and peripheral reference-clock inputs.
+|`clk_periph_i` |AVSBus, I2C, UART/log-engine and I3C operation. Register accesses
+cross through per-port AXI-Lite CDC bridges after the SMC-domain crossbar.
+|`clk_telemetry_i` |Incoming ATB side of each telemetry crossing FIFO. The
+receiver core and its CSRs operate in the SMC domain; the external telemetry
+reset is `rst_telemetry_ni`.
+|===
+
+=== Timer and Debug Timebases
+
+* OCTS uses `clk_smc_i`.
+* CLINT receives one tick per 1000 CPU-cluster `cbus` cycles; the uncore input
+  uses the main SMC clock. This timer tick is not the reference-clock input.
+* The CPU debug module uses a gated CPU-wrapper clock, enabled by debug
+  activation with a test override. JTAG TCK clocks the scan interface separately.
+
+[[smc-peripheral-timing-requirements]]
+=== Peripheral Timing Requirements
+
+ifdef::backend-html5[]
+++++
+<span id="the-peripheral-clock-domain"></span>
+++++
+endif::backend-html5[]
+
+The integrator supplies `clk_periph_i` at a frequency satisfying every enabled
+peripheral. A minimum frequency of 100 MHz applies; the upper limit is not fixed
+and is set by the integrator according to timing closure, peripheral IP limits,
+and system power and performance goals.
+
+The I3C target's worst-case internal SCL-to-SDA turnaround is four core-clock
+cycles. Meeting the 12 ns target turnaround limit therefore requires a clock
+period no greater than 3 ns (approximately 333.3 MHz or faster) before allowing
+for pad and routing delays. The integrator must include those delays in the
+timing budget and select a higher frequency where needed. See the
+https://chipsalliance.github.io/i3c-core/phy.html#i3c-timing-configuration[CHIPS
+Alliance I3C PHY timing requirements]. This is a target-mode requirement;
+controller-mode timing configuration does not establish target compliance.
+
+== Reset Architecture
+
+[[smc-reset-distribution-figure]]
+.SMC reset unit architecture
+image::smc-reset-unit.svg[alt="SMC reset unit: reset controller with its AND gates, synchronisers, cool-reset and isolation logic with its AND and OR gates, JTAG override muxes, registers and subsystem resets",width=100%,pdfwidth=100%]
+
+Reset inputs enter on the left and the unit's outputs leave on the right.
+Each reset net has its own colour, listed in the legend. The blue mux
+symbols are JTAG override muxes: `jtag_reset_ctrl_i` drives their input 1
+and select, drawn as short stubs, and each mux passes the value on input 1
+while its override bit is set.
+
+In `u_smc_reset_ctrl`, `powergood_i` is stretched by 32 reference clock
+cycles into `powergood_stable`, which leaves as `powergood_stable_o`,
+clears the de-glitchers while low and holds the cold-reset extender. The
+cold reset, after its JTAG override, must stay low for 32 reference clock
+cycles to pass the de-glitcher, and its release is extended by 255 cycles.
+The cool-reset pin passes its own 32-cycle de-glitcher. The primary reset is
+the AND of the stable cold reset, the de-glitched cool-reset pin and the FLR
+cool reset. The watchdog reset is the AND of `rst_ext_wdt_ni`, which comes
+from the SEP watchdog, and the inverted SMC watchdog second timeout;
+`smc_wdt_first_timeout_i` does not reach the reset logic. The warm reset is
+the AND of the watchdog reset, the primary reset and the fuse reset, which
+the eFuse wrapper releases once fuse sensing completes and any boot stall
+ends. Debug-initiated resets are the JTAG overrides of the cold, cool,
+warm, fuse and per-subsystem resets.
+
+`u_smc_reset_sync` gives each output an asynchronous assertion and a
+deassertion synchronised to its clock. `u_smc_cool_reset_wrap` runs the FLR
+sequence and isolation logic described in <<smc-function-level-reset>>.
+Its gates act on each of the 32 bits; the inputs labelled SMCEN, REG and
+PINEN are the `ISOLATE_REQ_SMCEN_REG`, `ISOLATE_REQ_REG` and
+`ISOLATE_REQ_PINEN_REG` bits. `skip_mem_repair_o` is high while the
+synchronised isolation pin or `ISOLATE_REQ_SMC` is set.
+`u_reset_unit_reg` is reset by `rst_primary_smc_clk_no`, as are the
+`SS_CONFIG` and `SS_COLD_RESET_N` registers in `u_smc_subsystem_resets`;
+the isolation registers and FLR counters are reset only by the stable cold
+reset, so they survive a cool reset. The per-subsystem cold and warm resets
+leave `ss_reset_ctrl_o` unsynchronised, and each subsystem synchronises them.
+In test mode, `scan_rst_ni` replaces the stretched powergood, the
+de-glitched cold reset and every synchroniser output.
+
+=== Power-Good and Cold Reset
+
+`BP_POWERGOOD` is the POR root. A 32-stage reference-clock synchronizer produces
+`powergood_stable`. Cold reset from `BP_RESETN` is filtered through a 32-bit
+shift register: once released, assertion requires 32 consecutive low samples.
+A 255-cycle reference-clock extension holds cold reset after the filtered input
+releases. Incoming cool reset has the same low-sample filter but no cold-reset
+extension. These are clock-cycle conditions, not fixed nanosecond delays.
+
+Power-good also enters JTAG/DTP as `pwr_on_rst_ni`. The primary TAP combines it
+with pad TRST, so loss of power-good resets TAP/TDR state even if TRST is released.
+Functional cold reset alone does not reset that state.
+
+[[smc-reset-sources-and-characteristics-table]]
+[cols="1,3",options="header"]
+.SMC reset sources and effects
+|===
+|Source |Functional effect
+|Power-good low |Holds functional reset and resets the JTAG/TDR POR path.
+|`BP_RESETN` |Filtered and extended cold reset feeds primary reset.
+|Incoming cool reset |Filtered pin request feeds primary reset.
+|FLR cool reset |Reference-domain timed reset feeds primary reset; isolation
+is controlled separately as described below.
+|External watchdog reset / second SMC watchdog timeout |Assert the watchdog
+reset term, which also asserts warm reset. The first-timeout input does not
+enter the reset equation in `smc_reset_ctrl`.
+|Fuse reset |Holds warm reset until released by the fuse-control path.
+|JTAG reset overrides |Select alternate fuse, cold, cool or warm reset values;
+normal functional equations below assume these overrides and scan mode are inactive.
+|===
+
+=== Primary and Warm Reset
+
+ifdef::backend-html5[]
+++++
+<span id="primary-reset-activation-sources-table"></span>
+<span id="primary-reset-rst_primary_no"></span>
+<span id="warm-reset-activation-sources-table"></span>
+<span id="warm-reset-rst_warm_no"></span>
+++++
+endif::backend-html5[]
+
+In normal operation the active-low reset equations are:
+
+[source,text]
+----
+rst_primary_n = stable_cold_rst_n AND stable_cool_rst_n
+                AND rst_cool_from_flr_n
+rst_wdt_n     = rst_ext_wdt_ni AND NOT smc_wdt_second_timeout_i
+rst_warm_n    = rst_primary_n AND rst_wdt_n AND fuse_reset_ni
+----
+
+Primary reset covers the main SMC functional fabric, peripheral control and
+configuration paths. Warm reset drives CPU core/uncore reset control, including
+the cluster's interrupt and timer logic, without resetting every primary-domain
+peripheral. CPU control registers also provide per-core/uncore reset controls;
+debug reset requests and JTAG overrides should not be treated as one unconditional
+warm-reset input. See the CPU chapter for its isolation/reset interlock.
+
+=== Reset Synchronization
+
+ifdef::backend-html5[]
+++++
+<span id="reset-synchronization-and-timing-integrity"></span>
+++++
+endif::backend-html5[]
+
+`smc_reset_sync` uses four-stage `prim_sync_reset` instances for asynchronous
+assertion and destination-clock-synchronous release. Scan mode selects the scan
+reset. A stopped destination clock cannot complete functional reset release.
+
+[[reset-synchronization-domains-table]]
+[cols="2,1,2",options="header"]
+.Reset synchronization domains
+|===
+|Output from `smc_reset_sync` |Clock |Reset source
+|`rst_cold_smc_no` |SMC |Stable cold reset; exported by the unit as
+`rst_cold_stable_smc_clk_no`.
+|`rst_primary_smc_clk_no` |SMC |Primary reset.
+|`rst_warm_smc_clk_no` |SMC |Warm reset after JTAG override selection.
+|`rst_wdt_smc_clk_no` |SMC |Watchdog reset term.
+|`rst_cold_ref_clk_no` |Reference |Stable cold reset; exported as
+`rst_cold_stable_ref_clk_no`.
+|`rst_primary_ref_clk_no` |Reference |Primary reset.
+|`rst_primary_periph_clk_no` |Peripheral |Primary reset.
+|===
+
+JTAG overrides for outgoing per-subsystem cold/warm controls leave the unit
+unsynchronized. The receiving subsystem must synchronize release at its boundary.
+The separate telemetry input reset belongs to its integration domain.
+
+[[smc-function-level-reset]]
+== Function Level Reset and Isolation
+
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="function-level-reset-and-isolation"></span>
+++++
+endif::backend-html5[]
+
+ifdef::backend-html5[]
+++++
+<span id="clock-domain-crossing-and-synchronization"></span>
+<span id="function-level-reset-flr"></span>
+++++
+endif::backend-html5[]
+
+PCIe `cfg_flr_pf_active_i` crosses independently into the SMC and reference
+clock domains. Its synchronized rising edge sets the SMC isolation latch and
+starts the reference-domain reset sequence when enabled by a nonzero hold count.
+The reset state machine has no isolation-complete input: its delay must be
+chosen to accommodate the system's isolation requirements.
+
+=== Isolation Controls
+
+ifdef::backend-html5[]
+++++
+<span id="isolation-control-architecture"></span>
+++++
+endif::backend-html5[]
+
+Each of the 32 `isolate_req_o` bits is the OR of three requests:
+
+[source,text]
+----
+ISOLATE_REQ_REG[i]
+OR (ISOLATE_REQ_PINEN_REG[i] AND synchronized isolate_req_pin_i)
+OR (ISOLATE_REQ_SMCEN_REG[i] AND ISOLATE_REQ_SMC_REG)
+----
+
+The FLR edge sets `ISOLATE_REQ_SMC_REG`. After recovery, a write to that register
+with any write strobe asserted clears the latch; write data is ignored. An FLR
+edge in the same cycle takes priority. Ending the timed cool reset does not clear
+the latch or release isolation automatically. Clearing one source does not cancel
+an isolation request held by either of the others.
+
+The isolation registers and FLR count storage are cold-reset state, so they
+survive cool reset. `ISOLATE_REQ_PINEN_REG` has a conditional synchronous clear:
+it clears on cold reset only while the synchronized isolation pin is low.
+Do not assume an uninitialized pin-enable mask becomes known while that pin is high.
+
+=== Timing and Recovery
+
+ifdef::backend-html5[]
+++++
+<span id="memory-test-bypass"></span>
+<span id="programmable-reset-timing"></span>
+++++
+endif::backend-html5[]
+
+The FLR count values cross from SMC to the reference domain through handshaked
+synchronizers; readback in the SMC domain does not acknowledge arrival in the
+reference domain. `ISOLATE_REQ_FLR_COUNTER_VALUE` selects the pre-reset
+countdown; zero allows assertion without that countdown.
+`ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` selects the cool-reset hold count, and
+must be nonzero to start the timed flow.
+
+On a synchronized FLR edge, the sequencer counts in reference-clock cycles,
+asserts cool reset, then releases it after the hold countdown. Destination
+reset synchronizers add their release latency. The sequencer is not a queue of
+overlapping FLR requests. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-flr-isolation[FLR preparation and recovery sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-flr-isolation[FLR preparation and recovery sequence]
+endif::backend-pdf[]
+is in the Programmer's Guide.
+
+A zero hold count disables the timed reset sequence, but does not prevent the
+SMC-domain FLR edge from setting the isolation latch. `ISOLATE_REQ_VIS` reports
+synchronized pin and cool-reset levels; it is not an isolation-completion handshake.
+
+`skip_mem_repair_o` is the OR of the synchronized isolation pin and the FLR
+isolation latch. It does not depend on the per-subsystem masks, and a software-only
+`ISOLATE_REQ_REG` request does not assert it. The receiving logic determines how
+this request bypasses memory repair/MBIST; it is not a general SRAM-retention guarantee.
+
+=== Isolation Connections
+
+<<smc-flr-isolation-diagram>> shows cool-reset and isolation connections between primary
+and secondary chiplets. The next three figures repeat the same drawing
+and highlight the path that each kind of request activates, so they can
+be compared directly.
+
+[[smc-flr-isolation-diagram]]
+.SMC FLR isolation connections between chiplets
+image::smc-flr-isolation.svg[alt="Primary and secondary chiplet SMCs with their FLR counters, isolation OR gate, primary reset AND gate, BP_COOL_RESET_N_I pins and cool-reset pads, and the board connections between them",width=100%,pdfwidth=100%]
+
+Each chiplet's SMC takes its cold reset from the board `BP_RESET_N` and
+its cool reset from its `BP_COOL_RESET_N_I` input; the primary reset
+is the AND of these and the FLR cool reset. The FLR cool reset also
+drives the open-drain `BP_COOL_RESET_N_O` pad, GPIO 62, which pulls the
+line low while the reset is asserted and leaves it undriven otherwise. The
+primary chiplet's `BP_COOL_RESET_N_O` connects to the secondary chiplet's
+`BP_COOL_RESET_N_I`, so an FLR on the primary chiplet cool-resets the
+secondary. To the secondary chiplet, a cold reset on `BP_RESET_N` and a
+cool reset on `BP_COOL_RESET_N_I` are the same: both assert its primary
+reset. Only its FLR and isolation registers are reset by the cold reset
+alone, and the secondary chiplet does not use them. The primary chiplet's
+`BP_COOL_RESET_N_I` and the secondary chiplet's `BP_COOL_RESET_N_O` are not connected. The board drives
+`ISOLATE_REQ`, sampled on GPIO 53, into the primary chiplet only; the
+secondary chiplet ties its `ISOLATE_REQ` and `cfg_flr_pf_active_i` low and
+leaves its `isolate_req_o` unconnected. The labels REG, PINEN and SMCEN
+on the isolation OR's inputs name the registers that qualify each source.
+The drawing leaves out the de-glitchers and synchronisers shown in
+<<smc-reset-distribution-figure>>.
+
+<<smc-flr-software-diagram>> shows isolation propagation for an SMC software request.
+Software sets bits of `ISOLATE_REQ_REG`, which reach `isolate_req_o` directly.
+Software cannot start the FLR counters, so this request isolates tiles without
+a cool reset.
+
+[[smc-flr-software-diagram]]
+.SMC-driven FLR isolation
+image::smc-flr-isolation-smc-driven.svg[alt="The FLR isolation drawing with the path from the primary SMC CPU through ISOLATE_REQ_REG and the isolation OR to the chiplet tiles highlighted",width=100%,pdfwidth=100%]
+
+<<smc-flr-tile-diagram>> shows isolation propagation for a tile request.
+A tile such as the PCIe controller raises `cfg_flr_pf_active_i`. Its
+synchronised rising edge sets `ISOLATE_REQ_SMC`, which isolates the
+subsystems enabled in `ISOLATE_REQ_SMCEN_REG`, and starts the FLR
+counters. When they expire, the FLR cool reset asserts the primary reset of
+the primary chiplet and, through `BP_COOL_RESET_N_O`, of the secondary
+chiplet.
+
+[[smc-flr-tile-diagram]]
+.Tile-request-driven FLR isolation
+image::smc-flr-isolation-tile-request.svg[alt="The FLR isolation drawing with the paths from the tile's cfg_flr_pf_active_i through the FLR counters to the primary chiplet's primary reset and, through BP_COOL_RESET_N_O and the secondary chiplet's BP_COOL_RESET_N_I pin, to the secondary chiplet's primary reset, and through the isolation OR to the chiplet tiles, highlighted",width=100%,pdfwidth=100%]
+
+<<smc-flr-gpio-diagram>> shows isolation propagation for a GPIO request, in two
+numbered steps. First the board raises `ISOLATE_REQ`, which isolates the
+subsystems enabled in `ISOLATE_REQ_PINEN_REG`; then it asserts `BP_RESET_N`,
+which cold-resets both chiplets. `ISOLATE_REQ_PINEN_REG` is not reset by the
+cold reset while the pin is high, so the isolation holds across it.
+
+[[smc-flr-gpio-diagram]]
+.GPIO-driven FLR isolation
+image::smc-flr-isolation-gpio.svg[alt="The FLR isolation drawing with step 1, the board ISOLATE_REQ through GPIO 53 and the isolation OR to the chiplet tiles, and step 2, the board BP_RESET_N into both primary resets, highlighted",width=100%,pdfwidth=100%]
+
+[[smc-subsystem-controls]]
+== Subsystem Controls and Clock Gating
+
+ifdef::backend-html5[]
+++++
+<span id="advanced-reset-features-table"></span>
+<span id="advanced-subsystem-reset-capabilities"></span>
+<span id="clock-and-reset-based-power-management-integration"></span>
+<span id="clock-gating-control-parameters-table"></span>
+++++
+endif::backend-html5[]
+
+The reset unit exports cold/warm reset, force-to-reference-clock and configuration,
+SRAM, debug and critical-signal hold controls for 32 subsystems. These are requests
+to the receiving subsystem, whose implementation defines the retained state.
+`SS_CONFIG_LOCK` and `SS_COLD_RESET_LOCK` mask writes to the corresponding
+configuration and cold-reset bits. `SS_RESET_COMPLETE` samples the return vector
+through a three-stage synchronizer; the unit does not sequence releases from it.
+The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-subsystem-resets[subsystem reset sequences]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-subsystem-resets[subsystem reset sequences]
+endif::backend-pdf[]
+are in the Programmer's Guide.
+
+SMC blocks have their own clock-gating enables, activity detection and hysteresis
+controls. For example, DMA uses a six-bit hysteresis input and bus-aware wakeup.
+A gate suppresses clock transitions; it does not itself create a power island or
+establish that outstanding bus traffic is drained. Follow the owning block's
+quiescence requirements before reset, isolation or clock changes. The I2C,
+UART, I3C, AVSBus and telemetry windows answer `SLVERR` with read data
+`0xBADCAB1E` while their `CLOCK_GATE_CONTROL` enable is set, so software can
+detect an access to a gated peripheral rather than stall on it; the other gated
+blocks wake on bus activity and need no such response.
+
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-interface"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+The following reset-unit map defines subsystem controls, isolation masks,
+visibility and FLR timing registers. Offsets are relative to the reset-unit base
+in the subsystem memory map. External state in the cool-reset wrapper follows
+the cold-reset behavior described above rather than the primary reset of the
+register-interface logic.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::partial$smc/regs/gen/html/blocks/reset_unit.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/reset_unit.adoc[leveloffset=+2]
+endif::backend-pdf[]

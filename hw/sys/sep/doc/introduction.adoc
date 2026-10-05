@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Introduction
+
+// Overview owns the content; this compatibility page stays out of nav and PDF.
+[[sep-introduction]]
+
+The SEP responsibilities and services are described in
+ifdef::backend-html5[]
+xref:overview.adoc#sep-introduction[Overview]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<hardware-overview,Overview>>
+endif::backend-pdf[]
+.

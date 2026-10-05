@@ -1,0 +1,60 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[gpio-interface]]
+== Interface
+
+The GPIO peripheral provides bus interfaces for register access, LSIO
+integration for hardware protocols, and direct GPIO pad connections.
+
+Each `gpio` instance drives one pad. The peripheral comprises 65 pads: 61 bonded and 4
+unbonded.
+
+ifdef::backend-html5[]
+The parameters and ports of `gpio` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/gpio/gpio.adoc[gpio].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `gpio` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+=== LSIO Interface
+
+The LSIO (Low Speed Input/Output) interface enables hardware-controlled
+GPIO operation for protocol processing.
+
+=== LSIO Protocol Specifications
+
+* *Selection Priority*: an asserted `lsio_interface_select_i` overrides
+register-driven control, including DATA_CTRL.interface_enable and the
+DATA_CTRL_ENABLE.use_reg_* per-field overrides. The software force bit
+DATA_CTRL.lsio_select ranks the other way, below the register interface;
+DATA_CTRL.lsio_disable gates both
+* *Enable Logic*: Active-low enables for both transmit and receive paths
+* *Data Latency*: Zero-cycle latency for data path when selected
+* *Mode Switching*: Immediate effect, no settling time required
+* *Status Reflection*: hardware LSIO request status available in
+DATA_CTRL.lsio_enable register. The field tracks the hardware request line
+gated by lsio_disable, so it reads 0 during a software-forced LSIO
+
+=== GPIO Pad Interface
+
+The GPIO pad interface provides direct connection to external pads with
+bidirectional capabilities.
+
+=== Interrupt Interface
+
+The interrupt interface provides event notification capabilities with
+configurable trigger modes.
+
+The strap-capture output `captured_strap_o` is a port of `gpio_shim`, not of `gpio`; it
+holds the pad value captured when the cold reset is released.
+
+=== Interrupt Specifications
+
+* *Polarity*: Active high (asserted when high)
+* *Duration*: Level-sensitive, remains asserted based on configuration
+* *Trigger Modes*: Level (active-high/low) and edge (rising/falling)
+detection
+* *Clearing*: Automatic clearing based on trigger mode and pad state
+* *Latency*: Interrupt assertion within 2-3 clock cycles of triggering
+event

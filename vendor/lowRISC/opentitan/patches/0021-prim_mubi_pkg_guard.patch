@@ -1,0 +1,18 @@
+--- a/hw/ip/prim/rtl/prim_mubi_pkg.sv
++++ b/hw/ip/prim/rtl/prim_mubi_pkg.sv
+@@ -10,6 +10,9 @@
+ // This package defines common multibit signal types, active high and active low values and
+ // the corresponding functions to test whether the values are set or not.
+ 
++`ifndef PRIM_MUBI_PKG_SV
++`define PRIM_MUBI_PKG_SV
++
+ `include "prim_assert.sv"
+ 
+ package prim_mubi_pkg;
+@@ -1127,3 +1130,5 @@
+   endfunction : mubi32_and_lo
+ 
+ endpackage : prim_mubi_pkg
++
++`endif // PRIM_MUBI_PKG_SV

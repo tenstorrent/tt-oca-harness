@@ -1,0 +1,3 @@
+`ifdef VERILATOR
+  `define COMMON_CELLS_ASSERTS_OFF
+`endif

@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# EMULATION keeps assertions compiled when SYNTHESIS is also set and drops the
+# #1ps settle in CALIPTRA_ASSERT_INIT_NET.
+
+--- a/src/caliptra_prim/rtl/caliptra_prim_assert.sv
++++ b/src/caliptra_prim/rtl/caliptra_prim_assert.sv
+@@ -104,6 +104,9 @@
+ 
+ `ifdef VERILATOR
+  `include "caliptra_prim_assert_dummy_macros.svh"
++`elsif EMULATION
++ `include "caliptra_prim_assert_standard_macros.svh"
++ `define CALIPTRA_INC_ASSERT
+ `elsif SYNTHESIS
+  `include "caliptra_prim_assert_dummy_macros.svh"
+ `elsif YOSYS
+--- a/src/caliptra_prim/rtl/caliptra_prim_assert_standard_macros.svh
++++ b/src/caliptra_prim/rtl/caliptra_prim_assert_standard_macros.svh
+@@ -32,8 +32,10 @@
+   initial begin                                                                      \
+     // When a net is assigned with a value, the assignment is evaluated after        \
+     // initial in Xcelium. Add 1ps delay to check value after the assignment is      \
+-    // completed.                                                                    \
++    // completed. The emulation view has no procedural delays.                      \
++`ifndef EMULATION                                                                    \
+     #1ps;                                                                            \
++`endif                                                                               \
+     __name: assert (__prop)                                                          \
+       else begin                                                                     \
+         `CALIPTRA_ASSERT_ERROR(__name)                                                        \

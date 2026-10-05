@@ -1,0 +1,407 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-secure_dma]
+== DMA Controller
+
+DMA Controller for the integrated OpenTitan.
+
+[NOTE]
+======
+*Register Arrays:*
+
+* *SHA2_DIGEST_0[16]*: 16 registers, base 0x58, stride 0x4
+* *INTR_SRC_ADDR_0[11]*: 11 registers, base 0xA4, stride 0x4
+* *INTR_SRC_WR_VAL_0[11]*: 11 registers, base 0x124, stride 0x4
+======
+
+[cols="1,4,1,6", options="header"]
+|===
+| Address | Name | Access | Description
+| 0x0 | <<reg-{regmap-instance}-secure_dma-INTR_STATE,INTR_STATE>> | R a| -
+| 0x4 | <<reg-{regmap-instance}-secure_dma-INTR_ENABLE,INTR_ENABLE>> | RW a| -
+| 0x8 | <<reg-{regmap-instance}-secure_dma-INTR_TEST,INTR_TEST>> | W a| -
+| 0xC | <<reg-{regmap-instance}-secure_dma-ALERT_TEST,ALERT_TEST>> | W a| -
+| 0x10 | <<reg-{regmap-instance}-secure_dma-SRC_ADDR_LO,SRC_ADDR_LO>> | RW a| -
+| 0x14 | <<reg-{regmap-instance}-secure_dma-SRC_ADDR_HI,SRC_ADDR_HI>> | RW a| -
+| 0x18 | <<reg-{regmap-instance}-secure_dma-DST_ADDR_LO,DST_ADDR_LO>> | RW a| -
+| 0x1C | <<reg-{regmap-instance}-secure_dma-DST_ADDR_HI,DST_ADDR_HI>> | RW a| -
+| 0x20 | <<reg-{regmap-instance}-secure_dma-ADDR_SPACE_ID,ADDR_SPACE_ID>> | RW a| -
+| 0x24 | <<reg-{regmap-instance}-secure_dma-ENABLED_MEMORY_RANGE_BASE,ENABLED_MEMORY_RANGE_BASE>> | RW a| -
+| 0x28 | <<reg-{regmap-instance}-secure_dma-ENABLED_MEMORY_RANGE_LIMIT,ENABLED_MEMORY_RANGE_LIMIT>> | RW a| -
+| 0x2C | <<reg-{regmap-instance}-secure_dma-RANGE_VALID,RANGE_VALID>> | RW a| -
+| 0x30 | <<reg-{regmap-instance}-secure_dma-RANGE_REGWEN,RANGE_REGWEN>> | RW a| -
+| 0x34 | <<reg-{regmap-instance}-secure_dma-CFG_REGWEN,CFG_REGWEN>> | R a| -
+| 0x38 | <<reg-{regmap-instance}-secure_dma-TOTAL_DATA_SIZE,TOTAL_DATA_SIZE>> | RW a| -
+| 0x3C | <<reg-{regmap-instance}-secure_dma-CHUNK_DATA_SIZE,CHUNK_DATA_SIZE>> | RW a| -
+| 0x40 | <<reg-{regmap-instance}-secure_dma-TRANSFER_WIDTH,TRANSFER_WIDTH>> | RW a| -
+| 0x44 | <<reg-{regmap-instance}-secure_dma-CONTROL,CONTROL>> | RW a| -
+| 0x48 | <<reg-{regmap-instance}-secure_dma-SRC_CONFIG,SRC_CONFIG>> | RW a| -
+| 0x4C | <<reg-{regmap-instance}-secure_dma-DST_CONFIG,DST_CONFIG>> | RW a| -
+| 0x50 | <<reg-{regmap-instance}-secure_dma-STATUS,STATUS>> | RW a| -
+| 0x54 | <<reg-{regmap-instance}-secure_dma-ERROR_CODE,ERROR_CODE>> | R a| -
+| 0x58 - 0x94 | <<reg-{regmap-instance}-secure_dma-SHA2_DIGEST_0-,SHA2_DIGEST_0[16]>> | R a| -
+| 0x98 | <<reg-{regmap-instance}-secure_dma-HANDSHAKE_INTR_ENABLE,HANDSHAKE_INTR_ENABLE>> | RW a| -
+| 0x9C | <<reg-{regmap-instance}-secure_dma-CLEAR_INTR_SRC,CLEAR_INTR_SRC>> | RW a| -
+| 0xA0 | <<reg-{regmap-instance}-secure_dma-CLEAR_INTR_BUS,CLEAR_INTR_BUS>> | RW a| -
+| 0xA4 - 0xCC | <<reg-{regmap-instance}-secure_dma-INTR_SRC_ADDR_0-,INTR_SRC_ADDR_0[11]>> | RW a| -
+| 0x124 - 0x14C | <<reg-{regmap-instance}-secure_dma-INTR_SRC_WR_VAL_0-,INTR_SRC_WR_VAL_0[11]>> | RW a| -
+|===
+
+[#reg-{regmap-instance}-secure_dma-INTR_STATE]
+=== INTR_STATE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:3 | `Reserved` | - | - a| Reserved
+| 2 | `DMA_ERROR` | R | 0x0 a| DMA error has occurred. DMA_STATUS.error_code register shows the details.
+| 1 | `DMA_CHUNK_DONE` | R | 0x0 a| Indicates the transfer of a single chunk has been completed.
+| 0 | `DMA_DONE` | R | 0x0 a| DMA operation has been completed.
+|===
+
+[#reg-{regmap-instance}-secure_dma-INTR_ENABLE]
+=== INTR_ENABLE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:3 | `Reserved` | - | - a| Reserved
+| 2 | `DMA_ERROR` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.dma_error is set.
+| 1 | `DMA_CHUNK_DONE` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.dma_chunk_done is set.
+| 0 | `DMA_DONE` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.dma_done is set.
+|===
+
+[#reg-{regmap-instance}-secure_dma-INTR_TEST]
+=== INTR_TEST
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:3 | `Reserved` | - | - a| Reserved
+| 2 | `DMA_ERROR` | W | 0x0 a| Write 1 to force !!INTR_STATE.dma_error to 1.
+| 1 | `DMA_CHUNK_DONE` | W | 0x0 a| Write 1 to force !!INTR_STATE.dma_chunk_done to 1.
+| 0 | `DMA_DONE` | W | 0x0 a| Write 1 to force !!INTR_STATE.dma_done to 1.
+|===
+
+[#reg-{regmap-instance}-secure_dma-ALERT_TEST]
+=== ALERT_TEST
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `Reserved` | - | - a| Reserved
+| 0 | `FATAL_FAULT` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
+|===
+
+[#reg-{regmap-instance}-secure_dma-SRC_ADDR_LO]
+=== SRC_ADDR_LO
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `SRC_ADDR_LO` | RW | 0x0 a| Lower 32 bits of the source address.
+Must be aligned to the transfer width.
+|===
+
+[#reg-{regmap-instance}-secure_dma-SRC_ADDR_HI]
+=== SRC_ADDR_HI
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `SRC_ADDR_HI` | RW | 0x0 a| Upper 32 bits of the physical or virtual address of memory location within SoC memory address map or physical address within OT non-secure memory space.
+Must be aligned to the transfer width.
+Source and destination address must have the same alignment.
+|===
+
+[#reg-{regmap-instance}-secure_dma-DST_ADDR_LO]
+=== DST_ADDR_LO
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `DST_ADDR_LO` | RW | 0x0 a| Lower 32 bits of the destination address.
+Must be aligned to the transfer width.
+Source and destination address must have the same alignment.
+|===
+
+[#reg-{regmap-instance}-secure_dma-DST_ADDR_HI]
+=== DST_ADDR_HI
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `DST_ADDR_HI` | RW | 0x0 a| Upper 32 bits of the physical or virtual address of memory location within SoC memory address map or physical address within OT non-secure memory space.
+Must be aligned to the transfer width.
+Source and destination address must have the same alignment.
+|===
+
+[#reg-{regmap-instance}-secure_dma-ADDR_SPACE_ID]
+=== ADDR_SPACE_ID
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7:4 | `DST_ASID` | RW | 0x7 a| Target address space that the destination address pointer refers to.
+| 3:0 | `SRC_ASID` | RW | 0x7 a| Target address space that the source address pointer refers to.
+|===
+
+[#reg-{regmap-instance}-secure_dma-ENABLED_MEMORY_RANGE_BASE]
+=== ENABLED_MEMORY_RANGE_BASE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `BASE` | RW | 0x0 a| Base Address to mark the start of the DMA enabled memory range within the OT internal memory space.
+|===
+
+[#reg-{regmap-instance}-secure_dma-ENABLED_MEMORY_RANGE_LIMIT]
+=== ENABLED_MEMORY_RANGE_LIMIT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `LIMIT` | RW | 0x0 a| Limit Address to mark the end of the DMA enabled memory range within the OT internal memory space; inclusive.
+|===
+
+[#reg-{regmap-instance}-secure_dma-RANGE_VALID]
+=== RANGE_VALID
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `Reserved` | - | - a| Reserved
+| 0 | `RANGE_VALID` | RW | 0x0 a| Once set the enabled memory base and limit registers are valid.
+|===
+
+[#reg-{regmap-instance}-secure_dma-RANGE_REGWEN]
+=== RANGE_REGWEN
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:4 | `Reserved` | - | - a| Reserved
+| 3:0 | `REGWEN` | RW0C | 0x6 a| Used by firmware to lock the DMA enabled memory range configuration registers from further modification.
+Once this register is set to kMultiBitBool4False, it can only be set to kMultiBitBool4True through a reset event.
+
+Default Value = kMultiBitBool4True -> Unlocked at reset.
+|===
+
+[#reg-{regmap-instance}-secure_dma-CFG_REGWEN]
+=== CFG_REGWEN
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:4 | `Reserved` | - | - a| Reserved
+| 3:0 | `REGWEN` | R | 0x6 a| Used by hardware to lock the DMA configuration registers.
+This register is purely managed by hardware and only software readable.
+|===
+
+[#reg-{regmap-instance}-secure_dma-TOTAL_DATA_SIZE]
+=== TOTAL_DATA_SIZE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `DATA_SIZE` | RW | 0x0 a| Total size (in bytes) of the data to be transferred. The complete transfer operation
+may consist of multiple chunks of data as specified by the CHUNK_DATA_SIZE register.
+
+Minimum: 1 byte.
+Maximum: May be restricted to a maximum pre-defined size based on OT DMA enabled memory space allocation.
+Works in conjunction with the TRANSFER_WIDTH register.
+|===
+
+[#reg-{regmap-instance}-secure_dma-CHUNK_DATA_SIZE]
+=== CHUNK_DATA_SIZE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `DATA_SIZE` | RW | 0x0 a| Size (in bytes) for a single DMA transfer.
+In hardware handshake mode, the DMA reads in chunks of CHUNK_DATA_SIZE from the peripheral.
+For a single memory transfer CHUNK_DATA_SIZE and TOTAL_DATA_SIZE are set to the same value.
+
+Minimum: 1 byte.
+Maximum: May be restricted to a maximum pre-defined size based on OT DMA enabled memory space allocation.
+Works in conjunction with the TRANSFER_WIDTH register.
+|===
+
+[#reg-{regmap-instance}-secure_dma-TRANSFER_WIDTH]
+=== TRANSFER_WIDTH
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:2 | `Reserved` | - | - a| Reserved
+| 1:0 | `TRANSACTION_WIDTH` | RW | 0x2 a| Denotes the width of each transaction that the DMA shall issue during the data movement.
+
+Multiple transactions of this width will be issued until TOTAL_DATA_SIZE bytes have been transferred.
+Note that firmware may need to set a different value if a receiving IP supports a read / write transaction width that is less than 1 DWORD.
+This does not affect the wrap-around mechanism.
+Note that the value 3 for this register represents an invalid configuration that leads to an error.
+|===
+
+[#reg-{regmap-instance}-secure_dma-CONTROL]
+=== CONTROL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31 | `GO` | RW | 0x0 a| Setting this bit triggers the DMA operation.
+For normal operation, the DMA engine clears the `go` bit automatically after the configured operation is complete.
+For Hardware handshake operation, DMA engine does not auto clear the Go bit.
+Firmware shall clear the Go bit when it intends to stop the hardware handshake operation.
+| 30:28 | `Reserved` | - | - a| Reserved
+| 27 | `ABORT` | W | 0x0 a| Aborts the DMA operation if this bit is set.
+Sets the corresponding bit in the status register once abort operation is complete.
+Any OpenTitan-internal transactions are guaranteed to complete, but there are no guarantees on the SoC interface.
+| 26:9 | `Reserved` | - | - a| Reserved
+| 8 | `INITIAL_TRANSFER` | RW | 0x0 a| Marks the initial transfer to initialize the DMA and SHA engine for one transfer that can span over multiple single DMA transfers.
+Used for hardware handshake and ordinary transfers, in which multiple transfers contribute to a final digest.
+Note, for non-handshake transfers with inline hashing mode enabled, this bit must be set to also mark the first transfer.
+| 7:6 | `Reserved` | - | - a| Reserved
+| 5 | `DIGEST_SWAP` | RW | 0x0 a| Digest register byte swap.
+
+If 1 the value in each digest output register is converted to big-endian byte order.
+This setting does not affect the order of the digest output registers, !!SHA2_DIGEST_0 still contains the first 4 bytes of the digest.
+| 4 | `HARDWARE_HANDSHAKE_ENABLE` | RW | 0x0 a| Enable hardware handshake mode.
+Used to clear FIFOs from low speed IO peripherals receiving data, e.g., I3C receive buffer.
+Listen to an input trigger signal.
+Read data from source address location.
+Copy to destination address.
+Number of bytes specified in size register.
+Note assumption is the peripheral lowers input once FIFO is cleared.
+No explicit clearing necessary.
+| 3:0 | `OPCODE` | RW | 0x0 a| Defines the type of DMA operations.
+|===
+
+[#reg-{regmap-instance}-secure_dma-SRC_CONFIG]
+=== SRC_CONFIG
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:2 | `Reserved` | - | - a| Reserved
+| 1 | `WRAP` | RW | 0x0 a| When 0: Chunks occupy contiguous ascending addresses.
+When 1: Source address wraps back to the starting address when finishing a chunk.
+| 0 | `INCREMENT` | RW | 0x0 a| Defines the increment behavior after every DMA read.
+When 0: Source address is not changed.
+All reads are done from the same address.
+When 1: Source address is incremented by transfer_width after each read.
+|===
+
+[#reg-{regmap-instance}-secure_dma-DST_CONFIG]
+=== DST_CONFIG
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:2 | `Reserved` | - | - a| Reserved
+| 1 | `WRAP` | RW | 0x0 a| When 0: Chunks occupy contiguous ascending addresses.
+When 1: Destination address wraps back to the starting address when finishing a chunk.
+| 0 | `INCREMENT` | RW | 0x0 a| Defines the increment behavior after every DMA write.
+When 0: Destination address is not changed.
+All writes are done to the same address.
+When 1: Destination address is incremented by transfer_width after each write.
+|===
+
+[#reg-{regmap-instance}-secure_dma-STATUS]
+=== STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:6 | `Reserved` | - | - a| Reserved
+| 5 | `CHUNK_DONE` | RW1C | 0x0 a| Transfer of a single chunk is complete.
+Only raised for multi-chunk memory-to-memory transfers.
+Cleared automatically by the hardware when starting the transfer of a new chunk.
+| 4 | `SHA2_DIGEST_VALID` | R | 0x0 a| Indicates whether the SHA2_DIGEST register contains a valid digest.
+This value is cleared on the initial transfer and set when the digest is written.
+| 3 | `ERROR` | RW1C | 0x0 a| Error occurred during the operation.
+ERROR_CODE register denotes the source of the error.
+| 2 | `ABORTED` | RW1C | 0x0 a| Set once aborted operation drains.
+| 1 | `DONE` | RW1C | 0x0 a| Configured DMA operation is complete.
+Cleared automatically by the hardware when starting a new transfer.
+| 0 | `BUSY` | R | 0x0 a| DMA operation is active if this bit is set.
+DMA engine clears this bit when operation is complete.
+This bit may be set as long as hardware handshake mode is active and triggered.
+|===
+
+[#reg-{regmap-instance}-secure_dma-ERROR_CODE]
+=== ERROR_CODE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7 | `ASID_ERROR` | R | 0x0 a| The source or destination ASID contains an invalid value.
+| 6 | `RANGE_VALID_ERROR` | R | 0x0 a| The DMA enabled memory range is not configured.
+| 5 | `BASE_LIMIT_ERROR` | R | 0x0 a| The base and limit addresses contain an invalid value.
+| 4 | `BUS_ERROR` | R | 0x0 a| The bus transfer returned an error.
+| 3 | `SIZE_ERROR` | R | 0x0 a| TRANSFER_WIDTH encodes an invalid value, TOTAL_DATA_SIZE or CHUNK_SIZE are zero, or inline hashing is not using 32-bit transfer width
+| 2 | `OPCODE_ERROR` | R | 0x0 a| Opcode is invalid.
+| 1 | `DST_ADDR_ERROR` | R | 0x0 a| Destination address is invalid.
+| 0 | `SRC_ADDR_ERROR` | R | 0x0 a| Source address is invalid.
+|===
+
+[#reg-{regmap-instance}-secure_dma-SHA2_DIGEST_0-]
+=== SHA2_DIGEST_0[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `DATA_0` | R | 0x0 a| SHA2 digest data
+|===
+
+[#reg-{regmap-instance}-secure_dma-HANDSHAKE_INTR_ENABLE]
+=== HANDSHAKE_INTR_ENABLE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:11 | `Reserved` | - | - a| Reserved
+| 10:0 | `MASK` | RW | 0x7FF a| Enable bits for incoming handshake interrupt wires.
+|===
+
+[#reg-{regmap-instance}-secure_dma-CLEAR_INTR_SRC]
+=== CLEAR_INTR_SRC
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:11 | `Reserved` | - | - a| Reserved
+| 10:0 | `SOURCE` | RW | 0x0 a| Source N needs interrupt cleared
+|===
+
+[#reg-{regmap-instance}-secure_dma-CLEAR_INTR_BUS]
+=== CLEAR_INTR_BUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:11 | `Reserved` | - | - a| Reserved
+| 10:0 | `BUS` | RW | 0x0 a| Bus selection bit for source N.
+|===
+
+[#reg-{regmap-instance}-secure_dma-INTR_SRC_ADDR_0-]
+=== INTR_SRC_ADDR_0[11]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `ADDR_0` | RW | 0x0 a| Destination address for interrupt source clearing write.
+|===
+
+[#reg-{regmap-instance}-secure_dma-INTR_SRC_WR_VAL_0-]
+=== INTR_SRC_WR_VAL_0[11]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `WR_VAL_0` | RW | 0x0 a| Write value for interrupt clearing write.
+|===

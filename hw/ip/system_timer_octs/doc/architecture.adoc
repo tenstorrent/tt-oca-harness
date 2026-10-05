@@ -1,0 +1,151 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[system-timer-octs-architecture]]
+== Operation
+
+<<system-timer-octs-diagram>> shows how primary and secondary timers exchange
+synchronization information. The dashed groups hold the logic that acts in only one mode,
+as `is_primary_i` selects it; the enable and the 64-bit count serve both. The inbound
+sync-load and credit pulses cross into `clk_i` through a flop and a `prim_edge_detector`,
+which synchronizes them with two flops and turns each rising edge into a one-cycle pulse;
+an AND gate with `is_primary_i` on its inverted input masks each pulse in PRIMARY mode.
+The enable flop is sticky: an OR gate holds it set once a PRIMARY-mode
+`TIMER_START.START` or a sync-load pulse has set it. In SECONDARY mode, the
+sync-load pulse loads the preset, a credit pulse moves the count to the
+expected count plus CREDIT_VAL, and between pulses
+the count advances by `CTRL.STEP`, which drives the core's `timer_cnt_step_i`, while
+credits are left. The credit tracking block holds the `cur_credits` accumulator, which
+adds STEP each cycle while it is below CREDIT_VAL (`credits_left`); the expected count,
+which `u_adder_expected_credit` advances by CREDIT_VAL on each credit pulse; and the
+`credit_expired_o` counter of cycles spent without credits. Both inbound pulses reset
+`cur_credits` and `credit_expired_o`. In PRIMARY mode, the count advances by one, and the
+credit counter and pulse state machine drive the outbound pulses. The wrapper keeps the
+longest credit-starved run reported by the core in a flop that loads the larger of its
+own value and `credit_expired_o`, and reads it back as `CREDIT_EXPIRED`; a write to
+`CREDIT_EXPIRED` clears both. In the
+SMC, the timer pulses use GPIO pads 55 and 56, which drive them on the primary chiplet and
+sample them on a secondary one.
+
+[[system-timer-octs-diagram]]
+.System Timer OCTS primary/secondary synchronization and credit CDC
+image::system-timer-octs.svg[alt="System Timer OCTS with synchronized sync-load and credit inputs masked in primary mode, secondary credit tracking, the sticky enable flop and 64-bit count, primary credit counter and pulse state machine, the CREDIT_EXPIRED maximum-hold flop, and the AXI-Lite register block",width=100%,pdfwidth=100%]
+
+ifdef::backend-html5[]
+++++
+<span id="timer-core-processing"></span>
+<span id="synchronization-protocol"></span>
+<span id="credit-based-synchronization"></span>
+<span id="credit-management"></span>
+<span id="synchronization-logic"></span>
+<span id="data-flow-and-control-path"></span>
+<span id="control-path-overview"></span>
+++++
+endif::backend-html5[]
+
+[[octs-counting]]
+=== Counting and Synchronization
+
+A write of 1 to `TIMER_START.START` starts the primary and loads
+`TIMER_PRESET_HI:LO`. The primary then increments by one on each `clk_i`
+cycle. It ignores synchronization inputs and generates load and credit
+pulses for the secondaries.
+
+A secondary loads its own preset when it detects a rising edge on
+`timer_sync_load_i`. On each credit edge, it advances its expected count by
+`CTRL.CREDIT_VAL` and replaces its actual count with that expected value.
+Between edges, it increments by `CTRL.STEP` while credits remain. This
+replacement is a correction, not just a diagnostic comparison: a secondary
+count can move backward if its previous increments overshot the boundary.
+
+[[octs-credit-management-table]]
+.OCTS credit management
+[cols="1,3",options="header"]
+|===
+|Role |Behavior
+|Primary |An 8-bit interval counter generates a credit event every
+`CREDIT_VAL` cycles while enabled. START clears this interval counter.
+|Secondary |A 9-bit consumed-credit counter starts at zero on load or
+credit edges. While it is less than `CREDIT_VAL`, both it and the timer
+advance by `STEP`. Counting pauses once the credit limit is reached.
+|===
+
+Choose a nonzero secondary `STEP` appropriate to the clock ratio.
+The limit is checked before adding the step, so the last increment can
+cross it. A lost credit pulse also leaves the expected count behind the
+primary; receiving a later credit does not recover the missing interval.
+
+ifdef::backend-html5[]
+++++
+<span id="clock-domain-crossing"></span>
+<span id="edge-detection"></span>
+<span id="pulse-generation"></span>
+<span id="pulse-state-machine"></span>
+<span id="pulse-width-control"></span>
+<span id="pulse-generation-in-primary-mode"></span>
+<span id="timing-specifications"></span>
+<span id="octs-timing-requirements-table"></span>
+++++
+endif::backend-html5[]
+
+[[octs-pulses]]
+=== Pulse Generation and Clock Crossing
+
+[[octs-pulse-states-table]]
+.OCTS pulse states
+[cols="1,3",options="header"]
+|===
+|State |Behavior
+|`PULSE_IDLE` |Accept START, or a credit event while enabled. START has priority.
+|`PULSE_SYNC_LOAD` |Assert the primary load output for the configured width.
+|`PULSE_CREDIT` |Assert the primary credit output for the configured width.
+|===
+
+`CTRL.PULSE_WIDTH` sets the high duration in primary clock cycles; zero
+is treated as one. `CREDIT_VAL` must exceed this effective width. The FSM
+accepts triggers only while idle and does not queue them. In particular,
+START can reload the primary count while an active pulse prevents a new
+load pulse; use a coordinated reset and setup sequence for restarting.
+
+Each synchronization input passes through an input flop, a two-flop
+synchronizer and an edge detector in the receiving clock domain. Pulses
+must stay high long enough to be sampled and low long enough to distinguish
+successive events. Determine those intervals from the destination clock,
+routing delay and CDC analysis; the RTL defines no universal frequency
+ratio, nanosecond timing guarantee or fixed system-wide alignment bound.
+
+[[octs-status]]
+=== Status and Credit Expiration
+
+`STATUS.MODE` is 0 for primary and 1 for secondary. `STATUS.RUNNING` is set
+when the internal enable is set and the count is nonzero. It can therefore
+remain set while a secondary is paused for lack of credit, or remain clear
+immediately after loading a zero preset. It is not a synchronization check.
+
+The secondary core counts cycles spent without credit. Load and credit
+edges clear this interval counter. The register wrapper retains the largest
+observed value in `CREDIT_EXPIRED`; writing any value clears the saved
+maximum, while only a load or credit pulse clears the running interval
+counter in the core. Normal credit reception does not clear the saved
+maximum. In a primary configured from reset, it stays zero.
+
+Use this value to detect waiting for credit, with thresholds derived from
+the clock ratio and pulse interval. It does not directly measure timestamp
+error or prove that all credit pulses arrived.
+
+ifdef::backend-html5[]
+++++
+<span id="reset-behavior-and-initialization"></span>
+++++
+endif::backend-html5[]
+
+[[octs-reset]]
+=== Reset
+
+`rst_ni` asynchronously clears the counter, enable, pulse state and
+registers. Reset release must meet the integration's timing requirements;
+this block does not synchronize reset deassertion internally.
+
+Enable is sticky after a PRIMARY-mode START or a received load edge. There is no stop CSR;
+writing START=0 does not stop counting. Configure role and timing before
+starting, and use system reset when a coordinated reconfiguration is needed.

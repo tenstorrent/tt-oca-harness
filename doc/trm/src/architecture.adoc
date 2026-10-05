@@ -1,0 +1,102 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= OCAH Architecture & Design
+:description: OCAH subsystem composition, memory map, power and clock domains, and reset hierarchy.
+
+[[ocah-architecture]]
+
+This section provides an overview of the OCAH architecture including its
+subsystem composition, power and clock domains, reset hierarchy, and memory
+map. It is organised into focused topic pages; subsequent chapters provide
+detailed microarchitectural documentation for each subsystem.
+
+ifdef::backend-html5[]
+* xref:overview.adoc[Platform Overview]
+* xref:memory_map.adoc[OCAH Memory Map]
+* xref:power_domains.adoc[Power Domains]
+* xref:clock_domains.adoc[Clock Domains]
+* xref:reset.adoc[Reset]
+* <<ocah-rtl-assertions,RTL Assertions>>
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::overview.adoc[leveloffset=+1]
+include::memory_map.adoc[leveloffset=+1]
+include::power_domains.adoc[leveloffset=+1]
+include::clock_domains.adoc[leveloffset=+1]
+include::reset.adoc[leveloffset=+1]
+endif::backend-pdf[]
+
+[[ocah-rtl-assertions]]
+== RTL Assertions
+
+First-party RTL uses the `OCAH_ASSERT*` macros; OpenTitan-derived blocks use
+`OCAH_OT_ASSERT*`; PULP-vendored cells (`common_cells`, AXI, iDMA) use
+`OCAH_PULP_ASSERT*`. The checks live in the module that owns the behavior and
+cover known-value hygiene, illegal parameter combinations, and local protocol
+or FSM invariants. They compile out of synthesis and fire on four-state
+simulators.
+
+<<rtl-assertion-macro-families-table>> identifies the header for each assertion macro
+family.
+
+[[rtl-assertion-macro-families-table]]
+.RTL assertion macro families
+[cols="<28%,<72%",options="header"]
+|===
+|Family |Header
+
+|`OCAH_ASSERT*`
+|`hw/common/assert/ocah_assert.svh`
+
+|`OCAH_OT_ASSERT*`
+|`vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_assert.sv`
+
+|`OCAH_PULP_ASSERT*`
+|`vendor/pulp-platform/common_cells/upstream/include/common_cells/assertions.svh`
+|===
+
+// HTML-only compatibility anchors for sections that moved to the topic pages
+// below. PDF assembly includes the authoritative content from those pages, so
+// these blocks are ifdef-guarded to prevent duplicate PDF destinations.
+ifdef::backend-html5[]
+++++
+<span id="ocah-high-level-features"></span>
+<span id="ocah-top-block-diagram"></span>
+<span id="ocah-memory-map"></span>
+<span id="ocah-power-domains"></span>
+<span id="ocah-clock-domains"></span>
+<span id="ocah-clock-domain-table"></span>
+<span id="ocah-reference-counter"></span>
+<span id="ocah-reset"></span>
+<span id="ocah-ic-reset"></span>
+++++
+
+* xref:overview.adoc#ocah-high-level-features[Platform Overview] -- the
+  high-level features of each OCAH subsystem and the top-level block diagram.
+* xref:memory_map.adoc#ocah-memory-map[OCAH Memory Map] -- the chiplet-visible
+  SMU aperture and the SEP and SMC global apertures programmed by firmware.
+* xref:power_domains.adoc#ocah-power-domains[Power Domains] -- the always-on
+  management domain and the isolation and sequencing infrastructure provided
+  for adopter-defined domains.
+* xref:clock_domains.adoc#ocah-clock-domains[Clock Domains] -- management
+  versus functional timing, the clock domain table, and the reference counter.
+* xref:reset.adoc#ocah-reset[Reset] -- the hierarchical reset model and the
+  SMU reset sequence.
+++++
+<span id="smu-axi-crossbar"></span>
+<span id="security-processor-sep"></span>
+<span id="system-management-controller"></span>
+<span id="debug-test-ports"></span>
+<span id="system-management-network"></span>
+<span id="axi-over-ucie-bridge"></span>
+++++
+
+* xref:smu:index.adoc#smu-axi-crossbar[SMU AXI Crossbar]
+* xref:sep:index.adoc[Security Processor (SEP)]
+* xref:smc:index.adoc[System Management Controller (SMC)]
+* xref:dtp:index.adoc[Debug & Test Ports (DTP)]
+* xref:smn.adoc[System Management Network (SMN)]
+* xref:aou.adoc[AXI-over-UCIe Bridge (AoU)]
+endif::backend-html5[]

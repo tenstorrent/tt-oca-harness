@@ -1,0 +1,113 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Boot ROM
+
+[[sep-rom]]
+The SEP maps a 64 KiB immutable Boot ROM aperture at `0x1004_0000` through
+`0x1004_FFFF`. The SEP CPU wrapper sets the VeeR EL2 `RESET_VEC` parameter to
+the base of this region, so a cold boot begins in the BL0 Root-of-Trust
+firmware.
+
+ifdef::backend-html5[]
+++++
+<span id="rom-architecture"></span>
+++++
+endif::backend-html5[]
+[[sep-rom-rom-architecture]]
+== ROM Architecture
+
+The CPU instruction-fetch and load/store interfaces reach the Boot ROM over a
+dedicated path outside the SEP local AXI crossbar. The SEP ROM interface shim
+converts the CPU memory request into the request, 64-bit word address, and
+read-data signals used by the ROM macro. Stores receive a response but are not
+forwarded to the macro and do not modify the ROM.
+
+The open integration instantiates a 16K-by-64-bit generic ROM, a physical
+128 KiB array. The generated SEP address map and production linker expose only
+the first 64 KiB. The unused physical capacity is not part of the BL0 software
+address contract.
+
+The ROM stores executable code, immutable metadata, read-only data, and the
+initial image of writable data; writable data, the stack and the BL0-to-BL1
+state run from the 128 KiB DCCM at `0xC004_0000`. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-prod-rom-memory-security[memory and security section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-prod-rom-memory-security[memory and security section]
+endif::backend-pdf[]
+of the SEP Boot ROM appendix in the Programmer's Guide gives the linker layout.
+
+BL0 stages the selected manifest and payload in SEP SRAM beginning at
+`0x1000_0000`. A validated SEP BL1 image is copied by the secure DMA to the
+256 KiB ICCM at `0xC000_0000`, where the instruction-fetch unit executes it.
+The CPU load/store unit cannot access ICCM, so BL0 cannot populate it with an
+ordinary software copy.
+
+ifdef::backend-html5[]
+++++
+<span id="integrity-features"></span>
+++++
+endif::backend-html5[]
+[[sep-rom-integrity-features]]
+== Hardware Configuration and Integrity
+
+A future ROM patching facility using OTP backup storage is planned for the
+second generation; it is not implemented in the first generation.
+
+The open generic ROM model has a 64-bit data path and no ECC or integrity-error
+sideband. Technology-specific integrity behavior is therefore outside this
+integration's visible hardware contract.
+
+ifdef::backend-html5[]
+++++
+<span id="firmware-behavior"></span>
+++++
+endif::backend-html5[]
+[[sep-rom-firmware-behavior]]
+== Boot Flow
+
+The production BL0 firmware selects SPI flash or an SMC-staged image from the
+captured boot straps. It validates the manifest, applies the lifecycle and
+secure-boot policy, checks the payload, locks sensitive fuse reads, and
+transfers control to BL1. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-boot-rom[SEP Boot ROM appendix]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-boot-rom[SEP Boot ROM appendix]
+endif::backend-pdf[]
+of the Programmer's Guide describes that behavior and its build artifacts in
+detail.
+
+[[bl0-secure-boot-and-bl1-execution-unlock]]
+=== BL0 Secure Boot and BL1 Execution Unlock
+
+BL0 brings the SEP into a runnable state after power-on reset, validates a
+boot manifest and its payload, unlocks BL1 execution in the CPU PMP and jumps
+to it. Any failed check ends the boot: a failure the backup manifest slot
+recovers from is a warning, and exhausting every slot leaves the processor in a
+fail loop until reset. The ordered steps (CPU and PMP setup, fuse and
+lifecycle evaluation, SMC synchronization, boot-source selection, manifest and
+payload validation, secure boot, demotion, attestation and hand-off), their
+requirement identifiers and the implementation-status matrix are in the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-boot-rom[SEP Boot ROM appendix]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-boot-rom[SEP Boot ROM appendix]
+endif::backend-pdf[]
+of the Programmer's Guide.
+
+
+== Firmware Reference
+
+The production ROM firmware is documented in the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-boot-rom[SEP Boot ROM appendix]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-boot-rom[SEP Boot ROM appendix]
+endif::backend-pdf[]
+of the Programmer's Guide.

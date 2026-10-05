@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: ISC
+
+# Slim local manifest for the vendored PicoRV32 RTL used by OCAH.
+# Sources mirror the one-module-per-file SystemVerilog split maintained in the
+# tenstorrent/tt-picorv32 fork. Do not edit upstream/ files directly; use
+# patches/ if this package needs a local delta.
+
+package:
+  name: picorv32
+  authors:
+    - "Claire Xenia Wolf <claire@yosyshq.com>"
+
+sources:
+  - target: any(picorv32_rtl, sep)
+    files:
+      - upstream/picorv32_regs.sv
+      - upstream/picorv32_pcpi_mul.sv
+      - upstream/picorv32_pcpi_fast_mul.sv
+      - upstream/picorv32_pcpi_div.sv
+      - upstream/picorv32_axi_adapter.sv
+      - upstream/picorv32.sv
+      - upstream/picorv32_axi.sv
+      - upstream/picorv32_wb.sv

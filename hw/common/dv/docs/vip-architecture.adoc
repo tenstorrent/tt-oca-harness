@@ -1,0 +1,286 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[shared-vip-architecture]]
+== Architecture and Ownership
+
+OCAH separates protocol-neutral behavior from DUT integration policy. This
+boundary keeps test intent stable when a backend, simulator, signal naming
+scheme, or optional backend changes.
+
+[[shared-vip-layering]]
+=== Layering Model
+
+[source,text]
+----
+DUT test / sequence
+  |
+  | scenario config, expected values, finalization
+  v
+DUT-local environment, agents, scoreboards, and reference models
+  |
+  | stable OCAH items, results, and transactions
+  v
+ocah_<protocol>_vip
+  |
+  | backend adaptation
+  v
+cocotbext-* / OCAH-native BFM / optional backend adapter
+  |
+  v
+SystemVerilog interface or flattened DUT signals
+----
+
+The layers have distinct responsibilities:
+
+[cols="<3,<7",options="header"]
+|===
+|Layer |Responsibilities
+
+|Test or sequence
+|Select the scenario, create immutable configuration, drive stimulus through
+the DUT environment, and finalize all checkers.
+
+|DUT-local DV
+|Bind hierarchy and signal names, own address maps and lifecycle/security
+policy, configure agents, and implement DUT-specific scoreboards and models.
+
+|Shared protocol VIP
+|Expose protocol-neutral driving, responding, monitoring, item, result, error,
+and protocol-checker APIs.
+
+|Backend adapter
+|Translate stable OCAH calls to cocotb extensions, native Python BFMs, or
+an optional simulator backend.
+
+|HDL boundary
+|Provide shared interfaces or DUT-local flattened-signal adapters without
+leaking backend objects into tests.
+|===
+
+[[shared-vip-package-layout]]
+=== Package Layout
+
+Each shared protocol package follows this hierarchy:
+
+[source,text]
+----
+hw/common/dv/vip/ocah_<protocol>_vip/
+  __init__.py                 # stable root exports
+  README.md                   # quick start, API, dependencies, limitations
+  MANUAL.md                   # detailed contract for complex protocols
+  cocotb/
+    __init__.py
+    ocah_<protocol>_master.py # active initiator, where applicable
+    ocah_<protocol>_slave.py  # active responder or RAM
+    ocah_<protocol>_item.py   # immutable transaction items
+    ocah_<protocol>_monitor.py
+    ocah_<protocol>_checker.py
+    examples/
+  interface/                  # shared SystemVerilog interface
+  uvm/                        # reusable SV-UVM agent/environment
+  cov/                        # simulator-neutral coverage hooks
+----
+
+Not every protocol needs every file. A unidirectional entropy stream, for
+example, uses source and monitor classes rather than master and slave naming.
+Omitted layers and capabilities must be stated in the package README.
+
+`ocah_checker` is shared checker infrastructure rather than a protocol VIP. It
+owns evidence formatting, counters, required IDs, timeout checks, retained
+findings, and finalization. Protocol legality remains in each protocol package.
+
+[[shared-vip-public-boundary]]
+=== Stable Public Boundary
+
+Tests import from the package root:
+
+[source,python]
+----
+from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiReadResult
+from ocah_jtag_vip import OcahJtagMasterDriver, OcahJtagChecker
+from ocah_checker import OcahChecker
+----
+
+Public methods accept and return:
+
+* Python `int`, `bool`, `bytes`, strings, and collections of these values;
+* immutable OCAH transaction or result dataclasses;
+* documented OCAH exceptions.
+
+Normal APIs must not return backend transactions, private channels, or backend
+response enums. A `.backend` or `.raw` escape may exist for debugging,
+but it is explicitly unstable and must not be used by new
+tests for checking.
+
+[[shared-vip-binding]]
+=== Signal Binding
+
+Shared VIP should offer a conventional constructor such as `from_prefix()` when
+the DUT exports a standard flattened protocol:
+
+[source,python]
+----
+master = OcahAxiMasterAgent.from_prefix(
+    dut,
+    "s_axi",
+    clock=dut.clk_i,
+    reset=dut.rst_ni,
+    reset_active_level=False,
+).sequence
+----
+
+DUT-local adapters remain appropriate when:
+
+* port names or polarity are non-standard;
+* packed structs require flattening;
+* open-drain buses use separate resolved-level and pull-low signals;
+* the binding includes DUT lifecycle, topology, or register policy.
+
+The adapter should contain only binding and policy. Protocol behavior should be
+implemented or fixed in the shared package.
+
+[[shared-vip-checking-ownership]]
+=== Checking and Coverage Ownership
+
+[cols="<3,<7",options="header"]
+|===
+|Owner |Checks and Evidence
+
+|Shared protocol VIP
+|Item-level protocol legality, transaction structure, response validity,
+handshake stability, and protocol coverage.
+
+|`hw/common/dv/sva/`
+|Reusable signal-level properties whose meaning is protocol-neutral and whose
+binding does not depend on DUT hierarchy. Protocol-specific SVA lives with its
+protocol VIP instead, for example
+`ocah_axi_vip/sva/ocah_axi_sva.sv` (AXI4/AXI4-Lite rules derived from
+ARM IHI 0022) and, beside it, `ocah_axi_fv.sv`, the same rules in the
+boolean subset a formal environment binds with one side asserted and the
+other assumed.
+
+|DUT `cocotb/assertions/` or local SVA
+|Hierarchy, address, reset, lifecycle, security, and integration invariants.
+
+|DUT environment
+|Lifecycle-aware scoreboards, predictors, reference models, drain policy, and
+per-stream non-vacuity.
+
+|Test or sequence
+|Independent scenario expectations, required checker IDs, expected-negative
+policy, and finalization.
+|===
+
+Functional coverage hooks under a package `cov/` are plain SystemVerilog
+covergroups/binds without UVM phasing. A cocotb four-state-simulator flow may
+compile them directly; an SV-UVM flow binds the same model. Coverage is not a
+substitute for checking and cannot turn a failed transaction into PASS.
+
+Coverage closure of a shared package is graded on its own wire-harness
+selftests (`dv/`). The SystemVerilog collateral carries the simulator metrics:
+Verilator line and branch coverage against the package's
+`dv/cov/config/verilator/coverage_policy.toml`, which holds one threshold per
+metric family (98 % of the points that remain after accepted waivers, failing
+closed on an unclassified point, plus a raw floor) and one hole entry per
+uncovered point with its category, rationale, owner and reviewer;
+the SV-UVM harness shape samples the `cov/` covergroups and the SVA cover
+properties on a four-state simulator. Python components have no simulator
+metric; their record is the `CHK-*` matrix of the selftests. A hole with
+reachable stimulus is covered by a selftest rather than waived, and
+capabilities a package lists as out of scope earn no credit.
+
+[[shared-vip-frameworks]]
+=== Cocotb, SystemVerilog UVM, and Optional Backends
+
+The cocotb layer is the public, license-free baseline. Where a SystemVerilog UVM
+agent exists, its item and event surfaces follow the same protocol contract.
+DUT environments instantiate the OCAH VIP-level environment rather than a
+backend-specific agent.
+
+Optional backend integration is an adopter-owned adapter behind the hooks the
+open tree ships (the opaque `vendor_cfg` extension, the `en_monitor` knob,
+the guarded vendor-interface nest, the factory-overridable environments).
+The normative contract — hook by hook, with the placement policy — is the
+*Template Contract* section of `hw/common/dv/vip/ocah_jtag_vip/README.md`;
+deployment-side guidance is <<shared-vip-backend-deployment>>.
+
+Tests, VPLAN evidence, and DUT scoreboards stay independent of the selected
+backend.
+
+[[shared-vip-ownership-levels]]
+=== Ownership Levels
+
+OCAH uses three maturity and ownership levels:
+
+[cols="<2,<3,<5",options="header"]
+|===
+|Level |Location |Use
+
+|DUT-local
+|`hw/<category>/<dut>/dv/`
+|Hierarchy bindings, fixtures, address maps, lifecycle/security policy, and
+DUT-specific models. The DUT DV maintainers own these files.
+
+|IP/domain-local reusable
+|`hw/ip/<ip>/dv/` or another domain-owned location
+|Custom behavior shared by related integrations but not protocol-neutral.
+
+|Shared VIP
+|`hw/common/dv/vip/ocah_<protocol>_vip/`
+|Versioned protocol-neutral API owned by shared DV maintainers and gated by at
+least one real DUT consumer.
+|===
+
+[[shared-vip-promotion]]
+=== Promotion Criteria
+
+Promote a local helper only when all applicable conditions are met:
+
+* a second independent consumer needs it, or a standards-based surface is
+  demonstrably stable and broadly reusable;
+* the API contains no DUT hierarchy, hard-coded address map, instance count,
+  or lifecycle policy;
+* root exports and item/result types are stable;
+* timeout, unsupported-operation, and error semantics are deterministic;
+* README, example, backend version/license, and limitations are complete;
+* at least one named DUT regression gates the behavior;
+* the DUT-local binding remains in the DUT tree.
+
+If a protocol already has an OCAH package, extend it rather than creating a
+second shared implementation.
+
+[[shared-vip-versioning]]
+=== Compatibility and Versioning
+
+Backward compatibility is measured at the OCAH API, not the backend API.
+Backend upgrades may change implementation internals but must preserve:
+
+* import paths and public symbol names;
+* argument and result semantics;
+* timeout and error behavior;
+* evidence IDs and result fields used by tests;
+* deterministic default behavior.
+
+Breaking changes require an explicit migration plan, adopter updates, and
+requalification of named consumer regressions.
+
+[[shared-vip-deprecation]]
+=== Deprecation
+
+This rule covers public API names: the classes, methods, constructor
+arguments, config fields, and plusargs that a package README documents.
+
+A name that a tagged release has shipped is renamed or removed in two steps:
+
+. Ship the replacement. Keep the old name as an alias that calls the
+  replacement and logs one warning per instance, telling the caller which
+  name to use instead.
+. Remove the alias after every consumer in this repository uses the new name
+  and at least one tagged release has shipped with the alias in place.
+
+Removing an alias is a breaking change under the versioning rule above. Each
+package README lists the aliases the package carries.
+
+A name that no tagged release has shipped and that no consumer in this
+repository uses is removed in one step, without an alias.

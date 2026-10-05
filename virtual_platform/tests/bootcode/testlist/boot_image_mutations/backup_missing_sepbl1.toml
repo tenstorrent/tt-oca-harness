@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Breaks the primary magic, then types the re-sealed backup's only TOC image SEPBL2 so it carries no BL1.
+pack_config = "oca_secure_boot"
+set = [
+  { target = "bundle", slot = "backup", path = "payload_images.0.type", value = "OCAHSEP BLSTAGE2" },
+]
+patch = [
+  { fill = [0x1000, 0x1004], value = 0x99 },
+]

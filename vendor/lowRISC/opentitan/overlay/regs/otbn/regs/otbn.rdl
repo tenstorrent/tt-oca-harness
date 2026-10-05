@@ -1,0 +1,268 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef _OTBN_RDL_DEFINED
+`define _OTBN_RDL_DEFINED
+
+`include "opentitan_udps.rdl"
+
+addrmap otbn {
+    name = "OpenTitan Big Number Accelerator";
+    desc = "Programmable coprocessor for asymmetric cryptography with SCA and FI countermeasures";
+    reg {
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "OTBN has completed the operation.";
+        } done[0:0] = 0x0;
+    } INTR_STATE @ 0x0;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable interrupt when !!INTR_STATE.done is set.";
+        } done[0:0] = 0x0;
+    } INTR_ENABLE @ 0x4;
+    reg {
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Write 1 to force !!INTR_STATE.done to 1.";
+        } done[0:0] = 0x0;
+    } external INTR_TEST @ 0x8;
+    reg {
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Write 1 to trigger one alert event of this kind.";
+        } fatal[0:0] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Write 1 to trigger one alert event of this kind.";
+        } recov[1:1] = 0x0;
+    } external ALERT_TEST @ 0xC;
+    reg {
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "The operation to perform.
+
+            | Value | Name          | Description |
+            |:------|:--------------|:------------|
+            | 0xd8  | EXECUTE       | Starts the execution of the program stored in the instruction memory, starting at address zero. |
+            | 0xc3  | SEC_WIPE_DMEM | Securely removes all contents from the data memory. |
+            | 0x1e  | SEC_WIPE_IMEM | Securely removes all contents from the instruction  memory. |";
+        } cmd[7:0] = 0x0;
+    } external CMD @ 0x10;
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Controls the reaction to software errors.
+
+            When set software errors produce fatal errors, rather than
+            recoverable errors.
+
+            Writes are ignored if OTBN is not idle.";
+        } software_errs_fatal[0:0] = 0x0;
+    } external CTRL @ 0x14;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates the current operational state OTBN is in.
+
+            All BUSY values represent an operation started by a write to the
+            !!CMD register.
+
+            | Value | Name               | Description                                           |
+            |:------|:-------------------|:------------------------------------------------------|
+            | 0x00  | IDLE               | OTBN is idle: it is not performing any action.        |
+            | 0x01  | BUSY_EXECUTE       | OTBN is busy executing software.                      |
+            | 0x02  | BUSY_SEC_WIPE_DMEM | OTBN is busy securely wiping the data memory.         |
+            | 0x03  | BUSY_SEC_WIPE_IMEM | OTBN is busy securely wiping the instruction memory.  |
+            | 0x04  | BUSY_SEC_WIPE_INT  | OTBN is busy securely wiping the internal state.      |
+            | 0xFF  | LOCKED             | OTBN is locked as reaction to a fatal error, and must be reset to unlock it again. See also the section \"Reaction to Fatal Errors\". |
+            ";
+        } status[7:0] = 0x4;
+    } STATUS @ 0x18;
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "A `BAD_DATA_ADDR` error was observed.";
+        } bad_data_addr[0:0] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "A `BAD_INSN_ADDR` error was observed.";
+        } bad_insn_addr[1:1] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "A `CALL_STACK` error was observed.";
+        } call_stack[2:2] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "An `ILLEGAL_INSN` error was observed.";
+        } illegal_insn[3:3] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "A `LOOP` error was observed.";
+        } loop[4:4] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "A `KEY_INVALID` error was observed.";
+        } key_invalid[5:5] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "An `RND_REP_CHK_FAIL` error was observed.";
+        } rnd_rep_chk_fail[6:6] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "An `RND_FIPS_CHK_FAIL` error was observed.";
+        } rnd_fips_chk_fail[7:7] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "An `MAI_SOFTWARE_ERROR` error was observed.";
+        } mai_software_error[8:8] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "A `IMEM_INTG_VIOLATION` error was observed.";
+        } imem_intg_violation[16:16] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "A `DMEM_INTG_VIOLATION` error was observed.";
+        } dmem_intg_violation[17:17] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "A `REG_INTG_VIOLATION` error was observed.";
+        } reg_intg_violation[18:18] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "A `BUS_INTG_VIOLATION` error was observed.";
+        } bus_intg_violation[19:19] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "A `BAD_INTERNAL_STATE` error was observed.";
+        } bad_internal_state[20:20] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "An `ILLEGAL_BUS_ACCESS` error was observed.";
+        } illegal_bus_access[21:21] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "A `LIFECYCLE_ESCALATION` error was observed.";
+        } lifecycle_escalation[22:22] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "A `FATAL_SOFTWARE` error was observed.";
+        } fatal_software[23:23] = 0x0;
+    } external ERR_BITS @ 0x1C;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "A `IMEM_INTG_VIOLATION` error was observed.";
+        } imem_intg_violation[0:0] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "A `DMEM_INTG_VIOLATION` error was observed.";
+        } dmem_intg_violation[1:1] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "A `REG_INTG_VIOLATION` error was observed.";
+        } reg_intg_violation[2:2] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "A `BUS_INTG_VIOLATION` error was observed.";
+        } bus_intg_violation[3:3] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "A `BAD_INTERNAL_STATE` error was observed.";
+        } bad_internal_state[4:4] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "A `ILLEGAL_BUS_ACCESS` error was observed.";
+        } illegal_bus_access[5:5] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "A `LIFECYCLE_ESCALATION` error was observed.";
+        } lifecycle_escalation[6:6] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "A `FATAL_SOFTWARE` error was observed.";
+        } fatal_software[7:7] = 0x0;
+    } FATAL_ALERT_CAUSE @ 0x20;
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "The number of executed instructions.";
+        } insn_cnt[31:0] = 0x0;
+    } external INSN_CNT @ 0x24;
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Checksum accumulator";
+        } checksum[31:0] = 0x0;
+    } external LOAD_CHECKSUM @ 0x28;
+    mem {
+        memwidth = 0x20;
+        mementries = 0x1000;
+    } external IMEM @ 0x4000;
+    mem {
+        memwidth = 0x20;
+        mementries = 0x1000;
+    } external DMEM @ 0x8000;
+};
+
+`endif // _OTBN_RDL_DEFINED

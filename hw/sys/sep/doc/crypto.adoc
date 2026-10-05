@@ -1,0 +1,267 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Cryptographic Subsystem
+:description: SEP cryptographic accelerators, entropy sources, and key management.
+ifdef::backend-html5[]
+:sep-register-map: xref:sep:memory_map.adoc#sep-detailed-register-map[Detailed Register Map]
+:sep-reset-controller-ref: xref:sep:reset_controller.adoc#sep-reset-controller[SEP Reset Controller]
+:sep-trng-reset-ref: xref:sep:reset_controller.adoc#sep-trng-reset[Resetting the TRNG]
+:km-reset-diagram-ref: xref:ip:key_manager/doc/index.adoc#key-manager-reset-diagram[Key Manager cold and warm reset conditioning]
+:sep-interrupt-map-ref: xref:sep:interrupts.adoc#sep-cpu-interrupt-vector-map[SEP CPU Interrupt Vector Map]
+:sep-register-single-beat-ref: xref:sep:memory_map.adoc#sep-register-single-beat[Single-Beat Register Access]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+:sep-register-map: <<sep-detailed-register-map,Detailed Register Map>>
+:sep-reset-controller-ref: <<sep-reset-controller>>
+:sep-trng-reset-ref: <<sep-trng-reset>>
+:km-reset-diagram-ref: <<key-manager-reset-diagram>>
+:sep-interrupt-map-ref: <<sep-cpu-interrupt-vector-map>>
+:sep-register-single-beat-ref: <<sep-register-single-beat>>
+endif::backend-pdf[]
+
+[[cryptographic-subsystem]]
+
+The cryptographic accelerators use separate paths for data and secret keys:
+
+* The SEP system fabric drives the AXI4 data and CSR bus.
+* Key Manager drives the AXI4-Lite secret-key buses.
+
+The accelerators are derived from OpenTitan, except for the Adams Bridge
+post-quantum accelerator from Caliptra. The firmware is based on the
+https://opentitan.org/book/doc/security/cryptolib/cryptolib_api.html[OpenTitan
+cryptographic library]. Each block's reference page includes its available
+register maps; the {sep-register-map} links to those pages.
+
+OCAH adds bus adapters and separate key-delivery paths to the accelerator
+wrappers. Key Manager writes keys through AXI4-Lite interfaces; the wrappers
+connect them to the accelerators' key inputs. The following sections describe
+the shared integration rules and accelerator-specific differences.
+
+Adams Bridge requires 13 SRAM macros with masking enabled (default), or 9
+with masking disabled.
+
+<<sep-crypto-diagram>> shows the accelerator interconnect, Key Manager paths, and
+external memory interfaces.
+
+[[sep-crypto-diagram]]
+.SEP cryptographic subsystem and external memory interfaces
+image::sep-crypto-subsystem.svg[alt="SEP cryptographic subsystem: the crypto AXI interconnect serves the TRNG, the accelerators, the Key Manager mailbox, the lifecycle controller and the eFuse wrapper; the Key Manager writes the key CSR block of each accelerator over its private key bus; entropy streams from the TRNG feed the Key Manager, the accelerators and the entropy pool; memory macros sit outside sep_crypto",width=100%,pdfwidth=100%]
+
+In <<sep-crypto-diagram>>, dark lines are host AXI4 and AXI4-Lite paths from the
+crypto AXI interconnect, and brown lines are the Key Manager private key buses.
+Each accelerator's key CSR block is the `<accelerator>_wrapper_key_reg` block that
+receives the `KEY_SHARE0`, `KEY_SHARE1` and `KEY_CTRL` writes described in
+<<km-key-delivery>> and drives the core's sideload key port. The Key Manager
+reaches the key CSR blocks through its internal crossbar; the Adams Bridge key bus
+leaves on the right, beside the ML-KEM shared-key interrupt that Adams Bridge
+returns. The host paths to the Key Manager mailbox, the external TRNG registers,
+the eFuse wrapper and the lifecycle controller are not isolated, and the eFuse and
+lifecycle legs leave the interconnect as AXI4. All six Key Manager paths, including
+its eFuse access, pass an isolation stage in `sep_crypto_axi_interconnect`.
+
+The Key Manager also receives OTP data: the eFuse shadow registers supply the
+lifecycle state and the identity and class-key fields, and the lifecycle
+controller supplies the two demotion states. Grey arrows carry entropy, OTP data
+and status one way; the three entropy streams from the DRBG pass through a source
+select that can take the external TRNG instead, as the TRNG and DRBG page
+describes. Grey boxes are outside `sep_crypto`: the memory macros live in the
+integration layer, and the entropy pool is `u_entropy_fifo` in `sep`. The Adams
+Bridge SRAMs are 13 macros with masking enabled and 9 without. Interrupts and
+OpenTitan alerts are not drawn; <<sep-crypto-alert-and-fault-routing-table>> lists
+them.
+
+The integrator must instantiate the Adams Bridge working SRAMs outside SEP and
+connect them through the dedicated `abr_mem` request/response interface.
+For the memory interface and configuration requirements, see
+ifdef::backend-html5[]
+xref:ocah-integrator-guide:ROOT:smu-sep.adoc#sep-memory-interfaces[SEP Memory Interfaces in the Integrator Guide].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/smu-sep.html#sep-memory-interfaces[SEP Memory Interfaces in the Integrator Guide].
+endif::backend-pdf[]
+
+The `sep_crypto` module implements the integration layer, with
+`sep_crypto_axi_interconnect` centralizing its bus infrastructure. A single
+64-bit AXI slave port from the SEP system fabric is decoded to the accelerators
+and internal peripherals. The host paths to OTBN, HMAC, AES, KMAC, ESRC, CSRNG,
+and EDN are converted to AXI4-Lite before isolation, with data-width conversion
+where required by the endpoint. The OpenTitan wrappers then bridge the isolated
+AXI4-Lite paths to TL-UL.
+
+The Key Manager drives private AXI4-Lite key buses to the accelerator wrappers,
+which map key words into the sideload structures expected by the OpenTitan
+cores. These buses are independently isolated so that they drain before either
+the Key Manager or the destination accelerator enters software reset.
+
+Each accelerator has its own software-controllable reset. The SEP Reset
+Controller drains and isolates both its host and Key Manager paths before
+asserting reset; a Key Manager reset similarly drains all of its key paths. The
+entropy source, CSRNG, and EDN share one coordinated reset. See
+{sep-reset-controller-ref} and {sep-trng-reset-ref}.
+
+<<sep-crypto-reset-diagram>> shows how the resets from the SEP Reset
+Controller reach the instances inside `u_sep_crypto`.
+
+[[sep-crypto-reset-diagram]]
+.SEP cryptographic subsystem resets
+image::sep-crypto-resets.svg[alt="Resets inside u_sep_crypto, including the TRNG reset-active synchronizer, the EDN adapter resets and the Key Manager reset conditioner",width=100%,pdfwidth=100%]
+
+Inside `u_sep_trng`, `por_rst_ni` resets a 2-flop synchronizer that samples the
+inverted TRNG reset and drives `trng_reset_active`. That signal synchronously
+clears both EDN AXIS adapters and, as `trng_entropy_clear_o`, the entropy pool.
+Both adapters take `rst_ni`. An OTBN, AES or KMAC software reset cancels that
+engine's endpoints in the crypto adapter (see {sep-reset-controller-ref}). The
+Key Manager conditions `sep_reset_n` into its cold domain through
+`u_cold_rst_sync`, and the gated Key Manager reset or its software reset
+`soft_rst_n` into a warm reset held for at least 10 cycles, as
+{km-reset-diagram-ref} shows in more detail.
+
+[[sep-crypto-alert-policy]]
+== OpenTitan Alert Termination
+
+SEP does not instantiate OpenTitan's `alert_handler`. Each OpenTitan crypto
+alert channel is terminated locally by a `prim_alert_receiver` in `sep_crypto`.
+That primitive decodes the sender's differential `alert_p`/`alert_n` handshake
+and pulses `alert_o` when the handshake starts; a malformed encoding raises
+`integ_fail_o`. Alert ping is disabled (`ping_req_i` tied 0); `ping_ok_o` is
+unused.
+
+PIC sources are in {sep-interrupt-map-ref}. A receiver's pulse and
+integrity-fail stay per-block at the receiver. <<sep-crypto-alert-and-fault-routing-table>> shows which of those,
+the native error IRQs, and the bridge faults are OR'd onto a PIC source and
+which are not.
+
+[[sep-crypto-alert-and-fault-routing-table]]
+[cols="14%,18%,22%,16%,30%",options="header"]
+.SEP crypto alert and fault routing
+|===
+|Block |OT alert channels |Alert PIC |Native error IRQ |Bridge `err_o`
+|HMAC |`[0]` fatal |OR into Crypto alert |dedicated PIC |STATUS bit; OR into Peripheral register-bridge fault
+|OTBN |`[2:1]` |OR into Crypto alert |none |STATUS bit; OR into Peripheral register-bridge fault
+|AES |`[4:3]` recoverable, fatal |OR into Crypto alert |none |STATUS bit; OR into Peripheral register-bridge fault
+|KMAC |`[6:5]` |OR into Crypto alert |dedicated PIC |STATUS bit; OR into Peripheral register-bridge fault
+|CSRNG |`[8:7]` |OR into Crypto alert |dedicated PIC |STATUS bit; OR into Peripheral register-bridge fault
+|EDN |`[10:9]` |OR into Crypto alert |dedicated PIC |STATUS bit; OR into Peripheral register-bridge fault
+|===
+
+Adams Bridge and the entropy source do not go through this conversion.
+
+[[sep-crypto-bridge-faults]]
+The Crypto alert source is the OR of every receiver pulse and integrity-fail, so
+that interrupt does not name the block. Native error IRQs are not OR'd. HMAC,
+AES, KMAC, OTBN, CSRNG, and EDN convert isolated AXI4-Lite to TL-UL through
+`axi_lite_to_tlul`; each bridge's sticky `err_o` is that wrapper's `bus_err_o`,
+visible as one bit in `PERIPH_BUS_ERR_STATUS` and cleared with the matching
+`PERIPH_BUS_ERR_CLEAR` bit. The Peripheral register-bridge fault source is the OR
+of those bits and the watchdog timer's bridge fault. Acknowledging one STATUS
+bit cannot discard another.
+
+The crypto complex uses whole-instance Class 2 scan boundaries so all
+sequential key, round-key, digest-working, seed, and random-distribution state
+is covered without per-register marking. The marked roots in `sep_crypto` are
+`u_hmac_wrapper_s3c_scan`, `u_sep_crypto_otbn_wrapper_s3c_scan`,
+`u_aes_wrapper_s3c_scan`, `u_kmac_wrapper_s3c_scan`,
+`u_sep_crypto_abr_wrapper_s3c_scan`, `u_entropy_source_s3c_scan`,
+`u_drbg_s3c_scan`, `u_axis_edn_crypto_s3c_scan`, `u_axis_edn_pool_s3c_scan`, and
+`u_key_manager_s3c_scan`. The integration module itself, public bus
+infrastructure, and combinational entropy muxes are not Class 2 roots.
+
+[[crypto-single-beat-only]]
+== Single-Beat Access Only
+
+The `sep_crypto` demux enforces single-beat access to the crypto region
+({sep-register-single-beat-ref}). Any access whose `AxLEN` is non-zero is
+routed to the internal error slave and answered with DECERR on every beat,
+whatever its address; no beat reaches an accelerator.
+
+[[km-key-delivery]]
+== Key Manager Key Delivery
+
+The Key Manager delivers keys and seeds to the crypto accelerators over a
+private key interface that software cannot read. Every delivery uses the same
+format: the value is carried as two shares whose XOR is the value, and each
+share is presented as a sequence of 32-bit words in the `KEY_SHARE0` and
+`KEY_SHARE1` registers of the destination. Within a share, word index N carries
+value bits `[32N+31:32N]`, so index 0 is the least-significant word and the
+highest index is the most-significant.
+
+Both shares are always consumed. Delivering a value V therefore requires two
+shares whose XOR is V; writing a single share delivers V only because the
+unwritten share reads as zero. `KEY_CTRL.KEY_VALID` qualifies the delivered
+value, and while it is 0 the destination has no valid key or seed.
+
+The words per share, whether software must select the delivered key in
+preference to the accelerator's own software key registers, whether software
+must also declare the key length, and the behavior on an invalid or mismatched
+key are accelerator-specific. They are stated in the accelerator reference
+pages and summarized in <<km-key-delivery-summary>>; the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-km-delivered-keys[delivered-key section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-km-delivered-keys[delivered-key section]
+endif::backend-pdf[]
+of the Programmer's Guide gives the corresponding software configuration.
+
+[[km-key-delivery-summary]]
+.Key Manager key delivery per accelerator
+[width="100%",cols="<12%,<14%,<20%,<20%,<34%",options="header"]
+|===
+|Accelerator |Words per share |Select delivered key |Key length |Invalid or mismatched key
+
+|HMAC |8 (256-bit) |Not required |`CFG.key_length`, set by software |Digest is wrong but repeatable; no error
+|AES |8 (256-bit) |`CTRL_SHADOWED.sideload` |`CTRL_SHADOWED.key_len`, set by software |Delivered key ignored while the select bit is 0; no error
+|KMAC |8 (256-bit) |`CFG_SHADOWED.sideload` |Applied automatically |Keyed operation raises an error
+|OTBN |12 (384-bit) |Not required |Not applicable |`ERR_BITS.KEY_INVALID`; the program stops
+|ABR |8 per block (256-bit) |Seed read enable |Not applicable |Seed read does not complete
+|===
+
+ifdef::backend-html5[]
+Cryptographic subsystem reference pages:
+
+++++
+<span id="true-random-number-generator-trng-true-random-number-generator-trng"></span>
+++++
+
+* xref:sep:trng.adoc[TRNG and DRBG]
+
+++++
+<span id="aes-cipher"></span>
+<span id="och-modifications-2"></span>
+++++
+
+* xref:sep:aes.adoc[AES Cipher]
+
+++++
+<span id="hmac-sha2"></span>
+<span id="och-modifications-4"></span>
+++++
+
+* xref:sep:hmac.adoc[HMAC-SHA2]
+
+++++
+<span id="kmac-sha3"></span>
+<span id="och-modifications-3"></span>
+++++
+
+* xref:sep:kmac.adoc[KMAC-SHA3]
+
+++++
+<span id="adams-bridge-abr"></span>
+<span id="abr-aperture-decode"></span>
+<span id="och-modifications-5"></span>
+++++
+
+* xref:sep:adams_bridge.adoc[Adams Bridge (ABR)]
+
+++++
+<span id="otbn-pka-public-key-accelerator"></span>
+<span id="och-modifications-1"></span>
+++++
+
+* xref:sep:otbn.adoc[OTBN PKA Public Key Accelerator]
+
+* xref:ip:key_manager/doc/index.adoc[Key Manager]
+
+endif::backend-html5[]

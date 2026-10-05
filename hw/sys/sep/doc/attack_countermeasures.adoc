@@ -1,0 +1,152 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Attack Countermeasures
+:description: SEP architectural, debug, and DFT security protections.
+
+[[attack-countermeasures]]
+
+Countermeasures include:
+
+* Protection of BL0 boot ROM and subsequent secure boot via digital
+signature verification
+* Glitch and error detection
+** SRAMs and other memory structures such as FIFOs and register files
+are protected by parity (byte-wise) or SECDED
+* Temporal noise injection, masking, secret splitting and obfuscation on
+sensitive operations
+* Transaction filtering and firewalling
+* Functional and physical isolation of private data assets
+e.g. cryptographic keys
+* Anti-replay facilities e.g. non-volatile counterj in OTP
+* Obfuscate data stored in SRAM and OTP memories
+
+[[debug-and-dft-security-considerations]]
+== Debug and DFT Security Considerations
+
+The debug facilities and DFT share the scan chain infrastructure for
+their respective tasks. This is a security hazard as certain secret
+values will be resident in the registers: tokens, secrets, cryptographic
+keys. Unless prevented, an attacker could halt the chip execution and
+extract the register state containing these secrets. This section
+describes the countermeasures we take to prevent this from happening.
+
+One debug feature is scandump which provides access to all internal
+register states. We must ensure that a certain subset of registers
+holding secrets are never dumped out in this mode.
+
+There are three scenarios of how registers are handled for DFT scan test
+and debug scandump:
+
+1.  Full DFT and Debug access
+2.  DFT access but no Debug access
+3.  No DFT and no Debug access
+
+Consequently there will be two discrete scan chains to handle the
+registers in groups 1 and 2. The register instances (or module
+instances) will be labelled as belonging to one of the three groups and
+the DFT scan insertion tool will group the registers into the respective
+scan chains which will be managed for security in the TAP controller.
+
+These three groups correspond to the SEP asset classes defined
+authoritatively in the Lifecycle Controller chapter (_Asset and Scan-Chain
+Protection_): group 1 = Class 3 (general), group 2 = Class 2 (crypto / KM
+secret-bearing, plus the fuse program path), group 3 = Class 1 (secrets and
+integrity-critical control fields).
+
+[[debug-and-scan-dump]]
+=== Debug and Scan Dump
+
+Debug mode is enabled when in-field debug is granted, via demotion (DEMOTE_1 /
+DEMOTE_2) or an RMA debug state (RMA_SIP / RMA_CHIPLET). In
+this mode, the user has near full control and observability of the chip
+state, but we must enforce security restrictions.
+
+*General logic (Class 3)* scan dump is gated by the `*_DBG` feature-control
+bits (sourced from the OTP DIS vectors; `1'b0` = enabled, `1'b1` = disabled,
+irreversible) and the LC state -- a scope's general logic is dumpable only
+when its local gate (`SEP_DBG` / `CHIPLET_DBG`), the `SIP_DBG` debug-access
+path into the chiplet, and the LC state permit it.
+
+*Secret-bearing logic (Class 2)* -- crypto-engine key / round-key storage and
+the Key Manager key vault / shared key storage -- is placed on a *dedicated
+secure scan chain* so DFT keeps coverage, but is *never scan-dumpable*, for any
+owner or LC state. The `*_DBG` bits decide whether that chain is reachable, as
+they do for any chain; what makes it undumpable is the command class. The DFT
+controller admits a *test* command on it only when `secure_tm = 1`, admits
+nothing at `secure_tm = 0`, and never admits a *dump* command at all. Under
+`secure_tm = 1` the secret sources (UID / `CLASS_KEY`) are disconnected from
+these consumers, so a permitted test shift moves no real secret.
+
+*Secrets and integrity-critical fields (Class 1)* are excluded from every scan
+chain (never scannable):
+
+* Class 1a (confidentiality): UIDs, `CLASS_KEY`, token-plaintext input
+registers (`*_TOKEN_I`), raw fuse read-back data.
+* Class 1b (integrity): `LOCKS`/`LOCKS_SPARE`, `LC_STATE`, `SIP_DIS`, `SYS_DIS`,
+`*_TOKEN_DIGEST` shadow registers.
+
+[[class-2-asset-manifest]]
+=== Class 2 Asset Manifest and Naming
+
+The authoritative class definitions, scan-chain policy, and gating rules are
+in the Lifecycle Controller chapter (_Asset and Scan-Chain Protection_); Key
+Manager specifics are in the Key Manager chapter (_Scan and Scan-Dump
+Protection_). This section records the implementation manifest. A complete
+module instance is classified as Class *2a* when it is the Key Manager, a
+device-secret-consuming cryptographic engine, an entropy engine, or sequential
+distribution logic that retains key, seed, random, digest-working, or round-key
+state. Classifying complete instances deliberately includes their control
+flops and avoids fragile per-register marking.
+
+The current SEP implementation has exactly 11 Class 2a RTL scan roots:
+
+* `u_sep_crypto.u_hmac_wrapper_s3c_scan`
+* `u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan`
+* `u_sep_crypto.u_aes_wrapper_s3c_scan`
+* `u_sep_crypto.u_kmac_wrapper_s3c_scan`
+* `u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan`
+* `u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan`
+* `u_sep_crypto.u_sep_trng.u_drbg_s3c_scan`
+* `u_sep_crypto.u_axis_edn_crypto_s3c_scan`
+* `u_sep_crypto.u_axis_edn_pool_s3c_scan`
+* `u_sep_crypto.u_key_manager_s3c_scan`
+* `u_trng_wrapper_s3c_scan`
+
+The `_s3c_scan` suffix is reserved for Class 2 instance and generate-scope
+names. It is not a module-name or per-flop suffix. A nested `_n0_scan` name
+remains Class 1 and takes precedence over an enclosing `_s3c_scan` hierarchy.
+
+Three writable companion SRAMs are also Class 2a assets:
+`u_km_sram`, `u_otbn_imem_sram`, and `u_otbn_dmem_sram`. Their macro instance
+names remain unchanged because `_s3c_scan` identifies RTL scan hierarchies;
+the owning memory-DFT/MBIST policy must provide the same never-dump outcome.
+`u_km_rom` is explicitly excluded because immutable executable contents
+cannot retain runtime secrets. The vendor TRNG core keeps its delivered DFT
+view beneath `u_trng_wrapper_s3c_scan`.
+
+Class *2b* covers the fuse programming *control* and *status* MMRs of the SEP
+fuse controller. These hold no secret; they are never-dumpable because scan
+shifting drives arbitrary transient values through them, and a program-control
+register reached during an ordinary dump could burn fuses (see the Lifecycle
+Controller chapter, _Asset Classes_). Class 2b shares the secure chain and the
+command-class rule with Class 2a, so the `_s3c_scan` suffix applies to it as
+well. Unlike Class 2a it is *not* a whole-instance classification: the remainder
+of the fuse controller stays Class 3, so the implementation must identify the
+program-path scan roots and name them accordingly.
+
+[[secure-test-mode-secure_tm-secure-test-mode-secure_tm]]
+=== Secure Test Mode (SECURE_TM)
+
+We assert a GPIO pin strap to enable secure test mode. This generates
+the SECURE_TM signal which is consumed by
+
+* The DFT controller, which admits a *test* command on the Class 2 secure chain only while SECURE_TM is asserted. SECURE_TM does not enable scan test and authorizes nothing; it is the condition under which that chain will accept a test command at all.
+** Shadow registers of LOCKS/LOCKS_SPARE, LC_STATE, SIP_DIS, and SYS_DIS are non-scannable registers
+** Any downstream registers in the path from these registers to the feature control outputs or the fuse write-enable signals are also non-scannable, as are the SECURE_TM latch and the command-admission logic that consumes it
+*** Dedicated test registers may be inserted in the path while in SECURE_TM mode to enable testing of downstream logic
+** During scan test (`secure_tm = 1`) the secret-source outputs (UID / `CLASS_KEY`) are disconnected from the Class 2 consumers, so no real secret is shifted. On the Class 2 secure chain the DFT controller admits a test command only at `secure_tm = 1`, admits no command at `secure_tm = 0`, and never admits a dump command (never dumpable). See the Lifecycle Controller chapter, _`secure_tm` and the Secure Scan Chain_.
+** Disable writing to any OTP fuse state to prevent updates.
+* OTP controller
+** Disable _writing_ of shadow registers: LOCKS/LOCKS_SPARE, LC_STATE, SIP_DIS and SYS_DIS
+** Other shadow register fields may optionally also have write disabled

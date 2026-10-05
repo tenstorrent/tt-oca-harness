@@ -1,0 +1,67 @@
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="{{{or site.url siteRootPath}}}">{{site.title}}</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      {{#if env.SITE_SEARCH_PROVIDER}}
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs"{{#if page.home}} autofocus{{/if}}>
+        </div>
+      </div>
+      {{/if}}
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            {{!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands. Each link resolves to
+                 the start page of the book's version in this build, so a
+                 release snapshot links within itself. --}}
+            <a class="navbar-item" href="{{#with (lookup site.components 'ocah-starting')}}{{{relativize ./url}}}{{/with}}">Starting with OCAH</a>
+            <a class="navbar-item" href="{{#with (lookup site.components 'ocah-docs')}}{{{relativize ./url}}}{{/with}}">Technical Reference Manual</a>
+            <a class="navbar-item" href="{{#with (lookup site.components 'ocah-integrator-guide')}}{{{relativize ./url}}}{{/with}}">Integrator Guide</a>
+            <a class="navbar-item" href="{{#with (lookup site.components 'ocah-programmer-guide')}}{{{relativize ./url}}}{{/with}}">Programmer's Guide</a>
+            <a class="navbar-item" href="{{#with (lookup site.components 'ocah-appnotes')}}{{{relativize ./url}}}{{/with}}">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="{{{siteRootPath}}}" data-snapshot="{{env.OCAH_DOC_SNAPSHOT}}">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="{{{siteRootPath}}}/downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="{{{siteRootPath}}}/downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="{{{siteRootPath}}}/downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="{{{siteRootPath}}}/downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="{{{siteRootPath}}}/downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="{{{siteRootPath}}}/downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="{{{siteRootPath}}}/downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="{{{siteRootPath}}}/downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="{{{siteRootPath}}}/downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="{{{uiRootPath}}}/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>

@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# The shipped ROM key slot 5 backup behind a slot 0 primary with a broken magic.
+base = "rom_key5"
+ops = [
+  { op = "graft_slot_from", slot = "primary", args = { image = "signed" } },
+]
+patch = [
+  { fill = [0x1000, 0x1004], value = 0x99 },
+]

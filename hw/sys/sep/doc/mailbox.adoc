@@ -1,0 +1,110 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Mailboxes
+
+[[mailboxes]]
+
+ifdef::backend-html5[]
+:sep-filter-ref: xref:fabric.adoc#sep-traffic-filter-decode[Filtering and Protection]
+:axi-traffic-filter-ref: xref:ip:axi_filter/doc/index.adoc#axi-traffic-filter[AXI Traffic Filter]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+:sep-filter-ref: <<sep-traffic-filter-decode,Filtering and Protection>>
+:axi-traffic-filter-ref: <<axi-traffic-filter>>
+endif::backend-pdf[]
+
+
+<<sep-mailbox-diagram>> shows the host mailbox connections and interrupt routing.
+
+[[sep-mailbox-diagram]]
+.SEP host mailbox architecture and interrupt routing
+image::sep-host-mailbox.svg[alt="Mailbox unit with its AXI-Lite demux, mailboxes 0 and 7 with their outbound and inbound ports and FIFOs, and the interrupt routing to the SMC and the SEP CPU PIC",width=100%,pdfwidth=100%]
+
+The mailbox unit takes one AXI-Lite port from the peripheral crossbar, and its
+demux selects one of sixteen 2 kB port apertures from address bits 14 to 11.
+Mailbox _m_ occupies the 4 kB at `0x10A0_0000` + _m_ × `0x1000`, with its
+outbound port at offset `0x000` and its inbound port at offset `0x800`. The
+figure draws mailboxes 0 and 7; mailboxes 1 to 6 are identical. Each mailbox
+holds two FIFOs of eight 64-bit entries, and `WRITE_DATA` in one port pushes the
+FIFO that `READ_DATA` in the other port pops. Every port has its own
+level-sensitive, active-high interrupt. The eight inbound-port interrupts are
+SEP CPU PIC sources 1 to 8. The eight outbound-port interrupts leave SEP on
+`smc_mailbox_interrupt_o` and reach the SMC as its peripheral interrupts 7 to 0.
+
+SEP uses mailboxes to exchange service requests with system clients, such as
+software running on application-processor (AP) cores. A client is the requester
+whose communication context software wants to keep separate; it need not be
+an entire processor. The system's firmware policy assigns mailbox apertures
+to clients and configures the inbound traffic filter to control their access.
+The hardware does not establish a fixed one-client-per-core allocation.
+
+Each mailbox occupies a 4 KiB aperture and has an inbox/outbox pair.
+Its privacy depends on the programmed access policy, not on a distinct
+hardware mailbox type. When the inbox is
+written, an interrupt is sent to the SEP CPU to notify it of an incoming
+service request. Similarly, when the outbox is written by the SEP, an
+interrupt is sent to the SMC. The outbox is only used for communication with AP cores. For
+all other resources we only use inboxes on both ends of the transaction.
+
+The SEP mailboxes have 64-bit data registers while SEP is a 32-bit system.
+Registers sit on an 8-byte stride and are decoded by which 8-byte slot the
+address falls in, so a register's low and high halves alias to the same
+register. The SEP CPU is RV32 and can reach only one half per instruction,
+which makes every half-word access a full-register access at the mailbox:
+
+* A read of `READ_DATA` at either half pops one FIFO entry. The mailbox drives
+the whole entry; the CPU keeps the half selected by address bit 2 and discards
+the other. Reading both halves consumes two entries.
+* A write of `WRITE_DATA` at either half pushes one entry, with bytes outside
+the write strobe pushed as zero. A 32-bit store to the low half enqueues
+`{32'h0, data}`.
+
+SEP can use either half, but never both halves of one entry, so a SEP-visible
+payload is 32 bits per entry and both ends must agree on which half carries
+it. SEP firmware uses the low half at the register base offset.
+
+NOTE: This depends on the mailbox aperture staying side-effect in `mrac`.
+Clearing side-effect enables the core's load-to-load forwarding and
+speculative accesses, both of which pop entries unpredictably. The
+Programmer's Guide lists it among the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-smc-mailbox-protocol[mailbox usage rules].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-mailbox-protocol[mailbox usage rules].
+endif::backend-pdf[]
+
+Mailbox type is a configuration, not a hardware variant. Every mailbox is an
+identical instance of the same block; what makes one an ISS mailbox and
+another an STEE or Regular mailbox is the inbound traffic filter entry that
+covers its 4 kB aperture. The filter blocks by default, so a mailbox with no
+enabled entry over its aperture is unreachable from the fabric, and
+reprogramming an entry retypes that mailbox at run time. An entry pairs an
+address range with the qualification criteria below, plus separate read and
+write permissions and a write-once lock bit. See {sep-filter-ref}
+for the SEP filter instances and {axi-traffic-filter-ref} for the entry
+registers and the decode algorithm used to program them.
+
+<<sep-mailbox-qualification-table>> describes the traffic qualifications used to
+distinguish mailbox types.
+
+[[sep-mailbox-qualification-table]]
+[width="100%",cols="<20%,<80%",options="header",]
+.SEP mailbox qualification
+|=======================================================================
+|Mailbox Type |Description
+|ISS |Uses fabric source ID to qualify incoming transactions. Legal
+source ID is programmable, lockable and reset by SEP reset.
+
+|STEE |Relies on STEE indicator in the transactions (NS bit) to qualify
+incoming transactions.
+
+|DTEE |Reserved. Would rely on the DTEE indicator in the transactions
+(confidential bit) to qualify incoming transactions. TODO: Confidential
+bit will be defined in future revisions, right now there is no hardware
+to qualify this.
+
+|Regular |Relies on PMA/PMP or page table for protection. No special
+action required by SEP.
+|=======================================================================

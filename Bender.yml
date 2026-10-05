@@ -1,0 +1,1580 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+package:
+  name: tt-oca-harness
+  # Contributors are listed once, in CONTRIBUTORS at the repository root.
+
+# Path dependencies on the vendored trees (transitive pins in Bender.local).
+dependencies:
+  aou: { path: "vendor/tenstorrent/aou" }
+  tt_dfd: { path: "vendor/tenstorrent/tt-hw-debug" }
+  el2: { path: "vendor/chipsalliance/Cores-VeeR-EL2" }
+  idma: { path: "vendor/pulp-platform/idma" }
+  opentitan: { path: "vendor/lowRISC/opentitan" }
+  picorv32: { path: "vendor/tenstorrent/tt-picorv32" }
+
+# Third-party IP vendored under vendor/<org>/<pkg>/upstream via `bender vendor init`.
+vendor_package:
+  # OpenTitan: prim, per-IP rtl/hjson, reference figures, and reggen/mubi.
+  - name: opentitan
+    target_dir: vendor/lowRISC/opentitan/upstream
+    upstream: { git: "https://github.com/tenstorrent/tt-opentitan.git", rev: "d1ce369cb357a7a4718c75f11567742a78a7ed07" }
+    include_from_upstream:
+      # Core reference figures used by the TRM.
+      - "hw/ip/aes/doc/aes_block_diagram.svg"
+      - "hw/ip/hmac/doc/hmac_block_diagram.svg"
+      - "hw/ip/i2c/doc/i2c_block_diagram.svg"
+      - "hw/ip/kmac/doc/kmac-block-diagram.svg"
+      - "hw/ip/otbn/doc/otbn_blockarch.svg"
+      - "hw/ip/dma/doc/block_diagram.svg"
+      - "hw/ip/prim/rtl"
+      - "hw/ip/prim_generic/rtl"
+      - "hw/ip/prim_generic/lint"
+      # Per-IP rtl + the <ip>.hjson feeding the SystemRDL register flow.
+      - "hw/ip/otbn/rtl"
+      - "hw/ip/otbn/data/otbn.hjson"
+      # OTBN assembler toolchain (otbn_as/otbn_ld + the insn/csr yamls they
+      # read), tracer RTL for the UVM testbenches, and the AES C reference
+      # model + DPI (sep.f / nonfree_smu.f).
+      - "hw/ip/otbn/data/base-insns.yml"
+      - "hw/ip/otbn/data/bignum-insns.yml"
+      - "hw/ip/otbn/data/csr.yml"
+      - "hw/ip/otbn/data/enc-schemes.yml"
+      - "hw/ip/otbn/data/insns.yml"
+      - "hw/ip/otbn/data/otbn.ld.tpl"
+      - "hw/ip/otbn/data/wsr.yml"
+      - "hw/ip/otbn/dv/tracer/rtl"
+      - "hw/ip/otbn/util"
+      - "hw/ip/aes/model"
+      - "hw/ip/aes/dv/aes_model_dpi"
+      - "hw/ip/aon_timer/rtl"
+      - "hw/ip/aon_timer/data/aon_timer.hjson"
+      - "hw/ip/csrng/rtl"
+      - "hw/ip/csrng/data/csrng.hjson"
+      - "hw/ip/edn/rtl"
+      - "hw/ip/edn/data/edn.hjson"
+      - "hw/ip/dma/rtl"
+      - "hw/ip/dma/data/dma.hjson"
+      - "hw/ip/spi_host/rtl"
+      - "hw/ip/spi_host/data/spi_host.hjson"
+      - "hw/ip/aes/rtl"
+      - "hw/ip/aes/data/aes.hjson"
+      - "hw/ip/hmac/rtl"
+      - "hw/ip/hmac/data/hmac.hjson"
+      - "hw/ip/kmac/rtl"
+      - "hw/ip/kmac/data/kmac.hjson"
+      - "hw/ip/entropy_src/rtl"
+      - "hw/ip/entropy_src/data/entropy_src.hjson"
+      # Package-only imports: OCAH does not instantiate these IPs.
+      # Vendored OT blocks still import the package names.
+      - "hw/ip/lc_ctrl/rtl/lc_ctrl_pkg.sv"
+      - "hw/ip/lc_ctrl/rtl/lc_ctrl_state_pkg.sv"
+      - "hw/ip/lc_ctrl/rtl/lc_ctrl_reg_pkg.sv"
+      - "hw/ip/keymgr/rtl/keymgr_pkg.sv"
+      - "hw/ip/keymgr/rtl/keymgr_reg_pkg.sv"
+      - "hw/ip/otp_ctrl/rtl/otp_ctrl_pkg.sv"
+      # reggen + mubi modules used to export <ip>.hjson to SystemRDL.
+      - "util/reggen/access.py"
+      - "util/reggen/alert.py"
+      - "util/reggen/bits.py"
+      - "util/reggen/bus_interfaces.py"
+      - "util/reggen/clocking.py"
+      - "util/reggen/countermeasure.py"
+      - "util/reggen/enum_entry.py"
+      - "util/reggen/exporter.py"
+      - "util/reggen/feature.py"
+      - "util/reggen/field.py"
+      - "util/reggen/inter_signal.py"
+      - "util/reggen/interrupt.py"
+      - "util/reggen/ip_block.py"
+      - "util/reggen/lib.py"
+      - "util/reggen/memory.py"
+      - "util/reggen/multi_register.py"
+      - "util/reggen/params.py"
+      - "util/reggen/reg_base.py"
+      - "util/reggen/reg_block.py"
+      - "util/reggen/register.py"
+      - "util/reggen/signal.py"
+      - "util/reggen/systemrdl_exporter.py"
+      - "util/reggen/systemrdl/udp.py"
+      - "util/reggen/systemrdl/udp.rdl"
+      - "util/reggen/window.py"
+      - "util/design/mubi/prim_mubi.py"
+    exclude_from_upstream:
+      # Unused FPGA RegFile variants.
+      - "hw/ip/otbn/rtl/otbn_rf_base_fpga.sv"
+      - "hw/ip/otbn/rtl/otbn_rf_bignum_fpga.sv"
+      # Bazel and SCA-campaign collateral unused by the vendored OTBN toolchain.
+      - "hw/ip/otbn/util/BUILD"
+      - "hw/ip/otbn/util/shared/BUILD"
+      - "hw/ip/otbn/util/otbn_fi_campaign.py"
+      - "hw/ip/otbn/util/otbn_tvla_campaign.py"
+    patch_dir: "vendor/lowRISC/opentitan/patches"
+
+  # pulp-platform packages, each pinned to a vendored rev.
+  - name: common_verification
+    target_dir: "vendor/pulp-platform/common_verification/upstream"
+    upstream: { git: "https://github.com/tenstorrent/tt-common_verification.git", rev: "c5d97a1fae01d2d8e8e311dee341b6b8849dcf38" }
+    include_from_upstream:
+      - "src"
+      - "test"
+    patch_dir: "vendor/pulp-platform/common_verification/patches"
+
+  - name: common_cells
+    target_dir: "vendor/pulp-platform/common_cells/upstream"
+    upstream: { git: "https://github.com/tenstorrent/tt-common_cells.git", rev: "c0961324117d186b1c4d87e2815dd31389ca7838" }
+    include_from_upstream:
+      - "src"
+      - "include"
+      - "test"
+    patch_dir: "vendor/pulp-platform/common_cells/patches"
+
+  # apb: flattened per-file mapping of the sources tt-oca instantiates.
+  - name: apb
+    target_dir: "vendor/pulp-platform/apb/upstream"
+    upstream: { git: "https://github.com/tenstorrent/tt-apb.git", rev: "77ddf073f194d44b9119949d2421be59789e69ae" }
+    patch_dir: "vendor/pulp-platform/apb/patches"
+    mapping:
+      - { from: "src/apb_demux.sv",   to: "apb_demux.sv",   patch_dir: "." }
+      - { from: "src/apb_pkg.sv",     to: "apb_pkg.sv" }
+      - { from: "src/apb_intf.sv",    to: "apb_intf.sv" }
+      - { from: "src/apb_cdc.sv",     to: "apb_cdc.sv" }
+      - { from: "include",            to: "include" }
+
+  # axi: pinned rev with in-place edits and extra modules applied via patch.
+  - name: axi
+    target_dir: "vendor/pulp-platform/axi/upstream"
+    upstream: { git: "https://github.com/tenstorrent/tt-axi.git", rev: "0ca386b3ea47669d5dd9314b8366300e3ff53746" }
+    include_from_upstream:
+      - "src"
+      - "include"
+    patch_dir: "vendor/pulp-platform/axi/patches"
+
+  # idma: vendored src with in-place edits; generated bundle lives in overlay/.
+  - name: idma
+    target_dir: "vendor/pulp-platform/idma/upstream"
+    upstream: { git: "https://github.com/tenstorrent/tt-iDMA.git", rev: "4664f8bd7eb2f10c732215bb5f9d43e0a8e08238" }
+    include_from_upstream:
+      - "src"
+    patch_dir: "vendor/pulp-platform/idma/patches"
+
+  # UNBENT bus error unit (pulp-platform/unbent), Solderpad 0.51.
+  # AXI wrapper path only; OBI wrapper intentionally excluded.
+  - name: unbent
+    target_dir: "vendor/pulp-platform/unbent/upstream"
+    upstream: { git: "https://github.com/tenstorrent-forks/unbent.git", rev: "2df7a3f0307739d3813cf77db8228720b39a94f8" }
+    include_from_upstream:
+      - "LICENSE"
+      - "src/bus_err_unit_reg_pkg.sv"
+      - "src/bus_err_unit_bare.sv"
+      - "src/bus_err_unit_reg_top.sv"
+      - "src/bus_err_unit.sv"
+      - "src/axi_err_unit_wrap.sv"
+
+  - name: axi_stream
+    target_dir: "vendor/pulp-platform/axi_stream/upstream"
+    upstream: { git: "https://github.com/tenstorrent/tt-axi_stream.git", rev: "54891ff40455ca94a37641b9da4604647878cc07" }
+    include_from_upstream:
+      - "src"
+      - "include"
+      - "test"
+    patch_dir: "vendor/pulp-platform/axi_stream/patches"
+
+  # obi/register_interface: pruned to the sources tt-oca instantiates.
+  - name: obi
+    target_dir: "vendor/pulp-platform/obi/upstream"
+    upstream: { git: "https://github.com/tenstorrent/tt-obi.git", rev: "b3f47e00e3a60ee3346253e3e7be7d1f732f05fd" }
+    include_from_upstream:
+      - "src/obi_pkg.sv"
+      - "include/obi/typedef.svh"
+    patch_dir: "vendor/pulp-platform/obi/patches"
+
+  - name: register_interface
+    target_dir: "vendor/pulp-platform/register_interface/upstream"
+    upstream: { git: "https://github.com/tenstorrent/tt-register_interface.git", rev: "d6e1d4cdaab7870f4faf3f88a1c788eaf5ac129d" }
+    include_from_upstream:
+      - "src/reg_intf.sv"
+      - "src/reg_demux.sv"
+      - "src/reg_mux.sv"
+      - "src/periph_to_reg.sv"
+      - "src/axi_to_reg_v2.sv"
+      - "include/register_interface/typedef.svh"
+      - "include/register_interface/assign.svh"
+    patch_dir: "vendor/pulp-platform/register_interface/patches"
+
+  # Adams Bridge post-quantum engine (ML-DSA-87 / ML-KEM-1024).
+  # RTL reachable from abr_top and reference figures for the SEP documentation;
+  # testbench and coverage collateral are left out.
+  - name: adams_bridge
+    target_dir: "vendor/chipsalliance/adams-bridge/upstream"
+    upstream: { git: "https://github.com/chipsalliance/adams-bridge.git", rev: "e59eba955eac2a1adcb059f250641ede78e304be" }
+    include_from_upstream:
+      - "LICENSE"
+      - "docs/images/MLDSA/image3.png"
+      - "docs/images/MLKEM/AdamsBridge_MLKEM.png"
+      - "src/abr_top/rtl"
+      - "src/abr_libs/rtl"
+      - "src/abr_prim/rtl"
+      - "src/abr_prim_generic/rtl"
+      - "src/abr_sampler_top/rtl"
+      - "src/abr_sha3/rtl"
+      - "src/barrett_reduction/rtl"
+      - "src/cbd_sampler/rtl"
+      - "src/compress/rtl"
+      - "src/decompose/rtl"
+      - "src/decompress/rtl"
+      - "src/exp_mask/rtl"
+      - "src/makehint/rtl"
+      - "src/norm_check/rtl"
+      - "src/ntt_top/rtl"
+      - "src/pk_decode/rtl"
+      - "src/power2round/rtl"
+      - "src/rej_bounded/rtl"
+      - "src/rej_sampler/rtl"
+      - "src/sample_in_ball/rtl"
+      - "src/sigdecode_h/rtl"
+      - "src/sig_decode_z/rtl"
+      - "src/sig_encode_z/rtl"
+      - "src/sk_decode/rtl"
+      - "src/sk_encode/rtl"
+    patch_dir: "vendor/chipsalliance/adams-bridge/patches"
+
+  # Caliptra KeyVault: only the client-side helpers Adams Bridge uses under
+  # `ifdef CALIPTRA`. The vault itself and its registers are not vendored;
+  # sep_abr_kv_shim serves the key-vault read/write instead.
+  - name: caliptra_keyvault
+    target_dir: "vendor/chipsalliance/caliptra-rtl/upstream"
+    upstream: { git: "https://github.com/chipsalliance/caliptra-rtl.git", rev: "ec349a89a0fe7bbe24f16c6bb05f9779d5a3d4c6" }
+    include_from_upstream:
+      - "LICENSE"
+      - "src/keyvault/rtl/kv_macros.svh"
+      - "src/keyvault/rtl/kv_defines_pkg.sv"
+      - "src/keyvault/rtl/kv_fsm.sv"
+      - "src/keyvault/rtl/kv_read_rule_check.sv"
+      - "src/keyvault/rtl/kv_write_rule_check.sv"
+      - "src/keyvault/rtl/kv_read_client.sv"
+      - "src/keyvault/rtl/kv_write_client.sv"
+      - "src/libs/rtl/caliptra_sva.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert.sv"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_standard_macros.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_dummy_macros.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_yosys_macros.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_sec_cm.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_flop_macros.sv"
+    patch_dir: "vendor/chipsalliance/caliptra-rtl/patches"
+
+  # VeeR EL2 core; config snapshots live in overlay/.
+  - name: veer_el2
+    target_dir: "vendor/chipsalliance/Cores-VeeR-EL2/upstream"
+    upstream: { git: "https://github.com/tenstorrent/tt-Cores-VeeR-EL2.git", rev: "07a51d817c5042f57850e931a1fb5e6a557a9333" }
+    include_from_upstream:
+      - "design"
+      - "configs"
+      - "tools"
+      - "testbench"
+    patch_dir: "vendor/chipsalliance/Cores-VeeR-EL2/patches"
+
+  - name: picorv32
+    target_dir: "vendor/tenstorrent/tt-picorv32/upstream"
+    upstream: { git: "https://github.com/tenstorrent/tt-picorv32.git", rev: "9cc836f58580d59d90e8a764382aa78acb14d399" }
+    include_from_upstream:
+      - "picorv32.sv"
+      - "picorv32_axi.sv"
+      - "picorv32_axi_adapter.sv"
+      - "picorv32_pcpi_div.sv"
+      - "picorv32_pcpi_fast_mul.sv"
+      - "picorv32_pcpi_mul.sv"
+      - "picorv32_regs.sv"
+      - "picorv32_wb.sv"
+    patch_dir: "vendor/tenstorrent/tt-picorv32/patches"
+
+  # Tenstorrent DFD (Design-for-Debug) IP: CLA + DST + trace sink.
+  # TODO: enable once the tt_hw_debug GitLab remote is reachable from CI. Until
+  # then vendor/tenstorrent/tt-hw-debug/upstream/ is a hand-mirrored subset -
+  # see that package's Bender.yml. Keep include_from_upstream in sync with it.
+  # - name: tt_dfd
+  #   target_dir: "vendor/tenstorrent/tt-hw-debug/upstream"
+  #   upstream: { git: "<gitlab-url>/tt_hw_debug.git", rev: "<pin>" }
+  #   include_from_upstream:
+  #     - "rtl"
+  #     - "dependencies/common"
+  #   patch_dir: "vendor/tenstorrent/tt-hw-debug/patches"
+
+  # AXI-over-UCIe (AoU) bridge IP: RTL, CSR SystemRDL, and the MAS.
+  - name: aou
+    target_dir: "vendor/tenstorrent/aou/upstream"
+    upstream: { git: "https://github.com/tenstorrent/tt-oca-harness-aou.git", rev: "08863921a328579bc96f3141b05113c11d7ac84c" }
+    include_from_upstream:
+      - "RTL"
+      - "csr"
+      - "DOC/MAS"
+      - "DOC/integration_guide"
+    patch_dir: "vendor/tenstorrent/aou/patches"
+
+  # I3C controller/target core. The wrapper and memory primitives are left out;
+  # this tree supplies its own through i3ccore_wrap.
+  - name: i3c-core
+    target_dir: "vendor/chipsalliance/i3c-core/upstream"
+    upstream: { git: "https://github.com/tenstorrent/tt-i3c-core.git", rev: "288f00ea21caf929b17ec1234abc3317b7ec071f" }
+    include_from_upstream:
+      - "LICENSE"
+      - "src"
+      - "doc/source/img/hc_top_level_arch.png"
+    exclude_from_upstream:
+      - "src/i3c_wrapper.sv"
+      - "src/libs/mem"
+      - "src/*.f"
+    patch_dir: "vendor/chipsalliance/i3c-core/patches"
+
+  - name: i3c-core-caliptra-rtl
+    target_dir: "vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl"
+    upstream: { git: "https://github.com/tenstorrent/caliptra-rtl-fork.git", rev: "8bd654eba57cfaa0688f9c4804b23253d0235dfc" }
+    include_from_upstream:
+      - "LICENSE"
+      - "src/axi/rtl/axi_addr.v"
+      - "src/axi/rtl/axi_if.sv"
+      - "src/axi/rtl/i3ccore_axi_pkg.sv"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert.sv"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_dummy_macros.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_sec_cm.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_standard_macros.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_yosys_macros.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_flop_macros.sv"
+      - "src/libs/rtl/caliptra_sva.svh"
+      - "src/libs/rtl/skidbuffer.v"
+    patch_dir: "vendor/chipsalliance/i3c-core/patches/caliptra-rtl"
+
+  - name: i3c-core-cocotbext-i3c
+    target_dir: "vendor/chipsalliance/i3c-core/upstream/third_party/cocotbext-i3c"
+    upstream: { git: "https://github.com/antmicro/cocotbext-i3c.git", rev: "6456315697d980ba59ff09448b89941346a3ce16" }
+    include_from_upstream:
+      - "LICENSE"
+      - "pyproject.toml"
+      - "src"
+    patch_dir: "vendor/chipsalliance/i3c-core/patches/cocotbext-i3c"
+
+# RTL sources are partitioned by composable subsystem targets.
+sources:
+  # Shared files are selected when any owning subsystem is requested.
+  # Selecting dtp, sep, and smc together also selects SMU integration.
+  - target: all(dtp, not(sep))
+    files:
+      - hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv
+  - target: any(dtp, sep, smc, key_manager, uart, system_timer_octs)
+    include_dirs:
+      - hw/common/assert
+      - hw/common/defs
+      - hw/ip/efuse/rtl/svh
+    files:
+      - hw/common/ocah_prim/rtl/prim_jtag_pkg.sv
+      - hw/common/ocah_prim/rtl/prim_ram_1p_adv_ext_pkg.sv
+  - target: smc
+    include_dirs:
+      - hw/sys/smc/rtl/smc_cpu
+      - hw/ip/i3ccore_wrap/rtl
+      - vendor/chipsalliance/i3c-core/upstream/src
+      - vendor/chipsalliance/i3c-core/upstream/src/libs
+      - vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl/src/axi/rtl
+      - vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl/src/caliptra_prim/rtl
+      - vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl/src/libs/rtl
+    files:
+      - hw/ip/avsbus_controller/regs/gen/sv/avsbus_controller_addrmap_pkg.sv
+  - target: sep
+    files:
+      - hw/ip/axi_alias_remap/regs/gen/sv/alias_remap_addrmap_pkg.sv
+  - target: any(sep, smc)
+    files:
+      - hw/ip/axi_filter/regs/gen/sv/filter_ctrl_addrmap_pkg.sv
+      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_addrmap_pkg.sv
+      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_addrmap_pkg.sv
+      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_addrmap_pkg.sv
+  - target: smc
+    files:
+      - hw/ip/dfd/regs/gen/sv/smc_cla_addrmap_pkg.sv
+  - target: any(sep, smc)
+    files:
+      - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_addrmap_pkg.sv
+      - hw/ip/efuse/regs/gen/sv/efuse_mmr_addrmap_pkg.sv
+  - target: any(sep, entropy_source)
+    files:
+      - hw/ip/entropy_source/regs/gen/sv/entropy_source_addrmap_pkg.sv
+  - target: smc
+    files:
+      - hw/ip/gpio/regs/gen/sv/gpio_intf_addrmap_pkg.sv
+      - hw/ip/i2c/regs/gen/sv/i2c_addrmap_pkg.sv
+      - hw/ip/i2c/regs/gen/sv/i2c_ctrl_addrmap_pkg.sv
+      - hw/ip/i2c/regs/gen/sv/i2c_wrap_addrmap_pkg.sv
+      - hw/ip/i3ccore_wrap/regs/gen/sv/oca_i3c_wrap_addrmap_pkg.sv
+  - target: any(sep, key_manager)
+    files:
+      - hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_addrmap_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/aes_wrapper_key_addrmap_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/hmac_wrapper_key_addrmap_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/key_manager_addrmap_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/km_csr_addrmap_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/km_drbg_sampler_addrmap_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/km_kpv_addrmap_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/km_mailbox_km_addrmap_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/km_mailbox_sep_addrmap_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/kmac_wrapper_key_addrmap_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/otbn_wrapper_key_addrmap_pkg.sv
+  - target: any(smc, uart)
+    files:
+      - hw/ip/uart/log_engine/regs/gen/sv/log_engine_addrmap_pkg.sv
+  - target: sep
+    files:
+      - hw/ip/output_remap/regs/gen/sv/output_remap_addrmap_pkg.sv
+  - target: any(smc, system_timer_octs)
+    files:
+      - hw/ip/system_timer_octs/regs/gen/sv/system_timer_octs_addrmap_pkg.sv
+  - target: smc
+    files:
+      - hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_addrmap_pkg.sv
+      - hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_wrap_addrmap_pkg.sv
+  - target: any(smc, uart)
+    files:
+      - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_dl_addrmap_pkg.sv
+      - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_addrmap_pkg.sv
+      - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_wo_addrmap_pkg.sv
+      - hw/ip/uart/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_ctrl_addrmap_pkg.sv
+      - hw/ip/uart/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_wrap_addrmap_pkg.sv
+      - hw/ip/uart/uart_wrap/regs/gen/sv/uart_wrap_addrmap_pkg.sv
+  - target: smc
+    files:
+      - hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_addrmap_pkg.sv
+  - target: smc
+    files:
+      - hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv
+  - target: any(sep, smc)
+    files:
+      - hw/ip/avsbus_controller/regs/gen/sv/avsbus_controller_reg_pkg.sv
+      - hw/ip/avsbus_controller/rtl/avsbus_controller_pkg.sv
+      - hw/ip/axi_alias_remap/regs/gen/sv/alias_remap_reg_pkg.sv
+      - hw/ip/axi_filter/regs/gen/sv/filter_ctrl_reg_pkg.sv
+      - hw/ip/axi_filter/rtl/axi_filter_pkg.sv
+  # The cross_trigger family compiles inside the DTP DUT and standalone in the
+  # per-IP benches under hw/ip/cross_trigger/*/dv (target `cross_trigger`).
+  - target: any(dtp, cross_trigger)
+    files:
+      - hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_addrmap_pkg.sv
+      - hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg_pkg.sv
+      - hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix_pkg.sv
+      - hw/ip/cross_trigger/cross_trigger_network/regs/gen/sv/cross_trigger_network_addrmap_pkg.sv
+      - hw/ip/cross_trigger/cross_trigger_network/rtl/cross_trigger_network_pkg.sv
+      - hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg_pkg.sv
+      - hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port_pkg.sv
+  - target: any(drbg, sep)
+    files:
+      - hw/ip/drbg/rtl/drbg_pkg.sv
+  - target: any(sep, smc)
+    files:
+      - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_reg_pkg.sv
+      - hw/ip/efuse/regs/gen/sv/efuse_mmr_reg_pkg.sv
+  - target: any(dtp, sep, smc)
+    files:
+      - hw/ip/efuse/rtl/efuse_pkg.sv
+  - target: any(sep, entropy_source)
+    files:
+      - hw/ip/entropy_source/regs/gen/sv/entropy_source_reg_pkg.sv
+      - hw/ip/entropy_source/rtl/entropy_source_pkg.sv
+  - target: smc
+    files:
+      - hw/ip/gpio/regs/gen/sv/gpio_intf_reg_pkg.sv
+      - hw/ip/gpio/rtl/gpio_pkg.sv
+      - hw/ip/i2c/regs/gen/sv/i2c_reg_pkg.sv
+      - hw/ip/i2c/rtl/i2c_pkg.sv
+      - hw/ip/i2c/regs/gen/sv/i2c_ctrl_reg_pkg.sv
+      - hw/ip/i2c/rtl/i2c_wrap_pkg.sv
+      - hw/ip/i3ccore_wrap/rtl/i3ccore_wrap_pkg.sv
+  - target: dtp
+    files:
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_inst_reg_pkg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_tap_pkg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_tmp_pkg.sv
+  - target: any(sep, key_manager)
+    files:
+      - hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/aes_wrapper_key_reg_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/hmac_wrapper_key_reg_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/km_csr_reg_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/km_drbg_sampler_reg_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/km_kpv_reg_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/km_mailbox_km_reg_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/km_mailbox_sep_reg_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/kmac_wrapper_key_reg_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/otbn_wrapper_key_reg_pkg.sv
+      - hw/ip/key_manager/rtl/km_intf_pkg.sv
+  - target: any(smc, uart)
+    files:
+      - hw/ip/uart/log_engine/regs/gen/sv/log_engine_reg_pkg.sv
+      - hw/ip/uart/log_engine/rtl/log_engine_pkg.sv
+  - target: sep
+    files:
+      - hw/ip/memory_interface/rtl/examples/rom/example_rom_pkg.sv
+      - hw/ip/memory_interface/rtl/examples/sram/example_sram_pkg.sv
+  - target: any(sep, smc)
+    files:
+      - hw/ip/output_remap/regs/gen/sv/output_remap_reg_pkg.sv
+  - target: any(sep, key_manager, scrambler)
+    files:
+      - hw/ip/scrambler/rtl/scrambler_pkg.sv
+  - target: any(smc, system_timer_octs)
+    files:
+      - hw/ip/system_timer_octs/regs/gen/sv/system_timer_octs_reg_pkg.sv
+      - hw/ip/system_timer_octs/rtl/system_timer_octs_pkg.sv
+  - target: smc
+    files:
+      - hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_reg_pkg.sv
+      - hw/ip/telemetry_receiver/rtl/telemetry_receiver_pkg.sv
+      - hw/ip/telemetry_receiver/rtl/telemetry_receiver_wrap_pkg.sv
+  - target: any(smc, uart)
+    files:
+      - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_dl_reg_pkg.sv
+      - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_reg_pkg.sv
+      - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_wo_reg_pkg.sv
+      - hw/ip/uart/uart_16550/rtl/uart_16550_pkg.sv
+      - hw/ip/uart/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_ctrl_reg_pkg.sv
+      - hw/ip/uart/uart_log_engine_wrap/rtl/uart_log_engine_wrap_pkg.sv
+      - hw/ip/uart/uart_wrap/rtl/uart_wrap_pkg.sv
+  - target: smc
+    files:
+      - hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_reg_pkg.sv
+  - target: dtp
+    files:
+      - hw/sys/dtp/rtl/dtp_pkg.sv
+  - target: sep
+    files:
+      - hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg_pkg.sv
+      - hw/sys/sep/regs/gen/sv/blocks/sep_lifecycle_ctrl_reg_pkg.sv
+      - hw/sys/sep/regs/gen/sv/blocks/sep_reset_ctrl_reg_pkg.sv
+      - hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg_pkg.sv
+      - hw/sys/sep/rtl/crossbars/sep_local_axi_xbar_pkg.sv
+      - hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar_pkg.sv
+  - target: any(dtp, sep)
+    files:
+      - hw/sys/sep/rtl/sep_lifecycle_ctrl_pkg.sv
+      - hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv
+  - target: sep
+    files:
+      - hw/sys/sep/rtl/sep_io_pkg.sv
+  - target: smc
+    files:
+      - hw/sys/smc/regs/gen/sv/blocks/chip_config_reg_pkg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/cpu_ctrl_reg_pkg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/dfx_ctrl_status_reg_pkg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/ndm_reset_reg_pkg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/reset_unit_reg_pkg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/scratch_reg_pkg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/smc_base_config_reg_pkg.sv
+      - hw/sys/smc/rtl/smc_pkg.sv
+      - hw/sys/smc/rtl/crossbars/smc_internal_axi_lite_xbar_pkg.sv
+      - hw/sys/smc/rtl/crossbars/smc_local_xbar_pkg.sv
+      - hw/sys/smc/rtl/crossbars/smc_periph_axi_lite_xbar_pkg.sv
+      - hw/sys/smc/rtl/smc_config_pkg.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_4core_mem_pkg.sv
+      - hw/sys/smc/rtl/smc_cpu/smc_4core_cpu_pkg.sv
+      - hw/sys/smc/rtl/smc_misc/rtl/smc_misc_pkg.sv
+      - hw/sys/smc/rtl/smc_peripherals/efuse/smc_efuse_pkg.sv
+      - hw/sys/smc/rtl/smc_peripherals/pkg/smc_padring_pkg.sv
+      - hw/sys/smc/rtl/smc_reset_unit/rtl/smc_reset_unit_pkg.sv
+  - target: all(dtp, sep, smc)
+    files:
+      - hw/sys/smu/rtl/smu_axi_xbar_pkg.sv
+      - hw/sys/smu/rtl/smu_pkg.sv
+  - target: any(sep, smc, entropy_source)
+    files:
+      - hw/common/axi/axi4lite_intf.sv
+      - hw/common/axi/axi_cg_snoop.sv
+  # axi_lite_to_ahb compiles inside SEP and standalone in its unit bench under
+  # hw/common/axi/dv (target `axi_lite_to_ahb`).
+  - target: any(sep, axi_lite_to_ahb)
+    files:
+      - hw/common/axi/axi_lite_to_ahb.sv
+  - target: any(drbg, sep)
+    files:
+      - hw/common/axi/axi_lite_to_tlul.sv
+      - hw/common/axi/tlul_to_axi_lite.sv
+  - target: any(dtp, sep, smc, key_manager, uart, system_timer_octs, axi_hang_detector)
+    files:
+      - hw/common/ocah_prim/rtl/prim_axi_snoop.sv
+  - target: any(dtp, sep, smc, key_manager, uart, system_timer_octs, entropy_source)
+    files:
+      - hw/common/ocah_prim/rtl/prim_clkmux4.sv
+  - target: any(dtp, sep, smc, key_manager, uart, system_timer_octs)
+    files:
+      - hw/common/ocah_prim/rtl/prim_ag_clk_mux.sv
+      - hw/common/ocah_prim/rtl/prim_apb_arb.sv
+      # prim_apb_mux_struct.sv is deliberately not listed. It sizes its localparams
+      # with $bits(req_t'(0).paddr); VCS rejects that cast-then-member-select in a
+      # parameter port list, in both V-2023.12-SP2-9 and X-2025.06, though slang and
+      # Verilator accept it. Nothing in this tree or nonfree instantiates the
+      # module, and the file is intentionally kept unpatched, so listing it here
+      # would only break every VCS flow that consumes bender's raw output.
+      - hw/common/ocah_prim/rtl/prim_axi_addr_fixer.sv
+      - hw/common/ocah_prim/rtl/prim_axi_id_converter.sv
+      - hw/common/ocah_prim/rtl/prim_axi_id_prepend_wrap.sv
+      - hw/common/ocah_prim/rtl/prim_axi_lite_err_slv.sv
+      - hw/common/ocah_prim/rtl/prim_axi_lite_to_apb_single.sv
+      - hw/common/ocah_prim/rtl/prim_axi_user_override.sv
+      - hw/common/ocah_prim/rtl/prim_axil_access_gate.sv
+      - hw/common/ocah_prim/rtl/prim_axil_addr_fixer.sv
+      - hw/common/ocah_prim/rtl/prim_axil_prot_filter.sv
+      - hw/common/ocah_prim/rtl/prim_bin2gray.sv
+      - hw/common/ocah_prim/rtl/prim_carry_select_adder.sv
+      - hw/common/ocah_prim/rtl/prim_cg_req.sv
+      - hw/common/ocah_prim/rtl/prim_clk_counter.sv
+      - hw/common/ocah_prim/rtl/prim_clk_counter_fifo_sync.sv
+      - hw/common/ocah_prim/rtl/prim_clk_gater_hysteresis.sv
+      - hw/common/ocah_prim/rtl/prim_diff_decode_multi.sv
+      - hw/common/ocah_prim/rtl/prim_diff_encode_multi.sv
+      - hw/common/ocah_prim/rtl/prim_fair_rr_arb.sv
+      - hw/common/ocah_prim/rtl/prim_fifo_sync_parity.sv
+      - hw/common/ocah_prim/rtl/prim_gray2bin.sv
+      - hw/common/ocah_prim/rtl/prim_jtag_scan_reg.sv
+      - hw/common/ocah_prim/rtl/prim_jtag_sib_mux_post.sv
+      - hw/common/ocah_prim/rtl/prim_jtag_sib_mux_pre.sv
+      - hw/common/ocah_prim/rtl/prim_pipe_stages.sv
+      - hw/common/ocah_prim/rtl/prim_prog_clk_div_posedge.sv
+      - hw/common/ocah_prim/rtl/prim_pulse_signal.sv
+      - hw/common/ocah_prim/rtl/prim_refclk_count_w_cdc.sv
+      - hw/common/ocah_prim/rtl/prim_rev_cell.sv
+      - hw/common/ocah_prim/rtl/prim_rst_mux2_hf_n.sv
+      - hw/common/ocah_prim/rtl/prim_sync3.sv
+      - hw/common/ocah_prim/rtl/prim_sync3_pulse.sv
+      - hw/common/ocah_prim/rtl/prim_sync3r.sv
+      - hw/common/ocah_prim/rtl/prim_sync4.sv
+      - hw/common/ocah_prim/rtl/prim_sync4r.sv
+      - hw/common/ocah_prim/rtl/prim_sync_data_autohs.sv
+      - hw/common/ocah_prim/rtl/prim_sync_reset.sv
+      - hw/common/ocah_prim/rtl/prim_updown_counter.sv
+      - hw/common/ocah_prim/rtl/prim_zero_counter.sv
+      - hw/common/sync.sv
+  # Scrambled-RAM primitives: dtp has no scrambled memory, so excluded here.
+  - target: any(sep, smc, key_manager)
+    files:
+      - hw/common/ocah_prim/rtl/prim_ram_1p_adv_ext.sv
+      - hw/common/ocah_prim/rtl/prim_ram_1p_scr_ext.sv
+  # Adopter synthesis and emulation flows read `+define+` lines from the
+  # generated filelist; SYNTHESIS selects the implementation view and EMULATION
+  # the emulation view in every source they compile. The emulation view keeps
+  # the synth file set but must not define SYNTHESIS. Bender drops a fileless
+  # group's defines, so each group carries the vendor alias header, which
+  # compiles as an empty unit.
+  - target: all(synth, not(emulation))
+    defines:
+      SYNTHESIS: 1
+    files:
+      - hw/common/defs/ocah_vendor_defines.svh
+  - target: all(synth, emulation)
+    defines:
+      EMULATION: 1
+    files:
+      - hw/common/defs/ocah_vendor_defines.svh
+  - target: all(any(dtp, sep, smc, key_manager, uart, system_timer_octs, entropy_source), not(synth))
+    files:
+      - hw/common/ocah_prim_generic/rtl/prim_and3.sv
+      - hw/common/ocah_prim_generic/rtl/prim_ao222.sv
+      - hw/common/ocah_prim_generic/rtl/prim_clock_nand2.sv
+      - hw/common/ocah_prim_generic/rtl/prim_flop_3sync.sv
+      - hw/common/ocah_prim_generic/rtl/prim_flop_3sync_r.sv
+      - hw/common/ocah_prim_generic/rtl/prim_flop_3sync_s.sv
+      - hw/common/ocah_prim_generic/rtl/prim_flop_4sync.sv
+      - hw/common/ocah_prim_generic/rtl/prim_flop_4sync_r.sv
+      - hw/common/ocah_prim_generic/rtl/prim_flop_4sync_s.sv
+      - hw/common/ocah_prim_generic/rtl/prim_latch_n.sv
+      - hw/common/ocah_prim_generic/rtl/prim_metastab_hardened_dffr.sv
+      - hw/common/ocah_prim_generic/rtl/prim_nand4.sv
+      - hw/common/ocah_prim_generic/rtl/prim_nor4.sv
+      - hw/common/ocah_prim_generic/rtl/prim_or2.sv
+      - hw/common/ocah_prim_generic/rtl/prim_or4.sv
+      - hw/common/ocah_prim_generic/rtl/prim_stdmux2.sv
+  - target: any(drbg, sep)
+    files:
+      - hw/common/tlul/rtl/tlul_adapter_host.sv
+      - hw/common/tlul/rtl/tlul_adapter_reg.sv
+      - hw/common/tlul/rtl/tlul_adapter_sram.sv
+      - hw/common/tlul/rtl/tlul_cmd_intg_chk.sv
+      - hw/common/tlul/rtl/tlul_cmd_intg_gen.sv
+      - hw/common/tlul/rtl/tlul_data_integ_dec.sv
+      - hw/common/tlul/rtl/tlul_data_integ_enc.sv
+      - hw/common/tlul/rtl/tlul_err.sv
+      - hw/common/tlul/rtl/tlul_err_resp.sv
+      - hw/common/tlul/rtl/tlul_fifo_sync.sv
+      - hw/common/tlul/rtl/tlul_rsp_intg_chk.sv
+      - hw/common/tlul/rtl/tlul_rsp_intg_gen.sv
+      - hw/common/tlul/rtl/tlul_socket_1n.sv
+      - hw/common/tlul/rtl/tlul_sram_byte.sv
+  - target: any(sep, smc)
+    files:
+      - hw/ip/avsbus_controller/regs/gen/sv/avsbus_controller_reg.sv
+      - hw/ip/avsbus_controller/rtl/avsbus_controller.sv
+      - hw/ip/avsbus_controller/rtl/submodules/avsbus_async_fifo.sv
+      - hw/ip/avsbus_controller/rtl/submodules/avsbus_crc3.sv
+      - hw/ip/axi_alias_remap/regs/gen/sv/alias_remap_reg.sv
+      - hw/ip/axi_alias_remap/rtl/axi_alias_remap.sv
+      - hw/ip/axi_alias_remap/rtl/axi_alias_remap_wrap.sv
+      - hw/ip/axi_filter/regs/gen/sv/filter_ctrl_reg.sv
+      - hw/ip/axi_filter/rtl/axi_filter_wrap.sv
+      - hw/ip/axi_filter/rtl/traffic_filter.sv
+  - target: any(smc, axi_hang_detector)
+    files:
+      - hw/ip/axi_hang_detector/rtl/axi_hang_detector.sv
+  - target: any(sep, smc)
+    files:
+      - hw/ip/axi_lite_mailbox_unit/rtl/axi_lite_mailbox_unit.sv
+  # See the cross_trigger package group above: shared by the DTP DUT and the
+  # per-IP benches (target `cross_trigger`).
+  - target: any(dtp, cross_trigger)
+    files:
+      - hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg.sv
+      - hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix.sv
+      - hw/ip/cross_trigger/cross_trigger_matrix/rtl/ctm_src_selector.sv
+      - hw/ip/cross_trigger/cross_trigger_network/rtl/cross_trigger_network.sv
+      - hw/ip/cross_trigger/cross_trigger_network/rtl/ctn_clock_stop_ctrl.sv
+      - hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg.sv
+      - hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port.sv
+      - hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port_core.sv
+      - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_edge_detector.sv
+      - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_handshake_ctrl.sv
+      - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_pulse_stretcher.sv
+      - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_synchronizer.sv
+  - target: any(drbg, sep)
+    files:
+      - hw/ip/drbg/rtl/drbg.sv
+      - hw/ip/drbg/rtl/drbg_axil64_lane_adapter.sv
+      - hw/ip/drbg/rtl/drbg_axis_edn_adapter.sv
+      - hw/ip/drbg/rtl/drbg_csrng_seed_adapter.sv
+      - hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv
+  - target: any(sep, smc)
+    files:
+      - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_reg.sv
+      - hw/ip/efuse/regs/gen/sv/efuse_mmr_reg.sv
+      - hw/ip/efuse/rtl/efuse_guard.sv
+      - hw/ip/efuse/rtl/efuse_interface_controller.sv
+      - hw/ip/efuse/rtl/efuse_program_interface.sv
+      - hw/ip/efuse/rtl/efuse_read_interface.sv
+      - hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv
+      - hw/ip/efuse/rtl/efuse_shadow_regs.sv
+      - hw/ip/efuse/rtl/efuse_token_digest_comparator.sv
+      - hw/ip/efuse/rtl/efuse_triple_redundant_comparator.sv
+  - target: sep
+    files:
+      - hw/ip/efuse/rtl/efuse_token_digest_sha256.sv
+      - hw/ip/efuse/rtl/efuse_token_processing.sv
+  - target: any(sep, entropy_source)
+    files:
+      - hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv
+      - hw/ip/entropy_source/rtl/entropy_debug_monitor.sv
+      - hw/ip/entropy_source/rtl/entropy_decorrelator.sv
+      - hw/ip/entropy_source/rtl/entropy_fifo.sv
+      - hw/ip/entropy_source/rtl/entropy_generator.sv
+      - hw/ip/entropy_source/rtl/entropy_generator_complex.sv
+      - hw/ip/entropy_source/rtl/entropy_health_test.sv
+      - hw/ip/entropy_source/rtl/entropy_noise_source.sv
+      - hw/ip/entropy_source/rtl/entropy_ring_stage_wrappers.sv
+      - hw/ip/entropy_source/rtl/entropy_ring_oscillator.sv
+      - hw/ip/entropy_source/rtl/entropy_ripple_divider.sv
+      - hw/ip/entropy_source/rtl/entropy_rosc_tune_fsm.sv
+      - hw/ip/entropy_source/rtl/entropy_sampler_clocks.sv
+      - hw/ip/entropy_source/rtl/entropy_sha256_whitener.sv
+      - hw/ip/entropy_source/rtl/entropy_source.sv
+      - hw/ip/entropy_source/rtl/entropy_source_rec_thresh_lut.sv
+      - hw/ip/entropy_source/rtl/gf_muladd.sv
+  - target: smc
+    files:
+      - hw/ip/gpio/regs/gen/sv/gpio_intf_reg.sv
+      - hw/ip/gpio/rtl/gpio.sv
+      - hw/ip/gpio/rtl/gpio_filter.sv
+      - hw/ip/i2c/regs/gen/sv/i2c_reg.sv
+      - hw/ip/i2c/rtl/i2c.sv
+      - hw/ip/i2c/rtl/i2c_bus_monitor.sv
+      - hw/ip/i2c/rtl/i2c_controller_fsm.sv
+      - hw/ip/i2c/rtl/i2c_core.sv
+      - hw/ip/i2c/rtl/i2c_target_fsm.sv
+      - hw/ip/i2c/regs/gen/sv/i2c_ctrl_reg.sv
+      - hw/ip/i2c/rtl/i2c_wrap.sv
+      - vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl/src/axi/rtl/i3ccore_axi_pkg.sv
+      - vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl/src/axi/rtl/axi_if.sv
+      - vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl/src/axi/rtl/axi_addr.v
+      - vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl/src/libs/rtl/skidbuffer.v
+      - vendor/chipsalliance/i3c-core/upstream/src/csr/I3CCSR_pkg.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/controller_pkg.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/i3c_pkg.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/phy/buf_pp.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/phy/bufs.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/phy/i3c_phy.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/csr/I3CCSR.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/interrupt.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/libs/axi_sub/i3c_axi_sub_arb.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/libs/axi_sub/i3c_axi_sub_rd.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/libs/axi_sub/i3c_axi_sub.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/libs/axi_sub/i3c_axi_sub_wr.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/queues/read_queue.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/queues/write_queue.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/ahb_if.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/axi_adapter.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/dxt.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/tti.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/queues.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/hci.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/csri.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/width_converter_8toN.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/width_converter_Nto8.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/recovery/recovery_pec.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/recovery/recovery_receiver.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/recovery/recovery_handler.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/bus_monitor.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/ctrl_bus_tx.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/ctrl_bus_tx_flow.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/bus_tx_flow.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/bus_rx_flow.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/ctrl_bus_rx_flow.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/bus_scl_flow.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/bus_start_stop_gen.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/bus_timers.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/ctrl_bus_timers.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/target_reset_detector.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/i3c_bus_monitor.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/ccc_entdaa.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/ccc.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/configuration.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/edge_detector.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/descriptor_rx.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/descriptor_tx.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/descriptor_ibi.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/i2c_controller_fsm.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/i2c_target_fsm.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/i3c_controller_fsm.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/i3c_target_fsm.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/flow_active.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/flow_standby_i2c.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/controller_standby_i2c.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/controller_standby_i3c.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/controller_active.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/controller_standby.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/controller.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/stable_high_detector.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/i3c.sv
+      - hw/ip/i3ccore_wrap/rtl/i3c_wrapper.sv
+      - hw/ip/i3ccore_wrap/rtl/i3ccore_wrapper.sv
+      - hw/ip/idma_wrapper/rtl/idma_backend_wrapper.sv
+      - hw/ip/idma_wrapper/rtl/idma_frontend_wrapper.sv
+      - hw/ip/idma_wrapper/rtl/idma_request_manager_wrapper.sv
+      - hw/ip/idma_wrapper/rtl/idma_wrapper.sv
+  - target: dtp
+    files:
+      - hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv
+      - hw/ip/jtag/jtag_intf_unit/rtl/jtag_intf_unit.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_3dcr_reg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_byp_reg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_caps_reg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_debug_ctrl_reg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_ic_reset_reg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_idcode_reg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_inst_reg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_inv_byp_reg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_jtag2axi_caps_reg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_ptap.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_tap_ctrlr.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_tmp.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_tmp_status_reg.sv
+      - hw/ip/jtag/jtag_stap/rtl/jtag_stap.sv
+  - target: any(sep, key_manager)
+    files:
+      - hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv
+      - hw/ip/key_manager/regs/gen/sv/aes_wrapper_key_reg.sv
+      - hw/ip/key_manager/regs/gen/sv/hmac_wrapper_key_reg.sv
+      - hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv
+      - hw/ip/key_manager/regs/gen/sv/km_drbg_sampler_reg.sv
+      - hw/ip/key_manager/regs/gen/sv/km_kpv_reg.sv
+      - hw/ip/key_manager/regs/gen/sv/km_mailbox_km_reg.sv
+      - hw/ip/key_manager/regs/gen/sv/km_mailbox_sep_reg.sv
+      - hw/ip/key_manager/regs/gen/sv/kmac_wrapper_key_reg.sv
+      - hw/ip/key_manager/regs/gen/sv/otbn_wrapper_key_reg.sv
+      - hw/ip/key_manager/rtl/key_manager.sv
+      - hw/ip/key_manager/rtl/km_axi_lite_xbar.sv
+      - hw/ip/key_manager/rtl/km_crc_engine.sv
+      - hw/ip/key_manager/rtl/km_csr.sv
+      - hw/ip/key_manager/rtl/km_drbg_sampler.sv
+      - hw/ip/key_manager/rtl/km_kpv.sv
+      - hw/ip/key_manager/rtl/km_kpv_eraser.sv
+      - hw/ip/key_manager/rtl/km_kpv_regfile.sv
+      - hw/ip/key_manager/rtl/km_mailbox.sv
+      - hw/ip/key_manager/rtl/km_reset_conditioner.sv
+      - hw/ip/key_manager/rtl/km_rom_interface.sv
+      - hw/ip/key_manager/rtl/km_sram_interface.sv
+      - hw/ip/key_manager/rtl/picorv32_pcpi_crc.sv
+      - hw/ip/key_manager/rtl/picorv32_wrapper.sv
+  - target: sep
+    files:
+      - hw/ip/axi_window_remap/rtl/axi_window_remap.sv
+  - target: any(smc, uart)
+    files:
+      - hw/ip/uart/log_engine/regs/gen/sv/log_engine_reg.sv
+      - hw/ip/uart/log_engine/rtl/log_engine.sv
+  - target: sep
+    files:
+      - hw/ip/memory_interface/rtl/memory_interface.sv
+  - target: any(sep, smc)
+    files:
+      - hw/ip/output_remap/regs/gen/sv/output_remap_reg.sv
+      - hw/ip/output_remap/rtl/output_remap.sv
+  - target: any(sep, key_manager, scrambler)
+    files:
+      - hw/ip/scrambler/rtl/scrambler.sv
+      - hw/ip/scrambler/rtl/scrambler_1024x32.sv
+      - hw/ip/scrambler/rtl/scrambler_2048x32.sv
+      - hw/ip/scrambler/rtl/scrambler_4096x32.sv
+      - hw/ip/scrambler/rtl/scrambler_512x32.sv
+      - hw/ip/scrambler/rtl/scrambler_8192x32.sv
+      - hw/ip/scrambler/rtl/scrambler_addr_tweak.sv
+  - target: any(smc, system_timer_octs)
+    files:
+      - hw/ip/system_timer_octs/regs/gen/sv/system_timer_octs_reg.sv
+      - hw/ip/system_timer_octs/rtl/system_timer_octs.sv
+      - hw/ip/system_timer_octs/rtl/system_timer_octs_core.sv
+  - target: smc
+    files:
+      - hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_reg.sv
+      - hw/ip/telemetry_receiver/rtl/telemetry_receiver.sv
+      - hw/ip/telemetry_receiver/rtl/telemetry_receiver_wrap.sv
+  - target: any(smc, uart)
+    files:
+      - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_dl_reg.sv
+      - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_reg.sv
+      - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_wo_reg.sv
+      - hw/ip/uart/uart_16550/rtl/uart_16550.sv
+      - hw/ip/uart/uart_16550/rtl/uart_core.sv
+      - hw/ip/uart/uart_16550/rtl/uart_rx.sv
+      - hw/ip/uart/uart_16550/rtl/uart_tx.sv
+      - hw/ip/uart/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_ctrl_reg.sv
+      - hw/ip/uart/uart_log_engine_wrap/rtl/uart_log_engine_wrap.sv
+      - hw/ip/uart/uart_wrap/rtl/uart_wrap.sv
+  - target: smc
+    files:
+      - hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_reg.sv
+      - hw/ip/zeroer/rtl/zeroer.sv
+  - target: dtp
+    files:
+      - hw/sys/dtp/rtl/dtp.sv
+  - target: sep
+    files:
+      - hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv
+      - hw/sys/sep/regs/gen/sv/blocks/sep_lifecycle_ctrl_reg.sv
+      - hw/sys/sep/regs/gen/sv/blocks/sep_reset_ctrl_reg.sv
+      - hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg.sv
+      - hw/sys/sep/rtl/aes_wrapper.sv
+      - hw/sys/sep/rtl/crossbars/sep_local_axi_xbar.sv
+      - hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar.sv
+      - hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv
+      - hw/sys/sep/rtl/hmac_wrapper.sv
+      - hw/sys/sep/rtl/kmac_wrapper.sv
+      - hw/sys/sep/rtl/sep.sv
+      - hw/sys/sep/rtl/sep_cpu.sv
+      - hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv
+      - hw/sys/sep/rtl/sep_trng.sv
+      - hw/sys/sep/rtl/sep_crypto.sv
+      - hw/sys/sep/rtl/sep_crypto_otbn_wrapper.sv
+      - hw/sys/sep/rtl/sep_dma_wrap.sv
+      - hw/sys/sep/rtl/sep_entropy_fifo.sv
+      - hw/sys/sep/rtl/sep_io.sv
+      - hw/sys/sep/rtl/sep_lifecycle_ctrl.sv
+      - hw/sys/sep/rtl/crossbars/sep_local_axi_xbar_wrapper.sv
+      - hw/sys/sep/rtl/sep_ot_spi_wrap.sv
+      - hw/sys/sep/rtl/sep_isolate_rst_seq.sv
+      - hw/sys/sep/rtl/sep_reset_ctrl.sv
+      - hw/sys/sep/rtl/sep_rom_interface_shim.sv
+      - hw/sys/sep/rtl/sep_sram.sv
+      - hw/sys/sep/rtl/sep_sram_interface_shim.sv
+      - hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv
+      - hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv
+      - hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar_wrapper.sv
+      - hw/sys/sep/rtl/sep_tcm_wrapper.sv
+      - hw/sys/sep/rtl/sep_wdt_wrap.sv
+      # =====================================================================
+      # Adams Bridge PQC (ML-DSA-87 / ML-KEM-1024) + Caliptra KV client helpers
+      #   vendor/chipsalliance/adams-bridge : chipsalliance/adams-bridge @ e59eba9
+      #   vendor/chipsalliance/caliptra-rtl : caliptra-rtl @ ec349a89 (KV clients only;
+      #                               kv.sv vault NOT compiled -- sep_abr_kv_shim replaces it)
+      # Defines, deliberately set together here so they can never disagree:
+      #   CALIPTRA   - required BY THE VENDORED RTL; gates abr_top's Caliptra
+      #                Key-Vault ports and the kv_* client helpers. Do not use it
+      #                as a feature switch in OCAH code.
+      #   SEP_ABR_EN - OCAH's own switch for "is the Adams Bridge block present in
+      #                this SEP build". Used by SEP crypto RTL and
+      #                hw/top/sep_ip_integration.sv (engine + SRAMs). Enabling ABR
+      #                therefore always brings CALIPTRA along; sep_crypto.sv also
+      #                carries an elaboration check that rejects the mismatch.
+      #   TECH_SPECIFIC_ICG - skip the latch in abr_icg.sv; overlay abr_clk_gate
+      #                instantiates prim_clock_gating (foundry cell under `-t synth`).
+      # File order follows vendor/chipsalliance/adams-bridge/upstream/src/abr_top/config/abr_top.vf.
+      # =====================================================================
+      - defines:
+          CALIPTRA: ~
+          SEP_ABR_EN: ~
+          TECH_SPECIFIC_ICG: ~
+        include_dirs:
+          - vendor/chipsalliance/caliptra-rtl/upstream/src/keyvault/rtl
+          - vendor/chipsalliance/caliptra-rtl/upstream/src/caliptra_prim/rtl
+          - vendor/chipsalliance/caliptra-rtl/upstream/src/libs/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_sampler_top/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/rej_bounded/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/rej_sampler/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/exp_mask/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/sample_in_ball/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/cbd_sampler/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_sha3/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim_generic/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/barrett_reduction/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompose/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/sk_decode/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/sk_encode/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/makehint/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/norm_check/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/sig_encode_z/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/sigdecode_h/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/sig_decode_z/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/pk_decode/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/power2round/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/compress/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompress/rtl
+        files:
+          # --- Caliptra KV client-side helpers (vault kv.sv intentionally excluded) ---
+          - vendor/chipsalliance/caliptra-rtl/upstream/src/keyvault/rtl/kv_defines_pkg.sv
+          - vendor/chipsalliance/caliptra-rtl/upstream/src/keyvault/rtl/kv_fsm.sv
+          - vendor/chipsalliance/caliptra-rtl/upstream/src/keyvault/rtl/kv_read_rule_check.sv
+          - vendor/chipsalliance/caliptra-rtl/upstream/src/keyvault/rtl/kv_write_rule_check.sv
+          - vendor/chipsalliance/caliptra-rtl/upstream/src/keyvault/rtl/kv_read_client.sv
+          - vendor/chipsalliance/caliptra-rtl/upstream/src/keyvault/rtl/kv_write_client.sv
+          # --- Adams Bridge packages ---
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_params_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_reg_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_sampler_top/rtl/abr_sampler_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_ctrl_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_defines_pkg.sv
+          # --- Adams Bridge libs ---
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_1r1w_ram.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_1r1w_be_ram.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_1r1w_512x4_ram.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_ram_regout.sv
+          - vendor/chipsalliance/adams-bridge/overlay/prim_shim/abr_clk_gate.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_icg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_2ff_sync.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_piso_multi.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_piso.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_sample_buffer.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_msg_buffer.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_rd_lat_buffer.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_ahb_defines_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_ahb_slv_sif.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_adder.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_add_sub_mod.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_ntt_add_sub_mod.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_splitter.sv
+          # --- Adams Bridge leaf blocks ---
+          - vendor/chipsalliance/adams-bridge/upstream/src/rej_bounded/rtl/rej_bounded_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/rej_bounded/rtl/rej_bounded2.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/rej_sampler/rtl/rej_sampler_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/rej_sampler/rtl/rej_sampler.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/exp_mask/rtl/exp_mask_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/exp_mask/rtl/exp_mask.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sample_in_ball/rtl/sample_in_ball_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sample_in_ball/rtl/sib_mem.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sample_in_ball/rtl/sample_in_ball_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sample_in_ball/rtl/sample_in_ball_shuffler.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sample_in_ball/rtl/sample_in_ball.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/cbd_sampler/rtl/cbd_sampler_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/cbd_sampler/rtl/cbd_sampler.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_sha3/rtl/abr_sha3_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_util_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_alert_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_subreg_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_mubi_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_cipher_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_sparse_fsm_pkg.sv
+          # Overlay shims keep the vendor module names and instantiate
+          # prim_flop / prim_buf / prim_flop_en (`not(synth)` / `-t synth`).
+          - vendor/chipsalliance/adams-bridge/overlay/prim_shim/abr_prim_generic_flop_en.sv
+          - vendor/chipsalliance/adams-bridge/overlay/prim_shim/abr_prim_generic_flop.sv
+          - vendor/chipsalliance/adams-bridge/overlay/prim_shim/abr_prim_generic_buf.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_flop_en.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_cdc_rand_delay.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_flop_2sync.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_lfsr.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_mubi4_sync.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_diff_decode.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_sec_anchor_buf.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_slicer.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_count.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_sparse_fsm_flop.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_dom_and_2share.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_sec_anchor_flop.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_reg_we_check.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_packer_fifo.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_max_tree.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_subreg_arb.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_subreg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_intr_hw.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_onehot_check.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_mubi8_sync.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_fifo_sync_cnt.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_buf.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_alert_receiver.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_flop.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_alert_sender.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_fifo_sync.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_arbiter_ppc.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_sum_tree.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_subreg_ext.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_edge_detector.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_sha3/rtl/abr_keccak_round.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_sha3/rtl/abr_keccak_2share.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_sha3/rtl/abr_sha3pad.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_sha3/rtl/abr_sha3.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_sampler_top/rtl/abr_sampler_top.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/barrett_reduction/rtl/barrett_reduction.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_butterfly2x2.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_butterfly.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_mult_dsp.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_div2.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_buffer.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_shuffle_buffer.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_twiddle_lookup.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_top.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_hybrid_butterfly_2x2.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_karatsuba_pairwm.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompose/rtl/decompose_defines_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompose/rtl/decompose.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompose/rtl/decompose_r1_lut.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompose/rtl/decompose_w1_mem.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompose/rtl/decompose_mod_2gamma2.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompose/rtl/decompose_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompose/rtl/decompose_w1_encode.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompose/rtl/decompose_usehint.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sk_decode/rtl/skdecode_defines_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sk_encode/rtl/skencode.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sk_decode/rtl/skdecode_top.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sk_decode/rtl/skdecode_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sk_decode/rtl/skdecode_s1s2_unpack.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sk_decode/rtl/skdecode_t0_unpack.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/makehint/rtl/makehint_defines_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/makehint/rtl/hintgen.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/makehint/rtl/makehint.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/norm_check/rtl/norm_check_defines_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/norm_check/rtl/norm_check.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/norm_check/rtl/norm_check_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/norm_check/rtl/norm_check_top.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sig_encode_z/rtl/sigencode_z_defines_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sig_encode_z/rtl/sigencode_z_top.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sig_encode_z/rtl/sigencode_z_unit.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sigdecode_h/rtl/sigdecode_h_defines_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sigdecode_h/rtl/sigdecode_h.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sigdecode_h/rtl/sigdecode_h_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sig_decode_z/rtl/sigdecode_z_defines_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sig_decode_z/rtl/sigdecode_z_top.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sig_decode_z/rtl/sigdecode_z_unit.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/pk_decode/rtl/pkdecode.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/power2round/rtl/power2round_defines_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/power2round/rtl/power2round_top.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/power2round/rtl/power2round_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/power2round/rtl/power2round_core.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/power2round/rtl/power2round_skencode.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/compress/rtl/compress_defines_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/compress/rtl/compress_top.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/compress/rtl/compress.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/compress/rtl/compress_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompress/rtl/decompress_defines_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompress/rtl/decompress_top.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompress/rtl/decompress.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompress/rtl/decompress_ctrl.sv
+          # --- Adams Bridge top assembly ---
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_mem_if.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_mem_top.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_seq.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_top.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_reg.sv
+          # --- SEP integration: KV shim + crypto wrapper ---
+          - hw/sys/sep/rtl/sep_abr_kv_shim.sv
+          - hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv
+  - target: smc
+    files:
+      - hw/sys/smc/regs/gen/sv/blocks/chip_config_reg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/cpu_ctrl_reg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/dfx_ctrl_status_reg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/ndm_reset_reg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/reset_unit_reg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/scratch_reg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/smc_base_config_reg.sv
+      - hw/sys/smc/rtl/crossbars/smc_internal_axi_lite_xbar.sv
+      - hw/sys/smc/rtl/crossbars/smc_local_xbar.sv
+      - hw/sys/smc/rtl/crossbars/smc_periph_axi_lite_xbar.sv
+      - hw/sys/smc/rtl/smc.sv
+      - hw/sys/smc/rtl/smc_base.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ALU.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AMOALU.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AXI4Buffer.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AXI4Deinterleaver.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AXI4Fragmenter.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AXI4IdIndexer.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AXI4IdIndexer_1.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AXI4ToTL.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AXI4UserYanker.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AXI4UserYanker_1.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Arbiter2_Valid_PTWReq.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Arbiter3_LLWB.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncQueueSink_DebugInternalBundle.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncQueueSink_TLBundleA_a9d32s1k1z2u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncQueueSink_TLBundleD_a9d32s1k1z2u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncQueueSource_DebugInternalBundle.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncQueueSource_TLBundleA_a9d32s1k1z2u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncQueueSource_TLBundleD_a9d32s1k1z2u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncResetRegVec_w16_i4096.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncResetRegVec_w1_i0.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncResetRegVec_w2_i0.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncResetRegVec_w328_i0.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncResetRegVec_w4_i0.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncResetSynchronizerShiftReg_w1_d3_i0.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncResetSynchronizerShiftReg_w1_d3_i0_1.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncValidSync.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Atomics.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_BTB.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_BankBinder.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_BreakpointUnit.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_BroadcastFilter.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_BundleBridgeNexus_UInt2_4.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_BusErrorUnit.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_CLINT.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_CLINTClockSinkDomain.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_CSRFile.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_CaptureChain_JTAGIdcodeBundle.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_CaptureUpdateChain_DMIAccessCapture_To_DMIAccessUpdate.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_CaptureUpdateChain_DTMInfo_To_DTMInfo.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_CaptureUpdateChain_UInt5_To_UInt5.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ChipyardPRCICtrlClockSinkDomain.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ClockCrossingReg_w21.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ClockCrossingReg_w43.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ClockCrossingReg_w55.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ClockGroupAggregator_allClocks.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ClockGroupCombiner.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ClockGroupResetSynchronizer.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ClockSinkDomain_1.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ClockSinkDomain_5.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_CoherenceManagerWrapper.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_CompareRecFN.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_DCache.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_DCacheDataArray.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_DMIToTL.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_DebugTransportModuleJTAG.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_DigitalTop.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_DivSqrtRawFN_small_e11_s53.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_DivSqrtRawFN_small_e8_s24.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_DivSqrtRecFMToRaw_small_e11_s53.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_DivSqrtRecFMToRaw_small_e8_s24.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_DivSqrtRecFM_small_e11_s53.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_DivSqrtRecFM_small_e8_s24.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ErrorDeviceWrapper.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_FPToFP.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_FPToInt.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_FPU.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_FPUDecoder.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_FPUFMAPipe_l8_f32.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_FPUFMAPipe_l8_f64.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_FixedClockBroadcast_2.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_FixedClockBroadcast_34.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_FixedClockBroadcast_4.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_FixedClockBroadcast_5.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_FixedClockBroadcast_6.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_FrontBus.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Frontend.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_HellaCacheArbiter.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_IBuf.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ICache.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_INToRecFN_i64_e11_s53.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_INToRecFN_i64_e8_s24.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ITLB.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_IntSyncAsyncCrossingSink_n1x1.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_IntSyncCrossingSource_n1x1.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_IntSyncCrossingSource_n1x2.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_IntSyncCrossingSource_n4x1_Registered.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_IntSyncSyncCrossingSink_n1x1.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_IntSyncSyncCrossingSink_n1x2.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_IntToFP.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_IntXbar_i4_o1.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_IntXbar_i5_o1.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_JtagBypassChain.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_JtagStateMachine.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_JtagTapController.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_LevelGateway.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_MaxPeriodFibonacciLFSR.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_MemoryBus.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_MulAddRecFNPipe_l2_e11_s53.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_MulAddRecFNPipe_l2_e8_s24.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_MulAddRecFNToRaw_postMul_e11_s53.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_MulAddRecFNToRaw_postMul_e8_s24.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_MulAddRecFNToRaw_preMul_e11_s53.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_MulAddRecFNToRaw_preMul_e8_s24.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_MulDiv.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_OptimizationBarrier_PTE.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_OptimizationBarrier_TLBEntryData.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_OptimizationBarrier_UInt.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_PLICClockSinkDomain.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_PLICFanIn.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_PMAChecker.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_PMPChecker_s2.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_PMPChecker_s3.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_PTW.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_PeripheryBus_cbus.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_PeripheryBus_pbus.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_PlusArgTimeout.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ProbePicker.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue16_TLBundleA_a32d64s11k1z3u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue16_TLBundleD_a32d64s11k1z3u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue1_AXI4BundleAR.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue1_AXI4BundleARW.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue1_AXI4BundleAW.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue1_AXI4BundleB.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue1_AXI4BundleR.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue1_AXI4BundleW.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue1_RegMapperInput_i23_m8.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue1_TLBundleA_a32d64s9k1z4u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue1_TLBundleA_a56d64s5k2z4c.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue25_BundleMap.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue26_BundleMap.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_AXI4BundleAR.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_AXI4BundleAW.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_AXI4BundleB.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_AXI4BundleR.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_AXI4BundleW.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_BundleMap.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_TLBundleA_a32d64s11k1z3u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_TLBundleA_a32d64s9k1z3u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_TLBundleA_a32d64s9k1z4u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_TLBundleA_a56d64s4k2z4u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_TLBundleA_a56d64s6k2z4c.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_TLBundleB_a56d64s6k2z4c.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_TLBundleC_a56d64s6k2z4c.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_TLBundleD_a32d64s11k1z3u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_TLBundleD_a32d64s9k1z3u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_TLBundleD_a32d64s9k1z4u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_TLBundleD_a56d64s4k2z4u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_TLBundleD_a56d64s6k2z4c.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_TLBundleD_a56d8s1k2z4u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_TLBundleE_a56d64s6k2z4c.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue3_BundleMap.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue4_BundleMap.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue8_AXI4BundleR.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue8_TLBroadcastData.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue9_BundleMap.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ROMClockSinkDomain.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_RVCExpander.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_RecFNToIN_e11_s53_i32.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_RecFNToIN_e11_s53_i64.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_RecFNToRecFN.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Repeater_TLBundleA_a32d64s11k1z3u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Repeater_TLBundleA_a32d64s9k1z3u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Repeater_TLBundleD_a56d64s1k2z4u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ResetCatchAndSync_d3.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ResetSynchronizerShiftReg_w1_d3_i0.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Rocket.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_RocketTile.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_RoundAnyRawFNToRecFN_ie11_is53_oe8_os24.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_RoundAnyRawFNToRecFN_ie11_is55_oe11_os53.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_RoundAnyRawFNToRecFN_ie7_is64_oe11_os53.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_RoundAnyRawFNToRecFN_ie7_is64_oe8_os24.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_RoundAnyRawFNToRecFN_ie8_is26_oe8_os24.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_RoundRawFNToRecFN_e11_s53.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_RoundRawFNToRecFN_e8_s24.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_SBToTL.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ShiftQueue.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_SynchronizerShiftReg_w1_d3.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_SynchronizerShiftReg_w328_d3.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_SystemBus.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLAsyncCrossingSink_a9d32s1k1z2u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLAsyncCrossingSource_a9d32s1k1z2u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLAtomicAutomata_cbus.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLAtomicAutomata_pbus.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLBroadcast.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLBroadcastTracker.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLBroadcastTracker_1.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLBroadcastTracker_2.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLBroadcastTracker_3.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLBuffer_a32d64s11k1z3u_1.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLBuffer_a32d64s11k1z3u_33.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLBuffer_a32d64s9k1z3u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLBuffer_a32d64s9k1z4u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLBuffer_a56d64s4k2z4u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLBuffer_a56d64s6k2z4c.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLBusBypass.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLBusBypassBar.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLDebugModuleInner.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLDebugModuleInnerAsync.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLDebugModuleOuter.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLError.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLError_1.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLFIFOFixer.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLFIFOFixer_1.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLFIFOFixer_2.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLFIFOFixer_3.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLFragmenter.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLFragmenter_14.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLFragmenter_5.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLFragmenter_7.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLFragmenter_CLINT.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLFragmenter_PLIC.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_cbus_to_clint.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_cbus_to_debug.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_cbus_to_plic.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_fbus_from_debug_sb.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_fbus_from_port_named_slave_port_axi4.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_mbus_to_rom.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_pbus_to_device_named_wdt_0.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_pbus_to_device_named_wdt_1.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_pbus_to_device_named_wdt_2.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_pbus_to_device_named_wdt_3.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_sbus_to_port_named_mmio_port_axi4.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLPLIC.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLRAM.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLToAXI4.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLWDT.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLWidthWidget1.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLXbar_MasterXbar_RocketTile_i2_o1_a56d64s6k2z4c.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLXbar_cbus_out_i1_o9_a32d64s9k1z4u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLXbar_fbus_i2_o1_a56d64s5k2z4u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLXbar_i1_o2_a9d32s1k1z2u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLXbar_mbus_i1_o33_a32d64s11k1z3u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLXbar_pbus_out_i1_o4_a32d64s9k1z3u.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLXbar_sbus_i5_o3_a56d64s9k2z4c.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TTTLDebugModule.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TTTLDebugModuleOuterAsync.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TilePRCIDomain.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_WatchdogTimer.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_mem_0.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_16x125.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_16x85.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_25x15.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_26x15.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_2x10.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_2x119.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_2x124.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_2x125.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_2x136.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_2x145.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_2x15.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_2x150.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_2x5.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_2x68.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_2x70.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_2x73.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_2x77.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_2x83.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_2x84.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_2x85.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_2x86.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_3x15.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_4x8.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_8x72.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_8x85.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_9x15.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_sink_2x2.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_regfile_32x65.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_rf_31x64.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_rockettile_dcache_data_arrays_0.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_rockettile_dcache_tag_array.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_rockettile_icache_data_arrays_0.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_rockettile_icache_data_arrays_1.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_rockettile_icache_tag_array.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_table_512x1.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/EICG_wrapper.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/plusarg_reader.v
+      - hw/sys/smc/rtl/smc_cpu/mem_swaps/4core/OCAH4CORECluster_mem_swaps.sv
+      - hw/sys/smc/rtl/smc_cpu/mem_swaps/4core/OCAH4CORECluster_mems.sv
+      - hw/sys/smc/rtl/smc_cpu/mem_swaps/4core/tilelink_to_rom_mem.sv
+      - hw/sys/smc/rtl/smc_cpu/smc_4core_cpu.sv
+      - hw/sys/smc/rtl/smc_cpu/smc_cpu_ctrl_wrap.sv
+      - hw/sys/smc/rtl/smc_cpu/smc_cpu_wrapper.sv
+      - hw/sys/smc/rtl/smc_cpu/sync_swaps/4core/OCAH4CORECluster_AsyncResetSynchronizerPrimitiveShiftReg_d3_i0.sv
+      - hw/sys/smc/rtl/smc_cpu/sync_swaps/4core/OCAH4CORECluster_InferredResetSynchronizerPrimitiveShiftReg_d3_i0.sv
+      - hw/sys/smc/rtl/smc_cpu/sync_swaps/4core/OCAH4CORECluster_NonSyncResetSynchronizerPrimitiveShiftReg_d3.sv
+      - hw/sys/smc/rtl/smc_data_accelerator_wrap/rtl/smc_data_accelerator_wrap.sv
+      - hw/sys/smc/rtl/smc_dfd/rtl/smc_dfd_wrap.sv
+      - hw/sys/smc/rtl/smc_fabric/smc_fabric.sv
+      - hw/sys/smc/rtl/smc_fabric/smc_fabric_misc/rtl/smc_alias_remap_wrap.sv
+      - hw/sys/smc/rtl/smc_fabric/smc_input_fabric/rtl/smc_input_fabric.sv
+      - hw/sys/smc/rtl/smc_fabric/smc_local_fabric/rtl/smc_local_fabric.sv
+      - hw/sys/smc/rtl/smc_fabric/smc_output_fabric/rtl/smc_output_fabric.sv
+      - hw/sys/smc/rtl/smc_internal_regs.sv
+      - hw/sys/smc/rtl/smc_misc/rtl/smc_base_config_wrap.sv
+      - hw/sys/smc/rtl/smc_misc/rtl/smc_dfx_ctrl_status_wrap.sv
+      - hw/sys/smc/rtl/smc_misc/rtl/smc_misc_wrap.sv
+      - hw/sys/smc/rtl/smc_misc/rtl/smc_version_id_wrap.sv
+      - hw/sys/smc/rtl/smc_peripherals/efuse/smc_efuse_wrapper.sv
+      - hw/sys/smc/rtl/smc_peripherals/rtl/ext_boot_seq_done_qual.sv
+      - hw/sys/smc/rtl/smc_peripherals/rtl/smc_padring.sv
+      - hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv
+      - hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals_cdc.sv
+      - hw/sys/smc/rtl/smc_reset_unit/rtl/smc_cool_reset_wrap.sv
+      - hw/sys/smc/rtl/smc_reset_unit/rtl/smc_reset_ctrl.sv
+      - hw/sys/smc/rtl/smc_reset_unit/rtl/smc_reset_sync.sv
+      - hw/sys/smc/rtl/smc_reset_unit/rtl/smc_reset_unit.sv
+      - hw/sys/smc/rtl/smc_reset_unit/rtl/smc_subsystem_resets.sv
+  - target: all(dtp, sep, smc)
+    files:
+      - hw/sys/smu/rtl/smu.sv
+      - hw/sys/smu/rtl/smu_axi_xbar.sv
+  # Reference wrappers are additive to their corresponding subsystem targets.
+  - target: any(sep_wrapper, smc_wrapper, smu_wrapper)
+    files:
+      - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_addrmap_pkg.sv
+      - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_reg_pkg.sv
+      - hw/ip/efuse/dv/models/efuse_bank_addrmap_pkg.sv
+      - hw/ip/efuse/dv/models/efuse_bank_reg_pkg.sv
+      - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_reg.sv
+      - hw/ip/efuse/dv/models/efuse_bank_reg.sv
+      - hw/ip/efuse/rtl/efuse_interface_shim.sv
+      - hw/ip/efuse/dv/models/efuse_bank_model.sv
+  - target: any(sep_wrapper, smu_wrapper)
+    files:
+      - hw/sys/sep/dv/models/regs/gen/sv/sep_external_addrmap_pkg.sv
+  - target: any(smc_wrapper, smu_wrapper)
+    files:
+      - hw/ip/gpio/regs/gen/sv/gpio_ctrl_addrmap_pkg.sv
+      - hw/ip/gpio/regs/gen/sv/gpio_ctrl_reg_pkg.sv
+      - hw/ip/gpio/regs/gen/sv/gpio_wrap_addrmap_pkg.sv
+      - hw/ip/gpio/regs/gen/sv/gpio_wrap_reg_pkg.sv
+      - hw/ip/gpio/rtl/gpio_shim_pkg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/straps_reg_pkg.sv
+      - hw/sys/smc/dv/models/regs/gen/sv/pll_wrap_addrmap_pkg.sv
+      - hw/sys/smc/dv/models/regs/gen/sv/pvt_wrap_addrmap_pkg.sv
+      - hw/ip/gpio/regs/gen/sv/gpio_ctrl_reg.sv
+      - hw/ip/gpio/regs/gen/sv/gpio_wrap_reg.sv
+      - hw/ip/gpio/dv/models/gpio_model.sv
+      - hw/ip/gpio/rtl/gpio_shim.sv
+      - hw/sys/smc/regs/gen/sv/blocks/straps_reg.sv
+      - hw/common/ocah_prim/rtl/prim_pad_shim.sv
+      - hw/sys/smc/dv/models/axil_okay_slv.sv
+      - hw/sys/smc/dv/models/pll_wrap.sv
+      - hw/sys/smc/dv/models/pvt_wrap.sv
+  - target: any(sep_wrapper, smu_wrapper)
+    files:
+      - hw/top/sep_ip_integration.sv
+  - target: sep_wrapper
+    files:
+      - hw/sys/smc/rtl/smc_peripherals/rtl/ext_boot_seq_done_qual.sv
+      - hw/top/sep_wrapper.sv
+  - target: any(smc_wrapper, smu_wrapper)
+    files:
+      - hw/top/smc_ip_integration.sv
+  - target: smc_wrapper
+    files:
+      - hw/top/smc_wrapper.sv
+  - target: smu_wrapper
+    files:
+      - hw/top/smu_wrapper.sv

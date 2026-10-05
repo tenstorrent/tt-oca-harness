@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef AXIL_MAILBOX_SEP_WRAP_RDL_DEFINED
+`define AXIL_MAILBOX_SEP_WRAP_RDL_DEFINED
+
+`include "axil_mailbox.rdl"
+
+addrmap axil_mailbox_sep_wrap {
+    name = "SEP AXI-Lite Mailbox Wrapper Address Map";
+    desc = "SEP-side wrapper instantiating the AXI-Lite mailbox pairs.
+            Each outbound_mailbox_N / inbound_mailbox_N pair is the two apertures of one
+            bidirectional mailbox and shares a single pair of FIFOs: data written through
+            WRITE_DATA in one aperture is what READ_DATA in the other aperture returns.
+            The outbound/inbound naming reflects intended use, not an access restriction.";
+    
+    axil_mailbox     outbound_mailbox_0      @0x000_0000;
+    axil_mailbox     inbound_mailbox_0       @0x000_0800;
+    axil_mailbox     outbound_mailbox_1      @0x000_1000;
+    axil_mailbox     inbound_mailbox_1       @0x000_1800;
+    axil_mailbox     outbound_mailbox_2      @0x000_2000;
+    axil_mailbox     inbound_mailbox_2       @0x000_2800;
+    axil_mailbox     outbound_mailbox_3      @0x000_3000;
+    axil_mailbox     inbound_mailbox_3       @0x000_3800;
+    axil_mailbox     outbound_mailbox_4      @0x000_4000;
+    axil_mailbox     inbound_mailbox_4       @0x000_4800;
+    axil_mailbox     outbound_mailbox_5      @0x000_5000;
+    axil_mailbox     inbound_mailbox_5       @0x000_5800;
+    axil_mailbox     outbound_mailbox_6      @0x000_6000;
+    axil_mailbox     inbound_mailbox_6       @0x000_6800;
+    axil_mailbox     outbound_mailbox_7      @0x000_7000;
+    axil_mailbox     inbound_mailbox_7       @0x000_7800;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+`endif
+};
+
+`endif

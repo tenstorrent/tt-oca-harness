@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= OCAH Shared Design Verification and VIP Guide
+:sectnums:
+:toc:
+:toclevels: 3
+:source-highlighter: highlight.js
+
+[[shared-dv-guide-overview]]
+== Overview
+
+This guide defines the architecture, public contracts, ownership rules, and
+development workflow for shared OCAH design-verification (DV) collateral under
+`hw/common/dv/`.
+
+The shared DV tree provides:
+
+* protocol verification intellectual property (VIP) with stable OCAH APIs;
+* cocotb bus-functional models (BFMs), monitors, items, and checkers;
+* SystemVerilog interfaces and UVM agents where a protocol needs them;
+* checker evidence and reference-model conventions;
+* shared configuration, assertions, shims, and firmware support.
+
+The intended audience includes verification engineers adding tests, VIP
+maintainers, DUT owners integrating shared VIP, and reviewers deciding whether
+a DUT-local helper is mature enough for promotion.
+
+[IMPORTANT]
+====
+The Python package root is `hw/common/dv/vip/`. Tests import public classes from
+top-level packages such as `ocah_axi_vip`, never from implementation
+subdirectories or backend packages.
+====
+
+[[shared-dv-guide-sources]]
+=== Related Sources
+
+This detailed guide complements:
+
+* `hw/common/dv/README.md` -- installation and concise policy summary;
+* each `hw/common/dv/vip/ocah_*_vip/README.md` -- protocol-specific API;
+* `tools/dv/doc/run-dv.adoc` -- simulation and formal runner and result contract; its Formal verification chapter is the contributor's route through formal mode;
+* DUT documentation under `hw/<category>/<dut>/dv/docs/` -- local integration.
+
+include::vip-architecture.adoc[leveloffset=0]
+include::vip-catalog.adoc[leveloffset=0]
+include::vip-deployment.adoc[leveloffset=0]
+include::vip-checker-model.adoc[leveloffset=0]
+include::uvm-framework.adoc[leveloffset=0]
+include::vip-development.adoc[leveloffset=0]
+include::formal-property-style.adoc[leveloffset=0]

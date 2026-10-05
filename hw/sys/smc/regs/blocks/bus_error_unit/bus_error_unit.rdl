@@ -1,0 +1,274 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef BUS_ERROR_UNIT_REG_RDL
+`define BUS_ERROR_UNIT_REG_RDL
+
+addrmap bus_error_unit {
+    name = "Bus Error Unit Address Map";
+    desc = "Status registers reporting correctable and uncorrectable I-cache, D-cache, and TileLink bus errors.";
+    
+    ////////////////////////////////////////////////////////////////////////////
+    // Register Definitions
+    ////////////////////////////////////////////////////////////////////////////
+
+    enum cause_enum {
+        no_error  = 3'd0 { desc = "No error"; };
+        itl_error = 3'd1 { desc = "ICache tilelink bus error"; };
+        iec_error = 3'd2 { desc = "ICache ECC correctable error"; };
+        ieu_error = 3'd3 { desc = "ICache ECC uncorrectable error"; };
+        rsvd      = 3'd4 { desc = "Reserved/Unused bit"; };
+        dtl_error = 3'd5 { desc = "DCache tilelink bus error"; };
+        dec_error = 3'd6 { desc = "DCache ECC correctable error"; };
+        deu_error = 3'd7 { desc = "DCache ECC uncorrectable error"; };
+    };
+
+    reg CAUSE {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw=rw; 
+            hw=r;
+            encode=cause_enum;
+            desc="Cause register. Enumerates different kinds of errors";
+        } data [2:0] = 0x0;
+    };
+
+    reg PHYS_ADDR {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw=rw;
+            hw=rw;
+            desc="Physical address captured with CAUSE when an enabled error arrives and CAUSE is zero. Software may overwrite the value; writes take priority over capture. No reset value";
+        } value [55:0];
+    };
+
+    reg ENABLE {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Reserved";
+        } rsvd0[0:0] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Enable recording error information for ICache Tilelink bus error. Enabled on reset.";
+        } icache_tlbus [1:1] = 0x1;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Enable recording error information for ICache ECC correctable bus error. Enabled on reset.";
+        } icache_correctable [2:2] = 0x1;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Reserved";
+        } rsvd3[3:3] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Reserved";
+        } rsvd4[4:4] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Enable recording error information for DCache Tilelink bus error. Enabled on reset.";
+        } dcache_tlbus [5:5] = 0x1;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Enable recording error information for DCache ECC correctable bus error. Enabled on reset.";
+        } dcache_correctable [6:6] = 0x1;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Enable recording error information for DCache ECC uncorrectable bus error. Enabled on reset.";
+        } dcache_uncorrectable [7:7] = 0x1;
+    };
+
+    reg PLIC_ENABLE {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Reserved";
+        } rsvd0[0:0] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="PLIC interrupt enable mask for ICache Tilelink bus error.";
+        } icache_tlbus [1:1] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="PLIC interrupt enable mask for ICache ECC correctable bus error.";
+        } icache_correctable [2:2] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Reserved";
+        } rsvd3[3:3] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Reserved";
+        } rsvd4[4:4] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="PLIC interrupt enable mask for DCache Tilelink bus error.";
+        } dcache_tlbus [5:5] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="PLIC interrupt enable mask for DCache ECC correctable bus error.";
+        } dcache_correctable [6:6] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="PLIC interrupt enable mask for DCache ECC uncorrectable bus error.";
+        } dcache_uncorrectable [7:7] = 0x0;
+    };
+
+    reg ACCRUED_ENABLE {
+        desc = "Sticky accrued error status. The legacy name ACCRUED_ENABLE does not denote an enable mask. Error events set these bits independently of ENABLE. Ordinary software writes replace the bits (write zero to clear) and take priority over simultaneous events. PLIC_ENABLE and LOCAL_ENABLE mask this status for interrupt delivery.";
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw=rw; 
+            hw=rw;
+            desc="Reserved";
+        } rsvd0[0:0] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=rw;
+            desc="Sticky accrued status for ICache Tilelink bus error.";
+        } icache_tlbus [1:1] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=rw;
+            desc="Sticky accrued status for ICache ECC correctable bus error.";
+        } icache_correctable [2:2] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=rw;
+            desc="Reserved";
+        } rsvd3[3:3] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=rw;
+            desc="Reserved";
+        } rsvd4[4:4] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=rw;
+            desc="Sticky accrued status for DCache Tilelink bus error.";
+        } dcache_tlbus [5:5] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=rw;
+            desc="Sticky accrued status for DCache ECC correctable bus error.";
+        } dcache_correctable [6:6] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=rw;
+            desc="Sticky accrued status for DCache ECC uncorrectable bus error.";
+        } dcache_uncorrectable [7:7] = 0x0;
+    };
+
+    reg LOCAL_ENABLE {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Reserved";
+        } rsvd0[0:0] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Core local interrupt enable mask for ICache Tilelink bus error.";
+        } icache_tlbus [1:1] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Core local interrupt enable mask for ICache ECC correctable bus error.";
+        } icache_correctable [2:2] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Reserved";
+        } rsvd3[3:3] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Reserved";
+        } rsvd4[4:4] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Core local interrupt enable mask for DCache Tilelink bus error.";
+        } dcache_tlbus [5:5] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Core local interrupt enable mask for DCache ECC correctable bus error.";
+        } dcache_correctable [6:6] = 0x0;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Core local interrupt enable mask for DCache ECC uncorrectable bus error.";
+        } dcache_uncorrectable [7:7] = 0x0;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Address Map
+    ////////////////////////////////////////////////////////////////////////////
+
+    CAUSE           CAUSE           @0x0;
+    PHYS_ADDR       PHYS_ADDR       @0x8;
+    ENABLE          ENABLE          @0x10;
+    PLIC_ENABLE     PLIC_ENABLE     @0x18;
+    ACCRUED_ENABLE  ACCRUED_ENABLE  @0x20;
+    LOCAL_ENABLE    LOCAL_ENABLE    @0x28;
+};
+
+`endif

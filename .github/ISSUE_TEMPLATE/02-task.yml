@@ -1,0 +1,96 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+name: Task
+description: Implementation, docs, investigation, or a tracked decision with a done condition.
+type: Task
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Pick Workstream, Subsystem, Component, Priority, and Target release.
+        These feed Project 291. Unsure on Component? leave **General**.
+        Unsure on schedule? pick **Future**. Description is optional.
+  - type: dropdown
+    id: workstream
+    attributes:
+      label: Workstream
+      options:
+        - RTL
+        - DV
+        - ROM
+        - SPEC
+        - DOCS
+        - INFRA
+        - SYNTH
+        - LINT
+        - CDC
+        - RDC
+        - RDL
+        - RELEASE
+        - NONFREE
+        - FUSA
+    validations:
+      required: true
+  - type: dropdown
+    id: subsystem
+    attributes:
+      label: Subsystem
+      options:
+        - OCAH
+        - SMU
+        - SMC
+        - SEP
+        - DTP
+        - AOU
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - General
+        - KM
+        - TRNG
+        - CRYPTO
+        - LC
+        - EFUSE
+        - AXI
+        - I3C
+        - CI
+        - BUILD
+        - DEPS
+      default: 0
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: Project board. Pick P2 if you are not sure.
+      options:
+        - P0
+        - P1
+        - P2
+      default: 2
+    validations:
+      required: true
+  - type: dropdown
+    id: target_release
+    attributes:
+      label: Target release
+      description: Project board. Pick Future if this is unscheduled. Do not set a GitHub milestone.
+      options:
+        - v0.5.0
+        - Future
+        - Not planned
+      default: 1
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Goal
+      description: Optional. What "done" means. Links to a parent issue or tracker codes can go here.
+      placeholder: Close when ...

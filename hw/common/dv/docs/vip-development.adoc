@@ -1,0 +1,295 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[shared-vip-development]]
+== VIP Development and Review
+
+[[shared-vip-development-decision]]
+=== Decide Ownership Before Coding
+
+Start with these questions:
+
+. Is the behavior a standard protocol or a DUT-specific fixture?
+. Does an `ocah_<protocol>_vip` package already exist?
+. Does another independent DUT need the same behavior?
+. Can the API avoid DUT hierarchy, addresses, lifecycle policy, and instance
+  counts?
+. Is the backend license/version suitable for the intended users?
+
+Default to DUT-local ownership. Promote only after the criteria in
+<<shared-vip-promotion,Promotion Criteria>> are met.
+
+[[shared-vip-development-workflow]]
+=== Development Workflow
+
+. Read the DUT interface, VPLAN, and existing VIP package.
+. Write the stable OCAH API before selecting backend calls.
+. Define plain items/results and deterministic errors/timeouts.
+. Implement active driving/responding.
+. Add passive observation and retained bounded history.
+. Add protocol checker behavior and evidence/finalization.
+. Document limitations and backend policy.
+. Integrate one real DUT consumer.
+. Run positive, negative, timeout, and non-vacuity validation.
+. Record the qualifying commit, tool versions, seed, result, and artifact in
+  an external qualification record.
+
+[[shared-vip-development-api]]
+=== Public API Rules
+
+Public APIs:
+
+* use explicit keyword arguments for optional behavior;
+* accept plain values and OCAH dataclasses;
+* return stable results rather than backend objects;
+* expose deterministic defaults;
+* distinguish strict positive helpers from result-inspection helpers;
+* use explicit `timeout_ns`/`allow_timeout` semantics;
+* give every blocking operation of an active initiator a finite default
+  timeout, and state that default and its unit in the package README; a
+  responder waits for its initiator and has no timeout;
+* provide statistics/reset methods when counters are meaningful;
+* use `from_prefix()` for conventional flattened interfaces where practical;
+* bind an interface scope through the VIP's geometry configuration when the
+  interface members are wider than the bus (`OcahAxiConfig.bus()` in the AXI VIP);
+* keep backend objects inside the package: every method or attribute that
+  hands a consumer a backend object is listed, with its purpose and the rule
+  the consumer follows, under "Backend escapes" in `hw/common/dv/README.md`.
+
+[source,python]
+----
+result = await master.write_result(
+    address,
+    data,
+    check_response=False,
+    timeout_ns=50_000,
+)
+----
+
+Compatibility helpers such as `read()`/`write()` may raise on errors. Result
+helpers must preserve response code, timeout, data, and success fields.
+
+[[shared-vip-development-items]]
+=== Transaction Items and Results
+
+Prefer immutable dataclasses. Include only protocol-stable information:
+
+* operation/direction;
+* address and data;
+* byte enables/strobes;
+* size, burst, ID, protection, or instruction where applicable;
+* response code/list;
+* `ok` and `timed_out`;
+* timing and source metadata where stable.
+
+Avoid storing simulator handles, backend enums, coroutine tasks, or private
+channel objects.
+
+[[shared-vip-development-master]]
+=== Active Initiators
+
+An active master/controller should provide:
+
+* positive-path read/write or transfer helpers;
+* result-returning helpers for negative checks;
+* event-style start methods only where explicit concurrency is needed;
+* finite timeout handling;
+* deterministic statistics;
+* no implicit unseeded delays.
+
+If random backpressure or timing is useful, require an explicit seed and log
+all selected values.
+
+[[shared-vip-development-responder]]
+=== Responders and Memory Models
+
+A responder should provide:
+
+* deterministic idle/reset;
+* memory-backed mode where the protocol permits it;
+* direct testbench read/write helpers for independent golden checking;
+* bounded deterministic backpressure;
+* explicit one-shot error injection where feasible;
+* statistics and clear/reset operations;
+* protocol-correct commit boundaries.
+
+Do not silently accept unsupported operations. Return or record a clear failure
+result and log the command/transaction context.
+
+[[shared-vip-development-monitor]]
+=== Passive Monitors
+
+A monitor:
+
+* never drives DUT signals;
+* samples protocol handshakes at defined clock phases;
+* emits plain item objects;
+* supports callback registration;
+* retains bounded history by default;
+* supports `start()`, `stop()`, `clear_history()`, and query/statistics methods;
+* re-raises a checker verdict (`AssertionError`) from a subscriber callback
+  and counts any other subscriber exception in `callback_errors` without
+  terminating sampling.
+
+Because subscriber defects are counted rather than raised, every attached
+checker needs explicit finalization by its owner, and the owner records the
+monitor's `callback_errors` against zero at drain.
+
+[[shared-vip-development-checker]]
+=== Protocol Checkers
+
+Protocol checkers should begin with deterministic, high-value invariants:
+
+* legal response/opcode values;
+* stable control/data while waiting;
+* completed beat/bit counts;
+* alignment and boundary restrictions;
+* protocol-specific single-beat rules;
+* timeout/uncompleted transaction handling.
+
+Use the shared evidence layer for named evidence and finalization in both
+languages: the cocotb `ocah_checker` package, and in SystemVerilog UVM the
+`ocah_checker_uvm_pkg::ocah_checker` base class that every protocol checker
+extends — a protocol checker carries only its own checks and identity,
+never a copy of the recording, severity-routing, or finalization mechanics.
+Keep protocol legality in the protocol package and scenario-specific
+expected values in the DUT.
+
+[[shared-vip-development-uvm-layer]]
+=== SystemVerilog UVM Layer
+
+A protocol's UVM layer ships four things, and its manifest is part of the
+public surface:
+
+* the shared SystemVerilog interface (`interface/ocah_<protocol>_if.sv`),
+  carrying the guarded vendor-interface nest;
+* module collateral compiled alongside the package — SVA protocol checkers
+  (`sva/`), behavioral responders and other bind-style helpers (`sv/`),
+  coverage collateral (`cov/`);
+* one UVM package (`uvm/ocah_<protocol>_uvm_pkg.sv`) whose `include` order
+  is load-bearing and documented in its header, importing
+  `ocah_checker_uvm_pkg` for the evidence base;
+* the ordered compile manifest (`uvm/sources.toml`): the shared checker
+  package first, then interface and module collateral, the UVM package
+  last, plus the incdirs they need.
+
+DUT sim configs consume the layer only through the manifest
+(`[frameworks.uvm.build].source_lists`); VIP paths are never hand-copied
+into DUT configs, Bender targets, or Verilator filelists. Manifests
+dedup-merge when a DUT consumes several VIPs, so shared entries (such as
+the checker package) compile exactly once. Naming mirrors cocotb: the same
+protocol operations exist in both frameworks' sequence/BFM APIs, and the
+UVM classes follow the `ocah_<protocol>_<role>` pattern of the catalog.
+
+[[shared-vip-development-dependencies]]
+=== Backend and License Policy
+
+Every dependency needs:
+
+* canonical package/repository name;
+* pinned supported version range;
+* SPDX-compatible license evidence;
+* installation or vendored-source instructions;
+* supported Python/simulator range;
+* behavior when the dependency is absent.
+
+Required public CI dependencies belong in `hw/common/dv/pyproject.toml` and the
+root lock. Optional dependencies must fail with actionable
+messages or be explicitly non-gating; they must never silently convert missing
+traffic into PASS.
+
+[[shared-vip-development-documentation]]
+=== Documentation Checklist
+
+Every promoted package README includes:
+
+* purpose and supported protocol version/modes;
+* backend version/license;
+* package layout and public exports;
+* construction and signal mapping;
+* method/result/error/timeout reference;
+* deterministic default and randomization policy;
+* example path;
+* known limitations and out-of-scope capabilities;
+* named gating DUT test;
+* the OCAH API to use in place of direct backend calls.
+
+Complex packages should add `MANUAL.md`. Shared architecture and cross-package
+rules belong in this guide rather than being duplicated inconsistently.
+
+[[shared-vip-development-validation]]
+=== Validation Matrix
+
+[cols="<3,<7",options="header"]
+|===
+|Gate |Evidence
+
+|Syntax/import
+|Python compilation, stable root imports, and actionable missing-backend
+diagnostics.
+
+|API example
+|Runnable example that exercises public values/results without backend types.
+
+|Positive protocol
+|Real DUT transaction with exact expected/observed evidence.
+
+|Negative response
+|Known illegal/blocked operation returns the exact modeled response rather than
+OKAY or timeout.
+
+|Timeout
+|Uncompleted transaction fails by default; explicit expected timeout records
+the bound and passes only that contract.
+
+|Non-vacuity
+|A dummy, idle, tied-off, default-only, or stubbed DUT cannot satisfy the
+evidence.
+
+|Replay
+|Seed and randomized choices are logged; repeating the seed reproduces traffic.
+
+|Regression
+|Named DUT/tool run produces passing structured output and native result JSON.
+|===
+
+[[shared-vip-development-commands]]
+=== Useful Commands
+
+[source,bash]
+----
+# Compile/import
+python3 -m py_compile <files>
+python3 -c 'from ocah_<protocol>_vip import <PublicClass>'
+
+# Style/config
+ruff check <python-paths>
+ruff format --check <python-paths>
+python3 tools/dv/run_dv.py --validate-configs
+
+# Resolve/run
+python3 tools/dv/run_dv.py \
+  --dut <dut> --items <test> --tool verilator --seed 1 --dry-run
+python3 tools/dv/run_dv.py \
+  --dut <dut> --items <test> --tool verilator --seed 1
+----
+
+For optional simulator backends, record the tool release and license
+environment, but do not expose server names or credentials in public logs.
+
+[[shared-vip-development-review]]
+=== Review Checklist
+
+Reviewers should verify:
+
+* the selected ownership level is justified;
+* public APIs contain no DUT/backend leakage;
+* deterministic timeout/error behavior exists;
+* monitor/checker finalization cannot be skipped silently;
+* expected values are independent of DUT observations;
+* logs identify seed, operation, expected, observed, and context;
+* non-vacuity names a concrete DUT bug that makes the check fail;
+* limitations are explicit and not presented as supported behavior;
+* at least one real consumer gates promoted behavior;
+* generated artifacts are not committed unless the repository contract
+  explicitly requires them.

@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# System Timer OCTS IP-level scenarios.
+
+[[tests]]
+name = "system_timer_octs_sanity_test"
+module = { cocotb = "system_timer_octs_sanity_test" }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "system_timer_octs"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "system_timer_octs_sync_test"
+module = { cocotb = "system_timer_octs_sync_test" }
+seed = 1
+timeout_sec = 900
+tags = ["system_timer_octs", "sync"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "system_timer_octs_clock_ratio_test"
+module = { cocotb = "system_timer_octs_clock_ratio_test" }
+seed = 1
+timeout_sec = 900
+tags = ["system_timer_octs", "sync", "cdc"]
+run_modes = ["functional"]
+
+[[groups]]
+name = "smoke"
+tests = ["system_timer_octs_sanity_test"]
+
+[[groups]]
+name = "all"
+tests = [
+  "system_timer_octs_sanity_test",
+  "system_timer_octs_sync_test",
+  "system_timer_octs_clock_ratio_test",
+]

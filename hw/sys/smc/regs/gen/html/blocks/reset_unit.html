@@ -1,0 +1,137 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-reset_unit">Reset Unit Address Map</h2>
+<p>Subsystem reset control, hold and isolation controls, and reset-sequencing status registers.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x20</td><td><a href="#SS_CONFIG">SS_CONFIG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x24</td><td><a href="#SS_CONFIG_LOCK">SS_CONFIG_LOCK</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x40</td><td><a href="#SS_COLD_RESET_N">SS_COLD_RESET_N</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x44</td><td><a href="#SS_WARM_RESET_N">SS_WARM_RESET_N</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x48</td><td><a href="#SS_CONFIG_HOLD">SS_CONFIG_HOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4C</td><td><a href="#SS_SRAM_HOLD">SS_SRAM_HOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x50</td><td><a href="#SS_CRITICAL_HOLD">SS_CRITICAL_HOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x54</td><td><a href="#SS_DEBUG_HOLD">SS_DEBUG_HOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x60</td><td><a href="#SS_RESET_COMPLETE">SS_RESET_COMPLETE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x70</td><td><a href="#SS_COLD_RESET_LOCK">SS_COLD_RESET_LOCK</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x80</td><td><a href="#SS_FORCE_TO_REF_CLK">SS_FORCE_TO_REF_CLK</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xA8</td><td><a href="#SYNC_REG">SYNC_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xB0</td><td><a href="#ISOLATE_REQ_REG">ISOLATE_REQ_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xB4</td><td><a href="#ISOLATE_REQ_PINEN_REG">ISOLATE_REQ_PINEN_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xB8</td><td><a href="#ISOLATE_REQ_SMC_REG">ISOLATE_REQ_SMC_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xBC</td><td><a href="#ISOLATE_REQ_SMCEN_REG">ISOLATE_REQ_SMCEN_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xC0</td><td><a href="#ISOLATE_REQ_VIS">ISOLATE_REQ_VIS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xC4</td><td><a href="#ISOLATE_REQ_FLR_COUNTER_VALUE">ISOLATE_REQ_FLR_COUNTER_VALUE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xC8</td><td><a href="#ISOLATE_REQ_FLR_RESET_COUNTER_VALUE">ISOLATE_REQ_FLR_RESET_COUNTER_VALUE</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="SS_CONFIG">SS_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>ss_config</td><td>RW</td><td>0x0</td><td>Configuration registers to setup system configuration.<br>Usage is integration-specific; see the adopter chiplet specification.</td></tr>
+</table>
+<h3 id="SS_CONFIG_LOCK">SS_CONFIG_LOCK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>config_lock</td><td>RW1S</td><td>0x0</td><td>Written to lock down SS config. If bit 0 is written, then bit 0 of other SS config<br>cannot be written to again</td></tr>
+</table>
+<h3 id="SS_COLD_RESET_N">SS_COLD_RESET_N</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>reset_n_n0_scan</td><td>RW</td><td>0x0</td><td>Subsystem active low cold resets</td></tr>
+</table>
+<h3 id="SS_WARM_RESET_N">SS_WARM_RESET_N</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>reset_n_n0_scan</td><td>RW</td><td>0xFFFFFFFF</td><td>Subsystem active low warm resets</td></tr>
+</table>
+<h3 id="SS_CONFIG_HOLD">SS_CONFIG_HOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>configuration_state_hold</td><td>RW</td><td>0x0</td><td>Used with warm_reset_n. Asserting ensures all registers configured during boot, including fuse values for<br>export compliance, SRAM repair, other fuse values, etc. are preserved</td></tr>
+</table>
+<h3 id="SS_SRAM_HOLD">SS_SRAM_HOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>sram_hold</td><td>RW</td><td>0x0</td><td>Used with warm_reset_n. Asserting ensures SRAMs, latch arrays and anything else that MBIST is<br>used to test and initialize during cold reset are preserved</td></tr>
+</table>
+<h3 id="SS_CRITICAL_HOLD">SS_CRITICAL_HOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>critical_signal_hold</td><td>RW</td><td>0x0</td><td>Used with warm_reset_n. Asserting ensures security, RAS, NMIs, perf counters, debug/trace and other<br>subsystem specific registers are preserved</td></tr>
+</table>
+<h3 id="SS_DEBUG_HOLD">SS_DEBUG_HOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>debug_hold</td><td>RW</td><td>0x0</td><td>Used with warm_reset_n. Debug hold signal to ensure any debug registers are preserved</td></tr>
+</table>
+<h3 id="SS_RESET_COMPLETE">SS_RESET_COMPLETE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>reset_complete</td><td>R</td><td>0x0</td><td>Response signal from subsystem to indicate reset (or some other critical step) has completed.<br>Bitwise write 1 to clear</td></tr>
+</table>
+<h3 id="SS_COLD_RESET_LOCK">SS_COLD_RESET_LOCK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>cold_reset_lock</td><td>RW1S</td><td>0x0</td><td>Written to lock down SS cold reset. If bit 0 is written, then bit 0 of other SS cold reset<br>cannot be written to again</td></tr>
+</table>
+<h3 id="SS_FORCE_TO_REF_CLK">SS_FORCE_TO_REF_CLK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>force_ss_to_ref_clk_n</td><td>RW</td><td>0x0</td><td>Forces clock to be ref clk. The ensures reset reaches all FFs within a subsystem in same clock cycle</td></tr>
+</table>
+<h3 id="SYNC_REG">SYNC_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>sync</td><td>RW</td><td>0x0</td><td>Set to assert global sync bit</td></tr>
+</table>
+<h3 id="ISOLATE_REQ_REG">ISOLATE_REQ_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>isolate_req_reg</td><td>RW</td><td>0x0</td><td>Isolate request. This prevents reset from being propagated to SS, keeping them alive in case of a cold reset</td></tr>
+</table>
+<h3 id="ISOLATE_REQ_PINEN_REG">ISOLATE_REQ_PINEN_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>isolate_req_pinen_reg</td><td>RW</td><td>0x0</td><td>Isolate request pin enable. This enables the external isolate request pin to have an effect on ss isolate requests</td></tr>
+</table>
+<h3 id="ISOLATE_REQ_SMC_REG">ISOLATE_REQ_SMC_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>isolate_req_smc_reg</td><td>RW</td><td>0x0</td><td>Isolate request smc. Asserted once cfg_flr_pf_active is asserted, de-asserted by sw</td></tr>
+</table>
+<h3 id="ISOLATE_REQ_SMCEN_REG">ISOLATE_REQ_SMCEN_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>isolate_req_smcen_reg</td><td>RW</td><td>0x0</td><td>Isolate request smc enable. This enables the FLR lock to have an effect on ss isolate requests</td></tr>
+</table>
+<h3 id="ISOLATE_REQ_VIS">ISOLATE_REQ_VIS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>cool_reset_n_o</td><td>R</td><td>0x1</td><td>Visibility bit for cool reset output</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>cool_reset_n_i</td><td>R</td><td>0x1</td><td>Visibility bit for cool reset input</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>isolate_req_pin</td><td>R</td><td>0x1</td><td>Visibility bit for isolate request pin</td></tr>
+</table>
+<h3 id="ISOLATE_REQ_FLR_COUNTER_VALUE">ISOLATE_REQ_FLR_COUNTER_VALUE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>isolate_req_flr_counter_value</td><td>RW</td><td>0x0</td><td>Number of cycles post cfg_flr_pf_active assertion is waited until cool_reset_n is asserted</td></tr>
+</table>
+<h3 id="ISOLATE_REQ_FLR_RESET_COUNTER_VALUE">ISOLATE_REQ_FLR_RESET_COUNTER_VALUE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>isolate_req_flr_reset_counter_value</td><td>RW</td><td>0x0</td><td>Number of cycles cool_reset_n is asserted for. NOTE: The cool reset flow requires this value to be greater than 0; a value of 0 will prevent initiation, regardless of ISOLATE_REQ_FLR_COUNTER_VALUE&#x27;s value</td></tr>
+</table>
+</div>

@@ -1,0 +1,540 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Interrupts
+:description: SMC interrupt routing, PLIC source IDs, local interrupts and software handling.
+
+[[interrupts]]
+
+SMC external interrupts pass through the Platform-Level Interrupt Controller
+(PLIC). CLINT supplies per-core timer and software interrupts. Each bus error
+unit (BEU) has both a direct core output and a separately selected PLIC output.
+This chapter distinguishes raw SMC vector bits from software-visible PLIC IDs.
+
+== Controllers
+
+[[smc-interrupts-interrupt-controllers-mmio]]
+=== Controller Addresses
+
+ifdef::backend-html5[]
+++++
+<span id="interrupt-controllers-mmio"></span>
+++++
+endif::backend-html5[]
+
+These addresses use the SMC-local view. N ranges from 0 through 3 for the
+per-core watchdog and BEU apertures.
+
+[[smc-interrupt-controller-addresses-table]]
+[cols="30%,40%,12%,18%",options="header",role="smc-interrupt-table"]
+.SMC interrupt-controller addresses
+|===================================================================
+|Block |Base Addr |Size |Interface
+|CPU Control Regs |0xC003_9000 |4 KB |AXI4-Lite
+|PLIC |0xC400_0000 |64 MB |TileLink (cluster control bus)
+|CLINT |0xC800_0000 |64 KB |TileLink (cluster control bus)
+|Watchdog Timers (N) |0xC000_0000 + (N * 0x400) |1 KB x4 |TileLink (cluster peripheral bus)
+|Bus Error Units (N) |0xC801_0000 + (N * 0x1000) |4 KB x4 |TileLink (cluster control bus)
+|===================================================================
+
+
+[[smc-interrupts-risc-v-plic]]
+=== PLIC Sources and Contexts
+
+ifdef::backend-html5[]
+++++
+<span id="advanced-plic-management-and-adaptive-priority-control"></span>
+<span id="multi-context-architecture-and-privilege-level-integration"></span>
+<span id="risc-v-plic"></span>
+<span id="smc-interrupt-sources-table"></span>
+<span id="smc-interrupts-advanced-plic-management-and-adaptive-priority-control"></span>
+<span id="smc-interrupts-multi-context-architecture-and-privilege-level-integration"></span>
+<span id="smc-interrupts-system-management-interrupt-source-integration"></span>
+<span id="system-management-interrupt-source-integration"></span>
+++++
+endif::backend-html5[]
+
+The four-core implementation has 336 PLIC inputs with source IDs 1–336.
+ID 0 means no interrupt. The inputs comprise:
+
+[cols="1,1,3",options="header"]
+.PLIC input groups
+|===
+|Input group |PLIC IDs |Origin
+|Raw SMC vector bits 0–327 |1–328 |`cpu_interrupts_o`; detailed below.
+|Cluster watchdogs 0–3 |329–332 |Added by the cluster interrupt crossbar.
+|Core BEU PLIC outputs 0–3 |333–336 |Added within the PLIC clock domain.
+|===
+
+Reserved raw-vector positions remain reserved PLIC IDs. The 256 external input
+meanings come from the enclosing SoC integration; an input count is not a promise
+that every position is an active source.
+
+There are eight delivery contexts: machine contexts for cores 0–3, then
+supervisor contexts for cores 0–3. Priorities are shared per source; enable masks,
+thresholds and claim/complete registers are per context. A priority must exceed
+the context threshold to raise its external-interrupt output. Priority zero
+suppresses a source. See the generated map for context offsets and priority range.
+These settings route interrupts; they do not themselves enforce MMIO access policy.
+
+The gateways are active-high and level-sensitive, with no selectable edge mode.
+External SMC pins pass through `prim_sync3` before the raw vector. A short pulse
+can be missed if it is not sampled; stretch it or hold the request until serviced.
+A gateway admits one request and waits for completion before accepting another.
+It does not count repeated pulses while one request is in flight.
+
+[[smc-interrupts-risc-v-clint-and-precise-system-management-timing]]
+=== CLINT
+
+ifdef::backend-html5[]
+++++
+<span id="risc-v-clint-and-precise-system-management-timing"></span>
+++++
+endif::backend-html5[]
+
+CLINT provides a shared 64-bit timer, per-core compare registers and per-core
+software-interrupt state. Timer and software interrupts go directly to the cores
+rather than through PLIC claim/complete. The timer advances on the cluster's
+periodic tick; see the Clocks and Resets chapter for its clock relationship.
+
+[[smc-interrupts-bus-error-unit-interrupts]]
+=== Bus Error Units
+
+ifdef::backend-html5[]
+++++
+<span id="bus-error-unit-interrupts"></span>
+++++
+endif::backend-html5[]
+
+A Bus Error Unit (BEU) accumulates error events for one core. The register
+named `ACCRUED_ENABLE` is sticky status, not an enable mask: events set its bits
+independently of `ENABLE`. Ordinary writes replace those bits; write zero to
+clear them. `ENABLE` instead gates capture of the first error's `CAUSE` and
+`PHYS_ADDR` while `CAUSE` is zero. Software can also write `PHYS_ADDR`.
+
+`LOCAL_ENABLE` selects accrued errors for direct delivery to the core, bypassing
+the PLIC and the ordinary per-source `mie` bits. This is not an unconditionally
+non-maskable interrupt: in machine mode, `mstatus.MIE = 0` suppresses delivery.
+The machine interrupt is enabled while executing in lower privilege modes.
+The BEU also has a separate output selected by `PLIC_ENABLE`. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-bus-error-units[Bus Error Unit service sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-bus-error-units[Bus Error Unit service sequence]
+endif::backend-pdf[]
+is in the Programmer's Guide.
+
+== Sources and Routing
+
+[[smc-interrupts-smc-interrupt-vector-cpu_interrupts_o]]
+=== Raw Vector and PLIC Numbering
+
+ifdef::backend-html5[]
+++++
+<span id="smc-interrupt-vector-cpu_interrupts_o"></span>
+++++
+endif::backend-html5[]
+
+Raw bit N maps to PLIC source ID N+1. For example, DMA completion is raw bit 322
+and PLIC ID 323. Watchdog IDs 329–332 and BEU IDs 333–336 are not additional bits
+on the 328-bit raw SMC vector.
+
+// Canonical SMC interrupt documentation: maintain this section with RTL changes;
+// other guides xref <<cpu-interrupt-vector-map>>.
+[[cpu-interrupt-vector-map]]
+=== SMC CPU Interrupt Vector Map
+
+This section documents the raw `cpu_interrupts_o` vector assembled in
+`hw/sys/smc/rtl/smc_base.sv`. The vector is built from four sources:
+
+* `smc_ext_interrupts_i`
+* `peripheral_interrupts_i[31:0]`
+* `mailbox_interrupts[31:0]`
+* four internal interrupt signals
+
+Unless otherwise noted, the bit numbers below are raw `cpu_interrupts_o`
+bit indices, not PLIC source IDs. When these signals feed the PLIC, the
+PLIC source ID is `cpu_interrupts_o` bit index + 1.
+
+The vector layout is:
+
+[source,systemverilog]
+----
+cpu_interrupts_o[NumExtInterrupts-1:0]        = ext_interrupts_smc_clk; // smc_ext_interrupts_i after 3-stage sync to clk_smc
+cpu_interrupts_o[NumExtInterrupts+:32]        = peripheral_interrupts_i;
+cpu_interrupts_o[(NumExtInterrupts+32)+:32]   = mailbox_interrupts;
+cpu_interrupts_o[(NumExtInterrupts+64)]       = tdr_dbg_ctrl_clocks_stopped_by_cla_o;
+cpu_interrupts_o[(NumExtInterrupts+64)+1]     = cla_interrupt;
+cpu_interrupts_o[(NumExtInterrupts+64)+2]     = dma_intp;
+cpu_interrupts_o[(NumExtInterrupts+64)+3]     = zeroer_intp;
+----
+
+`NumExtInterrupts = 256` and `NumCpuInterrupts = 328`.
+
+ifdef::backend-html5[]
+++++
+<span id="exact-indexed-map"></span>
+++++
+endif::backend-html5[]
+[[smc-interrupts-exact-indexed-map]]
+==== Exact Indexed Map
+
+<<smc-indexed-interrupt-map-table>> shows the exact raw `cpu_interrupts_o` indexing. The
+`Source` column is intentionally human-readable; implementation signal
+names are called out in the `RTL trace` column instead.
+
+ifdef::backend-html5[]
+++++
+<div class="smc-interrupt-table-scroll" role="region" aria-label="SMC CPU interrupt vector map" tabindex="0">
+++++
+endif::backend-html5[]
+
+[[smc-indexed-interrupt-map-table]]
+[width="100%",cols="12%,20%,28%,40%",options="header",role="smc-interrupt-table smc-interrupt-table-wide"]
+.SMC indexed interrupt map
+|=======================================================================
+|Bit(s) |Source |Description |RTL trace
+
+|`[255:0]`
+|External interrupts
+|Integration-defined external interrupt inputs
+|`hw/sys/smc/rtl/smc_base.sv` synchronizes `ext_interrupts_i` to `clk_smc`
+(`prim_sync3 u_ext_interrupts_sync3`; wired from `smc.sv`
+`smc_ext_interrupts_i`) and drives
+`cpu_interrupts_o[NumExtInterrupts-1:0] = ext_interrupts_smc_clk`.
+
+|`256`
+|SEP mailbox interrupt 0
+|SEP-to-SMC mailbox channel 0 interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[0] =
+sep_mailbox_interrupts_i[0]`.
+
+|`257`
+|SEP mailbox interrupt 1
+|SEP-to-SMC mailbox channel 1 interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[1] =
+sep_mailbox_interrupts_i[1]`.
+
+|`258`
+|SEP mailbox interrupt 2
+|SEP-to-SMC mailbox channel 2 interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[2] =
+sep_mailbox_interrupts_i[2]`.
+
+|`259`
+|SEP mailbox interrupt 3
+|SEP-to-SMC mailbox channel 3 interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[3] =
+sep_mailbox_interrupts_i[3]`.
+
+|`260`
+|SEP mailbox interrupt 4
+|SEP-to-SMC mailbox channel 4 interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[4] =
+sep_mailbox_interrupts_i[4]`.
+
+|`261`
+|SEP mailbox interrupt 5
+|SEP-to-SMC mailbox channel 5 interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[5] =
+sep_mailbox_interrupts_i[5]`.
+
+|`262`
+|SEP mailbox interrupt 6
+|SEP-to-SMC mailbox channel 6 interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[6] =
+sep_mailbox_interrupts_i[6]`.
+
+|`263`
+|SEP mailbox interrupt 7
+|SEP-to-SMC mailbox channel 7 interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[7] =
+sep_mailbox_interrupts_i[7]`.
+
+|`264`
+|Telemetry interrupt 0
+|Telemetry receiver instance 0 interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[8] =
+telemetry_irq[0]`.
+
+|`265`
+|Telemetry interrupt 1
+|Telemetry receiver instance 1 interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[9] =
+telemetry_irq[1]`.
+
+|`266`
+|Telemetry interrupt 2
+|Telemetry receiver instance 2 interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[10] =
+telemetry_irq[2]`.
+
+|`267`
+|NDM Reset Request
+|OR-reduced synchronized NDM reset request interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[11] =
+\|ndmreset_request_smc_clk`.
+
+|`268`
+|I3C interrupt 0
+|I3C controller instance 0 interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[12] =
+i3c_irqs_smc_clk[0]`; sourced from the I3C wrapper through the peripheral CDC block.
+
+|`269`
+|I3C interrupt 1
+|I3C controller instance 1 interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[13] =
+i3c_irqs_smc_clk[1]`; sourced from the I3C wrapper through the peripheral CDC block.
+
+|`270`
+|I3C interrupt 2
+|I3C controller instance 2 interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[14] =
+i3c_irqs_smc_clk[2]`; sourced from the I3C wrapper through the peripheral CDC block.
+
+|`271`
+|I3C interrupt 3
+|I3C controller instance 3 interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[15] =
+i3c_irqs_smc_clk[3]`; sourced from the I3C wrapper through the peripheral CDC block.
+
+|`272`
+|I3C interrupt 4
+|I3C controller instance 4 interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[16] =
+i3c_irqs_smc_clk[4]`; sourced from the I3C wrapper through the peripheral CDC block.
+
+|`273`
+|I3C interrupt 5
+|I3C controller instance 5 interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[17] =
+i3c_irqs_smc_clk[5]`; sourced from the I3C wrapper through the peripheral CDC block.
+
+|`274`
+|UART/Log Engine interrupt 0
+|Combined UART IRQ, UART error, and log-engine interrupt for instance 0
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[18] =
+uart_irq_combined_smc_clk[0]`; the combined signal is formed in
+`smc_peripherals_cdc.sv`.
+
+|`275`
+|UART/Log Engine interrupt 1
+|Combined UART IRQ, UART error, and log-engine interrupt for instance 1
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[19] =
+uart_irq_combined_smc_clk[1]`; the combined signal is formed in
+`smc_peripherals_cdc.sv`.
+
+|`276`
+|UART/Log Engine interrupt 2
+|Combined UART IRQ, UART error, and log-engine interrupt for instance 2
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[20] =
+uart_irq_combined_smc_clk[2]`; the combined signal is formed in
+`smc_peripherals_cdc.sv`.
+
+|`277`
+|UART/Log Engine interrupt 3
+|Combined UART IRQ, UART error, and log-engine interrupt for instance 3
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[21] =
+uart_irq_combined_smc_clk[3]`; the combined signal is formed in
+`smc_peripherals_cdc.sv`.
+
+|`278`
+|AVSBus interrupt
+|Adaptive voltage scaling interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[22] =
+avsbus_irq_smc_clk`.
+
+|`279`
+|I2C interrupt 0
+|I2C controller instance 0 interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[23] =
+i2c_irqs_smc_clk[0]`.
+
+|`280`
+|I2C interrupt 1
+|I2C controller instance 1 interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[24] =
+i2c_irqs_smc_clk[1]`.
+
+|`281`
+|I2C interrupt 2
+|I2C controller instance 2 interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[25] =
+i2c_irqs_smc_clk[2]`.
+
+|`282`
+|SEP watchdog reset
+|External watchdog reset indication from SEP path
+|`smc_peripherals.sv` synchronizes `~rst_ext_wdt_ni` through
+`u_rst_ext_wdt_irq_sync` and drives `peripheral_interrupts_o[26] =
+rst_ext_wdt_smc_clk`.
+
+|`283`
+|Locked field access
+|eFuse locked-field access violation interrupt
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[27] =
+locked_field_access_interrupt`, sourced from the eFuse controller path.
+
+|`284`
+|GPIO interrupt OR, lower half
+|OR-reduction across the lower half of bonded GPIO interrupt sources
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[28] =
+\|gpio_interrupt[smc_pkg::NumBondedGpio/2-1:0]`.
+
+|`285`
+|GPIO interrupt OR, upper half
+|OR-reduction across the upper half of bonded GPIO interrupt sources
+|`smc_peripherals.sv` drives `peripheral_interrupts_o[29] =
+\|gpio_interrupt[smc_pkg::NumBondedGpio-1:smc_pkg::NumBondedGpio/2]`.
+
+|`286`
+|AXI hang detector OR
+|OR of the three AXI hang detectors (sys_axi, sep_axi, data_accel). Asserts
+while any detector's `irq_o` is high, so software must read
+`SMC_BASE_CONFIG.HANG_DET_{SYS_AXI,SEP_AXI,DATA_ACCEL}_CTRL` to identify the
+stalled master. There is no status latch to clear: the level drops when that
+master's bus makes progress, or when the detector's `enable` or `irq_en` is
+cleared. The CPU AXI master is not covered here; it is covered by the watchdog.
+|`smc_base.sv` OR-reduces `hang_irq_sys_axi \| hang_irq_sep_axi \|
+hang_irq_data_accel` onto `axi_hang_irq_o`; `smc.sv` routes that back into
+`u_smc_peripherals`, and `smc_peripherals.sv` drives
+`peripheral_interrupts_o[30] = axi_hang_irq_i`.
+
+|`287`
+|Reserved
+|Unused peripheral interrupt slots; tied to zero
+|`peripheral_interrupts_o` is initialized to `'0`, and bit 31 is never
+overwritten in `smc_peripherals.sv`.
+
+|`[319:288]`
+|SMC mailbox interrupts `[31:0]`
+|Inbound SMC mailbox interrupt channels 31:0
+|`smc_base.sv` drives
+`cpu_interrupts_o[(NumExtInterrupts+32)+:32] = mailbox_interrupts`;
+`mailbox.sv` drives `inbound_interrupt_o[m]` per mailbox channel.
+
+|`320`
+|CLA Clock Stop
+|DFD CLA clock-stop status interrupt
+|`smc_base.sv` drives this bit from
+`tdr_dbg_ctrl_clocks_stopped_by_cla_o`, sourced through
+`u_smc_dfd_wrap` in `smc_internal_regs.sv`.
+
+|`321`
+|CLA Interrupt
+|DFD CLA interrupt
+|`smc_base.sv` drives this bit from `cla_interrupt`, sourced from
+`external_action_debug_interrupt_o` on `u_smc_dfd_wrap` in
+`smc_internal_regs.sv`.
+
+|`322`
+|DMA transfer complete
+|Falling-edge pulse when DMA busy deasserts
+|`smc_base.sv` drives this bit from `dma_intp`; `idma_wrapper.sv` generates
+`dma_intp_o` as a falling-edge pulse of `dma_busy_o`.
+
+|`323`
+|Zeroer transfer complete
+|Falling-edge pulse when Zeroer busy deasserts
+|`smc_base.sv` drives this bit from `zeroer_intp`; `zeroer.sv` generates
+`zeroer_intp_o` on the falling edge of `zeroer_busy_o`.
+
+|`[327:324]`
+|Reserved
+|Unused tail bits; tied to zero
+|`cpu_interrupts_o` is initialized to `'0`, and no RTL overwrites these
+tail bits in `smc_base.sv`.
+|=======================================================================
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
+[[smc-interrupts-trace-notes]]
+==== Routing Notes
+
+ifdef::backend-html5[]
+++++
+<span id="trace-notes"></span>
+++++
+endif::backend-html5[]
+
+`smc_base.sv` assembles the raw vector; `smc_peripherals.sv` assembles its
+32-bit peripheral slice. The AXI hang-detector OR enters peripheral bit 30
+(raw bit 286), while bit 31 is reserved. The table preserves the individual
+sources behind combined GPIO, UART/log-engine and hang-detector indications;
+software must inspect their local status to identify and service the cause.
+
+The six I3C entries are connected through the peripheral CDC block. The AVSBus
+and external-watchdog indications are also synchronized into the SMC domain.
+Do not infer pulse-capture guarantees merely from the presence of a synchronizer.
+DMA and zeroer completion indications are busy-falling pulses, not counted queues.
+
+== Software Handling
+
+ifdef::backend-html5[]
+++++
+<span id="multi-core-interrupt-distribution-and-load-management"></span>
+<span id="multi-tier-interrupt-classification-and-response-strategy"></span>
+<span id="smc-interrupts-multi-core-interrupt-distribution-and-load-management"></span>
+<span id="smc-interrupts-multi-tier-interrupt-classification-and-response-strategy"></span>
+<span id="fault-detection-and-recovery-architecture"></span>
+<span id="precision-timer-management-and-inter-core-coordination"></span>
+<span id="smc-interrupts-fault-detection-and-recovery-architecture"></span>
+<span id="smc-interrupts-precision-timer-management-and-inter-core-coordination"></span>
+++++
+endif::backend-html5[]
+
+The PLIC priority, enable and threshold registers are not reset by hardware. A
+source's priority is shared by every context that enables it. Completion
+releases the source's gateway, so a still-asserted source pends again; claim
+and complete do not clear a peripheral's own sticky status. CLINT timer and
+software interrupts do not use PLIC completion.
+
+The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-interrupt-control[Interrupt Control section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-interrupt-control[Interrupt Control section]
+endif::backend-pdf[]
+of the Programmer's Guide gives the PLIC initialization and claim/complete
+sequence, CLINT timer and software interrupt service, and Bus Error Unit
+service. Watchdog recovery and CPU reset/isolation ordering are described in
+the Watchdog Timers and CPU chapters. For CPU cluster context, see
+ifdef::backend-html5[]
+xref:smc:cpu.adoc#cpu-memory-system[CPU and Memory System].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<cpu-memory-system>>.
+endif::backend-pdf[]
+
+[[smc-interrupts-register-interfaces]]
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-interfaces"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::partial$smc/regs/gen/html/blocks/plic.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/plic.adoc[leveloffset=+2]
+endif::backend-pdf[]

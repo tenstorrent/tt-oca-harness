@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+// Entropy Source component documentation
+ifdef::backend-html5[]
+include::partial$entropy_source/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::architecture.adoc[]
+endif::backend-pdf[]

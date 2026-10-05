@@ -1,0 +1,105 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Cross-Trigger Port
+:description: CTP — pad-facing cross-trigger signalling module, wire-OR and point-to-point modes, architecture and interface.
+
+[[cross-trigger-port]]
+
+The Cross Trigger Port (CTP) is the pad-facing signalling module for
+cross-trigger communication per the Open Chiplet Cross Triggering (OCCT)
+specification. Each CTP connects the chiplet core logic to four I/O pads and
+handles the timing and handshaking required for both wire-OR and
+point-to-point signalling schemes.
+
+== Overview
+
+Each CTP connects to four I/O pads:
+
+* *CT_Req_out* — cross-trigger request output.
+* *CT_Ack_in* — acknowledge input (point-to-point only).
+* *CT_Req_in* — cross-trigger request input (point-to-point only).
+* *CT_Ack_out* — acknowledge output (point-to-point only).
+
+Two inter-chiplet signalling schemes are supported:
+
+* *Wire-OR* — supports a wide range of existing chiplet implementations and
+  is resource efficient. Uses pulse stretching to ensure reliable detection
+  across chiplet boundary delays.
+* *Point-to-point* — faster, more reliable, and simpler to configure. Uses
+  four-phase handshaking with CDC synchronisers at the die boundary.
+
+== Configuration
+
+The CTP has no build-time parameters. All operational settings are
+programmed at runtime through the AXI-Lite CSR interface:
+
+<<ctp-configuration-registers-table>> summarises the runtime controls exposed through
+the CTP CSR interface.
+
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="CTP configuration registers" tabindex="0">
+++++
+endif::backend-html5[]
+
+[[ctp-configuration-registers-table]]
+[cols="<28,<72",options="header",role="port-reference"]
+.CTP configuration registers
+|===
+|Register |Description
+|`MODE` |Select wire-OR (0) or point-to-point (1) signalling.
+|`STRETCH_MULT` |16-bit pulse stretch multiplier for wire-OR mode.
+|`INVERT` |Signal polarity inversion for GPIO adaptation.
+|`RESET` |Handshake state machine reset.
+|===
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
+See the
+ifdef::backend-html5[]
+xref:ip:cross_trigger_network/doc/index.adoc#ctn-memory-map[CTN Memory Map]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ctn-memory-map,CTN Memory Map>>
+endif::backend-pdf[]
+for the full CTP register layout and field descriptions. The CTN decodes the
+AXI-Lite CSR window and presents each CTP's registers at a 16-byte stride
+starting at offset 0x0200.
+
+`MODE` and `INVERT` are static configuration, set once per boot in a single
+write before any CTM route selects or targets the port. The Programmer's Guide
+gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#dtp-cross-trigger[cross-trigger programming sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-cross-trigger[cross-trigger programming sequence]
+endif::backend-pdf[]
+with reconfiguration and deadlock recovery.
+
+ifdef::backend-pdf[]
+:imagesdir: assets
+endif::backend-pdf[]
+
+== Architecture
+
+ifdef::backend-html5[]
+include::partial$cross_trigger_port/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::architecture.adoc[]
+endif::backend-pdf[]
+
+== Interface
+
+ifdef::backend-html5[]
+include::partial$cross_trigger_port/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::interface.adoc[]
+endif::backend-pdf[]

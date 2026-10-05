@@ -1,0 +1,222 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef DFX_CTRL_STATUS_RDL_DEFINED
+`define DFX_CTRL_STATUS_RDL_DEFINED
+
+addrmap dfx_ctrl_status {
+    name = "DFX Control and Status Address Map";
+    desc = "Memory-repair and MBIST status, debug clock and cross-trigger controls, and debug-mux selects.";
+
+    reg STATUS {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw = r;
+            hw = w;
+            stickybit;
+            desc = "One bit indicator from DFT logic to say when mem repair is completed.
+                    This register is sticky 1 and will hold the value until reset";
+        } mem_repair_done[0:0] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            stickybit;
+            desc = "One bit indicator from DFT logic to say if mem repair was successful
+                    This register is sticky 1 and will hold the value until reset";
+        } mem_repair_success[1:1] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            stickybit;
+            desc = "One bit indicator from DFT logic to say that mem repair has hit timeout and aborted
+                    This register is sticky 1 and will hold the value until reset";
+        } mem_repair_abort[2:2] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            stickybit;
+            desc = "One bit indicator from DFT logic to say when MBIST is completed
+                    This register is sticky 1 and will hold the value until reset";
+        } mbist_done[4:4] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            stickybit;
+            desc = "One bit indicator from DFT logic to say when MBIST is successful
+                    This register is sticky 1 and will hold the value until reset";
+        } mbist_pass[8:8] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            stickybit;
+            desc = "One bit indicator from DFT logic to say that MBIST has hit timeout and aborted
+                    This register is sticky 1 and will hold the value until reset";
+        } mbist_abort[12:12] = 0x0;
+    };
+
+    reg DEBUG_CTRL {
+        regwidth = 32;
+        accesswidth = 32;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Holds the written value for software to read back. It has no effect in the SMC.";
+        } chiplet_enable [1:0] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Holds the written value for software to read back. It has no effect in the SMC.";
+        }  gpio_en[2:2] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="DFD clock stop. 1 stops the clock to the debug-bus muxes and the CLA unless
+                    force_clk_en is 1; 0 lets it run. The clock also runs while the SMC is in
+                    reset.";
+        }  cg_en[3:3] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Design-for-debug (DFD) clock force. 1 keeps the DFD clock running whatever the
+                    value of cg_en.";
+        } force_clk_en[4:4] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Holds the written value for software to read back. It has no effect in the SMC.";
+        } dtb_ns_en[5:5] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Holds the written value for software to read back. It has no effect in the SMC.";
+        } dtb_ew_en[6:6] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="CLA cross-trigger and halt-clock enable. Bit 0 (register bit 7) enables every
+                    CLA cross-trigger output lane together with the CLA halt-clock request; 0 holds
+                    them all inactive. Bits 15:1 hold the written value for software to read back
+                    and have no effect.";
+        } xtrig_clk_halt_mask[22:7] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Holds the written value for software to read back. It has no effect in the SMC;
+                    the debug marker on the SMC debug bus comes from the core logic analyzer (CLA).";
+        } debug_marker [30:23] = 0x0;
+
+    };
+
+    reg DEBUG_BUS_MUX {
+        desc = "Mode, ID and lane selects for the twelve debug-bus muxes that reduce the SMC debug
+                    bus to the 16 CLA input lanes. Each mux takes its mode while Dbmid equals its ID,
+                    and its lane selects while Dbmid equals its ID and its mode is 1, so program one mux
+                    at a time.";
+        regwidth = 0x40;
+
+        field {
+            desc = "Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode";
+            sw = rw;
+            hw = r;
+
+        } Dbmmode[1:0] = 0x0;
+        field {
+            desc = "ID of the debug-bus mux to program: 3 to 6 address the level-2 muxes and 7 to 14 the
+                    level-3 muxes.";
+            sw = rw;
+            hw = r;
+
+        } Dbmid[7:2] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+
+        } Rsvd158[15:8] = 0x0;
+        field {
+            desc = "Binary input-lane select for output lane 0 of the addressed debug-bus mux, which
+                    takes eight 16-bit input lanes and drives four. 0 selects input lane 0; a value k
+                    from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.";
+            sw = rw;
+            hw = r;
+
+        } Muxselseg0[21:16] = 0x0;
+        field {
+            desc = "Binary input-lane select for output lane 1 of the addressed debug-bus mux, which
+                    takes eight 16-bit input lanes and drives four. 0 selects input lane 1; a value k
+                    from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.";
+            sw = rw;
+            hw = r;
+
+        } Muxselseg1[27:22] = 0x0;
+        field {
+            desc = "Binary input-lane select for output lane 2 of the addressed debug-bus mux, which
+                    takes eight 16-bit input lanes and drives four. 0 selects input lane 2; a value k
+                    from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.";
+            sw = rw;
+            hw = r;
+
+        } Muxselseg2[33:28] = 0x0;
+        field {
+            desc = "Binary input-lane select for output lane 3 of the addressed debug-bus mux, which
+                    takes eight 16-bit input lanes and drives four. 0 selects input lane 3; a value k
+                    from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.";
+            sw = rw;
+            hw = r;
+
+        } Muxselseg3[39:34] = 0x0;
+        field {
+            desc = "No effect in the SMC: each debug-bus mux has four output lanes, selected by
+                    Muxselseg0 to Muxselseg3.";
+            sw = rw;
+            hw = r;
+
+        } Muxselseg4[45:40] = 0x0;
+        field {
+            desc = "No effect in the SMC: each debug-bus mux has four output lanes, selected by
+                    Muxselseg0 to Muxselseg3.";
+            sw = rw;
+            hw = r;
+
+        } Muxselseg5[51:46] = 0x0;
+        field {
+            desc = "No effect in the SMC: each debug-bus mux has four output lanes, selected by
+                    Muxselseg0 to Muxselseg3.";
+            sw = rw;
+            hw = r;
+
+        } Muxselseg6[57:52] = 0x0;
+        field {
+            desc = "No effect in the SMC: each debug-bus mux has four output lanes, selected by
+                    Muxselseg0 to Muxselseg3.";
+            sw = rw;
+            hw = r;
+
+        } Muxselseg7[63:58] = 0x0;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Address Map
+    ////////////////////////////////////////////////////////////////////////////
+
+    STATUS              STATUS_SMU      @0x0;
+    DEBUG_CTRL          DEBUG_CTRL      @0x8;
+    DEBUG_BUS_MUX       DEBUG_BUS_MUX   @0x10;
+
+};
+
+`endif

@@ -1,0 +1,276 @@
+--- a/hw/ip/kmac/data/kmac.hjson
++++ b/hw/ip/kmac/data/kmac.hjson
+@@ -151,7 +151,7 @@
+     { name:    "NumWordsKey"
+       type:    "int"
+       default: "16"
+-      desc:    "Number of words for the secret key"
++      desc:    "Number of words for the secret key. Deprecated: SW key path is for DV only; production uses key manager sideload."
+       local:   "true"
+     }
+     { name:    "NumWordsPrefix"
+@@ -486,7 +486,8 @@
+         } // f: state_endianness
+         { bits: "12"
+           name: "sideload"
+-          desc: '''Sideloaded Key.
++          resval: "1"
++          desc: '''Sideloaded Key. Deprecated: defaults to 1 (sideload). Set to 0 for DV testing with SW key path only.
+ 
+                 If 1, KMAC uses KeyMgr sideloaded key for SW initiated KMAC
+                 operation. KMAC uses the sideloaded key regardless of this
+@@ -872,7 +873,7 @@
+     } // R: ENTROPY_SEED
+     { multireg: {
+         name: "KEY_SHARE0"
+-        desc: '''KMAC Secret Key
++        desc: '''KMAC Secret Key (deprecated: SW key path is for DV only; production uses key manager sideload).
+ 
+               KMAC secret key can be up to 512 bit.
+               Order of the secret key is:
+@@ -902,7 +903,7 @@
+     } // multireg: KEY_SHARE0
+     { multireg: {
+         name: "KEY_SHARE1"
+-        desc: '''KMAC Secret Key, 2nd share.
++        desc: '''KMAC Secret Key, 2nd share (deprecated: SW key path is for DV only; production uses key manager sideload).
+ 
+               KMAC secret key can be up to 512 bit.
+               Order of the secret key is:
+@@ -931,7 +932,7 @@
+       } // R: KEY_SHARE1
+     } // multireg: KEY_SHARE1
+     { name: "KEY_LEN"
+-      desc: '''Secret Key length in bit.
++      desc: '''Secret Key length in bit (deprecated: SW key path is for DV only; production uses key manager sideload).
+ 
+             This value is used to make encoded secret key in KMAC.
+             KMAC supports certain lengths of the secret key. Currently it
+--- a/hw/ip/kmac/rtl/keccak_2share.sv
++++ b/hw/ip/kmac/rtl/keccak_2share.sv
+@@ -5,10 +5,11 @@
+ // This module is the single round keccak permutation module
+ // It supports Keccak with up to 1600b of state
+ 
+-`include "prim_assert.sv"
+ 
+ module keccak_2share
+   import prim_mubi_pkg::*;
++
++    `include "prim_assert.sv"
+ #(
+   parameter int Width = 1600, // b= {25, 50, 100, 200, 400, 800, 1600}
+ 
+--- a/hw/ip/kmac/rtl/keccak_round.sv
++++ b/hw/ip/kmac/rtl/keccak_round.sv
+@@ -33,10 +33,11 @@
+ // data of the DOM multipliers when also providing fresh randomness and vice
+ // versa. Updating one without the other could lead to undesired SCA leakage.
+ 
+-`include "prim_assert.sv"
+ 
+ module keccak_round
+   import prim_mubi_pkg::*;
++
++    `include "prim_assert.sv"
+ #(
+   parameter int Width = 1600, // b= {25, 50, 100, 200, 400, 800, 1600}
+ 
+--- a/hw/ip/kmac/rtl/kmac.sv
++++ b/hw/ip/kmac/rtl/kmac.sv
+@@ -4,10 +4,11 @@
+ //
+ // KMAC/SHA3
+ 
+-`include "prim_assert.sv"
+ 
+ module kmac
+   import kmac_pkg::*;
++
++  `include "prim_assert.sv"
+   import kmac_reg_pkg::*;
+ #(
+   // EnMasking: Enable masking security hardening inside keccak_round
+@@ -257,7 +258,7 @@ module kmac
+   logic reg2msgfifo_process, msgfifo2kmac_process, kmac2sha3_process;
+ 
+ 
+-  // Secret Key signals
++  // Secret Key signals (deprecated: SW key path is for DV only; production uses key manager sideload)
+   logic [MaxKeyLen-1:0] sw_key_data_reg [SwKeyShare];
+   logic [MaxKeyLen-1:0] sw_key_data [Share];
+   key_len_e             sw_key_len;
+@@ -481,8 +482,9 @@ module kmac
+   assign hw2reg.cfg_regwen.d = engine_stable;
+ 
+   // Secret Key
++  // Deprecated: SW key path is for DV only; production uses key manager sideload.
+   // Secret key is defined as external register. So the logic latches when SW
+-  // writes to KEY_SHARE0 , KEY_SHARE1 registers.
++  // writes to KEY_SHARE0, KEY_SHARE1 registers.
+   // SEC_CM: SW_KEY.KEY.MASKING
+   always_ff @(posedge clk_i or negedge rst_ni) begin
+     if (!rst_ni) begin
+--- a/hw/ip/kmac/rtl/kmac_app.sv
++++ b/hw/ip/kmac/rtl/kmac_app.sv
+@@ -12,10 +12,11 @@
+ // compile-time and only a one-shot digest can be retrieved. A dynamic interface can send the
+ // desired hashing configuration at run time and supports XOF operation.
+ 
+-`include "prim_assert.sv"
+ 
+ module kmac_app
+   import kmac_pkg::*;
++
++    `include "prim_assert.sv"
+ #(
+   // App specific configs are defined in kmac_pkg
+   parameter  bit          EnMasking          = 1'b0,
+@@ -28,7 +29,7 @@ module kmac_app
+   input clk_i,
+   input rst_ni,
+ 
+-  // Secret Key from register
++  // Secret Key from register (deprecated: SW key path is for DV only; production uses sideload)
+   input [MaxKeyLen-1:0] reg_key_data_i[Share],
+   input key_len_e       reg_key_len_i,
+ 
+--- a/hw/ip/kmac/rtl/kmac_core.sv
++++ b/hw/ip/kmac/rtl/kmac_core.sv
+@@ -4,10 +4,11 @@
+ //
+ // KMAC control and padding logic
+ 
+-`include "prim_assert.sv"
+ 
+ module kmac_core
+   import kmac_pkg::*;
++
++    `include "prim_assert.sv"
+ #(
+   // EnMasking: Enable masking security hardening inside keccak_round
+   // If it is enabled, the result digest will be two set of 1600bit.
+--- a/hw/ip/kmac/rtl/kmac_entropy.sv
++++ b/hw/ip/kmac/rtl/kmac_entropy.sv
+@@ -4,10 +4,11 @@
+ //
+ // KMAC Entropy Generation module
+ 
+-`include "prim_assert.sv"
+ 
+ module kmac_entropy
+   import kmac_pkg::*;
++
++  `include "prim_assert.sv"
+   import kmac_reg_pkg::*;
+ #(
+   parameter lfsr_perm_t RndCnstLfsrPerm = RndCnstLfsrPermDefault,
+--- a/hw/ip/kmac/rtl/kmac_errchk.sv
++++ b/hw/ip/kmac/rtl/kmac_errchk.sv
+@@ -41,10 +41,11 @@
+ // 2. Kmac Prefix
+ // * sideload & key_valid -> Checker in kmac_core
+ 
+-`include "prim_assert.sv"
+ 
+ module kmac_errchk
+   import kmac_pkg::*;
++
++  `include "prim_assert.sv"
+   import sha3_pkg::sha3_mode_e;
+   import sha3_pkg::keccak_strength_e;
+ #(
+--- a/hw/ip/kmac/rtl/kmac_msgfifo.sv
++++ b/hw/ip/kmac/rtl/kmac_msgfifo.sv
+@@ -6,10 +6,11 @@
+ //
+ // This module converts TL-UL interface into MSG_FIFO interface used in KMAC.
+ 
+-`include "prim_assert.sv"
+ 
+ module kmac_msgfifo
+   import kmac_pkg::*;
++
++    `include "prim_assert.sv"
+ #(
+   // OutWidth is MsgFIFO data width. prim_packer converts InW to OutW prior to
+   // pushing to MsgFIFO
+--- a/hw/ip/kmac/rtl/kmac_reduced.sv
++++ b/hw/ip/kmac/rtl/kmac_reduced.sv
+@@ -5,7 +5,6 @@
+ // Reduced KMAC/SHA3 core including PRNG but without TL-UL interface. This module is suitable for
+ // SCA using e.g. PROLEAD.
+ 
+-`include "prim_assert.sv"
+ 
+ module kmac_reduced
+   import kmac_pkg::*;
+--- a/hw/ip/kmac/rtl/kmac_reg_top.sv
++++ b/hw/ip/kmac/rtl/kmac_reg_top.sv
+@@ -4,8 +4,6 @@
+ //
+ // Register Top module auto-generated by `reggen`
+ 
+-`include "prim_assert.sv"
+-
+ module kmac_reg_top (
+   input clk_i,
+   input rst_ni,
+@@ -28,6 +26,8 @@ module kmac_reg_top (
+   output logic intg_err_o
+ );
+ 
++  `include "prim_assert.sv"
++
+   import kmac_reg_pkg::* ;
+ 
+   localparam int AW = 12;
+@@ -851,7 +851,7 @@ module kmac_reg_top (
+   prim_subreg_shadow #(
+     .DW      (1),
+     .SwAccess(prim_subreg_pkg::SwAccessRW),
+-    .RESVAL  (1'h0),
++    .RESVAL  (1'h1),
+     .Mubi    (1'b0)
+   ) u_cfg_shadowed_sideload (
+     .clk_i   (clk_i),
+--- a/hw/ip/kmac/rtl/kmac_staterd.sv
++++ b/hw/ip/kmac/rtl/kmac_staterd.sv
+@@ -4,7 +4,6 @@
+ //
+ // Keccak state read
+ 
+-`include "prim_assert.sv"
+ 
+ module kmac_staterd
+   import kmac_pkg::*;
+--- a/hw/ip/kmac/rtl/sha3.sv
++++ b/hw/ip/kmac/rtl/sha3.sv
+@@ -6,10 +6,11 @@
+ //
+ // It instantiates a keccak_round with 1600 bits of the state.
+ 
+-`include "prim_assert.sv"
+ 
+ module sha3
+   import sha3_pkg::*;
++
++    `include "prim_assert.sv"
+ #(
+   // Enable Masked Keccak if 1
+   parameter  bit EnMasking = 0,
+--- a/hw/ip/kmac/rtl/sha3pad.sv
++++ b/hw/ip/kmac/rtl/sha3pad.sv
+@@ -4,10 +4,11 @@
+ //
+ // SHA3 padding logic
+ 
+-`include "prim_assert.sv"
+ 
+ module sha3pad
+   import sha3_pkg::*;
++
++    `include "prim_assert.sv"
+ #(
+   parameter  bit EnMasking = 0,
+   localparam int Share = (EnMasking) ? 2 : 1

@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+version = 1
+
+[[views]]
+name = "km-cpu"
+title = "Key Manager CPU Memory Map"
+include_all = true
+derive_gaps = true
+columns = ["base", "end", "size", "occupied_size", "label", "description", "hole_resp", "past_resp"]

@@ -1,0 +1,40 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-uart_16550_dl]
+== UART 16550 Divisor Latch Address Map
+
+Contains the registers accessible only when `LCR.DLAB = 1`.
+
+[cols="1,4,1,6", options="header"]
+|===
+| Address | Name | Access | Description
+| 0x0 | <<reg-{regmap-instance}-uart_16550_dl-DLL,DLL>> | RW a| Divisor Latch Least Significant Byte Register
+| 0x4 | <<reg-{regmap-instance}-uart_16550_dl-DLM,DLM>> | RW a| Divisor Latch Most Significant Byte Register
+|===
+
+[#reg-{regmap-instance}-uart_16550_dl-DLL]
+=== DLL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `DLL` | RW | 0x0 a| Divisor Latch Least Significant Byte. Baud rate is calculated as
+`baud_rate = system_clock_frequency / (16 * (divisor + 1))`. When the divisor is set
+to `0`, the transmitter and receiver logic are disabled.
+|===
+
+[#reg-{regmap-instance}-uart_16550_dl-DLM]
+=== DLM
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `DLM` | RW | 0x0 a| Divisor Latch Most Significant Byte. Baud rate is calculated as
+`baud_rate = system_clock_frequency / (16 * (divisor + 1))`. When the divisor is set
+to `0`, the transmitter and receiver logic are disabled.
+|===

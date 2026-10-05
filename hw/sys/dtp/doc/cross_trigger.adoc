@@ -1,0 +1,49 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Cross-Trigger Operation
+
+[[dtp-cross-trigger-operation]]
+
+The Cross-Trigger Network (CTN) routes debug events between internal sources
+and external cross-trigger ports. Matrices select event destinations; ports
+provide wire-OR or point-to-point signaling at the chiplet boundary.
+
+== Event Routing
+
+The CTN combines Cross-Trigger Matrices (CTMs) and Cross-Trigger Ports (CTPs).
+The port modes are configured before the matrix routes for an event path, and
+both before the participating debug sources are enabled.
+
+== Clock Stop
+
+JTAG and CLA clock-stop requests feed the chiplet halt path. Clocks and Resets
+owns its aggregation, clock-domain crossing and reset behavior.
+
+ifdef::backend-html5[]
+xref:clk_rst.adoc#dtp-clock-stop[Clock-stop integration]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<dtp-clock-stop,Clock-stop integration>>
+endif::backend-pdf[]
+
+== Programming Reference
+
+IP Reference groups the network, port and matrix descriptions. The CTN owns
+the unified register map; its component chapters describe routing and handshakes.
+
+ifdef::backend-html5[]
+xref:ip:cross_trigger_network/doc/index.adoc#ctn-memory-map[CTN Register Map]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ctn-memory-map,CTN Register Map>>
+endif::backend-pdf[]
+
+The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#dtp-cross-trigger[cross-trigger programming sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-cross-trigger[cross-trigger programming sequence]
+endif::backend-pdf[]
+for the port modes and matrix routes referenced above.

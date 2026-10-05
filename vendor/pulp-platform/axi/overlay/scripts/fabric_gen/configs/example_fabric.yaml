@@ -1,0 +1,97 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Example Fabric Configuration
+#
+# This demonstrates the fabric generator with mixed protocol outputs:
+# - AXI 64-bit inputs
+# - AXI 64-bit memory outputs
+# - AXI-Lite 32-bit peripheral bus
+# - APB 32-bit UART (shows full conversion chain: AXI -> AXI 32 -> AXI-Lite -> APB)
+
+name: "example_fabric"
+description: "Example SoC interconnect with mixed protocol outputs"
+
+# Global fabric settings
+fabric:
+  xbar_protocol: "axi"           # Core crossbar: axi | axi_lite
+  max_outstanding_txns: 8
+  pipeline_stages: 1
+  fall_through: false
+  atop: false                    # Atomic operations support
+
+# Protocol definitions (reusable)
+protocols:
+  axi64:
+    protocol: "AXI4"
+    data_width: 64
+    addr_width: 48
+    id_width: 4
+    user_width: 1
+    max_read_txns: 8
+    max_write_txns: 8
+
+  axi32:
+    protocol: "AXI4"
+    data_width: 32
+    addr_width: 48
+    id_width: 4
+    user_width: 1
+    max_read_txns: 8
+    max_write_txns: 8
+
+  axi_lite32:
+    protocol: "AXI4_LITE"
+    data_width: 32
+    addr_width: 32
+
+  apb32:
+    protocol: "APB4"
+    data_width: 32
+    addr_width: 32
+
+# Input ports (managers/initiators)
+inputs:
+  - name: "cpu_m0"
+    protocol: "axi64"
+    id_width: 4
+
+  - name: "dma_m0"
+    protocol: "axi64"
+    id_width: 2
+
+# Output ports (subordinates/targets)
+outputs:
+  # High-bandwidth memory - stays in AXI 64-bit
+  - name: "sram"
+    protocol: "axi64"
+    address_range:
+      main: { base: 0x00000000, size: 0x00010000 }  # 64KB SRAM
+    pipeline_stages: 0
+
+  # DDR memory - stays in AXI 64-bit
+  - name: "ddr"
+    protocol: "axi64"
+    address_range:
+      main: { base: 0x80000000, size: 0x40000000 }  # 1GB DDR
+    pipeline_stages: 1
+
+  # Peripheral bus - AXI 64 -> AXI-Lite 32
+  - name: "periph_bus"
+    protocol: "axi_lite32"
+    address_range:
+      peripherals: { base: 0x40000000, size: 0x01000000 }  # 16MB peripheral space
+    pipeline_stages: 1
+
+  # UART - Full conversion chain: AXI 64 -> AXI 32 -> AXI-Lite 32 -> APB 32
+  - name: "uart0"
+    protocol: "apb32"
+    address_range:
+      regs: { base: 0x50000000, size: 0x00001000 }  # 4KB UART
+    pipeline_stages: 0
+
+# Connectivity matrix (which inputs can reach which outputs)
+# If omitted, defaults to full connectivity
+connectivity:
+  cpu_m0: [sram, ddr, periph_bus, uart0]
+  dma_m0: [sram, ddr]

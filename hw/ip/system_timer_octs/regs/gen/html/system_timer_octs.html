@@ -1,0 +1,78 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-system_timer_octs">OCTS System Timer Address Map</h2>
+<p>Open Chiplet Time Synchronization (OCTS) System Timer Registers</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#TIMER_START">TIMER_START</a></td><td>RW</td><td>System Timer Start Register</td></tr>
+<tr><td>0x4</td><td><a href="#CTRL">CTRL</a></td><td>RW</td><td>System Timer Control Register</td></tr>
+<tr><td>0x8</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>System Timer Status Register</td></tr>
+<tr><td>0xC</td><td><a href="#TIMER_PRESET_LO">TIMER_PRESET_LO</a></td><td>RW</td><td>System Timer Preset Value [31:0]</td></tr>
+<tr><td>0x10</td><td><a href="#TIMER_PRESET_HI">TIMER_PRESET_HI</a></td><td>RW</td><td>System Timer Preset Value [63:32]</td></tr>
+<tr><td>0x14</td><td><a href="#TIMER_COUNT_LO">TIMER_COUNT_LO</a></td><td>R</td><td>Current System Timer Count [31:0]</td></tr>
+<tr><td>0x18</td><td><a href="#TIMER_COUNT_HI">TIMER_COUNT_HI</a></td><td>R</td><td>Current System Timer Count [63:32]</td></tr>
+<tr><td>0x1C</td><td><a href="#CREDIT_EXPIRED">CREDIT_EXPIRED</a></td><td>RW</td><td>Credit Expired Register</td></tr>
+<tr><td>0x20</td><td><a href="#TIMER_GPIO_ENABLE">TIMER_GPIO_ENABLE</a></td><td>RW</td><td>System Timer GPIO Enable Register</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="TIMER_START">TIMER_START</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>START</td><td>RW 1P</td><td>0x0</td><td>Start the system timer. In PRIMARY mode, a write of 1 loads the preset and pulses the sync-load output for PULSE_WIDTH cycles.<br>In SECONDARY mode, the write has no effect; a secondary starts on the primary&#x27;s sync-load pulse, which is what loads its preset.<br>Ensure both primary and secondary are out of reset.</td></tr>
+</table>
+<h3 id="CTRL">CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>23:16</td><td>STEP</td><td>RW</td><td>0x1</td><td>Step amount for secondary timer</td></tr>
+<tr><td>15:8</td><td>PULSE_WIDTH</td><td>RW</td><td>0x2</td><td>Pulse width for sync load and credit signals. A value of 0 will be rounded up to 1. WARNING: This value must be less than CREDIT_VAL</td></tr>
+<tr><td>7:0</td><td>CREDIT_VAL</td><td>RW</td><td>0xA</td><td>Credit value factor. WARNING: This value must be greater than PULSE_WIDTH</td></tr>
+</table>
+<h3 id="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>RUNNING</td><td>R</td><td>0x0</td><td>Timer is enabled and its count is nonzero.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>MODE</td><td>R</td><td>0x0</td><td>Timer mode driven by the is_primary_i input: 0=PRIMARY (is_primary_i=1), 1=SECONDARY (is_primary_i=0).</td></tr>
+</table>
+<h3 id="TIMER_PRESET_LO">TIMER_PRESET_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>PRESET_LO</td><td>RW</td><td>0x0</td><td>Lower 32 bits of preset value</td></tr>
+</table>
+<h3 id="TIMER_PRESET_HI">TIMER_PRESET_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>PRESET_HI</td><td>RW</td><td>0x0</td><td>Upper 32 bits of preset value</td></tr>
+</table>
+<h3 id="TIMER_COUNT_LO">TIMER_COUNT_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>COUNT_LO</td><td>R</td><td>0x0</td><td>Lower 32 bits of current timer count</td></tr>
+</table>
+<h3 id="TIMER_COUNT_HI">TIMER_COUNT_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>COUNT_HI</td><td>R</td><td>0x0</td><td>Upper 32 bits of current timer count</td></tr>
+</table>
+<h3 id="CREDIT_EXPIRED">CREDIT_EXPIRED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>MAX_CYCLES_EXPIRED</td><td>RW</td><td>0x0</td><td>Maximum number of clock cycles since a count credit expired (SECONDARY only). To reset the value of this register, write anything to it.<br>If this number is very high (exact value depends on clock speed and credit value), this indicates that the secondary has not received a count credit pulse in a while, and is likely not syncing properly with the primary.<br>This register can also be used to determine the clock skew between the primary and secondary.<br>If PRIMARY, this field is always 0.</td></tr>
+</table>
+<h3 id="TIMER_GPIO_ENABLE">TIMER_GPIO_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>GPIO_ENABLE</td><td>RW</td><td>0x0</td><td>Enable the GPIO pad lsio interface for the system timer. This is done to prevent X-prop on reset into the secondary timer, which can cause the secondary timer to start counting early.</td></tr>
+</table>
+</div>

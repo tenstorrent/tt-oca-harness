@@ -1,0 +1,3656 @@
+--- a/include/axi/assign.svh
++++ b/include/axi/assign.svh
+@@ -538,6 +538,95 @@
+ ////////////////////////////////////////////////////////////////////////////////////////////////////
+ 
+ 
++////////////////////////////////////////////////////////////////////////////////////////////////////
++// Internal implementation for assigning one Lite structs or interface to another struct or
++// interface.  The path to the signals on each side is defined by the `__sep*` arguments.  The
++// `__opt_as` argument allows to use this standalne (with `__opt_as = assign`) or in assignments
++// inside processes (with `__opt_as` void).
++`define __AXI5_LITE_TO_AX(__opt_as, __lhs, __lhs_sep, __rhs, __rhs_sep)  \
++  __opt_as __lhs``__lhs_sep``id   = __rhs``__rhs_sep``id;               \
++  __opt_as __lhs``__lhs_sep``addr = __rhs``__rhs_sep``addr;             \
++  __opt_as __lhs``__lhs_sep``prot = __rhs``__rhs_sep``prot;
++`define __AXI5_LITE_TO_W(__opt_as, __lhs, __lhs_sep, __rhs, __rhs_sep) \
++  __opt_as __lhs``__lhs_sep``data = __rhs``__rhs_sep``data;           \
++  __opt_as __lhs``__lhs_sep``strb = __rhs``__rhs_sep``strb;           \
++  __opt_as __lhs``__lhs_sep``user   = __rhs``__rhs_sep``user;
++`define __AXI5_LITE_TO_B(__opt_as, __lhs, __lhs_sep, __rhs, __rhs_sep) \
++  __opt_as __lhs``__lhs_sep``id   = __rhs``__rhs_sep``id;             \
++  __opt_as __lhs``__lhs_sep``resp = __rhs``__rhs_sep``resp;
++`define __AXI5_LITE_TO_R(__opt_as, __lhs, __lhs_sep, __rhs, __rhs_sep) \
++  __opt_as __lhs``__lhs_sep``id   = __rhs``__rhs_sep``id;             \
++  __opt_as __lhs``__lhs_sep``data = __rhs``__rhs_sep``data;           \
++  __opt_as __lhs``__lhs_sep``resp = __rhs``__rhs_sep``resp;
++`define __AXI5_LITE_TO_REQ(__opt_as, __lhs, __lhs_sep, __rhs, __rhs_sep) \
++  `__AXI5_LITE_TO_AX(__opt_as, __lhs.aw, __lhs_sep, __rhs.aw, __rhs_sep) \
++  __opt_as __lhs.aw_valid = __rhs.aw_valid;                             \
++  `__AXI5_LITE_TO_W(__opt_as, __lhs.w, __lhs_sep, __rhs.w, __rhs_sep)    \
++  __opt_as __lhs.w_valid = __rhs.w_valid;                               \
++  __opt_as __lhs.b_ready = __rhs.b_ready;                               \
++  `__AXI5_LITE_TO_AX(__opt_as, __lhs.ar, __lhs_sep, __rhs.ar, __rhs_sep) \
++  __opt_as __lhs.ar_valid = __rhs.ar_valid;                             \
++  __opt_as __lhs.r_ready = __rhs.r_ready;
++`define __AXI5_LITE_TO_RESP(__opt_as, __lhs, __lhs_sep, __rhs, __rhs_sep)  \
++  __opt_as __lhs.aw_ready = __rhs.aw_ready;                               \
++  __opt_as __lhs.ar_ready = __rhs.ar_ready;                               \
++  __opt_as __lhs.w_ready = __rhs.w_ready;                                 \
++  __opt_as __lhs.b_valid = __rhs.b_valid;                                 \
++  `__AXI5_LITE_TO_B(__opt_as, __lhs.b, __lhs_sep, __rhs.b, __rhs_sep)      \
++  __opt_as __lhs.r_valid = __rhs.r_valid;                                 \
++  `__AXI5_LITE_TO_R(__opt_as, __lhs.r, __lhs_sep, __rhs.r, __rhs_sep)
++////////////////////////////////////////////////////////////////////////////////////////////////////
++
++
++////////////////////////////////////////////////////////////////////////////////////////////////////
++// Assigning a Lite interface from channel or request/response structs outside a process.
++//
++// The channel macros `AXI5_LITE_ASSIGN_FROM_XX(axi_if, xx_struct)` assign the payload signals of the
++// `axi_if` interface from the signals in `xx_struct`.  They do not assign the handshake signals.
++// The request macro `AXI5_LITE_ASSIGN_FROM_REQ(axi_if, req_struct)` assigns all request channels
++// (AW, W, AR) and the request-side handshake signals (AW, W, and AR valid and B and R ready) of the
++// `axi_if` interface from the signals in `req_struct`.
++// The response macro `AXI5_LITE_ASSIGN_FROM_RESP(axi_if, resp_struct)` assigns both response
++// channels (B and R) and the response-side handshake signals (B and R valid and AW, W, and AR
++// ready) of the `axi_if` interface from the signals in `resp_struct`.
++//
++// Usage Example:
++// `AXI5_LITE_ASSIGN_FROM_REQ(my_if, my_req_struct)
++`define AXI5_LITE_ASSIGN_FROM_AW(axi_if, aw_struct)     `__AXI5_LITE_TO_AX(assign, axi_if.aw, _, aw_struct, .)
++`define AXI5_LITE_ASSIGN_FROM_W(axi_if, w_struct)       `__AXI5_LITE_TO_W(assign, axi_if.w, _, w_struct, .)
++`define AXI5_LITE_ASSIGN_FROM_B(axi_if, b_struct)       `__AXI5_LITE_TO_B(assign, axi_if.b, _, b_struct, .)
++`define AXI5_LITE_ASSIGN_FROM_AR(axi_if, ar_struct)     `__AXI5_LITE_TO_AX(assign, axi_if.ar, _, ar_struct, .)
++`define AXI5_LITE_ASSIGN_FROM_R(axi_if, r_struct)       `__AXI5_LITE_TO_R(assign, axi_if.r, _, r_struct, .)
++`define AXI5_LITE_ASSIGN_FROM_REQ(axi_if, req_struct)   `__AXI5_LITE_TO_REQ(assign, axi_if, _, req_struct, .)
++`define AXI5_LITE_ASSIGN_FROM_RESP(axi_if, resp_struct) `__AXI5_LITE_TO_RESP(assign, axi_if, _, resp_struct, .)
++////////////////////////////////////////////////////////////////////////////////////////////////////
++
++
++////////////////////////////////////////////////////////////////////////////////////////////////////
++// Assigning channel or request/response structs from an interface outside a process.
++//
++// The channel macros `AXI5_LITE_ASSIGN_TO_XX(xx_struct, axi_if)` assign the signals of `xx_struct`
++// to the payload signals of that channel in the `axi_if` interface.  They do not assign the
++// handshake signals.
++// The request macro `AXI5_LITE_ASSIGN_TO_REQ(axi_if, req_struct)` assigns all signals of
++// `req_struct` (i.e., request channel (AW, W, AR) payload and request-side handshake signals (AW,
++// W, and AR valid and B and R ready)) to the signals in the `axi_if` interface.
++// The response macro `AXI5_LITE_ASSIGN_TO_RESP(axi_if, resp_struct)` assigns all signals of
++// `resp_struct` (i.e., response channel (B and R) payload and response-side handshake signals (B
++// and R valid and AW, W, and AR ready)) to the signals in the `axi_if` interface.
++//
++// Usage Example:
++// `AXI5_LITE_ASSIGN_TO_REQ(my_req_struct, my_if)
++`define AXI5_LITE_ASSIGN_TO_AW(aw_struct, axi_if)     `__AXI5_LITE_TO_AX(assign, aw_struct, ., axi_if.aw, _)
++`define AXI5_LITE_ASSIGN_TO_W(w_struct, axi_if)       `__AXI5_LITE_TO_W(assign, w_struct, ., axi_if.w, _)
++`define AXI5_LITE_ASSIGN_TO_B(b_struct, axi_if)       `__AXI5_LITE_TO_B(assign, b_struct, ., axi_if.b, _)
++`define AXI5_LITE_ASSIGN_TO_AR(ar_struct, axi_if)     `__AXI5_LITE_TO_AX(assign, ar_struct, ., axi_if.ar, _)
++`define AXI5_LITE_ASSIGN_TO_R(r_struct, axi_if)       `__AXI5_LITE_TO_R(assign, r_struct, ., axi_if.r, _)
++`define AXI5_LITE_ASSIGN_TO_REQ(req_struct, axi_if)   `__AXI5_LITE_TO_REQ(assign, req_struct, ., axi_if, _)
++`define AXI5_LITE_ASSIGN_TO_RESP(resp_struct, axi_if) `__AXI5_LITE_TO_RESP(assign, resp_struct, ., axi_if, _)
++////////////////////////////////////////////////////////////////////////////////////////////////////
++
++
+ ////////////////////////////////////////////////////////////////////////////////////////////////////
+ // Macros for assigning flattened AXI ports to req/resp AXI structs
+ // Flat AXI ports are required by the Vivado IP Integrator. Vivado naming convention is followed.
+--- a/include/axi/typedef.svh
++++ b/include/axi/typedef.svh
+@@ -270,4 +270,127 @@
+   `AXI_LITE_TYPEDEF_ALL_CT(__name, __name``_req_t, __name``_resp_t, __addr_t, __data_t, __strb_t)
+ ////////////////////////////////////////////////////////////////////////////////////////////////////
+ 
++
++////////////////////////////////////////////////////////////////////////////////////////////////////
++// AXI5-Lite Channel and Request/Response Structs
++//
++// Usage Example:
++// `AXI5_LITE_TYPEDEF_AW_CHAN_T(axi_aw_t, axi_addr_t, axi_id_t, axi_user_t)
++// `AXI5_LITE_TYPEDEF_W_CHAN_T(axi_w_t, axi_data_t, axi_strb_t, axi_user_t)
++// `AXI5_LITE_TYPEDEF_B_CHAN_T(axi_b_t, axi_id_t, axi_user_t)
++// `AXI5_LITE_TYPEDEF_AR_CHAN_T(axi_ar_t, axi_addr_t, axi_id_t, axi_user_t)
++// `AXI5_LITE_TYPEDEF_R_CHAN_T(axi_r_t, axi_data_t, axi_id_t, axi_user_t)
++// `AXI5_LITE_TYPEDEF_REQ_T(axi_req_t, axi_aw_t, axi_w_t, axi_ar_t)
++// `AXI5_LITE_TYPEDEF_RESP_T(axi_resp_t, axi_b_t, axi_r_t)
++`define AXI5_LITE_TYPEDEF_AW_CHAN_T(aw_chan_t, addr_t, id_t, user_t)  \
++  typedef struct packed {                                       \
++    id_t              id;                                       \
++    addr_t            addr;                                     \
++    axi_pkg::len_t    len;                                      \
++    axi_pkg::size_t   size;                                     \
++    axi_pkg::burst_t  burst;                                    \
++    logic             lock;                                     \
++    axi_pkg::cache_t  cache;                                    \
++    axi_pkg::prot_t   prot;                                     \
++    axi_pkg::qos_t    qos;                                      \
++    axi_pkg::region_t region;                                   \
++    axi_pkg::atop_t   atop;                                     \
++    user_t            user;                                     \
++  } aw_chan_t;
++`define AXI5_LITE_TYPEDEF_W_CHAN_T(w_chan_t, data_t, strb_t, user_t)  \
++  typedef struct packed {                                       \
++    data_t data;                                                \
++    strb_t strb;                                                \
++    logic  last;                                                \
++    user_t user;                                                \
++  } w_chan_t;
++`define AXI5_LITE_TYPEDEF_B_CHAN_T(b_chan_t, id_t, user_t)  \
++  typedef struct packed {                             \
++    id_t            id;                               \
++    axi_pkg::resp_t resp;                             \
++    user_t          user;                             \
++  } b_chan_t;
++`define AXI5_LITE_TYPEDEF_AR_CHAN_T(ar_chan_t, addr_t, id_t, user_t)  \
++  typedef struct packed {                                       \
++    id_t              id;                                       \
++    addr_t            addr;                                     \
++    axi_pkg::len_t    len;                                      \
++    axi_pkg::size_t   size;                                     \
++    axi_pkg::burst_t  burst;                                    \
++    logic             lock;                                     \
++    axi_pkg::cache_t  cache;                                    \
++    axi_pkg::prot_t   prot;                                     \
++    axi_pkg::qos_t    qos;                                      \
++    axi_pkg::region_t region;                                   \
++    user_t            user;                                     \
++  } ar_chan_t;
++`define AXI5_LITE_TYPEDEF_R_CHAN_T(r_chan_t, data_t, id_t, user_t)  \
++  typedef struct packed {                                     \
++    id_t            id;                                       \
++    data_t          data;                                     \
++    axi_pkg::resp_t resp;                                     \
++    logic           last;                                     \
++    user_t          user;                                     \
++  } r_chan_t;
++`define AXI5_LITE_TYPEDEF_REQ_T(req_t, aw_chan_t, w_chan_t, ar_chan_t)  \
++  typedef struct packed {                                         \
++    aw_chan_t aw;                                                 \
++    logic     aw_valid;                                           \
++    w_chan_t  w;                                                  \
++    logic     w_valid;                                            \
++    logic     b_ready;                                            \
++    ar_chan_t ar;                                                 \
++    logic     ar_valid;                                           \
++    logic     r_ready;                                            \
++  } req_t;
++`define AXI5_LITE_TYPEDEF_RESP_T(resp_t, b_chan_t, r_chan_t)  \
++  typedef struct packed {                               \
++    logic     aw_ready;                                 \
++    logic     ar_ready;                                 \
++    logic     w_ready;                                  \
++    logic     b_valid;                                  \
++    b_chan_t  b;                                        \
++    logic     r_valid;                                  \
++    r_chan_t  r;                                        \
++  } resp_t;
++////////////////////////////////////////////////////////////////////////////////////////////////////
++
++
++////////////////////////////////////////////////////////////////////////////////////////////////////
++// All AXI5-Lite Channels and Request/Response Structs in One Macro - Custom Type Name Version
++//
++// This can be used whenever the user is not interested in "precise" control of the naming of the
++// individual channels.
++//
++// Usage Example:
++// `AXI5_LITE_TYPEDEF_ALL_CT(axi, axi_req_t, axi_rsp_t, addr_t, id_t, data_t, strb_t, user_t)
++//
++// This defines `axi_req_t` and `axi_rsp_t` request/response structs as well as `axi_aw_chan_t`,
++// `axi_w_chan_t`, `axi_b_chan_t`, `axi_ar_chan_t`, and `axi_r_chan_t` channel structs.
++`define AXI5_LITE_TYPEDEF_ALL_CT(__name, __req, __rsp, __addr_t, __id_t, __data_t, __strb_t, __user_t) \
++  `AXI5_LITE_TYPEDEF_AW_CHAN_T(__name``_aw_chan_t, __addr_t, __id_t, __user_t)                         \
++  `AXI5_LITE_TYPEDEF_W_CHAN_T(__name``_w_chan_t, __data_t, __strb_t, __user_t)                         \
++  `AXI5_LITE_TYPEDEF_B_CHAN_T(__name``_b_chan_t, __id_t, __user_t)                                     \
++  `AXI5_LITE_TYPEDEF_AR_CHAN_T(__name``_ar_chan_t, __addr_t, __id_t, __user_t)                         \
++  `AXI5_LITE_TYPEDEF_R_CHAN_T(__name``_r_chan_t, __data_t, __id_t, __user_t)                           \
++  `AXI5_LITE_TYPEDEF_REQ_T(__req, __name``_aw_chan_t, __name``_w_chan_t, __name``_ar_chan_t)           \
++  `AXI5_LITE_TYPEDEF_RESP_T(__rsp, __name``_b_chan_t, __name``_r_chan_t)
++////////////////////////////////////////////////////////////////////////////////////////////////////
++
++
++////////////////////////////////////////////////////////////////////////////////////////////////////
++// All AXI5-Lite Channels and Request/Response Structs in One Macro
++//
++// This can be used whenever the user is not interested in "precise" control of the naming of the
++// individual channels.
++//
++// Usage Example:
++// `AXI5_LITE_TYPEDEF_ALL(axi, addr_t, id_t, data_t, strb_t, user_t)
++//
++// This defines `axi_req_t` and `axi_resp_t` request/response structs as well as `axi_aw_chan_t`,
++// `axi_w_chan_t`, `axi_b_chan_t`, `axi_ar_chan_t`, and `axi_r_chan_t` channel structs.
++`define AXI5_LITE_TYPEDEF_ALL(__name, __addr_t, __id_t, __data_t, __strb_t, __user_t)                                \
++  `AXI5_LITE_TYPEDEF_ALL_CT(__name, __name``_req_t, __name``_resp_t, __addr_t, __id_t, __data_t, __strb_t, __user_t)
++////////////////////////////////////////////////////////////////////////////////////////////////////
++
+ `endif
+--- /dev/null
++++ b/src/axi5_lite_demux.sv
+@@ -0,0 +1,631 @@
++// Copyright (c) 2020 ETH Zurich and University of Bologna.
++// Copyright and related rights are licensed under the Solderpad Hardware
++// License, Version 0.51 (the "License"); you may not use this file except in
++// compliance with the License.  You may obtain a copy of the License at
++// http://solderpad.org/licenses/SHL-0.51. Unless required by applicable law
++// or agreed to in writing, software, hardware and materials distributed under
++// this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
++// CONDITIONS OF ANY KIND, either express or implied. See the License for the
++// specific language governing permissions and limitations under the License.
++//
++// Authors:
++// - Wolfgang Roenninger <wroennin@iis.ee.ethz.ch>
++// - Andreas Kurth <akurth@iis.ee.ethz.ch>
++
++`include "common_cells/registers.svh"
++
++`ifdef QUESTA
++// Derive `TARGET_VSIM`, which is used for tool-specific workarounds in this file, from `QUESTA`,
++// which is automatically set in Questa.
++`define TARGET_VSIM
++`endif
++
++// axi_lite_demux: Demultiplex an AXI4-Lite bus from one slave port to multiple master ports.
++//                 The selection signal at the AW and AR channel has to follow the same
++//                 stability rules as the corresponding AXI4-Lite channel.
++
++module axi5_lite_demux #(
++  parameter type         aw_chan_t      = logic, // AXI4-Lite AW channel
++  parameter type         w_chan_t       = logic, // AXI4-Lite  W channel
++  parameter type         b_chan_t       = logic, // AXI4-Lite  B channel
++  parameter type         ar_chan_t      = logic, // AXI4-Lite AR channel
++  parameter type         r_chan_t       = logic, // AXI4-Lite  R channel
++  parameter type         axi_req_t      = logic, // AXI4-Lite request struct
++  parameter type         axi_resp_t     = logic, // AXI4-Lite response struct
++  parameter int unsigned NoMstPorts     = 32'd0, // Number of instantiated ports
++  parameter int unsigned MaxTrans       = 32'd0, // Maximum number of open transactions per channel
++  parameter bit          FallThrough    = 1'b0,  // FIFOs are in fall through mode
++  parameter bit          SpillAw        = 1'b1,  // insert one cycle latency on slave AW
++  parameter bit          SpillW         = 1'b0,  // insert one cycle latency on slave  W
++  parameter bit          SpillB         = 1'b0,  // insert one cycle latency on slave  B
++  parameter bit          SpillAr        = 1'b1,  // insert one cycle latency on slave AR
++  parameter bit          SpillR         = 1'b0,  // insert one cycle latency on slave  R
++  // Dependent parameters, DO NOT OVERRIDE!
++  parameter type         select_t       = logic [$clog2(NoMstPorts)-1:0]
++) (
++  input  logic                        clk_i,
++  input  logic                        rst_ni,
++  input  logic                        test_i,
++  // slave port (AXI4-Lite input), connect master module here
++  input  axi_req_t                    slv_req_i,
++  input  select_t                     slv_aw_select_i,
++  input  select_t                     slv_ar_select_i,
++  output axi_resp_t                   slv_resp_o,
++  // master ports (AXI4-Lite outputs), connect slave modules here
++  output axi_req_t  [NoMstPorts-1:0]  mst_reqs_o,
++  input  axi_resp_t [NoMstPorts-1:0]  mst_resps_i
++);
++
++  //--------------------------------------
++  // Typedefs for the spill registers
++  //--------------------------------------
++  typedef struct packed {
++    aw_chan_t aw;
++    select_t  select;
++  } aw_chan_select_t;
++  typedef struct packed {
++    ar_chan_t ar;
++    select_t  select;
++  } ar_chan_select_t;
++
++  if (NoMstPorts == 32'd1) begin : gen_no_demux
++    // degenerate case, connect slave to master port
++    spill_register #(
++      .T       ( aw_chan_t  ),
++      .Bypass  ( ~SpillAw   )
++    ) i_aw_spill_reg (
++      .clk_i   ( clk_i                    ),
++      .rst_ni  ( rst_ni                   ),
++      .valid_i ( slv_req_i.aw_valid       ),
++      .ready_o ( slv_resp_o.aw_ready      ),
++      .data_i  ( slv_req_i.aw             ),
++      .valid_o ( mst_reqs_o[0].aw_valid   ),
++      .ready_i ( mst_resps_i[0].aw_ready  ),
++      .data_o  ( mst_reqs_o[0].aw         )
++    );
++    spill_register #(
++      .T       ( w_chan_t  ),
++      .Bypass  ( ~SpillW   )
++    ) i_w_spill_reg (
++      .clk_i   ( clk_i                   ),
++      .rst_ni  ( rst_ni                  ),
++      .valid_i ( slv_req_i.w_valid       ),
++      .ready_o ( slv_resp_o.w_ready      ),
++      .data_i  ( slv_req_i.w             ),
++      .valid_o ( mst_reqs_o[0].w_valid   ),
++      .ready_i ( mst_resps_i[0].w_ready  ),
++      .data_o  ( mst_reqs_o[0].w         )
++    );
++    spill_register #(
++      .T       ( b_chan_t ),
++      .Bypass  ( ~SpillB      )
++    ) i_b_spill_reg (
++      .clk_i   ( clk_i                  ),
++      .rst_ni  ( rst_ni                 ),
++      .valid_i ( mst_resps_i[0].b_valid ),
++      .ready_o ( mst_reqs_o[0].b_ready  ),
++      .data_i  ( mst_resps_i[0].b       ),
++      .valid_o ( slv_resp_o.b_valid     ),
++      .ready_i ( slv_req_i.b_ready      ),
++      .data_o  ( slv_resp_o.b           )
++    );
++    spill_register #(
++      .T       ( ar_chan_t  ),
++      .Bypass  ( ~SpillAr   )
++    ) i_ar_spill_reg (
++      .clk_i   ( clk_i                    ),
++      .rst_ni  ( rst_ni                   ),
++      .valid_i ( slv_req_i.ar_valid       ),
++      .ready_o ( slv_resp_o.ar_ready      ),
++      .data_i  ( slv_req_i.ar             ),
++      .valid_o ( mst_reqs_o[0].ar_valid   ),
++      .ready_i ( mst_resps_i[0].ar_ready  ),
++      .data_o  ( mst_reqs_o[0].ar         )
++    );
++    spill_register #(
++      .T       ( r_chan_t ),
++      .Bypass  ( ~SpillR      )
++    ) i_r_spill_reg (
++      .clk_i   ( clk_i                  ),
++      .rst_ni  ( rst_ni                 ),
++      .valid_i ( mst_resps_i[0].r_valid ),
++      .ready_o ( mst_reqs_o[0].r_ready  ),
++      .data_i  ( mst_resps_i[0].r       ),
++      .valid_o ( slv_resp_o.r_valid     ),
++      .ready_i ( slv_req_i.r_ready      ),
++      .data_o  ( slv_resp_o.r           )
++    );
++
++  end else begin : gen_demux
++    // normal non degenerate case
++
++
++    //--------------------------------------
++    //--------------------------------------
++    // Signal Declarations
++    //--------------------------------------
++    //--------------------------------------
++
++    //--------------------------------------
++    // Write Transaction
++    //--------------------------------------
++    aw_chan_select_t       slv_aw_chan;
++    logic                  slv_aw_valid,    slv_aw_ready;
++
++    logic [NoMstPorts-1:0] mst_aw_valids, mst_aw_readies;
++
++    logic                  lock_aw_valid_d, lock_aw_valid_q, load_aw_lock;
++
++    logic                  w_fifo_push,     w_fifo_pop;
++    logic                  w_fifo_full,     w_fifo_empty;
++
++    w_chan_t               slv_w_chan;
++    select_t               w_select;
++    logic                  slv_w_valid,     slv_w_ready;
++
++    // logic                  /*w_pop*/        b_fifo_pop;
++    // logic                  b_fifo_full,     b_fifo_empty;
++
++    // B channles input into the arbitration
++    b_chan_t [NoMstPorts-1:0] mst_b_chans;
++    logic    [NoMstPorts-1:0] mst_b_valids,       mst_b_readies;
++
++    b_chan_t               slv_b_chan;
++    select_t               b_select;
++    logic                  slv_b_valid,     slv_b_ready;
++
++    //--------------------------------------
++    // Read Transaction
++    //--------------------------------------
++    ar_chan_select_t slv_ar_chan;
++    logic            slv_ar_valid,    slv_ar_ready;
++
++    // logic            r_fifo_push,     r_fifo_pop;
++    // logic            r_fifo_full,     r_fifo_empty;
++
++    // R channles input into the arbitration
++    r_chan_t [NoMstPorts-1:0] mst_r_chans;
++    logic    [NoMstPorts-1:0] mst_r_valids,       mst_r_readies;
++
++    r_chan_t         slv_r_chan;
++    select_t         r_select;
++    logic            slv_r_valid,     slv_r_ready;
++
++    //--------------------------------------
++    //--------------------------------------
++    // Channel control
++    //--------------------------------------
++    //--------------------------------------
++
++    //--------------------------------------
++    // AW Channel
++    //--------------------------------------
++    `ifdef TARGET_VSIM
++    // Workaround for bug in Questa 2020.2 and 2021.1: Flatten the struct into a logic vector before
++    // instantiating `spill_register`.
++    typedef logic [$bits(aw_chan_select_t)-1:0] aw_chan_select_flat_t;
++    `else
++    // Other tools, such as VCS, have problems with `$bits()`, so the workaround cannot be used
++    // generally.
++    typedef aw_chan_select_t aw_chan_select_flat_t;
++    `endif
++    aw_chan_select_flat_t slv_aw_chan_select_in_flat,
++                          slv_aw_chan_select_out_flat;
++    assign slv_aw_chan_select_in_flat = {slv_req_i.aw, slv_aw_select_i};
++    spill_register #(
++      .T      ( aw_chan_select_flat_t         ),
++      .Bypass ( ~SpillAw                      )
++    ) i_aw_spill_reg (
++      .clk_i   ( clk_i                        ),
++      .rst_ni  ( rst_ni                       ),
++      .valid_i ( slv_req_i.aw_valid           ),
++      .ready_o ( slv_resp_o.aw_ready          ),
++      .data_i  ( slv_aw_chan_select_in_flat   ),
++      .valid_o ( slv_aw_valid                 ),
++      .ready_i ( slv_aw_ready                 ),
++      .data_o  ( slv_aw_chan_select_out_flat  )
++    );
++    assign slv_aw_chan = slv_aw_chan_select_out_flat;
++
++    // replicate AW channel to the request output
++    for (genvar i = 0; i < NoMstPorts; i++) begin : gen_mst_aw
++      assign mst_reqs_o[i].aw       = slv_aw_chan.aw;
++      assign mst_reqs_o[i].aw_valid = mst_aw_valids[i];
++      assign mst_aw_readies[i]      = mst_resps_i[i].aw_ready;
++    end
++
++    // AW channel handshake control
++    always_comb begin
++      // default assignments
++      lock_aw_valid_d = lock_aw_valid_q;
++      load_aw_lock    = 1'b0;
++      // handshake
++      slv_aw_ready    = 1'b0;
++      mst_aw_valids   = '0;
++      // W FIFO input control
++      w_fifo_push     = 1'b0;
++      // control
++      if (lock_aw_valid_q) begin
++        // AW channel is locked and has valid output, fifo was pushed, as the new request was issued
++        mst_aw_valids[slv_aw_chan.select] = 1'b1;
++        if (mst_aw_readies[slv_aw_chan.select]) begin
++          // transaction, go back to IDLE
++          slv_aw_ready    = 1'b1;
++          lock_aw_valid_d = 1'b0;
++          load_aw_lock    = 1'b1;
++        end
++      end else begin
++        if (!w_fifo_full && slv_aw_valid) begin
++          // new transaction, push select in the FIFO and then look if transaction happened
++          w_fifo_push                       = 1'b1;
++          mst_aw_valids[slv_aw_chan.select] = 1'b1; // only set the valid when FIFO is not full
++          if (mst_aw_readies[slv_aw_chan.select]) begin
++            // transaction, notify slave port
++            slv_aw_ready = 1'b1;
++          end else begin
++            // no transaction, lock valid
++            lock_aw_valid_d = 1'b1;
++            load_aw_lock    = 1'b1;
++          end
++        end
++      end
++    end
++
++    // lock the valid signal, as the selection gets pushed into the W FIFO on first assertion,
++    // prevent further pushing
++    `FFLARN(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
++
++    fifo_v3 #(
++      .FALL_THROUGH( FallThrough ),
++      .DEPTH       ( MaxTrans    ),
++      .dtype       ( select_t    )
++    ) i_w_fifo (
++      .clk_i      ( clk_i              ),
++      .rst_ni     ( rst_ni             ),
++      .flush_i    ( 1'b0               ), // not used, because AXI4-Lite no preemtion rule
++      .testmode_i ( test_i             ),
++      .full_o     ( w_fifo_full        ),
++      .empty_o    ( w_fifo_empty       ),
++      .usage_o    ( /*not used*/       ),
++      .data_i     ( slv_aw_chan.select ),
++      .push_i     ( w_fifo_push        ),
++      .data_o     ( w_select           ),
++      .pop_i      ( w_fifo_pop         )
++    );
++
++    //--------------------------------------
++    // W Channel
++    //--------------------------------------
++    spill_register #(
++      .T      ( w_chan_t ),
++      .Bypass ( ~SpillW  )
++    ) i_w_spill_reg (
++      .clk_i   ( clk_i              ),
++      .rst_ni  ( rst_ni             ),
++      .valid_i ( slv_req_i.w_valid  ),
++      .ready_o ( slv_resp_o.w_ready ),
++      .data_i  ( slv_req_i.w        ),
++      .valid_o ( slv_w_valid        ),
++      .ready_i ( slv_w_ready        ),
++      .data_o  ( slv_w_chan         )
++    );
++
++    // replicate W channel
++    for (genvar i = 0; i < NoMstPorts; i++) begin : gen_mst_w
++      assign mst_reqs_o[i].w       = slv_w_chan;
++      assign mst_reqs_o[i].w_valid = ~w_fifo_empty &
++                                       slv_w_valid & (w_select == select_t'(i));
++    end
++    assign slv_w_ready = ~w_fifo_empty & mst_resps_i[w_select].w_ready;
++    assign w_fifo_pop  = slv_w_valid & slv_w_ready;
++
++    // fifo_v3 #(
++    //   .FALL_THROUGH( FallThrough ),
++    //   .DEPTH       ( MaxTrans    ),
++    //   .dtype       ( select_t    )
++    // ) i_b_fifo (
++    //   .clk_i      ( clk_i        ),
++    //   .rst_ni     ( rst_ni       ),
++    //   .flush_i    ( 1'b0         ), // not used, because AXI4-Lite no preemption
++    //   .testmode_i ( test_i       ),
++    //   .full_o     ( b_fifo_full  ),
++    //   .empty_o    ( b_fifo_empty ),
++    //   .usage_o    ( /*not used*/ ),
++    //   .data_i     ( w_select     ),
++    //   .push_i     ( w_fifo_pop   ), // w beat was transferred, push selection to b channel
++    //   .data_o     ( b_select     ),
++    //   .pop_i      ( b_fifo_pop   )
++    // );
++
++    //--------------------------------------
++    // B Channel
++    //--------------------------------------
++
++    // unpack the response B channels for the arbitration
++    for (genvar i = 0; i < NoMstPorts; i++) begin : gen_b_channels
++      assign mst_b_chans[i]        = mst_resps_i[i].b;
++      assign mst_b_valids[i]       = mst_resps_i[i].b_valid;
++    end
++
++    // Arbitration of the different B responses
++    rr_arb_tree #(
++      .NumIn    ( NoMstPorts ),
++      .DataType ( b_chan_t   ),
++      .AxiVldRdy( 1'b1       ),
++      .LockIn   ( 1'b1       )
++    ) i_b_mux (
++      .clk_i  ( clk_i         ),
++      .rst_ni ( rst_ni        ),
++      .flush_i( 1'b0          ),
++      .rr_i   ( '0            ),
++      .req_i  ( mst_b_valids  ),
++      .gnt_o  ( mst_b_readies ),
++      .data_i ( mst_b_chans   ),
++      .gnt_i  ( slv_b_ready   ),
++      .req_o  ( slv_b_valid   ),
++      .data_o ( slv_b_chan    ),
++      .idx_o  (               )
++    );
++
++    for (genvar i = 0; i < NoMstPorts; i++) begin : gen_mst_b
++      assign mst_reqs_o[i].b_ready = mst_b_readies[i];
++    end
++
++    spill_register #(
++      .T      ( b_chan_t ),
++      .Bypass ( ~SpillB  )
++    ) i_b_spill_reg (
++      .clk_i   ( clk_i              ),
++      .rst_ni  ( rst_ni             ),
++      .valid_i ( slv_b_valid        ),
++      .ready_o ( slv_b_ready        ),
++      .data_i  ( slv_b_chan         ),
++      .valid_o ( slv_resp_o.b_valid ),
++      .ready_i ( slv_req_i.b_ready  ),
++      .data_o  ( slv_resp_o.b       )
++    );
++
++
++    //--------------------------------------
++    // AR Channel
++    //--------------------------------------
++    // Workaround for bug in Questa (see comments on AW channel for details).
++    `ifdef TARGET_VSIM
++    typedef logic [$bits(ar_chan_select_t)-1:0] ar_chan_select_flat_t;
++    `else
++    typedef ar_chan_select_t ar_chan_select_flat_t;
++    `endif
++    ar_chan_select_flat_t slv_ar_chan_select_in_flat,
++                          slv_ar_chan_select_out_flat;
++    assign slv_ar_chan_select_in_flat = {slv_req_i.ar, slv_ar_select_i};
++    spill_register #(
++      .T      ( ar_chan_select_flat_t         ),
++      .Bypass ( ~SpillAr                      )
++    ) i_ar_spill_reg (
++      .clk_i   ( clk_i                        ),
++      .rst_ni  ( rst_ni                       ),
++      .valid_i ( slv_req_i.ar_valid           ),
++      .ready_o ( slv_resp_o.ar_ready          ),
++      .data_i  ( slv_ar_chan_select_in_flat   ),
++      .valid_o ( slv_ar_valid                 ),
++      .ready_i ( slv_ar_ready                 ),
++      .data_o  ( slv_ar_chan_select_out_flat  )
++    );
++    assign slv_ar_chan = slv_ar_chan_select_out_flat;
++
++    // replicate AR channel
++    for (genvar i = 0; i < NoMstPorts; i++) begin : gen_mst_ar
++      assign mst_reqs_o[i].ar       = slv_ar_chan.ar;
++      assign mst_reqs_o[i].ar_valid = slv_ar_valid & (slv_ar_chan.select == select_t'(i));
++    end
++    assign slv_ar_ready = mst_resps_i[slv_ar_chan.select].ar_ready;
++    // assign r_fifo_push  = slv_ar_valid & slv_ar_ready;
++
++    // fifo_v3 #(
++    //   .FALL_THROUGH( FallThrough ),
++    //   .DEPTH       ( MaxTrans    ),
++    //   .dtype       ( select_t    )
++    // ) i_r_fifo (
++    //   .clk_i      ( clk_i              ),
++    //   .rst_ni     ( rst_ni             ),
++    //   .flush_i    ( 1'b0               ), // not used, because AXI4-Lite no preemption rule
++    //   .testmode_i ( test_i             ),
++    //   .full_o     ( r_fifo_full        ),
++    //   .empty_o    ( r_fifo_empty       ),
++    //   .usage_o    ( /*not used*/       ),
++    //   .data_i     ( slv_ar_chan.select ),
++    //   .push_i     ( r_fifo_push        ),
++    //   .data_o     ( r_select           ),
++    //   .pop_i      ( r_fifo_pop         )
++    // );
++
++    //--------------------------------------
++    // R Channel
++    //--------------------------------------
++    
++    // unpack the response R channels for the arbitration
++    for (genvar i = 0; i < NoMstPorts; i++) begin : gen_r_channels
++      assign mst_r_chans[i]        = mst_resps_i[i].r;
++      assign mst_r_valids[i]       = mst_resps_i[i].r_valid;
++    end
++    // // connect the response if the FIFO has valid data in it
++    // always_comb begin
++    //    slv_r_chan  = '0;
++    //    slv_r_valid = '0;
++    //    if (!r_fifo_empty) begin
++    //       slv_r_chan  = mst_resps_i[r_select].r;
++    //       slv_r_valid = mst_resps_i[r_select].r_valid;
++    //    end
++    // end
++
++
++    // Arbitration of the different R responses
++    rr_arb_tree #(
++      .NumIn    ( NoMstPorts ),
++      .DataType ( r_chan_t   ),
++      .AxiVldRdy( 1'b1       ),
++      .LockIn   ( 1'b1       )
++    ) i_r_mux (
++      .clk_i  ( clk_i         ),
++      .rst_ni ( rst_ni        ),
++      .flush_i( 1'b0          ),
++      .rr_i   ( '0            ),
++      .req_i  ( mst_r_valids  ),
++      .gnt_o  ( mst_r_readies ),
++      .data_i ( mst_r_chans   ),
++      .gnt_i  ( slv_r_ready   ),
++      .req_o  ( slv_r_valid   ),
++      .data_o ( slv_r_chan    ),
++      .idx_o  (               )
++    );
++    
++    spill_register #(
++      .T      ( r_chan_t ),
++      .Bypass ( ~SpillR  )
++    ) i_r_spill_reg (
++      .clk_i   ( clk_i              ),
++      .rst_ni  ( rst_ni             ),
++      .valid_i ( slv_r_valid        ),
++      .ready_o ( slv_r_ready        ),
++      .data_i  ( slv_r_chan         ),
++      .valid_o ( slv_resp_o.r_valid ),
++      .ready_i ( slv_req_i.r_ready  ),
++      .data_o  ( slv_resp_o.r       )
++    );
++
++
++    for (genvar i = 0; i < NoMstPorts; i++) begin : gen_mst_r
++      assign mst_reqs_o[i].r_ready = mst_r_readies[i];
++    end
++    // assign r_fifo_pop      = slv_r_valid & slv_r_ready;
++
++    // pragma translate_off
++    `ifndef VERILATOR
++    default disable iff (!rst_ni);
++    aw_select: assume property( @(posedge clk_i) (slv_req_i.aw_valid |->
++                                                 (slv_aw_select_i < NoMstPorts))) else
++      $fatal(1, "slv_aw_select_i is %d: AW has selected a slave that is not defined.\
++                 NoMstPorts: %d", slv_aw_select_i, NoMstPorts);
++    ar_select: assume property( @(posedge clk_i) (slv_req_i.ar_valid |->
++                                                 (slv_ar_select_i < NoMstPorts))) else
++      $fatal(1, "slv_ar_select_i is %d: AR has selected a slave that is not defined.\
++                 NoMstPorts: %d", slv_ar_select_i, NoMstPorts);
++    aw_valid_stable: assert property( @(posedge clk_i) (slv_aw_valid && !slv_aw_ready)
++                                                       |=> slv_aw_valid) else
++      $fatal(1, "aw_valid was deasserted, when aw_ready = 0 in last cycle.");
++    ar_valid_stable: assert property( @(posedge clk_i) (slv_ar_valid && !slv_ar_ready)
++                                                       |=> slv_ar_valid) else
++      $fatal(1, "ar_valid was deasserted, when ar_ready = 0 in last cycle.");
++    aw_stable: assert property( @(posedge clk_i) (slv_aw_valid && !slv_aw_ready)
++                               |=> $stable(slv_aw_chan)) else
++      $fatal(1, "slv_aw_chan_select unstable with valid set.");
++    ar_stable: assert property( @(posedge clk_i) (slv_ar_valid && !slv_ar_ready)
++                               |=> $stable(slv_ar_chan)) else
++      $fatal(1, "slv_aw_chan_select unstable with valid set.");
++    `endif
++    // pragma translate_on
++  end
++
++  // pragma translate_off
++  `ifndef VERILATOR
++    initial begin: p_assertions
++      NoPorts:  assert (NoMstPorts > 0) else $fatal("Number of master ports must be at least 1!");
++      MaxTnx:   assert (MaxTrans   > 0) else $fatal("Number of transactions must be at least 1!");
++    end
++  `endif
++  // pragma translate_on
++endmodule
++
++`include "axi/assign.svh"
++`include "axi/typedef.svh"
++
++module axi5_lite_demux_intf #(
++  parameter int unsigned AxiIdWidth   = 32'd0,
++  parameter int unsigned AxiAddrWidth = 32'd0,
++  parameter int unsigned AxiDataWidth = 32'd0,
++  parameter int unsigned AxiUserWidth = 32'd0,
++  parameter int unsigned NoMstPorts   = 32'd0,
++  parameter int unsigned MaxTrans     = 32'd0,
++  parameter bit          FallThrough  = 1'b0,
++  parameter bit          SpillAw      = 1'b1,
++  parameter bit          SpillW       = 1'b0,
++  parameter bit          SpillB       = 1'b0,
++  parameter bit          SpillAr      = 1'b1,
++  parameter bit          SpillR       = 1'b0,
++  // Dependent parameters, DO NOT OVERRIDE!
++  parameter type         select_t     = logic [$clog2(NoMstPorts)-1:0]
++) (
++  input  logic     clk_i,               // Clock
++  input  logic     rst_ni,              // Asynchronous reset active low
++  input  logic     test_i,              // Testmode enable
++  input  select_t  slv_aw_select_i,     // has to be stable, when aw_valid
++  input  select_t  slv_ar_select_i,     // has to be stable, when ar_valid
++  AXI5_LITE.Slave   slv,                 // slave port
++  AXI5_LITE.Master  mst [NoMstPorts-1:0] // master ports
++);
++  typedef logic [AxiIdWidth-1:0]     id_t;
++  typedef logic [AxiAddrWidth-1:0]   addr_t;
++  typedef logic [AxiDataWidth-1:0]   data_t;
++  typedef logic [AxiDataWidth/8-1:0] strb_t;
++  typedef logic [AxiUserWidth-1:0]   user_t;
++  // channels typedef
++  `AXI5_LITE_TYPEDEF_AW_CHAN_T(aw_chan_t, addr_t, id_t, user_t)
++  `AXI5_LITE_TYPEDEF_W_CHAN_T(w_chan_t, data_t, strb_t, user_t)
++  `AXI5_LITE_TYPEDEF_B_CHAN_T(b_chan_t, id_t, user_t)
++  `AXI5_LITE_TYPEDEF_AR_CHAN_T(ar_chan_t, addr_t, id_t, user_t)
++  `AXI5_LITE_TYPEDEF_R_CHAN_T(r_chan_t, data_t, id_t, user_t)
++  `AXI5_LITE_TYPEDEF_REQ_T(axi_req_t, aw_chan_t, w_chan_t, ar_chan_t)
++  `AXI5_LITE_TYPEDEF_RESP_T(axi_resp_t, b_chan_t, r_chan_t)
++
++  axi_req_t                   slv_req;
++  axi_resp_t                  slv_resp;
++  axi_req_t  [NoMstPorts-1:0] mst_reqs;
++  axi_resp_t [NoMstPorts-1:0] mst_resps;
++
++  `AXI5_LITE_ASSIGN_TO_REQ(slv_req, slv)
++  `AXI5_LITE_ASSIGN_FROM_RESP(slv, slv_resp)
++
++  for (genvar i = 0; i < NoMstPorts; i++) begin : gen_assign_mst_ports
++    `AXI5_LITE_ASSIGN_FROM_REQ(mst[i], mst_reqs[i])
++    `AXI5_LITE_ASSIGN_TO_RESP(mst_resps[i], mst[i])
++  end
++
++  axi5_lite_demux #(
++    .aw_chan_t   (  aw_chan_t  ),
++    .w_chan_t    (   w_chan_t  ),
++    .b_chan_t    (   b_chan_t  ),
++    .ar_chan_t   (  ar_chan_t  ),
++    .r_chan_t    (   r_chan_t  ),
++    .axi_req_t   (  axi_req_t  ),
++    .axi_resp_t  ( axi_resp_t  ),
++    .NoMstPorts  ( NoMstPorts  ),
++    .MaxTrans    ( MaxTrans    ),
++    .FallThrough ( FallThrough ),
++    .SpillAw     ( SpillAw     ),
++    .SpillW      ( SpillW      ),
++    .SpillB      ( SpillB      ),
++    .SpillAr     ( SpillAr     ),
++    .SpillR      ( SpillR      )
++  ) i_axi_demux (
++    .clk_i,
++    .rst_ni,
++    .test_i,
++    // slave Port
++    .slv_req_i       ( slv_req         ),
++    .slv_aw_select_i ( slv_aw_select_i ), // must be stable while slv_aw_valid_i
++    .slv_ar_select_i ( slv_ar_select_i ), // must be stable while slv_ar_valid_i
++    .slv_resp_o      ( slv_resp        ),
++    // mster ports
++    .mst_reqs_o      ( mst_reqs        ),
++    .mst_resps_i     ( mst_resps       )
++  );
++
++  // pragma translate_off
++  `ifndef VERILATOR
++    initial begin: p_assertions
++      AddrWidth: assert (AxiAddrWidth > 0) else $fatal("Axi Parmeter has to be > 0!");
++      DataWidth: assert (AxiDataWidth > 0) else $fatal("Axi Parmeter has to be > 0!");
++    end
++  `endif
++  // pragma translate_on
++endmodule
+--- /dev/null
++++ b/src/axi5_lite_demux_brcst.sv
+@@ -0,0 +1,828 @@
++// Copyright (c) 2020 ETH Zurich and University of Bologna.
++// Copyright and related rights are licensed under the Solderpad Hardware
++// License, Version 0.51 (the "License"); you may not use this file except in
++// compliance with the License.  You may obtain a copy of the License at
++// http://solderpad.org/licenses/SHL-0.51. Unless required by applicable law
++// or agreed to in writing, software, hardware and materials distributed under
++// this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
++// CONDITIONS OF ANY KIND, either express or implied. See the License for the
++// specific language governing permissions and limitations under the License.
++//
++// Authors:
++// - Wolfgang Roenninger <wroennin@iis.ee.ethz.ch>
++// - Andreas Kurth <akurth@iis.ee.ethz.ch>
++
++`include "common_cells/registers.svh"
++
++`ifdef QUESTA
++// Derive `TARGET_VSIM`, which is used for tool-specific workarounds in this file, from `QUESTA`,
++// which is automatically set in Questa.
++`define TARGET_VSIM
++`endif
++
++// axi_lite_demux: Demultiplex an AXI4-Lite bus from one slave port to multiple master ports.
++//                 The selection signal at the AW and AR channel has to follow the same
++//                 stability rules as the corresponding AXI4-Lite channel.
++
++module axi5_lite_demux_brcst #(
++  parameter type         aw_chan_t      = logic, // AXI4-Lite AW channel
++  parameter type         w_chan_t       = logic, // AXI4-Lite  W channel
++  parameter type         b_chan_t       = logic, // AXI4-Lite  B channel
++  parameter type         ar_chan_t      = logic, // AXI4-Lite AR channel
++  parameter type         r_chan_t       = logic, // AXI4-Lite  R channel
++  parameter type         axi_req_t      = logic, // AXI4-Lite request struct
++  parameter type         axi_resp_t     = logic, // AXI4-Lite response struct
++  parameter int unsigned NoMstPorts     = 32'd0, // Number of instantiated ports
++  parameter int unsigned MaxTrans       = 32'd0, // Maximum number of open transactions per channel
++  parameter bit          FallThrough    = 1'b0,  // FIFOs are in fall through mode
++  parameter bit          SpillAw        = 1'b1,  // insert one cycle latency on slave AW
++  parameter bit          SpillW         = 1'b0,  // insert one cycle latency on slave  W
++  parameter bit          SpillB         = 1'b0,  // insert one cycle latency on slave  B
++  parameter bit          SpillAr        = 1'b1,  // insert one cycle latency on slave AR
++  parameter bit          SpillR         = 1'b0,  // insert one cycle latency on slave  R
++  // Dependent parameters, DO NOT OVERRIDE!
++  parameter type         select_t       = logic [$clog2(NoMstPorts)-1:0]
++) (
++  input  logic                        clk_i,
++  input  logic                        rst_ni,
++  input  logic                        test_i,
++  // slave port (AXI4-Lite input), connect master module here
++  input  axi_req_t                    slv_req_i,
++  input  select_t                     slv_aw_select_i,
++  input  logic                        brcst_wr_req_enable,
++  input  select_t                     slv_ar_select_i,
++  output axi_resp_t                   slv_resp_o,
++  // master ports (AXI4-Lite outputs), connect slave modules here
++  output axi_req_t  [NoMstPorts-1:0]  mst_reqs_o,
++  input  axi_resp_t [NoMstPorts-1:0]  mst_resps_i
++);
++
++// FIXME_NONATHENA -> Clean up the implementation. Current one hard coded to
++// 2 broadcast masters
++  //--------------------------------------
++  // Typedefs for the spill registers
++  //--------------------------------------
++
++  typedef logic brcst_t;
++  typedef struct packed {
++    aw_chan_t aw;
++    select_t  select;
++    brcst_t brcst_en;
++  } aw_chan_select_t;
++  typedef struct packed {
++    ar_chan_t ar;
++    select_t  select;
++  } ar_chan_select_t;
++
++  if (NoMstPorts == 32'd1) begin : gen_no_demux
++    // degenerate case, connect slave to master port
++    spill_register #(
++      .T       ( aw_chan_t  ),
++      .Bypass  ( ~SpillAw   )
++    ) i_aw_spill_reg (
++      .clk_i   ( clk_i                    ),
++      .rst_ni  ( rst_ni                   ),
++      .valid_i ( slv_req_i.aw_valid       ),
++      .ready_o ( slv_resp_o.aw_ready      ),
++      .data_i  ( slv_req_i.aw             ),
++      .valid_o ( mst_reqs_o[0].aw_valid   ),
++      .ready_i ( mst_resps_i[0].aw_ready  ),
++      .data_o  ( mst_reqs_o[0].aw         )
++    );
++    spill_register #(
++      .T       ( w_chan_t  ),
++      .Bypass  ( ~SpillW   )
++    ) i_w_spill_reg (
++      .clk_i   ( clk_i                   ),
++      .rst_ni  ( rst_ni                  ),
++      .valid_i ( slv_req_i.w_valid       ),
++      .ready_o ( slv_resp_o.w_ready      ),
++      .data_i  ( slv_req_i.w             ),
++      .valid_o ( mst_reqs_o[0].w_valid   ),
++      .ready_i ( mst_resps_i[0].w_ready  ),
++      .data_o  ( mst_reqs_o[0].w         )
++    );
++    spill_register #(
++      .T       ( b_chan_t ),
++      .Bypass  ( ~SpillB      )
++    ) i_b_spill_reg (
++      .clk_i   ( clk_i                  ),
++      .rst_ni  ( rst_ni                 ),
++      .valid_i ( mst_resps_i[0].b_valid ),
++      .ready_o ( mst_reqs_o[0].b_ready  ),
++      .data_i  ( mst_resps_i[0].b       ),
++      .valid_o ( slv_resp_o.b_valid     ),
++      .ready_i ( slv_req_i.b_ready      ),
++      .data_o  ( slv_resp_o.b           )
++    );
++    spill_register #(
++      .T       ( ar_chan_t  ),
++      .Bypass  ( ~SpillAr   )
++    ) i_ar_spill_reg (
++      .clk_i   ( clk_i                    ),
++      .rst_ni  ( rst_ni                   ),
++      .valid_i ( slv_req_i.ar_valid       ),
++      .ready_o ( slv_resp_o.ar_ready      ),
++      .data_i  ( slv_req_i.ar             ),
++      .valid_o ( mst_reqs_o[0].ar_valid   ),
++      .ready_i ( mst_resps_i[0].ar_ready  ),
++      .data_o  ( mst_reqs_o[0].ar         )
++    );
++    spill_register #(
++      .T       ( r_chan_t ),
++      .Bypass  ( ~SpillR      )
++    ) i_r_spill_reg (
++      .clk_i   ( clk_i                  ),
++      .rst_ni  ( rst_ni                 ),
++      .valid_i ( mst_resps_i[0].r_valid ),
++      .ready_o ( mst_reqs_o[0].r_ready  ),
++      .data_i  ( mst_resps_i[0].r       ),
++      .valid_o ( slv_resp_o.r_valid     ),
++      .ready_i ( slv_req_i.r_ready      ),
++      .data_o  ( slv_resp_o.r           )
++    );
++
++  end else begin : gen_demux
++    // normal non degenerate case
++
++
++    //--------------------------------------
++    //--------------------------------------
++    // Signal Declarations
++    //--------------------------------------
++    //--------------------------------------
++
++    //--------------------------------------
++    // Write Transaction
++    //--------------------------------------
++    aw_chan_select_t       slv_aw_chan;
++    logic                  slv_aw_valid,    slv_aw_ready;
++
++    logic [NoMstPorts-1:0] mst_aw_valids, mst_aw_readies;
++
++    logic                  w_fifo_push,     w_fifo_pop;
++    logic                  w_fifo_full,     w_fifo_empty;
++
++    w_chan_t               slv_w_chan;
++    select_t               w_select;
++    brcst_t                w_brcst;
++    logic                  slv_w_valid,     slv_w_ready;
++
++    logic [NoMstPorts-1:0] mst_w_valids, mst_w_readies;
++
++    // logic                  /*w_pop*/        b_fifo_pop;
++    // logic                  b_fifo_full,     b_fifo_empty;
++
++    // B channles input into the arbitration
++    b_chan_t [NoMstPorts-1:0] mst_b_chans;
++    logic    [NoMstPorts-1:0] mst_b_valids,       mst_b_readies;
++
++    b_chan_t               slv_b_chan;
++    select_t               b_select;
++    logic                  slv_b_valid,     slv_b_ready;
++
++    //--------------------------------------
++    // Read Transaction
++    //--------------------------------------
++    ar_chan_select_t slv_ar_chan;
++    logic            slv_ar_valid,    slv_ar_ready;
++
++    // logic            r_fifo_push,     r_fifo_pop;
++    // logic            r_fifo_full,     r_fifo_empty;
++
++    // R channles input into the arbitration
++    r_chan_t [NoMstPorts-1:0] mst_r_chans;
++    logic    [NoMstPorts-1:0] mst_r_valids,       mst_r_readies;
++
++    r_chan_t         slv_r_chan;
++    select_t         r_select;
++    logic            slv_r_valid,     slv_r_ready;
++
++    //--------------------------------------
++    //--------------------------------------
++    // Channel control
++    //--------------------------------------
++    //--------------------------------------
++    
++    //--------------------------------------
++    // AW Channel
++    //--------------------------------------
++
++    typedef enum logic [2:0] {IDLE, REQ, LOCK, BREQ, BLOCK2, BLOCK1} state_e;
++    state_e state, n_state;
++    `FFLARN(state, n_state, 1'b1, IDLE, clk_i, rst_ni)
++
++    logic locked_idx;
++
++    logic [NoMstPorts-1:0] A_d, A_q, A_en;
++    for (genvar i = 0; i < NoMstPorts; i++) begin : gen_A_mask
++      `FFLARN(A_q[i], A_d[i], A_en[i], 1'b1, clk_i, rst_ni)
++    end
++
++    `ifdef TARGET_VSIM
++    // Workaround for bug in Questa 2020.2 and 2021.1: Flatten the struct into a logic vector before
++    // instantiating `spill_register`.
++    typedef logic [$bits(aw_chan_select_t)-1:0] aw_chan_select_flat_t;
++    `else
++    // Other tools, such as VCS, have problems with `$bits()`, so the workaround cannot be used
++    // generally.
++    typedef aw_chan_select_t aw_chan_select_flat_t;
++    `endif
++    aw_chan_select_flat_t slv_aw_chan_select_in_flat,
++                          slv_aw_chan_select_out_flat;
++    assign slv_aw_chan_select_in_flat = {slv_req_i.aw, slv_aw_select_i, brcst_t'(brcst_wr_req_enable)};
++    spill_register #(
++      .T      ( aw_chan_select_flat_t         ),
++      .Bypass ( ~SpillAw                      )
++    ) i_aw_spill_reg (
++      .clk_i   ( clk_i                        ),
++      .rst_ni  ( rst_ni                       ),
++      .valid_i ( slv_req_i.aw_valid           ),
++      .ready_o ( slv_resp_o.aw_ready          ),
++      .data_i  ( slv_aw_chan_select_in_flat   ),
++      .valid_o ( slv_aw_valid                 ),
++      .ready_i ( slv_aw_ready                 ),
++      .data_o  ( slv_aw_chan_select_out_flat  )
++    );
++    assign slv_aw_chan = slv_aw_chan_select_out_flat;
++
++    //State Machine for Broadcast Handshake control with TWO downstream channels
++    always_comb begin
++        // default assginments
++        slv_aw_ready    = 1'b0;
++        mst_aw_valids   = '0;
++        n_state = state;
++        //A_mask
++        A_d = A_q;
++        A_en = '0;
++        //locked channel index
++        locked_idx = 1'b0;
++        // W FIFO input control
++        w_fifo_push     = 1'b0;
++
++        case(state) 
++            IDLE: 
++            begin 
++                // reset A_mask
++                A_d = '1;
++                A_en = '1;
++                if (!w_fifo_full && slv_aw_valid) begin            
++                    // new transaction, push select in the FIFO and then look if transaction happened
++                    w_fifo_push = 1'b1;
++                    if (slv_aw_chan.brcst_en) begin
++                        n_state = BREQ;
++                    end else begin
++                        n_state = REQ;
++                    end
++                end else begin
++                end
++            end
++            
++            REQ: 
++            begin
++                mst_aw_valids[slv_aw_chan.select] = 1'b1;
++                if (mst_aw_readies[slv_aw_chan.select]) begin
++                    slv_aw_ready = 1'b1;
++                    n_state = IDLE;
++                end else begin
++                    n_state = LOCK;
++                end
++            end
++
++            LOCK:
++            begin
++                mst_aw_valids[slv_aw_chan.select] = 1'b1;
++                if (mst_aw_readies[slv_aw_chan.select]) begin
++                    slv_aw_ready    = 1'b1;
++                    n_state = IDLE;
++                end else begin
++                end
++            end
++
++            BREQ:
++            begin
++                mst_aw_valids = '1;
++                if (&mst_aw_readies[NoMstPorts - 2:0]) begin// : both channels ready
++                    slv_aw_ready    = 1'b1;
++                    n_state = IDLE;
++                end else if (~|mst_aw_readies[NoMstPorts - 2:0]) begin// : both channels not ready
++                    n_state = BLOCK2;
++                end
++                else begin// : one channel ready one not
++                    n_state = BLOCK1;
++                    for(int i = 0; i < NoMstPorts-1; i++) begin 
++                        if (mst_aw_readies[i]) begin : this_channel_ready
++                            // apply A_mask pull down valid_o for the ready channel @ next cycle;
++                            // Using this A_mask to delay 1 cycle and pull down mst_aw_valids
++                            A_d[i] = 1'b0;
++                            A_en[i] = 1'b1;
++                        end
++                    end
++                end
++            end
++
++            BLOCK2: 
++            begin
++                mst_aw_valids = '1;
++                if (&mst_aw_readies[NoMstPorts - 2:0]) begin// : both channels ready
++                    slv_aw_ready    = 1'b1;
++                    n_state = IDLE;
++                end else if (~|mst_aw_readies[NoMstPorts - 2:0]) begin// : both channels not ready
++                    // n_state = BLOCK2;
++                end
++                else begin// : one channel ready one not
++                    n_state = BLOCK1;
++                    for(int i = 0; i < NoMstPorts-1; i++) begin 
++                        if (mst_aw_readies[i]) begin : this_channel_ready
++                            // apply A_mask pull down valid_o for the ready channel @ next cycle;
++                            // Using this A_mask to delay 1 cycle and pull down mst_aw_valids
++                            A_d[i] = 1'b0;
++                            A_en[i] = 1'b1;
++                        end
++                    end
++                end
++            end
++
++            BLOCK1:
++            begin
++                mst_aw_valids = '1;
++                for(int i = 0; i < NoMstPorts-1; i++) begin 
++                    if (!A_q[i]) begin
++                        locked_idx = 1'(1-i);
++                    end
++                end
++                if (mst_aw_readies[locked_idx]) begin
++                    slv_aw_ready    = 1'b1;
++                    n_state = IDLE;
++                end else begin
++                    // n_state = BLOCK1;
++                end
++            end
++            
++            default: 
++            begin 
++                n_state = IDLE;
++            end
++        endcase
++    end
++
++    // replicate AW channel to the request output
++    for (genvar i = 0; i < NoMstPorts; i++) begin : gen_mst_aw
++      assign mst_aw_readies[i]      = mst_resps_i[i].aw_ready;
++      assign mst_reqs_o[i].aw       = slv_aw_chan.aw;
++      assign mst_reqs_o[i].aw_valid = (slv_aw_chan.brcst_en) ? ((i == NoMstPorts-1)? 1'b0 : mst_aw_valids[i]&A_q[i]) : mst_aw_valids[i];   
++    end
++
++    fifo_v3 #(
++      .FALL_THROUGH( FallThrough ),
++      .DEPTH       ( MaxTrans    ),
++      .dtype       ( brcst_t    )
++    ) i_w_brcst_fifo (
++      .clk_i      ( clk_i              ),
++      .rst_ni     ( rst_ni             ),
++      .flush_i    ( 1'b0               ), // not used, because AXI4-Lite no preemtion rule
++      .testmode_i ( test_i             ),
++      .full_o     (),
++      .empty_o    (),
++      .usage_o    (),
++      .data_i     ( slv_aw_chan.brcst_en ),
++      .push_i     ( w_fifo_push        ),
++      .data_o     ( w_brcst            ),
++      .pop_i      ( w_fifo_pop         )
++    );
++    
++    fifo_v3 #(
++      .FALL_THROUGH( FallThrough ),
++      .DEPTH       ( MaxTrans    ),
++      .dtype       ( select_t    )
++    ) i_w_fifo (
++      .clk_i      ( clk_i              ),
++      .rst_ni     ( rst_ni             ),
++      .flush_i    ( 1'b0               ), // not used, because AXI4-Lite no preemtion rule
++      .testmode_i ( test_i             ),
++      .full_o     ( w_fifo_full        ),
++      .empty_o    ( w_fifo_empty       ),
++      .usage_o    ( /*not used*/       ),
++      .data_i     ( slv_aw_chan.select ),
++      .push_i     ( w_fifo_push        ),
++      .data_o     ( w_select           ),
++      .pop_i      ( w_fifo_pop         )
++    );
++
++    //--------------------------------------
++    // W Channel
++    //--------------------------------------
++
++    state_e wstate, n_wstate;
++    `FFLARN(wstate, n_wstate, 1'b1, IDLE, clk_i, rst_ni)
++
++    logic locked_widx;
++
++    logic [NoMstPorts-1:0] B_d, B_q, B_en;
++    for (genvar i = 0; i < NoMstPorts; i++) begin : gen_B_mask
++      `FFLARN(B_q[i], B_d[i], B_en[i], 1'b1, clk_i, rst_ni)
++    end
++
++    spill_register #(
++      .T      ( w_chan_t ),
++      .Bypass ( ~SpillW  )
++    ) i_w_spill_reg (
++      .clk_i   ( clk_i              ),
++      .rst_ni  ( rst_ni             ),
++      .valid_i ( slv_req_i.w_valid  ),
++      .ready_o ( slv_resp_o.w_ready ),
++      .data_i  ( slv_req_i.w        ),
++      .valid_o ( slv_w_valid        ),
++      .ready_i ( slv_w_ready        ),
++      .data_o  ( slv_w_chan         )
++    );
++
++
++    // replicate W channel
++    for (genvar i = 0; i < NoMstPorts; i++) begin : gen_mst_w_chan
++      assign mst_w_readies[i]      = mst_resps_i[i].w_ready;
++      assign mst_reqs_o[i].w       = slv_w_chan;
++      assign mst_reqs_o[i].w_valid = (w_brcst) ? ((i==NoMstPorts-1) ? 1'b0 : mst_w_valids[i] & B_q[i]) : ~w_fifo_empty & mst_w_valids[i] & (w_select == select_t'(i));
++    end
++
++    assign w_fifo_pop = slv_w_valid & slv_w_ready; 
++
++    //State Machine for W channel handshake control
++    always_comb begin
++        // default assginments
++        slv_w_ready    = 1'b0;
++        mst_w_valids   = '0;
++        n_wstate = wstate;
++        //B_mask
++        B_d = B_q;
++        B_en = '0;
++        //locked channel index
++        locked_widx = 1'b0;
++
++        case(wstate) 
++            IDLE: 
++            begin 
++                // reset B_mask
++                B_d = '1;
++                B_en = '1;
++                if (slv_w_valid && ~w_fifo_empty) begin            
++                    if (w_brcst) begin
++                        n_wstate = BREQ;
++                    end else begin
++                        n_wstate = REQ;
++                    end
++                end else begin
++                end
++            end
++            
++            REQ: 
++            begin
++                mst_w_valids[w_select] = 1'b1;
++                if (mst_w_readies[w_select]) begin
++                    slv_w_ready = 1'b1;
++                    n_wstate = IDLE;
++                end else begin
++                    n_wstate = LOCK;
++                end
++            end
++
++            LOCK:
++            begin
++                mst_w_valids[w_select] = 1'b1;
++                if (mst_w_readies[w_select]) begin
++                    slv_w_ready    = 1'b1;
++                    n_wstate = IDLE;
++                end else begin
++                end
++            end
++
++            BREQ:
++            begin
++                mst_w_valids = '1;
++                if (&mst_w_readies[NoMstPorts - 2:0]) begin
++                    slv_w_ready    = 1'b1;
++                    n_wstate = IDLE;
++                end else if (~|mst_w_readies[NoMstPorts - 2:0]) begin
++                    n_wstate = BLOCK2;
++                end
++                else begin
++                    n_wstate = BLOCK1;
++                    for(int i = 0; i < NoMstPorts-1; i++) begin 
++                        if (mst_w_readies[i]) begin : this_channel_ready
++                            // apply B_mask pull down valid_o for the ready channel @ next cycle;
++                            // Using this B_mask to delay 1 cycle and pull down mst_w_valid
++                            B_d[i] = 1'b0;
++                            B_en[i] = 1'b1;
++                        end
++                    end
++                end
++            end
++
++            BLOCK2: 
++            begin
++                mst_w_valids = '1;
++                if (&mst_w_readies[NoMstPorts - 2:0]) begin
++                    slv_w_ready    = 1'b1;
++                    n_wstate = IDLE;
++                end else if (~|mst_w_readies[NoMstPorts - 2:0]) begin
++                    // n_wstate = BLOCK2;
++                end
++                else begin
++                    n_wstate = BLOCK1;
++                    for(int i = 0; i < NoMstPorts-1; i++) begin 
++                        if (mst_w_readies[i]) begin : this_channel_ready
++                            // apply B_mask pull down valid_o for the ready channel @ next cycle;
++                            // Using this B_mask to delay 1 cycle and pull down mst_w_valid
++                            B_d[i] = 1'b0;
++                            B_en[i] = 1'b1;
++                        end
++                    end
++                end
++            end
++
++            BLOCK1:
++            begin
++                mst_w_valids = '1;
++                for(int i = 0; i < NoMstPorts-1; i++) begin 
++                    if (!B_q[i]) begin
++                        locked_widx = 1'(1-i);
++                    end
++                end
++                if (mst_w_readies[locked_widx]) begin
++                    slv_w_ready    = 1'b1;
++                    n_wstate = IDLE;
++                end else begin
++                    // n_wstate = BLOCK1;
++                end
++            end
++            
++            default: 
++            begin 
++                n_wstate = IDLE;
++            end
++        endcase
++    end
++
++
++    //--------------------------------------
++    // B Channel
++    //--------------------------------------
++
++    // unpack the response B channels for the arbitration
++    for (genvar i = 0; i < NoMstPorts; i++) begin : gen_b_channels
++      assign mst_b_chans[i]        = mst_resps_i[i].b;
++      assign mst_b_valids[i]       = mst_resps_i[i].b_valid;
++    end
++
++    // Arbitration of the different B responses
++    rr_arb_tree #(
++      .NumIn    ( NoMstPorts ),
++      .DataType ( b_chan_t   ),
++      .AxiVldRdy( 1'b1       ),
++      .LockIn   ( 1'b1       )
++    ) i_b_mux (
++      .clk_i  ( clk_i         ),
++      .rst_ni ( rst_ni        ),
++      .flush_i( 1'b0          ),
++      .rr_i   ( '0            ),
++      .req_i  ( mst_b_valids  ),
++      .gnt_o  ( mst_b_readies ),
++      .data_i ( mst_b_chans   ),
++      .gnt_i  ( slv_b_ready   ),
++      .req_o  ( slv_b_valid   ),
++      .data_o ( slv_b_chan    ),
++      .idx_o  (               )
++    );
++
++    for (genvar i = 0; i < NoMstPorts; i++) begin : gen_mst_b
++      assign mst_reqs_o[i].b_ready = mst_b_readies[i];
++    end
++
++    spill_register #(
++      .T      ( b_chan_t ),
++      .Bypass ( ~SpillB  )
++    ) i_b_spill_reg (
++      .clk_i   ( clk_i              ),
++      .rst_ni  ( rst_ni             ),
++      .valid_i ( slv_b_valid        ),
++      .ready_o ( slv_b_ready        ),
++      .data_i  ( slv_b_chan         ),
++      .valid_o ( slv_resp_o.b_valid ),
++      .ready_i ( slv_req_i.b_ready  ),
++      .data_o  ( slv_resp_o.b       )
++    );
++
++
++    //--------------------------------------
++    // AR Channel
++    //--------------------------------------
++    // Workaround for bug in Questa (see comments on AW channel for details).
++    `ifdef TARGET_VSIM
++    typedef logic [$bits(ar_chan_select_t)-1:0] ar_chan_select_flat_t;
++    `else
++    typedef ar_chan_select_t ar_chan_select_flat_t;
++    `endif
++    ar_chan_select_flat_t slv_ar_chan_select_in_flat,
++                          slv_ar_chan_select_out_flat;
++    assign slv_ar_chan_select_in_flat = {slv_req_i.ar, slv_ar_select_i};
++    spill_register #(
++      .T      ( ar_chan_select_flat_t         ),
++      .Bypass ( ~SpillAr                      )
++    ) i_ar_spill_reg (
++      .clk_i   ( clk_i                        ),
++      .rst_ni  ( rst_ni                       ),
++      .valid_i ( slv_req_i.ar_valid           ),
++      .ready_o ( slv_resp_o.ar_ready          ),
++      .data_i  ( slv_ar_chan_select_in_flat   ),
++      .valid_o ( slv_ar_valid                 ),
++      .ready_i ( slv_ar_ready                 ),
++      .data_o  ( slv_ar_chan_select_out_flat  )
++    );
++    assign slv_ar_chan = slv_ar_chan_select_out_flat;
++
++    // replicate AR channel
++    for (genvar i = 0; i < NoMstPorts; i++) begin : gen_mst_ar
++      assign mst_reqs_o[i].ar       = slv_ar_chan.ar;
++      assign mst_reqs_o[i].ar_valid = slv_ar_valid & (slv_ar_chan.select == select_t'(i));
++    end
++    assign slv_ar_ready = mst_resps_i[slv_ar_chan.select].ar_ready;
++
++    //--------------------------------------
++    // R Channel
++    //--------------------------------------
++    
++    // unpack the response R channels for the arbitration
++    for (genvar i = 0; i < NoMstPorts; i++) begin : gen_r_channels
++      assign mst_r_chans[i]        = mst_resps_i[i].r;
++      assign mst_r_valids[i]       = mst_resps_i[i].r_valid;
++    end
++
++    // Arbitration of the different R responses
++    rr_arb_tree #(
++      .NumIn    ( NoMstPorts ),
++      .DataType ( r_chan_t   ),
++      .AxiVldRdy( 1'b1       ),
++      .LockIn   ( 1'b1       )
++    ) i_r_mux (
++      .clk_i  ( clk_i         ),
++      .rst_ni ( rst_ni        ),
++      .flush_i( 1'b0          ),
++      .rr_i   ( '0            ),
++      .req_i  ( mst_r_valids  ),
++      .gnt_o  ( mst_r_readies ),
++      .data_i ( mst_r_chans   ),
++      .gnt_i  ( slv_r_ready   ),
++      .req_o  ( slv_r_valid   ),
++      .data_o ( slv_r_chan    ),
++      .idx_o  (               )
++    );
++    
++    spill_register #(
++      .T      ( r_chan_t ),
++      .Bypass ( ~SpillR  )
++    ) i_r_spill_reg (
++      .clk_i   ( clk_i              ),
++      .rst_ni  ( rst_ni             ),
++      .valid_i ( slv_r_valid        ),
++      .ready_o ( slv_r_ready        ),
++      .data_i  ( slv_r_chan         ),
++      .valid_o ( slv_resp_o.r_valid ),
++      .ready_i ( slv_req_i.r_ready  ),
++      .data_o  ( slv_resp_o.r       )
++    );
++
++    for (genvar i = 0; i < NoMstPorts; i++) begin : gen_mst_r
++      assign mst_reqs_o[i].r_ready = mst_r_readies[i];
++    end
++
++    // pragma translate_off
++    `ifndef VERILATOR
++      default disable iff (!rst_ni);
++      aw_select: assume property( @(posedge clk_i) (slv_req_i.aw_valid |->
++                                                  (slv_aw_select_i < NoMstPorts))) else
++        $fatal(1, "slv_aw_select_i is %d: AW has selected a slave that is not defined.\
++                  NoMstPorts: %d", slv_aw_select_i, NoMstPorts);
++      ar_select: assume property( @(posedge clk_i) (slv_req_i.ar_valid |->
++                                                  (slv_ar_select_i < NoMstPorts))) else
++        $fatal(1, "slv_ar_select_i is %d: AR has selected a slave that is not defined.\
++                  NoMstPorts: %d", slv_ar_select_i, NoMstPorts);
++      aw_valid_stable: assert property( @(posedge clk_i) (slv_aw_valid && !slv_aw_ready && !slv_aw_chan.brcst_en)
++                                                        |=> slv_aw_valid) else
++        $fatal(1, "aw_valid was deasserted, when aw_ready = 0 in last cycle.");
++      ar_valid_stable: assert property( @(posedge clk_i) (slv_ar_valid && !slv_ar_ready)
++                                                        |=> slv_ar_valid) else
++        $fatal(1, "ar_valid was deasserted, when ar_ready = 0 in last cycle.");
++      aw_stable: assert property( @(posedge clk_i) (slv_aw_valid && !slv_aw_ready && !slv_aw_chan.brcst_en)
++                                |=> $stable(slv_aw_chan)) else
++        $fatal(1, "slv_aw_chan_select unstable with valid set.");
++      ar_stable: assert property( @(posedge clk_i) (slv_ar_valid && !slv_ar_ready)
++                                |=> $stable(slv_ar_chan)) else
++        $fatal(1, "slv_aw_chan_select unstable with valid set.");
++    `endif
++    // pragma translate_on
++  end
++
++  // pragma translate_off
++  `ifndef VERILATOR
++    initial begin: p_assertions
++      NoPorts:  assert (NoMstPorts > 0) else $fatal("Number of master ports must be at least 1!");
++      NoMstPortsIs2:  assert (NoMstPorts == 3) else $fatal("Number of master ports must be at least 3!, as the FSM was coded based on this assertion");
++      MaxTnx:   assert (MaxTrans   > 0) else $fatal("Number of transactions must be at least 1!");
++    end
++  `endif
++  // pragma translate_on
++endmodule
++
++`include "axi/assign.svh"
++`include "axi/typedef.svh"
++
++module axi5_lite_demux_brcst_intf #(
++  parameter int unsigned AxiIdWidth   = 32'd0,
++  parameter int unsigned AxiAddrWidth = 32'd0,
++  parameter int unsigned AxiDataWidth = 32'd0,
++  parameter int unsigned AxiUserWidth = 32'd0,
++  parameter int unsigned NoMstPorts   = 32'd0,
++  parameter int unsigned MaxTrans     = 32'd0,
++  parameter bit          FallThrough  = 1'b0,
++  parameter bit          SpillAw      = 1'b1,
++  parameter bit          SpillW       = 1'b0,
++  parameter bit          SpillB       = 1'b0,
++  parameter bit          SpillAr      = 1'b1,
++  parameter bit          SpillR       = 1'b0,
++  // Dependent parameters, DO NOT OVERRIDE!
++  parameter type         select_t     = logic [$clog2(NoMstPorts)-1:0]
++) (
++  input  logic     clk_i,               // Clock
++  input  logic     rst_ni,              // Asynchronous reset active low
++  input  logic     test_i,              // Testmode enable
++  input  select_t  slv_aw_select_i,     // has to be stable, when aw_valid
++  input  select_t  slv_ar_select_i,     // has to be stable, when ar_valid
++  AXI5_LITE.Slave   slv,                 // slave port
++  AXI5_LITE.Master  mst [NoMstPorts-1:0] // master ports
++);
++  typedef logic [AxiIdWidth-1:0]     id_t;
++  typedef logic [AxiAddrWidth-1:0]   addr_t;
++  typedef logic [AxiDataWidth-1:0]   data_t;
++  typedef logic [AxiDataWidth/8-1:0] strb_t;
++  typedef logic [AxiUserWidth-1:0]   user_t;
++  // channels typedef
++  `AXI5_LITE_TYPEDEF_AW_CHAN_T(aw_chan_t, addr_t, id_t, user_t)
++  `AXI5_LITE_TYPEDEF_W_CHAN_T(w_chan_t, data_t, strb_t, user_t)
++  `AXI5_LITE_TYPEDEF_B_CHAN_T(b_chan_t, id_t, user_t)
++  `AXI5_LITE_TYPEDEF_AR_CHAN_T(ar_chan_t, addr_t, id_t, user_t)
++  `AXI5_LITE_TYPEDEF_R_CHAN_T(r_chan_t, data_t, id_t, user_t)
++  `AXI5_LITE_TYPEDEF_REQ_T(axi_req_t, aw_chan_t, w_chan_t, ar_chan_t)
++  `AXI5_LITE_TYPEDEF_RESP_T(axi_resp_t, b_chan_t, r_chan_t)
++
++  axi_req_t                   slv_req;
++  axi_resp_t                  slv_resp;
++  axi_req_t  [NoMstPorts-1:0] mst_reqs;
++  axi_resp_t [NoMstPorts-1:0] mst_resps;
++
++  `AXI5_LITE_ASSIGN_TO_REQ(slv_req, slv)
++  `AXI5_LITE_ASSIGN_FROM_RESP(slv, slv_resp)
++
++  for (genvar i = 0; i < NoMstPorts; i++) begin : gen_assign_mst_ports
++    `AXI5_LITE_ASSIGN_FROM_REQ(mst[i], mst_reqs[i])
++    `AXI5_LITE_ASSIGN_TO_RESP(mst_resps[i], mst[i])
++  end
++
++  axi5_lite_demux_brcst #(
++    .aw_chan_t   (  aw_chan_t  ),
++    .w_chan_t    (   w_chan_t  ),
++    .b_chan_t    (   b_chan_t  ),
++    .ar_chan_t   (  ar_chan_t  ),
++    .r_chan_t    (   r_chan_t  ),
++    .axi_req_t   (  axi_req_t  ),
++    .axi_resp_t  ( axi_resp_t  ),
++    .NoMstPorts  ( NoMstPorts  ),
++    .MaxTrans    ( MaxTrans    ),
++    .FallThrough ( FallThrough ),
++    .SpillAw     ( SpillAw     ),
++    .SpillW      ( SpillW      ),
++    .SpillB      ( SpillB      ),
++    .SpillAr     ( SpillAr     ),
++    .SpillR      ( SpillR      )
++  ) i_axi_demux (
++    .clk_i,
++    .rst_ni,
++    .test_i,
++    // slave Port
++    .slv_req_i       ( slv_req         ),
++    .slv_aw_select_i ( slv_aw_select_i ), // must be stable while slv_aw_valid_i
++    .slv_ar_select_i ( slv_ar_select_i ), // must be stable while slv_ar_valid_i
++    .slv_resp_o      ( slv_resp        ),
++    // mster ports
++    .mst_reqs_o      ( mst_reqs        ),
++    .mst_resps_i     ( mst_resps       )
++  );
++
++  // pragma translate_off
++  `ifndef VERILATOR
++    initial begin: p_assertions
++      AddrWidth: assert (AxiAddrWidth > 0) else $fatal("Axi Parmeter has to be > 0!");
++      DataWidth: assert (AxiDataWidth > 0) else $fatal("Axi Parmeter has to be > 0!");
++    end
++  `endif
++  // pragma translate_on
++endmodule
+--- /dev/null
++++ b/src/axi5_lite_mux.sv
+@@ -0,0 +1,585 @@
++// Copyright (c) 2020 ETH Zurich, University of Bologna
++//
++// Copyright and related rights are licensed under the Solderpad Hardware
++// License, Version 0.51 (the "License"); you may not use this file except in
++// compliance with the License.  You may obtain a copy of the License at
++// http://solderpad.org/licenses/SHL-0.51. Unless required by applicable law
++// or agreed to in writing, software, hardware and materials distributed under
++// this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
++// CONDITIONS OF ANY KIND, either express or implied. See the License for the
++// specific language governing permissions and limitations under the License.
++//
++// Authors:
++// - Wolfgang Roenninger <wroennin@iis.ee.ethz.ch>
++// - Andreas Kurth <akurth@iis.ee.ethz.ch>
++
++// AXI4-Lite Multiplexer: This module multiplexes the AXI4-Lite slave ports down to one master port.
++//                        The multiplexing happens in a round robin fashion, responses get
++//                        sent back in order.
++
++// register macros
++`include "common_cells/registers.svh"
++
++module axi5_lite_mux #(
++  // AXI4-Lite parameter and channel types
++  parameter type          aw_chan_t  = logic, // AW LITE Channel Type
++  parameter type           w_chan_t  = logic, //  W LITE Channel Type
++  parameter type           b_chan_t  = logic, //  B LITE Channel Type
++  parameter type          ar_chan_t  = logic, // AR LITE Channel Type
++  parameter type           r_chan_t  = logic, //  R LITE Channel Type
++  parameter type          axi_req_t  = logic, // AXI4-Lite request type
++  parameter type         axi_resp_t  = logic, // AXI4-Lite response type
++  parameter int unsigned NoSlvPorts  = 32'd0, // Number of slave ports
++  // Maximum number of outstanding transactions per write or read
++  parameter int unsigned MaxTrans    = 32'd0,
++  // If enabled, this multiplexer is purely combinatorial
++  parameter bit          FallThrough = 1'b0,
++  // add spill register on write master port, adds a cycle latency on write channels
++  parameter bit          SpillAw     = 1'b1,
++  parameter bit          SpillW      = 1'b0,
++  parameter bit          SpillB      = 1'b0,
++  // add spill register on read master port, adds a cycle latency on read channels
++  parameter bit          SpillAr     = 1'b1,
++  parameter bit          SpillR      = 1'b0,
++  // Dependent parameters, DO NOT OVERRIDE!
++  parameter type         select_t       = logic
++) (
++  input  logic                       clk_i,    // Clock
++  input  logic                       rst_ni,   // Asynchronous reset active low
++  input  logic                       test_i,   // Test Mode enable
++  // slave ports (AXI4-Lite inputs), connect master modules here
++  input  axi_req_t  [NoSlvPorts-1:0] slv_reqs_i,
++  output axi_resp_t [NoSlvPorts-1:0] slv_resps_o,
++  // master port (AXI4-Lite output), connect slave module here
++  output axi_req_t                   mst_req_o,
++  input  axi_resp_t                  mst_resp_i,
++  input  select_t                    mst_b_select_i,
++  input  select_t                    mst_r_select_i
++);
++
++  //--------------------------------------
++  // Typedefs for the spill registers
++  //--------------------------------------
++
++  typedef struct packed {
++    b_chan_t  b;
++    select_t  select;
++  } b_chan_select_t;
++
++  typedef struct packed {
++    r_chan_t  r;
++    select_t  select;
++  } r_chan_select_t;
++
++
++  // pass through if only one slave port
++  if (NoSlvPorts == 32'h1) begin : gen_no_mux
++    spill_register #(
++      .T       ( aw_chan_t  ),
++      .Bypass  ( ~SpillAw   )
++    ) i_aw_spill_reg (
++      .clk_i   ( clk_i                    ),
++      .rst_ni  ( rst_ni                   ),
++      .valid_i ( slv_reqs_i[0].aw_valid   ),
++      .ready_o ( slv_resps_o[0].aw_ready  ),
++      .data_i  ( slv_reqs_i[0].aw         ),
++      .valid_o ( mst_req_o.aw_valid       ),
++      .ready_i ( mst_resp_i.aw_ready      ),
++      .data_o  ( mst_req_o.aw             )
++    );
++    spill_register #(
++      .T       ( w_chan_t ),
++      .Bypass  ( ~SpillW  )
++    ) i_w_spill_reg (
++      .clk_i   ( clk_i                   ),
++      .rst_ni  ( rst_ni                  ),
++      .valid_i ( slv_reqs_i[0].w_valid   ),
++      .ready_o ( slv_resps_o[0].w_ready  ),
++      .data_i  ( slv_reqs_i[0].w         ),
++      .valid_o ( mst_req_o.w_valid       ),
++      .ready_i ( mst_resp_i.w_ready      ),
++      .data_o  ( mst_req_o.w             )
++    );
++    spill_register #(
++      .T       ( b_chan_t ),
++      .Bypass  ( ~SpillB  )
++    ) i_b_spill_reg (
++      .clk_i   ( clk_i                  ),
++      .rst_ni  ( rst_ni                 ),
++      .valid_i ( mst_resp_i.b_valid     ),
++      .ready_o ( mst_req_o.b_ready      ),
++      .data_i  ( mst_resp_i.b           ),
++      .valid_o ( slv_resps_o[0].b_valid ),
++      .ready_i ( slv_reqs_i[0].b_ready  ),
++      .data_o  ( slv_resps_o[0].b       )
++    );
++    spill_register #(
++      .T       ( ar_chan_t ),
++      .Bypass  ( ~SpillAr  )
++    ) i_ar_spill_reg (
++      .clk_i   ( clk_i                    ),
++      .rst_ni  ( rst_ni                   ),
++      .valid_i ( slv_reqs_i[0].ar_valid   ),
++      .ready_o ( slv_resps_o[0].ar_ready  ),
++      .data_i  ( slv_reqs_i[0].ar         ),
++      .valid_o ( mst_req_o.ar_valid       ),
++      .ready_i ( mst_resp_i.ar_ready      ),
++      .data_o  ( mst_req_o.ar             )
++    );
++    spill_register #(
++      .T       ( r_chan_t ),
++      .Bypass  ( ~SpillR  )
++    ) i_r_spill_reg (
++      .clk_i   ( clk_i                  ),
++      .rst_ni  ( rst_ni                 ),
++      .valid_i ( mst_resp_i.r_valid     ),
++      .ready_o ( mst_req_o.r_ready      ),
++      .data_i  ( mst_resp_i.r           ),
++      .valid_o ( slv_resps_o[0].r_valid ),
++      .ready_i ( slv_reqs_i[0].r_ready  ),
++      .data_o  ( slv_resps_o[0].r       )
++    );
++
++  // other non degenerate cases
++  end else begin : gen_mux
++    // typedef for the FIFO types
++
++    // typedef logic [$clog2(NoSlvPorts)-1:0] select_t;
++
++    // input to the AW arbitration tree, unpacked from request struct
++    aw_chan_t [NoSlvPorts-1:0] slv_aw_chans;
++    logic     [NoSlvPorts-1:0] slv_aw_valids, slv_aw_readies;
++
++    // AW channel arb tree decision
++    select_t  aw_select;
++    aw_chan_t mst_aw_chan;
++    logic     mst_aw_valid, mst_aw_ready;
++
++    // AW master handshake internal, so that we are able to stall, if w_fifo is full
++    logic     aw_valid,     aw_ready;
++
++    // FF to lock the AW valid signal, when a new arbitration decision is made the decision
++    // gets pushed into the W FIFO, when it now stalls prevent subsequent pushing
++    // This FF removes AW to W dependency
++    logic     lock_aw_valid_d, lock_aw_valid_q;
++    logic     load_aw_lock;
++
++    // signals for the FIFO that holds the last switching decision of the AW channel
++    logic     w_fifo_full,  w_fifo_empty;
++    logic     w_fifo_push,  w_fifo_pop;
++
++    // W channel spill reg
++    select_t  w_select;
++    w_chan_t  mst_w_chan;
++    logic     mst_w_valid,  mst_w_ready;
++
++    // switching decision for the B response back routing
++    // select_t  b_select;
++    // signals for the FIFO that holds the last switching decision of the AW channel
++    // logic     b_fifo_full,  b_fifo_empty;
++    // logic     /*w_fifo_pop*/b_fifo_pop;
++
++    // B channel spill reg
++    b_chan_select_t  mst_b_chan;
++    logic     mst_b_valid,  mst_b_ready;
++
++    // input to the AR arbitration tree, unpacked from request struct
++    ar_chan_t [NoSlvPorts-1:0] slv_ar_chans;
++    logic     [NoSlvPorts-1:0] slv_ar_valids, slv_ar_readies;
++
++    // AR channel for when spill is enabled
++    // select_t  ar_select;
++    ar_chan_t mst_ar_chan;
++    logic     mst_ar_valid, mst_ar_ready;
++
++    // AR master handshake internal, so that we are able to stall, if R_fifo is full
++    logic     ar_valid,     ar_ready;
++
++    // master ID in the r_id
++    // select_t  r_select;
++
++    // signals for the FIFO that holds the last switching decision of the AR channel
++    // logic     r_fifo_full,  r_fifo_empty;
++    // logic     r_fifo_push,  r_fifo_pop;
++
++    // R channel spill reg
++    r_chan_select_t  mst_r_chan;
++    logic     mst_r_valid,  mst_r_ready;
++
++    //--------------------------------------
++    // AW Channel
++    //--------------------------------------
++    // unpach AW channel from request/response array
++    for (genvar i = 0; i < NoSlvPorts; i++) begin : gen_aw_arb_input
++      assign slv_aw_chans[i]         = slv_reqs_i[i].aw;
++      assign slv_aw_valids[i]        = slv_reqs_i[i].aw_valid;
++      assign slv_resps_o[i].aw_ready = slv_aw_readies[i];
++    end
++    rr_arb_tree #(
++      .NumIn    ( NoSlvPorts ),
++      .DataType ( aw_chan_t  ),
++      .AxiVldRdy( 1'b1       ),
++      .LockIn   ( 1'b1       )
++    ) i_aw_arbiter (
++      .clk_i  ( clk_i          ),
++      .rst_ni ( rst_ni         ),
++      .flush_i( 1'b0           ),
++      .rr_i   ( '0             ),
++      .req_i  ( slv_aw_valids  ),
++      .gnt_o  ( slv_aw_readies ),
++      .data_i ( slv_aw_chans   ),
++      .gnt_i  ( aw_ready       ),
++      .req_o  ( aw_valid       ),
++      .data_o ( mst_aw_chan    ),
++      .idx_o  ( aw_select      )
++    );
++
++    // control of the AW channel
++    always_comb begin
++      // default assignments
++      lock_aw_valid_d = lock_aw_valid_q;
++      load_aw_lock    = 1'b0;
++      w_fifo_push     = 1'b0;
++      mst_aw_valid    = 1'b0;
++      aw_ready        = 1'b0;
++      // had a downstream stall, be valid and send the AW along
++      if (lock_aw_valid_q) begin
++        mst_aw_valid = 1'b1;
++        // transaction
++        if (mst_aw_ready) begin
++          aw_ready        = 1'b1;
++          lock_aw_valid_d = 1'b0;
++          load_aw_lock    = 1'b1;
++        end
++      end else begin
++        if (!w_fifo_full && aw_valid) begin
++          mst_aw_valid = 1'b1;
++          w_fifo_push = 1'b1;
++          if (mst_aw_ready) begin
++            aw_ready = 1'b1;
++          end else begin
++            // go to lock if transaction not in this cycle
++            lock_aw_valid_d = 1'b1;
++            load_aw_lock    = 1'b1;
++          end
++        end
++      end
++    end
++
++    `FFLARN(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
++
++    fifo_v3 #(
++      .FALL_THROUGH ( FallThrough ),
++      .DEPTH        ( MaxTrans    ),
++      .dtype        ( select_t    )
++    ) i_w_fifo (
++      .clk_i     ( clk_i        ),
++      .rst_ni    ( rst_ni       ),
++      .flush_i   ( 1'b0         ),
++      .testmode_i( test_i       ),
++      .full_o    ( w_fifo_full  ),
++      .empty_o   ( w_fifo_empty ),
++      .usage_o   (              ),
++      .data_i    ( aw_select    ),
++      .push_i    ( w_fifo_push  ),
++      .data_o    ( w_select     ),
++      .pop_i     ( w_fifo_pop   )
++    );
++
++    spill_register #(
++      .T       ( aw_chan_t  ),
++      .Bypass  ( ~SpillAw   ) // Param indicated that we want a spill reg
++    ) i_aw_spill_reg (
++      .clk_i   ( clk_i               ),
++      .rst_ni  ( rst_ni              ),
++      .valid_i ( mst_aw_valid        ),
++      .ready_o ( mst_aw_ready        ),
++      .data_i  ( mst_aw_chan         ),
++      .valid_o ( mst_req_o.aw_valid  ),
++      .ready_i ( mst_resp_i.aw_ready ),
++      .data_o  ( mst_req_o.aw        )
++    );
++
++    //--------------------------------------
++    // W Channel
++    //--------------------------------------
++    // multiplexer
++    assign mst_w_chan      = slv_reqs_i[w_select].w;
++    assign mst_w_valid     = (!w_fifo_empty) ? slv_reqs_i[w_select].w_valid  : 1'b0;
++    for (genvar i = 0; i < NoSlvPorts; i++) begin : gen_slv_w_ready
++      assign slv_resps_o[i].w_ready =  mst_w_ready & ~w_fifo_empty &
++                                      (w_select == select_t'(i));
++    end
++    assign w_fifo_pop      = mst_w_valid & mst_w_ready;
++
++    // fifo_v3 #(
++    //   .FALL_THROUGH ( FallThrough ),
++    //   .DEPTH        ( MaxTrans    ),
++    //   .dtype        ( select_t    )
++    // ) i_b_fifo (
++    //   .clk_i     ( clk_i        ),
++    //   .rst_ni    ( rst_ni       ),
++    //   .flush_i   ( 1'b0         ),
++    //   .testmode_i( test_i       ),
++    //   .full_o    ( b_fifo_full  ),
++    //   .empty_o   ( b_fifo_empty ),
++    //   .usage_o   (              ),
++    //   .data_i    ( w_select     ),
++    //   .push_i    ( w_fifo_pop   ), // push the selection for the B channel on W transaction
++    //   .data_o    ( b_select     ),
++    //   .pop_i     ( b_fifo_pop   )
++    // );
++
++    spill_register #(
++      .T       ( w_chan_t ),
++      .Bypass  ( ~SpillW  )
++    ) i_w_spill_reg (
++      .clk_i   ( clk_i              ),
++      .rst_ni  ( rst_ni             ),
++      .valid_i ( mst_w_valid        ),
++      .ready_o ( mst_w_ready        ),
++      .data_i  ( mst_w_chan         ),
++      .valid_o ( mst_req_o.w_valid  ),
++      .ready_i ( mst_resp_i.w_ready ),
++      .data_o  ( mst_req_o.w        )
++    );
++
++    //--------------------------------------
++    // B Channel
++    //--------------------------------------
++    typedef b_chan_select_t b_chan_select_flat_t;
++
++    b_chan_select_flat_t mst_b_chan_select_in_flat,
++                         mst_b_chan_select_out_flat;
++    assign mst_b_chan_select_in_flat = {mst_resp_i.b, mst_b_select_i};
++
++    spill_register #(
++      .T       ( b_chan_select_flat_t ),
++      .Bypass  ( ~SpillB  )
++    ) i_b_spill_reg (
++      .clk_i   ( clk_i              ),
++      .rst_ni  ( rst_ni             ),
++      .valid_i ( mst_resp_i.b_valid ),
++      .ready_o ( mst_req_o.b_ready  ),
++      .data_i  ( mst_b_chan_select_in_flat),
++      .valid_o ( mst_b_valid        ),
++      .ready_i ( mst_b_ready        ),
++      .data_o  ( mst_b_chan_select_out_flat)
++    );
++    assign mst_b_chan = mst_b_chan_select_out_flat;
++
++
++    // replicate B channels
++    for (genvar i = 0; i < NoSlvPorts; i++) begin : gen_slv_resps_b
++      assign slv_resps_o[i].b       = mst_b_chan.b;
++      assign slv_resps_o[i].b_valid = mst_b_valid & (mst_b_chan.select == select_t'(i));
++    end
++    assign mst_b_ready    = slv_reqs_i[mst_b_chan.select].b_ready;
++    // assign b_fifo_pop     = mst_b_valid & mst_b_ready;
++
++
++    //--------------------------------------
++    // AR Channel
++    //--------------------------------------
++    // unpack AR channel from request/response struct
++    for (genvar i = 0; i < NoSlvPorts; i++) begin : gen_ar_arb_input
++      assign slv_ar_chans[i]         = slv_reqs_i[i].ar;
++      assign slv_ar_valids[i]        = slv_reqs_i[i].ar_valid;
++      assign slv_resps_o[i].ar_ready = slv_ar_readies[i];
++    end
++    rr_arb_tree #(
++      .NumIn    ( NoSlvPorts ),
++      .DataType ( ar_chan_t  ),
++      .AxiVldRdy( 1'b1       ),
++      .LockIn   ( 1'b1       )
++    ) i_ar_arbiter (
++      .clk_i  ( clk_i          ),
++      .rst_ni ( rst_ni         ),
++      .flush_i( 1'b0           ),
++      .rr_i   ( '0             ),
++      .req_i  ( slv_ar_valids  ),
++      .gnt_o  ( slv_ar_readies ),
++      .data_i ( slv_ar_chans   ),
++      .gnt_i  ( ar_ready       ),
++      .req_o  ( ar_valid       ),
++      .data_o ( mst_ar_chan    ),
++      .idx_o  ( /*ar_select*/  )
++    );
++
++    // connect the handshake if there is space in the FIFO, no need for valid locking
++    // as the R response is only allowed, when AR is transferred
++    assign mst_ar_valid = ar_valid;
++    assign ar_ready     = mst_ar_ready;
++    // assign mst_ar_valid = (!r_fifo_full) ? ar_valid     : 1'b0;
++    // assign ar_ready     = (!r_fifo_full) ? mst_ar_ready : 1'b0;
++    // assign r_fifo_push  = mst_ar_valid & mst_ar_ready;
++
++
++    // fifo_v3 #(
++    //   .FALL_THROUGH ( FallThrough ),
++    //   .DEPTH        ( MaxTrans    ),
++    //   .dtype        ( select_t    )
++    // ) i_r_fifo (
++    //   .clk_i     ( clk_i        ),
++    //   .rst_ni    ( rst_ni       ),
++    //   .flush_i   ( 1'b0         ),
++    //   .testmode_i( test_i       ),
++    //   .full_o    ( r_fifo_full  ),
++    //   .empty_o   ( r_fifo_empty ),
++    //   .usage_o   (              ),
++    //   .data_i    ( ar_select    ),
++    //   .push_i    ( r_fifo_push  ), // push the selection when w transaction happens
++    //   .data_o    ( r_select     ),
++    //   .pop_i     ( r_fifo_pop   )
++    // );
++
++    spill_register #(
++      .T       ( ar_chan_t ),
++      .Bypass  ( ~SpillAr  )
++    ) i_ar_spill_reg (
++      .clk_i   ( clk_i               ),
++      .rst_ni  ( rst_ni              ),
++      .valid_i ( mst_ar_valid        ),
++      .ready_o ( mst_ar_ready        ),
++      .data_i  ( mst_ar_chan         ),
++      .valid_o ( mst_req_o.ar_valid  ),
++      .ready_i ( mst_resp_i.ar_ready ),
++      .data_o  ( mst_req_o.ar        )
++    );
++
++    //--------------------------------------
++    // R Channel
++    //--------------------------------------
++
++    typedef r_chan_select_t r_chan_select_flat_t;
++
++    r_chan_select_flat_t mst_r_chan_select_in_flat,
++                         mst_r_chan_select_out_flat;
++    assign mst_r_chan_select_in_flat = {mst_resp_i.r, mst_r_select_i};
++
++    spill_register #(
++      .T       ( r_chan_select_flat_t ),
++      .Bypass  ( ~SpillR  )
++    ) i_r_spill_reg (
++      .clk_i   ( clk_i              ),
++      .rst_ni  ( rst_ni             ),
++      .valid_i ( mst_resp_i.r_valid ),
++      .ready_o ( mst_req_o.r_ready  ),
++      .data_i  ( mst_r_chan_select_in_flat),
++      .valid_o ( mst_r_valid        ),
++      .ready_i ( mst_r_ready        ),
++      .data_o  ( mst_r_chan_select_out_flat)
++    );
++    assign mst_r_chan = mst_r_chan_select_out_flat;
++
++    // replicate R channels
++    for (genvar i = 0; i < NoSlvPorts; i++) begin : gen_slv_resps_r
++      assign slv_resps_o[i].r       = mst_r_chan.r;
++      assign slv_resps_o[i].r_valid = mst_r_valid & (mst_r_chan.select == select_t'(i));
++    end
++    assign mst_r_ready    = slv_reqs_i[mst_r_chan.select].r_ready;
++    // assign r_fifo_pop     = mst_r_valid & mst_r_ready;
++  
++  end
++
++  // pragma translate_off
++  `ifndef VERILATOR
++    initial begin: p_assertions
++      NoPorts:  assert (NoSlvPorts > 0) else $fatal("Number of slave ports must be at least 1!");
++      MaxTnx:   assert (MaxTrans   > 0) else $fatal("Number of transactions must be at least 1!");
++    end
++  `endif
++  // pragma translate_on
++endmodule
++
++// interface wrap
++`include "axi/assign.svh"
++`include "axi/typedef.svh"
++
++module axi5_lite_mux_intf #(
++  parameter int unsigned AxiIdWidth   = 32'd0,
++  parameter int unsigned AxiAddrWidth = 32'd0,
++  parameter int unsigned AxiDataWidth = 32'd0,
++  parameter int unsigned AxiUserWidth = 32'd0,
++  parameter int unsigned NoSlvPorts    = 32'd0, // Number of slave ports
++  // Maximum number of outstanding transactions per write
++  parameter int unsigned MaxTrans      = 32'd0,
++  // if enabled, this multiplexer is purely combinatorial
++  parameter bit          FallThrough   = 1'b0,
++  // add spill register on write master ports, adds a cycle latency on write channels
++  parameter bit          SpillAw       = 1'b1,
++  parameter bit          SpillW        = 1'b0,
++  parameter bit          SpillB        = 1'b0,
++  // add spill register on read master ports, adds a cycle latency on read channels
++  parameter bit          SpillAr       = 1'b1,
++  parameter bit          SpillR        = 1'b0
++) (
++  input  logic    clk_i,                // Clock
++  input  logic    rst_ni,               // Asynchronous reset active low
++  input  logic    test_i,               // Testmode enable
++  AXI5_LITE.Slave  slv [NoSlvPorts-1:0], // slave ports
++  AXI5_LITE.Master mst                   // master port
++);
++
++  typedef logic [AxiIdWidth-1:0]     id_t;
++  typedef logic [AxiAddrWidth-1:0]   addr_t;
++  typedef logic [AxiDataWidth-1:0]   data_t;
++  typedef logic [AxiDataWidth/8-1:0] strb_t;
++  typedef logic [AxiUserWidth-1:0]   user_t;
++  // channels typedef
++  `AXI5_LITE_TYPEDEF_AW_CHAN_T(aw_chan_t, addr_t, id_t, user_t)
++  `AXI5_LITE_TYPEDEF_W_CHAN_T(w_chan_t, data_t, strb_t, user_t)
++  `AXI5_LITE_TYPEDEF_B_CHAN_T(b_chan_t, id_t, user_t)
++  `AXI5_LITE_TYPEDEF_AR_CHAN_T(ar_chan_t, addr_t, id_t, user_t)
++  `AXI5_LITE_TYPEDEF_R_CHAN_T(r_chan_t, data_t, id_t, user_t)
++  `AXI5_LITE_TYPEDEF_REQ_T(axi_req_t, aw_chan_t, w_chan_t, ar_chan_t)
++  `AXI5_LITE_TYPEDEF_RESP_T(axi_resp_t, b_chan_t, r_chan_t)
++
++  axi_req_t     [NoSlvPorts-1:0] slv_reqs;
++  axi_resp_t    [NoSlvPorts-1:0] slv_resps;
++  axi_req_t                      mst_req;
++  axi_resp_t                     mst_resp;
++
++  for (genvar i = 0; i < NoSlvPorts; i++) begin : gen_assign_slv_ports
++    `AXI5_LITE_ASSIGN_TO_REQ(slv_reqs[i], slv[i])
++    `AXI5_LITE_ASSIGN_FROM_RESP(slv[i], slv_resps[i])
++  end
++
++  `AXI5_LITE_ASSIGN_FROM_REQ(mst, mst_req)
++  `AXI5_LITE_ASSIGN_TO_RESP(mst_resp, mst)
++
++  axi5_lite_mux #(
++    .aw_chan_t     ( aw_chan_t     ), // AW Channel Type
++    .w_chan_t      (  w_chan_t     ), //  W Channel Type
++    .b_chan_t      (  b_chan_t     ), //  B Channel Type
++    .ar_chan_t     ( ar_chan_t     ), // AR Channel Type
++    .r_chan_t      (  r_chan_t     ), //  R Channel Type
++    .axi_req_t     ( axi_req_t     ),
++    .axi_resp_t    ( axi_resp_t    ),
++    .NoSlvPorts    ( NoSlvPorts    ), // Number of slave ports
++    .MaxTrans      ( MaxTrans      ),
++    .FallThrough   ( FallThrough   ),
++    .SpillAw       ( SpillAw       ),
++    .SpillW        ( SpillW        ),
++    .SpillB        ( SpillB        ),
++    .SpillAr       ( SpillAr       ),
++    .SpillR        ( SpillR        )
++  ) i_axi_mux (
++    .clk_i,  // Clock
++    .rst_ni, // Asynchronous reset active low
++    .test_i, // Test Mode enable
++    .slv_reqs_i  ( slv_reqs  ),
++    .slv_resps_o ( slv_resps ),
++    .mst_req_o   ( mst_req   ),
++    .mst_resp_i  ( mst_resp  )
++  );
++
++  // pragma translate_off
++  `ifndef VERILATOR
++    initial begin: p_assertions
++      AddrWidth: assert (AxiAddrWidth > 0) else $fatal("Axi Parameter has to be > 0!");
++      DataWidth: assert (AxiDataWidth > 0) else $fatal("Axi Parameter has to be > 0!");
++    end
++  `endif
++  // pragma translate_on
++endmodule
+--- /dev/null
++++ b/src/axi5_lite_mux_brcst.sv
+@@ -0,0 +1,607 @@
++// Copyright (c) 2020 ETH Zurich, University of Bologna
++//
++// Copyright and related rights are licensed under the Solderpad Hardware
++// License, Version 0.51 (the "License"); you may not use this file except in
++// compliance with the License.  You may obtain a copy of the License at
++// http://solderpad.org/licenses/SHL-0.51. Unless required by applicable law
++// or agreed to in writing, software, hardware and materials distributed under
++// this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
++// CONDITIONS OF ANY KIND, either express or implied. See the License for the
++// specific language governing permissions and limitations under the License.
++//
++// Authors:
++// - Wolfgang Roenninger <wroennin@iis.ee.ethz.ch>
++// - Andreas Kurth <akurth@iis.ee.ethz.ch>
++
++// AXI4-Lite Multiplexer: This module multiplexes the AXI4-Lite slave ports down to one master port.
++//                        The multiplexing happens in a round robin fashion, responses get
++//                        sent back in order.
++
++// register macros
++`include "common_cells/registers.svh"
++
++module axi5_lite_mux_brcst #(
++  // AXI4-Lite parameter and channel types
++  parameter type          aw_chan_t  = logic, // AW LITE Channel Type
++  parameter type           w_chan_t  = logic, //  W LITE Channel Type
++  parameter type           b_chan_t  = logic, //  B LITE Channel Type
++  parameter type          ar_chan_t  = logic, // AR LITE Channel Type
++  parameter type           r_chan_t  = logic, //  R LITE Channel Type
++  parameter type          axi_req_t  = logic, // AXI4-Lite request type
++  parameter type         axi_resp_t  = logic, // AXI4-Lite response type
++  parameter int unsigned NoSlvPorts  = 32'd0, // Number of slave ports
++  // Maximum number of outstanding transactions per write or read
++  parameter int unsigned MaxTrans    = 32'd0,
++  // If enabled, this multiplexer is purely combinatorial
++  parameter bit          FallThrough = 1'b0,
++  // add spill register on write master port, adds a cycle latency on write channels
++  parameter bit          SpillAw     = 1'b1,
++  parameter bit          SpillW      = 1'b0,
++  parameter bit          SpillB      = 1'b0,
++  // add spill register on read master port, adds a cycle latency on read channels
++  parameter bit          SpillAr     = 1'b1,
++  parameter bit          SpillR      = 1'b0,
++  // Dependent parameters, DO NOT OVERRIDE!
++  parameter type         select_t       = logic
++) (
++  input  logic                       clk_i,    // Clock
++  input  logic                       rst_ni,   // Asynchronous reset active low
++  input  logic                       test_i,   // Test Mode enable
++  // slave ports (AXI4-Lite inputs), connect master modules here
++  input  axi_req_t  [NoSlvPorts-1:0] slv_reqs_i,
++  output axi_resp_t [NoSlvPorts-1:0] slv_resps_o,
++  // master port (AXI4-Lite output), connect slave module here
++  output axi_req_t                   mst_req_o,
++  input  axi_resp_t                  mst_resp_i,
++  input  logic                       brcst_wr_rsp_disable,
++  input  select_t                    mst_b_select_i,
++  input  select_t                    mst_r_select_i
++);
++
++  logic brcst_wr_rsp_disable_dly;// delay brcst_wr_rsp_disable to match timing
++  if (SpillB)    
++  `FFLARN(brcst_wr_rsp_disable_dly, brcst_wr_rsp_disable, 1'b1, '0, clk_i, rst_ni)
++  else 
++  assign brcst_wr_rsp_disable_dly = brcst_wr_rsp_disable;
++
++
++  //--------------------------------------
++  // Typedefs for the spill registers
++  //--------------------------------------
++
++  typedef struct packed {
++    b_chan_t  b;
++    select_t  select;
++  } b_chan_select_t;
++
++  typedef struct packed {
++    r_chan_t  r;
++    select_t  select;
++  } r_chan_select_t;
++
++
++  // pass through if only one slave port
++  if (NoSlvPorts == 32'h1) begin : gen_no_mux
++
++    b_chan_t  mst_b_chan_passthru;
++    logic mst_b_valid_passthru;
++
++    spill_register #(
++      .T       ( aw_chan_t  ),
++      .Bypass  ( ~SpillAw   )
++    ) i_aw_spill_reg (
++      .clk_i   ( clk_i                    ),
++      .rst_ni  ( rst_ni                   ),
++      .valid_i ( slv_reqs_i[0].aw_valid   ),
++      .ready_o ( slv_resps_o[0].aw_ready  ),
++      .data_i  ( slv_reqs_i[0].aw         ),
++      .valid_o ( mst_req_o.aw_valid       ),
++      .ready_i ( mst_resp_i.aw_ready      ),
++      .data_o  ( mst_req_o.aw             )
++    );
++    spill_register #(
++      .T       ( w_chan_t ),
++      .Bypass  ( ~SpillW  )
++    ) i_w_spill_reg (
++      .clk_i   ( clk_i                   ),
++      .rst_ni  ( rst_ni                  ),
++      .valid_i ( slv_reqs_i[0].w_valid   ),
++      .ready_o ( slv_resps_o[0].w_ready  ),
++      .data_i  ( slv_reqs_i[0].w         ),
++      .valid_o ( mst_req_o.w_valid       ),
++      .ready_i ( mst_resp_i.w_ready      ),
++      .data_o  ( mst_req_o.w             )
++    );
++
++    logic mst_req_b_ready_brcst_masked;
++
++    spill_register #(
++      .T       ( b_chan_t ),
++      .Bypass  ( ~SpillB  )
++    ) i_b_spill_reg (
++      .clk_i   ( clk_i                  ),
++      .rst_ni  ( rst_ni                 ),
++      .valid_i ( mst_resp_i.b_valid & ~brcst_wr_rsp_disable    ),
++      .ready_o ( mst_req_b_ready_brcst_masked ),
++      .data_i  ( mst_resp_i.b           ),
++      .valid_o ( slv_resps_o[0].b_valid   ),
++      .ready_i ( slv_reqs_i[0].b_ready),
++      .data_o  ( slv_resps_o[0].b    )
++    );
++
++    assign mst_req_o.b_ready = mst_req_b_ready_brcst_masked | brcst_wr_rsp_disable;
++
++
++    spill_register #(
++      .T       ( ar_chan_t ),
++      .Bypass  ( ~SpillAr  )
++    ) i_ar_spill_reg (
++      .clk_i   ( clk_i                    ),
++      .rst_ni  ( rst_ni                   ),
++      .valid_i ( slv_reqs_i[0].ar_valid   ),
++      .ready_o ( slv_resps_o[0].ar_ready  ),
++      .data_i  ( slv_reqs_i[0].ar         ),
++      .valid_o ( mst_req_o.ar_valid       ),
++      .ready_i ( mst_resp_i.ar_ready      ),
++      .data_o  ( mst_req_o.ar             )
++    );
++    spill_register #(
++      .T       ( r_chan_t ),
++      .Bypass  ( ~SpillR  )
++    ) i_r_spill_reg (
++      .clk_i   ( clk_i                  ),
++      .rst_ni  ( rst_ni                 ),
++      .valid_i ( mst_resp_i.r_valid     ),
++      .ready_o ( mst_req_o.r_ready      ),
++      .data_i  ( mst_resp_i.r           ),
++      .valid_o ( slv_resps_o[0].r_valid ),
++      .ready_i ( slv_reqs_i[0].r_ready  ),
++      .data_o  ( slv_resps_o[0].r       )
++    );
++
++  // other non degenerate cases
++  end else begin : gen_mux
++    // typedef for the FIFO types
++
++    // typedef logic [$clog2(NoSlvPorts)-1:0] select_t;
++
++    // input to the AW arbitration tree, unpacked from request struct
++    aw_chan_t [NoSlvPorts-1:0] slv_aw_chans;
++    logic     [NoSlvPorts-1:0] slv_aw_valids, slv_aw_readies;
++
++    // AW channel arb tree decision
++    select_t  aw_select;
++    aw_chan_t mst_aw_chan;
++    logic     mst_aw_valid, mst_aw_ready;
++
++    // AW master handshake internal, so that we are able to stall, if w_fifo is full
++    logic     aw_valid,     aw_ready;
++
++    // FF to lock the AW valid signal, when a new arbitration decision is made the decision
++    // gets pushed into the W FIFO, when it now stalls prevent subsequent pushing
++    // This FF removes AW to W dependency
++    logic     lock_aw_valid_d, lock_aw_valid_q;
++    logic     load_aw_lock;
++
++    // signals for the FIFO that holds the last switching decision of the AW channel
++    logic     w_fifo_full,  w_fifo_empty;
++    logic     w_fifo_push,  w_fifo_pop;
++
++    // W channel spill reg
++    select_t  w_select;
++    w_chan_t  mst_w_chan;
++    logic     mst_w_valid,  mst_w_ready;
++
++    // switching decision for the B response back routing
++    // select_t  b_select;
++    // signals for the FIFO that holds the last switching decision of the AW channel
++    // logic     b_fifo_full,  b_fifo_empty;
++    // logic     /*w_fifo_pop*/b_fifo_pop;
++
++    // B channel spill reg
++    b_chan_select_t  mst_b_chan;
++    logic     mst_b_valid,  mst_b_ready;
++
++    // input to the AR arbitration tree, unpacked from request struct
++    ar_chan_t [NoSlvPorts-1:0] slv_ar_chans;
++    logic     [NoSlvPorts-1:0] slv_ar_valids, slv_ar_readies;
++
++    // AR channel for when spill is enabled
++    // select_t  ar_select;
++    ar_chan_t mst_ar_chan;
++    logic     mst_ar_valid, mst_ar_ready;
++
++    // AR master handshake internal, so that we are able to stall, if R_fifo is full
++    logic     ar_valid,     ar_ready;
++
++    // master ID in the r_id
++    // select_t  r_select;
++
++    // signals for the FIFO that holds the last switching decision of the AR channel
++    // logic     r_fifo_full,  r_fifo_empty;
++    // logic     r_fifo_push,  r_fifo_pop;
++
++    // R channel spill reg
++    r_chan_select_t  mst_r_chan;
++    logic     mst_r_valid,  mst_r_ready;
++
++    //--------------------------------------
++    // AW Channel
++    //--------------------------------------
++    // unpach AW channel from request/response array
++    for (genvar i = 0; i < NoSlvPorts; i++) begin : gen_aw_arb_input
++      assign slv_aw_chans[i]         = slv_reqs_i[i].aw;
++      assign slv_aw_valids[i]        = slv_reqs_i[i].aw_valid;
++      assign slv_resps_o[i].aw_ready = slv_aw_readies[i];
++    end
++    rr_arb_tree #(
++      .NumIn    ( NoSlvPorts ),
++      .DataType ( aw_chan_t  ),
++      .AxiVldRdy( 1'b1       ),
++      .LockIn   ( 1'b1       )
++    ) i_aw_arbiter (
++      .clk_i  ( clk_i          ),
++      .rst_ni ( rst_ni         ),
++      .flush_i( 1'b0           ),
++      .rr_i   ( '0             ),
++      .req_i  ( slv_aw_valids  ),
++      .gnt_o  ( slv_aw_readies ),
++      .data_i ( slv_aw_chans   ),
++      .gnt_i  ( aw_ready       ),
++      .req_o  ( aw_valid       ),
++      .data_o ( mst_aw_chan    ),
++      .idx_o  ( aw_select      )
++    );
++
++    // control of the AW channel
++    always_comb begin
++      // default assignments
++      lock_aw_valid_d = lock_aw_valid_q;
++      load_aw_lock    = 1'b0;
++      w_fifo_push     = 1'b0;
++      mst_aw_valid    = 1'b0;
++      aw_ready        = 1'b0;
++      // had a downstream stall, be valid and send the AW along
++      if (lock_aw_valid_q) begin
++        mst_aw_valid = 1'b1;
++        // transaction
++        if (mst_aw_ready) begin
++          aw_ready        = 1'b1;
++          lock_aw_valid_d = 1'b0;
++          load_aw_lock    = 1'b1;
++        end
++      end else begin
++        if (!w_fifo_full && aw_valid) begin
++          mst_aw_valid = 1'b1;
++          w_fifo_push = 1'b1;
++          if (mst_aw_ready) begin
++            aw_ready = 1'b1;
++          end else begin
++            // go to lock if transaction not in this cycle
++            lock_aw_valid_d = 1'b1;
++            load_aw_lock    = 1'b1;
++          end
++        end
++      end
++    end
++
++    `FFLARN(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
++
++    fifo_v3 #(
++      .FALL_THROUGH ( FallThrough ),
++      .DEPTH        ( MaxTrans    ),
++      .dtype        ( select_t    )
++    ) i_w_fifo (
++      .clk_i     ( clk_i        ),
++      .rst_ni    ( rst_ni       ),
++      .flush_i   ( 1'b0         ),
++      .testmode_i( test_i       ),
++      .full_o    ( w_fifo_full  ),
++      .empty_o   ( w_fifo_empty ),
++      .usage_o   (              ),
++      .data_i    ( aw_select    ),
++      .push_i    ( w_fifo_push  ),
++      .data_o    ( w_select     ),
++      .pop_i     ( w_fifo_pop   )
++    );
++
++    spill_register #(
++      .T       ( aw_chan_t  ),
++      .Bypass  ( ~SpillAw   ) // Param indicated that we want a spill reg
++    ) i_aw_spill_reg (
++      .clk_i   ( clk_i               ),
++      .rst_ni  ( rst_ni              ),
++      .valid_i ( mst_aw_valid        ),
++      .ready_o ( mst_aw_ready        ),
++      .data_i  ( mst_aw_chan         ),
++      .valid_o ( mst_req_o.aw_valid  ),
++      .ready_i ( mst_resp_i.aw_ready ),
++      .data_o  ( mst_req_o.aw        )
++    );
++
++    //--------------------------------------
++    // W Channel
++    //--------------------------------------
++    // multiplexer
++    assign mst_w_chan      = slv_reqs_i[w_select].w;
++    assign mst_w_valid     = (!w_fifo_empty) ? slv_reqs_i[w_select].w_valid  : 1'b0;
++    for (genvar i = 0; i < NoSlvPorts; i++) begin : gen_slv_w_ready
++      assign slv_resps_o[i].w_ready =  mst_w_ready & ~w_fifo_empty &
++                                      (w_select == select_t'(i));
++    end
++    assign w_fifo_pop      = mst_w_valid & mst_w_ready;
++
++    // fifo_v3 #(
++    //   .FALL_THROUGH ( FallThrough ),
++    //   .DEPTH        ( MaxTrans    ),
++    //   .dtype        ( select_t    )
++    // ) i_b_fifo (
++    //   .clk_i     ( clk_i        ),
++    //   .rst_ni    ( rst_ni       ),
++    //   .flush_i   ( 1'b0         ),
++    //   .testmode_i( test_i       ),
++    //   .full_o    ( b_fifo_full  ),
++    //   .empty_o   ( b_fifo_empty ),
++    //   .usage_o   (              ),
++    //   .data_i    ( w_select     ),
++    //   .push_i    ( w_fifo_pop   ), // push the selection for the B channel on W transaction
++    //   .data_o    ( b_select     ),
++    //   .pop_i     ( b_fifo_pop   )
++    // );
++
++    spill_register #(
++      .T       ( w_chan_t ),
++      .Bypass  ( ~SpillW  )
++    ) i_w_spill_reg (
++      .clk_i   ( clk_i              ),
++      .rst_ni  ( rst_ni             ),
++      .valid_i ( mst_w_valid        ),
++      .ready_o ( mst_w_ready        ),
++      .data_i  ( mst_w_chan         ),
++      .valid_o ( mst_req_o.w_valid  ),
++      .ready_i ( mst_resp_i.w_ready ),
++      .data_o  ( mst_req_o.w        )
++    );
++
++    //--------------------------------------
++    // B Channel
++    //--------------------------------------
++    typedef b_chan_select_t b_chan_select_flat_t;
++
++    b_chan_select_flat_t mst_b_chan_select_in_flat,
++                         mst_b_chan_select_out_flat;
++    assign mst_b_chan_select_in_flat = {mst_resp_i.b, mst_b_select_i};
++
++    logic mst_b_valid_1;
++    logic mst_req_b_ready_brcst_masked;
++
++    spill_register #(
++      .T       ( b_chan_select_flat_t ),
++      .Bypass  ( ~SpillB  )
++    ) i_b_spill_reg (
++      .clk_i   ( clk_i              ),
++      .rst_ni  ( rst_ni             ),
++      .valid_i ( mst_resp_i.b_valid & ~brcst_wr_rsp_disable ),
++      .ready_o ( mst_req_b_ready_brcst_masked ),
++      .data_i  ( mst_b_chan         ),
++      .valid_o ( mst_b_valid        ),
++      .ready_i ( mst_b_ready),
++      .data_o  ( mst_b_chan)
++    );
++    
++    assign mst_req_o.b_ready = mst_req_b_ready_brcst_masked | brcst_wr_rsp_disable;
++
++    // replicate B channels
++    for (genvar i = 0; i < NoSlvPorts; i++) begin : gen_slv_resps_b
++      assign slv_resps_o[i].b       = mst_b_chan.b;
++      assign slv_resps_o[i].b_valid = mst_b_valid & (mst_b_chan.select == select_t'(i));
++    end
++    assign mst_b_ready    = slv_reqs_i[mst_b_chan.select].b_ready;
++    // assign b_fifo_pop     = mst_b_valid & mst_b_ready;
++
++
++    //--------------------------------------
++    // AR Channel
++    //--------------------------------------
++    // unpack AR channel from request/response struct
++    for (genvar i = 0; i < NoSlvPorts; i++) begin : gen_ar_arb_input
++      assign slv_ar_chans[i]         = slv_reqs_i[i].ar;
++      assign slv_ar_valids[i]        = slv_reqs_i[i].ar_valid;
++      assign slv_resps_o[i].ar_ready = slv_ar_readies[i];
++    end
++    rr_arb_tree #(
++      .NumIn    ( NoSlvPorts ),
++      .DataType ( ar_chan_t  ),
++      .AxiVldRdy( 1'b1       ),
++      .LockIn   ( 1'b1       )
++    ) i_ar_arbiter (
++      .clk_i  ( clk_i          ),
++      .rst_ni ( rst_ni         ),
++      .flush_i( 1'b0           ),
++      .rr_i   ( '0             ),
++      .req_i  ( slv_ar_valids  ),
++      .gnt_o  ( slv_ar_readies ),
++      .data_i ( slv_ar_chans   ),
++      .gnt_i  ( ar_ready       ),
++      .req_o  ( ar_valid       ),
++      .data_o ( mst_ar_chan    ),
++      .idx_o  ( /*ar_select*/  )
++    );
++
++    // connect the handshake if there is space in the FIFO, no need for valid locking
++    // as the R response is only allowed, when AR is transferred
++    assign mst_ar_valid = ar_valid;
++    assign ar_ready     = mst_ar_ready;
++    // assign mst_ar_valid = (!r_fifo_full) ? ar_valid     : 1'b0;
++    // assign ar_ready     = (!r_fifo_full) ? mst_ar_ready : 1'b0;
++    // assign r_fifo_push  = mst_ar_valid & mst_ar_ready;
++
++
++    // fifo_v3 #(
++    //   .FALL_THROUGH ( FallThrough ),
++    //   .DEPTH        ( MaxTrans    ),
++    //   .dtype        ( select_t    )
++    // ) i_r_fifo (
++    //   .clk_i     ( clk_i        ),
++    //   .rst_ni    ( rst_ni       ),
++    //   .flush_i   ( 1'b0         ),
++    //   .testmode_i( test_i       ),
++    //   .full_o    ( r_fifo_full  ),
++    //   .empty_o   ( r_fifo_empty ),
++    //   .usage_o   (              ),
++    //   .data_i    ( ar_select    ),
++    //   .push_i    ( r_fifo_push  ), // push the selection when w transaction happens
++    //   .data_o    ( r_select     ),
++    //   .pop_i     ( r_fifo_pop   )
++    // );
++
++    spill_register #(
++      .T       ( ar_chan_t ),
++      .Bypass  ( ~SpillAr  )
++    ) i_ar_spill_reg (
++      .clk_i   ( clk_i               ),
++      .rst_ni  ( rst_ni              ),
++      .valid_i ( mst_ar_valid        ),
++      .ready_o ( mst_ar_ready        ),
++      .data_i  ( mst_ar_chan         ),
++      .valid_o ( mst_req_o.ar_valid  ),
++      .ready_i ( mst_resp_i.ar_ready ),
++      .data_o  ( mst_req_o.ar        )
++    );
++
++    //--------------------------------------
++    // R Channel
++    //--------------------------------------
++
++    typedef r_chan_select_t r_chan_select_flat_t;
++
++    r_chan_select_flat_t mst_r_chan_select_in_flat,
++                         mst_r_chan_select_out_flat;
++    assign mst_r_chan_select_in_flat = {mst_resp_i.r, mst_r_select_i};
++
++    spill_register #(
++      .T       ( r_chan_select_flat_t ),
++      .Bypass  ( ~SpillR  )
++    ) i_r_spill_reg (
++      .clk_i   ( clk_i              ),
++      .rst_ni  ( rst_ni             ),
++      .valid_i ( mst_resp_i.r_valid ),
++      .ready_o ( mst_req_o.r_ready  ),
++      .data_i  ( mst_r_chan_select_in_flat),
++      .valid_o ( mst_r_valid        ),
++      .ready_i ( mst_r_ready        ),
++      .data_o  ( mst_r_chan_select_out_flat)
++    );
++    assign mst_r_chan = mst_r_chan_select_out_flat;
++
++    // replicate R channels
++    for (genvar i = 0; i < NoSlvPorts; i++) begin : gen_slv_resps_r
++      assign slv_resps_o[i].r       = mst_r_chan.r;
++      assign slv_resps_o[i].r_valid = mst_r_valid & (mst_r_chan.select == select_t'(i));
++    end
++    assign mst_r_ready    = slv_reqs_i[mst_r_chan.select].r_ready;
++    // assign r_fifo_pop     = mst_r_valid & mst_r_ready;
++  
++  end
++
++  // pragma translate_off
++  `ifndef VERILATOR
++    initial begin: p_assertions
++      NoPorts:  assert (NoSlvPorts > 0) else $fatal("Number of slave ports must be at least 1!");
++      MaxTnx:   assert (MaxTrans   > 0) else $fatal("Number of transactions must be at least 1!");
++    end
++  `endif
++  // pragma translate_on
++endmodule
++
++// interface wrap
++`include "axi/assign.svh"
++`include "axi/typedef.svh"
++
++module axi5_lite_mux_brcst_intf #(
++  parameter int unsigned AxiIdWidth   = 32'd0,
++  parameter int unsigned AxiAddrWidth = 32'd0,
++  parameter int unsigned AxiDataWidth = 32'd0,
++  parameter int unsigned AxiUserWidth = 32'd0,
++  parameter int unsigned NoSlvPorts    = 32'd0, // Number of slave ports
++  // Maximum number of outstanding transactions per write
++  parameter int unsigned MaxTrans      = 32'd0,
++  // if enabled, this multiplexer is purely combinatorial
++  parameter bit          FallThrough   = 1'b0,
++  // add spill register on write master ports, adds a cycle latency on write channels
++  parameter bit          SpillAw       = 1'b1,
++  parameter bit          SpillW        = 1'b0,
++  parameter bit          SpillB        = 1'b0,
++  // add spill register on read master ports, adds a cycle latency on read channels
++  parameter bit          SpillAr       = 1'b1,
++  parameter bit          SpillR        = 1'b0
++) (
++  input  logic    clk_i,                // Clock
++  input  logic    rst_ni,               // Asynchronous reset active low
++  input  logic    test_i,               // Testmode enable
++  AXI5_LITE.Slave  slv [NoSlvPorts-1:0], // slave ports
++  AXI5_LITE.Master mst                   // master port
++);
++
++  typedef logic [AxiIdWidth-1:0]     id_t;
++  typedef logic [AxiAddrWidth-1:0]   addr_t;
++  typedef logic [AxiDataWidth-1:0]   data_t;
++  typedef logic [AxiDataWidth/8-1:0] strb_t;
++  typedef logic [AxiUserWidth-1:0]   user_t;
++  // channels typedef
++  `AXI5_LITE_TYPEDEF_AW_CHAN_T(aw_chan_t, addr_t, id_t, user_t)
++  `AXI5_LITE_TYPEDEF_W_CHAN_T(w_chan_t, data_t, strb_t, user_t)
++  `AXI5_LITE_TYPEDEF_B_CHAN_T(b_chan_t, id_t, user_t)
++  `AXI5_LITE_TYPEDEF_AR_CHAN_T(ar_chan_t, addr_t, id_t, user_t)
++  `AXI5_LITE_TYPEDEF_R_CHAN_T(r_chan_t, data_t, id_t, user_t)
++  `AXI5_LITE_TYPEDEF_REQ_T(axi_req_t, aw_chan_t, w_chan_t, ar_chan_t)
++  `AXI5_LITE_TYPEDEF_RESP_T(axi_resp_t, b_chan_t, r_chan_t)
++
++  axi_req_t     [NoSlvPorts-1:0] slv_reqs;
++  axi_resp_t    [NoSlvPorts-1:0] slv_resps;
++  axi_req_t                      mst_req;
++  axi_resp_t                     mst_resp;
++
++  for (genvar i = 0; i < NoSlvPorts; i++) begin : gen_assign_slv_ports
++    `AXI5_LITE_ASSIGN_TO_REQ(slv_reqs[i], slv[i])
++    `AXI5_LITE_ASSIGN_FROM_RESP(slv[i], slv_resps[i])
++  end
++
++  `AXI5_LITE_ASSIGN_FROM_REQ(mst, mst_req)
++  `AXI5_LITE_ASSIGN_TO_RESP(mst_resp, mst)
++
++  axi5_lite_mux_brcst #(
++    .aw_chan_t     ( aw_chan_t     ), // AW Channel Type
++    .w_chan_t      (  w_chan_t     ), //  W Channel Type
++    .b_chan_t      (  b_chan_t     ), //  B Channel Type
++    .ar_chan_t     ( ar_chan_t     ), // AR Channel Type
++    .r_chan_t      (  r_chan_t     ), //  R Channel Type
++    .axi_req_t     ( axi_req_t     ),
++    .axi_resp_t    ( axi_resp_t    ),
++    .NoSlvPorts    ( NoSlvPorts    ), // Number of slave ports
++    .MaxTrans      ( MaxTrans      ),
++    .FallThrough   ( FallThrough   ),
++    .SpillAw       ( SpillAw       ),
++    .SpillW        ( SpillW        ),
++    .SpillB        ( SpillB        ),
++    .SpillAr       ( SpillAr       ),
++    .SpillR        ( SpillR        )
++  ) i_axi_mux (
++    .clk_i,  // Clock
++    .rst_ni, // Asynchronous reset active low
++    .test_i, // Test Mode enable
++    .slv_reqs_i  ( slv_reqs  ),
++    .slv_resps_o ( slv_resps ),
++    .mst_req_o   ( mst_req   ),
++    .mst_resp_i  ( mst_resp  )
++  );
++
++  // pragma translate_off
++  `ifndef VERILATOR
++    initial begin: p_assertions
++      AddrWidth: assert (AxiAddrWidth > 0) else $fatal("Axi Parameter has to be > 0!");
++      DataWidth: assert (AxiDataWidth > 0) else $fatal("Axi Parameter has to be > 0!");
++    end
++  `endif
++  // pragma translate_on
++endmodule
+--- /dev/null
++++ b/src/axi5_lite_to_axi5.sv
+@@ -0,0 +1,164 @@
++// Copyright (c) 2014-2018 ETH Zurich, University of Bologna
++//
++// Copyright and related rights are licensed under the Solderpad Hardware
++// License, Version 0.51 (the "License"); you may not use this file except in
++// compliance with the License.  You may obtain a copy of the License at
++// http://solderpad.org/licenses/SHL-0.51. Unless required by applicable law
++// or agreed to in writing, software, hardware and materials distributed under
++// this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
++// CONDITIONS OF ANY KIND, either express or implied. See the License for the
++// specific language governing permissions and limitations under the License.
++//
++// Authors:
++// - Fabian Schuiki <fschuiki@iis.ee.ethz.ch>
++// - Wolfgang Roenninger <wroennin@iis.ee.ethz.ch>
++// - Andreas Kurth <akurth@iis.ee.ethz.ch>
++
++// An AXI5-Lite to AXI5 adapter.
++module axi5_lite_to_axi5 #(
++  parameter int unsigned AxiDataWidth = 32'd0,
++  // LITE AXI structs
++  parameter type  req_lite_t = logic,
++  parameter type resp_lite_t = logic,
++  // FULL AXI structs
++  parameter type   axi_req_t = logic,
++  parameter type  axi_resp_t = logic
++) (
++  // Slave AXI LITE port
++  input  req_lite_t       slv_req_lite_i,
++  output resp_lite_t      slv_resp_lite_o,
++  input  axi_pkg::cache_t slv_aw_cache_i,
++  input  axi_pkg::cache_t slv_ar_cache_i,
++  // Master AXI port
++  output axi_req_t        mst_req_o,
++  input  axi_resp_t       mst_resp_i
++);
++  localparam int unsigned AxiSize = axi_pkg::size_t'($unsigned($clog2(AxiDataWidth/8)));
++
++  // request assign
++  assign mst_req_o = '{
++    aw: '{
++      addr:  slv_req_lite_i.aw.addr,
++      prot:  slv_req_lite_i.aw.prot,
++      id: slv_req_lite_i.aw.id,
++      size:  AxiSize,
++      burst: axi_pkg::BURST_FIXED,
++      cache: slv_aw_cache_i,
++      default: '0
++    },
++    aw_valid: slv_req_lite_i.aw_valid,
++    w: '{
++      data: slv_req_lite_i.w.data,
++      strb: slv_req_lite_i.w.strb,
++      last: 1'b1,
++      default: '0
++    },
++    w_valid: slv_req_lite_i.w_valid,
++    b_ready: slv_req_lite_i.b_ready,
++    ar: '{
++      addr:  slv_req_lite_i.ar.addr,
++      prot:  slv_req_lite_i.ar.prot,
++      id: slv_req_lite_i.ar.id,
++      size:  AxiSize,
++      burst: axi_pkg::BURST_FIXED,
++      cache: slv_ar_cache_i,
++      default: '0
++    },
++    ar_valid: slv_req_lite_i.ar_valid,
++    r_ready:  slv_req_lite_i.r_ready,
++    default:   '0
++  };
++  // response assign
++  assign slv_resp_lite_o = '{
++    aw_ready: mst_resp_i.aw_ready,
++    w_ready:  mst_resp_i.w_ready,
++    b: '{
++      resp: mst_resp_i.b.resp,
++      id: mst_resp_i.b.id,
++      default: '0
++    },
++    b_valid:  mst_resp_i.b_valid,
++    ar_ready: mst_resp_i.ar_ready,
++    r: '{
++      data: mst_resp_i.r.data,
++      resp: mst_resp_i.r.resp,
++      id: mst_resp_i.r.id,
++      default: '0
++    },
++    r_valid: mst_resp_i.r_valid,
++    default: '0
++  };
++
++  // pragma translate_off
++  `ifndef VERILATOR
++  initial begin
++    assert (AxiDataWidth > 0) else $fatal(1, "Data width must be non-zero!");
++  end
++  `endif
++  // pragma translate_on
++endmodule
++
++module axi5_lite_to_axi5_intf #(
++  parameter int unsigned AXI_DATA_WIDTH = 32'd0
++) (
++  AXI_LITE.Slave  in,
++  input axi_pkg::cache_t slv_aw_cache_i,
++  input axi_pkg::cache_t slv_ar_cache_i,
++  AXI_BUS.Master  out
++);
++  localparam int unsigned AxiSize = axi_pkg::size_t'($unsigned($clog2(AXI_DATA_WIDTH/8)));
++
++// pragma translate_off
++  initial begin
++    assert(in.AXI_ADDR_WIDTH == out.AXI_ADDR_WIDTH);
++    assert(in.AXI_DATA_WIDTH == out.AXI_DATA_WIDTH);
++    assert(AXI_DATA_WIDTH    == out.AXI_DATA_WIDTH);
++  end
++// pragma translate_on
++
++  assign out.aw_id     = '0;
++  assign out.aw_addr   = in.aw_addr;
++  assign out.aw_len    = '0;
++  assign out.aw_size   = axi_pkg::size_t'(AxiSize);
++  assign out.aw_burst  = axi_pkg::BURST_FIXED;
++  assign out.aw_lock   = '0;
++  assign out.aw_cache  = slv_aw_cache_i;
++  assign out.aw_prot   = '0;
++  assign out.aw_qos    = '0;
++  assign out.aw_region = '0;
++  assign out.aw_atop   = '0;
++  assign out.aw_user   = '0;
++  assign out.aw_valid  = in.aw_valid;
++  assign in.aw_ready   = out.aw_ready;
++
++  assign out.w_data    = in.w_data;
++  assign out.w_strb    = in.w_strb;
++  assign out.w_last    = '1;
++  assign out.w_user    = '0;
++  assign out.w_valid   = in.w_valid;
++  assign in.w_ready    = out.w_ready;
++
++  assign in.b_resp     = out.b_resp;
++  assign in.b_valid    = out.b_valid;
++  assign out.b_ready   = in.b_ready;
++
++  assign out.ar_id     = '0;
++  assign out.ar_addr   = in.ar_addr;
++  assign out.ar_len    = '0;
++  assign out.ar_size   = axi_pkg::size_t'(AxiSize);
++  assign out.ar_burst  = axi_pkg::BURST_FIXED;
++  assign out.ar_lock   = '0;
++  assign out.ar_cache  = slv_ar_cache_i;
++  assign out.ar_prot   = '0;
++  assign out.ar_qos    = '0;
++  assign out.ar_region = '0;
++  assign out.ar_user   = '0;
++  assign out.ar_valid  = in.ar_valid;
++  assign in.ar_ready   = out.ar_ready;
++
++  assign in.r_data     = out.r_data;
++  assign in.r_resp     = out.r_resp;
++  assign in.r_valid    = out.r_valid;
++  assign out.r_ready   = in.r_ready;
++
++endmodule
+--- /dev/null
++++ b/src/axi5_lite_xbar.sv
+@@ -0,0 +1,288 @@
++// Copyright (c) 2020 ETH Zurich and University of Bologna.
++// Copyright and related rights are licensed under the Solderpad Hardware
++// License, Version 0.51 (the "License"); you may not use this file except in
++// compliance with the License.  You may obtain a copy of the License at
++// http://solderpad.org/licenses/SHL-0.51. Unless required by applicable law
++// or agreed to in writing, software, hardware and materials distributed under
++// this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
++// CONDITIONS OF ANY KIND, either express or implied. See the License for the
++// specific language governing permissions and limitations under the License.
++//
++// Authors:
++// - Wolfgang Roenninger <wroennin@iis.ee.ethz.ch>
++// - Fabian Schuiki <fschuiki@iis.ee.ethz.ch>
++// - Andreas Kurth <akurth@iis.ee.ethz.ch>
++
++// axi_lite_xbar: Fully-connected AXI4-Lite crossbar.
++// See `doc/axi_lite_xbar.md` for the documentation,
++// including the definition of parameters and ports.
++
++`include "axi/typedef.svh"
++
++module axi5_lite_xbar #(
++  parameter axi_pkg::axinode_cfg_t Cfg = '0,
++  parameter type  aw_chan_t         = logic,
++  parameter type   w_chan_t         = logic,
++  parameter type   b_chan_t         = logic,
++  parameter type  ar_chan_t         = logic,
++  parameter type   r_chan_t         = logic,
++  parameter type  axi_req_t         = logic,
++  parameter type axi_resp_t         = logic,
++  parameter type     rule_t         = axi_pkg::cluster_rule_t,
++  parameter type  id_rule_t         = axi_pkg::srcid_rule_t,
++  // DEPENDENT PARAMETERS, DO NOT OVERWRITE!
++  parameter int unsigned MstIdxWidth = (Cfg.NoMstPorts > 32'd1) ? $clog2(Cfg.NoMstPorts) : 32'd1,
++  parameter int unsigned SlvIdxWidth = (Cfg.NoSlvPorts > 32'd1) ? $clog2(Cfg.NoSlvPorts) : 32'd1
++) (
++  input  logic                                        clk_i,
++  input  logic                                        rst_ni,
++  input  logic                                        test_i,
++  input  axi_req_t  [Cfg.NoSlvPorts-1:0]              slv_ports_req_i,
++  output axi_resp_t [Cfg.NoSlvPorts-1:0]              slv_ports_resp_o,
++  output axi_req_t  [Cfg.NoMstPorts-1:0]              mst_ports_req_o,
++  input  axi_resp_t [Cfg.NoMstPorts-1:0]              mst_ports_resp_i,
++  input  rule_t     [Cfg.NoAddrRules-1:0]             addr_map_i,
++  input  id_rule_t  [Cfg.NoIdRules-1:0]               id_map_i,
++  input  logic  [Cfg.NoSlvPorts-1:0]                  en_default_mst_port_i,
++  input  logic  [Cfg.NoSlvPorts-1:0][MstIdxWidth-1:0] default_mst_port_i,
++  input  logic  [Cfg.NoMstPorts-1:0]                  en_default_slv_port_i,
++  input  logic  [Cfg.NoMstPorts-1:0][SlvIdxWidth-1:0] default_slv_port_i
++);
++
++  typedef logic [Cfg.AxiAddrWidth-1:0]   addr_t;
++  typedef logic [Cfg.AxiDataWidth-1:0]   data_t;
++  typedef logic [Cfg.AxiDataWidth/8-1:0] strb_t;
++  typedef logic [Cfg.AxiSrcIdWidth-1:0]  srcid_t;
++  // to account for the decoding error slave/master
++  typedef logic [$clog2(Cfg.NoMstPorts + 1)-1:0] mst_port_idx_t;
++  // FIXME_MUSTFIX_BABYLON: fixed to 1 bit for use of axi ring
++  // typedef logic [$clog2(Cfg.NoSlvPorts)-1:0] slv_port_idx_t;
++  typedef logic  slv_port_idx_t;
++  // full AXI typedef for the decode error slave, id_t and user_t are logic and will be
++  // removed during logic optimization as they are stable
++  `AXI_TYPEDEF_AW_CHAN_T(full_aw_chan_t, addr_t, logic [Cfg.AxiIdWidth - 1 : 0], logic)
++  `AXI_TYPEDEF_W_CHAN_T(full_w_chan_t, data_t, strb_t, logic)
++  `AXI_TYPEDEF_B_CHAN_T(full_b_chan_t, logic [Cfg.AxiIdWidth - 1 : 0], logic)
++  `AXI_TYPEDEF_AR_CHAN_T(full_ar_chan_t, addr_t, logic [Cfg.AxiIdWidth - 1 : 0], logic)
++  `AXI_TYPEDEF_R_CHAN_T(full_r_chan_t, data_t, logic [Cfg.AxiIdWidth - 1 : 0], logic)
++  `AXI_TYPEDEF_REQ_T(full_req_t, full_aw_chan_t, full_w_chan_t, full_ar_chan_t)
++  `AXI_TYPEDEF_RESP_T(full_resp_t, full_b_chan_t, full_r_chan_t)
++
++  // signals from the axi_lite_demuxes, one index more for decode error routing
++  axi_req_t  [Cfg.NoSlvPorts-1:0][Cfg.NoMstPorts:0] slv_reqs;
++  axi_resp_t [Cfg.NoSlvPorts-1:0][Cfg.NoMstPorts:0] slv_resps;
++
++  // signals into the axi_lite_muxes, are of type slave as the multiplexer extends the ID
++  axi_req_t  [Cfg.NoMstPorts-1:0][Cfg.NoSlvPorts-1:0] mst_reqs;
++  axi_resp_t [Cfg.NoMstPorts-1:0][Cfg.NoSlvPorts-1:0] mst_resps;
++
++  for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_slv_port_demux
++    logic [MstIdxWidth-1:0] dec_aw,        dec_ar;
++    mst_port_idx_t          slv_aw_select, slv_ar_select;
++    logic                   dec_aw_error;
++    logic                   dec_ar_error;
++
++    full_req_t  decerr_req;
++    full_resp_t decerr_resp;
++
++    addr_decode #(
++      .NoIndices  ( Cfg.NoMstPorts  ),
++      .NoRules    ( Cfg.NoAddrRules ),
++      .addr_t     ( addr_t          ),
++      .rule_t     ( rule_t          )
++    ) i_axi_aw_decode (
++      .addr_i           ( slv_ports_req_i[i].aw.addr ),
++      .addr_map_i       ( addr_map_i                 ),
++      .idx_o            ( dec_aw                     ),
++      .dec_valid_o      ( /*not used*/               ),
++      .dec_error_o      ( dec_aw_error               ),
++      .en_default_idx_i ( en_default_mst_port_i[i]   ),
++      .default_idx_i    ( default_mst_port_i[i]      )
++    );
++
++    addr_decode #(
++      .NoIndices  ( Cfg.NoMstPorts  ),
++      .addr_t     ( addr_t          ),
++      .NoRules    ( Cfg.NoAddrRules ),
++      .rule_t     ( rule_t          )
++    ) i_axi_ar_decode (
++      .addr_i           ( slv_ports_req_i[i].ar.addr ),
++      .addr_map_i       ( addr_map_i                 ),
++      .idx_o            ( dec_ar                     ),
++      .dec_valid_o      ( /*not used*/               ),
++      .dec_error_o      ( dec_ar_error               ),
++      .en_default_idx_i ( en_default_mst_port_i[i]   ),
++      .default_idx_i    ( default_mst_port_i[i]      )
++    );
++
++    assign slv_aw_select = (dec_aw_error) ?
++        mst_port_idx_t'(Cfg.NoMstPorts) : mst_port_idx_t'(dec_aw);
++    assign slv_ar_select = (dec_ar_error) ?
++        mst_port_idx_t'(Cfg.NoMstPorts) : mst_port_idx_t'(dec_ar);
++
++    // make sure that the default slave does not get changed, if there is an unserved Ax
++    // pragma translate_off
++    `ifndef VERILATOR
++    default disable iff (~rst_ni);
++    default_aw_mst_port_en: assert property(
++      @(posedge clk_i) (slv_ports_req_i[i].aw_valid && !slv_ports_resp_o[i].aw_ready)
++          |=> $stable(en_default_mst_port_i[i]))
++        else $fatal (1, $sformatf("It is not allowed to change the default mst port\
++                                   enable, when there is an unserved Aw beat. Slave Port: %0d", i));
++    default_aw_mst_port: assert property(
++      @(posedge clk_i) (slv_ports_req_i[i].aw_valid && !slv_ports_resp_o[i].aw_ready)
++          |=> $stable(default_mst_port_i[i]))
++        else $fatal (1, $sformatf("It is not allowed to change the default mst port\
++                                   when there is an unserved Aw beat. Slave Port: %0d", i));
++    default_ar_mst_port_en: assert property(
++      @(posedge clk_i) (slv_ports_req_i[i].ar_valid && !slv_ports_resp_o[i].ar_ready)
++          |=> $stable(en_default_mst_port_i[i]))
++        else $fatal (1, $sformatf("It is not allowed to change the enable, when\
++                                   there is an unserved Ar beat. Slave Port: %0d", i));
++    default_ar_mst_port: assert property(
++      @(posedge clk_i) (slv_ports_req_i[i].ar_valid && !slv_ports_resp_o[i].ar_ready)
++          |=> $stable(default_mst_port_i[i]))
++        else $fatal (1, $sformatf("It is not allowed to change the default mst port\
++                                   when there is an unserved Ar beat. Slave Port: %0d", i));
++    `endif
++    // pragma translate_on
++    axi5_lite_demux #(
++      .aw_chan_t      ( aw_chan_t          ),  // AW Channel Type
++      .w_chan_t       (  w_chan_t          ),  //  W Channel Type
++      .b_chan_t       (  b_chan_t          ),  //  B Channel Type
++      .ar_chan_t      ( ar_chan_t          ),  // AR Channel Type
++      .r_chan_t       (  r_chan_t          ),  //  R Channel Type
++      .axi_req_t      ( axi_req_t          ),
++      .axi_resp_t     ( axi_resp_t         ),
++      .NoMstPorts     ( Cfg.NoMstPorts + 1 ),
++      .MaxTrans       ( Cfg.MaxMstTrans    ),
++      .FallThrough    ( Cfg.FallThrough    ),
++      .SpillAw        ( Cfg.LatencyMode[9] ),
++      .SpillW         ( Cfg.LatencyMode[8] ),
++      .SpillB         ( Cfg.LatencyMode[7] ),
++      .SpillAr        ( Cfg.LatencyMode[6] ),
++      .SpillR         ( Cfg.LatencyMode[5] )
++    ) i_axi_lite_demux (
++      .clk_i,   // Clock
++      .rst_ni,  // Asynchronous reset active low
++      .test_i,  // Testmode enable
++      .slv_req_i       ( slv_ports_req_i[i]  ),
++      .slv_aw_select_i ( slv_aw_select       ),
++      .slv_ar_select_i ( slv_ar_select       ),
++      .slv_resp_o      ( slv_ports_resp_o[i] ),
++      .mst_reqs_o      ( slv_reqs[i]         ),
++      .mst_resps_i     ( slv_resps[i]        )
++    );
++
++    // connect the decode error module to the last index of the demux master port
++    // typedef as the decode error slave uses full axi
++    axi5_lite_to_axi5 #(
++      .AxiDataWidth ( Cfg.AxiDataWidth  ),
++      .req_lite_t   ( axi_req_t         ),
++      .resp_lite_t  ( axi_resp_t        ),
++      .axi_req_t    ( full_req_t        ),
++      .axi_resp_t   ( full_resp_t       )
++    ) i_dec_err_conv (
++      .slv_req_lite_i  ( slv_reqs[i][Cfg.NoMstPorts]  ),
++      .slv_resp_lite_o ( slv_resps[i][Cfg.NoMstPorts] ),
++      .slv_aw_cache_i  ( 4'd0                         ),
++      .slv_ar_cache_i  ( 4'd0                         ),
++      .mst_req_o       ( decerr_req                   ),
++      .mst_resp_i      ( decerr_resp                  )
++    );
++
++    axi_err_slv #(
++      .AxiIdWidth  ( Cfg.AxiIdWidth       ), // ID width is one as defined as logic above
++      .axi_req_t   ( full_req_t           ), // AXI request struct
++      .axi_resp_t  ( full_resp_t          ), // AXI response struct
++      .Resp        ( axi_pkg::RESP_DECERR ),
++      .ATOPs       ( 1'b0                 ), // no ATOPs in AXI4-Lite
++      .MaxTrans    ( 1                    )  // Transactions terminate at this slave, and AXI4-Lite
++                                             // transactions have only a single beat.
++    ) i_axi_err_slv (
++      .clk_i      ( clk_i       ),  // Clock
++      .rst_ni     ( rst_ni      ),  // Asynchronous reset active low
++      .test_i     ( test_i      ),  // Testmode enable
++      // slave port
++      .slv_req_i  ( decerr_req  ),
++      .slv_resp_o ( decerr_resp )
++    );
++  end
++
++  // cross all channels
++  for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_xbar_slv_cross
++    for (genvar j = 0; j < Cfg.NoMstPorts; j++) begin : gen_xbar_mst_cross
++      assign mst_reqs[j][i]  = slv_reqs[i][j];
++      assign slv_resps[i][j] = mst_resps[j][i];
++    end
++  end
++
++  for (genvar i = 0; i < Cfg.NoMstPorts; i++) begin : gen_mst_port_mux
++    logic [SlvIdxWidth-1:0] dec_b, dec_r;
++    slv_port_idx_t          mst_b_select, mst_r_select;
++    logic                   dec_b_error, dec_r_error;
++
++
++    addr_decode #(
++      .NoIndices  ( Cfg.NoSlvPorts  ),
++      .addr_t     ( srcid_t         ),
++      .NoRules    ( Cfg.NoIdRules   ),
++      .rule_t     ( id_rule_t       )
++    ) i_axi_b_decode (
++      .addr_i           ( mst_ports_resp_i[i].b.id[Cfg.AxiTxIdWidth+:Cfg.AxiSrcIdWidth]),   //use [srcid] from id for routing decode
++      .addr_map_i       ( id_map_i                   ),
++      .idx_o            ( dec_b                      ),
++      .dec_valid_o      ( /*not used*/               ),
++      .dec_error_o      ( dec_b_error                ), 
++      .en_default_idx_i ( en_default_slv_port_i[i]   ),
++      .default_idx_i    ( default_slv_port_i[i]      )
++    );
++
++    addr_decode #(
++      .NoIndices  ( Cfg.NoSlvPorts  ),
++      .addr_t     ( srcid_t         ),
++      .NoRules    ( Cfg.NoIdRules   ),
++      .rule_t     ( id_rule_t       )
++    ) i_axi_r_decode (
++      .addr_i           ( mst_ports_resp_i[i].r.id[Cfg.AxiTxIdWidth+:Cfg.AxiSrcIdWidth]),   //use [srcid] from id for routing decode
++      .addr_map_i       ( id_map_i                   ),
++      .idx_o            ( dec_r                      ),
++      .dec_valid_o      ( /*not used*/               ),
++      .dec_error_o      ( dec_r_error                ), 
++      .en_default_idx_i ( en_default_slv_port_i[i]   ),
++      .default_idx_i    ( default_slv_port_i[i]      )
++    );
++
++    assign mst_b_select = slv_port_idx_t'(dec_b);
++    assign mst_r_select = slv_port_idx_t'(dec_r);
++  
++
++    axi5_lite_mux #(
++      .aw_chan_t   ( aw_chan_t          ), // AW Channel Type
++      .w_chan_t    (  w_chan_t          ), //  W Channel Type
++      .b_chan_t    (  b_chan_t          ), //  B Channel Type
++      .ar_chan_t   ( ar_chan_t          ), // AR Channel Type
++      .r_chan_t    (  r_chan_t          ), //  R Channel Type
++      .axi_req_t   ( axi_req_t          ),
++      .axi_resp_t  ( axi_resp_t         ),
++      .NoSlvPorts  ( Cfg.NoSlvPorts     ), // Number of Masters for the module
++      .MaxTrans    ( Cfg.MaxSlvTrans    ),
++      .FallThrough ( Cfg.FallThrough    ),
++      .SpillAw     ( Cfg.LatencyMode[4] ),
++      .SpillW      ( Cfg.LatencyMode[3] ),
++      .SpillB      ( Cfg.LatencyMode[2] ),
++      .SpillAr     ( Cfg.LatencyMode[1] ),
++      .SpillR      ( Cfg.LatencyMode[0] )
++    ) i_axi_lite_mux (
++      .clk_i,  // Clock
++      .rst_ni, // Asynchronous reset active low
++      .test_i, // Test Mode enable
++      .slv_reqs_i  ( mst_reqs[i]         ),
++      .slv_resps_o ( mst_resps[i]        ),
++      .mst_req_o   ( mst_ports_req_o[i]  ),
++      .mst_resp_i  ( mst_ports_resp_i[i] ),
++      .mst_b_select_i(mst_b_select),
++      .mst_r_select_i(mst_r_select)
++    );
++  end
++endmodule
+--- /dev/null
++++ b/src/axi5_lite_xbar_brcst.sv
+@@ -0,0 +1,304 @@
++// Copyright (c) 2020 ETH Zurich and University of Bologna.
++// Copyright and related rights are licensed under the Solderpad Hardware
++// License, Version 0.51 (the "License"); you may not use this file except in
++// compliance with the License.  You may obtain a copy of the License at
++// http://solderpad.org/licenses/SHL-0.51. Unless required by applicable law
++// or agreed to in writing, software, hardware and materials distributed under
++// this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
++// CONDITIONS OF ANY KIND, either express or implied. See the License for the
++// specific language governing permissions and limitations under the License.
++//
++// Authors:
++// - Wolfgang Roenninger <wroennin@iis.ee.ethz.ch>
++// - Fabian Schuiki <fschuiki@iis.ee.ethz.ch>
++// - Andreas Kurth <akurth@iis.ee.ethz.ch>
++
++// axi_lite_xbar: Fully-connected AXI4-Lite crossbar.
++// See `doc/axi_lite_xbar.md` for the documentation,
++// including the definition of parameters and ports.
++
++`include "axi/typedef.svh"
++
++module axi5_lite_xbar_brcst #(
++  parameter axi_pkg::axinode_cfg_t Cfg = '0,
++  parameter type  aw_chan_t         = logic,
++  parameter type   w_chan_t         = logic,
++  parameter type   b_chan_t         = logic,
++  parameter type  ar_chan_t         = logic,
++  parameter type   r_chan_t         = logic,
++  parameter type  axi_req_t         = logic,
++  parameter type axi_resp_t         = logic,
++  parameter type     rule_t         = axi_pkg::cluster_rule_t,
++  parameter type  id_rule_t         = axi_pkg::srcid_rule_t,
++
++  parameter unsigned BRCST_ADDR  = Cfg.AxiAddrWidth'(0),   //Required Parameter, must set to use
++  parameter unsigned BRCST_SRCID = Cfg.AxiSrcIdWidth'(0),   //Required Parameter, must set to use
++  
++  parameter logic BRCST_END = 1'b0,   //Required Parameter, must set to use
++  // DEPENDENT PARAMETERS, DO NOT OVERWRITE!
++  parameter int unsigned MstIdxWidth = (Cfg.NoMstPorts > 32'd1) ? $clog2(Cfg.NoMstPorts) : 32'd1,
++  parameter int unsigned SlvIdxWidth = (Cfg.NoSlvPorts > 32'd1) ? $clog2(Cfg.NoSlvPorts) : 32'd1
++) (
++  input  logic                                        clk_i,
++  input  logic                                        rst_ni,
++  input  logic                                        test_i,
++  input  axi_req_t  [Cfg.NoSlvPorts-1:0]              slv_ports_req_i,
++  output axi_resp_t [Cfg.NoSlvPorts-1:0]              slv_ports_resp_o,
++  output axi_req_t  [Cfg.NoMstPorts-1:0]              mst_ports_req_o,
++  input  axi_resp_t [Cfg.NoMstPorts-1:0]              mst_ports_resp_i,
++  input  rule_t     [Cfg.NoAddrRules-1:0]             addr_map_i,
++  input  id_rule_t  [Cfg.NoIdRules-1:0]               id_map_i,
++  input  logic  [Cfg.NoSlvPorts-1:0]                  en_default_mst_port_i,
++  input  logic  [Cfg.NoSlvPorts-1:0][MstIdxWidth-1:0] default_mst_port_i,
++  input  logic  [Cfg.NoMstPorts-1:0]                  en_default_slv_port_i,
++  input  logic  [Cfg.NoMstPorts-1:0][SlvIdxWidth-1:0] default_slv_port_i
++);
++
++  typedef logic [Cfg.AxiAddrWidth-1:0]   addr_t;
++  typedef logic [Cfg.AxiDataWidth-1:0]   data_t;
++  typedef logic [Cfg.AxiDataWidth/8-1:0] strb_t;
++  typedef logic [Cfg.AxiSrcIdWidth-1:0]  srcid_t;
++  // to account for the decoding error slave/master
++  typedef logic [$clog2(Cfg.NoMstPorts + 1)-1:0] mst_port_idx_t;
++  // FIXME_MUSTFIX_BABYLON: fixed to 1 bit for use of axi ring
++  // typedef logic [$clog2(Cfg.NoSlvPorts)-1:0] slv_port_idx_t;
++  typedef logic  slv_port_idx_t;
++  // full AXI typedef for the decode error slave, id_t and user_t are logic and will be
++  // removed during logic optimization as they are stable
++  `AXI_TYPEDEF_AW_CHAN_T(full_aw_chan_t, addr_t, logic [Cfg.AxiIdWidth - 1 : 0], logic)
++  `AXI_TYPEDEF_W_CHAN_T(full_w_chan_t, data_t, strb_t, logic)
++  `AXI_TYPEDEF_B_CHAN_T(full_b_chan_t, logic [Cfg.AxiIdWidth - 1 : 0], logic)
++  `AXI_TYPEDEF_AR_CHAN_T(full_ar_chan_t, addr_t, logic [Cfg.AxiIdWidth - 1 : 0], logic)
++  `AXI_TYPEDEF_R_CHAN_T(full_r_chan_t, data_t, logic [Cfg.AxiIdWidth - 1 : 0], logic)
++  `AXI_TYPEDEF_REQ_T(full_req_t, full_aw_chan_t, full_w_chan_t, full_ar_chan_t)
++  `AXI_TYPEDEF_RESP_T(full_resp_t, full_b_chan_t, full_r_chan_t)
++
++  // signals from the axi_lite_demuxes, one index more for decode error routing
++  axi_req_t  [Cfg.NoSlvPorts-1:0][Cfg.NoMstPorts:0] slv_reqs;
++  axi_resp_t [Cfg.NoSlvPorts-1:0][Cfg.NoMstPorts:0] slv_resps;
++
++  // signals into the axi_lite_muxes, are of type slave as the multiplexer extends the ID
++  axi_req_t  [Cfg.NoMstPorts-1:0][Cfg.NoSlvPorts-1:0] mst_reqs;
++  axi_resp_t [Cfg.NoMstPorts-1:0][Cfg.NoSlvPorts-1:0] mst_resps;
++
++  logic [Cfg.NoSlvPorts-1:0] brcst_wr_req_enable;
++  logic [Cfg.NoMstPorts-1:0] brcst_wr_rsp_disable;
++
++  for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_slv_port_demux
++    logic [MstIdxWidth-1:0] dec_aw,        dec_ar;
++    mst_port_idx_t          slv_aw_select, slv_ar_select;
++    logic                   dec_aw_error;
++    logic                   dec_ar_error;
++
++    full_req_t  decerr_req;
++    full_resp_t decerr_resp;
++
++    addr_decode #(
++      .NoIndices  ( Cfg.NoMstPorts  ),
++      .NoRules    ( Cfg.NoAddrRules ),
++      .addr_t     ( addr_t          ),
++      .rule_t     ( rule_t          )
++    ) i_axi_aw_decode (
++      .addr_i           ( slv_ports_req_i[i].aw.addr ),
++      .addr_map_i       ( addr_map_i                 ),
++      .idx_o            ( dec_aw                     ),
++      .dec_valid_o      ( /*not used*/               ),
++      .dec_error_o      ( dec_aw_error               ),
++      .en_default_idx_i ( en_default_mst_port_i[i]   ),
++      .default_idx_i    ( default_mst_port_i[i]      )
++    );
++
++    addr_decode #(
++      .NoIndices  ( Cfg.NoMstPorts  ),
++      .addr_t     ( addr_t          ),
++      .NoRules    ( Cfg.NoAddrRules ),
++      .rule_t     ( rule_t          )
++    ) i_axi_ar_decode (
++      .addr_i           ( slv_ports_req_i[i].ar.addr ),
++      .addr_map_i       ( addr_map_i                 ),
++      .idx_o            ( dec_ar                     ),
++      .dec_valid_o      ( /*not used*/               ),
++      .dec_error_o      ( dec_ar_error               ),
++      .en_default_idx_i ( en_default_mst_port_i[i]   ),
++      .default_idx_i    ( default_mst_port_i[i]      )
++    );
++
++    assign slv_aw_select = (dec_aw_error) ? mst_port_idx_t'(Cfg.NoMstPorts) 
++                                            : (BRCST_END & brcst_wr_req_enable[i]) ? '0 : mst_port_idx_t'(dec_aw);
++    assign slv_ar_select = (dec_ar_error) ?
++        mst_port_idx_t'(Cfg.NoMstPorts) : mst_port_idx_t'(dec_ar);
++
++
++    assign brcst_wr_req_enable[i] = (slv_ports_req_i[i].aw_valid && (slv_ports_req_i[i].aw.addr == BRCST_ADDR[Cfg.AxiAddrWidth-1:0]) && (slv_ports_req_i[i].aw.id[Cfg.AxiTxIdWidth+:Cfg.AxiSrcIdWidth] == BRCST_SRCID[Cfg.AxiSrcIdWidth-1:0]) );
++
++    // make sure that the default slave does not get changed, if there is an unserved Ax
++    // pragma translate_off
++    `ifndef VERILATOR
++    default disable iff (~rst_ni);
++    default_aw_mst_port_en: assert property(
++      @(posedge clk_i) (slv_ports_req_i[i].aw_valid && !slv_ports_resp_o[i].aw_ready)
++          |=> $stable(en_default_mst_port_i[i]))
++        else $fatal (1, $sformatf("It is not allowed to change the default mst port\
++                                   enable, when there is an unserved Aw beat. Slave Port: %0d", i));
++    default_aw_mst_port: assert property(
++      @(posedge clk_i) (slv_ports_req_i[i].aw_valid && !slv_ports_resp_o[i].aw_ready)
++          |=> $stable(default_mst_port_i[i]))
++        else $fatal (1, $sformatf("It is not allowed to change the default mst port\
++                                   when there is an unserved Aw beat. Slave Port: %0d", i));
++    default_ar_mst_port_en: assert property(
++      @(posedge clk_i) (slv_ports_req_i[i].ar_valid && !slv_ports_resp_o[i].ar_ready)
++          |=> $stable(en_default_mst_port_i[i]))
++        else $fatal (1, $sformatf("It is not allowed to change the enable, when\
++                                   there is an unserved Ar beat. Slave Port: %0d", i));
++    default_ar_mst_port: assert property(
++      @(posedge clk_i) (slv_ports_req_i[i].ar_valid && !slv_ports_resp_o[i].ar_ready)
++          |=> $stable(default_mst_port_i[i]))
++        else $fatal (1, $sformatf("It is not allowed to change the default mst port\
++                                   when there is an unserved Ar beat. Slave Port: %0d", i));
++    `endif
++    // pragma translate_on
++    axi5_lite_demux_brcst #(
++      .aw_chan_t      ( aw_chan_t          ),  // AW Channel Type
++      .w_chan_t       (  w_chan_t          ),  //  W Channel Type
++      .b_chan_t       (  b_chan_t          ),  //  B Channel Type
++      .ar_chan_t      ( ar_chan_t          ),  // AR Channel Type
++      .r_chan_t       (  r_chan_t          ),  //  R Channel Type
++      .axi_req_t      ( axi_req_t          ),
++      .axi_resp_t     ( axi_resp_t         ),
++      .NoMstPorts     ( Cfg.NoMstPorts + 1 ),
++      .MaxTrans       ( Cfg.MaxMstTrans    ),
++      .FallThrough    ( Cfg.FallThrough    ),
++      .SpillAw        ( Cfg.LatencyMode[9] ),
++      .SpillW         ( Cfg.LatencyMode[8] ),
++      .SpillB         ( Cfg.LatencyMode[7] ),
++      .SpillAr        ( Cfg.LatencyMode[6] ),
++      .SpillR         ( Cfg.LatencyMode[5] )
++    ) i_axi_lite_demux (
++      .clk_i,   // Clock
++      .rst_ni,  // Asynchronous reset active low
++      .test_i,  // Testmode enable
++      .brcst_wr_req_enable     ( ~BRCST_END & brcst_wr_req_enable[i]      ),
++      .slv_req_i       ( slv_ports_req_i[i]  ),
++      .slv_aw_select_i ( slv_aw_select       ),
++      .slv_ar_select_i ( slv_ar_select       ),
++      .slv_resp_o      ( slv_ports_resp_o[i] ),
++      .mst_reqs_o      ( slv_reqs[i]         ),
++      .mst_resps_i     ( slv_resps[i]        )
++    );
++
++    // connect the decode error module to the last index of the demux master port
++    // typedef as the decode error slave uses full axi
++    axi5_lite_to_axi5 #(
++      .AxiDataWidth ( Cfg.AxiDataWidth  ),
++      .req_lite_t   ( axi_req_t         ),
++      .resp_lite_t  ( axi_resp_t        ),
++      .axi_req_t    ( full_req_t        ),
++      .axi_resp_t   ( full_resp_t       )
++    ) i_dec_err_conv (
++      .slv_req_lite_i  ( slv_reqs[i][Cfg.NoMstPorts]  ),
++      .slv_resp_lite_o ( slv_resps[i][Cfg.NoMstPorts] ),
++      .slv_aw_cache_i  ( 4'd0                         ),
++      .slv_ar_cache_i  ( 4'd0                         ),
++      .mst_req_o       ( decerr_req                   ),
++      .mst_resp_i      ( decerr_resp                  )
++    );
++
++    axi_err_slv #(
++      .AxiIdWidth  ( Cfg.AxiIdWidth       ), // ID width is one as defined as logic above
++      .axi_req_t   ( full_req_t           ), // AXI request struct
++      .axi_resp_t  ( full_resp_t          ), // AXI response struct
++      .Resp        ( axi_pkg::RESP_DECERR ),
++      .ATOPs       ( 1'b0                 ), // no ATOPs in AXI4-Lite
++      .MaxTrans    ( 1                    )  // Transactions terminate at this slave, and AXI4-Lite
++                                             // transactions have only a single beat.
++    ) i_axi_err_slv (
++      .clk_i      ( clk_i       ),  // Clock
++      .rst_ni     ( rst_ni      ),  // Asynchronous reset active low
++      .test_i     ( test_i      ),  // Testmode enable
++      // slave port
++      .slv_req_i  ( decerr_req  ),
++      .slv_resp_o ( decerr_resp )
++    );
++  end
++
++  // cross all channels
++  for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_xbar_slv_cross
++    for (genvar j = 0; j < Cfg.NoMstPorts; j++) begin : gen_xbar_mst_cross
++      assign mst_reqs[j][i]  = slv_reqs[i][j];
++      assign slv_resps[i][j] = mst_resps[j][i];
++    end
++  end
++
++  for (genvar i = 0; i < Cfg.NoMstPorts; i++) begin : gen_mst_port_mux
++    logic [SlvIdxWidth-1:0] dec_b, dec_r;
++    slv_port_idx_t          mst_b_select, mst_r_select;
++    logic                   dec_b_error, dec_r_error;
++
++
++    addr_decode #(
++      .NoIndices  ( Cfg.NoSlvPorts  ),
++      .addr_t     ( srcid_t         ),
++      .NoRules    ( Cfg.NoIdRules   ),
++      .rule_t     ( id_rule_t       )
++    ) i_axi_b_decode (
++      .addr_i           ( mst_ports_resp_i[i].b.id[Cfg.AxiTxIdWidth+:Cfg.AxiSrcIdWidth]),   //use [srcid] from id for routing decode
++      .addr_map_i       ( id_map_i                   ),
++      .idx_o            ( dec_b                      ),
++      .dec_valid_o      ( /*not used*/               ),
++      .dec_error_o      ( dec_b_error                ), 
++      .en_default_idx_i ( en_default_slv_port_i[i]   ),
++      .default_idx_i    ( default_slv_port_i[i]      )
++    );
++
++    addr_decode #(
++      .NoIndices  ( Cfg.NoSlvPorts  ),
++      .addr_t     ( srcid_t         ),
++      .NoRules    ( Cfg.NoIdRules   ),
++      .rule_t     ( id_rule_t       )
++    ) i_axi_r_decode (
++      .addr_i           ( mst_ports_resp_i[i].r.id[Cfg.AxiTxIdWidth+:Cfg.AxiSrcIdWidth]),   //use [srcid] from id for routing decode
++      .addr_map_i       ( id_map_i                   ),
++      .idx_o            ( dec_r                      ),
++      .dec_valid_o      ( /*not used*/               ),
++      .dec_error_o      ( dec_r_error                ), 
++      .en_default_idx_i ( en_default_slv_port_i[i]   ),
++      .default_idx_i    ( default_slv_port_i[i]      )
++    );
++
++
++    assign brcst_wr_rsp_disable[i] = mst_ports_resp_i[i].b_valid && (mst_ports_resp_i[i].b.id[Cfg.AxiTxIdWidth+:Cfg.AxiSrcIdWidth] == BRCST_SRCID[Cfg.AxiSrcIdWidth-1:0]);
++
++    assign mst_b_select = slv_port_idx_t'(dec_b);
++    assign mst_r_select = slv_port_idx_t'(dec_r);
++  
++
++    axi5_lite_mux_brcst #(
++      .aw_chan_t   ( aw_chan_t          ), // AW Channel Type
++      .w_chan_t    (  w_chan_t          ), //  W Channel Type
++      .b_chan_t    (  b_chan_t          ), //  B Channel Type
++      .ar_chan_t   ( ar_chan_t          ), // AR Channel Type
++      .r_chan_t    (  r_chan_t          ), //  R Channel Type
++      .axi_req_t   ( axi_req_t          ),
++      .axi_resp_t  ( axi_resp_t         ),
++      .NoSlvPorts  ( Cfg.NoSlvPorts     ), // Number of Masters for the module
++      .MaxTrans    ( Cfg.MaxSlvTrans    ),
++      .FallThrough ( Cfg.FallThrough    ),
++      .SpillAw     ( Cfg.LatencyMode[4] ),
++      .SpillW      ( Cfg.LatencyMode[3] ),
++      .SpillB      ( Cfg.LatencyMode[2] ),
++      .SpillAr     ( Cfg.LatencyMode[1] ),
++      .SpillR      ( Cfg.LatencyMode[0] )
++    ) i_axi_lite_mux (
++      .clk_i,  // Clock
++      .rst_ni, // Asynchronous reset active low
++      .test_i, // Test Mode enable
++      .slv_reqs_i  ( mst_reqs[i]         ),
++      .slv_resps_o ( mst_resps[i]        ),
++      .mst_req_o   ( mst_ports_req_o[i]  ),
++      .mst_resp_i  ( mst_ports_resp_i[i] ),
++      .brcst_wr_rsp_disable  ( brcst_wr_rsp_disable[i] ),
++      .mst_b_select_i(mst_b_select),
++      .mst_r_select_i(mst_r_select)
++    );
++  end
++endmodule

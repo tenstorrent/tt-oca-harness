@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Breaks the primary magic so the ROM fails over, and sets the resealed backup
+# payload_hashed_length to zero.
+base = "signed"
+ops = [
+  { op = "set_payload_hashed_length", slot = "backup", args = { value = 0 } },
+]
+patch = [
+  { offset = 0x1000, le = 0x99999999, size = 4 },
+]

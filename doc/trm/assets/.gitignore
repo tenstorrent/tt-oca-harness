@@ -1,0 +1,21 @@
+# doc/trm/assets/.gitignore
+#
+# The Makefile copies HW images from hw/*/doc/assets/ into this directory
+# for the PDF build (imagesdir = assets). Those copies are ignored by the
+# blanket "doc/*/assets/*" rule in the root .gitignore.
+#
+# Hand-authored documentation images placed directly here ARE tracked.
+# Convention: prefix them with "ocah" so they are picked up automatically.
+# Non-conforming names can be added as one-off exceptions below.
+
+# --- Naming-convention patterns (no editing needed for new images) ---
+!ocah-*.png
+!ocah_*.png
+!ocah-*.svg
+!ocah_*.svg
+
+# --- One-off exceptions ---
+!self-test-*.png
+!bus_err_unit.png
+!TT_Cover_Image.png
+!oca-banner.png

@@ -1,0 +1,37 @@
+package:
+  name: apb
+  authors:
+    - "Andreas Kurth <akurth@iis.ee.ethz.ch>" # current maintainer
+    - "Fabian Schuiki <fschuiki@iis.ee.ethz.ch>"
+    - "Wolfgang Roenninger <wroennin@ethz.ch>"
+
+# Sources are vendored from upstream pulp-platform/apb into upstream/ via the `vendor_package`
+# entry in the root Bender.yml (bender vendor init). Only the four modules OCA instantiates
+# are vendored: apb_pkg, apb_intf, apb_demux and apb_cdc (apb_err_slv/apb_regs/apb_upsizer/apb_test
+# are intentionally dropped). The TT-local delta (a width-safe lint fix to apb_demux) is applied as
+# patches/0001-tt-apb-delta.patch. The apb_rtl target gating is reproduced from the fork because
+# bender-targets.mk passes -t apb_rtl. Do NOT hand-edit the upstream/ files; edit/regenerate the
+# patch instead.
+
+# Inert: the Bender.local override forces common_cells to the locally vendored path package for
+# every consumer. Points at the upstream pulp-platform commit actually vendored (root Bender.yml).
+dependencies:
+  common_cells: { git: "https://github.com/pulp-platform/common_cells.git", rev: "b74f0ad63600762ef101cf1d3365d19dfbb3123b" }
+
+export_include_dirs:
+  - upstream/include
+
+
+sources:
+  # Source files grouped in levels. Files in level 0 have no dependencies on files in this
+  # package. Files in level 1 only depend on files in level 0, files in level 2 on files in
+  # levels 1 and 0, etc. Files within a level are ordered alphabetically.
+  # Level 0
+  - upstream/apb_pkg.sv
+  - target: apb_rtl
+    files:
+    # Level 1
+    - upstream/apb_intf.sv
+    # Level 2
+    - upstream/apb_cdc.sv
+    - upstream/apb_demux.sv

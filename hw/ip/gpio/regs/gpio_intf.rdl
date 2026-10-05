@@ -1,0 +1,154 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef GPIO_INTF_RDL_DEFINED
+`define GPIO_INTF_RDL_DEFINED
+
+addrmap gpio_intf {
+    name = "GPIO Interface Address Map";
+    desc = "GPIO interface configuration: pad/core routing, receive and transmit enables, and interrupt control.";
+
+    
+    ////////////////////////////////////////////////////////////////////////////
+    // Register Definitions
+    ////////////////////////////////////////////////////////////////////////////
+    //---------------------------------
+
+    reg ACCESS_FILTER {
+        desc = "GPIO Access Filter Register. WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+                the filter may not update before your next transaction, causing unexpected behavior.";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Write Filter Enable. When set, writes require an exact match between AXI AWPROT and awprot_requirement. When clear, writes are unfiltered. PROT does not identify the initiator.
+                    WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+                    the filter may not update before your next transaction, causing unexpected behavior.";
+        } write_filter_enable[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Read Filter Enable. When set, reads require an exact match between AXI ARPROT and arprot_requirement. When clear, reads are unfiltered. PROT does not identify the initiator.
+                    WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+                    the filter may not update before your next transaction, causing unexpected behavior.";
+        } read_filter_enable[1:1] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "When write_filter_enable is set, only allow write accesses with this prot value
+                    WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+                    the filter may not update before your next transaction, causing unexpected behavior.";
+        } awprot_requirement[10:8] = 0x1;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "When read_filter_enable is set, only allow read accesses with this prot value
+                    WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+                    the filter may not update before your next transaction, causing unexpected behavior.";
+        } arprot_requirement[18:16] = 0x1;
+    };
+
+    reg DATA_CTRL {
+        regwidth = 32;
+        accesswidth = 32;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Register-driven data to send to the pad.";
+        } core2pad[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Direction control. 2'b00: Neither RX nor TX enabled. 2'b01: TX enabled. 2'b10: RX enabled. 2'b11: Both enabled";
+        } enable_rx_tx[5:4] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Register Interface Enable. Setting this chooses register values to drive the PAD. This includes core2pad, enable_rx_tx, and pad2core";
+        } interface_enable[16:16] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Force the LSIO interface to be used from software, when no hardware LSIO request is
+                    present on this pad. interface_enable has higher priority over this bit. This ranking
+                    applies to this software force bit only: the hardware lsio_interface_select_i input
+                    outranks interface_enable. Use lsio_disable to gate both.";
+        } lsio_select[17:17] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Interrupt Enable.";
+        } interrupt_enable[18:18] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "When set, LSIO accesses will be blocked from the GPIO interface";
+        } lsio_disable[19:19] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Interrupt type - 0: active-high level, 1: active-low level, 2: rising edge, 3: falling edge";
+        } interrupt_type[21:20] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "LSIO hardware request status. Set while lsio_interface_select_i is asserted and
+                    lsio_disable is clear. Because the hardware LSIO request outranks interface_enable,
+                    a set value also means the LSIO plane is driving this pad's data and direction.
+                    This field does not reflect a software-forced selection via lsio_select, which ranks
+                    below the register interface - it reads 0 in that case even when LSIO drives the pad.";
+        } lsio_enable[25:25] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "PAD2SOC Value";
+        } pad2core[31:31] = 0x0;
+    };
+
+    reg DATA_CTRL_ENABLE {
+        regwidth = 32;
+        accesswidth = 32;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Per-field register override. When set, core2pad is register-driven. OR'd with interface_enable.";
+        } use_reg_core2pad[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Per-field register override. When set, the TX direction (output enable) is taken from enable_rx_tx[0]. OR'd with interface_enable.";
+        } use_reg_tx[4:4] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Per-field register override. When set, the RX direction (input enable) is taken from enable_rx_tx[1]. OR'd with interface_enable.";
+        } use_reg_rx[5:5] = 0x0;
+    };
+
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Address Map
+    ////////////////////////////////////////////////////////////////////////////
+
+    DATA_CTRL        DATA_CTRL        @0x0;
+    DATA_CTRL_ENABLE DATA_CTRL_ENABLE @0x4;
+    ACCESS_FILTER    ACCESS_FILTER    @0x8;
+
+};
+
+`endif

@@ -1,0 +1,217 @@
+package:
+  name: common_cells
+  authors:
+    - "Florian Zaruba <zarubaf@iis.ee.ethz.ch>"
+    - "Fabian Schuiki <fschuiki@iis.ee.ethz.ch>"
+    - "Michael Schaffner <schaffner@iis.ee.ethz.ch>"
+    - "Andreas Kurth <akurth@iis.ee.ethz.ch>"
+    - "Manuel Eggimann <meggimann@iis.ee.ethz.ch>"
+    - "Stefan Mach <smach@iis.ee.ethz.ch>"
+    - "Wolfgang Roenninger <wroennin@student.ethz.ch>"
+    - "Thomas Benz <tbenz@iis.ee.ethz.ch>"
+
+# Sources are vendored from upstream pulp-platform/common_cells into upstream/ via the
+# `vendor_package` entry in the root Bender.yml (bender vendor init). The TT-local delta
+# (bare ASSERT -> OCAH_PULP_ASSERT rename per the vendoring playbook, CDC SYNC_STAGES 2->3 defaults,
+# lint/sim casts) is
+# applied as vendor/patches/common_cells/0001-tt-common_cells-delta.patch. src/sync.sv is
+# left as pure upstream (generic 2-stage) and is shimmed out via common_cell_sync_shim;
+# OCA uses hw/common/sync.sv instead. The TT Bender target gating (common_cells_rtl,
+# common_cell_sync_shim, common_cells_simulation/test/synth_test) is reproduced from the fork
+# because ~25 of OCA's Makefiles pass those targets.
+
+# Inert: the Bender.local override forces common_verification to the locally vendored path
+# package for every consumer. Points at the upstream pulp-platform commit actually vendored
+# (root Bender.yml). tech_cells_generic is NOT declared here: Plan B dependency pruning de-selected
+# the only common_cells cells that pulled it (the clk/reset cells below), so this package no
+# longer needs it. See the comment on those de-selected files below.
+dependencies:
+  common_verification: { git: "https://github.com/pulp-platform/common_verification.git", rev: "c5d97a1fae01d2d8e8e311dee341b6b8849dcf38" }
+
+export_include_dirs:
+  - upstream/include
+
+sources:
+  # Source files grouped in levels. Files in level 0 have no dependencies on files in this package.
+  # Files in level 1 only depend on files in level 0, files in level 2 on files in levels 1 and 0,
+  # etc. Files within a level are ordered alphabetically.
+
+  - upstream/src/cf_math_pkg.sv
+
+  - target: any(sep_wrapper, smu_wrapper, all(common_cells_rtl, not(all(xilinx, vivado_ipx))))
+    files:
+      - upstream/src/fifo_v3.sv
+      - upstream/src/counter.sv
+
+  - target: common_cells_rtl
+    files:
+
+    # Level 0
+    - upstream/src/binary_to_gray.sv
+
+  # this cell is a shim that we have replaced with TT libcells
+  # - if not TT, exclude this file and the adopter needs to provide their own implementation
+  - target: all(common_cells_rtl, not(common_cell_sync_shim))
+    files:
+      - upstream/src/sync.sv
+
+  - target: all(common_cells_rtl,not(all(xilinx,vivado_ipx)))
+    files:
+      - upstream/src/cb_filter_pkg.sv
+      - upstream/src/cc_onehot.sv
+      - upstream/src/cdc_reset_ctrlr_pkg.sv
+      # Plan B dependency pruning: the common_cells clock/reset cells (clk_int_div,
+      # clk_int_div_static, clk_mux_glitch_free, rstgen, rstgen_bypass, sync_wedge,
+      # edge_detect) are the ONLY modules in the whole tree that instantiate
+      # tech_cells_generic tc_clk_*/pulp_clock_* cells. bender kg parse shows none of
+      # them are instantiated by any live design (smu/smc/sep) or testbench, so they are
+      # de-selected here. This makes tech_cells_generic fully removable (see root Bender.yml).
+      # They remain vendored under upstream/src/ (bender vendor diff stays clean); they are
+      # just not compiled. Re-enable as a group (with tech_cells_generic) if ever instantiated.
+      # - upstream/src/clk_int_div.sv
+      - upstream/src/credit_counter.sv
+      - upstream/src/delta_counter.sv
+      - upstream/src/ecc_pkg.sv
+      - upstream/src/edge_propagator_tx.sv
+      - upstream/src/exp_backoff.sv
+      - upstream/src/gray_to_binary.sv
+      - upstream/src/heaviside.sv
+      - upstream/src/isochronous_4phase_handshake.sv
+      - upstream/src/isochronous_spill_register.sv
+      - upstream/src/lfsr.sv
+      - upstream/src/lfsr_16bit.sv
+      - upstream/src/lfsr_8bit.sv
+      - upstream/src/lossy_valid_to_stream.sv
+      - upstream/src/mv_filter.sv
+      - upstream/src/onehot_to_bin.sv
+      - upstream/src/plru_tree.sv
+      - upstream/src/passthrough_stream_fifo.sv
+      - upstream/src/popcount.sv
+      - upstream/src/ring_buffer.sv
+      - upstream/src/rr_arb_tree.sv
+      # - upstream/src/rstgen_bypass.sv  # Plan B prune: dead clk/reset cell (see clk_int_div note)
+      - upstream/src/serial_deglitch.sv
+      - upstream/src/shift_reg.sv
+      - upstream/src/shift_reg_gated.sv
+      - upstream/src/spill_register_flushable.sv
+      - upstream/src/stream_demux.sv
+      - upstream/src/stream_filter.sv
+      - upstream/src/stream_fork.sv
+      - upstream/src/stream_intf.sv
+      - upstream/src/stream_join_dynamic.sv
+      - upstream/src/stream_mux.sv
+      - upstream/src/stream_throttle.sv
+      - upstream/src/sub_per_hash.sv
+      # - upstream/src/sync_wedge.sv  # Plan B prune: dead clk/reset cell (see clk_int_div note)
+      - upstream/src/unread.sv
+      - upstream/src/read.sv
+      # Level 1
+      - upstream/src/addr_decode_dync.sv
+      - upstream/src/boxcar.sv
+      - upstream/src/cdc_2phase.sv
+      - upstream/src/cdc_4phase.sv
+      # - upstream/src/clk_int_div_static.sv  # Plan B prune: dead clk/reset cell (see clk_int_div note)
+      - upstream/src/trip_counter.sv
+      # Level 2
+      - upstream/src/addr_decode.sv
+      - upstream/src/addr_decode_napot.sv
+      - upstream/src/multiaddr_decode.sv
+  - target: all(common_cells_rtl,not(all(xilinx,vivado_ipx)))
+    files:
+      - upstream/src/cb_filter.sv
+      - upstream/src/cdc_fifo_2phase.sv
+      # - upstream/src/clk_mux_glitch_free.sv  # Plan B prune: dead clk/reset cell (see clk_int_div note)
+      - upstream/src/ecc_decode.sv
+      - upstream/src/ecc_encode.sv
+      # - upstream/src/edge_detect.sv  # Plan B prune: dead clk/reset cell (instantiates sync_wedge)
+      - upstream/src/lzc.sv
+      - upstream/src/max_counter.sv
+      # - upstream/src/rstgen.sv  # Plan B prune: dead clk/reset cell (see clk_int_div note)
+      - upstream/src/spill_register.sv
+      - upstream/src/stream_delay.sv
+      - upstream/src/stream_fifo.sv
+      - upstream/src/stream_fork_dynamic.sv
+      - upstream/src/stream_join.sv
+      # Level 2
+      - upstream/src/cdc_reset_ctrlr.sv
+      - upstream/src/cdc_fifo_gray.sv
+      - upstream/src/fall_through_register.sv
+      - upstream/src/id_queue.sv
+      - upstream/src/stream_to_mem.sv
+      - upstream/src/stream_arbiter_flushable.sv
+      - upstream/src/stream_fifo_optimal_wrap.sv
+      - upstream/src/stream_register.sv
+      - upstream/src/stream_xbar.sv
+      # Level 3
+      - upstream/src/cdc_fifo_gray_clearable.sv
+      - upstream/src/cdc_2phase_clearable.sv
+      - upstream/src/mem_to_banks_detailed.sv
+      - upstream/src/stream_arbiter.sv
+      - upstream/src/stream_omega_net.sv
+      # Level 4
+      - upstream/src/mem_to_banks.sv
+
+  # - target: any(common_cells_simulation, all(simulation, not(verilator), not(cva6)))
+  #   files:
+  #     - upstream/src/deprecated/sram.sv
+
+  # - target: common_cells_test
+  #   files:
+  #     # Level 0
+  #     - upstream/test/addr_decode_tb.sv
+  #     - upstream/test/cb_filter_tb.sv
+  #     - upstream/test/cdc_2phase_tb.sv
+  #     - upstream/test/cdc_2phase_clearable_tb.sv
+  #     - upstream/test/cdc_fifo_tb.sv
+  #     - upstream/test/cdc_fifo_clearable_tb.sv
+  #     - upstream/test/fifo_tb.sv
+  #     - upstream/test/graycode_tb.sv
+  #     - upstream/test/id_queue_tb.sv
+  #     - upstream/test/passthrough_stream_fifo_tb.sv
+  #     - upstream/test/popcount_tb.sv
+  #     - upstream/test/rr_arb_tree_tb.sv
+  #     - upstream/test/stream_test.sv
+  #     - upstream/test/stream_register_tb.sv
+  #     - upstream/test/stream_to_mem_tb.sv
+  #     - upstream/test/sub_per_hash_tb.sv
+  #     # Level 1
+  #     - upstream/test/isochronous_crossing_tb.sv
+  #     - upstream/test/stream_omega_net_tb.sv
+  #     - upstream/test/stream_xbar_tb.sv
+  #     - upstream/test/clk_int_div_tb.sv
+  #     - upstream/test/clk_int_div_static_tb.sv
+  #     - upstream/test/clk_mux_glitch_free_tb.sv
+  #     - upstream/test/lossy_valid_to_stream_tb.sv
+
+
+  # - target: common_cells_synth_test
+  #   files:
+  #     # Level 0
+  #     - upstream/test/cdc_2phase_synth.sv
+  #     - upstream/test/id_queue_synth.sv
+  #     - upstream/test/stream_arbiter_synth.sv
+  #     - upstream/test/ecc_synth.sv
+  #     # Level 1
+  #     - upstream/test/synth_bench.sv
+
+  #     # Deprecated modules
+  #     # Level 0
+  #     - upstream/src/deprecated/clock_divider_counter.sv
+  #     - upstream/src/deprecated/clk_div.sv
+  #     - upstream/src/deprecated/find_first_one.sv
+  #     - upstream/src/deprecated/generic_LFSR_8bit.sv
+  #     - upstream/src/deprecated/generic_fifo.sv
+  #     - upstream/src/deprecated/prioarbiter.sv
+  #     - upstream/src/deprecated/pulp_sync.sv
+  #     - upstream/src/deprecated/pulp_sync_wedge.sv
+  #     - upstream/src/deprecated/rrarbiter.sv
+  #     # Level 1
+  #     - upstream/src/deprecated/clock_divider.sv
+  #     - upstream/src/deprecated/fifo_v2.sv
+  #     # Level 2
+  #     - upstream/src/deprecated/fifo_v1.sv
+
+  #     # Depend on deprecated modules
+  #     - upstream/src/edge_propagator_ack.sv
+  #     - upstream/src/edge_propagator.sv
+  #     - upstream/src/edge_propagator_rx.sv

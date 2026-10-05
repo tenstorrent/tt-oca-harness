@@ -1,0 +1,23 @@
+--- a/hw/ip/prim/rtl/prim_arbiter_ppc.sv
++++ b/hw/ip/prim/rtl/prim_arbiter_ppc.sv
+@@ -33,7 +33,7 @@
+   parameter bit EnDataPort = 1,
+ 
+   // Derived parameters
+-  localparam int IdxW = prim_util_pkg::vbits(N)
++  localparam int IdxW = $clog2(N)
+ ) (
+   input clk_i,
+   input rst_ni,
+@@ -180,9 +180,11 @@
+   `OCAH_OT_ASSERT(GntImpliesReq_A, gnt_o[k] |-> req_i[k])
+ 
+   // if request and ready are constantly held at 1, we should eventually get a grant
++`ifndef VERILATOR
+   `OCAH_OT_ASSERT(NoStarvation_A,
+       ReqsAreStable && ReadyIsStable && ready_i && req_i[k] |->
+       strong(##[0:$] gnt_o[k]))
++`endif
+ 
+   // if N requests are constantly asserted and ready is constant 1, each request must
+   // be granted exactly once over a time window of N cycles for the arbiter to be fair.

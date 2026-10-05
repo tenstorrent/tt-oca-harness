@@ -1,0 +1,44 @@
+--- a/util/reggen/systemrdl_exporter.py
++++ b/util/reggen/systemrdl_exporter.py
+@@ -171,10 +171,17 @@ class RegBlock2Systemrdl:
+     inner: RegBlock
+     importer: RDLImporter
+ 
+-    def export(self) -> Addrmap | None:
+-        name = self.inner.name or "none"
+-        rdl_addrmap_t = self.importer.create_addrmap_definition(name)
+-        rdl_addrmap = self.importer.instantiate_addrmap(rdl_addrmap_t, name, 0)
++    def export(self, target: Addrmap | None = None) -> Addrmap | None:
++        # An unnamed interface has no architectural hierarchy level of its
++        # own; when the caller provides a target addrmap, populate it
++        # directly instead of wrapping the registers in an inner addrmap
++        # instance (which would otherwise be named "none").
++        if target is not None:
++            rdl_addrmap = target
++        else:
++            name = self.inner.name or "none"
++            rdl_addrmap_t = self.importer.create_addrmap_definition(name)
++            rdl_addrmap = self.importer.instantiate_addrmap(rdl_addrmap_t, name, 0)
+ 
+         # registers and multiregs
+         for reg in self.inner.registers:
+@@ -205,13 +212,17 @@ class IpBlock2Systemrdl:
+         rdl_addrmap = self.importer.create_addrmap_definition(self.inner.name)
+ 
+         for rb in self.inner.reg_blocks.values():
+-            rdl_rb = RegBlock2Systemrdl(rb, self.importer).export()
++            # Flatten the unnamed interface into the block addrmap; named
++            # interfaces keep their own addrmap level.
++            target = rdl_addrmap if not rb.name else None
++            rdl_rb = RegBlock2Systemrdl(rb, self.importer).export(target)
+ 
+             # Skip empty interfaces
+             if rdl_rb is None:
+                 continue
+ 
+-            self.importer.add_child(rdl_addrmap, rdl_rb)
++            if target is None:
++                self.importer.add_child(rdl_addrmap, rdl_rb)
+             num_children += 1
+ 
+         if num_children > 1:

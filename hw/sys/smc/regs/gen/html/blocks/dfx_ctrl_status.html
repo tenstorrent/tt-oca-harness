@@ -1,0 +1,61 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-dfx_ctrl_status">DFX Control and Status Address Map</h2>
+<p>Memory-repair and MBIST status, debug clock and cross-trigger controls, and debug-mux selects.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#STATUS_SMU">STATUS_SMU</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#DEBUG_CTRL">DEBUG_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#DEBUG_BUS_MUX">DEBUG_BUS_MUX</a></td><td>RW</td><td>Mode, ID and lane selects for the twelve debug-bus muxes that reduce the SMC debug<br>bus to the 16 CLA input lanes. Each mux takes its mode while Dbmid equals its ID,<br>and its lane selects while Dbmid equals its ID and its mode is 1, so program one mux<br>at a time.</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="STATUS_SMU">STATUS_SMU</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12</td><td>mbist_abort</td><td>R</td><td>0x0</td><td>One bit indicator from DFT logic to say that MBIST has hit timeout and aborted<br>This register is sticky 1 and will hold the value until reset</td></tr>
+<tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>mbist_pass</td><td>R</td><td>0x0</td><td>One bit indicator from DFT logic to say when MBIST is successful<br>This register is sticky 1 and will hold the value until reset</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>mbist_done</td><td>R</td><td>0x0</td><td>One bit indicator from DFT logic to say when MBIST is completed<br>This register is sticky 1 and will hold the value until reset</td></tr>
+<tr><td>3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>mem_repair_abort</td><td>R</td><td>0x0</td><td>One bit indicator from DFT logic to say that mem repair has hit timeout and aborted<br>This register is sticky 1 and will hold the value until reset</td></tr>
+<tr><td>1</td><td>mem_repair_success</td><td>R</td><td>0x0</td><td>One bit indicator from DFT logic to say if mem repair was successful<br>This register is sticky 1 and will hold the value until reset</td></tr>
+<tr><td>0</td><td>mem_repair_done</td><td>R</td><td>0x0</td><td>One bit indicator from DFT logic to say when mem repair is completed.<br>This register is sticky 1 and will hold the value until reset</td></tr>
+</table>
+<h3 id="DEBUG_CTRL">DEBUG_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>30:23</td><td>debug_marker</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC;<br>the debug marker on the SMC debug bus comes from the core logic analyzer (CLA).</td></tr>
+<tr><td>22:7</td><td>xtrig_clk_halt_mask</td><td>RW</td><td>0x0</td><td>CLA cross-trigger and halt-clock enable. Bit 0 (register bit 7) enables every<br>CLA cross-trigger output lane together with the CLA halt-clock request; 0 holds<br>them all inactive. Bits 15:1 hold the written value for software to read back<br>and have no effect.</td></tr>
+<tr><td>6</td><td>dtb_ew_en</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC.</td></tr>
+<tr><td>5</td><td>dtb_ns_en</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC.</td></tr>
+<tr><td>4</td><td>force_clk_en</td><td>RW</td><td>0x0</td><td>Design-for-debug (DFD) clock force. 1 keeps the DFD clock running whatever the<br>value of cg_en.</td></tr>
+<tr><td>3</td><td>cg_en</td><td>RW</td><td>0x0</td><td>DFD clock stop. 1 stops the clock to the debug-bus muxes and the CLA unless<br>force_clk_en is 1; 0 lets it run. The clock also runs while the SMC is in<br>reset.</td></tr>
+<tr><td>2</td><td>gpio_en</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC.</td></tr>
+<tr><td>1:0</td><td>chiplet_enable</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC.</td></tr>
+</table>
+<h3 id="DEBUG_BUS_MUX">DEBUG_BUS_MUX</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Muxselseg7</td><td>RW</td><td>0x0</td><td>No effect in the SMC: each debug-bus mux has four output lanes, selected by<br>Muxselseg0 to Muxselseg3.</td></tr>
+<tr><td>57:52</td><td>Muxselseg6</td><td>RW</td><td>0x0</td><td>No effect in the SMC: each debug-bus mux has four output lanes, selected by<br>Muxselseg0 to Muxselseg3.</td></tr>
+<tr><td>51:46</td><td>Muxselseg5</td><td>RW</td><td>0x0</td><td>No effect in the SMC: each debug-bus mux has four output lanes, selected by<br>Muxselseg0 to Muxselseg3.</td></tr>
+<tr><td>45:40</td><td>Muxselseg4</td><td>RW</td><td>0x0</td><td>No effect in the SMC: each debug-bus mux has four output lanes, selected by<br>Muxselseg0 to Muxselseg3.</td></tr>
+<tr><td>39:34</td><td>Muxselseg3</td><td>RW</td><td>0x0</td><td>Binary input-lane select for output lane 3 of the addressed debug-bus mux, which<br>takes eight 16-bit input lanes and drives four. 0 selects input lane 3; a value k<br>from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</td></tr>
+<tr><td>33:28</td><td>Muxselseg2</td><td>RW</td><td>0x0</td><td>Binary input-lane select for output lane 2 of the addressed debug-bus mux, which<br>takes eight 16-bit input lanes and drives four. 0 selects input lane 2; a value k<br>from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</td></tr>
+<tr><td>27:22</td><td>Muxselseg1</td><td>RW</td><td>0x0</td><td>Binary input-lane select for output lane 1 of the addressed debug-bus mux, which<br>takes eight 16-bit input lanes and drives four. 0 selects input lane 1; a value k<br>from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</td></tr>
+<tr><td>21:16</td><td>Muxselseg0</td><td>RW</td><td>0x0</td><td>Binary input-lane select for output lane 0 of the addressed debug-bus mux, which<br>takes eight 16-bit input lanes and drives four. 0 selects input lane 0; a value k<br>from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</td></tr>
+<tr><td>15:8</td><td>Rsvd158</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>7:2</td><td>Dbmid</td><td>RW</td><td>0x0</td><td>ID of the debug-bus mux to program: 3 to 6 address the level-2 muxes and 7 to 14 the<br>level-3 muxes.</td></tr>
+<tr><td>1:0</td><td>Dbmmode</td><td>RW</td><td>0x0</td><td>Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode</td></tr>
+</table>
+</div>

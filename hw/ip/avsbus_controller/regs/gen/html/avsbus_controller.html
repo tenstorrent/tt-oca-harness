@@ -1,0 +1,160 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-avsbus_controller">AVSBus Controller Address Map</h2>
+<p>Command, readback, status, and interrupt registers for the AVSBus (V1.3.1) controller.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#AVS_CMD">AVS_CMD</a></td><td>W</td><td>The command+data to be transferred to the AVS bus</td></tr>
+<tr><td>0x4</td><td><a href="#AVS_READBACK">AVS_READBACK</a></td><td>R</td><td>Response data from AVS slave device (updated in response to both AVS read and write commands). Reading<br>this register causes the AVS response readback fifo pointer to advance.</td></tr>
+<tr><td>0x8</td><td><a href="#AVS_DEBUG_READBACK">AVS_DEBUG_READBACK</a></td><td>R</td><td>This register mirrors the AVS_READBACK register, but reading it does NOT affect the<br>AVS readback fifo pointer. Provided for debug purposes.</td></tr>
+<tr><td>0xC</td><td><a href="#AVS_LATEST_SLAVE_SUBFRAME">AVS_LATEST_SLAVE_SUBFRAME</a></td><td>R</td><td>This register contains the most recently received subframe from the AVS slave, bypassing the<br>AVS readback fifo. It is provided so that APB can see the current slave StatusResponse and SlaveAck<br>settings in a timely fashion, since the status data from the next entry in the readback fifo might<br>have considerable latency relative to when it was initially received from the AVS Slave.</td></tr>
+<tr><td>0x20</td><td><a href="#AVS_NORMAL_STATUS">AVS_NORMAL_STATUS</a></td><td>R</td><td>Various Status bits indicating normal operating conditions for APB2AVS bridge block.<br>These all have corresponding maskable bits in the AVS_INTERRUPT register</td></tr>
+<tr><td>0x24</td><td><a href="#AVS_SLAVE_STATUS">AVS_SLAVE_STATUS</a></td><td>R</td><td>Contains the most recent status feedback from the AVS slave device</td></tr>
+<tr><td>0x28</td><td><a href="#AVS_FIFOS_STATUS">AVS_FIFOS_STATUS</a></td><td>R</td><td>Contains the number of occupied and vacant slots in the AVS master&#x27;s command and readback FIFOs</td></tr>
+<tr><td>0x30</td><td><a href="#AVS_INTERRUPT">AVS_INTERRUPT</a></td><td>R</td><td>Interrupt register - A &#x27;1&#x27; indicates an interrupt has occurred for that bit. To clear the<br>interrupt bit, write to the corresponding field in the AVS_INTERRUPT_CLEAR register.</td></tr>
+<tr><td>0x34</td><td><a href="#AVS_INTERRUPT_MASK">AVS_INTERRUPT_MASK</a></td><td>RW</td><td>Interrupt mask register - Determines which AVS_INTERRUPT bits can trigger an interrupt</td></tr>
+<tr><td>0x38</td><td><a href="#AVS_INTERRUPT_CLEAR">AVS_INTERRUPT_CLEAR</a></td><td>W</td><td>Write 1 to clear corresponding interrupt bit</td></tr>
+<tr><td>0x50</td><td><a href="#AVS_CFG_0">AVS_CFG_0</a></td><td>RW</td><td>Configuration register for APB2AVS bridge block</td></tr>
+<tr><td>0x54</td><td><a href="#AVS_CFG_1">AVS_CFG_1</a></td><td>RW</td><td>Configuration register for APB2AVS bridge block</td></tr>
+<tr><td>0x58</td><td><a href="#AVS_CONFIG">AVS_CONFIG</a></td><td>RW</td><td>AVS Configuration Register</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="AVS_CMD">AVS_CMD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:30</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>29:28</td><td>R_OR_W</td><td>W</td><td>0x0</td><td>Read or write type: [list]<br>[*]0x0 - Commit Write<br>[*]0x1 - Hold Write<br>[*]0x2 - Reserved<br>[*]0x3 - Read<br>[/list]</td></tr>
+<tr><td>27</td><td>CMD_GRP</td><td>W</td><td>0x0</td><td>Command group:<br>Set to 1 for manufacturer-specific Command Code (cmd_code), otherwise 0</td></tr>
+<tr><td>26:23</td><td>CMD_CODE</td><td>W</td><td>0x0</td><td>Command Code (For cmd_group=0. For cmd_group=1, this is manufacturer-specific): [list]<br>[*]0x0 - Target Rail Voltage Read/Write<br>[*]0x1 - Vout Transition Rate Read/Write<br>[*]0x2 - Rail Current Read<br>[*]0x3 - Temperature Read<br>[*]0x4 - Force Voltage Reset (Requires wr_cmd_data=0x0)<br>[*]0x5 - Power Mode Read/Write<br>[*]0xe - AVSBus Status Read/Write<br>[*]0xf - AVSBus Version Read<br>[/list]</td></tr>
+<tr><td>22:19</td><td>RAIL_SEL</td><td>W</td><td>0x0</td><td>Rail Select:<br>0x0 - Rail 0<br>0x1 - Rail 1<br>0xf - Broadcast</td></tr>
+<tr><td>18:3</td><td>CMD_DATA</td><td>W</td><td>0x0</td><td>Write Cmd Data. Formats: [list]<br>[*]Voltage (cmd_code 0x0): 16-bit unsigned int, 1LSB=1mV<br>[*]Transition Rate (cmd_code 0x1): [list]<br>[*]MSByte: Rise Rate, 8-bit unsigned int, 1LSB=1mV/us<br>[*]LSByte: Fall Rate, 8-bit unsigned int, 1LSB=1mV/us [/list]<br>[*]Reset Voltage (cmd_code 0x4): 16-bits, all zeroes<br>[*]Power Mode (cmd_code 0x5): 3-bits, LSB aligned: [list]<br>[*]0x0 - Maximum Efficiency<br>[*]0x3 - Maximum Power<br>[*]0x4-0x7 - Manufacturer-specific  [/list]<br>[*]AVSBus Status (cmd_code 0xe): 16-bits, encoded per AVS Spec<br>[*]AVSBus Version (cmd_code 0xf): 4 bits encoded per AVS Spec, LSB-aligned<br>[*]For read cmd_code&#x27;s, this is 0xffff<br>[/list]</td></tr>
+<tr><td>2:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="AVS_READBACK">AVS_READBACK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:30</td><td>SLAVE_ACK</td><td>R RMOD</td><td>0x0</td><td>Indicates whether command executed or not - codes 0x1 and 0x2 trigger automatic retries by hardware:  [list]<br>[*]0x0: Action Performed<br>[*]0x1: Good CRC received but resource unavailable - hardware will retry<br>[*]0x2: Bad CRC received - hardware will retry<br>[*]0x3: Good CRC received but bad data, data type or selector - no hardware retry<br>[/list]</td></tr>
+<tr><td>29</td><td>CONST0</td><td>R RMOD</td><td>0x0</td><td>Always 0</td></tr>
+<tr><td>28:24</td><td>STATUS_RESPONSE</td><td>R RMOD</td><td>0x0</td><td>5-bit field indicating general condition of the slave, per AVS spec StatusReponse field: [list]<br>[*]bit 4: VDone - AND of all VDone bits of active rails<br>[*]bit 3: StatusAlert - Indicates potential status issue, requiring AVSBus Status read cmd for details<br>[*]bit 2: AVS_Control - 1 if ABSBus is controlling at least 1 device output, 0 otherwise.<br>[*]bit 1: MfrSpcfc_Stts1 - Manufacturer-specific<br>[*]bit 0: MfrSpcfc_Stts2 - Manufacturer-specific<br>[/list]</td></tr>
+<tr><td>23:8</td><td>CMD_DATA</td><td>R RMOD</td><td>0x0</td><td>Read Cmd Data. Format depends on cmd_code in previous master subframe:[list]<br>[*]Voltage (cmd_code 0x0): 16-bit unsigned int, 1LSB=1mV<br>[*]Transition Rate (cmd_code 0x1): [list]<br>[*]MSByte: Rise Rate, 8-bit unsigned int, 1LSB=1mV/us<br>[*]LSByte: Fall Rate, 8-bit unsigned int, 1LSB=1mV/us [/list]<br>[*]Current (cmd_mode 0x2): 16-bit unsigned, 1LSB=10mA<br>[*]Temperature (cmd_code 0x3): 16-bit signed, 1LSB=0.1degC<br>[*]Power Mode (cmd_code 0x5): 3-bits, LSB aligned: [list]<br>[*]0x0 - Maximum Efficiency<br>[*]0x3 - Maximum Power<br>[*]0x4-0x7 - Manufacturer-specific  [/list]<br>[*]AVSBus Status (cmd_code 0xe): 16-bits, encoded per AVS Spec<br>[*]AVSBus Version (cmd_code 0xf): 4 bits encoded per AVS Spec, LSB-aligned<br>[*]If master issued a write (rw!=0x3) in previous master subframe, this field is 0xffff<br>[/list]</td></tr>
+<tr><td>7:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>CRC</td><td>R RMOD</td><td>0x0</td><td>The CRC-3 code received from slave</td></tr>
+</table>
+<h3 id="AVS_DEBUG_READBACK">AVS_DEBUG_READBACK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>AVS_SLAVE_SUBFRAME</td><td>R</td><td>0xFFFFFFFF</td><td>The current top-of-fifo AVS slave response sub-frame in the readback fifo</td></tr>
+</table>
+<h3 id="AVS_LATEST_SLAVE_SUBFRAME">AVS_LATEST_SLAVE_SUBFRAME</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>AVS_SLAVE_SUBFRAME</td><td>R</td><td>0xFFFF</td><td>The most recently received AVS slave response sub-frame</td></tr>
+</table>
+<h3 id="AVS_NORMAL_STATUS">AVS_NORMAL_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:23</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>22</td><td>AVS_SLAVE_IS_IN_RESYNC</td><td>R</td><td>0x0</td><td>Indicates that the AVS master is issuing a slave resync operation (35 AVS clock cycles of holding mdata high)</td></tr>
+<tr><td>21</td><td>AVS_BUS_IS_IDLE</td><td>R</td><td>0x0</td><td>Indicates that neither AVS master nor slave is currently driving a transaction on the AVS bus</td></tr>
+<tr><td>20</td><td>READBACK_HAS_DATA</td><td>R</td><td>0x0</td><td>Indicates AVS_READBACK register has data ready to read on APB</td></tr>
+<tr><td>19</td><td>READBACK_FIFO_FULL</td><td>R</td><td>0x0</td><td>Indicates read-back fifo is full - no new AVS commands will be launched until<br>space is freed by an AVS_READBACK access</td></tr>
+<tr><td>18</td><td>CMD_FIFO_FULL</td><td>R</td><td>0x0</td><td>Indicates AVS_CMD fifo is full - any additional APB writes to AVS_CMD will be dropped until<br>the AVS bus can accept the next command, thus freeing space in the cmd fifo</td></tr>
+<tr><td>17</td><td>CMD_FIFO_EMPTY</td><td>R</td><td>0x0</td><td>Indicates AVS_CMD fifo is empty</td></tr>
+<tr><td>16</td><td>AVS_MASTER_IS_RETRYING</td><td>R</td><td>0x0</td><td>Master is currently in the middle of retrying a failed command</td></tr>
+<tr><td>15:0</td><td>TOTAL_RETRIES</td><td>R</td><td>0x0</td><td>Total number of retries attempted by the AVS Master</td></tr>
+</table>
+<h3 id="AVS_SLAVE_STATUS">AVS_SLAVE_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:18</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>17:16</td><td>AVS_SLAVE_ACK</td><td>R</td><td>0x0</td><td>The SlaveAck bits of the most recent slave subframe received: [list]<br>[*]00: Action Performed<br>[*]01:Good CRC received by resource unavailable. No action performed (triggers retry)<br>[*]10: Bad CRC received (triggers retry)<br>[*]11: Good CRC received bit bad data, data type, or selector. No action performed<br>[/list]</td></tr>
+<tr><td>15:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>AVS_SLAVE_STATUS_RESPONSE</td><td>R</td><td>0x0</td><td>The 5-bit Slave StatusResponse of the most recent slave subframe received, indicating the<br>general condition of the slave, per AVS spec StatusReponse field: [list]<br>[*]bit 4: VDone - AND of all VDone bits of active rails<br>[*]bit 3: StatusAlert - Indicates potential status issue, requiring AVSBus Status read cmd for details<br>[*]bit 2: AVS_Control - 1 if ABSBus is controlling at least 1 device output, 0 otherwise.<br>[*]bit 1: MfrSpcfc_Stts1 - Manufacturer-specific<br>[*]bit 0: MfrSpcfc_Stts2 - Manufacturer-specific<br>[/list]</td></tr>
+</table>
+<h3 id="AVS_FIFOS_STATUS">AVS_FIFOS_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:28</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>27:24</td><td>READBACK_FIFO_VACANT_SLOTS</td><td>R</td><td>0x8</td><td>Number of vacant slots in the readback FIFO</td></tr>
+<tr><td>23:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:16</td><td>READBACK_FIFO_OCCUPIED_SLOTS</td><td>R</td><td>0x0</td><td>Number of occupied slots in the readback FIFO</td></tr>
+<tr><td>15:12</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>11:8</td><td>CMD_FIFO_VACANT_SLOTS</td><td>R</td><td>0x8</td><td>Number of vacant slots in the command FIFO</td></tr>
+<tr><td>7:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3:0</td><td>CMD_FIFO_OCCUPIED_SLOTS</td><td>R</td><td>0x0</td><td>Number of occupied slots in the command FIFO</td></tr>
+</table>
+<h3 id="AVS_INTERRUPT">AVS_INTERRUPT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>READBACK_OVERFLOW_INT</td><td>R</td><td>0x0</td><td>Indicates that the response from AVS slave could not be written to readback FIFO due to it being<br>full =&gt; response was dropped</td></tr>
+<tr><td>7</td><td>READBACK_UNDERFLOW_INT</td><td>R</td><td>0x0</td><td>Indicates that an APB read on the AVS_READBACK reg occurred when the readback fifo<br>was empty (AVS_NORMAL_STATUS:readback_has_data=0)</td></tr>
+<tr><td>6</td><td>CMD_FIFO_OVERFLOW_INT</td><td>R</td><td>0x0</td><td>Indicates that an APB write to AVS_CMD was attempted when the the command fifo was already<br>full - the command is dropped</td></tr>
+<tr><td>5</td><td>MAX_RETRIES_ATTEMPTED_INT</td><td>R</td><td>0x0</td><td>Indicates that the AVS Master failed to receive a non-failure acknowledgement from the Slave after a command was retried the maximum allowable number of times (as determined by AVS_CFG_0:max_retries)</td></tr>
+<tr><td>4</td><td>SLAVE_UNRESPONSIVE_INT</td><td>R</td><td>0x0</td><td>Indicates the AVS Slave device is not responding to command subframes from the Master</td></tr>
+<tr><td>3</td><td>READBACK_HAS_DATA_INT</td><td>R</td><td>0x0</td><td>Indicates AVS_READBACK register has data ready to read on APB</td></tr>
+<tr><td>2</td><td>READBACK_FIFO_FULL_INT</td><td>R</td><td>0x0</td><td>Indicates read-back fifo is full - no new AVS commands will be launched until<br>space is freed by an AVS_READBACK access</td></tr>
+<tr><td>1</td><td>CMD_FIFO_FULL_INT</td><td>R</td><td>0x0</td><td>Indicates AVS_CMD fifo is full - any additional APB writes to AVS_CMD will be dropped until<br>the AVS bus can accept the next command, thus freeing space in the cmd fifo</td></tr>
+<tr><td>0</td><td>AVS_SLAVE_ISSUED_INTERRUPT</td><td>R</td><td>0x0</td><td>Indicates the AVS slave has signaled an interrupt</td></tr>
+</table>
+<h3 id="AVS_INTERRUPT_MASK">AVS_INTERRUPT_MASK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>DISABLE_READBACK_OVERFLOW_INT</td><td>RW</td><td>0x1</td><td>Disable readback_overflow interrupt</td></tr>
+<tr><td>7</td><td>DISABLE_READBACK_UNDERFLOW_INT</td><td>RW</td><td>0x1</td><td>Disable readback_underflow interrupt</td></tr>
+<tr><td>6</td><td>DISABLE_CMD_FIFO_OVERFLOW_INT</td><td>RW</td><td>0x1</td><td>Disable cmd_fifo_overflow interrupt</td></tr>
+<tr><td>5</td><td>DISABLE_MAX_RETRIES_ATTEMPTED_INT</td><td>RW</td><td>0x1</td><td>Disable max_retries_attempted interrupt</td></tr>
+<tr><td>4</td><td>DISABLE_SLAVE_UNRESPONSIVE_INT</td><td>RW</td><td>0x1</td><td>Disable slave_unresponsive interrupt</td></tr>
+<tr><td>3</td><td>DISABLE_READBACK_HAS_DATA_INT</td><td>RW</td><td>0x1</td><td>Disable readback_has_data interrupt</td></tr>
+<tr><td>2</td><td>DISABLE_READBACK_FIFO_FULL_INT</td><td>RW</td><td>0x1</td><td>Disable readback_fifo_full interrupt</td></tr>
+<tr><td>1</td><td>DISABLE_CMD_FIFO_FULL_INT</td><td>RW</td><td>0x1</td><td>Disable cmd_fifo_full interrupt</td></tr>
+<tr><td>0</td><td>DISABLE_AVS_SLAVE_ISSUED_INTERRUPT</td><td>RW</td><td>0x1</td><td>Disable notification of AVS slave interrupt</td></tr>
+</table>
+<h3 id="AVS_INTERRUPT_CLEAR">AVS_INTERRUPT_CLEAR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>CLEAR_READBACK_OVERFLOW_INT</td><td>W 1P</td><td>0x0</td><td>Clear readback_overflow interrupt</td></tr>
+<tr><td>7</td><td>CLEAR_READBACK_UNDERFLOW_INT</td><td>W 1P</td><td>0x0</td><td>Clear readback_underflow interrupt</td></tr>
+<tr><td>6</td><td>CLEAR_CMD_FIFO_OVERFLOW_INT</td><td>W 1P</td><td>0x0</td><td>Clear cmd_fifo_overflow interrupt</td></tr>
+<tr><td>5</td><td>CLEAR_MAX_RETRIES_ATTEMPTED_INT</td><td>W 1P</td><td>0x0</td><td>Clear max_retries_attempted interrupt</td></tr>
+<tr><td>4</td><td>CLEAR_SLAVE_UNRESPONSIVE_INT</td><td>W 1P</td><td>0x0</td><td>Clear slave_unresponsive interrupt</td></tr>
+<tr><td>3</td><td>CLEAR_READBACK_HAS_DATA_INT</td><td>W 1P</td><td>0x0</td><td>Clear readback_has_data interrupt</td></tr>
+<tr><td>2</td><td>CLEAR_READBACK_FIFO_FULL_INT</td><td>W 1P</td><td>0x0</td><td>Clear readback_fifo_full interrupt</td></tr>
+<tr><td>1</td><td>CLEAR_CMD_FIFO_FULL_INT</td><td>W 1P</td><td>0x0</td><td>Clear cmd_fifo_full interrupt</td></tr>
+<tr><td>0</td><td>CLEAR_AVS_SLAVE_ISSUED_INTERRUPT</td><td>W 1P</td><td>0x0</td><td>Clear avs_slave_issued_interrupt</td></tr>
+</table>
+<h3 id="AVS_CFG_0">AVS_CFG_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>23:16</td><td>MAX_RETRIES</td><td>RW</td><td>0x5</td><td>Maximum number of retries, after the original attempt, if an AVS command returns a fail<br>status (either due to targeted resource being busy or CRC failure). A value of 0 disables<br>retries and MAX_RETRIES_ATTEMPTED_INT.</td></tr>
+<tr><td>15:0</td><td>RESYNC_INTERVAL</td><td>RW</td><td>0x1000</td><td>Interval between periodic slave resync operations on the AVS bus, in APB clock cycles counted from the end of the previous resync. The resulting request then crosses a 3-stage AVS clock synchronizer, and the resync starts once any frame in flight has completed.</td></tr>
+</table>
+<h3 id="AVS_CFG_1">AVS_CFG_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>CLK_DIVIDER_DUTY_CYCLE_NUMERATOR</td><td>RW</td><td>0x0</td><td>Determines the desired duty cycle of the divided clock (when avs_clock_select is set to select the divided APB clock or refclk clock).<br>This value will be divided by 256 to determine the high-pulse percentage of the divided clock period. Depending on the clk_divider_value,<br>it may not be possible to precisely achieve the desired duty cycle - in that case, the closest possible fit is used. If this is set to 0,<br>a value of 1 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings (numerator=0x80)<br>by matching the FF default in the resynced version of the signal.</td></tr>
+<tr><td>23:16</td><td>CLK_DIVIDER_VALUE</td><td>RW</td><td>0x0</td><td>Determines the divisor value used to generate the AVS clock (when avs_clock_select is set to select the divided APB clock or divided refclk clock).<br>The duty cycle of the divided clock depends both on the clk_divider_value together with the clk_divider_duty_cycle_numerator value. A 50%<br>duty cycle is only possible on even clk_divider_values with clk_divider_duty_cycle_numerator set to 128. This field requires a minimum value of<br>2 - for lower values, 2 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings<br>(divider=0x4) by matching the FF default in the resynced version of the signal.</td></tr>
+<tr><td>15:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>10</td><td>TURN_OFF_ALL_PREMUX_CLOCKS</td><td>RW</td><td>0x0</td><td>Gate off all clocks entering the AVS clock mux - do this before changing the mux selection or changing the clock divider settings, then turn back on afterwards</td></tr>
+<tr><td>9</td><td>FORCE_SLAVE_RESYNC_OPERATION</td><td>RW 1P</td><td>0x0</td><td>Force master to issue a slave resync (35 AVS clock cycles of holding the mdata signal high) at the next possible opportunity. The request crosses a 3-stage AVS clock synchronizer before the master sees it.</td></tr>
+<tr><td>8</td><td>STOP_AVS_CLOCK_ON_IDLE</td><td>RW</td><td>0x0</td><td>When the AVS bus is idle, gate the avs_clock from running. Restart it when there are new commands to be run.<br>The master always issues a slave resync first when the clock restarts.</td></tr>
+<tr><td>7:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1:0</td><td>AVS_CLOCK_SELECT</td><td>RW</td><td>0x3</td><td>Selects which clock to use for AVS Clock: [list]<br>[*] 00: Use the APB clock directly as the AVS clock<br>[*] 01: Use a divided version of APB clock as the AVS Clock. The clock divider settings are determined by AVS_CFG_1:clk_divider_value and AVS_CFG_1:clk_divider_duty_cycle_numerator<br>[*] 10: Use the refclk clock directly as the AVS clock<br>[*] 11: Use a divided version of refclk clock as the AVS Clock. The clock divider settings are determined by AVS_CFG_1:clk_divider_value and AVS_CFG_1:clk_divider_duty_cycle_numerator<br>[/list]</td></tr>
+</table>
+<h3 id="AVS_CONFIG">AVS_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>AVS_GPIO_ENABLE</td><td>RW</td><td>0x1</td><td>Enable AVSBus connection to GPIOs. The effective sets OE of the GPIOs dedicated to<br>avs_clock and avs_cdata to 1, sets IE of GPIO dedicated to avs_tdata to 1. By default,<br>this is enabled as the AVSBus state machine immediately starts after reset deassertion.</td></tr>
+</table>
+</div>

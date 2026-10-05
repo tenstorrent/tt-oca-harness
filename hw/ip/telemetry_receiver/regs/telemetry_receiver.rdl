@@ -1,0 +1,183 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef TELEMETRY_RECEIVER_RDL
+`define TELEMETRY_RECEIVER_RDL
+
+addrmap telemetry_receiver #(
+    longint unsigned NUM_COUNTER_REGS = 32
+) {
+    name = "Telemetry Receiver Address Map";
+    desc = "Configuration, status, and data-buffer registers for a single telemetry receiver channel.";
+
+    
+    //////////////////////////
+    // Register Definitions //
+    //////////////////////////
+
+    reg CTRL {
+        desc = "Control Register";
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.
+                    Writing `1` pops the buffer and thus updates the data in the
+                    `TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`
+                    registers.";
+        } BUFFER_POP[0:0] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write
+                    pointer. Stored payload bytes are not cleared. In particular, a later short
+                    message can retain trailing counter values and validity from an earlier
+                    message. This operation does not erase storage.";
+        } TELEMETRY_RX_FLUSH[4:4] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            hwclr;
+            desc = "Telemetry Transmitter Flush. Writing `1` flushes all FIFOs in the telemetry
+                    transmitter. The flushing is done via the ATB AF interface. This bit clears
+                    itself after the flush completes.";
+        } TELEMETRY_TX_FLUSH[8:8] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Telemetry Message Buffer Threshold. The Telemetry Buffer Threshold Interrupt is
+                    asserted when the number of entries in the buffer is greater than this value.
+                    Only the low log2(queue depth)+1 bits are compared, so values alias modulo
+                    twice the queue depth, and only values below the queue depth can assert the
+                    interrupt.";
+        } BUFFER_THRESHOLD[23:12] = 0x0;
+    };
+
+    reg STATUS {
+        desc = "Status Register";
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Telemetry Message Buffer Empty.";
+        } BUFFER_EMPTY[0:0] = 0x1;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Telemetry Message Buffer Full.";
+        } BUFFER_FULL[4:4] = 0x0;
+    };
+
+    reg TELEMETRY_PROBE_ID {
+        desc = "Telemetry Probe ID Register";
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Probe ID. Contains the Probe ID field of the telemetry message at the bottom of
+                    the Telemetry Message Buffer.";
+        } PROBE_ID[4:0] = 0x0;
+    };
+
+    reg TELEMETRY_COUNTER_VLDS {
+        desc = "Telemetry Counter Valid Bits Register";
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Counter Valid Bits. Indicates which of the counter values in the telemetry
+                    message at the bottom of the Telemetry Message Buffer are valid. Bit `i` is for
+                    the `i`-th counter.";
+        } COUNTER_VLDS[31:0] = 0x0;
+    };
+
+    reg TELEMETRY_COUNTER {
+        desc = "Telemetry Counter Register";
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Counter Value. Contains one of the 32 counter values in the telemetry message
+                    at the bottom of the Telemetry Message Buffer.";
+        } COUNTER[31:0] = 0x0;
+    };
+
+    reg INTR_STATUS {
+        desc = "Interrupt Status Register";
+
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not
+                    received a Last Packet flag when the maximum number of packets a message can
+                    consist of has been received.";
+        } MISSING_LAST[0:0] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Telemetry Message Buffer Threshold Interrupt. Asserted when the number of
+                    telemetry messages in the Telemetry Message Buffer is greater than
+                    `CTRL.BUFFER_THRESHOLD`.";
+        } BUFFER_THRESHOLD[4:4] = 0x0;
+    };
+
+    reg INTR_ENABLE {
+        desc = "Interrupt Enable Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Last Packet Missing Interrupt Enable.";
+        } MISSING_LAST[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Telemetry Message Buffer Threshold Interrupt Enable.";
+        } BUFFER_THRESHOLD[4:4] = 0x0;
+    };
+
+    reg INTR_TEST {
+        desc = "Interrupt Test Register";
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.";
+        } MISSING_LAST[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Telemetry Message Buffer Threshold Interrupt Test. Writing `1` forces the
+                    interrupt and writing `0` releases it.";
+        } BUFFER_THRESHOLD[4:4] = 0x0;
+    };
+
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    CTRL                      CTRL                                         @0x0;
+    STATUS                    STATUS                                       @0x4;
+    INTR_STATUS               INTR_STATUS                                  @0x8;
+    INTR_ENABLE               INTR_ENABLE                                  @0xC;
+    INTR_TEST                 INTR_TEST                                    @0x10;
+    TELEMETRY_PROBE_ID        TELEMETRY_PROBE_ID                           @0x14;
+    TELEMETRY_COUNTER_VLDS    TELEMETRY_COUNTER_VLDS                       @0x18;
+    TELEMETRY_COUNTER         TELEMETRY_COUNTER     [NUM_COUNTER_REGS]     @0x80;
+
+};
+
+`endif

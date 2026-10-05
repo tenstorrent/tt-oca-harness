@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef SMC_EXTERNAL_RDL
+`define SMC_EXTERNAL_RDL
+
+`include "ext_memory.rdl"
+
+// Stubbed adopter extension window: reserves the region as opaque memory instead of
+// pulling in the vendor PLL/PVT/efuse-shim/I3C register maps.
+//
+// Must stay an addrmap wrapping an external mem, not a bare mem: a bare mem has to be
+// instantiated with the `external` keyword, which the real smc_external addrmap cannot
+// carry, and smc_top.rdl's instantiation must be identical under every profile.
+//
+// NUM_ENTRIES * 4 bytes = 0x40_0000, the full window smc_top reserves for
+// smc_external.
+addrmap smc_external {
+    name = "SMC External Window Address Map";
+    desc = "Stubbed adopter extension window reserving the region as opaque external memory.";
+
+    external ext_memory #(.NUM_ENTRIES(1048576), .WIDTH(32)) region @0x0000;
+
+};
+
+`endif

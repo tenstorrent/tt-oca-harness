@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Security and Lifecycle
+
+[[sep-security-and-lifecycle]]
+
+These blocks establish the chiplet's lifecycle state, process authorization
+tokens and control access to security assets, debug and test facilities.
+The Threat Model and Attack Countermeasures chapters describe the security
+objectives and protections.
+
+ifdef::backend-html5[]
+* xref:otp_fuse_controller.adoc[OTP Fuse Controller]
+* xref:token_processing.adoc[Token Processing]
+* xref:security_disable.adoc[Security Disable]
+* xref:lifecycle_controller.adoc[Lifecycle Controller]
+* xref:test_mode.adoc[Test Mode Entry]
+endif::backend-html5[]

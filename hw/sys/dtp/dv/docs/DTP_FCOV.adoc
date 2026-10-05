@@ -1,0 +1,1151 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[dtp-dv-functional-coverage]]
+== DTP OCAH Open-Source Functional Coverage Plan
+
+=== Overview
+
+This document defines functional coverage intent for the OCAH open-source DTP
+testbench and its cocotb and SV-UVM realizations.
+
+Functional coverage is collected by the SystemVerilog coverage modules under
+`hw/sys/dtp/dv/cov/sv/`, instantiated once in the shared `tb_top` so the same
+source serves the cocotb and SV-UVM flows. Each module carries two layers. Its
+SV covergroups sit under an `ifndef VERILATOR` guard, because Verilator does
+not compile `covergroup`, `coverpoint`, or `cross`, and they are the functional
+model on VCS: the runner maps URG's `group` metric to the functional family.
+Its labeled `cover property` points are compiled in every flow: under
+Verilator they land in the coverage database as the functional `user` points,
+and on VCS they are graded with the assertion family as cover directives.
+Crosses, `illegal_bins`, and `ignore_bins` exist only in the covergroups, so
+the two layers do not carry the same bins. The debug-disable 22-cell contract
+additionally keeps its checker-gated Python ledger (`env/dtp_fcov.py`).
+
+[cols=",",options="header",]
+|===
+|Field |Value
+|Design specification |`hw/sys/dtp/doc/index.adoc` (designer-owned)
+|Reference VPLAN |`DTP_VPLAN.adoc`
+|Coverage policy |`cov/config/verilator/coverage_policy.toml` (hole dispositions and waivers); `cov/config/vcs/coverage_policy.toml` (the URG exclusion lists) and `cov/config/vcs/dtp_cov_scope.hier` (the VCS compile-time scope)
+|Open-source framework |PyUVM on cocotb
+|Open-source simulator |Verilator
+|Commercial simulator |VCS, the cocotb and SV-UVM realizations
+|===
+
+=== Coverage Goals
+
+The target of the code-coverage families and of the Verilator `user` family
+is one figure: at least 98 percent of the points that remain after the
+accepted waivers and scope exclusions of the coverage policy file (the
+runner's `effective` population), per metric family, over the `all`
+regression, with the DUT instance as the scope for the code-coverage families.
+A hole below that line closes through a test, a design or model fix, or a
+reviewed waiver (<<dtp-fcov-closure>>); the raw figure, which no waiver moves,
+is reported beside the effective one.
+
+The target of the functional family is 100 percent of the covergroup model,
+with no waiver. A combination that no stimulus can reach on the bench
+configuration is excluded in the model with `ignore_bins`, and one that only a
+design or checker failure produces is an `illegal_bins` entry, which VCS
+reports as a runtime error.
+
+[cols="1,1,2,2",options="header",]
+|===
+|Metric |Target |Public evidence path (Verilator) |Commercial evidence path (VCS)
+|Functional coverage |100% of the covergroup model, no waiver; 98% effective for the Verilator `user` family |The `user` family: the `cover property` points of the `cov/sv/` modules, merged over the weekly `all` regression and graded by the policy file |The covergroup bins (URG's `group` metric) in the merged database of the cocotb and SV-UVM `all` runs
+|Line and branch coverage |98% effective, scoped to the DUT instance |`--coverage-line`, reported beside the functional figure |`-cm line+branch` in the merged database
+|Condition and expression coverage |98% effective, scoped to the DUT instance |`--coverage-expr` |`-cm cond`
+|FSM coverage |98% effective, scoped to the DUT instance |Not collected under Verilator |`-cm fsm`
+|Toggle coverage |98% effective, scoped to the DUT instance |Not collected under Verilator, where toggle instrumentation multiplies the per-test database size |`-cm tgl`
+|Assertion coverage |Every enabled assertion attempted; every `cover` directive of the SVA and coverage modules hit |The two-state assertion set stops the simulation on a failure and records no coverage |`-cm assert` in the merged database, with the `cover property` points of the coverage modules as cover directives; the runner also reports those points as the `user` family
+|===
+
+On VCS the scope is applied at compile time by `cov/config/vcs/dtp_cov_scope.hier`
+(`-cm_hier` with `-cm_common_hier`): the code-coverage families grade the DUT
+instance `dtp_uvm_top.u_dut` with everything it instantiates, the vendored
+cells included, except two simulation-only modules: `prim_cdc_rand_delay`, the
+CDC jitter model that the synchronizer primitives instantiate only under
+`SIMULATION`, and `dtp_j2a_state_flags`, the observation module `tb_top` binds
+into each JTAG2AXI bridge. The expressions that bind connects to the module's
+ports are evaluated in the bridge's scope, so condition coverage grades them
+with the bridge, under `tb_top.sv` line numbers. Assertion coverage grades the
+DUT, the `cov/sv/` modules and the protocol checker instances under the bench
+top. Nets a constant drives leave the toggle denominator
+(`-cm_noconst`, `-cm_seqnoconst`) and continuous assignments count as lines
+(`-cm_line contassign`); condition coverage is URG's `basic` mode. The
+covergroups are unaffected by the scope file.
+
+=== Coverage Summary
+
+[cols=",,",options="header",]
+|===
+|Category |Covergroup / Coverage Model |Collection Point
+|TAP states and transitions |`cg_tap_state`, `cg_tap_arc` |`dtp_fcov` (`c_state_*`, `c_arc_*`)
+|TAP reset and IDCODE |`cg_tap_smoke` |`dtp_fcov` (`c_reset_*`, `c_smoke_*`)
+|Scan boundaries |`cg_scan_boundary` |`dtp_fcov` (`c_completed_ir_scan`, `c_completed_dr_scan`)
+|JTAG instruction decode |`cg_jtag_instruction` |`dtp_fcov` (`c_ir_*`)
+|Instruction data registers |`cg_dr_scan` |`dtp_fcov` (`c_dr_scan_*`)
+|Debug-disable gating of instructions |`cg_instruction_gate` |`dtp_fcov` (`c_gate_*`)
+|JTAG2AXI single operations |`cg_jtag2axi_single_op` |`dtp_jtag2axi_fcov` (`+c_<target>_op_*+`, `+c_<target>_wstrb_*+`, `+c_<target>_addr_*+`, `+c_<target>_size_*+`)
+|JTAG2AXI responses, recovery, and status polls |`cg_jtag2axi_response`, `cg_jtag2axi_recovery`, `cg_jtag2axi_poll` |`dtp_jtag2axi_fcov` (`+c_<target>_status_*+`, `+c_<target>_recovery_*+`, `+c_<target>_poll_*+`, `+c_<target>_op_nop+`)
+|JTAG2AXI series operations |`cg_jtag2axi_series` |`dtp_jtag2axi_fcov` (`+c_<target>_series_*+`, `c_series_shape_*`)
+|JTAG2AXI backpressure and reset recovery |`cg_jtag2axi_backpressure`, `cg_jtag2axi_reset`, `cg_jtag2axi_cdc` |`dtp_jtag2axi_fcov` (`+c_<target>_skew_*+`, `+c_<target>_reset_timing_*+`, `+c_<target>_cdc_clear_*+`, `c_reset_*`)
+|JTAG2AXI security gating |`cg_jtag2axi_gating` |`dtp_jtag2axi_fcov` (`+c_<target>_gating_*+`)
+|TMP controller and TMP_STATUS |`cg_tmp` |`dtp_debug_tdr_fcov` (`c_tmp_*`)
+|IC_RESET TDR |`cg_ic_reset` |`dtp_debug_tdr_fcov` (`c_ic_reset_*`)
+|Debug control |`cg_debug_control` |`dtp_debug_tdr_fcov` (`c_boot_stall_*`, `c_jtag_clock_stop_*`, `c_cla_*`, `c_debug_control_*`)
+|Clock-stop aggregation |`cg_clock_stop` |`dtp_debug_tdr_fcov` (`c_clk_stop_req_*`, `c_clock_stop_output_*`)
+|Capability TDRs |`cg_caps_tdr` |`dtp_debug_tdr_fcov` (`c_caps_*`)
+|STAP / 3DCR |`cg_stap_3dcr`, `cg_stap_chain`, `cg_3dcr_hold` |`dtp_scan_fcov` (`c_stap_*`, `c_3dcr_*`)
+|iJTAG SIBs |`cg_ijtag_sib` |`dtp_scan_fcov` (`c_sib_*`, `c_instrument_*`)
+|Cross-trigger CTP |`cg_ctp`, `cg_ctp_p2p`, `cg_ctp_reset`, `cg_ctp_wire_or_rx` |`dtp_xtrig_fcov` (`c_ctp_*`)
+|Cross-trigger CTM |`cg_ctm`, `cg_ctm_route`, `cg_ctm_fanout` |`dtp_xtrig_fcov` (`c_ctm_*`)
+|XTRIG CSR map and port |`cg_xtrig_csr_write`, `cg_xtrig_csr_read`, `cg_xtrig_axil_flow` |`dtp_xtrig_fcov` (`c_xtrig_*`)
+|Debug-disable gating |`DtpDbgDisableFcov`, `cg_dbg_disable_scan`, `cg_dbg_disable_jtag2axi` |Checker-gated 22-cell Python ledger in the two `dbg_disable` matrix tests; `dtp_scan_fcov` (`+c_dbg_disable_<field>_*+`, `c_dbg_disable_scan_mask_*`) and `dtp_jtag2axi_fcov` (`+c_<target>_dbg_disable_*+`, `c_dbg_disable_jtag2axi_*`) for the signal-level cells
+|===
+
+=== Coverage Definitions
+
+==== `cg_tap_smoke`
+
+*Description*: Covers the resets that return the TAP to Test-Logic-Reset and
+IDCODE access.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_reset_source` |`trst`, `por`, `tms5`: TRST with power-on reset deasserted, power-on reset with TRST deasserted, and TMS held high, each moving the TAP from an active state to Test-Logic-Reset
+|`cp_trst_from_state` |One bin per TAP state other than Test-Logic-Reset: the state the TAP held when TRST fell, for each `trst` reset; a state that is not one-hot is an illegal bin
+|`cp_idcode_read` |`default_after_trst`, `default_after_por`, `default_after_tms5` (a DR scan with no IR load since that reset), `explicit_instruction`
+|`cp_idcode_marker` |`marker_1`; marker bit `0` is an illegal bin
+|===
+
+`dtp_fcov` latches the TAP state while TRST is high, so it holds the state
+the asynchronous reset interrupted, and samples the `trst` bin and
+`cp_trst_from_state` at the first TCK edge under TRST when that state was
+active. It samples the `por` and `tms5` bins at the first TCK edge on which
+the TAP is in Test-Logic-Reset after an active state; a power-on reset is
+seen at the first TCK edge after the pulse even when TCK stays idle across
+it. An IDCODE read is a completed DR scan with IDCODE the current instruction
+and the PTAP TAP_3DCR select clear, and the marker bin samples its first
+captured bit on TDO. While the select is set the STAP chain return drives TDO,
+so those scans are not IDCODE reads.
+
+==== `cg_tap_state`
+
+*Description*: Covers the TAP controller states.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_state` |All 16 IEEE 1149.1 states; a state register that is not one-hot is an illegal bin
+|===
+
+==== `cg_tap_arc`
+
+*Description*: Covers the legal TMS transitions of the TAP controller.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_arc` |All 32 legal `(state, tms) -++>++ next_state` arcs; an arc off the IEEE 1149.1 state graph that does not end in Test-Logic-Reset is an illegal bin
+|===
+
+Both groups sample at every TCK rising edge outside TRST, from the exported
+one-hot TAP state at that edge and at the edge before it and the TMS value
+that moved it. TRST and power-on reset hold or move the TAP to
+Test-Logic-Reset whatever TMS is, so the first transition after a reset can
+end there off the graph; `cg_tap_arc` does not sample that transition, and
+`cg_tap_smoke` collects the reset.
+
+==== `cg_scan_boundary`
+
+*Description*: Covers completed IR and DR scans.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_boundary` |`ir_scan` (Update-IR), `dr_scan` (Update-DR)
+|===
+
+==== `cg_jtag_instruction`
+
+*Description*: Covers the 6-bit instruction space, the instruction categories,
+and the two ways Update-IR loads the instruction register.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_opcode` |`op[0]` to `op[63]`, all 64 IR values; a decode that is not one-hot is an illegal bin
+|`cp_category` |`mandatory`, `optional_instr`, `ieee1838`, `debug`, `ijtag`, `jtag2axi`, `reserved`, `undefined`
+|`cp_ir_update` |`shifted` (an instruction shifted in), `capture_pattern` (an Update-IR with no Shift-IR cycle since Capture-IR, which latches the Capture-IR pattern, IDCODE); a capture-pattern update that decodes anything but IDCODE is an illegal bin
+|===
+
+`dtp_fcov` samples the flattened `jtag_ptap_inst_decoded` observable at every
+completed IR scan (the edge after Update-IR). The category bins come from a
+one-mask-per-category partition of the 64 opcodes, checked at time zero.
+Standard JTAG driving uses `ocah_jtag_vip`.
+
+==== `cg_dr_scan`
+
+*Description*: Covers the data register each IEEE 1149.1 instruction places
+between TDI and TDO.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_dr_instruction` |A completed DR scan under `bypass_alt` (`0x00`), `idcode`, `runbist`, `sample_preload`, `extest`, `extest_train`, `extest_pulse`, `clamp`, `highz`, `intest`, `clamp_hold`, `clamp_release`, `reserved` (`0x10` to `0x17`), `undefined` (`0x0F`, `0x2D` to `0x3C`), `zero_length_bypass`, `inv_bypass`, and `bypass` (`0x3F`)
+|`cp_zero_length_path` |ZERO_LENGTH_BYPASS with the PTAP TAP_3DCR select clear (`zero_length`, TDI to TDO with no stage) and set (`as_bypass`, the bypass register leading the STAP chain)
+|===
+
+`dtp_fcov` samples every completed DR scan (the edge that leaves Update-DR)
+from the instruction decode and the PTAP TAP_3DCR select. The TDR
+instructions of the debug-control, scan, and JTAG2AXI areas have no bin here;
+their groups cover those registers.
+
+==== `cg_instruction_gate`
+
+*Description*: Covers each instruction whose data register a debug-disable
+field gates, scanned with that field clear and set. A field gates the
+register, never the decode: the instruction decodes as itself and keeps its
+register on the scan path.
+
+[cols=",",options="header",]
+|===
+|Cross |Bins
+|`cx_gate_disabled` |`cp_gate` x `cp_disabled` (`clear`, `set`), where `cp_gate` is the SMC fabric data-path TDRs (`0x28` to `0x2C`, `smc_axi_tdr`) with `smc_jtag2axi`, the SMC OTP data-path TDRs (`0x1C` to `0x20`, `smc_otp_tdr`) with `smc_otp_jtag2axi`, the SEP OTP data-path TDRs (`0x22` to `0x26`, `sep_otp_tdr`) with `sep_otp_jtag2axi`, SELECT_IJTAG with each of `dft_secure`, `dft_nonsecure`, and `dfd`, and RUNBIST with `dft_nonsecure`
+|===
+
+`dtp_fcov` samples every completed DR scan of a gated instruction with the
+value of the field that gates its register; the two coverpoints carry no
+weight of their own. RUNBIST pairs with `dft_nonsecure`, the field of the
+non-secure DFT host that receives the RUNBIST control; the SIB gating of the
+other two fields does not depend on which instruction selects the network.
+The STAP fields and `stap_host` gate the STAP chain and its return path,
+which no instruction selects, and `cg_stap_3dcr` and `cg_dbg_disable_scan`
+carry them. What a set field does to the register (no TDR update or AXI
+traffic, a SIB held closed) is covered by the JTAG2AXI, iJTAG, and
+debug-disable groups.
+
+==== `cg_jtag2axi_single_op`
+
+*Description*: Covers the shape of every SINGLE_OP operation a JTAG2AXI bridge
+completes with an AXI response. The `smc_otp` and `sep_otp` target bins carry
+the OTP bridges, here and in every other JTAG2AXI covergroup.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_target` |`smc_axi`, `smc_otp`, `sep_otp`
+|`cp_op` |`read`, `write`
+|`cp_size` |`b1`, `b2`, `b4`, `b8`: the bytes of the beat the operation moves
+|`cp_strobe` |`none`, `single` (one lane of a beat of two or more), `partial`, `all`, `no_strobe` (a read)
+|`cp_addr` |`aligned`, `window_boundary` (the last beat of the 64 KiB responder window)
+|`x_op_shape` |`cp_target` x `cp_op` x `cp_size` x `cp_strobe`
+|`x_target_addr` |`cp_target` x `cp_addr`
+|===
+
+`dtp_jtag2axi_fcov` samples every operation whose pending flag falls with an
+AXI response, from the bridge's own status, pending, and launched-operation
+registers. The SMC fabric beat is the operation's size, at most 8 bytes; an
+AXI4-Lite beat is 4 bytes whatever the SINGLE_OP size field holds. The strobe
+class counts the lanes of the transfer from the address's lane on for the
+fabric bus and every lane of the beat for an AXI4-Lite bus. `x_op_shape`
+ignores the combinations the buses cannot carry: an OTP beat other than
+`b4`, a read with a strobe class or a write without one, a `single` or
+`partial` 1-byte beat, and a `partial` 2-byte beat. Unaligned and unmapped
+addresses are outside the bridge TDR and testbench address-map contract.
+
+==== `cg_jtag2axi_response`
+
+*Description*: Covers how each SINGLE_OP operation ends.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_target` |`smc_axi`, `smc_otp`, `sep_otp`
+|`cp_outcome` |`success`, `slverr`, `decerr`, `reset_discard` (a system reset discarded the pending operation, which then reads DECERR)
+|`x_target_outcome` |`cp_target` x `cp_outcome`
+|===
+
+An operation ends when its pending flag falls. It is a `reset_discard` when
+the fall follows the start of the TCK-side clear of the bridge's CDC, the edge
+on which the bridge discards it; a fall that leaves BUSY_OR_FULL rejects a
+second operation and is not sampled.
+
+==== `cg_jtag2axi_recovery`
+
+*Description*: Covers the recovery from each abnormal end of a SINGLE_OP
+operation.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_target` |`smc_axi`, `smc_otp`, `sep_otp`
+|`cp_prior` |`slverr`, `decerr`, `reset_discard`: the last abnormal outcome
+|`cp_path` |`next_poll` (the first SINGLE_OP capture after the abnormal end reports it), `next_success` (the next operation completes with OKAY)
+|`x_target_prior_path` |`cp_target` x `cp_prior` x `cp_path`
+|===
+
+==== `cg_jtag2axi_poll`
+
+*Description*: Covers the SINGLE_OP status captures a debugger polls with.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_target` |`smc_axi`, `smc_otp`, `sep_otp`
+|`cp_capture` |`busy_or_full` (an operation pending), `settled` (the first capture after an operation ended), `idle_nop` (any other capture)
+|`cp_wait` |on a `settled` capture, the BUSY_OR_FULL captures before it: `immediate` (none), `short_wait` (one to three), `long_wait` (four or more)
+|`x_target_capture` |`cp_target` x `cp_capture`
+|`x_target_wait` |`cp_target` x `cp_wait`
+|===
+
+==== `cg_jtag2axi_series`
+
+*Description*: Covers every transaction the bridge completes for a series
+instruction. Size-aligned narrow series transfers (`AxSIZE` smaller than the
+data bus, starting at a non-zero beat offset) are in contract for the SMC
+fabric series path.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_target` |`smc_axi`, `smc_otp`, `sep_otp`
+|`cp_mode` |`incr`, `no_incr`, `with_error_status`
+|`cp_dir` |`write`, `read`
+|`cp_beat` |`clean` (OKAY, with the SERIES_CTRL status OKAY before it), `fault` (SLVERR or DECERR), `after_fault` (OKAY while the SERIES_CTRL status holds an earlier error)
+|`cp_status_step` |on a `with_error_status` transaction, the increment bit shifted with it: `hold`, `increment`
+|`cp_shape` |`full` (a full data beat), `narrow_lane0` and `narrow_offset` (a narrower beat on lane 0 or at a non-zero lane offset), `oversize` (a size field wider than the bus, taken as one full beat)
+|`x_mode_dir` |`cp_target` x `cp_mode` x `cp_dir`
+|`x_mode_beat` |`cp_target` x `cp_mode` x `cp_beat`
+|`x_target_status_step` |`cp_target` x `cp_status_step`
+|===
+
+`dtp_jtag2axi_fcov` samples the transaction the bridge's AXI state machine
+completes when it did not come from the single-op buffer, with its response,
+its with-error-status and increment flags, and the SERIES_CTRL status before
+it, through the `dtp_j2a_state_flags` instance `tb_top` binds into each
+bridge. `after_fault` is the SERIES_CTRL status held until
+`SERIES_CTRL.reset`.
+
+==== `cg_jtag2axi_backpressure`
+
+*Description*: Covers the bridge's AXI handshakes under subordinate READY
+backpressure. The bridge presents AW and W together and lets each complete on
+its own.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_target` |`smc_axi`, `smc_otp`, `sep_otp`
+|`cp_handshake` |`aw_before_w` (W accepted after the AW of its pair), `w_before_aw` (AW accepted after the W of its pair), `ar_held` (AR accepted after ARVALID waited against a low ARREADY)
+|`x_target_handshake` |`cp_target` x `cp_handshake`
+|===
+
+==== `cg_jtag2axi_reset`
+
+*Description*: Covers where each system reset lands in a bridge's AXI
+transaction.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_target` |`smc_axi`, `smc_otp`, `sep_otp`
+|`cp_phase` |`idle`, `request_issued` (AW or AR valid and not accepted), `data_phase` (AW accepted, W not), `response_wait` (AW and W accepted, or AR accepted, with the response outstanding)
+|`cp_spacing` |`isolated`, `back_to_back` (within 64 system clocks of the previous reset)
+|`x_target_phase` |`cp_target` x `cp_phase`
+|===
+
+`dtp_jtag2axi_fcov` samples at each falling edge of `rst_n_i` from per-bridge
+flops that hold the handshake state of the last clock before it. The bridge's
+AXI output stage resets asynchronously, so its VALID outputs are already low
+when the clocked sample sees the reset.
+
+==== `cg_jtag2axi_cdc`
+
+*Description*: Covers what the TCK-side clear of a bridge's CDC discards when
+a system reset reaches it.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_target` |`smc_axi`, `smc_otp`, `sep_otp`
+|`cp_clear` |`clear_idle` (nothing), `single_discard` (a SINGLE_OP or with-error-status operation; SINGLE_OP reads DECERR with a zero data field), `series_discard` (series operations in flight or queued; SERIES_CTRL reads DECERR unless it holds an earlier error)
+|`x_target_clear` |`cp_target` x `cp_clear`
+|===
+
+==== `cg_jtag2axi_gating`
+
+*Description*: Covers the release and recovery of a bridge after its
+debug-disable field blocked an operation.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_target` |`smc_axi`, `smc_otp`, `sep_otp`
+|`cp_event` |`release_no_replay` (the bridge's synchronized disable clears after it blocked an operation), `recovery` (the first operation completing with OKAY after that release)
+|`x_target_event` |`cp_target` x `cp_event`
+|===
+
+The gating checkers judge that nothing replays; the bins record the release
+and the recovery that the judgement covers.
+
+==== `cg_tmp`
+
+*Description*: Covers the TMP controller and the TMP_STATUS TDR.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_read_value` |TMP_STATUS[1:0] shifted out: `zero`, `escape_armed` (`0b01`), `persistence` (`0b10`), `persistence_armed` (`0b11`)
+|`cp_read_match` |`match`; a value that differs from the persistence state and escape arm at Capture-DR is an illegal bin
+|`cp_change` |`clamp_hold_on`, `clamp_release_off`, `bypass_escape_off`, `tap_reset_off`; a change with no CLAMP_HOLD, CLAMP_RELEASE, armed BYPASS load, or TAP reset behind it, and persistence kept through a TAP reset, are illegal bins
+|`cp_bypass` |A BYPASS load while persistence is on: `unarmed_held`, `armed_escaped`; an unarmed load that releases or an armed load that holds is an illegal bin
+|`cp_tlr` |`chrst_n` on entry to Test-Logic-Reset by TMS: `persistence_on_released`, `persistence_off_asserted`; the other two pairs are illegal bins
+|`cp_sys_reset` |`persistence_preserved`: persistence on when `rst_n_i` asserts and when it releases
+|===
+
+`dtp_debug_tdr_fcov` samples a TMP_STATUS read at the TCK edge that leaves
+Update-DR after a two-bit scan with the PTAP TAP_3DCR select clear, from the
+first two bits on TDO; while the select is set the STAP chain return drives
+TDO. A persistence change is judged at the edge after it, against the
+instruction or escape condition the TMP unit saw, and a TAP reset is judged at
+the first TCK edge after it, so a power-on reset with TCK idle counts. The TAP
+reset is TRST or power-on reset, as the PTAP combines them. The
+`+dtp_jtag_tmp_status_*+`, `dtp_jtag_clamp_hold_test`, and
+`dtp_jtag_clamp_release_test` scenarios drive these bins.
+
+==== `cg_ic_reset`
+
+*Description*: Covers the IC_RESET TDR and its slice outputs.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_smc`, `cp_sep`, `cp_ext` |The slice's `{ovrd, ctrl_n}` after an update: `functional` (`0b01`, the reset default), `staged` (`0b00`), `override_reset` (`0b10`), `override_run` (`0b11`)
+|`cp_hold` |`reset_hold` after an update: `hold_clear`, `hold_set`
+|`cp_reset` |`tlr_preserve` (`reset_hold` = 0 keeps the slices through Test-Logic-Reset), `tlr_restore` (`reset_hold` = 1 restores them), `tap_reset_restore` (a TAP reset restores the whole register); every other outcome is an illegal bin
+|===
+
+The slice bins sample the flattened `jtag_ic_reset_{smc,sep,ext}_o` outputs at
+each IC_RESET update. A Test-Logic-Reset entered by TMS is judged when the
+slices were away from their default, under the `reset_hold` written before
+it; a TAP reset is judged when any field, `reset_hold` included, was away from
+its default. `dtp_jtag_ic_reset_test` drives every bin; its four directed
+`reset_hold` = 0 patterns give each slice all four values.
+
+==== `cg_debug_control`
+
+*Description*: Covers the DEBUG_CONTROL TDR fields, the `cla_clock_stop`
+readback, and their reset.
+
+[cols=",",options="header",]
+|===
+|Coverpoint / cross |Bins
+|`cp_boot` |`{boot_stall_ovrd, boot_stall}`: `ovrd0_stall0`, `ovrd0_stall1`, `ovrd1_stall0`, `ovrd1_stall1`
+|`cp_jtag_stop`, `cp_cla_en` |`off`, `on`
+|`x_boot_clock_stop` |`cp_boot` x `cp_jtag_stop` x `cp_cla_en`
+|`cp_readback` |Bit 4 against the request lines at Capture-DR: `no_request`, `one_request`, `multiple_requests`
+|`cp_capture_jtag_stop`, `cp_capture_cla_en` |`off`, `on`, while bit 4 was captured
+|`x_readback` |`cp_readback` x `cp_capture_jtag_stop` x `cp_capture_cla_en`
+|`cp_reset` |`tlr_cleared`, `tap_reset_cleared`: nonzero fields cleared by Test-Logic-Reset or a TAP reset; fields kept are an illegal bin
+|===
+
+The field bins sample the `jtag_boot_stall_ovrd_o`, `jtag_boot_stall_o`, and
+`cla_clock_stop_en_o` outputs and the JTAG clock stop at each DEBUG_CONTROL
+update. Bit 4 reaches the TDR through a two-flop TCK synchronizer, so a
+request change within two TCK edges of Capture-DR reads either way and counts
+in no readback bin. The `+dtp_dbg_ctrl_clk_stop_*+` and
+`dtp_dbg_ctrl_boot_stall_test` scenarios drive these bins, and
+`dtp_jtag_tlr_reset_test` drives `tlr_cleared`.
+
+==== `cg_clock_stop`
+
+*Description*: Covers the aggregation of the JTAG clock stop and the CLA
+clock-stop requests into `stop_clks_o`.
+
+[cols=",",options="header",]
+|===
+|Coverpoint / cross |Bins
+|`cp_req_source` |`line_0` to `line_8` (one `xtrig_clk_stop_req_i` line alone), `none`, `multi`
+|`cp_jtag_stop`, `cp_cla_en` |`off`, `on`
+|`cp_stop_clks` |`running`, `stopped`
+|`x_aggregation` |`cp_req_source` x `cp_jtag_stop` x `cp_cla_en` x `cp_stop_clks`: the combinations in which `stop_clks_o` is the OR of the JTAG clock stop and the request lines; every other combination is an illegal bin
+|===
+
+`stop_clks_o` follows its sources three `clk_i` edges later, after the
+two-flop synchronizer and the output flop, or four when the synchronizer's
+delay model holds a change back an edge. `dtp_debug_tdr_fcov` delays the
+sources to line up with it and samples each combination of the request
+lines, `jtag_clock_stop`, and `cla_clock_stop_en` that holds for two `clk_i`
+edges. `cla_clock_stop_en` is crossed so that every cell shows it leaves the
+output unchanged. The directed sweep of
+`dtp_dbg_ctrl_clk_stop_random_clock_stop_test` drives every single-line and
+multi-line cell in each seed, and the four DEBUG_CONTROL scenarios drive the
+cells with no request.
+
+==== `cg_caps_tdr`
+
+*Description*: Covers the read-only capability TDRs.
+
+[cols=",",options="header",]
+|===
+|Coverpoint / cross |Bins
+|`cp_register` |`jtag_caps`, `smc_caps`, `smc_otp_caps`, `sep_otp_caps`
+|`cp_pattern` |Pattern shifted in: `all_zero`, `all_one`, `alternating`, `mixed`
+|`cp_after` |Instruction committed before the capability instruction: `after_idcode`, `after_bypass`
+|`cp_stability` |`stable`: the value equals the register's previous read; a changed value is an illegal bin
+|`x_register_pattern` |`cp_register` x `cp_pattern`
+|`x_register_after` |`cp_register` x `cp_after`
+|`x_register_stability` |`cp_register` x `cp_stability`
+|===
+
+`dtp_debug_tdr_fcov` samples a capability TDR at the TCK edge that leaves
+Update-DR after a full-length scan, 60 bits for JTAG_CAPS and 14 for each
+`+*_JTAG2AXI_CAPS+`; the pattern comes from TDI, the value from TDO, and the
+stability bin compares only reads taken with the PTAP TAP_3DCR select clear.
+`dtp_dbg_jtag_caps_test` and the three `+dtp_dbg_*_jtag2axi_caps_test+`
+scenarios drive every bin.
+
+==== `cg_stap_3dcr`
+
+*Description*: Covers the IEEE 1838 STAP 3DCRs: each STAP's SIB, its stored
+select, TMS hold, and config hold, its debug disable, and its forwarding.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_type` |`io`, `smc`, `sep`, `extra`
+|`cp_sib` |`closed`, `open`
+|`cp_forwarded` |`forwarded`: the port drove its host TDO enable during the scan
+|`cp_select` |with the SIB open: `deselected`, `selected` (the stored select)
+|`cp_tms_hold` |with the SIB open: `low`, `high`
+|`cp_config_hold` |with the SIB open: `clear`, `set`
+|`cp_security` |with the SIB open: `enabled`, `gated` by the STAP's `dbg_disable` field
+|`x_type_sib` |`cp_type` x `cp_sib`
+|`x_type_forwarded` |`cp_type` x `cp_forwarded`
+|`x_config` |with the SIB open: `cp_type` x `cp_select` x `cp_tms_hold` x `cp_config_hold` x `cp_security`
+|===
+
+`dtp_scan_fcov` samples the group once per STAP at every Update-IR and
+Update-DR that the STAP chain takes, that is, every update of a scan run with
+the PTAP 3DCR select set. The SIB state is the one the scan ran under, since a
+STAP's 3DCR is in the chain only while its SIB is open; the 3DCR fields are the
+stored values after the update. The disable blocks the 3DCR update and keeps
+the stored fields, so every `x_config` combination is reachable, and a
+`selected` STAP under its disable is a port parked at its TMS hold.
+`dtp_3dcr_tms_hold_test` writes every payload to every STAP, enabled and under
+the four STAP disables, in each pass.
+
+==== `cg_stap_chain`
+
+*Description*: Covers the PTAP 3DCR select gating the STAP chain on instruction
+and data scans.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_ptap_select` |`held_unselected`, `scanned_selected`
+|`cp_scan` |`ir`, `dr`
+|`x_chain` |`cp_ptap_select` x `cp_scan`
+|===
+
+Sampled at every Update-IR and Update-DR with the PTAP 3DCR select the scan ran
+under: with it clear the STAP chain and the host scan controls held their state
+through the scan, with it set the chain shifted.
+
+==== `cg_3dcr_hold`
+
+*Description*: Covers CONFIG_HOLD across the TAP resets for the PTAP 3DCR and
+every STAP 3DCR.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_reg` |`ptap`, `io`, `smc`, `sep`, `extra`
+|`cp_case` |`tlr_unheld_cleared`, `tlr_held_retained`, `trst_unheld_cleared`, `trst_held_cleared`; any other result is an illegal bin
+|`x_hold` |`cp_reg` x `cp_case`
+|===
+
+Sampled once per 3DCR holding a non-zero image at each reset, against the image
+held just before it: a Test-Logic-Reset entered through TMS, compared on the
+edge that leaves its first cycle, and a TRST, compared on the first edge after
+its release. Test-Logic-Reset keeps the image while CONFIG_HOLD is set and
+clears it otherwise; TRST clears it at either value.
+
+==== `cg_ijtag_sib`
+
+*Description*: Covers IEEE 1687 SIB network selection across the DFT Secure, DFT Non-Secure, and DFD (Design-for-Debug) chains.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_instr` |`select_ijtag`, `runbist`
+|`cp_pattern` |`pattern[0]` to `pattern[7]`: every open set of {DFT secure, DFT non-secure, DFD}
+|`cp_access` |`dft_secure`, `dft_nonsecure`, `dfd`: the instrument shifted through its open SIB during the scan
+|`cp_dft_secure`, `cp_dft_nonsecure`, `cp_dfd` |`closed`, `open`, `gated` by the SIB's `dbg_disable` field (`dft_secure`, `dft_nonsecure`, `dfd`); open while gated is an illegal bin
+|`x_gating` |`cp_dft_secure` x `cp_dft_nonsecure` x `cp_dfd`
+|===
+
+`dtp_scan_fcov` samples the group at every Update-DR of the iJTAG network,
+which the PTAP selects as its data register under SELECT_IJTAG and RUNBIST.
+Each SIB's open state is the one after the update, and its disable is the
+synchronized field the SIB gate applies, so a gated SIB is closed whatever was
+shifted into it. `dtp_ijtag_sib_random_test` walks every `x_gating`
+combination in each pass.
+
+==== `cg_ctp`
+
+*Description*: Covers every CTP transmission and reception with the
+configuration the port runs with.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_direction` |`receive`, `transmit`
+|`cp_mode` |`wire_or`, `p2p`
+|`cp_inversion` |`normal`, `inverted`
+|`cp_stretch` |`min` (0), `mid` (1 to 0xFFFE), `max` (0xFFFF), on wire-OR transmissions
+|`x_direction_mode_inversion` |every direction, mode, and inversion
+|`x_mode_inversion_stretch` |every inversion and stretch of a wire-OR transmission; STRETCH_MULT shapes no point-to-point action, so the point-to-point combinations are ignore bins
+|===
+
+A transmission is a CTP starting to assert CT_Req_out: its output enable
+rising in wire-OR mode, where the pad input is enabled, and its request level
+rising at the `CONFIG.INVERT` polarity in point-to-point mode. A reception is
+the port delivering a trigger on `ct_dst`. Each samples `CONFIG.MODE`,
+`CONFIG.INVERT`, and `STRETCH_MULT` from the port's register fields one clock
+behind the registers, the clock at which the registered pad outputs apply
+them.
+
+==== `cg_ctp_p2p`
+
+*Description*: Covers the four-phase handshake of the point-to-point CTPs at
+both pad polarities.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_phase` |`tx_request`, `tx_acknowledge`, `tx_request_drop`, `tx_idle`, `rx_acknowledge`, `rx_idle`
+|`cp_inversion` |`normal`, `inverted`
+|`x_phase_inversion` |every phase at both polarities
+|===
+
+Each bin samples one edge of a port whose pad input is disabled, every pad at
+the port's `CONFIG.INVERT` polarity: the sender asserts CT_Req_out
+(`tx_request`), sees CT_Ack_in on the held request (`tx_acknowledge`), drops
+CT_Req_out while CT_Ack_in holds (`tx_request_drop`), and is idle once
+CT_Ack_in drops (`tx_idle`); the receiver asserts CT_Ack_out on CT_Req_in
+(`rx_acknowledge`) and drops it after CT_Req_in drops (`rx_idle`).
+
+==== `cg_ctp_reset`
+
+*Description*: Covers resets landing on live CTP state and the transmissions
+that recover from them.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_system_reset` |`tx_pending`, `rx_held`, `wire_or_pulse`
+|`cp_config_reset` |`tx_pending`, `rx_held`
+|`cp_recovery` |`after_config_reset`, `after_system_reset_wire_or`, `after_system_reset_p2p`
+|===
+
+A system reset is sampled when it releases, once for each kind of state a CTP
+held in the last cycle before it: a point-to-point request awaiting its
+acknowledge, a CT_Ack_out asserted for a received request, and a wire-OR
+output enable asserted. `CONFIG.RESET` is sampled when it rises on a
+point-to-point port whose request or CT_Ack_out is asserted; it acts on the
+sender alone, so the receiver keeps its CT_Ack_out. Recovery is the next
+request of a port whose pending request `CONFIG.RESET` cleared, and the first
+transmission, by mode, after a system reset that landed on live state.
+
+==== `cg_ctp_wire_or_rx`
+
+*Description*: Covers the wire-OR receive of the CTP ports: a port in wire-OR
+mode delivering a trigger from its shared wire.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_sense` |`normal` (INVERT=0, the wire pulled low), `inverted` (INVERT=1, the wire pulled high)
+|`cp_listeners` |`one` (a wire of the port's own), `shared_wire` (a wire two or more CTPs share)
+|`cp_origin` |`other_pull`, `own_pull` (the port's own output enable pulled the wire)
+|`x_sense_listeners` |both listener classes at both senses
+|`x_sense_origin` |both origins at both senses
+|===
+
+A port hears its own pull three clocks after its output enable pulls the
+wire: two synchronizer stages and the registered `ct_dst`. Which pads share a
+wire is the board's, so `cp_listeners` reads it from the `tb_top` open-drain
+wire model.
+
+==== `cg_ctm`
+
+*Description*: Covers the CTM source and destination ports.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_source_type` |`internal`, `ctp`
+|`cp_dest_type` |`internal`, `ctp`
+|`cp_source_index` |`ctp[16]`, `internal[10]`: every source port of the bench configuration
+|`cp_dest_index` |`ctp[16]`, `internal[10]`: every destination port
+|`cp_dest_fanin` |`single`, `merged` (two or more selected sources rose within the route window)
+|===
+
+A source event is a CTP delivering a trigger into the matrix (`ct_dst`, either
+mode) or a CLA request; a destination event is a CTP starting to assert
+CT_Req_out or the matrix requesting a CLA. A CTP asserts by driving its wire
+in wire-OR mode and by driving the request level, high unless `CONFIG.INVERT`
+is set, in point-to-point mode. A destination event's sources are those its
+`CT_SRC` `CONFIG_0` `CT_DST_SELECT` mask, shadowed from the CSR writes to its
+word under their byte strobes, selects among the sources that rose within the
+preceding 32 system clocks.
+
+==== `cg_ctm_route`
+
+*Description*: Covers the routes the matrix carried. A destination event with
+a single source (`cg_ctm` `cp_dest_fanin`) is credited to that source as a
+route; one with two or more credits none. The CLA-to-CTP and CTP-to-CLA random
+mixes drive every route of their class alone within one test, so each of their
+seeds closes its cross.
+
+[cols=",",options="header",]
+|===
+|Coverpoint / cross |Bins
+|`cp_cla_src`, `cp_cla_dst` |`cla[10]`
+|`cp_ctp_src`, `cp_ctp_dst` |`ctp[16]`
+|`x_cla_to_ctp` |10 internal CT sources x 16 CTP destinations
+|`x_ctp_to_cla` |16 CTP sources x 10 internal CT destinations
+|===
+
+==== `cg_ctm_fanout`
+
+*Description*: Covers the destinations each source event reached.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_source_type` |`internal`, `ctp`
+|`cp_dest_type` |`internal`, `ctp`, on an event that reached a destination
+|`cp_fanout` |`none`, `single`, `multicast`
+|`x_source_dest_fanout` |every source class, destination class, and `single` or `multicast`; an event that reached no destination has no destination class, so the `none` combinations are ignore bins
+|===
+
+A source event closes 32 system clocks after it rose. Its fanout is the
+number of destination events credited to it as routes; an event a destination
+merged with another source has no fanout and is not sampled. A closed event is
+sampled once for each destination class it reached, with its total fanout, or
+once with fanout `none`.
+
+==== `cg_xtrig_csr_write`
+
+*Description*: Covers every completed write on the XTRIG CSR port.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_region` |`ctm_select`, `ctm_hole`, `ctp_config`, `ctp_status`, `ctp_stretch`, `ctp_hole`, `ctm_unmapped`, `unmapped`
+|`cp_rw_register` |`ctm_select`, `ctp_config`, `ctp_stretch`
+|`cp_strobe` |`byte0`, `byte1`, `byte2`, `byte3`, `full`, on the read-write registers
+|`x_register_strobe` |every byte strobe on every read-write register
+|`cp_order` |`same_cycle`, `aw_first`, `w_first`
+|`cp_resp` |`okay`, `decerr`; EXOKAY and SLVERR are illegal bins
+|`x_region_resp` |`okay` on the six mapped classes, `decerr` on the two unmapped ones; the other combinations are illegal bins
+|`cp_wait` |`ready`, `held`
+|===
+
+==== `cg_xtrig_csr_read`
+
+*Description*: Covers every completed read on the XTRIG CSR port.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_region` |as `cg_xtrig_csr_write`
+|`cp_resp`, `x_region_resp` |as `cg_xtrig_csr_write`, with the same illegal bins
+|`cp_wait` |`ready`, `held`
+|`cp_reset_value` |`ctm_select`, `ctp_config`, `ctp_status`, `ctp_stretch`, read before any write reaches the word after the system reset
+|`cp_status` |`idle` (0), `pulse` (BUSY), `tx_request` (BUSY, REQ_OUT), `tx_acknowledge` (BUSY, ACK_IN), `rx_acknowledge` (BUSY, REQ_IN, ACK_OUT), on STATUS reads
+|===
+
+Both groups classify an access by the word its address selects in the
+cross-trigger network memory map: a `CT_SRC` `CONFIG_0` register or the hole
+word that follows it in its slot, the matrix aperture past its register extent
+(`ctm_unmapped`), a CTP window's CONFIG, STATUS, STRETCH_MULT, or hole word,
+and every word past the last CTP window (`unmapped`). The register blocks
+answer OKAY and the crossbar answers DECERR, and no subordinate answers EXOKAY
+or SLVERR. A write pairs the n-th W beat with the n-th AW beat and takes its
+order from the cycles the port took them; every response pairs with the
+request it answers in issue order. A response is held when its VALID was high
+with READY low in the cycle before its handshake.
+
+==== `cg_xtrig_axil_flow`
+
+*Description*: Covers the CSR port's spill registers and the crossbar demux
+behind them, which serves one access at a time.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_flow` |`aw_accept_open`, `ar_accept_open`, `w_spill_full`, `r_spill_full`, `demux_aw_held`, `demux_ar_held`, `aw_spill_full`, `ar_spill_full`, `demux_aw_lock`
+|===
+
+`aw_accept_open` and `ar_accept_open` are the port taking a request while an
+earlier one of its kind is owed its W or R beat, `w_spill_full`,
+`r_spill_full`, `aw_spill_full` and `ar_spill_full` a spill register holding
+two beats, `demux_aw_held` and `demux_ar_held` the demux holding a request
+while an earlier one is open, and `demux_aw_lock` the demux holding an AW
+its subordinate refused. Each is sampled on the cycle it begins, from the
+`tb_top` spill-register and demux mirrors.
+
+==== `DtpDbgDisableFcov`
+
+*Description*: The checker-gated ledger (`env/dtp_fcov.py`) of the per-field
+debug-disable gating contract for the eleven pre-resolved active-high
+disables of `sep_lifecycle_ctrl_pkg::dbg_disable_t` (`1 = interface
+disabled`). Deriving these fields from lifecycle policy is verified at the SEP
+level; DTP coverage closes on each field gating exactly its interface.
+
+The sample tuple is `(field, disable_value, observed_outcome)`. For each of
+the eleven fields, both legal cells are required:
+
+* `(field, 0, allowed)`
+* `(field, 1, blocked)`
+
+This produces 22 required cells. The contradictory tuples,
+`(field, 0, blocked)` and `(field, 1, allowed)`, are checker failures, never
+ledger cells.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|Field |`stap_io`, `stap_smc`, `stap_sep`, `stap_extra`, `stap_host`, `dft_secure`, `dft_nonsecure`, `dfd`, `smc_jtag2axi`, `smc_otp_jtag2axi`, `sep_otp_jtag2axi`
+|Field outcome |`(field, 0, allowed)` and `(field, 1, blocked)` per field (22 cells)
+|Mask class |all clear, one-hot, multi-hot, all disabled
+|Unrelated-resource isolation |an enabled resource proven usable while another field is asserted
+|Release without replay |no queued operation completes after a disable clears
+|Recovery |a sanctioned operation succeeds after release
+|===
+
+Sampling rules:
+
+* A cell is recorded only after the associated functional checker passes;
+  coverage is never auto-hit from a test name or from writing a disable
+  input.
+* Every coverage log line records the field, the full named disable mask,
+  the attempted operation, and the observed result.
+* Each matrix test enforces its own cells before completing: the scan
+  matrix requires all 16 cells of its eight fields and the JTAG2AXI matrix
+  the 6 cells of its three bridge fields, so a passing `dbg_disable` group
+  run covers all 22 required cells. Each matrix also emits a JSON artifact
+  under its `coverage/` directory recording the cells it hit.
+* `cg_dbg_disable_scan` in `dtp_scan_fcov` and `cg_dbg_disable_jtag2axi` in
+  `dtp_jtag2axi_fcov` record the sixteen scan-side and the six bridge cells at
+  the signal level in both realizations, with the contradictory tuples as
+  illegal bins; the checker-gated ledger cells above are the contract.
+
+==== `cg_dbg_disable_scan`
+
+*Description*: The signal-level twin of the sixteen scan-side cells of the
+`DtpDbgDisableFcov` ledger.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_field` |`stap_io`, `stap_smc`, `stap_sep`, `stap_extra`, `stap_host`, `dft_secure`, `dft_nonsecure`, `dfd`
+|`cp_value` |`clear`, `set`
+|`cp_outcome` |`allowed`, `blocked`
+|`cp_mask` |`all_clear`, `one_hot`, `multi_hot`, `all_disabled` over the eight scan-side fields
+|`cp_isolation` |on an attempt with the field clear: `other_field_set` (another scan-side field set)
+|`cp_sequence` |`released`, `recovered`
+|`x_cell` |`cp_field` x `cp_value` x `cp_outcome`: `(field, clear, allowed)` and `(field, set, blocked)`; the contradictory tuples are illegal bins
+|`x_field_isolation` |`cp_field` x `cp_isolation`
+|`x_sequence` |`cp_field` x `cp_sequence`
+|===
+
+`dtp_scan_fcov` samples one tuple per field and attempt, with the
+synchronized disable the gate applies:
+
+* `stap_io`, `stap_smc`, `stap_sep`, `stap_extra`: a STAP chain shift cycle
+  while the port's stored select is set; `allowed` when the port drives its
+  host TDO enable, `blocked` when it stays parked.
+* `stap_host`: a STAP chain shift cycle; `allowed` when the extended host
+  shift enable follows it, `blocked` when that enable stays low.
+* `dft_secure`, `dft_nonsecure`, `dfd`: an iJTAG network Update-DR that loads
+  a 1 into the SIB bit; `allowed` when the SIB opens, `blocked` when it stays
+  closed.
+
+A release is the field clearing after a blocked attempt, and a recovery the
+first allowed attempt after a release. `dtp_scan_dbg_disable_matrix_test`
+reaches every bin in each realization: the one-hot rows give each field's
+blocked cell and its isolation from the others, the all-clear row the allowed
+cells, and the release after the all-disabled row with the recovery row that
+follows give each field's release and recovery.
+
+==== `cg_dbg_disable_jtag2axi`
+
+*Description*: The signal-level twin of the six bridge cells of the
+`DtpDbgDisableFcov` ledger.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_field` |`smc_jtag2axi`, `smc_otp_jtag2axi`, `sep_otp_jtag2axi`
+|`cp_value` |`clear`, `set`
+|`cp_outcome` |`allowed`, `blocked`
+|`cp_mask` |`all_clear`, `one_hot`, `multi_hot`, `all_set` over the three bridge fields
+|`cp_isolation` |on an `allowed` sample: `alone`, `other_field_set` (another debug-disable field set)
+|`x_cell` |`cp_field` x `cp_value` x `cp_outcome`: `(field, clear, allowed)` and `(field, set, blocked)`; the contradictory tuples are illegal bins
+|`x_field_isolation` |`cp_field` x `cp_isolation`
+|===
+
+`dtp_jtag2axi_fcov` samples one TCK after every SINGLE_OP Update-DR whose op
+field is READ or WRITE and that finds the bridge idle: the value is the
+bridge's synchronized disable at the update, and the outcome is `allowed` when
+the bridge launched the operation on that edge, `blocked` otherwise.
+
+[[dtp-fcov-closure]]
+=== Closure Policy
+
+Coverage closes against the policy file, not against a rerun: every
+uncovered point of the `all` regression is either fired by a new or
+extended scenario, held open by a defect that a tracker item owns, or removed
+from the effective denominator by a reviewed waiver, which a covergroup bin
+never takes. The rules below bind the DTP policy file; the runner's schema
+and grading behavior are in `tools/dv/doc/run-dv.adoc`.
+
+[[dtp-fcov-evidence-paths]]
+==== Evidence paths
+
+* **Public path.** The weekly `all` regression at three seeds with `--cov`
+  on Verilator. Its run tree carries `cov/report/coverage-details.json`
+  (every point with its disposition), `cov/report/summary.json` (the raw
+  and effective figures per family and the hole counts), and
+  `cov/report/policy-application.json`; the hosted job publishes them as
+  the `dv-run-dtp-verilator-weekly` artifact. A policy change is graded
+  against a finished run with `run_dv.py --dut dtp --run-dir <run> --waive`,
+  which rewrites the grade without a simulation.
+* **Commercial path.** The cocotb `all` and SV-UVM `all` regressions on
+  VCS with the full `-cm` set and the compile-time scope, each merged by the
+  runner, then combined across frameworks into one run with
+  `run_dv.py --dut dtp --cov-combine <cocotb-run> <uvm-run>`; the report
+  of that combined run is the code-coverage evidence and carries the
+  covergroup model. URG hands the runner code-coverage family totals and no
+  per-point list, so `cov/config/vcs/coverage_policy.toml` carries no
+  `pass:[[[holes]]]` and a VCS hole closes through a scenario, a design or
+  model change, or an entry in one of the two URG exclusion lists that the
+  `pass:[[[native_files]]]` entries of that policy name
+  (<<dtp-fcov-unreachability-list>>, <<dtp-fcov-waiver-list>>); the runner
+  passes each list to `urg -elfile`, records its checksum, and reports the
+  figures with and without them as `effective_metrics` and `raw_metrics`.
+  Covergroup bins take no exclusion.
+* A metric is applicable on the path that collects it, and a point that
+  both paths collect is one point: a hole on either path needs one
+  disposition, and a waiver written for one path names the same
+  structural reason on the other.
+
+==== Hole dispositions
+
+[cols="1,3,2,1",options="header",]
+|===
+|Disposition |Meaning |Requires while open |Counts as
+|`cover` |The point is reachable and needs a scenario or a stimulus change |A tracker link |Open hole
+|`fix_design` |A design defect blocks the point |A tracker link naming the defect |Open hole
+|`fix_model` |A bench, model, or coverage-module defect blocks the point |A tracker link |Open hole
+|`review` |The point awaits a disposition |A tracker link |Open hole
+|`waive` |The point has no reachable stimulus on this bench or configuration, for the structural reason the rationale names |`status = "accepted"`, the fields below |Removed from the effective denominator
+|`exclude_scope` |The point is outside the DTP verification contract (integration-level behavior, vendor IP internals, elaboration-time constants) |`status = "accepted"`, the fields below |Removed from the effective denominator
+|===
+
+An open hole never shrinks a denominator; only an accepted `waive` or
+`exclude_scope` entry does, and only at `medium` or `high` confidence. The
+runner rejects an accepted waiver that matches a covered point, a
+low-confidence waiver, an entry whose `dut` is not the run's, and an open
+actionable hole without a tracker link.
+
+==== Waiver fields
+
+Every `pass:[[[holes]]]` entry carries `id`, `title`, `category`, `disposition`,
+`status`, `confidence`, `rationale`, `owner`, `reviewer`, and at least one
+`pass:[[[holes.native]]]` selector (`tool`, `metric_family`, `hierarchy`); an
+entry whose selector is a pattern also carries `expected_matches`. The
+rationale states the design
+or bench fact that makes the point unreachable, in words the reviewer of a
+later design or bench change can recognize; a rationale that restates the
+point's name is not one. `issues` carries the tracker link of the defect or
+task an open hole waits on, and of the review that accepted a waiver.
+
+==== Reviewers
+
+An entry's `reviewer` differs from its `owner`. A `waive`,
+`exclude_scope`, or `fix_design` entry whose rationale is a design fact
+takes design review; a `fix_model` or `cover` entry takes DV review; a
+`pass:[[[native_files]]]` entry takes coverage-flow review. Every entry
+change is graded against a named finished run with the runner's `--waive`
+re-grade.
+
+==== Reopen triggers
+
+An accepted waiver stays accepted until the policy changes; the calendar does
+not reopen it. It reopens, by the entry's status returning to `open` or the
+entry being removed, when:
+
+* the runner rejects it because its selector matches a covered point;
+* the policy's `scope_epoch` changes, which restarts every dashboard
+  series;
+* a design or bench change removes the structural reason its rationale
+  names;
+* the metric set of `[coverage.verilator]` or the VCS `-cm` set changes;
+* the tracker item its `issues` list names closes.
+
+==== Run status
+
+A regression passes or fails on its tests; its coverage figures do not move
+its status. Neither policy file sets a `pass:[[[thresholds]]]` rule and
+`dtp_sim_cfg.toml` sets no `fail_under`, so the runner grades coverage
+against 0 percent, and `cov_report` fails only when the report tool fails or
+the runner refuses a policy file. Both paths report the raw and effective
+figure of every metric family, and closure reads them against the targets of
+the Coverage Goals section.
+
+[[dtp-fcov-unreachability-list]]
+==== Unreachability exclusion list
+
+`cov/config/vcs/dtp_unreachable.el` is the URG exclusion list of the
+code-coverage points that a formal unreachability analysis proves no stimulus
+reaches in the bench's environment: the DTP at the bench configuration, the
+DFT ports at their functional values, the boundary-scan chain looped back,
+and every other input free, the extended STAP host scan-in and the resets
+included. The analysis starts from the merged database of the commercial-path
+`all` regression (<<dtp-fcov-evidence-paths>>), so it targets the points that
+regression left uncovered, and it runs in the checkout that produced that
+database, because the formal model and the seed must describe one RTL. The
+analysis runs as a formal-mode item of the runner, from the formal
+configuration the site layer names for `dtp` (`run-dv.adoc`, Formal
+verification); the open tree carries no such item, so a reader without one
+runs their own unreachability tool over the same database with the same
+environment and writes the same URG exclusion format.
+
+The `pass:[[[native_files]]]` entry of `cov/config/vcs/coverage_policy.toml`
+that names the list pins the file's SHA-256. The runner refuses the policy
+when the file and the pinned digest differ, so a regenerated list takes a new
+entry. URG maps each code-coverage entry onto the design it reports on by the
+item's signature and applies it whatever the scope checksum. A toggle or
+condition entry outlives an RTL change that leaves the signal or expression it
+quotes in place. A branch entry's signature spans every condition of its
+decision tree, and a line entry's, which URG writes as `Block`, spans its
+statement and the condition that governs it; an FSM state or transition
+entry's signature names its states. Any change to that text, a renamed
+localparam or state included, drops the entry. The check mode below finds an
+entry an RTL change has made reachable.
+
+Regeneration rule: the list is regenerated from the merged database of a
+fresh `all` regression after any change to the DTP RTL file set, and the
+analysis's check mode over the accepted list fails when an excluded point has
+become reachable. A regenerated list takes design review before its entry
+changes, and the review accepts no entry that stimulus can reach.
+
+[[dtp-fcov-waiver-list]]
+==== Waiver list
+
+`cov/config/vcs/dtp_waivers.el` is the URG exclusion list of the points the
+bench reaches by no stimulus the DTP's interface contract allows. Each is a
+DTP input, a JTAG2AXI bridge point that only a response outside the AXI
+protocol reaches or that the bridge's one transaction in flight through its
+clock-domain crossing rules out, a bench checker rule, an assertion, or a
+point the cross-trigger network's register map and crossbar flow control rule
+out, none of which the formal unreachability analysis proves, and the
+`ANNOTATION` before each entry states the fact that rules it out:
+
+[cols=",",options="header",]
+|===
+|Points |Fact
+|BID and RID toggles of `axi_smc_dbg_resp_i` at `u_dut`, `u_jtag_intf_unit` and `u_jtag_ptap`, and of the SMC fabric bridge's `bid_i` and `rid_i`, its response structures on both sides of its clock-domain crossing and that crossing's response ports |The JTAG2AXI bridge issues every SMC fabric request with ID 0, and an AXI subordinate returns the request's ID
+|BID and RID toggles inside the SMC fabric bridge's B and R clock-domain-crossing FIFOs: the source input, the storage and its next-state value, both halves and the destination spill register |The source input, and the next-state value at the write pointer, carry the `axi_smc_dbg_resp_i` ID that the row above waives; every beat the FIFO stores carries the ID of its request, which the bridge issues as 0
+|The EXOKAY fall-through of the B and R response decode in every JTAG2AXI bridge, as condition and branch rows |The bridge issues every access with AxLOCK 0, and an AXI subordinate returns EXOKAY only to an exclusive access
+|The `AXI_SEND_DATA_W` state of every JTAG2AXI bridge's state machine, with its arcs, its case arm, the lines it alone runs and the write-path condition rows that name it |The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused
+|`xtrig_ctp_ack_out_din_i` toggles at `u_dut`, and `ctp_ack_out_din_i` at `u_cross_trigger_network` |CT_Ack_out is output-only: the cross-trigger network holds the pad input enables low and reads the pad inputs only into its lint sink
+|The FIXED and WRAP burst rules and the multi-beat covers of `u_m_axi_sva` |The bridge issues every SMC fabric request as a single-beat INCR burst
+|The `RECEIVER_WAIT_REQ_DEASSERT` arm of every external CTP's receiver with CT_Req_in high |The receiver enters the state with CT_Req_in low; a four-phase sender raises its next request only after it sees CT_Ack_out fall, which the receiver drives low in that same transition
+|Condition row W valid without AW valid in every CTP register block and the matrix register block |The crossbar demux forwards a W only after presenting its AW, and only once the previous write's B has left the block, by which time the block has taken that AW
+|Bits 26 and 30 of the R data held in the CSR port's R spill register |No subordinate returns them: a CT_SRC select holds 26 bits, every CTP register fewer, and the decode-error subordinate answers `0xBADCAB1E`
+|`flush_valid` on the five CSR port spill registers |The spill register wrapper ties their flush input low
+|`full_write` of the decode-error subordinate's B FIFO |The demux presents it a W only while its own one-entry B FIFO is empty, and that FIFO stays full until the write's B
+|`ar_select_stable` of the crossbar demux |The demux presents an AR only while its one-entry R FIFO is empty, and a subordinate refuses an AR only while it owes a read its R, which keeps that FIFO full
+|===
+
+The entries carry the checksums `urg -dump full_exclusions` reports for each
+scope, and the `pass:[[[native_files]]]` entry that names the file, with
+`role = "waive"`, pins its SHA-256. An `Assert` entry applies only while its
+instance checksum matches the design, so a change to the checker drops it
+with a URG warning. Toggle, condition and branch entries map by the signature
+rule of the unreachability list (<<dtp-fcov-unreachability-list>>), so a
+change to any condition of a waived branch's decision tree drops that entry,
+and its replacement comes from a fresh dump. A changed entry takes design
+review.
+
+=== VPLAN to FCOV Traceability
+
+[cols=",",options="header",]
+|===
+|VPLAN Test / Group |Coverage
+|`dtp_sanity_test` |`cg_tap_state`, `cg_tap_arc`, `cg_tap_smoke` TMS reset and IDCODE bins, `cg_jtag_instruction` Capture-IR pattern bin
+|`basic_jtag` group |`cg_tap_smoke`, `cg_tap_state`, `cg_tap_arc`, `cg_jtag_instruction`, `cg_dr_scan`, `cg_instruction_gate` RUNBIST bins
+|`dtp_jtag2axi_smc_axi_single_write_test` |`cg_jtag2axi_single_op` fabric write shapes, `cg_jtag2axi_response` `success`
+|`dtp_jtag2axi_smc_axi_single_write_read_test` |`cg_jtag2axi_single_op` fabric read, `cg_jtag2axi_response` `success`
+|JTAG instruction scenarios |`cg_jtag_instruction`, `cg_dr_scan`
+|`debug_tdr` group |`cg_tmp`, `cg_ic_reset`, `cg_debug_control`, `cg_clock_stop`, `cg_caps_tdr`, `cg_jtag_instruction`
+|JTAG2AXI single, series, and error scenarios |`cg_jtag2axi_single_op`, `cg_jtag2axi_series`, `cg_jtag2axi_response`, `cg_jtag2axi_recovery`, `cg_jtag2axi_poll`, per target
+|JTAG2AXI robustness scenarios |`cg_jtag2axi_backpressure`, `cg_jtag2axi_reset`, `cg_jtag2axi_cdc`, `cg_jtag2axi_poll`, `cg_jtag2axi_response`, `cg_jtag2axi_recovery`
+|JTAG2AXI security gating scenarios |`cg_jtag2axi_gating`, `cg_dbg_disable_jtag2axi`, `cg_instruction_gate` bridge bins
+|STAP / 3DCR scenarios |`cg_stap_3dcr`, `cg_stap_chain`, `cg_3dcr_hold`, `cg_dbg_disable_scan`
+|iJTAG scenarios |`cg_ijtag_sib`, `cg_dbg_disable_scan`, `cg_instruction_gate` SELECT_IJTAG bins
+|`dtp_scan_dbg_disable_matrix_test` |`DtpDbgDisableFcov` scan-side cells (8 fields); `cg_dbg_disable_scan`, `cg_instruction_gate` SELECT_IJTAG bins
+|`dtp_jtag2axi_dbg_disable_matrix_test` |`DtpDbgDisableFcov` bridge cells (3 fields); `cg_dbg_disable_jtag2axi`, `cg_instruction_gate` bridge bins
+|`dbg_disable` group |Complete 22-cell `DtpDbgDisableFcov` closure
+|CTP / CTM scenarios |`cg_ctp`, `cg_ctp_p2p`, `cg_ctp_reset`, `cg_ctp_wire_or_rx`, `cg_ctm`, `cg_ctm_route`, `cg_ctm_fanout`
+|XTRIG CSR and AXI-Lite scenarios |`cg_xtrig_csr_write`, `cg_xtrig_csr_read`, `cg_xtrig_axil_flow`
+|===
+
+=== Collection Strategy
+
+[cols=",",options="header",]
+|===
+|Flow |Strategy
+|Verilator open-source CI |Labeled `cover property` points in the `cov/sv/` modules; `run_dv.py --cov` collects them as `user` coverage in each test's `coverage.dat`, merges across tests and seeds (`cov_merge`), and reports through `cov_report` with `cov/config/verilator/coverage_policy.toml` applied
+|Per-group reporting |The DV dashboard ingests the merged run's `coverage-details.json` (policy dispositions included), keyed by the cover points' native hierarchy names (`u_dtp_<area>_fcov.c_<label>`)
+|Verilator metric set |`[coverage.verilator]` in `dtp_sim_cfg.toml` instruments line, expression, and `user` coverage and leaves toggle out; the weekly regression merges every leaf and seed into one report
+|Commercial simulation |The same modules' covergroups compile under VCS/Xcelium (the `ifndef VERILATOR` layer) and are the functional family; the cover properties stay compiled and grade with the assertions. Both frameworks collect through the runner, cocotb with `run_dv.py --cov --tool vcs` and SV-UVM with `run_dv.py --framework uvm --cov`, with per-test `simv.vdb` databases merged (`cov_merge`, `urg` with the design database) and reported (`cov_report`); the two frameworks' merged databases are combined with `run_dv.py --dut dtp --cov-combine <cocotb-run> <uvm-run>` into one DUT-scoped report
+|Code coverage |VCS/Xcelium line, branch, condition, FSM, toggle, assertion coverage, scoped to the DUT instance
+|Closure triage |Add directed tests for reachable holes; record blocked or unreachable points as hole entries in the coverage policy file, each stating the structural reason the point cannot fire
+|===
+
+Sampling happens at the documented transaction boundaries: TCK rising edge
+(TAP state and transition), completed IR scan, completed DR scan (the TDR,
+STAP chain, and iJTAG network groups sample at the edge that leaves Update-IR
+or Update-DR), Test-Logic-Reset and TRST, STAP chain shift cycle, completed
+JTAG2AXI operation (each bridge's own single-op registers and the transaction
+its AXI state machine completes), JTAG2AXI SINGLE_OP update and capture,
+system reset, clock-stop source change, CTP/CTM event, completed XTRIG CSR
+access, and debug-disable configuration change.
+
+=== Exclusions and Limitations
+
+[cols=",",options="header",]
+|===
+|Item |Reason
+|SV covergroups in Verilator |Unsupported by the tool; the cover-property layer carries the public flow
+|Capability TDR field values (JTAG_CAPS fields, JTAG2AXI bus type, address and data size, pipeline depths) |Elaboration-time constants with one reachable value each; `CHK-CAPS` compares every field on every read, and `cg_caps_tdr` covers their stability and read-only behavior
+|Illegal bins: a TAP state or instruction decode that is not one-hot, a TAP transition off the IEEE 1149.1 state graph, a Capture-IR update that is not IDCODE, an invalid IDCODE marker, a contradictory debug-disable outcome, an open SIB under its disable, a 3DCR reset result CONFIG_HOLD does not call for, an XTRIG CSR response the memory map does not give, and the other illegal bins each definition names |Only a design or checker failure reaches them; VCS reports a hit as a runtime error, and the ledger records a contradictory outcome as a checker failure, never a cell
+|Unaligned and unmapped JTAG2AXI addresses |Outside the bridge TDR and testbench address-map contract
+|Internal cross-trigger lanes in point-to-point mode |The bench elaborates `XTRIG_INT_CT_MODE` = 0, so every internal CT runs pulse mode
+|Static parameter toggles |Compile-time constants; not meaningful runtime coverage
+|`prim_cdc_rand_delay` under every synchronizer primitive (`prim_flop_2sync`, `prim_sync3r` and their siblings) |Simulation-only CDC jitter model with no counterpart in a synthesized DTP; the VCS scope file removes the module from code coverage
+|`dtp_j2a_state_flags` bound into every JTAG2AXI bridge |Bench observation module with no counterpart in a synthesized DTP; the VCS scope file removes the module from code coverage, and the bridge's condition coverage keeps the expressions the bind connects to its ports
+|DFT inputs `test_en_i` and `scan_rst_ni` |The bench holds them at their functional values, the environment the unreachability exclusion list is proven in, so the list excludes their toggles
+|Protocol-specific behavior without shared VIP support |Covered by OCAH-local DTP BFMs
+|===

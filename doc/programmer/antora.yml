@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+name: ocah-programmer-guide
+title: Programmer's Guide
+version: latest
+start_page: index.adoc
+nav:
+- modules/ROOT/nav.adoc
+asciidoc:
+  attributes:
+    source-highlighter: highlight.js
+    sectanchors: ''
+    sectlinks: ''
+    sectnums: ''
+    idprefix: ''
+    idseparator: '-'
+    safe-mode: unsafe
+    allow-uri-read: ''
+    basedir: doc/programmer
+    verbose: ''

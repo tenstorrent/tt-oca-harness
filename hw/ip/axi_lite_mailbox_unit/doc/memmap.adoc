@@ -1,0 +1,89 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[memory-map]]
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="address-space-organization"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+ifdef::backend-html5[]
+++++
+<span id="address-space"></span>
+++++
+endif::backend-html5[]
+
+With the default `MAILBOX_SIZE=0x800`, each directional aperture occupies
+2 KiB and each pair occupies 4 KiB. The SMC 32-pair map spans `0x20000`
+bytes, and the SEP 8-pair map spans `0x8000` bytes; the generic unit's span is `2 * MAILBOX_SIZE * NUM_MAILBOXES`.
+The SMC and SEP wrapper layouts are generated from
+their SystemRDL compositions:
+
+ifdef::backend-html5[]
+include::partial$axi_lite_mailbox_unit/regs/gen/adoc/memory_map.adoc[]
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/memory_map.adoc[]
+endif::backend-pdf[]
+
+==== Per-Mailbox Register Map
+
+Each aperture contains ten registers.
+Offsets are spaced by `DATA_WIDTH`/8, so they are 8 bytes apart in the
+64-bit configurations used today. The generated detailed register map below is
+authoritative for offsets, widths, access, and field descriptions. The `CTRL`
+flush bits are pulses rather than stored state, so reads return zero with an
+OKAY response.
+
+ifdef::backend-html5[]
+The xref:smc:memmap.adoc#smc-memory-map[SMC] and
+xref:sep:memory_map.adoc#sep-memory-map[SEP] memory maps state how an offset
+above the registers answers.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+The <<smc-memory-map,SMC>> and <<sep-memory-map,SEP>> memory maps state how an
+offset above the registers answers.
+endif::backend-pdf[]
+
+==== Address Examples
+
+For mailbox pair `N`, the outbound aperture begins at
+`BASE + N * 0x1000`; the inbound aperture begins 0x800 bytes later. A
+register address is the aperture base plus the generated register offset. For
+example, in pair zero, `READ_DATA` is at `BASE + 0x8` outbound and
+`BASE + 0x808` inbound.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::partial$axi_lite_mailbox_unit/regs/gen/html/axil_mailbox.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/axil_mailbox.adoc[leveloffset=+2]
+endif::backend-pdf[]
+
+==== Subsystem Wrapper Maps
+
+The wrapper maps describe the generated SMC and SEP mailbox compositions.
+Their offsets are relative to the corresponding wrapper aperture.
+
+ifdef::backend-html5[]
+++++
+include::partial$axi_lite_mailbox_unit/regs/gen/html/axil_mailbox_smc_wrap.html[]
+include::partial$axi_lite_mailbox_unit/regs/gen/html/axil_mailbox_sep_wrap.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/axil_mailbox_smc_wrap.adoc[leveloffset=+3]
+include::../regs/gen/adoc/axil_mailbox_sep_wrap.adoc[leveloffset=+3]
+endif::backend-pdf[]

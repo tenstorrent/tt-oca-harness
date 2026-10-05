@@ -1,0 +1,294 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-cpu_ctrl]
+== CPU Control Address Map
+
+Per-core reset control and status, reset timing, chip configuration, mailbox, and boot-ROM stub registers for the SMC CPU cluster.
+
+[NOTE]
+======
+*Register Arrays:*
+
+* *RESET_VECTOR[4]*: 4 registers, base 0x0, stride 0x8
+* *SCRATCH[16]*: 16 registers, base 0x80, stride 0x8
+* *WB_PC_CORE0[8]*: 8 registers, base 0x100, stride 0x8
+* *WB_PC_CORE1[8]*: 8 registers, base 0x140, stride 0x8
+* *WB_PC_CORE2[8]*: 8 registers, base 0x180, stride 0x8
+* *WB_PC_CORE3[8]*: 8 registers, base 0x1C0, stride 0x8
+* *MUTEX[4]*: 4 registers, base 0x240, stride 0x8
+* *SEMA[4]*: 4 registers, base 0x260, stride 0x8
+* *DUMMY_ROM_NULL[4]*: 4 registers, base 0x2A0, stride 0x8
+======
+
+[cols="1,4,1,6", options="header"]
+|===
+| Address | Name | Access | Description
+| 0x0 - 0x18 | <<reg-{regmap-instance}-cpu_ctrl-RESET_VECTOR-,RESET_VECTOR[4]>> | RW a| -
+| 0x20 | <<reg-{regmap-instance}-cpu_ctrl-RESET_CTRL,RESET_CTRL>> | RW a| -
+| 0x28 | <<reg-{regmap-instance}-cpu_ctrl-CORE_RESET_PULSE_COUNT,CORE_RESET_PULSE_COUNT>> | RW a| -
+| 0x30 | <<reg-{regmap-instance}-cpu_ctrl-RESET_TIMEOUT,RESET_TIMEOUT>> | RW a| -
+| 0x40 | <<reg-{regmap-instance}-cpu_ctrl-REFERENCE_COUNTER,REFERENCE_COUNTER>> | RW a| -
+| 0x50 | <<reg-{regmap-instance}-cpu_ctrl-WDT_TIMEOUT,WDT_TIMEOUT>> | RW a| -
+| 0x58 | <<reg-{regmap-instance}-cpu_ctrl-WDT_TIMEOUT_RESET,WDT_TIMEOUT_RESET>> | RW a| -
+| 0x60 | <<reg-{regmap-instance}-cpu_ctrl-TEST_CTRL,TEST_CTRL>> | R a| -
+| 0x80 - 0xF8 | <<reg-{regmap-instance}-cpu_ctrl-SCRATCH-,SCRATCH[16]>> | RW a| -
+| 0x100 - 0x138 | <<reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE0-,WB_PC_CORE0[8]>> | R a| -
+| 0x140 - 0x178 | <<reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE1-,WB_PC_CORE1[8]>> | R a| -
+| 0x180 - 0x1B8 | <<reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE2-,WB_PC_CORE2[8]>> | R a| -
+| 0x1C0 - 0x1F8 | <<reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE3-,WB_PC_CORE3[8]>> | R a| -
+| 0x200 | <<reg-{regmap-instance}-cpu_ctrl-SMC_ATTRIBUTES,SMC_ATTRIBUTES>> | R a| -
+| 0x240 - 0x258 | <<reg-{regmap-instance}-cpu_ctrl-MUTEX-,MUTEX[4]>> | RW a| -
+| 0x260 - 0x278 | <<reg-{regmap-instance}-cpu_ctrl-SEMA-,SEMA[4]>> | RW a| -
+| 0x280 | <<reg-{regmap-instance}-cpu_ctrl-DUMMY_ROM_0,DUMMY_ROM_0>> | RW a| -
+| 0x288 | <<reg-{regmap-instance}-cpu_ctrl-DUMMY_ROM_1,DUMMY_ROM_1>> | RW a| -
+| 0x290 | <<reg-{regmap-instance}-cpu_ctrl-DUMMY_ROM_2,DUMMY_ROM_2>> | RW a| -
+| 0x298 | <<reg-{regmap-instance}-cpu_ctrl-DUMMY_ROM_3,DUMMY_ROM_3>> | RW a| -
+| 0x2A0 - 0x2B8 | <<reg-{regmap-instance}-cpu_ctrl-DUMMY_ROM_NULL-,DUMMY_ROM_NULL[4]>> | RW a| -
+|===
+
+[#reg-{regmap-instance}-cpu_ctrl-RESET_VECTOR-]
+=== RESET_VECTOR[4]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:56 | `Reserved` | - | - a| Reserved
+| 55:0 | `vector` | RW | 0xC0040000 a| -
+|===
+
+[#reg-{regmap-instance}-cpu_ctrl-RESET_CTRL]
+=== RESET_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:25 | `Reserved` | - | - a| Reserved
+| 24 | `debug_reset_n_n0_scan` | RW | 0x0 a| Debug Module Reset, active low
+| 23:9 | `Reserved` | - | - a| Reserved
+| 8 | `uncore_reset_n_n0_scan` | RW | 0x1 a| Cluster Uncore Reset, active low. Writing this register will only reset the uncore portion in the chipyard cluster.
+WARNING: using this can cause any outstanding axi requests to and from the cluster to cause timeouts/exceptions.
+| 7 | `core3_reset_pulse_start_n0_scan` | RW | 0x0 a| Writing a 1 to this register triggers a core reset pulse on core 3, timed by CORE_RESET_PULSE_COUNT.
+A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.
+| 6 | `core2_reset_pulse_start_n0_scan` | RW | 0x0 a| Writing a 1 to this register triggers a core reset pulse on core 2, timed by CORE_RESET_PULSE_COUNT.
+A 0 in core2_reset_n_n0_scan holds the core in reset for the whole pulse.
+| 5 | `core1_reset_pulse_start_n0_scan` | RW | 0x0 a| Writing a 1 to this register triggers a core reset pulse on core 1, timed by CORE_RESET_PULSE_COUNT.
+A 0 in core1_reset_n_n0_scan holds the core in reset for the whole pulse.
+| 4 | `core0_reset_pulse_start_n0_scan` | RW | 0x0 a| Writing a 1 to this register triggers a core reset pulse on core 0, timed by CORE_RESET_PULSE_COUNT.
+A 0 in core0_reset_n_n0_scan holds the core in reset for the whole pulse.
+| 3 | `core3_reset_n_n0_scan` | RW | 0x1 a| Reset control for the CPU, active low.
+| 2 | `core2_reset_n_n0_scan` | RW | 0x1 a| Reset control for the CPU, active low.
+| 1 | `core1_reset_n_n0_scan` | RW | 0x1 a| Reset control for the CPU, active low.
+| 0 | `core0_reset_n_n0_scan` | RW | 0x1 a| Reset control for the CPU, active low.
+|===
+
+[#reg-{regmap-instance}-cpu_ctrl-CORE_RESET_PULSE_COUNT]
+=== CORE_RESET_PULSE_COUNT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:36 | `Reserved` | - | - a| Reserved
+| 35:32 | `core_resets_done` | R | 0xF a| Logic low while performing core reset, logic high otherwise.
+| 31:16 | `post_reset_count` | RW | 0x10 a| Cycles (clk_smc), minus one, that a core reset pulse holds the core in reset.
+| 15:0 | `pre_reset_count` | RW | 0x8 a| Cycles (clk_smc), minus one, from the start of a core reset pulse to reset assertion.
+|===
+
+[#reg-{regmap-instance}-cpu_ctrl-RESET_TIMEOUT]
+=== RESET_TIMEOUT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:37 | `Reserved` | - | - a| Reserved
+| 36 | `reset_timeout` | R | 0x0 a| Status for the active software reset request: high after the request exceeds
+timeout_value and remains high until the request is deasserted. Set in both modes.
+| 35:33 | `Reserved` | - | - a| Reserved
+| 32 | `reset_applied` | R | 0x0 a| Live status: high while a requested software reset is applied at the cluster,
+either after drain completes or after a force-mode timeout.
+| 31:17 | `Reserved` | - | - a| Reserved
+| 16 | `timeout_mode` | RW | 0x0 a| Timeout mode: 0 = give up and report error (stay withheld, do not apply);
+1 = force the reset on timeout.
+| 15:0 | `timeout_value` | RW | 0x0 a| Cycles (clk_smc) a software reset may stay pending (withheld, waiting
+for drain) before timeout. 0 = disabled, wait indefinitely.
+|===
+
+[#reg-{regmap-instance}-cpu_ctrl-REFERENCE_COUNTER]
+=== REFERENCE_COUNTER
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `rc` | RW | 0x0 a| Reference counter for the CPU. Write once, then poll this register until
+the readback reflects the written value before writing again. The counter
+keeps advancing, so the readback is at or just above the written value
+rather than equal to it.
+|===
+
+[#reg-{regmap-instance}-cpu_ctrl-WDT_TIMEOUT]
+=== WDT_TIMEOUT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | 0x4000 a| Cycle count value that 2nd stage watchdog timer timeout should occur at. Defaults to 16384 cycles
+|===
+
+[#reg-{regmap-instance}-cpu_ctrl-WDT_TIMEOUT_RESET]
+=== WDT_TIMEOUT_RESET
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:4 | `Reserved` | - | - a| Reserved
+| 3 | `reset_cycle_count_3` | RW 1P | 0x0 a| Reset current cycle count value in 2nd stage watchdog timer
+| 2 | `reset_cycle_count_2` | RW 1P | 0x0 a| Reset current cycle count value in 2nd stage watchdog timer
+| 1 | `reset_cycle_count_1` | RW 1P | 0x0 a| Reset current cycle count value in 2nd stage watchdog timer
+| 0 | `reset_cycle_count_0` | RW 1P | 0x0 a| Reset current cycle count value in 2nd stage watchdog timer
+|===
+
+[#reg-{regmap-instance}-cpu_ctrl-TEST_CTRL]
+=== TEST_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:32 | `Reserved` | - | - a| Reserved
+| 31:0 | `data` | R | 0x0 a| Test control register for the CPU
+|===
+
+[#reg-{regmap-instance}-cpu_ctrl-SCRATCH-]
+=== SCRATCH[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:32 | `Reserved` | - | - a| Reserved
+| 31:0 | `data` | RW | 0x0 a| Scratch register for the CPU
+|===
+
+[#reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE0-]
+=== WB_PC_CORE0[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:58 | `Reserved` | - | - a| Reserved
+| 57:0 | `pc` | R | 0x0 a| Writeback PC value
+|===
+
+[#reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE1-]
+=== WB_PC_CORE1[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:58 | `Reserved` | - | - a| Reserved
+| 57:0 | `pc` | R | 0x0 a| Writeback PC value
+|===
+
+[#reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE2-]
+=== WB_PC_CORE2[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:58 | `Reserved` | - | - a| Reserved
+| 57:0 | `pc` | R | 0x0 a| Writeback PC value
+|===
+
+[#reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE3-]
+=== WB_PC_CORE3[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:58 | `Reserved` | - | - a| Reserved
+| 57:0 | `pc` | R | 0x0 a| Writeback PC value
+|===
+
+[#reg-{regmap-instance}-cpu_ctrl-SMC_ATTRIBUTES]
+=== SMC_ATTRIBUTES
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:46 | `Reserved` | - | - a| Reserved
+| 45:40 | `num_mailboxes` | R | - a| -
+| 39:36 | `mailbox_depth` | R | - a| -
+| 35:33 | `num_cores` | R | - a| -
+| 32 | `no_output_remap` | R | - a| -
+| 31:26 | `sram_size` | R | - a| Total SRAM size is 2 ^ value bytes
+| 25:17 | `num_cpu_interrupts` | R | - a| -
+| 16:8 | `num_ext_interrupts` | R | - a| -
+| 7:1 | `Reserved` | - | - a| Reserved
+| 0 | `chiplet_is_primary` | R | - a| Indicates if this chiplet is primary (1) or secondary (0). Driven by strap.
+|===
+
+[#reg-{regmap-instance}-cpu_ctrl-MUTEX-]
+=== MUTEX[4]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:1 | `Reserved` | - | - a| Reserved
+| 0 | `mutex` | RW | 0x1 a| HW mutex. Reads will attempt to acquire mutex, 1 on success. If the mutex is already acquired, the read will return 0. To release the mutex, write any value to the register.
+|===
+
+[#reg-{regmap-instance}-cpu_ctrl-SEMA-]
+=== SEMA[4]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:16 | `Reserved` | - | - a| Reserved
+| 15:0 | `sema` | RW | 0x0 a| 16-bit semaphore value to inc/dec. Writing to this register will inc/dec the semaphore value.
+The written value is treated as a signed number using 2s compliment.
+|===
+
+[#reg-{regmap-instance}-cpu_ctrl-DUMMY_ROM_0]
+=== DUMMY_ROM_0
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `dummy_rom_word_0` | RW | 0x145051300000517 a| Word 0 of WFI loop
+|===
+
+[#reg-{regmap-instance}-cpu_ctrl-DUMMY_ROM_1]
+=== DUMMY_ROM_1
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `dummy_rom_word_1` | RW | 0xFFF0069330551073 a| Word 1 of WFI loop
+|===
+
+[#reg-{regmap-instance}-cpu_ctrl-DUMMY_ROM_2]
+=== DUMMY_ROM_2
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `dummy_rom_word_2` | RW | 0x105000733046B073 a| Word 2 of WFI loop
+|===
+
+[#reg-{regmap-instance}-cpu_ctrl-DUMMY_ROM_3]
+=== DUMMY_ROM_3
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `dummy_rom_word_3` | RW | 0xFFDFF06F a| Word 3 of WFI loop
+|===
+
+[#reg-{regmap-instance}-cpu_ctrl-DUMMY_ROM_NULL-]
+=== DUMMY_ROM_NULL[4]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `dummy_rom_null` | RW | 0x0 a| Cache line size is 64 bytes so want to ensure no random data is read when reading dummy rom
+|===

@@ -1,0 +1,149 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# Verilator coverage policy of the shared JTAG VIP selftest harness
+# (`--dut ocah_jtag_vip --cov`); the cov_report stage applies it to the merged
+# run and `--waive` re-grades a finished run against it.
+#
+# Scope: the compile-time scope file ocah_jtag_vip_cov_scope.vlt keeps the
+# harness body and the vendored packages out of the database, so the measured
+# points are the VIP's SystemVerilog collateral (sva/ocah_jtag_sva.sv). The
+# Python components carry no simulator metric; their record is the CHK-*
+# evidence of the selftests and of the simulator-free slave selftest.
+#
+# Two mechanisms, do not confuse them:
+#
+#   ocah_jtag_vip_cov_scope.vlt  `coverage_off` -> the point never enters the
+#                                database: code this harness does not grade.
+#   [[holes]] here               the point exists and is not hit, carried with
+#                                a category, a rationale, an owner and a
+#                                reviewer.
+#
+# The branch family measures the one-hot next-state function: every legal
+# transition is a branch point, and the selftests drive each of them (Pause-x,
+# Exit2-x, and capture-only scans included). The line family counts the
+# function's case arms at zero while their branches count, so the line arms
+# are carried as one tool-artifact waiver.
+#
+# The file sets no [[thresholds]]: the runner reports the raw and effective
+# figure of each metric family, and the figures do not set a run's status.
+#
+# An accepted selector that matches a covered point fails the run: a waiver
+# that stimulus has overtaken has to be removed. Line selectors follow the source
+# file; a moved line fails the run (`expected_matches`) until the entry is
+# updated.
+
+schema_version = 1
+dut = "ocah_jtag_vip"
+scope_epoch = "ocah-jtag-vip-collateral-v1"
+
+# The sixteen case arms of jtag_next_onehot, one per TAP state.
+[[holes]]
+id = "sva-next-state-case-arms"
+title = "jtag_next_onehot case arms (line metric)"
+category = "tool_artifact"
+disposition = "waive"
+status = "accepted"
+confidence = "high"
+rationale = "Verilator's line metric does not count the case arms of a function evaluated inside an assertion; the branch metric of the same lines counts every arm in both TMS directions, and the selftests drive every legal transition."
+owner = "ocah-dv"
+reviewer = "ocah-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/476"]
+expected_matches = 16
+[[holes.native]]
+tool = "verilator"
+metric_family = "line"
+source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
+line = 80
+[[holes.native]]
+tool = "verilator"
+metric_family = "line"
+source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
+line = 81
+[[holes.native]]
+tool = "verilator"
+metric_family = "line"
+source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
+line = 82
+[[holes.native]]
+tool = "verilator"
+metric_family = "line"
+source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
+line = 83
+[[holes.native]]
+tool = "verilator"
+metric_family = "line"
+source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
+line = 84
+[[holes.native]]
+tool = "verilator"
+metric_family = "line"
+source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
+line = 85
+[[holes.native]]
+tool = "verilator"
+metric_family = "line"
+source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
+line = 86
+[[holes.native]]
+tool = "verilator"
+metric_family = "line"
+source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
+line = 87
+[[holes.native]]
+tool = "verilator"
+metric_family = "line"
+source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
+line = 88
+[[holes.native]]
+tool = "verilator"
+metric_family = "line"
+source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
+line = 89
+[[holes.native]]
+tool = "verilator"
+metric_family = "line"
+source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
+line = 90
+[[holes.native]]
+tool = "verilator"
+metric_family = "line"
+source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
+line = 91
+[[holes.native]]
+tool = "verilator"
+metric_family = "line"
+source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
+line = 92
+[[holes.native]]
+tool = "verilator"
+metric_family = "line"
+source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
+line = 93
+[[holes.native]]
+tool = "verilator"
+metric_family = "line"
+source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
+line = 94
+[[holes.native]]
+tool = "verilator"
+metric_family = "line"
+source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
+line = 95
+
+[[holes]]
+id = "sva-next-state-illegal-input"
+title = "jtag_next_onehot default arm"
+category = "unreachable"
+disposition = "waive"
+status = "accepted"
+confidence = "high"
+rationale = "The default arm answers a state input that is not one-hot; OCAH_JTAG_STATE_ONEHOT rejects such an input on the same cycle, so a passing run cannot reach it."
+owner = "ocah-dv"
+reviewer = "ocah-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/476"]
+[[holes.native]]
+tool = "verilator"
+metric_family = "line"
+source = "*/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv"
+line = 96

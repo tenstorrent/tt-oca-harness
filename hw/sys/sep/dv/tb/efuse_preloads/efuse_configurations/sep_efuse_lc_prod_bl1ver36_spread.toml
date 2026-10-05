@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# PROD lifecycle with BL1_VERSION security-version flags spread across the four words
+# the ROM reads.
+#
+# plat_get_security_version() (oca_platform.c) reads the low 16 bytes of the 32-byte
+# BL1_VERSION bank as a 128-bit flag set; a manifest is refused when it omits a device
+# flag. Words 0-3 carry distinct non-empty flags, so a truncated, repeated or mis-indexed
+# read changes the verdict. Words 4-7 are not read. Used by sep_firmware_bl1_ver_test.
+# Otherwise identical to sep_efuse_lc_prod.toml.
+
+[LC_STATE]
+  [LC_STATE.fields.lc_state]
+  value = 0xE1   # PROD (raw=0x1)
+
+[BL1_VERSION]
+  [BL1_VERSION.fields.version]
+  # word i = (1 << (i+1)) - 1, i.e. popcounts 1,2,3,4,5,6,7,8 -> total 36.
+  value = 0x000000ff0000007f0000003f0000001f0000000f000000070000000300000001

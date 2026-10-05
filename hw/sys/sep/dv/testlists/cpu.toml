@@ -1,0 +1,138 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Production Boot ROM firmware tests live in rom_fw.toml and run in the `rom_fw`
+# group only (see all.toml).
+
+[[tests]]
+name = "sep_hello_world_test"
+module = "cpu.sep_hello_world_test"
+firmware = "hello_world"
+seed = 1
+timeout_sec = 3600
+tags = ["smoke", "boot", "cpu"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Cross-checks the trace monitor's trap record, shadow call stack and nm
+# symbolization against the mcause/mepc the firmware prints.
+name = "sep_cpu_trace_diag_test"
+module = "cpu.sep_cpu_trace_diag_test"
+firmware = "cpu_trace_diag_test"
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "cpu", "trace", "debug"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+name = "sep_dma_hash_test"
+module = "cpu.sep_dma_hash_test"
+firmware = "dma_hash_test"
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "cpu", "dma", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Inbound mailbox channel ch -> PIC source ch+1 -> CPU ISR; an outbound push raises no PIC
+# source and asserts smc_mailbox_interrupt_o.
+name = "sep_mailbox_plic_test"
+module = "cpu.sep_mailbox_plic_test"
+firmware = "mailbox_plic_test"
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "cpu", "mailbox", "interrupt", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# WDT bark -> NMI -> registered handler, with SEP_NMI_VEC default, writeback and sticky
+# lock.
+name = "sep_nmi_sanity_test"
+module = "cpu.sep_nmi_sanity_test"
+firmware = "nmi_sanity_test"
+seed = 1
+timeout_sec = 3600
+tags = ["nmi", "wdt", "interrupt", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# PIC source-id map and ISR delivery for the three required sources plus all eight
+# extras on every seed; the seed sets only the order of the extras.
+# timeout_sec: the bounded STORM_CHECK_ITERS loop (pic_irq_source_map_test.c) dominates the
+# VCS coverage-build run time. A stuck ISR fails by name (wait_isr() bounds at ISR_WAIT_ITERS).
+name = "sep_pic_irq_source_map_delivery_test"
+module = "cpu.sep_pic_irq_source_map_delivery_test"
+firmware = "pic_irq_source_map_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["boot", "cpu", "interrupt", "pic", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Secure-DMA control and copy breadth over the CPU LSU.
+name = "sep_dma_basic_test"
+module = "cpu.sep_dma_basic_test"
+firmware = "dma_basic_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["boot", "cpu", "dma", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Reset observables at rest and CPU-observable liveness under a real warm reset.
+# dbg_rstb_i isolation is NOT proven: in this build the pin has no netlist path to
+# either observable.
+name = "sep_cpu_dbg_reset_independence_test"
+module = "cpu.sep_cpu_dbg_reset_independence_test"
+seed = 1
+timeout_sec = 1800
+tags = ["reset", "debug", "cpu", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# A warm reset clears the WARM scratch bank and keeps the COLD bank; a cold reset
+# clears both.
+name = "sep_warm_cold_reset_scratch_test"
+module = "cpu.sep_warm_cold_reset_scratch_test"
+seed = 1
+timeout_sec = 1800
+tags = ["reset", "scratch", "cpu", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# CPU-side IFU and LSU alias remap of 0xD000_xxxx to physical SRAM 0x1000_xxxx. MUST be
+# cpu mode: the no_cpu AXI splice is post-remap and bypasses the remap.
+name = "sep_cpu_ifu_lsu_alias_remap_matrix_test"
+module = "cpu.sep_cpu_ifu_lsu_alias_remap_matrix_test"
+firmware = "cpu_alias_remap_test"
+seed = 1
+timeout_sec = 3600
+tags = ["fabric", "alias", "remap", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# PIC claim id 40, the SEC_DISABLE sticky bit and the meie[40] mask for an injected
+# token-comparator collapse. Real fuse sense: the SEC_DISABLE compare is not fuse-gated.
+name = "sep_efuse_token_match_fault_pic_test"
+module = "efuse.sep_efuse_token_match_fault_pic_test"
+firmware = "token_match_fault_pic_test"
+seed = 1
+timeout_sec = 1800
+tags = ["boot", "cpu", "interrupt", "pic", "efuse", "subsystem"]
+run_modes = ["cpu"]

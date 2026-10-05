@@ -1,0 +1,56 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[revision-history]]
+= Revision History
+
+== Document history
+
+This document tracks major revisions and updates to the OCAH Integrator Guide.
+
+.Revision History
+[width="100%",cols="15%,15%,15%,55%",options="header",]
+|=======================================================================
+|Version |Date |Author |Description
+|0.0.1 |2026-06-17 |Alessandro Ottaviano |Initial integrator guide draft
+|0.0.2 |2026-08-13 |Alessandro Ottaviano |Completed the documentation
+migration: added primitive-cell replacement and CDC constraint guidance,
+corrected DTP/JTAG integration, and aligned SMC/SEP paths, GPIO and DFX status
+descriptions, and cross-guide references with the current tree.
+|0.0.3 |2026-08-21 |Ben Melton |Added a Project Defines section covering
+compile-time defines that apply across OCAH, starting with `SIMULATION`: how to
+set it, the testbench hooks and models it enables, and the flows it must not
+reach.
+|0.0.4 |2026-08-31 |Ben Melton |Documented the SMU IC_RESET TDR slice layout
+(SMC, SEP, external) and marked the external slice as adopter-defined.
+|0.0.5 |2026-09-02 |Alessandro Ottaviano |Consolidated immutable ROM FW
+integration guidance, including the generic weak-symbol override method and
+SMC, SEP, and Key Manager ROM FW integration sections.
+|0.0.6 |2026-09-10 |Ben Melton |Documented the external TRNG aperture as a
+full-window AXI-Lite passthrough whose intra-aperture decode (SLVERR on
+unmapped offsets, no aliasing onto live registers) is an adopter constraint.
+|0.0.7 |2026-09-11 |Alessandro Ottaviano |Noted that `smc_ext_interrupts_i` is
+an active-high level or a pulse long enough to be sampled on `clk_smc`.
+|0.0.8 |2026-09-18 |Ben Melton |Documented the OCAH view, tool, and native-DV
+defines, the vendor-alias map in `ocah_vendor_defines.svh`, and that adopters
+set OCAH names only.
+|0.0.9 |2026-09-21 |Ben Melton |Documented that synthesis defines ride the
+Bender `synth` filelist as `+define+` lines, with Design Compiler / Fusion
+Compiler and Genus commands that consume them.
+|0.0.10 |2026-09-21 |Alessandro Ottaviano |Documented the generated synthesis,
+Verilator, and VCS filelists published under `integration/filelists/`.
+|0.0.11 |2026-09-26 |Ben Melton |Documented the `EMULATION` view: the debug
+hooks it keeps, the constructs it drops, its precedence over `SYNTHESIS`, and
+the `OCAH_DEBUG_LIVE` and `ASSERTS_OVERRIDE_ON` names it derives.
+|0.0.12 |2026-09-26 |Ben Melton |Documented the SMC and DTP defines: SMC
+simulation hooks, CPU cluster initialization macros and i3c-core
+configuration, the shared-cell defines to leave unset, and the
+`+cdc_instrumentation_enabled` plusarg.
+|0.0.13 |2026-09-28 |Ben Melton |Documented the SEP defines: the Adams Bridge
+block-selection defines, the VeeR EL2 snapshot configuration, SEP view checks,
+and the SEP DV testbench names.
+|0.0.14 |2026-09-29 |Ben Melton |Documented `OCAH_KM_VROM`, the
+simulation-only define that decodes the key manager virtual ROM window, the
+DECERR and execute-violation responses without it, and the elaboration error
+when `SYNTHESIS` or `EMULATION` is also set.
+|=======================================================================

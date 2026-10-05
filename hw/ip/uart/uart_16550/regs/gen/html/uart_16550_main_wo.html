@@ -1,0 +1,35 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-uart_16550_main_wo">UART 16550 Main Write-Only Address Map</h2>
+<p>Contains the write-only registers. THR is accessible only when `LCR.DLAB = 0`;<br>FCR is writable for either `LCR.DLAB` value.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#THR">THR</a></td><td>W</td><td>Transmitter Holding Register</td></tr>
+<tr><td>0x8</td><td><a href="#FCR">FCR</a></td><td>W</td><td>FIFO Control Register</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="THR">THR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>DATA</td><td>W WMOD</td><td>0x0</td><td>Transmit Data. Holds a character to be transmitted. If FIFOs are enabled, this<br>field points to the top of the TX FIFO. Otherwise, this field points to a<br>single-byte Transmitter Holding Register.</td></tr>
+</table>
+<h3 id="FCR">FCR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:6</td><td>RCVR_TRIGGER</td><td>W</td><td>0x0</td><td>Receiver FIFO Trigger Level (Least Significant 2 Bits). To configure the most<br>significant 2 bits, use the `ECR.RCVR_TRIGGER_MS2B` register field. The<br>configurations for the trigger levels are:<br>* `0x0` -    1 character<br>* `0x1` -    4 characters<br>* `0x2` -    8 characters<br>* `0x3` -   14 characters<br>* `0x4` -   32 characters<br>* `0x5` -   64 characters<br>* `0x6` -  128 characters<br>* `0x7` -  256 characters<br>* `0x8` -  512 characters<br>* `0x9` - 1024 characters<br>* `0xA` - 2048 characters<br>* `0xB` - 4096 characters</td></tr>
+<tr><td>5:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>DMA_MODE_SELECT</td><td>W</td><td>0x0</td><td>DMA mode select:<br>* `0` - DMA Mode 0<br>* `1` - DMA Mode 1</td></tr>
+<tr><td>2</td><td>XMIT_FIFO_RESET</td><td>W 1P</td><td>0x0</td><td>Transmitter FIFO Reset. Writing `1` clears the TX FIFO.</td></tr>
+<tr><td>1</td><td>RCVR_FIFO_RESET</td><td>W 1P</td><td>0x0</td><td>Receiver FIFO Reset. Writing `1` clears the RX FIFO.</td></tr>
+<tr><td>0</td><td>FIFO_ENABLE</td><td>W</td><td>0x0</td><td>FIFO Enable. When set, enables the TX and RX FIFOs (FIFO Mode). When unset,<br>disables the FIFOs (Non-FIFO Mode).</td></tr>
+</table>
+</div>

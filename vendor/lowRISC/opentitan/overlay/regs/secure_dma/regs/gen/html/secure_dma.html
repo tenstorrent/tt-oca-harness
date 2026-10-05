@@ -1,0 +1,235 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-secure_dma">DMA Controller</h2>
+<p>DMA Controller for the integrated OpenTitan.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>SHA2_DIGEST_0[16]</strong>: 16 registers, base 0x58, stride 0x4</li>
+<li><strong>INTR_SRC_ADDR_0[11]</strong>: 11 registers, base 0xA4, stride 0x4</li>
+<li><strong>INTR_SRC_WR_VAL_0[11]</strong>: 11 registers, base 0x124, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#INTR_TEST">INTR_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#SRC_ADDR_LO">SRC_ADDR_LO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x14</td><td><a href="#SRC_ADDR_HI">SRC_ADDR_HI</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#DST_ADDR_LO">DST_ADDR_LO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1C</td><td><a href="#DST_ADDR_HI">DST_ADDR_HI</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#ADDR_SPACE_ID">ADDR_SPACE_ID</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x24</td><td><a href="#ENABLED_MEMORY_RANGE_BASE">ENABLED_MEMORY_RANGE_BASE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x28</td><td><a href="#ENABLED_MEMORY_RANGE_LIMIT">ENABLED_MEMORY_RANGE_LIMIT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2C</td><td><a href="#RANGE_VALID">RANGE_VALID</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x30</td><td><a href="#RANGE_REGWEN">RANGE_REGWEN</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x34</td><td><a href="#CFG_REGWEN">CFG_REGWEN</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x38</td><td><a href="#TOTAL_DATA_SIZE">TOTAL_DATA_SIZE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x3C</td><td><a href="#CHUNK_DATA_SIZE">CHUNK_DATA_SIZE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x40</td><td><a href="#TRANSFER_WIDTH">TRANSFER_WIDTH</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x44</td><td><a href="#CONTROL">CONTROL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x48</td><td><a href="#SRC_CONFIG">SRC_CONFIG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4C</td><td><a href="#DST_CONFIG">DST_CONFIG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x50</td><td><a href="#STATUS">STATUS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x54</td><td><a href="#ERROR_CODE">ERROR_CODE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x58 - 0x94</td><td><a href="#SHA2_DIGEST_0_16_">SHA2_DIGEST_0[16]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x98</td><td><a href="#HANDSHAKE_INTR_ENABLE">HANDSHAKE_INTR_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x9C</td><td><a href="#CLEAR_INTR_SRC">CLEAR_INTR_SRC</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xA0</td><td><a href="#CLEAR_INTR_BUS">CLEAR_INTR_BUS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xA4 - 0xCC</td><td><a href="#INTR_SRC_ADDR_0_11_">INTR_SRC_ADDR_0[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x124 - 0x14C</td><td><a href="#INTR_SRC_WR_VAL_0_11_">INTR_SRC_WR_VAL_0[11]</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="INTR_STATE">INTR_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>DMA_ERROR</td><td>R</td><td>0x0</td><td>DMA error has occurred. DMA_STATUS.error_code register shows the details.</td></tr>
+<tr><td>1</td><td>DMA_CHUNK_DONE</td><td>R</td><td>0x0</td><td>Indicates the transfer of a single chunk has been completed.</td></tr>
+<tr><td>0</td><td>DMA_DONE</td><td>R</td><td>0x0</td><td>DMA operation has been completed.</td></tr>
+</table>
+<h3 id="INTR_ENABLE">INTR_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>DMA_ERROR</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.dma_error is set.</td></tr>
+<tr><td>1</td><td>DMA_CHUNK_DONE</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.dma_chunk_done is set.</td></tr>
+<tr><td>0</td><td>DMA_DONE</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.dma_done is set.</td></tr>
+</table>
+<h3 id="INTR_TEST">INTR_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>DMA_ERROR</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.dma_error to 1.</td></tr>
+<tr><td>1</td><td>DMA_CHUNK_DONE</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.dma_chunk_done to 1.</td></tr>
+<tr><td>0</td><td>DMA_DONE</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.dma_done to 1.</td></tr>
+</table>
+<h3 id="ALERT_TEST">ALERT_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>FATAL_FAULT</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+</table>
+<h3 id="SRC_ADDR_LO">SRC_ADDR_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>SRC_ADDR_LO</td><td>RW</td><td>0x0</td><td>Lower 32 bits of the source address.<br>Must be aligned to the transfer width.</td></tr>
+</table>
+<h3 id="SRC_ADDR_HI">SRC_ADDR_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>SRC_ADDR_HI</td><td>RW</td><td>0x0</td><td>Upper 32 bits of the physical or virtual address of memory location within SoC memory address map or physical address within OT non-secure memory space.<br>Must be aligned to the transfer width.<br>Source and destination address must have the same alignment.</td></tr>
+</table>
+<h3 id="DST_ADDR_LO">DST_ADDR_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DST_ADDR_LO</td><td>RW</td><td>0x0</td><td>Lower 32 bits of the destination address.<br>Must be aligned to the transfer width.<br>Source and destination address must have the same alignment.</td></tr>
+</table>
+<h3 id="DST_ADDR_HI">DST_ADDR_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DST_ADDR_HI</td><td>RW</td><td>0x0</td><td>Upper 32 bits of the physical or virtual address of memory location within SoC memory address map or physical address within OT non-secure memory space.<br>Must be aligned to the transfer width.<br>Source and destination address must have the same alignment.</td></tr>
+</table>
+<h3 id="ADDR_SPACE_ID">ADDR_SPACE_ID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:4</td><td>DST_ASID</td><td>RW</td><td>0x7</td><td>Target address space that the destination address pointer refers to.</td></tr>
+<tr><td>3:0</td><td>SRC_ASID</td><td>RW</td><td>0x7</td><td>Target address space that the source address pointer refers to.</td></tr>
+</table>
+<h3 id="ENABLED_MEMORY_RANGE_BASE">ENABLED_MEMORY_RANGE_BASE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>BASE</td><td>RW</td><td>0x0</td><td>Base Address to mark the start of the DMA enabled memory range within the OT internal memory space.</td></tr>
+</table>
+<h3 id="ENABLED_MEMORY_RANGE_LIMIT">ENABLED_MEMORY_RANGE_LIMIT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>LIMIT</td><td>RW</td><td>0x0</td><td>Limit Address to mark the end of the DMA enabled memory range within the OT internal memory space; inclusive.</td></tr>
+</table>
+<h3 id="RANGE_VALID">RANGE_VALID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>RANGE_VALID</td><td>RW</td><td>0x0</td><td>Once set the enabled memory base and limit registers are valid.</td></tr>
+</table>
+<h3 id="RANGE_REGWEN">RANGE_REGWEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3:0</td><td>REGWEN</td><td>RW0C</td><td>0x6</td><td>Used by firmware to lock the DMA enabled memory range configuration registers from further modification.<br>Once this register is set to kMultiBitBool4False, it can only be set to kMultiBitBool4True through a reset event.<br><br>Default Value = kMultiBitBool4True -&gt; Unlocked at reset.</td></tr>
+</table>
+<h3 id="CFG_REGWEN">CFG_REGWEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3:0</td><td>REGWEN</td><td>R</td><td>0x6</td><td>Used by hardware to lock the DMA configuration registers.<br>This register is purely managed by hardware and only software readable.</td></tr>
+</table>
+<h3 id="TOTAL_DATA_SIZE">TOTAL_DATA_SIZE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DATA_SIZE</td><td>RW</td><td>0x0</td><td>Total size (in bytes) of the data to be transferred. The complete transfer operation<br>may consist of multiple chunks of data as specified by the CHUNK_DATA_SIZE register.<br><br>Minimum: 1 byte.<br>Maximum: May be restricted to a maximum pre-defined size based on OT DMA enabled memory space allocation.<br>Works in conjunction with the TRANSFER_WIDTH register.</td></tr>
+</table>
+<h3 id="CHUNK_DATA_SIZE">CHUNK_DATA_SIZE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DATA_SIZE</td><td>RW</td><td>0x0</td><td>Size (in bytes) for a single DMA transfer.<br>In hardware handshake mode, the DMA reads in chunks of CHUNK_DATA_SIZE from the peripheral.<br>For a single memory transfer CHUNK_DATA_SIZE and TOTAL_DATA_SIZE are set to the same value.<br><br>Minimum: 1 byte.<br>Maximum: May be restricted to a maximum pre-defined size based on OT DMA enabled memory space allocation.<br>Works in conjunction with the TRANSFER_WIDTH register.</td></tr>
+</table>
+<h3 id="TRANSFER_WIDTH">TRANSFER_WIDTH</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1:0</td><td>TRANSACTION_WIDTH</td><td>RW</td><td>0x2</td><td>Denotes the width of each transaction that the DMA shall issue during the data movement.<br><br>Multiple transactions of this width will be issued until TOTAL_DATA_SIZE bytes have been transferred.<br>Note that firmware may need to set a different value if a receiving IP supports a read / write transaction width that is less than 1 DWORD.<br>This does not affect the wrap-around mechanism.<br>Note that the value 3 for this register represents an invalid configuration that leads to an error.</td></tr>
+</table>
+<h3 id="CONTROL">CONTROL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>GO</td><td>RW</td><td>0x0</td><td>Setting this bit triggers the DMA operation.<br>For normal operation, the DMA engine clears the `go` bit automatically after the configured operation is complete.<br>For Hardware handshake operation, DMA engine does not auto clear the Go bit.<br>Firmware shall clear the Go bit when it intends to stop the hardware handshake operation.</td></tr>
+<tr><td>30:28</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>27</td><td>ABORT</td><td>W</td><td>0x0</td><td>Aborts the DMA operation if this bit is set.<br>Sets the corresponding bit in the status register once abort operation is complete.<br>Any OpenTitan-internal transactions are guaranteed to complete, but there are no guarantees on the SoC interface.</td></tr>
+<tr><td>26:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>INITIAL_TRANSFER</td><td>RW</td><td>0x0</td><td>Marks the initial transfer to initialize the DMA and SHA engine for one transfer that can span over multiple single DMA transfers.<br>Used for hardware handshake and ordinary transfers, in which multiple transfers contribute to a final digest.<br>Note, for non-handshake transfers with inline hashing mode enabled, this bit must be set to also mark the first transfer.</td></tr>
+<tr><td>7:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5</td><td>DIGEST_SWAP</td><td>RW</td><td>0x0</td><td>Digest register byte swap.<br><br>If 1 the value in each digest output register is converted to big-endian byte order.<br>This setting does not affect the order of the digest output registers, !!SHA2_DIGEST_0 still contains the first 4 bytes of the digest.</td></tr>
+<tr><td>4</td><td>HARDWARE_HANDSHAKE_ENABLE</td><td>RW</td><td>0x0</td><td>Enable hardware handshake mode.<br>Used to clear FIFOs from low speed IO peripherals receiving data, e.g., I3C receive buffer.<br>Listen to an input trigger signal.<br>Read data from source address location.<br>Copy to destination address.<br>Number of bytes specified in size register.<br>Note assumption is the peripheral lowers input once FIFO is cleared.<br>No explicit clearing necessary.</td></tr>
+<tr><td>3:0</td><td>OPCODE</td><td>RW</td><td>0x0</td><td>Defines the type of DMA operations.</td></tr>
+</table>
+<h3 id="SRC_CONFIG">SRC_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>WRAP</td><td>RW</td><td>0x0</td><td>When 0: Chunks occupy contiguous ascending addresses.<br>When 1: Source address wraps back to the starting address when finishing a chunk.</td></tr>
+<tr><td>0</td><td>INCREMENT</td><td>RW</td><td>0x0</td><td>Defines the increment behavior after every DMA read.<br>When 0: Source address is not changed.<br>All reads are done from the same address.<br>When 1: Source address is incremented by transfer_width after each read.</td></tr>
+</table>
+<h3 id="DST_CONFIG">DST_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>WRAP</td><td>RW</td><td>0x0</td><td>When 0: Chunks occupy contiguous ascending addresses.<br>When 1: Destination address wraps back to the starting address when finishing a chunk.</td></tr>
+<tr><td>0</td><td>INCREMENT</td><td>RW</td><td>0x0</td><td>Defines the increment behavior after every DMA write.<br>When 0: Destination address is not changed.<br>All writes are done to the same address.<br>When 1: Destination address is incremented by transfer_width after each write.</td></tr>
+</table>
+<h3 id="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5</td><td>CHUNK_DONE</td><td>RW1C</td><td>0x0</td><td>Transfer of a single chunk is complete.<br>Only raised for multi-chunk memory-to-memory transfers.<br>Cleared automatically by the hardware when starting the transfer of a new chunk.</td></tr>
+<tr><td>4</td><td>SHA2_DIGEST_VALID</td><td>R</td><td>0x0</td><td>Indicates whether the SHA2_DIGEST register contains a valid digest.<br>This value is cleared on the initial transfer and set when the digest is written.</td></tr>
+<tr><td>3</td><td>ERROR</td><td>RW1C</td><td>0x0</td><td>Error occurred during the operation.<br>ERROR_CODE register denotes the source of the error.</td></tr>
+<tr><td>2</td><td>ABORTED</td><td>RW1C</td><td>0x0</td><td>Set once aborted operation drains.</td></tr>
+<tr><td>1</td><td>DONE</td><td>RW1C</td><td>0x0</td><td>Configured DMA operation is complete.<br>Cleared automatically by the hardware when starting a new transfer.</td></tr>
+<tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA operation is active if this bit is set.<br>DMA engine clears this bit when operation is complete.<br>This bit may be set as long as hardware handshake mode is active and triggered.</td></tr>
+</table>
+<h3 id="ERROR_CODE">ERROR_CODE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>ASID_ERROR</td><td>R</td><td>0x0</td><td>The source or destination ASID contains an invalid value.</td></tr>
+<tr><td>6</td><td>RANGE_VALID_ERROR</td><td>R</td><td>0x0</td><td>The DMA enabled memory range is not configured.</td></tr>
+<tr><td>5</td><td>BASE_LIMIT_ERROR</td><td>R</td><td>0x0</td><td>The base and limit addresses contain an invalid value.</td></tr>
+<tr><td>4</td><td>BUS_ERROR</td><td>R</td><td>0x0</td><td>The bus transfer returned an error.</td></tr>
+<tr><td>3</td><td>SIZE_ERROR</td><td>R</td><td>0x0</td><td>TRANSFER_WIDTH encodes an invalid value, TOTAL_DATA_SIZE or CHUNK_SIZE are zero, or inline hashing is not using 32-bit transfer width</td></tr>
+<tr><td>2</td><td>OPCODE_ERROR</td><td>R</td><td>0x0</td><td>Opcode is invalid.</td></tr>
+<tr><td>1</td><td>DST_ADDR_ERROR</td><td>R</td><td>0x0</td><td>Destination address is invalid.</td></tr>
+<tr><td>0</td><td>SRC_ADDR_ERROR</td><td>R</td><td>0x0</td><td>Source address is invalid.</td></tr>
+</table>
+<h3 id="SHA2_DIGEST_0_16_">SHA2_DIGEST_0[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DATA_0</td><td>R</td><td>0x0</td><td>SHA2 digest data</td></tr>
+</table>
+<h3 id="HANDSHAKE_INTR_ENABLE">HANDSHAKE_INTR_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>10:0</td><td>MASK</td><td>RW</td><td>0x7FF</td><td>Enable bits for incoming handshake interrupt wires.</td></tr>
+</table>
+<h3 id="CLEAR_INTR_SRC">CLEAR_INTR_SRC</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>10:0</td><td>SOURCE</td><td>RW</td><td>0x0</td><td>Source N needs interrupt cleared</td></tr>
+</table>
+<h3 id="CLEAR_INTR_BUS">CLEAR_INTR_BUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>10:0</td><td>BUS</td><td>RW</td><td>0x0</td><td>Bus selection bit for source N.</td></tr>
+</table>
+<h3 id="INTR_SRC_ADDR_0_11_">INTR_SRC_ADDR_0[11]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>ADDR_0</td><td>RW</td><td>0x0</td><td>Destination address for interrupt source clearing write.</td></tr>
+</table>
+<h3 id="INTR_SRC_WR_VAL_0_11_">INTR_SRC_WR_VAL_0[11]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>WR_VAL_0</td><td>RW</td><td>0x0</td><td>Write value for interrupt clearing write.</td></tr>
+</table>
+</div>

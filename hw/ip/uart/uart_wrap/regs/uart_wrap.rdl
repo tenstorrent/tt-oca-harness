@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef UART_WRAP_RDL
+`define UART_WRAP_RDL
+
+`include "uart_log_engine_wrap.rdl"
+
+addrmap uart_wrap #(
+    longint unsigned MAX_NUM_UARTS = 4
+) {
+    name = "UART Wrapper Address Map";
+    desc = "Wrapper address map instantiating the per-UART log-engine blocks.";
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    uart_log_engine_wrap    uart_log_engine_wrap[MAX_NUM_UARTS]    @0x0 += 0x400;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
+`endif
+};
+
+`endif

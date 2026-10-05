@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# SMC eFuse map layout for generate_efuse_preload.py, copied from smc_efuse_map.rdl.
+# The generator lays blocks out in file order, so the order must match the RDL
+# address map. The smc_efuse_image_*_test leaves check every block's order, bit
+# offset and width, and its LOCKS bit positions, against the generated RDL
+# headers.
+
+[LOCKS]
+regwidth = 64
+  [LOCKS.fields.lock_entries]
+  bits = "63:0"
+  desc = "Per-field read/write lock controls. Bit 2*i = write lock, bit 2*i+1 = read lock, in configuration order."
+
+[JTAG_PUBLIC_IDENTITY]
+regwidth = 256
+  [JTAG_PUBLIC_IDENTITY.fields.value]
+  bits = "255:0"
+  desc = "JTAG-public identity window. Replaces the former CHIPLET_ID and PACKAGE_ID registers. Readable via JTAG in PROD and RMA_SiP states where all other eFuse fields are blocked."
+
+[I2C_I3C_ID]
+regwidth = 576
+  [I2C_I3C_ID.fields.interface_id]
+  bits = "575:0"
+  desc = "9 x 64 b I2C/I3C interface IDs. Static-ID mode uses [6:0] of each word; provisional-ID mode uses all 64."
+
+[SMC_CONFIG]
+regwidth = 64
+  [SMC_CONFIG.fields.smc_config]
+  bits = "63:0"
+  desc = "SMC configuration bits. rom_flip_endianness=[0], sram_auto_zero_disable=[7], dft_ignore_error=[15]. All other bits reserved."
+
+[OCCP_TRANSPORT_TIMEOUT]
+regwidth = 64
+  [OCCP_TRANSPORT_TIMEOUT.fields.transport_timeout]
+  bits = "63:0"
+  desc = "OCCP transport timeout in bits [31:0]; bits [63:32] reserved. The boot ROM reads this and substitutes a 10000-cycle default when it reads 0."
+
+[SPARE]
+regwidth = 7168
+  [SPARE.fields.spare_data]
+  bits = "7167:0"
+  desc = "28 x 256 b individually lockable spare regions. Each element has its own write/read lock pair in LOCKS (slots 4-31). Reserved for fields assigned after the RTL is frozen."

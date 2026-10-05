@@ -1,0 +1,72 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= OCAH DV Tooling Guide
+:doctype: book
+:sectanchors:
+:sectlinks:
+:sectnums:
+:source-highlighter: highlight.js
+:imagesdir: assets
+
+This guide describes the command-line tools used to launch OCAH design
+verification (DV) and formal verification (FV) flows and to turn their results
+into static reports:
+
+* `tools/dv/run_dv.py` discovers and executes configured DUT flows.
+* `tools/dv/run_dashboard.py` collects completed run results, renders reports,
+  aggregates history, and publishes static output.
+
+The guide documents the behavior of the tools in this source tree. The
+interfaces page maps how the tools, the shared configuration, the hosted
+workflows, and the contributor environment connect; the runbook is the
+operating manual for the hosted service they form.
+
+ifdef::backend-html5[]
+== Building This Guide
+
+`tools/dv/doc` is a standalone documentation source and is not staged by the
+TRM/Antora build or documentation CI. Render every HTML page together so the
+landing-page links resolve:
+
+[source,bash]
+----
+out=$(mktemp -d "${TMPDIR:-/tmp}/ocah-dv-doc.XXXXXX")
+
+asciidoctor -a data-uri -D "$out" \
+  tools/dv/doc/index.adoc \
+  tools/dv/doc/run-dv.adoc \
+  tools/dv/doc/run-dashboard.adoc \
+  tools/dv/doc/interfaces.adoc \
+  tools/dv/doc/runbook.adoc
+
+asciidoctor-pdf \
+  -o "$out/ocah-dv-tooling-guide.pdf" \
+  tools/dv/doc/index.adoc
+----
+endif::backend-html5[]
+
+ifdef::backend-html5[]
+== Guide Contents
+
+* xref:run-dv.adoc[DV and FV Runner] -- configure, launch, reproduce, and debug
+  native verification runs.
+* xref:run-dashboard.adoc[DV and FV Dashboard] -- normalize, render, aggregate,
+  and publish completed-run results, and stage that data into the
+  documentation site.
+* xref:interfaces.adoc[DV Infrastructure Interfaces] -- the files and
+  command lines where the runner, the dashboard, the configuration, the
+  coverage policies, the workflows, and the environment meet, and the check
+  behind each contract.
+* xref:runbook.adoc[DV Infrastructure Runbook] -- operate the hosted
+  service: schedules and budgets, retention, what a cancellation leaves
+  behind, recovery procedures, ownership by component, escalation, and
+  known limitations.
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::run-dv.adoc[leveloffset=+1]
+include::run-dashboard.adoc[leveloffset=+1]
+include::interfaces.adoc[leveloffset=+1]
+include::runbook.adoc[leveloffset=+1]
+endif::backend-pdf[]

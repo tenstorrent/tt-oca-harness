@@ -1,0 +1,237 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Direct Memory Access (DMA) Engine
+:description: SMC DMA configuration, submission, completion and register reference.
+
+[[direct-memory-access-dma-engine]]
+
+The SMC DMA copies data through an AXI master using register-programmed linear
+or two-dimensional transfers. Software supplies one shared configuration and
+submits it by reading `NEXT_ID_0`. The engine does not fetch descriptor lists.
+SMC instantiates one control interface, one stream and one DMA master.
+
+[[smc-dma-controller-integration-table]]
+[cols="1,3",options="header"]
+.SMC DMA integration
+|===
+|Item |SMC configuration
+|Control aperture |`0xC003_8000–0xC003_81FF` (512 bytes, SMC-local view).
+|Control path |AXI, 9-bit local address and 64-bit data, 8-bit ID, converted internally
+to 32-bit register accesses. This is not an AXI4-Lite-only wrapper.
+|Data path |56-bit addresses, 64-bit data; 3-bit ID at the DMA wrapper and
+4-bit ID after the shared DMA/zeroer mux. Backend internal IDs are 2 bits.
+|Access policy |Transfers pass through SMC fabric remapping/filtering;
+program addresses permitted by that integration.
+|===
+
+== Architecture and Configuration
+
+ifdef::backend-html5[]
+++++
+<span id="architecture-overview"></span>
+<span id="configuration-parameters"></span>
+<span id="dma-backend"></span>
+<span id="dma-request-manager"></span>
+<span id="performance-optimization-and-power-management"></span>
+<span id="request-arbitration"></span>
+<span id="request-path"></span>
+<span id="request-tracking"></span>
+<span id="response-routing"></span>
+<span id="smc-dma-axi4-master-characteristics-table"></span>
+<span id="smc-dma-clock-gating-configuration-table"></span>
+<span id="smc-dma-performance-features-table"></span>
+<span id="system-integration"></span>
+++++
+endif::backend-html5[]
+
+The frontend captures register state into a request FIFO. The 2D midend expands
+each command into linear transfers, and the backend performs the AXI reads and
+writes. The DMA and zeroer share the outgoing fabric path shown below.
+
+[[smc-dma-zeroer-diagram]]
+.SMC DMA frontend, backend and shared fabric path
+image::smc-dma.svg[alt="SMC DMA frontend, request manager and backend inside the data-accelerator wrapper, with the control demux and master mux shared with the memory zeroer",width=100%,pdfwidth=100%]
+
+The DMA and the zeroer share `smc_data_accelerator_wrap`. Its control demux sends the
+zeroer register window to the zeroer and every other address to the DMA, and each
+control path narrows the address to its own register window. Its master mux merges the
+two master ports onto the port to the input fabric and adds one ID bit to tell their
+responses apart. In the figure, thick lines are AXI4, thin dark lines are the register
+bus, and grey lines are iDMA requests and responses, gated clocks and status outputs.
+The dashed box is the manager-to-backend FIFO, which is absent because SMC sets
+`M2B_FIFO_DEPTH` to 0. With one control interface and one master interface, the
+request manager is a passthrough, so the arbitration described under
+<<smc-dma-request-arbitration>> is not instantiated.
+
+[[smc-dma-request-arbitration]]
+The generic request manager can arbitrate multiple control/master interfaces
+with round-robin selection, per-master origin tracking and buffered response
+routing. In the instantiated one-control/one-master SMC configuration it is a
+passthrough; these generic arbitration features add no extra SMC streams.
+
+[[smc-dma-configuration-parameters-table]]
+[cols="2,1,3",options="header"]
+.SMC DMA elaboration settings
+|===
+|Parameter |SMC value |Meaning
+|`NUM_CTRL_INTERFACES`, `NUM_CTRL_STREAMS`, `NUM_MST_INTERFACES` |1 each
+|One shared configuration, one functional stream and one DMA master.
+|`DMA_MST_MAX_TXNS` |32 |Backend in-flight AXI limit, from `FabricMaxTrans`.
+The generic DMA wrapper default is 16.
+|`F2M_FIFO_DEPTH` |4 |Request FIFO between frontend and 2D midend.
+|`M2B_FIFO_DEPTH` |0 |Midend-to-backend FIFO bypassed.
+|`BUFFER_DEPTH` |16 |Backend realignment buffer depth in beats; the generic
+wrapper default is 3. It is not a reorder-buffer entry count.
+|`EN_R_AW_COUPLING` |1 |Backend read/write address coupling enabled.
+|`BYPASS_DMA_CTRL_FLOPS`, `BYPASS_DMA_MST_FLOPS` |0 each |Interface cuts retained.
+|`CG_HYSTERESIS_W` |6 |Width of the runtime clock-gating hysteresis input.
+|===
+
+ifdef::backend-html5[]
+The parameters of `idma_wrapper` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/idma_wrapper/idma_wrapper.adoc[idma_wrapper].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters of `idma_wrapper` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+The frontend has a bus-aware clock gate; the request manager and backend use a
+separate activity/hysteresis gate. `cg_enable_i=0` keeps them awake, and test
+mode overrides gating. Clock gating does not abort transfers or isolate the bus.
+
+== Transfer Configuration
+
+ifdef::backend-html5[]
+++++
+<span id="dma-configuration-and-control"></span>
+<span id="type-definitions"></span>
+++++
+endif::backend-html5[]
+
+[[dma-stream-support]]
+=== Stream and Register Ownership
+
+ifdef::backend-html5[]
+++++
+<span id="control-interface"></span>
+<span id="dma-frontend"></span>
+<span id="smc-dma-frontend-control-interface-table"></span>
+++++
+endif::backend-html5[]
+
+The generated map contains `NEXT_ID`, `STATUS` and `DONE` banks for 16 streams,
+but only bank 0 is functional in SMC. Reads of `NEXT_ID_1..15` complete with zero
+and launch nothing; their `STATUS` and `DONE` registers also read zero. A read of
+`NEXT_ID_0` is a command, not a status read: any read whose bytes include
+`NEXT_ID_0`, such as a 64-bit read at `0x48`, launches a transfer; a 32-bit read
+of the unused word at `0x4C` does not.
+
+Source, destination, length, strides, repetitions and `CONFIG` are registers
+shared by all software contexts, with no configuration-lock register. The 64-bit
+fields use low/high 32-bit register halves, which the register path does not
+update atomically.
+
+[[smc-dma-transfer-parameters-table]]
+[cols="2,1,1,3",options="header"]
+.DMA register storage and effective field widths
+|===
+|Field |CSR storage |Effective width |Use
+|`SRC_ADDRESS_LO/HI`, `DST_ADDRESS_LO/HI` |64 bits each |56 bits each |Byte addresses.
+|`LENGTH_LO/HI` |64 bits |56 bits |Bytes per linear copy or per 2D row. Zero-length transfers are rejected.
+|`SRC_STRIDE_LO/HI`, `DST_STRIDE_LO/HI` |64 bits each |56 bits each |Address increment
+between consecutive row starts; source and destination increments are independent.
+|`NUM_REPETITIONS_LO/HI` |64 bits |32 bits |Number of rows, including the first.
+|===
+
+The frontend casts register values to these effective widths: upper bits are
+discarded, not validated as an out-of-range access. Program unused upper bits
+as zero and ensure all row addresses and lengths fit the permitted address
+range. Address stepping uses the effective address width.
+
+=== Linear and Two-Dimensional Copies
+
+ifdef::backend-html5[]
+++++
+<span id="smc-dma-transfer-capabilities-table"></span>
+<span id="transfer-descriptor-support"></span>
+++++
+endif::backend-html5[]
+
+A linear copy is one repetition with `CONFIG.ENABLED_ND` set; a 2D copy adds
+source/destination strides and a repetition count. Strides can gather or
+scatter evenly spaced rows; there is no linked-list walker.
+
+Clearing `CONFIG.ENABLED_ND` forces the midend repetition count to zero. A zero-repetition command produces an internal
+midend error response without data movement; that response still retires a
+transfer ID. The control aperture does not expose the error payload, so a
+retired ID alone is not proof that valid data was copied.
+
+The names above follow the published register map. The RTL frontend calls the
+configuration `conf`, the ND-enable field `enable_nd`, and the repetition pair
+`reps_2_low/high`; these refer to the same fields.
+
+The frontend requests incrementing AXI bursts and sets the cache attribute to
+modifiable. `CONFIG` supplies decoupling, maximum burst-length and length-reduction
+options; the `CONFIG` register description gives each field's effect. The backend
+handles alignment and burst splitting; these mechanisms do not grant permission
+to access a filtered or otherwise invalid address.
+
+== Submission and Completion
+
+ifdef::backend-html5[]
+++++
+<span id="command-processing"></span>
+<span id="response-path"></span>
+<span id="status-and-control"></span>
+++++
+endif::backend-html5[]
+
+The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-dma[DMA Engine section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-dma[DMA Engine section]
+endif::backend-pdf[]
+of the Programmer's Guide gives the submission and completion sequence.
+
+[[smc-dma-status-monitoring-and-control-table]]
+[cols="1,3",options="header"]
+.DMA status and notification
+|===
+|Indication |Meaning
+|`STATUS_0[7:0]` |Eight copies of frontend request readiness: `0xFF` means
+room to accept a command. These are not per-channel backend busy bits.
+|`STATUS_0[8]` / `[9]` |Bit 8 is the midend activity indication; bit 9 is zero.
+|`DONE_0` |Most recently retired transfer ID. No byte-progress or classified
+software error-status register is provided.
+|DMA interrupt |One-cycle pulse on a falling edge of combined frontend/backend
+busy, routed to raw CPU vector bit 322 (PLIC ID 323). No local enable, mask or
+pending register; this is not one interrupt per submitted descriptor.
+|===
+
+Frontend readiness and a zero `STATUS` value do not indicate completion.
+The transfer-ID generator resets `NEXT_ID` to 2 and `DONE` to 1 and skips zero
+on wrap. PLIC gateway behavior does not turn successive busy-falling pulses
+into a counted queue.
+
+== Memory Map and Register Reference
+
+=== Memory Map
+
+NOTE: The register map below covers all 16 stream banks because the
+register file is generated at the maximum stream count. With
+`NUM_CTRL_STREAMS = 1`, only the `_0` bank of `NEXT_ID`, `STATUS`, and
+`DONE` has any effect; see <<dma-stream-support>>.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$dma_ctrl/regs/gen/html/dma_ctrl.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../../vendor/pulp-platform/idma/overlay/rdl/gen/adoc/dma_ctrl.adoc[leveloffset=+2]
+endif::backend-pdf[]

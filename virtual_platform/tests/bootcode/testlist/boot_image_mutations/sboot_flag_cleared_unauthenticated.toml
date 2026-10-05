@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Makes both slots validly unsigned, so the manifest no longer requests secure boot.
+base = "signed"
+ops = [
+  { op = "clear_secure_boot", slot = "primary" },
+  { op = "clear_secure_boot", slot = "backup" },
+]

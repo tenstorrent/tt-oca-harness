@@ -1,0 +1,179 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef SMC_BASE_CONFIG_RDL_DEFINED
+`define SMC_BASE_CONFIG_RDL_DEFINED
+
+addrmap smc_base_config {
+    name = "SMC Base Configuration Address Map";
+    desc = "Base-address, region-size, per-block clock-gating enable, and interrupt configuration registers.";
+
+    reg GLOBAL_BASE {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field  {
+            sw=rw;
+            hw=r;
+            desc="Global base address for the CPU";
+        } base [55:0] = 0x4000_0000;
+    };
+
+    reg LOCAL_BASE {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field  {
+            sw=r;
+            hw=r;
+            desc="Local base address for the CPU";
+        } base [55:0] = 0xC000_0000;
+    };
+
+    reg REGION_SIZE {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Inbound accesses to a unit whose window extends past this size answer DECERR. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.";
+        } size [31:0] = 0x100_0000;
+    };
+
+    reg CLOCK_GATE_CONTROL {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field  {
+            sw=rw;
+            hw=r;
+            desc="Clockgate enable for the DMA";
+        } dma_cg_en [0:0] = 0x0;
+
+        field  {
+            sw=rw;
+            hw=r;
+            desc="Clockgate enable for the mailbox";
+        } mailbox_cg_en [1:1] = 0x0;
+
+        field  {
+            sw=rw;
+            hw=r;
+            desc="Clockgate enable for the outbound filters";
+        } filter_ob_axi_cg_en [2:2] = 0x0;
+
+        field  {
+            sw=rw;
+            hw=r;
+            desc="Clockgate enable for outbound filter registers";
+        } filter_ob_reg_cg_en [3:3] = 0x0;
+
+        field  {
+            sw=rw;
+            hw=r;
+            desc="Clockgate enable for the inbound filters";
+        } filter_ib_axi_cg_en [4:4] = 0x0;
+
+        field  {
+            sw=rw;
+            hw=r;
+            desc="Clockgate enable for inbound filter registers";
+        } filter_ib_reg_cg_en [5:5] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Clock gate enable for address remapper register logic";
+        } addr_remap_cg_en [6:6] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Clock gate enable for the output fabric remap demux and mux";
+        } output_fabric_cg_en [7:7] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Clock gate enable for axi zeroer";
+        } zeroer_cg_en [8:8] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Clock gate enable for I3C. While set, the I3C peripheral clock is stopped and every access to the OCA_I3C_WRAP window answers SLVERR with read data 0xBADCAB1E.";
+        } i3c_cg_en [9:9] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Clock gate enable for AVSBus. While set, the AVSBus controller clocks are stopped and every access to the SMC_AVSBUS_CONTROLLER window answers SLVERR with read data 0xBADCAB1E.";
+        } avs_cg_en [10:10] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Clock gate enable for I2C. While set, the I2C peripheral clock is stopped and every access to the SMC_I2C_WRAP window answers SLVERR with read data 0xBADCAB1E.";
+        } i2c_cg_en [11:11] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Clock gate enable for UART. While set, the UART peripheral clock is stopped and every access to the SMC_UART_WRAP window answers SLVERR with read data 0xBADCAB1E.";
+        } uart_cg_en [12:12] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Clock gate enable for telemetry. While set, the telemetry receiver clocks are stopped and every access to the SMC_TELEMETRY_RECEIVER_WRAP window answers SLVERR with read data 0xBADCAB1E.";
+        } telemetry_cg_en [13:13] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Clockgate cg_hysteresis";
+        } cg_hysteresis [29:24] = 0x1f;
+    };
+
+    reg HANG_DET_CTRL {
+        desc = "AXI hang detector control.";
+        field {
+            sw = rw; hw = r;
+            desc = "When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.";
+        } enable[0:0] = 0x0;
+        field {
+            sw = rw; hw = r;
+            desc = "Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.";
+        } irq_en[4:4] = 0x0;
+        field {
+            sw = rw; hw = r;
+            desc = "Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.";
+        } irq_test[8:8] = 0x0;
+    };
+
+    reg HANG_DET_TIMEOUT_THRESHOLD {
+        desc = "Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.";
+        field {
+            sw = rw; hw = r;
+            desc = "Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.";
+        } value[19:0] = 0x1000;
+    };
+
+    // --------------------------------------------------
+
+    GLOBAL_BASE                     GLOBAL_BASE                     @ 0x0;
+    LOCAL_BASE                      LOCAL_BASE                      @ 0x8;
+    REGION_SIZE                     REGION_SIZE                     @ 0x10;
+    CLOCK_GATE_CONTROL              CLOCK_GATE_CONTROL              @ 0x18;
+
+    // AXI hang detectors, one per independent master AXI into the SMC fabric.
+    HANG_DET_CTRL              HANG_DET_SYS_AXI_CTRL                  @ 0x20;
+    HANG_DET_TIMEOUT_THRESHOLD HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD    @ 0x28;
+    HANG_DET_CTRL              HANG_DET_SEP_AXI_CTRL                  @ 0x30;
+    HANG_DET_TIMEOUT_THRESHOLD HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD    @ 0x38;
+    HANG_DET_CTRL              HANG_DET_DATA_ACCEL_CTRL              @ 0x40;
+    HANG_DET_TIMEOUT_THRESHOLD HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD @ 0x48;
+};
+
+`endif

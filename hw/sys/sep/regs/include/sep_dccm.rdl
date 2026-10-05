@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef SEP_DCCM_RDL
+`define SEP_DCCM_RDL
+
+// This RDL defines an address space for the DCCM
+
+mem sep_dccm #(
+    longint unsigned NUM_ENTRIES = 0x4000,  // 128 KiB / 8 bytes = 0x4000 entries
+    longint unsigned WIDTH       = 64
+) {
+    desc = "Tightly coupled data SRAM for the SEP CPU.";
+
+    mementries = NUM_ENTRIES;
+    memwidth   = WIDTH;
+
+    // a single word of the memory
+    reg mem_word {
+        regwidth = 64;
+        field {
+           sw=rw;
+           hw=rw;
+        } data[WIDTH-1:0];
+    };
+
+    // the entire memory is an array of memory words
+    mem_word mem_array[NUM_ENTRIES];
+
+};
+
+`endif

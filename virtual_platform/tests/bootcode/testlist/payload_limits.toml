@@ -1,0 +1,330 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Rows whose payload start or end in flash reaches 2^32. oca_locate_payload works in int64,
+# so every row is refused by the slot-window bound before any payload read; no row reaches the
+# int64 overflow branches.
+
+[[testcase]]
+name = "sep_manifest_payload_limits_test__offset_4g_minus_4k"
+family = "payload_limits"
+classification = "vp-equivalent"
+image = "payload_limits_offset_4g_minus_4k"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { field = { name = "OFF_PAYLOAD_LENGTH", slot = "primary", size = 8, value = 0x2000 } },
+  { field = { name = "OFF_PAYLOAD_OFFSET", slot = "primary", size = 8, value = 0xFFFFF000 } },
+  { field = { name = "OFF_PAYLOAD_LENGTH", slot = "backup", size = 8, value = 0x2000 } },
+  { field = { name = "OFF_PAYLOAD_OFFSET", slot = "backup", size = 8, value = 0xFFFFF000 } },
+  { range = [0x1b90, 0x1b98], differs_from = "signed" },
+  { range = [0x41b90, 0x41b98], differs_from = "signed" },
+  { range = [0x1ea4, 0x1eac], differs_from = "signed" },
+  { range = [0x41ea4, 0x41eac], differs_from = "signed" },
+  { range = [0x0, 0x1b90], same_as = "signed" },
+  { range = [0x1b98, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x1ea4], same_as = "signed" },
+  { range = [0x1eac, 0x41000], same_as = "signed" },
+  { range = [0x41000, 0x41b90], same_as = "signed" },
+  { range = [0x41b98, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, 0x41ea4], same_as = "signed" },
+  { range = [0x41eac, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_LOC_FAIL",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "PUBK_AUTHORIZED",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_LOC_FAIL",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x0003001b",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "PAYLOAD_OK",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "MANIFEST_ERR=0x00030101",
+  "MANIFEST_ERR=0x00030106",
+  "MANIFEST_ERR=0x0003000d",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "SBOOT_OFF",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "PAYLOAD_LOC_FAIL" = 2, "MANIFEST_ERR=0x0003001b" = 2, "MANIFEST_ALL_FAILED" = 1 }
+expect_status = ["INFO 0x0053", "WARN 0x007a", "INFO 0x0053", "WARN 0x007a", "ERROR 0x007a", "ERROR 0x0213"]
+forbid_status = ["INFO 0x0055"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x0003001b"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], exact = 18 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], exact = 18 },
+  { name = "backup_payload", range = [0x42000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_manifest"]
+markers = [
+  "payload_offset 0xFFFFF000 puts the payload at 0x1_0000_0000, which (uint32_t) truncation would turn into flash offset 0; oca_locate_payload works in int64, so the region bound refuses it.",
+]
+
+[[testcase]]
+name = "sep_manifest_payload_limits_test__offset_4g_minus_1"
+family = "payload_limits"
+classification = "vp-equivalent"
+image = "payload_limits_offset_4g_minus_1"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { field = { name = "OFF_PAYLOAD_LENGTH", slot = "primary", size = 8, value = 0x1 } },
+  { field = { name = "OFF_PAYLOAD_OFFSET", slot = "primary", size = 8, value = 0xFFFFFFFF } },
+  { field = { name = "OFF_PAYLOAD_LENGTH", slot = "backup", size = 8, value = 0x1 } },
+  { field = { name = "OFF_PAYLOAD_OFFSET", slot = "backup", size = 8, value = 0xFFFFFFFF } },
+  { range = [0x1b90, 0x1b98], differs_from = "signed" },
+  { range = [0x41b90, 0x41b98], differs_from = "signed" },
+  { range = [0x1ea4, 0x1eac], differs_from = "signed" },
+  { range = [0x41ea4, 0x41eac], differs_from = "signed" },
+  { range = [0x0, 0x1b90], same_as = "signed" },
+  { range = [0x1b98, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x1ea4], same_as = "signed" },
+  { range = [0x1eac, 0x41000], same_as = "signed" },
+  { range = [0x41000, 0x41b90], same_as = "signed" },
+  { range = [0x41b98, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, 0x41ea4], same_as = "signed" },
+  { range = [0x41eac, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_LOC_FAIL",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "PUBK_AUTHORIZED",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_LOC_FAIL",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x0003001b",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "PAYLOAD_OK",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "MANIFEST_ERR=0x00030101",
+  "MANIFEST_ERR=0x00030106",
+  "MANIFEST_ERR=0x0003000d",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "SBOOT_OFF",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "PAYLOAD_LOC_FAIL" = 2, "MANIFEST_ERR=0x0003001b" = 2, "MANIFEST_ALL_FAILED" = 1 }
+expect_status = ["INFO 0x0053", "WARN 0x007a", "INFO 0x0053", "WARN 0x007a", "ERROR 0x007a", "ERROR 0x0213"]
+forbid_status = ["INFO 0x0055"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x0003001b"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], exact = 18 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], exact = 18 },
+  { name = "backup_payload", range = [0x42000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_manifest"]
+markers = [
+  "0xFFFFFFFF is written as the positive int64 0x0000_0000_FFFF_FFFF, not -1; the payload address 0x1_0000_0FFF lies past the slot window and the region bound refuses it.",
+]
+
+[[testcase]]
+name = "sep_manifest_payload_limits_test__offset_and_length_2g"
+family = "payload_limits"
+classification = "vp-equivalent"
+image = "payload_limits_offset_and_length_2g"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { field = { name = "OFF_PAYLOAD_LENGTH", slot = "primary", size = 8, value = 0x80000000 } },
+  { field = { name = "OFF_PAYLOAD_OFFSET", slot = "primary", size = 8, value = 0x80000000 } },
+  { field = { name = "OFF_PAYLOAD_LENGTH", slot = "backup", size = 8, value = 0x80000000 } },
+  { field = { name = "OFF_PAYLOAD_OFFSET", slot = "backup", size = 8, value = 0x80000000 } },
+  { range = [0x1b90, 0x1b98], differs_from = "signed" },
+  { range = [0x41b90, 0x41b98], differs_from = "signed" },
+  { range = [0x1ea4, 0x1eac], differs_from = "signed" },
+  { range = [0x41ea4, 0x41eac], differs_from = "signed" },
+  { range = [0x0, 0x1b90], same_as = "signed" },
+  { range = [0x1b98, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x1ea4], same_as = "signed" },
+  { range = [0x1eac, 0x41000], same_as = "signed" },
+  { range = [0x41000, 0x41b90], same_as = "signed" },
+  { range = [0x41b98, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, 0x41ea4], same_as = "signed" },
+  { range = [0x41eac, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_LOC_FAIL",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "PUBK_AUTHORIZED",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_LOC_FAIL",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x0003001b",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "PAYLOAD_OK",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "MANIFEST_ERR=0x00030101",
+  "MANIFEST_ERR=0x00030106",
+  "MANIFEST_ERR=0x0003000d",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "SBOOT_OFF",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "PAYLOAD_LOC_FAIL" = 2, "MANIFEST_ERR=0x0003001b" = 2, "MANIFEST_ALL_FAILED" = 1 }
+expect_status = ["INFO 0x0053", "WARN 0x007a", "INFO 0x0053", "WARN 0x007a", "ERROR 0x007a", "ERROR 0x0213"]
+forbid_status = ["INFO 0x0055"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x0003001b"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], exact = 18 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], exact = 18 },
+  { name = "backup_payload", range = [0x42000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_manifest"]
+markers = [
+  "Offset plus length is exactly 2^32 past the manifest; no int64 overflow guard fires, and the region bound refuses the payload address 0x8000_1000.",
+]
+
+[[testcase]]
+name = "sep_manifest_payload_limits_test__length_4g_minus_1"
+family = "payload_limits"
+classification = "vp-equivalent"
+image = "payload_limits_length_4g_minus_1"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { field = { name = "OFF_PAYLOAD_LENGTH", slot = "primary", size = 8, value = 0xFFFFFFFF } },
+  { field = { name = "OFF_PAYLOAD_OFFSET", slot = "primary", size = 8, value = 0x1000 } },
+  { field = { name = "OFF_PAYLOAD_LENGTH", slot = "backup", size = 8, value = 0xFFFFFFFF } },
+  { field = { name = "OFF_PAYLOAD_OFFSET", slot = "backup", size = 8, value = 0x1000 } },
+  { range = [0x1b90, 0x1b98], differs_from = "signed" },
+  { range = [0x41b90, 0x41b98], differs_from = "signed" },
+  { range = [0x0, 0x1b90], same_as = "signed" },
+  { range = [0x1b98, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x41000], same_as = "signed" },
+  { range = [0x41000, 0x41b90], same_as = "signed" },
+  { range = [0x41b98, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_LOC_FAIL",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "PUBK_AUTHORIZED",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_LOC_FAIL",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x0003001b",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "PAYLOAD_OK",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "MANIFEST_ERR=0x00030101",
+  "MANIFEST_ERR=0x00030106",
+  "MANIFEST_ERR=0x0003000d",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "SBOOT_OFF",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "PAYLOAD_LOC_FAIL" = 2, "MANIFEST_ERR=0x0003001b" = 2, "MANIFEST_ALL_FAILED" = 1 }
+expect_status = ["INFO 0x0053", "WARN 0x007a", "INFO 0x0053", "WARN 0x007a", "ERROR 0x007a", "ERROR 0x0213"]
+forbid_status = ["INFO 0x0055"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x0003001b"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], exact = 18 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], exact = 18 },
+  { name = "backup_payload", range = [0x42000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_manifest"]
+markers = [
+  "payload_offset stays at the shipped 0x1000, pinned by a field assert, so only the length moves the payload end (0x2000 + 0xFFFFFFFF) past the slot window.",
+]

@@ -1,0 +1,113 @@
+diff --git a/src/midend/idma_mp_dist_midend.sv b/src/midend/idma_mp_dist_midend.sv
+index 362d93742..5100d4505 100644
+--- a/src/midend/idma_mp_dist_midend.sv
++++ b/src/midend/idma_mp_dist_midend.sv
+@@ -90,9 +90,27 @@ module idma_mp_dist_midend #(
+       trans_complete_d = '0;
+     end
+   end
+-  `FF(trans_complete_q, trans_complete_d, '0, clk_i, rst_ni)
+-  `FF(tie_off_trans_complete_q, tie_off_trans_complete_d, '0, clk_i, rst_ni)
+-  `FF(backend_busy_q, backend_busy_d, '1, clk_i, rst_ni)
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            trans_complete_q <= '0;
++        end else begin
++            trans_complete_q <= trans_complete_d;
++        end
++    end
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            tie_off_trans_complete_q <= '0;
++        end else begin
++            tie_off_trans_complete_q <= tie_off_trans_complete_d;
++        end
++    end
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            backend_busy_q <= '1;
++        end else begin
++            backend_busy_q <= backend_busy_d;
++        end
++    end
+ 
+   // Fork
+   logic [NumBEs-1:0] valid, ready;
+diff --git a/src/midend/idma_mp_split_midend.sv b/src/midend/idma_mp_split_midend.sv
+index 6d21612ce..8815af56d 100644
+--- a/src/midend/idma_mp_split_midend.sv
++++ b/src/midend/idma_mp_split_midend.sv
+@@ -89,7 +89,13 @@ module idma_mp_split_midend #(
+       idma_rsp_valid_o = 1'b1;
+     end
+   end
+-  `FF(num_trans_q, num_trans_d, '0, clk_i, rst_ni)
++  always_ff @(posedge clk_i or negedge rst_ni) begin
++    if (!rst_ni) begin
++      num_trans_q <= '0;
++    end else begin
++      num_trans_q <= num_trans_d;
++    end
++  end
+ 
+   // Split requests
+   always_comb begin : proc_
+@@ -105,8 +111,21 @@ module idma_mp_split_midend #(
+   state_t state_d, state_q;
+   idma_req_t req_d, req_q;
+ 
+-  `FFARN(state_q, state_d, Idle, clk_i, rst_ni)
+-  `FFARN(req_q, req_d, '0, clk_i, rst_ni)
++  always_ff @(posedge clk_i or negedge rst_ni) begin
++    if (!rst_ni) begin
++      state_q <= Idle;
++    end else begin
++      state_q <= state_d;
++    end
++  end
++
++  always_ff @(posedge clk_i or negedge rst_ni) begin
++    if (!rst_ni) begin
++      req_q <= '0;
++    end else begin
++      req_q <= req_d;
++    end
++  end
+ 
+   always_comb begin : proc_splitting
+     // defaults
+diff --git a/src/midend/idma_nd_midend.sv b/src/midend/idma_nd_midend.sv
+index 07267c97d..3d07fd58c 100644
+--- a/src/midend/idma_nd_midend.sv
++++ b/src/midend/idma_nd_midend.sv
+@@ -233,7 +233,14 @@ module idma_nd_midend #(
+     `FFL(stride_sel_q, stride_sel_d, nd_req_valid_i, NumDim - 'd1, clk_i, rst_ni)
+     `FFL(src_addr_q,   src_addr_d,   nd_req_valid_i, '0,           clk_i, rst_ni)
+     `FFL(dst_addr_q,   dst_addr_d,   nd_req_valid_i, '0,           clk_i, rst_ni)
+-    `FF (burst_sent_q, burst_sent_d,                 '0,           clk_i, rst_ni)
++
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            burst_sent_q <= '0;
++        end else begin
++            burst_sent_q <= burst_sent_d;
++        end
++    end
+ 
+     //--------------------------------------
+     // Assertions
+@@ -281,6 +288,13 @@ module idma_nd_counter #(
+     assign done_o = counter_q == limit_i;
+ 
+     // state
+-    `FF(counter_q, counter_d, 'd1, clk_i, rst_ni)
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            counter_q <= 'd1;
++        end else begin
++            counter_q <= counter_d;
++        end
++    end
++
+ 
+ endmodule : idma_nd_counter

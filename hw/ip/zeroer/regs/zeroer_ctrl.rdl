@@ -1,0 +1,65 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef ZEROER_REG_RDL
+`define ZEROER_REG_RDL
+
+addrmap zeroer_ctrl {
+    name = "Zeroer Control Address Map";
+    desc = "Control and status registers for the AXI memory-zeroing engine.";
+    
+    ////////////////////////////////////////////////////////////////////////////
+    // Register Definitions
+    ////////////////////////////////////////////////////////////////////////////
+
+    reg DEST_ADDR {
+        regwidth = 64;
+        accesswidth = 64;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Byte address to write zeros to";
+        } DEST_ADDR[63:0] = 0x0;
+    };
+
+    reg SIZE {
+        regwidth = 64;
+        accesswidth = 64;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Size in bytes of zeros to write";
+        } SIZE[63:0] = 0x0;
+    };
+
+    reg CTRL_STATUS {
+        regwidth = 64;
+        accesswidth = 64;
+
+        desc = "Writing this register will trigger start of zeroer. The write is ignored while SIZE is 0.";
+
+        field {
+            sw = rw;
+            hw = r;
+            wr_swacc = true;
+            desc = "If enabled, an interrupt will be outputted once zeroer completes.";
+        } INT_EN[0:0] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            rd_swacc = true;
+            desc = "Indicates whether the zeroer is busy. 1 means the zeroer is active, has pending work, or is in an error state; 0 means it is idle with no pending or outstanding work, including after completion.";
+        } STATUS[32:32] = 0x0;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Address Map
+    ////////////////////////////////////////////////////////////////////////////
+
+    DEST_ADDR       DEST_ADDR       @0x0;
+    SIZE            SIZE            @0x8;
+    CTRL_STATUS     CTRL_STATUS     @0x10;
+};
+
+`endif

@@ -1,0 +1,100 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[ptap-interface]]
+
+=== Instruction Encodings
+
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="ptap-signal-interface-table"></span>
+++++
+endif::backend-html5[]
+
+The PTAP uses 6-bit instruction encodings. During the capture phase, the least
+significant bit (closest to TDO) of the instruction register always presents a 1
+to the scan chain, and the next least significant bit presents a 0 as specified
+by the 1149.1 standard, section 7.2.1. All other bits of the instruction
+register always return 0s.
+
+<<ptap-instruction-encodings-table>> lists the PTAP instruction encodings and associated
+register lengths.
+
+[[ptap-instruction-encodings-table]]
+[cols="<,<,<,<",options="header"]
+.PTAP instruction encodings
+|===
+|Encoding |Name |Register Size |Description
+|0x00 |BYPASS |1 |IEEE 1149.1, Section 8.4
+|0x01 |IDCODE |32 |IEEE 1149.1, Section 8.13
+|0x02 |RUNBIST |BIST |IEEE 1149.1, Section 8.10
+|0x03 |SAMPLE_PRELOAD |BSR |IEEE 1149.1, Sections 8.6 and 8.7
+|0x04 |EXTEST |BSR |IEEE 1149.1, Section 8.8
+|0x05 |EXTEST_TRAIN |BSR |
+|0x06 |EXTEST_PULSE |BSR |
+|0x07 |CLAMP |1 |IEEE 1149.1, Section 8.11
+|0x08 |HIGHZ |1 |IEEE 1149.1, Section 8.16
+|0x09 |INTEST |BSR |IEEE 1149.1, Section 8.9
+|0x0A |CLAMP_HOLD |2 |IEEE 1149.1, Section 8.20
+|0x0B |CLAMP_RELEASE |2 |IEEE 1149.1, Section 8.20
+|0x0C |TMP_STATUS |2 |IEEE 1149.1, Section 8.20
+|0x0D |IC_RESET |Variable |IEEE 1149.1, Section 8.21
+|0x0E |TAP_3DCR |2 |IEEE 1838, Section 5.5.1
+|0x18 |DEBUG_CONTROL |5 |Debug and clock stop control
+|0x19 |JTAG_CAPS |60 |Capabilities readback
+|0x1A |SELECT_IJTAG |Variable |iJTAG network selection
+|0x1B |SMC_OTP_JTAG2AXI_CAPS |14 |SMC OTP bridge capabilities readback
+|0x1C |SMC_OTP_AXI_SINGLE_OP |Variable |SMC OTP bridge single transaction
+|0x1D |SMC_OTP_AXI_SERIES_CTRL |Variable |SMC OTP bridge series control
+|0x1E |SMC_OTP_AXI_SERIES_DATA_INCR |Variable |SMC OTP bridge series data, incrementing address
+|0x1F |SMC_OTP_AXI_SERIES_DATA_NO_INCR |Variable |SMC OTP bridge series data, fixed address
+|0x20 |SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS |Variable |SMC OTP bridge series data with error status
+|0x21 |SEP_OTP_JTAG2AXI_CAPS |14 |SEP OTP bridge capabilities readback
+|0x22 |SEP_OTP_AXI_SINGLE_OP |Variable |SEP OTP bridge single transaction
+|0x23 |SEP_OTP_AXI_SERIES_CTRL |Variable |SEP OTP bridge series control
+|0x24 |SEP_OTP_AXI_SERIES_DATA_INCR |Variable |SEP OTP bridge series data, incrementing address
+|0x25 |SEP_OTP_AXI_SERIES_DATA_NO_INCR |Variable |SEP OTP bridge series data, fixed address
+|0x26 |SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS |Variable |SEP OTP bridge series data with error status
+|0x27 |SMC_JTAG2AXI_CAPS |14 |SMC fabric bridge capabilities readback
+|0x28 |SMC_AXI_SINGLE_OP |Variable |SMC fabric bridge single transaction
+|0x29 |SMC_AXI_SERIES_CTRL |Variable |SMC fabric bridge series control
+|0x2A |SMC_AXI_SERIES_DATA_INCR |Variable |SMC fabric bridge series data, incrementing address
+|0x2B |SMC_AXI_SERIES_DATA_NO_INCR |Variable |SMC fabric bridge series data, fixed address
+|0x2C |SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS |Variable |SMC fabric bridge series data with error status
+|0x3D |ZERO_LENGTH_BYPASS |0, or 1 |TDI to TDO with no register; BYPASS, with its 1-bit register, while the TAP_3DCR STAP-select bit is set
+|0x3E |INV_BYPASS | |
+|0x3F |BYPASS |1 |IEEE 1149.1, Section 8.4
+|===
+
+The length of each variable-length JTAG2AXI register follows from the bridge's
+address width, data width and pipeline depth, and for the series data registers
+from the size last written to `*_AXI_SERIES_CTRL`. <<ptap-jtag2axi-support>>
+defines each layout.
+
+**NOTE:** All instruction encodings _not_ explicitly defined in this table map
+to the BYPASS instruction.
+
+=== Signal Interface
+
+Packed control and bus types remain bundles at the `jtag_ptap` boundary; their
+members are not separate scalar ports.
+
+ifdef::backend-html5[]
+The parameters and ports of `jtag_ptap` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/jtag_ptap/jtag_ptap.adoc[jtag_ptap].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `jtag_ptap` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+=== Dependencies
+
+The PTAP depends on the following components:
+
+* https://github.com/tenstorrent/tt-oca-harness/tree/829b09cf54dde1969dc309733f97f8fb32cefbdd/hw/common/ocah_prim[`hw/common/ocah_prim`] — Primitive cells (synchronizers, clock gating)
+ifdef::backend-html5[]
+* xref:ip:jtag_stap/doc/index.adoc[`hw/ip/jtag/jtag_stap`] — Secondary TAP (when 3DIC support enabled)
+endif::backend-html5[]
+ifdef::backend-pdf[]
+* <<jtag-stap,`hw/ip/jtag/jtag_stap`>> — Secondary TAP (when 3DIC support enabled)
+endif::backend-pdf[]

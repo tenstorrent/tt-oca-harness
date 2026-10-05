@@ -1,0 +1,257 @@
+# SPDX-License-Identifier: Apache-2.0
+schema_version = 1
+
+[[tests]]
+name = "smc_clk_running_test"
+module = "smc_clk_running_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_multi_window_test"
+module = "smc_clk_multi_window_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dma_cg_activity_test"
+module = "smc_dma_cg_activity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock", "dma_cg"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_static_cg_sanity_test"
+module = "smc_static_cg_sanity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock", "static_cg"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_zeroer_axiclk_cg_test"
+module = "smc_zeroer_axiclk_cg_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock", "zeroer_cg"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_zeroer_regclk_cg_test"
+module = "smc_zeroer_regclk_cg_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock", "zeroer_cg"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_zeroer_cg_indep_test"
+module = "smc_zeroer_cg_indep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock", "zeroer_cg"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cg_test_mode_bypass_test"
+module = "smc_cg_test_mode_bypass_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock", "dft_cg"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cg_dft_reset_bringup_test"
+module = "smc_cg_dft_reset_bringup_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock", "dft_cg"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cg_zeroer_activity_bringup_test"
+module = "smc_cg_zeroer_activity_bringup_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock", "zeroer_cg"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clock_domain_connectivity_test"
+module = "smc_clock_domain_connectivity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_slower_than_ref_test"
+module = "smc_clk_smc_slower_than_ref_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_equal_ref_test"
+module = "smc_clk_smc_equal_ref_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_periph_slower_than_ref_test"
+module = "smc_clk_periph_slower_than_ref_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_slower_periph_slower_test"
+module = "smc_clk_smc_slower_periph_slower_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_slower_periph_equal_test"
+module = "smc_clk_smc_slower_periph_equal_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_slower_periph_much_faster_test"
+module = "smc_clk_smc_slower_periph_much_faster_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_equal_periph_slower_test"
+module = "smc_clk_smc_equal_periph_slower_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_equal_periph_faster_test"
+module = "smc_clk_smc_equal_periph_faster_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_equal_periph_much_faster_test"
+module = "smc_clk_smc_equal_periph_much_faster_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_faster_periph_slower_test"
+module = "smc_clk_smc_faster_periph_slower_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_faster_periph_equal_test"
+module = "smc_clk_smc_faster_periph_equal_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_faster_periph_faster_test"
+module = "smc_clk_smc_faster_periph_faster_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_faster_periph_much_faster_test"
+module = "smc_clk_smc_faster_periph_much_faster_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_much_faster_periph_equal_test"
+module = "smc_clk_smc_much_faster_periph_equal_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_much_faster_periph_faster_test"
+module = "smc_clk_smc_much_faster_periph_faster_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_much_faster_periph_much_faster_test"
+module = "smc_clk_smc_much_faster_periph_much_faster_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[groups]]
+name = "clock"
+tests = [
+    "smc_clk_running_test",
+    "smc_clk_multi_window_test",
+    "smc_clk_smc_slower_than_ref_test",
+    "smc_clk_smc_equal_ref_test",
+    "smc_clk_periph_slower_than_ref_test",
+    "smc_clk_smc_slower_periph_slower_test",
+    "smc_clk_smc_slower_periph_equal_test",
+    "smc_clk_smc_slower_periph_much_faster_test",
+    "smc_clk_smc_equal_periph_slower_test",
+    "smc_clk_smc_equal_periph_faster_test",
+    "smc_clk_smc_equal_periph_much_faster_test",
+    "smc_clk_smc_faster_periph_slower_test",
+    "smc_clk_smc_faster_periph_equal_test",
+    "smc_clk_smc_faster_periph_faster_test",
+    "smc_clk_smc_faster_periph_much_faster_test",
+    "smc_clk_smc_much_faster_periph_equal_test",
+    "smc_clk_smc_much_faster_periph_faster_test",
+    "smc_clk_smc_much_faster_periph_much_faster_test",
+    "smc_dma_cg_activity_test",
+    "smc_static_cg_sanity_test",
+    "smc_zeroer_axiclk_cg_test",
+    "smc_zeroer_regclk_cg_test",
+    "smc_zeroer_cg_indep_test",
+    "smc_cg_test_mode_bypass_test",
+    "smc_cg_dft_reset_bringup_test",
+    "smc_cg_zeroer_activity_bringup_test",
+]
+
+[[tests]]
+name = "smc_zeroer_dma_timeout_test"
+module = "smc_zeroer_dma_timeout_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]

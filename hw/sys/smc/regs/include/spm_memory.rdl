@@ -1,0 +1,34 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef SPM_MEMORY_RDL
+`define SPM_MEMORY_RDL
+
+// This RDL defines an address space for the SRAM
+
+mem spm_memory #(
+    longint unsigned NUM_ENTRIES = 131072,
+    longint unsigned WIDTH       = 64
+) {
+    desc = "Scratch RAM Memory - only present for non-CPL configurations";
+
+    mementries = NUM_ENTRIES;
+    memwidth   = WIDTH;
+
+    // a single word of the memory
+    reg mem_word {
+        regwidth = 64;
+        field {
+           sw=rw;
+           hw=rw;
+        } data[WIDTH-1:0];
+    };
+
+    // the entire memory is an array of memory words
+    mem_word mem_array[NUM_ENTRIES];
+
+};
+
+`endif
+
+

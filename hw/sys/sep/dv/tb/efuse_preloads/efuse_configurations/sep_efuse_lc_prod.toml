@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# PROD lifecycle, everything else at zero.
+#
+# The baseline secure-boot preload: PROD is what makes SEP ROM enforce signature
+# verification, and SBOOT_DIS stays 0 so nothing can opt out of it.
+#
+# It is the default preload for every secure-boot testcase in
+# testlists/rom_fw.toml that needs no other fuse; that testlist is the list of
+# users.
+#
+# Anything that changes in this file changes all of them at once, so treat it as
+# shared state and prefer a sibling preload over an edit here.
+#
+# sep_efuse_lc_prod_pubk_revoke{0..5}.toml are this file plus exactly one
+# CHIPLET_PUBK_REVOKE bit each, and sep_efuse_lc_prod_secver1.toml is this file
+# plus BL1_VERSION security-version flag 0. They are separate preloads, not users
+# of this one.
+
+[LC_STATE]
+  [LC_STATE.fields.lc_state]
+  value = 0xE1   # PROD (raw=0x1)

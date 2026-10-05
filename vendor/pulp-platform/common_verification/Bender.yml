@@ -1,0 +1,44 @@
+package:
+  name: common_verification
+  authors:
+    - "Andreas Kurth <akurth@iis.ee.ethz.ch>"
+
+# Sources are vendored from upstream pulp-platform/common_verification into upstream/
+# via the `vendor_package` entry in the root Bender.yml (bender vendor init). TT-local
+# deltas live as patches under vendor/patches/common_verification. Do NOT hand-edit the
+# upstream/ files; edit/regenerate the patch instead.
+
+sources:
+  # Files in this package are meant for simulation only.
+  # Verilator does not support features commonly used in simulation (eg: rand conditioning)
+  - target: any(simulation, verilator)
+    files:
+    - upstream/src/clk_rst_gen.sv
+    - upstream/src/sim_timeout.sv
+    - upstream/src/stream_watchdog.sv
+    - upstream/src/signal_highlighter.sv
+
+  - target: simulation
+    files:
+      - upstream/src/rand_verif_pkg.sv
+  - target: common_verification_simulation
+    files:
+    # Source files grouped in levels. Files in level 0 have no dependencies on files in this
+    # package. Files in level 1 only depend on files in level 0, files in level 2 on files in
+    # levels 1 and 0, etc. Files within a level are ordered alphabetically.
+    # Level 0
+    - upstream/src/rand_id_queue.sv
+    - upstream/src/rand_stream_mst.sv
+    - upstream/src/rand_synch_holdable_driver.sv
+    - upstream/src/rand_verif_pkg.sv
+    - upstream/src/signal_highlighter.sv
+    - upstream/src/sim_timeout.sv
+    - upstream/src/stream_watchdog.sv
+    # Level 1
+    - upstream/src/rand_synch_driver.sv
+    # Level 2
+    - upstream/src/rand_stream_slv.sv
+
+  - target: test
+    files:
+    - upstream/test/tb_clk_rst_gen.sv

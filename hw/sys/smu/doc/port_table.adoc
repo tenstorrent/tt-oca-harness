@@ -1,0 +1,212 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[.small,stretch]
+.SMU Port Declaration
+[%autowidth,options="header",frame=all,grid=all]
+|===
+|Interface Name |Type |Direction |Width |Description |Connection |Default value (if applicable)
+
+|`clk_smu_i` |`logic` |Input |1 |Primary SMU clock domain. Shared by SMC and DTP system logic. |PLL output |N/A
+|`clk_ref_i` |`logic` |Input |1 |Reference clock domain for timing-sensitive operations. |PLL reference clock |N/A
+|`rst_cold_ni` |`logic` |Input |1 |Cold reset (active low). Assertion and deassertion are synchronous to `clk_ref_i` and do not propagate while that clock is stopped. Assertion is de-glitched for 32 cycles. A falling `powergood_i` asserts the downstream cold reset without that wait. Deassertion is held for 255 cycles. |System cold reset |N/A
+|`rst_cold_stable_ref_clk_no` |`logic` |Output |1 |Stable cold reset synchronized to reference clock domain (active low). |Downstream subsystems |N/A
+|`powergood_i` |`logic` |Input |1 |Power-good indication from supply supervisor. |Power supply supervisor |N/A
+
+|`jtag_ptap_client_tap_ctrl_i` |`prim_jtag_pkg::jtag_tap_ctrl_t` |Input |- |Primary JTAG TAP control (TCK, TMS, TRST_N). |External JTAG pads |N/A
+|`jtag_ptap_client_tdi_i` |`logic` |Input |1 |Primary JTAG TDI. |External JTAG pads |N/A
+|`jtag_ptap_client_tdo_o` |`logic` |Output |1 |Primary JTAG TDO. |External JTAG pads |N/A
+|`jtag_ptap_client_tdo_oen_o` |`logic` |Output |1 |Primary JTAG TDO output enable. |External JTAG pads |N/A
+
+|`jtag_bsr_host_scan_ctrl_o` |`prim_jtag_pkg::jtag_scan_ctrl_t` |Output |- |Boundary scan control. |Boundary scan chain |N/A
+|`jtag_bsr_host_scan_in_i` |`logic` |Input |1 |Boundary scan data in. |Boundary scan chain |N/A
+|`jtag_bsr_host_scan_out_o` |`logic` |Output |1 |Boundary scan data out. |Boundary scan chain |N/A
+
+|`jtag_stap_io_host_tap_ctrl_o` |`prim_jtag_pkg::jtag_tap_ctrl_t` |Output |- |I/O STAP TAP control. |I/O STAP host |N/A
+|`jtag_stap_io_host_tdi_i` |`logic` |Input |1 |I/O STAP TDI. |I/O STAP host |Tie to '0 if unused
+|`jtag_stap_io_host_tdo_o` |`logic` |Output |1 |I/O STAP TDO. |I/O STAP host |N/A
+|`jtag_stap_io_host_tdo_oen_o` |`logic` |Output |1 |I/O STAP TDO output enable. |I/O STAP host |N/A
+
+|`jtag_stap_extra_host_tap_ctrl_o` |`prim_jtag_pkg::jtag_tap_ctrl_t` |Output |`[JtagNumExtraStapPorts-1:0]` |Extra STAP TAP control array. |Extra STAP hosts |Tie to '0 if unused
+|`jtag_stap_extra_host_tdi_i` |`logic` |Input |`[JtagNumExtraStapPorts-1:0]` |Extra STAP TDI array. |Extra STAP hosts |Tie to '0 if unused
+|`jtag_stap_extra_host_tdo_o` |`logic` |Output |`[JtagNumExtraStapPorts-1:0]` |Extra STAP TDO array. |Extra STAP hosts |N/A
+|`jtag_stap_extra_host_tdo_oen_o` |`logic` |Output |`[JtagNumExtraStapPorts-1:0]` |Extra STAP TDO output enable array. |Extra STAP hosts |N/A
+
+|`jtag_stap_host_scan_ctrl_o` |`prim_jtag_pkg::jtag_scan_ctrl_t` |Output |- |Extended STAP scan control. |STAP scan chain |N/A
+|`jtag_stap_host_scan_in_i` |`logic` |Input |1 |Extended STAP scan data in. |STAP scan chain |N/A
+|`jtag_stap_host_scan_out_o` |`logic` |Output |1 |Extended STAP scan data out. |STAP scan chain |N/A
+
+|`jtag_dfd_host_scan_ctrl_o` |`prim_jtag_pkg::jtag_scan_ctrl_t` |Output |- |DFD iJTAG scan control. |DFD iJTAG chain |N/A
+|`jtag_dfd_host_scan_in_i` |`logic` |Input |1 |DFD iJTAG scan data in. |DFD iJTAG chain |N/A
+|`jtag_dfd_host_scan_out_o` |`logic` |Output |1 |DFD iJTAG scan data out. |DFD iJTAG chain |N/A
+
+|`jtag_dft_secure_host_scan_ctrl_o` |`prim_jtag_pkg::jtag_scan_ctrl_t` |Output |- |Secure DFT iJTAG scan control. |Secure DFT iJTAG chain |N/A
+|`jtag_dft_secure_host_scan_in_i` |`logic` |Input |1 |Secure DFT iJTAG scan data in. |Secure DFT iJTAG chain |N/A
+|`jtag_dft_secure_host_scan_out_o` |`logic` |Output |1 |Secure DFT iJTAG scan data out. |Secure DFT iJTAG chain |N/A
+
+|`jtag_dft_host_scan_ctrl_o` |`prim_jtag_pkg::jtag_scan_ctrl_t` |Output |- |Non-secure DFT iJTAG scan control. |Non-secure DFT iJTAG chain |N/A
+|`jtag_dft_host_scan_in_i` |`logic` |Input |1 |Non-secure DFT iJTAG scan data in. |Non-secure DFT iJTAG chain |N/A
+|`jtag_dft_host_scan_out_o` |`logic` |Output |1 |Non-secure DFT iJTAG scan data out. |Non-secure DFT iJTAG chain |N/A
+
+|`dtp_stop_clks_o` |`logic` |Output |1 |Clock stop output from DTP (JTAG DEBUG_CONTROL or CLA clock-stop). |PLL clock gates |N/A
+
+|`jtag_ptap_state_o` |`jtag_tap_pkg::tap_state_e` |Output |- |Current PTAP TAP state. |Debug infrastructure |N/A
+|`jtag_ptap_inst_decoded_o` |`jtag_inst_reg_pkg::jtag_instruction_decoded_e` |Output |- |Current decoded PTAP instruction. |Debug infrastructure |N/A
+
+|`jtag_ic_reset_ext_o` |`ic_reset_ext_t` |Output |`$bits(ic_reset_ext_t)` |External JTAG IC_RESET override slice. Integrator-defined packed struct with `.ovrd` override enables and `.val` active-low override values. Driven by the DTP's `jtag_ic_reset_ext_o` when `CFG.JTAG_IC_RESET_ENABLE=1`, otherwise tied to '0. An integrator needing JTAG reset overrides for logic outside the SMU sets `ic_reset_ext_t` to their own override struct and routes this port to it; the SMU does not define that type. |Integrator-defined reset overrides |N/A
+
+|`xtrig_ctm_src_req_o` |`logic` |Output |`[XtrigNumIntCt-1:0]` |Cross trigger source requests. The SMU exposes DTP lanes above the SMC reservation (`smu_pkg::XtrigSmcIntCtLanes`). |Cross trigger network |N/A
+|`xtrig_ctm_src_ack_i` |`logic` |Input |`[XtrigNumIntCt-1:0]` |Cross trigger source acknowledges. Unused in pulse-sync mode (mode bit = 0). |Cross trigger network |Tie to '0 in pulse-sync mode
+|`xtrig_ctm_dst_req_i` |`logic` |Input |`[XtrigNumIntCt-1:0]` |Cross trigger destination requests. The SMU exposes DTP lanes above the SMC reservation. |Cross trigger network |Tie to '0 if unused
+|`xtrig_ctm_dst_ack_o` |`logic` |Output |`[XtrigNumIntCt-1:0]` |Cross trigger destination acknowledges. Unused in pulse-sync mode. |Cross trigger network |N/A
+|`xtrig_clk_stop_req_i` |`logic` |Input |`[XtrigNumClkStopReq-1:0]` |Clock stop requests. The SMU exposes DTP lanes above the SMC reservation (`smu_pkg::XtrigSmcClkStopLanes`). |Clock stop requesters |Tie to '0 if unused
+
+|`xtrig_ctp_req_out_dout_o` |`logic` |Output |`[XtrigNumCtp-1:0]` |CTP request-out data output. |GPIO pad ring |N/A
+|`xtrig_ctp_req_out_dout_en_o` |`logic` |Output |`[XtrigNumCtp-1:0]` |CTP request-out data output enable. |GPIO pad ring |N/A
+|`xtrig_ctp_req_out_din_i` |`logic` |Input |`[XtrigNumCtp-1:0]` |CTP request-out data input. |GPIO pad ring |Tie to '0 if unused
+|`xtrig_ctp_req_out_din_en_o` |`logic` |Output |`[XtrigNumCtp-1:0]` |CTP request-out data input enable. |GPIO pad ring |N/A
+|`xtrig_ctp_req_in_dout_o` |`logic` |Output |`[XtrigNumCtp-1:0]` |CTP request-in data output. |GPIO pad ring |N/A
+|`xtrig_ctp_req_in_dout_en_o` |`logic` |Output |`[XtrigNumCtp-1:0]` |CTP request-in data output enable. |GPIO pad ring |N/A
+|`xtrig_ctp_req_in_din_i` |`logic` |Input |`[XtrigNumCtp-1:0]` |CTP request-in data input. |GPIO pad ring |Tie to '0 if unused
+|`xtrig_ctp_req_in_din_en_o` |`logic` |Output |`[XtrigNumCtp-1:0]` |CTP request-in data input enable. |GPIO pad ring |N/A
+|`xtrig_ctp_ack_in_dout_o` |`logic` |Output |`[XtrigNumCtp-1:0]` |CTP ack-in data output. |GPIO pad ring |N/A
+|`xtrig_ctp_ack_in_dout_en_o` |`logic` |Output |`[XtrigNumCtp-1:0]` |CTP ack-in data output enable. |GPIO pad ring |N/A
+|`xtrig_ctp_ack_in_din_i` |`logic` |Input |`[XtrigNumCtp-1:0]` |CTP ack-in data input. |GPIO pad ring |Tie to '0 if unused
+|`xtrig_ctp_ack_in_din_en_o` |`logic` |Output |`[XtrigNumCtp-1:0]` |CTP ack-in data input enable. |GPIO pad ring |N/A
+|`xtrig_ctp_ack_out_dout_o` |`logic` |Output |`[XtrigNumCtp-1:0]` |CTP ack-out data output. |GPIO pad ring |N/A
+|`xtrig_ctp_ack_out_dout_en_o` |`logic` |Output |`[XtrigNumCtp-1:0]` |CTP ack-out data output enable. |GPIO pad ring |N/A
+|`xtrig_ctp_ack_out_din_i` |`logic` |Input |`[XtrigNumCtp-1:0]` |CTP ack-out data input. |GPIO pad ring |Tie to '0 if unused
+|`xtrig_ctp_ack_out_din_en_o` |`logic` |Output |`[XtrigNumCtp-1:0]` |CTP ack-out data input enable. |GPIO pad ring |N/A
+
+|`rst_primary_ref_clk_no` |`logic` |Output |1 |Primary reset synchronized to reference clock domain (active low). |Downstream subsystems |N/A
+|`rst_primary_smc_clk_no` |`logic` |Output |1 |Primary reset synchronized to SMC clock domain (active low). |Downstream subsystems |N/A
+
+|`smu_axi_in_req_i` |`smu_axi_xbar_pkg::axi_56_64_req_t` |Input |- |SMU AXI crossbar inbound request (from SMN). |SMN fabric |Tie to '0 if unused
+|`smu_axi_in_resp_o` |`smu_axi_xbar_pkg::axi_56_64_resp_t` |Output |- |SMU AXI crossbar inbound response. |SMN fabric |N/A
+|`smu_axi_out_req_o` |`smu_axi_xbar_pkg::axi_out_req_t` |Output |- |SMU AXI crossbar outbound request (to SMN). |SMN fabric |N/A
+|`smu_axi_out_resp_i` |`smu_axi_xbar_pkg::axi_out_resp_t` |Input |- |SMU AXI crossbar outbound response. |SMN fabric |Tie to '0 if unused
+
+|`smc_external_req_o` |`smc_pkg::smc_axil_32_32_req_t` |Output |- |SMC AXI-Lite external port request for adopter peripheral expansion. |Adopter peripherals |N/A
+|`smc_external_resp_i` |`smc_pkg::smc_axil_32_32_resp_t` |Input |- |SMC AXI-Lite external port response. |Adopter peripherals |Tie to DECERR if unused
+
+|`smc_efuse_bank_ctrl_req_o` |`smc_pkg::smc_axil_32_32_req_t` |Output |- |SMC eFuse bank control AXI-Lite request. |eFuse shim |N/A
+|`smc_efuse_bank_ctrl_resp_i` |`smc_pkg::smc_axil_32_32_resp_t` |Input |- |SMC eFuse bank control AXI-Lite response. |eFuse shim |N/A
+|`smc_efuse_shim_command_req_o` |`smc_efuse_pkg::fuse_command_req_t` |Output |- |SMC eFuse command interface request. |eFuse shim |N/A
+|`smc_efuse_shim_command_resp_i` |`smc_efuse_pkg::fuse_command_resp_t` |Input |- |SMC eFuse command interface response. |eFuse shim |N/A
+|`smc_shadow_regs_o` |`smc_efuse_pkg::efuse_map_t` |Output |- |SMC eFuse shadow register output. |External systems |N/A
+
+|`pll_clk_obs_i` |`logic` |Input |1 |PLL clock observation input. |PLL shim |N/A
+|`pll_clk_obs_en_i` |`logic` |Input |1 |PLL clock observation enable. |Control logic |N/A
+|`pvt_process_clk_obs_i` |`logic` |Input |1 |PVT process monitor clock observation input. |PVT shim |N/A
+|`pvt_process_clk_obs_en_i` |`logic` |Input |1 |PVT process monitor clock observation enable. |Control logic |N/A
+|`cat_therm_i` |`logic` |Input |1 |CAT thermal sensor input. |CAT thermal sensor |Tie to '0 if unused
+
+|`lsio_interface_select_o` |`logic` |Output |`[NumGpioWraps-1:0]` |LSIO interface selection. |GPIO padring |N/A
+|`pad2core_i` |`logic` |Input |`[NumGpioWraps-1:0]` |GPIO input data from pad ring to core. |GPIO padring → SMU |N/A
+|`core2pad_o` |`logic` |Output |`[NumGpioWraps-1:0]` |GPIO output data from core to pad ring. |SMU → GPIO padring |N/A
+|`pad2core_en_o` |`logic` |Output |`[NumGpioWraps-1:0]` |GPIO pad-to-core path enable. |SMU → GPIO padring |N/A
+|`core2pad_en_o` |`logic` |Output |`[NumGpioWraps-1:0]` |GPIO core-to-pad path enable. |SMU → GPIO padring |N/A
+|`rst_cool_n_from_pin_i` |`logic` |Input |1 |Cool reset input from GPIO pin. |GPIO pin |N/A
+
+|`clk_telemetry_i` |`logic` |Input |1 |Telemetry clock domain for ATB data collection. |Telemetry clock source |N/A
+|`rst_telemetry_ni` |`logic` |Input |1 |Telemetry reset (active low). |Telemetry reset source |N/A
+|`telemetry_atdata_i` |`telemetry_receiver_pkg::telemetry_data_t` |Input |`[NumTelemetryReceivers-1:0]` |ATB telemetry data input array. |ATB sources |N/A
+|`telemetry_atid_i` |`telemetry_receiver_pkg::atb_id_t` |Input |`[NumTelemetryReceivers-1:0]` |ATB telemetry ID input array. |ATB sources |N/A
+|`telemetry_atready_o` |`logic` |Output |`[NumTelemetryReceivers-1:0]` |ATB telemetry ready output. |ATB sources |N/A
+|`telemetry_atvalid_i` |`logic` |Input |`[NumTelemetryReceivers-1:0]` |ATB telemetry valid input. |ATB sources |N/A
+|`telemetry_afvalid_o` |`logic` |Output |`[NumTelemetryReceivers-1:0]` |ATB flush valid output. |ATB sources |N/A
+|`telemetry_afready_i` |`logic` |Input |`[NumTelemetryReceivers-1:0]` |ATB flush ready input. |ATB sources |N/A
+
+|`smc_cluster_ded_o` |`logic` |Output |1 |Cluster double error detection output. |External systems |N/A
+|`smc_wdt_first_timeout_o` |`logic` |Output |1 |First watchdog timeout signal. |Reset unit |N/A
+|`smc_wdt_second_timeout_o` |`logic` |Output |1 |Second watchdog timeout signal. |External systems |N/A
+|`smc_region_size_o` |`logic` |Output |`[31:0]` |SMC address region size output. |External systems |N/A
+
+|`smc_ext_interrupts_i` |`logic` |Input |`[CFG.NUM_INT_TO_SMC-1:0]` |External interrupt inputs to SMC. Active-high level or a pulse long enough to be sampled on `clk_smc`. |External interrupt sources |Tie to '0 if unused
+|`smc_fuse_sense_done_o` |`logic` |Output |1 |SMC fuse sense completion output. |Memory repair logic |N/A
+|`smc_fuse_reset_n_delayed_o` |`logic` |Output |1 |Delayed fuse reset output. |External systems |N/A
+|`skip_mem_repair_o` |`logic` |Output |1 |Skip memory repair output. |Memory repair logic |N/A
+|`ext_boot_seq_done_i` |`logic` |Input |1 |Asynchronous external boot sequence completion (memory repair and shadow register override done). Connect only to SMC; qualified internally and fanned to SEP. |External boot/repair controller |N/A
+
+|`lc_state_o` |`logic` |Output |`[2*LcStateWidth-1:0]` |Lifecycle state output (driven by SEP when `CFG.SEP=1`, else `8'hf0`). |External systems |N/A
+|`lc_sigint_err_o` |`logic` |Output |1 |Lifecycle signal integrity error. |External systems |N/A
+
+|`smc_ndmreset_request_i` |`logic` |Input |`[CpuClusterCount-1:0]` |NDM reset request from external CPU cluster `i` on bit `i`. |External CPU clusters |Tie to '0 if unused
+|`smc_ndmreset_process_o` |`logic` |Output |`[CpuClusterCount-1:0]` |Firmware response to external CPU cluster `i` on bit `i`. |SMC → external CPU clusters |N/A
+
+|`smc_ext_mailbox_interrupts_o` |`logic` |Output |`[NumMailboxes-1:0]` |External mailbox interrupt outputs. |External targets |N/A
+
+|`cfg_flr_pf_active_i` |`logic` |Input |1 |Function Level Reset (FLR) PF active signal. |PCIe / system |Tie to '0 if unused
+|`isolate_req_o` |`logic` |Output |`[31:0]` |Isolation request output for 32 subsystems. |Subsystems |N/A
+|`ss_reset_complete_i` |`logic` |Input |`[31:0]` |Subsystem reset completion status. |Subsystems |32'hFFFFFFFF
+|`ss_config_o` |`logic` |Output |`[31:0]` |Subsystem configuration output. |Subsystems |N/A
+|`ss_reset_ctrl_o` |`smc_reset_unit_pkg::reset_ctrl_t` |Output |`[31:0]` |Subsystem reset control output array. |Subsystems |N/A
+|`sync_irq_o` |`logic` |Output |1 |Software-controlled global synchronisation bit (`SYNC_REG.sync` in the SMC reset unit). Not an interrupt aggregate output. |External systems |N/A
+|`gpio_interrupt_o` |`logic` |Output |`[NumGpioWraps-1:0]` |Raw GPIO interrupt vector from the padring, one bit per GPIO wrap (bonded + unbonded). Passed through from SMC. Software reads GPIO status registers to identify the interrupt source. |SMC → external consumers |N/A, leave floating if unused
+|`uart_interrupt_o` |`logic` |Output |`[NumUart-1:0]` |Raw UART interrupt outputs, one bit per UART instance, in the peripheral clock domain. Passed through from SMC. |SMC → external consumers |N/A, leave floating if unused
+
+|`smc_rom_intf_req_o` |`rom_req_t` |Output |- |SMC ROM memory interface request. |Boot ROM |N/A
+|`smc_rom_intf_rsp_i` |`rom_rsp_t` |Input |- |SMC ROM memory interface response. |Boot ROM |N/A
+|`smc_scratch_ram_intf_req_o` |`scratch_ram_req_t` |Output |`[31:0]` |SMC scratch RAM interface requests. |Scratch RAM banks |N/A
+|`smc_scratch_ram_intf_rsp_i` |`scratch_ram_rsp_t` |Input |`[31:0]` |SMC scratch RAM interface responses. |Scratch RAM banks |N/A
+|`smc_l1_icache_tag_intf_req_o` |`l1_icache_tag_req_t` |Output |`[3:0]` |SMC L1 I-cache tag interface requests. |I-cache tag banks |N/A
+|`smc_l1_icache_tag_intf_rsp_i` |`l1_icache_tag_rsp_t` |Input |`[3:0]` |SMC L1 I-cache tag interface responses. |I-cache tag banks |N/A
+|`smc_l1_icache_data_intf_req_o` |`l1_icache_data_req_t` |Output |`[7:0]` |SMC L1 I-cache data interface requests. |I-cache data banks |N/A
+|`smc_l1_icache_data_intf_rsp_i` |`l1_icache_data_rsp_t` |Input |`[7:0]` |SMC L1 I-cache data interface responses. |I-cache data banks |N/A
+|`smc_l1_dcache_tag_intf_req_o` |`l1_dcache_tag_req_t` |Output |`[3:0]` |SMC L1 D-cache tag interface requests. |D-cache tag banks |N/A
+|`smc_l1_dcache_tag_intf_rsp_i` |`l1_dcache_tag_rsp_t` |Input |`[3:0]` |SMC L1 D-cache tag interface responses. |D-cache tag banks |N/A
+|`smc_l1_dcache_data_intf_req_o` |`l1_dcache_data_req_t` |Output |`[3:0]` |SMC L1 D-cache data interface requests. |D-cache data banks |N/A
+|`smc_l1_dcache_data_intf_rsp_i` |`l1_dcache_data_rsp_t` |Input |`[3:0]` |SMC L1 D-cache data interface responses. |D-cache data banks |N/A
+
+|`smc_disable_sram_auto_init_i` |`logic` |Input |1 |Disable SRAM automatic initialization. |Control logic |1'b0
+|`smc_init_mem_done_o` |`logic` |Output |1 |Memory initialization completion signal. |Control logic |N/A
+|`chiplet_is_primary_i` |`logic` |Input |1 |Chiplet is primary (for System Timer OCTS). |GPIO padring straps |N/A
+|`timer_count_o` |`logic` |Output |`[63:0]` |64-bit system timer count output (OCTS). |External systems |N/A
+
+|`trace_mem_req_o` |`dfd_trace_mem_pkg::SinkMemPktIn_s` |Output |`[TRC_RAM_INSTANCES-1:0]` |Trace memory interface requests. |Trace memory |N/A
+|`trace_mem_resp_i` |`dfd_trace_mem_pkg::SinkMemPktOut_s` |Input |`[TRC_RAM_INSTANCES-1:0]` |Trace memory interface responses. |Trace memory |N/A
+
+|`test_en_i` |`logic` |Input |1 |DFT/scan test-enable. Drives clock-gater test ports and AXI cell test inputs. |Test controller |1'b0
+|`scan_rst_ni` |`logic` |Input |1 |Scan reset (active-low). Bypasses reset synchronizers during DFT. |Test controller |1'b1
+
+|`mem_repair_done_i` |`logic` |Input |1 |Memory repair done indicator. |DFT controller |1'b0
+|`mem_repair_success_i` |`logic` |Input |1 |Memory repair success indicator. |DFT controller |1'b0
+|`mem_repair_abort_i` |`logic` |Input |1 |Memory repair abort indicator. |DFT controller |1'b0
+|`mbist_done_i` |`logic` |Input |1 |MBIST done indicator. |DFT controller |1'b0
+|`mbist_pass_i` |`logic` |Input |1 |MBIST pass indicator. |DFT controller |1'b0
+|`mbist_abort_i` |`logic` |Input |1 |MBIST abort indicator. |DFT controller |1'b0
+
+|`sep_sram_req_o` |`sep_pkg::sep_sram_req_t` |Output |- |SEP scratch SRAM request passthrough. |SEP SRAM macros |N/A
+|`sep_sram_rsp_i` |`sep_pkg::sep_sram_rsp_t` |Input |- |SEP scratch SRAM response passthrough. |SEP SRAM macros |N/A
+|`sep_boot_rom_req_o` |`sep_pkg::sep_sram_req_t` |Output |- |SEP boot ROM request passthrough. |SEP ROM macro |N/A
+|`sep_boot_rom_rsp_i` |`sep_pkg::sep_sram_rsp_t` |Input |- |SEP boot ROM response passthrough. |SEP ROM macro |N/A
+|`sep_cpu_tcm_req_o` |`sep_pkg::sep_cpu_tcm_req_t` |Output |- |SEP CPU TCM request passthrough (ICCM + DCCM). |SEP SRAM macros |N/A
+|`sep_cpu_tcm_rsp_i` |`sep_pkg::sep_cpu_tcm_rsp_t` |Input |- |SEP CPU TCM response passthrough. |SEP SRAM macros |N/A
+
+|`sep_efuse_bank_ctrl_req_o` |`sep_efuse_pkg::efuse_axil_req_t` |Output |- |SEP eFuse bank control AXI-Lite request passthrough. |SEP eFuse shim |N/A
+|`sep_efuse_bank_ctrl_resp_i` |`sep_efuse_pkg::efuse_axil_resp_t` |Input |- |SEP eFuse bank control AXI-Lite response passthrough. |SEP eFuse shim |N/A
+|`sep_efuse_shim_command_req_o` |`sep_efuse_pkg::fuse_command_req_t` |Output |- |SEP eFuse command interface request passthrough. |SEP eFuse shim |N/A
+|`sep_efuse_shim_command_resp_i` |`sep_efuse_pkg::fuse_command_resp_t` |Input |- |SEP eFuse command interface response passthrough. |SEP eFuse shim |N/A
+
+|`sep_crypto_pka_imem_sram_req_o` |`sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t` |Output |- |SEP OTBN PKA instruction memory SRAM request passthrough. |SRAM macro |N/A
+|`sep_crypto_pka_imem_sram_rsp_i` |`sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t` |Input |- |SEP OTBN PKA instruction memory SRAM response passthrough. |SRAM macro |N/A
+|`sep_crypto_pka_dmem_sram_req_o` |`sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t` |Output |- |SEP OTBN PKA data memory SRAM request passthrough. |SRAM macro |N/A
+|`sep_crypto_pka_dmem_sram_rsp_i` |`sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t` |Input |- |SEP OTBN PKA data memory SRAM response passthrough. |SRAM macro |N/A
+
+|`sep_km_rom_mem_req_o` |`km_intf_pkg::km_rom_mem_req_t` |Output |- |SEP Key Manager ROM memory request passthrough. |ROM macro |N/A
+|`sep_km_rom_mem_rsp_i` |`km_intf_pkg::km_rom_mem_rsp_t` |Input |- |SEP Key Manager ROM memory response passthrough. |ROM macro |N/A
+|`sep_km_sram_mem_req_o` |`km_intf_pkg::km_sram_mem_req_t` |Output |- |SEP Key Manager SRAM memory request passthrough. |SRAM macro |N/A
+|`sep_km_sram_mem_rsp_i` |`km_intf_pkg::km_sram_mem_rsp_t` |Input |- |SEP Key Manager SRAM memory response passthrough. |SRAM macro |N/A
+
+|`sep_external_req_o` |`sep_pkg::sep_32_64_6_12_axi_req_t` |Output |- |SEP AXI extension port request passthrough. |Adopter peripherals |N/A
+|`sep_external_resp_i` |`sep_pkg::sep_32_64_6_12_axi_resp_t` |Input |- |SEP AXI extension port response passthrough. |Adopter peripherals |Tie to DECERR if unused
+
+|`sep_cpu_trace_o` |`sep_pkg::sep_cpu_trace_t` |Output |- |SEP CPU trace output. |Trace infrastructure |N/A
+|`sep_lockstep_ctrl_i` |`sep_pkg::sep_lockstep_ctrl_t` |Input |- |SEP CPU lockstep controls, passed through to the SEP. Inert unless the SEP core is built with `RV_LOCKSTEP_ENABLE`. |Chip-level RAS control |Tie to '0 if unused
+|`sep_lockstep_status_o` |`sep_pkg::sep_lockstep_status_t` |Output |- |SEP CPU lockstep status. Reads 0 when the SEP is absent (`CFG.SEP=0`) or the core is built without `RV_LOCKSTEP_ENABLE`. |Chip-level RAS aggregation |N/A
+|`lcc_demote_state_1_o` |`logic` |Output |`[1:0]` |SEP lifecycle demote state 1. |External lifecycle logic |N/A
+|`lcc_demote_state_2_o` |`logic` |Output |`[1:0]` |SEP lifecycle demote state 2. |External lifecycle logic |N/A
+|`sep_fuse_sense_done_o` |`logic` |Output |1 |SEP fuse sense done output. |System integration |N/A
+|`clk_sep_wdt_i` |`logic` |Input |1 |SEP watchdog timer clock passthrough. |Low-frequency clock source |N/A
+|`secure_tm_req_i` |`logic` |Input |- |Secure test mode request, passthrough to SEP. |GPIO padring / tie-off |N/A
+|===

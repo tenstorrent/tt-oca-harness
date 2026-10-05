@@ -1,0 +1,26 @@
+--- a/hw/ip/prim_generic/rtl/prim_clock_mux2.sv
++++ b/hw/ip/prim_generic/rtl/prim_clock_mux2.sv
+@@ -16,16 +16,12 @@
+   // We model the mux with logic operations for GTECH runs.
+   assign clk_o = (sel_i & clk1_i) | (~sel_i & clk0_i);
+ 
+-  // Make sure sel is never X.
+-  //
+-  // So that this can be a clocked assertion, we check it on the posedge of each input clock.
+-  //
+-  // This is disabled for FPV runs (because some formal tools don't have a concept of "X"). The
+-  // assertion comes after a ##1 to allow inverted clocks that start with a rising edge at the
+-  // beginning of the simulation.
+-`ifndef FPV_ON
+-  `OCAH_OT_ASSERT(selKnown0, ##1 !$isunknown(sel_i), clk0_i, 0)
+-  `OCAH_OT_ASSERT(selKnown1, ##1 !$isunknown(sel_i), clk1_i, 0)
+-`endif
++  // make sure sel is never X (including during reset)
++  // need to use ##1 as this could break with inverted clocks that
++  // start with a rising edge at the beginning of the simulation.
++
++  // TODO FIXME uncomment these once xprop issue is solved
++  // `OCAH_OT_ASSERT(selKnown0, ##1 !$isunknown(sel_i), clk0_i, 0)
++  // `OCAH_OT_ASSERT(selKnown1, ##1 !$isunknown(sel_i), clk1_i, 0)
+ 
+ endmodule : prim_clock_mux2

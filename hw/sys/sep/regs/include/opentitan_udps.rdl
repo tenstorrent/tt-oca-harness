@@ -1,0 +1,27 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef _OPENTITAN_UDPS_RDL_DEFINED
+`define _OPENTITAN_UDPS_RDL_DEFINED
+
+// OpenTitan User-Defined Properties (UDPs)
+// These properties are used in RDL files exported from OpenTitan HJSON register
+// descriptions. They must be compiled before any RDL file that references them.
+
+// hwre: true if hardware uses `re` signal (latched software read pulse).
+// The standard SystemRDL property `swacc` cannot be used because `swacc = hwre | swmod`.
+property hwre {
+    type = boolean;
+    component = reg;
+    default = false;
+};
+
+// shadowed: if true, the register is implemented using a shadow register module.
+// Shadow registers guard sensitive registers against fault injection attacks.
+property shadowed {
+    type = boolean;
+    component = reg;
+    default = false;
+};
+
+`endif // _OPENTITAN_UDPS_RDL_DEFINED

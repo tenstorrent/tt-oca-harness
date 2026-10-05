@@ -1,0 +1,22 @@
+--- a/hw/ip/entropy_src/rtl/entropy_src_adaptp_ht.sv
++++ b/hw/ip/entropy_src/rtl/entropy_src_adaptp_ht.sv
+@@ -103,7 +103,7 @@
+ 
+   prim_sum_tree #(
+     .NumSrc(RngBusWidth),
+-    .InWidth(RegWidth)
++    .Width(RegWidth)
+   ) u_sum (
+     .clk_i       (clk_i),
+     .rst_ni      (rst_ni),
+--- a/hw/ip/entropy_src/rtl/entropy_src_markov_ht.sv
++++ b/hw/ip/entropy_src/rtl/entropy_src_markov_ht.sv
+@@ -133,7 +133,7 @@
+ 
+   prim_sum_tree #(
+     .NumSrc(RngBusWidth),
+-    .InWidth(RegWidth)
++    .Width(RegWidth)
+   ) u_sum (
+     .clk_i       (clk_i),
+     .rst_ni      (rst_ni),

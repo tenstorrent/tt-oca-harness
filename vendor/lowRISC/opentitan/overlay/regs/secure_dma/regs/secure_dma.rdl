@@ -1,0 +1,416 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+addrmap secure_dma {
+    name = "DMA Controller";
+    desc = "DMA Controller for the integrated OpenTitan.";
+    reg {
+        field {
+            sw = r;
+            hw = rw;
+            desc = "DMA operation has been completed.";
+        } DMA_DONE[0:0] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Indicates the transfer of a single chunk has been completed.";
+        } DMA_CHUNK_DONE[1:1] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "DMA error has occurred. DMA_STATUS.error_code register shows the details.";
+        } DMA_ERROR[2:2] = 0x0;
+    } INTR_STATE @ 0x0;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable interrupt when !!INTR_STATE.dma_done is set.";
+        } DMA_DONE[0:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable interrupt when !!INTR_STATE.dma_chunk_done is set.";
+        } DMA_CHUNK_DONE[1:1] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable interrupt when !!INTR_STATE.dma_error is set.";
+        } DMA_ERROR[2:2] = 0x0;
+    } INTR_ENABLE @ 0x4;
+    reg {
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Write 1 to force !!INTR_STATE.dma_done to 1.";
+        } DMA_DONE[0:0] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Write 1 to force !!INTR_STATE.dma_chunk_done to 1.";
+        } DMA_CHUNK_DONE[1:1] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Write 1 to force !!INTR_STATE.dma_error to 1.";
+        } DMA_ERROR[2:2] = 0x0;
+    } external INTR_TEST @ 0x8;
+    reg {
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Write 1 to trigger one alert event of this kind.";
+        } FATAL_FAULT[0:0] = 0x0;
+    } external ALERT_TEST @ 0xC;
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            desc = "Lower 32 bits of the source address.
+            Must be aligned to the transfer width.";
+        } SRC_ADDR_LO[31:0] = 0x0;
+    } SRC_ADDR_LO @ 0x10;
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            desc = "Upper 32 bits of the physical or virtual address of memory location within SoC memory address map or physical address within OT non-secure memory space.
+            Must be aligned to the transfer width.
+            Source and destination address must have the same alignment.";
+        } SRC_ADDR_HI[31:0] = 0x0;
+    } SRC_ADDR_HI @ 0x14;
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            desc = "Lower 32 bits of the destination address.
+            Must be aligned to the transfer width.
+            Source and destination address must have the same alignment.";
+        } DST_ADDR_LO[31:0] = 0x0;
+    } DST_ADDR_LO @ 0x18;
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            desc = "Upper 32 bits of the physical or virtual address of memory location within SoC memory address map or physical address within OT non-secure memory space.
+            Must be aligned to the transfer width.
+            Source and destination address must have the same alignment.";
+        } DST_ADDR_HI[31:0] = 0x0;
+    } DST_ADDR_HI @ 0x1C;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target address space that the source address pointer refers to.";
+        } SRC_ASID[3:0] = 0x7;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target address space that the destination address pointer refers to.";
+        } DST_ASID[7:4] = 0x7;
+    } ADDR_SPACE_ID @ 0x20;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            swmod = true;
+            desc = "Base Address to mark the start of the DMA enabled memory range within the OT internal memory space.";
+        } BASE[31:0] = 0x0;
+    } ENABLED_MEMORY_RANGE_BASE @ 0x24;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            swmod = true;
+            desc = "Limit Address to mark the end of the DMA enabled memory range within the OT internal memory space; inclusive.";
+        } LIMIT[31:0] = 0x0;
+    } ENABLED_MEMORY_RANGE_LIMIT @ 0x28;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Once set the enabled memory base and limit registers are valid.";
+        } RANGE_VALID[0:0] = 0x0;
+    } RANGE_VALID @ 0x2C;
+    reg {
+        field {
+            enum MultiBitBool4 {
+                True = 6;
+                False = 9;
+            } ;
+            sw = rw;
+            onwrite = wzc;
+            hw = r;
+            desc = "Used by firmware to lock the DMA enabled memory range configuration registers from further modification.
+            Once this register is set to kMultiBitBool4False, it can only be set to kMultiBitBool4True through a reset event.
+
+            Default Value = kMultiBitBool4True -> Unlocked at reset.";
+            encode = MultiBitBool4;
+        } REGWEN[3:0] = 0x6;
+    } RANGE_REGWEN @ 0x30;
+    reg {
+        field {
+            enum MultiBitBool4 {
+                True = 6;
+                False = 9;
+            } ;
+            sw = r;
+            hw = w;
+            desc = "Used by hardware to lock the DMA configuration registers.
+            This register is purely managed by hardware and only software readable.";
+            encode = MultiBitBool4;
+        } REGWEN[3:0] = 0x6;
+    } external CFG_REGWEN @ 0x34;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Total size (in bytes) of the data to be transferred. The complete transfer operation
+            may consist of multiple chunks of data as specified by the CHUNK_DATA_SIZE register.
+
+            Minimum: 1 byte.
+            Maximum: May be restricted to a maximum pre-defined size based on OT DMA enabled memory space allocation.
+            Works in conjunction with the TRANSFER_WIDTH register.";
+        } DATA_SIZE[31:0] = 0x0;
+    } TOTAL_DATA_SIZE @ 0x38;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Size (in bytes) for a single DMA transfer.
+            In hardware handshake mode, the DMA reads in chunks of CHUNK_DATA_SIZE from the peripheral.
+            For a single memory transfer CHUNK_DATA_SIZE and TOTAL_DATA_SIZE are set to the same value.
+
+            Minimum: 1 byte.
+            Maximum: May be restricted to a maximum pre-defined size based on OT DMA enabled memory space allocation.
+            Works in conjunction with the TRANSFER_WIDTH register.";
+        } DATA_SIZE[31:0] = 0x0;
+    } CHUNK_DATA_SIZE @ 0x3C;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Denotes the width of each transaction that the DMA shall issue during the data movement.
+
+            Multiple transactions of this width will be issued until TOTAL_DATA_SIZE bytes have been transferred.
+            Note that firmware may need to set a different value if a receiving IP supports a read / write transaction width that is less than 1 DWORD.
+            This does not affect the wrap-around mechanism.
+            Note that the value 3 for this register represents an invalid configuration that leads to an error.";
+        } TRANSACTION_WIDTH[1:0] = 0x2;
+    } TRANSFER_WIDTH @ 0x40;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Defines the type of DMA operations.";
+        } OPCODE[3:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable hardware handshake mode.
+            Used to clear FIFOs from low speed IO peripherals receiving data, e.g., I3C receive buffer.
+              Listen to an input trigger signal.
+              Read data from source address location.
+              Copy to destination address.
+              Number of bytes specified in size register.
+              Note assumption is the peripheral lowers input once FIFO is cleared.
+            No explicit clearing necessary.";
+        } HARDWARE_HANDSHAKE_ENABLE[4:4] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Digest register byte swap.
+
+            If 1 the value in each digest output register is converted to big-endian byte order.
+            This setting does not affect the order of the digest output registers, !!SHA2_DIGEST_0 still contains the first 4 bytes of the digest.";
+        } DIGEST_SWAP[5:5] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            desc = "Marks the initial transfer to initialize the DMA and SHA engine for one transfer that can span over multiple single DMA transfers.
+            Used for hardware handshake and ordinary transfers, in which multiple transfers contribute to a final digest.
+            Note, for non-handshake transfers with inline hashing mode enabled, this bit must be set to also mark the first transfer.";
+        } INITIAL_TRANSFER[8:8] = 0x0;
+        field {
+            sw = w;
+            hw = rw;
+            desc = "Aborts the DMA operation if this bit is set.
+            Sets the corresponding bit in the status register once abort operation is complete.
+            Any OpenTitan-internal transactions are guaranteed to complete, but there are no guarantees on the SoC interface.";
+        } ABORT[27:27] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Setting this bit triggers the DMA operation.
+            For normal operation, the DMA engine clears the `go` bit automatically after the configured operation is complete.
+            For Hardware handshake operation, DMA engine does not auto clear the Go bit.
+            Firmware shall clear the Go bit when it intends to stop the hardware handshake operation.";
+        } GO[31:31] = 0x0;
+    } CONTROL @ 0x44;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Defines the increment behavior after every DMA read.
+            When 0: Source address is not changed.
+                    All reads are done from the same address.
+            When 1: Source address is incremented by transfer_width after each read.";
+        } INCREMENT[0:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "When 0: Chunks occupy contiguous ascending addresses.
+            When 1: Source address wraps back to the starting address when finishing a chunk.";
+        } WRAP[1:1] = 0x0;
+    } SRC_CONFIG @ 0x48;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Defines the increment behavior after every DMA write.
+            When 0: Destination address is not changed.
+                    All writes are done to the same address.
+            When 1: Destination address is incremented by transfer_width after each write.";
+        } INCREMENT[0:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "When 0: Chunks occupy contiguous ascending addresses.
+            When 1: Destination address wraps back to the starting address when finishing a chunk.";
+        } WRAP[1:1] = 0x0;
+    } DST_CONFIG @ 0x4C;
+    reg {
+        field {
+            sw = r;
+            hw = rw;
+            desc = "DMA operation is active if this bit is set.
+            DMA engine clears this bit when operation is complete.
+            This bit may be set as long as hardware handshake mode is active and triggered.";
+        } BUSY[0:0] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Configured DMA operation is complete.
+            Cleared automatically by the hardware when starting a new transfer.";
+        } DONE[1:1] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = w;
+            desc = "Set once aborted operation drains.";
+        } ABORTED[2:2] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            swmod = true;
+            desc = "Error occurred during the operation.
+            ERROR_CODE register denotes the source of the error.";
+        } ERROR[3:3] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            swmod = true;
+            desc = "Indicates whether the SHA2_DIGEST register contains a valid digest.
+            This value is cleared on the initial transfer and set when the digest is written.";
+        } SHA2_DIGEST_VALID[4:4] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Transfer of a single chunk is complete.
+            Only raised for multi-chunk memory-to-memory transfers.
+            Cleared automatically by the hardware when starting the transfer of a new chunk.";
+        } CHUNK_DONE[5:5] = 0x0;
+    } STATUS @ 0x50;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Source address is invalid.";
+        } SRC_ADDR_ERROR[0:0] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Destination address is invalid.";
+        } DST_ADDR_ERROR[1:1] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Opcode is invalid.";
+        } OPCODE_ERROR[2:2] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "TRANSFER_WIDTH encodes an invalid value, TOTAL_DATA_SIZE or CHUNK_SIZE are zero, or inline hashing is not using 32-bit transfer width";
+        } SIZE_ERROR[3:3] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "The bus transfer returned an error.";
+        } BUS_ERROR[4:4] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "The base and limit addresses contain an invalid value.";
+        } BASE_LIMIT_ERROR[5:5] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "The DMA enabled memory range is not configured.";
+        } RANGE_VALID_ERROR[6:6] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "The source or destination ASID contains an invalid value.";
+        } ASID_ERROR[7:7] = 0x0;
+    } ERROR_CODE @ 0x54;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "SHA2 digest data";
+        } DATA_0[31:0] = 0x0;
+    } SHA2_DIGEST_0[16] @ 0x58 += 0x4;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable bits for incoming handshake interrupt wires.";
+        } MASK[10:0] = 0x7FF;
+    } HANDSHAKE_INTR_ENABLE @ 0x98;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Source N needs interrupt cleared";
+        } SOURCE[10:0] = 0x0;
+    } CLEAR_INTR_SRC @ 0x9C;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Bus selection bit for source N.";
+        } BUS[10:0] = 0x0;
+    } CLEAR_INTR_BUS @ 0xA0;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Destination address for interrupt source clearing write.";
+        } ADDR_0[31:0] = 0x0;
+    } INTR_SRC_ADDR_0[11] @ 0xA4 += 0x4;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Write value for interrupt clearing write.";
+        } WR_VAL_0[31:0] = 0x0;
+    } INTR_SRC_WR_VAL_0[11] @ 0x124 += 0x4;
+};

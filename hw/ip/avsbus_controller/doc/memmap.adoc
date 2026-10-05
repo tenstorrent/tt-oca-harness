@@ -1,0 +1,67 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[avsbus-controller-memory-map]]
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="overview-2"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+The AVSBus Controller occupies a 128-byte address space (0x00-0x7F) reached
+through its AXI4-Lite port. The register map holds the command and readback
+FIFO windows, status registers for monitoring the bus and the target,
+interrupt status, mask and clear registers, and configuration registers for
+the clock, the retry budget and the resync interval.
+
+==== Address Alignment and Access Requirements
+
+All registers are 32 bits wide and aligned to a 4-byte boundary. The highest
+allocated offset is `0x58`; offsets `0x5C` through `0x7F` are unallocated and
+reserved.
+
+The controller decodes only the low 7 address bits, so the integrating address
+decoder is responsible for confining the block to its 128-byte window. The
+ifdef::backend-html5[]
+xref:smc:memmap.adoc#smc-memory-map[SMC memory map]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<smc-memory-map,SMC memory map>>
+endif::backend-pdf[]
+states how the SMC answers an access outside it.
+
+Stored registers honour byte strobes, so a partial write updates only the
+addressed byte lanes. The two FIFO windows do not:
+
+* *`AVS_CMD`* ignores write strobes and pushes the whole 32-bit write data
+word into the command FIFO, so it must be written with a single full-width
+access. A partial write enqueues a malformed command.
+* *`AVS_READBACK`* pops the readback FIFO on any read, whatever the access
+width, so it must be read exactly once per response. `AVS_DEBUG_READBACK`
+returns the same data without popping.
+
+Neither FIFO window back-pressures the bus; both report a failed access
+instead. A write to `AVS_CMD` while the command FIFO is full is dropped, and a
+read of `AVS_READBACK` while the readback FIFO is empty returns 0 without
+popping. Each case raises its interrupt and completes the access with an error
+response, so software can detect the condition from the bus response alone.
+An all-zero word is also a well-formed target response, so the read data does
+not identify an empty read; only the error response or `READBACK_UNDERFLOW_INT`
+does. `AVS_DEBUG_READBACK` reads 0xFFFFFFFF when the FIFO is empty and never
+errors, which makes it the safer register to poll.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::partial$avsbus_controller/regs/gen/html/avsbus_controller.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/avsbus_controller.adoc[leveloffset=+2]
+endif::backend-pdf[]

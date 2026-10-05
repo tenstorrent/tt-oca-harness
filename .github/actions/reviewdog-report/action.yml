@@ -1,0 +1,99 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Shared by all lint jobs in .github/workflows/lint.yml: each job runs its
+# own existing `make ocah-...` command into a log (non-fatal), then hands
+# that log to this action for inline PR annotations + pass/fail gating.
+# Keeps every job's own step the single source of truth for how the tool is
+# actually invoked; only the annotate+gate step is common code.
+name: 'Report to reviewdog'
+description: 'Download the shared reviewdog binary and pipe a captured lint log through it for inline PR annotations + pass/fail gating'
+inputs:
+  log-file:
+    required: true
+    description: 'Path to the already-captured tool output'
+  name:
+    required: true
+    description: 'Unique reviewdog check name (must differ per job)'
+  efm:
+    required: false
+    default: ''
+    description: 'One or more errorformat patterns, one per line (mutually exclusive with format). Multiple patterns MUST be passed as separate -efm flags, not comma-joined in one -efm value - reviewdog''s -efm parses a comma as a literal character, not a Vim-style multi-pattern separator (confirmed by smoke test; see CONTRIBUTING.md).'
+  format:
+    required: false
+    default: ''
+    description: 'predefined reviewdog -f name, e.g. rdjson (mutually exclusive with efm)'
+  level:
+    required: false
+    default: ''
+    description: 'default severity for tools whose output carries none (skip for slang, whose rdjson already has real severities)'
+  fail-level:
+    required: false
+    default: 'error'
+    description: 'reviewdog -fail-level; set to none to report annotations without failing the job (e.g. while a violation backlog is being worked down)'
+  reporter:
+    required: false
+    default: 'github-check'
+    description: 'reviewdog reporter; use github-pr-review when diagnostics carry suggested fixes'
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/download-artifact@v4
+      with: { name: reviewdog-bin, path: "${{ runner.temp }}/reviewdog-bin" }
+    - shell: bash
+      run: |
+        chmod +x "${{ runner.temp }}/reviewdog-bin/reviewdog"
+        echo "${{ runner.temp }}/reviewdog-bin" >> "$GITHUB_PATH"
+    - shell: bash
+      env:
+        REVIEWDOG_GITHUB_API_TOKEN: ${{ github.token }}
+        RD_LOG_FILE: ${{ inputs.log-file }}
+        RD_NAME: ${{ inputs.name }}
+        RD_EFM: ${{ inputs.efm }}
+        RD_FORMAT: ${{ inputs.format }}
+        RD_LEVEL: ${{ inputs.level }}
+        RD_FAIL_LEVEL: ${{ inputs.fail-level }}
+        RD_REPORTER: ${{ inputs.reporter }}
+      run: |
+        set -o pipefail
+        efm_flags=()
+        if [ -n "$RD_EFM" ]; then
+          while IFS= read -r pattern; do
+            [ -n "$pattern" ] && efm_flags+=(-efm="$pattern")
+          done <<< "$RD_EFM"
+        fi
+        fmt_flags=()
+        [ -n "$RD_FORMAT" ] && fmt_flags=(-f="$RD_FORMAT")
+        level_flags=()
+        [ -n "$RD_LEVEL" ] && level_flags=(-level="$RD_LEVEL")
+        # reviewdog exits non-zero for a finding at fail-level and for a
+        # failed Checks API post. Retry only an HTTP 5xx post. A finding
+        # stays one attempt so a comment is not posted again.
+        post_log="$(mktemp)"
+        trap 'rm -f "$post_log"' EXIT
+        status=1
+        for attempt in 1 2 3; do
+          set +e
+          cat "$RD_LOG_FILE" \
+            | reviewdog "${efm_flags[@]}" "${fmt_flags[@]}" "${level_flags[@]}" \
+              -name="$RD_NAME" \
+              -reporter="$RD_REPORTER" \
+              -filter-mode=nofilter \
+              -fail-level="$RD_FAIL_LEVEL" \
+            >"$post_log" 2>&1
+          status=$?
+          set -e
+          cat "$post_log"
+          if [ "$status" -eq 0 ]; then
+            exit 0
+          fi
+          if [ "$attempt" -lt 3 ] \
+            && grep -q 'failed to post result' "$post_log" \
+            && grep -Eq '(^|[^0-9])(500|502|503|504)([^0-9]|$)' "$post_log"; then
+            echo "reviewdog: GitHub API post failed (attempt ${attempt}/3); retrying in $((attempt * 10))s" >&2
+            sleep $((attempt * 10))
+            continue
+          fi
+          exit "$status"
+        done
+        exit "$status"

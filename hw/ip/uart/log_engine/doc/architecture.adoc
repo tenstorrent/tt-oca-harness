@@ -1,0 +1,116 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[log-engine-architecture]]
+== Operation
+
+ifdef::backend-html5[]
+++++
+<span id="overview-2"></span>
+<span id="functional-blocks"></span>
+<span id="control-and-status-registers-csrs"></span>
+++++
+endif::backend-html5[]
+
+[[log-engine-slots]]
+=== Memory Slots and Lengths
+
+`LOG_REGION_ADDR` specifies the start of a shared region. `LOG_REGION_SIZE`
+specifies its total size in bytes. Use an 8-byte-aligned base and a nonzero
+size aligned to 128 bytes, up to 512 KiB. The region is divided equally
+among 16 slots; it does not provide independently sized buffers.
+
+For supported settings, slot `i` starts at:
+
+----
+LOG_REGION_ADDR + (LOG_REGION_SIZE / 16) * i
+----
+
+A nonzero `LOG_CTRL[i].LOG_LEN` makes that slot pending. The length is in
+bytes and remains the submitted value until hardware clears it on completion;
+it is not a bytes-remaining counter. Keep the buffer and its configuration
+unchanged until completion.
+
+For oversized regions, hardware clamps the effective size to 512 KiB.
+For a size not aligned to 128 bytes, it divides the effective size by 16
+and rounds each slot's transferable capacity down to a multiple of eight.
+Requested lengths above that capacity are clamped. A zero-capacity slot
+completes without a transfer. Software should validate size and length
+instead of relying on truncation.
+
+ifdef::backend-html5[]
+++++
+<span id="round-robin-arbiter"></span>
+<span id="log-fetch-fsm"></span>
+<span id="rdata-fifo"></span>
+<span id="log-write-fsm"></span>
+<span id="data-flow-and-control-path"></span>
+<span id="data-flow"></span>
+<span id="control-path"></span>
+<span id="memory-interface-protocol"></span>
+<span id="performance-characteristics"></span>
+<span id="design-trade-offs"></span>
+++++
+endif::backend-html5[]
+
+[[log-engine-transfer]]
+=== Arbitration and Data Transfer
+
+The arbiter selects among nonzero lengths and advances when the selected
+message completes. Scheduling is per message, not per byte. A stalled UART
+or bus response holds up that message and all later entries; round-robin
+selection does not impose a completion-time bound.
+
+The fetch FSM issues single-beat 64-bit reads and waits for each response.
+A `FIFO_DEPTH`-entry FIFO buffers the returned words. The final read still
+fetches a full eight-byte word when the message length is not a multiple of
+eight, so the whole fetched word must be readable within the slot.
+
+The write FSM sends bytes in increasing address order, least-significant
+byte first within each fetched word. It waits for FIFO data and
+`uart_tx_ready_i`, writes the character in data bits `[7:0]` to
+`LOG_WRITE_ADDR`, then waits for the response. The current implementation
+sets all four write strobes; the UART target must accept that access.
+
+Completion clears the selected length and advances arbitration. It means
+the write responses have returned, not that the UART has finished shifting
+the final character onto its serial output.
+
+ifdef::backend-html5[]
+++++
+<span id="interrupt-sources"></span>
+++++
+endif::backend-html5[]
+
+[[log-engine-errors]]
+=== Errors and Interrupts
+
+`INTR_STATUS.LOG_FETCH_ERR` (bit 0) and `LOG_WRITE_ERR` (bit 4) latch bus
+response errors whether or not their interrupts are enabled.
+`INTR_ENABLE` masks the corresponding contributions to `irq_o`.
+Write 1 to a status bit to clear it; `INTR_TEST` can force either condition.
+
+The FSMs advance on error responses as well as successful responses. There
+is no automatic retry or per-slot success flag, and a cleared length alone
+does not prove successful delivery. Software must inspect error status and
+choose recovery appropriate to its logging requirements.
+
+ifdef::backend-html5[]
+++++
+<span id="clocking-and-reset-methodology"></span>
+++++
+endif::backend-html5[]
+
+[[log-engine-reset]]
+=== Reset and Disable
+
+All logic uses `clk_i`. Active-low `rst_ni` asynchronously resets the
+registers, state machines, counters and FIFO. Reset release timing is the
+integrator's responsibility; the module does not synchronize it internally.
+
+Clearing `CTRL.EN` returns the fetch/write FSMs and counters to idle and
+clears the FIFO. It does not clear configuration or pending lengths, and
+it does not reset the AXI adapters. Disabling an active transfer is not a
+guaranteed drain or clean cancellation. Configure while idle; following an
+aborted transfer, reconcile outstanding bus traffic before reusing buffers
+or restarting the engine.

@@ -1,0 +1,65 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= JTAG Interface Unit
+:description: JTAG Interface Unit — top-level JTAG control, STAP configuration, iJTAG chains and JTAG2AXI bridges.
+
+[[jtag-interface-unit]]
+
+The JTAG Interface Unit (JIU) is the top-level JTAG control module for the
+DTP subsystem. It manages the primary JTAG port and all supporting instrument
+logic.
+
+== Overview
+
+The JIU contains:
+
+* A Primary TAP (PTAP) with chiplet IDCODE, boundary scan, BIST, reset
+  control and JTAG2AXI bridges.
+* A configurable number of Secondary TAPs (STAPs) for downstream chiplet JTAG,
+  SMC CPU debug, SEP CPU debug, and optional additional TAPs.
+* An iJTAG network with SIB-based chains for DFT (secure and non-secure), DFD,
+  and JTAG2AXI bridges to the SMC fabric, SMC OTP and SEP OTP controllers.
+
+* Per-path debug-disable inputs gate STAPs, iJTAG SIBs, and JTAG2AXI bridges.
+
+The PTAP, STAP and all supporting logic conform to IEEE 1149.1-2013 (JTAG),
+IEEE 1687-2014 (iJTAG) and IEEE 1838-2019 (3DIC).
+
+== Configuration Parameters
+
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="jiu-configuration-parameters-table"></span>
+++++
+endif::backend-html5[]
+
+The JIU is configured through the PTAP feature enables, the I/O, SMC debug and SEP
+debug STAP enables, the number of additional STAPs, the IDCODE and JTAG_CAPS values,
+and the JTAG2AXI pipeline depths.
+
+ifdef::backend-html5[]
+The parameters of `jtag_intf_unit` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/jtag_intf_unit/jtag_intf_unit.adoc[jtag_intf_unit].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters of `jtag_intf_unit` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+== Architecture
+
+ifdef::backend-html5[]
+include::partial$jtag_intf_unit/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::architecture.adoc[]
+endif::backend-pdf[]
+
+== Interface
+
+ifdef::backend-html5[]
+include::partial$jtag_intf_unit/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::interface.adoc[]
+endif::backend-pdf[]

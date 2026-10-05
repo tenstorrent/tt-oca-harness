@@ -1,0 +1,311 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+// Demux one AXI-Lite slave onto NUM_TELEMETRY_RECEIVERS with dual clocks.
+//
+// Register accesses and the receivers use clk_i / rst_ni; ATB streams use clk_telemetry_i /
+// rst_telemetry_ni.
+// Receiver i decodes at TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR plus i times
+// TELEMETRY_RECEIVER_0__REG_MAP_SIZE; other addresses get DECERR with read data 0xBADCAB1E.
+// The demux allows one outstanding transaction per channel.
+// Each ATB stream crosses into clk_i through an 8-entry prim_fifo_async. afready_i passes
+// through a 2-flop synchronizer clocked by clk_telemetry_i, and afvalid_o through one
+// clocked by clk_i.
+// Either reset clears both sides of every ATB FIFO; atready_o stays high while the write side
+// is in reset, so beats offered then are dropped.
+// NUM_TELEMETRY_RECEIVERS must be between 1 and MaxNumTelemetryReceivers.
+// TELEMETRY_RECEIVER_BUFFER_DEPTH must be a power of two and greater than or equal to 2.
+// NumRegMaps is NUM_TELEMETRY_RECEIVERS plus one for the error slave.
+// Each receiver's debug nibble matches telemetry_receiver's four-bit debug bus.
+
+module telemetry_receiver_wrap #(
+  parameter int unsigned NUM_TELEMETRY_RECEIVERS         = 3, // Receiver instance count.
+  parameter int unsigned TELEMETRY_RECEIVER_BUFFER_DEPTH = 8, // Per-receiver message FIFO depth;
+                                                              // must be a power of two and >= 2.
+  parameter int unsigned TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE [NUM_TELEMETRY_RECEIVERS-1:0] = '{default: 4}, // Per-receiver max counters.
+
+  parameter bit [telemetry_receiver_wrap_pkg::RegAddrWidth-1:0] TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR = 0,   // Instance 0 register-map byte base address.
+  parameter bit [telemetry_receiver_wrap_pkg::RegAddrWidth-1:0] TELEMETRY_RECEIVER_0__REG_MAP_SIZE      = 0,   // Per-instance register-map size in bytes; instances are
+                                                                                                               // contiguous.
+
+  localparam int unsigned NumRegMaps                               = NUM_TELEMETRY_RECEIVERS + 1, // Decode targets: instances + error slave.
+  localparam type         telemetry_receiver_wrap_reg_map_select_t = logic [$clog2(NumRegMaps)-1:0], // Register-map select type.
+
+  localparam telemetry_receiver_wrap_reg_map_select_t UndefinedRegMap = // Select index for the error slave.
+        telemetry_receiver_wrap_reg_map_select_t'(NumRegMaps-1)
+) (
+  input  logic clk_i,                                       // Register-domain clock; also clocks
+                                                            // the receivers.
+  input  logic rst_ni,                                      // Register-domain async reset,
+                                                            // active-low.
+
+  input  logic clk_telemetry_i,                             // ATB-domain clock.
+  input  logic rst_telemetry_ni,                            // ATB-domain async reset, active-low.
+
+  input  logic test_en_i,                                   // Scan test mode, active-high; selects
+                                                            // scan_rst_ni for the ATB FIFO resets.
+  input  logic scan_rst_ni,                                 // Scan reset, active-low.
+
+  input  telemetry_receiver_wrap_pkg::axil_req_t  axil_req_i, // Shared AXI-Lite request.
+  output telemetry_receiver_wrap_pkg::axil_resp_t axil_resp_o, // Shared AXI-Lite response.
+
+  input  telemetry_receiver_pkg::telemetry_data_t [NUM_TELEMETRY_RECEIVERS-1:0] atdata_i, // Per-receiver ATB data, in the clk_telemetry_i domain.
+  input  telemetry_receiver_pkg::atb_id_t         [NUM_TELEMETRY_RECEIVERS-1:0] atid_i, // Per-receiver ATB ID; crosses into clk_i but the receiver ignores it.
+  output logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] atready_o, // Per-receiver ATB ready; high while the crossing FIFO has space.
+  input  logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] atvalid_i, // Per-receiver ATB valid.
+  output logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] afvalid_o, // Per-receiver ATB flush valid.
+  input  logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] afready_i, // Per-receiver ATB flush ready.
+
+  output logic [NUM_TELEMETRY_RECEIVERS-1:0] telemetry_receiver_irq_o, // Per-receiver interrupt.
+
+  output logic [NUM_TELEMETRY_RECEIVERS-1:0][3:0] telemetry_receiver_debug_o // Per-receiver debug nibble; see telemetry_receiver.
+);
+
+  `include "axi/assign.svh"
+  `include "prim_assert.sv"
+
+  /////////////////////////
+  // Signal Declarations //
+  /////////////////////////
+
+  telemetry_receiver_wrap_pkg::axil_req_t  [NumRegMaps-1:0] axil_reqs;
+  telemetry_receiver_wrap_pkg::axil_resp_t [NumRegMaps-1:0] axil_resps;
+
+
+  //////////////////////////////
+  // AXI4-Lite Register Demux //
+  //////////////////////////////
+
+  telemetry_receiver_wrap_reg_map_select_t axil_aw_select, axil_ar_select;
+
+  always_comb begin
+    axil_aw_select = UndefinedRegMap;
+    axil_ar_select = UndefinedRegMap;
+
+    for (int i = 0; i < NUM_TELEMETRY_RECEIVERS; i++) begin
+      if (axil_req_i.aw.addr >= TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR + i * TELEMETRY_RECEIVER_0__REG_MAP_SIZE &&
+                axil_req_i.aw.addr <  TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR + (i + 1) * TELEMETRY_RECEIVER_0__REG_MAP_SIZE) begin
+        axil_aw_select = telemetry_receiver_wrap_reg_map_select_t'(i);
+      end
+      if (axil_req_i.ar.addr >= TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR + i * TELEMETRY_RECEIVER_0__REG_MAP_SIZE &&
+                axil_req_i.ar.addr <  TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR + (i + 1) * TELEMETRY_RECEIVER_0__REG_MAP_SIZE) begin
+        axil_ar_select = telemetry_receiver_wrap_reg_map_select_t'(i);
+      end
+    end
+  end
+
+  axi_lite_demux #(
+    .aw_chan_t       (telemetry_receiver_wrap_pkg::axil_aw_chan_t),
+    .w_chan_t        (telemetry_receiver_wrap_pkg::axil_w_chan_t),
+    .b_chan_t        (telemetry_receiver_wrap_pkg::axil_b_chan_t),
+    .ar_chan_t       (telemetry_receiver_wrap_pkg::axil_ar_chan_t),
+    .r_chan_t        (telemetry_receiver_wrap_pkg::axil_r_chan_t),
+    .axi_req_t       (telemetry_receiver_wrap_pkg::axil_req_t),
+    .axi_resp_t      (telemetry_receiver_wrap_pkg::axil_resp_t),
+    .NoMstPorts      (NumRegMaps),
+    .MaxTrans        (1),
+    .FallThrough     (1'b0),
+    .SpillAw         (1'b1),
+    .SpillW          (1'b0),
+    .SpillB          (1'b0),
+    .SpillAr         (1'b1),
+    .SpillR          (1'b0)
+  ) u_axi_lite_demux (
+    .clk_i,
+    .rst_ni,
+    .test_i          (1'b0),
+    .slv_req_i       (axil_req_i),
+    .slv_aw_select_i (axil_aw_select),
+    .slv_ar_select_i (axil_ar_select),
+    .slv_resp_o      (axil_resp_o),
+    .mst_reqs_o      (axil_reqs),
+    .mst_resps_i     (axil_resps)
+  );
+
+  prim_axi_lite_err_slv #(
+    .AXI_ADDR_WIDTH (telemetry_receiver_wrap_pkg::RegAddrWidth),
+    .AXI_DATA_WIDTH (telemetry_receiver_wrap_pkg::RegDataWidth),
+    .axil_req_t     (telemetry_receiver_wrap_pkg::axil_req_t),
+    .axil_resp_t    (telemetry_receiver_wrap_pkg::axil_resp_t),
+    .RESP           (axi_pkg::RESP_DECERR),
+    .RESP_WIDTH     (telemetry_receiver_wrap_pkg::RegDataWidth),
+    .RESP_DATA      (32'hBADCAB1E),
+    .MAX_TRANS      (1)
+  ) u_prim_axi_lite_err_slv (
+    .clk_i,
+    .rst_ni,
+
+    .axil_req_i     (axil_reqs [UndefinedRegMap]),
+    .axil_resp_o    (axil_resps[UndefinedRegMap])
+  );
+
+
+  /////////////////////
+  // ATB FIFO Resets //
+  /////////////////////
+
+  logic rst_at_fifo_n;
+  logic rst_at_fifo_wr_n;
+  logic rst_at_fifo_rd_n;
+
+  assign rst_at_fifo_n = rst_ni & rst_telemetry_ni;
+
+  prim_sync_reset u_at_fifo_wr_rst_sync (
+    .clk_i       (clk_telemetry_i),
+    .rst_ni      (rst_at_fifo_n),
+    .test_mode_i (test_en_i),
+    .scan_rst_ni (scan_rst_ni),
+    .sync_rst_no (rst_at_fifo_wr_n)
+  );
+
+  prim_sync_reset u_at_fifo_rd_rst_sync (
+    .clk_i       (clk_i),
+    .rst_ni      (rst_at_fifo_n),
+    .test_mode_i (test_en_i),
+    .scan_rst_ni (scan_rst_ni),
+    .sync_rst_no (rst_at_fifo_rd_n)
+  );
+
+
+  /////////////////////////
+  // Telemetry Receivers //
+  /////////////////////////
+
+  for (genvar i = 0; i < NUM_TELEMETRY_RECEIVERS; i++) begin : gen_telemetry_receivers
+
+    /////////////////////////
+    // Signal Declarations //
+    /////////////////////////
+
+    telemetry_receiver_wrap_pkg::at_req_t at_req_telemetry, at_req;
+    logic atready, atvalid;
+
+    logic afready, afvalid;
+
+
+    ////////////////
+    // ATB AT CDC //
+    ////////////////
+
+    assign at_req_telemetry.atdata = atdata_i[i];
+    assign at_req_telemetry.atid   = atid_i  [i];
+
+    // Depth kept in a localparam so the occupancy-output widths stay in step with
+    // the instantiation; prim_fifo_async derives DepthW = $clog2(Depth+1).
+    localparam int unsigned AtFifoDepth = 8;
+    localparam int unsigned AtFifoDepthW = $clog2(AtFifoDepth + 1);
+
+    logic [AtFifoDepthW-1:0] at_fifo_wdepth;
+    logic [AtFifoDepthW-1:0] at_fifo_rdepth;
+
+    prim_fifo_async #(
+      .Width               ($bits(telemetry_receiver_wrap_pkg::at_req_t)),
+      .Depth               (AtFifoDepth),
+      .OutputZeroIfEmpty   (1'b0),
+      .OutputZeroIfInvalid (1'b0)
+    ) u_at_req_fifo_async (
+      .clk_wr_i            (clk_telemetry_i),
+      .rst_wr_ni           (rst_at_fifo_wr_n),
+      .wvalid_i            (atvalid_i[i]),
+      .wready_o            (atready_o[i]),
+      .wdata_i             (at_req_telemetry),
+      .wdepth_o            (at_fifo_wdepth),
+
+      .clk_rd_i            (clk_i),
+      .rst_rd_ni           (rst_at_fifo_rd_n),
+      .rvalid_o            (atvalid),
+      .rready_i            (atready),
+      .rdata_o             (at_req),
+      .rdepth_o            (at_fifo_rdepth)
+    );
+
+    // Tie off unused signals to satisfy lint. Kept in separate reductions because
+    // wdepth is in the clk_telemetry_i domain and rdepth is in clk_i.
+    logic unused_at_fifo_wdepth;
+    logic unused_at_fifo_rdepth;
+    assign unused_at_fifo_wdepth = ^at_fifo_wdepth;
+    assign unused_at_fifo_rdepth = ^at_fifo_rdepth;
+
+
+    ////////////////
+    // ATB AF CDC //
+    ////////////////
+
+    // afready_i arrives from the telemetry clock domain but is consumed by
+    // telemetry_receiver on clk_i, so it is synchronized into clk_i.
+    prim_flop_2sync #(
+      .Width(1)
+    ) u_afready_sync2r (
+      .clk_i                  (clk_i),
+      .d_i                    (afready_i[i]),
+      .rst_ni                 (rst_ni),
+      .q_o                    (afready)
+    );
+
+    // afvalid is produced on clk_i and exported to the telemetry clock
+    // domain, so it is synchronized into clk_telemetry_i.
+    prim_flop_2sync #(
+      .Width(1)
+    ) u_afvalid_sync2r (
+      .clk_i                  (clk_telemetry_i),
+      .d_i                    (afvalid),
+      .rst_ni                 (rst_telemetry_ni),
+      .q_o                    (afvalid_o[i])
+    );
+
+
+    ////////////////////////
+    // Telemetry Receiver //
+    ////////////////////////
+
+    telemetry_receiver_pkg::axil_req_t  telemetry_receiver_axil_req;
+    telemetry_receiver_pkg::axil_resp_t telemetry_receiver_axil_resp;
+
+    `AXI_LITE_ASSIGN_REQ_STRUCT(telemetry_receiver_axil_req, axil_reqs[i])
+    `AXI_LITE_ASSIGN_RESP_STRUCT(axil_resps[i], telemetry_receiver_axil_resp)
+
+    telemetry_receiver #(
+      .BUFFER_DEPTH                 (TELEMETRY_RECEIVER_BUFFER_DEPTH),
+      .MAX_NUM_COUNTERS_PER_MESSAGE (TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE[i])
+    ) u_telemetry_receiver (
+      // Global Interface
+      .clk_i,
+      .rst_ni,
+
+      // AXI4-Lite Register Interface
+      .axil_req_i                   (telemetry_receiver_axil_req),
+      .axil_resp_o                  (telemetry_receiver_axil_resp),
+
+      // ATB Telemetry Interface
+      .atdata_i                     (at_req.atdata),
+      .atid_i                       (at_req.atid),
+      .atready_o                    (atready),
+      .atvalid_i                    (atvalid),
+      .afready_i                    (afready),
+      .afvalid_o                    (afvalid),
+
+      // Interrupt Interface
+      .irq_o                        (telemetry_receiver_irq_o[i]),
+
+      // Debug Interface
+      .debug_o                      (telemetry_receiver_debug_o[i])
+    );
+
+  end
+
+
+  ////////////////
+  // Assertions //
+  ////////////////
+
+  `OCAH_OT_ASSERT_INIT(
+      paramCheckNumTelemetryReceivers_A,
+      NUM_TELEMETRY_RECEIVERS > 0 && NUM_TELEMETRY_RECEIVERS <= telemetry_receiver_wrap_pkg::MaxNumTelemetryReceivers)
+
+  `OCAH_OT_ASSERT_KNOWN(AxilRespKnownO_A, axil_resp_o)
+  `OCAH_OT_ASSERT_KNOWN(AtreadyKnownO_A, atready_o)
+  `OCAH_OT_ASSERT_KNOWN(AfvalidKnownO_A, afvalid_o)
+  `OCAH_OT_ASSERT_KNOWN(TelemetryReceiverIrqKnownO_A, telemetry_receiver_irq_o)
+  `OCAH_OT_ASSERT_KNOWN(TelemetryReceiverDebugKnownO_A, telemetry_receiver_debug_o)
+
+endmodule

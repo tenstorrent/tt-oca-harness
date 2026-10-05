@@ -1,0 +1,66 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= JTAG STAP
+:description: Secondary TAP — hierarchical TAP interconnection per IEEE 1838-2019, STAP types and timing parameters.
+
+[[jtag-stap]]
+
+The Secondary TAP (STAP) enables hierarchical interconnection of TAP
+controllers across multiple chiplets as specified in IEEE 1838-2019 (3DIC).
+Each STAP interface extends the SiP's primary JTAG access across internal or
+external chiplets.
+
+== Overview
+
+The DTP supports these STAP types:
+
+* *I/O STAP* — extends JTAG to the next chiplet in the SiP.
+* *SMC Debug STAP* — provides access to the SMC CPU core debugger TAP.
+* *SEP Debug STAP* — provides access to the SEP CPU core debugger TAP.
+* *Additional STAPs* — optional connections to additional on- or off-chip TAPs.
+* *Extended STAP Scan Interface* — a port for adding STAPs external to the DTP.
+
+Each STAP has an active-high disable input. When it is asserted, STAP
+selection, host TDO, and 3DCR updates are blocked.
+
+== Configuration Parameters
+
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="stap-configuration-parameters-table"></span>
+++++
+endif::backend-html5[]
+
+Three timing parameters are available to optimise the STAP for different
+physical topologies, particularly die-boundary crossings.
+
+ifdef::backend-html5[]
+The parameters of `jtag_stap` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/jtag_stap/jtag_stap.adoc[jtag_stap].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters of `jtag_stap` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+:imagesdir: assets
+endif::backend-pdf[]
+
+== Architecture
+
+ifdef::backend-html5[]
+include::partial$jtag_stap/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::architecture.adoc[]
+endif::backend-pdf[]
+
+== Interface
+
+ifdef::backend-html5[]
+include::partial$jtag_stap/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::interface.adoc[]
+endif::backend-pdf[]

@@ -1,0 +1,145 @@
+package:
+  name: axi
+  authors:
+    # Alphabetically ordered by last name (maintainers first)
+    - "Thomas Benz <tbenz@iis.ee.ethz.ch>" # current maintainer
+    - "Michael Rogenmoser <michaero@iis.ee.ethz.ch>" # current maintainer
+    - "Matheus Cavalcante <matheusd@iis.ee.ethz.ch>"
+    - "Tim Fischer <fischeti@iis.ee.ethz.ch>"
+    - "Noah Huetter <huettern@ethz.ch>"
+    - "Cyril Koenig <cykoenig@iis.ee.ethz.ch>"
+    - "Andreas Kurth <akurth@iis.ee.ethz.ch>"
+    - "Stefan Mach <smach@iis.ee.ethz.ch>"
+    - "Samuel Riedel <sriedel@iis.ee.ethz.ch>"
+    - "Wolfgang Rönninger <wroennin@iis.ee.ethz.ch>"
+    - "Paul Scheffler <paulsc@iis.ee.ethz.ch>"
+    - "Fabian Schuiki <fschuiki@iis.ee.ethz.ch>"
+    - "Luca Valente <luca.valente@unibo.it>"
+    - "Nils Wistoff <nwistoff@iis.ee.ethz.ch>"
+    - "Florian Zaruba <zarubaf@iis.ee.ethz.ch>"
+
+# Sources are vendored from tenstorrent/tt-axi into upstream/ via the `vendor_package` entry in
+# the root Bender.yml (bender vendor init), at the revision pinned there. The remaining TT-local
+# delta is applied as the numbered, atomic patches in patches/ (0001 AXI5-Lite feature, 0002 TT
+# helper modules axi_hidestrb/axi_cdc_clearable/axi_spill_regs, 0003 in-place RTL edits, 0004
+# verif, 0005 axi_err_slv read data 0xBADCAB1EBADCAB1E so a 32-bit read of either half of a
+# 64-bit bus returns the same word, 0006 the burst splitter keeps a write beat's own error
+# response and reports SLVERR only when an earlier fragment of a split burst erred). It is a mix of
+# in-place edits (axi_pkg/axi_intf/typedef.svh/assign.svh/...) plus TT-authored modules that do
+# not exist upstream (axi5_lite_* family, axi_hidestrb, axi_cdc_clearable, axi_spill_regs, ...).
+# The TT Bender target gating (axi_rtl / axi_simulation) is reproduced from the fork because
+# bender-targets.mk passes -t axi_rtl. The upstream test/ benches (axi_test / axi_synth_test targets)
+# are not vendored - OCA instantiates none of them. Do NOT hand-edit the upstream/ files;
+# edit/regenerate the patch instead.
+#
+# overlay/scripts/fabric_gen/ and overlay/block_flow_customizations/ are TT-authored trees that
+# live in this package's overlay/ (NOT under upstream/), so `bender path axi` +
+# meta/crossbars/generate.sh resolve them as "$(bender path axi)/overlay/...". They are committed
+# directly here and are not touched by `bender vendor init`.
+
+# These declarations are inert: the Bender.local overrides force common_cells / common_verification
+# to the locally vendored path packages for every consumer. They point at the upstream pulp-platform
+# commits actually vendored (root Bender.yml vendor_package revs) rather than the internal forks.
+# tech_cells_generic is NOT declared: axi never instantiates a tc_*/pulp_clock_* cell, and Plan B
+# dependency pruning removed that package from the workspace entirely.
+dependencies:
+  common_cells:        { git: "https://github.com/pulp-platform/common_cells.git",        rev: "b74f0ad63600762ef101cf1d3365d19dfbb3123b" }
+  common_verification: { git: "https://github.com/pulp-platform/common_verification.git", rev: "c5d97a1fae01d2d8e8e311dee341b6b8849dcf38" }
+
+export_include_dirs:
+  - upstream/include
+
+sources:
+  # Source files grouped in levels. Files in level 0 have no dependencies on files in this
+  # package. Files in level 1 only depend on files in level 0, files in level 2 on files in
+  # levels 1 and 0, etc. Files within a level are ordered alphabetically.
+  # Level 0
+  - upstream/src/axi_pkg.sv
+
+  - target: axi_rtl
+    files:
+    # Level 1
+    - upstream/src/axi_demux_id_counters.sv
+    - upstream/src/axi_intf.sv
+    # Level 2
+    - upstream/src/axi_atop_filter.sv
+    - upstream/src/axi_burst_splitter_gran.sv
+    - upstream/src/axi_burst_unwrap.sv
+    - upstream/src/axi_bus_compare.sv
+    - upstream/src/axi_cdc_dst.sv
+    - upstream/src/axi_cdc_src.sv
+    - upstream/src/axi_cut.sv
+    - upstream/src/axi_delayer.sv
+    - upstream/src/axi_demux_simple.sv
+    - upstream/src/axi_dw_downsizer.sv
+    - upstream/src/axi_dw_upsizer.sv
+    - upstream/src/axi_fifo.sv
+    - upstream/src/axi_fifo_delay_dyn.sv
+    - upstream/src/axi_id_remap.sv
+    - upstream/src/axi_id_prepend.sv
+    - upstream/src/axi_inval_filter.sv
+    - upstream/src/axi_isolate.sv
+    - upstream/src/axi_join.sv
+    - upstream/src/axi_lite_demux.sv
+    - upstream/src/axi_lite_dw_converter.sv
+    - upstream/src/axi_lite_from_mem.sv
+    - upstream/src/axi_lite_isolate.sv
+    - upstream/src/axi_lite_join.sv
+    - upstream/src/axi_lite_lfsr.sv
+    - upstream/src/axi_lite_mailbox.sv
+    - upstream/src/axi_lite_mux.sv
+    - upstream/src/axi_lite_regs.sv
+    - upstream/src/axi_lite_to_apb.sv
+    - upstream/src/axi_lite_to_axi.sv
+    - upstream/src/axi_modify_address.sv
+    - upstream/src/axi_mux.sv
+    - upstream/src/axi_rw_join.sv
+    - upstream/src/axi_rw_split.sv
+    - upstream/src/axi_serializer.sv
+    - upstream/src/axi_slave_compare.sv
+    - upstream/src/axi_throttle.sv
+    - upstream/src/axi_to_detailed_mem.sv
+    # Level 3
+    - upstream/src/axi_burst_splitter.sv
+    - upstream/src/axi_cdc.sv
+    - upstream/src/axi_cdc_clearable.sv
+    - upstream/src/axi_demux.sv
+    - upstream/src/axi_dw_converter.sv
+    - upstream/src/axi_from_mem.sv
+    - upstream/src/axi_id_serialize.sv
+    - upstream/src/axi_lfsr.sv
+    - upstream/src/axi_multicut.sv
+    - upstream/src/axi_to_axi_lite.sv
+    - upstream/src/axi_to_mem.sv
+    - upstream/src/axi_zero_mem.sv
+    # Level 4
+    - upstream/src/axi_interleaved_xbar.sv
+    - upstream/src/axi_iw_converter.sv
+    - upstream/src/axi_lite_xbar.sv
+    - upstream/src/axi_xbar_unmuxed.sv
+    - upstream/src/axi_to_mem_banked.sv
+    - upstream/src/axi_to_mem_interleaved.sv
+    - upstream/src/axi_to_mem_split.sv
+    # Level 5
+    - upstream/src/axi_xbar.sv
+    # Level 6
+    - upstream/src/axi_xp.sv
+    - upstream/src/axi_spill_regs.sv
+    - upstream/src/axi5_lite_mux.sv
+    - upstream/src/axi5_lite_mux_brcst.sv
+    - upstream/src/axi5_lite_demux.sv
+    - upstream/src/axi5_lite_demux_brcst.sv
+    - upstream/src/axi5_lite_xbar.sv
+    - upstream/src/axi5_lite_xbar_brcst.sv
+    - upstream/src/axi_hidestrb.sv
+
+  - target: any(axi_rtl, sep_wrapper, smu_wrapper)
+    files:
+      - upstream/src/axi_err_slv.sv
+
+  - target: axi_simulation
+    files:
+    - upstream/src/axi_chan_compare.sv
+    - upstream/src/axi_dumper.sv
+    - upstream/src/axi_sim_mem.sv
+    - upstream/src/axi_test.sv

@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Launch entry: selected by `--dut uart_wrap` (registered in
+# hw/common/dv/configs/duts.toml — the DV root is nested one level below the
+# hw/ip/<name>/dv convention). IP-level cocotb bench for the UART wrapper:
+# the wrapper's AXI4-Lite CSR port is driven by the shared AXI VIP's
+# AXI4-Lite master, its log-fetch master port is answered by the VIP's memory
+# responder, and each UART's serial line is driven and sampled by the shared
+# UART VIP's line engines, all on the pin-exposed ports of tb/tb_top.sv.
+name = "uart_wrap"
+profile = "native"
+default_framework = "cocotb"
+description = "UART wrapper IP-level cocotb DV flow"
+default_tool = "verilator"
+tools = ["verilator", "vcs", "xcelium"]
+
+[testlist]
+path = "testlists/all.toml"
+format = "toml_list"
+
+[native.stages.clean]
+kind = "clean"
+paths = ["{run_dir}", "hw/ip/uart/uart_wrap/dv/build"]
+
+[build]
+top_module = "uart_wrap_tb_top"
+top_file = "hw/ip/uart/uart_wrap/dv/tb/tb_top.sv"
+filelist = "hw/ip/uart/uart_wrap/dv/build/uart_wrap_dut_compile.f"
+bender_filelist = "hw/ip/uart/uart_wrap/dv/build/uart_wrap_bender.f"
+work_dir = "hw/ip/uart/uart_wrap/dv/build"
+# Shared dependency targets: the pulp AXI package/typedefs plus the
+# common-cells closure the axi_rtl group parses against.
+common_bender_targets = [
+  "axi_rtl",
+  "common_cells_rtl",
+]
+# The uart family target (Bender.yml): the four UART-family IPs' packages
+# and RTL plus the vendored OpenTitan prim closure.
+bender_targets = ["uart"]
+# The generated register header carries the register-map bases the tb top
+# passes to the wrapper.
+incdirs = ["hw/ip/uart/uart_wrap/regs/gen/svh"]
+
+[frameworks.cocotb]
+python_root = "hw/ip/uart/uart_wrap/dv/cocotb"
+test_dir = "hw/ip/uart/uart_wrap/dv/cocotb/tests"
+python_paths = [
+  "hw/common/dv/vip",
+  "hw/ip/uart/uart_wrap/regs/gen/py",
+]
+results_dir = "{run_dir}/{item}/results"
+cocotb_log = "{run_dir}/{item}/logs/{item}.log"
+
+[run_modes.smoke]
+description = "Wrapper per-instance window decode sanity"
+timeout_sec = 600
+args = []
+
+[run_modes.functional]
+description = "Wrapper per-instance serial lines and log paths"
+timeout_sec = 900
+args = []
+
+[targets.default]
+description = "UART wrapper IP-level cocotb target"
+build_dir = "hw/ip/uart/uart_wrap/dv/build/cocotb"
+
+[targets.default.tools.verilator]
+flags = [
+  "-Wno-BLKLOOPINIT",
+  "+define+VERILATOR",
+]

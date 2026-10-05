@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+# SMC DV local ignores.
+
+# Python bytecode
+**/__pycache__/
+*.pyc
+
+# Simulator temp/run artifacts that must never be committed into the source tree
+# (Xcelium implicit tmpdir, run logs, waves, coverage db).
+**/xrun_test.log
+**/*.log
+**/xm.*
+**/.xm.db.*
+**/.cdsvmod
+**/*.fsdb
+**/*.vcd
+**/*.vpd
+**/simv
+**/simv.daidir/
+**/*.vdb
+implicit_tmpdir_test/

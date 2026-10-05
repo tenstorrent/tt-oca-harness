@@ -1,0 +1,448 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef UART_16550_MAIN_RDL
+`define UART_16550_MAIN_RDL
+
+addrmap uart_16550_main {
+
+    name = "UART 16550 Main Address Map";
+    desc = "Contains the mode-independent registers and the read-only registers accessible only
+            when `DLAB = 0`.";
+
+    //////////////////////////
+    // Register Definitions //
+    //////////////////////////
+
+    reg RBR {
+        desc = "Receiver Buffer Register";
+
+        field {
+            sw = r;
+            hw = w;
+            onread = ruser;
+            desc = "Received Data. Contains a received character. If FIFOs are enabled, this field
+                    points to the bottom of the RX FIFO. Otherwise, this field points to a single-
+                    byte Receiver Buffer Register.";
+        } DATA[7:0] = 0x0;
+    };
+
+    reg IER {
+        desc = "Interrupt Enable Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable Receiver Buffer Full (Received Data Ready) Interrupt.";
+        } ERBFI[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable Transmitter Buffer Empty (Transmitter Holding Register Empty)
+                    Interrupt.";
+        } ETBEI[1:1] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable (Receiver) Line Status Interrupt.";
+        } ELSI[2:2] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable (Delta Status of) Modem Status Interrupt.";
+        } EDSSI[3:3] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable FIFO Error Interrupt.";
+        } EFEI[4:4] = 0x0;
+    };
+
+    reg IIR {
+        desc = "Interrupt Identification Register";
+
+        field {
+            sw = r;
+            hw = w;
+            rd_swacc;
+            desc = "Interrupt Pending. Active-low.";
+        } INTERRUPT_PENDING[0:0] = 0x1;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Interrupt ID:
+                     * `0x7` - FIFO Error Interrupt                         (priority 0)
+                     * `0x3` - Receiver Line Status Interrupt               (priority 1)
+                     * `0x6` - Reception Timeout Interrupt                  (priority 2)
+                     * `0x2` - Received Data Ready Interrupt                (priority 3)
+                     * `0x1` - Transmitter Holding Register Empty Interrupt (priority 4)
+                     * `0x0` - Modem Status Interrupt                       (priority 5)";
+        } INTERRUPT_ID[3:1] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "FIFOs Enabled:
+                    * `0x0` - FIFOs are disabled
+                    * `0x3` - FIFOs are enabled";
+        } FIFOS_ENABLED[7:6] = 0x0;
+    };
+
+    reg LCR {
+        desc = "Line Control Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Word Length Select:
+                     * `0x0` - 5 bits per character
+                     * `0x1` - 6 bits per character
+                     * `0x2` - 7 bits per character
+                     * `0x3` - 8 bits per character";
+        } WLS[1:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Stop Bits:
+                     * `0` - 1 stop bit.
+                     * `1` - 2 stop bits (or 1.5 stop bits if word length is set to 5 bits)";
+        } STB[2:2] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Parity Enable.";
+        } PEN[3:3] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Even Parity Select:
+                     * `1` - even parity
+                     * `0` - odd parity";
+        } EPS[4:4] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Stick Parity. If set, forces the transmit and received parity bits to be `0` if
+                    even parity is selected and `1` if odd parity is selected.";
+        } STICK_PARITY[5:5] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Set Break. If set, forces the `tx_o` output to `0` to cause a break condition
+                    on the receiving UART.";
+        } SET_BREAK[6:6] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Divisor Latch Access Bit. If set, allows access to the `DLL` and `DLM` registers
+                    when accessing addresses `0x0` and `0x4`, respectively. If unset, allows access
+                    to the `THR`, `RBR`, and `IIR` registers.";
+        } DLAB[7:7] = 0x0;
+    };
+
+    reg MCR {
+        desc = "Modem Control Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Data Terminal Ready. Writing to this bit drives the `dtr_no` output in the
+                    opposite polarity.";
+        } DTR[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Request to Send. Writing to this bit drives the `rts_no` output in the opposite
+                    polarity.";
+        } RTS[1:1] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "User Output 1. Writing to this bit drives the `out1_no` in the opposite
+                    polarity.";
+        } OUT1[2:2] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "User Output 2. Writing to this bit drives the `out2_no` in the opposite
+                    polarity.";
+        } OUT2[3:3] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "System Loopback. If set, the transmitter is internally connected to the
+                    receiver. The `tx_o` output is set to `1`.";
+        } LOOP[4:4] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Line Loopback. If set, the `rx_i` input is internally connected to the
+                    `tx_o` output.";
+        } LINE_LOOPBACK[5:5] = 0x0;
+    };
+
+    reg LSR {
+        desc = "Line Status Register";
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Data Ready. When set, indicates that the RX FIFO (or RBR in non-FIFO
+                    mode) contains data.";
+        } DR[0:0] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            level intr;
+            rclr;
+            desc = "Overrun Error. When set, indicates that the RX FIFO (or Receiver Buffer
+                    Register in Non-FIFO Mode) is full when new character is received. In FIFO Mode, the new character
+                    is dropped. In non-FIFO mode, the existing character in the RBR is overwritten.
+                    This bit triggers the Receiver Line Status Interrupt.";
+        } OE[1:1] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            level intr;
+            rclr;
+            desc = "Parity Error. When set, indicates that the character at the top of the receiver
+                    FIFO (or RBR in non-FIFO mode) has a parity error. This bit triggers the
+                    Receiver Line Status Interrupt.";
+        } PE[2:2] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            level intr;
+            rclr;
+            desc = "Framing Error. When set, indicates that the received character is missing a
+                    stop bit. In FIFO mode, this bit is set when the character reaches the top of
+                    the FIFO. In non-FIFO mode, this bit is set when the character enters the RBR.
+                    This bit triggers the Receiver Line Status Interrupt.";
+        } FE[3:3] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            level intr;
+            rclr;
+            desc = "Break Interrupt. When set, indicates that the `rx_i` input is `0` for an entire
+                    frame's time (start + data + parity + stop bits). In FIFO mode, this bit set
+                    when the character reaches the top of the receiver FIFO. In non-FIFO mode, this
+                    bit is set when the character enters the RBR. This bit triggers the Receiver
+                    Line Status Interrupt.";
+        } BI[4:4] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Transmitter Holding Register Empty. When set, indicates that the TX FIFO (or
+                    THR in non-FIFO mode) is empty. Clearing the Transmitter Holding Register Empty
+                    Interrupt does NOT clear this bit.";
+        } THRE[5:5] = 0x1;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Transmitter Empty. When set, indicates that the transmitter shift register and
+                    the transmitter FIFO (or THR in non-FIFO mode) are empty.";
+        } TEMT[6:6] = 0x1;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Error in Receiver FIFO. When set, indicates that the receiver FIFO or (RBR in
+                    non-FIFO mode) has the parity, framing, or break error. In other words, at
+                    least one of the PE, FE, and BI bits is set.";
+        } ERROR_IN_RCVR_FIFO[7:7] = 0x0;
+    };
+
+    reg MSR {
+        desc = "Modem Status Register";
+
+        field {
+            sw = r;
+            hw = w;
+            rd_swacc;
+            level intr;
+            rclr;
+            desc = "Delta Clear to Send. When set, indicates that the `CTS` bit has changed since
+                    the last time this register was read. This bit triggers the Modem Status
+                    Interrupt.";
+        } DCTS[0:0] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            level intr;
+            rclr;
+            desc = "Delta Data Set Ready. When set, indicates that the `DSR` bit has changed since
+                    the last time this register was read. This bit triggers the Modem Status
+                    Interrupt.";
+        } DDSR[1:1] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            level intr;
+            rclr;
+            desc = "Trailing Edge Ring Indicator. When set, indicates that the `RI` bit has changed
+                    from a `1` to a `0`. This bit triggers the Modem Status Interrupt.";
+        } TERI[2:2] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            level intr;
+            rclr;
+            desc = "Delta Data Carrier Detect. When set, indicates that the `DCD` bit has changed
+                    since the last time this register was read. This bit triggers the Modem Status
+                    Interrupt.";
+        } DDCD[3:3] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Clear to Send. This bit reflects the `cts_ni` input in the opposite polarity, so
+                    it reads `1` while the remote device is ready to receive data.";
+        } CTS[4:4] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Data Set Ready. This bit reflects the `dsr_ni` input in the opposite polarity,
+                    so it reads `1` while the remote modem is connected and ready.";
+        } DSR[5:5] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Ring Indicator. This bit reflects the `ri_ni` input in the opposite polarity, so
+                    it reads `1` while the remote modem signals an incoming call.";
+        } RI[6:6] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Data Carrier Detect. This bit reflects the `dcd_ni` input in the opposite
+                    polarity, so it reads `1` while a carrier is detected.";
+        } DCD[7:7] = 0x0;
+    };
+
+    reg SCR {
+        desc = "Scratch Register";
+
+        field {
+            sw = rw;
+            hw = na;
+            desc = "Scratch. Holds user data.";
+        } SCR[7:0] = 0x0;
+    };
+
+    reg ECR {
+        desc = "Extended Control Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Receiver FIFO Trigger Level Most Significant 2 Bits. To configure the least
+                    significant 2 bits, use the `FCR.RCVR_TRIGGER` register field. The
+                    configurations for the trigger levels are:
+                     * `0x0` -    1 character
+                     * `0x1` -    4 characters
+                     * `0x2` -    8 characters
+                     * `0x3` -   14 characters
+                     * `0x4` -   32 characters
+                     * `0x5` -   64 characters
+                     * `0x6` -  128 characters
+                     * `0x7` -  256 characters
+                     * `0x8` -  512 characters
+                     * `0x9` - 1024 characters
+                     * `0xA` - 2048 characters
+                     * `0xB` - 4096 characters";
+        } RCVR_TRIGGER_MS2B[1:0] = 0x0;
+    };
+
+    reg ITR {
+        desc = "Interrupt Test Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Test Receiver Buffer Full (Received Data Ready) Interrupt. Writing `1` forces
+                    the interrupt and writing `0` releases it.";
+        } TRBFI[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Test Transmitter Buffer Empty (Transmitter Holding Register Empty) Interrupt.
+                    Writing `1` forces the interrupt and writing `0` releases it.";
+        } TTBEI[1:1] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Test (Receiver) Line Status Interrupt. Writing `1` forces the interrupt and
+                    writing `0` releases it.";
+        } TLSI[2:2] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Test (Delta Status of) Modem Status Interrupt. Writing `1` forces the
+                    interrupt and writing `0` releases it.";
+        } TDSSI[3:3] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Test FIFO Error Interrupt. Writing `1` forces the interrupt and writing `0`
+                    releases it.";
+        } TFEI[4:4] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Test Reception Timeout Interrupt. Writing a `1` forces the interrupt and
+                    writing `0` releases it.";
+        } TRTI[5:5] = 0x0;
+    };
+
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    external RBR    RBR    @0x0;
+             IER    IER    @0x4;
+             IIR    IIR    @0x8;
+             LCR    LCR    @0xC;
+             MCR    MCR    @0x10;
+             LSR    LSR    @0x14;
+             MSR    MSR    @0x18;
+             SCR    SCR    @0x1C;
+             ECR    ECR    @0x20;
+             ITR    ITR    @0x24;
+
+};
+
+`endif

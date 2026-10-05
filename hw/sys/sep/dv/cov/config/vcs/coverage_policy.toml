@@ -1,0 +1,139 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# SEP VCS coverage policy: the report inputs for the database that
+# `sep_cov_scope.hier` scopes at compile time (`[coverage.vcs]` in
+# sep_sim_cfg.toml). It sets no [[thresholds]] and no [[holes]]: the runner
+# reports the family figures, a run's status comes from its tests, and a
+# threshold without an agreed score target would fail runs without saying
+# anything true. SEP_FCOV.adoc, "Closure Policy", states who reviews an
+# exclusion and what reopens it, and its "Unreachability exclusion lists"
+# section states the RTL fact behind each file below.
+#
+# Scope is NOT owned here. `-cm_hier` + `-cm_common_hier` at compile time decide
+# what enters the database and therefore what the number means; the entry below
+# is the report-time half, which only keeps the pages aligned with that scope.
+# `--run-dir <dir> --stage cov_report` re-renders the pages from the same merged
+# database, but it cannot widen or narrow the score. `--run-dir <dir> --waive`
+# re-grades the rendered report against this file's [[holes]] and
+# [[thresholds]] without running urg; it exits 2 when this [[native_files]]
+# entry's digest differs from the one the report recorded.
+
+schema_version = 1
+dut = "sep"
+scope_epoch = "sep-code-cov-v2b"
+
+# Report-page pruning only. `urg -hier` drops rows from the report but scores
+# the whole database regardless, so this entry keeps the pages aligned with the
+# instrumented scope and records the file's hash in the manifest; it does not
+# produce the number. The number's scope comes from `-cm_hier` at compile time.
+[[native_files]]
+tool = "vcs"
+role = "scope"
+path = "sep_cov_scope.hier"
+apply_phase = "report"
+# `-cm_common_hier` is the report-time half of the compile-time pairing: it makes
+# `-hier` prune assertion pages as well as code pages, so the report matches the
+# instrumented scope instead of showing assertion rows for excluded hierarchy.
+args = ["-hier", "{path}", "-cm_common_hier"]
+
+# Point-level structural ties in the PeakRDL-generated regblocks. Hierarchy-level
+# scope lives in sep_cov_scope.hier; this file waives individual coverage objects
+# inside blocks that stay graded, which `-hier` cannot express.
+# SEP_FCOV.adoc, "PeakRDL register blocks".
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "sep_regblock_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# External-TRNG AXI-Stream payload. The stream has no master in this
+# elaboration -- sep_ip_integration.sv ties ext_trng_axis_req_o to
+# '{default: '0} in RTL, not in the testbench -- so tvalid/tdata/tstrb cannot present a second
+# value on any of the three modules the struct crosses. The source-select mux
+# that consumes the stream stays graded: its select is a CSR field, so both
+# arms are reachable. SEP_FCOV.adoc, "External TRNG payload".
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "sep_ext_trng_payload_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# Structurally tied inputs on the Tenstorrent-owned SEP DMA wrapper. Each entry names
+# the RTL tie. Stimulus gaps stay in the denominator. Checksums come from
+# `urg -dump full_exclusions tgl` on the merged VDB, never by hand.
+# SEP_FCOV.adoc, "SEP DMA tied inputs".
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "sep_unreachable_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# AXI request fields that a single internal master ties to a constant: the
+# VeeR IFU, LSU and debug masters and the secure DMA host port. Only ports that
+# exactly one of those masters drives are listed, and only fields no leaf moved.
+# Checksums come from `urg -dump full_exclusions tgl` on the merged VDB.
+# SEP_FCOV.adoc, "Single-master AXI ties".
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "sep_master_tie_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# Crossbar and interconnect request bits the RTL holds constant: address bits
+# outside every decode rule, initiator-index bits no connected initiator sets,
+# and fields every connected initiator ties. Fields the inbound SoC port drives
+# stay graded. Checksums come from `urg -dump full_exclusions tgl`.
+# SEP_FCOV.adoc, "Crossbar and interconnect ties".
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "sep_xbar_tie_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# RTL ties in the CPU wrapper, reset control, IO/SPI, watchdog, DMA, CPU control
+# regblock and mailbox unit: single-master demux and remap fields, constant
+# bridge response fields, and parameter-dead bridge branches.
+# SEP_FCOV.adoc, "CPU, reset, IO, watchdog, DMA and mailbox ties".
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "sep_system_tie_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# RTL ties inside sep_crypto: key-vault shim and AHB bridge ties, constant
+# OTBN OTP key, DRBG stream strobe, alert ping lines and constant TL-UL fields.
+# SEP_FCOV.adoc, "sep_crypto ties".
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "sep_crypto_tie_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# FSM transitions that no next-state assignment reaches with the parameters SEP
+# elaborates. Reset-in-flight, error and abort transitions stay graded.
+# SEP_FCOV.adoc, "Unreachable FSM transitions".
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "sep_fsm_unreachable_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# Condition and branch terms fixed by RTL ties and SEP elaboration parameters:
+# no-stall regblock dispatch, no-error APB decode, the KM virtual-ROM decode
+# compiled out without its define, elaboration-only functions, and parameter
+# else-arms SEP fixes. SEP_FCOV.adoc, "Condition and branch ties".
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "sep_cond_branch_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]

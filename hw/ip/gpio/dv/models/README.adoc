@@ -1,0 +1,42 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# GPIO Model
+
+This module implements a general-purpose I/O (GPIO) pad model for bidirectional communication between the chip and external pins.
+
+## Parameters
+
+| Parameter | Description |
+| --------- | ----------- |
+| ctrl_t    | structure to hold all control related signals for the GPIO macro |
+| status_t  | structure to hold all status related signals for the GPIO macro |
+
+## Port Description
+
+### Input Ports
+
+| Port | Width | Description |
+|------|-------|-------------|
+| `core2pad_i` | 1 | Data signal from chip logic to external pad |
+| `core2pad_en_i` | 1 | Output enable - when high, drives `core2pad_i` value to pad |
+| `pad2core_en_i` | 1 | Input enable - when high, passes pad value to `pad2core_o` |
+
+### Output Ports
+
+| Port | Width | Description |
+|------|-------|-------------|
+| `pad2core_o` | 1 | Data signal from external pad to chip logic |
+
+### Inout Ports
+
+| Port | Width | Description |
+|------|-------|-------------|
+| `gpio_pad_io` | 1 | Bidirectional external pad connection |
+
+## Functionality
+
+The GPIO model provides two main functions:
+
+1. **Output Drive**: When `core2pad_en_i` is asserted, the pad is driven with the value from `core2pad_i`
+2. **Input Reception**: When `pad2core_en_i` is asserted, the pad value is passed to `pad2core_o`

@@ -1,0 +1,34 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-gpio_ctrl">GPIO Control Address Map</h2>
+<p>Per-pin GPIO pad control registers: drive strength, pull configuration, and strap capture.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#CONTROL">CONTROL</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="CONTROL">CONTROL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:25</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>24</td><td>hw2_ovrd</td><td>RW</td><td>0x0</td><td>Setting this register will enable the secondary HW function to override the GPIO enable and data lines.</td></tr>
+<tr><td>23:22</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>21</td><td>strap_value</td><td>R</td><td>0x0</td><td>This register holds the captured value that was applied to the pad when reset was de-asserted.</td></tr>
+<tr><td>20</td><td>strap_valid</td><td>R</td><td>0x1</td><td>When set, this bit indicates that the strap value is valid. This field is not set if the GPIO is not an input by default</td></tr>
+<tr><td>19:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>16</td><td>config_enable</td><td>RW</td><td>0x0</td><td>Setting this choosing the register values for PAD settings. This includes pull_enable, pull_select, and schmitt_select</td></tr>
+<tr><td>15:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>10</td><td>schmitt_select</td><td>RW</td><td>0x0</td><td>Register-driven schmitt select.</td></tr>
+<tr><td>9</td><td>pull_select</td><td>RW</td><td>0x0</td><td>Register-driven pull select - by default we pull down</td></tr>
+<tr><td>8</td><td>pull_enable_n0_scan</td><td>RW</td><td>0x0</td><td>Register-driven pull enable. Default is disabled</td></tr>
+<tr><td>7:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>drive_strength</td><td>RW</td><td>0x2</td><td>Register-driven drive-strength.</td></tr>
+</table>
+</div>

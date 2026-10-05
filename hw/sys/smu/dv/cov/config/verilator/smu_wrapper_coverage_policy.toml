@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# SMU wrapper (`--dut smu`) Verilator coverage policy.
+#
+# GENERATED from a measured run: the [[holes]] below are the `user` points the
+# graded run left unhit, each carried with a category, a rationale and an
+# owner. This file carries no `[[holes]]`: every collected `user` point is
+# hit by an enrolled leaf of `all`, and a point this bench cannot legally
+# reach is not collected (see the Phase 2 list in SMU_FCOV.adoc) rather than
+# waived here. `all` is the coverage set, as it is for SEP; `hosted` is its
+# toolchain-free subset and leaves the SEP firmware and lifecycle stimulus out.
+#
+# No floor is set on the `user` family; one is set only from a measured
+# weekly `--cov` database, by the SMU DV owner, together with
+# `max_unclassified_points` -- see SMU_COVERAGE_POLICY.adoc. The effective
+# percentage is still reported, just not gated. The Verilator set does not
+# collect toggle; the wrapper's toggle is graded on the VCS flow by
+# ../vcs/smu_wrapper_coverage_policy.toml.
+#
+# The wrapper has one target, `compile_smu_chiplet`, with SEP elaborated. An
+# accepted waiver whose selector matches a COVERED point is a hard
+# ConfigError, so a hole may only name a point the graded database leaves
+# unhit. The `g_sep` generate blocks in cov/sv/*_fcov.sv elaborate the points
+# that need SEP only when SEP is present.
+#
+# Three mechanisms, do not confuse them:
+#
+#   smu_wrapper_cov_scope.vlt  `coverage_off` -> the point never enters the
+#                              database. Structural OUT, by source file.
+#   SEP_PRESENT                the `g_sep` generate blocks described above.
+#                              Structural OUT, by elaboration.
+#   [[holes]] here             the point exists and is not hit, carried with a
+#                              category, a rationale and an owner. Its
+#                              selectors include `hierarchy`, which the .vlt
+#                              cannot express.
+#
+# smu_sim_cfg.toml names this file explicitly rather than relying on the
+# cov/config/verilator/coverage_policy.toml discovery.
+
+schema_version = 1
+dut = "smu"
+scope_epoch = "smu-fcov-v1"
+

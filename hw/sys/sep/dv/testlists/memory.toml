@@ -1,0 +1,86 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Non-firmware tests for memory-style boundary responders. Firmware-owned DMA
+# tests stay in cpu.toml even when they exercise memory.
+
+[[tests]]
+name = "sep_boot_rom_smoke_test"
+module = "cpu.sep_boot_rom_smoke_test"
+seed = 1
+timeout_sec = 3600
+tags = ["smoke", "boot", "cpu", "rom", "memory", "ci"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+name = "sep_sram_smoke_test"
+module = { cocotb = "sram.sep_sram_smoke_test", uvm = "sep_sram_smoke_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "sram", "memory"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# SRAM byte-lane, data-pattern, boundary and sequential-word breadth over the CPU-LSU
+# splice.
+name = "sep_sram_datapath_breadth_test"
+module = "sram.sep_sram_datapath_breadth_test"
+seed = 1
+timeout_sec = 1800
+tags = ["sram", "memory", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Multi-beat FIXED and WRAP bursts into SEP SRAM answer SLVERR and leave SRAM unchanged
+# (hw/sys/sep/doc/fabric.adoc#sep-sram-target).
+name = "sep_sram_burst_type_test"
+module = "sram.sep_sram_burst_type_test"
+seed = 1
+timeout_sec = 1800
+tags = ["sram", "memory", "negative", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# INCR bursts of 1 to 256 beats from the SMN-inbound master with seeded attributes. The
+# inbound filter decides on address, prot[1], user[3:0] and AxLEN only, so the data must
+# not change.
+name = "sep_sram_inbound_burst_attr_test"
+module = "sram.sep_sram_inbound_burst_attr_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["sram", "memory", "fabric", "inbound", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+name = "sep_rom_sanity_test"
+module = "cpu.sep_rom_sanity_test"
+firmware = "rom_sanity_test"
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "cpu", "rom", "memory", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense", "+sep_boot_rom_hex=rom_sanity_rom.hex"]
+
+[[tests]]
+# LSU reads of the boot ROM match the preloaded image; a store is ignored, NOT DECERR.
+# cpu mode is required: the no_cpu splice cannot reach the ROM.
+name = "sep_boot_rom_lsu_read_test"
+module = "cpu.sep_boot_rom_lsu_read_test"
+firmware = "rom_lsu_read_test"
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "cpu", "rom", "memory", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense", "+sep_boot_rom_hex=mem_rom_test_rom.hex"]

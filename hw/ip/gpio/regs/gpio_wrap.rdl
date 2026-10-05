@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef GPIO_WRAP_RDL_DEFINED
+`define GPIO_WRAP_RDL_DEFINED
+
+`include "gpio_intf.rdl"
+`include "gpio_ctrl.rdl"
+
+addrmap gpio_wrap {
+    name = "GPIO Wrapper Address Map";
+    desc = "Top-level GPIO address map composing the interface and control register blocks.";
+        
+
+    gpio_intf     gpio_intf      @0x000_0000;
+    gpio_ctrl     gpio_ctrl      @0x000_0010;
+
+};
+
+`endif

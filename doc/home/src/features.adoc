@@ -1,0 +1,58 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Feature Overview
+
+OCA Harness provides the non-application-specific framework logic that is common
+across chiplets built to the Open Chiplet Atlas (OCA) standard.
+
+== Architecture
+
+OCA Harness implements the common non-application functions an OCA chiplet
+needs, so adopters get them by construction rather than rebuilding
+them per project::
+
+* Security Processor (SEP) -- secure boot, chain of trust, key management
+* System Management Controller (SMC) -- system bring-up, clock control,
+  power/thermal management, reset coordination, telemetry
+* System Management Unit (SMU) -- composite of SEP, SMC, and DTP
+* System Management Network (SMN) -- management-plane fabric
+* Debug & Test Ports (DTP) -- post-package debug and test access over JTAG
+  (IEEE 1149.1), iJTAG instrument access (IEEE 1687), and package-level TAP
+  chaining (IEEE 1838), plus OCA cross-trigger management
+* AXI-over-UCIe Bridge (AoU) -- die-to-die transport bridge (roadmap)
+
+== OCA Standard Layers
+
+OCA Harness is built to the OCA specification's five-layer model, from top to
+bottom: Software, System, Protocol, Transport, and Physical. Each layer
+abstracts the one below it, so adopters aren't locked to specific
+lower-layer choices.
+
+[cols="20%,80%",options="header"]
+|===
+|Layer |What it standardizes
+
+|Software
+|Open Chiplet Management Interface (OCMI), signed boot image format, and a
+standard device configuration data structure
+
+|System
+|Boot sequencing, security domains (SSID/DSID), the system management
+hierarchy, hardware-assisted time synchronization, FuSa/RAS, and debug/test
+
+|Protocol
+|Inter-chiplet communication protocols including AXI, CHI, and the Open
+Chiplet Configuration Protocol (OCCP)
+
+|Transport
+|UCIe and BoW for high-speed die-to-die links; I3C/I2C as auxiliary
+transport for boot configuration, firmware distribution, and management
+traffic
+
+|Physical
+|Packaging, physical interconnect, electrical signaling, and power
+delivery for 2D/2.5D/3D integration
+|===
+
+

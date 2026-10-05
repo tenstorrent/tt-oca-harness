@@ -1,0 +1,325 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+[[tests]]
+name = "sep_efuse_sense_test"
+module = { cocotb = "efuse.sep_efuse_sense_test", uvm = "sep_efuse_sense_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "efuse", "ci"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+# Pin the committed default preload (bare +sep_efuse_preload, no path): preload here,
+# random image in sep_efuse_image_test.
+[tests.overrides.cocotb]
+args = ["+sep_efuse_preload"]
+
+# Same committed preload; the sequence compares the sensed shadow with the
+# committed expected shadow (written by cocotb/env/sep_efuse_default_shadow.py).
+[tests.overrides.uvm]
+args = [
+  "+sep_efuse_hex={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_default.hex",
+  "+sep_efuse_shadow_hex={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_default.shadow.hex",
+]
+
+[[tests]]
+name = "sep_efuse_image_test"
+module = "efuse.sep_efuse_image_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "efuse"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+name = "sep_efuse_lcc_lc_state_stitch_test"
+module = "lcc.sep_efuse_lcc_lc_state_stitch_test"
+seed = 1
+timeout_sec = 1800
+tags = ["lcc", "subsystem", "efuse"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+# count=1 fails the first bank write after each reset, the floor the retry check
+# needs. percent stays 0: a random failure looks the same as the secure-TM guard
+# refusal. The LFSR seed keeps the one-shot reproducible.
+args = [
+    "+sep_efuse_prog_fail_count=1",
+    "+sep_efuse_prog_fail_percent=0",
+    "+sep_efuse_prog_fail_seed={seed}",
+]
+
+[[tests]]
+# TEST_DEV JTAG allow leg for the two windows the PROD mux test denies. Real
+# fuse sense: the JTAG gate reads the sensed LC_STATE.
+name = "sep_efuse_jtag_window_allow_test"
+module = "efuse.sep_efuse_jtag_window_allow_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "jtag"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# eFuse JTAG AXI-Lite and EL2 CPU arbitration at the eFuse mux, plus the PROD shadow
+# deny. Real fuse sense: the JTAG lifecycle gate reads the sensed LC_STATE.
+name = "sep_efuse_jtag_axil_el2_cpu_mux_test"
+module = "efuse.sep_efuse_jtag_axil_el2_cpu_mux_test"
+firmware = "efuse_jtag_el2_mux_test"
+seed = 1
+timeout_sec = 3600
+tags = ["efuse", "jtag", "mux", "cpu", "subsystem"]
+run_modes = ["cpu"]
+
+[[tests]]
+# eFuse program x write-lock on SPARE0..SPARE8 (never LC_STATE). RAND-REP.
+name = "sep_efuse_program_lock_matrix_test"
+module = "efuse.sep_efuse_program_lock_matrix_test"
+seed = 1
+# No reseed: every run walks SPARE0..SPARE8; the seed selects only bit offsets.
+timeout_sec = 1800
+tags = ["efuse", "lock", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Program with and without EFUSE_PROGRAM_CTRL.efuse_program_read_back. count=2
+# drops the first two bank writes, so each leg sees one dropped and one kept write.
+name = "sep_efuse_program_read_back_select_test"
+module = "efuse.sep_efuse_program_read_back_select_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = [
+    "+sep_efuse_prog_fail_count=2",
+    "+sep_efuse_prog_fail_percent=0",
+    "+sep_efuse_prog_fail_seed={seed}",
+]
+
+[[tests]]
+# Lifecycle demote product: LC x DEMOTE_1/2 x a small DIS subset vs the FEAT_CTRL
+# golden. RAND-REP.
+name = "sep_lcc_demote_feat_ctrl_matrix_test"
+module = "lcc.sep_lcc_demote_feat_ctrl_matrix_test"
+seed = 1
+timeout_sec = 1800
+tags = ["lcc", "demote", "efuse", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# eFuse shadow write policy on every otp_fuse_controller.adoc fuse-field row
+# except LC_STATE: set-only rows OR-merge, SW-writable rows overwrite. RANDCFG.
+name = "sep_efuse_set_only_monotonicity_test"
+module = "efuse.sep_efuse_set_only_monotonicity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "set_only", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# SEC_DIS token match, mismatch and the sep_reset_n override. RAND-NONE. The
+# override resets the crypto engines without isolation, so
+# +sep_edn_jtag_reset_waive turns the crypto EDN request-hold checks off.
+name = "sep_sec_dis_override_test"
+module = "efuse.sep_sec_dis_override_test"
+seed = 1
+args = ["+sep_edn_jtag_reset_waive"]
+timeout_sec = 1800
+tags = ["efuse", "lcc", "sec_dis", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# SEP reset reached through the IC_RESET TDR before sense finishes. RAND-NONE.
+# The TDR re-hold resets the crypto engines without isolation, so
+# +sep_edn_jtag_reset_waive turns the crypto EDN request-hold checks off.
+name = "sep_sec_dis_reset_reach_test"
+module = "efuse.sep_sec_dis_reset_reach_test"
+seed = 1
+args = ["+sep_edn_jtag_reset_waive"]
+timeout_sec = 1800
+tags = ["efuse", "lcc", "sec_dis", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# RMA token match and mismatch -> LC update, then the comparator redundancy
+# fault path. RANDCFG.
+name = "sep_efuse_rma_token_rand_test"
+module = "efuse.sep_efuse_rma_token_rand_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "lcc", "rma", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# RMA-SIP token digest latch: capture, idle hold and the test-enable freeze. The
+# only force is on the tied-low digest test_en input.
+name = "sep_efuse_digest_latch_fault_test"
+module = "efuse.sep_efuse_digest_latch_fault_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "lcc", "rma", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Locked-field shadow access pulses sep_internal_interrupts[33]. RAND-REP and
+# RANDCFG.
+name = "sep_locked_field_access_irq_path_test"
+module = "efuse.sep_locked_field_access_irq_path_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["efuse", "interrupt", "lock", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# KM public-ID OTP readout and both read locks. RANDCFG. The km_rom_otp_id image
+# copies the KMCSR OTP_SEP_*_ID words before and after OTP_READ_LOCK.
+name = "sep_efuse_km_public_id_test"
+module = "efuse.sep_efuse_km_public_id_test"
+firmware = { name = "km_rom_otp_id", mode = "km_rom_blob" }
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["efuse", "km", "lock", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+km_rom_hex=km_rom_otp_id.parhex"]
+
+[[tests]]
+# SECURE_TM shadow-write lock: a SecureTmLock field refuses a shadow write while
+# the latched TEST_EN strap is high.
+# Plusarg-selected variant: +secure_tm_lock selects this scenario in the
+# locked-field module. See Naming Rules in docs/SEP_VPLAN.adoc.
+name = "sep_efuse_secure_tm_write_lock_test"
+module = "efuse.sep_locked_field_access_irq_path_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["efuse", "interrupt", "lock", "secure_tm", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+secure_tm_lock"]
+
+[[tests]]
+# Both eFuse FSMs fail closed from an illegal state encoding. No frontdoor
+# stimulus reaches 2'b00 or 2'b11, so the test forces each for one cycle.
+name = "sep_efuse_illegal_state_fail_closed_test"
+module = "efuse.sep_efuse_illegal_state_fail_closed_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "fault", "fail-closed", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# LC_STATE next state on the shadow write-1-to-set path. The OTP image is a t=0
+# deposit that survives reset, so each sensed start state is its own leaf:
+# +lc_start must agree with the image dv_sim_prestage.py stages for that leaf
+# name, and the test fails if the sensed nibble disagrees. RANDCFG: tokens and
+# LC_STATE[31:8] only; the cells within a leaf are fixed.
+# The seven sep_lcc_lc_state_w1s_* entries are plusarg-selected variants of
+# sep_lcc_lc_state_transition_matrix_test. See Naming Rules in docs/SEP_VPLAN.adoc.
+#
+# PROD: W1S no-clear, the RMA_SIP token gate, the RMA_CHIPLET ordering gate
+# (with its token gate already open), then the authorized advance to RMA_SIP.
+name = "sep_lcc_lc_state_w1s_prod_test"
+module = "lcc.sep_lcc_lc_state_transition_matrix_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["lcc", "efuse", "rma", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+lc_start=1"]
+
+[[tests]]
+# PROD with both demote groups asserted. Demotion is volatile debug state and
+# not a lifecycle term, so the same advance must succeed; FEAT_CTRL proves the
+# demotion actually took, so the advance cannot pass vacuously.
+name = "sep_lcc_lc_state_w1s_prod_demote_test"
+module = "lcc.sep_lcc_lc_state_transition_matrix_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["lcc", "efuse", "rma", "demote", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+lc_start=1", "+lc_demote"]
+
+[[tests]]
+# RMA_SIP_0: bit 0 is a don't-care inside 001X, the CHIPLET token gate, the
+# authorized advance to RMA_CHIPLET, then off the named set entirely -- which
+# must fail FEAT_CTRL closed to 0 and be terminal with both tokens matched.
+name = "sep_lcc_lc_state_w1s_rma_sip_test"
+module = "lcc.sep_lcc_lc_state_transition_matrix_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["lcc", "efuse", "rma", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+lc_start=2"]
+
+[[tests]]
+# RMA_CHIP_0: bit 0 is a don't-care inside 011X too.
+name = "sep_lcc_lc_state_w1s_rma_chiplet_test"
+module = "lcc.sep_lcc_lc_state_transition_matrix_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["lcc", "efuse", "rma", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+lc_start=6"]
+
+[[tests]]
+# PROD_END: every reachable set lands outside the named encodings ("the only
+# permitted transition is to INVALID", hw/sys/sep/doc/lifecycle_controller.adoc).
+# One sensed start allows one exit, so the two exits are two leaves: the ungated
+# bit 0 here, the RMA_SIP-matched bit 1 in the next entry.
+name = "sep_lcc_lc_state_w1s_prod_end_test"
+module = "lcc.sep_lcc_lc_state_transition_matrix_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["lcc", "efuse", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+lc_start=8", "+lc_prod_end_exit=bit0"]
+
+[[tests]]
+# PROD_END, RMA exit: an RMA_SIP token match then a write of bit 1 must still
+# land on INVALID, never on a named RMA state.
+name = "sep_lcc_lc_state_w1s_prod_end_rma_test"
+module = "lcc.sep_lcc_lc_state_transition_matrix_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["lcc", "efuse", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+lc_start=8", "+lc_prod_end_exit=rma_sip"]
+
+[[tests]]
+# Transient RMA from PROD_END: the same W1S and token rules apply on a path with
+# no bus request at all, INVALID result included.
+name = "sep_lcc_lc_state_w1s_transient_test"
+module = "lcc.sep_lcc_lc_state_transition_matrix_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["lcc", "efuse", "rma", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+lc_start=8", "+lc_transient_rma"]

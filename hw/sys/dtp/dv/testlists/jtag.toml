@@ -1,0 +1,157 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+[[tests]]
+name = "dtp_sanity_test"
+# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
+module = { cocotb = "dtp_sanity_test", uvm = "dtp_sanity_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "dtp_jtag_idcode_test"
+module = { cocotb = "dtp_jtag_idcode_test", uvm = "dtp_jtag_idcode_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ci", "jtag"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "dtp_jtag_bypass_test"
+module = { cocotb = "dtp_jtag_bypass_test", uvm = "dtp_jtag_bypass_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["basic_jtag", "jtag"]
+run_modes = ["basic_jtag"]
+
+[[tests]]
+name = "dtp_jtag_undef_instr_test"
+module = { cocotb = "dtp_jtag_undef_instr_test", uvm = "dtp_jtag_undef_instr_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["basic_jtag", "jtag"]
+run_modes = ["basic_jtag"]
+
+[[tests]]
+name = "dtp_jtag_runbist_test"
+module = { cocotb = "dtp_jtag_runbist_test", uvm = "dtp_jtag_runbist_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["basic_jtag", "jtag"]
+run_modes = ["basic_jtag"]
+
+[[tests]]
+name = "dtp_jtag_sample_preload_test"
+module = { cocotb = "dtp_jtag_sample_preload_test", uvm = "dtp_jtag_sample_preload_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["basic_jtag", "jtag"]
+run_modes = ["basic_jtag"]
+
+[[tests]]
+name = "dtp_jtag_extest_test"
+module = { cocotb = "dtp_jtag_extest_test", uvm = "dtp_jtag_extest_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["basic_jtag", "jtag"]
+run_modes = ["basic_jtag"]
+
+[[tests]]
+name = "dtp_jtag_intest_test"
+module = { cocotb = "dtp_jtag_intest_test", uvm = "dtp_jtag_intest_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["basic_jtag", "jtag"]
+run_modes = ["basic_jtag"]
+
+[[tests]]
+name = "dtp_jtag_clamp_test"
+module = { cocotb = "dtp_jtag_clamp_test", uvm = "dtp_jtag_clamp_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["basic_jtag", "jtag"]
+run_modes = ["basic_jtag"]
+
+[[tests]]
+name = "dtp_jtag_highz_test"
+module = { cocotb = "dtp_jtag_highz_test", uvm = "dtp_jtag_highz_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["basic_jtag", "jtag"]
+run_modes = ["basic_jtag"]
+
+[[tests]]
+name = "dtp_jtag_zero_length_bypass_test"
+module = { cocotb = "dtp_jtag_zero_length_bypass_test", uvm = "dtp_jtag_zero_length_bypass_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["basic_jtag", "jtag"]
+run_modes = ["basic_jtag"]
+
+[[tests]]
+name = "dtp_jtag_inv_bypass_test"
+module = { cocotb = "dtp_jtag_inv_bypass_test", uvm = "dtp_jtag_inv_bypass_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["basic_jtag", "jtag"]
+run_modes = ["basic_jtag"]
+
+[[tests]]
+name = "dtp_jtag_trst_test"
+module = { cocotb = "dtp_jtag_trst_test", uvm = "dtp_jtag_trst_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["basic_jtag", "jtag"]
+run_modes = ["basic_jtag"]
+
+[[tests]]
+name = "dtp_jtag_trst_por_independence_test"
+module = { cocotb = "dtp_jtag_trst_por_independence_test", uvm = "dtp_jtag_trst_por_independence_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["basic_jtag", "jtag"]
+run_modes = ["basic_jtag"]
+
+[[tests]]
+name = "dtp_jtag_tlr_reset_test"
+module = { cocotb = "dtp_jtag_tlr_reset_test", uvm = "dtp_jtag_tlr_reset_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["basic_jtag", "jtag"]
+run_modes = ["basic_jtag"]
+
+[[tests]]
+name = "dtp_jtag_clamp_hold_test"
+module = { cocotb = "dtp_jtag_clamp_hold_test", uvm = "dtp_jtag_clamp_hold_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["basic_jtag", "jtag"]
+run_modes = ["basic_jtag"]
+
+[[tests]]
+name = "dtp_jtag_clamp_release_test"
+module = { cocotb = "dtp_jtag_clamp_release_test", uvm = "dtp_jtag_clamp_release_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["basic_jtag", "jtag"]
+run_modes = ["basic_jtag"]
+
+[[tests]]
+name = "dtp_jtag_ac_extest_train_test"
+module = { cocotb = "dtp_jtag_ac_extest_train_test", uvm = "dtp_jtag_ac_extest_train_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["basic_jtag", "jtag"]
+run_modes = ["basic_jtag"]
+
+[[tests]]
+name = "dtp_jtag_ac_extest_pulse_test"
+module = { cocotb = "dtp_jtag_ac_extest_pulse_test", uvm = "dtp_jtag_ac_extest_pulse_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["basic_jtag", "jtag"]
+run_modes = ["basic_jtag"]

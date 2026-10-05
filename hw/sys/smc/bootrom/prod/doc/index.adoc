@@ -1,0 +1,54 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[smc-boot-rom]]
+= SMC Boot ROM
+
+[[overview]]
+== Overview
+
+The SMC production ROM establishes a usable SMC execution environment and then services Open Chiplet Configuration Protocol (OCCP) requests over target-mode I2C and I3C interfaces.
+It performs early SRAM handling and memory-health checks before using a stack, initializes status and coordination state, applies the ROM's lifecycle-based access policy, and exposes commands for status, memory transfer, and boot handoff.
+
+The ROM follows one common flow regardless of the `PRIMARY_CHIPLET` strap.
+The strap value is reported for observability, but the ROM does not implement separate primary and secondary boot algorithms.
+
+The implementation is divided into:
+
+* assembly startup in `boot/`, including SRAM initialization, MBIST, memory-repair checking, trap setup, and C-runtime entry;
+* the Phase 0 through Phase 5 C flow in `src/main.c`;
+* I2C, I3C, strap, eFuse, and optional PLL drivers in `drivers/`;
+* OCCP, security, status, scratch-register coordination, and ring-buffer support in `lib/`; and
+* the ROM/SRAM image layout in `linker/smc/smc_rom.ld`.
+
+Selected adopter-facing services are weak-symbol ROM FW integration hooks.
+The open definitions allow the image to build without adopter-owned PLL or I3C
+implementations; a final adopter ROM FW image can replace them with strong
+definitions before the ROM FW is frozen. The detailed sections identify the
+hooks where they are used. For the build-time override method and the SMC
+override inventory, see
+ifdef::backend-html5[]
+xref:ocah-integrator-guide::index.adoc#immutable-rom-fw-integration[Immutable ROM FW Integration]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/index.html#immutable-rom-fw-integration[Immutable ROM FW Integration]
+endif::backend-pdf[]
+in the Integrator Guide.
+
+The ROM has two terminal handoff paths.
+`ExecuteImage` sends a success response and transfers control directly in non-secure lifecycle states.
+`AuthenticateImage` sends a success response, publishes a manifest offset to the coordination scratch registers, and parks the SMC in `wfi`.
+
+include::occp-protocol.adoc[]
+
+include::boot-flow.adoc[]
+
+include::hardware-initialization.adoc[]
+
+include::memory-security.adoc[]
+
+include::interfaces.adoc[]
+
+include::status-coordination.adoc[]
+
+include::occp-processing.adoc[]

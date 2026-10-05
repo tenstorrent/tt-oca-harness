@@ -1,0 +1,33 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef PVT_WRAP_RDL_DEFINED
+`define PVT_WRAP_RDL_DEFINED
+
+// OCAH: adopter PVT/monitor placeholder. This reserves the map slot only (see
+// smc_top @ +0x7000); no CSRs are modeled. A uniquely named footprint mem keeps
+// the generated C type distinct from the other placeholder wrappers.
+mem pvt_wrap_placeholder_mem #(
+    longint unsigned NUM_ENTRIES = 594,
+    longint unsigned WIDTH       = 32
+) {
+    desc = "Placeholder footprint (adopter PVT/monitor block; no CSRs modeled)";
+
+    mementries = NUM_ENTRIES;
+    memwidth   = WIDTH;
+
+    reg mem_word {
+        regwidth = 32;
+        field { sw = r; hw = r; } data[WIDTH-1:0];
+    };
+
+    mem_word mem_array[NUM_ENTRIES];
+};
+
+addrmap pvt_wrap {
+    name = "PVT Wrapper Placeholder Address Map";
+    desc = "Adopter PVT and monitor placeholder reserving the map slot; no CSRs are modeled.";
+    external pvt_wrap_placeholder_mem footprint @0x0;
+};
+
+`endif

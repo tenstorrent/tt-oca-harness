@@ -1,0 +1,332 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[shared-uvm-framework]]
+== SystemVerilog UVM Framework
+
+This section is the adopter guide to the SystemVerilog UVM framework: how it
+runs alongside cocotb, the conventions every UVM view must follow, and a
+step-by-step walkthrough for bringing a UVM view up on a DUT that has only a
+cocotb bench. The working reference implementation is DTP
+(`hw/sys/dtp/dv/`, `--dut dtp --framework uvm`); its sim config and
+testbench are annotated for exactly this purpose.
+
+[[shared-uvm-architecture]]
+=== Framework Architecture
+
+Cocotb is the default, license-free baseline on every DUT. SystemVerilog UVM
+is a per-DUT opt-in *view of the same testbench and testlist*, not a parallel
+flow:
+
+* *One runner.* `run_dv.py --framework uvm` selects the view; everything
+  else (selection model, run directories, result contract, CI matrices) is
+  the same runner documented in `tools/dv/doc/run-dv.adoc`. A DUT implements
+  the framework by declaring a `[frameworks.uvm]` table in its sim config.
+* *Framework-neutral scenarios.* Each testlist entry is a scenario name that
+  binds per-framework implementations through its `module` key
+  (`module = { cocotb = "...", uvm = "..." }`). Test names, groups, and tags
+  are shared; selecting a scenario the chosen framework does not implement is
+  an error rather than a silent skip.
+* *Profile-owned launch mechanics.* The shared `native` profile
+  (`hw/common/dv/configs/profiles/native.toml`) supplies the UVM view's
+  contract: the simulator allowlist, the folded analyze+elaborate
+  build, the bare `UVM` define, assertions enabled, and `SIMULATION` kept
+  on. DUT configs declare only their own sources and incdirs.
+* *Simulator-owned UVM library.* The UVM base-class library comes from the
+  simulator installation; the analyze stage compiles it before any user
+  source. It is not included in the repository.
+* *One testbench top, one core.* The same `tb_top.sv` compiles as a
+  framework-neutral core (interface instances, DUT, adapters) whose
+  instances both frameworks consume; the `UVM` define adds only the harness
+  block, and every TB signal is declared exactly once (see the walkthrough
+  below).
+* *One evidence model.* Checkers emit the `CHK-*`/`CHECKER_SUMMARY` grammar
+  of <<shared-checker-model-contract>> in both frameworks; the SV side
+  shares its mechanics through `ocah_checker_uvm_pkg`
+  (`hw/common/dv/vip/ocah_checker/uvm/`). Run verdicts come from the
+  `uvm-log` parse policy: `UVM_ERROR`/`UVM_FATAL` counts plus the pass
+  banner, so a failing check is a failing run by construction.
+* *Coverage.* The `native` profile declares the `cov_merge` and `cov_report`
+  stages for both frameworks, and the UVM build and sim adapters inject the
+  simulator's coverage instrumentation, so `--cov` on the UVM view collects,
+  merges and reports coverage like the cocotb view; an adopter does not wire
+  coverage itself.
+
+[[shared-uvm-conventions]]
+=== Normative Conventions
+
+. *Cocotb-mirrored layout and naming.* `dv/uvm/env/`, `dv/uvm/seq_lib/`, and
+  `dv/uvm/tests/` mirror the cocotb tree with identical basenames; packages
+  are named `<dut>_env_pkg` and `<dut>_seq_lib_pkg`; test classes are named
+  after their scenario. A scenario keeps the same name in both frameworks.
+. *Framework library bases.* Every bench class extends a base from the shared
+  framework library `hw/common/dv/vip/ocah_lib/uvm/` (`ocah_lib_pkg`):
+  `<dut>_base_test` extends `ocah_test`, `<dut>_env` extends `ocah_env`,
+  `<dut>_base_test_seq` extends `ocah_sequence`, `<dut>_virtual_sequencer`
+  extends `ocah_sequencer`, `<dut>_scoreboard` extends `ocah_scoreboard`, and
+  invariant subscribers extend `ocah_subscriber`. The library owns the seed
+  and knob accessors, the looped-scenario runner, the pass banner, and the
+  scoreboard feature registry, so a bench writes none of them. The cocotb
+  twin is the Python package `ocah_lib` under the same directory, with
+  identical basenames (`OcahTest`, `OcahSequence`, ...).
+. *Two configuration levels.* `<dut>_test_cfg` (extends `ocah_test_cfg`) is
+  the only object the seed touches: the base test fills it from the knobs,
+  seeds it, and randomizes it once (clock and protocol timing included).
+  `<dut>_env_cfg` (extends `ocah_env_cfg`) is derived from it and is what the
+  env reads; VIP configs are filled from the env cfg.
+. *Virtual sequencer and reusable sequences.* The env owns a
+  `<dut>_virtual_sequencer` holding one typed handle per agent sequencer and
+  one per responder sequence. Every scenario is a virtual sequence extending
+  `<dut>_base_test_seq` that runs on it and starts reusable operation
+  sequences (`<dut>_<if>_<op>_seq`, extending the VIP sequence) on the handle
+  each step needs. A scenario never touches a driver or a VIP virtual
+  interface.
+. *The scoreboard is mandatory and compares only.* Every bench has a
+  `<dut>_scoreboard` fed per feature by two streams: the VIP monitor stream
+  the feature is observed on and the `expected_ap` of that feature's
+  `<dut>_<feature>_ref_model` (on `ocah_ref_model`), which predicts from
+  configuration and the observed stimulus and never compares. The scoreboard
+  pairs, compares, counts, and emits evidence; it runs in every test and a
+  required feature with zero comparisons fails the run. Sequence-level
+  evidence supplements it and never replaces it.
+. *The bare `UVM` define.* The SV-UVM shape of the shared testbench top is
+  gated on `ifdef UVM` — nothing else. The define is owned by the `native`
+  profile's `[frameworks.uvm]` overlay; a DUT config never sets it, and no
+  per-DUT spelling (of the `<DUT>_UVM_TB` kind) is permitted.
+. *Library and VIP consumption through manifests only.* A UVM view pulls the
+  framework library and each shared VIP in via
+  `[frameworks.uvm.build].source_lists` pointing at the owned
+  `uvm/sources.toml` (`ocah_lib` first, then the VIPs). Manifest order is
+  load-bearing (evidence base first, interface and module collateral, the
+  UVM package last), manifests dedup-merge when several are consumed
+  together, and library or VIP paths are never hand-copied into DUT configs,
+  Bender targets, or Verilator filelists.
+. *The sequence-API rule.* Tests and DUT sequences drive a VIP only through
+  its `*_sequence` API classes. A missing operation is added to the VIP API
+  (where every DUT inherits it), never inlined as raw driver or virtual
+  -interface manipulation in DUT code.
+. *One responder for every DUT-mastered AXI boundary.* The shared VIP slave
+  agent (`ocah_axi_slave_agent` / `OcahAxiSlaveAgent`) answers it:
+  edge-sampled through the clocking block, memory-backed, preloaded and
+  fault-programmed through `ocah_axi_slave_sequence`. A port the bench
+  flattens to pins attaches directly; a port that stays a request/response
+  struct inside `tb_top` is placed on an `ocah_axi_if` instance through
+  `ocah_axi_struct_bridge` and attaches the same way. No bench instantiates a
+  vendored simulation memory or a DUT-local terminator on such a boundary.
+. *Shared evidence mechanics.* Every checker extends
+  `ocah_checker_uvm_pkg::ocah_checker`; protocol and DUT checkers carry only
+  their own checks and identity, never a copy of the recording, severity
+  -routing, or finalization mechanics.
+. *The pass-banner contract.* `UVM TEST PASSED` is emitted only from the
+  base test's `report_phase`, and only when the global `UVM_ERROR` and
+  `UVM_FATAL` counts are both zero — never from sequence or scoreboard code
+  mid-run. The `uvm-log` parse policy depends on this.
+. *Compile-order contract.* The generated filelist emits, in order: the
+  Bender-resolved DUT/RTL layer, the expanded library and VIP manifests, the
+  DUT's own `sources` (TB interface, any generated register collateral the
+  bench reads, then `<dut>_env_pkg`, then `<dut>_seq_lib_pkg`), and
+  `top_file` last. The env package precedes the sequence library because the
+  scenario virtual sequences run on the `<dut>_virtual_sequencer` it
+  declares. Test classes compile inside the top's module scope via
+  `include "<dut>_tests.sv"`.
+
+[[shared-uvm-bringup]]
+=== Bring-Up Walkthrough
+
+The steps below add a `--framework uvm` view to a DUT with a working cocotb
+bench. Every step names its DTP reference so the pattern can be copied
+rather than invented. DTP's testbench architecture is described in
+`hw/sys/dtp/dv/docs/DTP_TB_ARCH.adoc`.
+
+==== Step 1: Declare the framework view in the sim config
+
+Add the `[frameworks.uvm]` tables to `<dut>_sim_cfg.toml` — build inputs,
+sim args, and the default target. Reference: the bottom of
+`hw/sys/dtp/dv/dtp_sim_cfg.toml`.
+
+[source,toml]
+----
+[frameworks.uvm]
+description = "<DUT> SV-UVM smoke flow"
+
+[frameworks.uvm.build]
+source_lists = [
+  "hw/common/dv/vip/ocah_lib/uvm/sources.toml",
+  "hw/common/dv/vip/ocah_jtag_vip/uvm/sources.toml",
+  "hw/common/dv/vip/ocah_axi_vip/uvm/sources.toml",
+]
+filelist        = "hw/<category>/<dut>/dv/build/uvm/<dut>_uvm_compile.f"
+bender_filelist = "hw/<category>/<dut>/dv/build/uvm/<dut>_uvm_bender.f"
+work_dir        = "hw/<category>/<dut>/dv/build/uvm"
+incdirs = [ "...tb", "...uvm/env", "...uvm/seq_lib", "...uvm/tests" ]
+sources = [
+  "hw/<category>/<dut>/dv/tb/<dut>_tb_if.sv",
+  "hw/<category>/<dut>/dv/uvm/env/<dut>_env_pkg.sv",
+  "hw/<category>/<dut>/dv/uvm/seq_lib/<dut>_seq_lib_pkg.sv",
+]
+
+[frameworks.uvm.sim]
+args = ["+UVM_VERBOSITY=UVM_MEDIUM"]
+
+[frameworks.uvm.targets.default]
+build_dir = "hw/<category>/<dut>/dv/build/uvm"
+----
+
+Do not redeclare what the profile owns: the `UVM` define, the tool
+allowlist, and the backend stage mechanics all come from
+`profiles/native.toml`. `run_dv.py --validate-configs` checks every listed
+path, including the manifest fragments.
+
+==== Step 2: Give the shared testbench top its UVM harness block
+
+The bench's `tb_top.sv` stays the single top for both frameworks: a portless
+core instantiates the shared-VIP and DUT-local interfaces, the DUT, and the
+adapters, and both frameworks consume the same interface instances (cocotb
+through hierarchical handles, SV-UVM through `uvm_config_db`); the `UVM`
+define appends a harness block at the end of the module — clock generation,
+protocol SVA, `uvm_config_db` publication, test inclusion, and `run_test()`:
+
+[source,systemverilog]
+----
+`ifdef UVM
+    import uvm_pkg::*;
+
+    initial clk_i = 1'b0;
+    always #(u_tb_if.clk_period_ns * 0.5ns) clk_i = ~clk_i;  // period from the env cfg
+
+    ocah_jtag_if u_jtag_if ();
+    <dut>_tb_if  u_tb_if ();
+    // ... DUT-pin wiring and quiescent tie-offs ...
+
+    `include "<dut>_tests.sv"
+
+    initial begin
+        uvm_config_db#(virtual ocah_jtag_if)::set(null, "*", "jtag_vif", u_jtag_if);
+        uvm_config_db#(virtual <dut>_tb_if)::set(null, "*", "tb_vif", u_tb_if);
+        run_test();
+    end
+`endif
+----
+
+Declare every TB signal exactly once. In the interface-based core each TB
+net is one local declaration wired to an interface member (DTP's
+`tb_top.sv`). A bench whose cocotb realization binds a pin-level port list
+keeps that list in a single include file expanded into both shapes
+through direction macros. Hand-maintaining two declaration blocks in
+lockstep is the failure mode both patterns exist to remove.
+
+==== Step 3: Carry DUT-local controls in a TB interface
+
+`<dut>_tb_if` owns what the harness and sequences exchange outside the
+protocol VIPs: the harness clock period the env publishes from the seeded
+test cfg, test-sequenced resets, DUT observables and reset counters, checker
+enables, and typed struct stimulus (a typed struct member beats re-flattened
+per-field scalars in the UVM shape). Sequences, checkers, and the scoreboard
+reach DUT-local signals only through it. Reference:
+`hw/sys/dtp/dv/tb/dtp_tb_if.sv`.
+
+==== Step 4: Build the environment package
+
+`<dut>_env_pkg` holds everything reusable across tests: DUT constants and
+codecs (`<dut>_types.svh`), the two configuration levels (`<dut>_test_cfg`,
+`<dut>_env_cfg`), the `<dut>_virtual_sequencer`, the reference models, the
+always-on `<dut>_scoreboard` and the invariant subscribers, and the
+environment. The environment reads its env cfg and the TB interface from
+`uvm_config_db`, fills one VIP config per port (interface, geometry,
+`name_tag`, evidence policy), instantiates the VIP-level environments and
+agents (the factory-overridable seam that optional backend integrations
+replace), wires the virtual sequencer handles and the monitor streams in
+`connect_phase`, and finalizes evidence once in `check_phase`. It drives
+nothing and checks no protocol. Reference:
+`hw/sys/dtp/dv/uvm/env/dtp_env_pkg.sv` and `dtp_env.svh`.
+
+==== Step 5: Build the sequence library package
+
+`<dut>_seq_lib_pkg` holds two tiers: the reusable operation sequences
+(`<dut>_<if>_<op>_seq`, one DUT operation on one agent, extending the VIP
+`*_sequence` API per the sequence-API rule) and the scenario virtual
+sequences (`<dut>_<scenario>_test_seq`, extending `<dut>_base_test_seq`,
+running on the virtual sequencer and starting the operations on its typed
+handles). Reference: `hw/sys/dtp/dv/uvm/seq_lib/`.
+
+==== Step 6: Write the tests
+
+`<dut>_tests.sv` is included at module scope in the testbench top and pulls
+in one class per scenario plus the base test. The base test extends
+`ocah_test`: it builds and randomizes the test cfg, derives the env cfg,
+builds the environment, walks the reset ladder in `bring_up()`, and names
+the virtual sequencer; a thin scenario test overrides `create_scenario_seq()`
+and the knob-name hooks. The pass banner comes from the library base and is
+emitted only from its `report_phase`:
+
+[source,systemverilog]
+----
+function void report_phase(uvm_phase phase);
+    uvm_report_server svr = uvm_report_server::get_server();
+    super.report_phase(phase);
+    if (svr.get_severity_count(UVM_FATAL) == 0 && svr.get_severity_count(UVM_ERROR) == 0)
+        `uvm_info(get_type_name(), "UVM TEST PASSED", UVM_NONE)
+    else
+        `uvm_info(get_type_name(), "UVM TEST FAILED", UVM_NONE)
+endfunction
+----
+
+Reference: `hw/sys/dtp/dv/uvm/tests/`.
+
+==== Step 7: Bind scenarios in the testlist
+
+Give each implemented scenario its UVM binding:
+
+[source,toml]
+----
+module = { cocotb = "<dut>_sanity_test", uvm = "<dut>_sanity_test" }
+----
+
+A scenario that is cocotb-only by design declares it in the same map
+(`module = { cocotb = "<dut>_x_test", uvm = false }`). A scenario without
+any `uvm` entry needs nothing: the UVM view runs the scenarios bound to it,
+and group selections under `--framework uvm` skip the rest, printed on the
+`selection` line. `--list` counts the two states apart, as `excluded` and
+`missing`, so the `false` is a statement for the reader rather than a
+switch. Naming either kind with `--items` under `--framework uvm` errors.
+
+==== Step 8: Run and verify
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --dut <dut> --framework uvm --items <dut>_sanity_test --seed 1
+----
+
+Acceptance for a bring-up is three-sided: the UVM scenario passes end to
+end on the selected backend (flow verdict, not just the banner — the
+`uvm-log` policy counts `UVM_ERROR`/`UVM_FATAL` lines), its
+`CHK-*`/`CHECKER_SUMMARY` evidence is present in the log, and the DUT's
+cocotb regressions pass without test changes.
+
+[[shared-uvm-optional-backend]]
+=== Optional Backend Integration
+
+The normative text for integrating an optional backend behind the shared
+surfaces is the *Template Contract* section of
+`hw/common/dv/vip/ocah_jtag_vip/README.md`. In brief: the open tree carries
+only the hooks — the opaque `vendor_cfg` extension, the `cfg.en_monitor`
+knob, the guarded vendor-interface nest inside each shared interface, and
+the factory-overridable VIP environments. Adopter overlays supply backend
+implementations without adding a dependency from the open tree.
+Deployment-side guidance lives in <<shared-vip-backend-deployment>>.
+
+[[shared-uvm-troubleshooting]]
+=== Troubleshooting
+
+* *"scenario ... not implemented" under `--framework uvm`* — the testlist
+  entry lacks a `uvm` binding in its `module` map (Step 7).
+* *Unknown VIP types at compile* — the VIP's `uvm/sources.toml` is missing
+  from `source_lists`, or a DUT source compiles before the manifest layer;
+  check the generated `*_uvm_compile.f` order against the compile-order
+  contract.
+* *The UVM shape does not select* — the `UVM` define is profile-owned;
+  inspect the resolved view with `--list`/`--validate-configs` instead of
+  adding a define to the DUT config.
+* *Run fails although the banner says PASSED* — the `uvm-log` policy also
+  fails a run on any `UVM_ERROR` line and on missing required patterns; a
+  `CHK-* FAIL` reaches the verdict through `uvm_error`.

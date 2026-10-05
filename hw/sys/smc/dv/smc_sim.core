@@ -1,0 +1,41 @@
+CAPI=2:
+# SPDX-License-Identifier: Apache-2.0
+# Optional FuseSoC/CAPI-2 view of the SMC OSS sim target. The native OSS flow
+# (tools/dv/run_dv.py) builds from smc_sim_cfg.toml [build].bender_targets
+# and does NOT parse this file; it exists only for an external FuseSoC consumer.
+name: "ocah:dv:smc_sim:0.1"
+description: "SMC OSS cocotb/Verilator simulation target (smc_wrapper)"
+
+filesets:
+  files_rtl:
+    depend:
+      - ocah:subsystem:smc
+
+  files_dv:
+    files:
+      - tb/tb_top.sv
+      # Stand-in for the ocah_prim prim_sync3 cell; recorded in
+      # docs/SMC_VPLAN.adoc, Known Limitations (Bench stand-ins).
+      - tb/verilator_stubs/prim_sync3.sv
+    file_type: systemVerilogSource
+
+  files_tests:
+    files:
+      - tests/__init__.py
+      - tests/test_smc_oss_reset_sanity.py
+      - testlists/smoke.toml
+    file_type: pythonSource
+
+targets:
+  sim: &sim_target
+    description: "Build and run the SMC OSS cocotb smoke environment"
+    toplevel: smc_uvm_top
+    filesets:
+      - files_rtl
+      - files_dv
+      - files_tests
+    default_tool: verilator
+
+  lint:
+    <<: *sim_target
+    description: "Lint the SMC OSS simulation target"

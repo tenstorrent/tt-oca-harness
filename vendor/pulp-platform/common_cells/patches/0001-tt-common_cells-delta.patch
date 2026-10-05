@@ -1,0 +1,347 @@
+diff --git a/src/addr_decode_dync.sv b/src/addr_decode_dync.sv
+index f6a88b5..29a9aa7 100644
+--- a/src/addr_decode_dync.sv
++++ b/src/addr_decode_dync.sv
+@@ -1,3 +1,5 @@
++// Modified by Tenstorrent
++
+ // Copyright 2019 ETH Zurich and University of Bologna.
+ // Copyright and related rights are licensed under the Solderpad Hardware
+ // License, Version 0.51 (the "License"); you may not use this file except in
+@@ -142,7 +144,7 @@ module addr_decode_dync #(
+   // check_idx:          Enforces a valid index in the rule.
+   // check_overlap:      Warns if there are overlapping address regions.
+   `ifndef SYNTHESIS
+-  always_comb begin : proc_check_addr_map
++  always @(addr_map_i or config_ongoing_i) /* #0 rmcnulty: Fix zero delay error */ begin : proc_check_addr_map
+     if (!$isunknown(addr_map_i) && ~config_ongoing_i) begin
+       for (int unsigned i = 0; i < NoRules; i++) begin
+         `OCAH_PULP_ASSUME_I(check_start, Napot || addr_map_i[i].start_addr < addr_map_i[i].end_addr ||
+diff --git a/src/cdc_2phase_clearable.sv b/src/cdc_2phase_clearable.sv
+index c538aa6..2968742 100644
+--- a/src/cdc_2phase_clearable.sv
++++ b/src/cdc_2phase_clearable.sv
+@@ -198,7 +198,7 @@ endmodule
+ /// Half of the two-phase clock domain crossing located in the source domain.
+ module cdc_2phase_src_clearable #(
+   parameter type T = logic,
+-  parameter int unsigned SYNC_STAGES = 2
++  parameter int unsigned SYNC_STAGES = 3
+ ) (
+   input  logic rst_ni,
+   input  logic clk_i,
+@@ -268,7 +268,7 @@ endmodule
+ /// domain.
+ module cdc_2phase_dst_clearable #(
+   parameter type T = logic,
+-  parameter int unsigned SYNC_STAGES = 2
++  parameter int unsigned SYNC_STAGES = 3
+ )(
+   input  logic rst_ni,
+   input  logic clk_i,
+diff --git a/src/cdc_4phase.sv b/src/cdc_4phase.sv
+index bd4c65a..2f689cd 100644
+--- a/src/cdc_4phase.sv
++++ b/src/cdc_4phase.sv
+@@ -91,7 +91,7 @@ endmodule
+ /// Half of the 4-phase clock domain crossing located in the source domain.
+ module cdc_4phase_src #(
+   parameter type T = logic,
+-  parameter int unsigned SYNC_STAGES = 2,
++  parameter int unsigned SYNC_STAGES = 3,
+   parameter bit DECOUPLED = 1'b1,
+   parameter bit SEND_RESET_MSG = 1'b0,
+   parameter T RESET_MSG = T'('0)
+@@ -204,7 +204,7 @@ endmodule
+ /// domain.
+ module cdc_4phase_dst #(
+   parameter type T = logic,
+-  parameter int unsigned SYNC_STAGES = 2,
++  parameter int unsigned SYNC_STAGES = 3,
+   parameter bit DECOUPLED = 1
+ )(
+   input  logic rst_ni,
+diff --git a/src/cdc_fifo_gray.sv b/src/cdc_fifo_gray.sv
+index b24a3a4..3ede509 100644
+--- a/src/cdc_fifo_gray.sv
++++ b/src/cdc_fifo_gray.sv
+@@ -108,7 +108,7 @@ module cdc_fifo_gray #(
+   /// The FIFO's depth given as 2**LOG_DEPTH.
+   parameter int LOG_DEPTH = 3,
+   /// The number of synchronization registers to insert on the async pointers.
+-  parameter int SYNC_STAGES = 2
++  parameter int SYNC_STAGES = 3
+ ) (
+   input  logic src_rst_ni,
+   input  logic src_clk_i,
+@@ -171,7 +171,7 @@ endmodule
+ module cdc_fifo_gray_src #(
+   parameter type T = logic,
+   parameter int LOG_DEPTH = 3,
+-  parameter int SYNC_STAGES = 2
++  parameter int SYNC_STAGES = 3
+ )(
+   input  logic src_rst_ni,
+   input  logic src_clk_i,
+@@ -231,7 +231,7 @@ endmodule
+ module cdc_fifo_gray_dst #(
+   parameter type T = logic,
+   parameter int LOG_DEPTH = 3,
+-  parameter int SYNC_STAGES = 2
++  parameter int SYNC_STAGES = 3
+ )(
+   input  logic dst_rst_ni,
+   input  logic dst_clk_i,
+diff --git a/src/cdc_fifo_gray_clearable.sv b/src/cdc_fifo_gray_clearable.sv
+index 673a4bb..1463a0c 100644
+--- a/src/cdc_fifo_gray_clearable.sv
++++ b/src/cdc_fifo_gray_clearable.sv
+@@ -268,7 +268,7 @@ endmodule
+ module cdc_fifo_gray_src_clearable #(
+   parameter type T = logic,
+   parameter int LOG_DEPTH = 3,
+-  parameter int SYNC_STAGES = 2
++  parameter int SYNC_STAGES = 3
+ )(
+   input  logic src_rst_ni,
+   input  logic src_clk_i,
+@@ -328,7 +328,7 @@ endmodule
+ module cdc_fifo_gray_dst_clearable #(
+   parameter type T = logic,
+   parameter int LOG_DEPTH = 3,
+-  parameter int SYNC_STAGES = 2
++  parameter int SYNC_STAGES = 3
+ )(
+   input  logic dst_rst_ni,
+   input  logic dst_clk_i,
+diff --git a/src/cdc_reset_ctrlr.sv b/src/cdc_reset_ctrlr.sv
+index 3ea5e3b..ce09f1a 100644
+--- a/src/cdc_reset_ctrlr.sv
++++ b/src/cdc_reset_ctrlr.sv
+@@ -112,7 +112,7 @@ module cdc_reset_ctrlr
+   /// The number of synchronization stages to use for the
+   /// clear signal request/acknowledge. Must be less than the
+   /// number of sync stages used in the CDC.
+-  parameter int unsigned SYNC_STAGES = 2,
++  parameter int unsigned SYNC_STAGES = 3,
+   /// Whether an asynchronous reset shall cause a clear
+   /// request to be sent to the other side.
+   parameter logic        CLEAR_ON_ASYNC_RESET = 1'b1
+@@ -190,7 +190,7 @@ module cdc_reset_ctrlr_half
+   /// The number of synchronization stages to use for the
+   /// clear signal request/acknowledge. Must be less than
+   /// the number of sync stages used in the CDC
+-  parameter int unsigned SYNC_STAGES = 2,
++  parameter int unsigned SYNC_STAGES = 3,
+   /// Whether an asynchronous reset shall cause a clear
+   /// request to be sent to the other side.
+   parameter logic        CLEAR_ON_ASYNC_RESET = 1'b1
+@@ -388,7 +388,7 @@ module cdc_reset_ctrlr_half
+ 
+   cdc_4phase_src #(
+     .T(clear_seq_phase_e),
+-    .SYNC_STAGES(2),
++    .SYNC_STAGES(SYNC_STAGES),//saket :: Removed Hard-Coded Param
+     .DECOUPLED(0), // Important! The CDC must not be in decoupled mode.
+                    // Otherwise we will proceed to the next state without
+                    // waiting for the new state to arrive on the other side.
+@@ -420,7 +420,7 @@ module cdc_reset_ctrlr_half
+ 
+   cdc_4phase_dst #(
+     .T(clear_seq_phase_e),
+-    .SYNC_STAGES(2),
++    .SYNC_STAGES(SYNC_STAGES),//ksaket :: Removed Hardcoded Param
+     .DECOUPLED(0) // Important! The CDC must not be in decoupled mode. Otherwise
+                   // we will proceed to the next state without waiting for the
+                   // new state to arrive on the other side.
+diff --git a/src/clk_mux_glitch_free.sv b/src/clk_mux_glitch_free.sv
+index 0180eb6..8418fdf 100644
+--- a/src/clk_mux_glitch_free.sv
++++ b/src/clk_mux_glitch_free.sv
+@@ -72,7 +72,7 @@
+ 
+ module clk_mux_glitch_free #(
+   parameter int unsigned  NUM_INPUTS = 2,
+-  parameter int unsigned  NUM_SYNC_STAGES = 2,
++  parameter int unsigned  NUM_SYNC_STAGES = 3,
+   parameter bit CLOCK_DURING_RESET = 1'b1, //< If 1, alow the selected clock to
+                                            //propagate even during reset
+                                            //assertion.
+@@ -254,7 +254,7 @@ endmodule
+ 
+ // Helper Module to generate an N-input clock OR-gate from a tree of tc_clk_or2 cells.
+ module clk_or_tree #(
+-  parameter int unsigned NUM_INPUTS
++  parameter int unsigned NUM_INPUTS = 1
+ ) (
+   input logic [NUM_INPUTS-1:0] clks_i,
+   output logic clk_o
+diff --git a/src/delta_counter.sv b/src/delta_counter.sv
+index 6cb4053..e720d61 100644
+--- a/src/delta_counter.sv
++++ b/src/delta_counter.sv
+@@ -66,9 +66,9 @@ module delta_counter #(
+             counter_d = {1'b0, d_i};
+         end else if (en_i) begin
+             if (down_i) begin
+-                counter_d = counter_q - delta_i;
++                counter_d = (WIDTH+1)'(counter_q - delta_i);
+             end else begin
+-                counter_d = counter_q + delta_i;
++                counter_d = (WIDTH+1)'(counter_q + delta_i);
+             end
+         end
+     end
+diff --git a/src/deprecated/pulp_sync.sv b/src/deprecated/pulp_sync.sv
+index 2b43616..4e6b9c6 100644
+--- a/src/deprecated/pulp_sync.sv
++++ b/src/deprecated/pulp_sync.sv
+@@ -12,7 +12,7 @@
+ 
+ module pulp_sync
+   #(
+-    parameter STAGES = 2
++    parameter STAGES = 3
+     )
+    (
+     input  logic clk_i,
+diff --git a/src/deprecated/pulp_sync_wedge.sv b/src/deprecated/pulp_sync_wedge.sv
+index 66cee57..064961c 100644
+--- a/src/deprecated/pulp_sync_wedge.sv
++++ b/src/deprecated/pulp_sync_wedge.sv
+@@ -11,7 +11,7 @@
+ // Antonio Pullini <pullinia@iis.ee.ethz.ch>
+ 
+ module pulp_sync_wedge #(
+-    parameter int unsigned STAGES = 2
++    parameter int unsigned STAGES = 3
+ ) (
+     input  logic clk_i,
+     input  logic rstn_i,
+diff --git a/src/ecc_pkg.sv b/src/ecc_pkg.sv
+index fde9f78..49e4422 100644
+--- a/src/ecc_pkg.sv
++++ b/src/ecc_pkg.sv
+@@ -25,7 +25,7 @@ package ecc_pkg;
+   // Calculate required ECC codeword width:
+   function automatic int unsigned get_cw_width (input int unsigned data_width);
+     // data width + parity width + one additional parity bit (for double error detection)
+-    return data_width + get_parity_width(data_width);
++    return unsigned'(data_width + get_parity_width(data_width));
+   endfunction
+ 
+ endpackage
+diff --git a/src/id_queue.sv b/src/id_queue.sv
+index cb57b41..759a90d 100644
+--- a/src/id_queue.sv
++++ b/src/id_queue.sv
+@@ -383,7 +383,7 @@ module id_queue #(
+         end
+     end
+ 
+-    // Registers
++    // Reginexts
+     for (genvar i = 0; i < HtCapacity; i++) begin: gen_ht_ffs
+         always_ff @(posedge clk_i, negedge rst_ni) begin
+             if (!rst_ni) begin
+diff --git a/src/mem_to_banks_detailed.sv b/src/mem_to_banks_detailed.sv
+index 8255f00..7f3c464 100644
+--- a/src/mem_to_banks_detailed.sv
++++ b/src/mem_to_banks_detailed.sv
+@@ -126,7 +126,7 @@ module mem_to_banks_detailed #(
+   // Handle requests.
+   assign req_valid = req_i & gnt_o;
+   for (genvar i = 0; unsigned'(i) < NumBanks; i++) begin : gen_reqs
+-    assign bank_req[i].addr  = align_addr(addr_i) + i * BytesPerBank;
++    assign bank_req[i].addr  = align_addr(addr_i) + 7'(i * BytesPerBank);
+     assign bank_req[i].wdata = wdata_i[i*BitsPerBank+:BitsPerBank];
+     assign bank_req[i].strb  = strb_i[i*BytesPerBank+:BytesPerBank];
+     assign bank_req[i].wuser = wuser_i;
+diff --git a/src/multiaddr_decode.sv b/src/multiaddr_decode.sv
+index 5d81cc8..fb61f87 100644
+--- a/src/multiaddr_decode.sv
++++ b/src/multiaddr_decode.sv
+@@ -1,3 +1,5 @@
++// Modified by Tenstorrent
++
+ // Copyright 2019 ETH Zurich and University of Bologna.
+ // Copyright and related rights are licensed under the Solderpad Hardware
+ // License, Version 0.51 (the "License"); you may not use this file except in
+@@ -133,7 +135,7 @@ module multiaddr_decode #(
+   // These following assumptions check the validity of the address map.
+   // check_idx: Enforces a valid index in the rule.
+   `ifndef SYNTHESIS
+-  always_comb begin : proc_check_addr_map
++  always @(addr_map_i) /* #0 rmcnulty: Fix zero delay error */ begin : proc_check_addr_map
+     if (!$isunknown(addr_map_i)) begin
+       for (int unsigned i = 0; i < NoRules; i++) begin
+         // check the SLV ids
+diff --git a/src/rr_arb_tree.sv b/src/rr_arb_tree.sv
+index 6278f36..10ef680 100644
+--- a/src/rr_arb_tree.sv
++++ b/src/rr_arb_tree.sv
+@@ -108,7 +108,9 @@ module rr_arb_tree #(
+   /// Output data.
+   output DataType             data_o,
+   /// Index from which input the data came from.
++  /* verilator lint_off UNOPTFLAT */
+   output idx_t                idx_o
++  /* verilator lint_on UNOPTFLAT */
+ );
+ 
+   // just pass through in this corner case
+@@ -219,22 +221,20 @@ module rr_arb_tree #(
+ 
+         assign next_idx = upper_empty      ? lower_idx : upper_idx;
+         assign rr_d     = (gnt_i && req_o) ? next_idx  : rr_q;
+-
+-      end else begin : gen_unfair_arb
+-        assign rr_d = (gnt_i && req_o) ? ((rr_q == idx_t'(NumIn-1)) ? '0 : rr_q + 1'b1) : rr_q;
+-      end
+-
+-      // this holds the highest priority
+-      always_ff @(posedge clk_i or negedge rst_ni) begin : p_rr_regs
+-        if (!rst_ni) begin
+-          rr_q   <= '0;
+-        end else begin
+-          if (flush_i) begin
++        // this holds the highest priority
++        always_ff @(posedge clk_i or negedge rst_ni) begin : p_rr_regs
++          if (!rst_ni) begin
+             rr_q   <= '0;
+           end else begin
+-            rr_q   <= rr_d;
++            if (flush_i) begin
++              rr_q   <= '0;
++            end else begin
++              rr_q   <= rr_d;
++            end
+           end
+         end
++      end else begin : gen_unfair_arb
++        assign rr_d = (gnt_i && req_o) ? ((rr_q == idx_t'(NumIn-1)) ? '0 : rr_q + 1'b1) : rr_q;
+       end
+     end
+ 
+diff --git a/src/sync_wedge.sv b/src/sync_wedge.sv
+index 58f1279..21a07d7 100644
+--- a/src/sync_wedge.sv
++++ b/src/sync_wedge.sv
+@@ -11,7 +11,7 @@
+ // Antonio Pullini <pullinia@iis.ee.ethz.ch>
+ 
+ module sync_wedge #(
+-    parameter int unsigned STAGES = 2
++    parameter int unsigned STAGES = 3
+ ) (
+     input  logic clk_i,
+     input  logic rst_ni,
+diff --git a/src/verilator_asserts_off.svh b/src/verilator_asserts_off.svh
+new file mode 100644
+index 0000000..2fbbdfe
+--- /dev/null
++++ b/src/verilator_asserts_off.svh
+@@ -0,0 +1,3 @@
++`ifdef VERILATOR
++  `define COMMON_CELLS_ASSERTS_OFF
++`endif

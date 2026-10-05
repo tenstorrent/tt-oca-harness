@@ -1,0 +1,243 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+// Derive the SMC primary, warm, and watchdog resets from the pad resets.
+//
+// Stretches powergood by 32 reference clock cycles, de-glitches the cold reset and the
+// cool-reset pin over 32 reference clock cycles, and extends the cold-reset release by 255
+// cycles. The primary reset combines the cold, cool-pin and FLR cool resets; the warm
+// reset adds the watchdog and fuse resets. The outputs are not synchronized to any
+// destination clock.
+
+module smc_reset_ctrl (
+  input  logic                                   clk_ref_i,  // Reference clock for the powergood
+                                                             // stretcher, de-glitchers and
+                                                             // cold-reset extender.
+  input  logic                                   powergood_i,  // Powergood from the pad
+                                                               // (BP_POWERGOOD), active-high;
+                                                               // low asynchronously clears the
+                                                               // stretcher and the de-glitchers.
+
+  input  logic                                   rst_cold_ni,  // Cold reset from the pad
+                                                               // (BP_RESETN), active-low; must
+                                                               // stay low 32 reference clock
+                                                               // cycles to take effect.
+
+  input  logic                                   fuse_reset_ni,  // Fuse reset, active-low;
+                                                                 // released once fuse
+                                                                 // sensing is done and
+                                                                 // DFT is complete; holds
+                                                                 // the warm reset.
+
+  input  logic                                   rst_ext_wdt_ni,  // External watchdog reset,
+                                                                  // active-low; asserts the
+                                                                  // WDT and warm resets.
+  input  logic                                   smc_wdt_first_timeout_i,  // SMC CPU watchdog first-timeout indication;
+                                                                           // not used in this module.
+  input  logic                                   smc_wdt_second_timeout_i,  // SMC CPU watchdog second-timeout
+                                                                            // indication, active-high; asserts the WDT
+                                                                            // reset and, through it, the warm reset.
+
+  input  logic                                   rst_cool_from_pin_ni,  // Cool reset received by
+                                                                        // secondary chiplets,
+                                                                        // active-low; de-glitched
+                                                                        // over 32 reference clock
+                                                                        // cycles into the primary
+                                                                        // reset.
+  input  logic                                   rst_cool_from_flr_ni,  // FLR cool reset generated
+                                                                        // by primary chiplets and
+                                                                        // sent to secondary
+                                                                        // chiplets, active-low;
+                                                                        // asserts the primary reset
+                                                                        // directly.
+
+  output logic                                   powergood_stable_o,  // Powergood that falls with
+                                                                      // powergood_i and rises 32
+                                                                      // reference clock cycles
+                                                                      // after it.
+  output logic                                   stable_cold_rst_no,  // De-glitched cold reset,
+                                                                      // active-low, released 255
+                                                                      // reference clock cycles
+                                                                      // after the de-glitched
+                                                                      // input releases; low while
+                                                                      // powergood_stable_o is low.
+  output logic                                   rst_primary_no,  // Primary reset, active-low:
+                                                                  // the stable cold, de-glitched
+                                                                  // cool-pin and FLR cool resets
+                                                                  // combined.
+  output logic                                   rst_warm_no,  // Warm reset, active-low: the
+                                                               // primary, WDT and fuse resets
+                                                               // combined.
+  output logic                                   rst_wdt_no,  // WDT reset, active-low, asserted
+                                                              // by rst_ext_wdt_ni or
+                                                              // smc_wdt_second_timeout_i;
+                                                              // combinational from its inputs.
+
+  input  logic                                   test_en_i,  // Scan test mode enable, active-high;
+                                                             // selects scan_rst_ni in place of the
+                                                             // stretched powergood and the
+                                                             // de-glitched cold reset.
+  input  logic                                   scan_rst_ni  // Scan reset, active-low, used in
+                                                              // place of the stretched powergood
+                                                              // and the de-glitched cold reset
+                                                              // while test_en_i is high.
+);
+
+  // Reset de-glitcher parameters
+  localparam int unsigned ResetDeglitchWidth = 32;
+
+  logic powergood_stable;
+  logic cold_rst_pre_extend;
+  logic cold_rst_deglitch_to_rstbypass;
+  logic stable_cold_rst_n;
+  logic stable_cool_rst_n;
+
+  ///////////////////////////////
+  // Powergood Stretch Circuit //
+  ///////////////////////////////
+
+  // Note: in simulation, an X/Z on powergood_i makes the synchronizer's async-reset
+  // condition evaluate as false, so the chain shifts in 1s and powergood_stable resolves
+  // to 1. This is safe in practice: if power is not actually stable there is no clk_ref_i
+  // to clock that 1 through the synchronizer.
+
+  // Wait 32 cycles after power good de-assertion before broadcasting to rest of chip
+  prim_sync_reset #(
+    .WIDTH(32)
+  ) u_powergood_stretcher_n0_scan (
+    .clk_i(clk_ref_i),
+    .rst_ni(powergood_i),
+    .test_mode_i(test_en_i),
+    .scan_rst_ni(scan_rst_ni),
+    .sync_rst_no(powergood_stable)
+  );
+
+  /////////////////////////////////////////////////////////////////////////////////////////////
+  // COLD reset de-glitcher circuit
+  // Only assert reset downstream when it has been seen for at least 32 refclk cycles == 320ns
+  /////////////////////////////////////////////////////////////////////////////////////////////
+  logic [ResetDeglitchWidth-1:0] cold_rst_deglitch_shift_reg_n0_scan;
+
+  always @(posedge clk_ref_i or negedge powergood_stable) begin
+    if (~powergood_stable) begin
+      cold_rst_deglitch_shift_reg_n0_scan <= '0;
+      cold_rst_deglitch_to_rstbypass      <= 1'b0;
+    end else begin
+      cold_rst_deglitch_shift_reg_n0_scan <= {
+        cold_rst_deglitch_shift_reg_n0_scan[ResetDeglitchWidth-2:0], rst_cold_ni
+      };
+      cold_rst_deglitch_to_rstbypass <= |{
+        cold_rst_deglitch_shift_reg_n0_scan[ResetDeglitchWidth-2:0], rst_cold_ni
+      };
+    end
+  end
+
+  prim_rst_mux2_hf_n u_cold_rst_pre_extend_rstbypass (
+    .rst0_ni(cold_rst_deglitch_to_rstbypass),
+    .rst1_ni(scan_rst_ni),
+    .sel_i  (test_en_i),
+    .rst_no (cold_rst_pre_extend)
+  );
+
+  // Cold reset extender circuit
+  // When powergood_stable is 1, hold reset_n to 0 for 255 cycles after it is de-asserted
+  localparam int unsigned ResetExtendDuration = 255;
+  localparam int unsigned ExtendCountWidth = $clog2(ResetExtendDuration + 1);
+  logic [ExtendCountWidth-1:0] extend_count_n0_scan;
+
+  always @(posedge clk_ref_i or negedge cold_rst_pre_extend) begin
+    if (~cold_rst_pre_extend) begin
+      extend_count_n0_scan <= ResetExtendDuration;
+    end else begin
+      if (powergood_stable && (|extend_count_n0_scan)) begin
+        extend_count_n0_scan <= extend_count_n0_scan - {{(ExtendCountWidth - 1) {1'b0}}, 1'b1};
+      end
+    end
+  end
+
+  always_comb begin
+    stable_cold_rst_n = 1'b0;
+    if (powergood_stable) begin
+      if (~(|extend_count_n0_scan)) begin
+        stable_cold_rst_n = cold_rst_pre_extend;
+      end
+    end
+  end
+
+  /////////////////////////////////////////////////////////////////////////////////////////////
+  // COOL reset de-glitcher circuit
+  /////////////////////////////////////////////////////////////////////////////////////////////
+  logic [ResetDeglitchWidth-1:0] cool_rst_deglitch_shift_reg_n0_scan;
+
+  always @(posedge clk_ref_i or negedge powergood_stable) begin
+    if (~powergood_stable) begin
+      cool_rst_deglitch_shift_reg_n0_scan <= '0;
+      stable_cool_rst_n                   <= 1'b0;
+    end else begin
+      cool_rst_deglitch_shift_reg_n0_scan <= {
+        cool_rst_deglitch_shift_reg_n0_scan[ResetDeglitchWidth-2:0], rst_cool_from_pin_ni
+      };
+      stable_cool_rst_n <= |{
+        cool_rst_deglitch_shift_reg_n0_scan[ResetDeglitchWidth-2:0],
+        rst_cool_from_pin_ni
+      };
+    end
+  end
+
+  // Final reset outputs
+  logic smc_wdt_second_timeout_n;
+  logic wdt_reset_n;
+  logic rst_primary_cold_cool_n;
+  logic rst_warm_wdt_primary_n;
+
+  prim_inv u_smc_wdt_timeout_inv (
+    .in_i  (smc_wdt_second_timeout_i),
+    .out_o (smc_wdt_second_timeout_n)
+  );
+
+  prim_and2 #(
+    .Width(1)
+  ) u_smc_wdt_reset_and (
+    .in0_i (rst_ext_wdt_ni),
+    .in1_i (smc_wdt_second_timeout_n),
+    .out_o (wdt_reset_n)
+  );
+
+  prim_and2 #(
+    .Width(1)
+  ) u_rst_primary_cold_cool_and (
+    .in0_i (stable_cold_rst_n),
+    .in1_i (stable_cool_rst_n),
+    .out_o (rst_primary_cold_cool_n)
+  );
+
+  prim_and2 #(
+    .Width(1)
+  ) u_rst_primary_flr_and (
+    .in0_i (rst_primary_cold_cool_n),
+    .in1_i (rst_cool_from_flr_ni),
+    .out_o (rst_primary_no)
+  );
+
+  prim_and2 #(
+    .Width(1)
+  ) u_rst_warm_wdt_primary_and (
+    .in0_i (wdt_reset_n),
+    .in1_i (rst_primary_no),
+    .out_o (rst_warm_wdt_primary_n)
+  );
+
+  prim_and2 #(
+    .Width(1)
+  ) u_rst_warm_fuse_and (
+    .in0_i (rst_warm_wdt_primary_n),
+    .in1_i (fuse_reset_ni),
+    .out_o (rst_warm_no)
+  );
+
+  assign rst_wdt_no = wdt_reset_n;
+
+  assign stable_cold_rst_no = stable_cold_rst_n;
+  assign powergood_stable_o = powergood_stable;
+
+endmodule

@@ -1,0 +1,63 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef CROSS_TRIGGER_MATRIX_RDL
+`define CROSS_TRIGGER_MATRIX_RDL
+
+//------------------------------------------------------------------------------
+// Copyright 2025 Tenstorrent Inc.
+// Cross Trigger Matrix Configuration Registers
+//
+// One configuration register per CT_Src output port, declared as an array sized
+// by NUM_CT_SRC, each holding one select bit per CT_Dst port. Every port occupies
+// 8 bytes regardless of the port count, so the address map does not move when the
+// matrix is resized.
+//
+// Selecting among more than 32 destinations needs a select field wider than one
+// bus word, so the register grows to fill its 8 bytes and is accessed a word at a
+// time. Both properties follow NUM_CT_DST, which may be 1 to 64:
+//
+//   NUM_CT_DST <= 32   32-bit register, second word unmapped
+//   NUM_CT_DST >  32   64-bit register accessed 32 bits at a time, writes
+//                      buffered because the select field spans both words
+//
+// Buffered writes commit the whole select mask when the upper word is written, so
+// a mask crossing the word boundary never takes effect half-programmed. Firmware
+// must write both words, low first, to change such a mask.
+//
+// The array is wrapped in a regfile because the C header exporter rejects a
+// register array whose stride exceeds the register width.
+//------------------------------------------------------------------------------
+
+addrmap cross_trigger_matrix #(
+    longint unsigned NUM_CT_SRC = 26,
+    longint unsigned NUM_CT_DST = 26
+) {
+    name = "Cross Trigger Matrix Address Map";
+    desc = "Configuration registers for the cross trigger matrix";
+
+    regfile {
+        name = "Cross Trigger Source Configuration";
+        desc = "Cross trigger destination selection for one CT_Src output port";
+
+        reg {
+            regwidth = NUM_CT_DST > 32 ? 64 : 32;
+            accesswidth = 32;
+            buffer_writes = NUM_CT_DST > 32;
+
+            desc = "Cross Trigger Source Configuration - CT_Dst select mask";
+            field {
+                sw = rw;
+                hw = r;
+                desc = "Selects the CT_Dst port(s) to forward on the CT_Src output
+                        at this array index. Each bit corresponds to one CT_Dst
+                        port, from CT_Dst[0] at bit 0 upwards. Multiple ports may
+                        be selected as a trigger source. All selected source ports
+                        are then OR'd together to produce the CT_Src output. Set
+                        this register to all-zero to disable that output.";
+            } CT_DST_SELECT[NUM_CT_DST-1:0] = 0x0;
+        } CONFIG_0 @0x0;
+    } CT_SRC[NUM_CT_SRC] @0x0 += 0x8;
+};
+
+`endif

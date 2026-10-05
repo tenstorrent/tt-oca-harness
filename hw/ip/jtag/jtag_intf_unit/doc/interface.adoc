@@ -1,0 +1,96 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[jtag-intf-unit-interface]]
+
+=== Instruction Encodings
+
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="jiu-signal-interface-table"></span>
+++++
+endif::backend-html5[]
+
+The JTAG interface unit uses 6-bit instruction encodings (<<jiu-instruction-encodings-table>>).
+
+[[jiu-instruction-encodings-table]]
+[cols="<,<,<,<",options="header"]
+.JIU instruction encodings
+|===
+|Encoding |Name |Register Size |Security
+|0x00 |BYPASS (IEEE 1149.1, Section 8.4) |1 |
+|0x01 |IDCODE (IEEE 1149.1, Section 8.13) |32 |
+|0x02 |RUNBIST (IEEE 1149.1, Section 8.10) |BIST |
+|0x03 |SAMPLE_PRELOAD (IEEE 1149.1, Sections 8.6 and 8.7) |BSR |
+|0x04 |EXTEST (IEEE 1149.1, Section 8.8) |BSR |
+|0x05 |EXTEST_TRAIN |BSR |
+|0x06 |EXTEST_PULSE |BSR |
+|0x07 |CLAMP (IEEE 1149.1, Section 8.11) |1 |
+|0x08 |HIGHZ (IEEE 1149.1, Section 8.16) |1 |
+|0x09 |INTEST (IEEE 1149.1, Section 8.9) |BSR |
+|0x0A |CLAMP_HOLD (IEEE 1149.1, Section 8.20) |2 |
+|0x0B |CLAMP_RELEASE (IEEE 1149.1, Section 8.20) |2 |
+|0x0C |TMP_STATUS (IEEE 1149.1, Section 8.20) |2 |
+|0x0D |IC_RESET (IEEE 1149.1, Section 8.21) |Variable |
+|0x0E |TAP_3DCR (IEEE 1838, Section 5.5.1) |2 |
+|0x10-0x17 |_Reserved for RISC-V_ | |
+|0x18 |DEBUG_CONTROL |5 |
+|0x19 |JTAG_CAPS |60 |
+|0x1A |SELECT_IJTAG |Variable |
+|0x1B |SMC_OTP_JTAG2AXI_CAPS |14 |
+|0x1C |SMC_OTP_AXI_SINGLE_OP |Variable |
+|0x1D |SMC_OTP_AXI_SERIES_CTRL |Variable |
+|0x1E |SMC_OTP_AXI_SERIES_DATA_INCR |Variable |
+|0x1F |SMC_OTP_AXI_SERIES_DATA_NO_INCR |Variable |
+|0x20 |SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS |Variable |
+|0x21 |SEP_OTP_JTAG2AXI_CAPS |14 |
+|0x22 |SEP_OTP_AXI_SINGLE_OP |Variable |
+|0x23 |SEP_OTP_AXI_SERIES_CTRL |Variable |
+|0x24 |SEP_OTP_AXI_SERIES_DATA_INCR |Variable |
+|0x25 |SEP_OTP_AXI_SERIES_DATA_NO_INCR |Variable |
+|0x26 |SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS |Variable |
+|0x27 |SMC_JTAG2AXI_CAPS |14 |
+|0x28 |SMC_AXI_SINGLE_OP |Variable |
+|0x29 |SMC_AXI_SERIES_CTRL |Variable |
+|0x2A |SMC_AXI_SERIES_DATA_INCR |Variable |
+|0x2B |SMC_AXI_SERIES_DATA_NO_INCR |Variable |
+|0x2C |SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS |Variable |
+|0x3D |ZERO_LENGTH_BYPASS |0; 1, as BYPASS, while the PTAP TAP_3DCR STAP-select bit is set |
+|0x3E |INV_BYPASS | |
+|0x3F |BYPASS (IEEE 1149.1, Section 8.4) |1 |
+|===
+
+The length of each variable-length JTAG2AXI register follows from the bridge's
+address width, data width and pipeline depth, and for the series data registers
+from the size last written to `*_AXI_SERIES_CTRL`. The
+ifdef::backend-html5[]
+xref:ip:jtag_ptap/doc/index.adoc#ptap-jtag2axi-support[PTAP JTAG2AXI Support]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ptap-jtag2axi-support,PTAP JTAG2AXI Support>>
+endif::backend-pdf[]
+section defines each layout.
+
+**NOTE:** All instruction encodings _not_ explicitly defined in this table map
+to the BYPASS instruction.
+
+=== Signal Interface
+
+Packed control and bus types remain bundles at the `jtag_intf_unit` boundary; their
+members are not separate scalar ports.
+
+ifdef::backend-html5[]
+The parameters and ports of `jtag_intf_unit` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/jtag_intf_unit/jtag_intf_unit.adoc[jtag_intf_unit].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `jtag_intf_unit` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+=== Dependencies
+
+The JTAG Interface Unit depends on the following components:
+
+* `hw/ip/jtag/jtag_ptap` - Primary TAP
+* `hw/ip/jtag/jtag_stap` - Secondary TAP
+* `hw/common/ocah_prim` - Primitive cells

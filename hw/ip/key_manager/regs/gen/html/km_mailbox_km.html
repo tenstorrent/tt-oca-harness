@@ -1,0 +1,84 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-km_mailbox_km">Key Manager Mailbox KM Side</h2>
+<p>Register interface for KM CPU to access mailbox (write to outbound FIFO, read from inbound FIFO)</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#KM_WRITE_DATA">KM_WRITE_DATA</a></td><td>W</td><td>Write data to outbound FIFO (KM→SEP messages)</td></tr>
+<tr><td>0x4</td><td><a href="#KM_WRITE_SEPARATOR">KM_WRITE_SEPARATOR</a></td><td>RW</td><td>Write 1 to set message separator on next outbound (KM→SEP) write. Cleared by hardware when that write completes.</td></tr>
+<tr><td>0x8</td><td><a href="#KM_READ_DATA">KM_READ_DATA</a></td><td>R</td><td>Read data from inbound FIFO (SEP→KM messages)</td></tr>
+<tr><td>0xC</td><td><a href="#KM_STATUS">KM_STATUS</a></td><td>RW</td><td>FIFO status information</td></tr>
+<tr><td>0x10</td><td><a href="#KM_IRQ_STATUS">KM_IRQ_STATUS</a></td><td>RW</td><td>Interrupt status register</td></tr>
+<tr><td>0x14</td><td><a href="#KM_IRQ_ENABLE">KM_IRQ_ENABLE</a></td><td>RW</td><td>Interrupt enable register for KM CPU</td></tr>
+<tr><td>0x18</td><td><a href="#KM_CTRL">KM_CTRL</a></td><td>RW</td><td>Control register for mailbox behavior configuration</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="KM_WRITE_DATA">KM_WRITE_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>0x0</td><td>32-bit data word to write to outbound FIFO</td></tr>
+</table>
+<h3 id="KM_WRITE_SEPARATOR">KM_WRITE_SEPARATOR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>set</td><td>RW</td><td>0x0</td><td>Write 1 to set message separator on next outbound write. Cleared by hardware when that write completes.</td></tr>
+</table>
+<h3 id="KM_READ_DATA">KM_READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>R</td><td>0x0</td><td>32-bit data word read from inbound FIFO</td></tr>
+</table>
+<h3 id="KM_STATUS">KM_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:26</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>25</td><td>outbound_separator</td><td>R</td><td>0x0</td><td>Message separator: 1 if the last word read from outbound FIFO had the separator bit set (last word of message). Read-only, not sticky.</td></tr>
+<tr><td>24</td><td>inbound_separator</td><td>R</td><td>0x0</td><td>Message separator: 1 if the last word read from inbound FIFO had the separator bit set (last word of message). Read-only, not sticky.</td></tr>
+<tr><td>23</td><td>outbound_underflow</td><td>RW1C</td><td>0x0</td><td>Outbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.</td></tr>
+<tr><td>22</td><td>inbound_underflow</td><td>RW1C</td><td>0x0</td><td>Inbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.</td></tr>
+<tr><td>21</td><td>outbound_overflow</td><td>RW1C</td><td>0x0</td><td>Outbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.</td></tr>
+<tr><td>20</td><td>inbound_overflow</td><td>RW1C</td><td>0x0</td><td>Inbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.</td></tr>
+<tr><td>19:12</td><td>outbound_depth</td><td>R</td><td>0x0</td><td>Outbound FIFO fill level (number of words in FIFO)</td></tr>
+<tr><td>11:4</td><td>inbound_depth</td><td>R</td><td>0x0</td><td>Inbound FIFO fill level (number of words in FIFO)</td></tr>
+<tr><td>3</td><td>outbound_full</td><td>R</td><td>0x0</td><td>Outbound FIFO is full (cannot write more data)</td></tr>
+<tr><td>2</td><td>outbound_empty</td><td>R</td><td>0x1</td><td>Outbound FIFO is empty (no data available for SEP to read)</td></tr>
+<tr><td>1</td><td>inbound_full</td><td>R</td><td>0x0</td><td>Inbound FIFO is full</td></tr>
+<tr><td>0</td><td>inbound_empty</td><td>R</td><td>0x1</td><td>Inbound FIFO is empty (no data available for KM to read)</td></tr>
+</table>
+<h3 id="KM_IRQ_STATUS">KM_IRQ_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>4</td><td>flushed_by_sep</td><td>RW1C</td><td>0x0</td><td>SEP performed a mailbox flush. Sticky, write 1 to clear.</td></tr>
+<tr><td>3</td><td>inbound_underflow</td><td>RW1C</td><td>0x0</td><td>Inbound FIFO underflow detected. Sticky, write 1 to clear.</td></tr>
+<tr><td>2</td><td>outbound_overflow</td><td>RW1C</td><td>0x0</td><td>Outbound FIFO overflow detected. Sticky, write 1 to clear.</td></tr>
+<tr><td>1</td><td>outbound_write_space_avail</td><td>R</td><td>0x0</td><td>Outbound FIFO has space available for KM to write (level-sensitive). 1 = space available, 0 = full.</td></tr>
+<tr><td>0</td><td>inbound_read_data_avail</td><td>R</td><td>0x0</td><td>Inbound FIFO has data available for KM to read (level-sensitive). 1 = data available, 0 = empty.</td></tr>
+</table>
+<h3 id="KM_IRQ_ENABLE">KM_IRQ_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>4</td><td>flushed_by_sep_en</td><td>RW</td><td>0x0</td><td>Enable interrupt to KM when SEP performs a mailbox flush</td></tr>
+<tr><td>3</td><td>inbound_underflow_en</td><td>RW</td><td>0x0</td><td>Enable interrupt to KM when inbound FIFO underflow is detected</td></tr>
+<tr><td>2</td><td>outbound_overflow_en</td><td>RW</td><td>0x0</td><td>Enable interrupt to KM when outbound FIFO overflow is detected</td></tr>
+<tr><td>1</td><td>outbound_write_space_avail_en</td><td>RW</td><td>0x0</td><td>Enable interrupt to KM when outbound FIFO has space available (KM-&gt;SEP messages)</td></tr>
+<tr><td>0</td><td>inbound_read_data_avail_en</td><td>RW</td><td>0x0</td><td>Enable interrupt to KM when inbound FIFO has data available (SEP-&gt;KM messages)</td></tr>
+</table>
+<h3 id="KM_CTRL">KM_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>2</td><td>flush</td><td>RW</td><td>0x0</td><td>Write 1 to flush all mailbox FIFOs (inbound and outbound). Cleared by hardware when flush completes.</td></tr>
+<tr><td>1</td><td>inbound_underflow_resp</td><td>RW</td><td>0x0</td><td>Response type for inbound FIFO underflow: 0=SLVERR (default), 1=OKAY</td></tr>
+<tr><td>0</td><td>outbound_overflow_resp</td><td>RW</td><td>0x0</td><td>Response type for outbound FIFO overflow: 0=SLVERR (default), 1=OKAY</td></tr>
+</table>
+</div>

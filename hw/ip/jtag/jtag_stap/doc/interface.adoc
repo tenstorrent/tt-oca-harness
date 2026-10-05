@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[stap-interface]]
+
+=== Signal Interface
+
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="stap-signal-interface-table"></span>
+++++
+endif::backend-html5[]
+
+Packed control and bus types remain bundles at the `jtag_stap` boundary; their
+members are not separate scalar ports.
+
+ifdef::backend-html5[]
+The parameters and ports of `jtag_stap` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/jtag_stap/jtag_stap.adoc[jtag_stap].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `jtag_stap` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+=== Timing Requirements
+
+The STAP interface timing follows IEEE 1838-2019:
+
+* TDI is sampled on the rising edge of TCK
+* TDO is driven on the falling edge of TCK
+* TMS is sampled on the rising edge of TCK
+* The TDO lockup latch captures the client scan data on every falling edge of
+  TCK
+
+=== Dependencies
+
+The STAP depends on the following components:
+
+* `hw/common/ocah_prim` - Primitive cells (clock gating, synchronizers)

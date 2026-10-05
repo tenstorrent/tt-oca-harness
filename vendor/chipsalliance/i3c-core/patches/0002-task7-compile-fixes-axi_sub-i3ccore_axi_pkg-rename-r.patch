@@ -1,0 +1,67 @@
+From 62afa25fd0a65a3364a02bd1c32353cb848ec210 Mon Sep 17 00:00:00 2001
+From: Kai Qin <kqin@tenstorrent.com>
+Date: Wed, 10 Jun 2026 14:26:10 -0400
+Subject: [PATCH] task7 compile fixes: axi_sub i3ccore_axi_pkg rename
+
+---
+ src/libs/axi_sub/i3c_axi_sub.sv     | 2 +-
+ src/libs/axi_sub/i3c_axi_sub_arb.sv | 2 +-
+ src/libs/axi_sub/i3c_axi_sub_rd.sv  | 2 +-
+ src/libs/axi_sub/i3c_axi_sub_wr.sv  | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/libs/axi_sub/i3c_axi_sub.sv b/src/libs/axi_sub/i3c_axi_sub.sv
+index 032dd806..470e178c 100644
+--- a/src/libs/axi_sub/i3c_axi_sub.sv
++++ b/src/libs/axi_sub/i3c_axi_sub.sv
+@@ -27,7 +27,7 @@
+ //
+ // -------------------------------------------------------------
+ 
+-module i3c_axi_sub import axi_pkg::*; #(
++module i3c_axi_sub import i3ccore_axi_pkg::*; #(
+     parameter AW = 32,         // Address Width
+     parameter DW = 32,         // Data Width
+               BC = DW/8,       // Byte Count
+diff --git a/src/libs/axi_sub/i3c_axi_sub_arb.sv b/src/libs/axi_sub/i3c_axi_sub_arb.sv
+index 77e0981c..62d13d7d 100644
+--- a/src/libs/axi_sub/i3c_axi_sub_arb.sv
++++ b/src/libs/axi_sub/i3c_axi_sub_arb.sv
+@@ -22,7 +22,7 @@
+ //
+ // -------------------------------------------------------------
+ 
+-module i3c_axi_sub_arb import axi_pkg::*; #(
++module i3c_axi_sub_arb import i3ccore_axi_pkg::*; #(
+     parameter AW = 32,         // Address Width
+     parameter DW = 32,         // Data Width
+               BC = DW/8,       // Byte Count
+diff --git a/src/libs/axi_sub/i3c_axi_sub_rd.sv b/src/libs/axi_sub/i3c_axi_sub_rd.sv
+index 3bdb2506..01baee5a 100644
+--- a/src/libs/axi_sub/i3c_axi_sub_rd.sv
++++ b/src/libs/axi_sub/i3c_axi_sub_rd.sv
+@@ -26,7 +26,7 @@
+ //
+ // -------------------------------------------------------------
+ 
+-module i3c_axi_sub_rd import axi_pkg::*; #(
++module i3c_axi_sub_rd import i3ccore_axi_pkg::*; #(
+     parameter AW = 32,         // Address Width
+     parameter DW = 32,         // Data Width
+               BC = DW/8,       // Byte Count
+diff --git a/src/libs/axi_sub/i3c_axi_sub_wr.sv b/src/libs/axi_sub/i3c_axi_sub_wr.sv
+index d245a2f3..9c5725dd 100644
+--- a/src/libs/axi_sub/i3c_axi_sub_wr.sv
++++ b/src/libs/axi_sub/i3c_axi_sub_wr.sv
+@@ -27,7 +27,7 @@
+ //
+ // -------------------------------------------------------------
+ 
+-module i3c_axi_sub_wr import axi_pkg::*; #(
++module i3c_axi_sub_wr import i3ccore_axi_pkg::*; #(
+     parameter AW = 32,         // Address Width
+     parameter DW = 32,         // Data Width
+               BC = DW/8,       // Byte Count
+-- 
+2.26.2
+

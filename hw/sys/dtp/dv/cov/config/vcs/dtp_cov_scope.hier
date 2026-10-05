@@ -1,0 +1,62 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+// Compile-time coverage scope of the DTP bench on VCS (`-cm_hier` with
+// `-lca -cm_common_hier`, from `[coverage.vcs]` in dtp_sim_cfg.toml). Every
+// name here matches an elaborated instance of the default configuration; VCS
+// reports a name that matches nothing as `VCM-HFUFR` in the compile log.
+//
+// Code coverage (line, cond, fsm, tgl, branch) grades the DUT instance with
+// everything it instantiates, the vendored cells included, apart from the two
+// simulation-only modules removed below: the bench top, the VIP interfaces, the
+// protocol checkers and the coverage modules never enter the database, except
+// the bind connections described below. `+tree` on its own restricts nothing,
+// so the bench tree is excluded first and the DUT re-admitted under it.
+-tree dtp_uvm_top
++tree dtp_uvm_top.u_dut
+
+// prim_cdc_rand_delay is the CDC jitter model that the synchronizer
+// primitives (prim_flop_2sync, prim_sync3r and their siblings) instantiate
+// only under SIMULATION; a synthesized DTP has none of it, so none of its
+// instances is graded. A compile without SIMULATION has no such module and
+// reports this line as unmatched.
+-module prim_cdc_rand_delay
+
+// dtp_j2a_state_flags is the bench observation module that tb_top binds into
+// every jtag2axi bridge; a synthesized DTP has none of it, so none of its
+// instances is graded. The expressions the bind connects to its ports are
+// evaluated in the bridge's scope, and condition coverage grades them with the
+// bridge under tb_top.sv line numbers.
+-module dtp_j2a_state_flags
+
+// Assertion coverage carries the DUT's own assertions, the `cover property`
+// points of the functional-coverage modules, and the protocol checkers
+// under the bench top; the assertions of the UVM and AXI packages, which URG
+// lists as top-level scopes of their own, stay out. uvm_pkg exists in the
+// SV-UVM elaboration only, so the cocotb compile reports that line as
+// unmatched. A metric section replaces the general rules for that metric, so
+// the tree is stated again.
+begin assert
+-tree dtp_uvm_top
+-tree uvm_pkg
+-tree axi_pkg
++tree dtp_uvm_top.u_dut
++tree dtp_uvm_top.u_dtp_fcov
++tree dtp_uvm_top.u_dtp_jtag2axi_fcov
++tree dtp_uvm_top.u_dtp_debug_tdr_fcov
++tree dtp_uvm_top.u_dtp_scan_fcov
++tree dtp_uvm_top.u_dtp_xtrig_fcov
++tree dtp_uvm_top.u_jtag_ptap_sva
++tree dtp_uvm_top.u_stap_io_host_sva
++tree dtp_uvm_top.u_stap_smc_host_sva
++tree dtp_uvm_top.u_stap_sep_host_sva
++tree dtp_uvm_top.u_stap_extra0_host_sva
++tree dtp_uvm_top.u_smc_otp_axil_sva
++tree dtp_uvm_top.u_sep_otp_axil_sva
++tree dtp_uvm_top.u_m_axi_sva
++tree dtp_uvm_top.u_xtrig_axil_sva
++tree dtp_uvm_top.u_smc_otp_axil_data_sva
++tree dtp_uvm_top.u_sep_otp_axil_data_sva
++tree dtp_uvm_top.u_m_axi_data_sva
++tree dtp_uvm_top.u_xtrig_axil_data_sva
+end

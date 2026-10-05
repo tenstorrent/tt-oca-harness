@@ -1,0 +1,148 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version: 1
+
+# When false, the project curator emits no safe outputs.
+automation:
+  enabled: true
+  mode: apply
+
+repository: tenstorrent/tt-oca-harness
+
+project:
+  url: https://github.com/orgs/tenstorrent/projects/291
+  canonical_name: OCAH Open Source Program
+  fields:
+    Workstream:
+      - RTL
+      - DV
+      - ROM
+      - SPEC
+      - DOCS
+      - INFRA
+      - SYNTH
+      - LINT
+      - CDC
+      - RDC
+      - RDL
+      - RELEASE
+      - NONFREE
+      - FUSA
+    Subsystem:
+      - OCAH
+      - SMU
+      - SMC
+      - SEP
+      - DTP
+      - AOU
+    Component:
+      - General
+      - KM
+      - TRNG
+      - CRYPTO
+      - LC
+      - EFUSE
+      - AXI
+      - I3C
+      - CI
+      - BUILD
+      - DEPS
+    Target release:
+      - v0.5.0
+      - Future
+      - Not planned
+    Priority:
+      - P0
+      - P1
+      - P2
+    Curation state:
+      - Managed
+      - Needs review
+      - Locked
+
+# Humans park unscheduled work as Target release = Future. Automation must not
+# invent a release or milestone.
+release:
+  current: v0.5.0
+  milestone_number: 22
+  target_release_to_milestone:
+    v0.5.0: "v0.5.0 (TT)"
+  future_backlog:
+    target_release: Future
+    view: Future Backlog
+
+protection:
+  authors:
+    - bonnie-banks123
+    - DanielG-lowRISC
+  # All current lowRISC SOW milestones are protected. Milestone 22 is excluded.
+  milestone_numbers:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    - 13
+    - 14
+    - 15
+    - 16
+    - 17
+    - 18
+    - 19
+    - 20
+    - 21
+    - 23
+    - 24
+    - 25
+
+classification:
+  one_value_per_field:
+    - Workstream
+    - Subsystem
+    - Component
+  defaults:
+    component_for_generic_subsystem_work: General
+    subsystem_for_tree_wide_work: OCAH
+  rules:
+    - Firmware test and firmware support work uses Workstream DV.
+    - ROM is a distinct Workstream when ROM implementation is the primary work.
+    - RDL is a distinct Workstream when register definition or generation is the primary work.
+    - KM, TRNG, and CRYPTO use Subsystem SEP.
+    - LC and EFUSE use the targeted Subsystem, SEP or SMC.
+    - Cross-subsystem work must be proposed for human decomposition; never invent compound values.
+    - NONFREE is the Workstream when the work lands in the companion repository.
+    - FUSA is the Workstream for functional-safety work.
+
+title:
+  general_component_format: "[WORKSTREAM/SUBSYSTEM] Imperative title"
+  specific_component_format: "[WORKSTREAM/SUBSYSTEM-COMPONENT] Imperative title"
+  preserve_external_codes:
+    - TRC
+    - JPP
+    - OBR
+
+priority:
+  reporting_source: project
+  label_mapping:
+    "Priority:P0": P0
+    "Priority:P1": P1
+
+curation:
+  locked_value: Locked
+  ambiguous_value: Needs review
+  managed_value: Managed
+  # Last-resort PR reviewers. Ingest and the curator walk this list in
+  # listed order, skip the author, and request the first assignable
+  # collaborator.
+  reviewer_pool:
+    - aottavianoTT
+    - nbetikTT
+    - nboettcher-tenstorrent

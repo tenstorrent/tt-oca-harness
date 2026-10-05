@@ -1,0 +1,594 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef SMC_EFUSE_MAP_RDL_DEFINED
+`define SMC_EFUSE_MAP_RDL_DEFINED
+
+addrmap smc_efuse_map {
+
+    name = "Efuse address map of physical efuse macro";
+    desc = "Address map for efuse shadow registers providing access to various chip configuration and ID fields";
+
+    //////////////////////////
+    // Register Definitions //
+    //////////////////////////
+
+    default regwidth = 64;
+    default accesswidth = 64;
+
+    // The map fills exactly one 8192-bit efuse bank and must tile it without gaps: the
+    // efuse_map_t union in smc_efuse_pkg overlays a field struct on the raw word array, and an
+    // unmapped address resolves to the LOCKS meta-field sentinel, which is never lock-checked and
+    // would leave programmable OTP that cannot be locked.
+    //
+    // LOCKS holds one write/read pair per lockable field, at bits 2n and 2n+1 of slot n. All 32
+    // slots the 64-bit field can address are assigned: slots 0-3 to the functional registers and
+    // slots 4-31 to SPARE[0] through SPARE[27]. A 33rd field would need a wider lock field, since
+    // the hardware indexes this register directly.
+    reg LOCKS {
+        desc = "Lock controls for each fuse field. When write locked, the corresponding field is not
+                programmable. When read locked, the shadow register is not readable.";
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "JTAG public identity write lock (slot 0). When set, JTAG_PUBLIC_IDENTITY is not writable.";
+        } jtag_public_identity_write_lock[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "JTAG public identity read lock (slot 0). When set, JTAG_PUBLIC_IDENTITY is not readable.";
+        } jtag_public_identity_read_lock[1:1] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "I2C/I3C ID write lock (slot 1). When set, no I2C_I3C_ID element is writable.";
+        } i2c_i3c_id_write_lock[2:2] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "I2C/I3C ID read lock (slot 1). When set, no I2C_I3C_ID element is readable.";
+        } i2c_i3c_id_read_lock[3:3] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "SMC config write lock (slot 2). When set, SMC_CONFIG is not writable.";
+        } smc_config_write_lock[4:4] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "SMC config read lock (slot 2). When set, SMC_CONFIG is not readable.";
+        } smc_config_read_lock[5:5] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "OCCP transport timeout write lock (slot 3). When set, OCCP_TRANSPORT_TIMEOUT is not writable.";
+        } occp_transport_timeout_write_lock[6:6] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "OCCP transport timeout read lock (slot 3). When set, OCCP_TRANSPORT_TIMEOUT is not readable.";
+        } occp_transport_timeout_read_lock[7:7] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 0 write lock (slot 4). When set, SPARE[0] is not writable.";
+        } spare0_write_lock[8:8] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 0 read lock (slot 4). When set, SPARE[0] is not readable.";
+        } spare0_read_lock[9:9] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 1 write lock (slot 5). When set, SPARE[1] is not writable.";
+        } spare1_write_lock[10:10] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 1 read lock (slot 5). When set, SPARE[1] is not readable.";
+        } spare1_read_lock[11:11] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 2 write lock (slot 6). When set, SPARE[2] is not writable.";
+        } spare2_write_lock[12:12] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 2 read lock (slot 6). When set, SPARE[2] is not readable.";
+        } spare2_read_lock[13:13] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 3 write lock (slot 7). When set, SPARE[3] is not writable.";
+        } spare3_write_lock[14:14] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 3 read lock (slot 7). When set, SPARE[3] is not readable.";
+        } spare3_read_lock[15:15] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 4 write lock (slot 8). When set, SPARE[4] is not writable.";
+        } spare4_write_lock[16:16] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 4 read lock (slot 8). When set, SPARE[4] is not readable.";
+        } spare4_read_lock[17:17] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 5 write lock (slot 9). When set, SPARE[5] is not writable.";
+        } spare5_write_lock[18:18] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 5 read lock (slot 9). When set, SPARE[5] is not readable.";
+        } spare5_read_lock[19:19] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 6 write lock (slot 10). When set, SPARE[6] is not writable.";
+        } spare6_write_lock[20:20] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 6 read lock (slot 10). When set, SPARE[6] is not readable.";
+        } spare6_read_lock[21:21] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 7 write lock (slot 11). When set, SPARE[7] is not writable.";
+        } spare7_write_lock[22:22] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 7 read lock (slot 11). When set, SPARE[7] is not readable.";
+        } spare7_read_lock[23:23] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 8 write lock (slot 12). When set, SPARE[8] is not writable.";
+        } spare8_write_lock[24:24] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 8 read lock (slot 12). When set, SPARE[8] is not readable.";
+        } spare8_read_lock[25:25] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 9 write lock (slot 13). When set, SPARE[9] is not writable.";
+        } spare9_write_lock[26:26] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 9 read lock (slot 13). When set, SPARE[9] is not readable.";
+        } spare9_read_lock[27:27] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 10 write lock (slot 14). When set, SPARE[10] is not writable.";
+        } spare10_write_lock[28:28] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 10 read lock (slot 14). When set, SPARE[10] is not readable.";
+        } spare10_read_lock[29:29] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 11 write lock (slot 15). When set, SPARE[11] is not writable.";
+        } spare11_write_lock[30:30] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 11 read lock (slot 15). When set, SPARE[11] is not readable.";
+        } spare11_read_lock[31:31] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 12 write lock (slot 16). When set, SPARE[12] is not writable.";
+        } spare12_write_lock[32:32] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 12 read lock (slot 16). When set, SPARE[12] is not readable.";
+        } spare12_read_lock[33:33] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 13 write lock (slot 17). When set, SPARE[13] is not writable.";
+        } spare13_write_lock[34:34] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 13 read lock (slot 17). When set, SPARE[13] is not readable.";
+        } spare13_read_lock[35:35] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 14 write lock (slot 18). When set, SPARE[14] is not writable.";
+        } spare14_write_lock[36:36] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 14 read lock (slot 18). When set, SPARE[14] is not readable.";
+        } spare14_read_lock[37:37] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 15 write lock (slot 19). When set, SPARE[15] is not writable.";
+        } spare15_write_lock[38:38] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 15 read lock (slot 19). When set, SPARE[15] is not readable.";
+        } spare15_read_lock[39:39] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 16 write lock (slot 20). When set, SPARE[16] is not writable.";
+        } spare16_write_lock[40:40] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 16 read lock (slot 20). When set, SPARE[16] is not readable.";
+        } spare16_read_lock[41:41] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 17 write lock (slot 21). When set, SPARE[17] is not writable.";
+        } spare17_write_lock[42:42] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 17 read lock (slot 21). When set, SPARE[17] is not readable.";
+        } spare17_read_lock[43:43] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 18 write lock (slot 22). When set, SPARE[18] is not writable.";
+        } spare18_write_lock[44:44] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 18 read lock (slot 22). When set, SPARE[18] is not readable.";
+        } spare18_read_lock[45:45] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 19 write lock (slot 23). When set, SPARE[19] is not writable.";
+        } spare19_write_lock[46:46] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 19 read lock (slot 23). When set, SPARE[19] is not readable.";
+        } spare19_read_lock[47:47] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 20 write lock (slot 24). When set, SPARE[20] is not writable.";
+        } spare20_write_lock[48:48] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 20 read lock (slot 24). When set, SPARE[20] is not readable.";
+        } spare20_read_lock[49:49] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 21 write lock (slot 25). When set, SPARE[21] is not writable.";
+        } spare21_write_lock[50:50] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 21 read lock (slot 25). When set, SPARE[21] is not readable.";
+        } spare21_read_lock[51:51] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 22 write lock (slot 26). When set, SPARE[22] is not writable.";
+        } spare22_write_lock[52:52] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 22 read lock (slot 26). When set, SPARE[22] is not readable.";
+        } spare22_read_lock[53:53] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 23 write lock (slot 27). When set, SPARE[23] is not writable.";
+        } spare23_write_lock[54:54] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 23 read lock (slot 27). When set, SPARE[23] is not readable.";
+        } spare23_read_lock[55:55] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 24 write lock (slot 28). When set, SPARE[24] is not writable.";
+        } spare24_write_lock[56:56] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 24 read lock (slot 28). When set, SPARE[24] is not readable.";
+        } spare24_read_lock[57:57] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 25 write lock (slot 29). When set, SPARE[25] is not writable.";
+        } spare25_write_lock[58:58] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 25 read lock (slot 29). When set, SPARE[25] is not readable.";
+        } spare25_read_lock[59:59] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 26 write lock (slot 30). When set, SPARE[26] is not writable.";
+        } spare26_write_lock[60:60] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 26 read lock (slot 30). When set, SPARE[26] is not readable.";
+        } spare26_read_lock[61:61] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 27 write lock (slot 31). When set, SPARE[27] is not writable.";
+        } spare27_write_lock[62:62] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Spare 27 read lock (slot 31). When set, SPARE[27] is not readable.";
+        } spare27_read_lock[63:63] = 0x0;
+    };
+
+    reg JTAG_PUBLIC_IDENTITY {
+        desc = "JTAG-public exception window. In PROD and RMA_SiP, JTAG reads of this range
+                are admitted while JTAG access to every other fuse field is blocked. Encoding
+                is adopter-defined; the harness does not interpret or consume the value. The
+                slot-0 read lock still hides the bits when set.";
+        regwidth = 256;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Opaque payload. Encoding is adopter-defined; the harness does not interpret
+                    it.";
+        } value [255:0] = 0x0;
+    };
+
+    reg I2C_I3C_ID {
+        desc = "I2C/I3C interface ID";
+        regwidth = 64;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "I2C or I3C ID configuration:
+                   * Static ID mode: [6:0] contains ID, [63:7] reserved
+                   * Provisional ID mode: [63:0] full ID";
+        } interface_id[63:0] = 0x0;
+    };
+
+    reg SMC_CONFIG {
+        desc = "SMC boot and configuration controls sourced from fuse. Only the low word carries
+                assigned bits, so firmware reads it as a single 32-bit access.";
+        regwidth = 64;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "When set, the ROM interface swaps byte order on instruction fetch.";
+        } rom_flip_endianness[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Reserved for future configuration bits.";
+        } config_rsvd_low[6:1] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "When set, boot skips the SRAM auto-zero initialisation pass.";
+        } sram_auto_zero_disable[7:7] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Reserved for future configuration bits.";
+        } config_rsvd_mid[14:8] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "When set, boot continues despite a reported memory repair or MBIST failure.";
+        } dft_ignore_error[15:15] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Reserved for future configuration bits.";
+        } config_rsvd_high[63:16] = 0x0;
+    };
+
+    reg OCCP_TRANSPORT_TIMEOUT {
+        desc = "OCCP transport timeout in the low word; upper word reserved.";
+        regwidth = 64;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Transport timeout value consumed by the boot ROM OCCP driver.";
+        } timeout[31:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Reserved for extension of the timeout encoding.";
+        } timeout_rsvd[63:32] = 0x0;
+    };
+
+    reg SPARE_256_BITS {
+        desc = "Individually lockable 256-bit spare region, reserved for fields assigned after the
+                RTL is frozen. Each element has its own write/read lock pair in LOCKS.";
+        regwidth = 256;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Spare fuse bits for future use.";
+        } rsvd[255:0] = 0x0;
+    };
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    // Sizes total 8 + 32 + 72 + 8 + 8 + 896 = 1024 B, ending at 0x3FF.
+    LOCKS                   LOCKS                   @ 0x0;
+    JTAG_PUBLIC_IDENTITY    JTAG_PUBLIC_IDENTITY    @ 0x8;
+    I2C_I3C_ID              I2C_I3C_ID[9]           @ 0x28;
+    SMC_CONFIG              SMC_CONFIG              @ 0x70;
+    OCCP_TRANSPORT_TIMEOUT  OCCP_TRANSPORT_TIMEOUT  @ 0x78;
+    SPARE_256_BITS          SPARE[28]               @ 0x80;
+
+};
+
+`endif

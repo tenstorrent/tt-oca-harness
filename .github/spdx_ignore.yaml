@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Patterns skipped by tenstorrent/tt-github-actions spdx-checker.
+# Remaining header gaps after #329–#333: vendored snapshots, accepted
+# dual/foreign attribution, and CC0 cocotb templates.
+
+ignore:
+  perform_check: false
+  include:
+    # Third-party vendored snapshots keep their upstream license; TT does not
+    # claim copyright on them, so they stay out of the SPDX check.
+    - vendor/chipsalliance/
+    - vendor/lowRISC/
+    - vendor/pulp-platform/
+    - vendor/tenstorrent/aou/
+    - vendor/tenstorrent/tt-picorv32/
+    - vendor/tenstorrent/tt-hw-debug/patches/
+    - build/
+    - __pycache__/
+    - .pytest_cache/
+    - .git/
+    - .venv/
+    - node_modules/
+    - .bender/
+    - .bender-kg/
+    # Foreign IP blocks (lowRISC/OpenTitan and SiFive Metal SDK) — OSPO policy:
+    # keep the upstream license, do not claim TT copyright on third-party code.
+    - hw/common/ocah_prim_generic/rtl/
+    - hw/common/ot_pkg/rtl/
+    - hw/common/tlul/rtl/
+    - hw/ip/i2c/rtl/
+    - hw/ip/uart/uart_16550/rtl/
+    - hw/sys/smc/dv/fw/drivers/
+    - hw/sys/smc/dv/fw/include/metal/
+    - hw/sys/sep/dv/fw/tests/otbn_loops_test/
+    # SiFive startup code and linker scripts (VeeR EL2 / Metal SDK)
+    - hw/sys/smc/dv/fw/startup/
+    - hw/sys/smc/dv/fw/link/
+    - hw/sys/smc/bootrom/prod/boot/
+    - hw/sys/smc/bootrom/prod/linker/
+    # TT-authored KM ROM firmware: uses # comment style (RISC-V assembly)
+    - hw/sys/sep/dv/cocotb/tests/km_fw/
+    # VeeR EL2 DV startup code (Western Digital / Chips Alliance origin)
+    - hw/sys/sep/dv/fw/startup/
+    # lowRISC/OpenTitan OTBN assembly programs
+    - hw/sys/sep/dv/fw/tests/otbn_p256_verify_test/otbn_src/
+    - hw/sys/sep/dv/fw/tests/otbn_rsa_3072_verify_test/otbn_src/
+    - hw/sys/sep/dv/fw/tests/otbn_sep_integration_test/otbn_src/
+    - hw/sys/sep/dv/fw/tests/otbn_smoke_test/otbn_src/
+    - hw/sys/sep/dv/fw/tests/otbn_km_sideload_keydump/otbn_src/
+    - hw/sys/sep/dv/fw/tests/otbn_sw_error_test/otbn_src/
+    - hw/sys/sep/dv/fw/tests/common_otbn/serialize/parse_helpers.py
+    # pulp-platform vendored script (ETH Zurich copyright)
+    - scripts/ci/slang_to_rdjson.py

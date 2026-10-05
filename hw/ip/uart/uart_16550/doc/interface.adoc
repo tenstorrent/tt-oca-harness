@@ -1,0 +1,84 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[uart-16550-interface]]
+== Interface
+
+=== Configuration Parameters
+
+The UART 16550 module provides configurable parameters to customize FIFO
+sizes according to system requirements.
+
+ifdef::backend-html5[]
+The parameters and ports of `uart_16550` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/uart_16550/uart_16550.adoc[uart_16550].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `uart_16550` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+=== Modem Control Interface
+
+The modem control interface provides full RS-232 modem signaling
+compatibility. All modem signals are active low at the pins, matching the
+RS-232 convention.
+
+The modem inputs are *status only*. Each one is synchronized and then
+reported in the `MSR` register in the opposite polarity (a bit reads `1`
+while its pin is asserted low), and a change on any of them raises the
+Modem Status Interrupt. None of them gates the datapath: this component
+implements no automatic flow control, so software must act on the
+interrupt to throttle traffic. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-uart-flow-control[software flow control procedure]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-uart-flow-control[software flow control procedure]
+endif::backend-pdf[]
+is in the Programmer's Guide.
+
+=== DMA Interface
+
+The DMA interface provides signals for Direct Memory Access controllers
+to manage data transfers automatically. The `rxrdy_o` and `txrdy_o` signals
+indicate when DMA operations can proceed, with behavior configurable through
+FIFO control modes.
+
+=== Interface Timing Considerations
+
+=== Clock Domain
+
+All interface signals operate in a single clock domain referenced to
+`clk_i`. The following timing considerations apply:
+
+* *AXI4-Lite Protocol*: All AXI4-Lite signals must meet setup and hold
+time requirements relative to `clk_i`
+* *Asynchronous Inputs*: `rx_i` and modem control inputs (`cts_ni`,
+`dsr_ni`, `ri_ni`, `dcd_ni`) are asynchronous and are synchronized
+internally
+* *Reset Requirements*: `rst_ni` should be asserted asynchronously and
+deasserted synchronously relative to `clk_i`
+
+=== Serial Interface Timing
+
+* *Baud Rate*: Serial data rate is determined by the divisor latch
+registers (DLL/DLM) and uses 16x oversampling
+* *Maximum Baud Rate*: Limited to `system_clock_frequency / 32` - a
+divisor of `0` disables the transmitter and receiver, so the smallest
+usable divisor is `1`
+* *Data Frame*: Configurable start bit (always 1), 5-8 data bits,
+optional parity bit, 1-2 stop bits
+
+=== Protocol Support
+
+The interface supports standard UART communication protocols:
+
+* *RS-232*: Full modem control and serial data signaling
+* *RS-485*: Can be used with external transceivers (using RTS for
+direction control)
+* *Industrial Protocols*: Compatible with Modbus RTU and other
+industrial serial protocols
+* *Debug Interfaces*: Suitable for system debug and console applications
+
+The comprehensive interface design ensures compatibility with a wide
+range of serial communication requirements while maintaining the
+flexibility needed for diverse embedded system applications.

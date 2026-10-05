@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# PROD lifecycle with ROM public-key slot 2 revoked.
+#
+# CHIPLET_PUBK_REVOKE.select[7:0] is the ROM chiplet-creator classical key
+# bitmap (CHIPLET_PUBK_REVOKE in sep_efuse_map.rdl); the ROM refuses a manifest that
+# selects ROM key slot N when bit N is set. 0x04 revokes slot 2 and
+# nothing else, so a rejection can only be attributed to the selected slot.
+#
+# Everything else matches sep_efuse_lc_prod.toml: PROD so secure boot is
+# enforced, SBOOT_DIS clear so nothing opts out of it, and BL1_VERSION 0 so the
+# rollback check (which runs before key selection) cannot preempt the
+# revocation verdict. Used by
+# sep_firmware_backup_pubkey_rom_2_revoked_key_test and
+# sep_firmware_primary_pubkey_rom_2_revoked_key_test.
+#
+# One of a family of six that differ by exactly one hex value, shared by the
+# BACKUP-side and PRIMARY-side revoke families; see
+# hw/sys/sep/dv/cocotb/tests/rom_fw/sep_pubkey_rom_revoked_base.py and
+# hw/sys/sep/dv/cocotb/tests/rom_fw/sep_pubkey_rom_revoked_primary_base.py.
+
+[LC_STATE]
+  [LC_STATE.fields.lc_state]
+  value = 0xE1   # PROD (raw=0x1)
+
+[CHIPLET_PUBK_REVOKE]
+  [CHIPLET_PUBK_REVOKE.fields.select]
+  value = 0x04   # bit 2 -> ROM public-key slot 2 revoked

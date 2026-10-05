@@ -1,0 +1,139 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="SEP port reference" tabindex="0">
+++++
+endif::backend-html5[]
+
+[.port-reference.port-reference-wide.small,stretch]
+.SEP Port Declaration
+ifdef::backend-html5[]
+[cols="<19%,<15%,<11%,<8%,<20%,<14%,<13%",options="header",frame=all,grid=all]
+endif::backend-html5[]
+ifndef::backend-html5[]
+[%autowidth,options="header",frame=all,grid=all]
+endif::backend-html5[]
+|===
+|Interface Name |Type |Direction |Width |Description |Connection |Default value (if applicable)
+
+|`clk_i` |`logic` |Input |1 |Primary SEP clock. All SEP internal logic operates synchronously to this clock. |System clock |N/A
+|`clk_wdt_i` |`logic` |Input |1 |200 kHz clock for watchdog timer. |Low-frequency clock source |N/A
+|`rst_ni` |`logic` |Input |1 |Primary reset (active low). Asynchronous assertion, synchronous deassertion. |System reset |N/A
+|`dbg_rstb_i` |`logic` |Input |1 |EL2 debugger reset (active low). |JTAG debug infrastructure |N/A
+|`wdt_rst_ni` |`logic` |Input |1 |Watchdog timer reset from SMC (active low). |SMC reset unit |N/A
+|`wdt_timer_rst_req_o` |`logic` |Output |1 |WDT reset request output. Triggers memory interface reset in `sep_wrapper`. |SEP wrapper |N/A
+
+|`jtag_tck_i` |`logic` |Input |1 |JTAG test clock. |JTAG pads (via DTP STAP) |N/A
+|`jtag_tms_i` |`logic` |Input |1 |JTAG test mode select. |JTAG pads (via DTP STAP) |N/A
+|`jtag_tdi_i` |`logic` |Input |1 |JTAG test data in. |JTAG pads (via DTP STAP) |N/A
+|`jtag_trst_ni` |`logic` |Input |1 |JTAG test reset (active low). |JTAG pads (via DTP STAP) |N/A
+|`jtag_tdo_o` |`logic` |Output |1 |JTAG test data out. |JTAG pads (via DTP STAP) |N/A
+|`jtag_tdoEn_o` |`logic` |Output |1 |JTAG test data out enable. |JTAG pads (via DTP STAP) |N/A
+
+|`axil_sep_otp_jtag_req_i` |`sep_efuse_pkg::efuse_axil_req_t` |Input |- |OTP debug AXI-Lite request from JTAG. |DTP `axil_sep_otp_jtag_req_o` |Tie to '0 if unused
+|`axil_sep_otp_jtag_resp_o` |`sep_efuse_pkg::efuse_axil_resp_t` |Output |- |OTP debug AXI-Lite response to JTAG. |DTP `axil_sep_otp_jtag_resp_i` |N/A
+
+|`mpc_debug_halt_req_i` |`logic` |Input |1 |Async halt request from MPC. |Debug controller |Tie to '0 if unused
+|`mpc_debug_run_req_i` |`logic` |Input |1 |Async run request from MPC. |Debug controller |Tie to '0 if unused
+|`mpc_reset_run_req_i` |`logic` |Input |1 |Run/halt selection after reset. |Debug controller |1'b1
+|`cpu_halt_req_i` |`logic` |Input |1 |Async halt request to CPU. |Debug controller |Tie to '0 if unused
+|`cpu_run_req_i` |`logic` |Input |1 |Async restart request to CPU. |Debug controller |Tie to '0 if unused
+
+|`test_en_i` |`logic` |Input |1 |DFT/scan test-enable. Drives clock-gater test ports and AXI cell test inputs. |Test controller |1'b0
+|`scan_rst_ni` |`logic` |Input |1 |Scan reset (active-low). Bypasses reset synchronizers during DFT. |Test controller |1'b1
+|`ext_boot_seq_done_i` |`logic` |Input |1 |Boot sequence completion qualified to `clk_i` (memory repair and shadow register override done); gates reset release. In SMU, driven from SMC-qualified logic. In standalone SEP, synchronize and qualify before this port. |SMC-qualified boot done or external synchronizer |1'b1
+
+|`dmi_core_enable_i` |`logic` |Input |1 |Enables DMI accesses to the core debug module (addresses 0x00-0x4F). Tied high at SMU; TAP access is already lifecycle-gated. |Debug infrastructure |1'b1
+|`dmi_uncore_enable_i` |`logic` |Input |1 |Enables DMI accesses to an external uncore aperture (addresses 0x50+). Unused: the core debug module AXI master already reaches the SEP fabric. |Debug infrastructure |Tie to '0 if unused
+|`dmi_uncore_en_o` |`logic` |Output |1 |DMI uncore access enable. |Debug infrastructure |N/A
+|`dmi_uncore_wr_en_o` |`logic` |Output |1 |DMI uncore write enable. |Debug infrastructure |N/A
+|`dmi_uncore_addr_o` |`logic` |Output |`[6:0]` |DMI uncore address. |Debug infrastructure |N/A
+|`dmi_uncore_wdata_o` |`logic` |Output |`[31:0]` |DMI uncore write data. |Debug infrastructure |N/A
+|`dmi_uncore_rdata_i` |`logic` |Input |`[31:0]` |DMI uncore read data. |Debug infrastructure |N/A
+|`dmi_active_o` |`logic` |Output |1 |DMI active indicator. |Debug infrastructure |N/A
+
+|`sep_cpu_trace_o` |`sep_cpu_trace_t` |Output |- |CPU trace output for debug. |Trace infrastructure |N/A
+|`lockstep_ctrl_i` |`sep_pkg::sep_lockstep_ctrl_t` |Input |- |VeeR lockstep controls: disable corruption detection, and error-injection enable. Inert unless the core is built with `RV_LOCKSTEP_ENABLE`. |Chip-level RAS control |Tie to '0 if unused
+|`lockstep_status_o` |`sep_pkg::sep_lockstep_status_t` |Output |- |VeeR lockstep status: corruption detected. Reads 0 unless the core is built with `RV_LOCKSTEP_ENABLE`. |Chip-level RAS aggregation |N/A
+
+|`jtag_id_i` |`logic` |Input |`[31:1]` |JTAG ID value. |Configuration tie-off |N/A
+
+|`timer_int_i` |`logic` |Input |1 |Timer interrupt. |Internal timer |Tie to '0 if unused
+|`soft_int_i` |`logic` |Input |1 |Software interrupt. |Software IRQ source |Tie to '0 if unused
+|`extintsrc_req_i` |`logic` |Input |`[NUM_EXTERNAL_IRQS-1:0]` |External interrupt sources for PIC. |External IRQ sources |Tie to '0 if unused
+
+|`sep_cpu_tcm_req_o` |`sep_cpu_tcm_req_t` |Output |- |CPU tightly-coupled memory (TCM) request (ICCM + DCCM). |SRAM macros |N/A
+|`sep_cpu_tcm_rsp_i` |`sep_cpu_tcm_rsp_t` |Input |- |CPU TCM response. |SRAM macros |N/A
+|`sep_sram_req_o` |`sep_sram_req_t` |Output |- |Scratch SRAM request. |SRAM macros |N/A
+|`sep_sram_rsp_i` |`sep_sram_rsp_t` |Input |- |Scratch SRAM response. |SRAM macros |N/A
+|`sep_boot_rom_req_o` |`sep_sram_req_t` |Output |- |Boot ROM (BL0) request. |ROM macro |N/A
+|`sep_boot_rom_rsp_i` |`sep_sram_rsp_t` |Input |- |Boot ROM (BL0) response. |ROM macro |N/A
+
+|`smn_outbound_axi_req_o` |`sep_system_peripherals_outbound_axi_req_t` |Output |- |SMN outbound AXI request (system bus master). |SMN fabric |N/A
+|`smn_outbound_axi_resp_i` |`sep_system_peripherals_outbound_axi_resp_t` |Input |- |SMN outbound AXI response. |SMN fabric |N/A
+|`smn_inbound_axi_req_i` |`sep_system_peripherals_internal_axi_req_t` |Input |- |SMN inbound AXI request (system bus slave). |SMN fabric |Tie to '0 if unused
+|`smn_inbound_axi_resp_o` |`sep_system_peripherals_internal_axi_resp_t` |Output |- |SMN inbound AXI response. |SMN fabric |N/A
+|`sep_ext_to_smc_axi_req_o` |`sep_system_peripherals_internal_axi_req_t` |Output |- |SEP-to-SMC AXI request. Dedicated path for SEP to access SMC resources. |SMC `sep_axi_in_req_i` |N/A
+|`sep_ext_to_smc_axi_resp_i` |`sep_system_peripherals_internal_axi_resp_t` |Input |- |SEP-to-SMC AXI response. |SMC `sep_axi_in_resp_o` |N/A
+
+|`entropy_rosc_sample_clk_i` |`logic` |Input |1 |Ring-oscillator sample clock for entropy source (async vs `clk_i`; ~100-400 MHz typical). |Ring oscillator |N/A
+|`sep_crypto_pka_imem_sram_req_o` |`sep_crypto_pka_imem_sram_req_t` |Output |- |OTBN PKA instruction memory SRAM request. |SRAM macro |N/A
+|`sep_crypto_pka_imem_sram_rsp_i` |`sep_crypto_pka_imem_sram_rsp_t` |Input |- |OTBN PKA instruction memory SRAM response. |SRAM macro |N/A
+|`sep_crypto_pka_dmem_sram_req_o` |`sep_crypto_pka_dmem_sram_req_t` |Output |- |OTBN PKA data memory SRAM request. |SRAM macro |N/A
+|`sep_crypto_pka_dmem_sram_rsp_i` |`sep_crypto_pka_dmem_sram_rsp_t` |Input |- |OTBN PKA data memory SRAM response. |SRAM macro |N/A
+|`ext_trng_axil_req_o` |`sep_32_32_axil_req_t` |Output |- |External TRNG AXI-Lite passthrough request (to `sep_ip_integration`). |External TRNG shim |N/A
+|`ext_trng_axil_resp_i` |`sep_32_32_axil_resp_t` |Input |- |External TRNG AXI-Lite passthrough response. |External TRNG shim |N/A
+|`ext_trng_axis_req_i` |`ext_trng_axis_req_t` |Input |`[EXT_TRNG_NUM_AXIS-1:0]` |External TRNG AXI-Stream request array (from `sep_ip_integration`). |External TRNG shim |N/A
+|`ext_trng_axis_rsp_o` |`ext_trng_axis_rsp_t` |Output |`[EXT_TRNG_NUM_AXIS-1:0]` |External TRNG AXI-Stream response array. |External TRNG shim |N/A
+|`ext_trng_irq_i` |`logic` |Input |1 |External TRNG interrupt (routed to PIC). |External TRNG shim |Tie to '0 if unused
+
+|`km_rom_mem_req_o` |`km_intf_pkg::km_rom_mem_req_t` |Output |- |Key Manager ROM memory request. |ROM macro |N/A
+|`km_rom_mem_rsp_i` |`km_intf_pkg::km_rom_mem_rsp_t` |Input |- |Key Manager ROM memory response. |ROM macro |N/A
+|`km_sram_mem_req_o` |`km_intf_pkg::km_sram_mem_req_t` |Output |- |Key Manager SRAM memory request. |SRAM macro |N/A
+|`km_sram_mem_rsp_i` |`km_intf_pkg::km_sram_mem_rsp_t` |Input |- |Key Manager SRAM memory response. |SRAM macro |N/A
+
+|`efuse_bank_ctrl_req_o` |`sep_efuse_pkg::efuse_axil_req_t` |Output |- |eFuse bank control AXI-Lite request. |eFuse shim |N/A
+|`efuse_bank_ctrl_resp_i` |`sep_efuse_pkg::efuse_axil_resp_t` |Input |- |eFuse bank control AXI-Lite response. |eFuse shim |N/A
+|`efuse_shim_command_req_o` |`sep_efuse_pkg::fuse_command_req_t` |Output |- |eFuse command interface request. |eFuse shim |N/A
+|`efuse_shim_command_resp_i` |`sep_efuse_pkg::fuse_command_resp_t` |Input |- |eFuse command interface response. |eFuse shim |N/A
+
+|`lcc_demote_state_1_o` |`logic` |Output |`[1:0]` |Lifecycle demote state output 1. Exported at SMU boundary; not currently connected to SMC. |SMU external port |N/A
+|`lcc_demote_state_2_o` |`logic` |Output |`[1:0]` |Lifecycle demote state output 2. Exported at SMU boundary; not currently connected to SMC. |SMU external port |N/A
+
+|`sep_io_spi_req_o` |`sep_io_spi_req_t` |Output |- |SPI host controller request. |SPI pad interface |N/A
+|`sep_io_spi_rsp_i` |`sep_io_spi_rsp_t` |Input |- |SPI host controller response. |SPI pad interface |N/A
+
+|`lc_state_o` |`logic` |Output |`[2*LcStateBitWidth-1:0]` |Lifecycle state output (differentially encoded). Routed to SMC and the SMU external output; debug-disable control to DTP is via `dbg_disable_o`. |SMC, SMU external |N/A
+|`dbg_disable_o` |`sep_lifecycle_ctrl_pkg::dbg_disable_t` |Output |- |Typed debug-disable struct routed by SMU to DTP debug-disable control. |SMU → DTP |N/A
+|`sep_fuse_dft_disable_o` |`logic` |Output |1 |Gate for the DFT-inserted access path into the SEP OTP, composed as Case 3 AND `SEP_FUSE_DBG`. Unconnected in the functional design; an adopter's DFT insertion connects it. |Adopter DFT insertion |Leave open if no path is inserted
+|`smc_fuse_dft_disable_o` |`logic` |Output |1 |Gate for the DFT-inserted access path into the SMC OTP, composed as Case 2 AND `SMC_FUSE_DBG`. Unconnected in the functional design; an adopter's DFT insertion connects it. |Adopter DFT insertion |Leave open if no path is inserted
+|`lc_sigint_err_o` |`logic` |Output |1 |Lifecycle signal integrity error. |SMU |N/A
+|`security_disable_o` |`logic` |Output |1 |Security disable output. |SMU |N/A
+|`secure_tm_o` |`logic` |Output |1 |Secure test mode output. |SMU |N/A
+
+|`smc_mailbox_interrupt_o` |`logic` |Output |`[NumMailboxes-1:0]` |Mailbox interrupt outputs to SMC. |SMC interrupt aggregator |N/A
+
+|`smc_fuse_sense_done_i` |`logic` |Input |1 |SMC fuse sense done indication. |SMC `fuse_sense_done_o` |N/A
+|`sep_fuse_sense_done_o` |`logic` |Output |1 |SEP fuse sense done output. |System integration |N/A
+
+|`secure_tm_req_i` |`logic` |Input |- |Secure test mode request. |GPIO padring / tie-off |N/A
+
+|`axi_extension_axi_req_o` |`sep_32_64_6_12_axi_req_t` |Output |- |AXI extension port request for adopter peripheral expansion. |Adopter peripherals |N/A
+|`axi_extension_axi_resp_i` |`sep_32_64_6_12_axi_resp_t` |Input |- |AXI extension port response. |Adopter peripherals |Tie to DECERR if unused
+
+|`smc_global_base_addr_i` |`logic` |Input |`[55:0]` |SMC global base address for outbound address translation. |System configuration |N/A
+|`smc_region_size_i` |`logic` |Input |`[55:0]` |SMC region size for outbound address translation. |SMC `smc_region_size_o` |N/A
+
+|`km_unrecoverable_err_o` |`logic` |Output |1 |Key Manager unrecoverable error. |RAS / error handling |N/A
+|`km_recoverable_err_o` |`logic` |Output |1 |Key Manager recoverable error. |RAS / error handling |N/A
+
+|`ext_debug_bus_o` |`logic` |Output |`[511:0]` |External debug observation bus. |Debug infrastructure |N/A
+|===
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]

@@ -1,0 +1,177 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+[verilator]
+kind = "simulation"
+binary = "verilator"
+# Verilator has no SV-UVM support, so it runs the cocotb framework only.
+frameworks = ["cocotb"]
+license_env = []
+# cocotb's documented Verilator floor, the `VLT_MIN` of its Makefile flow. cocotb's Python
+# runner enforces no floor, so the doctor compares the release the binary reports against this.
+min_version = "5.036"
+supports_waves = ["fst", "vcd"]
+supports_cov = ["line", "toggle", "branch", "expression", "user"]
+default_waves = "fst"
+
+[verilator.build_defaults]
+compile_args = ["--timing", "-sv", "--language", "1800-2023"]
+elab_args = []
+sim_args = []
+extra_args = []
+timescale = ""
+output_split = 0
+ccache = false
+
+[verilator.coverage_defaults]
+backend = "verilator_coverage"
+parser = "verilator"
+build_args = ["--coverage"]
+compile_args = []
+sim_args = []
+test_args = ["+verilator+coverage+file+{cov_dir}/coverage.dat"]
+artifact = "{cov_dir}/coverage.dat"
+input_glob = "**/coverage/coverage.dat"
+merged_name = "merged.dat"
+merge_cmd = ["verilator_coverage", "--write", "{merged}", "{inputs}"]
+report_cmd = [
+  "verilator_coverage",
+  "--annotate",
+  "{report}",
+  "--annotate-min",
+  "1",
+  "--write-info",
+  "{report}/coverage.info",
+  "{merged}",
+]
+
+[verilator.parser_extensions]
+extra_hard_fail_patterns = [
+  "^%Error.*?:",
+]
+
+[vcs]
+kind = "simulation"
+binary = "vcs"
+frameworks = ["cocotb", "uvm"]
+license_env = ["SNPSLMD_LICENSE_FILE", "LM_LICENSE_FILE"]
+supports_waves = ["vpd", "fsdb"]
+# `user` is the cover-property half of urg's assert metric, read from asserts.txt.
+supports_cov = ["line", "cond", "toggle", "fsm", "branch", "assert", "functional", "user"]
+default_waves = "vpd"
+
+[vcs.build_defaults]
+compile_args = []
+elab_args = []
+sim_args = []
+extra_args = []
+timescale = "1ns/1ps"
+partition_compile = false
+opt_level = ""
+
+[vcs.coverage_defaults]
+backend = "urg"
+parser = "urg"
+build_args = []
+compile_args = ["-cm", "line+cond+tgl+fsm+branch+assert", "-cm_dir", "{build_cov_dir}"]
+sim_args = ["-cm", "line+cond+tgl+fsm+branch+assert", "-cm_dir", "{cov_dir}/simv.vdb"]
+test_args = []
+artifact = "{cov_dir}/simv.vdb"
+design_artifact = "{build_cov_dir}"
+input_glob = "**/coverage/simv.vdb"
+merged_name = "merged.vdb"
+merge_cmd = ["urg", "-full64", "-dir", "{design_db}", "-dir", "{inputs}", "-dbname", "{merged}"]
+# `--cov-combine`: the inputs are the design and merged databases of finished runs. Runs
+# of different frameworks elaborate different harness tops, and only a flexible union merge
+# keeps the DUT subtree the databases share.
+combine_cmd = ["urg", "-full64", "-flex_merge", "union", "-dir", "{inputs}", "-dbname", "{merged}"]
+report_cmd = ["urg", "-full64", "-dir", "{merged}", "-report", "{report}", "-format", "both"]
+
+[vcs.parser_extensions]
+# VCS analysis/elaboration errors and runtime fatals (UVM_ERROR/UVM_FATAL come from the uvm-log policy).
+extra_hard_fail_patterns = [
+  "^Error-\\[",
+  "^\\s*Fatal:",
+]
+extra_fail_patterns = [
+  # Capture the WHOLE line, not just the "Error:" prefix. logparse._match_lines
+  # keeps match.group(0) and hands exactly that string to _is_ignored, so a
+  # prefix-only pattern reduces every VCS error to the bare token "Error:" and
+  # no content-scoped extra_ignore_patterns can match it. The per-env VCS
+  # waivers (e.g. the abr_reg waivers in sep_sim_cfg.toml and smu_sim_cfg.toml)
+  # name a file, which only the full line contains.
+  "^\\s*Error:.*",
+]
+
+[xcelium]
+kind = "simulation"
+binary = "xrun"
+# The native runner's SV-UVM flow is VCS-only (profiles/native.toml [frameworks.uvm]).
+frameworks = ["cocotb"]
+license_env = ["CDS_LIC_FILE", "LM_LICENSE_FILE"]
+supports_waves = ["shm", "fsdb", "vcd"]
+supports_cov = ["line", "cond", "toggle", "fsm", "branch", "assert", "functional"]
+default_waves = "shm"
+
+[xcelium.build_defaults]
+compile_args = []
+elab_args = []
+sim_args = []
+extra_args = []
+timescale = "1ns/1ps"
+mce = false
+opt_level = ""
+
+[xcelium.coverage_defaults]
+backend = "imc"
+parser = "imc"
+build_args = ["-coverage", "all"]
+compile_args = []
+sim_args = []
+test_args = ["-covworkdir", "{cov_dir}"]
+artifact = "{cov_dir}"
+input_glob = "**/coverage"
+merged_name = "merged_cov"
+merge_cmd = ["imc", "-batch", "-execcmd", "merge {inputs} -out {merged} -overwrite"]
+report_cmd = [
+  "imc",
+  "-batch",
+  "-execcmd",
+  "load -run {merged}; report -summary -metrics all -out {report}/summary.txt; report -detail -metrics all -out {report}/details.txt",
+]
+
+[xcelium.parser_extensions]
+# xmvlog/xmelab/xmsim error markers (UVM_ERROR/UVM_FATAL come from the uvm-log policy).
+extra_hard_fail_patterns = [
+  "^xm(vlog|elab|sim): \\*F",
+  "\\*F,",
+]
+extra_fail_patterns = [
+  "^xm(vlog|elab|sim): \\*E",
+  "\\*E,",
+]
+
+[sby]
+kind = "formal"
+binary = "sby"
+# SymbiYosys drives Yosys with the yosys-slang frontend, `yosys-smtbmc`, `yosys-abc`, and the
+# SMT solver named in the task file; the doctor probes `sby` alone, so those must share its PATH.
+frameworks = ["formal"]
+license_env = []
+supports_waves = []
+supports_cov = ["formal"]
+default_waves = ""
+# The `grader = "formal"` policy in parsers.toml that grades a run from the task status lines.
+parser_policy = "sby-summary"
+# sby resolves the task file's [files] entries against its working directory, so the app's `cwd`
+# is the directory holding the task file. `-f` clears a work directory left by an earlier run into
+# the same run directory; `--prefix` places one work directory per task under the run's formal
+# stage directory as `<item>_<task>`; the app's `args` name the tasks to run.
+argv = ["{binary}", "-f", "--prefix", "{run_dir}/stages/formal/{item}", "{script}", "{args}", "{formal_args}"]
+
+# `sby` is the only formal backend this registry names. A licensed formal backend is a complete
+# tool table in the site layer (`[simulators.<name>]` in site.local.toml, shaped like the `fvtool`
+# example in site.local.example.toml); a DUT formal config that lists the name in `tools` selects
+# it, and the runner treats it exactly like a table declared here.

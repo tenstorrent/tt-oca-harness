@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Points the primary payload 0x100 into its own manifest body; payload_offset is unsigned.
+base = "signed"
+patch = [
+  { field = "OFF_PAYLOAD_OFFSET", slot = "primary", le = 0x100, size = 8 },
+]

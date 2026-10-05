@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+`verilator_config
+// SEP cocotb/Verilator public-signal scope.
+// (Comment lines must NOT start with the word "verilator" -- the lexer would treat
+//  "// verilator ..." as a metacomment directive and fail to parse this file.)
+//
+// cocotb's runner forces a global --public-flat-rw, which disables the split_var
+// pragmas in the AXI fabric cells and wedges the Verilator runtime in the
+// input-combinational settle. This file gives broad access only to the tb top
+// and the shared AXI VIP interface. The named memory exceptions below support
+// image initialization, and the scratch exception supports a timed deposit.
+// Other fabric internals stay private.
+// cocotb_public_scope() in tools/dv/runlib/stages.py removes the global flag
+// and injects this file.
+public_flat_rw -module "sep_uvm_top" -var "*"
+
+// The shared AXI VIP interface on the SEP->SMC boundary (rom_boot target):
+// cocotb binds the slave agent to its members.
+public_flat_rw -module "ocah_axi_if" -var "*"
+
+// sep_wrapper DUT: tb_backdoor_mem in sep_uvm_top writes the real
+// memory macro arrays (default-fill patterns + firmware/image loads). Those XMR writes
+// no-op under Verilator unless the target array is public. These three cover all eight
+// macros: prim_ram_1p.mem = SEP SRAM + KM SRAM (inner u_mem of prim_ram_1p_adv) + OTBN
+// imem/dmem; prim_rom.mem = boot ROM + KM ROM; ram_16384x39.ram_core = ICCM (4 banks) +
+// DCCM (2 banks) inside sep_tcm_wrapper. These arrays sit outside the hot AXI
+// ready/valid cones, so exposing them does not re-arm the ICO blow-up.
+public_flat_rw -module "prim_ram_1p"  -var "mem"
+public_flat_rw -module "prim_rom"     -var "mem"
+public_flat_rw -module "ram_16384x39" -var "ram_core"
+
+// +sep_cold_scratch7 deposits the warm-handler address into
+// sep_scratch_reg.field_storage before the CPU fetches. The CPU owns the
+// system-CSR AXI frontdoor during firmware boot, so the testbench has no
+// independent path for this timed write. The XMR deposit requires public write
+// access to the leaf register storage, which sits outside the fabric AXI
+// ready/valid combinational cones.
+public_flat_rw -module "sep_scratch_reg" -var "field_storage"

@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# A v1.0 primary one word short of the body size, so the untouched body-size backup boots.
+base = "signed"
+ops = [
+  { op = "set_manifest_length", slot = "primary", args = { value = 4092 } },
+]

@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+// Top-level SMU address map for a combined SMC+SEP view.
+// Not wired into the register-generation build flow; kept as a source
+// reference. Lives in regs/include/ (not regs/) so block discovery does
+// not pick it up as a generatable top.
+//
+// Only globally accessible resources belong in this map, so drop each
+// subsystem's core-local block (SEP ICCM/DCCM/PIC, SMC PLIC/CLINT/BEU).
+`define EXCLUDE_CORE_LOCAL_RESOURCES
+
+`include "sep.rdl"
+`include "smc.rdl"
+
+addrmap smu_top {
+    name = "SMU Top-Level Address Map";
+    desc = "Combined SMC and SEP top-level view exposing globally accessible resources.";
+    // Default address for the SMC and SEP; the base address can be
+    // configured using the global base address.
+    sep_top     #(.BASE_ADDR(0x0000_0000)) sep @0x0000_0000;
+    smc_top     #(.BASE_ADDR(0x0000_0000)) smc @0x4000_0000;
+};

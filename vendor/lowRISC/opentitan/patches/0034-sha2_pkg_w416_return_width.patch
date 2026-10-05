@@ -1,0 +1,22 @@
+diff --git a/hw/ip/prim/rtl/prim_sha2_pkg.sv b/hw/ip/prim/rtl/prim_sha2_pkg.sv
+index f63b25c81..c331a78a8 100644
+--- a/hw/ip/prim/rtl/prim_sha2_pkg.sv
++++ b/hw/ip/prim/rtl/prim_sha2_pkg.sv
+@@ -220,7 +220,7 @@ package prim_sha2_pkg;
+     automatic sha_word32_t sum0, sum1;
+     sum0 = rotr32(w_1,   7) ^ rotr32(w_1,  18) ^ shiftr32(w_1,   3);
+     sum1 = rotr32(w_14, 17) ^ rotr32(w_14, 19) ^ shiftr32(w_14, 10);
+-    calc_w_256 = w_0 + sum0 + w_9 + sum1;
++    calc_w_256 = sha_word32_t'(w_0 + sum0 + w_9 + sum1);
+   endfunction : calc_w_256
+ 
+   function automatic sha_word64_t calc_w_512(input sha_word64_t w_0,
+@@ -230,7 +230,7 @@ package prim_sha2_pkg;
+     automatic sha_word64_t sum0, sum1;
+     sum0 = rotr64(w_1,   1) ^ rotr64(w_1,  8) ^ shiftr64(w_1,   7);
+     sum1 = rotr64(w_14, 19) ^ rotr64(w_14, 61) ^ shiftr64(w_14, 6);
+-    calc_w_512 = w_0 + sum0 + w_9 + sum1;
++    calc_w_512 = sha_word64_t'(w_0 + sum0 + w_9 + sum1);
+   endfunction : calc_w_512
+ 
+   typedef enum logic [31:0] {

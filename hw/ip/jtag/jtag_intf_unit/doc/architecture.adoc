@@ -1,0 +1,224 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[jtag-intf-unit-architecture]]
+
+The JTAG Interface Unit integrates the PTAP, STAP chain and iJTAG network into
+a unified debug access point.
+
+<<jtag-interface-unit-scan-chain-figure>> shows the PTAP, STAP chain, and iJTAG network
+at the debug access point. Follow the arrows from TDI to TDO: italic labels beside
+a mux name the instructions or select bit that choose its input, 0 or 1 at a mux
+input is the select value that picks it, and italic labels in the STAPs and SIBs
+name the `dbg_disable_i` field that closes each one. Dashed blocks exist only when
+their enable parameter is set; `NUM_EXTRA_STAPS` sets the number of `u_stap_extra`
+instances. TDO is retimed on the falling edge of TCK except during a
+`ZERO_LENGTH_BYPASS` DR scan with the `TAP_3DCR` STAP-select bit clear, when the
+last mux takes the TDO mux output ahead of the retimer and TDI reaches TDO
+combinationally. While the bit is set, `ZERO_LENGTH_BYPASS` behaves exactly as
+`BYPASS`: the PTAP bypass register leads the STAP chain and the chain's return
+is retimed, because the chain launches its last bit on the rising TCK edge.
+
+[[jtag-interface-unit-scan-chain-figure]]
+.JTAG Interface Unit scan chain
+image::dtp-jtag-scan-chain.svg[alt="JTAG Interface Unit scan chain: TDI fans out to the PTAP instruction and data registers, the boundary-scan chain and the three iJTAG SIBs; the PTAP output passes through the STAP chain and an external STAP chain back to the TDO mux",width=100%,pdfwidth=100%]
+
+=== Scan Chain Topology
+
+The PTAP is connected to the incoming JTAG interface for the chiplet. The scan
+chain is organized in three major segments: the Primary TAP processes all
+instructions, the Secondary TAP chain provides hierarchical TAP access, and the
+iJTAG network enables instrument-level access to debug blocks.
+
+==== STAP Chain Hierarchy
+
+The STAP chain implements a four-level hierarchy with configurable lockup latch
+insertion optimized for different physical routing distances.
+
+<<jiu-stap-chain-hierarchy-table>> relates each STAP level to its lockup-latch
+configuration and physical role.
+
+[[jiu-stap-chain-hierarchy-table]]
+[width="100%",cols="<15%,<25%,<15%,<15%,<30%",options="header"]
+.JIU STAP chain hierarchy
+|===
+|Level |STAP Type |TDI_LOCKUP |SCAN_OUT_LOCKUP |Purpose
+
+|1
+|I/O STAP
+|1
+|0
+|Chiplet-to-chiplet connectivity (die boundary crossing)
+
+|2
+|SMC Debug STAP
+|0
+|0
+|On-chip connection to SMC CPU debugger TAP
+
+|3
+|SEP Debug STAP
+|0
+|0
+|On-chip connection to SEP CPU debugger TAP
+
+|4
+|Extra STAPs [N-1:0]
+|0
+|0
+|Local debug ports
+|===
+
+The I/O STAP enables TDI lockup to handle the longer propagation delays across
+die boundaries. On-chip STAPs (SMC Debug, SEP Debug) disable TDI lockup since
+signal routing is local to the chiplet.
+
+No STAP in the chain enables scan output lockup. The chain return reaches the
+PTAP's falling-edge TDO retimer, and a lockup ahead of that retimer would add
+one TCK of latency to every scan through the STAP chain. The last STAP's scan
+output also drives `stap_host_scan_out_o`, which launches on the rising edge of
+TCK like the host scan outputs of the iJTAG SIBs.
+
+`stap_host_scan_out_o` carries the scan bit of the last STAP's SIB. That bit
+resets to 0 on TRST and in Test-Logic-Reset, so the port reads 0 from reset.
+
+==== Debug Disable Synchronization
+
+`dbg_disable_i` (`sep_lifecycle_ctrl_pkg::dbg_disable_t`) is in the system clock
+domain and must be synchronized to TCK before use. The interface unit
+synchronizes each bit through a 2-FF chain whose reset value is 1 (fail-closed).
+The synchronized fields gate STAP and SIB selection and are forwarded to the
+PTAP for the JTAG2AXI bridges.
+
+Each field is active-high (1 = path disabled).
+
+<<jiu-debug-disable-fields-table>> maps each debug access point to its synchronized
+disable field.
+
+[[jiu-debug-disable-fields-table]]
+[width="100%",cols="<40%,<60%",options="header"]
+.JIU debug-disable fields
+|===
+|Access Point |Disable Field
+
+|I/O STAP
+|`dbg_disable_i.stap_io`
+
+|SMC Debug STAP
+|`dbg_disable_i.stap_smc`
+
+|SEP Debug STAP
+|`dbg_disable_i.stap_sep`
+
+|Extra STAPs
+|`dbg_disable_i.stap_extra`
+
+|External STAP return path
+|`dbg_disable_i.stap_host`
+
+|DFT Secure SIB
+|`dbg_disable_i.dft_secure`
+
+|DFT Non-Secure SIB
+|`dbg_disable_i.dft_nonsecure`
+
+|DFD SIB
+|`dbg_disable_i.dfd`
+
+|SMC fabric JTAG2AXI
+|`dbg_disable_i.smc_jtag2axi`
+
+|SMC OTP JTAG2AXI
+|`dbg_disable_i.smc_otp_jtag2axi`
+
+|SEP OTP JTAG2AXI
+|`dbg_disable_i.sep_otp_jtag2axi`
+|===
+
+[[jiu-ijtag-network]]
+=== iJTAG Network
+
+The iJTAG network is organized into three cascaded Segment Insertion Bit (SIB)
+chains. Each SIB is gated by the corresponding synchronized debug-disable field.
+Each SIB's scan bit and control bit reset to 0 on TRST and in Test-Logic-Reset,
+so `dft_secure_host_scan_out_o`, `dft_host_scan_out_o` and `dfd_host_scan_out_o`
+read 0 from reset, whether or not the SIB is disabled.
+
+The PTAP selects the iJTAG network as its DR under SELECT_IJTAG and, when
+`RUNBIST_ENABLE` is set, under RUNBIST. From TDI the scan path passes through the
+DFT Secure SIB, the DFT Non-Secure SIB and the DFD SIB, and the DFD SIB's output
+returns to the PTAP. Each SIB is one bit long. While a SIB is open, its segment
+is inserted on the TDO side of its bit: the SIB bit drives the segment's scan
+input, and the segment's return continues to the next SIB. With every SIB closed
+the iJTAG DR is three bits long, laid out as in <<jiu-ijtag-sib-bit-map-table>>.
+
+[[jiu-ijtag-sib-bit-map-table]]
+[width="100%",cols="<12%,<28%,<30%,<30%",options="header"]
+.JIU iJTAG DR with every SIB closed
+|===
+|DR Bit |SIB |Segment Ports |Disable Field
+
+|0
+|DFD
+|`dfd_host_scan_*`
+|`dbg_disable_i.dfd`
+
+|1
+|DFT Non-Secure
+|`dft_host_scan_*`
+|`dbg_disable_i.dft_nonsecure`
+
+|2
+|DFT Secure
+|`dft_secure_host_scan_*`
+|`dbg_disable_i.dft_secure`
+|===
+
+Bit 0 is nearest TDO and is the first bit shifted in. A SIB bit shifted in as 1
+opens that SIB at Update-DR, and its segment is on the scan path from the next DR
+scan. Each SIB captures its own open state. A SIB whose disable field is set
+stays closed and remains a one-bit stage that captures 0, whatever is shifted
+into it.
+
+With the DFT Non-Secure SIB open and an N-bit segment, the DR is N + 3 bits
+long: bit 0 is the DFD SIB, bits N to 1 are the segment with the bit nearest its
+scan output at bit 1, bit N + 1 is the DFT Non-Secure SIB and bit N + 2 is the
+DFT Secure SIB. The network attached to each segment's ports defines its
+contents and length. The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#dtp-ijtag-access[segment access sequence].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ijtag-access[segment access sequence].
+endif::backend-pdf[]
+
+==== DFT Secure Chain
+
+The DFT Secure chain is gated by `dbg_disable_i.dft_secure`. This port is for
+security-sensitive DFT control.
+
+==== DFT Non-Secure Chain
+
+The DFT Non-Secure chain is gated by `dbg_disable_i.dft_nonsecure`. General DFT
+control is attached to this port.
+
+==== DFD Chain
+
+The Design-for-Debug (DFD) chain is gated by `dbg_disable_i.dfd`.
+Integrator-defined debug instruments are attached to this port.
+
+=== JTAG2AXI Interfaces
+
+The interface unit instantiates multiple JTAG2AXI bridges. Each bridge is a set
+of PTAP TDRs selected by its own instructions and gated by its own
+`dbg_disable_i` field (<<jiu-debug-disable-fields-table>>); no bridge is reached
+through the iJTAG network.
+
+* *SMC JTAG2AXI TDRs*: This set of TDRs provide a mechanism to inject AXI
+  transactions onto the SMC AXI local interconnect.
+* *SMC Fuse JTAG2AXIL TDRs*: This set of TDRs provide a mechanism to interact
+  directly with the SMC fuse controller. The JTAG2AXIL interface connects to the
+  fuse controller CSRs through an AXI4-lite-to-APB bridge.
+* *SEP Fuse JTAG2AXIL TDRs*: This set of TDRs provide a mechanism to interact
+  directly with the SEP fuse controller. The JTAG2AXIL interface connects to the
+  fuse controller CSRs through an AXI4-lite-to-APB bridge.

@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Force the opensrc packages to resolve to the locally vendored path packages
+# (vendor/pulp-platform/<pkg>) for every consumer in the graph, overriding the
+# git declarations the forks carry. Bender only lets a path dependency win over
+# transitive git dependencies via a config-level `overrides`. Sources are pulled
+# from the tt- forks + TT patches by the vendor_package entries in Bender.yml
+# (run `bender vendor init`).
+overrides:
+  common_verification: { path: "vendor/pulp-platform/common_verification" }
+  common_cells: { path: "vendor/pulp-platform/common_cells" }
+  apb: { path: "vendor/pulp-platform/apb" }
+  axi: { path: "vendor/pulp-platform/axi" }
+  axi_stream: { path: "vendor/pulp-platform/axi_stream" }
+  register_interface: { path: "vendor/pulp-platform/register_interface" }
+  obi: { path: "vendor/pulp-platform/obi" }
+  idma: { path: "vendor/pulp-platform/idma" }
+  opentitan: { path: "vendor/lowRISC/opentitan" }
+  picorv32: { path: "vendor/tenstorrent/tt-picorv32" }

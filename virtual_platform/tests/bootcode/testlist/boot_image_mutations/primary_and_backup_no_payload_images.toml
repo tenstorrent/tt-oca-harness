@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Both TOCs declare zero images, each resealed, so neither slot can boot.
+base = "signed"
+ops = [
+  { op = "set_toc_image_count", slot = "primary", args = { value = 0, hashed_to_span = true } },
+  { op = "set_toc_image_count", slot = "backup", args = { value = 0, hashed_to_span = true } },
+]

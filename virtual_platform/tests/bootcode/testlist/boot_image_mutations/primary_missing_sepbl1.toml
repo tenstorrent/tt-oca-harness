@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# The primary TOC types its only image SEPBL2, so the slot carries no BL1 to hand off to.
+pack_config = "oca_secure_boot"
+set = [
+  { target = "bundle", slot = "primary", path = "payload_images.0.type", value = "OCAHSEP BLSTAGE2" },
+]

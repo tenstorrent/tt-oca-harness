@@ -1,0 +1,116 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""SPI flash data reaches SRAM through the RX FIFO and the Secure DMA without corruption.
+
+The spi_ot_dma_rx firmware arms the Secure DMA in hardware-handshake mode (SRC = SPI RXDATA
+fixed, DST = SRAM incrementing) and issues a SPI flash READ; each RX FIFO watermark crossing
+raises ``lsio_trigger`` and the DMA drains a chunk to SRAM. The flash BFM is preloaded with
+0xA5, and the firmware checks every DMA-written SRAM word against 0xA5A5A5A5, so a pass
+proves the data path, not only completion. The host gates on the firmware verdict line:
+CHK-DATAPATH (the SRAM pattern) and CHK-RW1C (the DMA done status holds after the poll
+and clears on write-one-to-clear).
+
+Run mode: cpu with +skip_fuse_sense.
+"""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+import cocotb
+import pyuvm
+from env.sep_boot_scoreboard import SepBootScoreboard
+from ocah_spi_vip import OcahSpiFlash
+from sep_base_test import sep_base_test
+from sep_reg_meta import sym
+
+_DV_ROOT = str(Path(__file__).resolve().parents[3])
+_FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "spi_ot_dma_rx_test")
+_ITCM_HEX = os.path.join(_FW_DIR, "spi_ot_dma_rx_test.itcm.hex")
+_DTCM_HEX = os.path.join(_FW_DIR, "spi_ot_dma_rx_test.dtcm.hex")
+
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
+_MAX_RUN_CYCLES = 3_000_000
+_NO_BOOT_CYCLES = 80_000
+_PROGRESS_EVERY = 5_000
+_VERDICT_PREFIX = "PASS: SPI RX FIFO -> DMA -> SRAM"
+_BANNER = "SEP SPI OT DMA RX test"
+
+# Must match the firmware's RX_SIZE / RX_PATTERN (spi_ot_dma_rx_test.c). The
+# firmware issues a flash READ (0x03) at address 0 and value-checks the result.
+_RX_SIZE = 64
+_RX_PATTERN = 0xA5
+
+
+@pyuvm.test()
+class sep_spi_ot_dma_rx_test(sep_base_test):
+    """The firmware verdict line reports both the SRAM pattern check and the RW1C check."""
+
+    build_env = False
+
+    def build_phase(self) -> None:
+        super().build_phase()
+        self.sb = SepBootScoreboard("sb", self)
+
+    async def run_scenario(self) -> None:
+        dut = cocotb.top
+        flash = OcahSpiFlash(
+            dut.spi_cs_n_o,
+            dut.spi_sck_o,
+            mosi=dut.spi_mosi_o,
+            miso=dut.spi_miso_i,
+            name="sep_spi_rx_flash",
+        )
+        # Preload the known pattern the firmware reads back and value-checks.
+        flash.write_memory(0, bytes([_RX_PATTERN]) * _RX_SIZE)
+        await flash.start()
+        try:
+            # Override the boot scoreboard's expected banner here (after its own
+            # build_phase, which resets it to the hello_world default).
+            self.sb.expected_line = _BANNER
+            await self.boot_firmware(
+                self.sb,
+                _ITCM_HEX,
+                _DTCM_HEX,
+                rst_vec=_ICCM_BASE >> 1,
+                max_run_cycles=_MAX_RUN_CYCLES,
+                no_boot_cycles=_NO_BOOT_CYCLES,
+                progress_every=_PROGRESS_EVERY,
+            )
+            # The firmware's verdict line names both contracts it scored; gate on it
+            # so a stale image that dropped one is visible instead of hiding behind
+            # the PASS magic, and emit the CHK records the VPLAN row names.
+            console = self.sb.console_text()
+            verdict = next(
+                (ln for ln in console.splitlines() if ln.startswith(_VERDICT_PREFIX)),
+                "",
+            )
+            assert verdict, (
+                f"firmware console has no {_VERDICT_PREFIX!r} verdict line, so the "
+                f"SRAM pattern and the write-one-to-clear were not both checked. "
+                f"Console was:\n{console}"
+            )
+            # One line, two contracts: each record names the token that carries it,
+            # so dropping either half of the firmware check fails here.
+            for token, chk, what in (
+                ("(0xA5)", "CHK-DATAPATH", "the preloaded pattern in the DMA-written SRAM"),
+                (
+                    "RW1C verified",
+                    "CHK-RW1C",
+                    "the DMA done status holding after the poll and clearing on write-one-to-clear",
+                ),
+            ):
+                assert token in verdict, (
+                    f"firmware verdict line has no {token!r}, so {what} was not "
+                    f"checked. Line was: {verdict!r}"
+                )
+                self.logger.info("%s PASS: firmware reported %s", chk, what)
+            # Evidence is the firmware value-check, gated by the boot scoreboard's
+            # fw_pass magic. SRAM == 0xA5A5A5A5 can only come from the preloaded
+            # flash over MISO -> SPI RX FIFO -> lsio_trigger -> DMA -> SRAM. The
+            # BFM does not log the open-ended 0x03 READ (the host never clocks the
+            # final edge), and flash.read_memory() only echoes the preload, so
+            # neither is evidence.
+        finally:
+            await flash.stop()

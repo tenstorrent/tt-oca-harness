@@ -1,0 +1,80 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-cross_trigger_network]
+== Cross Trigger Network Address Map
+
+Cross trigger matrix and externally visible cross trigger ports
+
+[NOTE]
+======
+*Register Arrays:*
+
+* *CT_SRC[26].CONFIG_0*: 26 registers, base 0x0, stride 0x8
+* *ctp[16].CONFIG*: 16 registers, base 0x200, stride 0x10
+* *ctp[16].STATUS*: 16 registers, base 0x204, stride 0x10
+* *ctp[16].STRETCH_MULT*: 16 registers, base 0x208, stride 0x10
+======
+
+[cols="1,4,1,6", options="header"]
+|===
+| Address | Name | Access | Description
+| 0x0 - 0xC8 | <<reg-{regmap-instance}-cross_trigger_network-ctm-CT_SRC-CONFIG_0,CT_SRC[26].CONFIG_0>> | RW a| Cross Trigger Source Configuration - CT_Dst select mask
+| 0x200 - 0x2F0 | <<reg-{regmap-instance}-cross_trigger_network-ctp-CONFIG,ctp[16].CONFIG>> | RW a| Cross Trigger Port Configuration
+| 0x204 - 0x2F4 | <<reg-{regmap-instance}-cross_trigger_network-ctp-STATUS,ctp[16].STATUS>> | R a| Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.
+| 0x208 - 0x2F8 | <<reg-{regmap-instance}-cross_trigger_network-ctp-STRETCH_MULT,ctp[16].STRETCH_MULT>> | RW a| Pulse Stretch Multiplier
+|===
+
+[#reg-{regmap-instance}-cross_trigger_network-ctm-CT_SRC-CONFIG_0]
+=== CT_SRC[26].CONFIG_0
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:26 | `Reserved` | - | - a| Reserved
+| 25:0 | `CT_DST_SELECT` | RW | 0x0 a| Selects the CT_Dst port(s) to forward on the CT_Src output
+at this array index. Each bit corresponds to one CT_Dst
+port, from CT_Dst[0] at bit 0 upwards. Multiple ports may
+be selected as a trigger source. All selected source ports
+are then OR'd together to produce the CT_Src output. Set
+this register to all-zero to disable that output.
+|===
+
+[#reg-{regmap-instance}-cross_trigger_network-ctp-CONFIG]
+=== ctp[16].CONFIG
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:3 | `Reserved` | - | - a| Reserved
+| 2 | `RESET` | RW | 0x0 a| While set, holds the outgoing point-to-point handshake idle with CT_Req_out deasserted and discards core-side cross trigger pulses for transmission. The incoming handshake keeps running. Set and then clear it to recover a handshake deadlock.
+| 1 | `INVERT` | RW | 0x0 a| Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.
+| 0 | `MODE` | RW | 0x0 a| Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package's cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.
+|===
+
+[#reg-{regmap-instance}-cross_trigger_network-ctp-STATUS]
+=== ctp[16].STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out level with CONFIG.INVERT undone, so 1 means the acknowledge is asserted whatever the pad polarity. Reads 0 in wire-OR mode.
+| 6 | `REQ_IN` | R | 0x0 a| Readout of the current synchronized CT_Req_in level with CONFIG.INVERT undone, so 1 means the request is asserted whatever the pad polarity.
+| 5 | `ACK_IN` | R | 0x0 a| Readout of the current synchronized CT_Ack_in level with CONFIG.INVERT undone, so 1 means the acknowledge is asserted whatever the pad polarity.
+| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out level with CONFIG.INVERT undone, so 1 means the request is asserted whatever the pad polarity. Reads 0 in wire-OR mode.
+| 3:1 | `Reserved` | - | - a| Reserved
+| 0 | `BUSY` | R | 0x0 a| Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress
+|===
+
+[#reg-{regmap-instance}-cross_trigger_network-ctp-STRETCH_MULT]
+=== ctp[16].STRETCH_MULT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:16 | `Reserved` | - | - a| Reserved
+| 15:0 | `STRETCH_MULT` | RW | 0x0 a| The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.
+|===

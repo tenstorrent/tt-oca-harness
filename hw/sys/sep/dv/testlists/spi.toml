@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+[[tests]]
+name = "sep_spi_flash_jedec_smoke_test"
+module = "spi.sep_spi_flash_jedec_smoke_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "spi"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# OT SPI flash command breadth from CPU firmware. RAND-REP: seeded flash address, word
+# count and data; +spi1_directed pins the directed defaults. Dual/quad paths are not
+# walked: the BFM is single-bit.
+name = "sep_spi_ot_flash_cmd_rand_test"
+module = "spi.sep_spi_ot_flash_cmd_rand_test"
+firmware = "spi_ot_flash_cmd_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["boot", "cpu", "spi", "flash", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# OT SPI host control plane (CSRs, interrupts, ERROR_STATUS W1C, TX watermark, SPIEN gate),
+# no flash BFM. RAND-REP. Distinct from sep_spi_ot_flash_cmd_rand_test (flash datapath).
+name = "sep_spi_ot_host_csr_irq_rand_test"
+module = "spi.sep_spi_ot_host_csr_irq_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["spi", "csr", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+name = "sep_spi_ot_dma_rx_test"
+module = "spi.sep_spi_ot_dma_rx_test"
+firmware = "spi_ot_dma_rx_test"
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "spi", "dma", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# SRAM -> Secure DMA (TX-watermark handshake) -> SPI TXFIFO -> flash page program, read back
+# against the BFM golden. The TX complement of `sep_spi_ot_dma_rx_test`. RAND-REP seeds the
+# flash address and data.
+name = "sep_spi_ot_dma_tx_test"
+module = "spi.sep_spi_ot_dma_tx_test"
+firmware = "spi_ot_dma_tx_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["boot", "cpu", "spi", "dma", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]

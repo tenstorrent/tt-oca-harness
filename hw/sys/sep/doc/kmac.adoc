@@ -1,0 +1,98 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= KMAC-SHA3
+:description: SEP KMAC-SHA3 integration, entropy interface, and Key Manager key delivery.
+
+[[kmac-sha3]]
+
+The module is based on the
+https://opentitan.org/book/hw/ip/kmac/index.html[OpenTitan KMAC] design.
+
+[[sep-kmac-reference-diagram]]
+.OpenTitan KMAC core reference architecture
+image::opentitan_kmac.svg[alt="OpenTitan KMAC core reference architecture",width=100%,pdfwidth=100%]
+
+<<sep-kmac-reference-diagram>> shows the upstream core. The OCAH bus, key-delivery, and entropy
+connections are described in the integration details below.
+
+[[och-modifications-3]]
+== OCAH Modifications
+
+* AXI4-lite key bus slave interface replaces side loading interface
+* AXI4-lite control/status bus slave interface
+
+The KMAC host path uses the same conversion and isolation sequence as AES. The
+address path subtracts the KMAC base address and masks to a 12-bit window
+(4 KB) before the `axi_to_axi_lite` stage, aligning the internal decoder with
+the OpenTitan register block. `kmac_wrapper` bridges the isolated AXI-Lite path
+to TL-UL. EDN is handled identically to AES: KMAC is one of the four clients
+arbitrated by `u_axis_edn_crypto_s3c_scan` (the shared
+`drbg_axis_edn_adapter`), served from the same post-CSRNG DRBG AXI-Stream feed.
+The `app_i` application interface is tied off since the SEP does not use the
+KMAC hardware application path. Life-cycle escalation is inactive. KMAC
+ifdef::backend-html5[]
+occupies alert indices `[6:5]` in xref:sep:crypto.adoc#sep-crypto-alert-policy[OpenTitan Alert Termination] and exports three
+endif::backend-html5[]
+ifdef::backend-pdf[]
+occupies alert indices `[6:5]` in <<sep-crypto-alert-policy>> and exports three
+endif::backend-pdf[]
+interrupts: `done`, `fifo_empty`, and `err`.
+
+The Key Manager delivers a 256-bit KMAC key as eight words per share, in the
+ifdef::backend-html5[]
+format given in xref:sep:crypto.adoc#km-key-delivery[Key Manager Key Delivery]. In KMAC, `CFG_SHADOWED.sideload`
+endif::backend-html5[]
+ifdef::backend-pdf[]
+format given in <<km-key-delivery>>. In KMAC, `CFG_SHADOWED.sideload`
+endif::backend-pdf[]
+selects the delivered key; while that bit is 0 the engine uses its software
+key registers. Unlike AES and HMAC, software does not declare a key length for
+a delivered key: the engine applies the delivered key's length automatically
+and ignores its key-length register for that operation. Beginning a keyed
+operation that uses the delivered key while `KEY_CTRL.KEY_VALID` is 0 raises an
+error instead of producing a digest; OTBN also reports an invalid key error.
+
+Consult the
+https://opentitan.org/book/hw/ip/kmac/index.html[OpenTitan KMAC
+documentation] for the authoritative core functionality of the IP.
+The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-kmac[programming guidance]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-kmac[programming guidance]
+endif::backend-pdf[]
+for this block.
+The
+ifdef::backend-html5[]
+register map follows below.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+register map follows below.
+endif::backend-pdf[]
+
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$kmac/regs/gen/html/kmac.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/kmac/regs/gen/adoc/kmac.adoc[leveloffset=+2]
+endif::backend-pdf[]

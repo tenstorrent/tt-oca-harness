@@ -1,0 +1,73 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Launch entry: selected by `--dut cross_trigger_port` (registered in
+# hw/common/dv/configs/duts.toml — the DV root is nested one level below the
+# hw/ip/<name>/dv convention). IP-level cocotb bench for the Cross Trigger
+# Port: the DUT's AXI4-Lite CSR port is driven by the shared AXI VIP's
+# AXI4-Lite master; the core-side and GPIO pad pins are pin-exposed on
+# tb/tb_top.sv for direct cocotb stimulus.
+name = "cross_trigger_port"
+profile = "native"
+default_framework = "cocotb"
+description = "Cross Trigger Port (CTP) IP-level cocotb DV flow"
+default_tool = "verilator"
+tools = ["verilator", "vcs", "xcelium"]
+
+[testlist]
+path = "testlists/all.toml"
+format = "toml_list"
+
+[native.stages.clean]
+kind = "clean"
+paths = ["{run_dir}", "hw/ip/cross_trigger/cross_trigger_port/dv/build"]
+
+[build]
+top_module = "cross_trigger_port_tb_top"
+top_file = "hw/ip/cross_trigger/cross_trigger_port/dv/tb/tb_top.sv"
+filelist = "hw/ip/cross_trigger/cross_trigger_port/dv/build/cross_trigger_port_dut_compile.f"
+bender_filelist = "hw/ip/cross_trigger/cross_trigger_port/dv/build/cross_trigger_port_bender.f"
+work_dir = "hw/ip/cross_trigger/cross_trigger_port/dv/build"
+# Shared dependency targets: the pulp AXI package/typedefs plus the
+# common-cells closure the axi_rtl group parses against.
+common_bender_targets = [
+  "axi_rtl",
+  "common_cells_rtl",
+]
+# The cross_trigger family target (Bender.yml): all three cross-trigger IPs'
+# packages and RTL plus the vendored OpenTitan prim closure.
+bender_targets = ["cross_trigger"]
+# The open-drain shared-wire model tb/tb_top.sv places on the CT_Req_out pad.
+sources = ["hw/common/dv/shims/analog/ocah_open_drain_bus.sv"]
+
+[frameworks.cocotb]
+python_root = "hw/ip/cross_trigger/cross_trigger_port/dv/cocotb"
+test_dir = "hw/ip/cross_trigger/cross_trigger_port/dv/cocotb/tests"
+python_paths = [
+  "hw/common/dv/vip",
+  "hw/ip/cross_trigger/cross_trigger_port/regs/gen/py",
+]
+results_dir = "{run_dir}/{item}/results"
+cocotb_log = "{run_dir}/{item}/logs/{item}.log"
+
+[run_modes.smoke]
+description = "CTP register sanity and wire-OR bring-up"
+timeout_sec = 600
+args = []
+
+[run_modes.functional]
+description = "CTP wire-OR and point-to-point protocol scenarios"
+timeout_sec = 900
+args = []
+
+[targets.default]
+description = "CTP IP-level cocotb target"
+build_dir = "hw/ip/cross_trigger/cross_trigger_port/dv/build/cocotb"
+
+[targets.default.tools.verilator]
+flags = [
+  "-Wno-BLKLOOPINIT",
+  "+define+VERILATOR",
+]

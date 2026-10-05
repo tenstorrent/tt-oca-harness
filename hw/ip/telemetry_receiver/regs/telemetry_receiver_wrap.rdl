@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef TELEMETRY_RECEIVER_WRAP_RDL
+`define TELEMETRY_RECEIVER_WRAP_RDL
+
+`include "telemetry_receiver.rdl"
+
+addrmap telemetry_receiver_wrap #(
+    // TODO: Fix
+    // longint unsigned MaxNumTelemetryReceivers = 16
+    longint unsigned NUM_TELEMETRY_RECEIVERS = 3
+) {
+    name = "Telemetry Receiver Wrapper Address Map";
+    desc = "Wrapper address map instantiating the telemetry receiver channels.";
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    telemetry_receiver    telemetry_receiver[NUM_TELEMETRY_RECEIVERS]    @0x0 += 0x100;
+
+};
+
+`endif

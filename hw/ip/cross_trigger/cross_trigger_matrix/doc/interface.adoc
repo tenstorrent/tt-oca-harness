@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[ctm-interface]]
+
+=== Signal Interface
+
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="ctm-signal-interface-table"></span>
+++++
+endif::backend-html5[]
+
+Packed control and bus types remain bundles at the `cross_trigger_matrix` module
+boundary; their members are not separate scalar ports.
+
+ifdef::backend-html5[]
+The parameters and ports of `cross_trigger_matrix` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/cross_trigger_matrix/cross_trigger_matrix.adoc[cross_trigger_matrix].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `cross_trigger_matrix` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+`NUM_CT_SRC` and `NUM_CT_DST` come from the generated register package.
+Routing masks are programmed through the AXI-Lite CSR port; there are no
+separate route-configuration or acknowledge ports.
+
+=== Data Ports
+
+The CTM has the following data ports:
+
+* *CT_Src[N-1:0]* - Cross trigger pulse output signals from the CTM to CLAs,
+  CTPs, or other cross trigger sinking devices, where N is the number of these
+  cross trigger sinks.
+* *CT_Dst[M-1:0]* - Cross trigger pulse input signals to the CTM from CLAs,
+  CTPs, or other cross trigger generating devices, where M is the number of
+  these cross trigger sources.
+
+=== Dependencies
+
+The CTM depends on the following components:
+
+* `hw/common/ocah_prim` - Primitive cells

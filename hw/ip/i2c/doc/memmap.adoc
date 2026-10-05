@@ -1,0 +1,50 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[i2c-memory-map]]
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="overview"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+The I2C Interface Component provides a comprehensive register interface
+through an 8-bit address space (0x00-0xFF) accessible via AXI4-Lite
+protocol. The register map is organized into logical groups covering
+interrupt management, control configuration, data access, timing
+parameters, and mode-specific functionality. All registers are 32-bit
+aligned and support both controller and target operating modes.
+
+==== Address Alignment and Access Width
+
+*Address Alignment:* - All registers are aligned to 32-bit boundaries
+(addresses are multiples of 4) - 8-bit effective address space: only
+bits [7:0] of the AXI4-Lite address are used - Upper address bits are
+ignored
+
+*Access Width Requirements:* - All registers must be accessed using
+32-bit operations - Byte and halfword accesses are not supported -
+AXI4-Lite write strobe signals should be set to 4'b1111 for all writes
+
+*Endianness:* - All multi-byte fields use little-endian byte ordering -
+Bit numbering follows standard convention (bit 0 is LSB)
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::partial$i2c/regs/gen/html/i2c.html[]
+include::partial$i2c/regs/gen/html/i2c_ctrl.html[]
+include::partial$i2c/regs/gen/html/i2c_wrap.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/i2c.adoc[leveloffset=+2]
+include::../regs/gen/adoc/i2c_ctrl.adoc[leveloffset=+2]
+include::../regs/gen/adoc/i2c_wrap.adoc[leveloffset=+2]
+endif::backend-pdf[]

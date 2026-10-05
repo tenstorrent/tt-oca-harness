@@ -1,0 +1,35 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef UART_LOG_ENGINE_CTRL_RDL
+`define UART_LOG_ENGINE_CTRL_RDL
+
+addrmap uart_log_engine_ctrl {
+    name = "UART Log Engine Control Address Map";
+    desc = "Top-level enable register for the UART log-engine block.";
+
+    //////////////////////////
+    // Register Definitions //
+    //////////////////////////
+
+    reg CTRL {
+        desc = "Control Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "UART Enable. When set, the pad-mux downstream will be forced to accept UART
+                    traffic.";
+        } UART_EN[0:0] = 0x0;
+    };
+
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    CTRL    CTRL    @0x0;
+
+};
+
+`endif

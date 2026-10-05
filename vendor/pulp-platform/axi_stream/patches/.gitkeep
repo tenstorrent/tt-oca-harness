@@ -1,0 +1,4 @@
+# No patches are currently carried for axi_stream.
+#
+# Keep this directory so the root Bender.yml patch_dir exists. If a TT-local
+# delta becomes necessary, replace this with numbered patch files.

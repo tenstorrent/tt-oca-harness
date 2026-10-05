@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-pll_wrap]
+== PLL Wrapper Placeholder Address Map
+
+Adopter clock-control placeholder reserving the PLL map slot; no CSRs are modeled.
+
+[NOTE]
+======
+*Register Arrays:*
+
+* *mem_array[954]*: 954 registers, base 0x0, stride 0x4
+======
+
+[cols="1,4,1,6", options="header"]
+|===
+| Address | Name | Access | Description
+| 0x0 - 0xEE4 | <<reg-{regmap-instance}-pll_wrap-footprint-mem_array-,mem_array[954]>> | R a| -
+|===
+
+[#reg-{regmap-instance}-pll_wrap-footprint-mem_array-]
+=== mem_array[954]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | R | - a| -
+|===

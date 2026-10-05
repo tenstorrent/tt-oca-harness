@@ -1,0 +1,416 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+// Key Manager Mailbox - KM Side Interface
+// SystemRDL 2.0 Register Definition
+//
+// Copyright 2026 Tenstorrent Inc.
+//
+// Base Address: 0x0001_0000 (KM side)
+// Size: 4KB decode window (0x1000); registers occupy lower portion
+// This register file is accessed by KM CPU to interact with the mailbox
+
+addrmap km_mailbox_km {
+    name = "Key Manager Mailbox KM Side";
+    desc = "Register interface for KM CPU to access mailbox (write to outbound FIFO, read from inbound FIFO)";
+
+    default regwidth = 32;
+    default sw = rw;
+    default hw = r;
+
+    //=========================================================================
+    // Warm reset signal declaration
+    //=========================================================================
+    // Resets the KM-side AXI CPUIF state machine and all CPU-owned volatile
+    // register fields on warm reset. The underlying FIFOs are cold-reset only
+    // (handled in RTL); the raw data-path registers (KM_WRITE_DATA,
+    // KM_READ_DATA) and hardware-driven FIFO-level STATUS fields do not carry
+    // resetsignal since their values are either write-only or overwritten by
+    // hardware on every clock cycle.
+    // field_reset is intentionally NOT set: every warm-resettable field carries
+    // an explicit `resetsignal = WARM_RST_N`. Fields without one (WRITE_DATA,
+    // READ_DATA, FIFO-level STATUS fields) use the default arst_n (cold only).
+    signal warm_rst_n {
+        activelow;
+        async = false;
+        cpuif_reset = true;
+    };
+    warm_rst_n WARM_RST_N;
+
+    //=========================================================================
+    // WRITE_DATA Register (0x000)
+    //=========================================================================
+    reg write_data_reg {
+        name = "WRITE_DATA";
+        desc = "Write data to outbound FIFO (KM→SEP messages)";
+
+        field {
+            name = "DATA";
+            desc = "32-bit data word to write to outbound FIFO";
+            sw = w;
+            hw = r;
+            reset = 32'h0;
+        } data[31:0];
+    };
+
+    write_data_reg KM_WRITE_DATA @ 0x000;
+
+    //=========================================================================
+    // WRITE_SEPARATOR Register (0x004)
+    //=========================================================================
+    reg write_separator_reg {
+        name = "WRITE_SEPARATOR";
+        desc = "Write 1 to set message separator on next outbound (KM→SEP) write. Cleared by hardware when that write completes.";
+
+        field {
+            name = "SET";
+            desc = "Write 1 to set message separator on next outbound write. Cleared by hardware when that write completes.";
+            sw = rw;
+            hw = rw;
+            reset = 1'b0;
+            resetsignal = WARM_RST_N;
+        } set[0:0];
+
+        field {
+            name = "RSVD";
+            desc = "Reserved";
+            sw = r;
+            hw = na;
+            reset = 31'h0;
+        } rsvd[31:1];
+    };
+
+    write_separator_reg KM_WRITE_SEPARATOR @ 0x004;
+
+    //=========================================================================
+    // READ_DATA Register (0x008)
+    //=========================================================================
+    reg read_data_reg {
+        name = "READ_DATA";
+        desc = "Read data from inbound FIFO (SEP→KM messages)";
+
+        field {
+            name = "DATA";
+            desc = "32-bit data word read from inbound FIFO";
+            sw = r;
+            hw = r;
+            reset = 32'h0;
+        } data[31:0];
+    };
+
+    read_data_reg KM_READ_DATA @ 0x008;
+
+    //=========================================================================
+    // STATUS Register (0x00C)
+    //=========================================================================
+    reg status_reg {
+        name = "STATUS";
+        desc = "FIFO status information";
+
+        field {
+            name = "INBOUND_EMPTY";
+            desc = "Inbound FIFO is empty (no data available for KM to read)";
+            sw = r;
+            hw = w;
+            reset = 1'b1;
+        } inbound_empty[0:0];
+
+        field {
+            name = "INBOUND_FULL";
+            desc = "Inbound FIFO is full";
+            sw = r;
+            hw = w;
+            reset = 1'b0;
+        } inbound_full[1:1];
+
+        field {
+            name = "OUTBOUND_EMPTY";
+            desc = "Outbound FIFO is empty (no data available for SEP to read)";
+            sw = r;
+            hw = w;
+            reset = 1'b1;
+        } outbound_empty[2:2];
+
+        field {
+            name = "OUTBOUND_FULL";
+            desc = "Outbound FIFO is full (cannot write more data)";
+            sw = r;
+            hw = w;
+            reset = 1'b0;
+        } outbound_full[3:3];
+
+        field {
+            name = "INBOUND_DEPTH";
+            desc = "Inbound FIFO fill level (number of words in FIFO)";
+            sw = r;
+            hw = w;
+            reset = 8'h0;
+        } inbound_depth[11:4];
+
+        field {
+            name = "OUTBOUND_DEPTH";
+            desc = "Outbound FIFO fill level (number of words in FIFO)";
+            sw = r;
+            hw = w;
+            reset = 8'h0;
+        } outbound_depth[19:12];
+
+        field {
+            name = "INBOUND_OVERFLOW";
+            desc = "Inbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.";
+            sw = rw;
+            hw = rw;
+            hwset = true;
+            stickybit = true;
+            onwrite = woclr;
+            reset = 1'b0;
+            resetsignal = WARM_RST_N;
+        } inbound_overflow[20:20];
+
+        field {
+            name = "OUTBOUND_OVERFLOW";
+            desc = "Outbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.";
+            sw = rw;
+            hw = rw;
+            hwset = true;
+            stickybit = true;
+            onwrite = woclr;
+            reset = 1'b0;
+            resetsignal = WARM_RST_N;
+        } outbound_overflow[21:21];
+
+        field {
+            name = "INBOUND_UNDERFLOW";
+            desc = "Inbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.";
+            sw = rw;
+            hw = rw;
+            hwset = true;
+            stickybit = true;
+            onwrite = woclr;
+            reset = 1'b0;
+            resetsignal = WARM_RST_N;
+        } inbound_underflow[22:22];
+
+        field {
+            name = "OUTBOUND_UNDERFLOW";
+            desc = "Outbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.";
+            sw = rw;
+            hw = rw;
+            hwset = true;
+            stickybit = true;
+            onwrite = woclr;
+            reset = 1'b0;
+            resetsignal = WARM_RST_N;
+        } outbound_underflow[23:23];
+
+        field {
+            name = "INBOUND_SEPARATOR";
+            desc = "Message separator: 1 if the last word read from inbound FIFO had the separator bit set (last word of message). Read-only, not sticky.";
+            sw = r;
+            hw = w;
+            reset = 1'b0;
+        } inbound_separator[24:24];
+
+        field {
+            name = "OUTBOUND_SEPARATOR";
+            desc = "Message separator: 1 if the last word read from outbound FIFO had the separator bit set (last word of message). Read-only, not sticky.";
+            sw = r;
+            hw = w;
+            reset = 1'b0;
+        } outbound_separator[25:25];
+
+        field {
+            name = "RSVD";
+            desc = "Reserved";
+            sw = r;
+            hw = na;
+            reset = 6'h0;
+        } rsvd[31:26];
+    };
+
+    status_reg KM_STATUS @ 0x00C;
+
+    //=========================================================================
+    // IRQ_STATUS Register (0x010)
+    //=========================================================================
+    reg irq_status_reg {
+        name = "IRQ_STATUS";
+        desc = "Interrupt status register";
+
+        field {
+            name = "INBOUND_READ_DATA_AVAIL";
+            desc = "Inbound FIFO has data available for KM to read (level-sensitive). 1 = data available, 0 = empty.";
+            sw = r;
+            hw = w;
+            reset = 1'b0;
+            resetsignal = WARM_RST_N;
+        } inbound_read_data_avail[0:0];
+
+        field {
+            name = "OUTBOUND_WRITE_SPACE_AVAIL";
+            desc = "Outbound FIFO has space available for KM to write (level-sensitive). 1 = space available, 0 = full.";
+            sw = r;
+            hw = w;
+            reset = 1'b0;
+            resetsignal = WARM_RST_N;
+        } outbound_write_space_avail[1:1];
+
+        field {
+            name = "OUTBOUND_OVERFLOW";
+            desc = "Outbound FIFO overflow detected. Sticky, write 1 to clear.";
+            sw = rw;
+            hw = rw;
+            hwset = true;
+            stickybit = true;
+            onwrite = woclr;
+            reset = 1'b0;
+            resetsignal = WARM_RST_N;
+        } outbound_overflow[2:2];
+
+        field {
+            name = "INBOUND_UNDERFLOW";
+            desc = "Inbound FIFO underflow detected. Sticky, write 1 to clear.";
+            sw = rw;
+            hw = rw;
+            hwset = true;
+            stickybit = true;
+            onwrite = woclr;
+            reset = 1'b0;
+            resetsignal = WARM_RST_N;
+        } inbound_underflow[3:3];
+
+        field {
+            name = "FLUSHED_BY_SEP";
+            desc = "SEP performed a mailbox flush. Sticky, write 1 to clear.";
+            sw = rw;
+            hw = rw;
+            hwset = true;
+            stickybit = true;
+            onwrite = woclr;
+            reset = 1'b0;
+            resetsignal = WARM_RST_N;
+        } flushed_by_sep[4:4];
+
+        field {
+            name = "RSVD";
+            desc = "Reserved";
+            sw = r;
+            hw = na;
+            reset = 27'h0;
+        } rsvd[31:5];
+    };
+
+    irq_status_reg KM_IRQ_STATUS @ 0x010;
+
+    //=========================================================================
+    // IRQ_ENABLE Register (0x014)
+    //=========================================================================
+    reg irq_enable_reg {
+        name = "IRQ_ENABLE";
+        desc = "Interrupt enable register for KM CPU";
+
+        field {
+            name = "INBOUND_READ_DATA_AVAIL_EN";
+            desc = "Enable interrupt to KM when inbound FIFO has data available (SEP->KM messages)";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+            resetsignal = WARM_RST_N;
+        } inbound_read_data_avail_en[0:0];
+
+        field {
+            name = "OUTBOUND_WRITE_SPACE_AVAIL_EN";
+            desc = "Enable interrupt to KM when outbound FIFO has space available (KM->SEP messages)";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+            resetsignal = WARM_RST_N;
+        } outbound_write_space_avail_en[1:1];
+
+        field {
+            name = "OUTBOUND_OVERFLOW_EN";
+            desc = "Enable interrupt to KM when outbound FIFO overflow is detected";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+            resetsignal = WARM_RST_N;
+        } outbound_overflow_en[2:2];
+
+        field {
+            name = "INBOUND_UNDERFLOW_EN";
+            desc = "Enable interrupt to KM when inbound FIFO underflow is detected";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+            resetsignal = WARM_RST_N;
+        } inbound_underflow_en[3:3];
+
+        field {
+            name = "FLUSHED_BY_SEP_EN";
+            desc = "Enable interrupt to KM when SEP performs a mailbox flush";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+            resetsignal = WARM_RST_N;
+        } flushed_by_sep_en[4:4];
+
+        field {
+            name = "RSVD";
+            desc = "Reserved";
+            sw = r;
+            hw = na;
+            reset = 27'h0;
+        } rsvd[31:5];
+    };
+
+    irq_enable_reg KM_IRQ_ENABLE @ 0x014;
+
+    //=========================================================================
+    // CTRL Register (0x018)
+    //=========================================================================
+    reg ctrl_reg {
+        name = "CTRL";
+        desc = "Control register for mailbox behavior configuration";
+
+        field {
+            name = "OUTBOUND_OVERFLOW_RESP";
+            desc = "Response type for outbound FIFO overflow: 0=SLVERR (default), 1=OKAY";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+            resetsignal = WARM_RST_N;
+        } outbound_overflow_resp[0:0];
+
+        field {
+            name = "INBOUND_UNDERFLOW_RESP";
+            desc = "Response type for inbound FIFO underflow: 0=SLVERR (default), 1=OKAY";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+            resetsignal = WARM_RST_N;
+        } inbound_underflow_resp[1:1];
+
+        field {
+            name = "FLUSH";
+            desc = "Write 1 to flush all mailbox FIFOs (inbound and outbound). Cleared by hardware when flush completes.";
+            sw = rw;
+            hw = rw;
+            reset = 1'b0;
+            resetsignal = WARM_RST_N;
+        } flush[2:2];
+
+        field {
+            name = "RSVD";
+            desc = "Reserved";
+            sw = r;
+            hw = na;
+            reset = 29'h0;
+        } rsvd[31:3];
+    };
+
+    ctrl_reg KM_CTRL @ 0x018;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+`endif
+};

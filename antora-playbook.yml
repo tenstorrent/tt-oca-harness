@@ -1,0 +1,69 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# Combined multi-book Antora playbook. Add one content.sources entry per book here;
+# cross-book navigation (the component/version switcher panel) follows
+# automatically once a book has a valid antora.yml -- no other changes
+# needed to add a book to the switcher.
+
+site:
+  title: Open Chiplet Atlas Harness (OCAH) Documentation
+  url: /
+  start_page: ocah-home::index.adoc
+content:
+  sources:
+    - url: .
+      branches: HEAD
+      start_path: doc/home
+      edit_url: false
+    - url: .
+      branches: HEAD
+      start_path: doc/trm
+      edit_url: false
+    - url: .
+      branches: HEAD
+      start_path: doc/integrator
+      edit_url: false
+    - url: .
+      branches: HEAD
+      start_path: doc/programmer
+      edit_url: false
+    - url: .
+      branches: HEAD
+      start_path: doc/appnotes
+      edit_url: false
+    - url: .
+      branches: HEAD
+      start_path: doc/starting
+      edit_url: false
+asciidoc:
+  attributes:
+    kroki-default-format: svg
+    kroki-fetch-diagram: true
+  extensions:
+    - asciidoctor-kroki
+    - ./tools/doc/block-captions.js
+runtime:
+  log:
+    # A broken xref or a missing include target is logged at ERROR, but
+    # Antora's own default (failure_level: fatal) still exits 0 on it, so
+    # the site builds and ships with the break silently rendered as dead
+    # text. Raise the threshold so doc.yml's build step fails instead.
+    failure_level: error
+ui:
+  bundle:
+    # Pinned 2026-07-24 to the latest antora-ui-default commit at the time
+    # (0e38223a) -- antora-ui-default has no tags/releases, so a commit SHA
+    # is the pin mechanism here rather than a version number. To bump
+    # later: find the new latest commit on
+    # https://gitlab.com/antora/antora-ui-default and swap the SHA below.
+    url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/0e38223adfd81eb74d4b1779e158f8ad05ff8923/raw/build/ui-bundle.zip?job=bundle-stable
+    snapshot: true
+  supplemental_files: ./doc/ui-supplemental
+antora:
+  extensions:
+    - '@antora/lunr-extension'
+    - ./tools/doc/block-indexes.js
+    - ./tools/doc/preserve-smn-fragments.js
+output:
+  dir: ./doc/_build/html_antora

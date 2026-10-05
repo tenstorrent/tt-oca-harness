@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# TEST_DEV with CHIPLET_DBG disabled by SIP_DIS.
+#
+# A debug-locked TEST_DEV part enforces secure boot (SEP-ROM-SB-025), so the ROM
+# must refuse an image whose manifest does not ask to be verified, and report
+# SBOOT_DBG_LOCK at [S18].
+#
+# Used by sep_rom_dbg_lock_sip_dis_refuse_test and sep_rom_dbg_lock_secure_boot_test.
+
+[LC_STATE]
+  # Differentially encoded {~raw[3:0], raw[3:0]}: raw 0x0 (TEST_DEV) stores as
+  # 0xF0. See the directory README.
+  [LC_STATE.fields.lc_state]
+  value = 0xF0
+
+[SIP_DIS]
+  [SIP_DIS.fields.chiplet_dbg]
+  value = 1

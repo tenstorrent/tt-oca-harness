@@ -1,0 +1,30 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef MISC_WRAP_RDL
+`define MISC_WRAP_RDL
+
+`include "chip_config.rdl"
+`include "scratch.rdl"
+`include "ndm_reset.rdl"
+
+
+addrmap misc_wrap {
+    name = "SMC Miscellaneous Wrapper Address Map";
+    desc = "Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks.";
+    
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    scratch         scratch_cold         @0x000_0000;
+	scratch         scratch_cold_warm    @0x000_0080;
+    chip_config     chip_config          @0x000_0100;
+    ndm_reset       ndm_reset            @0x000_0200;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
+`endif
+};
+
+`endif

@@ -1,0 +1,70 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+//
+// Attaches dtp_ctn_xtrig_props to every cross_trigger_network instance under the formal top. External
+// port 0 and matrix slice 0 stand for their arrays; the internal-port vectors list the ports in
+// index order. Internal signals reach the property module through this port list only; the RTL
+// carries no properties.
+
+bind cross_trigger_network dtp_ctn_xtrig_props #(
+  .NUM_INT_CT (NUM_INT_CT),
+  .NUM_CT_DST (NumCtmPorts)
+) u_dtp_ctn_xtrig_props (
+  .clk_i                 (clk_i),
+  .rst_ni                (rst_ni),
+  .mode_wire_or_i        (gen_ext_ctp[0].u_ctp.u_core.mode_wire_or_i),
+  .invert_i              (gen_ext_ctp[0].u_ctp.u_core.invert_i),
+  .hs_reset_i            (gen_ext_ctp[0].u_ctp.u_core.handshake_reset_i),
+  .stretch_mult_i        (gen_ext_ctp[0].u_ctp.u_core.stretch_mult_i),
+  .ct_src_i              (gen_ext_ctp[0].u_ctp.u_core.ct_src_i),
+  .sender_state_i        (gen_ext_ctp[0].u_ctp.u_core.u_handshake_ctrl.sender_state_q),
+  .receiver_state_i      (gen_ext_ctp[0].u_ctp.u_core.u_handshake_ctrl.receiver_state_q),
+  .hs_req_out_i          (gen_ext_ctp[0].u_ctp.u_core.u_handshake_ctrl.ct_req_out_q),
+  .hs_ack_out_i          (gen_ext_ctp[0].u_ctp.u_core.u_handshake_ctrl.ct_ack_out_q),
+  .hs_dst_i              (gen_ext_ctp[0].u_ctp.u_core.u_handshake_ctrl.ct_dst_q),
+  .hs_busy_i             (gen_ext_ctp[0].u_ctp.u_core.u_handshake_ctrl.busy_q),
+  .req_in_sync_i         (gen_ext_ctp[0].u_ctp.u_core.ct_req_in_din_sync_inv),
+  .ack_in_sync_i         (gen_ext_ctp[0].u_ctp.u_core.ct_ack_in_din_sync_inv),
+  .req_out_din_raw_sync_i (gen_ext_ctp[0].u_ctp.u_core.ct_req_out_din_sync),
+  .req_out_din_sync_i    (gen_ext_ctp[0].u_ctp.u_core.ct_req_out_din_sync_inv),
+  .req_out_din_prev_i    (gen_ext_ctp[0].u_ctp.u_core.wire_or_req_out_prev),
+  .ct_dst_i              (gen_ext_ctp[0].u_ctp.u_core.ct_dst_q),
+  .req_out_dout_en_i     (gen_ext_ctp[0].u_ctp.u_core.ct_req_out_dout_en_q),
+  .req_out_din_en_i      (gen_ext_ctp[0].u_ctp.u_core.ct_req_out_din_en_q),
+  .req_out_dout_i        (gen_ext_ctp[0].u_ctp.u_core.ct_req_out_dout_q),
+  .req_in_din_en_i       (gen_ext_ctp[0].u_ctp.u_core.ct_req_in_din_en_q),
+  .ack_in_din_en_i       (gen_ext_ctp[0].u_ctp.u_core.ct_ack_in_din_en_q),
+  .ack_out_dout_en_i     (gen_ext_ctp[0].u_ctp.u_core.ct_ack_out_dout_en_q),
+  .ack_out_dout_i        (gen_ext_ctp[0].u_ctp.u_core.ct_ack_out_dout_q),
+  .stretch_active_i      (gen_ext_ctp[0].u_ctp.u_core.u_pulse_stretcher.active_q),
+  .stretch_count_i       (gen_ext_ctp[0].u_ctp.u_core.u_pulse_stretcher.counter_q),
+  .status_busy_i         (gen_ext_ctp[0].u_ctp.reg_in.STATUS.BUSY.next),
+  .status_req_out_i      (gen_ext_ctp[0].u_ctp.reg_in.STATUS.REQ_OUT.next),
+  .status_ack_in_i       (gen_ext_ctp[0].u_ctp.reg_in.STATUS.ACK_IN.next),
+  .status_req_in_i       (gen_ext_ctp[0].u_ctp.reg_in.STATUS.REQ_IN.next),
+  .status_ack_out_i      (gen_ext_ctp[0].u_ctp.reg_in.STATUS.ACK_OUT.next),
+  .ctm_ct_dst_i          (ctm_ct_dst),
+  .ctm_select_i          (u_ctm.gen_src_selectors[0].select_mask),
+  .ctm_ct_src_i          (ctm_ct_src[0]),
+  .int_mode_wire_or_i    ({gen_int_ctp[9].u_int_ctp_core.mode_wire_or_i,
+                           gen_int_ctp[8].u_int_ctp_core.mode_wire_or_i,
+                           gen_int_ctp[7].u_int_ctp_core.mode_wire_or_i,
+                           gen_int_ctp[6].u_int_ctp_core.mode_wire_or_i,
+                           gen_int_ctp[5].u_int_ctp_core.mode_wire_or_i,
+                           gen_int_ctp[4].u_int_ctp_core.mode_wire_or_i,
+                           gen_int_ctp[3].u_int_ctp_core.mode_wire_or_i,
+                           gen_int_ctp[2].u_int_ctp_core.mode_wire_or_i,
+                           gen_int_ctp[1].u_int_ctp_core.mode_wire_or_i,
+                           gen_int_ctp[0].u_int_ctp_core.mode_wire_or_i}),
+  .int_req_out_dout_en_i ({gen_int_ctp[9].int_ct_req_out_dout_en,
+                           gen_int_ctp[8].int_ct_req_out_dout_en,
+                           gen_int_ctp[7].int_ct_req_out_dout_en,
+                           gen_int_ctp[6].int_ct_req_out_dout_en,
+                           gen_int_ctp[5].int_ct_req_out_dout_en,
+                           gen_int_ctp[4].int_ct_req_out_dout_en,
+                           gen_int_ctp[3].int_ct_req_out_dout_en,
+                           gen_int_ctp[2].int_ct_req_out_dout_en,
+                           gen_int_ctp[1].int_ct_req_out_dout_en,
+                           gen_int_ctp[0].int_ct_req_out_dout_en}),
+  .ctm_src_req_i         (ctm_src_req_o)
+);

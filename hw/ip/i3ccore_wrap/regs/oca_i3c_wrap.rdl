@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef OCA_I3C_WRAP_RDL_DEFINED
+`define OCA_I3C_WRAP_RDL_DEFINED
+
+`include "registers.rdl"
+
+addrmap oca_i3c_wrap #(
+    longint unsigned NUM_I3CS = 6
+) {
+    name = "OCA I3C Controller Wrapper Address Map";
+    desc = "Wrapper address map instantiating the per-controller I3C CSR blocks.";
+    
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    I3CCSR      i3c_csr     [NUM_I3CS]      @0x0    += 0x1000;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_hole_note = "Each instance implements 16 DAT and 16 DCT entries: the DAT at 0x400-0x7FF repeats every 0x80 bytes, the DCT at 0x800-0xFFF repeats every 0x100 bytes, and DCT writes are dropped.";
+`endif
+};
+
+`endif

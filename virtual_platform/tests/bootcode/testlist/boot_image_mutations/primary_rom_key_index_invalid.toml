@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Names key slot 26, the first slot the format reserves, in the re-signed primary.
+pack_config = "oca_secure_boot"
+set = [
+  { target = "bundle", slot = "primary", path = "public_key_select_classic", value = 0x4000000 },
+]

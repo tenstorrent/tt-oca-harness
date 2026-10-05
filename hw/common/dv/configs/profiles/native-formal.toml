@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Shared profile for formal tasks launched by the native runner.
+#
+# `tools` names the open backend only, and `license` describes it. A site-supplied formal
+# backend (a complete tool table in the site layer) is selected by a DUT formal config that
+# lists it in its own `tools`; `--list` marks such a backend `(licensed)` from its `license_env`.
+
+kind = "fv"
+framework = "formal"
+visibility = "public"
+runnability = "contributor"
+license = "none"
+
+default_tool = "sby"
+tools = ["sby"]
+
+[scheduler]
+default_executor = "local"
+allowed = ["local"]
+
+[native]
+enabled = true
+status = "active"
+
+[native.stages.formal]
+kind = "formal_run"

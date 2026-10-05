@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Encrypted primary TOC payload_length disagrees with the manifest payload_length, re-encrypted and resealed.
+base = "encrypted"
+ops = [
+  { op = "set_toc_payload_length", slot = "primary", args = { value = 0x2000 } },
+]

@@ -1,0 +1,16 @@
+{
+  "name": "ocah-a11y-scan",
+  "private": true,
+  "version": "1.0.0",
+  "description": "WCAG 2.2 AA accessibility scan of a random sample of built OCAH docs pages, using Playwright + axe-core.",
+  "scripts": {
+    "install-browsers": "playwright install chromium",
+    "scan": "node generate-sample.js && playwright test",
+    "summarize": "node summarize.js"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.9.0",
+    "@playwright/test": "^1.46.0",
+    "http-server": "^14.1.1"
+  }
+}

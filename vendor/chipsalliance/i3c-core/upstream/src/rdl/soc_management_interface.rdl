@@ -1,0 +1,533 @@
+// I3C controller register map based on MIPI HCI 1.2
+
+regfile SoCManagementInterfaceRegisters #(
+    bit T_WIDTH = 20
+) {
+    name = "SoC Management Interface";
+    default regwidth = 32;
+    reg {
+        regwidth = 32;
+        field {
+            name = "CAP_LENGTH";
+            desc = "Capability Structure Length in DWORDs";
+            sw = r;
+            hw = r;
+            reset = 16'h001A;
+        } CAP_LENGTH[23:8];
+        field {
+            name = "CAP_ID";
+            desc = "Extended Capability ID";
+            sw = r;
+            hw = r;
+            reset = 8'hC1;
+        } CAP_ID[7:0];
+    } EXTCAP_HEADER;
+    reg {
+        name = "SoC Management Control";
+        field {
+            name = "";
+            desc = "";
+            sw = rw;
+            hw = r;
+            reset = 32'h00000000;
+        } PLACEHOLDER[31:0];
+    } SOC_MGMT_CONTROL;
+    reg {
+        name = "SoC Management Status";
+        field {
+            name = "";
+            desc = "";
+            sw = rw;
+            hw = r;
+            reset = 32'h00000000;
+        } PLACEHOLDER[31:0];
+    } SOC_MGMT_STATUS;
+    reg {
+        name = "Configuration of Recovery Interface";
+        desc = "Configures the recovery interface and signals payload completion to the recovery handler.";
+        field {
+            name = "Recovery Interface access type";
+            desc = "Choose Recovery Interface access type:
+
+            * 0 - I3C Core
+
+            * 1 - direct AXI";
+            sw = rw;
+            hw = r;
+            reset = 1'h0;
+        } REC_INTF_BYPASS[0:0];
+        field {
+            name = "Recovery payload done";
+            desc = "Inform Recovery Handler that payload transfer is finished.";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 1'h0;
+        } REC_PAYLOAD_DONE[1:1];
+    } REC_INTF_CFG;
+    reg {
+        name = "Mock hardware register access";
+        field {
+            name = "HW Device Reset Control";
+            desc = "Write to 'Reset control - Device Reset Control' register, mocking a hardware access (bypassing 'write 1 to clear' register property).";
+            sw = rw;
+            hw = rw;
+            we = true;
+            swmod = true;
+            reset = 8'h0;
+        } DEVICE_RESET_CTRL[7:0];
+        field {
+            name = "HW Activate Recovery Image";
+            desc = "Write to 'Recovery Control - Activate Recovery Image' register, mocking a hardware access (bypassing 'write 1 to clear' register property).";
+            sw = rw;
+            hw = rw;
+            we = true;
+            swmod = true;
+            reset = 8'h0;
+        } RECOVERY_CTRL_ACTIVATE_REC_IMG[15:8];
+        field {
+            name = "HW Indirect FIFO Reset Control";
+            desc = "Write to 'Indirect memory configuration - reset' register, mocking a hardware access (bypassing 'write 1 to clear' register property).";
+            sw = rw;
+            hw = rw;
+            we = true;
+            swmod = true;
+            reset = 8'h0;
+        } INDIRECT_FIFO_CTRL_RESET[23:16];
+    } REC_INTF_REG_W1C_ACCESS;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "";
+            sw = rw;
+            hw = r;
+            reset = 32'h00000000;
+        } PLACEHOLDER[31:0];
+    } SOC_MGMT_RSVD_2;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "";
+            sw = rw;
+            hw = r;
+            reset = 32'h00000000;
+        } PLACEHOLDER[31:0];
+    } SOC_MGMT_RSVD_3;
+    reg {
+        name = "I3C Pad Configuration Register";
+        field {
+            name = "Pad type";
+            desc = "Select pad type
+
+            0 - Bidirectional
+
+            1 - Open-drain
+
+            2 - Input-only
+
+            3 - Analog input
+            ";
+            sw = rw;
+            hw = r;
+            reset = 8'h01;
+        } PAD_TYPE[31:24];
+        field {
+            name = "Virtual Open Drain Enable";
+            desc = "Enable virtual open drain:
+
+            0 - disabled
+
+            1 - enabled";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } VIRTUAL_OD_EN[7:7];
+        field {
+            name = "Open-Drain Enable";
+            desc = "Enable Open-Drain:
+
+            0 - disabled
+
+            1 - enabled";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } OD_EN[6:6];
+        field {
+            name = "IO INVERSION";
+            desc = "Invert I/O signal:
+
+            0 - signals pass-through
+
+            1 - signals are inverted";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } IO_INVERSION[5:5];
+        field {
+            name = "Pull Enable";
+            desc = "Enable Pull:
+
+            0 - disabled
+
+            1 - enabled";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } PULL_EN[4:4];
+        field {
+            name = "Pull Direction";
+            desc = "Direction of the pull:
+
+            0 - Pull down
+
+            1 - Pull up";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } PULL_DIR[3:3];
+        field {
+            name = "High-Keeper Enable";
+            desc = "Enable the High-Keeper:
+
+            0 - disabled
+
+            1 - enabled";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } KEEPER_EN[2:2];
+        field {
+            name = "Schmitt Trigger Enable";
+            desc = "Enable the Schmitt Trigger:
+
+            0 - disabled
+
+            1 - enabled";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } SCHMITT_EN[1:1];
+
+        field {
+            name = "Enable Input";
+            desc = "Enable input:
+
+            0 - enabled
+
+            1 - disabled";
+            sw = rw;
+            hw = r;
+            reset = 1'b1;
+        } INPUT_ENABLE[0:0];
+    } SOC_PAD_CONF;
+    reg {
+        name = "I3C Pad Attribute Configuration Register";
+        field {
+            name = "Driver Strength";
+            desc = "Select driver strength
+
+            '0 - lowest
+
+            '1 - highest
+            ";
+            sw = rw;
+            hw = r;
+            reset = 8'h0F;
+        } DRIVE_STRENGTH[31:24];
+        field {
+            name = "Driver Slew Rate";
+            desc = "Select driver slew rate
+
+            '0 - lowest
+
+            '1 - highest
+            ";
+            sw = rw;
+            hw = r;
+            reset = 8'h0F;
+        } DRIVE_SLEW_RATE[15:8];
+    } SOC_PAD_ATTR;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Reserved for: I/O ring and pad configuration";
+            sw = rw;
+            hw = r;
+            reset = 32'h00000000;
+        } PLACEHOLDER[31:0];
+    } SOC_MGMT_FEATURE_2;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Reserved for: I/O ring and pad configuration";
+            sw = rw;
+            hw = r;
+            reset = 32'h00000000;
+        } PLACEHOLDER[31:0];
+    } SOC_MGMT_FEATURE_3;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Rise time of both SDA and SCL in clock units";
+            sw = rw;
+            hw = r;
+            reset = 20'h00000;
+        } T_R[T_WIDTH-1:0];
+    } T_R_REG;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Fall time of both SDA and SCL in clock units";
+            sw = rw;
+            hw = r;
+            reset = 20'h00000;
+        } T_F[T_WIDTH-1:0];
+    } T_F_REG;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Data setup time in clock units";
+            sw = rw;
+            hw = r;
+            reset = 20'h00000;
+        } T_SU_DAT[T_WIDTH-1:0];
+    } T_SU_DAT_REG;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Data setup time in I2C mode in clock units";
+            sw = rw;
+            hw = r;
+            reset = 20'h00000;
+        } T_SU_DAT_I2C[T_WIDTH-1:0];
+    } T_SU_DAT_I2C_REG;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Data hold time in clock units";
+            sw = rw;
+            hw = r;
+            reset = 20'h00000;
+        } T_HD_DAT[T_WIDTH-1:0];
+    } T_HD_DAT_REG;
+    reg {
+        name = "";
+        field {
+            name = "High period of the SCL in clock units";
+            desc = "";
+            sw = rw;
+            hw = r;
+            reset = 20'h00000;
+        } T_HIGH[T_WIDTH-1:0];
+    } T_HIGH_REG;
+    reg {
+        name = "";
+        field {
+            name = "High period of the SCL in Open-Drain mode in clock units";
+            desc = "";
+            sw = rw;
+            hw = r;
+            reset = 20'h00000;
+        } T_HIGH_OD[T_WIDTH-1:0];
+    } T_HIGH_OD_REG;
+    reg {
+        name = "";
+        field {
+            name = "High period of the SCL in Open-Drain mode during bus initialization in clock units";
+            desc = "";
+            sw = rw;
+            hw = r;
+            reset = 20'h00000;
+        } T_HIGH_INIT_OD[T_WIDTH-1:0];
+    } T_HIGH_INIT_OD_REG;
+    reg {
+        name = "";
+        field {
+            name = "High period of the SCL in I2C mode in clock units";
+            desc = "";
+            sw = rw;
+            hw = r;
+            reset = 20'h00000;
+        } T_HIGH_I2C[T_WIDTH-1:0];
+    } T_HIGH_I2C_REG;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Low period of the SCL in clock units";
+            sw = rw;
+            hw = r;
+            reset = 20'h00000;
+        } T_LOW[T_WIDTH-1:0];
+    } T_LOW_REG;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Low period of the SCL in Open-Drain mode in clock units";
+            sw = rw;
+            hw = r;
+            reset = 20'h00000;
+        } T_LOW_OD[T_WIDTH-1:0];
+    } T_LOW_OD_REG;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Low period of the SCL in I2C mode in clock units";
+            sw = rw;
+            hw = r;
+            reset = 20'h00000;
+        } T_LOW_I2C[T_WIDTH-1:0];
+    } T_LOW_I2C_REG;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Hold time for START in clock units";
+            sw = rw;
+            hw = r;
+            reset = 20'h00000;
+        } T_HD_STA[T_WIDTH-1:0];
+    } T_HD_STA_REG;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Hold time for START in I2C mode in clock units";
+            sw = rw;
+            hw = r;
+            reset = 20'h00000;
+        } T_HD_STA_I2C[T_WIDTH-1:0];
+    } T_HD_STA_I2C_REG;
+     reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Hold time for repeated START in clock units";
+            sw = rw;
+            hw = r;
+            reset = 20'h00000;
+        } T_HD_RSTA[T_WIDTH-1:0];
+    } T_HD_RSTA_REG;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Setup time for repeated START in clock units";
+            sw = rw;
+            hw = r;
+            reset = 20'h00000;
+        } T_SU_STA[T_WIDTH-1:0];
+    } T_SU_STA_REG;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Setup time for repeated START in I2C mode in clock units";
+            sw = rw;
+            hw = r;
+            reset = 20'h00000;
+        } T_SU_STA_I2C[T_WIDTH-1:0];
+    } T_SU_STA_I2C_REG;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Setup time for STOP in clock units";
+            sw = rw;
+            hw = r;
+            reset = 20'h00000;
+        } T_SU_STO[T_WIDTH-1:0];
+    } T_SU_STO_REG;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Setup time for STOP in in I2C mode clock units";
+            sw = rw;
+            hw = r;
+            reset = 20'h00000;
+        } T_SU_STO_I2C[T_WIDTH-1:0];
+    } T_SU_STO_I2C_REG;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Setup time for SDA during START in clock units";
+            sw = rw;
+            hw = r;
+            reset = 20'h00000;
+        } T_DS_OD[T_WIDTH-1:0];
+    } T_DS_OD_REG;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Bus Free Time Between a STOP and a START";
+            sw = rw;
+            hw = r;
+            reset = 32'h0000000C;
+        } T_FREE[31:0];
+    } T_FREE_REG;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Bus Free Time Between a STOP and a START in I2C mode";
+            sw = rw;
+            hw = r;
+            reset = 32'h0000000C;
+        } T_FREE_I2C[31:0];
+    } T_FREE_I2C_REG;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "";
+            sw = rw;
+            hw = r;
+            reset = 32'h00000012C;
+        } T_AVAL[31:0];
+    } T_AVAL_REG;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Time in clock cycles from STOP detection until Bus Idle Condition (tIDLE). Configure based on System Clock";
+            sw = rw;
+            hw = r;
+            reset = 32'h0000EA60;
+        } T_IDLE[31:0];
+    } T_IDLE_REG;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Enable bit for the optional 60us HDR error recovery timer (I3C spec 5.1.10.1.9). When enabled, the Target can recover from TE0/TE1 errors if both SCL and SDA stay High for a period exceeding the configured threshold. Disabled on reset.";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } HDR_TIMEOUT_EN[0:0];
+    } HDR_TIMEOUT_EN_REG;
+    reg {
+        name = "";
+        field {
+            name = "";
+            desc = "Timer threshold in clock cycles for the optional HDR error recovery (I3C spec 5.1.10.1.9). If both SCL and SDA stay High for this many clock cycles during a TE0/TE1 error-induced HDR mode, the Target exits HDR mode and returns to Idle. Configure based on System Clock to achieve 60us.";
+            sw = rw;
+            hw = r;
+            reset = 20'hEA60;
+        } T_HDR_TIMEOUT[19:0];
+    } T_HDR_TIMEOUT_REG;
+};

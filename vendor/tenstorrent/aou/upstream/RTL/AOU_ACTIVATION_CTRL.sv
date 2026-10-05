@@ -1,0 +1,608 @@
+// *****************************************************************************
+// SPDX-License-Identifier: Apache-2.0
+// *****************************************************************************
+//  Copyright (c) 2026 BOS Semiconductors
+//
+//  Licensed under the Apache License, Version 2.0 (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License.
+// *****************************************************************************
+//
+//  Module     : AOU_ACTIVATION_CTRL
+//  Version    : 1.00
+//  Date       : 26-02-26
+//  Author     : Soyoung Min, Jaeyun Lee, Hojun Lee, Kwanho Kim
+//
+// *****************************************************************************
+
+`timescale 1ns/1ps
+
+module AOU_ACTIVATION_CTRL
+(
+    input           I_CLK                           ,
+    input           I_RESETN                        ,
+    
+    //initiate Activation Req
+    input           I_UCIE_INIT_DONE                ,
+    input           I_ACTIVATE_START                ,
+    //input Activation message
+    input   [3:0]   I_ACTMSG_ACTIVATION_OP          ,
+    input           I_ACTMSG_PROPERTYREQ            ,
+    input           I_ACTMSG_VALID                  ,
+    
+    //output Activation message
+    output  [3:0]   O_ACTMSG_ACTIVATION_OP          ,
+    output          O_ACTMSG_PROPERTYREQ            ,
+    output          O_ACTMSG_VALID                  ,
+    input           I_ACTMSG_READY                  ,
+
+    //Signal to determine when to issue a Deactivate request
+    input   [2:0]   I_DEACTIVATE_TIME_OUT_VALUE     ,
+    input           I_DEACTIVATE_START              , 
+    input           I_DEACTIVATE_FORCE              ,
+    input           I_TX_PENDING                    ,//and check tx fifo count and ring buffer valid
+    input           I_TX_AXI_TR_PENDING             ,
+
+    input           I_MST_BUS_CLEANY_COMPLETE       ,//from bus cleany
+    input           I_SLV_BUS_CLEANY_COMPLETE       ,
+    input           I_AOU_RX_NEW_TR_HS              ,
+    input           I_AOU_RX_FIFO_PENDING           ,        
+    
+    input           I_CRDTGRANT_VALID               ,
+
+    input   [2:0]   I_ACK_TIME_OUT_VALUE            ,
+    input   [2:0]   I_MSGCREDIT_TIME_OUT_VALUE      ,
+
+    input           I_CREDIT_MANAGE_TYPE            ,//0: based on v0.5 / 1: manage request-related message and response-related message separately
+
+    output          O_ACT_ACK_ERR                   ,
+    output          O_DEACT_ACK_ERR                 ,
+    output  [3:0]   O_INVALID_ACTMSG_INFO           ,
+    output          O_INVALID_ACTMSG_ERR            ,
+    output          O_MSGCREDIT_ERR                 ,
+
+    //output signal
+    output          O_CRD_COUNT_EN                  ,
+    output          O_REQ_CRD_ADVERTISE_EN          ,
+    output          O_TX_REQ_CREDITED_MESSAGE_EN    ,
+    output          O_RSP_CRD_ADVERTISE_EN          ,
+    output          O_TX_RSP_CREDITED_MESSAGE_EN    ,
+
+    output          O_STATUS_DISABLED               ,
+    output          O_STATUS_ENABLED                ,
+    output          O_STATUS_DEACTIVATE             ,    
+
+    output          O_INT_ACTIVATE_START            ,
+    output          O_INT_DEACTIVATE_START          ,
+    output          O_DEACTIVATE_PROPERTY
+
+);
+
+localparam  DISABLED        = 4'b0001,
+            ACTIVATE        = 4'b0010,
+            ENABLED         = 4'b0100,
+            DEACTIVATE      = 4'b1000;
+
+localparam  ACTIVATE_REQ    = 4'b0000,
+            ACTIVATE_ACK    = 4'b0001,
+            DEACTIVATE_REQ  = 4'b0010,
+            DEACTIVATE_ACK  = 4'b0011;
+
+logic [3:0] r_cur_st;
+logic [3:0] w_nxt_st;
+
+logic       st_update;
+
+logic       r_activate_start_1d;
+logic       w_activate_start_rising_edge_detect;
+
+logic       r_deactivate_start_1d;
+logic       w_deactivate_start_rising_edge_detect;
+
+logic       r_deactivate_force_1d;
+logic       w_deactivate_force_rising_edge_detect;
+
+logic       r_axi_mst_rsp_completed_1d;
+logic       w_axi_mst_rsp_completed_falling_edge_detect;
+
+logic       r_tx_deactivate_req;
+logic       r_tx_deactivate_ack;
+logic       r_rx_deactivate_req;
+logic       r_rx_deactivate_ack;
+
+logic       r_rx_deactivate_propertyreq;
+
+logic       r_tx_activate_req;
+logic       r_tx_activate_ack;
+logic       r_rx_activate_req;
+logic       r_rx_activate_ack;
+
+logic       w_activate_related0;
+logic       w_deactivate_related0;
+
+logic       w_activate_related1;
+logic       w_deactivate_related1;
+
+logic       w_deactivate_reg_clear;
+logic       w_activate_reg_clear;
+
+logic       w_svalid0;
+logic [4:0] w_sdata0;
+logic       w_svalid1;
+logic [4:0] w_sdata1;
+
+logic [11:0]r_time_out;
+logic       w_time_out_done;
+
+logic [11:0]w_time_out_value;
+logic       w_axi_rsp_completed_safe_base;
+logic       w_axi_rsp_completed_safe;
+logic       r_deactivate_block;
+
+logic       w_activate_en;
+logic       w_deactivate_en;
+
+logic       w_lp_linkerror_start;
+
+assign      w_activate_en   = ((r_cur_st == DISABLED) | (r_cur_st == ACTIVATE  )) & ~(r_tx_activate_req | ((O_ACTMSG_ACTIVATION_OP == ACTIVATE_REQ) & O_ACTMSG_VALID));
+assign      w_deactivate_en = ((r_cur_st == ENABLED)  | (r_cur_st == DEACTIVATE)) & ~(r_tx_deactivate_req | ((O_ACTMSG_ACTIVATION_OP == DEACTIVATE_REQ) & O_ACTMSG_VALID));
+
+
+//-------------------------------------------------------------
+always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+    if(~I_RESETN) begin
+        r_deactivate_block <= 1'b0;
+    end else if (I_MST_BUS_CLEANY_COMPLETE && I_AOU_RX_NEW_TR_HS) begin
+        r_deactivate_block <= 1'b1;
+    end else if (w_axi_mst_rsp_completed_falling_edge_detect) begin
+        r_deactivate_block <= 1'b0;
+    end
+end
+//-------------------------------------------------------------
+assign w_axi_rsp_completed_safe_base = I_MST_BUS_CLEANY_COMPLETE;
+assign w_axi_rsp_completed_safe = w_axi_rsp_completed_safe_base & ~r_deactivate_block;
+//-------------------------------------------------------------
+always_comb begin
+    case(I_DEACTIVATE_TIME_OUT_VALUE)
+        3'b000: w_time_out_value = 12'd8;
+        3'b001: w_time_out_value = 12'd16;
+        3'b010: w_time_out_value = 12'd32;
+        3'b011: w_time_out_value = 12'd64;
+        3'b100: w_time_out_value = 12'd128;
+        3'b101: w_time_out_value = 12'd256;
+        3'b110: w_time_out_value = 12'd512;
+        3'b111: w_time_out_value = 12'd1024;
+    endcase
+end 
+//-------------------------------------------------------------
+//edge detect logic
+always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+    if(~I_RESETN)begin
+        r_activate_start_1d <= 1'b0;
+    end else begin
+        r_activate_start_1d <= I_UCIE_INIT_DONE & I_ACTIVATE_START & w_activate_en & (~I_AOU_RX_FIFO_PENDING);
+    end
+end
+
+assign  w_activate_start_rising_edge_detect  =   ~r_activate_start_1d & (I_ACTIVATE_START & I_UCIE_INIT_DONE & w_activate_en & (~I_AOU_RX_FIFO_PENDING));
+
+always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+    if(~I_RESETN)begin
+        r_deactivate_start_1d <= 1'b0;
+    end else if (I_CREDIT_MANAGE_TYPE) begin
+        r_deactivate_start_1d <= I_DEACTIVATE_START & w_time_out_done & w_deactivate_en & I_SLV_BUS_CLEANY_COMPLETE;        
+    end else begin
+        r_deactivate_start_1d <= I_DEACTIVATE_START & w_axi_rsp_completed_safe & w_time_out_done & w_deactivate_en & ((~r_rx_deactivate_req & I_SLV_BUS_CLEANY_COMPLETE) | (r_rx_deactivate_req));
+    end
+end
+
+assign  w_deactivate_start_rising_edge_detect   = I_CREDIT_MANAGE_TYPE ? ~r_deactivate_start_1d & (I_DEACTIVATE_START & w_time_out_done & w_deactivate_en & I_SLV_BUS_CLEANY_COMPLETE) :
+                                                  ~r_deactivate_start_1d & (I_DEACTIVATE_START & w_axi_rsp_completed_safe & w_time_out_done & w_deactivate_en & ((~r_rx_deactivate_req & I_SLV_BUS_CLEANY_COMPLETE) | (r_rx_deactivate_req)));
+
+always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+    if(~I_RESETN) begin
+        r_deactivate_force_1d <= 1'b0;
+    end else begin
+        r_deactivate_force_1d <= I_DEACTIVATE_FORCE & w_deactivate_en;
+    end
+end
+
+assign w_deactivate_force_rising_edge_detect = ~r_deactivate_force_1d & (I_DEACTIVATE_FORCE & w_deactivate_en);
+
+
+always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+    if(~I_RESETN)begin
+        r_axi_mst_rsp_completed_1d <= 1'b0;
+    end else begin
+        r_axi_mst_rsp_completed_1d <= I_MST_BUS_CLEANY_COMPLETE;
+    end
+end
+
+assign  w_axi_mst_rsp_completed_falling_edge_detect  = r_axi_mst_rsp_completed_1d & ~I_MST_BUS_CLEANY_COMPLETE;
+
+//-------------------------------------------------------------
+//Deactivate Reqest, ack register 
+
+always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+    if(~I_RESETN) begin
+        r_tx_deactivate_req <= 1'b0;
+    end else if((O_ACTMSG_ACTIVATION_OP == DEACTIVATE_REQ) & O_ACTMSG_VALID & I_ACTMSG_READY) begin
+        r_tx_deactivate_req <= 1'b1;
+    end else if(w_deactivate_reg_clear | w_lp_linkerror_start) begin
+        r_tx_deactivate_req <= 1'b0;
+    end
+end
+
+always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+    if(~I_RESETN) begin
+        r_tx_deactivate_ack <= 1'b0;
+    end else if ((I_ACTMSG_ACTIVATION_OP == DEACTIVATE_ACK) & I_ACTMSG_VALID)begin
+        r_tx_deactivate_ack <= 1'b1;
+    end else if(w_deactivate_reg_clear | w_lp_linkerror_start) begin
+        r_tx_deactivate_ack <= 1'b0;    
+    end
+end
+
+always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+    if(~I_RESETN) begin
+        r_rx_deactivate_req <= 1'b0;
+    end else if ((I_ACTMSG_ACTIVATION_OP == DEACTIVATE_REQ) & I_ACTMSG_VALID)begin
+        r_rx_deactivate_req <= 1'b1;
+    end else if(w_deactivate_reg_clear | w_lp_linkerror_start) begin
+        r_rx_deactivate_req <= 1'b0;    
+    end
+end
+
+always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+    if(~I_RESETN) begin
+        r_rx_deactivate_ack <= 1'b0;
+    end else if ((O_ACTMSG_ACTIVATION_OP == DEACTIVATE_ACK) & O_ACTMSG_VALID & I_ACTMSG_READY)begin
+        r_rx_deactivate_ack <= 1'b1;
+    end else if(w_deactivate_reg_clear | w_lp_linkerror_start) begin
+        r_rx_deactivate_ack <= 1'b0;
+    end
+end
+
+always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+    if(~I_RESETN) begin
+        r_tx_activate_req <= 1'b0;
+    end else if ((O_ACTMSG_ACTIVATION_OP == ACTIVATE_REQ) & O_ACTMSG_VALID & I_ACTMSG_READY) begin
+        r_tx_activate_req <= 1'b1;
+    end else if (w_activate_reg_clear | w_lp_linkerror_start) begin
+        r_tx_activate_req <= 1'b0;
+    end
+end
+
+always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+    if(~I_RESETN) begin
+        r_tx_activate_ack <= 1'b0;
+    end else if ((I_ACTMSG_ACTIVATION_OP == ACTIVATE_ACK) & I_ACTMSG_VALID) begin
+        r_tx_activate_ack <= 1'b1;
+    end else if (w_activate_reg_clear | w_lp_linkerror_start) begin
+        r_tx_activate_ack <= 1'b0;
+    end
+end
+
+
+always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+    if(~I_RESETN) begin
+        r_rx_activate_req <= 1'b0;
+    end else if ((I_ACTMSG_ACTIVATION_OP == ACTIVATE_REQ) & I_ACTMSG_VALID) begin
+        r_rx_activate_req <= 1'b1;
+    end else if (w_activate_reg_clear | w_lp_linkerror_start) begin
+        r_rx_activate_req <= 1'b0;
+    end
+end
+
+
+always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+    if(~I_RESETN) begin
+        r_rx_activate_ack <= 1'b0;
+    end else if ((O_ACTMSG_ACTIVATION_OP == ACTIVATE_ACK) & O_ACTMSG_VALID & I_ACTMSG_READY) begin
+        r_rx_activate_ack <= 1'b1;
+    end else if (w_activate_reg_clear | w_lp_linkerror_start) begin
+        r_rx_activate_ack <= 1'b0;
+    end
+end
+
+always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+    if(~I_RESETN) begin
+        r_rx_deactivate_propertyreq <= 1'b0;
+    end else if ((I_ACTMSG_ACTIVATION_OP == DEACTIVATE_REQ) & I_ACTMSG_VALID & I_ACTMSG_PROPERTYREQ)begin
+        r_rx_deactivate_propertyreq <= 1'b1;
+    end else if(w_deactivate_reg_clear | w_lp_linkerror_start) begin
+        r_rx_deactivate_propertyreq <= 1'b0;    
+    end
+end
+
+//-------------------------------------------------------------
+assign st_update = (r_cur_st != w_nxt_st);
+
+always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+    if(~I_RESETN) begin
+        r_cur_st <= DISABLED;
+    end else if (st_update) begin
+        r_cur_st <= w_nxt_st;
+    end
+end
+
+always_comb begin
+    case(r_cur_st)
+        DISABLED:begin
+            if(r_tx_activate_req | r_rx_activate_req)  begin
+                w_nxt_st = ACTIVATE;
+            end else if (w_lp_linkerror_start) begin
+                w_nxt_st = DISABLED;
+            end else begin
+                w_nxt_st = DISABLED;
+            end
+        end
+        ACTIVATE:begin
+            if(r_tx_activate_req & r_tx_activate_ack & r_rx_activate_req & r_rx_activate_ack) begin
+                w_nxt_st = ENABLED;
+            end else if (w_lp_linkerror_start) begin
+                w_nxt_st = DISABLED;
+            end else begin
+                w_nxt_st = ACTIVATE;
+            end
+        end
+        ENABLED:begin
+            if(r_tx_deactivate_req | r_rx_deactivate_req) begin
+                w_nxt_st = DEACTIVATE;
+            end else if (w_lp_linkerror_start) begin
+                w_nxt_st = DISABLED;
+            end else begin
+                w_nxt_st = ENABLED;
+            end
+        end
+        DEACTIVATE:begin
+            if(r_tx_deactivate_req & r_rx_deactivate_req & r_tx_deactivate_ack & r_rx_deactivate_ack) begin
+                w_nxt_st = DISABLED;
+            end else if (w_lp_linkerror_start) begin
+                w_nxt_st = DISABLED;
+            end else begin
+                w_nxt_st = DEACTIVATE;
+            end
+        end
+        default: w_nxt_st = DISABLED;
+    endcase
+end 
+//-------------------------------------------------------------
+assign w_activate_reg_clear   = ((r_cur_st == ACTIVATE)   & (w_nxt_st == ENABLED )); 
+assign w_deactivate_reg_clear = ((r_cur_st == DEACTIVATE) & (w_nxt_st == DISABLED));
+//-------------------------------------------------------------
+assign  w_activate_related0      = w_activate_start_rising_edge_detect;
+assign  w_deactivate_related0    = w_deactivate_start_rising_edge_detect | w_deactivate_force_rising_edge_detect;
+
+assign  w_activate_related1      = (I_ACTMSG_ACTIVATION_OP == ACTIVATE_REQ) & I_ACTMSG_VALID;
+assign  w_deactivate_related1    = (I_ACTMSG_ACTIVATION_OP == DEACTIVATE_REQ) & I_ACTMSG_VALID;
+
+//svalid 0 is for ACTIVATE_REQ & DEACTIVATE_REQ
+//svalid 1 is for ACTIVATE_ACK & DEACTIVATE_ACK
+assign  w_svalid0               = w_activate_related0 | w_deactivate_related0;
+assign  w_sdata0                = w_activate_related0 ? {ACTIVATE_REQ, 1'b0} : w_deactivate_start_rising_edge_detect ? {DEACTIVATE_REQ, 1'b0} :  {DEACTIVATE_REQ, 1'b1};
+assign  w_svalid1               = w_activate_related1 | w_deactivate_related1;
+assign  w_sdata1                = w_activate_related1 ? {ACTIVATE_ACK, 1'b0} : {DEACTIVATE_ACK, 1'b0};
+
+AOU_SYNC_FIFO_NS1M #(
+    .FIFO_WIDTH      (4 + 1),   //ACTIVATION_OP + PROPERTYREQ
+    .FIFO_DEPTH      (4),       //depth 3 is enough, never occur overflow    
+    .ICH_CNT         (2)
+) u_aou_sync_2s1m_activation
+(
+    .I_CLK           ( I_CLK                                            ),
+    .I_RESETN        ( I_RESETN                                         ),
+
+    .I_SVALID        ( {w_svalid1, w_svalid0}                           ),
+    .I_SDATA         ( {w_sdata1, w_sdata0}                             ),
+    .O_SREADY        (                                                  ),
+
+    .I_MREADY        ( I_ACTMSG_READY                                   ),
+    .O_MDATA         ( {O_ACTMSG_ACTIVATION_OP, O_ACTMSG_PROPERTYREQ}   ), 
+    .O_MVALID        ( O_ACTMSG_VALID                                   ),
+    
+    .O_S_EMPTY_CNT   (                                                  ),
+    .O_M_DATA_CNT    (                                                  )
+);
+
+//-------------------------------------------------------------
+assign O_CRD_COUNT_EN           = ((r_cur_st == ACTIVATE) & (r_tx_activate_ack | ((I_ACTMSG_ACTIVATION_OP == ACTIVATE_ACK) & I_ACTMSG_VALID)))
+                                  | (r_cur_st == ENABLED) 
+                                  | (r_cur_st == DEACTIVATE) ; 
+//Reqest and WriteData message
+assign O_REQ_CRD_ADVERTISE_EN       = ((r_cur_st == ACTIVATE) & (r_rx_activate_ack | (((O_ACTMSG_ACTIVATION_OP == ACTIVATE_ACK) & O_ACTMSG_VALID & I_ACTMSG_READY))))
+                                    | (((r_cur_st == DEACTIVATE) | (r_cur_st == ENABLED)) & ~(r_rx_deactivate_req));
+
+assign O_TX_REQ_CREDITED_MESSAGE_EN = ((r_cur_st == ACTIVATE) & (r_tx_activate_req & r_rx_activate_ack & r_rx_activate_req & (((I_ACTMSG_ACTIVATION_OP == ACTIVATE_ACK) & I_ACTMSG_VALID)|r_tx_activate_ack)))
+                                  | ((r_cur_st == ENABLED) & (~(r_tx_deactivate_req | ((O_ACTMSG_ACTIVATION_OP == DEACTIVATE_REQ) & O_ACTMSG_VALID & I_ACTMSG_READY))))
+                                  | ((r_cur_st == DEACTIVATE) & (~(r_tx_deactivate_req | ((O_ACTMSG_ACTIVATION_OP == DEACTIVATE_REQ) & O_ACTMSG_VALID & I_ACTMSG_READY))));
+
+//Read Data, Write response message
+assign O_RSP_CRD_ADVERTISE_EN       = I_CREDIT_MANAGE_TYPE ? ((r_cur_st == ACTIVATE) & (r_rx_activate_ack | (((O_ACTMSG_ACTIVATION_OP == ACTIVATE_ACK) & O_ACTMSG_VALID & I_ACTMSG_READY))))
+                                  | (((r_cur_st == DEACTIVATE) | (r_cur_st == ENABLED)) & ~(r_tx_deactivate_req)) : O_REQ_CRD_ADVERTISE_EN;
+
+assign O_TX_RSP_CREDITED_MESSAGE_EN = I_CREDIT_MANAGE_TYPE ? ((r_cur_st == ACTIVATE) & (r_tx_activate_req & r_rx_activate_ack & r_rx_activate_req & (((I_ACTMSG_ACTIVATION_OP == ACTIVATE_ACK) & I_ACTMSG_VALID)|r_tx_activate_ack)))
+                                  | ((r_cur_st == ENABLED) & (~(r_rx_deactivate_req | ((I_ACTMSG_ACTIVATION_OP == DEACTIVATE_REQ) & I_ACTMSG_VALID))))
+                                  | ((r_cur_st == DEACTIVATE) & (~(r_rx_deactivate_req | ((I_ACTMSG_ACTIVATION_OP == DEACTIVATE_REQ) & I_ACTMSG_VALID)))) : O_TX_REQ_CREDITED_MESSAGE_EN;                                  
+
+assign O_STATUS_DISABLED        = (r_cur_st == DISABLED);
+assign O_STATUS_ENABLED         = (r_cur_st == ENABLED);
+assign O_STATUS_DEACTIVATE      = (r_cur_st == DEACTIVATE);
+
+assign O_INT_ACTIVATE_START   = (~I_ACTIVATE_START) & ((I_TX_AXI_TR_PENDING | (~I_SLV_BUS_CLEANY_COMPLETE) | r_rx_activate_req) & w_activate_en);
+assign O_INT_DEACTIVATE_START = (r_cur_st == DEACTIVATE) & ~(r_tx_deactivate_req | ((O_ACTMSG_ACTIVATION_OP == DEACTIVATE_REQ) & O_ACTMSG_VALID)) & (((~I_DEACTIVATE_START) & (~r_rx_deactivate_propertyreq)) | ((~I_DEACTIVATE_FORCE) & r_rx_deactivate_propertyreq));
+assign O_DEACTIVATE_PROPERTY  = r_rx_deactivate_propertyreq;
+//-------------------------------------------------------------
+assign  w_time_out_done = (r_time_out == w_time_out_value);
+
+always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+    if(~I_RESETN) begin
+        r_time_out <= 'd0;
+    end else if ((r_cur_st == DISABLED) | (r_cur_st == ACTIVATE)) begin
+        r_time_out <= 'd0;
+    end else if (((r_cur_st == ENABLED)|(r_cur_st == DEACTIVATE)) & I_TX_PENDING)  begin
+        r_time_out <= 'd0;
+    end else if (~w_time_out_done) begin
+        r_time_out <= r_time_out + 1;
+    end
+end
+
+
+//-- LP_LINKERROR --------
+// Activation Ack timeout
+logic [31:0]    r_act_req_to_ack_cnt;
+logic           r_act_req_send;
+logic           w_act_req_to_ack_error;
+
+always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+    if (~I_RESETN) begin
+        r_act_req_send <= 1'b0;
+    end else if ((O_ACTMSG_ACTIVATION_OP == ACTIVATE_REQ) & O_ACTMSG_VALID & I_ACTMSG_READY) begin
+        r_act_req_send <= 1'b1;
+    end else if ((I_ACTMSG_ACTIVATION_OP == ACTIVATE_ACK) & I_ACTMSG_VALID) begin
+        r_act_req_send <= 1'b0;
+    end else if (w_act_req_to_ack_error) begin
+        r_act_req_send <= 1'b0;
+    end
+end
+
+always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+    if (~I_RESETN) begin
+        r_act_req_to_ack_cnt <= 'b0;
+    end else if (r_act_req_send) begin
+        r_act_req_to_ack_cnt <= r_act_req_to_ack_cnt + 1;
+    end else if (|r_act_req_to_ack_cnt) begin//~r_act_req_send
+        r_act_req_to_ack_cnt <= 'b0;
+    end
+end
+
+always_comb begin
+    w_act_req_to_ack_error = (r_act_req_to_ack_cnt == (1 << (I_ACK_TIME_OUT_VALUE + 18)));
+end
+
+// Deactivation Ack timeout
+logic [31:0]    r_deact_req_to_ack_cnt;
+logic           r_deact_req_send;
+logic           w_deact_req_to_ack_error;
+
+always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+    if (~I_RESETN) begin
+        r_deact_req_send <= 1'b0;
+    end else if ((O_ACTMSG_ACTIVATION_OP == DEACTIVATE_REQ) & O_ACTMSG_VALID & I_ACTMSG_READY) begin
+        r_deact_req_send <= 1'b1;
+    end else if ((I_ACTMSG_ACTIVATION_OP == DEACTIVATE_ACK) & I_ACTMSG_VALID) begin
+        r_deact_req_send <= 1'b0;
+    end else if (w_deact_req_to_ack_error) begin
+        r_deact_req_send <= 1'b0;
+    end
+end
+
+always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+    if (~I_RESETN) begin
+        r_deact_req_to_ack_cnt <= 'b0;
+    end else if (r_deact_req_send) begin
+        r_deact_req_to_ack_cnt <= r_deact_req_to_ack_cnt + 1;
+    end else if (|r_deact_req_to_ack_cnt) begin//~r_deact_req_send
+        r_deact_req_to_ack_cnt <= 'b0;
+    end
+end
+
+always_comb begin
+    w_deact_req_to_ack_error = (r_deact_req_to_ack_cnt == (1 << (I_ACK_TIME_OUT_VALUE + 18)));
+end
+
+// Invalid ACTMSG
+logic           w_invalid_msgtype;
+
+always_comb begin
+    case (r_cur_st)
+        DISABLED : begin
+            if ((I_ACTMSG_ACTIVATION_OP == DEACTIVATE_REQ) & I_ACTMSG_VALID) begin
+                w_invalid_msgtype = 1'b1;
+            end else if ((I_ACTMSG_ACTIVATION_OP == DEACTIVATE_ACK) & I_ACTMSG_VALID) begin
+                w_invalid_msgtype = 1'b1;
+            end else begin
+                w_invalid_msgtype = 1'b0;
+            end
+        end
+        ACTIVATE : begin
+            if ((I_ACTMSG_ACTIVATION_OP == DEACTIVATE_REQ) & I_ACTMSG_VALID) begin
+                w_invalid_msgtype = 1'b1;
+            end else if ((I_ACTMSG_ACTIVATION_OP == DEACTIVATE_ACK) & I_ACTMSG_VALID) begin
+                w_invalid_msgtype = 1'b1;
+            end else begin
+                w_invalid_msgtype = 1'b0;
+            end
+        end
+        ENABLED : begin
+            if ((I_ACTMSG_ACTIVATION_OP == ACTIVATE_REQ) & I_ACTMSG_VALID) begin
+                w_invalid_msgtype = 1'b1;
+            end else if ((I_ACTMSG_ACTIVATION_OP == ACTIVATE_ACK) & I_ACTMSG_VALID) begin
+                w_invalid_msgtype = 1'b1;
+            end else begin
+                w_invalid_msgtype = 1'b0;
+            end
+        end
+        DEACTIVATE : begin
+            if ((I_ACTMSG_ACTIVATION_OP == ACTIVATE_REQ) & I_ACTMSG_VALID) begin
+                w_invalid_msgtype = 1'b1;
+            end else if ((I_ACTMSG_ACTIVATION_OP == ACTIVATE_ACK) & I_ACTMSG_VALID) begin
+                w_invalid_msgtype = 1'b1;
+            end else begin
+                w_invalid_msgtype = 1'b0;
+            end
+        end
+        default : w_invalid_msgtype = 1'b0;
+    endcase
+end
+
+
+assign O_INVALID_ACTMSG_INFO = w_invalid_msgtype ? I_ACTMSG_ACTIVATION_OP : 'b0;
+assign O_INVALID_ACTMSG_ERR  = w_invalid_msgtype;
+
+// MsgCredit timeout
+logic [31:0]    r_act_act_to_msgcredit_cnt;
+logic           r_act_ack_receive;
+logic           w_msgcredit_receive_err;
+
+always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+    if (~I_RESETN) begin
+        r_act_ack_receive <= 1'b0;
+    end else if ((I_ACTMSG_ACTIVATION_OP == ACTIVATE_ACK) & I_ACTMSG_VALID) begin
+        r_act_ack_receive <= 1'b1;
+    end else if (I_CRDTGRANT_VALID) begin
+        r_act_ack_receive <= 1'b0;
+    end else if (w_msgcredit_receive_err) begin
+        r_act_ack_receive <= 1'b0;
+    end
+end
+
+always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+    if (~I_RESETN) begin
+        r_act_act_to_msgcredit_cnt <= 'b0;
+    end else if (r_act_ack_receive) begin
+        r_act_act_to_msgcredit_cnt <= r_act_act_to_msgcredit_cnt + 1;
+    end else if (|r_act_act_to_msgcredit_cnt) begin//~r_act_ack_receive
+        r_act_act_to_msgcredit_cnt <= 'b0;
+    end
+end
+
+always_comb begin
+    w_msgcredit_receive_err = (r_act_act_to_msgcredit_cnt == (1 << (I_MSGCREDIT_TIME_OUT_VALUE + 18)));
+end
+
+assign w_lp_linkerror_start = O_ACT_ACK_ERR || O_DEACT_ACK_ERR || O_MSGCREDIT_ERR || O_INVALID_ACTMSG_ERR;
+
+assign O_ACT_ACK_ERR   = w_act_req_to_ack_error;
+assign O_DEACT_ACK_ERR = w_deact_req_to_ack_error;
+assign O_MSGCREDIT_ERR = w_msgcredit_receive_err;
+
+endmodule

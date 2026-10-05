@@ -1,0 +1,101 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+ifdef::backend-pdf[]
+= Open Chiplet Atlas Harness (OCAH): Programmer's Guide
+endif::[]
+ifndef::backend-pdf[]
+= Programmer's Guide
+endif::[]
+:doctype: book
+:sectanchors:
+:sectlinks:
+:sectnums:
+:toclevels: 3
+:source-highlighter: highlight.js
+:revnumber: 0.0.4
+:revdate: 2026-10-05
+:title-page-background-image: image:../assets/TT_Cover_Image.png[fit=cover]
+
+[WARNING]
+====
+This documentation product is currently under development. More content will be
+added as the project matures.
+====
+
+ifdef::backend-pdf[]
+:imagesdir: ../assets
+:aou-imagesdir: {docdir}/../../../vendor/tenstorrent/aou/upstream/DOC/MAS/assets
+endif::backend-pdf[]
+
+[[programmer-guide-about]]
+== About this Guide
+
+This guide describes how firmware and debuggers program the OCA Harness subsystems:
+the bring-up sequences, run-time operation and recovery procedures, with C
+examples where they help. The Technical Reference Manual describes the hardware
+itself, and this guide links to it for register and block details.
+
+The guide is organized as follows:
+
+* <<smc-programming-guide>> covers SMC bring-up and its peripherals, and
+  <<smc-reset-overview>> lists the resets SMC software can request.
+* <<sep-programming-guide>> covers SEP bring-up, entropy, the cryptographic
+  engines and the security procedures, and <<sep-reset-overview>> lists the
+  resets SEP software can request.
+* <<sep-smc-common-blocks-communication>> covers the address remapping,
+  filters, mailboxes and reference counter that both subsystems share.
+* <<dtp-programming-guide>> covers cross-trigger configuration and the debug
+  host procedures.
+* <<aou-software-operation-guide>> covers the AXI-over-UCIe bridge registers,
+  debug features, the activation and deactivation flows and the core reset.
+* The appendices document the production SMC and SEP Boot ROMs and the Key
+  Manager Application ROM.
+
+ifndef::release[]
+include::revision.adoc[leveloffset=+1]
+endif::release[]
+
+include::smc-programming.adoc[]
+
+include::sep-programming.adoc[]
+
+include::sep-smc-common.adoc[]
+
+include::dtp-programming.adoc[]
+
+// The AoU partial sets imagesdir for its own figures and ends mid-paragraph,
+// so the restore below needs the blank line before it.
+:pg-imagesdir: {imagesdir}
+ifdef::backend-pdf[]
+include::../modules/aou/partials/pdf/software-operation.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::aou:partial$software-operation.adoc[]
+endif::backend-html5[]
+
+:imagesdir: {pg-imagesdir}
+
+[appendix]
+ifdef::backend-pdf[]
+include::../../../hw/sys/smc/bootrom/prod/doc/index.adoc[leveloffset=1]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::smc-bootrom-prod:index.adoc[leveloffset=1]
+endif::backend-html5[]
+
+[appendix]
+ifdef::backend-pdf[]
+include::../../../hw/sys/sep/bootrom/prod/doc/index.adoc[leveloffset=1]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::sep-bootrom-prod:index.adoc[leveloffset=1]
+endif::backend-html5[]
+
+[appendix]
+ifdef::backend-pdf[]
+include::../../../hw/ip/key_manager/doc/firmware.adoc[leveloffset=1]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::ip:partial$key_manager/doc/firmware.adoc[leveloffset=1]
+endif::backend-html5[]

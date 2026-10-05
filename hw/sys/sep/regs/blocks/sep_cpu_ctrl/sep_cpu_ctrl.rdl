@@ -1,0 +1,560 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef SEP_CPU_CTRL_RDL_DEFINED
+`define SEP_CPU_CTRL_RDL_DEFINED
+addrmap sep_cpu_ctrl {
+    name = "SEP CPU Control Address Map";
+    desc = "SEP CPU control and status registers: PKA and crypto configuration, boot and fast-memory enables, fuse-sense status, and interrupt controls.";
+
+    reg REFERENCE_COUNTER {
+        regwidth = 64;
+        accesswidth = 64;
+        field  {
+            sw=rw;
+            hw=rw;
+            wr_swacc = true;
+            desc="SEP REFERENCE COUNTER, counting after deassert of cold reset. Write once,
+                  then poll this register until the readback reflects the written value before
+                  writing again. The counter keeps advancing, so the readback is at or just
+                  above the written value rather than equal to it.";
+        } rc [63:0] = 0x0;
+    };
+
+    // TODO: Clock-gate control - NOT YET IMPLEMENTED (reserved placeholder with named fields).
+    reg CLOCK_GATE_CTRL {
+        regwidth = 64;
+        accesswidth = 64;
+        desc = "TODO: clock-gate control - placeholder fields, not yet implemented.";
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Reserved - PKA clock-gate enable, not yet implemented.";
+        } pka_cg_enable [0:0] = 0x0;
+    };
+
+    // TODO: PKA control - NOT YET IMPLEMENTED (reserved placeholder with named fields).
+    reg PKA_CTRL {
+        regwidth = 64;
+        accesswidth = 64;
+        desc = "TODO: PKA control - placeholder fields, not yet implemented.";
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Reserved - disable DPA countermeasures in PKA, not yet implemented.";
+        } pka_dpa_disable [0:0] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Reserved - PKA noise source select, not yet implemented.";
+        } pka_noise_src [1:1] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Reserved - PKA noise source valid, not yet implemented.";
+        } pka_noise_src_valid [2:2] = 0x0;
+    };
+
+    // TODO: Per-block timeout interrupt, count, enable, clear, mode - NOT YET IMPLEMENTED (reserved placeholders).
+    reg TIMEOUT_INTERRUPT {
+        regwidth = 64;
+        accesswidth = 64;
+
+        desc = "Reserved - per-block timeout interrupt not yet implemented.";
+
+        field {
+            sw=r;
+            hw=w;
+            desc="Reserved - timeout interrupt status not yet implemented.";
+        } reserved [0:0] = 0x0;
+    };
+
+    reg TIMEOUT_COUNT {
+        regwidth = 64;
+        accesswidth = 64;
+        desc = "Reserved - per-block timeout count/threshold not yet implemented.";
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Reserved - timeout count not yet implemented.";
+        } reserved [0:0] = 0x0;
+    };
+
+    reg TIMEOUT_ENABLE {
+        regwidth = 64;
+        accesswidth = 64;
+        desc = "Reserved - per-block timeout enable not yet implemented.";
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Reserved - timeout monitors not yet implemented.";
+        } reserved [0:0] = 0x0;
+    };
+
+    reg TIMEOUT_CLEAR {
+        regwidth = 64;
+        accesswidth = 64;
+        desc = "Reserved - per-block timeout interrupt-clear not yet implemented.";
+
+        field {
+            sw=w;
+            hw=r;
+            singlepulse=true;
+            desc="Reserved - timeout monitors not yet implemented.";
+        } reserved [0:0] = 0x0;
+    };
+
+    reg TIMEOUT_MODE {
+        regwidth = 64;
+        accesswidth = 64;
+        desc = "Reserved - per-block timeout mode not yet implemented.";
+
+        field {
+            sw=w;
+            hw=r;
+            desc="Reserved - timeout monitors not yet implemented.";
+        } reserved [0:0] = 0x0;
+    };
+
+    reg SEP_VERSION_ID {
+        regwidth = 64;
+        accesswidth = 64;
+        field  {
+            sw=r;
+            hw=na;
+            desc="Version ID for the CPU";
+        } version_id [31:0] = 0xdeadbeef;
+    };
+
+    reg SEP_TEST_CTRL {
+        regwidth = 32;
+        accesswidth = 32;
+        field  {
+            sw=r;
+            hw=w;
+            desc="Fast SPI Enable";
+        } fast_spi_en [31:31] = 0x0;
+
+        field  {
+            sw=r;
+            hw=w;
+            desc="Fast ICCM Enable";
+        } fast_iccm_en [30:30] = 0x0;
+
+        field  {
+            sw=r;
+            hw=w;
+            desc="Fast DCCM Enable";
+        } fast_dccm_en [29:29] = 0x0;
+
+        field  {
+            sw=r;
+            hw=w;
+            desc="Fast SRAM Enable";
+        } fast_sram_en [28:28] = 0x0;
+
+        field  {
+            sw=r;
+            hw=w;
+            desc="Fast PKA Enable";
+        } fast_pka_en [27:27] = 0x0;
+
+        field  {
+            sw=r;
+            hw=w;
+            desc="SEP is standalone (not part of eg SMU)";
+        } sep_standalone [26:26] = 0x0;
+    };
+
+    reg SEP_GLOBAL_BASE_ADDR {
+        regwidth = 64;
+        accesswidth = 64;
+        field {
+            sw = rw;
+            hw = r;
+        } addr[55:0] = 0x0;
+    };
+
+    reg SEP_LOCAL_BASE_ADDR {
+        regwidth = 64;
+        accesswidth = 64;
+        field {
+            sw = rw;
+            hw = r;
+        } addr[55:0] = 0xD0000000;
+    };
+
+    reg SEP_REGION_SIZE {
+        regwidth = 64;
+        accesswidth = 64;
+        field {
+            sw = rw;
+            hw = r;
+        } size[31:0] = 0x01000000; // 16 MiB (FW reprograms per chiplet spec)
+    };
+
+	reg SMU_GLOBAL_BASE_ADDR {
+        regwidth = 64;
+        accesswidth = 64;
+        field {
+            sw = rw;
+            hw = r;
+        } addr[55:0] = 0x80000000; // TODO: Update once spec is defined
+    };
+
+    reg SMU_REGION_SIZE {
+        regwidth = 64;
+        accesswidth = 64;
+        field {
+            sw = rw;
+            hw = r;
+        } size[31:0] = 0x40000000; // TODO: Update once spec is defined
+    };
+
+    reg SMC_FUSE_SENSE_STATUS {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "This bit indicates when SMC's fuse sense is completed. While fuse sense if ongoing, SMC fabric will be in reset. Any requests to the SMC will hang.
+                    When this is 1, it is safe to send requests to the SMC.";
+        } smc_fuse_sense_done[0:0] = 0x0;
+    };
+
+    reg SEP_FUSE_SENSE_STATUS {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "This reg is used to indicate the fuse sense status of SEP. ";
+        } sep_fuse_sense_done[0:0] = 0x0;
+    };
+
+
+    reg SEP_SW_DEBUG {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "software writtable debug information. This reg is routed to CLA";
+        } sep_sw_debug[31:0] = 0x0;
+    };
+
+    reg SEP_NMI_VEC {
+        regwidth = 64;
+        accesswidth = 64;
+        desc = "NMI vector address for VeeR-EL2 CPU. The default value is 0xC000_0100. The NMI
+                interrupt is used for the WDT Bark interrupt.
+
+                WARNING: the reset value is a placeholder, not a usable handler. Firmware must
+                program this register with the address of its own NMI handler, and then set
+                SEP_NMI_VEC_LOCK, before enabling any NMI source (the WDT bark in particular).
+                If a bark arrives while the reset value is still in place, the CPU jumps to
+                0xC000_0100 in ICCM and executes whatever is there: arbitrary instructions if
+                the loaded image covers that location, or an uncorrectable ICCM ECC error
+                (which itself re-raises NMI) if it does not.";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "NMI vector address [31:1] for VeeR-EL2 CPU. Bit 0 is always 0 (aligned).
+                    Address where CPU jumps on Non-Maskable Interrupt. This is used for the
+                    WDT Bark interrupt. The reset value does not point at a valid handler --
+                    see the register description for the required programming order.";
+        } nmi_vec[31:1] = 0x6000_0080;
+
+        field {
+            sw = r;
+            hw = r;
+            desc = "Reserved, bit 0 is always 0 (aligned)";
+        } rsvd[0:0] = 0x0;
+    };
+
+    reg SEP_NMI_VEC_LOCK {
+        regwidth = 64;
+        accesswidth = 64;
+        desc = "Lock the NMI vector address. Once locked, the NMI vector address cannot be changed. The
+                NMI interrupt is used for the WDT Bark interrupt.";
+
+        field {
+            sw = rw;
+            hw = r;
+            woset;
+            desc = "Lock the NMI vector address. Once locked, the NMI vector address cannot be changed.
+                    The NMI interrupt is used for the WDT Bark interrupt.";
+        } lock[0:0] = 0x0;
+    };
+
+    reg EXT_TRNG_SRC_SEL {
+        regwidth = 64;
+        accesswidth = 64;
+        desc = "Per-stream external TRNG source selection for crypto subsystem entropy muxes.";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "TRNG source select per stream. Bit N selects the source for stream N
+                    (bit0 = Key Manager, bit1 = crypto blocks, bit2 = entropy pool).
+                    0 = internal DRBG output, 1 = external TRNG (default).";
+        } sel[2:0] = 0x7;
+    };
+
+    reg EXT_TRNG_SRC_SEL_LOCK {
+        regwidth = 64;
+        accesswidth = 64;
+        desc = "Lock the TRNG source selection. Once locked, EXT_TRNG_SRC_SEL cannot be changed until reset.";
+
+        field {
+            sw = rw;
+            hw = r;
+            woset;
+            desc = "Lock TRNG source selection. Once set, cannot be cleared by software.";
+        } lock[0:0] = 0x0;
+    };
+
+    reg KM_WIPE_CTRL {
+        regwidth = 64;
+        accesswidth = 64;
+        desc = "Key Manager emergency wipe control.";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Key Manager wipe state. A rising edge zeroes all KPV entries and sets the WIPE_STATE interrupt status.";
+        } wipe_state[0:0] = 0x0;
+    };
+
+    reg DMA_BUS_ERR_STATUS {
+        regwidth = 64;
+        accesswidth = 64;
+        desc = "Secure DMA bridge fault status. Each bit is latched in hardware and held
+                until the corresponding DMA_BUS_ERR_CLEAR write. These bits also drive
+                dedicated PIC sources.
+
+                Neither bit is cleared by a CPU-only reset (the WDT resets the CPU without
+                resetting the DMA), so a bit read as set immediately after boot may describe
+                a fault from before that reset rather than a new one.";
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Register-path bus error: a CPU access to a Secure DMA register returned
+                    a TL-UL error response (unmapped or misaligned offset). The faulting
+                    access also received SLVERR synchronously.";
+        } reg_path_err [0:0] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "DMA-master-path fault: either the fabric returned a non-OKAY AXI response
+                    to a DMA transfer, or a TL-UL command-integrity check failed on a command
+                    issued by the DMA. The latter is a fault-detection event with no other
+                    reporting path.";
+        } host_path_err [1:1] = 0x0;
+    };
+
+    reg DMA_BUS_ERR_CLEAR {
+        regwidth = 64;
+        accesswidth = 64;
+        desc = "Clear the DMA_BUS_ERR_STATUS bits. Writing 1 emits a single-cycle clear pulse
+                to both latches. A fault arriving in the same cycle as the clear still
+                latches, so acknowledging cannot drop a concurrent fault.";
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
+            desc = "Write 1 to clear both DMA_BUS_ERR_STATUS bits. Always reads 0.";
+        } clr [0:0] = 0x0;
+    };
+
+    reg PERIPH_BUS_ERR_STATUS {
+        regwidth = 64;
+        accesswidth = 64;
+        desc = "Peripheral register-bridge fault status, one bit per block. Each bit latches
+                when a CPU access to that block's registers returned a TL-UL error response
+                (unmapped or misaligned offset), and is held until the matching
+                PERIPH_BUS_ERR_CLEAR bit is written. The faulting access also received
+                SLVERR synchronously.
+
+                All bits OR together into a single PIC source, so read this register to
+                identify which block faulted.
+
+                No bit is cleared by a CPU-only reset (the WDT resets the CPU without
+                resetting the peripherals), so a bit read as set immediately after boot may
+                describe a fault from before that reset rather than a new one.";
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "AES register bridge error.";
+        } aes [0:0] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "HMAC register bridge error.";
+        } hmac [1:1] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "KMAC register bridge error.";
+        } kmac [2:2] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "OTBN register bridge error.";
+        } otbn [3:3] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "CSRNG register bridge error (DRBG CSRNG path).";
+        } csrng [4:4] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "EDN register bridge error (DRBG EDN path).";
+        } edn [5:5] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Watchdog timer register bridge error.";
+        } wdt [6:6] = 0x0;
+    };
+
+    reg PERIPH_BUS_ERR_CLEAR {
+        regwidth = 64;
+        accesswidth = 64;
+        desc = "Clear PERIPH_BUS_ERR_STATUS bits. Writing 1 to a bit emits a single-cycle
+                clear pulse to that block's latch; bit order matches
+                PERIPH_BUS_ERR_STATUS. Clears are per-block so acknowledging one block
+                cannot discard a fault another block raised between the status read and
+                this write. A fault arriving in the same cycle as its own clear still
+                latches.";
+
+        // One 1-bit field per block: singlepulse requires width 1.
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
+            desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.aes. Always reads 0.";
+        } aes [0:0] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
+            desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.hmac. Always reads 0.";
+        } hmac [1:1] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
+            desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.kmac. Always reads 0.";
+        } kmac [2:2] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
+            desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.otbn. Always reads 0.";
+        } otbn [3:3] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
+            desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.csrng. Always reads 0.";
+        } csrng [4:4] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
+            desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.edn. Always reads 0.";
+        } edn [5:5] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
+            desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.";
+        } wdt [6:6] = 0x0;
+    };
+
+    // ----------------------------------------------
+
+    // Core Specific Address Space 0x0 - 0x0ffff
+    CLOCK_GATE_CTRL       CLOCK_GATE_CTRL                         @ 0x8;
+    REFERENCE_COUNTER     REFERENCE_COUNTER                       @ 0x10;
+    TIMEOUT_INTERRUPT     TIMEOUT_INTERRUPT                       @ 0x18;
+    PKA_CTRL              PKA_CTRL                                @ 0x20;
+
+    // Per-block timeout count/threshold slots - reserved until implemented.
+    TIMEOUT_COUNT         TIMEOUT_COUNT_DMA                       @ 0x28;
+    TIMEOUT_COUNT         TIMEOUT_COUNT_SYS_IN                    @ 0x30;
+    TIMEOUT_COUNT         TIMEOUT_COUNT_MAILBOX_INBOUND           @ 0x38;
+    TIMEOUT_COUNT         TIMEOUT_COUNT_MAILBOX_OUTBOUND          @ 0x40;
+    TIMEOUT_COUNT         TIMEOUT_COUNT_ENTROPY_WRITE             @ 0x48;
+    TIMEOUT_COUNT         TIMEOUT_COUNT_ENTROPY_READ              @ 0x50;
+    TIMEOUT_COUNT         TIMEOUT_COUNT_FILTER_OUT                @ 0x58;
+    TIMEOUT_COUNT         TIMEOUT_COUNT_ALIAS_REMAP               @ 0x60;
+    TIMEOUT_ENABLE        TIMEOUT_ENABLE                          @ 0x68;
+    TIMEOUT_CLEAR         TIMEOUT_CLEAR                           @ 0x70;
+    TIMEOUT_MODE          TIMEOUT_MODE                            @ 0x78;
+
+    SEP_TEST_CTRL         SEP_TEST_CTRL                           @ 0xb0;
+
+    SEP_GLOBAL_BASE_ADDR  SEP_GLOBAL_BASE_ADDR                    @ 0xc0;
+    SEP_LOCAL_BASE_ADDR   SEP_LOCAL_BASE_ADDR                     @ 0xc8;
+    SEP_REGION_SIZE       SEP_REGION_SIZE                         @ 0xd0;
+
+	SMU_GLOBAL_BASE_ADDR  SMU_GLOBAL_BASE_ADDR                    @ 0x100;
+    SMU_REGION_SIZE       SMU_REGION_SIZE                         @ 0x110;
+
+    SMC_FUSE_SENSE_STATUS SMC_FUSE_SENSE_STATUS                  @ 0x140;
+    SEP_FUSE_SENSE_STATUS SEP_FUSE_SENSE_STATUS                  @ 0x150;
+
+
+    SEP_SW_DEBUG          SEP_SW_DEBUG                            @ 0x178;
+
+    SEP_NMI_VEC           SEP_NMI_VEC                             @ 0x180;
+    SEP_NMI_VEC_LOCK      SEP_NMI_VEC_LOCK                        @ 0x188;
+
+    EXT_TRNG_SRC_SEL      EXT_TRNG_SRC_SEL                        @ 0x190;
+    EXT_TRNG_SRC_SEL_LOCK EXT_TRNG_SRC_SEL_LOCK                   @ 0x198;
+    KM_WIPE_CTRL          KM_WIPE_CTRL                            @ 0x1A0;
+    DMA_BUS_ERR_STATUS    DMA_BUS_ERR_STATUS                      @ 0x1A8;
+    DMA_BUS_ERR_CLEAR     DMA_BUS_ERR_CLEAR                       @ 0x1B0;
+    PERIPH_BUS_ERR_STATUS PERIPH_BUS_ERR_STATUS                   @ 0x1B8;
+    PERIPH_BUS_ERR_CLEAR  PERIPH_BUS_ERR_CLEAR                    @ 0x1C0;
+
+    // Generic Address Space 0x1000 - 0x1fff
+    SEP_VERSION_ID        SEP_VERSION_ID                          @ 0x1000;
+
+    //----------------------------------------------
+
+    // Constraints
+    SEP_NMI_VEC.nmi_vec->swwel = SEP_NMI_VEC_LOCK.lock;
+    EXT_TRNG_SRC_SEL.sel->swwel = EXT_TRNG_SRC_SEL_LOCK.lock;
+};
+
+`endif

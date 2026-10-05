@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# ABC timing constraint file (`yosys abc -constr`) for IHP SG13G2: driving
+# cell + external load seen by top-level ports.
+set_driving_cell sg13g2_buf_1
+set_load 0.015

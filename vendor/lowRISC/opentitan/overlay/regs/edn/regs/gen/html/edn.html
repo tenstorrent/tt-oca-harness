@@ -1,0 +1,165 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-edn">Entropy Distribution Network</h2>
+<p>Distributes random numbers produced by CSRNG to hardware blocks</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#INTR_TEST">INTR_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#REGWEN">REGWEN</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x14</td><td><a href="#CTRL">CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#BOOT_INS_CMD">BOOT_INS_CMD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1C</td><td><a href="#BOOT_GEN_CMD">BOOT_GEN_CMD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#SW_CMD_REQ">SW_CMD_REQ</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x24</td><td><a href="#SW_CMD_STS">SW_CMD_STS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x28</td><td><a href="#HW_CMD_STS">HW_CMD_STS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x2C</td><td><a href="#RESEED_CMD">RESEED_CMD</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x30</td><td><a href="#GENERATE_CMD">GENERATE_CMD</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x34</td><td><a href="#MAX_NUM_REQS_BETWEEN_RESEEDS">MAX_NUM_REQS_BETWEEN_RESEEDS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x38</td><td><a href="#RECOV_ALERT_STS">RECOV_ALERT_STS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x3C</td><td><a href="#ERR_CODE">ERR_CODE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x40</td><td><a href="#ERR_CODE_TEST">ERR_CODE_TEST</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x44</td><td><a href="#MAIN_SM_STATE">MAIN_SM_STATE</a></td><td>R</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="INTR_STATE">INTR_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>edn_fatal_err</td><td>RW1C</td><td>0x0</td><td>Asserted when a FIFO error occurs.</td></tr>
+<tr><td>0</td><td>edn_cmd_req_done</td><td>RW1C</td><td>0x0</td><td>Asserted when a software CSRNG request has completed.</td></tr>
+</table>
+<h3 id="INTR_ENABLE">INTR_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>edn_fatal_err</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.edn_fatal_err is set.</td></tr>
+<tr><td>0</td><td>edn_cmd_req_done</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.edn_cmd_req_done is set.</td></tr>
+</table>
+<h3 id="INTR_TEST">INTR_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>edn_fatal_err</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.edn_fatal_err to 1.</td></tr>
+<tr><td>0</td><td>edn_cmd_req_done</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.edn_cmd_req_done to 1.</td></tr>
+</table>
+<h3 id="ALERT_TEST">ALERT_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>fatal_alert</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+<tr><td>0</td><td>recov_alert</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+</table>
+<h3 id="REGWEN">REGWEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>REGWEN</td><td>RW0C</td><td>0x1</td><td>When true, the CTRL can be written by software.<br>When false, this field read-only. Defaults true, write zero to clear.<br>Note that this needs to be cleared after initial configuration at boot in order to<br>lock in the listed register settings.</td></tr>
+</table>
+<h3 id="CTRL">CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:12</td><td>CMD_FIFO_RST</td><td>RW</td><td>0x9</td><td>Setting this field to kMultiBitBool4True clears the two command FIFOs: the<br>RESEED_CMD FIFO and the GENERATE_CMD FIFO. This field must be<br>set to the reset state by software before any further commands can be issued to<br>these FIFOs.</td></tr>
+<tr><td>11:8</td><td>AUTO_REQ_MODE</td><td>RW</td><td>0x9</td><td>Setting this field to kMultiBitBool4True enables auto request mode.<br>In this mode, EDN automatically sends `generate` and `reseed` command requests to the CSRNG application interface.<br>The purpose of this mode is to continuously deliver entropy to endpoints without firmware intervention.<br><br>For this to work, firmware has to 1) configure the !!GENERATE_CMD, !!RESEED_CMD, and !!MAX_NUM_REQS_BETWEEN_RESEEDS registers, and 2) to issue the first `instantiate` command via the !!SW_CMD_REQ register.<br>Once this command has been acknowledged by CSRNG, the first `generate` command is sent out automatically, and a `reseed` command is sent after every MAX_NUM_REQS_BETWEEN_RESEEDS number of `generate` commands.<br><br>Note that the BOOT_REQ_MODE field takes precedence over this field: If both fields are set, EDN enters boot-time request mode.<br>If none of the fields are set, EDN enters Software Port Mode upon enabling.</td></tr>
+<tr><td>7:4</td><td>BOOT_REQ_MODE</td><td>RW</td><td>0x9</td><td>Setting this field to kMultiBitBool4True enables the boot-time request mode.<br>In this mode, EDN automatically sends a boot-time request to the CSRNG application interface.<br>The purpose of this mode is to request entropy as fast as possible after reset, and during chip boot time.<br><br>Note that this takes precedence over the AUTO_REQ_MODE field: If both fields are set, EDN enters boot-time request mode.<br>If none of the fields are set, EDN enters Software Port Mode upon enabling.</td></tr>
+<tr><td>3:0</td><td>EDN_ENABLE</td><td>RW</td><td>0x9</td><td>Setting this field to kMultiBitBool4True enables the EDN module. The modules of the<br>entropy complex may only be enabled and disabled in a specific order, see<br>Programmers Guide for details.</td></tr>
+</table>
+<h3 id="BOOT_INS_CMD">BOOT_INS_CMD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>BOOT_INS_CMD</td><td>RW</td><td>0x901</td><td>This field is used as the value for the `instantiate` command at boot time.<br><br>See [Command Header](../../csrng/doc/theory_of_operation.md#command-header) for the meaning of the individual bits.<br>Note that the hardware only supports a value of 0 for the `clen` field.<br>If `clen` has a different value, EDN will hang.<br>Fixing this requires disabling and restarting both EDN and CSRNG.</td></tr>
+</table>
+<h3 id="BOOT_GEN_CMD">BOOT_GEN_CMD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>BOOT_GEN_CMD</td><td>RW</td><td>0xFFF003</td><td>This field is used as the value for the `generate` command at boot time.<br><br>See [Command Header](../../csrng/doc/theory_of_operation.md#command-header) for the meaning of the individual bits.<br>Note that the hardware only supports a value of 0 for the `clen` field.<br>If `clen` has a different value, EDN will hang.<br>Fixing this requires disabling and restarting both EDN and CSRNG.</td></tr>
+</table>
+<h3 id="SW_CMD_REQ">SW_CMD_REQ</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>SW_CMD_REQ</td><td>W</td><td>-</td><td>Any CSRNG action can be initiated by writing a CSRNG command to this register.<br>Before any write operation to this register, firmware must read !!SW_CMD_STS to check whether EDN is ready to receive a new command or the next word of a previously started command.<br><br>While !!CTRL.AUTO_REQ_MODE is set, only the first instantiate command has any effect.<br>After that command has been processed, writes to this register will have no effect on operation, until !!CTRL.AUTO_REQ_MODE is de-asserted and the state machine of EDN enters the `SwPortMode` state.<br><br>Refer to the [CSRNG documentation](../../csrng/doc/theory_of_operation.md#general-command-format) for details on the command format.</td></tr>
+</table>
+<h3 id="SW_CMD_STS">SW_CMD_STS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5:3</td><td>CMD_STS</td><td>R</td><td>0x0</td><td>This field represents the status code returned with the CSRNG application command ack.<br>It is updated each time a SW command is acknowledged by CSRNG.<br>To check whether a command was successful, wait for !!INTR_STATE.EDN_CMD_REQ_DONE or<br>!!SW_CMD_STS.CMD_ACK to be high and then check the value of this field.<br>A description of the command status types can be found [here](../../csrng/doc/registers.md#sw_cmd_sts--cmd_sts).</td></tr>
+<tr><td>2</td><td>CMD_ACK</td><td>R</td><td>0x0</td><td>This one bit field indicates when a SW command has been acknowledged by the CSRNG.<br>It is set to low each time a new command is written to !!SW_CMD_REQ.<br>The field is set to high once a SW command request has been acknowledged by the CSRNG.<br>0b0: The last SW command has not been acknowledged yet.<br>0b1: The last SW command has been acknowledged.</td></tr>
+<tr><td>1</td><td>CMD_RDY</td><td>R</td><td>0x0</td><td>This bit indicates when the EDN is ready to accept the next command.<br>Before starting to write a new command to !!SW_CMD_REQ, this field needs to be polled.<br>0b0: The EDN is not ready to accept commands or the last command hasn&#x27;t been acked yet.<br>0b1: The EDN is ready to accept the next command.</td></tr>
+<tr><td>0</td><td>CMD_REG_RDY</td><td>R</td><td>0x0</td><td>This bit indicates when !!SW_CMD_REQ is ready to accept the next word.<br>This bit has to be polled before each word of a command is written to !!SW_CMD_REQ.<br>0b0: The EDN is not ready to accept the next word yet.<br>0b1: The EDN is ready to accept the next word.</td></tr>
+</table>
+<h3 id="HW_CMD_STS">HW_CMD_STS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9:7</td><td>CMD_STS</td><td>R</td><td>0x0</td><td>This field represents the status code returned with the CSRNG application command ack.<br>It is updated each time a HW command is acknowledged by CSRNG.<br>A description of the command status types can be found [here](../../csrng/doc/registers.md#sw_cmd_sts--cmd_sts).</td></tr>
+<tr><td>6</td><td>CMD_ACK</td><td>R</td><td>0x0</td><td>This one bit field indicates when a HW command has been acknowledged by the CSRNG.<br>It is set to low each time a new command is sent to the CSRNG.<br>The field is set to high once a HW command request has been acknowledged by the CSRNG.<br>0b0: The last HW command has not been acknowledged yet.<br>0b1: The last HW command has been acknowledged.</td></tr>
+<tr><td>5:2</td><td>CMD_TYPE</td><td>R</td><td>0x0</td><td>This field contains the application command type of the hardware controlled command issued last.<br>The application command selects one of five operations to perform.<br>A description of the application command types can be found [here](../../csrng/doc/theory_of_operation.md#command-description).</td></tr>
+<tr><td>1</td><td>AUTO_MODE</td><td>R</td><td>0x0</td><td>This one bit field indicates whether the EDN is in the hardware controlled part of auto mode.<br>The instantiate command is issued via SW interface and is thus not part of the hardware controlled part of auto mode.<br>0b0: The EDN is not in the hardware controlled part of auto mode.<br>0b1: The EDN is in the hardware controlled part of auto mode.</td></tr>
+<tr><td>0</td><td>BOOT_MODE</td><td>R</td><td>0x0</td><td>This one bit field indicates whether the EDN is in the hardware controlled boot mode.<br>0b0: The EDN is not in boot mode.<br>0b1: The EDN is in boot mode.</td></tr>
+</table>
+<h3 id="RESEED_CMD">RESEED_CMD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>RESEED_CMD</td><td>W</td><td>-</td><td>Writing this register will fill a FIFO with up to 13 command words (32b words).<br>When running in auto request mode, this FIFO is used to automatically send out a `reseed` command to the CSRNG application interface after every MAX_NUM_REQS_BETWEEN_RESEEDS number of `generate` commands.<br><br>See [General Command Format](../../csrng/doc/theory_of_operation.md#general-command-format) for details about the command format.<br><br>Note that the number of additional data words provided must match the value of the `clen` field of the first word.<br>Otherwise, undefined behavior may result.<br>If more than 13 entries are written to the FIFO, they are ignored and EDN signals an `edn_fatal_err` interrupt as well as a fatal alert.</td></tr>
+</table>
+<h3 id="GENERATE_CMD">GENERATE_CMD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>GENERATE_CMD</td><td>W</td><td>-</td><td>Writing this register will fill a FIFO with up to 13 command words (32b words).<br>When running auto request mode, this FIFO is used to automatically send out `generate` commands to the CSRNG<br>application interface.<br><br>See [General Command Format](../../csrng/doc/theory_of_operation.md#general-command-format) for details about the command format.<br><br>Note that the number of additional data words provided must match the value of the `clen` field of the first word.<br>Otherwise, undefined behavior may result.<br>If more than 13 entries are written to the FIFO, they are ignored and EDN signals an `edn_fatal_err` interrupt as well as a fatal alert.</td></tr>
+</table>
+<h3 id="MAX_NUM_REQS_BETWEEN_RESEEDS">MAX_NUM_REQS_BETWEEN_RESEEDS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>MAX_NUM_REQS_BETWEEN_RESEEDS</td><td>RW</td><td>0x0</td><td>Setting this field will set the number of `generate` command requests that are made<br>to CSRNG before a reseed request is made.<br>This value only has meaning when running in auto request mode.<br>This register supports a maximum of 2^32 `generate` requests between reseeds.<br>This register will be used by a counter that counts down, triggering an automatic `reseed` request when it reaches zero.<br><br>Note that this value must be chosen smaller than or equal to the value configured in the [`RESEED_INTERVAL` register of CSRNG](../../csrng/doc/registers.md#reseed-interval).</td></tr>
+</table>
+<h3 id="RECOV_ALERT_STS">RECOV_ALERT_STS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>13</td><td>CSRNG_ACK_ERR</td><td>RW0C</td><td>0x0</td><td>This bit is set when the CSRNG returns an acknowledgement where the status signal is non-zero.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>12</td><td>EDN_BUS_CMP_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the interal entropy bus value is equal to the prior<br>valid value on the bus, indicating a possible attack.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>11:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>CMD_FIFO_RST_FIELD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the CMD_FIFO_RST field is set to an illegal value,<br>something other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>2</td><td>AUTO_REQ_MODE_FIELD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the !!CTRL.AUTO_REQ_MODE field is set to an illegal value,<br>something other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>1</td><td>BOOT_REQ_MODE_FIELD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the BOOT_REQ_MODE field is set to an illegal value,<br>something other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>0</td><td>EDN_ENABLE_FIELD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the EDN_ENABLE field is set to an illegal value,<br>something other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+</table>
+<h3 id="ERR_CODE">ERR_CODE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>30</td><td>FIFO_STATE_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when any of the source bits (bits 0 through 1 of this register) are asserted as a result of an error pulse generated from any FIFO where both the empty and full status bits are set or in case of error conditions inside the hardened counters.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>29</td><td>FIFO_READ_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when any of the source bits (bits 0 through 1 of this register) are asserted as a result of an error pulse generated from any empty FIFO that has received a read pulse.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>28</td><td>FIFO_WRITE_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when any of the source bits (bits 0 through 1 of this register) are asserted as a result of an error pulse generated from any full FIFO that has received a write pulse.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>27:23</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>22</td><td>EDN_CNTR_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when a hardened counter has detected an error<br>condition. This error will signal a fatal alert.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>21</td><td>EDN_MAIN_SM_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an illegal state has been detected for the<br>EDN main stage state machine. This error will signal a fatal alert.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>20</td><td>EDN_ACK_SM_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an illegal state has been detected for the<br>EDN ack stage state machine. This error will signal a fatal alert.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>19:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>SFIFO_GENCMD_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an error has been detected for the<br>generate command FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>When this bit is set, a fatal error condition will result.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>0</td><td>SFIFO_RESCMD_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an error has been detected for the<br>reseed command FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>When this bit is set, a fatal error condition will result.</td></tr>
+</table>
+<h3 id="ERR_CODE_TEST">ERR_CODE_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>ERR_CODE_TEST</td><td>RW</td><td>0x0</td><td>Setting this field will set the bit number for which an error<br>will be forced in the hardware. This bit number is that same one<br>found in the !!ERR_CODE register. The action of writing this<br>register will force an error pulse. The sole purpose of this<br>register is to test that any error properly propagates to either<br>an interrupt or an alert.</td></tr>
+</table>
+<h3 id="MAIN_SM_STATE">MAIN_SM_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8:0</td><td>MAIN_SM_STATE</td><td>R</td><td>0xC1</td><td>This is the state of the EDN main state machine.<br>See the RTL file `edn_main_sm` for the meaning of the values.</td></tr>
+</table>
+</div>

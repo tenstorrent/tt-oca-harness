@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Site-local override layer for the DV runner: a template for `site.local.toml`.
+#
+#   cp hw/common/dv/configs/site.local.example.toml hw/common/dv/configs/site.local.toml
+#
+# `site.local.toml` beside this file is git-ignored and loads whenever it exists;
+# `OCAH_DV_SITE=<path>` names a file elsewhere and wins over it. The layer merges over
+# simulators.toml and executors.toml; `--doctor` names the file that supplied each tool
+# and `--validate-configs` reports the merged result. Every stage the runner launches
+# from argv (formal, the SV-UVM adapters, coverage merge/report) honours all keys; the
+# cocotb path honours `binary`, `extra_env`, and `setup_hook` but refuses a `launcher`,
+# because cocotb's Python runner starts the simulator from the runner's own process.
+
+schema_version = 1
+description = "Example deployment: renamed binaries, one containerised tool, a site-added backend"
+
+# A tool simulators.toml declares accepts these keys only, each replacing the checked-in
+# value whole: binary, launcher, argv (formal tools), license_env, extra_env, setup_hook.
+[simulators.verilator]
+binary = "verilator-5.036"
+# Sourced by bash before the tool starts; its exports (PATH, license variables) reach every
+# stage that runs the tool. Relative paths resolve against this file's directory.
+# setup_hook = "eda/verilator.env"
+
+# Container case: the launcher is an argv prefix in front of every command of this tool.
+# The container must see the checkout and the run directory at the same paths as the host.
+[simulators.vcs]
+launcher = ["podman", "exec", "-i", "-w", "/work", "eda"]
+license_env = ["SNPSLMD_LICENSE_FILE"]
+extra_env = { VCS_HOME = "/opt/vcs" }
+
+# A tool table the checked-in registry lacks must be complete; the registry schema
+# validates it, and a DUT's formal config selects it through `tools`/`default_tool`. The open
+# registry names the open formal backend only, so this is how a licensed formal backend
+# reaches the runner: its `license_env` drives the `(licensed)` marking in `--list`, and its
+# `argv` is the launch template (`{binary} {args} {script} {formal_args}` suits a Tcl-driven
+# tool; an app table may override it).
+[simulators.fvtool]
+kind = "formal"
+binary = "fvtool"
+frameworks = ["formal"]
+license_env = ["FVTOOL_LICENSE_FILE"]
+supports_waves = []
+supports_cov = ["formal"]
+default_waves = ""
+argv = ["{binary}", "-batch", "{script}", "{args}", "{formal_args}"]
+
+# A companion checkout's formal config for one DUT, reached without editing duts.toml.
+# Paths resolve against the repository root, or are absolute. While the file is absent,
+# `--list` and `--validate-configs` show the view as unavailable and only `--mode formal`
+# on that DUT is an error.
+# [duts.dtp]
+# formal_cfg = "companion/hw/sys/dtp/dv/dtp_formal_cfg.toml"
+
+# The simulation counterparts. `sim_cfg` replaces the DUT's simulation view, with the same
+# path and absence rules as `formal_cfg`. `tools` adds checked-in simulation tools to the
+# DUT's allowlist: each joins the views whose framework it serves, the DUT's default tool
+# stays, and `--list` marks a licensed one `(licensed)`.
+# [duts.smc]
+# sim_cfg = "companion/hw/sys/smc/dv/smc_sim_cfg.toml"
+# tools = ["xcelium"]
+
+# A cluster executor the registry declares takes per-key overrides: the site's queue and
+# resource defaults, its coordinator limits, the hook that puts the scheduler commands on
+# PATH, and a whole argv template when the site's scheduler wants other flags or units. A
+# complete table adds an executor the registry lacks.
+[executors.lsf]
+defaults = { queue = "batch", cores = 1, mem_mb = 8192, walltime = "02:00" }
+# setup_hook = "eda/lsf.env"
+
+[executors.lsf.limits]
+max_in_flight = 200
+poll_interval_sec = 30

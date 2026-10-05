@@ -1,0 +1,394 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef CPU_CTRL_RDL_DEFINED
+`define CPU_CTRL_RDL_DEFINED
+
+addrmap cpu_ctrl {
+    name = "CPU Control Address Map";
+    desc = "Per-core reset control and status, reset timing, chip configuration, mailbox, and boot-ROM stub registers for the SMC CPU cluster.";
+
+    reg RESET_VECTOR{
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw=rw;
+            hw=r;
+        } vector [55:0] = 0xc004_0000;
+    };
+
+    reg RESET_CTRL {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field  {
+            sw=rw;
+            hw=r;
+            desc="Reset control for the CPU, active low.";
+        } core0_reset_n_n0_scan [0:0] = 0x1;
+
+        field  {
+            sw=rw;
+            hw=r;
+            desc="Reset control for the CPU, active low.";
+        } core1_reset_n_n0_scan [1:1] = 0x1;
+
+        field  {
+            sw=rw;
+            hw=r;
+            desc="Reset control for the CPU, active low.";
+        } core2_reset_n_n0_scan [2:2] = 0x1;
+
+        field  {
+            sw=rw;
+            hw=r;
+            desc="Reset control for the CPU, active low.";
+        } core3_reset_n_n0_scan [3:3] = 0x1;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc = "Writing a 1 to this register triggers a core reset pulse on core 0, timed by CORE_RESET_PULSE_COUNT.
+                    A 0 in core0_reset_n_n0_scan holds the core in reset for the whole pulse.";
+        } core0_reset_pulse_start_n0_scan[4:4] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc = "Writing a 1 to this register triggers a core reset pulse on core 1, timed by CORE_RESET_PULSE_COUNT.
+                    A 0 in core1_reset_n_n0_scan holds the core in reset for the whole pulse.";
+        } core1_reset_pulse_start_n0_scan[5:5] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc = "Writing a 1 to this register triggers a core reset pulse on core 2, timed by CORE_RESET_PULSE_COUNT.
+                    A 0 in core2_reset_n_n0_scan holds the core in reset for the whole pulse.";
+        } core2_reset_pulse_start_n0_scan[6:6] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc = "Writing a 1 to this register triggers a core reset pulse on core 3, timed by CORE_RESET_PULSE_COUNT.
+                    A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.";
+        } core3_reset_pulse_start_n0_scan[7:7] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Cluster Uncore Reset, active low. Writing this register will only reset the uncore portion in the chipyard cluster.
+                  WARNING: using this can cause any outstanding axi requests to and from the cluster to cause timeouts/exceptions.";
+        } uncore_reset_n_n0_scan [8:8] = 0x1;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Debug Module Reset, active low";
+        } debug_reset_n_n0_scan [24:24] = 0x0;
+    };
+
+    reg CORE_RESET_PULSE_COUNT {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field  {
+            sw=rw;
+            hw=r;
+            desc="Cycles (clk_smc), minus one, from the start of a core reset pulse to reset assertion.";
+        } pre_reset_count [15:0] = 0x8;
+
+        field  {
+            sw=rw;
+            hw=r;
+            desc="Cycles (clk_smc), minus one, that a core reset pulse holds the core in reset.";
+        } post_reset_count [31:16] = 0x10;
+
+        field {
+            sw=r;
+            hw=w;
+            desc="Logic low while performing core reset, logic high otherwise.";
+        } core_resets_done [35:32] = 0xf;
+
+    };
+
+    reg RESET_TIMEOUT {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Cycles (clk_smc) a software reset may stay pending (withheld, waiting
+                  for drain) before timeout. 0 = disabled, wait indefinitely.";
+        } timeout_value [15:0] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Timeout mode: 0 = give up and report error (stay withheld, do not apply);
+                  1 = force the reset on timeout.";
+        } timeout_mode [16:16] = 0x0;
+
+        field {
+            sw=r;
+            hw=w;
+            desc="Live status: high while a requested software reset is applied at the cluster,
+                  either after drain completes or after a force-mode timeout.";
+        } reset_applied [32:32] = 0x0;
+
+        field {
+            sw=r;
+            hw=w;
+            desc="Status for the active software reset request: high after the request exceeds
+                  timeout_value and remains high until the request is deasserted. Set in both modes.";
+        } reset_timeout [36:36] = 0x0;
+    };
+
+    reg REFERENCE_COUNTER {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field  {
+            sw=rw;
+            hw=rw;
+            wr_swacc = true;
+            desc="Reference counter for the CPU. Write once, then poll this register until
+                  the readback reflects the written value before writing again. The counter
+                  keeps advancing, so the readback is at or just above the written value
+                  rather than equal to it.";
+        } rc [63:0] = 0x0;
+    };
+
+
+    reg WDT_TIMEOUT {
+        field  {
+            sw=rw;
+            hw=r;
+            desc="Cycle count value that 2nd stage watchdog timer timeout should occur at. Defaults to 16384 cycles";
+        } data [31:0] = 0x4000;
+    };
+
+    reg WDT_TIMEOUT_RESET {
+        field  {
+            sw=rw;
+            hw=r;
+            singlepulse=true;
+            desc="Reset current cycle count value in 2nd stage watchdog timer";
+        } reset_cycle_count_0 [0:0] = 0x0;
+
+        field  {
+            sw=rw;
+            hw=r;
+            singlepulse=true;
+            desc="Reset current cycle count value in 2nd stage watchdog timer";
+        } reset_cycle_count_1 [1:1] = 0x0;
+
+        field  {
+            sw=rw;
+            hw=r;
+            singlepulse=true;
+            desc="Reset current cycle count value in 2nd stage watchdog timer";
+        } reset_cycle_count_2 [2:2] = 0x0;
+
+        field  {
+            sw=rw;
+            hw=r;
+            singlepulse=true;
+            desc="Reset current cycle count value in 2nd stage watchdog timer";
+        } reset_cycle_count_3 [3:3] = 0x0;
+    };
+
+    reg TEST_CTRL {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field  {
+            sw=r;
+            hw=w;
+            desc="Test control register for the CPU";
+        } data [31:0] = 0x0;
+    };
+
+    reg SCRATCH {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field  {
+            sw=rw;
+            hw=r;
+            desc="Scratch register for the CPU";
+        } data [31:0] = 0x0;
+    };
+
+    reg SMC_ATTRIBUTES {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            hw = w;
+            sw = r;
+            desc = "Indicates if this chiplet is primary (1) or secondary (0). Driven by strap.";
+        } chiplet_is_primary[0:0];
+        field {
+            hw = w;
+            sw = r;
+        } num_ext_interrupts[16:8];
+        field {
+            hw = w;
+            sw = r;
+        } num_cpu_interrupts[25:17];
+        field {
+            hw = w;
+            sw = r;
+            desc = "Total SRAM size is 2 ^ value bytes";
+        } sram_size[31:26];
+        field {
+            hw = w;
+            sw = r;
+        } no_output_remap[32:32];
+        field {
+            hw = w;
+            sw = r;
+        } num_cores[35:33];
+        field {
+            hw = w;
+            sw = r;
+        } mailbox_depth[39:36];
+        field {
+            hw = w;
+            sw = r;
+        } num_mailboxes[45:40];
+    };
+
+    reg WB_PC {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw=r;
+            hw=w;
+            desc="Writeback PC value";
+        } pc[57:0] = 0x0;
+    };
+
+    reg MUTEX {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw = rw;
+            hw = w;
+            rd_swacc = true;
+            wr_swacc = true;
+            desc = "HW mutex. Reads will attempt to acquire mutex, 1 on success. If the mutex is already acquired, the read will return 0. To release the mutex, write any value to the register.";
+        } mutex[0:0] = 0x1;
+    };
+
+    reg SEMA {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "16-bit semaphore value to inc/dec. Writing to this register will inc/dec the semaphore value.
+                    The written value is treated as a signed number using 2s compliment.";
+        } sema[15:0] = 0x0;
+    };
+
+    reg DUMMY_ROM_0{
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Word 0 of WFI loop";
+        } dummy_rom_word_0 [63:0] = 0x0145051300000517;
+    };
+
+    reg DUMMY_ROM_1{
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Word 1 of WFI loop";
+        } dummy_rom_word_1 [63:0] = 0xfff0069330551073;
+    };
+
+    reg DUMMY_ROM_2{
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Word 2 of WFI loop";
+        } dummy_rom_word_2 [63:0] = 0x105000733046b073;
+    };
+
+    reg DUMMY_ROM_3{
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Word 3 of WFI loop";
+        } dummy_rom_word_3 [63:0] = 0x00000000ffdff06f;
+    };
+
+    reg DUMMY_ROM_NULL{
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Cache line size is 64 bytes so want to ensure no random data is read when reading dummy rom";
+        } dummy_rom_null [63:0] = 0x0;
+    };
+
+    // --------------------------------------------------
+
+    // Core Specific Address Space 0x000 - 0x07F
+    RESET_VECTOR                    RESET_VECTOR[4]                 @ 0x0;
+    external RESET_CTRL             RESET_CTRL                      @ 0x20;
+    CORE_RESET_PULSE_COUNT          CORE_RESET_PULSE_COUNT          @ 0x28;
+
+    RESET_TIMEOUT                   RESET_TIMEOUT                   @ 0x30;
+
+    REFERENCE_COUNTER               REFERENCE_COUNTER               @ 0x40;
+
+    WDT_TIMEOUT                     WDT_TIMEOUT                     @ 0x50;
+    WDT_TIMEOUT_RESET               WDT_TIMEOUT_RESET               @ 0x58;
+
+    TEST_CTRL                       TEST_CTRL                       @ 0x60;
+
+    // Scratch 0x080 - 0x0FF
+    SCRATCH                         SCRATCH[16]                     @ 0x80;
+
+    // Writeback PC, per core (0x100 - 0x1FF)
+    WB_PC                           WB_PC_CORE0[8]                  @ 0x100;
+    WB_PC                           WB_PC_CORE1[8]                  @ 0x140;
+    WB_PC                           WB_PC_CORE2[8]                  @ 0x180;
+    WB_PC                           WB_PC_CORE3[8]                  @ 0x1C0;
+
+    // Generic Address Space 0x200 - 0x2BF
+    SMC_ATTRIBUTES                  SMC_ATTRIBUTES                  @ 0x200;
+
+    MUTEX                           MUTEX[4]                        @ 0x240;
+    external SEMA                   SEMA[4]                         @ 0x260;
+
+    DUMMY_ROM_0                     DUMMY_ROM_0                     @ 0x280;
+    DUMMY_ROM_1                     DUMMY_ROM_1                     @ 0x288;
+    DUMMY_ROM_2                     DUMMY_ROM_2                     @ 0x290;
+    DUMMY_ROM_3                     DUMMY_ROM_3                     @ 0x298;
+    DUMMY_ROM_NULL                  DUMMY_ROM_NULL[4]               @ 0x2A0;
+
+};
+
+`endif

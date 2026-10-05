@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# Generic testbench top name: the module identifies the driven block.
+waive --rule=module-filename --regex="module ocah_axi_vip_tb_top" --location=".*hw/common/dv/vip/ocah_axi_vip/dv/tb/tb_top\.sv$"
+waive --rule=module-filename --regex="module axi_lite_to_ahb_tb_top" --location=".*hw/common/axi/dv/tb/tb_top\.sv$"
+
+# PeakRDL AXI4-Lite CPUIF import predating the `_if` convention.
+waive --rule=interface-name-style --regex="interface axi4lite_intf " --location=".*hw/common/axi/axi4lite_intf\.sv$"

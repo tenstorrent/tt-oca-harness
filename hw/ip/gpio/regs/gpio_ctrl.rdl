@@ -1,0 +1,79 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef GPIO_CTRL_RDL_DEFINED
+`define GPIO_CTRL_RDL_DEFINED
+
+addrmap gpio_ctrl {
+    name = "GPIO Control Address Map";
+    desc = "Per-pin GPIO pad control registers: drive strength, pull configuration, and strap capture.";
+
+    
+    ////////////////////////////////////////////////////////////////////////////
+    // Register Definitions
+    ////////////////////////////////////////////////////////////////////////////
+    //---------------------------------
+
+    reg CONTROL {
+        regwidth = 32;
+        accesswidth = 32;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Register-driven drive-strength.";
+        } drive_strength[2:0] = 0x2;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Register-driven pull enable. Default is disabled";
+        } pull_enable_n0_scan[8:8] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Register-driven pull select - by default we pull down";
+        } pull_select[9:9] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Register-driven schmitt select.";
+        } schmitt_select[10:10] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Setting this choosing the register values for PAD settings. This includes pull_enable, pull_select, and schmitt_select";
+        } config_enable[16:16] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "When set, this bit indicates that the strap value is valid. This field is not set if the GPIO is not an input by default";
+        } strap_valid[20:20] = 0x1;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "This register holds the captured value that was applied to the pad when reset was de-asserted.";
+        } strap_value[21:21] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Setting this register will enable the secondary HW function to override the GPIO enable and data lines.";
+        } hw2_ovrd[24:24] = 0x0;
+
+    };
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Address Map
+    ////////////////////////////////////////////////////////////////////////////
+
+    CONTROL       CONTROL        @0x0;
+
+};
+
+`endif

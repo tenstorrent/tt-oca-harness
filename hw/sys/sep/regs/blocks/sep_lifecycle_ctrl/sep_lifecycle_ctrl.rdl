@@ -1,0 +1,58 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef SEP_LIFECYCLE_CTRL_RDL
+`define SEP_LIFECYCLE_CTRL_RDL
+
+addrmap sep_lifecycle_ctrl {
+    name = "SEP Lifecycle Control Address Map";
+    desc = "Lifecycle feature-control and demotion registers with their associated locks.";
+    
+    reg FEAT_CTRL {
+        regwidth = 64;
+        accesswidth = 64;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Lifecycle feature control bits,";
+        } feature_control [63:0] = 0x0;
+    };
+
+
+    reg DEMOTE {
+        regwidth = 64;
+        accesswidth = 64;
+        field {
+            sw = rw;
+            hw = r;
+            swwe = true;
+            onwrite = woset;
+            desc = "Demote bit to enter PROD_DBG state";
+        } demote [0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            onwrite = woset;
+            desc = "Demote lock bit. Once locked, demote can no longer be changed";
+        } lock [1:1] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            onwrite = woset;
+            desc = "Not used";
+        } rsvd [63:2] = 0x0;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Address Map
+    ////////////////////////////////////////////////////////////////////////////
+
+    FEAT_CTRL       FEAT_CTRL               @0x0000;
+
+    DEMOTE          DEMOTE_1                @0x0008;
+    DEMOTE          DEMOTE_2                @0x0010;
+};
+
+`endif

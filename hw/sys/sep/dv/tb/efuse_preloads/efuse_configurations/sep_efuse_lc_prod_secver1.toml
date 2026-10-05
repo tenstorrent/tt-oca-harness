@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# PROD lifecycle whose BL1_VERSION holds security-version flag 0.
+#
+# The low 128 bits of BL1_VERSION are the device's security-version flag set. The
+# ROM accepts a manifest only if its security_version carries every flag set here
+# (`manifest & device == device`, plat_get_security_version() in oca_platform.c).
+#
+# Used by sep_firmware_primary_invalid_security_version_test. The shipped test
+# image carries security_version 0 in both slots, so the primary lacks flag 0 and
+# is refused; the test raises the backup to exactly 0x1, the boundary that must be
+# accepted.
+#
+# sep_efuse_lc_prod_secver8.toml (flags 0-7) is the sibling in which both slots
+# are refused.
+#
+# Everything else matches sep_efuse_lc_prod.toml: PROD enforces secure boot,
+# SBOOT_DIS clear opts nothing out, and CHIPLET_PUBK_REVOKE 0 leaves no revocation
+# verdict to preempt the rollback one.
+
+[LC_STATE]
+  [LC_STATE.fields.lc_state]
+  value = 0xE1   # PROD (raw=0x1)
+
+[BL1_VERSION]
+  [BL1_VERSION.fields.version]
+  value = 0x1    # flag 0 set

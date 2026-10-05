@@ -1,0 +1,41 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-sep_entropy_pool">SEP Entropy Pool</h2>
+<p>Read-only entropy pool FIFO; DATA reads drain conditioned entropy supplied by the native EDN, and writes return SLVERR.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#IRQ_CAUSE">IRQ_CAUSE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#DATA">DATA</a></td><td>R</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>pool_error</td><td>R</td><td>-</td><td>The pool detected a FIFO integrity error</td></tr>
+<tr><td>7</td><td>fill_stall</td><td>R</td><td>-</td><td>The EDN fill request exceeded the configured stall threshold</td></tr>
+<tr><td>6</td><td>pool_low</td><td>R</td><td>-</td><td>The pool occupancy is below the configured low watermark</td></tr>
+<tr><td>5:0</td><td>fifo_level</td><td>R</td><td>-</td><td>Current number of available 64-bit entropy words</td></tr>
+</table>
+<h3 id="IRQ_CAUSE">IRQ_CAUSE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>pool_error</td><td>R</td><td>-</td><td>-</td></tr>
+<tr><td>1</td><td>fill_stall</td><td>R</td><td>-</td><td>-</td></tr>
+<tr><td>0</td><td>pool_low</td><td>R</td><td>-</td><td>-</td></tr>
+</table>
+<h3 id="DATA">DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>entropy</td><td>R</td><td>-</td><td>Pops one conditioned entropy word; an empty pool returns SLVERR</td></tr>
+</table>
+</div>

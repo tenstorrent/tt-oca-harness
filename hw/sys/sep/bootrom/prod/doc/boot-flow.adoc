@@ -1,0 +1,119 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[sep-prod-rom-boot-flow]]
+== Boot flow
+
+The assembly entry path handles every operation that must run before a stack
+or trustworthy DCCM exists. The C path starts only after the memory-health gate,
+DCCM scrub, and runtime initialization complete.
+
+.Cold and warm boot flow
+[plantuml]
+....
+@startuml
+start
+:Reset enters _start at 0x10040000;
+if (Hart 0?) then (yes)
+else (no)
+  :Install stack-free trap vector;
+  :WFI forever;
+  stop
+endif
+:Install stack-free trap vector and configure MRAC;
+if (cold_scratch[7] is zero?) then (yes)
+  :Poison cold_scratch[7] with -1;
+else (no)
+  if (Value is in ICCM?) then (yes)
+    :Report warm dispatch;
+    :Poison cold_scratch[7] with 0;
+    :Jump to BL1 warm handler;
+    stop
+  else (no)
+    :Report invalid warm target;
+    :WFI forever;
+    stop
+  endif
+endif
+:Set stack, gp, and C trap vector;
+:Open the outbound status window and configure PMP;
+:Check memory repair and MBIST;
+if (Checks permit boot?) then (yes)
+else (no)
+  :Record raw DFT status;
+  :WFI forever;
+  stop
+endif
+:Scrub DCCM, copy .data, and clear .bss;
+:Enter rom_main;
+:Read straps, initialize status and clock;
+:Initialize BL0 state and validate lifecycle;
+:Run crypto self-test and initialize memory and DMA;
+if (Primary normal boot?) then (yes)
+  :Initialize SPI;
+  :Select primary or backup flash slot;
+else (no)
+  :Wait for SMC-staged manifest;
+endif
+:Stage and validate manifest and payload;
+if (Selected image valid?) then (yes)
+else (no)
+  if (Another SPI slot remains?) then (yes)
+    :Clear staging SRAM and reinitialize SPI;
+    :Try the other slot;
+  else (no)
+    :Record terminal failure;
+    :WFI forever;
+    stop
+  endif
+endif
+:Lock fuse secrets, apply demotion,\nand record boot measurement;
+:Copy SEP BL1 from SRAM to ICCM;
+:fence.i, fence, and mret to BL1;
+stop
+@enduml
+....
+
+=== Assembly entry
+
+`_start` parks every hart except hart 0. Hart 0 installs a trap vector that
+does not use the stack, configures the CPU memory attributes, and examines
+`cold_scratch[7]` before touching DCCM. This ordering preserves the BL1 runtime
+state on a watchdog reset.
+
+The cold path establishes the stack and global pointer, installs the C-capable
+trap vector, opens the outbound filter window used by later firmware, and
+programs PMP. It then evaluates the SMC memory-repair and MBIST status. A
+failed check stops the boot unless the corresponding strap or
+`SKIP_MEM_CHECK` fuse policy permits it. Only after this gate passes does the
+ROM scrub DCCM, copy initialized data from ROM, clear BSS, and call
+`rom_main()`.
+
+=== C boot sequence
+
+`rom_main()` performs these operations in order:
+
+. Verify that `.data` and `.bss` were initialized.
+. Probe the SMC scratch round-trip and report the ROM version and hash.
+. Read the captured straps and initialize status reporting and the selected
+  clock.
+. Initialize `bl0_state`, check that its DCCM reserve does not overlap the
+  stack, validate the lifecycle state, and read the chip ID.
+. Run the peripheral/bus reset sequence and the SHA-256 self-test, apply the
+  configured SRAM and ICCM initialization, read `SBOOT_DIS`, install the stack
+  canary, and initialize the DMA.
+. Select SPI, recovery, or secondary mode.
+. Probe the SMC coordination state and check the stack canary.
+. Load and validate a manifest and payload.
+. Decide demotion, lock sensitive fuse reads, verify the lock, and record the
+  boot measurement.
+. Copy BL1 to ICCM and transfer control.
+
+Errors detected by C code converge on `rom_err_fail()`. The function records the
+error in `bl0_state` when available, publishes machine-readable status, writes
+the failure verdict, and enters a non-returning `wfi` loop.
+
+A trap takes a separate path. `trap_handler_c()` writes the failure verdict
+alone, so neither `bl0_state` nor the machine-readable status word records a
+trap-terminated boot. <<sep-prod-rom-status-errors>> describes both trap
+vectors.

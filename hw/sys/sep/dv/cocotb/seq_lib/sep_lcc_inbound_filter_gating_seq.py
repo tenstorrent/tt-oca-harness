@@ -1,0 +1,193 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""LCC sep_debug -> inbound-filter gating sequences.
+
+Contract:
+
+  * ``feat_ctrl_o = ~(SIP_DIS | SYS_DIS)``; bit 0 is ``SEP_DBG``: 1 = inbound
+    traffic bypasses the filter, 0 = it is filtered
+    (``hw/sys/sep/doc/lifecycle_controller.adoc``, feature-control-vector-definition).
+  * The filter blocks traffic that matches no entry
+    (``hw/sys/sep/doc/fabric.adoc``, sep-traffic-filter-decode) and terminates a
+    blocked read with ``DECERR`` on ``RRESP``
+    (``hw/ip/axi_filter/doc/index.adoc``, axi-traffic-filter-blocked).
+
+Buses:
+  * CONTROL (CPU-LSU, ``s_axi``, unfiltered): reads FEAT_CTRL with an exact
+    ``expected`` value and writes DEMOTE_1 to relax DBG_1 in PROD.
+  * EXTERNAL (SMN-inbound, ``m_axi``, filtered): ``SepExtAxiProbeSeq`` issues one
+    read; a blocked access is proven by DECERR, and a timeout is fatal by default.
+"""
+
+from __future__ import annotations
+
+from env.sep_axi_agent import SepAxiItem, SepAxiOp
+from env.sep_axi_decode_map import spec_regions
+from env.sep_lcc_golden import LCC_DEMOTE_1, LCC_DEMOTE_2, LCC_FEAT_CTRL
+from pyuvm import uvm_sequence
+from sep_reg_meta import SEP_LIFECYCLE_CTRL, sym
+
+# DEMOTE field masks from the generated export; LCC offsets come from env.sep_lcc_golden.
+DEMOTE_BIT = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_1", "demote")
+DEMOTE_LOCK_BIT = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_1", "lock")
+DEMOTE_FIELD_MASK = DEMOTE_BIT | DEMOTE_LOCK_BIT
+
+
+class SepLccFeatCtrlCheckSeq(uvm_sequence):
+    """Read FEAT_CTRL (lo+hi) on the CONTROL bus and exact-value-check vs golden.
+
+    ``expected`` is the 64-bit golden FEAT_CTRL from ``feat_ctrl_expected(...)``.
+    Each 32-bit half is read with ``item.expected`` set so the scoreboard does the
+    value compare (positive evidence, fails on a broken decode). Exposes
+    ``feat_ctrl`` (64-bit observed) and ``sep_debug`` (FEAT_CTRL[0]).
+    """
+
+    def __init__(self, expected: int, *, name: str = "lcc_feat_ctrl_check_seq") -> None:
+        super().__init__(name)
+        self.expected = expected & ((1 << 64) - 1)
+        self.feat_ctrl: int | None = None
+        self.sep_debug: int | None = None
+
+    async def _read_expect(self, addr: int, expected: int, label: str) -> int:
+        item = SepAxiItem(f"rd_{label}_0x{addr:08x}")
+        item.op = SepAxiOp.READ
+        item.addr = addr
+        item.length = 4
+        item.expected = expected
+        await self.start_item(item)
+        await self.finish_item(item)
+        return item.rdata & 0xFFFF_FFFF
+
+    async def body(self) -> None:
+        lo = await self._read_expect(LCC_FEAT_CTRL, self.expected & 0xFFFF_FFFF, "feat_lo")
+        hi = await self._read_expect(
+            LCC_FEAT_CTRL + 4, (self.expected >> 32) & 0xFFFF_FFFF, "feat_hi"
+        )
+        self.feat_ctrl = lo | (hi << 32)
+        self.sep_debug = lo & 0x1
+
+
+class SepLccDemoteSeq(uvm_sequence):
+    """Write DEMOTE_{1,2} on the CONTROL bus and read it back.
+
+    DEMOTE_1 relaxes DBG_1 ([23:0]) and DEMOTE_2 relaxes DBG_2 ([47:24]);
+    ``group`` selects which one this sequence drives.
+
+    ``group`` is 1 or 2. ``value`` is the demote and/or lock bits (W1S). When
+    ``lock`` is set, ``demote.swwe`` is 0 and a later demote write is ignored
+    until ``rst_ni``. ``expected`` overrides the read-back check so a locked
+    reject can require the pre-write value. Exposes ``demote`` and ``lock``.
+    """
+
+    def __init__(
+        self,
+        group: int = 1,
+        value: int = DEMOTE_BIT,
+        *,
+        expected: int | None = None,
+        name: str | None = None,
+    ) -> None:
+        super().__init__(name or f"lcc_demote{group}_seq")
+        assert group in (1, 2), f"demote group must be 1 or 2, got {group}"
+        self.group = group
+        self.value = value & DEMOTE_FIELD_MASK
+        self.expected = self.value if expected is None else expected & DEMOTE_FIELD_MASK
+        self.addr = LCC_DEMOTE_1 if group == 1 else LCC_DEMOTE_2
+        self.demote: int | None = None
+        self.lock: int | None = None
+
+    async def body(self) -> None:
+        wr = SepAxiItem(f"wr_demote{self.group}")
+        wr.op = SepAxiOp.WRITE
+        wr.addr = self.addr
+        wr.length = 4
+        wr.wdata = self.value
+        await self.start_item(wr)
+        await self.finish_item(wr)
+
+        rd = SepAxiItem(f"rd_demote{self.group}")
+        rd.op = SepAxiOp.READ
+        rd.addr = self.addr
+        rd.length = 4
+        rd.expected = self.expected
+        await self.start_item(rd)
+        await self.finish_item(rd)
+        self.demote = rd.rdata & DEMOTE_BIT
+        self.lock = bool(rd.rdata & DEMOTE_LOCK_BIT)
+
+
+# AMBA AXI4-Lite decode error (IHI 0022). A blocked inbound probe must return
+# DECERR, not a timeout and not SLVERR.
+RESP_DECERR = 3
+
+
+class SepExtAxiProbeSeq(uvm_sequence):
+    """Single read on the EXTERNAL (SMN-inbound, ``m_axi``) master.
+
+    Run on the external sequencer (``start_ext_seq``). The access traverses the
+    inbound filter: blocked when sep_debug=0 (RESP_DECERR, per the module
+    contract) and allowed when sep_debug=1 (OKAY + real data). Exposes
+    ``resp_ok`` / ``resp_code`` / ``timed_out`` / ``rdata``.
+
+    ``allow_timeout`` defaults False: a non-completing access is then a test-fatal
+    wedge, NOT accepted as "blocked". A blocked access is proven by the specific
+    DECERR response code, not by a timeout.
+    """
+
+    def __init__(
+        self, addr: int, *, allow_timeout: bool = False, name: str = "ext_axi_probe_seq"
+    ) -> None:
+        super().__init__(name)
+        self.addr = addr
+        self.allow_timeout = allow_timeout
+        self.resp_ok: bool = False
+        self.resp_code: int = -1
+        self.timed_out: bool = False
+        self.rdata: int = 0
+
+    async def body(self) -> None:
+        item = SepAxiItem(f"ext_rd_0x{self.addr:08x}")
+        item.op = SepAxiOp.READ
+        item.addr = self.addr
+        item.length = 4
+        item.allow_timeout = self.allow_timeout
+        await self.start_item(item)
+        await self.finish_item(item)
+        self.resp_ok = item.resp_ok
+        self.resp_code = item.resp_code
+        self.timed_out = item.timed_out
+        self.rdata = item.rdata & 0xFFFF_FFFF
+
+
+def _spec_row(unit: str):
+    rows = [r for r in spec_regions() if r.unit == unit]
+    if len(rows) != 1:
+        raise RuntimeError(f"memory-map table has {len(rows)} rows for {unit!r}, want 1")
+    return rows[0]
+
+
+def _unreachable() -> tuple[tuple[str, int], ...]:
+    """First and last word of each unit the inbound port has no path to.
+
+    ``hw/sys/sep/doc/fabric.adoc`` [[sep-axi-connectivity]]
+    (``hw/sys/sep/doc/assets/sep_axi_connectivity.svg``): the System Interface
+    initiator has no connection to CPU TCM, Reset Ctrl or System Periph (which
+    holds the AP/STEE remap regions), and the Boot ROM path serves only CPU IFI
+    and LSU. ICCM, DCCM and the PIC are SEP CPU resources that no crossbar
+    target reaches.
+    Unit extents come from the DV-owned memory-map table in
+    ``env/sep_axi_decode_map.py`` and, for the ROM, the generated export.
+    """
+    rom = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
+    out = [("Boot ROM", rom), ("Boot ROM", rom + sym("SEP_BOOT_ROM_MEM_SIZE") - 4)]
+    for unit in ("RST_CTRL", "ICCM", "DCCM", "PIC", "AP Remap Region", "STEE Remap Region"):
+        row = _spec_row(unit)
+        out += [(unit, row.base), (unit, (row.end_addr - 3) & ~0x3)]
+    return tuple(out)
+
+
+# (unit, word address) the SMN inbound port must not reach, walked in order.
+INBOUND_UNREACHABLE = _unreachable()
+# Reachable positive control on the same port: Scratch SRAM is connected to the
+# System Interface initiator in the same connectivity matrix.
+INBOUND_REACHABLE_SRAM = sym("SEP_SRAM_MEM_BASE_ADDR") + 0x100

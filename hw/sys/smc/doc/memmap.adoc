@@ -1,0 +1,279 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Memory Map and Register Reference
+:description: SMC address-space organization, access control, and register reference.
+
+[[smc-memory-map]]
+
+== Memory Map
+
+This section provides a comprehensive overview of the SMC memory map.
+The SMC address space is organized to provide access to various
+functional units including CPU control, peripheral interfaces, system
+management functions, and fabric control mechanisms.
+
+All addresses below are expressed as `BASE + offset`, where `BASE` can
+be either the local alias (`LOCAL_BASE`, fixed read-only at
+`0xC000_0000`) or the global system address (`GLOBAL_BASE`,
+programmable by firmware). The fabric routes transactions to SMC
+resources identically regardless of which base is used, as long as the
+access falls inside the relevant local or global aperture. Both
+apertures are sized by the SMC `REGION_SIZE` CSR, which resets to
+16 MiB and may be reprogrammed by firmware.
+Address ranges include both endpoints.
+Addresses are 32-bit aligned and follow standard AXI4-Lite addressing
+conventions. For details on how `LOCAL_BASE` and `GLOBAL_BASE` relate
+and how an adopter maps this aperture into the system address space,
+refer to the
+ifdef::backend-html5[]
+SMC Address Map Integration
+endif::backend-html5[]
+ifdef::backend-pdf[]
+SMC Address Map Integration
+endif::backend-pdf[]
+section of the Integration Guide.
+
+=== Address Space Organization
+
+The generated component map reports each allocated aperture separately from
+the extent occupied by registers.
+
+ifdef::backend-html5[]
+include::partial$smc/regs/gen/adoc/memory_map.adoc[]
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/memory_map.adoc[]
+endif::backend-pdf[]
+
+The last two columns state how the SMC answers a 32-bit access that no
+register or memory backs, as seen at its inbound AXI port, and
+ifdef::backend-html5[]
+xref:ocah-docs:ROOT:memory_map.adoc#ocah-decode-response-codes[Decode Response Codes]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ocah-decode-response-codes,Decode Response Codes>>
+endif::backend-pdf[]
+defines them and their codes.
+
+An address between unit apertures reaches no unit. A read there answers `DECERR`
+with data `0xBADCAB1E`, and a write answers `DECERR`, except from
+`BASE + 0x001_7000` through `BASE + 0x001_7FFF`, where it answers `SLVERR`.
+
+An address inside neither the local nor the global aperture answers `DECERR`
+to reads and writes. The M-mode and Xvisor remap regions forward accesses from
+SMC initiators only; an access to them from the inbound port answers `DECERR`.
+
+The inbound port reaches a unit only while its whole aperture lies below
+`BASE + REGION_SIZE`. At the reset value the PLIC, CLINT and bus-error units lie
+beyond it and answer `DECERR`. The SMC harts reach the PLIC and CLINT inside the
+CPU cluster regardless of `REGION_SIZE`.
+
+The I2C, UART, I3C, AVSBus and Telemetry Receiver windows answer `SLVERR`, with
+read data `0xBADCAB1E`, while the peripheral's `CLOCK_GATE_CONTROL` enable in
+SMC_BASE_CONFIG is set and its clock is stopped.
+
+=== AXI-Lite External Window
+
+The `smc_external` window at `BASE + 0x040_0000` is the adopter extension
+window. OCAH exposes this AXI-Lite bus so an adopter can attach their own
+technology- and vendor-specific implementations of memory-mapped blocks. The
+window is split into two regions (see `smc_external.rdl`). Apart from the
+eFuse SHIM control block described below, hardware treats both identically;
+the split is purely organizational:
+
+* *Mandatory* (`BASE + 0x040_0000`): blocks every integration must implement.
+  Their function is dictated by the OCAH specifications, but their
+  implementation is inherently technology- and vendor-specific — the eFuse
+  SHIM, PLL and PVT clock observation, the reference-clock pad control, the
+  per-pad GPIO controls, the PLL macro, and the PVT sensors.
+* *Supplementary* (`BASE + 0x040_4000`): any additional memory-mapped devices
+  the adopter wants to expose, plus the captured strap registers at
+  `BASE + 0x040_5800`.
+
+The generated SMC map reports this as one opaque adopter-owned aperture.
+Concrete placements inside it are integration-specific and are documented by
+the adopter. The mandatory functions are the PLL and PVT wrappers, clock
+observation and pad controls, and the eFuse SHIM. Supplementary functions are
+adopter-defined memory-mapped devices, plus the captured GPIO straps. Captured
+straps are read-only values latched from bonded pads at cold reset and consumed
+by boot firmware.
+
+The eFuse SHIM control block is the exception. Its placement is fixed at the
+base of the window, `BASE + 0x040_0000`, and its size is the
+`EFUSE_SHIM_SIZE` parameter (`CFG.SMC_EFUSE_SHIM_SIZE` at the SMU). The peripheral
+crossbar routes that range to the eFuse controller,
+which forwards it unchanged on `efuse_bank_ctrl` to the adopter's SHIM. It
+never appears on the external port. The adopter defines the SHIM's control
+registers at offset `0x0` of its own `smc_external` map.
+
+The supplementary (optional) region of the window is passed through to the SMU's
+`smc_external_req_o` / `smc_external_resp_i` ports for adopter integration. The
+adopter may implement any memory-mapped functions there, or may instead
+terminate the region with an error response. The reference integration
+(`hw/top/smc_ip_integration.sv`) terminates
+unclaimed accesses in this region with a DECERR response via the
+`prim_axi_lite_err_slv` helper; this is one integration choice, not a
+requirement.
+
+=== Register Interface Standards
+
+All SMC components use standard AMBA interfaces. We summarize the
+interfaces in <<smc-register-interface-standards-table>>:
+
+ifdef::backend-html5[]
+++++
+<div class="smc-memory-table-scroll" role="region" aria-label="Register Interface Standards" tabindex="0">
+++++
+endif::backend-html5[]
+
+[[smc-register-interface-standards-table]]
+.SMC Register Interface Standards
+[width="100%",cols="20%,18%,18%,44%",options="header",role="smc-memory-table"]
+|=======================================================================
+|Interface |Address Width |Data Width |Description
+|AXI4-Lite |32-bit |64-bit |High-performance components
+|APB4 |32-bit |32-bit |Peripheral components
+4+|*Address Alignment:* 32-bit registers on 4-byte boundaries, 64-bit on 8-byte boundaries
+4+|*Endianness:* Little-endian byte ordering throughout
+4+|*Protection:* AXI protection bits used for secure/non-secure access control
+|=======================================================================
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
+=== Access Control and Security
+
+<<smc-access-control-mechanisms-table>> summarises the SMC access-control mechanisms.
+
+[[smc-access-control-mechanisms-table]]
+.SMC Access Control Mechanisms
+[width="100%",cols="30%,70%",options="header"]
+|=======================================================================
+|Mechanism |Description
+|Address Filtering |Configurable inbound and outbound address filters
+
+|Protection Levels |AXI protection attribute enforcement
+
+|Secure Regions |eFuse and security-critical registers require elevated
+privileges
+
+|Error Handling |Bus error units provide comprehensive error logging and
+reporting
+|=======================================================================
+
+== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+<span id="preamble"></span>
+<span id="detailed-address-map"></span>
+<span id="component-specific-register-documentation"></span>
+++++
+endif::backend-html5[]
+
+=== External Window Reference Maps
+
+The PLL and PVT maps below describe placeholder memory footprints used by the
+open verification models. Their memory words do not specify the control
+registers of an adopter's clock or sensor implementation. The straps map
+describes captured GPIO values. Placement of these blocks within the external
+window is integration-specific.
+
+ifdef::backend-html5[]
+++++
+include::partial$smc/dv/models/regs/gen/html/pll_wrap.html[]
+include::partial$smc/dv/models/regs/gen/html/pvt_wrap.html[]
+include::partial$smc/regs/gen/html/blocks/straps.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../dv/models/regs/gen/adoc/pll_wrap.adoc[leveloffset=+2]
+include::../dv/models/regs/gen/adoc/pvt_wrap.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/straps.adoc[leveloffset=+2]
+endif::backend-pdf[]
+
+== Spare SMC Register Blocks
+
+ifdef::backend-html5[]
+++++
+<span id="spare-smc-register-blocks"></span>
+++++
+endif::backend-html5[]
+
+The following shows the detailed register map of a set of
+programmer-visible spare SMC blocks. They are spare but essential: for
+example, the scratch block provides general-purpose registers, and the
+chip-config and NDM-reset blocks hold system-level configuration and
+reset control.
+
+[[smc-ndm-reset-block]]
+=== Chip Config, Scratch, NDM Reset, and Misc Wrap
+
+ifdef::backend-html5[]
+++++
+include::partial$smc/regs/gen/html/blocks/chip_config.html[]
+include::partial$smc/regs/gen/html/blocks/scratch.html[]
+include::partial$smc/regs/gen/html/blocks/ndm_reset.html[]
+include::partial$smc/regs/gen/html/blocks/misc_wrap.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/chip_config.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/scratch.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/ndm_reset.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/misc_wrap.adoc[leveloffset=+2]
+endif::backend-pdf[]
+
+=== Base Config and DFX Status
+
+ifdef::backend-html5[]
+++++
+include::partial$smc/regs/gen/html/blocks/smc_base_config.html[]
+include::partial$smc/regs/gen/html/blocks/dfx_ctrl_status.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/smc_base_config.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/dfx_ctrl_status.adoc[leveloffset=+2]
+endif::backend-pdf[]
+
+=== Component Register References
+
+For detailed register-level documentation of each SMC component, refer
+to the individual component documentation (<<smc-component-documentation-table>>).
+
+[[smc-component-documentation-table]]
+.SMC Component Documentation
+[width="100%",cols="30%,50%,20%",options="header",]
+|=======================================================================
+|Category |Description |Reference
+|CPU and System Control |CPU Control, PLIC, CLINT, Watchdog Timers, and
+Bus Error Units |cpu
+
+|Interrupt Controller |Platform-Level Interrupt Controller (PLIC)
+details |interrupts
+
+|DMA Controller |DMA Controller detailed register interface |dma
+
+|Memory Zeroer |Memory Zeroer control registers |zeroer
+
+|Fabric Control |Address remapping, inbound/outbound filters, and fabric
+control registers |fabric
+
+|Peripherals and I/O |Mailbox, System Timer OCTS, eFuse, UART 16550, Log
+Engine, I2C, I3C, AVSBus, GPIO, and Telemetry Receiver |periphs
+
+|Reset Management |Reset unit and system control registers |clk_rst
+
+|Clock Generation |PLL wrapper and clock generation registers |pll
+
+|DFD / CLA |Design-for-debug wrap and Core Logic Analyzer register map |dfd
+|=======================================================================

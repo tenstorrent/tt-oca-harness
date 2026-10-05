@@ -1,0 +1,1161 @@
+--- a/src/axi_burst_splitter.sv
++++ b/src/axi_burst_splitter.sv
+@@ -31,6 +31,12 @@ module axi_burst_splitter #(
+   parameter int unsigned MaxWriteTxns = 32'd0,
+   // Internal ID queue can work in two bandwidth modes: see id_queue.sv for details
+   parameter bit          FullBW       = 0,
++  // Spill register control
++  parameter bit          SpillAw      = 1'b0,
++  parameter bit          SpillW       = 1'b0,
++  parameter bit          SpillB       = 1'b0,
++  parameter bit          SpillAr      = 1'b0,
++  parameter bit          SpillR       = 1'b0,
+   // AXI Bus Types
+   parameter int unsigned AddrWidth    = 32'd0,
+   parameter int unsigned DataWidth    = 32'd0,
+--- a/src/axi_burst_splitter_gran.sv
++++ b/src/axi_burst_splitter_gran.sv
+@@ -93,6 +93,7 @@ module axi_burst_splitter_gran #(
+     .clk_i,
+     .rst_ni,
+     .test_i           ( 1'b0                          ),
++    .sel_hash_i       ( '0                            ),
+     .slv_req_i        ( slv_req ),
+     .slv_aw_select_i  ( sel_aw_unsupported            ),
+     .slv_ar_select_i  ( sel_ar_unsupported            ),
+@@ -101,6 +102,7 @@ module axi_burst_splitter_gran #(
+     .mst_resps_i      ( {unsupported_resp, act_resp}  )
+   );
+ 
++
+   // Define supported transactions.
+   function bit txn_supported(axi_pkg::atop_t atop, axi_pkg::burst_t burst, axi_pkg::cache_t cache,
+       axi_pkg::len_t len, axi_pkg::len_t len_limit);
+--- a/src/axi_cdc.sv
++++ b/src/axi_cdc.sv
+@@ -32,7 +32,7 @@ module axi_cdc #(
+   /// Depth of the FIFO crossing the clock domain, given as 2**LOG_DEPTH.
+   parameter int unsigned  LogDepth   = 1,
+   /// Number of synchronization registers to insert on the async pointers
+-  parameter int unsigned  SyncStages = 2
++  parameter int unsigned  SyncStages = 3
+ ) (
+   // slave side - clocked by `src_clk_i`
+   input  logic      src_clk_i,
+--- a/src/axi_cdc_dst.sv
++++ b/src/axi_cdc_dst.sv
+@@ -25,7 +25,7 @@ module axi_cdc_dst #(
+   /// Depth of the FIFO crossing the clock domain, given as 2**LOG_DEPTH.
+   parameter int unsigned LogDepth = 1,
+   /// Number of synchronization registers to insert on the async pointers
+-  parameter int unsigned SyncStages = 2,
++  parameter int unsigned SyncStages = 3,
+   parameter type aw_chan_t = logic,
+   parameter type w_chan_t = logic,
+   parameter type b_chan_t = logic,
+--- a/src/axi_cdc_src.sv
++++ b/src/axi_cdc_src.sv
+@@ -25,7 +25,7 @@ module axi_cdc_src #(
+   /// Depth of the FIFO crossing the clock domain, given as 2**LOG_DEPTH.
+   parameter int unsigned LogDepth   = 1,
+   /// Number of synchronization registers to insert on the async pointers
+-  parameter int unsigned SyncStages = 2,
++  parameter int unsigned SyncStages = 3,
+   parameter type aw_chan_t = logic,
+   parameter type w_chan_t = logic,
+   parameter type b_chan_t = logic,
+--- a/src/axi_demux.sv
++++ b/src/axi_demux.sv
+@@ -53,6 +53,7 @@ module axi_demux #(
+   parameter int unsigned MaxTrans       = 32'd8,
+   parameter int unsigned AxiLookBits    = 32'd3,
+   parameter bit          UniqueIds      = 1'b0,
++  parameter bit          SelHashIds     = 1'b0,
+   parameter bit          SpillAw        = 1'b1,
+   parameter bit          SpillW         = 1'b0,
+   parameter bit          SpillB         = 1'b0,
+@@ -65,6 +66,7 @@ module axi_demux #(
+   input  logic                          clk_i,
+   input  logic                          rst_ni,
+   input  logic                          test_i,
++  input  logic        [1:0]             sel_hash_i,
+   // Slave Port
+   input  axi_req_t                      slv_req_i,
+   input  select_t                       slv_aw_select_i,
+@@ -194,11 +196,13 @@ module axi_demux #(
+     .NoMstPorts ( NoMstPorts  ),
+     .MaxTrans   ( MaxTrans    ),
+     .AxiLookBits( AxiLookBits ),
+-    .UniqueIds  ( UniqueIds   )
++    .UniqueIds  ( UniqueIds   ),
++    .SelHashIds ( SelHashIds  )
+   ) i_demux_simple (
+     .clk_i,
+     .rst_ni,
+     .test_i,
++    .sel_hash_i,
+ 
+     .slv_req_i       ( slv_req_cut   ),
+     .slv_aw_select_i ( slv_aw_select ),
+@@ -223,6 +227,7 @@ module axi_demux_intf #(
+   parameter int unsigned MAX_TRANS        = 32'd8,
+   parameter int unsigned AXI_LOOK_BITS    = 32'd3,
+   parameter bit          UNIQUE_IDS       = 1'b0,
++  parameter bit          SEL_HASH_IDS     = 1'b0,
+   parameter bit          SPILL_AW         = 1'b1,
+   parameter bit          SPILL_W          = 1'b0,
+   parameter bit          SPILL_B          = 1'b0,
+@@ -235,6 +240,7 @@ module axi_demux_intf #(
+   input  logic    clk_i,                 // Clock
+   input  logic    rst_ni,                // Asynchronous reset active low
+   input  logic    test_i,                // Testmode enable
++  input  logic    [1:0] sel_hash_i,      // Hash selection, if enabled
+   input  select_t slv_aw_select_i,       // has to be stable, when aw_valid
+   input  select_t slv_ar_select_i,       // has to be stable, when ar_valid
+   AXI_BUS.Slave   slv,                   // slave port
+@@ -281,6 +287,7 @@ module axi_demux_intf #(
+     .MaxTrans       ( MAX_TRANS     ),
+     .AxiLookBits    ( AXI_LOOK_BITS ),
+     .UniqueIds      ( UNIQUE_IDS    ),
++    .SelHashIds     ( SEL_HASH_IDS  ),
+     .SpillAw        ( SPILL_AW      ),
+     .SpillW         ( SPILL_W       ),
+     .SpillB         ( SPILL_B       ),
+@@ -290,6 +297,7 @@ module axi_demux_intf #(
+     .clk_i,   // Clock
+     .rst_ni,  // Asynchronous reset active low
+     .test_i,  // Testmode enable
++    .sel_hash_i, // Hash selection (if enabled)
+     // slave port
+     .slv_req_i       ( slv_req         ),
+     .slv_aw_select_i ( slv_aw_select_i ),
+--- a/src/axi_demux_simple.sv
++++ b/src/axi_demux_simple.sv
+@@ -1,3 +1,6 @@
++// Modified by Tenstorrent
++// UNOPTFLAT warning lint_offs for Verilator
++
+ // Copyright (c) 2019 ETH Zurich and University of Bologna.
+ // Copyright and related rights are licensed under the Solderpad Hardware
+ // License, Version 0.51 (the "License"); you may not use this file except in
+@@ -49,6 +52,7 @@ module axi_demux_simple #(
+   parameter int unsigned MaxTrans       = 32'd8,
+   parameter int unsigned AxiLookBits    = 32'd3,
+   parameter bit          UniqueIds      = 1'b0,
++  parameter bit          SelHashIds     = 1'b0,
+   // Dependent parameters, DO NOT OVERRIDE!
+   parameter int unsigned SelectWidth    = (NoMstPorts > 32'd1) ? $clog2(NoMstPorts) : 32'd1,
+   parameter type         select_t       = logic [SelectWidth-1:0]
+@@ -56,16 +60,33 @@ module axi_demux_simple #(
+   input  logic                          clk_i,
+   input  logic                          rst_ni,
+   input  logic                          test_i,
++  input  logic          [1:0]           sel_hash_i,
+   // Slave Port
+   input  axi_req_t                      slv_req_i,
+   input  select_t                       slv_aw_select_i,
+   input  select_t                       slv_ar_select_i,
++  /* verilator lint_off UNOPTFLAT */
+   output axi_resp_t                     slv_resp_o,
+   // Master Ports
+   output axi_req_t    [NoMstPorts-1:0]  mst_reqs_o,
++  /* verilator lint_on UNOPTFLAT */
+   input  axi_resp_t   [NoMstPorts-1:0]  mst_resps_i
+ );
+ 
++  function automatic [3:0] id_hash (
++    input [9:0] id,
++    input [1:0] sel_hash
++  );
++    begin
++      unique case (sel_hash)
++            2'b00: id_hash = {2'b00, id[9:8]} ^ id[7:4] ^ id[3:0];
++            2'b01: id_hash = id[3:0];
++            2'b10: id_hash = {id[9], id[2:0]};
++            2'b11: id_hash = {id[9:8], 2'b00} ^ id[7:4] ^ id[3:0];
++      endcase
++    end
++  endfunction
++
+   localparam int unsigned IdCounterWidth = cf_math_pkg::idx_width(MaxTrans);
+   typedef logic [IdCounterWidth-1:0] id_cnt_t;
+ 
+@@ -95,15 +116,23 @@ module axi_demux_simple #(
+     // Upon an ATOP load, inject IDs from the AW into the AR channel
+     logic                     atop_inject;
+ 
++    // AW ID hash
++    logic   [AxiLookBits-1:0] awid_hash;
++
+     // W select counter: stores the decision to which master W beats should go
++    /* verilator lint_off UNOPTFLAT */
+     select_t                  w_select,           w_select_q;
+     logic                     w_select_valid;
++    /* verilator lint_on UNOPTFLAT */
+     id_cnt_t                  w_open;
+     logic                     w_cnt_up,           w_cnt_down;
+ 
+     // B channles input into the arbitration
+     logic    [NoMstPorts-1:0] mst_b_valids,       mst_b_readies;
+ 
++    // B ID hash
++    logic   [AxiLookBits-1:0] bid_hash;
++
+     //--------------------------------------
+     // Read Transaction
+     //--------------------------------------
+@@ -113,16 +142,44 @@ module axi_demux_simple #(
+     logic                     ar_select_occupied, ar_id_cnt_full;
+     logic                     ar_push;
+ 
++    // AR ID hash
++    logic   [AxiLookBits-1:0] arid_hash;
++
+     // Register which locks the AR valid signel
+     logic                     lock_ar_valid_d,    lock_ar_valid_q, load_ar_lock;
+     logic                     ar_valid,           ar_ready;
+ 
+     logic    [NoMstPorts-1:0] mst_r_valids, mst_r_readies;
+ 
++    // R ID hash
++    logic   [AxiLookBits-1:0] rid_hash;
+ 
+ 
++    //--------------------------------------
++    // AXI Hash ID Selection
++    //--------------------------------------
++    //--------------------------------------
+ 
+-
++    // ID Hash
++    // If the `SelHashIds` parameter is set (and there are atleast 10 ID bits), AxiHashSel MMR will choose which hashing function to use for write transaction IDs
++    // Four hashing schemes are made available for selection
++    //   Hash 0 - {2’b00, [9,8]}  ^ [7:4] ^ [3:0] // folding (default setting)
++    //   Hash 1 - [3:0] // Core ID + I/D
++    //   Hash 2 - {[9],[2:0]} // Core ID + Strongly Ordered / Relaxed Ordered
++    //   Hash 3 - {[9,8],2’b00} ^ [7:4] ^ [3:0] // bit-3 is I/D xor Strongly Ordered/Relaxed Ordered
++    //
++    // otherwise, hashed ID uses the lower AxiLookBits bits as the hash
++    if (SelHashIds && (AxiIdWidth >= 10)) begin : gen_id_hash
++      assign awid_hash = id_hash(.id(slv_req_i.aw.id[9:0]), .sel_hash(sel_hash_i));
++      assign bid_hash = id_hash(.id(slv_resp_o.b.id[9:0]), .sel_hash(sel_hash_i));
++      assign arid_hash = id_hash(.id(slv_req_i.ar.id[9:0]), .sel_hash(sel_hash_i));
++      assign rid_hash = id_hash(.id(slv_resp_o.r.id[9:0]), .sel_hash(sel_hash_i));
++    end else begin
++      assign awid_hash = slv_req_i.aw.id[0+:AxiLookBits];
++      assign bid_hash = slv_resp_o.b.id[0+:AxiLookBits];
++      assign arid_hash = slv_req_i.ar.id[0+:AxiLookBits];
++      assign rid_hash = slv_resp_o.r.id[0+:AxiLookBits];
++    end
+ 
+ 
+     //--------------------------------------
+@@ -193,6 +250,7 @@ module axi_demux_simple #(
+       end
+     end
+ 
++
+     // lock the valid signal, as the selection gets pushed into the W FIFO on first assertion,
+     // prevent further pushing
+     `FFLARN(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
+@@ -214,16 +272,16 @@ module axi_demux_simple #(
+       ) i_aw_id_counter (
+         .clk_i                        ( clk_i                          ),
+         .rst_ni                       ( rst_ni                         ),
+-        .lookup_axi_id_i              ( slv_req_i.aw.id[0+:AxiLookBits] ),
++        .lookup_axi_id_i              ( awid_hash                      ),
+         .lookup_mst_select_o          ( lookup_aw_select               ),
+         .lookup_mst_select_occupied_o ( aw_select_occupied             ),
+         .full_o                       ( aw_id_cnt_full                 ),
+         .inject_axi_id_i              ( '0                             ),
+         .inject_i                     ( 1'b0                           ),
+-        .push_axi_id_i                ( slv_req_i.aw.id[0+:AxiLookBits] ),
++        .push_axi_id_i                ( awid_hash                      ),
+         .push_mst_select_i            ( slv_aw_select_i                ),
+         .push_i                       ( w_cnt_up                       ),
+-        .pop_axi_id_i                 ( slv_resp_o.b.id[0+:AxiLookBits]  ),
++        .pop_axi_id_i                 ( bid_hash                       ),
+         .pop_i                        ( slv_resp_o.b_valid & slv_req_i.b_ready      ),
+         .any_outstanding_trx_o        ( )
+       );
+@@ -260,7 +318,9 @@ module axi_demux_simple #(
+     //--------------------------------------
+     //  B Channel
+     //--------------------------------------
++    /* verilator lint_off UNOPTFLAT */
+     logic [cf_math_pkg::idx_width(NoMstPorts)-1:0] b_idx;
++    /* verilator lint_on UNOPTFLAT */
+ 
+     // Arbitration of the different B responses
+     rr_arb_tree #(
+@@ -340,6 +400,7 @@ module axi_demux_simple #(
+       end
+     end
+ 
++
+     // this ff is needed so that ar does not get de-asserted if an atop gets injected
+     `FFLARN(lock_ar_valid_q, lock_ar_valid_d, load_ar_lock, '0, clk_i, rst_ni)
+ 
+@@ -360,16 +421,16 @@ module axi_demux_simple #(
+       ) i_ar_id_counter (
+         .clk_i                        ( clk_i                                       ),
+         .rst_ni                       ( rst_ni                                      ),
+-        .lookup_axi_id_i              ( slv_req_i.ar.id[0+:AxiLookBits]             ),
++        .lookup_axi_id_i              ( arid_hash                                   ),
+         .lookup_mst_select_o          ( lookup_ar_select                            ),
+         .lookup_mst_select_occupied_o ( ar_select_occupied                          ),
+         .full_o                       ( ar_id_cnt_full                              ),
+-        .inject_axi_id_i              ( slv_req_i.aw.id[0+:AxiLookBits]             ),
++        .inject_axi_id_i              ( awid_hash                                   ),
+         .inject_i                     ( atop_inject                                 ),
+-        .push_axi_id_i                ( slv_req_i.ar.id[0+:AxiLookBits]             ),
++        .push_axi_id_i                ( arid_hash                                   ),
+         .push_mst_select_i            ( slv_ar_select_i                             ),
+         .push_i                       ( ar_push                                     ),
+-        .pop_axi_id_i                 ( slv_resp_o.r.id[0+:AxiLookBits]               ),
++        .pop_axi_id_i                 ( rid_hash                                    ),
+         .pop_i                        ( slv_resp_o.r_valid & slv_req_i.r_ready & slv_resp_o.r.last ),
+         .any_outstanding_trx_o        ( )
+       );
+@@ -379,7 +440,9 @@ module axi_demux_simple #(
+     //  R Channel
+     //--------------------------------------
+ 
++    /* verilator lint_off UNOPTFLAT */
+     logic [cf_math_pkg::idx_width(NoMstPorts)-1:0] r_idx;
++    /* verilator lint_on UNOPTFLAT */
+ 
+     // Arbitration of the different r responses
+     rr_arb_tree #(
+--- a/src/axi_dw_downsizer.sv
++++ b/src/axi_dw_downsizer.sv
+@@ -225,6 +225,7 @@ module axi_dw_downsizer #(
+     .clk_i          (clk_i                      ),
+     .rst_ni         (rst_ni                     ),
+     .test_i         (1'b0                       ),
++    .sel_hash_i     (2'd0                       ),   // unused
+     .mst_reqs_o     ({axi_err_req, mst_req_o}   ),
+     .mst_resps_i    ({axi_err_resp, mst_resp_i} ),
+     .slv_ar_select_i(mst_req_ar_err[mst_req_idx]),
+--- a/src/axi_dw_upsizer.sv
++++ b/src/axi_dw_upsizer.sv
+@@ -222,6 +222,7 @@ module axi_dw_upsizer #(
+     .clk_i          (clk_i                      ),
+     .rst_ni         (rst_ni                     ),
+     .test_i         (1'b0                       ),
++    .sel_hash_i     (2'd0                       ),   // unused
+     .mst_reqs_o     ({axi_err_req, mst_req_o}   ),
+     .mst_resps_i    ({axi_err_resp, mst_resp_i} ),
+     .slv_ar_select_i(mst_req_ar_err[mst_req_idx]),
+--- a/src/axi_from_mem.sv
++++ b/src/axi_from_mem.sv
+@@ -122,3 +122,6 @@ module axi_from_mem #(
+   );
+ 
+ endmodule
++// Local Variables:
++// verilog-typedef-regexp:"_t$"
++// End:
+--- a/src/axi_id_prepend.sv
++++ b/src/axi_id_prepend.sv
+@@ -77,6 +77,9 @@ module axi_id_prepend #(
+   output logic         [NoBus-1:0] mst_r_readies_o
+ );
+ 
++  localparam size_b_chan = $bits(slv_b_chan_t);
++  localparam size_r_chan = $bits(slv_r_chan_t);
++
+   // prepend the ID
+   for (genvar i = 0; i < NoBus; i++) begin : gen_id_prepend
+     if (PreIdWidth == 0) begin : gen_no_prepend
+--- a/src/axi_id_serialize.sv
++++ b/src/axi_id_serialize.sv
+@@ -201,6 +201,7 @@ module axi_id_serialize #(
+     .clk_i,
+     .rst_ni,
+     .test_i          ( 1'b0                ),
++    .sel_hash_i      ( 2'd0                ),   // unused
+     .slv_req_i       ( slv_req_i           ),
+     .slv_aw_select_i ( slv_aw_select       ),
+     .slv_ar_select_i ( slv_ar_select       ),
+--- a/src/axi_interleaved_xbar.sv
++++ b/src/axi_interleaved_xbar.sv
+@@ -211,6 +211,7 @@ import cf_math_pkg::idx_width;
+       .clk_i,   // Clock
+       .rst_ni,  // Asynchronous reset active low
+       .test_i,  // Testmode enable
++      .sel_hash_i      (2'd0                 ),   // unused
+       .slv_req_i       ( slv_reqs_mod[i]     ),
+       .slv_aw_select_i ( slv_aw_select       ),
+       .slv_ar_select_i ( slv_ar_select       ),
+--- a/src/axi_intf.sv
++++ b/src/axi_intf.sv
+@@ -536,6 +536,154 @@ interface AXI_LITE_DV #(
+ endinterface
+ 
+ 
++interface AXI5_LITE #(
++  parameter int unsigned AXI_ADDR_WIDTH = 0,
++  parameter int unsigned AXI_DATA_WIDTH = 0,
++  parameter int unsigned AXI_ID_WIDTH   = 0,
++  parameter int unsigned AXI_USER_WIDTH = 0
++);
++
++  localparam int unsigned AXI_STRB_WIDTH = AXI_DATA_WIDTH / 8;
++
++  typedef logic [AXI_ID_WIDTH-1:0]   id_t;
++  typedef logic [AXI_ADDR_WIDTH-1:0] addr_t;
++  typedef logic [AXI_DATA_WIDTH-1:0] data_t;
++  typedef logic [AXI_STRB_WIDTH-1:0] strb_t;
++  typedef logic [AXI_USER_WIDTH-1:0] user_t;
++
++  // AW channel
++  id_t              aw_id;
++  addr_t          aw_addr;
++  axi_pkg::prot_t aw_prot;
++  logic           aw_valid;
++  logic           aw_ready;
++
++  data_t          w_data;
++  strb_t          w_strb;
++  user_t            w_user;
++  logic           w_valid;
++  logic           w_ready;
++
++  id_t              b_id;
++  axi_pkg::resp_t b_resp;
++  logic           b_valid;
++  logic           b_ready;
++
++  id_t              ar_id;
++  addr_t          ar_addr;
++  axi_pkg::prot_t ar_prot;
++  logic           ar_valid;
++  logic           ar_ready;
++
++  id_t              r_id;
++  data_t          r_data;
++  axi_pkg::resp_t r_resp;
++  logic           r_valid;
++  logic           r_ready;
++
++  modport Master (
++    output aw_id, aw_addr, aw_prot, aw_valid, input aw_ready,
++    output w_data, w_strb, w_user, w_valid, input w_ready,
++    input b_id, b_resp, b_valid, output b_ready,
++    output ar_id, ar_addr, ar_prot, ar_valid, input ar_ready,
++    input r_id, r_data, r_resp, r_valid, output r_ready
++  );
++
++  modport Slave (
++    input aw_id, aw_addr, aw_prot, aw_valid, output aw_ready,
++    input w_data, w_strb, w_user, w_valid, output w_ready,
++    output b_id, b_resp, b_valid, input b_ready,
++    input ar_id, ar_addr, ar_prot, ar_valid, output ar_ready,
++    output r_id, r_data, r_resp, r_valid, input r_ready
++  );
++
++  modport Monitor (
++    input aw_id, aw_addr, aw_prot, aw_valid, aw_ready,
++          w_data, w_strb, w_user, w_valid, w_ready,
++          b_id, b_resp, b_valid, b_ready,
++          ar_id, ar_addr, ar_prot, ar_valid, ar_ready,
++          r_id, r_data, r_resp, r_valid, r_ready
++  );
++
++endinterface
++
++
++/// A clocked AXI4-Lite interface for use in design verification.
++interface AXI5_LITE_DV #(
++  parameter int unsigned AXI_ADDR_WIDTH = 0,
++  parameter int unsigned AXI_DATA_WIDTH = 0,
++  parameter int unsigned AXI_ID_WIDTH   = 0,
++  parameter int unsigned AXI_USER_WIDTH = 0
++)(
++  input logic clk_i
++);
++
++  localparam AXI_STRB_WIDTH = AXI_DATA_WIDTH / 8;
++
++  typedef logic [AXI_ID_WIDTH-1:0]   id_t;
++  typedef logic [AXI_ADDR_WIDTH-1:0] addr_t;
++  typedef logic [AXI_DATA_WIDTH-1:0] data_t;
++  typedef logic [AXI_STRB_WIDTH-1:0] strb_t;
++  typedef logic [AXI_USER_WIDTH-1:0] user_t;
++
++  // AW channel
++  id_t              aw_id;
++  addr_t          aw_addr;
++  axi_pkg::prot_t aw_prot;
++  logic           aw_valid;
++  logic           aw_ready;
++
++  data_t          w_data;
++  strb_t          w_strb;
++  user_t            w_user;
++  logic           w_valid;
++  logic           w_ready;
++
++  id_t              b_id;
++  axi_pkg::resp_t b_resp;
++  logic           b_valid;
++  logic           b_ready;
++
++  id_t              ar_id;
++  addr_t          ar_addr;
++  axi_pkg::prot_t ar_prot;
++  logic           ar_valid;
++  logic           ar_ready;
++
++  id_t              r_id;
++  data_t          r_data;
++  axi_pkg::resp_t r_resp;
++  logic           r_valid;
++  logic           r_ready;
++
++  modport Master (
++    output aw_id, aw_addr, aw_prot, aw_valid, input aw_ready,
++    output w_data, w_strb, w_user, w_valid, input w_ready,
++    input b_id, b_resp, b_valid, output b_ready,
++    output ar_id, ar_addr, ar_prot, ar_valid, input ar_ready,
++    input r_id, r_data, r_resp, r_valid, output r_ready
++  );
++
++  modport Slave (
++    input aw_id, aw_addr, aw_prot, aw_valid, output aw_ready,
++    input w_data, w_strb, w_user, w_valid, output w_ready,
++    output b_id, b_resp, b_valid, input b_ready,
++    input ar_id, ar_addr, ar_prot, ar_valid, output ar_ready,
++    output r_id, r_data, r_resp, r_valid, input r_ready
++  );
++
++  modport Monitor (
++    input aw_id, aw_addr, aw_prot, aw_valid, aw_ready,
++          w_data, w_strb, w_user, w_valid, w_ready,
++          b_id, b_resp, b_valid, b_ready,
++          ar_id, ar_addr, ar_prot, ar_valid, ar_ready,
++          r_id, r_data, r_resp, r_valid, r_ready
++  );
++
++
++endinterface
++
++
+ /// An asynchronous AXI4-Lite interface for Gray CDCs.
+ interface AXI_LITE_ASYNC_GRAY #(
+   parameter int unsigned AXI_ADDR_WIDTH = 0,
+--- a/src/axi_isolate.sv
++++ b/src/axi_isolate.sv
+@@ -184,6 +184,7 @@ module axi_isolate #(
+     ) i_axi_demux (
+       .clk_i,
+       .rst_ni,
+       .test_i          ( 1'b0          ),
++      .sel_hash_i      ( 2'd0          ),   // unused
+       .slv_req_i       ( demux_slv_req ),
+       .slv_aw_select_i ( sel_aw_q      ),
+       .slv_ar_select_i ( sel_ar_q      ),
+--- a/src/axi_lite_demux.sv
++++ b/src/axi_lite_demux.sv
+@@ -566,4 +566,4 @@ module axi_lite_demux_intf #(
+     end
+   `endif
+   // pragma translate_on
+-endmodule
++endmodule
+\ No newline at end of file
+--- a/src/axi_lite_from_mem.sv
++++ b/src/axi_lite_from_mem.sv
+@@ -252,3 +252,6 @@ module axi_lite_from_mem #(
+   `endif
+   // pragma translate_on
+ endmodule
++// Local Variables:
++// verilog-typedef-regexp:"_[t]$"
++// End:
+--- a/src/axi_lite_xbar.sv
++++ b/src/axi_lite_xbar.sv
+@@ -1,3 +1,6 @@
++// Modified by Tenstorrent
++// UNOPTFLAT warning lint_offs for Verilator
++
+ // Copyright (c) 2020 ETH Zurich and University of Bologna.
+ // Copyright and related rights are licensed under the Solderpad Hardware
+ // License, Version 0.51 (the "License"); you may not use this file except in
+@@ -36,7 +39,9 @@ module axi_lite_xbar #(
+   input  logic                                        rst_ni,
+   input  logic                                        test_i,
+   input  axi_req_t  [Cfg.NoSlvPorts-1:0]              slv_ports_req_i,
++  /* verilator lint_off UNOPTFLAT */
+   output axi_resp_t [Cfg.NoSlvPorts-1:0]              slv_ports_resp_o,
++  /* verilator lint_on UNOPTFLAT */
+   output axi_req_t  [Cfg.NoMstPorts-1:0]              mst_ports_req_o,
+   input  axi_resp_t [Cfg.NoMstPorts-1:0]              mst_ports_resp_i,
+   input  rule_t [Cfg.NoAddrRules-1:0]                 addr_map_i,
+--- a/src/axi_multicut.sv
++++ b/src/axi_multicut.sv
+@@ -235,3 +235,6 @@ module axi_lite_multicut_intf #(
+   `endif
+   // pragma translate_on
+ endmodule
++// Local Variables:
++// verilog-typedef-regexp:"_t$"
++// End:
+--- a/src/axi_mux.sv
++++ b/src/axi_mux.sv
+@@ -387,7 +387,8 @@ module axi_mux #(
+     assign slv_b_chans  = {NoSlvPorts{mst_b_chan}};
+     // control B channel handshake
+     assign switch_b_id  = mst_b_chan.id[SlvAxiIDWidth+:MstIdxBits];
+-    assign slv_b_valids = (mst_b_valid) ? (1 << switch_b_id) : '0;
++    localparam NoSlvPorts_m_1 = NoSlvPorts - 1;
++    assign slv_b_valids = (mst_b_valid) ? ( {{NoSlvPorts_m_1{1'b0}},{1'b1}} << switch_b_id) : {NoSlvPorts{1'b0}};
+ 
+     spill_register #(
+       .T       ( mst_b_chan_t ),
+@@ -446,7 +447,8 @@ module axi_mux #(
+     assign slv_r_chans  = {NoSlvPorts{mst_r_chan}};
+     // R channel handshake control
+     assign switch_r_id  = mst_r_chan.id[SlvAxiIDWidth+:MstIdxBits];
+-    assign slv_r_valids = (mst_r_valid) ? (1 << switch_r_id) : '0;
++
++    assign slv_r_valids = (mst_r_valid) ? ({{NoSlvPorts_m_1{1'b0}},{1'b1}} << switch_r_id) : {NoSlvPorts{1'b0}};
+ 
+     spill_register #(
+       .T       ( mst_r_chan_t ),
+--- a/src/axi_pkg.sv
++++ b/src/axi_pkg.sv
+@@ -136,9 +136,11 @@ package axi_pkg;
+ 
+     // pragma translate_off
+     `ifndef VERILATOR
++      if (!$isunknown(len)) begin
+       assume (len == len_t'(4'b1) || len == len_t'(4'b11) || len == len_t'(4'b111) ||
+           len == len_t'(4'b1111)) else
+         $error("AXI BURST_WRAP with not allowed len of: %0h", len);
++      end
+     `endif
+     // pragma translate_on
+ 
+@@ -315,6 +317,9 @@ package axi_pkg;
+         // No response precedes DECERR.
+         return resp_a;
+       end
++      default: begin
++        return resp_a;
++      end
+     endcase
+   endfunction
+ 
+@@ -511,6 +516,8 @@ package axi_pkg;
+     int unsigned   AxiIdUsedSlvPorts;
+     /// Are IDs unique?
+     bit            UniqueIds;
++    /// Enable hash selection for IDs?
++    bit            SelHashIds;
+     /// AXI4+ATOP address field width.
+     int unsigned   AxiAddrWidth;
+     /// AXI4+ATOP data field width.
+@@ -521,6 +528,58 @@ package axi_pkg;
+     int unsigned   NoAddrRules;
+   } xbar_cfg_t;
+ 
++    /// Configuration for `axi_xbar`.
++  typedef struct packed {
++    /// Number of slave ports of the crossbar.
++    /// This many master modules are connected to it.
++    int unsigned   NoSlvPorts;
++    /// Number of master ports of the crossbar.
++    /// This many slave modules are connected to it.
++    int unsigned   NoMstPorts;
++    /// Maximum number of open transactions each master connected to the crossbar can have in
++    /// flight at the same time.
++    int unsigned   MaxMstTrans;
++    /// Maximum number of open transactions each slave connected to the crossbar can have in
++    /// flight at the same time.
++    int unsigned   MaxSlvTrans;
++    /// Determine if the internal FIFOs of the crossbar are instantiated in fallthrough mode.
++    /// 0: No fallthrough
++    /// 1: Fallthrough
++    bit            FallThrough;
++    /// The Latency mode of the xbar. This determines if the channels on the ports have
++    /// a spill register instantiated.
++    /// Example configurations are provided with the enum `xbar_latency_e`.
++    xbar_latency_e LatencyMode;
++    /// This is the number of `axi_multicut` stages instantiated in the line cross of the channels.
++    /// Having multiple stages can potentially add a large number of FFs!
++    int unsigned   PipelineStages;
++    /// AXI ID width of the salve ports. The ID width of the master ports is determined
++    /// Automatically. See `axi_mux` for details.
++    int unsigned   AxiIdWidthSlvPorts;
++    /// The used ID portion to determine if a different salve is used for the same ID.
++    /// See `axi_demux` for details.
++    int unsigned   AxiIdUsedSlvPorts;
++    /// Are IDs unique?
++    bit            UniqueIds;
++    /// AXI4+ATOP id field width.
++    int unsigned   AxiIdWidth;
++    /// AXI4+ATOP source id field width.
++    int unsigned   AxiSrcIdWidth;
++    /// AXI4+ATOP transaction id field width.
++    int unsigned   AxiTxIdWidth;
++    /// AXI4+ATOP address field width.
++    int unsigned   AxiAddrWidth;
++    /// AXI4+ATOP data field width.
++    int unsigned   AxiDataWidth;
++    /// AXI4+ATOP user field width.
++    int unsigned   AxiUserWidth;
++    /// The number of address rules defined for routing of the transactions.
++    /// Each master port can have multiple rules, should have however at least one.
++    /// If a transaction can not be routed the xbar will answer with an `axi_pkg::RESP_DECERR`.
++    int unsigned   NoAddrRules;
++    int unsigned   NoIdRules;
++  } axinode_cfg_t;
++
+   /// Commonly used rule types for `axi_xbar` (64-bit addresses).
+   typedef struct packed {
+     int unsigned idx;
+@@ -540,4 +599,267 @@ package axi_pkg;
+       return (width != 32'd0) ? unsigned'(width-1) : 32'd0;
+   endfunction
+ 
++  /// rule types for `axi_xbar` (27-bit addresses).
++  typedef struct packed {
++    int unsigned idx;
++    logic [26:0] start_addr;
++    logic [26:0] end_addr;
++  } xbar_rule_27_t;
++
++  /// cluster rule types for `axi_xbar` (25-bit addresses).
++  typedef struct packed {
++    int unsigned idx;
++    logic [24:0] start_addr;
++    logic [24:0] end_addr;
++  } cluster_rule_t;
++
++  /// Used rule types for srcId Map (5-bit addresses). for maximum 32 nodes
++  typedef struct packed {
++    int unsigned idx;
++    logic [4:0] start_addr;
++    logic [4:0] end_addr;
++  } srcid_rule_t;
++
++  localparam IdWidth   = 10;
++  localparam UserWidth = 10;
++  localparam AddrWidth_25 = 25;
++  localparam AddrWidth_27 = 27;
++  localparam AddrWidth_32 = 32;
++  localparam DataWidth = 64;
++  localparam DataWidth512 = 512;
++  localparam StrbWidth = DataWidth / 8;
++  localparam StrbWidth512 = DataWidth512 / 8;
++
++  localparam CORE_AXI_ADDR_WIDTH = AddrWidth_25;
++  localparam CORE_AXI_ID_WIDTH = IdWidth;
++  localparam CORE_AXI_DATA_WIDTH = DataWidth;
++
++  typedef logic   [IdWidth-1:0]   id_t;
++  typedef logic [AddrWidth_25-1:0] addr_25_t;
++  typedef logic [AddrWidth_27-1:0] addr_27_t;
++  typedef logic [AddrWidth_32-1:0] addr_32_t;
++  typedef logic [DataWidth-1:0] data_t;
++  typedef logic [DataWidth512-1:0] data_512_t;
++  typedef logic [StrbWidth-1:0] strb_t;
++  typedef logic [StrbWidth512-1:0] strb_512_t;
++  typedef logic [UserWidth-1:0] user_t;
++
++  // AW Channel
++  typedef struct packed {
++      id_t      id;
++      addr_25_t    addr;
++      len_t     len;
++      size_t    size;
++      burst_t   burst;
++      logic     lock;
++      cache_t   cache;
++      prot_t    prot;
++      qos_t     qos;
++      region_t  region;
++      atop_t    atop;
++      user_t    user;
++  } aw_chan_t;
++
++  // W Channel - AXI4 doesn't define a wid
++  typedef struct packed {
++      data_t    data;
++      strb_t    strb;
++      logic     last;
++      user_t    user;
++  } w_chan_t;
++
++  // W Channel - AXI4 doesn't define a wid
++  typedef struct packed {
++      data_512_t    data;
++      strb_512_t    strb;
++      logic     last;
++      user_t    user;
++  } w_512_chan_t;
++  // B Channel
++  typedef struct packed {
++      id_t      id;
++      resp_t    resp;
++      user_t    user;
++  } b_chan_t;
++
++  // AR Channel
++  typedef struct packed {
++      id_t      id;
++      addr_25_t    addr;
++      len_t     len;
++      size_t    size;
++      burst_t   burst;
++      logic     lock;
++      cache_t   cache;
++      prot_t    prot;
++      qos_t     qos;
++      region_t  region;
++      user_t    user;
++  } ar_chan_t;
++
++  // R Channel
++  typedef struct packed {
++      id_t      id;
++      data_t    data;
++      resp_t    resp;
++      logic     last;
++      user_t    user;
++  } r_chan_t;
++
++  // R Channel
++  typedef struct packed {
++      id_t      id;
++      data_512_t    data;
++      resp_t    resp;
++      logic     last;
++      user_t    user;
++  } r_512_chan_t;
++
++  // Request/Response structs
++  typedef struct packed {
++      aw_chan_t aw;
++      logic     aw_valid;
++      w_chan_t  w;
++      logic     w_valid;
++      logic     b_ready;
++      ar_chan_t ar;
++      logic     ar_valid;
++      logic     r_ready;
++  } axi_req_t;
++
++  typedef struct packed {
++      aw_chan_t     aw;
++      logic         aw_valid;
++      w_512_chan_t  w;
++      logic         w_valid;
++      logic         b_ready;
++      ar_chan_t     ar;
++      logic         ar_valid;
++      logic         r_ready;
++  } axi_512_req_t;
++
++  typedef struct packed {
++      logic     aw_ready;
++      logic     w_ready;
++      b_chan_t  b;
++      logic     b_valid;
++      logic     ar_ready;
++      r_chan_t  r;
++      logic     r_valid;
++  } axi_resp_t;
++
++  typedef struct packed {
++      logic     aw_ready;
++      logic     w_ready;
++      b_chan_t  b;
++      logic     b_valid;
++      logic     ar_ready;
++      r_512_chan_t  r;
++      logic     r_valid;
++  } axi_512_resp_t;
++
++  // AW Channel
++  typedef struct packed {
++      id_t      id;
++      addr_32_t    addr;
++      len_t     len;
++      size_t    size;
++      burst_t   burst;
++      logic     lock;
++      cache_t   cache;
++      prot_t    prot;
++      qos_t     qos;
++      region_t  region;
++      atop_t    atop;
++      user_t    user;
++  } aw32_chan_t;
++
++  typedef struct packed {
++      id_t      id;
++      addr_27_t    addr;
++      len_t     len;
++      size_t    size;
++      burst_t   burst;
++      logic     lock;
++      cache_t   cache;
++      prot_t    prot;
++      qos_t     qos;
++      region_t  region;
++      atop_t    atop;
++      user_t    user;
++  } aw27_chan_t;
++
++  // AR Channel
++  typedef struct packed {
++      id_t      id;
++      addr_32_t    addr;
++      len_t     len;
++      size_t    size;
++      burst_t   burst;
++      logic     lock;
++      cache_t   cache;
++      prot_t    prot;
++      qos_t     qos;
++      region_t  region;
++      user_t    user;
++  } ar32_chan_t;
++
++  typedef struct packed {
++      id_t      id;
++      addr_27_t    addr;
++      len_t     len;
++      size_t    size;
++      burst_t   burst;
++      logic     lock;
++      cache_t   cache;
++      prot_t    prot;
++      qos_t     qos;
++      region_t  region;
++      user_t    user;
++  } ar27_chan_t;
++
++  // Request/Response structs
++  typedef struct packed {
++      aw32_chan_t aw;
++      logic     aw_valid;
++      w_chan_t  w;
++      logic     w_valid;
++      logic     b_ready;
++      ar32_chan_t ar;
++      logic     ar_valid;
++      logic     r_ready;
++  } axi32_req_t;
++
++  typedef struct packed {
++      logic     aw_ready;
++      logic     w_ready;
++      b_chan_t  b;
++      logic     b_valid;
++      logic     ar_ready;
++      r_chan_t  r;
++      logic     r_valid;
++  } axi32_resp_t;
++
++  typedef struct packed {
++      aw27_chan_t aw;
++      logic     aw_valid;
++      w_chan_t  w;
++      logic     w_valid;
++      logic     b_ready;
++      ar27_chan_t ar;
++      logic     ar_valid;
++      logic     r_ready;
++  } axi27_req_t;
++
++  typedef struct packed {
++      logic     aw_ready;
++      logic     w_ready;
++      b_chan_t  b;
++      logic     b_valid;
++      logic     ar_ready;
++      r_chan_t  r;
++      logic     r_valid;
++  } axi27_resp_t;
++
++
+ endpackage
+--- a/src/axi_to_axi_lite.sv
++++ b/src/axi_to_axi_lite.sv
+@@ -24,6 +24,11 @@ module axi_to_axi_lite #(
+   parameter int unsigned AxiMaxReadTxns  = 32'd0,
+   parameter bit          FullBW          = 0,     // ID Queue in Full BW mode in axi_burst_splitter
+   parameter bit          FallThrough     = 1'b1,  // FIFOs in Fall through mode in ID reflect
++  parameter bit          SpillAw         = 1'b0,  // Spill register control
++  parameter bit          SpillW          = 1'b0,
++  parameter bit          SpillB          = 1'b0,
++  parameter bit          SpillAr         = 1'b0,
++  parameter bit          SpillR          = 1'b0,
+   parameter type         full_req_t      = logic,
+   parameter type         full_resp_t     = logic,
+   parameter type         lite_req_t      = logic,
+@@ -63,6 +68,11 @@ module axi_to_axi_lite #(
+     .MaxReadTxns  ( AxiMaxReadTxns  ),
+     .MaxWriteTxns ( AxiMaxWriteTxns ),
+     .FullBW       ( FullBW          ),
++    .SpillAw      ( SpillAw         ),
++    .SpillW       ( SpillW          ),
++    .SpillB       ( SpillB          ),
++    .SpillAr      ( SpillAr         ),
++    .SpillR       ( SpillR          ),
+     .AddrWidth    ( AxiAddrWidth    ),
+     .DataWidth    ( AxiDataWidth    ),
+     .IdWidth      ( AxiIdWidth      ),
+@@ -258,7 +268,13 @@ module axi_to_axi_lite_intf #(
+   /// Maximum number of outstanding reads.
+   parameter int unsigned AXI_MAX_READ_TXNS  = 32'd1,
+   parameter bit          FALL_THROUGH       = 1'b1,
+-  parameter bit          FULL_BW            = 0
++  parameter bit          FULL_BW            = 0,
++  // Spill register control
++  parameter bit          SPILL_AW           = 1'b0,
++  parameter bit          SPILL_W            = 1'b0,
++  parameter bit          SPILL_B            = 1'b0,
++  parameter bit          SPILL_AR           = 1'b0,
++  parameter bit          SPILL_R            = 1'b0
+ ) (
+   input logic     clk_i,
+   input logic     rst_ni,
+@@ -308,6 +324,11 @@ module axi_to_axi_lite_intf #(
+     .AxiMaxReadTxns  ( AXI_MAX_READ_TXNS  ),
+     .FallThrough     ( FALL_THROUGH       ),  // FIFOs in Fall through mode in ID reflect
+     .FullBW          ( FULL_BW            ),
++    .SpillAw         ( SPILL_AW           ),
++    .SpillW          ( SPILL_W            ),
++    .SpillB          ( SPILL_B            ),
++    .SpillAr         ( SPILL_AR           ),
++    .SpillR          ( SPILL_R            ),
+     .full_req_t      ( full_req_t         ),
+     .full_resp_t     ( full_resp_t        ),
+     .lite_req_t      ( lite_req_t         ),
+--- a/src/axi_to_mem_banked.sv
++++ b/src/axi_to_mem_banked.sv
+@@ -160,6 +160,7 @@ module axi_to_mem_banked #(
+     .clk_i,
+     .rst_ni,
+     .test_i,
++    .sel_hash_i      ( 2'd0          ),   // unused
+     .slv_req_i       ( axi_req_i     ),
+     .slv_aw_select_i ( WriteAccess   ),
+     .slv_ar_select_i ( ReadAccess    ),
+--- a/src/axi_to_mem_interleaved.sv
++++ b/src/axi_to_mem_interleaved.sv
+@@ -114,6 +114,7 @@ module axi_to_mem_interleaved #(
+     .clk_i,
+     .rst_ni,
+     .test_i,
++    .sel_hash_i      ( 2'd0                     ),   // unused
+     .slv_req_i       ( axi_req_i                ),
+     .slv_ar_select_i ( 1'b0                     ),
+     .slv_aw_select_i ( 1'b1                     ),
+--- a/src/axi_to_mem_split.sv
++++ b/src/axi_to_mem_split.sv
+@@ -98,6 +98,7 @@ module axi_to_mem_split #(
+     .clk_i,
+     .rst_ni,
+     .test_i,
++    .sel_hash_i      ( 2'd0                            ),   // unused
+     .slv_req_i       ( axi_req_i                       ),
+     .slv_ar_select_i ( 1'b0                            ),
+     .slv_aw_select_i ( 1'b1                            ),
+--- a/src/axi_xbar.sv
++++ b/src/axi_xbar.sv
+@@ -70,6 +70,8 @@ import cf_math_pkg::idx_width;
+   input  logic                                                          rst_ni,
+   /// Testmode enable, active high.
+   input  logic                                                          test_i,
++  /// Selection for hash schema for IDs, only used if Cfg.SelHashIds parameter set, if not used, set to 2'b0
++  input  logic      [1:0]                                               sel_hash_i,
+   /// AXI4+ATOP requests to the slave ports.
+   input  slv_req_t  [Cfg.NoSlvPorts-1:0]                                slv_ports_req_i,
+   /// AXI4+ATOP responses of the slave ports.
+@@ -110,6 +112,7 @@ import cf_math_pkg::idx_width;
+     .clk_i,
+     .rst_ni,
+     .test_i,
++    .sel_hash_i,
+     .slv_ports_req_i,
+     .slv_ports_resp_o,
+     .mst_ports_req_o  (mst_reqs),
+@@ -177,6 +180,7 @@ import cf_math_pkg::idx_width;
+   AXI_BUS.Master                                                    mst_ports [Cfg.NoMstPorts-1:0],
+   input  rule_t [Cfg.NoAddrRules-1:0]                               addr_map_i,
+   input  logic  [Cfg.NoSlvPorts-1:0]                                en_default_mst_port_i,
++  input  logic  [1:0]                                               sel_hash_i,
+   input  logic  [Cfg.NoSlvPorts-1:0][MstPortsIdxWidth-1:0]          default_mst_port_i
+ );
+ 
+@@ -240,6 +244,7 @@ import cf_math_pkg::idx_width;
+     .clk_i,
+     .rst_ni,
+     .test_i,
++    .sel_hash_i,
+     .slv_ports_req_i  (slv_reqs ),
+     .slv_ports_resp_o (slv_resps),
+     .mst_ports_req_o  (mst_reqs ),
+--- a/src/axi_xbar_unmuxed.sv
++++ b/src/axi_xbar_unmuxed.sv
+@@ -58,6 +58,8 @@ import cf_math_pkg::idx_width;
+   input  logic                                                          rst_ni,
+   /// Testmode enable, active high.
+   input  logic                                                          test_i,
++  /// Selection for hash schema for IDs, only used if Cfg.SelHashIds parameter set, if not used, set to 2'b0
++  input  logic      [1:0]                                               sel_hash_i,
+   /// AXI4+ATOP requests to the slave ports.
+   input  req_t  [Cfg.NoSlvPorts-1:0]                                    slv_ports_req_i,
+   /// AXI4+ATOP responses of the slave ports.
+@@ -175,6 +177,7 @@ import cf_math_pkg::idx_width;
+       .MaxTrans       ( Cfg.MaxMstTrans        ),
+       .AxiLookBits    ( Cfg.AxiIdUsedSlvPorts  ),
+       .UniqueIds      ( Cfg.UniqueIds          ),
++      .SelHashIds     ( Cfg.SelHashIds         ),
+       .SpillAw        ( Cfg.LatencyMode[9]     ),
+       .SpillW         ( Cfg.LatencyMode[8]     ),
+       .SpillB         ( Cfg.LatencyMode[7]     ),
+@@ -184,6 +187,7 @@ import cf_math_pkg::idx_width;
+       .clk_i,   // Clock
+       .rst_ni,  // Asynchronous reset active low
+       .test_i,  // Testmode enable
++      .sel_hash_i,  // Hash selection (if enabled)
+       .slv_req_i       ( slv_ports_req_i[i]  ),
+       .slv_aw_select_i ( slv_aw_select       ),
+       .slv_ar_select_i ( slv_ar_select       ),
+@@ -285,8 +289,9 @@ import cf_math_pkg::idx_width;
+   input  logic                                                      clk_i,
+   input  logic                                                      rst_ni,
+   input  logic                                                      test_i,
++  input  logic      [1:0]                                           sel_hash_i,
+   AXI_BUS.Slave                                                     slv_ports [Cfg.NoSlvPorts-1:0],
+-  AXI_BUS.Master                                                    mst_ports [Cfg.NoMstPorts-1:0][Cfg.NoSlvPorts-1:0],
++  AXI_BUS.Master                                                    mst_ports [Cfg.NoMstPorts*Cfg.NoSlvPorts-1:0],
+   input  rule_t [Cfg.NoAddrRules-1:0]                               addr_map_i,
+   input  logic  [Cfg.NoSlvPorts-1:0]                                en_default_mst_port_i,
+   input  logic  [Cfg.NoSlvPorts-1:0][idx_width(Cfg.NoMstPorts)-1:0] default_mst_port_i
+@@ -313,8 +318,8 @@ import cf_math_pkg::idx_width;
+ 
+   for (genvar i = 0; i < Cfg.NoMstPorts; i++) begin : gen_assign_mst
+     for (genvar j = 0; j < Cfg.NoSlvPorts; j++) begin : gen_assign_mst_inner
+-      `AXI_ASSIGN_FROM_REQ(mst_ports[i][j], mst_reqs[i][j])
+-      `AXI_ASSIGN_TO_RESP(mst_resps[i][j], mst_ports[i][j])
++      `AXI_ASSIGN_FROM_REQ(mst_ports[i*Cfg.NoSlvPorts+j], mst_reqs[i][j])
++      `AXI_ASSIGN_TO_RESP(mst_resps[i][j], mst_ports[i*Cfg.NoSlvPorts+j])
+     end
+   end
+ 
+@@ -339,6 +344,7 @@ import cf_math_pkg::idx_width;
+     .clk_i,
+     .rst_ni,
+     .test_i,
++    .sel_hash_i,
+     .slv_ports_req_i  (slv_reqs ),
+     .slv_ports_resp_o (slv_resps),
+     .mst_ports_req_o  (mst_reqs ),

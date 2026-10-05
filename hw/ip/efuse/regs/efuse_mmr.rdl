@@ -1,0 +1,97 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef EFUSE_MMR_RDL_DEFINED
+`define EFUSE_MMR_RDL_DEFINED
+
+addrmap efuse_mmr {
+    name = "eFuse Token Registers Address Map";
+    desc = "Security-token input and match-status registers for RMA and secure-disable eFuse tokens.";
+
+    reg RMA_TOKEN_I {
+        desc = "Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.";
+        } token [31:0] ;
+    };
+
+    reg SEC_DISABLE_TOKEN_I {
+        desc = "Software-writeable security-disable token word. The assembled token is hashed and compared against the post-silicon injected value to authorize security_disable.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Portion of writeable version of SEC_DISABLE_TOKEN, hashed, and compared with the post silicon injected values to allow security_disable.";
+        } token [31:0] ;
+    };
+
+    reg TOKEN_EOP {
+        desc = "Token end-of-packet control. Writing the per-token go bit signals that all token words have been written and triggers a pulse to begin token hashing.";
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.";
+        } rma_sip_token_go [0:0] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.";
+        } rma_chiplet_token_go [8:8] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.";
+        } secure_disable_token_go [16:16] = 0x0;
+    };
+
+    reg TOKEN_MATCH {
+        desc = "Token match status. Reports the result of the token hash comparison (match, mismatch, or error).";
+        field {
+            sw = r;
+            hw = w;
+            desc = "Store the status of the token match.  Match = 6'b010101, Mismatch = 6'b101010, Error = 6'b111111";
+        } token_match_status [5:0] = 0x0;
+    };
+
+    reg TOKEN_MATCH_FAULT {
+        desc = "Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6'b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.";
+        field {
+            sw = r;
+            hw = w;
+            desc = "A redundancy fault was detected in the RMA_SIP_TOKEN comparators.";
+        } rma_sip_token_fault [0:0] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "A redundancy fault was detected in the RMA_CHIPLET_TOKEN comparators.";
+        } rma_chiplet_token_fault [8:8] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "A redundancy fault was detected in the SEC_DISABLE_TOKEN comparators.";
+        } secure_disable_token_fault [16:16] = 0x0;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Address Map
+    ////////////////////////////////////////////////////////////////////////////
+
+    external RMA_TOKEN_I         RMA_SIP_TOKEN_I[8]        @0x00;
+    external RMA_TOKEN_I         RMA_CHIPLET_TOKEN_I[8]    @0x20;
+    external SEC_DISABLE_TOKEN_I SEC_DISABLE_TOKEN_I[8]    @0x40;
+    TOKEN_EOP                    TOKEN_EOP                 @0x60;
+    TOKEN_MATCH                  RMA_SIP_TOKEN_MATCH       @0x64;
+    TOKEN_MATCH                  RMA_CHIPLET_TOKEN_MATCH   @0x68;
+    TOKEN_MATCH                  SEC_DISABLE_TOKEN_MATCH   @0x6C;
+    TOKEN_MATCH_FAULT            TOKEN_MATCH_FAULT         @0x70;
+};
+
+`endif

@@ -1,0 +1,55 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef NDM_REG_DEFINED
+`define NDM_REG_DEFINED
+
+
+////////////////////////////////////////////////////////////////////////////
+// NDM Reset Control Register
+////////////////////////////////////////////////////////////////////////////
+
+addrmap ndm_reset {
+    name = "NDM Reset Control Address Map";
+    desc = "Per-cluster NDM reset handshake with an external CPU cluster debug module";
+    
+    reg NDMRESET_REQUEST {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Bit i is the NDM reset request from external CPU cluster i.
+                    Bits below ndmreset_cluster_count follow the request input.
+                    Bits at and above that count read as 0. The field holds up to 32 clusters.";
+        } ndmreset_request[31:0] = 0x0;
+    };
+
+    reg NDMRESET_PROCESS {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Bit i is the firmware response to the NDM reset request from external CPU cluster i.
+                    Bits below ndmreset_cluster_count are driven on the process output.
+                    Bits at and above that count are stored and are not driven. The field holds up to 32 clusters.";
+        } ndmreset_process[31:0] = 0x0;
+    };
+
+    reg NDMRESET_CLUSTER_COUNT {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Number of external CPU clusters connected on the low bits of NDMRESET_REQUEST and NDMRESET_PROCESS.
+                    Software masks those registers with this value. The maximum is 32.";
+        } ndmreset_cluster_count[7:0] = 0x0;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Address Map
+    ////////////////////////////////////////////////////////////////////////////
+
+    NDMRESET_REQUEST            NDMRESET_REQUEST            @0x0;
+    NDMRESET_PROCESS            NDMRESET_PROCESS            @0x4;
+    NDMRESET_CLUSTER_COUNT      NDMRESET_CLUSTER_COUNT      @0x8;
+
+};
+
+`endif

@@ -1,0 +1,82 @@
+# SPDX-License-Identifier: Apache-2.0
+
+# Slim local manifest for the vendored AXI-over-UCIe (AoU) bridge RTL used by
+# OCAH. Source order mirrors upstream/RTL/filelist.f (and the nested
+# AXI4MUX_3X1/ and LIB/ filelist.f's it -f includes). Do not edit upstream/
+# files directly; use patches/ if this package needs a local delta.
+# patches/0009 documents AOU_TOP. Drop it once that text is upstream.
+
+package:
+  name: aou
+  authors:
+    - "BOS Semiconductors"
+    - "Tenstorrent USA, Inc."
+
+sources:
+  - target: aou
+    files:
+      - upstream/RTL/packet_def_pkg.sv
+      - upstream/RTL/AOU_RX_CORE.sv
+      - upstream/RTL/AOU_ACTIVATION_CTRL.sv
+      - upstream/RTL/AOU_DATA_W_FIFO_NS1M_TPSRAM.sv
+      - upstream/RTL/AOU_DATA_R_FIFO_NS1M_TPSRAM.sv
+      - upstream/RTL/AOU_AXI_WLAST_GEN.v
+      - upstream/RTL/AOU_CORE_TOP.sv
+      - upstream/RTL/AOU_CRD_CTRL.sv
+      - upstream/RTL/AOU_RX_CRD_CTRL.sv
+      - upstream/RTL/AOU_TX_CRD_CTRL.sv
+      - upstream/RTL/AOU_FWD_RS.sv
+      - upstream/RTL/AOU_REV_RS.sv
+      - upstream/RTL/AOU_ISO_RS.sv
+      - upstream/RTL/AOU_SYNC_FIFO_REG.v
+      - upstream/RTL/AOU_TX_CORE.sv
+      - upstream/RTL/AOU_2X1_ARBITER.v
+      - upstream/RTL/AOU_3X1_ARBITER.v
+      - upstream/RTL/AOU_4X1_ARBITER.v
+      - upstream/RTL/AOU_TX_ARBITER.sv
+      - upstream/RTL/AOU_TX_AXI_BUFFER.sv
+      - upstream/RTL/AOU_TX_QOS_BUFFER.sv
+      - upstream/RTL/AOU_TX_QOS_ARBITER.sv
+      - upstream/RTL/AOU_CORE_SFR.v
+      - upstream/RTL/AOU_SYNC_FIFO_NS1M.sv
+      - upstream/RTL/AOU_SYNC_FIFO_NS1M_SREADY.sv
+      - upstream/RTL/AOU_TPSRAM.sv
+      - upstream/RTL/AOU_TX_FDI_IF.sv
+      - upstream/RTL/AOU_RX_FDI_IF.sv
+      - upstream/RTL/AOU_EARLY_BRESP_CTRL_AWCACHE.sv
+      - upstream/RTL/AOU_EARLY_TABLE.sv
+      - upstream/RTL/AOU_AXIMUX_1XN_SS.v
+      - upstream/RTL/AOU_ERROR_INFO.sv
+      - upstream/RTL/AOU_SLV_AXI_INFO.sv
+      - upstream/RTL/AOU_CORE.sv
+      - upstream/RTL/AOU_CORE_RP.sv
+      - upstream/RTL/AOU_FIFO_RP.sv
+      - upstream/RTL/AOU_AW_W_ALIGNER.sv
+      - upstream/RTL/AOU_TX_CORE_OUT_MUX.sv
+      - upstream/RTL/AOU_RX_CORE_IN_MUX.sv
+      - upstream/RTL/AOU_FDI_BRINGUP_CTRL.sv
+      - upstream/RTL/AOU_TOP.sv
+      # RTL/AXI4MUX_3X1/filelist.f
+      - upstream/RTL/AXI4MUX_3X1/AOU_AXI4MUX_3X1_TOP.v
+      - upstream/RTL/AXI4MUX_3X1/AOU_AXI4MUX_3X1_256.v
+      - upstream/RTL/AXI4MUX_3X1/AOU_AXI4MUX_3X1_512.v
+      - upstream/RTL/AXI4MUX_3X1/AOU_AXI4MUX_3X1_1024.v
+      - upstream/RTL/AXI4MUX_3X1/AOU_AXI_INST_SPLITTER.v
+      - upstream/RTL/AXI4MUX_3X1/AOU_AXI_UP.v
+      - upstream/RTL/AXI4MUX_3X1/AOU_AXI_DOWN.v
+      - upstream/RTL/AXI4MUX_3X1/AOU_UP_FIFO.v
+      - upstream/RTL/AXI4MUX_3X1/AOU_AXI_DOWN_RDATA_ORDER.sv
+      - upstream/RTL/AXI4MUX_3X1/AOU_AXI_SPLIT_ADDRGEN.v
+      - upstream/RTL/AXI4MUX_3X1/AOU_AXI_SPLIT_TR.v
+      - upstream/RTL/AXI4MUX_3X1/AOU_SPLIT_WR_PENDING_INFO.sv
+      - upstream/RTL/AXI4MUX_3X1/AOU_SPLIT_RD_PENDING_INFO.sv
+      - upstream/RTL/AXI4MUX_3X1/AOU_AGGREGATOR.v
+      - upstream/RTL/AXI4MUX_3X1/AOU_AGGREGATOR_INFO.sv
+      # RTL/LIB/filelist.f
+      - upstream/RTL/LIB/AOU_SOC_BUF.v
+      - upstream/RTL/LIB/AOU_SOC_GFMUX_LVT.v
+      - upstream/RTL/LIB/AOU_SOC_SYNCHSR.v
+      # RTL/LIB/ASYNC_APB_BRIDGE/filelist.f
+      - upstream/RTL/LIB/ASYNC_APB_BRIDGE/ASYNC_APB_BRIDGE_MI.v
+      - upstream/RTL/LIB/ASYNC_APB_BRIDGE/ASYNC_APB_BRIDGE_SI.v
+      - upstream/RTL/LIB/ASYNC_APB_BRIDGE/ASYNC_APB_BRIDGE.v

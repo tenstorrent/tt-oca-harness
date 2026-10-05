@@ -1,0 +1,70 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[testcase]]
+name = "sep_boot_measurement_golden_test"
+family = "measurement"
+classification = "vp-equivalent"
+image = "signed"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# PROD from base_ini secure, SBOOT_DIS clear, and a manifest with no demotion flag, so BL0 locks non-demoted.
+measurement_golden = { slot = "primary", lc_state = 1, demotion_decision = 2, secure_boot = 1, sboot_dis = 0 }
+expect = [
+  "LC_STATE=0x00000001",
+  "LC=PROD",
+  "FUSE: SBOOT_DIS: 0",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "DEMOTE: BL2 deferred, lock non-demoted",
+  "BL2_DEMOTE_DEC=0",
+  "MEAS_BOOT_STATE_OK",
+  "DEMOTE_LOCKED",
+  "BL1_COPIED",
+  "BL1",
+  "BL0S_CHK",
+  "BL0S_MFST=0x10000000",
+  "{measurement_golden}",
+  "BL0S_OK",
+  "GO!",
+]
+forbid = [
+  "BL0S_VERIFY_FAIL",
+  "FAIL:BL0S",
+  "FAIL:BL0S_MFST",
+  "DEMOTE_NOT_LOCKED",
+  "BL1_DEMOTE=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_ERR=",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "SBOOT_OFF",
+  "TRAP H0",
+]
+expect_counts = { "{measurement_golden}" = 1, "MEAS_BOOT_STATE_OK" = 1, "BL0S_OK" = 1, "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "GO!" = 1 }
+expect_status = ["INFO 0x0051", "INFO_EXT 0x0000", "INFO 0x0055", "INFO 0x0051", "INFO_EXT 0x0001"]
+forbid_status = ["ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+markers = [
+  "The golden is computed by boot_measurement_golden.py from the run's image and the four declared scalars, as SHA256(0^32 || SHA256(40-byte record)); it shares no code with the ROM.",
+  "BL1 prints the soft PCR it reads from bl0_state, so a match also shows the value survived the handoff; all 32 bytes are compared.",
+  "The record inputs are pinned on the console: LC_STATE=0x00000001, FUSE: SBOOT_DIS: 0, the RSA chain for secure_boot, and DEMOTE_LOCKED with BL2_DEMOTE_DEC=0 for demotion 0x2.",
+  "INFO 0x0051 with INFO_EXT 0x0001 after INFO 0x0055 is the slot-1 enrollment, after the payload was accepted.",
+  "One combination only (PROD, secure boot, no demotion, SBOOT_DIS clear), as in DV; other lifecycle, demotion and SBOOT_DIS combinations are not covered.",
+  "Runs the golden image, as DV does, so the audit reports it as sharing the golden stimulus.",
+]

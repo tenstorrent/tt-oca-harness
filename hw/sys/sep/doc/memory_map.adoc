@@ -1,0 +1,170 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Memory Map and Register Reference
+:description: SEP address regions and generated register tables.
+ifdef::backend-html5[]
+:sep-crypto-access-ref: xref:sep:crypto.adoc#crypto-single-beat-only[Single-Beat Access Only]
+:sep-drbg-architecture-ref: xref:sep:trng.adoc#drbg-deterministic-random-bit-generator[Architecture]
+:sep-integrator-guide-ref: xref:ocah-docs:ROOT:referenced-documents.adoc#ref-ocah-integrator-guide[Integrator Guide]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+:sep-crypto-access-ref: <<crypto-single-beat-only,Single-Beat Access Only>>
+:sep-drbg-architecture-ref: <<drbg-deterministic-random-bit-generator,Architecture>>
+:sep-integrator-guide-ref: <<ref-ocah-integrator-guide,Integrator Guide>>
+endif::backend-pdf[]
+
+[[sep-memory-map]]
+
+== Memory Map
+
+SEP uses 32-bit addressing. The following table outlines the SEP CPU's
+logical view of the SEP-local address space. External masters use the
+chiplet-global base programmed in `SEP_GLOBAL_BASE_ADDR`; SEP CPU
+software uses either direct internal addresses (`0x1000_0000`,
+`0x1080_0000`, and so on) or the local alias view described below.
+
+ifdef::backend-html5[]
+include::partial$sep/regs/gen/adoc/memory_map.adoc[tag=sep-cpu-logical]
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/memory_map.adoc[tag=sep-cpu-logical]
+endif::backend-pdf[]
+
+The `SEP Local Alias` row is an alternate CPU-side name for the same
+hardware listed in the `SEP Local` and `SEP External` rows. For
+example, `0xD000_0000` aliases `0x1000_0000` and `0xD080_2000` aliases
+`0x1080_2000`. This alias range is used by SEP-local masters, while
+external masters use chiplet-global addresses.
+
+The EL2 CPU resources are mapped into a separate segment than the SEP
+Local resources due to constraints on the CPU memory map. The ICCM,
+DCCM, and PIC addresses in the `0xC000_0000` region are statically
+configured in the CPU core module and are reached through the CPU's
+internal wiring. The high local-alias mapping covers the `0xD000_0000`
+and above alias view. CPU CSRs are accessed with dedicated RISC-V
+instructions and do not appear in the address map.
+
+The high local alias span has a fixed SEP-local size of 768 MiB
+(`0xD000_0000` through `0xFFFF_FFFF`), corresponding to the direct
+internal range `0x1000_0000` through `0x3FFF_FFFF`. The
+chiplet-global SEP aperture configured by `SEP_GLOBAL_BASE_ADDR` /
+`SEP_REGION_SIZE` controls the SMU xbar and inbound global-to-local
+remap.
+
+ifdef::backend-html5[]
+include::partial$sep/regs/gen/adoc/memory_map.adoc[tag=sep-cpu-resources]
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/memory_map.adoc[tag=sep-cpu-resources]
+endif::backend-pdf[]
+
+The remaining subsystems are mapped into regions 1 and 2 for the EL2 CPU.
+
+Each row below is the aperture reserved for a unit, and the Decoded Extent
+column gives the part of it that registers or memory back. The last two
+columns state how SEP answers a 32-bit access that no register or memory
+backs, as seen at its inbound AXI port, and
+ifdef::backend-html5[]
+xref:ocah-docs:ROOT:memory_map.adoc#ocah-decode-response-codes[Decode Response Codes]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ocah-decode-response-codes,Decode Response Codes>>
+endif::backend-pdf[]
+defines them and their codes.
+
+The TRNG aperture is forwarded in full to an adopter-defined external IP. SEP
+does not decode offsets inside that window, so every access reaches the external
+TRNG slave. Intra-aperture decode is then an integrator constraint: when an
+adopter TRNG is connected, an address that owns no register must return an error
+and must not alias onto a live register. When no external TRNG is connected, the
+window is terminated with a DECERR slave, so single-beat reads and writes both
+return DECERR, refuse the access and never alias onto a live register. See the
+{sep-integrator-guide-ref}.
+
+[[sep-register-single-beat]]
+== Single-Beat Register Access
+
+Register regions support single-beat transactions only. Bursts are supported
+into ICCM, DCCM, SRAM, the extension port and the outbound SMN windows. The
+fabric routes a burst on its first address only, so the later beats of a burst
+to a register region may be answered with errors or alias onto other
+registers. The crypto region, which spans OTBN through ABR in the generated
+memory map below, refuses bursts ({sep-crypto-access-ref}).
+
+== Units Unreachable from the Inbound Port
+
+Several SEP units are not connected to the external inbound port and answer
+`DECERR` to any external access attempt. These units include the Boot ROM,
+Reset Control, ICCM, DCCM, PIC, and AP/STEE remap regions. The inbound port
+serves the mailbox and system CSR windows, and forwards all other addresses
+below 0x4000_0000 (outside the mailbox and system CSR windows) to the SEP local
+crossbar. Addresses above 0x4000_0000 and the units listed above are not
+reachable through this external path and receive error responses from the
+`smn_inbound` port. Their rows in the table below state what the SEP CPU sees.
+
+ifdef::backend-html5[]
+include::partial$sep/regs/gen/adoc/memory_map.adoc[tag=sep-components]
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/memory_map.adoc[tag=sep-components]
+endif::backend-pdf[]
+
+[[sep-detailed-register-map]]
+== Detailed Register Map
+
+The address tables above identify each aperture. Detailed registers are
+published with the owning block:
+
+ifdef::backend-html5[]
+* xref:cpu.adoc[CPU] — sep_cpu_ctrl.
+* xref:interrupts.adoc[Interrupts] — el2_pic.
+* xref:reset_controller.adoc[SEP Reset Controller] — sep_reset_ctrl.
+* xref:lifecycle_controller.adoc[Life Cycle Controller (LCC)] — sep_lifecycle_ctrl.
+* xref:otp_fuse_controller.adoc[OTP Fuse Controller] — sep_efuse_map.
+* xref:watchdog.adoc[Watchdog Timer (WDT)] — aon_timer.
+* xref:aes.adoc[AES Cipher] — aes.
+* xref:hmac.adoc[HMAC-SHA2] — hmac.
+* xref:kmac.adoc[KMAC-SHA3] — kmac.
+* xref:otbn.adoc[OTBN PKA Public Key Accelerator] — otbn.
+* xref:trng.adoc[TRNG and DRBG] — csrng, edn.
+* xref:dma.adoc[Direct Memory Access (DMA)] — secure_dma.
+* xref:spi.adoc[Serial Peripheral Interface (SPI)] — spi_controller.
+* xref:cpu.adoc#dual-scratch-register-banks[CPU scratch banks] — sep_scratch.
+* xref:entropy_pool.adoc[Entropy Pool] — sep_entropy_pool.
+* xref:ip:entropy_source/doc/index.adoc[Entropy Source].
+* xref:ip:key_manager/doc/index.adoc[Key Manager] — controller, KPV, sampler, mailboxes and key wrappers.
+* xref:ip:efuse/doc/index.adoc[Shared eFuse IP] — eFuse MMR and interface registers.
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+See the register references in the CPU, Interrupts, SEP Reset Controller, Life Cycle
+Controller, OTP Fuse Controller, Watchdog Timer, Cryptographic Subsystem (including AES Cipher,
+HMAC-SHA2, KMAC-SHA3, OTBN and TRNG and DRBG), DMA, Serial Peripheral Interface,
+Key Manager and Entropy Source chapters. The shared eFuse IP chapter owns the eFuse MMR reference.
+endif::backend-pdf[]
+
+=== External Window Reference Model
+
+The SEP external-window model supplies the eFuse SHIM control register below.
+The `efuse_shim_ctrl` instance at offset `0x0` fixes where that block sits.
+`EFUSE_SHIM_SIZE` bytes from that base (`CFG.SEP_EFUSE_SHIM_SIZE` at the SMU,
+default `0x4`) are routed to the eFuse controller, which forwards them
+unchanged on `efuse_bank_ctrl` to the adopter's SHIM rather than out the
+external port. An adopter external map must keep an `efuse_shim_ctrl`
+instance at that offset.
+Its execute-in-place region is a memory window rather than a register bank.
+Adopter-specific external devices require their own register documentation.
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/dv/models/regs/gen/html/sep_external.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../dv/models/regs/gen/adoc/sep_external.adoc[leveloffset=+2]
+endif::backend-pdf[]

@@ -1,0 +1,1408 @@
+// I3C controller register map based on MIPI HCI 1.2
+
+
+regfile TargetTransactionInterfaceRegisters #(
+    bit rx_desc_fifo_size,
+    bit tx_desc_fifo_size,
+    bit rx_fifo_size,
+    bit tx_fifo_size,
+    bit ibi_fifo_size
+){
+    name = "Target Transaction Interface";
+    default regwidth = 32;
+    reg {
+        regwidth = 32;
+        field {
+            name = "CAP_LENGTH";
+            desc = "Capability Structure Length in DWORDs";
+            sw = r;
+            hw = r;
+            reset = 16'h0040;
+        } CAP_LENGTH[23:8];
+        field {
+            name = "CAP_ID";
+            desc = "Extended Capability ID";
+            sw = r;
+            hw = r;
+            reset = 8'hC4;
+        } CAP_ID[7:0];
+    } EXTCAP_HEADER;
+    reg {
+        name = "TTI Control";
+        desc = "Control Register";
+        field {
+            name = "IBI_RETRY_NUM";
+            desc = "Number of times the Target Device will try to request an IBI before giving up.
+
+            Values:
+
+            0x0 - Device will never retry.
+
+            0x1-0x6 - Device will retry this many times.
+
+            0x7 - Device will retry indefinitely until the Active Controller sets
+            DISINT bit in the DISEC command.
+            ";
+            sw = rw;
+            hw = r;
+            reset = 3'b000;
+        } IBI_RETRY_NUM[15:13];
+        field {
+            name = "IBI_EN";
+            desc = "Enable the IBI queue servicing.
+
+            Values:
+
+            0x0 - Device will not service the IBI queue.
+
+            0x1 - Device will send IBI requests onto the bus, if possible.
+            ";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 1'b1;
+        } IBI_EN[12:12];
+        field {
+            name = "CRR_EN";
+            desc = "Enable Controller Role Request.
+
+            Values:
+
+            0x0 - Device is allowed to perform Controller Role Request.
+
+            0x1 - Device is not allowed to perform Controller Role Request.
+            ";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 1'b0;
+        } CRR_EN[11:11];
+        field {
+            name = "HJ_EN";
+            desc = "Enable Hot-Join capability.
+
+            Values:
+
+            0x0 - Device is allowed to attempt Hot-Join.
+
+            0x1 - Device is not allowed to attempt Hot-Join.
+            ";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 1'b1;
+        } HJ_EN[10:10];
+    } CONTROL;
+    reg {
+        name = "TTI Status";
+        desc = "Status Register";
+        field {
+            name = "LAST_IBI_STATUS";
+            desc = "Status of last IBI. Should be read after IBI_DONE interrupt.
+
+            Values:
+
+            000 - Success: IBI was transmitted and ACK'd by the Active Controller.
+            001 - FailureNack: Active Controller NACK'd the IBI before any data was sent.
+            The device will retry sending the IBI as long as permitted by the retry counter.
+            010 - FailurePartialData: Active Controller NACK'd the IBI after data was
+            partially sent. The remaining part of data in the IBI queue is considered
+            corrupted and will be discarded.
+            011 - FailureRetry: IBI could not be serviced due to reached retry count.
+            100 - FailureArbitration:: IBI could not be serviced as arbitration was lost
+            during the address header. The device will retry sending the IBI as long as
+            permitted by the retry counter.
+            ";
+            sw = r;
+            hw = rw;
+            we = true;
+            reset = 2'b00;
+            swacc = true;
+        } LAST_IBI_STATUS[14:12];
+        field {
+            name = "PROTOCOL_ERROR";
+            desc = "Protocol error occurred in the past. This field can only be reset
+            by the Controller, if it issues the GETSTATUS CCC.
+
+            Values:
+
+            0 - no error occurred
+
+            1 - generic protocol error occurred in the past. It will be set until reception
+            of the next GETSTATUS command.
+            ";
+            sw = r;
+            hw = rw;
+            reset = 1'b0;
+        } PROTOCOL_ERROR[8:8];
+    } STATUS;
+    reg {
+        name = "TTI Reset Control";
+        desc = "Reset Control for Queues and IBI Retry Counter";
+        field {
+            name = "IBI_RETRY_CTR_RST";
+            desc = "TTI IBI Retry Counter Software Reset";
+            sw = w;
+            hw = r;
+            singlepulse;
+            reset = 1'b0;
+        } IBI_RETRY_CTR_RST[6:6];
+        field {
+            name = "IBI_QUEUE_RST";
+            desc = "TTI IBI Queue Buffer Software Reset";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 1'b0;
+        } IBI_QUEUE_RST[5:5];
+        field {
+            name = "RX_DATA_RST";
+            desc = "TTI RX Data Queue Buffer Software Reset";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 1'b0;
+        } RX_DATA_RST[4:4];
+        field {
+            name = "TX_DATA_RST";
+            desc = "TTI TX Data Queue Buffer Software Reset. Also resets the tti_conv_Nto8 since first dword is immediately loaded into the converter and can't be cleared otherwise.";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 1'b0;
+        } TX_DATA_RST[3:3];
+        field {
+            name = "RX_DESC_RST";
+            desc = "TTI RX Descriptor Queue Buffer Software Reset";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 1'b0;
+        } RX_DESC_RST[2:2];
+        field {
+            name = "TX_DESC_RST";
+            desc = "TTI TX Descriptor Queue Buffer Software Reset";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 1'b0;
+        } TX_DESC_RST[1:1];
+        field {
+            name = "SOFT_RST";
+            desc = "Target Core Software Reset";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 1'b0;
+        } SOFT_RST[0:0];
+    } RESET_CONTROL;
+    reg {
+        name = "TTI Queue Status";
+        desc = "Dynamic queue full/empty status for debug and monitoring";
+        field {
+            name = "IBI_QUEUE_EMPTY";
+            desc = "IBI Queue is empty";
+            sw = r;
+            hw = w;
+            reset = 1'b1;
+        } IBI_QUEUE_EMPTY[9:9];
+        field {
+            name = "IBI_QUEUE_FULL";
+            desc = "IBI Queue is full";
+            sw = r;
+            hw = w;
+            reset = 1'b0;
+        } IBI_QUEUE_FULL[8:8];
+        field {
+            name = "TX_DATA_QUEUE_EMPTY";
+            desc = "TX Data Queue is empty";
+            sw = r;
+            hw = w;
+            reset = 1'b1;
+        } TX_DATA_QUEUE_EMPTY[7:7];
+        field {
+            name = "TX_DATA_QUEUE_FULL";
+            desc = "TX Data Queue is full";
+            sw = r;
+            hw = w;
+            reset = 1'b0;
+        } TX_DATA_QUEUE_FULL[6:6];
+        field {
+            name = "RX_DATA_QUEUE_EMPTY";
+            desc = "RX Data Queue is empty";
+            sw = r;
+            hw = w;
+            reset = 1'b1;
+        } RX_DATA_QUEUE_EMPTY[5:5];
+        field {
+            name = "RX_DATA_QUEUE_FULL";
+            desc = "RX Data Queue is full";
+            sw = r;
+            hw = w;
+            reset = 1'b0;
+        } RX_DATA_QUEUE_FULL[4:4];
+        field {
+            name = "TX_DESC_QUEUE_EMPTY";
+            desc = "TX Descriptor Queue is empty";
+            sw = r;
+            hw = w;
+            reset = 1'b1;
+        } TX_DESC_QUEUE_EMPTY[3:3];
+        field {
+            name = "TX_DESC_QUEUE_FULL";
+            desc = "TX Descriptor Queue is full";
+            sw = r;
+            hw = w;
+            reset = 1'b0;
+        } TX_DESC_QUEUE_FULL[2:2];
+        field {
+            name = "RX_DESC_QUEUE_EMPTY";
+            desc = "RX Descriptor Queue is empty";
+            sw = r;
+            hw = w;
+            reset = 1'b1;
+        } RX_DESC_QUEUE_EMPTY[1:1];
+        field {
+            name = "RX_DESC_QUEUE_FULL";
+            desc = "RX Descriptor Queue is full";
+            sw = r;
+            hw = w;
+            reset = 1'b0;
+        } RX_DESC_QUEUE_FULL[0:0];
+    } QUEUE_STATUS;
+    reg {
+        name = "TTI Descriptor Queue Depth";
+        desc = "Current number of entries in descriptor queues";
+        field {
+            name = "TX_DESC_QUEUE_DEPTH";
+            desc = "Number of entries in TX Descriptor Queue";
+            sw = r;
+            hw = w;
+            reset = 8'h00;
+        } TX_DESC_QUEUE_DEPTH[15:8];
+        field {
+            name = "RX_DESC_QUEUE_DEPTH";
+            desc = "Number of entries in RX Descriptor Queue";
+            sw = r;
+            hw = w;
+            reset = 8'h00;
+        } RX_DESC_QUEUE_DEPTH[7:0];
+    } DESC_QUEUE_DEPTH;
+    reg {
+        name = "TTI Data Queue Depth";
+        desc = "Current number of DWORD entries in data queues";
+        field {
+            name = "TX_DATA_QUEUE_DEPTH";
+            desc = "Number of DWORD entries in TX Data Queue";
+            sw = r;
+            hw = w;
+            reset = 8'h00;
+        } TX_DATA_QUEUE_DEPTH[15:8];
+        field {
+            name = "RX_DATA_QUEUE_DEPTH";
+            desc = "Number of DWORD entries in RX Data Queue";
+            sw = r;
+            hw = w;
+            reset = 8'h00;
+        } RX_DATA_QUEUE_DEPTH[7:0];
+    } DATA_QUEUE_DEPTH;
+    reg {
+        name = "TTI IBI Queue Depth";
+        desc = "Current number of entries in IBI queue";
+        field {
+            name = "IBI_QUEUE_DEPTH";
+            desc = "Number of entries in IBI Queue";
+            sw = r;
+            hw = w;
+            reset = 8'h00;
+        } IBI_QUEUE_DEPTH[7:0];
+    } IBI_QUEUE_DEPTH;
+    reg {
+        name = "TTI Interrupt Status";
+        desc = "Interrupt Status.
+
+        How a bit is cleared depends on the bit:
+
+        - Auto-cleared by hardware on a specific access: RX_DESC_STAT, RX_DESC_THLD_STAT
+        and RX_DATA_THLD_STAT clear when software reads the corresponding RX queue; IBI_DONE
+        clears when software reads STATUS.LAST_IBI_STATUS. These bits are also write-1-to-clear,
+        but the normal servicing access clears them without an explicit write here.
+
+        - Write-1-to-clear only (no hardware auto-clear): TX_DESC_COMPLETE, TX_DESC_STAT,
+        TX_DESC_THLD_STAT, TX_DATA_THLD_STAT, IBI_THLD_STAT, and the not-implemented
+        TRANSFER_ERR_STAT, TRANSFER_ABORT_STAT, TX_DESC_TIMEOUT, RX_DESC_TIMEOUT. Write 1 to
+        the bit in this register to clear it.
+
+        - Read-only, hardware-driven level status that cannot be cleared by software:
+        PENDING_IBI and PENDING_INTERRUPT track live conditions.
+        ";
+        field {
+            name = "TRANSFER_ERR_STAT";
+            desc = "NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } TRANSFER_ERR_STAT[31:31];
+        field {
+            name = "TX_DESC_COMPLETE";
+            desc = "Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } TX_DESC_COMPLETE[26:26];
+        field {
+            name = "TRANSFER_ABORT_STAT";
+            desc = "NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } TRANSFER_ABORT_STAT[25:25];
+        field {
+            name = "PENDING_IBI";
+            desc = "At least one IBI is pending. Read-only, hardware-driven level status: it tracks the live IBI-pending condition and cannot be cleared by software (clears automatically when no IBI is pending).";
+            sw = r;
+            hw = rw;
+            reset = 1'b0;
+        } PENDING_IBI[20:20];
+        field {
+            name = "PENDING_INTERRUPT";
+            desc = "Contains the interrupt number of any pending interrupt, or 0 if no interrupts are pending. This encoding allows for up to 15 numbered interrupts. If more than one interrupt is set, then the highest priority interrupt shall be returned. Read-only, hardware-driven level status: it cannot be cleared by software and updates as pending conditions change.";
+            sw = rw;
+            hw = rw;
+            reset = 4'd0;
+        } PENDING_INTERRUPT[19:16];
+        field {
+            name = "IBI_DONE";
+            desc = "IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } IBI_DONE[13:13];
+        field {
+            name = "IBI_THLD_STAT";
+            desc = "TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is >= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } IBI_THLD_STAT[12:12];
+        field {
+            name = "RX_DESC_THLD_STAT";
+            desc = "TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is >= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } RX_DESC_THLD_STAT[11:11];
+        field {
+            name = "TX_DESC_THLD_STAT";
+            desc = "TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is >= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } TX_DESC_THLD_STAT[10:10];
+        field {
+            name = "RX_DATA_THLD_STAT";
+            desc = "TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is >= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } RX_DATA_THLD_STAT[9:9];
+        field {
+            name = "TX_DATA_THLD_STAT";
+            desc = "TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is >= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } TX_DATA_THLD_STAT[8:8];
+        field {
+            name = "TX_DESC_TIMEOUT";
+            desc = "NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } TX_DESC_TIMEOUT[3:3];
+        field {
+            name = "RX_DESC_TIMEOUT";
+            desc = "NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } RX_DESC_TIMEOUT[2:2];
+        field {
+            name = "TX_DESC_STAT";
+            desc = "There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } TX_DESC_STAT[1:1];
+        field {
+            name = "RX_DESC_STAT";
+            desc = "There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } RX_DESC_STAT[0:0];
+    } INTERRUPT_STATUS;
+    reg {
+        name = "TTI Interrupt Enable";
+        desc = "Interrupt Enable";
+        field {
+            name = "TRANSFER_ERR_STAT_EN";
+            desc = "Enables the corresponding interrupt bit `TRANSFER_ERR_STAT`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TRANSFER_ERR_STAT_EN[31:31];
+        field {
+            name = "TX_DESC_COMPLETE_EN";
+            desc = "Enables the corresponding interrupt bit `TX_DESC_COMPLETE_EN`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TX_DESC_COMPLETE_EN[26:26];
+        field {
+            name = "TRANSFER_ABORT_STAT_EN";
+            desc = "Enables the corresponding interrupt bit `TRANSFER_ABORT_STAT`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TRANSFER_ABORT_STAT_EN[25:25];
+        field {
+            name = "IBI_DONE_EN";
+            desc = "Enables the corresponding interrupt bit `IBI_DONE`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } IBI_DONE_EN[13:13];
+        field {
+            name = "IBI_THLD_STAT_EN";
+            desc = "Enables the corresponding interrupt bit `TTI_IBI_THLD_STAT`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } IBI_THLD_STAT_EN[12:12];
+        field {
+            name = "RX_DESC_THLD_STAT_EN";
+            desc = "Enables the corresponding interrupt bit `TTI_RX_DESC_THLD_STAT`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } RX_DESC_THLD_STAT_EN[11:11];
+        field {
+            name = "TX_DESC_THLD_STAT_EN";
+            desc = "Enables the corresponding interrupt bit `TTI_TX_DESC_THLD_STAT`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TX_DESC_THLD_STAT_EN[10:10];
+        field {
+            name = "RX_DATA_THLD_STAT_EN";
+            desc = "Enables the corresponding interrupt bit `TTI_RX_DATA_THLD_STAT`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } RX_DATA_THLD_STAT_EN[9:9];
+        field {
+            name = "TX_DATA_THLD_STAT_EN";
+            desc = "Enables the corresponding interrupt bit `TTI_TX_DATA_THLD_STAT`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TX_DATA_THLD_STAT_EN[8:8];
+        field {
+            name = "TX_DESC_TIMEOUT_EN";
+            desc = "Enables the corresponding interrupt bit `TX_DESC_TIMEOUT_EN`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TX_DESC_TIMEOUT_EN[3:3];
+        field {
+            name = "RX_DESC_TIMEOUT_EN";
+            desc = "Enables the corresponding interrupt bit `RX_DESC_TIMEOUT_EN`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } RX_DESC_TIMEOUT_EN[2:2];
+        field {
+            name = "TX_DESC_STAT_EN";
+            desc = "Enables the corresponding interrupt bit `TX_DESC_STAT_EN`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TX_DESC_STAT_EN[1:1];
+        field {
+            name = "RX_DESC_STAT_EN";
+            desc = "Enables the corresponding interrupt bit `RX_DESC_STAT_EN`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } RX_DESC_STAT_EN[0:0];
+    } INTERRUPT_ENABLE;
+    reg {
+        name = "TTI Interrupt Force";
+        desc = "Interrupt Force";
+        field {
+            name = "TRANSFER_ERR_STAT_FORCE";
+            desc = "Enables the corresponding interrupt bit `TRANSFER_ERR_STAT_FORCE`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TRANSFER_ERR_STAT_FORCE[31:31];
+        field {
+            name = "TX_DESC_COMPLETE_FORCE";
+            desc = "Enables the corresponding interrupt bit `TX_DESC_COMPLETE_FORCE`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TX_DESC_COMPLETE_FORCE[26:26];
+        field {
+            name = "TRANSFER_ABORT_STAT_FORCE";
+            desc = "Enables the corresponding interrupt bit `TRANSFER_ABORT_STAT_FORCE`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TRANSFER_ABORT_STAT_FORCE[25:25];
+        field {
+            name = "IBI_DONE_FORCE";
+            desc = "Enables the corresponding interrupt bit `IBI_DONE_FORCE`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } IBI_DONE_FORCE[13:13];
+        field {
+            name = "IBI_THLD_FORCE";
+            desc = "Forces the corresponding interrupt bit `TTI_IBI_THLD_STAT` to be set to 1";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } IBI_THLD_FORCE[12:12];
+        field {
+            name = "RX_DESC_THLD_FORCE";
+            desc = "Forces the corresponding interrupt bit `TTI_RX_DESC_THLD_STAT` to be set to `1`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } RX_DESC_THLD_FORCE[11:11];
+        field {
+            name = "TX_DESC_THLD_FORCE";
+            desc = "Forces the corresponding interrupt bit `TTI_TX_DESC_THLD_STAT` to be set to `1`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TX_DESC_THLD_FORCE[10:10];
+        field {
+            name = "RX_DATA_THLD_FORCE";
+            desc = "Forces the corresponding interrupt bit `TTI_RX_DATA_THLD_STAT` to be set to `1`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } RX_DATA_THLD_FORCE[9:9];
+        field {
+            name = "TX_DATA_THLD_FORCE";
+            desc = "Forces the corresponding interrupt bit `TTI_TX_DATA_THLD_STAT` to be set to `1`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TX_DATA_THLD_FORCE[8:8];
+        field {
+            name = "TX_DESC_TIMEOUT_FORCE";
+            desc = "Enables the corresponding interrupt bit `TX_DESC_TIMEOUT_FORCE`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TX_DESC_TIMEOUT_FORCE[3:3];
+        field {
+            name = "RX_DESC_TIMEOUT_FORCE";
+            desc = "Enables the corresponding interrupt bit `RX_DESC_TIMEOUT_FORCE`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } RX_DESC_TIMEOUT_FORCE[2:2];
+        field {
+            name = "TX_DESC_STAT_FORCE";
+            desc = "Enables the corresponding interrupt bit `TX_DESC_STAT_FORCE`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TX_DESC_STAT_FORCE[1:1];
+        field {
+            name = "RX_DESC_STAT_FORCE";
+            desc = "Enables the corresponding interrupt bit `RX_DESC_STAT_FORCE`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } RX_DESC_STAT_FORCE[0:0];
+    } INTERRUPT_FORCE;
+    // =========================================================================
+    // Target Error Detection Control and Interrupt Registers
+    // =========================================================================
+    // Error detection enable bits - default enabled
+    // Set to 0 to disable error detection for debugging
+    reg {
+        name = "TTI Target Error Detection Control";
+        desc = "Target Error Detection Control. Set bits to enable error detection. Clear to disable.";
+        field {
+            name = "RI_INDIRECT_FIFO_OVERFLOW_ERR_DET_EN";
+            desc = "Enable Recovery Interface INDIRECT FIFO overflow error detection and transition to Error state. Set to 0 to disable (overflow is still recorded in interrupt status).";
+            sw = rw;
+            hw = r;
+            reset = 1'b1;
+        } RI_INDIRECT_FIFO_OVERFLOW_ERR_DET_EN[12:12];
+        field {
+            name = "RI_RX_FIFO_OVERFLOW_ERR_DET_EN";
+            desc = "Enable Recovery Interface RX FIFO overflow error detection and transition to Error state. Set to 0 to disable (overflow is still recorded in interrupt status).";
+            sw = rw;
+            hw = r;
+            reset = 1'b1;
+        } RI_RX_FIFO_OVERFLOW_ERR_DET_EN[11:11];
+        field {
+            name = "RI_UNSUPPORTED_ERR_DET_EN";
+            desc = "Enable Recovery Interface unsupported command error detection. Set to 0 to disable.";
+            sw = rw;
+            hw = r;
+            reset = 1'b1;
+        } RI_UNSUPPORTED_ERR_DET_EN[10:10];
+        field {
+            name = "RI_READONLY_ERR_DET_EN";
+            desc = "Enable Recovery Interface write-to-read-only error detection. Set to 0 to disable.";
+            sw = rw;
+            hw = r;
+            reset = 1'b1;
+        } RI_READONLY_ERR_DET_EN[9:9];
+        field {
+            name = "RI_LENGTH_ERR_DET_EN";
+            desc = "Enable Recovery Interface length error detection. Set to 0 to disable.";
+            sw = rw;
+            hw = r;
+            reset = 1'b1;
+        } RI_LENGTH_ERR_DET_EN[8:8];
+        field {
+            name = "RI_PEC_ERR_DET_EN";
+            desc = "Enable Recovery Interface PEC/CRC error detection. Set to 0 to disable.";
+            sw = rw;
+            hw = r;
+            reset = 1'b1;
+        } RI_PEC_ERR_DET_EN[7:7];
+        field {
+            name = "FRAMING_ERR_DET_EN";
+            desc = "Enable framing error detection. Set to 0 to disable.";
+            sw = rw;
+            hw = r;
+            reset = 1'b1;
+        } FRAMING_ERR_DET_EN[6:6];
+        field {
+            name = "TE5_ERR_DET_EN";
+            desc = "Enable TE5 error detection. Set to 0 to disable.";
+            sw = rw;
+            hw = r;
+            reset = 1'b1;
+        } TE5_ERR_DET_EN[5:5];
+        field {
+            name = "TE4_ERR_DET_EN";
+            desc = "Enable TE4 error detection. Set to 0 to disable.";
+            sw = rw;
+            hw = r;
+            reset = 1'b1;
+        } TE4_ERR_DET_EN[4:4];
+        field {
+            name = "TE3_ERR_DET_EN";
+            desc = "Enable TE3 error detection. Set to 0 to disable.";
+            sw = rw;
+            hw = r;
+            reset = 1'b1;
+        } TE3_ERR_DET_EN[3:3];
+        field {
+            name = "TE2_ERR_DET_EN";
+            desc = "Enable TE2 error detection. Set to 0 to disable.";
+            sw = rw;
+            hw = r;
+            reset = 1'b1;
+        } TE2_ERR_DET_EN[2:2];
+        field {
+            name = "TE1_ERR_DET_EN";
+            desc = "Enable TE1 error detection. Set to 0 to disable.";
+            sw = rw;
+            hw = r;
+            reset = 1'b1;
+        } TE1_ERR_DET_EN[1:1];
+        field {
+            name = "TE0_ERR_DET_EN";
+            desc = "Enable TE0 error detection. Set to 0 to disable.";
+            sw = rw;
+            hw = r;
+            reset = 1'b1;
+        } TE0_ERR_DET_EN[0:0];
+    } TARGET_ERR_CTRL;
+
+    // Target Errors interrupt status and enable
+    // provide W1C interrupt status for each error type.
+    reg {
+        name = "TTI Target Error Interrupt Status";
+        desc = "Target Error Interrupt Status. Write 1 to clear individual bits.";
+        field {
+            name = "RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT";
+            desc = "Recovery Interface INDIRECT FIFO overflow error detected";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT[13:13];
+        field {
+            name = "RI_RX_FIFO_OVERFLOW_ERR_STAT";
+            desc = "Recovery Interface RX FIFO overflow error detected";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } RI_RX_FIFO_OVERFLOW_ERR_STAT[12:12];
+        field {
+            name = "RI_UNSUPPORTED_ERR_STAT";
+            desc = "Recovery Interface unsupported command error detected";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } RI_UNSUPPORTED_ERR_STAT[11:11];
+        field {
+            name = "RI_READONLY_ERR_STAT";
+            desc = "Recovery Interface write-to-read-only error detected";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } RI_READONLY_ERR_STAT[10:10];
+        field {
+            name = "RI_LENGTH_ERR_STAT";
+            desc = "Recovery Interface length mismatch error detected";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } RI_LENGTH_ERR_STAT[9:9];
+        field {
+            name = "RI_PEC_ERR_STAT";
+            desc = "Recovery Interface PEC/CRC error detected";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } RI_PEC_ERR_STAT[8:8];
+        field {
+            name = "FRAMING_ERR_STAT";
+            desc = "DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } FRAMING_ERR_STAT[7:7];
+        field {
+            name = "TE5_ERR_STAT";
+            desc = "TE5: Broadcast/Direct CCC wrong R/W direction";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } TE5_ERR_STAT[6:6];
+        field {
+            name = "TE4_ERR_STAT";
+            desc = "TE4: ENTDAA BCR/DCR mismatch";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } TE4_ERR_STAT[5:5];
+        field {
+            name = "TE3_ERR_STAT";
+            desc = "TE3: ENTDAA PID mismatch";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } TE3_ERR_STAT[4:4];
+        field {
+            name = "TE2_ERR_STAT";
+            desc = "TE2: CCC or Private Write data parity error";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } TE2_ERR_STAT[3:3];
+        field {
+            name = "TE1_ERR_STAT";
+            desc = "TE1: CCC command parity error";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } TE1_ERR_STAT[2:2];
+        field {
+            name = "TE0_ERR_STAT";
+            desc = "TE0: Invalid reserved address + RnW combination";
+            sw = rw;
+            hw = rw;
+            woclr = true;
+            we = true;
+            reset = 1'b0;
+        } TE0_ERR_STAT[1:1];
+    } TARGET_ERR_INTR_STATUS;
+    reg {
+        name = "TTI Target Error Interrupt Enable";
+        desc = "Target Error Interrupt Enable. Set bits to enable corresponding interrupts.";
+        field {
+            name = "RI_INDIRECT_FIFO_OVERFLOW_ERR_EN";
+            desc = "Enables the corresponding interrupt bit `RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } RI_INDIRECT_FIFO_OVERFLOW_ERR_EN[13:13];
+        field {
+            name = "RI_RX_FIFO_OVERFLOW_ERR_EN";
+            desc = "Enables the corresponding interrupt bit `RI_RX_FIFO_OVERFLOW_ERR_STAT`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } RI_RX_FIFO_OVERFLOW_ERR_EN[12:12];
+        field {
+            name = "RI_UNSUPPORTED_ERR_EN";
+            desc = "Enables the corresponding interrupt bit `RI_UNSUPPORTED_ERR_STAT`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } RI_UNSUPPORTED_ERR_EN[11:11];
+        field {
+            name = "RI_READONLY_ERR_EN";
+            desc = "Enables the corresponding interrupt bit `RI_READONLY_ERR_STAT`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } RI_READONLY_ERR_EN[10:10];
+        field {
+            name = "RI_LENGTH_ERR_EN";
+            desc = "Enables the corresponding interrupt bit `RI_LENGTH_ERR_STAT`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } RI_LENGTH_ERR_EN[9:9];
+        field {
+            name = "RI_PEC_ERR_EN";
+            desc = "Enables the corresponding interrupt bit `RI_PEC_ERR_STAT`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } RI_PEC_ERR_EN[8:8];
+        field {
+            name = "FRAMING_ERR_EN";
+            desc = "Enables the corresponding interrupt bit `FRAMING_ERR_STAT`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } FRAMING_ERR_EN[7:7];
+        field {
+            name = "TE5_ERR_EN";
+            desc = "Enables the corresponding interrupt bit `TE5_ERR_STAT`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TE5_ERR_EN[6:6];
+        field {
+            name = "TE4_ERR_EN";
+            desc = "Enables the corresponding interrupt bit `TE4_ERR_STAT`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TE4_ERR_EN[5:5];
+        field {
+            name = "TE3_ERR_EN";
+            desc = "Enables the corresponding interrupt bit `TE3_ERR_STAT`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TE3_ERR_EN[4:4];
+        field {
+            name = "TE2_ERR_EN";
+            desc = "Enables the corresponding interrupt bit `TE2_ERR_STAT`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TE2_ERR_EN[3:3];
+        field {
+            name = "TE1_ERR_EN";
+            desc = "Enables the corresponding interrupt bit `TE1_ERR_STAT`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TE1_ERR_EN[2:2];
+        field {
+            name = "TE0_ERR_EN";
+            desc = "Enables the corresponding interrupt bit `TE0_ERR_STAT`";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TE0_ERR_EN[1:1];
+    } TARGET_ERR_INTR_ENABLE;
+    reg {
+        name = "TTI Target Error Interrupt Force";
+        desc = "Target Error Interrupt Force. Set bits to force corresponding interrupts for testing.";
+        field {
+            name = "RI_INDIRECT_FIFO_OVERFLOW_ERR_FORCE";
+            desc = "Forces the corresponding interrupt bit `RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT` to be set to 1";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } RI_INDIRECT_FIFO_OVERFLOW_ERR_FORCE[13:13];
+        field {
+            name = "RI_RX_FIFO_OVERFLOW_ERR_FORCE";
+            desc = "Forces the corresponding interrupt bit `RI_RX_FIFO_OVERFLOW_ERR_STAT` to be set to 1";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } RI_RX_FIFO_OVERFLOW_ERR_FORCE[12:12];
+        field {
+            name = "RI_UNSUPPORTED_ERR_FORCE";
+            desc = "Forces the corresponding interrupt bit `RI_UNSUPPORTED_ERR_STAT` to be set to 1";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } RI_UNSUPPORTED_ERR_FORCE[11:11];
+        field {
+            name = "RI_READONLY_ERR_FORCE";
+            desc = "Forces the corresponding interrupt bit `RI_READONLY_ERR_STAT` to be set to 1";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } RI_READONLY_ERR_FORCE[10:10];
+        field {
+            name = "RI_LENGTH_ERR_FORCE";
+            desc = "Forces the corresponding interrupt bit `RI_LENGTH_ERR_STAT` to be set to 1";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } RI_LENGTH_ERR_FORCE[9:9];
+        field {
+            name = "RI_PEC_ERR_FORCE";
+            desc = "Forces the corresponding interrupt bit `RI_PEC_ERR_STAT` to be set to 1";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } RI_PEC_ERR_FORCE[8:8];
+        field {
+            name = "FRAMING_ERR_FORCE";
+            desc = "Forces the corresponding interrupt bit `FRAMING_ERR_STAT` to be set to 1";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } FRAMING_ERR_FORCE[7:7];
+        field {
+            name = "TE5_ERR_FORCE";
+            desc = "Forces the corresponding interrupt bit `TE5_ERR_STAT` to be set to 1";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TE5_ERR_FORCE[6:6];
+        field {
+            name = "TE4_ERR_FORCE";
+            desc = "Forces the corresponding interrupt bit `TE4_ERR_STAT` to be set to 1";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TE4_ERR_FORCE[5:5];
+        field {
+            name = "TE3_ERR_FORCE";
+            desc = "Forces the corresponding interrupt bit `TE3_ERR_STAT` to be set to 1";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TE3_ERR_FORCE[4:4];
+        field {
+            name = "TE2_ERR_FORCE";
+            desc = "Forces the corresponding interrupt bit `TE2_ERR_STAT` to be set to 1";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TE2_ERR_FORCE[3:3];
+        field {
+            name = "TE1_ERR_FORCE";
+            desc = "Forces the corresponding interrupt bit `TE1_ERR_STAT` to be set to 1";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TE1_ERR_FORCE[2:2];
+        field {
+            name = "TE0_ERR_FORCE";
+            desc = "Forces the corresponding interrupt bit `TE0_ERR_STAT` to be set to 1";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } TE0_ERR_FORCE[1:1];
+    } TARGET_ERR_INTR_FORCE;
+
+    // Target Error Counters - 8-bit saturating counters
+    // SW can read the count or write 0 to clear. HW increments on errors.
+    reg {
+        name = "TE0 Error Counter";
+        desc = "Counts TE0 errors. Saturates at 255. Write 0 to clear.";
+        field {
+            name = "CNT";
+            desc = "Error count (saturates at 255). Write 0 to clear.";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 8'h00;
+        } CNT[7:0];
+    } TARGET_ERR_CNT_TE0;
+
+    reg {
+        name = "TE1 Error Counter";
+        desc = "Counts TE1 errors. Saturates at 255. Write 0 to clear.";
+        field {
+            name = "CNT";
+            desc = "Error count (saturates at 255). Write 0 to clear.";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 8'h00;
+        } CNT[7:0];
+    } TARGET_ERR_CNT_TE1;
+
+    reg {
+        name = "TE2 Error Counter";
+        desc = "Counts TE2 errors. Saturates at 255. Write 0 to clear.";
+        field {
+            name = "CNT";
+            desc = "Error count (saturates at 255). Write 0 to clear.";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 8'h00;
+        } CNT[7:0];
+    } TARGET_ERR_CNT_TE2;
+
+    reg {
+        name = "TE3 Error Counter";
+        desc = "Counts TE3 errors. Saturates at 255. Write 0 to clear.";
+        field {
+            name = "CNT";
+            desc = "Error count (saturates at 255). Write 0 to clear.";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 8'h00;
+        } CNT[7:0];
+    } TARGET_ERR_CNT_TE3;
+
+    reg {
+        name = "TE4 Error Counter";
+        desc = "Counts TE4 errors. Saturates at 255. Write 0 to clear.";
+        field {
+            name = "CNT";
+            desc = "Error count (saturates at 255). Write 0 to clear.";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 8'h00;
+        } CNT[7:0];
+    } TARGET_ERR_CNT_TE4;
+
+    reg {
+        name = "TE5 Error Counter";
+        desc = "Counts TE5 errors. Saturates at 255. Write 0 to clear.";
+        field {
+            name = "CNT";
+            desc = "Error count (saturates at 255). Write 0 to clear.";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 8'h00;
+        } CNT[7:0];
+    } TARGET_ERR_CNT_TE5;
+
+    reg {
+        name = "Framing Error Counter";
+        desc = "Counts framing errors. Saturates at 255. Write 0 to clear.";
+        field {
+            name = "CNT";
+            desc = "Error count (saturates at 255). Write 0 to clear.";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 8'h00;
+        } CNT[7:0];
+    } TARGET_ERR_CNT_FRAMING;
+
+    reg {
+        name = "Recovery Interface PEC Error Counter";
+        desc = "Counts Recovery Interface PEC errors. Saturates at 255. Write 0 to clear.";
+        field {
+            name = "CNT";
+            desc = "Error count (saturates at 255). Write 0 to clear.";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 8'h00;
+        } CNT[7:0];
+    } TARGET_ERR_CNT_RI_PEC;
+
+    reg {
+        name = "Recovery Interface Length Error Counter";
+        desc = "Counts Recovery Interface length mismatch errors. Saturates at 255. Write 0 to clear.";
+        field {
+            name = "CNT";
+            desc = "Error count (saturates at 255). Write 0 to clear.";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 8'h00;
+        } CNT[7:0];
+    } TARGET_ERR_CNT_RI_LENGTH;
+
+    reg {
+        name = "Recovery Interface Read-Only Error Counter";
+        desc = "Counts Recovery Interface write-to-read-only errors. Saturates at 255. Write 0 to clear.";
+        field {
+            name = "CNT";
+            desc = "Error count (saturates at 255). Write 0 to clear.";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 8'h00;
+        } CNT[7:0];
+    } TARGET_ERR_CNT_RI_READONLY;
+
+    reg {
+        name = "Recovery Interface Unsupported Error Counter";
+        desc = "Counts Recovery Interface unsupported command errors. Saturates at 255. Write 0 to clear.";
+        field {
+            name = "CNT";
+            desc = "Error count (saturates at 255). Write 0 to clear.";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 8'h00;
+        } CNT[7:0];
+    } TARGET_ERR_CNT_RI_UNSUPPORTED;
+
+    reg {
+        name = "Recovery Interface RX FIFO Overflow Error Counter";
+        desc = "Counts Recovery Interface RX FIFO overflow errors. Saturates at 255. Write 0 to clear.";
+        field {
+            name = "CNT";
+            desc = "Error count (saturates at 255). Write 0 to clear.";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 8'h00;
+        } CNT[7:0];
+    } TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW;
+
+    reg {
+        name = "Recovery Interface INDIRECT FIFO Overflow Error Counter";
+        desc = "Counts Recovery Interface INDIRECT FIFO overflow errors. Saturates at 255. Write 0 to clear.";
+        field {
+            name = "CNT";
+            desc = "Error count (saturates at 255). Write 0 to clear.";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 8'h00;
+        } CNT[7:0];
+    } TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW;
+
+    external reg {
+        name = "TTI RX Descriptor Queue Port";
+        desc = "RX Descriptor Queue Port";
+        field {
+            name = "RX_DESC";
+            desc = "RX Data";
+            sw = r;
+            hw = w;
+            reset = 32'h00000000;
+        } RX_DESC[31:0];
+    } RX_DESC_QUEUE_PORT;
+    external reg {
+        name = "TTI RX Data Port";
+        desc = "RX Data Port";
+        field {
+            name = "RX_DATA";
+            desc = "RX Data";
+            sw = r;
+            hw = w;
+            reset = 32'h00000000;
+        } RX_DATA[31:0];
+    } RX_DATA_PORT;
+    external reg {
+        name = "TTI TX Descriptor Queue Port";
+        desc = "TX Descriptor Queue Port";
+        field {
+            name = "TX_DESC";
+            desc = "TX Data";
+            sw = w;
+            hw = r;
+            reset = 32'h00000000;
+        } TX_DESC[31:0];
+    } TX_DESC_QUEUE_PORT;
+    external reg {
+        name = "TTI TX Data Port";
+        desc = "TX Data Port";
+        field {
+            name = "TX_DATA";
+            desc = "TX Data";
+            sw = w;
+            hw = r;
+            reset = 32'h00000000;
+        } TX_DATA[31:0];
+    } TX_DATA_PORT;
+    external reg {
+        name = "TTI IBI Data Port";
+        desc = "IBI Data Port";
+        field {
+            name = "IBI_DATA";
+            desc = "IBI Data";
+            sw = w;
+            hw = r;
+            reset = 32'h00000000;
+        } IBI_DATA[31:0];
+    } IBI_PORT;
+    reg {
+        name = "TTI Queue Size";
+        desc = "Queue Size";
+        field {
+            name = "TX_DATA_BUFFER_SIZE";
+            desc = "Transmit Data Buffer Size in DWORDs calculated as `2^(N+1)`";
+            sw = r;
+            hw = r;
+            reset = 8'h05; // FUTUREFIX: was `tx_fifo_size`
+        } TX_DATA_BUFFER_SIZE[31:24];
+        field {
+            name = "RX_DATA_BUFFER_SIZE";
+            desc = "Receive Data Buffer Size in DWORDs calculated as `2^(N+1)`";
+            sw = r;
+            hw = r;
+            reset = 8'h05; // FUTUREFIX: was `rx_fifo_size`
+        } RX_DATA_BUFFER_SIZE[23:16];
+        field {
+            name = "TX_DESC_BUFFER_SIZE";
+            desc = "TX Descriptor Buffer Size in DWORDs calculated as `2^(N+1)`";
+            sw = r;
+            hw = r;
+            reset = 8'h04; // FUTUREFIX: was `tx_desc_fifo_size`
+        } TX_DESC_BUFFER_SIZE[15:8];
+        field {
+            name = "RX_DESC_BUFFER_SIZE";
+            desc = "RX Descriptor Buffer Size in DWORDs calculated as `2^(N+1)`";
+            sw = r;
+            hw = r;
+            reset = 8'h04; // FUTUREFIX: was `rx_desc_fifo_size`
+        } RX_DESC_BUFFER_SIZE[7:0];
+    } QUEUE_SIZE;
+    reg {
+        name = "TTI IBI Queue Size";
+        desc = "IBI Queue Size";
+        field {
+            name = "IBI_QUEUE_SIZE";
+            desc = "IBI Queue Size in DWORDs calculated as `2^(N+1)`";
+            sw = r;
+            hw = r;
+            reset = 8'h04; // FUTUREFIX: was `ibi_fifo_size`
+        } IBI_QUEUE_SIZE[7:0];
+    } IBI_QUEUE_SIZE;
+    reg {
+        name = "TTI Queue Threshold Control";
+        desc = "Queue Threshold Control";
+        field {
+            name = "IBI_THLD";
+            desc = "Controls the minimum number of IBI Queue entries needed to trigger the IBI threshold interrupt.";
+            sw = rw;
+            hw = rw;
+            reset = 8'h01;
+            swmod = true;
+            we = true;
+        } IBI_THLD[31:24];
+        field {
+            name = "RX_DESC_THLD";
+            desc = "Controls the minimum number of TTI RX Descriptor Queue entries needed to trigger the TTI RX Descriptor interrupt.";
+            sw = rw;
+            hw = rw;
+            reset = 8'h01;
+            swmod = true;
+            we = true;
+        } RX_DESC_THLD[15:8];
+        field {
+            name = "TX_DESC_THLD";
+            desc = "Controls the minimum number of empty TTI TX Descriptor Queue entries needed to trigger the TTI TX Descriptor interrupt.";
+            sw = rw;
+            hw = rw;
+            reset = 8'h01;
+            swmod = true;
+            we = true;
+        } TX_DESC_THLD[7:0];
+    } QUEUE_THLD_CTRL;
+    reg {
+        name = "TTI IBI Queue Threshold Control";
+        desc = "IBI Queue Threshold Control";
+        field {
+            name = "RX_DATA_THLD";
+            desc = "Minimum number of TTI RX Data queue entries of data received, in DWORDs, that will trigger the TTI RX Data interrupt. Interrupt triggers when `2^(N+1)` RX Buffer DWORD entries are received during the Read transfer.";
+            sw = rw;
+            hw = r;
+            reset = 3'h1;
+        } RX_START_THLD[26:24];
+        field {
+            name = "TX_DATA_THLD";
+            desc = "Minimum number of available TTI TX Data queue entries, in DWORDs, that will trigger the TTI TX Data interrupt. Interrupt triggers when `2^(N+1)` TX Buffer DWORD entries are available.";
+            sw = rw;
+            hw = r;
+            reset = 3'h1;
+        } TX_START_THLD[18:16];
+        field {
+            name = "RX_DATA_THLD";
+            desc = "Minimum number of TTI RX Data queue entries of data received, in DWORDs, that will trigger the TTI RX Data interrupt. Interrupt triggers when `2^(N+1)` RX Buffer DWORD entries are received during the Read transfer.";
+            sw = rw;
+            hw = r;
+            reset = 3'h1;
+        } RX_DATA_THLD[10:8];
+        field {
+            name = "TX_DATA_THLD";
+            desc = "Minimum number of available TTI TX Data queue entries, in DWORDs, that will trigger the TTI TX Data interrupt. Interrupt triggers when `2^(N+1)` TX Buffer DWORD entries are available.";
+            sw = rw;
+            hw = r;
+            reset = 3'h1;
+        } TX_DATA_THLD[2:0];
+    } DATA_BUFFER_THLD_CTRL;
+};

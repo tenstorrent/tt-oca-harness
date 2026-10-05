@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef CHIP_CONFIG_REG_RDL
+`define CHIP_CONFIG_REG_RDL
+
+addrmap chip_config {
+    name = "Chip Configuration Address Map";
+    desc = "Chip version, identification, and lifecycle-state registers.";
+
+	reg VERSION_LO {
+        field {
+            sw = r;
+            hw = w;
+            desc = "SMC version, lower 32 bits";
+        } version_lo [31:0] = 0x000100A0;
+    };
+
+    reg VERSION_HI {
+        field {
+            sw = r;
+            hw = w;
+            desc = "SMC version, upper 32 bits";
+        } version_hi [31:0] = 0x0;
+    };
+
+    reg CHIP_ID {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Chip ID (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet)";
+        } chip_id [31:0] = 0x0;
+    };
+
+    reg LC_STATE {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Lifecycle state value from SEP. Default to invalid state";
+        } lc_state[7:0] = 0x0f;
+    };
+
+	// --------------------------------------------------
+
+	VERSION_LO                      VERSION_LO          @ 0x00;
+	VERSION_HI                      VERSION_HI          @ 0x04;
+	CHIP_ID                         CHIP_ID             @ 0x08;
+	LC_STATE                        LC_STATE            @ 0x0C;
+
+};
+
+`endif

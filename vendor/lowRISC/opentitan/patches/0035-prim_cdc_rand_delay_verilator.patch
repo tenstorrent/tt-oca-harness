@@ -1,0 +1,14 @@
+--- a/hw/ip/prim/rtl/prim_cdc_rand_delay.sv
++++ b/hw/ip/prim/rtl/prim_cdc_rand_delay.sv
+@@ -37,7 +37,11 @@
+       if (DataWidth <= 32) begin
+         data = $urandom();
+       end else begin
++`ifndef VERILATOR
+         if (!std::randomize(data)) $fatal(1, "%t: [%m] Failed to randomize data", $time);
++`else
++        data = $urandom();
++`endif
+       end
+       return data;
+     endfunction

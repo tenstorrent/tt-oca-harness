@@ -1,0 +1,962 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-km_csr">Key Manager Control and Status Registers</h2>
+<p>Control and status registers for the Key Manager subsystem</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#VERSION">VERSION</a></td><td>R</td><td>Hardware version register (semantic versioning: major.minor.patch)</td></tr>
+<tr><td>0x4</td><td><a href="#CTRL">CTRL</a></td><td>R</td><td>Control register (reserved for future use)</td></tr>
+<tr><td>0x8</td><td><a href="#SOFT_RST_CODE">SOFT_RST_CODE</a></td><td>RW</td><td>Software reset code register. Write 0x53525354 (&#x27;SRST&#x27;) to trigger soft reset. Any other value has no effect.</td></tr>
+<tr><td>0xC</td><td><a href="#IRQ_STATUS">IRQ_STATUS</a></td><td>RW</td><td>Interrupt status register. Sticky bits cleared by writing 1.</td></tr>
+<tr><td>0x10</td><td><a href="#IRQ_ENABLE">IRQ_ENABLE</a></td><td>RW</td><td>Interrupt enable/mask register</td></tr>
+<tr><td>0x14</td><td><a href="#SCRAMBLER_KEY">SCRAMBLER_KEY</a></td><td>RW</td><td>32-bit scrambler key for SRAM address/data scrambling. When locked: writes ignored, reads return 0. No reset; powers up random.</td></tr>
+<tr><td>0x18</td><td><a href="#SCRAMBLER_CTRL">SCRAMBLER_CTRL</a></td><td>RW</td><td>Scrambler control register</td></tr>
+<tr><td>0x1C</td><td><a href="#SRAM_LOCK">SRAM_LOCK</a></td><td>RW</td><td>SRAM write-lock bits. Bit[i]=1 locks region i (1 KB each, 32 regions). Write-1-only: writing 1 sets the bit, writing 0 has no effect. Cleared by warm or cold reset (warm reset domain); ROM re-applies the lock policy on every boot before handover to mutable firmware.</td></tr>
+<tr><td>0x20</td><td><a href="#IRQ_SET">IRQ_SET</a></td><td>W</td><td>Interrupt set register. Write 1 to trigger corresponding interrupt (for ISR testing). Write-only, reads return 0.</td></tr>
+<tr><td>0x24</td><td><a href="#SRAM_WRITE_LOCK_VIOLATION">SRAM_WRITE_LOCK_VIOLATION</a></td><td>RW</td><td>Which SRAM region(s) had write attempts while locked. Bit[i]=region i. Sticky, write 1 to clear each bit.</td></tr>
+<tr><td>0x28</td><td><a href="#RECOVERABLE_ERR">RECOVERABLE_ERR</a></td><td>RW</td><td>Recoverable error status. Firmware writes 1 to set (after recovering in ISR), writes 0 to clear (e.g. when SEP requests clear). Drives recoverable error event output.</td></tr>
+<tr><td>0x2C</td><td><a href="#BOOT_STATUS">BOOT_STATUS</a></td><td>RW</td><td>Boot status. Firmware writes 1 to COLD_BOOT_DONE after cold-boot init completes; bit remains set until next cold reset.</td></tr>
+<tr><td>0x30</td><td><a href="#OTP_LIFE_CYCLE">OTP_LIFE_CYCLE</a></td><td>R</td><td>Life cycle state. 8-bit (4-bit value differentially encoded). Read-through from OTP port; no reset.</td></tr>
+<tr><td>0x34</td><td><a href="#OTP_DEMOTION_STATE">OTP_DEMOTION_STATE</a></td><td>R</td><td>Demotion state. 2-bit, differentially encoded. Read-through from OTP port; no reset.</td></tr>
+<tr><td>0x38</td><td><a href="#SRAM_EXEC_MODE">SRAM_EXEC_MODE</a></td><td>RW</td><td>Execute-permission whitelist mode. Write-1-only (woset); cleared by warm or cold reset. 0=ROM executable; 1=write-locked SRAM regions executable, and the ROM lockout is armed. Set by ROM stack-less handover immediately before jumping to mutable firmware.</td></tr>
+<tr><td>0xB8</td><td><a href="#IRQ_ENTRY_ADDR">IRQ_ENTRY_ADDR</a></td><td>RW</td><td>Effective IRQ entry address for subsequent interrupts. Writable while unlocked; any 32-bit value accepted.</td></tr>
+<tr><td>0xBC</td><td><a href="#IRQ_ENTRY_LOCK">IRQ_ENTRY_LOCK</a></td><td>RW</td><td>Write-one-only lock for IRQ_ENTRY_ADDR. Separate readable register; cleared only on KM reset.</td></tr>
+<tr><td>0x100</td><td><a href="#VUART_TX">VUART_TX</a></td><td>RW</td><td>Virtual UART transmit register. Write a byte to send to testbench. DATA_VALID is set on write and self-clears.</td></tr>
+<tr><td>0x104</td><td><a href="#VUART_RX">VUART_RX</a></td><td>R</td><td>Virtual UART receive register. Testbench writes bytes here for firmware to read.</td></tr>
+<tr><td>0x108</td><td><a href="#VUART_STATUS">VUART_STATUS</a></td><td>R</td><td>Virtual UART status register for flow control</td></tr>
+<tr><td>0x110</td><td><a href="#TB_RESULT">TB_RESULT</a></td><td>RW</td><td>Test result register. Firmware writes 0=fail, 1=pass.</td></tr>
+<tr><td>0x114</td><td><a href="#TB_SIGNATURE">TB_SIGNATURE</a></td><td>RW</td><td>Test completion signature. Firmware writes 0x600D600D (pass) or 0xBADBADBA (fail).</td></tr>
+<tr><td>0x118</td><td><a href="#TB_ERRCODE">TB_ERRCODE</a></td><td>RW</td><td>Test error code register. Firmware writes optional error code for debugging.</td></tr>
+<tr><td>0x11C</td><td><a href="#TB_SUBTEST">TB_SUBTEST</a></td><td>RW</td><td>Current subtest number register. Firmware increments for each subtest.</td></tr>
+<tr><td>0x120</td><td><a href="#TB_CMD">TB_CMD</a></td><td>RW</td><td>Testbench command register. Firmware writes command, testbench reads and clears.</td></tr>
+<tr><td>0x124</td><td><a href="#TB_CMD_ARG">TB_CMD_ARG</a></td><td>RW</td><td>Testbench command argument register. Firmware writes optional argument.</td></tr>
+<tr><td>0x128</td><td><a href="#TB_CMD_STATUS">TB_CMD_STATUS</a></td><td>RW</td><td>Testbench command status register. Testbench writes status, firmware reads.</td></tr>
+<tr><td>0x12C</td><td><a href="#TB_CMD_RESULT">TB_CMD_RESULT</a></td><td>R</td><td>Testbench command result register. Testbench writes result value.</td></tr>
+<tr><td>0x1FC</td><td><a href="#DEBUG">DEBUG</a></td><td>R</td><td>Debug register with known constant value for verification</td></tr>
+<tr><td>0x200</td><td><a href="#OTP_CHIPLET_UID_VAL_0">OTP_CHIPLET_UID_VAL_0</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x204</td><td><a href="#OTP_CHIPLET_UID_VAL_1">OTP_CHIPLET_UID_VAL_1</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x208</td><td><a href="#OTP_CHIPLET_UID_VAL_2">OTP_CHIPLET_UID_VAL_2</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x20C</td><td><a href="#OTP_CHIPLET_UID_VAL_3">OTP_CHIPLET_UID_VAL_3</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x210</td><td><a href="#OTP_CHIPLET_UID_VAL_4">OTP_CHIPLET_UID_VAL_4</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x214</td><td><a href="#OTP_CHIPLET_UID_VAL_5">OTP_CHIPLET_UID_VAL_5</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x218</td><td><a href="#OTP_CHIPLET_UID_VAL_6">OTP_CHIPLET_UID_VAL_6</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x21C</td><td><a href="#OTP_CHIPLET_UID_VAL_7">OTP_CHIPLET_UID_VAL_7</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x220</td><td><a href="#OTP_CHIPLET_UID_CPL_0">OTP_CHIPLET_UID_CPL_0</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x224</td><td><a href="#OTP_CHIPLET_UID_CPL_1">OTP_CHIPLET_UID_CPL_1</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x228</td><td><a href="#OTP_CHIPLET_UID_CPL_2">OTP_CHIPLET_UID_CPL_2</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x22C</td><td><a href="#OTP_CHIPLET_UID_CPL_3">OTP_CHIPLET_UID_CPL_3</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x230</td><td><a href="#OTP_CHIPLET_UID_CPL_4">OTP_CHIPLET_UID_CPL_4</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x234</td><td><a href="#OTP_CHIPLET_UID_CPL_5">OTP_CHIPLET_UID_CPL_5</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x238</td><td><a href="#OTP_CHIPLET_UID_CPL_6">OTP_CHIPLET_UID_CPL_6</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x23C</td><td><a href="#OTP_CHIPLET_UID_CPL_7">OTP_CHIPLET_UID_CPL_7</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x240</td><td><a href="#OTP_SIP_UID_VAL_0">OTP_SIP_UID_VAL_0</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x244</td><td><a href="#OTP_SIP_UID_VAL_1">OTP_SIP_UID_VAL_1</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x248</td><td><a href="#OTP_SIP_UID_VAL_2">OTP_SIP_UID_VAL_2</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x24C</td><td><a href="#OTP_SIP_UID_VAL_3">OTP_SIP_UID_VAL_3</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x250</td><td><a href="#OTP_SIP_UID_VAL_4">OTP_SIP_UID_VAL_4</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x254</td><td><a href="#OTP_SIP_UID_VAL_5">OTP_SIP_UID_VAL_5</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x258</td><td><a href="#OTP_SIP_UID_VAL_6">OTP_SIP_UID_VAL_6</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x25C</td><td><a href="#OTP_SIP_UID_VAL_7">OTP_SIP_UID_VAL_7</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x260</td><td><a href="#OTP_SIP_UID_CPL_0">OTP_SIP_UID_CPL_0</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x264</td><td><a href="#OTP_SIP_UID_CPL_1">OTP_SIP_UID_CPL_1</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x268</td><td><a href="#OTP_SIP_UID_CPL_2">OTP_SIP_UID_CPL_2</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x26C</td><td><a href="#OTP_SIP_UID_CPL_3">OTP_SIP_UID_CPL_3</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x270</td><td><a href="#OTP_SIP_UID_CPL_4">OTP_SIP_UID_CPL_4</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x274</td><td><a href="#OTP_SIP_UID_CPL_5">OTP_SIP_UID_CPL_5</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x278</td><td><a href="#OTP_SIP_UID_CPL_6">OTP_SIP_UID_CPL_6</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x27C</td><td><a href="#OTP_SIP_UID_CPL_7">OTP_SIP_UID_CPL_7</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x280</td><td><a href="#OTP_SYS_UID_VAL_0">OTP_SYS_UID_VAL_0</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x284</td><td><a href="#OTP_SYS_UID_VAL_1">OTP_SYS_UID_VAL_1</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x288</td><td><a href="#OTP_SYS_UID_VAL_2">OTP_SYS_UID_VAL_2</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x28C</td><td><a href="#OTP_SYS_UID_VAL_3">OTP_SYS_UID_VAL_3</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x290</td><td><a href="#OTP_SYS_UID_VAL_4">OTP_SYS_UID_VAL_4</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x294</td><td><a href="#OTP_SYS_UID_VAL_5">OTP_SYS_UID_VAL_5</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x298</td><td><a href="#OTP_SYS_UID_VAL_6">OTP_SYS_UID_VAL_6</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x29C</td><td><a href="#OTP_SYS_UID_VAL_7">OTP_SYS_UID_VAL_7</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2A0</td><td><a href="#OTP_SYS_UID_CPL_0">OTP_SYS_UID_CPL_0</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2A4</td><td><a href="#OTP_SYS_UID_CPL_1">OTP_SYS_UID_CPL_1</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2A8</td><td><a href="#OTP_SYS_UID_CPL_2">OTP_SYS_UID_CPL_2</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2AC</td><td><a href="#OTP_SYS_UID_CPL_3">OTP_SYS_UID_CPL_3</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2B0</td><td><a href="#OTP_SYS_UID_CPL_4">OTP_SYS_UID_CPL_4</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2B4</td><td><a href="#OTP_SYS_UID_CPL_5">OTP_SYS_UID_CPL_5</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2B8</td><td><a href="#OTP_SYS_UID_CPL_6">OTP_SYS_UID_CPL_6</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2BC</td><td><a href="#OTP_SYS_UID_CPL_7">OTP_SYS_UID_CPL_7</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2C0</td><td><a href="#OTP_CLASS_KEY_VAL_0">OTP_CLASS_KEY_VAL_0</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2C4</td><td><a href="#OTP_CLASS_KEY_VAL_1">OTP_CLASS_KEY_VAL_1</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2C8</td><td><a href="#OTP_CLASS_KEY_VAL_2">OTP_CLASS_KEY_VAL_2</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2CC</td><td><a href="#OTP_CLASS_KEY_VAL_3">OTP_CLASS_KEY_VAL_3</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2D0</td><td><a href="#OTP_CLASS_KEY_VAL_4">OTP_CLASS_KEY_VAL_4</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2D4</td><td><a href="#OTP_CLASS_KEY_VAL_5">OTP_CLASS_KEY_VAL_5</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2D8</td><td><a href="#OTP_CLASS_KEY_VAL_6">OTP_CLASS_KEY_VAL_6</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2DC</td><td><a href="#OTP_CLASS_KEY_VAL_7">OTP_CLASS_KEY_VAL_7</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2E0</td><td><a href="#OTP_CLASS_KEY_CPL_0">OTP_CLASS_KEY_CPL_0</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2E4</td><td><a href="#OTP_CLASS_KEY_CPL_1">OTP_CLASS_KEY_CPL_1</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2E8</td><td><a href="#OTP_CLASS_KEY_CPL_2">OTP_CLASS_KEY_CPL_2</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2EC</td><td><a href="#OTP_CLASS_KEY_CPL_3">OTP_CLASS_KEY_CPL_3</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2F0</td><td><a href="#OTP_CLASS_KEY_CPL_4">OTP_CLASS_KEY_CPL_4</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2F4</td><td><a href="#OTP_CLASS_KEY_CPL_5">OTP_CLASS_KEY_CPL_5</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2F8</td><td><a href="#OTP_CLASS_KEY_CPL_6">OTP_CLASS_KEY_CPL_6</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x2FC</td><td><a href="#OTP_CLASS_KEY_CPL_7">OTP_CLASS_KEY_CPL_7</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x300</td><td><a href="#OTP_READ_LOCK">OTP_READ_LOCK</a></td><td>RW</td><td>OTP field warm-reset-domain read-lock bits. Write 1 to set; writing 0 has no effect. Locked reads of the corresponding OTP field return zero (effective lock = OTP_READ_LOCK | OTP_READ_LOCK_COLD). Warm-reset domain: cleared by warm or cold reset.</td></tr>
+<tr><td>0x304</td><td><a href="#OTP_CHANGE_STATUS">OTP_CHANGE_STATUS</a></td><td>RW</td><td>OTP field change status. A bit is set when the corresponding field&#x27;s decoded value changes. Sticky, write 1 to clear. Valid after IRQ_STATUS.OTP_CHANGE fires.</td></tr>
+<tr><td>0x308</td><td><a href="#OTP_READ_LOCK_COLD">OTP_READ_LOCK_COLD</a></td><td>RW</td><td>OTP field cold-reset-domain read-lock bits. Write 1 to set; writing 0 has no effect. Locked reads of the corresponding OTP field return zero (effective lock = OTP_READ_LOCK | OTP_READ_LOCK_COLD). Cold-reset domain: survives warm reset.</td></tr>
+<tr><td>0x400</td><td><a href="#OTP_SEP_CHIPLET_ID_VAL_0">OTP_SEP_CHIPLET_ID_VAL_0</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x404</td><td><a href="#OTP_SEP_CHIPLET_ID_VAL_1">OTP_SEP_CHIPLET_ID_VAL_1</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x408</td><td><a href="#OTP_SEP_CHIPLET_ID_VAL_2">OTP_SEP_CHIPLET_ID_VAL_2</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x40C</td><td><a href="#OTP_SEP_CHIPLET_ID_VAL_3">OTP_SEP_CHIPLET_ID_VAL_3</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x410</td><td><a href="#OTP_SEP_CHIPLET_ID_VAL_4">OTP_SEP_CHIPLET_ID_VAL_4</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x414</td><td><a href="#OTP_SEP_CHIPLET_ID_VAL_5">OTP_SEP_CHIPLET_ID_VAL_5</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x418</td><td><a href="#OTP_SEP_CHIPLET_ID_VAL_6">OTP_SEP_CHIPLET_ID_VAL_6</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x41C</td><td><a href="#OTP_SEP_CHIPLET_ID_VAL_7">OTP_SEP_CHIPLET_ID_VAL_7</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x420</td><td><a href="#OTP_SEP_CHIPLET_ID_CPL_0">OTP_SEP_CHIPLET_ID_CPL_0</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x424</td><td><a href="#OTP_SEP_CHIPLET_ID_CPL_1">OTP_SEP_CHIPLET_ID_CPL_1</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x428</td><td><a href="#OTP_SEP_CHIPLET_ID_CPL_2">OTP_SEP_CHIPLET_ID_CPL_2</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x42C</td><td><a href="#OTP_SEP_CHIPLET_ID_CPL_3">OTP_SEP_CHIPLET_ID_CPL_3</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x430</td><td><a href="#OTP_SEP_CHIPLET_ID_CPL_4">OTP_SEP_CHIPLET_ID_CPL_4</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x434</td><td><a href="#OTP_SEP_CHIPLET_ID_CPL_5">OTP_SEP_CHIPLET_ID_CPL_5</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x438</td><td><a href="#OTP_SEP_CHIPLET_ID_CPL_6">OTP_SEP_CHIPLET_ID_CPL_6</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x43C</td><td><a href="#OTP_SEP_CHIPLET_ID_CPL_7">OTP_SEP_CHIPLET_ID_CPL_7</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x440</td><td><a href="#OTP_SEP_SIP_ID_VAL_0">OTP_SEP_SIP_ID_VAL_0</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x444</td><td><a href="#OTP_SEP_SIP_ID_VAL_1">OTP_SEP_SIP_ID_VAL_1</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x448</td><td><a href="#OTP_SEP_SIP_ID_VAL_2">OTP_SEP_SIP_ID_VAL_2</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x44C</td><td><a href="#OTP_SEP_SIP_ID_VAL_3">OTP_SEP_SIP_ID_VAL_3</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x450</td><td><a href="#OTP_SEP_SIP_ID_VAL_4">OTP_SEP_SIP_ID_VAL_4</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x454</td><td><a href="#OTP_SEP_SIP_ID_VAL_5">OTP_SEP_SIP_ID_VAL_5</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x458</td><td><a href="#OTP_SEP_SIP_ID_VAL_6">OTP_SEP_SIP_ID_VAL_6</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x45C</td><td><a href="#OTP_SEP_SIP_ID_VAL_7">OTP_SEP_SIP_ID_VAL_7</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x460</td><td><a href="#OTP_SEP_SIP_ID_CPL_0">OTP_SEP_SIP_ID_CPL_0</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x464</td><td><a href="#OTP_SEP_SIP_ID_CPL_1">OTP_SEP_SIP_ID_CPL_1</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x468</td><td><a href="#OTP_SEP_SIP_ID_CPL_2">OTP_SEP_SIP_ID_CPL_2</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x46C</td><td><a href="#OTP_SEP_SIP_ID_CPL_3">OTP_SEP_SIP_ID_CPL_3</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x470</td><td><a href="#OTP_SEP_SIP_ID_CPL_4">OTP_SEP_SIP_ID_CPL_4</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x474</td><td><a href="#OTP_SEP_SIP_ID_CPL_5">OTP_SEP_SIP_ID_CPL_5</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x478</td><td><a href="#OTP_SEP_SIP_ID_CPL_6">OTP_SEP_SIP_ID_CPL_6</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x47C</td><td><a href="#OTP_SEP_SIP_ID_CPL_7">OTP_SEP_SIP_ID_CPL_7</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x480</td><td><a href="#OTP_SEP_SYS_ID_VAL_0">OTP_SEP_SYS_ID_VAL_0</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x484</td><td><a href="#OTP_SEP_SYS_ID_VAL_1">OTP_SEP_SYS_ID_VAL_1</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x488</td><td><a href="#OTP_SEP_SYS_ID_VAL_2">OTP_SEP_SYS_ID_VAL_2</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x48C</td><td><a href="#OTP_SEP_SYS_ID_VAL_3">OTP_SEP_SYS_ID_VAL_3</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x490</td><td><a href="#OTP_SEP_SYS_ID_VAL_4">OTP_SEP_SYS_ID_VAL_4</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x494</td><td><a href="#OTP_SEP_SYS_ID_VAL_5">OTP_SEP_SYS_ID_VAL_5</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x498</td><td><a href="#OTP_SEP_SYS_ID_VAL_6">OTP_SEP_SYS_ID_VAL_6</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x49C</td><td><a href="#OTP_SEP_SYS_ID_VAL_7">OTP_SEP_SYS_ID_VAL_7</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x4A0</td><td><a href="#OTP_SEP_SYS_ID_CPL_0">OTP_SEP_SYS_ID_CPL_0</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x4A4</td><td><a href="#OTP_SEP_SYS_ID_CPL_1">OTP_SEP_SYS_ID_CPL_1</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x4A8</td><td><a href="#OTP_SEP_SYS_ID_CPL_2">OTP_SEP_SYS_ID_CPL_2</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x4AC</td><td><a href="#OTP_SEP_SYS_ID_CPL_3">OTP_SEP_SYS_ID_CPL_3</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x4B0</td><td><a href="#OTP_SEP_SYS_ID_CPL_4">OTP_SEP_SYS_ID_CPL_4</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x4B4</td><td><a href="#OTP_SEP_SYS_ID_CPL_5">OTP_SEP_SYS_ID_CPL_5</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x4B8</td><td><a href="#OTP_SEP_SYS_ID_CPL_6">OTP_SEP_SYS_ID_CPL_6</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+<tr><td>0x4BC</td><td><a href="#OTP_SEP_SYS_ID_CPL_7">OTP_SEP_SYS_ID_CPL_7</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="VERSION">VERSION</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved; must read as zero</td></tr>
+<tr><td>23:16</td><td>major</td><td>R</td><td>0x1</td><td>Major version number</td></tr>
+<tr><td>15:8</td><td>minor</td><td>R</td><td>0x0</td><td>Minor version number</td></tr>
+<tr><td>7:0</td><td>patch</td><td>R</td><td>0x0</td><td>Patch version number</td></tr>
+</table>
+<h3 id="CTRL">CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+</table>
+<h3 id="SOFT_RST_CODE">SOFT_RST_CODE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>code</td><td>RW</td><td>0x0</td><td>32-bit reset code. Write 0x53525354 to trigger soft reset.</td></tr>
+</table>
+<h3 id="IRQ_STATUS">IRQ_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:12</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>11</td><td>rom_access_violation</td><td>RW1C</td><td>0x0</td><td>KM ROM instruction fetch or data read attempted after the ROM lockout engaged. The lockout engages on the first committed instruction fetch from write-locked SRAM once SRAM_EXEC_MODE.enable is set, and clears only on warm or cold reset. Sticky, write 1 to clear.</td></tr>
+<tr><td>10</td><td>exec_violation</td><td>RW1C</td><td>0x0</td><td>Instruction fetch from a non-whitelisted (non-executable) memory region detected, excluding the KM ROM. Sticky, write 1 to clear.</td></tr>
+<tr><td>9</td><td>otp_sigint</td><td>RW1C</td><td>0x0</td><td>OTP dual-rail encoding integrity violation: value and complement are not complementary on at least one field. Sticky, write 1 to clear.</td></tr>
+<tr><td>8</td><td>otp_change</td><td>RW1C</td><td>0x0</td><td>An OTP readout field value changed (decoded value differs from prior cycle). Sticky, write 1 to clear. Check OTP_CHANGE_STATUS for the specific field(s).</td></tr>
+<tr><td>7</td><td>wipe_state</td><td>RW1C</td><td>0x0</td><td>Wipe state event (rising edge of wipe_state input). Sticky, write 1 to clear.</td></tr>
+<tr><td>6</td><td>drbg_err</td><td>RW1C</td><td>0x0</td><td>DRBG Sampler error (timeout or AXI-Stream error). Sticky, write 1 to clear.</td></tr>
+<tr><td>5</td><td>axi_decerr</td><td>RW1C</td><td>0x0</td><td>AXI DECERR (decode error) response detected on CPU bus transaction. Sticky, write 1 to clear.</td></tr>
+<tr><td>4</td><td>axi_slverr</td><td>RW1C</td><td>0x0</td><td>AXI SLVERR (slave error) response detected on CPU bus transaction. Sticky, write 1 to clear.</td></tr>
+<tr><td>3</td><td>sram_write_lock_err</td><td>RW1C</td><td>0x0</td><td>SRAM write attempt to a write-locked region detected. Sticky, write 1 to clear.</td></tr>
+<tr><td>2</td><td>rom_write_err</td><td>RW1C</td><td>0x0</td><td>ROM write attempt detected (ROM is read-only). Sticky, write 1 to clear.</td></tr>
+<tr><td>1</td><td>sram_parity_err</td><td>RW1C</td><td>0x0</td><td>SRAM parity error detected. Sticky, write 1 to clear.</td></tr>
+<tr><td>0</td><td>rom_parity_err</td><td>RW1C</td><td>0x0</td><td>ROM parity error detected. Sticky, write 1 to clear.</td></tr>
+</table>
+<h3 id="IRQ_ENABLE">IRQ_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:12</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>11</td><td>rom_access_violation_en</td><td>RW</td><td>0x0</td><td>Enable ROM lockout violation interrupt</td></tr>
+<tr><td>10</td><td>exec_violation_en</td><td>RW</td><td>0x0</td><td>Enable execute-permission whitelist violation interrupt</td></tr>
+<tr><td>9</td><td>otp_sigint_en</td><td>RW</td><td>0x0</td><td>Enable OTP dual-rail integrity violation interrupt</td></tr>
+<tr><td>8</td><td>otp_change_en</td><td>RW</td><td>0x0</td><td>Enable OTP field change interrupt</td></tr>
+<tr><td>7</td><td>wipe_state_en</td><td>RW</td><td>0x0</td><td>Enable wipe state interrupt</td></tr>
+<tr><td>6</td><td>drbg_err_en</td><td>RW</td><td>0x0</td><td>Enable DRBG Sampler error interrupt</td></tr>
+<tr><td>5</td><td>axi_decerr_en</td><td>RW</td><td>0x0</td><td>Enable AXI DECERR error interrupt</td></tr>
+<tr><td>4</td><td>axi_slverr_en</td><td>RW</td><td>0x0</td><td>Enable AXI SLVERR error interrupt</td></tr>
+<tr><td>3</td><td>sram_write_lock_en</td><td>RW</td><td>0x0</td><td>Enable SRAM write-lock violation interrupt</td></tr>
+<tr><td>2</td><td>rom_write_en</td><td>RW</td><td>0x0</td><td>Enable ROM write error interrupt</td></tr>
+<tr><td>1</td><td>sram_parity_en</td><td>RW</td><td>0x0</td><td>Enable SRAM parity error interrupt</td></tr>
+<tr><td>0</td><td>rom_parity_en</td><td>RW</td><td>0x0</td><td>Enable ROM parity error interrupt</td></tr>
+</table>
+<h3 id="SCRAMBLER_KEY">SCRAMBLER_KEY</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>key</td><td>RW</td><td>-</td><td>Scrambler key value. Not readable when SCRAMBLER_CTRL.LOCK=1 (returns 0). No reset for security; power-up value undefined.</td></tr>
+</table>
+<h3 id="SCRAMBLER_CTRL">SCRAMBLER_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>1</td><td>lock</td><td>RW</td><td>0x0</td><td>Lock scrambler key and enable bit. Once set, key and enable cannot be modified until reset. Write-once (0-&gt;1 only). Security requirement: prevents disabling scrambling after key provisioning.</td></tr>
+<tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>Enable SRAM scrambling. When 0, data passes through unmodified. Locked when LOCK=1 (security requirement).</td></tr>
+</table>
+<h3 id="SRAM_LOCK">SRAM_LOCK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>lock_bits</td><td>RW1S</td><td>0x0</td><td>One bit per 1 KB SRAM region. Region 0 = 0x8000-0x83FF, region 31 = 0xFC00-0xFFFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.</td></tr>
+</table>
+<h3 id="IRQ_SET">IRQ_SET</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:12</td><td>rsvd</td><td>W</td><td>0x0</td><td>Reserved (write-only; reads trigger SLVERR via err_if_bad_rw)</td></tr>
+<tr><td>11</td><td>rom_access_violation_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.ROM_ACCESS_VIOLATION (triggers ROM lockout violation interrupt for testing)</td></tr>
+<tr><td>10</td><td>exec_violation_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.EXEC_VIOLATION (triggers exec-permission violation interrupt for testing)</td></tr>
+<tr><td>9</td><td>otp_sigint_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.OTP_SIGINT (triggers OTP sigint interrupt for testing)</td></tr>
+<tr><td>8</td><td>otp_change_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.OTP_CHANGE (triggers OTP change interrupt for testing)</td></tr>
+<tr><td>7</td><td>wipe_state_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.WIPE_STATE (triggers wipe state interrupt for testing)</td></tr>
+<tr><td>6</td><td>drbg_err_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.DRBG_ERR (triggers DRBG Sampler interrupt for testing)</td></tr>
+<tr><td>5</td><td>axi_decerr_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.AXI_DECERR (triggers AXI DECERR interrupt for testing)</td></tr>
+<tr><td>4</td><td>axi_slverr_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.AXI_SLVERR (triggers AXI SLVERR interrupt for testing)</td></tr>
+<tr><td>3</td><td>sram_write_lock_err_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.SRAM_WRITE_LOCK_ERR (triggers SRAM write-lock interrupt for testing)</td></tr>
+<tr><td>2</td><td>rom_write_err_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.ROM_WRITE_ERR (triggers ROM write interrupt for testing)</td></tr>
+<tr><td>1</td><td>sram_parity_err_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.SRAM_PARITY_ERR (triggers SRAM parity interrupt for testing)</td></tr>
+<tr><td>0</td><td>rom_parity_err_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.ROM_PARITY_ERR (triggers ROM parity interrupt for testing)</td></tr>
+</table>
+<h3 id="SRAM_WRITE_LOCK_VIOLATION">SRAM_WRITE_LOCK_VIOLATION</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>violation_bits</td><td>RW1C</td><td>0x0</td><td>Bit[i]=1 if region i had attempted write while locked. Sticky, write 1 to clear each bit.</td></tr>
+</table>
+<h3 id="RECOVERABLE_ERR">RECOVERABLE_ERR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>recoverable_err</td><td>RW</td><td>0x0</td><td>1 = recoverable fault occurred and was handled by ISR; 0 = clear. Write 1 to set, write 0 to clear.</td></tr>
+</table>
+<h3 id="BOOT_STATUS">BOOT_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>cold_boot_done</td><td>RW1S</td><td>0x0</td><td>Write-1-only: set by ROM firmware at end of cold boot. Reads 0 after cold reset; reads 1 after firmware sets it. Sticky until next cold reset (preserved across warm resets).</td></tr>
+</table>
+<h3 id="OTP_LIFE_CYCLE">OTP_LIFE_CYCLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>value</td><td>R</td><td>-</td><td>8-bit life cycle state from OTP. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_DEMOTION_STATE">OTP_DEMOTION_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3:2</td><td>demote_2_value</td><td>R</td><td>-</td><td>2-bit demotion 2 state from OTP. No reset; power-up value undefined.</td></tr>
+<tr><td>1:0</td><td>demote_1_value</td><td>R</td><td>-</td><td>2-bit demotion 1 state from OTP. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="SRAM_EXEC_MODE">SRAM_EXEC_MODE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>enable</td><td>RW1S</td><td>0x0</td><td>Execute-permission mode: 0=ROM-only whitelist; 1=write-locked SRAM whitelist, arming the ROM lockout. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.</td></tr>
+</table>
+<h3 id="IRQ_ENTRY_ADDR">IRQ_ENTRY_ADDR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>addr</td><td>RW</td><td>0x10</td><td>IRQ handler entry PC. Reset matches ROM vector at 0x10. When locked, SW writes do not update storage.</td></tr>
+</table>
+<h3 id="IRQ_ENTRY_LOCK">IRQ_ENTRY_LOCK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved; reads as zero.</td></tr>
+<tr><td>0</td><td>lock</td><td>RW1S</td><td>0x0</td><td>Write 1 to set; write 0 has no effect; sticky until reset.</td></tr>
+</table>
+<h3 id="VUART_TX">VUART_TX</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>data_valid</td><td>RW</td><td>0x0</td><td>Data valid strobe. Set by firmware on write, cleared by hardware after one cycle.</td></tr>
+<tr><td>30:8</td><td>rsvd0</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>tx_byte</td><td>RW</td><td>0x0</td><td>Byte to transmit (write to send character to testbench)</td></tr>
+</table>
+<h3 id="VUART_RX">VUART_RX</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>data_valid</td><td>R</td><td>0x0</td><td>RX data valid. Set by testbench, cleared by firmware read.</td></tr>
+<tr><td>30:8</td><td>rsvd0</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>rx_byte</td><td>R</td><td>0x0</td><td>Received byte from testbench</td></tr>
+</table>
+<h3 id="VUART_STATUS">VUART_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>2</td><td>print_enable</td><td>R</td><td>0x0</td><td>Enable VUART printing. Set by testbench to enable printf output. Disabled by default to save simulation time.</td></tr>
+<tr><td>1</td><td>rx_valid</td><td>R</td><td>0x0</td><td>RX has valid data available</td></tr>
+<tr><td>0</td><td>tx_ready</td><td>R</td><td>0x1</td><td>TX ready to accept data (always 1 in simulation)</td></tr>
+</table>
+<h3 id="TB_RESULT">TB_RESULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>result</td><td>RW</td><td>0x0</td><td>Test result: 0=fail, 1=pass</td></tr>
+</table>
+<h3 id="TB_SIGNATURE">TB_SIGNATURE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>signature</td><td>RW</td><td>0x0</td><td>Completion signature value</td></tr>
+</table>
+<h3 id="TB_ERRCODE">TB_ERRCODE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>errcode</td><td>RW</td><td>0x0</td><td>Error code value</td></tr>
+</table>
+<h3 id="TB_SUBTEST">TB_SUBTEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>subtest</td><td>RW</td><td>0x0</td><td>Current subtest number</td></tr>
+</table>
+<h3 id="TB_CMD">TB_CMD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>cmd</td><td>RW</td><td>0x0</td><td>Command code (0=NOP, 1=ROM_PARITY_EN, 2=ROM_PARITY_DIS, 3=SRAM_PARITY_EN, 4=SRAM_PARITY_DIS)</td></tr>
+</table>
+<h3 id="TB_CMD_ARG">TB_CMD_ARG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>arg</td><td>RW</td><td>0x0</td><td>Command argument value</td></tr>
+</table>
+<h3 id="TB_CMD_STATUS">TB_CMD_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>status</td><td>RW</td><td>0x0</td><td>Command status: 0=IDLE, 1=ACK, 0xFFFFFFFF=ERR</td></tr>
+</table>
+<h3 id="TB_CMD_RESULT">TB_CMD_RESULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>result</td><td>R</td><td>0x0</td><td>Command result value</td></tr>
+</table>
+<h3 id="DEBUG">DEBUG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>magic</td><td>R</td><td>0xCAFEBEEF</td><td>Magic constant: 0xCAFEBEEF</td></tr>
+</table>
+<h3 id="OTP_CHIPLET_UID_VAL_0">OTP_CHIPLET_UID_VAL_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CHIPLET_UID_VAL_1">OTP_CHIPLET_UID_VAL_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CHIPLET_UID_VAL_2">OTP_CHIPLET_UID_VAL_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CHIPLET_UID_VAL_3">OTP_CHIPLET_UID_VAL_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CHIPLET_UID_VAL_4">OTP_CHIPLET_UID_VAL_4</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CHIPLET_UID_VAL_5">OTP_CHIPLET_UID_VAL_5</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CHIPLET_UID_VAL_6">OTP_CHIPLET_UID_VAL_6</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CHIPLET_UID_VAL_7">OTP_CHIPLET_UID_VAL_7</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CHIPLET_UID_CPL_0">OTP_CHIPLET_UID_CPL_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CHIPLET_UID_CPL_1">OTP_CHIPLET_UID_CPL_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CHIPLET_UID_CPL_2">OTP_CHIPLET_UID_CPL_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CHIPLET_UID_CPL_3">OTP_CHIPLET_UID_CPL_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CHIPLET_UID_CPL_4">OTP_CHIPLET_UID_CPL_4</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CHIPLET_UID_CPL_5">OTP_CHIPLET_UID_CPL_5</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CHIPLET_UID_CPL_6">OTP_CHIPLET_UID_CPL_6</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CHIPLET_UID_CPL_7">OTP_CHIPLET_UID_CPL_7</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SIP_UID_VAL_0">OTP_SIP_UID_VAL_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SIP_UID_VAL_1">OTP_SIP_UID_VAL_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SIP_UID_VAL_2">OTP_SIP_UID_VAL_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SIP_UID_VAL_3">OTP_SIP_UID_VAL_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SIP_UID_VAL_4">OTP_SIP_UID_VAL_4</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SIP_UID_VAL_5">OTP_SIP_UID_VAL_5</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SIP_UID_VAL_6">OTP_SIP_UID_VAL_6</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SIP_UID_VAL_7">OTP_SIP_UID_VAL_7</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SIP_UID_CPL_0">OTP_SIP_UID_CPL_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SIP_UID_CPL_1">OTP_SIP_UID_CPL_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SIP_UID_CPL_2">OTP_SIP_UID_CPL_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SIP_UID_CPL_3">OTP_SIP_UID_CPL_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SIP_UID_CPL_4">OTP_SIP_UID_CPL_4</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SIP_UID_CPL_5">OTP_SIP_UID_CPL_5</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SIP_UID_CPL_6">OTP_SIP_UID_CPL_6</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SIP_UID_CPL_7">OTP_SIP_UID_CPL_7</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SYS_UID_VAL_0">OTP_SYS_UID_VAL_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SYS_UID_VAL_1">OTP_SYS_UID_VAL_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SYS_UID_VAL_2">OTP_SYS_UID_VAL_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SYS_UID_VAL_3">OTP_SYS_UID_VAL_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SYS_UID_VAL_4">OTP_SYS_UID_VAL_4</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SYS_UID_VAL_5">OTP_SYS_UID_VAL_5</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SYS_UID_VAL_6">OTP_SYS_UID_VAL_6</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SYS_UID_VAL_7">OTP_SYS_UID_VAL_7</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SYS_UID_CPL_0">OTP_SYS_UID_CPL_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SYS_UID_CPL_1">OTP_SYS_UID_CPL_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SYS_UID_CPL_2">OTP_SYS_UID_CPL_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SYS_UID_CPL_3">OTP_SYS_UID_CPL_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SYS_UID_CPL_4">OTP_SYS_UID_CPL_4</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SYS_UID_CPL_5">OTP_SYS_UID_CPL_5</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SYS_UID_CPL_6">OTP_SYS_UID_CPL_6</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SYS_UID_CPL_7">OTP_SYS_UID_CPL_7</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CLASS_KEY_VAL_0">OTP_CLASS_KEY_VAL_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CLASS_KEY_VAL_1">OTP_CLASS_KEY_VAL_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CLASS_KEY_VAL_2">OTP_CLASS_KEY_VAL_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CLASS_KEY_VAL_3">OTP_CLASS_KEY_VAL_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CLASS_KEY_VAL_4">OTP_CLASS_KEY_VAL_4</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CLASS_KEY_VAL_5">OTP_CLASS_KEY_VAL_5</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CLASS_KEY_VAL_6">OTP_CLASS_KEY_VAL_6</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CLASS_KEY_VAL_7">OTP_CLASS_KEY_VAL_7</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CLASS_KEY_CPL_0">OTP_CLASS_KEY_CPL_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CLASS_KEY_CPL_1">OTP_CLASS_KEY_CPL_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CLASS_KEY_CPL_2">OTP_CLASS_KEY_CPL_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CLASS_KEY_CPL_3">OTP_CLASS_KEY_CPL_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CLASS_KEY_CPL_4">OTP_CLASS_KEY_CPL_4</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CLASS_KEY_CPL_5">OTP_CLASS_KEY_CPL_5</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CLASS_KEY_CPL_6">OTP_CLASS_KEY_CPL_6</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_CLASS_KEY_CPL_7">OTP_CLASS_KEY_CPL_7</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_READ_LOCK">OTP_READ_LOCK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:9</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>8</td><td>sep_sys_id</td><td>RW1S</td><td>0x0</td><td>Lock OTP_SEP_SYS_ID_VAL/CPL reads (returns zero when locked)</td></tr>
+<tr><td>7</td><td>sep_sip_id</td><td>RW1S</td><td>0x0</td><td>Lock OTP_SEP_SIP_ID_VAL/CPL reads (returns zero when locked)</td></tr>
+<tr><td>6</td><td>sep_chiplet_id</td><td>RW1S</td><td>0x0</td><td>Lock OTP_SEP_CHIPLET_ID_VAL/CPL reads (returns zero when locked)</td></tr>
+<tr><td>5</td><td>class_key</td><td>RW1S</td><td>0x0</td><td>Lock OTP_CLASS_KEY_VAL/CPL reads (returns zero when locked)</td></tr>
+<tr><td>4</td><td>sys_uid</td><td>RW1S</td><td>0x0</td><td>Lock OTP_SYS_UID_VAL/CPL reads (returns zero when locked)</td></tr>
+<tr><td>3</td><td>sip_uid</td><td>RW1S</td><td>0x0</td><td>Lock OTP_SIP_UID_VAL/CPL reads (returns zero when locked)</td></tr>
+<tr><td>2</td><td>chiplet_uid</td><td>RW1S</td><td>0x0</td><td>Lock OTP_CHIPLET_UID_VAL/CPL reads (returns zero when locked)</td></tr>
+<tr><td>1</td><td>demotion</td><td>RW1S</td><td>0x0</td><td>Lock OTP_DEMOTION_STATE reads (returns zero when locked)</td></tr>
+<tr><td>0</td><td>life_cycle</td><td>RW1S</td><td>0x0</td><td>Lock OTP_LIFE_CYCLE reads (returns zero when locked)</td></tr>
+</table>
+<h3 id="OTP_CHANGE_STATUS">OTP_CHANGE_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:9</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>8</td><td>sep_sys_id</td><td>RW1C</td><td>0x0</td><td>OTP_SEP_SYS_ID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>7</td><td>sep_sip_id</td><td>RW1C</td><td>0x0</td><td>OTP_SEP_SIP_ID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>6</td><td>sep_chiplet_id</td><td>RW1C</td><td>0x0</td><td>OTP_SEP_CHIPLET_ID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>5</td><td>class_key</td><td>RW1C</td><td>0x0</td><td>OTP_CLASS_KEY value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>4</td><td>sys_uid</td><td>RW1C</td><td>0x0</td><td>OTP_SYS_UID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>3</td><td>sip_uid</td><td>RW1C</td><td>0x0</td><td>OTP_SIP_UID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>2</td><td>chiplet_uid</td><td>RW1C</td><td>0x0</td><td>OTP_CHIPLET_UID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>1</td><td>demotion</td><td>RW1C</td><td>0x0</td><td>OTP_DEMOTION_STATE value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>0</td><td>life_cycle</td><td>RW1C</td><td>0x0</td><td>OTP_LIFE_CYCLE value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+</table>
+<h3 id="OTP_READ_LOCK_COLD">OTP_READ_LOCK_COLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:9</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>8</td><td>sep_sys_id</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_SEP_SYS_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sys_id | OTP_READ_LOCK_COLD.sep_sys_id.</td></tr>
+<tr><td>7</td><td>sep_sip_id</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_SEP_SIP_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sip_id | OTP_READ_LOCK_COLD.sep_sip_id.</td></tr>
+<tr><td>6</td><td>sep_chiplet_id</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_SEP_CHIPLET_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_chiplet_id | OTP_READ_LOCK_COLD.sep_chiplet_id.</td></tr>
+<tr><td>5</td><td>class_key</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_CLASS_KEY_VAL/CPL. Effective lock = OTP_READ_LOCK.class_key | OTP_READ_LOCK_COLD.class_key.</td></tr>
+<tr><td>4</td><td>sys_uid</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_SYS_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sys_uid | OTP_READ_LOCK_COLD.sys_uid.</td></tr>
+<tr><td>3</td><td>sip_uid</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_SIP_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sip_uid | OTP_READ_LOCK_COLD.sip_uid.</td></tr>
+<tr><td>2</td><td>chiplet_uid</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_CHIPLET_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.chiplet_uid | OTP_READ_LOCK_COLD.chiplet_uid.</td></tr>
+<tr><td>1</td><td>demotion</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_DEMOTION_STATE. Effective lock = OTP_READ_LOCK.demotion | OTP_READ_LOCK_COLD.demotion.</td></tr>
+<tr><td>0</td><td>life_cycle</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_LIFE_CYCLE. Effective lock = OTP_READ_LOCK.life_cycle | OTP_READ_LOCK_COLD.life_cycle.</td></tr>
+</table>
+<h3 id="OTP_SEP_CHIPLET_ID_VAL_0">OTP_SEP_CHIPLET_ID_VAL_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_CHIPLET_ID_VAL_1">OTP_SEP_CHIPLET_ID_VAL_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_CHIPLET_ID_VAL_2">OTP_SEP_CHIPLET_ID_VAL_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_CHIPLET_ID_VAL_3">OTP_SEP_CHIPLET_ID_VAL_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_CHIPLET_ID_VAL_4">OTP_SEP_CHIPLET_ID_VAL_4</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_CHIPLET_ID_VAL_5">OTP_SEP_CHIPLET_ID_VAL_5</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_CHIPLET_ID_VAL_6">OTP_SEP_CHIPLET_ID_VAL_6</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_CHIPLET_ID_VAL_7">OTP_SEP_CHIPLET_ID_VAL_7</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_CHIPLET_ID_CPL_0">OTP_SEP_CHIPLET_ID_CPL_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_CHIPLET_ID_CPL_1">OTP_SEP_CHIPLET_ID_CPL_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_CHIPLET_ID_CPL_2">OTP_SEP_CHIPLET_ID_CPL_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_CHIPLET_ID_CPL_3">OTP_SEP_CHIPLET_ID_CPL_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_CHIPLET_ID_CPL_4">OTP_SEP_CHIPLET_ID_CPL_4</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_CHIPLET_ID_CPL_5">OTP_SEP_CHIPLET_ID_CPL_5</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_CHIPLET_ID_CPL_6">OTP_SEP_CHIPLET_ID_CPL_6</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_CHIPLET_ID_CPL_7">OTP_SEP_CHIPLET_ID_CPL_7</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SIP_ID_VAL_0">OTP_SEP_SIP_ID_VAL_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SIP_ID_VAL_1">OTP_SEP_SIP_ID_VAL_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SIP_ID_VAL_2">OTP_SEP_SIP_ID_VAL_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SIP_ID_VAL_3">OTP_SEP_SIP_ID_VAL_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SIP_ID_VAL_4">OTP_SEP_SIP_ID_VAL_4</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SIP_ID_VAL_5">OTP_SEP_SIP_ID_VAL_5</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SIP_ID_VAL_6">OTP_SEP_SIP_ID_VAL_6</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SIP_ID_VAL_7">OTP_SEP_SIP_ID_VAL_7</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SIP_ID_CPL_0">OTP_SEP_SIP_ID_CPL_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SIP_ID_CPL_1">OTP_SEP_SIP_ID_CPL_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SIP_ID_CPL_2">OTP_SEP_SIP_ID_CPL_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SIP_ID_CPL_3">OTP_SEP_SIP_ID_CPL_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SIP_ID_CPL_4">OTP_SEP_SIP_ID_CPL_4</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SIP_ID_CPL_5">OTP_SEP_SIP_ID_CPL_5</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SIP_ID_CPL_6">OTP_SEP_SIP_ID_CPL_6</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SIP_ID_CPL_7">OTP_SEP_SIP_ID_CPL_7</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SYS_ID_VAL_0">OTP_SEP_SYS_ID_VAL_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SYS_ID_VAL_1">OTP_SEP_SYS_ID_VAL_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SYS_ID_VAL_2">OTP_SEP_SYS_ID_VAL_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SYS_ID_VAL_3">OTP_SEP_SYS_ID_VAL_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SYS_ID_VAL_4">OTP_SEP_SYS_ID_VAL_4</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SYS_ID_VAL_5">OTP_SEP_SYS_ID_VAL_5</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SYS_ID_VAL_6">OTP_SEP_SYS_ID_VAL_6</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SYS_ID_VAL_7">OTP_SEP_SYS_ID_VAL_7</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SYS_ID_CPL_0">OTP_SEP_SYS_ID_CPL_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SYS_ID_CPL_1">OTP_SEP_SYS_ID_CPL_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SYS_ID_CPL_2">OTP_SEP_SYS_ID_CPL_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SYS_ID_CPL_3">OTP_SEP_SYS_ID_CPL_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SYS_ID_CPL_4">OTP_SEP_SYS_ID_CPL_4</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SYS_ID_CPL_5">OTP_SEP_SYS_ID_CPL_5</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SYS_ID_CPL_6">OTP_SEP_SYS_ID_CPL_6</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+<h3 id="OTP_SEP_SYS_ID_CPL_7">OTP_SEP_SYS_ID_CPL_7</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
+</table>
+</div>

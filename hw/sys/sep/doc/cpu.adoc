@@ -1,0 +1,281 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= CPU
+:description: SEP VeeR EL2 configuration, local memories, debug and interfaces.
+ifdef::backend-html5[]
+:sep-register-map: xref:sep:memory_map.adoc#sep-detailed-register-map[Detailed Register Map]
+:sep-rom-reference: xref:sep:rom.adoc#sep-rom[SEP Boot ROM]
+:sep-fabric-figures: xref:sep:fabric.adoc#sep-fabric-topology[fabric figures]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+:sep-register-map: <<sep-detailed-register-map,Detailed Register Map>>
+:sep-rom-reference: <<sep-rom,SEP Boot ROM>>
+:sep-fabric-figures: <<sep-fabric-topology,fabric figures>>
+endif::backend-pdf[]
+
+[[cpu-subsystem]]
+
+SEP uses the 32-bit RISC-V
+https://github.com/chipsalliance/Cores-VeeR-EL2[VeeR EL2 CPU] to run boot and
+security-service firmware. This chapter describes the SEP configuration,
+local memories, reset vector and debug integration. The
+https://chipsalliance.github.io/Cores-VeeR-EL2/html/main/docs_rendered/html/index.html[EL2 Programmer's Reference Manual]
+defines the core programming model.
+The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-pic[programming guidance]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-pic[programming guidance]
+endif::backend-pdf[]
+for this block.
+
+<<sep-cpu-diagram>> shows the CPU subsystem and its instruction, data, and external
+memory interfaces.
+
+[[sep-cpu-diagram]]
+.SEP VeeR EL2 CPU subsystem and memory interfaces
+image::sep-cpu.svg[alt="sep_cpu with the VeeR EL2 core complex, its ICCM, DCCM, PIC, debug module and DMA slave, and the alias remaps and demuxes on its AXI4 masters",width=100%,pdfwidth=100%]
+
+`sep_cpu` holds the VeeR EL2 core complex, `u_el2_veer_wrapper`, and the fabric
+elements on its bus masters; the figure uses the notation of the
+{sep-fabric-figures}. The ICCM and DCCM controllers are part of
+the core complex, but their RAM macros sit outside `sep_cpu` in
+`sep_tcm_wrapper`, each bank 32 data bits plus 7 ECC bits wide. The instruction
+cache is not configured. The DMA slave port is the local crossbar's `cpu_tcm`
+target, the backdoor through which the secure DMA preloads the ICCM and DCCM.
+The IFU, LSU and debug system-bus masters are AXI4 with 64-bit data and 3-bit
+IDs, and each carries `SepSourceId` in AxUSER. The debug master's 1-bit ID is
+zero-extended to 3 bits. Each master passes a local alias remap that rewrites the
+768 MiB window at `SEP_LOCAL_BASE_ADDR` to `0x1000_0000`. The IFU demux then
+sends boot ROM addresses to the boot ROM mux, SEP SRAM addresses to the local
+crossbar and everything else to a DECERR responder, and the LSU demux sends boot
+ROM addresses to the boot ROM mux and everything else to the local crossbar. The
+core and its buses run on the SEP clock. `mpc_reset_run_req_i` passes a two-flop
+synchronizer in `sep_cpu`; the core synchronizes the NMI, timer, software
+interrupt and the other halt and run requests itself.
+
+[[cpu-feature-summary]]
+== Processor Core
+
+The SEP build configures the core as follows. Optional VeeR capabilities must
+not be assumed to be present merely because the core supports them.
+
+.SEP processor configuration
+[cols="1,3",options="header"]
+|===
+|Feature |SEP configuration
+|Instruction set
+|RV32IMC. The bit-manipulation build options enable Zba, Zbb, Zbc and Zbe; Zbf, Zbp, Zbr and Zbs are disabled.
+|Pipeline and privilege
+|Four-stage pipeline; user-mode support enabled.
+|Memory protection
+|16 Physical Memory Protection (PMP) entries with Smepmp enabled. `pmpcfg` and `pmpaddr` CSRs control address ranges and access permissions.
+|Memory attributes
+|`mrac` independently selects cacheability and side-effect attributes for sixteen fixed 256 MiB regions. These attributes do not grant read, write or execute permission.
+|Interrupts and timers
+|Programmable Interrupt Controller (PIC), configured for 255 external sources, plus two internal timers that can operate independently or be linked. The timers use VeeR-specific `mip.MITIP0` and `mip.MITIP1` interrupts.
+|Debug
+|JTAG debug interface and an AXI4 debug master connected to the SEP fabric.
+|Dual Core Lock Step (DCLS)
+|Disabled in the checked-in SEP configuration. The integration exposes lockstep controls and status for builds that enable it; this does not establish functional-safety compliance.
+|===
+
+The Interrupts chapter owns the source-by-source PIC mapping:
+ifdef::backend-html5[]
+xref:sep:interrupts.adoc#sep-cpu-interrupt-vector-map[SEP CPU Interrupt Vector Map].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<sep-cpu-interrupt-vector-map>>.
+endif::backend-pdf[]
+The Boot ROM chapter describes secure boot and execution unlock.
+
+== Local Memory
+
+The configured closely coupled memories provide separate instruction and data
+storage. Their memory macros connect through the SEP CPU memory interface.
+The instruction cache is disabled in this configuration.
+
+.SEP closely coupled memories
+[cols="1,1,1,2",options="header"]
+|===
+|Memory |Capacity |CPU base address |Protection
+|Instruction Closely Coupled Memory (ICCM) |256 KiB |`0xC000_0000` |7 ECC bits per 32-bit word
+|Data Closely Coupled Memory (DCCM) |128 KiB |`0xC004_0000` |7 ECC bits per 32-bit word
+|===
+
+
+[[dual-scratch-register-banks]]
+=== Dual Scratch Register Banks
+
+The system CSR block supplies two software read/write scratch banks. Each
+contains eight 32-bit data fields in 64-bit register slots, giving an 8-byte
+stride. Both banks reset their data to zero. Hardware exposes the field values,
+but the current system CSR logic does not use them to control behavior.
+
+.Scratch-bank reset behavior
+[cols="1,3",options="header"]
+|===
+|Bank |Reset and retention
+|Set 0, cold scratch
+|Cleared by `sep_reset_n`. Retains data through a watchdog-only CPU reset; retention is not guaranteed across reassertion of the boot-qualified SEP reset.
+|Set 1, warm scratch
+|Cleared by either `sep_reset_n` or `sep_cpu_reset_n`, so an aggregated SMC/SEP watchdog reset also clears this bank.
+|===
+
+The names distinguish watchdog-reset behavior; they do not mean that set 0
+can only be cleared by a power-on event. The Clocks and Resets chapter defines
+these reset boundaries.
+
+==== Scratch Register Reference
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/sep_scratch.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/sep_scratch.adoc[leveloffset=+3]
+endif::backend-pdf[]
+
+
+== Reset and Boot
+
+The default reset vector points to BL0 in the Boot ROM. The debugger can
+change that vector as described below. Boot ROM owns the ROM layout,
+integrity limitations and BL0-to-BL1 boot sequence.
+
+{sep-rom-reference}.
+
+// These page-local anchors are excluded from the combined PDF.
+ifdef::backend-html5[]
+[[boot-rom]]
+See xref:rom.adoc[Boot ROM].
+
+[[bl0-secure-boot-and-bl1-execution-unlock]]
+See xref:rom.adoc#bl0-secure-boot-and-bl1-execution-unlock[BL0 boot sequence].
+
+endif::backend-html5[]
+
+
+[[configuration-straps]]
+=== Configuration Straps
+
+The platform boot-interface requirement is at least eight static configuration
+straps, preferably sixteen, associated with GPIO pins in the SMC complex.
+Board pull-up/pull-down resistors or a board controller provide the levels.
+This is a platform requirement, not a count of strap inputs on the CPU core.
+
+For a GPIO configured as an input by default, its strap latch follows the pad
+while cold reset is asserted and holds the level when cold reset is released.
+Firmware reads the captured level through the GPIO control registers after
+reset release. `strap_valid` indicates capture support for that pin, not
+completion of reset. The GPIO chapter defines capture and register behavior.
+
+BL0 uses platform configuration to select startup options, such as primary or
+secondary chiplet operation and normal or recovery boot. The board and boot
+firmware define the assignment of those options to pins; the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-configuration-straps[configuration strap section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-configuration-straps[configuration strap section]
+endif::backend-pdf[]
+of the Programmer's Guide describes reading them.
+
+[[cpu-reset-vector]]
+=== Reset Vector
+
+The SEP CPU reset vector is held in a test data register (TDR) in the EL2
+debug TAP, selected by JTAG instruction opcode 0x18. The TDR resets to the
+Boot ROM base address on JTAG reset (TRST assertion or the Test-Logic-Reset
+TAP state). With that default vector, the CPU starts in the BL0 Root-of-Trust
+code.
+
+An alternate address shifted into the TDR while the SEP CPU is held in reset
+redirects the first instruction fetch, which supports bring-up and failure
+analysis flows that execute from a memory other than the Boot ROM. The TDR
+stores address bits [31:1]; bit 0 is zero. The programmed value persists until
+it is rewritten or the TAP is reset; CPU reset alone does not restore the
+default. The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#dtp-sep-reset-vector[redirect procedure].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-sep-reset-vector[redirect procedure].
+endif::backend-pdf[]
+
+
+== System Interfaces
+
+=== DMA Interface
+
+The DMA engine is described under Peripherals:
+ifdef::backend-html5[]
+xref:dma.adoc[Direct Memory Access (DMA)]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<sep-dma,Direct Memory Access (DMA)>>
+endif::backend-pdf[]
+
+ifdef::backend-html5[]
+[[direct-memory-access-controller-dma-direct-memory-access-controller-dma]]
+See xref:dma.adoc[DMA].
+
+[[och-modifications]]
+See xref:dma.adoc#och-modifications[DMA integration].
+
+[[future-enhancements]]
+See xref:dma.adoc#future-enhancements[DMA future enhancements].
+
+endif::backend-html5[]
+[[debug-module]]
+== Debug
+
+The VeeR EL2 debug module is reached from the DTP SEP debug STAP through the
+core's JTAG TAP. TAP access is already gated by lifecycle state, so the DMI
+core aperture is left enabled at the SMU and does not take a second lifecycle
+check. The DMI uncore aperture is unused: the debug module's AXI master already
+reaches the rest of the SEP fabric.
+
+[[alarm-aggregation-processor-agp-alarm-aggregation-processor-agp]]
+== Alarm Aggregation Processor (AGP)
+
+The AGP is a proposed addition for a later SEP generation, aimed at edge
+applications such as automotive and robotics. It is not implemented in the
+first-generation SEP.
+
+The proposed CPU-programmed monitor would collect and filter alarm events,
+detect suspected attacks and request countermeasures: wiping sensitive state
+or resetting selected components, subsystems or the SEP. These are future
+capabilities, not available alarm-response controls in the current integration.
+
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+The SEP subsystem memory map gives the base addresses of the CPU-control and
+scratch banks. Offsets below are relative to the CPU-control block base.
+The detailed map describes the memory-mapped SEP CPU-control registers;
+RISC-V core CSRs such as `pmpcfg` and `mrac` are accessed by CSR instructions.
+The scratch-bank register layout appears under Local Memory above.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/sep_cpu_ctrl.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/sep_cpu_ctrl.adoc[leveloffset=+2]
+endif::backend-pdf[]

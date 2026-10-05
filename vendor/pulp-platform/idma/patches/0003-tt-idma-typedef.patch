@@ -1,0 +1,97 @@
+diff --git a/src/include/idma/typedef.svh b/src/include/idma/typedef.svh
+index d250ec104..5fb2c5670 100644
+--- a/src/include/idma/typedef.svh
++++ b/src/include/idma/typedef.svh
+@@ -28,6 +28,48 @@
+         idma_pkg::backend_options_t beo;                                 \
+         logic                       last;                                \
+     } options_t;
++`define IDMA_TYPEDEF_DATA_CONV_OPTIONS_T(options_t, axi_id_t, data_fmt_t) \
++    typedef struct packed {                                               \
++        idma_pkg::protocol_e        src_protocol;                         \
++        idma_pkg::protocol_e        dst_protocol;                         \
++        axi_id_t                    axi_id;                               \
++        idma_pkg::axi_options_t     src;                                  \
++        idma_pkg::axi_options_t     dst;                                  \
++        idma_pkg::backend_options_t beo;                                  \
++        logic                       last;                                 \
++        data_fmt_t                  src_data_fmt;                         \
++        data_fmt_t                  dst_data_fmt;                         \
++        logic                       stoch_rnd_en;                         \
++        logic                       overflow_en;                          \
++    } options_t;
++`define IDMA_TYPEDEF_EXT_OPTIONS_T(options_t, axi_id_t, dvm_t, cmd_user_t)   \
++    typedef struct packed {                                              \
++        idma_pkg::protocol_e        src_protocol;                        \
++        idma_pkg::protocol_e        dst_protocol;                        \
++        axi_id_t                    axi_id;                              \
++        idma_pkg::axi_options_t     src;                                 \
++        idma_pkg::axi_options_t     dst;                                 \
++        idma_pkg::backend_options_t beo;                                 \
++        logic                       last;                                \
++        dvm_t                       dvm_signals;                         \
++        cmd_user_t                  cmd_user;                            \
++    } options_t;
++`define IDMA_TYPEDEF_EXT_DATA_CONV_OPTIONS_T(options_t, axi_id_t, dvm_t, cmd_user_t, data_fmt_t)   \
++    typedef struct packed {                                              \
++        idma_pkg::protocol_e        src_protocol;                        \
++        idma_pkg::protocol_e        dst_protocol;                        \
++        axi_id_t                    axi_id;                              \
++        idma_pkg::axi_options_t     src;                                 \
++        idma_pkg::axi_options_t     dst;                                 \
++        idma_pkg::backend_options_t beo;                                 \
++        logic                       last;                                \
++        dvm_t                       dvm_signals;                         \
++        cmd_user_t                  cmd_user;                            \
++        data_fmt_t                  src_data_fmt;                        \
++        data_fmt_t                  dst_data_fmt;                        \
++        logic                       stoch_rnd_en;                        \
++        logic                       overflow_en;                         \
++    } options_t;
+ `define IDMA_TYPEDEF_ERR_PAYLOAD_T(err_payload_t, axi_addr_t)            \
+     typedef struct packed {                                              \
+         axi_pkg::resp_t      cause;                                      \
+@@ -48,6 +90,15 @@
+         logic         error;                                             \
+         err_payload_t pld;                                               \
+     } idma_rsp_t;
++`define IDMA_TYPEDEF_ACCUM_REQ_T(idma_req_t, tf_len_t, axi_addr_t, options_t)  \
++    typedef struct packed {                                                    \
++        tf_len_t   length;                                                     \
++        axi_addr_t src_addr;                                                   \
++        axi_addr_t dst_addr;                                                   \
++        options_t  opt;                                                        \
++        logic      l1_accum_en;                                                \
++    } idma_req_t;
++
+ ////////////////////////////////////////////////////////////////////////////////////////////////////
+ 
+ 
+@@ -57,11 +108,23 @@
+ // Usage Example:
+ // `IDMA_TYPEDEF_FULL_REQ_T(idma_req_t, axi_id_t, axi_addr_t, tf_len_t)
+ // `IDMA_TYPEDEF_FULL_RSP_T(idma_rsp_t, axi_addr_t)
+-`define IDMA_TYPEDEF_FULL_REQ_T(idma_req_t, axi_id_t, axi_addr_t, tf_len_t) \
+-    `IDMA_TYPEDEF_OPTIONS_T(options_t, axi_id_t)                            \
++`define IDMA_TYPEDEF_FULL_REQ_T(idma_req_t, axi_id_t, axi_addr_t, tf_len_t)                              \
++    `IDMA_TYPEDEF_OPTIONS_T(options_t, axi_id_t)                                                         \
+     `IDMA_TYPEDEF_REQ_T(idma_req_t, tf_len_t, axi_addr_t, options_t)
+-`define IDMA_TYPEDEF_FULL_RSP_T(idma_rsp_t, axi_addr_t)                     \
+-    `IDMA_TYPEDEF_ERR_PAYLOAD_T(err_payload_t, axi_addr_t)                  \
++`define IDMA_TYPEDEF_FULL_ACCUM_REQ_T(idma_req_t, axi_id_t, axi_addr_t, tf_len_t)                        \
++    `IDMA_TYPEDEF_OPTIONS_T(options_t, axi_id_t)                                                         \
++    `IDMA_TYPEDEF_ACCUM_REQ_T(idma_req_t, tf_len_t, axi_addr_t, options_t)
++`define IDMA_TYPEDEF_FULL_ACCUM_DATA_CONV_REQ_T(idma_req_t, axi_id_t, axi_addr_t, tf_len_t, data_fmt_t) \
++    `IDMA_TYPEDEF_DATA_CONV_OPTIONS_T(options_t, axi_id_t, data_fmt_t) \
++    `IDMA_TYPEDEF_ACCUM_REQ_T(idma_req_t, tf_len_t, axi_addr_t, options_t)
++`define IDMA_TYPEDEF_FULL_ACCUM_EXT_REQ_T(idma_req_t, axi_id_t, axi_addr_t, tf_len_t, dvm_t, cmd_user_t) \
++    `IDMA_TYPEDEF_EXT_OPTIONS_T(options_t, axi_id_t, dvm_t, cmd_user_t)                                  \
++    `IDMA_TYPEDEF_ACCUM_REQ_T(idma_req_t, tf_len_t, axi_addr_t, options_t)
++`define IDMA_TYPEDEF_FULL_ACCUM_EXT_DATA_CONV_REQ_T(idma_req_t, axi_id_t, axi_addr_t, tf_len_t, dvm_t, cmd_user_t, data_fmt_t) \
++    `IDMA_TYPEDEF_EXT_DATA_CONV_OPTIONS_T(options_t, axi_id_t, dvm_t, cmd_user_t, data_fmt_t) \
++    `IDMA_TYPEDEF_ACCUM_REQ_T(idma_req_t, tf_len_t, axi_addr_t, options_t)
++`define IDMA_TYPEDEF_FULL_RSP_T(idma_rsp_t, axi_addr_t)                                                  \
++    `IDMA_TYPEDEF_ERR_PAYLOAD_T(err_payload_t, axi_addr_t)                                               \
+     `IDMA_TYPEDEF_RSP_T(idma_rsp_t, err_payload_t)
+ ////////////////////////////////////////////////////////////////////////////////////////////////////
+ 

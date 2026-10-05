@@ -1,0 +1,111 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-aon_timer">Always-On Timer</h2>
+<p>Wakeup and watchdog timers running on a low-power, always-on clock</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#WKUP_CTRL">WKUP_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#WKUP_THOLD_HI">WKUP_THOLD_HI</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#WKUP_THOLD_LO">WKUP_THOLD_LO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#WKUP_COUNT_HI">WKUP_COUNT_HI</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x14</td><td><a href="#WKUP_COUNT_LO">WKUP_COUNT_LO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#WDOG_REGWEN">WDOG_REGWEN</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1C</td><td><a href="#WDOG_CTRL">WDOG_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#WDOG_BARK_THOLD">WDOG_BARK_THOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x24</td><td><a href="#WDOG_BITE_THOLD">WDOG_BITE_THOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x28</td><td><a href="#WDOG_COUNT">WDOG_COUNT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2C</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x30</td><td><a href="#INTR_TEST">INTR_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x34</td><td><a href="#WKUP_CAUSE">WKUP_CAUSE</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="ALERT_TEST">ALERT_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>fatal_fault</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+</table>
+<h3 id="WKUP_CTRL">WKUP_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12:1</td><td>prescaler</td><td>RW</td><td>0x0</td><td>Pre-scaler value for wakeup timer count</td></tr>
+<tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When set to 1, the wakeup timer will count</td></tr>
+</table>
+<h3 id="WKUP_THOLD_HI">WKUP_THOLD_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>threshold_hi</td><td>RW</td><td>0x0</td><td>The count at which a wakeup interrupt should be generated, top 32 bits.</td></tr>
+</table>
+<h3 id="WKUP_THOLD_LO">WKUP_THOLD_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>threshold_lo</td><td>RW</td><td>0x0</td><td>The count at which a wakeup interrupt should be generated, bottom 32 bits.</td></tr>
+</table>
+<h3 id="WKUP_COUNT_HI">WKUP_COUNT_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>count_hi</td><td>RW</td><td>0x0</td><td>The current wakeup counter value, top 32 bits.</td></tr>
+</table>
+<h3 id="WKUP_COUNT_LO">WKUP_COUNT_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>count_lo</td><td>RW</td><td>0x0</td><td>The current wakeup counter value, bottom 32 bits.</td></tr>
+</table>
+<h3 id="WDOG_REGWEN">WDOG_REGWEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>regwen</td><td>RW0C</td><td>0x1</td><td>Once cleared, the watchdog configuration will be locked until the next reset.</td></tr>
+</table>
+<h3 id="WDOG_CTRL">WDOG_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>pause_in_sleep</td><td>RW</td><td>0x0</td><td>When set to 1, the watchdog timer will not count during sleep.</td></tr>
+<tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When set to 1, the watchdog timer will count.</td></tr>
+</table>
+<h3 id="WDOG_BARK_THOLD">WDOG_BARK_THOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>threshold</td><td>RW</td><td>0x0</td><td>The count at which a watchdog bark interrupt should be generated.</td></tr>
+</table>
+<h3 id="WDOG_BITE_THOLD">WDOG_BITE_THOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>threshold</td><td>RW</td><td>0x0</td><td>The count at which a watchdog bite reset should be generated.</td></tr>
+</table>
+<h3 id="WDOG_COUNT">WDOG_COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>count</td><td>RW</td><td>0x0</td><td>The current watchdog counter value.</td></tr>
+</table>
+<h3 id="INTR_STATE">INTR_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>wdog_timer_bark</td><td>RW1C</td><td>0x0</td><td>Raised if the watchdog timer has hit the bark threshold.</td></tr>
+<tr><td>0</td><td>wkup_timer_expired</td><td>RW1C</td><td>0x0</td><td>Raised if the wakeup timer has hit the specified threshold.</td></tr>
+</table>
+<h3 id="INTR_TEST">INTR_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>wdog_timer_bark</td><td>W</td><td>-</td><td>Write 1 to force wdog_timer_bark interrupt.</td></tr>
+<tr><td>0</td><td>wkup_timer_expired</td><td>W</td><td>-</td><td>Write 1 to force wkup_timer_expired interrupt.</td></tr>
+</table>
+<h3 id="WKUP_CAUSE">WKUP_CAUSE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>cause</td><td>RW0C</td><td>0x0</td><td>AON timer requested wakeup, write 0 to clear.</td></tr>
+</table>
+</div>

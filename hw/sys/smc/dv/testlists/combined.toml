@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: Apache-2.0
+schema_version = 1
+
+[[tests]]
+name = "smc_combined_observability_test"
+module = "smc_combined_observability_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "combined"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_irq_during_powergood_glitch_test"
+module = "smc_irq_during_powergood_glitch_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "combined"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_5agent_observability_test"
+module = "smc_5agent_observability_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "combined"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_6agent_observability_test"
+module = "smc_6agent_observability_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_canonical_smoke_test"
+module = "smc_canonical_smoke_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ci", "combined", "canonical"]
+run_modes = ["smoke"]
+
+[[groups]]
+name = "combined"
+tests = [
+    "smc_combined_observability_test",
+    "smc_5agent_observability_test",
+    "smc_6agent_observability_test",
+    "smc_canonical_smoke_test",
+    "smc_irq_during_powergood_glitch_test",
+]

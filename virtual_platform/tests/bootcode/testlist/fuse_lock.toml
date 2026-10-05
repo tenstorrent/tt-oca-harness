@@ -1,0 +1,471 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# The fuse-lock 2x2 (lifecycle x secure boot): every secure-boot path must reach the ROM's fuse
+# lock. The manifest enforced bit overrides SBOOT_DIS, so the non-secure cells clear it and burn
+# sboot_dis = 1. The secure cells use an encrypted payload, whose CLASS_KEY read fails if the lock
+# moves earlier.
+
+[[testcase]]
+name = "sep_firmware_fuse_lock_non_secure_prod_test"
+family = "fuse_lock"
+classification = "vp-equivalent"
+image = "fuse_lock_non_secure_prod"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+efuse = { lc_state = "PROD", sboot_dis = 1 }
+image_asserts = [
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x2 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "backup", size = 4, value = 0x2 } },
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "primary", size = 1, value = 0 } },
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "backup", size = 1, value = 0 } },
+  { field = { name = "OFF_SIGNATURE_TYPE_CLASSIC", slot = "primary", size = 1, value = 0 } },
+  { field = { name = "OFF_ENCRYPTION_TYPE", slot = "primary", size = 1, value = 0 } },
+  { range = [0x1024, 0x1025], all = 0x01 },
+  { range = [0x41024, 0x41025], all = 0x01 },
+  { range = [0x1c64, 0x1e64], all = 0x00 },
+  { range = [0x41c64, 0x41e64], all = 0x00 },
+  { range = [0x0, 0x1024], same_as = "signed" },
+  { range = [0x1025, 0x1088], same_as = "signed" },
+  { range = [0x108c, 0x10b6], same_as = "signed" },
+  { range = [0x10b7, 0x182c], same_as = "signed" },
+  { range = [0x1a5d, 0x1c64], same_as = "signed" },
+  { range = [0x1e84, 0x41024], same_as = "signed" },
+  { range = [0x41025, 0x41088], same_as = "signed" },
+  { range = [0x4108c, 0x410b6], same_as = "signed" },
+  { range = [0x410b7, 0x4182c], same_as = "signed" },
+  { range = [0x41a5d, 0x41c64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC_STATE=0x00000001",
+  "LC=PROD",
+  "FUSE: SBOOT_DIS: 1",
+  "BOOT_SPI",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "SBOOT_OFF",
+  "FUSE_SECRETS_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "BL1",
+  "FUSE_CHK",
+  "LOCKS=0x8880A800",
+  "FUSE_OK",
+  "LOCK_RD",
+  "LOCK_RD_OK",
+  "GO!",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+forbid = [
+  "LC=TEST_DEV",
+  "LC=PROD_END",
+  "LC=RMA_SIP",
+  "LC=RMA_CHIPLET",
+  "LC_STATE=0x00000000",
+  "LC_STATE_INVALID=",
+  "FUSE: SBOOT_DIS: 0",
+  "PUBK_SEL=",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "PUBK_REVOKE=",
+  "FUSE_VER=",
+  "ENTROPY_OK",
+  "DECRYPT_OK",
+  "FUSE_SECRETS_NOT_LOCKED",
+  "LOCKS_LO=",
+  "FAIL:LOCKS",
+  "FUSE_LOCK_VERIFY_FAIL",
+  "LOCK_RD_FAIL",
+  "FAIL:CLASS_KEY=",
+  "BL0S_VERIFY_FAIL",
+  "BOOT_SECONDARY",
+  "BOOT_RECOVERY",
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "SBOOT_OFF" = 1, "FUSE_SECRETS_LOCKED" = 1, "LOCKS=0x8880A800" = 1, "LOCK_RD_OK" = 1, "LC=PROD" = 1, "FUSE: SBOOT_DIS: 1" = 1 }
+expect_status = [
+  "INFO 0x0020",
+  "INFO_EXT 0x0001",
+  "INFO 0x002c",
+  "INFO 0x0058",
+  "INFO_EXT 0x0001",
+  "INFO 0x0023",
+  "INFO 0x004c",
+  "INFO 0x0053",
+  "INFO 0x0055",
+  "INFO 0x021b",
+  "INFO 0x021c",
+  "INFO 0x0054",
+]
+forbid_status = ["INFO 0x0040", "WARN 0x0001", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup_and_beyond", range = [0x40000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+markers = [
+  "Reaches lock_fuse_secrets() through the device-disable arm: the manifest carries no enforced bit, so SBOOT_DIS = 1 decides before the PROD lifecycle is consulted.",
+  "The manifest is the signed image made validly unsigned by clear_secure_boot after the lifecycle constraint was sealed; no whitelisted op sets the lifecycle selector on the prebuilt unsigned image.",
+  "Not covered: that the fuse bits are physically unwritable or that the lock survives reset; that is eFuse IP scope.",
+]
+
+[[testcase]]
+name = "sep_firmware_fuse_lock_non_secure_test_dev_test"
+family = "fuse_lock"
+classification = "vp-equivalent"
+image = "fuse_lock_non_secure_test_dev"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+efuse = { lc_state = "TEST_DEV", sboot_dis = 1 }
+image_asserts = [
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x1 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "backup", size = 4, value = 0x1 } },
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "primary", size = 1, value = 0 } },
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "backup", size = 1, value = 0 } },
+  { field = { name = "OFF_SIGNATURE_TYPE_CLASSIC", slot = "primary", size = 1, value = 0 } },
+  { field = { name = "OFF_ENCRYPTION_TYPE", slot = "primary", size = 1, value = 0 } },
+  { range = [0x1024, 0x1025], all = 0x01 },
+  { range = [0x41024, 0x41025], all = 0x01 },
+  { range = [0x1c64, 0x1e64], all = 0x00 },
+  { range = [0x41c64, 0x41e64], all = 0x00 },
+  { range = [0x0, 0x1024], same_as = "signed" },
+  { range = [0x1025, 0x1088], same_as = "signed" },
+  { range = [0x108c, 0x10b6], same_as = "signed" },
+  { range = [0x10b7, 0x182c], same_as = "signed" },
+  { range = [0x1a5d, 0x1c64], same_as = "signed" },
+  { range = [0x1e84, 0x41024], same_as = "signed" },
+  { range = [0x41025, 0x41088], same_as = "signed" },
+  { range = [0x4108c, 0x410b6], same_as = "signed" },
+  { range = [0x410b7, 0x4182c], same_as = "signed" },
+  { range = [0x41a5d, 0x41c64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC_STATE=0x00000000",
+  "LC=TEST_DEV",
+  "FUSE: SBOOT_DIS: 1",
+  "BOOT_SPI",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "SBOOT_OFF",
+  "FUSE_SECRETS_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "BL1",
+  "FUSE_CHK",
+  "LOCKS=0x8880A800",
+  "FUSE_OK",
+  "LOCK_RD",
+  "LOCK_RD_OK",
+  "GO!",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+forbid = [
+  "LC=PROD",
+  "LC=PROD_END",
+  "LC=RMA_SIP",
+  "LC=RMA_CHIPLET",
+  "LC_STATE=0x00000001",
+  "LC_STATE_INVALID=",
+  "FUSE: SBOOT_DIS: 0",
+  "PUBK_SEL=",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "PUBK_REVOKE=",
+  "FUSE_VER=",
+  "ENTROPY_OK",
+  "DECRYPT_OK",
+  "FUSE_SECRETS_NOT_LOCKED",
+  "LOCKS_LO=",
+  "FAIL:LOCKS",
+  "FUSE_LOCK_VERIFY_FAIL",
+  "LOCK_RD_FAIL",
+  "FAIL:CLASS_KEY=",
+  "BL0S_VERIFY_FAIL",
+  "BOOT_SECONDARY",
+  "BOOT_RECOVERY",
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "SBOOT_OFF" = 1, "FUSE_SECRETS_LOCKED" = 1, "LOCKS=0x8880A800" = 1, "LOCK_RD_OK" = 1, "LC=TEST_DEV" = 1, "FUSE: SBOOT_DIS: 1" = 1 }
+expect_status = [
+  "INFO 0x0020",
+  "INFO_EXT 0x0000",
+  "INFO 0x002c",
+  "INFO 0x0058",
+  "INFO_EXT 0x0001",
+  "INFO 0x0023",
+  "INFO 0x004c",
+  "INFO 0x0053",
+  "INFO 0x0055",
+  "INFO 0x021b",
+  "INFO 0x021c",
+  "INFO 0x0054",
+]
+forbid_status = ["INFO 0x0040", "WARN 0x0001", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup_and_beyond", range = [0x40000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+markers = [
+  "SBOOT_DIS = 1 decides here too; at TEST_DEV with chiplet debug open the lifecycle would also have reported secure boot inactive, so this cell covers the path, not the precedence.",
+  "The manifest is the signed image made validly unsigned by clear_secure_boot after the lifecycle constraint was sealed; no whitelisted op sets the lifecycle selector on the prebuilt unsigned image.",
+  "Not covered: that the fuse bits are physically unwritable or that the lock survives reset; that is eFuse IP scope.",
+]
+
+[[testcase]]
+name = "sep_firmware_fuse_lock_secure_prod_test"
+family = "fuse_lock"
+classification = "vp-equivalent"
+image = "fuse_lock_secure_prod"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+efuse = { lc_state = "PROD", sboot_dis = 0, class_key = [0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c] }
+image_asserts = [
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x2 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "backup", size = 4, value = 0x2 } },
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "primary", size = 1, value = 0x03 } },
+  { field = { name = "OFF_ENCRYPTION_TYPE", slot = "primary", size = 1, value = 2 } },
+  { range = [0x1024, 0x1025], all = 0x01 },
+  { range = [0x41024, 0x41025], all = 0x01 },
+  { range = [0x1c64, 0x1de4], differs_from = "encrypted" },
+  { range = [0x41c64, 0x41de4], differs_from = "encrypted" },
+  { range = [0x0, 0x1024], same_as = "encrypted" },
+  { range = [0x1025, 0x1088], same_as = "encrypted" },
+  { range = [0x108c, 0x1c64], same_as = "encrypted" },
+  { range = [0x1de4, 0x1e64], same_as = "encrypted" },
+  { range = [0x1e84, 0x41024], same_as = "encrypted" },
+  { range = [0x41025, 0x41088], same_as = "encrypted" },
+  { range = [0x4108c, 0x41c64], same_as = "encrypted" },
+  { range = [0x41de4, 0x41e64], same_as = "encrypted" },
+  { range = [0x41e84, "end"], same_as = "encrypted" },
+]
+expect = [
+  "LC_STATE=0x00000001",
+  "LC=PROD",
+  "FUSE: SBOOT_DIS: 0",
+  "BOOT_SPI",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "PAYLOAD_OK",
+  "FUSE_SECRETS_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "BL1",
+  "FUSE_CHK",
+  "LOCKS=0x8880A800",
+  "FUSE_OK",
+  "LOCK_RD",
+  "LOCK_RD_OK",
+  "GO!",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+forbid = [
+  "LC=TEST_DEV",
+  "LC=PROD_END",
+  "LC=RMA_SIP",
+  "LC=RMA_CHIPLET",
+  "LC_STATE=0x00000000",
+  "LC_STATE_INVALID=",
+  "FUSE: SBOOT_DIS: 1",
+  "SBOOT_OFF",
+  "DECRYPT_CLASS_KEY_EMPTY",
+  "AES_PAD_BAD",
+  "FUSE_SECRETS_NOT_LOCKED",
+  "LOCKS_LO=",
+  "FAIL:LOCKS",
+  "FUSE_LOCK_VERIFY_FAIL",
+  "LOCK_RD_FAIL",
+  "FAIL:CLASS_KEY=",
+  "BL0S_VERIFY_FAIL",
+  "BOOT_SECONDARY",
+  "BOOT_RECOVERY",
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "RSA_VERIFY_OK" = 1, "DECRYPT_OK" = 1, "SBOOT_OFF" = 0, "FUSE_SECRETS_LOCKED" = 1, "LOCKS=0x8880A800" = 1, "LOCK_RD_OK" = 1, "LC=PROD" = 1, "FUSE: SBOOT_DIS: 0" = 1 }
+expect_status = [
+  "INFO 0x0020",
+  "INFO_EXT 0x0001",
+  "INFO 0x002c",
+  "INFO 0x0058",
+  "INFO_EXT 0x0000",
+  "INFO 0x0023",
+  "INFO 0x004c",
+  "INFO 0x0053",
+  "INFO 0x0040",
+  "INFO 0x0042",
+  "INFO 0x0055",
+  "INFO 0x021b",
+  "INFO 0x021c",
+  "INFO 0x0054",
+]
+forbid_status = ["WARN 0x0001", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup_and_beyond", range = [0x40000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+markers = [
+  "The manifest's enforced bit settles secure boot; at PROD the lifecycle agrees but is never consulted.",
+  "Encrypted where DV packs cleartext: plat_decrypt_payload() reads CLASS_KEY inside the slot attempt, before lock_fuse_secrets(), so this cell fails if the lock ever moves ahead of the only secret read in BL0.",
+  "Not covered: that the fuse bits are physically unwritable or that the lock survives reset; that is eFuse IP scope.",
+]
+
+[[testcase]]
+name = "sep_firmware_fuse_lock_secure_test_dev_test"
+family = "fuse_lock"
+classification = "vp-equivalent"
+image = "fuse_lock_secure_test_dev"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+efuse = { lc_state = "TEST_DEV", sboot_dis = 0, class_key = [0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c] }
+image_asserts = [
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x1 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "backup", size = 4, value = 0x1 } },
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "primary", size = 1, value = 0x03 } },
+  { field = { name = "OFF_ENCRYPTION_TYPE", slot = "primary", size = 1, value = 2 } },
+  { range = [0x1024, 0x1025], all = 0x01 },
+  { range = [0x41024, 0x41025], all = 0x01 },
+  { range = [0x1c64, 0x1de4], differs_from = "encrypted" },
+  { range = [0x41c64, 0x41de4], differs_from = "encrypted" },
+  { range = [0x0, 0x1024], same_as = "encrypted" },
+  { range = [0x1025, 0x1088], same_as = "encrypted" },
+  { range = [0x108c, 0x1c64], same_as = "encrypted" },
+  { range = [0x1de4, 0x1e64], same_as = "encrypted" },
+  { range = [0x1e84, 0x41024], same_as = "encrypted" },
+  { range = [0x41025, 0x41088], same_as = "encrypted" },
+  { range = [0x4108c, 0x41c64], same_as = "encrypted" },
+  { range = [0x41de4, 0x41e64], same_as = "encrypted" },
+  { range = [0x41e84, "end"], same_as = "encrypted" },
+]
+expect = [
+  "LC_STATE=0x00000000",
+  "LC=TEST_DEV",
+  "FUSE: SBOOT_DIS: 0",
+  "BOOT_SPI",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "PAYLOAD_OK",
+  "FUSE_SECRETS_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "BL1",
+  "FUSE_CHK",
+  "LOCKS=0x8880A800",
+  "FUSE_OK",
+  "LOCK_RD",
+  "LOCK_RD_OK",
+  "GO!",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+forbid = [
+  "LC=PROD",
+  "LC=PROD_END",
+  "LC=RMA_SIP",
+  "LC=RMA_CHIPLET",
+  "LC_STATE=0x00000001",
+  "LC_STATE_INVALID=",
+  "FUSE: SBOOT_DIS: 1",
+  "SBOOT_OFF",
+  "DECRYPT_CLASS_KEY_EMPTY",
+  "AES_PAD_BAD",
+  "FUSE_SECRETS_NOT_LOCKED",
+  "LOCKS_LO=",
+  "FAIL:LOCKS",
+  "FUSE_LOCK_VERIFY_FAIL",
+  "LOCK_RD_FAIL",
+  "FAIL:CLASS_KEY=",
+  "BL0S_VERIFY_FAIL",
+  "BOOT_SECONDARY",
+  "BOOT_RECOVERY",
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "RSA_VERIFY_OK" = 1, "DECRYPT_OK" = 1, "SBOOT_OFF" = 0, "FUSE_SECRETS_LOCKED" = 1, "LOCKS=0x8880A800" = 1, "LOCK_RD_OK" = 1, "LC=TEST_DEV" = 1, "FUSE: SBOOT_DIS: 0" = 1 }
+expect_status = [
+  "INFO 0x0020",
+  "INFO_EXT 0x0000",
+  "INFO 0x002c",
+  "INFO 0x0058",
+  "INFO_EXT 0x0000",
+  "INFO 0x0023",
+  "INFO 0x004c",
+  "INFO 0x0053",
+  "INFO 0x0040",
+  "INFO 0x0042",
+  "INFO 0x0055",
+  "INFO 0x021b",
+  "INFO 0x021c",
+  "INFO 0x0054",
+]
+forbid_status = ["WARN 0x0001", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup_and_beyond", range = [0x40000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+markers = [
+  "The manifest's enforced bit is the deciding input: at TEST_DEV with chiplet debug open the lifecycle alone would not enforce.",
+  "Encrypted where DV packs cleartext: plat_decrypt_payload() reads CLASS_KEY inside the slot attempt, before lock_fuse_secrets(), so this cell fails if the lock ever moves ahead of the only secret read in BL0.",
+  "Not covered: that the fuse bits are physically unwritable or that the lock survives reset; that is eFuse IP scope.",
+]

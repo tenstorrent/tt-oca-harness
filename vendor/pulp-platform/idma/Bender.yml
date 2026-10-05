@@ -1,0 +1,91 @@
+# Copyright 2023 ETH Zurich and University of Bologna.
+# Solderpad Hardware License, Version 0.51, see LICENSE for details.
+# SPDX-License-Identifier: SHL-0.51
+
+# Sources are vendored from upstream pulp-platform/iDMA into upstream/ via the `vendor_package`
+# entry in the root Bender.yml (bender vendor init), pinned at the v0.6.5-src release. The TT-local
+# delta to upstream src/ is applied as five numbered patches in sorted filename order: 0001 backend,
+# 0002 frontend, 0003 typedef, 0004 midend, and 0005 generated-width sizing. Patch 0005 updates
+# templates modified by 0001 and 0002, so it must follow both. See the package README. Do not
+# hand-edit the upstream/ files; edit/regenerate the patches instead.
+#
+# overlay/target/rtl/ holds the TT-generated RTL OCA compiles (idma_generated.sv is the rw_axi
+# backend bundle; include/idma/tracer.svh). The -src release ships no generated RTL (its target/rtl
+# is empty), and this TT bundle is generated from the patched templates with a TT generator config,
+# so it has no upstream equivalent: it lives under overlay/ (TT-owned collateral) and is committed
+# directly, not touched by bender vendor init.
+
+
+package:
+  name: idma
+  authors:
+    - "Thomas Benz <tbenz@iis.ee.ethz.ch>" # current maintainer
+    - "Michael Rogenmoser <michaero@iis.ee.ethz.ch>"
+    - "Tobias Senti <tsenti@ethz.ch>"
+    - "Axel Vanoni <axvanoni@ethz.ch>"
+
+# axi / axi_stream / common_cells / common_verification / register_interface / obi are forced to
+# the locally vendored path packages for every consumer via the Bender.local overrides. The
+# declarations below are inert and point at the upstream pulp-platform commits actually vendored
+# (root Bender.yml vendor_package revs), so no TT-internal URL enters the graph.
+dependencies:
+  axi:                 { git: "https://github.com/pulp-platform/axi.git",                       rev: "808e7b326f9f259bd2831847d9362291500db641" }
+  axi_stream:          { git: "https://github.com/pulp-platform/axi_stream.git",                rev: "54891ff40455ca94a37641b9da4604647878cc07" }
+  common_cells:        { git: "https://github.com/pulp-platform/common_cells.git",              rev: "b74f0ad63600762ef101cf1d3365d19dfbb3123b" }
+  common_verification: { git: "https://github.com/pulp-platform/common_verification.git",       rev: "c5d97a1fae01d2d8e8e311dee341b6b8849dcf38" }
+  register_interface:  { git: "https://github.com/pulp-platform/register_interface.git",        rev: "d6e1d4cdaab7870f4faf3f88a1c788eaf5ac129d" }
+  obi:                 { git: "https://github.com/pulp-platform/obi.git",                       rev: "0155fc34e900c7c884e081c0a1114a247937ff69" }
+
+export_include_dirs:
+  - upstream/src/include
+  - overlay/target/rtl/include
+
+sources:
+  # Source files grouped in levels. Files in level 0 have no dependencies on files in this
+  # package. Files in level 1 only depend on files in level 0, files in level 2 on files in
+  # levels 1 and 0, etc. Files within a level are ordered alphabetically.
+  - target: idma_rtl
+    files:
+      # Level 0
+      - upstream/src/idma_pkg.sv
+      - upstream/src/frontend/inst64/idma_inst64_snitch_pkg.sv
+      # Level 1
+      - upstream/src/backend/idma_axil_read.sv
+      - upstream/src/backend/idma_axil_write.sv
+      - upstream/src/backend/idma_axi_read.sv
+      - upstream/src/backend/idma_axi_write.sv
+      - upstream/src/backend/idma_axis_read.sv
+      - upstream/src/backend/idma_axis_write.sv
+      - upstream/src/backend/idma_channel_coupler.sv
+      - upstream/src/backend/idma_dataflow_element.sv
+      - upstream/src/backend/idma_error_handler.sv
+      - upstream/src/backend/idma_init_read.sv
+      - upstream/src/backend/idma_init_write.sv
+      - upstream/src/backend/idma_legalizer_page_splitter.sv
+      - upstream/src/backend/idma_legalizer_pow2_splitter.sv
+      - upstream/src/backend/idma_obi_read.sv
+      - upstream/src/backend/idma_obi_write.sv
+      - upstream/src/backend/idma_tilelink_read.sv
+      - upstream/src/backend/idma_tilelink_write.sv
+      # Generated Content (TT-owned, overlay/)
+      - overlay/target/rtl/idma_generated.sv
+
+      # Level 0
+      - upstream/src/midend/idma_mp_dist_midend.sv
+      - upstream/src/midend/idma_mp_split_midend.sv
+      - upstream/src/midend/idma_nd_midend.sv
+      - upstream/src/midend/idma_rt_midend.sv
+
+      # Level 0
+      - upstream/src/frontend/desc64/idma_desc64_ar_gen.sv
+      - upstream/src/frontend/desc64/idma_desc64_ar_gen_prefetch.sv
+      - upstream/src/frontend/desc64/idma_desc64_reader.sv
+      - upstream/src/frontend/desc64/idma_desc64_reader_gater.sv
+      - upstream/src/frontend/desc64/idma_desc64_reshaper.sv
+      - upstream/src/frontend/idma_transfer_id_gen.sv
+      - upstream/src/frontend/inst64/idma_inst64_events.sv
+      # Level 1
+      - upstream/src/frontend/desc64/idma_desc64_reg_wrapper.sv
+      - upstream/src/frontend/inst64/idma_inst64_top.sv
+      # Level 2
+      - upstream/src/frontend/desc64/idma_desc64_top.sv

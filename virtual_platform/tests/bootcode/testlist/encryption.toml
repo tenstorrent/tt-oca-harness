@@ -1,0 +1,417 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# The class key 00..1f is the secret configs/oca_encrypted_boot_test.yaml packs with; the
+# payload hash covers the ciphertext, so every slot here verifies before it decrypts.
+
+[[testcase]]
+name = "sep_firmware_invalid_class_key_test"
+family = "encryption"
+classification = "vp-equivalent"
+image = "encrypted"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+# The packing secret with bit 0 of byte 0 flipped.
+efuse = { class_key = [0x03020101, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c] }
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "AES_PAD_BAD",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "PUBK_AUTHORIZED",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "AES_PAD_BAD",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030013",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "DECRYPT_OK",
+  "DECRYPT_CLASS_KEY_EMPTY",
+  "DECRYPT_NO_SECRET",
+  "KDF_FAIL",
+  "KDF_HMAC_FAIL",
+  "AES_DEC_FAIL",
+  "AES_INIT_BUSY",
+  "AES_IDLE_TIMEOUT=",
+  "HMAC_ERR_CODE=",
+  "RSA_PKCS1_FAIL",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_OK" = 2, "RSA_VERIFY_OK" = 2, "AES_PAD_BAD" = 2, "MANIFEST_ERR=0x00030013" = 2, "MANIFEST_ALL_FAILED" = 1, "MANIFEST_BOOT_FAIL=0x00030013" = 1 }
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030013"
+expect_status = [
+  "INFO 0x0053",
+  "INFO 0x0040",
+  "WARN 0x001a",
+  "INFO 0x0053",
+  "INFO 0x0040",
+  "WARN 0x001a",
+  "ERROR 0x001a",
+  "ERROR 0x0213",
+]
+forbid_status = ["INFO 0x0042", "INFO 0x0055"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "The KBKDF succeeds on the wrong secret and AES-CBC decrypts without error; the wrong key surfaces at the PKCS#7 strip, so the refusal is OCA_FAIL_DECRYPT with AES_PAD_BAD, not a hash or TOC code.",
+  "The pad failure was checked host-side for this key on both slots (the DV rom_view_decrypt mirror); a key that happened to leave a valid pad would reach the TOC checks instead.",
+  "Both slots read the same fuse, so both fail the same way; MANIFEST_ALL_FAILED and the FAILED verdict close the boot.",
+  "No DV rom_fw test of this name; the arm matches DV sep_firmware_invalid_decryption_kdf_input_test, which derives a wrong key from the KDF input instead of the fuse.",
+]
+
+[[testcase]]
+name = "sep_firmware_invalid_encryption_iv_test"
+family = "encryption"
+classification = "vp-equivalent"
+image = "encrypted_bad_packed_iv"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+efuse = { class_key = [0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c] }
+image_asserts = [
+  { field = { name = "OFF_ENCRYPTION_IV", slot = "primary", size = 1, value = 0xEF } },
+  { range = [0x10eb, 0x10ec], differs_from = "encrypted" },
+  { range = [0x1c64, 0x1de4], differs_from = "encrypted" },
+  { range = [0x0, 0x10eb], same_as = "encrypted" },
+  { range = [0x10ec, 0x1c64], same_as = "encrypted" },
+  { range = [0x1de4, 0x1e64], same_as = "encrypted" },
+  { range = [0x1e84, "end"], same_as = "encrypted" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "AES_PAD_BAD",
+  "AES_DEC_FAIL",
+  "KDF_FAIL",
+  "KDF_HMAC_FAIL",
+  "DECRYPT_CLASS_KEY_EMPTY",
+  "DECRYPT_NO_SECRET",
+  "RSA_PKCS1_FAIL",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030014" = 1, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "DECRYPT_OK" = 2, "PAYLOAD_OK" = 1, "GO!" = 1 }
+expect_status = [
+  "INFO 0x0053",
+  "INFO 0x0040",
+  "INFO 0x0042",
+  "WARN 0x0066",
+  "INFO 0x0053",
+  "INFO 0x0040",
+  "INFO 0x0042",
+  "INFO 0x0055",
+]
+forbid_status = ["ERROR 0x0066", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "Flipping IV byte 0 flips plaintext byte 0 only, the first byte of the PTOC magic; the pad stays valid, so DECRYPT_OK prints and the hash chain refuses the slot with OCA_FAIL_PAYLOAD_HASH_CHAIN.",
+  "The op re-signs over the new IV, so RSA_VERIFY_OK twice shows the primary was refused after authentication, not at it.",
+  "The backup is byte-identical to the encrypted golden and decrypts with the same fuse in the same run, so DECRYPT_OK twice is the in-run control.",
+  "The TOC magic itself is not checked by the ROM; a wrong IV that left the magic intact but changed other block-0 bytes would also land on the chain.",
+]
+
+[[testcase]]
+name = "sep_firmware_invalid_decryption_class_key_test"
+family = "encryption"
+classification = "vp-equivalent"
+image = "invalid_class_key"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# An unprovisioned CLASS_KEY bank reads all zero.
+efuse = { class_key = [0, 0, 0, 0, 0, 0, 0, 0] }
+image_asserts = [
+  { field = { name = "OFF_ENCRYPTION_TYPE", slot = "primary", size = 1, value = 2 } },
+  { field = { name = "OFF_ENCRYPTION_TYPE", slot = "backup", size = 1, value = 0 } },
+]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_CLASS_KEY_EMPTY",
+  "MANIFEST_ERR=0x0003001e",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "DECRYPT_OK",
+  "DECRYPT_NO_SECRET",
+  "AES_PAD_BAD",
+  "AES_DEC_FAIL",
+  "KDF_FAIL",
+  "KDF_HMAC_FAIL",
+  "RSA_PKCS1_FAIL",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "DECRYPT_CLASS_KEY_EMPTY" = 1, "MANIFEST_ERR=0x0003001e" = 1, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "PAYLOAD_OK" = 1, "GO!" = 1 }
+expect_status = ["INFO 0x0053", "WARN 0x0019", "INFO 0x0053", "INFO 0x0055"]
+forbid_status = ["INFO 0x0040", "ERROR 0x0019", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "plat_decrypt_payload refuses an all-zero CLASS_KEY before deriving a key, so the primary ends at OCA_FAIL_NO_PROVISIONED_SECRET with no INFO 0x0040; it never reaches AES.",
+  "The image is the prebuilt invalid_class_key: encrypted primary, cleartext backup, the topology DV uses; the cleartext backup never reads the fuse and completes the boot.",
+  "No in-run positive control for the fuse; rom_ot_encrypted_boot_golden boots the same encrypted primary with the packing key.",
+  "A wrong but non-zero key takes a different arm, covered by sep_firmware_invalid_class_key_test.",
+]
+
+[[testcase]]
+name = "sep_firmware_invalid_decryption_kdf_input_test"
+family = "encryption"
+classification = "vp-equivalent"
+image = "encrypted_bad_kdf_input"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+efuse = { class_key = [0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c] }
+image_asserts = [
+  { field = { name = "OFF_ENCRYPTION_KDF_INPUT", slot = "primary", size = 1, value = 0xA4 } },
+  { decrypt_pad = { slot = "primary", valid = false } },
+  { range = [0x1113, 0x1114], differs_from = "encrypted" },
+  { range = [0x1c64, 0x1de4], differs_from = "encrypted" },
+  { range = [0x0, 0x1113], same_as = "encrypted" },
+  { range = [0x1114, 0x1c64], same_as = "encrypted" },
+  { range = [0x1de4, 0x1e64], same_as = "encrypted" },
+  { range = [0x1e84, "end"], same_as = "encrypted" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "AES_PAD_BAD",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "KDF_FAIL",
+  "KDF_HMAC_FAIL",
+  "AES_DEC_FAIL",
+  "DECRYPT_CLASS_KEY_EMPTY",
+  "DECRYPT_NO_SECRET",
+  "RSA_PKCS1_FAIL",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "AES_PAD_BAD" = 1, "MANIFEST_ERR=0x00030013" = 1, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "DECRYPT_OK" = 1, "PAYLOAD_OK" = 1, "GO!" = 1 }
+expect_status = [
+  "INFO 0x0053",
+  "INFO 0x0040",
+  "WARN 0x001a",
+  "INFO 0x0053",
+  "INFO 0x0040",
+  "INFO 0x0042",
+  "INFO 0x0055",
+]
+forbid_status = ["ERROR 0x001a", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "KDF input byte 0 is changed as in DV; the derivation succeeds on a wrong context and the wrong key leaves an invalid PKCS#7 pad, so the primary ends at AES_PAD_BAD and OCA_FAIL_DECRYPT before DECRYPT_OK.",
+  "decrypt_pad proves the invalid pad before the run, as DV asserts on its stimulus: a wrong key leaves a valid pad for about 1 ciphertext in 256, and the ROM then refuses the slot at the TOC instead. DV writes byte 0 as 0x5a, which leaves a valid pad on some BL1 builds, so this entry uses 0xa4.",
+  "The op re-signs over the new KDF input, so RSA_VERIFY_OK twice shows the refusal followed authentication.",
+  "The backup is the encrypted golden slot and decrypts in the same run; DECRYPT_OK once is the backup's, and INFO 0x0040 twice shows both slots entered decryption.",
+]
+
+[[testcase]]
+name = "sep_decryption_failure_terminal_test"
+family = "encryption"
+classification = "partial"
+image = "encrypted_both_slots_bad_toc_image_count"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+efuse = { class_key = [0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c] }
+image_asserts = [
+  { range = [0x1ad7, 0x1af7], differs_from = "encrypted" },
+  { range = [0x2010, 0x2020], differs_from = "encrypted" },
+  { range = [0x41ad7, 0x41af7], differs_from = "encrypted" },
+  { range = [0x42010, 0x42020], differs_from = "encrypted" },
+  { range = [0x0, 0x1ad7], same_as = "encrypted" },
+  { range = [0x1af7, 0x1c64], same_as = "encrypted" },
+  { range = [0x1de4, 0x1e64], same_as = "encrypted" },
+  { range = [0x1e84, 0x2010], same_as = "encrypted" },
+  { range = ["primary.payload_end", 0x41ad7], same_as = "encrypted" },
+  { range = [0x41af7, 0x41c64], same_as = "encrypted" },
+  { range = [0x41de4, 0x41e64], same_as = "encrypted" },
+  { range = [0x41e84, 0x42010], same_as = "encrypted" },
+  { range = ["backup.payload_end", "end"], same_as = "encrypted" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "PUBK_AUTHORIZED",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030015",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "AES_PAD_BAD",
+  "AES_DEC_FAIL",
+  "KDF_FAIL",
+  "KDF_HMAC_FAIL",
+  "DECRYPT_CLASS_KEY_EMPTY",
+  "DECRYPT_NO_SECRET",
+  "RSA_PKCS1_FAIL",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x0003001a",
+  "PAYLOAD_OK",
+  "COPY_DST=",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "DECRYPT_OK" = 2, "MANIFEST_ERR=0x00030015" = 2, "MANIFEST_ALL_FAILED" = 1, "MANIFEST_BOOT_FAIL=0x00030015" = 1 }
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030015"
+expect_status = [
+  "INFO 0x0040",
+  "INFO 0x0042",
+  "WARN 0x000f",
+  "INFO 0x0040",
+  "INFO 0x0042",
+  "WARN 0x000f",
+  "ERROR 0x000f",
+  "ERROR 0x0213",
+]
+forbid_status = ["INFO 0x0055"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "Variant (b) only: each slot decrypts cleanly and the plaintext TOC is refused, so the boot ends after both slots; an AES engine status error is not reachable without forcing it.",
+  "DV flips ciphertext byte 0, which garbles block 0 and turns image_count 1 into 254; corrupt_ciphertext is not a whitelisted op, so the spec plants image_count 254 in the plaintext and re-encrypts instead. Both reach read_toc_span() with the same count.",
+  "The planted plaintext cannot be pinned in the image because CBC diffuses it; host-side decryption of both slots shows only plaintext byte 16 changed, to 0xFE.",
+  "payload_hash is refreshed over the new ciphertext and the chain is left stale on purpose; read_toc_span() refuses the count before the chain is compared, which MANIFEST_ERR=0x00030014 forbidden confirms.",
+]

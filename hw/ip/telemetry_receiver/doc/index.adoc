@@ -1,0 +1,73 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[telemetry-receiver]]
+= Telemetry Receiver
+
+== Overview
+
+ifdef::backend-html5[]
+// Preserve incoming links to the consolidated sections.
+++++
+<span id="description-and-features"></span>
+++++
+endif::backend-html5[]
+
+The receiver assembles an 8-bit ATB stream into probe-ID and counter messages.
+Software reads completed messages through a 32-bit AXI4-Lite register interface
+and explicitly pops each message. The core defaults to eight queued messages
+and four counters per message; these are elaboration parameters, not software
+settings. Threshold and missing-last-packet interrupts report service needs.
+
+Reception does not stop when the message queue fills: a new message replaces
+the oldest one, including while software is reading it through several
+registers. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-telemetry-receiver[Telemetry Receiver section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-telemetry-receiver[Telemetry Receiver section]
+endif::backend-pdf[]
+of the Programmer's Guide gives the buffer, flush and interrupt procedures. The receiver does not use `atid_i` to maintain separate
+source contexts; producers sharing a receiver must serialize complete messages.
+
+[[telemetry-receiver-message-format]]
+=== Message Format
+
+Eight little-endian ATB beats form a 64-bit packet. One or more packets
+form a message that ends when `last_packet` is set.
+
+<<telemetry-packet-fields-table>> defines the fields carried in each telemetry packet.
+
+[[telemetry-packet-fields-table]]
+[width="100%",cols="20%,15%,65%",options="header",]
+.Telemetry packet fields
+|====================================================================================
+|Field |Width |Location
+|`last_packet` |1 bit |Bit 63 of each packet
+|`probe_id` |5 bits |Bits `[60:56]` of the first packet
+|block |9 bits |Seven per packet: 1-bit valid + 8-bit data
+|counter |32 bits |Four consecutive blocks, most-significant byte first
+|====================================================================================
+
+A counter is valid only when all four of its blocks are valid. The number of
+counters per message is parameterized (default 4); the field layout is fixed.
+
+ifdef::backend-html5[]
+include::partial$telemetry_receiver/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::architecture.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$telemetry_receiver/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::interface.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$telemetry_receiver/doc/memmap.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::memmap.adoc[]
+endif::backend-pdf[]

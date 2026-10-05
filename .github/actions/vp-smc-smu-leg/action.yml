@@ -1,0 +1,325 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# One smc-vp/smu-vp leg on a hosted runner. Shared by the native and container jobs in
+# .github/workflows/vp.yml so the two cannot drift apart; each caller owns only
+# which mode it is. The container leg pulls its toolchain image from the
+# registry by the flake content hash; the native leg needs no image at all.
+#
+# The caller must check the repository out first: a local composite action is
+# loaded from the checked-out tree.
+name: 'Run an smc-vp/smu-vp leg'
+description: 'Build smc-vp and smu-vp for one environment and run the model firmware suites'
+inputs:
+  mode:
+    required: true
+    description: 'native or container; selects where the build and the suites run'
+  vp_container:
+    required: true
+    description: 'VP_CONTAINER value: 1 forwards the goals into the OCAH image, 0 builds on the runner'
+  local_dir:
+    required: true
+    description: 'SystemC/CCI prefix for this environment (local/ natively, local-ctr/ in the image)'
+  build_dir:
+    required: true
+    description: 'VP build tree for this environment; the tag keeps container and native objects apart'
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    # tt-oca-harness-model is the simulator, and the bootcode tests read
+    # tt-oca-manifest's src/oca/constants.py as the authority for the manifest
+    # layout.
+    - name: Check out the submodules
+      shell: bash
+      run: |
+        set -euo pipefail
+        git submodule update --init --recursive \
+          virtual_platform/tt-oca-harness-model \
+          hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+        test -d virtual_platform/tt-oca-harness-model/vp
+
+    # Identical to the sep-vp native leg's set: smc-vp and smu-vp need no
+    # extra packages. gcc-riscv64-unknown-elf is what the two firmware suites
+    # auto-detect; picolibc is not needed for them (they build -ffreestanding
+    # -nostdlib) but keeps this list the same as the sep-vp job's.
+    # ocah_deps.nix builds openssl-merged and boost-merged from source -- they
+    # are overlay derivations, so no binary cache has them -- on top of the
+    # RISC-V toolchain, verilator and yosys. That does not fit a hosted
+    # runner's free space, and the failure surfaces deep inside a build as
+    #   ld.bfd: final link failed: No space left on device
+    # rather than as anything about disk. Reclaim the preinstalled toolchains
+    # this job never uses first. vp.yml is the only workflow that builds the
+    # image, which is why nothing else needs this.
+    - name: Free disk space for the nix build
+      shell: bash
+      run: |
+        echo "before:"; df -h / | tail -1
+        # Everything here is preinstalled runner content these jobs never use.
+        # hostedtoolcache goes entirely: the steps that want it run later and
+        # re-fetch, and the container carries its own python and node.
+        sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+                    /usr/local/.ghcup /usr/local/share/boost \
+                    /usr/local/lib/node_modules /opt/hostedtoolcache \
+                    /usr/share/swift /usr/lib/jvm /usr/share/miniconda || true
+        sudo docker image prune -af >/dev/null 2>&1 || true
+        echo "after:"; df -h / | tail -1
+
+    # The image closure builds gcc, boost and openssl from source and outgrows
+    # the root volume. Relocate the store onto a larger volume where one exists;
+    # the current hosted image has only /, so there this prints the layout and
+    # moves nothing.
+    - name: Put the nix store on the largest volume
+      shell: bash
+      run: |
+        df -h
+        root_free=$(df --output=avail -k / | tail -1)
+        for cand in /mnt /datadisk; do
+          [ -d "$cand" ] || continue
+          cand_free=$(df --output=avail -k "$cand" | tail -1)
+          [ "$cand_free" -gt "$root_free" ] || continue
+          echo "nix store -> $cand (${cand_free}K free, / has ${root_free}K)"
+          sudo mkdir -p "$cand/nix" /nix
+          sudo mount --bind "$cand/nix" /nix
+          break
+        done
+        df -h /nix 2>/dev/null || true
+
+    # docker-run.sh runs nix locally when a nix binary is on PATH, and falls
+    # back to pulling docker.io/nixos/nix and building inside it otherwise.
+    # The fallback builds the whole closure from scratch on every job and does
+    # not finish inside the budget, so install nix on the runner -- the same
+    # step and action lint.yml uses. The token lifts the anonymous GitHub API
+    # rate limit while nix resolves the flake's inputs.
+    - name: Install Nix
+      uses: cachix/install-nix-action@v31.11.1
+      with:
+        github_access_token: ${{ github.token }}
+
+    - name: Install VP build dependencies
+      shell: bash
+      run: |
+        # Acquire options: turn a stalled mirror into an error so apt's
+        # retry/failover actually runs instead of hanging to the job timeout.
+        sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 update
+        sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 \
+          install -y --no-install-recommends \
+          g++ cmake autoconf automake wget zlib1g-dev \
+          libboost-iostreams-dev libboost-program-options-dev libboost-log-dev \
+          libssl-dev \
+          gcc-riscv64-unknown-elf picolibc-riscv64-unknown-elf
+
+    - name: Read the pinned Whisper revision
+      id: whisper
+      shell: bash
+      run: |
+        # Ask make for the resolved value rather than parsing the Makefile:
+        # WHISPER_REV is read from the model's own CI workflow at expansion
+        # time, so there is no literal here to grep. Resolving it the same way
+        # the build does keeps the cache key from ever describing a different
+        # revision than the one built.
+        rev="$(make -s -C virtual_platform print-WHISPER_REV)"
+        [ -n "$rev" ] || { echo "::error::WHISPER_REV resolved empty; is the tt-oca-harness-model submodule checked out?"; exit 1; }
+        echo "rev=$rev" >> "$GITHUB_OUTPUT"
+        echo "WHISPER_REV=$rev" >> "$GITHUB_STEP_SUMMARY"
+
+    # As in the sep-vp job, but local*/ here also holds the Whisper archives:
+    # the runner's g++ identity is part of the key because VP_CONFIG_SIG
+    # invalidation only wipes build*/, never local*/.
+    - name: Compute dependency cache key
+      id: depkey
+      if: inputs.mode == 'native'
+      shell: bash
+      run: echo "cxx_id=$(g++ -dumpmachine)-$(g++ -dumpversion)" >> "$GITHUB_OUTPUT"
+
+    # Its OWN key, not the sep-vp job's: local*/ here also holds the Whisper
+    # tree, so a shared key would let whichever job saved first decide whether
+    # Whisper is in the cache at all. The key carries the revision, the
+    # PIC-ness, and a recipe version to bump when the set of archives changes.
+    # Native leg only; the container gets Whisper from ocah_deps.nix too.
+    - name: Cache VP dependencies (including Whisper)
+      if: inputs.mode == 'native'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ inputs.local_dir }}
+          virtual_platform/downloads
+        key: vp-deps-smc-${{ inputs.mode }}-${{ steps.depkey.outputs.cxx_id }}-${{ hashFiles('virtual_platform/Makefile') }}-whisper-${{ steps.whisper.outputs.rev }}-pic-libs4
+
+    # A cache hit is not proof the tree is usable: actions/cache saves the
+    # directory in a post-job step even when the job FAILED, so a restored
+    # cache can carry the Makefile's completeness stamp beside a tree that
+    # lost archives. Drop the stamp unless all four are really there, so make
+    # rebuilds instead of trusting it.
+    - name: Invalidate the Whisper stamp unless all four archives are present
+      shell: bash
+      run: |
+        tree="${{ inputs.local_dir }}/whisper-${{ steps.whisper.outputs.rev }}-pic"
+        stamp="${{ inputs.local_dir }}/.whisper-${{ steps.whisper.outputs.rev }}-pic-complete"
+        complete=true
+        for lib in "build-$(uname -s)/librvcore.a" \
+                   virtual_memory/libvirtual_memory.a \
+                   pci/libpci.a \
+                   third_party/softfloat/build/RISCV-GCC/softfloat.a; do
+          if [ ! -f "${tree}/${lib}" ]; then
+            echo "missing: ${lib}"
+            complete=false
+          fi
+        done
+        if [ "$complete" = true ]; then
+          echo "Whisper archives complete; the cached tree will be reused."
+        else
+          echo "Whisper tree incomplete or absent; dropping any stamp so make rebuilds."
+          rm -f "$stamp"
+        fi
+
+    # The published tag is the same flake content hash docker-run.sh computes,
+    # so a pull either matches this tree exactly or misses and falls through.
+    - name: Log in to GHCR
+      if: inputs.mode == 'container'
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+
+    # The registry is the only source of this image; a miss must not fall
+    # through into a local build.
+    - name: Provision toolchain image
+      if: inputs.mode == 'container'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        ./scripts/ci/await_toolchain_image.sh
+        ./scripts/docker-run.sh ensure
+
+    - name: Check toolchains
+      shell: bash
+      run: |
+        if [ "${{ inputs.mode }}" = "container" ]; then
+          ./scripts/docker-run.sh verify
+          ./scripts/docker-run.sh run-here sh -c 'g++ --version | head -1; cmake --version | head -1'
+        else
+          make -C virtual_platform check-cxx
+          # Assert rather than just print: without a cross toolchain the two
+          # suites below fail deep inside the model's runner instead of here.
+          # A bare `cmd --version | head -1` would not fail the step, since
+          # the pipeline's status is head's.
+          command -v riscv64-unknown-elf-gcc >/dev/null 2>&1 || {
+            echo "::error::riscv64-unknown-elf-gcc is not on PATH; the SMC/SMU firmware suites need it"
+            exit 1
+          }
+          riscv64-unknown-elf-gcc --version | head -1
+        fi
+
+    - name: Build smc-vp and smu-vp
+      shell: bash
+      run: |
+        make -C virtual_platform smc-vp smu-vp \
+          VP_CONTAINER=${{ inputs.vp_container }} NPROC="$(nproc)"
+
+    # Boost and OpenSSL as in the sep-vp job. Whisper is asserted the other way
+    # round -- it MUST be the pinned revision, so a stray WHISPER_HOME in the
+    # environment cannot point CI at another tree. The container takes it from
+    # the flake, which derives the revision from WHISPER_REV.
+    - name: Assert the expected dependency resolution
+      shell: bash
+      run: |
+        make -C virtual_platform deps-info VP_CONTAINER=${{ inputs.vp_container }} \
+          | tee "$RUNNER_TEMP/deps-info.txt"
+        for dep in BOOST OPENSSL; do
+          if ! grep -qE "^\[VP\][[:space:]]+${dep}_ROOT[[:space:]]*=[[:space:]]*(/usr|/nix/store/[^[:space:]]+)([[:space:]]|$)" "$RUNNER_TEMP/deps-info.txt"; then
+            echo "::error::${dep}_ROOT is not a provisioned prefix (/usr or /nix/store); see deps-info above"
+            exit 1
+          fi
+        done
+        rev="${{ steps.whisper.outputs.rev }}"
+        if [ "${{ inputs.vp_container }}" = "1" ]; then
+          want_re="WHISPER_HOME = /nix/store/[^[:space:]]*-whisper-${rev}/whisper([[:space:]]|$)"
+        else
+          # The trailing space keeps local-ctr from matching the native leg's
+          # expected local/ prefix (and vice versa).
+          want="${{ inputs.local_dir }}/whisper-${rev}-pic "
+          want="${want#virtual_platform/}"
+          want_re="WHISPER_HOME = .*/virtual_platform/${want}.*local \(default\); .*built"
+        fi
+        if ! grep -qE "$want_re" "$RUNNER_TEMP/deps-info.txt"; then
+          echo "::error::WHISPER_HOME is not the pinned whisper for this environment; see deps-info above"
+          exit 1
+        fi
+
+    # smu-vp's companion DSO is built beside the target, not into bin/, and
+    # smu-vp bakes that absolute build-tree path into its RUNPATH. Assert both
+    # artifacts exist and that each binary's loader closure is satisfied with
+    # a scrubbed environment. The binaries must be inspected in the
+    # environment they were built FOR: a container-built VP links the image's
+    # glibc and would not load on the runner.
+    - name: Check both artifacts and that they load with no LD_LIBRARY_PATH
+      shell: bash
+      run: |
+        tree="${{ inputs.build_dir }}"
+        for f in "$tree/bin/smc-vp" "$tree/bin/smu-vp" "$tree/platform/smu/libsmc_cluster_smu.so"; do
+          [ -f "$f" ] || { echo "::error::missing artifact: $f"; exit 1; }
+          ls -l "$f"
+        done
+        # Paths come in as positional args so nothing needs escaping through
+        # the container invocation.
+        probe='rc=0
+        for b in "$@"; do
+          n=$(ldd "$b" | grep -c "not found" || true)
+          echo "$b: $n unresolved"
+          [ "$n" = 0 ] || rc=1
+        done
+        exit $rc'
+        if [ "${{ inputs.mode }}" = "container" ]; then
+          ./scripts/docker-run.sh run-here env -i PATH=/usr/bin:/bin HOME=/tmp \
+            bash -c "$probe" probe "$PWD/$tree/bin/smc-vp" "$PWD/$tree/bin/smu-vp"
+        else
+          env -i PATH=/usr/bin:/bin HOME=/tmp \
+            bash -c "$probe" probe "$PWD/$tree/bin/smc-vp" "$PWD/$tree/bin/smu-vp"
+        fi
+
+    - name: Run the SMC firmware suite
+      shell: bash
+      run: |
+        make -C virtual_platform smc-test VP_CONTAINER=${{ inputs.vp_container }} \
+          2>&1 | tee "$RUNNER_TEMP/smc-test.log"
+        # The runner exits non-zero on failure, but a suite that collected
+        # nothing must not read as a pass either. Each SMC test prints
+        # "PASS:" or "ALL TESTS PASSED".
+        ran=$(grep -cE '(^|[[:space:]])(PASS:|ALL TESTS PASSED)' "$RUNNER_TEMP/smc-test.log" || true)
+        echo "SMC tests reporting a pass line (${{ inputs.mode }}): $ran" | tee -a "$GITHUB_STEP_SUMMARY"
+        [ "$ran" -gt 0 ] || { echo "::error::no SMC test reported a pass line"; exit 1; }
+
+    - name: Run the SMU firmware suite
+      shell: bash
+      run: |
+        make -C virtual_platform smu-test VP_CONTAINER=${{ inputs.vp_container }} \
+          2>&1 | tee "$RUNNER_TEMP/smu-test.log"
+        # run_smu_vp_tests.sh prints "All SMU-VP tests PASSED" and exits 0
+        # even when its test list is empty, so gate on the pass COUNT.
+        n=$(sed -n 's/^SMU-VP TEST SUMMARY: \([0-9]\+\) passed.*/\1/p' "$RUNNER_TEMP/smu-test.log" | tail -1)
+        echo "SMU tests passed (${{ inputs.mode }}): ${n:-0}" | tee -a "$GITHUB_STEP_SUMMARY"
+        [ -n "$n" ] && [ "$n" -gt 0 ] || { echo "::error::no SMU test actually ran"; exit 1; }
+
+    # The DSO travels with the binary. An smu-vp uploaded on its own cannot
+    # run anywhere else: its RUNPATH points into this runner's build tree.
+    - name: Upload run artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: vp-smc-smu-${{ inputs.mode }}
+        path: |
+          ${{ inputs.build_dir }}/bin/smc-vp
+          ${{ inputs.build_dir }}/bin/smu-vp
+          ${{ inputs.build_dir }}/platform/smu/libsmc_cluster_smu.so
+          ${{ inputs.build_dir }}/CMakeCache.txt
+          ${{ inputs.build_dir }}/CMakeFiles/CMakeConfigureLog.yaml
+          ${{ runner.temp }}/deps-info.txt
+          ${{ runner.temp }}/smc-test.log
+          ${{ runner.temp }}/smu-test.log
+        retention-days: 14
+        if-no-files-found: ignore

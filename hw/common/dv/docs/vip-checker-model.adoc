@@ -1,0 +1,1261 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[shared-checker-model-contract]]
+== Checker, Reference Model, and Scoreboard Contracts
+
+This chapter defines how OCAH tests turn stimulus and DUT observations into
+triage-ready evidence without weakening the native runner's PASS authority.
+
+[IMPORTANT]
+====
+This is the normative, DUT-neutral contract. Concrete register maps, opcodes,
+hierarchy, scenario suites, and test names belong in each adopter's DV tree;
+captured qualification results belong in external qualification records and
+retained CI artifacts.
+====
+
+[[shared-checker-evidence]]
+=== Named Checker Evidence
+
+Each concrete VPLAN checker uses one stable uppercase ID:
+
+[source,text]
+----
+CHK-<ID> PASS expected=<value> observed=<value> context=<details>
+CHK-<ID> FAIL expected=<value> observed=<value> context=<details>
+CHECKER_SUMMARY name=<name> checks=<n> passed=<n> failed=<n> missing=<n>
+----
+
+Evidence requirements:
+
+* expected and observed values are both explicit;
+* context identifies the relevant address, field, response, loop, pattern, or
+  seed;
+* PASS is emitted only after the comparison succeeds;
+* failure is retained before fail-fast raising;
+* required IDs make missing execution visible;
+* finalization rejects zero checks, failures, and missing IDs;
+* finalization runs once per checker; a second call is rejected;
+* zero checks pass only for a stream the owner declares idle
+  (`require_checks=False`), never by default.
+
+Integers are rendered in hexadecimal, booleans as lowercase `true`/`false`,
+bytes as hexadecimal payloads, and other values with a deterministic
+representation suitable for debugging.
+
+[[shared-checker-api]]
+=== Common Checker API
+
+`ocah_checker.OcahChecker` supplies the protocol-neutral mechanics:
+
+[source,python]
+----
+checker = OcahChecker(
+    name="csr-scoreboard",
+    required_ids={"CHK-DATA", "CHK-RESP", "CHK-NONVAC"},
+    fail_fast=False,
+)
+
+checker.expect_equal("CHK-DATA", observed, expected, context="addr=0x1000")
+checker.expect_equal("CHK-RESP", response, RESP_OKAY, context="read")
+checker.expect_true(
+    "CHK-NONVAC",
+    transaction_count > 0,
+    context=f"transactions={transaction_count}",
+)
+checker.finalize()
+----
+
+Fail-fast mode is convenient for direct test checks. Aggregate mode is required
+when a scoreboard should evaluate all configured checks before reporting.
+
+Protocol checkers such as `OcahJtagChecker` retain their item-level structural
+rules and delegate evidence/finalization to the common core.
+
+[[shared-checker-source-layout]]
+=== Source and Import Layout
+
+[cols="<4,<6",options="header"]
+|===
+|Path |Purpose
+
+|`hw/common/dv/vip/ocah_checker/`
+|Protocol-neutral evidence package. Its root exports `OcahCheckFinding`,
+`OcahChecker`, and `OcahCheckerError`.
+
+|`hw/common/dv/vip/ocah_checker/cocotb/checker.py`
+|Implementation of ID validation, value formatting, comparisons, counters,
+required IDs, timeout evidence, retained findings, and finalization.
+
+|`hw/common/dv/vip/ocah_checker/cocotb/examples/example_checker.py`
+|Runnable, simulator-independent positive example.
+
+|`hw/common/dv/vip/ocah_checker/cocotb/examples/example_checker_selftest.py`
+|Runnable, simulator-independent selftest: every rule positive and negative.
+
+|`hw/common/dv/vip/ocah_checker/uvm/ocah_checker.svh`
+|The SV-UVM twin of the core (`ocah_checker_uvm_pkg::ocah_checker`), listed
+first in every dependent VIP manifest.
+
+|`hw/common/dv/vip/ocah_<protocol>_vip/cocotb/`
+|Protocol items, monitors, and protocol-specific checker rules composed over
+`OcahChecker`.
+
+|`hw/<category>/<dut>/dv/cocotb/assertions/`
+|Pure DUT-specific hierarchy, lifecycle, address, and integration invariants.
+
+|`hw/<category>/<dut>/dv/cocotb/env/`
+|DUT-local configuration, reference models, scoreboards, and predictors.
+|===
+
+Import only the stable package roots:
+
+[source,python]
+----
+from ocah_checker import OcahCheckFinding, OcahChecker, OcahCheckerError
+from ocah_jtag_vip import OcahJtagChecker
+----
+
+[[shared-checker-constructor]]
+=== `OcahChecker` Constructor
+
+[cols="<2,<2,<2,<4",options="header"]
+|===
+|Argument |Type |Default |Contract
+
+|`name`
+|`str`
+|`"OcahChecker"`
+|Stable checker instance name included in `CHECKER_SUMMARY`.
+
+|`required_ids`
+|iterable of `str`
+|empty
+|IDs that must execute at least once before finalization. Construction rejects
+an invalid ID.
+
+|`fail_fast`
+|`bool`
+|`True`
+|Raise `OcahCheckerError` immediately after retaining a failed comparison.
+Set to `False` for aggregate scoreboard operation.
+
+|`logger`
+|`logging.Logger` or `None`
+|logger named by `name`
+|Logger receiving evidence and summary lines. A cocotb adopter normally passes
+`cocotb.log` so evidence appears in the simulator log.
+|===
+
+[[shared-checker-api-reference]]
+=== `OcahChecker` API Reference
+
+[cols="<3,<3,<4",options="header"]
+|===
+|Member |Result |Contract
+
+|`expect_equal(id, observed, expected, context="")`
+|`bool`
+|Exact equality comparison. The argument order is observed first, expected
+second. Returns `True` on PASS; retains a finding before any exception.
+
+|`expect_true(id, condition, context="")`
+|`bool`
+|Normalizes `condition` to `bool` and compares it with `True`.
+
+|`expect_not_timed_out(id, *, timed_out, timeout_ns, context="")`
+|`bool`
+|Requires `timed_out == False` and appends the declared bound to context.
+
+|`expect_timeout(id, *, timed_out, timeout_ns, context="")`
+|`bool`
+|Requires `timed_out == True` for an explicitly specified bounded-timeout
+scenario.
+
+|`expect_rw1c(id, *, before, after, mask, context="")`
+|`bool`
+|Write-one-to-clear status: the `mask` bits were set in `before` and are clear
+in `after`; bits outside the mask are not judged. Records the masked value
+after the write against `0x0` with both raw reads in the context.
+
+|`expect_sticky(id, *, first, second, mask, context="")`
+|`bool`
+|Sticky status: the `mask` bits read set in `first` and again in `second` with
+no clearing write between. Records the masked second read against `mask`.
+
+|`expect_pulse(id, *, asserted, deasserted, context="")`
+|`bool`
+|Pulse-only event: asserted for the event (bit 1) and deasserted after
+completion (bit 0), recorded against `0x3`.
+
+|`finalize(*, require_checks=True)`
+|`None`
+|Logs one summary and raises `OcahCheckerError` on zero checks, retained
+failures, missing required IDs, or a second call. `require_checks=False`
+declares the stream idle for this scenario, so zero checks pass; a failure or
+a missing ID still raises.
+
+|`clear()`
+|`None`
+|Clears findings, seen IDs, and the finalized state. Required-ID configuration
+is retained.
+
+|`finalized`
+|`bool`
+|Whether `finalize()` has run since construction or the last `clear()`.
+
+|`findings`
+|`list[OcahCheckFinding]`
+|Ordered immutable findings containing ID, status, expected, observed, context,
+and rendered message.
+
+|`check_count`, `pass_count`
+|`int`
+|Executed and passing comparison counts.
+
+|`failures`
+|`list[OcahCheckFinding]`
+|All retained non-passing findings.
+
+|`missing_ids`
+|`set[str]`
+|Configured required IDs that have not executed.
+|===
+
+Checker IDs must match `CHK-[A-Z0-9][A-Z0-9_-]*`. Invalid IDs raise
+`ValueError`; they are configuration defects rather than DUT failures.
+
+[[shared-checker-value-format]]
+=== Value and Context Formatting
+
+Evidence formatting is deterministic:
+
+[cols="<3,<7",options="header"]
+|===
+|Value |Rendered Form
+
+|`bool`
+|`true` or `false`
+
+|`int`
+|Python hexadecimal, including `0x0`
+
+|`bytes` / `bytearray`
+|Contiguous lowercase hexadecimal prefixed with `0x`
+
+|Other values
+|Python `repr()`
+
+|Context
+|Whitespace collapsed to one line; empty context becomes `-`
+|===
+
+Context is diagnostic evidence, not an unstructured prose message. Prefer
+stable `key=value` fields such as `seed=1 addr=0x1000 loop=2`.
+
+[[shared-checker-monitor-callback]]
+=== Monitor Callback Failure
+
+A monitor publishes items to subscriber callbacks. Two kinds of exception can
+leave a callback, and the shared monitors treat them differently:
+
+* an `AssertionError`, which includes `OcahCheckerError`, is a checker verdict:
+  the monitor re-raises it, so a fail-fast checker attached to a monitor fails
+  the test at once (the finding is retained first, so aggregate mode is
+  unaffected);
+* any other exception is a subscriber defect: the monitor logs it, counts it
+  in `callback_errors`, exposes the count through `get_statistics()`, and keeps
+  sampling.
+
+A counted subscriber defect must not pass silently. The component that owns
+the monitor records the count as evidence after traffic: the AXI scoreboard
+folds it into `CHK-AXI-DRAIN` together with in-flight requests and orphan
+completions, and every VIP selftest harness records
+`CHK-<PROTO>-MON-CALLBACKS` against zero when it stops its monitors. A DUT
+scoreboard that attaches a shared monitor does the same in its drain.
+
+Protocol checkers therefore:
+
+. retain the finding before raising;
+. expose `finalize()` or `assert_clean()`;
+. require the owning test/scoreboard to call finalization after traffic, and
+  to record the monitor's `callback_errors` there.
+
+[WARNING]
+====
+Attaching a checker to a monitor without finalization is incomplete. A retained
+finding or a counted callback error may otherwise be visible in the log while
+the structured test result remains green.
+====
+
+[[shared-checker-expected-errors]]
+=== Expected-Error Credits
+
+A protocol error expected by the scenario (an error response to an
+unmapped address, a refused command, a bad frame) earns PASS evidence only
+through a credit the test arms from its own intent, never from the
+observation:
+
+* the credit is armed before the transaction that consumes it is observed; a
+  credit armed after the observation classifies nothing;
+* a credit is consumed once, by the first matching observation, and its
+  record names the credit (`CHK-AXI-RESP-EXPECTED`, `CHK-SPI-WREN-ORDER` for a
+  refused program, `CHK-UART-CLASSIFY` for an injected frame fault);
+* an armed credit that is never consumed fails at finalization
+  (`CHK-AXI-CREDITS`): an error that was expected and did not happen is a
+  failure;
+* a credit never overrides a reference model: where a model predicts the
+  response, the model comparison is recorded as well, and a credit that
+  contradicts the model fails;
+* an expected timeout is the credit form of a timeout (`expect_timeout`, or
+  `arm_expected_timeout` on the AXI scoreboard) and carries its bound;
+* an operation outside a package's scope earns no credit of any kind
+  (`CHK-SPI-UNSUPPORTED` counts it and never credits it).
+
+The AXI scoreboard's simulator-free selftest proves each of these rules
+negatively (an un-armed error, a stale credit, a late-armed credit, a credit
+conflicting with the model, an un-armed timeout).
+
+[[shared-checker-protocol-composition]]
+=== Protocol Checker Composition Template
+
+A protocol package composes the common core; it does not duplicate evidence
+formatting:
+
+[source,python]
+----
+class MyProtocolChecker:
+    def __init__(
+        self,
+        *,
+        name="MyProtocolChecker",
+        raise_on_error=True,
+        required_ids=(),
+        logger=None,
+    ):
+        self.raise_on_error = raise_on_error
+        self.errors = []
+        self.evidence = OcahChecker(
+            name=name,
+            required_ids=required_ids,
+            fail_fast=raise_on_error,
+            logger=logger,
+        )
+
+    def check_item(self, item):
+        # Retain protocol-legality findings in self.errors.
+        ...
+
+    def expect_equal(self, check_id, observed, expected, *, context=""):
+        return self.evidence.expect_equal(
+            check_id, observed, expected, context=context
+        )
+
+    def finalize(self):
+        if self.errors:
+            raise AssertionError(f"{len(self.errors)} protocol error(s)")
+        self.evidence.finalize()
+----
+
+The concrete implementation is
+`hw/common/dv/vip/ocah_jtag_vip/cocotb/ocah_jtag_checker.py`.
+`OcahJtagChecker.finalize()` first rejects retained IEEE 1149.1 item findings,
+then finalizes named evidence.
+
+A second concrete composition reference is the AXI package:
+`ocah_axi_vip/cocotb/ocah_axi_checker.py` (item rules + evidence),
+`ocah_axi_ref_model.py` (stateful shadow memory + expected-response policy),
+and `ocah_axi_scoreboard.py` (expected-vs-unexpected non-OKAY credits,
+blocked windows, per-stream minimums, memory audits). Its simulator-free
+positive/negative proof is
+`ocah_axi_vip/cocotb/examples/example_axi_scoreboard_selftest.py`, and the
+SV-UVM mirror of the evidence grammar is
+`ocah_axi_vip/uvm/ocah_axi_checker.svh`.
+
+[[shared-checker-realization-parity]]
+=== Realization Parity
+
+`ocah_checker.OcahChecker` (cocotb) and `ocah_checker_uvm_pkg::ocah_checker`
+(SV-UVM) implement one contract. The SV twin is the base class every
+`ocah_<protocol>_vip` UVM checker extends; the cocotb core is composed.
+
+[cols="<3,<3,<4",options="header"]
+|===
+|Contract |cocotb |SV-UVM
+
+|Identifier grammar
+|`CHK-[A-Z0-9][A-Z0-9_-]*`, `ValueError` otherwise
+|Same grammar, `uvm_fatal` otherwise
+
+|Record grammar
+|`CHK-<ID> PASS\|FAIL expected=<v> observed=<v> context=<c>`; PASS at INFO,
+FAIL at ERROR
+|Same text; PASS through `uvm_info` (`UVM_LOW`), FAIL through `uvm_error`
+
+|Value rendering
+|Integers hexadecimal, booleans `true`/`false`, bytes hexadecimal, other values
+`repr()`; empty context `-`
+|Integers `0x%0h`, booleans `true`/`false`, word lists `(0x..,0x..)`; empty
+context `-`
+
+|Comparisons
+|`expect_equal`, `expect_true`
+|`expect_equal` (64-bit), `expect_true`, `expect_equal_words`
+
+|Timeout evidence
+|`expect_not_timed_out`, `expect_timeout`; the bound rides in the context as
+`timeout_ns=<n>`
+|Same names and context field
+
+|Status evidence
+|`expect_rw1c`, `expect_sticky`, `expect_pulse`
+|Same names, 64-bit values
+
+|Fail-fast
+|`fail_fast=True` raises `OcahCheckerError` after retaining the finding
+|Every FAIL is a `uvm_error`; the run fails through the log policy
+
+|Required identifiers
+|`required_ids` at construction; `missing_ids`
+|`required_ids` queue set by the owning env or test before finalization
+
+|Zero checks
+|`finalize()` raises; `finalize(require_checks=False)` declares the stream
+idle
+|`finalize(1)` errors; `finalize(0)` declares the stream idle (an adopter's
+policy object carries the bit)
+
+|Finalize once
+|A second `finalize()` raises; `clear()` re-arms
+|A second `finalize()` is a `uvm_error`; `clear()` re-arms
+
+|Summary
+|`CHECKER_SUMMARY name=<n> checks=N passed=N failed=N missing=N`
+|Same line
+|===
+
+The idle declaration exists for a passive checker on a stream the scenario
+never drives; the owner states it from its scenario policy, never from the
+observed count. `ocah_lib`'s scoreboard bases derive it from whether any
+registered feature is required.
+
+[[shared-checker-status-patterns]]
+=== Reset, Interrupt, and Status Evidence
+
+Reset, interrupt, and status behavior is judged with the same evidence core
+through three patterns. Each names the real source CSR or signal in the
+identifier or the context, and never an aggregate interrupt wire in place of
+the status register that drives it.
+
+[cols="<2,<4,<4",options="header"]
+|===
+|Pattern |Contract |Helper
+
+|Write-one-to-clear
+|Observe the status bits set, write the clearing value, read back the bits
+clear. The read before the write is the precondition; a bit that was never set
+cannot be credited as cleared.
+|`expect_rw1c(id, before=, after=, mask=)`
+
+|Sticky status
+|The status bits stay set across a second read with no clearing write between.
+A level that has already returned to zero is a pulse, not a sticky status.
+|`expect_sticky(id, first=, second=, mask=)`
+
+|Pulse
+|The event asserts the signal and the signal deasserts after completion on its
+own. Observe both edges; a stuck-high or never-fired signal fails.
+|`expect_pulse(id, asserted=, deasserted=)`
+|===
+
+Decide sticky versus pulse from the register description, not from a
+measurement: a `W1C` or `RW1C` field is sticky and must clear by write; a
+status bit documented as reflecting a live condition is a level and is judged
+by observing the condition's edges; an interrupt output is a pulse or a level
+according to the interrupt controller's contract, and the source register
+behind it is judged separately. A reset scenario combines the patterns: the
+value before reset, the value at the architectural reset point, and the value
+after release are three independent observations compared with the register's
+documented reset value.
+
+[source,python]
+----
+checker = OcahChecker(name="irq-status", required_ids={"CHK-DONE-RW1C", "CHK-IRQ-PULSE"})
+before = await csr.read(STATUS)
+await csr.write(STATUS, DONE)
+after = await csr.read(STATUS)
+checker.expect_rw1c("CHK-DONE-RW1C", before=before, after=after, mask=DONE, context="csr=STATUS.DONE")
+checker.expect_pulse("CHK-IRQ-PULSE", asserted=irq_seen, deasserted=irq_released, context="signal=irq_done_o")
+checker.finalize()
+----
+
+The SV twin carries the same three helpers. The SEP and SMC benches own the
+register maps and scenarios that use them.
+
+[[shared-jtag-checker-reference]]
+=== `OcahJtagChecker` Adapter Reference
+
+`OcahJtagChecker` adds IEEE 1149.1 item checks while preserving the common
+evidence API.
+
+[cols="<3,<7",options="header"]
+|===
+|Member |Contract
+
+|`name`
+|Checker and summary name.
+
+|`ir_width`
+|Optional expected IR scan width. A mismatching IR item is retained as a
+protocol finding.
+
+|`raise_on_error`
+|Controls fail-fast behavior for both protocol findings and named evidence.
+
+|`required_ids`, `logger`
+|Forwarded to the common evidence core.
+
+|`attach_monitor(monitor)`
+|Registers `check_item()` as an item callback.
+
+|`check_item(item)`
+|Checks negative width, configured IR width, the IDCODE marker, and invalid
+negative TDO shape. Returns `True` if no new protocol finding was retained.
+
+|`expect_equal()`, `expect_true()`, timeout methods
+|Forward named evidence to `OcahChecker`.
+
+|`assert_clean()`
+|Raises `AssertionError` when protocol findings remain.
+
+|`finalize()`
+|Calls `assert_clean()` and then common evidence finalization.
+
+|`clear()`
+|Clears both protocol findings and common evidence.
+|===
+
+`OcahJtagCheckerError` is the immutable record stored in `errors`, not an
+exception class. Protocol finalization raises `AssertionError`, while evidence
+finalization raises `OcahCheckerError`.
+
+[[shared-checker-adoption-recipe]]
+=== DUT Test Adoption Recipe
+
+. Define stable required IDs from the VPLAN.
+. Choose fail-fast mode for one direct assertion or aggregate mode for a suite.
+. Obtain observed values only from completed DUT-facing transactions.
+. Obtain expected values independently from a specification, immutable config,
+  or reference model.
+. Emit exact comparison evidence for every configured case.
+. Add a domain-specific non-vacuity check where required.
+. Drain pending traffic and call `finalize()` exactly once.
+
+[source,python]
+----
+checker = OcahJtagChecker(
+    name=f"{self.get_name()}.checker",
+    raise_on_error=False,
+    required_ids={"CHK-DATA", "CHK-NONVAC"},
+    logger=cocotb.log,
+)
+
+observed = completed_item.result
+expected = model.predict(case_cfg)
+checker.expect_equal(
+    "CHK-DATA",
+    observed,
+    expected,
+    context=f"seed={seed} case={case_cfg.label}",
+)
+checker.expect_true(
+    "CHK-NONVAC",
+    meaningful_observations > 0,
+    context=f"observations={meaningful_observations}",
+)
+checker.finalize()
+----
+
+Do not place `finalize()` in a monitor callback. Finalization belongs to the
+test, virtual sequence, or lifecycle-owning scoreboard after traffic and drain.
+
+[[shared-checker-timeout]]
+=== Timeout Semantics
+
+Transaction timeout fails by default:
+
+[source,python]
+----
+checker.expect_not_timed_out(
+    "CHK-COMPLETION",
+    timed_out=result.timed_out,
+    timeout_ns=50_000,
+    context="AXI read",
+)
+----
+
+An expected timeout is legal only when the VPLAN explicitly defines bounded
+non-completion as the expected behavior:
+
+[source,python]
+----
+checker.expect_timeout(
+    "CHK-EXPECTED-TIMEOUT",
+    timed_out=result.timed_out,
+    timeout_ns=200,
+    context="documented unmapped aperture",
+)
+----
+
+The BFM's `allow_timeout` option only returns an inspectable result. It does not
+grant PASS.
+
+A runner stage timeout is outside the checker contract. It always produces
+`TIMEOUT`, exit code 124, and a timeout failure bucket.
+
+[[shared-model-data-flow]]
+=== Config and Reference-Model Data Flow
+
+Use immutable scenario configuration as a single source of truth when a test
+has multiple stimulus and expectation fields:
+
+[source,text]
+----
+immutable scenario config
+  +-> DUT programming / BFM transaction
+  +-> pure reference model -> expected value/item
+  +-> evidence context
+
+DUT-facing driver/monitor -> observed value/item
+
+expected + observed -> checker/scoreboard -> named evidence + summary
+----
+
+Configuration objects may contain:
+
+* reproducible seed and randomized choices;
+* operation/mode, widths, addresses, and payloads;
+* expected response policy;
+* model parameters and evidence labels.
+
+They must not contain:
+
+* cocotb handles or UVM components;
+* mutable BFM/monitor tasks;
+* DUT observations;
+* global simulator state.
+
+[[shared-model-interface]]
+=== Reference-Model Interface Template
+
+OCAH does not require inheritance from a framework base class. The minimum
+contract is an immutable configuration and a deterministic prediction API:
+
+[source,python]
+----
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class TransferCfg:
+    address: int
+    payload: int
+    mode: int
+    label: str
+
+
+class TransferRefModel:
+    @staticmethod
+    def predict(case: TransferCfg) -> int:
+        # Pure specification transformation; no DUT access.
+        ...
+----
+
+For item-oriented protocols, return an immutable expected item rather than a
+scalar. The expected item and monitor item need not share a class, but the
+scoreboard must map both to the same explicit contract fields.
+
+The configuration object is the single source of truth only for scenario
+intent. It feeds both stimulus and prediction, but expected results are
+calculated by the model; they are not copied from the DUT observation.
+
+[[shared-model-purity]]
+=== Pure and Stateful Models
+
+A pure model is preferred:
+
+[source,python]
+----
+expected = model.predict(case_cfg)
+----
+
+It has no simulator handles, does not read the DUT, and returns plain values.
+
+A stateful model is appropriate for memory, FIFO, mailbox, routing, or protocol
+history. It must define:
+
+* deterministic initial state;
+* explicit `reset()`/`clear()` behavior;
+* update order relative to accepted DUT transactions;
+* snapshot/query APIs for scoreboards;
+* bounded retained history where applicable.
+
+The test resets the model at the same architectural event as the DUT. It must
+not silently retain state across independent test cases.
+
+[[shared-model-ownership]]
+=== Model and Scoreboard Ownership
+
+[cols="<3,<4,<3",options="header"]
+|===
+|Artifact |Default Owner |Promotion Trigger
+
+|Scenario config
+|DUT test or DUT environment
+|Move with a promoted protocol model only when all fields are
+protocol-neutral.
+
+|DUT reference/golden model
+|DUT `cocotb/env/`
+|A second independent consumer needs the same standards-based transformation,
+and the model has no hierarchy, address-map, lifecycle, topology, or fixture
+assumptions.
+
+|Protocol reference model
+|Existing `ocah_<protocol>_vip`
+|Already shared by definition; retain protocol-only inputs and outputs.
+
+|Scoreboard
+|DUT environment
+|Promote only a protocol-only comparator. Lifecycle ownership, stream routing,
+drain, and DUT policy normally remain local.
+
+|Evidence/finalization mechanics
+|`ocah_checker`
+|Already shared; do not fork the grammar in a DUT.
+|===
+
+A model is not automatically shared because it is pure. A serial-delay model,
+for example, remains adopter-local while it owns device opcodes, case labels,
+and scenario policy. When a second protocol consumer needs the transformation,
+extract only the protocol-neutral input/output contract into the existing
+shared VIP and keep adopter-specific suite construction local.
+
+[[shared-scoreboard-lifecycle]]
+=== Scoreboard Lifecycle and Ordering
+
+[cols="<1,<3,<6",options="header"]
+|===
+|Step |Owner |Required Action
+
+|1
+|Test/sequence
+|Freeze the scenario config and log seed plus selected values.
+
+|2
+|Environment
+|Reset DUT, model, checker, queues, and retained observations at the same
+architectural reset event.
+
+|3
+|Driver/BFM
+|Drive stimulus derived from config.
+
+|4
+|Monitor/completed driver
+|Publish an observed item only at the protocol commit boundary.
+
+|5
+|Reference model
+|Compute or update the expected item independently.
+
+|6
+|Scoreboard
+|Pair expected/observed items, compare exact fields, and retain evidence.
+
+|7
+|Test/environment
+|Stop stimulus and drain all required queues with a finite bound.
+
+|8
+|Scoreboard/test
+|Check unmatched items and per-stream minimums, then finalize once.
+|===
+
+For a stateful model, specify whether the state update occurs before or after
+the expected result is produced. For concurrent streams, define the ordering
+key explicitly; arrival order alone is insufficient when the protocol permits
+reordering.
+
+[[shared-scoreboard-contract]]
+=== Scoreboard Contract
+
+A scoreboard:
+
+* consumes plain observed items from monitors or completed drivers;
+* obtains expected values from config/reference models;
+* counts every executed comparison;
+* retains every failure with exact contract context;
+* enforces required evidence and per-stream minimums;
+* finalizes once after stimulus and drain;
+* emits `CHECKER_SUMMARY`.
+
+Use `failed` as the scoreboard error count to avoid creating another summary
+dialect. Protocol-specific counters may be logged separately.
+
+A scoreboard must not pass with zero checks. When a scenario has multiple
+independent streams, a global nonzero count is insufficient; enforce minimum
+checks for every required stream.
+
+[[shared-checker-nonvacuity]]
+=== Non-Vacuity
+
+Generic finalization proves that checks executed. It does not prove that the
+DUT feature was meaningfully exercised.
+
+`CHK-NONVAC` should demonstrate a domain property such as:
+
+* observed output differs from direct input because a modeled transformation
+  occurred;
+* a write changed state and a read returned the modeled value;
+* an error path returns exact DECERR/SLVERR instead of OKAY or timeout;
+* multiple randomized cells or ports were exercised;
+* a checker would fail on an idle, default, stubbed, or tied-off DUT.
+
+Expected values must be independent of the observed path. Capturing a value
+from the DUT and comparing a later DUT read against it is not an independent
+golden.
+
+[[shared-checker-runner-authority]]
+=== Runner Result Authority
+
+Named evidence is retained in the simulation log. It does not independently
+make a run pass.
+
+For cocotb flows:
+
+* `results.xml` is the test-level structured authority;
+* the configured parser checks hard failures, required patterns, process status,
+  and test summary;
+* schema-version-1 `result.json` is the run-level authority;
+* missing or inconclusive structured evidence produces a non-passing status.
+
+Positive `CHK-*` text cannot override failed or missing structured results.
+Checker evidence is for auditability and mapping to the VPLAN, while the runner
+result controls CI.
+
+[[shared-checker-fixed-contract-example]]
+=== Example: Fixed Register Contract
+
+Use a direct checker when the specification provides a fixed expected value.
+The sequence declares all required intent, collects values from completed
+protocol transactions, checks stability and fields, then finalizes once:
+
+[source,python]
+----
+checker = OcahChecker(
+    name="identity-checker",
+    logger=cocotb.log,
+    required_ids={
+        "CHK-IDENTITY-RAW",
+        "CHK-IDENTITY-STABLE",
+        "CHK-IDENTITY-MARKER",
+        "CHK-NONVAC",
+    },
+)
+
+observed_values = []
+for loop_idx in range(read_loops):
+    item = await protocol_agent.read(identity_address)
+    observed_values.append(item.result)
+    checker.expect_equal(
+        "CHK-IDENTITY-RAW",
+        item.result,
+        SPEC_IDENTITY_VALUE,
+        context=f"loop={loop_idx} addr={identity_address:#x}",
+    )
+
+checker.expect_equal(
+    "CHK-IDENTITY-STABLE",
+    len(set(observed_values)),
+    1,
+    context=f"reads={len(observed_values)}",
+)
+checker.expect_equal(
+    "CHK-IDENTITY-MARKER",
+    observed_values[0] & 1,
+    1,
+    context="field=marker bit=0",
+)
+checker.expect_true(
+    "CHK-NONVAC",
+    len(observed_values) >= 2
+    and observed_values[0] not in (0, value_mask),
+    context=f"reads={len(observed_values)}",
+)
+checker.finalize()
+----
+
+The specification constant is the independent expected value. Re-reading the
+DUT and using the first observation as the expected value would not satisfy the
+golden-independence requirement.
+
+[[shared-checker-reference-model-example]]
+=== Example: Modeled Serial Delay
+
+The following protocol-neutral example illustrates a frozen config, pure model,
+completed transaction observation, aggregate checker, and non-vacuity proof:
+
+[source,text]
+----
+SerialDelaySuiteCfg
+  +-> operation/pattern/width stimulus
+  +-> SerialDelayRefModel.predict(case) -> expected serial output
+  +-> checker ID and evidence context
+
+completed protocol item -> observed serial output
+expected + observed -> checker -> evidence + summary
+----
+
+[source,python]
+----
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class SerialDelayCaseCfg:
+    operation: int
+    width: int
+    pattern: int
+    capture_bit: int = 0
+    label: str = ""
+
+    @property
+    def check_id(self) -> str:
+        return f"CHK-DELAY-{self.operation:02X}"
+
+    @property
+    def context(self) -> str:
+        return (
+            f"case={self.label or '-'} operation=0x{self.operation:02x} "
+            f"width={self.width} pattern={self.pattern:#x} "
+            f"capture={self.capture_bit}"
+        )
+
+
+class SerialDelayRefModel:
+    @staticmethod
+    def predict(case: SerialDelayCaseCfg) -> int:
+        mask = (1 << max(case.width - 1, 0)) - 1
+        shifted_input = case.pattern & mask
+        return (case.capture_bit & 1) | (shifted_input << 1)
+
+    @staticmethod
+    def direct_passthrough(case: SerialDelayCaseCfg) -> int:
+        return case.pattern & ((1 << case.width) - 1)
+----
+
+Validate configuration at construction: operation is supported, width is
+positive, pattern fits width, and capture is binary. A seeded suite should
+combine directed, walking-bit, inverse, and reproducible random patterns.
+
+The adopter uses the same immutable case for stimulus, prediction, evidence ID,
+and context:
+
+[source,python]
+----
+model = SerialDelayRefModel()
+checker = OcahChecker(
+    name="serial-delay",
+    fail_fast=False,
+    required_ids={"CHK-DELAY-00", "CHK-DELAY-01", "CHK-NONVAC"},
+    logger=cocotb.log,
+)
+
+delayed_observations = 0
+observed_operations = set()
+observed_patterns = set()
+
+for case in suite.cases:
+    await protocol_agent.select_operation(case.operation)
+    item = await protocol_agent.shift(case.pattern, case.width)
+    observed = item.result & ((1 << case.width) - 1)
+    expected = model.predict(case)
+    checker.expect_equal(
+        case.check_id,
+        observed,
+        expected,
+        context=f"seed={suite.seed} {case.context}",
+    )
+    observed_operations.add(case.operation)
+    observed_patterns.add(case.pattern)
+    if observed == expected and observed != model.direct_passthrough(case):
+        delayed_observations += 1
+
+checker.expect_true(
+    "CHK-NONVAC",
+    len(observed_operations) >= 2
+    and len(observed_patterns) >= 6
+    and delayed_observations > 0,
+    context=(
+        f"operations={len(observed_operations)} "
+        f"patterns={len(observed_patterns)} "
+        f"delayed_observations={delayed_observations}"
+    ),
+)
+checker.finalize()
+----
+
+The operation encodings and suite policy normally remain adopter-local. Promote
+the model only after extracting a protocol-neutral contract needed by another
+consumer.
+
+This pattern may be sequence-owned or scoreboard-owned. A sequence-owned
+checker is suitable when completed driver items are the architectural
+observations. A scoreboard should own it when passive monitor items, multiple
+streams, reordering, or drain policy determine completion. Only the component
+that owns the comparisons reports their `CHECKER_SUMMARY`.
+
+[[shared-checker-runnable-example]]
+=== Run the Framework Example
+
+The common helper example requires no simulator:
+
+[source,bash]
+----
+PYTHONPATH="$PWD/hw/common/dv/vip" \
+  .venv/bin/python \
+  hw/common/dv/vip/ocah_checker/cocotb/examples/example_checker.py
+----
+
+Expected evidence:
+
+[source,text]
+----
+CHK-REGISTER PASS expected=0xa5 observed=0xa5 context=addr=0x1000
+CHK-NONVAC PASS expected=true observed=true context=observed=0xa5
+CHECKER_SUMMARY name=register-example checks=2 passed=2 failed=0 missing=0
+----
+
+[[shared-checker-negative-validation]]
+=== Prove Failure Is Retained
+
+A positive-only example does not prove fail-closed behavior. The core's
+simulator-free selftest exercises every rule of this chapter positively and
+then makes each one fail: the identifier grammar at construction and at record
+time, the record grammar and value rendering, fail-fast raising after the
+finding is retained, aggregate collection, finalization rejecting a retained
+failure, a missing required identifier, zero checks, and a second call, the
+idle declaration, `clear()`, the timeout evidence in both directions, the
+status helpers with their preconditions, and the immutability of findings:
+
+[source,bash]
+----
+uv run --locked --group dv python \
+  hw/common/dv/vip/ocah_checker/cocotb/examples/example_checker_selftest.py
+----
+
+The expected tail is `ocah_checker selftest PASS`; every rule prints an
+`ok:` line naming what it proved.
+
+[[shared-checker-family-negatives]]
+=== Negative Qualification by Checker Family
+
+Every released checker family has a must-fail entry point, so a green run of
+the family is trustworthy. Each command below exits non-zero:
+
+[cols="<2,<8",options="header"]
+|===
+|Family |Must-fail entry points
+
+|Evidence core (cocotb)
+|The selftest above; on a harness, `OCAH_CHECKER_SELFTEST_NEGATIVE=1` arms a
+required identifier no scenario records, so finalization reports `missing=1`:
+`OCAH_CHECKER_SELFTEST_NEGATIVE=1 python3 tools/dv/run_dv.py --dut ocah_jtag_vip
+--items ocah_jtag_idcode_test --tool verilator`
+
+|Evidence core (SV-UVM)
+|`python3 tools/dv/run_dv.py --dut ocah_jtag_vip --framework uvm
+--items ocah_jtag_idcode_test --plusarg=+OCAH_CHECKER_SELFTEST_NEGATIVE`
+
+|AXI
+|`uv run --locked --group dv python
+hw/common/dv/vip/ocah_axi_vip/cocotb/examples/example_axi_scoreboard_selftest.py`
+runs its negative cases against the scoreboard, the reference model, and the
+credits, each printed as `selftest negative-<letter> PASS`; the SV-UVM
+scoreboard is exercised by the `--dut ocah_axi_vip --framework uvm` selftests
+
+|JTAG
+|`OCAH_JTAG_SELFTEST_NEGATIVE=1 python3 tools/dv/run_dv.py --dut ocah_jtag_vip
+--items ocah_jtag_tap_reset_test --tool verilator` and the SV-UVM twin
+`--plusarg=+OCAH_JTAG_SELFTEST_NEGATIVE` on `ocah_jtag_idcode_test`; every
+harness selftest also carries in-band `CHK-JTAG-NEG-*` probes
+
+|SPI
+|`OCAH_SPI_SELFTEST_NEGATIVE=1 python3 tools/dv/run_dv.py --dut ocah_spi_vip
+--items ocah_spi_program_readback_test --tool verilator` (and
+`ocah_spi_ordering_test`); in-band `CHK-SPI-NEG-*` probes
+
+|UART
+|`OCAH_UART_SELFTEST_NEGATIVE=1 python3 tools/dv/run_dv.py --dut ocah_uart_vip
+--items ocah_uart_data_test --tool verilator` (and `ocah_uart_error_test`,
+`ocah_uart_timeout_test`); in-band `CHK-UART-NEG-*` probes
+
+|DUT adopters
+|Each bench names its own knob; the DTP bench arms
+`DTP_JTAG_TAP_CHECKER_NEGATIVE` in both flows
+|===
+
+[[shared-checker-qualification]]
+=== Qualify an Adopter
+
+From the repository root:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --validate-configs
+
+python3 tools/dv/run_dv.py \
+  --dut <dut> \
+  --items <checker-or-model-test> \
+  --tool <supported-tool> \
+  --seed <fixed-seed> \
+  --ui plain
+----
+
+The runner prints the unique run directory and schema-version-1 `result.json`
+path. Qualification requires all of the following:
+
+* command exit code is zero;
+* run-level `status` is `PASS`;
+* test totals report one passing and zero failing tests;
+* parser evidence includes a passing `results.xml` testcase;
+* log summary reports `TESTS=1 PASS=1 FAIL=0 SKIP=0`;
+* required `CHK-*` lines and `CHECKER_SUMMARY` are present.
+
+Do not commit generated `build/runs/` artifacts; retain the CI artifact in the
+external qualification record.
+
+[[shared-checker-qualification-record]]
+=== Qualification Record
+
+Every adopter keeps a compact, reproducible external qualification record:
+
+[cols="<3,<7",options="header"]
+|===
+|Field |Required Content
+
+|Source
+|Candidate commit SHA and whether the worktree was clean.
+
+|Environment
+|Runner schema, framework, simulator and version, Python version, and relevant
+backend versions.
+
+|Invocation
+|Exact command, DUT profile, item/group, seed, and resolved overrides.
+
+|Positive evidence
+|Representative `CHK-* PASS`, `CHK-NONVAC PASS`, and complete
+`CHECKER_SUMMARY`.
+
+|Negative evidence
+|A wrong expectation, omitted required ID, or zero-check case that finalization
+rejects.
+
+|Structured authority
+|`results.xml` pass count and run-level `result.json` status/reason.
+
+|Artifact
+|Retained CI URL or other durable artifact location.
+|===
+
+Representative protocol-neutral record:
+
+[source,text]
+----
+CHK-DATA PASS expected=0xa5 observed=0xa5 context=seed=7 addr=0x1000
+CHK-NONVAC PASS expected=true observed=true context=transactions=8
+CHECKER_SUMMARY name=register-scoreboard checks=9 passed=9 failed=0 missing=0
+TESTS=1 PASS=1 FAIL=0 SKIP=0
+result.json: status=PASS tests.total=1 tests.passing=1 tests.failing=0
+----
+
+Evidence from a dirty exploratory worktree demonstrates behavior but is not
+immutable merge qualification. Rerun on the candidate commit or CI job before
+sign-off.
+
+[[shared-checker-conformance]]
+=== Checker and Model Conformance Checklist
+
+[cols="<3,<4,<3",options="header"]
+|===
+|Concern |Requirement |Evidence
+
+|Ownership
+|Shared mechanics, protocol legality, DUT invariants, model, scoreboard, and
+test intent follow the boundaries in
+<<shared-vip-checking-ownership,Checking and Coverage Ownership>>.
+|Source paths and maintainer ownership are documented.
+
+|Checker API
+|Stable IDs, exact values, retained findings, required IDs, fail-fast/aggregate
+mode, and finalization follow
+<<shared-checker-api-reference,Checker API Reference>>.
+|Runnable positive example and invalid-ID checks.
+
+|Monitor integration
+|Callback failure is retained and finalization occurs outside the callback.
+|An injected invalid monitored item fails the owning test at finalization.
+
+|Timeout
+|Normal timeout fails. An expected timeout is bounded and explicitly required
+by the VPLAN.
+|Positive completion, unexpected timeout, and expected-timeout cases.
+
+|Configuration and model
+|Immutable config feeds stimulus, prediction, and context; the model does not
+read DUT observations.
+|Pure vectors or deterministic stateful-model replay.
+
+|Scoreboard
+|Expected/observed pairing, ordering, drain, unmatched items, per-stream
+minimums, and reset behavior are explicit.
+|Summary has nonzero checks, zero failures, and zero missing IDs.
+
+|Non-vacuity
+|A tied-off, idle, default-only, direct-pass-through, or stubbed implementation
+cannot satisfy the check.
+|Named `CHK-NONVAC` with domain-specific context.
+
+|Negative validation
+|A wrong expectation or missing required ID is rejected, and the family has
+a must-fail entry point from
+<<shared-checker-family-negatives,Negative Qualification by Checker Family>>.
+|`CHK-* FAIL`, failing summary, and raised checker error.
+
+|Finalize once
+|Exactly one finalization per checker after drain; a second call is rejected.
+|One `CHECKER_SUMMARY` per checker name in the log.
+
+|Callback errors
+|Checker verdicts leave the monitor callback; other subscriber exceptions are
+counted and recorded against zero at drain.
+|`callback_errors` in the monitor statistics and its evidence record.
+
+|Expected-error credits
+|An expected error is credited only through a credit armed from scenario
+intent before observation; an unconsumed credit fails.
+|The credit's record and the finalization failure of a stale credit.
+
+|Realization parity
+|The cocotb and SV-UVM cores accept the same grammar and reject the same
+defects (<<shared-checker-realization-parity,Realization Parity>>).
+|The core selftest and the SV-UVM harness negatives.
+
+|Runner qualification
+|Structured test and run results agree with named evidence.
+|Completed record from
+<<shared-checker-qualification-record,Qualification Record>>.
+|===

@@ -1,0 +1,33 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef PLL_WRAP_REG_RDL
+`define PLL_WRAP_REG_RDL
+
+// OCAH: adopter clock-control placeholder. This reserves the map slot only
+// (see smc_top @ +0x3000); no CSRs are modeled. A uniquely named footprint mem
+// keeps the generated C type distinct from the other placeholder wrappers.
+mem pll_wrap_placeholder_mem #(
+    longint unsigned NUM_ENTRIES = 954,
+    longint unsigned WIDTH       = 32
+) {
+    desc = "Placeholder footprint (adopter clock-control block; no CSRs modeled)";
+
+    mementries = NUM_ENTRIES;
+    memwidth   = WIDTH;
+
+    reg mem_word {
+        regwidth = 32;
+        field { sw = r; hw = r; } data[WIDTH-1:0];
+    };
+
+    mem_word mem_array[NUM_ENTRIES];
+};
+
+addrmap pll_wrap {
+    name = "PLL Wrapper Placeholder Address Map";
+    desc = "Adopter clock-control placeholder reserving the PLL map slot; no CSRs are modeled.";
+    external pll_wrap_placeholder_mem footprint @0x0;
+};
+
+`endif

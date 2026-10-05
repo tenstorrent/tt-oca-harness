@@ -1,0 +1,33 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef REAMPPED_REGION_RDL
+`define REAMPPED_REGION_RDL
+
+mem remapped_region #(
+    longint unsigned NUM_ENTRIES = 1048576, // this creates a 0x80_0000 sized region
+    longint unsigned WIDTH       = 64       // width in bits
+) {
+    desc = "Address region whose accesses an output remap redirects.";
+
+    mementries = NUM_ENTRIES;
+    memwidth   = WIDTH;
+
+    // a single word of the memory
+    reg mem_word {
+        regwidth = 64;
+        field {
+           sw=rw;
+           hw=rw;
+        } data[WIDTH-1:0];
+    };
+
+    // the entire memory is an array of memory words
+    mem_word mem_array[NUM_ENTRIES];
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::FORWARD, rdata: 0x0, bresp: ocah_resp_e::FORWARD};
+`endif
+};
+
+`endif

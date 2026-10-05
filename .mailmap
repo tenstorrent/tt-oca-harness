@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# Maps every other name and address a contributor has committed under to their
+# CONTRIBUTORS entry; see gitmailmap(5). scripts/update_contributors.py relies on
+# it to recognise people already listed.
+
+# Tenstorrent
+Jonathan Baker <jbaker@tenstorrent.com> <223292507+jbakerTT@users.noreply.github.com>
+Noah Betik <nbetik@tenstorrent.com> <221366943+nbetikTT@users.noreply.github.com>
+Nicole Boettcher <nboettcher@tenstorrent.com> <225886820+nboettcher-tenstorrent@users.noreply.github.com>
+Grace Chang <gchang@tenstorrent.com> <281738430+gchangTT@users.noreply.github.com>
+Minshao Ho <minshaoho@tenstorrent.com>
+Minshao Ho <minshaoho@tenstorrent.com> <227078473+minshaohoTT@users.noreply.github.com>
+Minshao Ho <minshaoho@tenstorrent.com> <msho@users.noreply.github.com>
+Andrew Hsiao <ahsiao@tenstorrent.com> <229668696+ahsiaoTT@users.noreply.github.com>
+Bruce Hsu <brucehsu@tenstorrent.com> <225106160+brucehsu-TT@users.noreply.github.com>
+Ankitha Keshavaraj <ctr-akeshavaraj@ext.tenstorrent.com> <274620421+akeshavarajTT@users.noreply.github.com>
+Daniel Kim <danielkim@tenstorrent.com> <283717790+dkimTT@users.noreply.github.com>
+Henry Lai <yenhenglai@tenstorrent.com>
+Henry Lai <yenhenglai@tenstorrent.com> <233657690+yenhenglaiTT@users.noreply.github.com>
+Henry Lai <yenhenglai@tenstorrent.com> <yenhenglai@soc-l-01.yyz2.tenstorrent.com>
+Haohao Liao <hliao@tenstorrent.com> <178933718+hliaott@users.noreply.github.com>
+Calvin McCoy <cmccoy@tenstorrent.com> <1562105+inmcm@users.noreply.github.com>
+Ben Melton <bmelton@tenstorrent.com> <210747676+bmeltonTT@users.noreply.github.com>
+Alessandro Ottaviano <aottaviano@tenstorrent.com> <236338902+aottavianoTT@users.noreply.github.com>
+Alessandro Ottaviano <aottaviano@tenstorrent.com> <aottaviano@soc-l-01.yyz2.tenstorrent.com>
+Kai Qin <kqin@tenstorrent.com> <225477620+TT-kqin@users.noreply.github.com>
+Nils Wistoff <nwistoff@tenstorrent.com> <326170102+nwistoffTT@users.noreply.github.com>
+
+# lowRISC
+Jay Alphey <jay.alphey@lowrisc.org> <200631831+jayalp@users.noreply.github.com>
+Jay Alphey <jay.alphey@lowrisc.org> <jalphey@lowrisc.org>
+Tye Buckingham <tye.buckingham@lowrisc.org> <272186295+tye-b@users.noreply.github.com>
+Daniel Green <daniel.green@lowrisc.org> <312488706+DanielG-lowRISC@users.noreply.github.com>
+Luís Marques <luismarques@lowrisc.org> <171812+luismarques@users.noreply.github.com>
+Luís Marques <luismarques@lowrisc.org> <luis@luismarques.eu>
+James McCorrie <james.mccorrie@lowrisc.org> <1406491+machshev@users.noreply.github.com>
+James McCorrie <james.mccorrie@lowrisc.org> <djmccorrie@gmail.com>
+Colin McKellar <colin.mckellar@lowrisc.org> <37253155+bonnie-banks123@users.noreply.github.com>
+Colin McKellar <colin.mckellar@lowrisc.org> <colser@live.co.uk>
+Rupert Swarbrick <rswarbrick@lowrisc.org> <104845+rswarbrick@users.noreply.github.com>
+Rupert Swarbrick <rswarbrick@lowrisc.org> <rswarbrick@gmail.com>
+Alice Ziuziakowska <a.ziuziakowska@lowrisc.org> <86219468+ziuziakowska@users.noreply.github.com>

@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Backup permits every chiplet lifecycle token except PROD; the primary magic is broken first.
+base = "signed"
+ops = [
+  { op = "set_lifecycle_constraint", slot = "backup", args = { allowed = 0x7D, level = "chiplet" } },
+]
+patch = [
+  { field = "OFF_BOOT_MANIFEST_MAGIC", slot = "primary", le = 0x99999999, size = 4 },
+]

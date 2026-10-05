@@ -1,0 +1,38 @@
+diff --git a/src/clk_rst_gen.sv b/src/clk_rst_gen.sv
+index e708f6a..9a5b539 100644
+--- a/src/clk_rst_gen.sv
++++ b/src/clk_rst_gen.sv
+@@ -17,6 +17,9 @@ module clk_rst_gen #(
+   output logic rst_no
+ );
+ 
++  timeunit 1ns;
++  timeprecision 1ps;
++
+   logic clk;
+ 
+   // Clock Generation
+@@ -33,8 +36,7 @@ module clk_rst_gen #(
+   initial begin
+     static int unsigned rst_cnt = 0;
+     rst_no = 1'b0;
+-    #(ClkPeriod / 2); // Start counting clock cycles on first complete cycle.
+-    while (rst_cnt < RstClkCycles) begin
++    while (rst_cnt <= RstClkCycles) begin
+       @(posedge clk);
+       rst_cnt++;
+     end
+@@ -45,11 +47,9 @@ module clk_rst_gen #(
+ `ifndef VERILATOR
+   initial begin: validate_params
+     assert (ClkPeriod >= 2ps)
+-      else $fatal(1, "The clock period must be at least 2ps!");
+-      // Reason: Gets divided by two, and some simulators do not support non-integer time steps, so
+-      // if the time unit is 1ps, this would fail.
++      else $fatal("The clock period must be at least 2ps!");
+     assert (RstClkCycles > 0)
+-      else $fatal(1, "The number of clock cycles in reset must be greater than 0!");
++      else $fatal("The number of clock cycles in reset must be greater than 0!");
+   end
+ `endif
+ 

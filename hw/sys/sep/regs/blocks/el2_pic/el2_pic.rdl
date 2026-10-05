@@ -1,0 +1,159 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef EL2_PIC_RDL_DEFINED
+`define EL2_PIC_RDL_DEFINED
+
+// VeeR EL2 PIC (Programmable Interrupt Controller) Memory-Mapped Registers
+// Based on VeeR EL2 documentation: chipsalliance/Cores-VeeR-EL2 docs/source/interrupts.md
+//
+// Note: CSR registers (meivt, meipt, meicpct, meicidpl, meicurpl, meihap) are
+// in RISC-V CSR address space and NOT included in this memory-mapped RDL file.
+
+addrmap el2_pic #(
+    longint unsigned PIC_TOTAL_INT = 255,
+    // Tracks the RTL's INTPEND_SIZE/32: the pending bitmap covers PIC_TOTAL_INT+1
+    // sources rounded up to a power of two (min 32), so the word count steps in
+    // powers of two rather than by ceil(sources/32).
+    longint unsigned PIC_INTPEND_WORDS =
+        (PIC_TOTAL_INT + 1) <= 32  ? 1 :
+        (PIC_TOTAL_INT + 1) <= 64  ? 2 :
+        (PIC_TOTAL_INT + 1) <= 128 ? 4 :
+        (PIC_TOTAL_INT + 1) <= 256 ? 8 :
+        (PIC_TOTAL_INT + 1) <= 512 ? 16 : 32
+) {
+    name = "EL2_PIC";
+    desc = "VeeR EL2 Programmable Interrupt Controller (PIC) memory-mapped registers.
+            Supports up to PIC_TOTAL_INT external interrupt sources with 15 priority levels.";
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Register Definitions
+    ////////////////////////////////////////////////////////////////////////////
+
+    // PIC Configuration Register (mpiccfg)
+    reg MPICCFG {
+        desc = "PIC Configuration Register. Used to select the operational parameters of the PIC.";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Priority order:
+                    0: RISC-V standard compliant priority order (0=lowest to 15=highest)
+                    1: Reverse priority order (15=lowest to 0=highest)";
+        } priord[0:0] = 0x0;
+    };
+
+    // External Interrupt Priority Level Register (meiplS)
+    reg MEIPL {
+        desc = "External Interrupt Priority Level Register. Sets the priority level for an interrupt source.";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "External interrupt priority level:
+                    RISC-V standard order: 0=Never interrupt, 1..15=Priority (1 lowest, 15 highest)
+                    Reverse order: 15=Never interrupt, 14..0=Priority (14 lowest, 0 highest)";
+        } intpriority[3:0] = 0x0;
+    };
+
+    // External Interrupt Pending Register (meipX)
+    reg MEIP {
+        desc = "External Interrupt Pending Register. Reports pending status of up to 32 interrupt sources.";
+
+        field {
+            sw = r;
+            hw = rw;
+            desc = "External interrupt pending bits. Bit Y indicates pending status for source X*32+Y.
+                    0: Interrupt not pending
+                    1: Interrupt pending";
+        } intpend[31:0] = 0x0;
+    };
+
+    // External Interrupt Enable Register (meieS)
+    reg MEIE {
+        desc = "External Interrupt Enable Register. Controls interrupt enable for a single source.";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "External interrupt enable:
+                    0: Interrupt disabled
+                    1: Interrupt enabled";
+        } inten[0:0] = 0x0;
+    };
+
+    // External Interrupt Gateway Configuration Register (meigwctrlS)
+    reg MEIGWCTRL {
+        desc = "External Interrupt Gateway Configuration Register. Controls interrupt type and polarity.";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "External interrupt polarity:
+                    0: Active-high interrupt
+                    1: Active-low interrupt";
+        } polarity[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "External interrupt type:
+                    0: Level-triggered interrupt
+                    1: Edge-triggered interrupt";
+        } irq_type[1:1] = 0x0;
+    };
+
+    // External Interrupt Gateway Clear Register (meigwclrS)
+    reg MEIGWCLR {
+        desc = "External Interrupt Gateway Clear Register. Writing any value clears the gateway's
+                interrupt pending (IP) bit for edge-triggered interrupts.";
+
+        field {
+            sw = w;
+            hw = r;
+            desc = "Write any value to clear the interrupt pending bit in the gateway.
+                    This register is write-only; reads return 0.";
+        } clear[0:0] = 0x0;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Address Map
+    // Memory-mapped register layout per VeeR EL2 PIC specification:
+    //   +0x0000:            Reserved (source ID 0 is not valid)
+    //   +0x0004 to +S*4:    meiplS priority registers (S=1..PIC_TOTAL_INT)
+    //   +0x1000 to +0x1000+X*4: meipX pending registers (X=0..PIC_INTPEND_WORDS-1)
+    //   +0x2000:            Reserved
+    //   +0x2004 to +0x2000+S*4: meieS enable registers (S=1..PIC_TOTAL_INT)
+    //   +0x3000:            mpiccfg configuration register
+    //   +0x4000:            Reserved
+    //   +0x4004 to +0x4000+S*4: meigwctrlS gateway config (S=1..PIC_TOTAL_INT)
+    //   +0x5000:            Reserved
+    //   +0x5004 to +0x5000+S*4: meigwclrS gateway clear (S=1..PIC_TOTAL_INT)
+    //
+    // The per-source arrays are sized PIC_TOTAL_INT+1 and anchored on the reserved
+    // word so the array index equals the interrupt source ID (meipl[7] is source 7).
+    // SystemRDL arrays are always 0-based, so element [0] models the reserved word
+    // and must be excluded from any full-map RAL access test.
+    ////////////////////////////////////////////////////////////////////////////
+
+    // Priority Level Registers (index == source ID; [0] is the reserved word)
+    MEIPL           meipl[PIC_TOTAL_INT + 1]        @0x0000;
+
+    // Pending Registers (bit Y of word X is source X*32+Y; genuinely 0-based)
+    MEIP            meip[PIC_INTPEND_WORDS]         @0x1000;
+
+    // Enable Registers (index == source ID; [0] is the reserved word)
+    MEIE            meie[PIC_TOTAL_INT + 1]         @0x2000;
+
+    // Configuration Register
+    MPICCFG         mpiccfg                         @0x3000;
+
+    // Gateway Configuration Registers (index == source ID; [0] is the reserved word)
+    MEIGWCTRL       meigwctrl[PIC_TOTAL_INT + 1]    @0x4000;
+
+    // Gateway Clear Registers (index == source ID; [0] is the reserved word)
+    MEIGWCLR        meigwclr[PIC_TOTAL_INT + 1]     @0x5000;
+
+};
+
+`endif // EL2_PIC_RDL_DEFINED

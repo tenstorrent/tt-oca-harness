@@ -1,0 +1,50 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef UART_16550_DL_RDL
+`define UART_16550_DL_RDL
+
+addrmap uart_16550_dl {
+
+    name = "UART 16550 Divisor Latch Address Map";
+    desc = "Contains the registers accessible only when `LCR.DLAB = 1`.";
+
+    //////////////////////////
+    // Register Definitions //
+    //////////////////////////
+
+    reg DLL {
+        desc = "Divisor Latch Least Significant Byte Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Divisor Latch Least Significant Byte. Baud rate is calculated as
+                    `baud_rate = system_clock_frequency / (16 * (divisor + 1))`. When the divisor is set
+                    to `0`, the transmitter and receiver logic are disabled.";
+        } DLL[7:0] = 0x0;
+    };
+
+    reg DLM {
+        desc = "Divisor Latch Most Significant Byte Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Divisor Latch Most Significant Byte. Baud rate is calculated as
+                    `baud_rate = system_clock_frequency / (16 * (divisor + 1))`. When the divisor is set
+                    to `0`, the transmitter and receiver logic are disabled.";
+        } DLM[7:0] = 0x0;
+    };
+
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    DLL    DLL    @0x0;
+    DLM    DLM    @0x4;
+
+};
+
+`endif

@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef I2C_WRAP_RDL
+`define I2C_WRAP_RDL
+
+`include "i2c.rdl"
+`include "i2c_ctrl.rdl"
+
+addrmap i2c_wrap #(
+    longint unsigned NUM_I2CS = 3
+) {
+    name = "I2C Wrapper Address Map";
+    desc = "Wrapper address map instantiating the per-controller I2C register blocks and shared control.";
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    i2c         i2c     [NUM_I2CS]        @0x0   += 0x200;
+    i2c_ctrl    i2c_ctrl_regs             @0xe00;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
+`endif
+};
+
+`endif

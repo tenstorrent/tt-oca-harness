@@ -1,0 +1,288 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-spi_controller]
+== SPI Host
+
+Serial peripheral interface for host mode, suitable for interfacing external serial NOR flash devices
+
+[cols="1,4,1,6", options="header"]
+|===
+| Address | Name | Access | Description
+| 0x0 | <<reg-{regmap-instance}-spi_controller-INTR_STATE,INTR_STATE>> | RW a| -
+| 0x4 | <<reg-{regmap-instance}-spi_controller-INTR_ENABLE,INTR_ENABLE>> | RW a| -
+| 0x8 | <<reg-{regmap-instance}-spi_controller-INTR_TEST,INTR_TEST>> | W a| -
+| 0xC | <<reg-{regmap-instance}-spi_controller-ALERT_TEST,ALERT_TEST>> | W a| -
+| 0x10 | <<reg-{regmap-instance}-spi_controller-CONTROL,CONTROL>> | RW a| -
+| 0x14 | <<reg-{regmap-instance}-spi_controller-STATUS,STATUS>> | R a| -
+| 0x18 | <<reg-{regmap-instance}-spi_controller-CONFIGOPTS,CONFIGOPTS>> | RW a| -
+| 0x1C | <<reg-{regmap-instance}-spi_controller-CSID,CSID>> | RW a| -
+| 0x20 | <<reg-{regmap-instance}-spi_controller-COMMAND,COMMAND>> | W a| -
+| 0x2C | <<reg-{regmap-instance}-spi_controller-ERROR_ENABLE,ERROR_ENABLE>> | RW a| -
+| 0x30 | <<reg-{regmap-instance}-spi_controller-ERROR_STATUS,ERROR_STATUS>> | RW a| -
+| 0x34 | <<reg-{regmap-instance}-spi_controller-EVENT_ENABLE,EVENT_ENABLE>> | RW a| -
+|===
+
+[#reg-{regmap-instance}-spi_controller-INTR_STATE]
+=== INTR_STATE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:2 | `Reserved` | - | - a| Reserved
+| 1 | `SPI_EVENT` | R | 0x0 a| Event-related interrupts, see !!EVENT_ENABLE register for more
+information.
+| 0 | `ERROR` | RW1C | 0x0 a| Error-related interrupts, see !!ERROR_ENABLE register for more
+information.
+|===
+
+[#reg-{regmap-instance}-spi_controller-INTR_ENABLE]
+=== INTR_ENABLE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:2 | `Reserved` | - | - a| Reserved
+| 1 | `SPI_EVENT` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.spi_event is set.
+| 0 | `ERROR` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.error is set.
+|===
+
+[#reg-{regmap-instance}-spi_controller-INTR_TEST]
+=== INTR_TEST
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:2 | `Reserved` | - | - a| Reserved
+| 1 | `SPI_EVENT` | W | 0x0 a| Write 1 to force !!INTR_STATE.spi_event to 1.
+| 0 | `ERROR` | W | 0x0 a| Write 1 to force !!INTR_STATE.error to 1.
+|===
+
+[#reg-{regmap-instance}-spi_controller-ALERT_TEST]
+=== ALERT_TEST
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `Reserved` | - | - a| Reserved
+| 0 | `FATAL_FAULT` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
+|===
+
+[#reg-{regmap-instance}-spi_controller-CONTROL]
+=== CONTROL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31 | `SPIEN` | RW | 0x0 a| Enables the SPI host.  On reset, this field is 0, meaning
+that no transactions can proceed.
+| 30 | `SW_RST` | RW | 0x0 a| Clears the internal state (not registers) to the reset state when set to 1,
+including the FIFOs, the CDC's, the core state machine and the shift register.
+In the current implementation, the CDC FIFOs are drained not reset.
+Therefore software must confirm that both FIFO's empty before releasing
+the IP from reset.
+| 29 | `OUTPUT_EN` | RW | 0x0 a| Enable the SPI host output buffers for the sck, csb, and sd lines.  This allows
+the SPI_HOST IP to connect to the same bus as other SPI controllers without
+interference.
+| 28:16 | `Reserved` | - | - a| Reserved
+| 15:8 | `TX_WATERMARK` | RW | 0x0 a| If !!EVENT_ENABLE.TXWM is set, the IP will send
+an interrupt when the depth of the TX FIFO drops below
+TX_WATERMARK words (32b each).
+| 7:0 | `RX_WATERMARK` | RW | 0x7F a| If !!EVENT_ENABLE.RXWM is set, the IP will send
+an interrupt when the depth of the RX FIFO reaches
+RX_WATERMARK words (32b each).
+|===
+
+[#reg-{regmap-instance}-spi_controller-STATUS]
+=== STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31 | `READY` | R | 0x0 a| When high, indicates the SPI host is ready to receive
+commands. Writing to COMMAND when READY is low is
+an error, and will trigger an interrupt.
+| 30 | `ACTIVE` | R | 0x0 a| When high, indicates the SPI host is processing a previously
+issued command.
+| 29 | `TXFULL` | R | 0x0 a| When high, indicates that the transmit data fifo is full.
+Any further writes to !!TXDATA will create an error interrupt.
+| 28 | `TXEMPTY` | R | 0x0 a| When high, indicates that the transmit data fifo is empty.
+| 27 | `TXSTALL` | R | 0x0 a| If high, signifies that an ongoing transaction has stalled
+due to lack of data in the TX FIFO
+| 26 | `TXWM` | R | 0x0 a| If high, the amount of data in the TX FIFO has fallen below the
+level of !!CONTROL.TX_WATERMARK words (32b each).
+| 25 | `RXFULL` | R | 0x0 a| When high, indicates that the receive fifo is full.  Any
+ongoing transactions will stall until firmware reads some
+data from !!RXDATA.
+| 24 | `RXEMPTY` | R | 0x0 a| When high, indicates that the receive fifo is empty.
+Any reads from RX FIFO will cause an error interrupt.
+| 23 | `RXSTALL` | R | 0x0 a| If high, signifies that an ongoing transaction has stalled
+due to lack of available space in the RX FIFO
+| 22 | `BYTEORDER` | R | 0x0 a| The value of the ByteOrder parameter, provided so that firmware
+can confirm proper IP configuration.
+| 21 | `Reserved` | - | - a| Reserved
+| 20 | `RXWM` | R | 0x0 a| If high, the number of 32-bits in the RX FIFO now exceeds the
+!!CONTROL.RX_WATERMARK entries (32b each).
+| 19:16 | `CMDQD` | R | 0x0 a| Command queue depth. Indicates how many unread 32-bit words are
+currently in the command segment queue.
+| 15:8 | `RXQD` | R | 0x0 a| Receive queue depth. Indicates how many unread 32-bit words are
+currently in the RX FIFO.  When active, this result may an
+underestimate due to synchronization delays.
+| 7:0 | `TXQD` | R | 0x0 a| Transmit queue depth.
+Indicates how many unsent 32-bit words are currently in the TX FIFO.
+When active, this result may be an overestimate due to synchronization delays.
+|===
+
+[#reg-{regmap-instance}-spi_controller-CONFIGOPTS]
+=== CONFIGOPTS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31 | `CPOL` | RW | 0x0 a| The polarity of the sck clock signal.  When CPOL is 0,
+sck is low when idle, and emits high pulses.   When CPOL
+is 1, sck is high when idle, and emits a series of low
+pulses.
+| 30 | `CPHA` | RW | 0x0 a| The phase of the sck clock signal relative to the data. When
+CPHA = 0, the data changes on the trailing edge of sck
+and is typically sampled on the leading edge.  Conversely
+if CPHA = 1 high, data lines change on the leading edge of
+sck and are typically sampled on the trailing edge.
+CPHA should be chosen to match the phase of the selected
+device.  The sampling behavior is modified by the
+!!CONFIGOPTS.FULLCYC bit.
+| 29 | `FULLCYC` | RW | 0x0 a| Full cycle.  Modifies the CPHA sampling behaviour to allow
+for longer device logic setup times.  Rather than sampling the SD
+bus a half cycle after shifting out data, the data is sampled
+a full cycle after shifting data out.  This means that if
+CPHA = 0, data is shifted out on the trailing edge, and
+sampled a full cycle later.  If CPHA = 1, data is shifted and
+sampled with the trailing edge, also separated by a
+full cycle.
+| 28 | `Reserved` | - | - a| Reserved
+| 27:24 | `CSNLEAD` | RW | 0x0 a| CS_N Leading Time.  Indicates the number of half sck cycles,
+CSNLEAD+1, to leave between the falling edge of cs_n and
+the first edge of sck.  Setting this register to zero
+corresponds to the minimum delay of one-half sck cycle
+| 23:20 | `CSNTRAIL` | RW | 0x0 a| CS_N Trailing Time.  Indicates the number of half sck cycles,
+CSNTRAIL+1, to leave between last edge of sck and the rising
+edge of cs_n. Setting this register to zero corresponds
+to the minimum delay of one-half sck cycle.
+| 19:16 | `CSNIDLE` | RW | 0x0 a| Minimum idle time between commands. Indicates the minimum
+number of sck half-cycles to hold cs_n high between commands.
+Setting this register to zero creates a minimally-wide CS_N-high
+pulse of one-half sck cycle.
+| 15:0 | `CLKDIV` | RW | 0x0 a| Core clock divider.  Slows down subsequent SPI transactions by a
+factor of (CLKDIV+1) relative to the core clock frequency.  The
+period of sck, T(sck) then becomes `2*(CLK_DIV+1)*T(core)`
+|===
+
+[#reg-{regmap-instance}-spi_controller-CSID]
+=== CSID
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `CSID` | RW | 0x0 a| Chip Select ID
+|===
+
+[#reg-{regmap-instance}-spi_controller-COMMAND]
+=== COMMAND
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:25 | `Reserved` | - | - a| Reserved
+| 24:5 | `LEN` | W | 0x0 a| Segment Length.
+
+For read or write segments, this field controls the
+number of 1-byte bursts to transmit and or receive in
+this command segment.  The number of cycles required
+to send or received a byte will depend on !!COMMAND.SPEED.
+For dummy segments, (!!COMMAND.DIRECTION == 0), this register
+controls the number of dummy cycles to issue.
+The number of bytes (or dummy cycles) in the segment will be
+equal to !!COMMAND.LEN + 1.
+| 4:3 | `DIRECTION` | W | 0x0 a| The direction for the following command: "0" = Dummy cycles
+(no TX/RX). "1" = Rx only, "2" = Tx only, "3" = Bidirectional
+Tx/Rx (Standard SPI mode only).
+| 2:1 | `SPEED` | W | 0x0 a| The speed for this command segment: "0" = Standard SPI. "1" = Dual SPI.
+"2"=Quad SPI,  "3": RESERVED.
+| 0 | `CSAAT` | W | 0x0 a| **C**hip **S**elect **A**ctive **A**fter **T**ransaction.
+If !!COMMAND.CSAAT = 0, the chip select line is raised immediately
+at the end of the command segment.
+If !!COMMAND.CSAAT = 1, the chip select line is left low at the
+end of the current transaction segment.
+This allows the creation of longer, more complete SPI transactions,
+consisting of several separate segments for issuing instructions,
+pausing for dummy cycles, and transmitting or receiving data from
+the device.
+|===
+
+[#reg-{regmap-instance}-spi_controller-ERROR_ENABLE]
+=== ERROR_ENABLE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:5 | `Reserved` | - | - a| Reserved
+| 4 | `CSIDINVAL` | RW | 0x1 a| Invalid CSID: If this bit is set, the block sends an error interrupt whenever
+a command is submitted, but CSID exceeds NumCS.
+| 3 | `CMDINVAL` | RW | 0x1 a| Invalid Command Errors: If this bit is set, the block sends an
+error interrupt whenever a command is sent with invalid values for
+!!COMMAND.SPEED or !!COMMAND.DIRECTION.
+| 2 | `UNDERFLOW` | RW | 0x1 a| Underflow Errors: If this bit is set, the block sends an
+error interrupt whenever there is a read from !!RXDATA
+but the RX FIFO is empty.
+| 1 | `OVERFLOW` | RW | 0x1 a| Overflow Errors: If this bit is set, the block sends an
+error interrupt whenever the TX FIFO overflows.
+| 0 | `CMDBUSY` | RW | 0x1 a| Command Error: If this bit is set, the block sends an error
+interrupt whenever a command is issued while busy (i.e. a 1 is
+when !!STATUS.READY is not asserted.)
+|===
+
+[#reg-{regmap-instance}-spi_controller-ERROR_STATUS]
+=== ERROR_STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:6 | `Reserved` | - | - a| Reserved
+| 5 | `ACCESSINVAL` | RW1C | 0x0 a| Indicates that TLUL attempted to write to TXDATA with no bytes enabled. Such
+'zero byte' writes are not supported.
+| 4 | `CSIDINVAL` | RW1C | 0x0 a| Indicates a command was attempted with an invalid value for !!CSID.
+| 3 | `CMDINVAL` | RW1C | 0x0 a| Indicates an invalid command segment, meaning either an invalid value of
+!!COMMAND.SPEED or a request for bidirectional data transfer at dual or quad
+speed
+| 2 | `UNDERFLOW` | RW1C | 0x0 a| Indicates that firmware has attempted to read from
+!!RXDATA when the RX FIFO is empty.
+| 1 | `OVERFLOW` | RW1C | 0x0 a| Indicates that firmware has overflowed the TX FIFO
+| 0 | `CMDBUSY` | RW1C | 0x0 a| Indicates a write to !!COMMAND when !!STATUS.READY = 0.
+|===
+
+[#reg-{regmap-instance}-spi_controller-EVENT_ENABLE]
+=== EVENT_ENABLE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:6 | `Reserved` | - | - a| Reserved
+| 5 | `IDLE` | RW | 0x0 a| Assert to send a spi_event interrupt whenever !!STATUS.ACTIVE
+goes low
+| 4 | `READY` | RW | 0x0 a| Assert to send a spi_event interrupt whenever !!STATUS.READY
+goes high
+| 3 | `TXWM` | RW | 0x0 a| Assert to send a spi_event interrupt whenever the number of 32-bit words in
+the TX FIFO is less than !!CONTROL.TX_WATERMARK.  To prevent the
+reassertion of this interrupt add more data to the TX FIFO, or
+reduce !!CONTROL.TX_WATERMARK.
+| 2 | `RXWM` | RW | 0x0 a| Assert to send a spi_event interrupt whenever the number of 32-bit words in
+the RX FIFO is greater than !!CONTROL.RX_WATERMARK. To prevent the
+reassertion of this interrupt, read more data from the RX FIFO, or
+increase !!CONTROL.RX_WATERMARK.
+| 1 | `TXEMPTY` | RW | 0x0 a| Assert to send a spi_event interrupt whenever !!STATUS.TXEMPTY
+goes high
+| 0 | `RXFULL` | RW | 0x0 a| Assert to send a spi_event interrupt whenever !!STATUS.RXFULL
+goes high
+|===

@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[smu-top-level-integration]]
+= SMU Top-Level Integration
+
+The System Management Unit (SMU) comprises three peer subsystems: the System
+Management Controller (SMC), the Debug & Test Ports (DTP), and the Security
+Processor (SEP). The subsections below describe each subsystem's interfaces
+independently, followed by the <<smu-composition,SMU Composition>> section that
+explains how they are wired together inside the SMU and how to select between the
+`smu.sv` logic-level core and the `smu_wrapper.sv` reference integration.
+
+ifdef::backend-html5[]
+* xref:smu-filelists.adoc[RTL Filelists]
+* xref:smu-address-map.adoc[Address Map Integration]
+* xref:smu-rom-fw.adoc[Immutable ROM FW Integration]
+* xref:smu-smc.adoc[System Management Controller (SMC) Integration]
+* xref:smu-dtp.adoc[Debug & Test Ports (DTP) Integration]
+* xref:smu-sep.adoc[Security Processor (SEP) Integration]
+* xref:smu-composition.adoc[SMU Composition and Internal Wiring]
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::smu-filelists.adoc[leveloffset=+1]
+include::smu-address-map.adoc[leveloffset=+1]
+include::smu-rom-fw.adoc[leveloffset=+1]
+include::smu-smc.adoc[leveloffset=+1]
+include::smu-dtp.adoc[leveloffset=+1]
+include::smu-sep.adoc[leveloffset=+1]
+include::smu-composition.adoc[leveloffset=+1]
+endif::backend-pdf[]

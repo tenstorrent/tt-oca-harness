@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef SEP_EXTERNAL_RDL_DEFINED
+`define SEP_EXTERNAL_RDL_DEFINED
+
+`include "efuse_shim_ctrl.rdl"
+
+addrmap sep_external {
+    name = "SEP External";
+    desc = "SEP external address map (eFuse SHIM control and execute-in-place window).";
+
+    // eFuse SHIM control. Sits at the base of the window because sep.sv's
+    // external demux carves this block off before the crossbar and routes it
+    // through the eFuse controller rather than out the external port.
+    efuse_shim_ctrl             efuse_shim_ctrl         @0x0;
+
+    // Execute-in-place window (256 MB: 0x1000_0000 - 0x2000_0000)
+    mem {
+        memwidth = 0x40;
+        mementries = 0x200_0000;
+    } external xip_region @0x1000_0000;
+};
+
+`endif

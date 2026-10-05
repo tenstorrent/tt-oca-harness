@@ -1,0 +1,325 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[avsbus-controller-interface]]
+== Interface
+
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="configuration-parameters"></span>
+<span id="avsbus-configuration-parameters-table"></span>
+<span id="port-list"></span>
+<span id="avsbus-register-interface-table"></span>
+<span id="avsbus-protocol-signals-table"></span>
+<span id="avsbus-clock-reset-and-dft-signals-table"></span>
+<span id="avsbus-interrupt-and-debug-signals-table"></span>
+++++
+endif::backend-html5[]
+
+The AVSBus Controller presents an AXI4-Lite register interface, a two-wire
+AVSBus protocol interface, and clock, reset, interrupt and DFT interfaces for
+system integration. The register file itself is APB4; the controller contains
+an `axi_lite_to_apb` bridge, so APB4 is not exposed at the module boundary.
+
+ifdef::backend-html5[]
+The parameters and ports of `avsbus_controller` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/avsbus_controller/avsbus_controller.adoc[avsbus_controller].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `avsbus_controller` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+=== AVSBus Frame Format
+
+Both subframes are 32 bits: 29 bits of payload followed by a 3-bit CRC. The
+master subframe carries a fixed `2'b01` preamble in its two most significant
+bits; the remaining fields occupy the same bit positions as the `AVS_CMD`
+register, so software writes a command in wire order.
+
+<<avsbus-master-subframe-table>> defines the fields transmitted in a master subframe.
+
+[[avsbus-master-subframe-table]]
+.AVSBus Master Subframe
+[width="100%",cols="25%,10%,10%,55%",options="header",]
+|=====================================================================================
+|Field Name |Bit Range |Width |Description
+
+|Preamble |[31:30] |2 |Fixed `2'b01`, inserted by hardware
+
+|Command Type |[29:28] |2 |`AVS_CMD.R_OR_W`: 0 = commit write, 1 = hold write,
+2 = reserved, 3 = read
+
+|Command Group |[27] |1 |`AVS_CMD.CMD_GRP`: 0 = standard, 1 =
+manufacturer-specific
+
+|Command Code |[26:23] |4 |`AVS_CMD.CMD_CODE`, see <<avsbus-controller-cmd-codes>>
+
+|Rail Select |[22:19] |4 |`AVS_CMD.RAIL_SEL`: rail index, 0xF = broadcast
+
+|Command Data |[18:3] |16 |`AVS_CMD.CMD_DATA`; 0xFFFF for read commands
+
+|CRC-3 |[2:0] |3 |Calculated by hardware over bits [31:3]
+|=====================================================================================
+
+<<avsbus-controller-cmd-codes>> lists the command-group-zero data types, resolutions,
+and access modes.
+
+[[avsbus-controller-cmd-codes]]
+.AVSBus Command Codes (Command Group 0)
+[width="100%",cols="10%,25%,15%,50%",options="header",]
+|=================================================================================
+|Code |Data Type |Resolution |Description
+|0x0 |Target Rail Voltage |1 mV |16-bit unsigned, read or write
+|0x1 |Vout Transition Rate |1 mV/us |MSByte rise rate, LSByte fall rate
+|0x2 |Rail Current |10 mA |16-bit unsigned, read only
+|0x3 |Temperature |0.1 degC |16-bit signed, read only
+|0x4 |Force Voltage Reset |N/A |Requires a command data field of 0x0000
+|0x5 |Power Mode |N/A |3 bits, LSB aligned: 0x0 maximum efficiency, 0x3
+maximum power, 0x4-0x7 manufacturer-specific
+|0xE |AVSBus Status |N/A |16 bits, encoded per the AVS specification
+|0xF |AVSBus Version |N/A |4 bits, LSB aligned, read only
+|=================================================================================
+
+With command group 1 the command code is manufacturer-specific and <<avsbus-slave-subframe-table>>
+above does not apply.
+
+[[avsbus-slave-subframe-table]]
+.AVSBus Slave Subframe
+[width="100%",cols="25%,10%,10%,55%",options="header",]
+|=====================================================================================
+|Field Name |Bit Range |Width |Description
+
+|Slave Acknowledgment |[31:30] |2 |0 = action performed, 1 = good CRC but
+resource unavailable, 2 = bad CRC received, 3 = good CRC but bad data, data
+type or selector. Codes 1 and 2 trigger a hardware retry
+
+|Frame Valid |[29] |1 |0 in a valid frame. A 1 means the target did not
+respond and raises `SLAVE_UNRESPONSIVE_INT`
+
+|Status Response |[28:24] |5 |Per the AVS specification: bit 4 VDone, bit 3
+StatusAlert, bit 2 AVS_Control, bits 1-0 manufacturer-specific
+
+|Response Data |[23:8] |16 |Read data; 0xFFFF when the master issued a write
+
+|Reserved |[7:3] |5 |Reserved
+
+|CRC-3 |[2:0] |3 |CRC received from the target, checked by hardware
+|=====================================================================================
+
+A received subframe reaches software by two paths. It is pushed into the
+readback FIFO and read out of `AVS_READBACK`, which pops the FIFO, or
+inspected without popping through `AVS_DEBUG_READBACK`. Independently of the
+FIFO, a subframe whose frame valid bit is 0 and whose CRC checks also latches
+into `AVS_LATEST_SLAVE_SUBFRAME` and `AVS_SLAVE_STATUS`, so the current target
+status is visible without waiting for the FIFO to drain.
+
+=== Clock Architecture
+
+The AVS clock is derived from one of two sources, optionally divided, and
+optionally gated while the bus is idle.
+
+`AVS_CFG_1.AVS_CLOCK_SELECT[1:0]` selects both the source and whether the
+divider is used: bit 1 picks the source (0 = `clk_reg_i`, 1 = `clk_ref_i`) and
+bit 0 picks the divider (0 = bypass, 1 = divided). The reset value is `2'b11`,
+so the controller comes up on a divided `clk_ref_i`.
+
+<<avsbus-clock-select-diagram>> shows the clock path. Each source passes a clock gate that
+`TURN_OFF_ALL_PREMUX_CLOCKS` closes, then the anti-glitch mux `u_refclk_apbclk_mux`
+selects one of them, choosing `clk_ref_i` while in reset. The test mux substitutes
+`clk_test_i` in test mode. Inside `u_clk_div`, the glitch-free post-divider mux selects
+either the undivided clock or the divider output. The result, `avs_clk`, clocks the AVS
+domain and reaches `avs_clock_o` through `u_avs_bus_clkgate`, which the protocol FSM closes
+while the bus is idle if `STOP_AVS_CLOCK_ON_IDLE` is set. Each mux passes its input 0 when
+its select is 0. <<avs-clock-select-table>> lists the four settings.
+
+[[avsbus-clock-select-diagram]]
+.AVSBus clock selection
+image::avsbus-clock-select.svg[alt="clk_reg_i and clk_ref_i through their clock gates into the anti-glitch source mux, the test mux for clk_test_i, the programmable divider with its bypass and post-divider mux, and the AVS clock gate driving avs_clock_o",width=100%,pdfwidth=100%]
+
+[[avs-clock-select-table]]
+.AVS_CLOCK_SELECT settings
+[width="100%",cols="20%,20%,20%,40%",options="header",]
+|=====================================================================================
+|AVS_CLOCK_SELECT |Source mux |Post-divider mux |AVS clock
+
+|2'b00 |0 |0, bypass |`clk_reg_i`
+
+|2'b01 |0 |1, divided |`clk_reg_i` divided by `CLK_DIVIDER_VALUE`
+
+|2'b10 |1 |0, bypass |`clk_ref_i`
+
+|2'b11 (reset) |1 |1, divided |`clk_ref_i` divided by `CLK_DIVIDER_VALUE`, by 4 until
+software writes a non-zero value
+|=====================================================================================
+
+<<avs-clock-configuration-fields-table>> defines the source-selection and divider
+configuration fields.
+
+[[avs-clock-configuration-fields-table]]
+.AVS Clock Configuration Fields
+[width="100%",cols="45%,15%,40%",options="header",]
+|=====================================================================================
+|Field |Reset |Description
+
+|AVS_CFG_1.AVS_CLOCK_SELECT[1:0] |0x3 |Clock source and divider bypass
+
+|AVS_CFG_1.CLK_DIVIDER_VALUE[23:16] |0x0 |Division ratio. A value below 2 is
+treated as 2. The reset value 0 is a sentinel that leaves the divider at its
+hardware default of 4
+
+|AVS_CFG_1.CLK_DIVIDER_DUTY_CYCLE_NUMERATOR[31:24] |0x0 |High-pulse fraction
+in 1/256 units, so 128 is 50%. A 50% duty cycle is only reachable with an even
+divider. The reset value 0 is a sentinel that leaves the numerator at its
+hardware default of 0x80
+
+|AVS_CFG_1.STOP_AVS_CLOCK_ON_IDLE[8] |0x0 |Gate the AVS clock while the bus is
+idle. The master issues a slave resync whenever the clock restarts
+
+|AVS_CFG_1.TURN_OFF_ALL_PREMUX_CLOCKS[10] |0x0 |Gate both clocks feeding the
+source mux
+|=====================================================================================
+
+Gate the clocks with `TURN_OFF_ALL_PREMUX_CLOCKS` before changing
+`AVS_CLOCK_SELECT`, `CLK_DIVIDER_VALUE` or
+`CLK_DIVIDER_DUTY_CYCLE_NUMERATOR`, then release the gate afterwards.
+
+While `test_en_i` is high the source and divider-bypass muxes ignore
+`AVS_CLOCK_SELECT`, and `clk_test_i` drives the AVS clock directly.
+
+=== Reset Architecture
+
+<<avsbus-reset-domains-table>> identifies the logic reset by each AVSBus reset input.
+
+[[avsbus-reset-domains-table]]
+.AVSBus Reset Domains
+[width="100%",cols="25%,75%",options="header",]
+|=====================================================================================
+|Reset |Scope
+
+|rst_clk_div_ni |The programmable clock divider
+
+|rst_reg_ni |The register file, the protocol FSM and the reset synchronizers
+for the register, pre-divider and AVS clock domains
+
+|rst_ref_ni |The `clk_ref_i` leg of the anti-glitch source mux
+|=====================================================================================
+
+`rst_clk_div_ni` must be deasserted before `rst_reg_ni`. The divider has to be
+producing a clock before the logic it feeds leaves reset, otherwise the AVS
+clock domain never starts.
+
+=== Interrupt Interface
+
+`interrupt_o` is a level output, asserted while any `AVS_INTERRUPT` bit is set
+and its corresponding `AVS_INTERRUPT_MASK` bit is clear.
+
+<<avsbus-interrupt-sources-table>> maps AVS_INTERRUPT bits to the events that set them.
+
+[[avsbus-interrupt-sources-table]]
+.AVSBus Interrupt Sources
+[width="100%",cols="10%,35%,55%",options="header",]
+|=====================================================================================
+|Bit |Field |Raised when
+
+|8 |READBACK_OVERFLOW_INT |A target response was dropped because the readback
+FIFO was full
+
+|7 |READBACK_UNDERFLOW_INT |`AVS_READBACK` was read while the readback FIFO
+was empty; the read returned 0 with an error response
+
+|6 |CMD_FIFO_OVERFLOW_INT |`AVS_CMD` was written while the command FIFO was
+full, so the command was dropped and the write completed with an error response
+
+|5 |MAX_RETRIES_ATTEMPTED_INT |A command still failed after
+`AVS_CFG_0.MAX_RETRIES` retries, `MAX_RETRIES` + 1 attempts in all. Never
+raised while `MAX_RETRIES` is 0
+
+|4 |SLAVE_UNRESPONSIVE_INT |The target did not drive a valid subframe
+
+|3 |READBACK_HAS_DATA_INT |The readback FIFO holds data for software
+
+|2 |READBACK_FIFO_FULL_INT |The readback FIFO is full; no further commands
+launch until it drains
+
+|1 |CMD_FIFO_FULL_INT |The command FIFO is full
+
+|0 |AVS_SLAVE_ISSUED_INTERRUPT |The target signalled an interrupt
+|=====================================================================================
+
+`AVS_INTERRUPT_MASK` is a *disable* mask and every bit resets to 1, so all
+sources are masked after reset and software must clear a bit to enable that
+source. Interrupt bits are cleared by writing 1 to the matching bit of
+`AVS_INTERRUPT_CLEAR`; those bits self-clear.
+
+[[avsbus-controller-gpio-enable]]
+=== Pad Enable Interface
+
+`AVS_CONFIG.AVS_GPIO_ENABLE` drives `avs_gpio_enable_o`, which enables the
+pads carrying the AVSBus signals: output enable for the `avs_clock` and
+`avs_mdata` pins and input enable for the `avs_sdata` pin. It resets to 1,
+because the protocol FSM begins running as soon as reset is deasserted.
+
+=== Timing
+
+<<avsbus-protocol-timing-table>> summarises the subframe and clock timing.
+
+[[avsbus-protocol-timing-table]]
+.AVSBus Protocol Timing
+[width="100%",cols="40%,60%",options="header",]
+|=====================================================================================
+|Parameter |Value
+
+|Subframe length |32 `avs_clock_o` cycles
+
+|Slave resync |35 `avs_clk` cycles in `AVS_SLAVE_RESYNC` with `avs_mdata_o`
+held high; the pin stays high for longer, through the cycles around that state
+
+|Minimum AVS clock division |2, when the divider is selected
+
+|Resync interval |`AVS_CFG_0.RESYNC_INTERVAL` `clk_reg_i` cycles, counted from
+when the register domain observes the end of the previous resync, plus one
+`clk_reg_i` cycle to register the request, three `avs_clk` cycles to
+synchronize it, and the time for any frame in flight to complete
+|=====================================================================================
+
+The resync counts are `avs_clk` cycles at the protocol FSM's state register.
+Pin-level setup, hold and propagation figures are a function of the
+implementation and are not specified by this IP.
+
+=== Integration Example
+
+The register port takes the AXI4-Lite structs from `avsbus_controller_pkg`.
+
+[source,sourceCode,verilog]
+----
+avsbus_controller #(
+    .COMMAND_FIFO_DEPTH  (8),
+    .READBACK_FIFO_DEPTH (8)
+) u_avs_ctrl (
+    // Clocks and resets
+    .clk_reg_i      (reg_clk),
+    .clk_ref_i      (ref_clk),
+    .rst_ref_ni     (ref_rst_n),
+    .rst_reg_ni     (reg_rst_n),
+    .rst_clk_div_ni (clk_div_rst_n),  // deassert before rst_reg_ni
+
+    // AVSBus interface
+    .avs_sdata_i       (avs_sdata),
+    .avs_mdata_o       (avs_mdata),
+    .avs_clock_o       (avs_clock),
+    .avs_gpio_enable_o (avs_pad_enable),
+
+    // AXI4-Lite register interface
+    .axil_req_i  (avs_axil_req),
+    .axil_resp_o (avs_axil_resp),
+
+    .interrupt_o (avs_irq),
+
+    // DFT
+    .scan_rst_ni (scan_rst_n),
+    .test_en_i   (test_en),
+    .clk_test_i  (test_clk),
+
+    .cur_state_debug_o (avs_fsm_state)
+);
+----

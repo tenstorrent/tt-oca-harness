@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="876" viewBox="0 0 1040 876" role="img" aria-labelledby="title desc">
+<title id="title">SMC traffic filter mechanism</title>
+<desc id="desc">Decode of axi_filter_wrap, the block behind the SMC inbound filter u_smc_sys_inbound_filter and outbound filter u_smc_sys_outbound_filter, drawn with gate symbols. The upper part is one traffic_filter, instantiated once per entry and channel. A five-input AND gate gives the hit bit when all five conditions hold: the address lies between START_ADDR and END_ADDR compared on bits 55 to 12 when allow_burst is set and on bits 55 to 3 otherwise; AxPROT[1] equals allow_ns; src_id is 0 or equals the source ID in AxUSER[3:0], an OR of two comparisons; allow_burst is set or AxLEN is 0, another OR; and entry_enabled is set. Group ID matching is not built into the SMC instances. Separately, the entry's permission bit, write_allowed for AW or read_allowed for AR, ANDed with AxVALID, gives its pass bit. The lower part is one channel of axi_filter_wrap; AW and AR each have their own copy. The 16 hit bits drive a priority encoder that returns the lowest-numbered hitting entry and whether no entry hit. A 16-to-1 mux selects that entry's pass bit and an inverter turns it into a block request. A 2-to-1 mux selected by no hit chooses between that request and BlockByDefault, which is 1 for the inbound and 0 for the outbound instance. A second 2-to-1 mux, selected by filter_skip_i, forces 0 instead; filter_skip_i is tied to 0 in the SMC. The resulting block bit selects the port of the demux u_axi_demux: allowed transactions continue to the filtered output and blocked ones go to u_axi_err_slv, which answers with DECERR.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.axil { fill: none; stroke: #103525; stroke-width: 1.5; marker-start: url(#as); marker-end: url(#ae); }
+.sigd { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 5 4; marker-end: url(#ge); }
+.axin { fill: none; stroke: #103525; stroke-width: 2.5; }
+.axis { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); }
+.axie { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#ae); }
+.axiln { fill: none; stroke: #103525; stroke-width: 1.5; }
+.gl { fill: none; stroke: #937027; stroke-width: 2; }
+</style>
+</defs>
+<rect width="1040" height="876" fill="#ffffff"/>
+<rect class="smu" x="16" y="16" width="1008" height="356" rx="6"/>
+<text class="bs" x="28" y="360" text-anchor="start">traffic_filter, one per entry and channel</text>
+<text class="s" x="236" y="60" text-anchor="end">START_ADDR, END_ADDR</text>
+<text class="s" x="236" y="77" text-anchor="end">AxADDR</text>
+<path class="sigo" d="M242,64 L267,64"/>
+<rect class="core" x="270" y="40" width="340" height="48" rx="6"/>
+<text class="bs" x="440" y="60.5" text-anchor="middle">Address in range</text>
+<text class="s" x="440" y="77.5" text-anchor="middle">bits [55:12] if allow_burst, else [55:3]</text>
+<path class="sigo" d="M610,64 L677,64"/>
+<text class="s" x="236" y="124" text-anchor="end">allow_ns</text>
+<text class="s" x="236" y="141" text-anchor="end">AxPROT[1]</text>
+<path class="sigo" d="M242,128 L267,128"/>
+<rect class="core" x="270" y="104" width="340" height="48" rx="6"/>
+<text class="bs" x="440" y="124.5" text-anchor="middle">Security state</text>
+<text class="s" x="440" y="141.5" text-anchor="middle">AxPROT[1] = allow_ns</text>
+<path class="sigo" d="M610,128 L677,128"/>
+<text class="s" x="236" y="180.5" text-anchor="end">src_id</text>
+<path class="sigo" d="M242,176 L267,176"/>
+<rect class="core" x="270" y="164" width="230" height="24" rx="4"/>
+<text class="s" x="385" y="181" text-anchor="middle">src_id = 0</text>
+<path class="sigo" d="M500,176 L542.1333333333333,176"/>
+<text class="s" x="236" y="210.5" text-anchor="end">AxUSER[3:0]</text>
+<path class="sigo" d="M242,206 L267,206"/>
+<rect class="core" x="270" y="194" width="230" height="24" rx="4"/>
+<text class="s" x="385" y="211" text-anchor="middle">AxUSER[3:0] = src_id</text>
+<path class="sigo" d="M500,206 L542.1333333333333,206"/>
+<path class="fabric" d="M540,164 Q554.85,191.0 540,218 Q576.828,218 599.4,191.0 Q576.828,164 540,164 Z"/>
+<path class="sigo" d="M599.4,191.0 L677,191.0"/>
+<text class="s" x="236" y="252.5" text-anchor="end">allow_burst</text>
+<path class="sigo" d="M242,248 L541.4,248"/>
+<text class="s" x="236" y="282.5" text-anchor="end">AxLEN</text>
+<path class="sigo" d="M242,278 L267,278"/>
+<rect class="core" x="270" y="266" width="230" height="24" rx="4"/>
+<text class="s" x="385" y="283" text-anchor="middle">AxLEN = 0</text>
+<path class="sigo" d="M500,278 L541.4,278"/>
+<path class="fabric" d="M540,238 Q553.75,263.0 540,288 Q574.1,288 595.0,263.0 Q574.1,238 540,238 Z"/>
+<path class="sigo" d="M595.0,263.0 L677,263.0"/>
+<text class="s" x="236" y="326.5" text-anchor="end">entry_enabled</text>
+<path class="sigo" d="M242,322 L677,322"/>
+<path class="fabric" d="M680,136 L715.0,136 A50.0,50.0 0 0 1 715.0,236 L680,236 Z"/>
+<path class="gl" d="M680,40 L680,136 M680,236 L680,346"/>
+<path class="sigo" d="M765.0,186.0 L1024,186.0"/>
+<text class="t" x="781" y="177" text-anchor="start">hit[n]</text>
+<text class="s" x="781" y="207" text-anchor="start">entry matches</text>
+<path class="fabric" d="M900,70 L917.5,70 A25.0,25.0 0 0 1 917.5,120 L900,120 Z"/>
+<path class="sigo" d="M700,82 L897,82"/>
+<text class="s" x="704" y="76" text-anchor="start">write_allowed or read_allowed</text>
+<path class="sigo" d="M700,108 L897,108"/>
+<text class="s" x="704" y="102" text-anchor="start">AxVALID</text>
+<path class="sigo" d="M942.5,95.0 L1024,95.0"/>
+<text class="t" x="954.5" y="86" text-anchor="start">pass[n]</text>
+<rect class="smu" x="16" y="400" width="1008" height="400" rx="6"/>
+<text class="bs" x="28" y="788" text-anchor="start">axi_filter_wrap, one channel (AW and AR each have a copy)</text>
+<rect class="core" x="76" y="424" width="190" height="90" rx="6"/>
+<rect class="core" x="68" y="432" width="190" height="90" rx="6"/>
+<rect class="core" x="60" y="440" width="190" height="90" rx="6"/>
+<text class="bs" x="155" y="472" text-anchor="middle">traffic_filter</text>
+<text class="s" x="155" y="490" text-anchor="middle">entries 0 to 15</text>
+<text class="s" x="155" y="508" text-anchor="middle">u_write_traffic_filter</text>
+<path class="sigo" d="M250,454 L337,454"/>
+<text class="s" x="272" y="446" text-anchor="start">hit[15:0]</text>
+<rect class="core" x="340" y="424" width="170" height="80" rx="6"/>
+<text class="bs" x="425" y="452" text-anchor="middle">Lowest hit</text>
+<text class="s" x="425" y="469" text-anchor="middle">u_write_filter_hit_lzc</text>
+<text class="s" x="425" y="486" text-anchor="middle">priority encoder</text>
+<path class="fabric" d="M560,494 L590,502 L590,546 L560,554 Z"/>
+<text class="s" x="575" y="528" text-anchor="middle">16:1</text>
+<path class="sigo" d="M250,524.0 L557,524.0"/>
+<text class="s" x="272" y="516" text-anchor="start">pass[15:0]</text>
+<path class="sigplain" d="M510,474 L575.0,474"/>
+<path class="sigo" d="M575.0,474 L575.0,496"/>
+<text class="s" x="518" y="468" text-anchor="start">index</text>
+<path class="fabric" d="M600,515.0 L616.2,524.0 L600,533.0 Z"/>
+<circle class="fabric" cx="620.2" cy="524.0" r="4"/>
+<path class="sigplain" d="M590,524.0 L600,524.0"/>
+<path class="fabric" d="M660,514.0 L690,522.0 L690,566.0 L660,574.0 Z"/>
+<text class="s" x="668" y="529" text-anchor="middle">0</text>
+<text class="s" x="668" y="569" text-anchor="middle">1</text>
+<path class="sigo" d="M624.2,524.0 L657,524.0"/>
+<path class="sigplain" d="M510,440 L675.0,440"/>
+<path class="sigo" d="M675.0,440 L675.0,516.0"/>
+<text class="s" x="518" y="434" text-anchor="start">no hit</text>
+<path class="sigplain" d="M640,586.0 L640,554.0"/>
+<path class="sigo" d="M640,554.0 L657,554.0"/>
+<text class="s" x="640" y="602" text-anchor="middle">BlockByDefault</text>
+<text class="s" x="640" y="619" text-anchor="middle">inbound 1, outbound 0</text>
+<path class="fabric" d="M760,534.0 L790,542.0 L790,586.0 L760,594.0 Z"/>
+<text class="s" x="768" y="549" text-anchor="middle">0</text>
+<text class="s" x="768" y="589" text-anchor="middle">1</text>
+<path class="sigo" d="M690,544.0 L757,544.0"/>
+<path class="sigo" d="M736,584.0 L757,584.0"/>
+<text class="s" x="732" y="588.5" text-anchor="end">0</text>
+<path class="sigo" d="M775.0,440 L775.0,536.0"/>
+<text class="s" x="775" y="432" text-anchor="middle">filter_skip_i (tied 0)</text>
+<text class="t" x="32" y="678" text-anchor="start">axi_in_req_i</text>
+<path class="axi" d="M4,690 L790,690"/>
+<circle cx="140" cy="690" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M140,690 L140,533"/>
+<text class="s" x="150" y="652" text-anchor="start">address, AxUSER, AxPROT,</text>
+<text class="s" x="150" y="669" text-anchor="start">AxLEN, AxVALID</text>
+<path class="fabric" d="M790,673.5 L834,646 L834,756 L790,728.5 Z"/>
+<text class="s" x="780" y="744" text-anchor="end">u_axi_demux</text>
+<path class="sigplain" d="M790,564.0 L812,564.0"/>
+<path class="sigo" d="M812,564.0 L812,656.75"/>
+<text class="s" x="798" y="556" text-anchor="start">block</text>
+<path class="axi" d="M834,668 L1036,668"/>
+<text class="s" x="842" y="658" text-anchor="start">0: axi_filtered_out_req_o</text>
+<path class="axi" d="M834,728 L904,728"/>
+<text class="s" x="842" y="752" text-anchor="start">1</text>
+<rect class="external" x="904" y="706" width="106" height="44" rx="4"/>
+<text class="s" x="957" y="725" text-anchor="middle">u_axi_err_slv</text>
+<text class="s" x="957" y="741" text-anchor="middle">DECERR</text>
+<rect class="core" x="14" y="821" width="36" height="18" rx="4"/>
+<text class="s" x="58" y="834.5" text-anchor="start">Logic block</text>
+<path class="fabric" d="M159.9,825 L181.9,820 L181.9,840 L159.9,835 Z"/>
+<text class="s" x="189.9" y="834.5" text-anchor="start">Demux</text>
+<rect class="external" x="250.4" y="821" width="36" height="18" rx="4"/>
+<text class="s" x="294.4" y="834.5" text-anchor="start">Error responder</text>
+<rect class="smu" x="423.9" y="821" width="36" height="18" rx="4"/>
+<text class="s" x="467.9" y="834.5" text-anchor="start">Module</text>
+<path class="fabric" d="M535.3,820 L542.3,820 A10.0,10.0 0 0 1 542.3,840 L535.3,840 Z"/>
+<text class="s" x="560.3" y="834.5" text-anchor="start">AND</text>
+<path class="fabric" d="M603.3,820 Q608.8,830.0 603.3,840 Q616.9399999999999,840 625.3,830.0 Q616.9399999999999,820 603.3,820 Z"/>
+<text class="s" x="633.3" y="834.5" text-anchor="start">OR</text>
+<path class="fabric" d="M669.3,822.0 L683.6999999999999,830 L669.3,838.0 Z"/>
+<circle class="fabric" cx="687.6999999999999" cy="830" r="4"/>
+<text class="s" x="699.3" y="834.5" text-anchor="start">NOT</text>
+<path class="fabric" d="M742.3,817 L758.3,825 L758.3,835 L742.3,843 Z"/>
+<text class="s" x="766.3" y="834.5" text-anchor="start">Mux</text>
+<text class="s" x="44" y="862.5" text-anchor="start">Subordinate port</text>
+<text class="s" x="210.4" y="862.5" text-anchor="start">Manager port</text>
+<path class="axi" d="M322.20000000000005,858 L364.20000000000005,858"/>
+<text class="s" x="375.2" y="862.5" text-anchor="start">AXI4</text>
+<path class="sigo" d="M431.80000000000007,858 L473.80000000000007,858"/>
+<text class="s" x="484.8" y="862.5" text-anchor="start">Control</text>
+<rect class="ps" x="5.0" y="681.0" width="22" height="18" rx="4"/>
+<text class="pst" x="16" y="694.5" text-anchor="middle">S</text>
+<rect class="pm" x="1013.0" y="659.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="1024" y="672.5" text-anchor="middle">M</text>
+<rect class="ps" x="14.0" y="849.0" width="22" height="18" rx="4"/>
+<text class="pst" x="25" y="862.5" text-anchor="middle">S</text>
+<rect class="pm" x="180.4" y="849.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="191.4" y="862.5" text-anchor="middle">M</text>
+</svg>

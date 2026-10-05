@@ -1,0 +1,162 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef LOG_ENGINE_RDL
+`define LOG_ENGINE_RDL
+
+addrmap log_engine #(
+    longint unsigned NUM_LOG_ENTRIES = 16
+) {
+    name = "Log Engine Address Map";
+    desc = "Configuration and status registers for the UART log engine, including the log region and write pointers.";
+
+    
+    //////////////////////////
+    // Register Definitions //
+    //////////////////////////
+
+    reg CTRL {
+        desc = "Control Register";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Log Engine Enable. When set, enables the Log Engine. When cleared, the engine
+                    stops fetching and writing, discards buffered log data and resets transfer
+                    progress. Configuration and pending LOG_LEN values are retained, so a pending
+                    entry restarts from the start of its slot when the engine is enabled again.
+                    Clearing does not wait for outstanding bus responses.";
+        } EN[0:0] = 0x0;
+    };
+
+    reg LOG_REGION_SIZE {
+        desc = "Log Region Size Register";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Log region size in bytes. Supported values are at most 512 KiB and aligned
+                    to 128 bytes (16 slots times the 8-byte fetch beat). If software programs a
+                    larger value, RTL clamps the effective region to 512 KiB. For a value that is
+                    not 128-byte aligned, RTL divides the effective region among the 16 slots and
+                    rounds each slot's transferable capacity down to complete 8-byte fetch beats.
+                    A requested LOG_LEN above that capacity is clamped to the capacity.";
+        } LOG_REGION_SIZE[19:0] = 0x0;
+    };
+
+    reg LOG_REGION_ADDR {
+        desc = "Log Region Address Register";
+        regwidth    = 64;
+        accesswidth = 32;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Log Region Start Address Low.";
+        } LOG_REGION_ADDR_LO[31:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Log Region Start Address High. Contains fabric address bits [55:32].";
+        } LOG_REGION_ADDR_HI[55:32] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Reserved. Reads as zero; writes are ignored.";
+        } RESERVED[63:56] = 0x0;
+    };
+
+    reg LOG_WRITE_ADDR {
+        desc = "Log Write Address Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Log Write Address. This is the address where the log data is written to.";
+        } LOG_WRITE_ADDR[31:0] = 0x0;
+    };
+
+    reg INTR_STATUS {
+        desc = "Interrupt Status Register";
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Log Fetch Error Interrupt. Asserted when the bus for fetching log data returns
+                    an error.";
+        } LOG_FETCH_ERR[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Log Write Error Interrupt. Asserted when the bus for writing log data returns
+                    an error.";
+        } LOG_WRITE_ERR[4:4] = 0x0;
+    };
+
+    reg INTR_ENABLE {
+        desc = "Interrupt Enable Register";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Log Fetch Error Interrupt Enable.";
+        } LOG_FETCH_ERR[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Log Write Error Interrupt Enable.";
+        } LOG_WRITE_ERR[4:4] = 0x0;
+    };
+
+    reg INTR_TEST {
+        desc = "Interrupt Test Register";
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Log Fetch Error Interrupt Test. Writing `1` forces the interrupt.";
+        } LOG_FETCH_ERR[0:0] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Log Write Error Interrupt Test. Writing `1` forces the interrupt.";
+        } LOG_WRITE_ERR[4:4] = 0x0;
+    };
+
+    reg LOG_CTRL {
+        desc = "Log Control Register";
+        field {
+            sw = rw;
+            hw = r;
+            hwclr;
+            desc = "Log Length. Writing a nonzero value representing the log length in bytes to this field
+            starts the log transfer process. The field holds the requested length until the
+            transfer completes, when hardware clears it to zero; it is not a remaining-byte
+            counter. There are 16 copies of this register, each representing
+            a log entry. The log entries go through round robin arbitration.";
+        } LOG_LEN[15:0] = 0x0;
+    };
+
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    CTRL               CTRL                                @0x0;
+    LOG_REGION_SIZE    LOG_REGION_SIZE                     @0x4;
+    LOG_REGION_ADDR    LOG_REGION_ADDR                     @0x8;
+    LOG_WRITE_ADDR     LOG_WRITE_ADDR                      @0x10;
+    INTR_STATUS        INTR_STATUS                         @0x14;
+    INTR_ENABLE        INTR_ENABLE                         @0x18;
+    INTR_TEST          INTR_TEST                           @0x1C;
+    LOG_CTRL           LOG_CTRL       [NUM_LOG_ENTRIES]    @0x40;
+
+};
+
+`endif

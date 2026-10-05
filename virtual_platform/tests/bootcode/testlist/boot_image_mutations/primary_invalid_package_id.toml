@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Selects primary package_id bytes 2 and 4 with values unlike the erased SEP_SIP_ID fuse.
+base = "signed"
+ops = [
+  { op = "set_identity", slot = "primary", args = { kind = "package", value = "0000ff00ff000000000000000000000000000000000000000000000000000000", mask = 0x1400000000 } },
+]

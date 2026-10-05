@@ -1,0 +1,871 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[ptap-architecture]]
+
+The PTAP is fully compliant with the IEEE JTAG specifications. It implements a
+modular design with a core TAP controller, dedicated register modules for each
+instruction type, and optional AXI bridge modules for debug access. The
+architecture supports Test Mode Persistence (TMP), boundary scan with dedicated
+scan ports and control signals, BIST functionality, and 3DIC support with STAP
+scan ports and control signals derived from internal TDRs.
+
+<<ptap-module-architecture-figure>> shows the control, decode, and scan-data paths
+through the PTAP.
+
+[[ptap-module-architecture-figure]]
+.PTAP module architecture
+image::ptap-architecture.svg[alt="PTAP module diagram showing the TRST and power-on reset AND gate, the TAP controller, TMP controller, the instruction register and test data registers with the IR opcodes that select each one, the JTAG2AXI bridges, the TDR multiplexer that takes every register output, and the zero-length-bypass, STAP and retimer-bypass multiplexers on the TDO path with their selects",width=100%,pdfwidth=100%]
+
+Blue lines carry scan data and grey lines carry control. `client_tdi_i` feeds the
+instruction register and every register in the scan-register group, whose last
+column gives the IR opcodes, in hex, that select each register for a DR scan. The
+6-bit instruction register captures `6'b000001`, resets to IDCODE and decodes its
+opcode one-hot onto `inst_decoded_o[63:0]`. An opcode with no register of its own,
+or one whose enable parameter is 0, selects BYPASS. Dashed registers and bridges
+are present only when their parameter enables them
+(<<ptap-module-hierarchy-table>>). The boundary-scan chain and the iJTAG network
+lie outside the PTAP: `client_tdi_i` is forwarded to them, and their returns enter
+the TDR multiplexer.
+
+`tdr_mux` takes the output of every register in the group and the boundary-scan
+and iJTAG returns. It selects the instruction register while `ir_scan_ctrl.select`
+is set, and otherwise the register that `inst_decoded_o` selects. The numbers on
+the inputs of each 2:1 multiplexer are the select values that pass them.
+`u_zlb_tdr_mux` passes `client_tdi_i` instead of `tdr_mux` during a
+ZERO_LENGTH_BYPASS DR scan, and its output also leaves on `stap_host_scan_out_o`
+toward the STAP chain. `u_tdo_mux` passes the chain return `stap_host_scan_in_i`
+while `stap_select`, the TAP_3DCR select bit, is set. The retimer registers the
+result on the falling TCK edge, and `u_tdo_bypass_mux` bypasses the retimer during
+a ZERO_LENGTH_BYPASS DR scan. Both ZERO_LENGTH_BYPASS multiplexers take their
+select from `inst_decoded_o[3D]` ANDed with `dr_scan_select_reg`, the DR scan
+select registered on the falling TCK edge, and with the inverse of `stap_select`.
+While `stap_select` is set, ZERO_LENGTH_BYPASS therefore behaves exactly as
+BYPASS (<<ptap-zero-length-bypass>>).
+
+`pwr_on_rst_ni` is ANDed with the client TRST in `u_trst_n_and`. The result,
+`jtag_trst_n`, resets the TAP controller and the retimer, and the controller
+forwards it with TCK and TMS on `host_tap_ctrl_o`. The controller also drives the
+IR and DR scan controls, ORed together and gated by `stap_select`, on
+`stap_host_scan_ctrl_o`, so the STAP chain holds its state while the bit is clear.
+The TMP controller takes the decoded CLAMP_HOLD, CLAMP_RELEASE and BYPASS
+instructions and the TMP_STATUS `bypass_escape_bit`, and returns `persistence_mode`
+to the TAP controller. The AXI side of each JTAG2AXI bridge runs on `clk_i` and
+`rst_n_i` and takes the DFT test-mode enable `test_en_i`; the figure omits all
+three. Each bridge has its own `*_security_disable_i` input
+(<<ptap-debug-disable-inputs-table>>).
+
+=== Module Hierarchy
+
+<<ptap-module-hierarchy-table>> identifies the PTAP submodules and the conditions under
+which they are instantiated.
+
+ifdef::backend-html5[]
+++++
+<div class="ptap-module-hierarchy-scroll" tabindex="0" aria-label="Module Hierarchy table, scrollable">
+++++
+endif::backend-html5[]
+
+[[ptap-module-hierarchy-table]]
+[.ptap-module-hierarchy,width="100%",cols="<30%,<45%,<25%",options="header"]
+.PTAP module hierarchy
+|===
+|Module |Purpose |Conditional
+
+|`jtag_tap_ctrlr`
+|IEEE 1149.1 TAP controller FSM (16 states, one-hot encoded)
+|Always instantiated
+
+|`jtag_inst_reg`
+|6-bit instruction register with 64-wide one-hot decoded output
+|Always instantiated
+
+|`jtag_byp_reg`
+|1-bit bypass register (BYPASS instruction)
+|Always instantiated
+
+|`jtag_inv_byp_reg`
+|1-bit inverted bypass register (INV_BYPASS instruction)
+|Always instantiated
+
+|`jtag_idcode_reg`
+|32-bit IDCODE register
+|Always instantiated
+
+|`jtag_3dcr_reg`
+|2-bit 3D Control Register for STAP control
+|When `STAP_IO_ENABLE \|\| SEP_DBG_ENABLE \|\| SMC_DBG_ENABLE \|\| NUM_EXTRA_STAPS != 0`
+
+|`jtag_tmp`
+|Test Mode Persistence controller
+|When `TMP_ENABLE=1`
+
+|`jtag_tmp_status_reg`
+|2-bit TMP status register
+|When `TMP_ENABLE=1`
+
+|`jtag_ic_reset_reg`
+|IC_RESET control register (2*(NumSmcIcReset+NumSepIcReset+NumExtIcReset)+1 bits)
+|When any of `IC_RESET_SMC_ENABLE`, `IC_RESET_SEP_ENABLE`, `IC_RESET_EXT_ENABLE` is 1
+
+|`jtag_debug_ctrl_reg`
+|5-bit debug control register
+|Always instantiated
+
+|`jtag_caps_reg`
+|60-bit capabilities readback register
+|Always instantiated
+
+|`jtag2axi` (SMC OTP)
+|JTAG-to-AXI-Lite bridge for SMC OTP controller
+|When `SMC_DBG_ENABLE=1`
+
+|`jtag2axi` (SEP OTP)
+|JTAG-to-AXI-Lite bridge for SEP OTP controller
+|When `SEP_DBG_ENABLE=1`
+
+|`jtag2axi` (SMC fabric)
+|JTAG-to-AXI bridge for SMC system fabric
+|When `SMC_DBG_ENABLE=1`
+|===
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
+=== TAP Controller State Machine
+
+The TAP controller implements the IEEE 1149.1 16-state finite state machine
+using one-hot encoding. Each state is assigned a unique bit position within a
+16-bit vector, enabling direct state detection via single-bit comparisons.
+
+<<ptap-state-encodings-table>> lists the one-hot encodings and functions of the sixteen
+TAP-controller states.
+
+[[ptap-state-encodings-table]]
+[width="100%",cols="<20%,<20%,<60%",options="header"]
+.PTAP state encodings
+|===
+|State |Encoding |Description
+
+|TEST_LOGIC_RESET |16'h0001 |State 0: Reset state, instruction register loads IDCODE
+|RUN_TEST_IDLE |16'h0002 |State 1: Idle state between operations
+|SELECT_DR_SCAN |16'h0004 |State 2: Select data register scan path
+|CAPTURE_DR |16'h0008 |State 3: Capture data into selected DR
+|SHIFT_DR |16'h0010 |State 4: Shift data through selected DR
+|EXIT1_DR |16'h0020 |State 5: Exit from shift to either pause or update
+|PAUSE_DR |16'h0040 |State 6: Pause DR shift operation
+|EXIT2_DR |16'h0080 |State 7: Exit from pause back to shift or update
+|UPDATE_DR |16'h0100 |State 8: Update DR from shift register
+|SELECT_IR_SCAN |16'h0200 |State 9: Select instruction register scan path
+|CAPTURE_IR |16'h0400 |State 10: Capture data into IR (fixed pattern 6'b000001)
+|SHIFT_IR |16'h0800 |State 11: Shift data through IR
+|EXIT1_IR |16'h1000 |State 12: Exit from shift to either pause or update
+|PAUSE_IR |16'h2000 |State 13: Pause IR shift operation
+|EXIT2_IR |16'h4000 |State 14: Exit from pause back to shift or update
+|UPDATE_IR |16'h8000 |State 15: Update IR, decode new instruction
+|===
+
+Five consecutive TCK cycles with TMS high bring the state machine to
+TEST_LOGIC_RESET from any state, as the IEEE 1149.1 state graph defines. A state
+register value that is not one of the sixteen one-hot encodings also moves to
+TEST_LOGIC_RESET on the next rising edge of TCK.
+
+Control signals are generated using a split approach. The update and
+run-test-idle signals are decoded combinationally from the current state as
+Moore machine outputs. The capture, shift, test-logic-reset and TDO output
+enable signals are decoded from the current state and registered on the falling
+edge of TCK, so they are stable before the next rising edge samples data.
+
+=== Reset Hierarchy
+
+The PTAP employs a three-level reset hierarchy to support power-on
+initialization, JTAG reset, and conditional register preservation.
+
+<<ptap-reset-hierarchy-table>> identifies the source and scope of each PTAP reset.
+
+[[ptap-reset-hierarchy-table]]
+[width="100%",cols="<25%,<35%,<40%",options="header"]
+.PTAP reset hierarchy
+|===
+|Reset Signal |Source |Scope
+
+|`jtag_trst_n`
+|`pwr_on_rst_ni && client_tap_ctrl_i.trst_n`
+|Primary reset for all JTAG logic, combines power-on and external TRST
+
+|`test_logic_reset`
+|Derived from TAP FSM state (asserted when state == TEST_LOGIC_RESET)
+|Resets instruction and data registers
+
+|`chrst_n`
+|`TMP_ENABLE ? (!test_logic_reset \|\| persistence_mode_i) : !test_logic_reset`
+|Channel reset for TMP-aware registers, preserves state when in persistence mode
+|===
+
+The primary reset `jtag_trst_n` is formed by AND-gating the power-on reset input
+with the external TRST signal. This combined reset feeds all JTAG clock domain
+logic. The TAP controller derives `test_logic_reset` from the FSM state, which
+normally resets all registers. When Test Mode Persistence is enabled, the
+conditional reset `chrst_n` allows boundary scan and configuration registers to
+survive TEST_LOGIC_RESET state transitions while in persistence mode.
+
+=== TDR Multiplexer
+
+The PTAP implements an instruction-dependent data register multiplexer.
+During IR scan operations, the instruction register connects to the scan path.
+During DR scan operations, the appropriate data register is selected based on
+the currently decoded instruction. Each test data register has dedicated scan
+control logic that enables selection only when the corresponding instruction is
+active and the required feature is enabled.
+
+The scan path supports zero-length bypass through explicit `prim_stdmux2`
+multiplexer cells rather than behavioral multiplexing. This implementation
+prevents glitches on scan path selectors during instruction transitions.
+
+STAP selection is implemented as a second-level multiplexer. When the 3DCR
+register's select bit is asserted, the STAP chain input replaces the TDR
+multiplexer output. The STAP scan control signals are generated by OR-combining
+the instruction register and data register scan controls, enabling STAP
+operation during both IR and DR scan sequences as required by IEEE 1838. The
+select bit also gates the select, capture, shift and update strobes of the STAP
+scan interface, so they stay low while the bit is clear.
+
+[[ptap-zero-length-bypass]]
+==== Zero-Length Bypass
+
+While the TAP_3DCR STAP-select bit is clear, the ZERO_LENGTH_BYPASS instruction
+connects TDI directly to TDO without intermediate register stages, providing
+minimum scan latency for hierarchical JTAG chains. The DR scan adds no bit, and
+TDO follows TDI combinationally rather than through the retimer.
+
+While the STAP-select bit is set, ZERO_LENGTH_BYPASS behaves exactly as BYPASS.
+The last stage of the STAP chain shifts on the rising TCK edge, so its return
+must reach TDO through the falling-edge retimer, and a path that skips the
+retimer cannot carry it. The bypass register is selected, captures 0 and leads
+the STAP chain, and TDO is retimed. A DR scan under ZERO_LENGTH_BYPASS is then
+one bit longer than the STAP chain and matches a DR scan under BYPASS bit for
+bit.
+
+=== TDO Retiming
+
+The TDO output is retimed on the falling edge of TCK as required by IEEE 1149.1
+Section 4.5.2. The retiming register ensures that TDO transitions occur at the
+same clock edge that samples TDI at the receiving device, maintaining timing
+margins across board-level JTAG chains. For zero-length bypass operation with
+the TAP_3DCR STAP-select bit clear, the retimer is bypassed using an explicit
+`prim_stdmux2` cell to minimize scan latency. While the bit is set, TDO is
+retimed under every instruction, ZERO_LENGTH_BYPASS included.
+
+=== ID Code
+
+The IDCODE instruction accesses a TDR containing device identification
+information.
+
+<<ptap-idcode-fields-table>> defines the identification fields shifted out by IDCODE.
+
+[[ptap-idcode-fields-table]]
+[cols="2,2,1,7",options="header"]
+.PTAP IDCODE fields
+|===
+|Bits |Field |Access |Description
+|31:28 |si_rev |R |Silicon revision
+|27:12 |part_num |R |Chiplet model ID
+|11:1 |mfr_id |R |JEDEC-assigned manufacturer ID, encoded into 11 bits
+|0 |marker |R |Marker bit, always 1
+|===
+
+Bits shifted into the IDCODE TDR are ignored. The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#dtp-ptap-tdr-access[TDR access sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ptap-tdr-access[TDR access sequence]
+endif::backend-pdf[]
+for this register.
+
+=== Debug Control
+
+The DEBUG_CONTROL instruction accesses a TDR defining general control bits for
+debug and control of the design.
+
+<<ptap-debug-control-fields-table>> defines the clock-stop and debug-control fields of
+the DEBUG_CONTROL TDR.
+
+[[ptap-debug-control-fields-table]]
+[width="100%",cols="2,2,1,1,6",options="header"]
+.PTAP DEBUG_CONTROL fields
+|===
+|Bits |Field |Access |Reset |Description
+|4 |cla_clock_stop |R |0 |When set, indicates that a CLA in the chiplet attempted to stop the clocks. Note that the clocks will actually have been stopped only when _cla_clock_stop_en_ is set.
+|3 |jtag_clock_stop |RW |0 |When set, stops all clocks in the chiplet. This is wired to the functional clock gaters on all of the PLLs in the chiplet. This bit is active high.
+|2 |cla_clock_stop_en |RW |0 |When set, enables the CLAs to stop the clocks in the design. This bit indicates that an external debugger is connected and ready to do debug or scan dump operations after the CLA stops the clocks. This bit is intended to protect against unintentional CLA clock stops in the field due to incorrect CLA programming. This bit is active high.
+|1 |boot_stall_ovrd |RW |0 |When set, overrides the boot stall signal to the internals of the part to use the value from boot_stall in this TDR instead. This bit is active high.
+|0 |boot_stall |RW |0 |When boot_stall_override is set, the value in this bit is used for boot stall. This bit is active high: setting to 1 causes boot stall.
+|===
+
+The DEBUG_CONTROL TDR captures bits shifted into its R/W fields and ignores
+those shifted into its RO fields. The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#dtp-ptap-tdr-access[TDR access sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ptap-tdr-access[TDR access sequence]
+endif::backend-pdf[]
+for this register.
+
+=== JTAG Capabilities
+
+The JTAG_CAPS instruction accesses a read-only TDR reporting the DTP version
+number and general configuration parameters for the DTP.
+
+<<ptap-jtag-caps-fields-table>> defines the version and configuration fields reported by
+JTAG_CAPS.
+
+[[ptap-jtag-caps-fields-table]]
+[width="100%",cols="2,2,1,7",options="header"]
+.PTAP JTAG_CAPS fields
+|===
+|Bits |Field |Access |Description
+|59:54 |num_xtrig_int_ct |R |The number of internal cross trigger signals.
+|53:48 |num_xtrig_ctp |R |The number of Cross Trigger Ports.
+|47:44 |num_xtra_stap |R |The number of additional DTP STAP interfaces.
+|43 |stap_io_en |R |The STAP interface for chiplet-to-chiplet connectivity is enabled.
+|42 |sep_dbg_en |R |The SEP STAP interface enabled.
+|41 |smc_dbg_en |R |The SMC JTAG2AXI interface is enabled.
+|40:33 |num_smc_ic_rst |R |The number of SMC IC_RESET override ports.
+|32:25 |num_sep_ic_rst |R |The number of SEP IC_RESET override ports.
+|24:17 |num_ext_ic_rst |R |The number of external IC_RESET override ports.
+|16 |ic_rst_inst_en |R |The IC_RESET instruction is enabled.
+|15 |tmp_inst_en |R |The TMP controller functionality and instructions are enabled.
+|14 |runbist_inst_en |R |The RUNBIST instruction is enabled.
+|13 |highz_inst_en |R |The HIGHZ instruction is enabled.
+|12 |clamp_inst_en |R |The CLAMP instruction is enabled.
+|11 |intest_inst_en |R |The INTEST instruction is enabled.
+|10 |extest_pulse_en |R |The EXTEST_PULSE instruction is enabled.
+|9 |extest_train_en |R |The EXTEST_TRAIN instruction is enabled.
+|8 |bsr_inst_en |R |All mandatory boundary scan instructions are enabled.
+|7:0 |och_ver |R |The MAJOR version number of the DTP IP.
+|===
+
+Bits shifted into the JTAG_CAPS TDR are ignored. The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#dtp-ptap-tdr-access[TDR access sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ptap-tdr-access[TDR access sequence]
+endif::backend-pdf[]
+for this register.
+
+=== Boundary Scan Support
+
+All boundary scan and BIST instructions defined in IEEE 1149.1 are optionally
+supported, but support is not enabled by default. RTL parameters are provided to
+selectively enable support for each instruction. Any disabled instruction has
+the same behavior as the BYPASS instruction.
+
+Any boundary scan instruction that selects the BSRs shifts their contents out
+on TDO. The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#dtp-ptap-tdr-access[TDR access sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ptap-tdr-access[TDR access sequence]
+endif::backend-pdf[]
+for these registers.
+
+=== BIST Support
+
+The RUNBIST instruction is optionally supported, but support is not enabled by
+default. An RTL parameter is provided to selectively enable support. Any
+disabled instruction has the same behavior as the BYPASS instruction.
+
+When the RUNBIST instruction is selected, the iJTAG network is selected as the
+active scan chain. An iJTAG network control signal indicates that the RUNBIST
+instruction is active. A designer may also utilize the decoded INST_SELECT
+signal to trigger the BIST logic for any instructions that they have enabled.
+
+The PTAP adds no Segment Insertion Bit (SIB) or other scan cell to the iJTAG
+path. TDI is forwarded unchanged to the iJTAG network, and the network's return
+is the RUNBIST TDR, so the length and contents of the RUNBIST DR are defined
+entirely by the iJTAG network attached to the PTAP.
+
+The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#dtp-runbist[BIST execution sequence].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-runbist[BIST execution sequence].
+endif::backend-pdf[]
+
+ifdef::backend-html5[]
+In the JTAG Interface Unit, the iJTAG network begins with three SIBs; their bit
+map and the integrated scan sequence are given in
+xref:ip:jtag_intf_unit/doc/index.adoc#jiu-ijtag-network[iJTAG Network].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+In the JTAG Interface Unit, the iJTAG network begins with three SIBs; their bit
+map and the integrated scan sequence are given in
+<<jiu-ijtag-network,iJTAG Network>>.
+endif::backend-pdf[]
+
+=== Test Mode Persistence (TMP) Support
+
+There is optional support for TMP, but support for TMP is disabled by default.
+An RTL parameter enables support for TMP.
+
+When TMP support is enabled, a TMP controller is included in the PTAP. The TMP
+controller manages the active-low _CH_RESET_N_ signal. The _CH_RESET_N_ signal
+is the reset signal for any registers that must retain their state across TLR
+soft resets, mainly the boundary scan cells. _CH_RESET_N_ asserts whenever the
+TAP is in the TLR state _except_ when the TMP controller is in the
+_PERSISTENCE_ON_ state. When the TMP controller is in the _PERSISTENCE_ON_
+state, the only events that will assert _CH_RESET_N_ are full power-on-reset
+(POR) or TRST signal assertion.
+
+When TMP support is disabled, the _CLAMP_HOLD_, _CLAMP_RELEASE_, and
+_TMP_STATUS_ instructions have the same behavior as the _BYPASS_ instruction,
+and the _CH_RESET_N_ signal always responds to every POR, TRST, or TLR event,
+i.e. it is an exact copy of the _RESET_N_ signal.
+
+<<ptap-tmp-status-fields-table>> defines the bypass-escape and persistence-status bits.
+
+[[ptap-tmp-status-fields-table]]
+[width="100%",cols="3,1,6",options="header"]
+.PTAP TMP_STATUS fields
+|===
+|*Bit* |*Reset* |*Description*
+|Bypass Escape (bit 0) |0 |Whenever this bit is set, the TMP controller will transition to the _PERSISTENCE_OFF_ state when the TAP controller enters the _UPDATE_IR_ state after the _BYPASS_ instruction has been selected.
+|TMP Status (bit 1) |0 on capture |Capture-DR samples whether the TMP controller is in the Persistence-On state. The update register resets to `2'b10`; its bit 1 is replaced by the controller state on capture and does not enable persistence.
+|===
+
+=== 3DIC Support
+
+There is optional support for STAP interfaces, and support is enabled by
+default. An RTL parameter selects the number of STAP interfaces, where a value
+of 0 disables STAP support.
+
+In order to properly support the IEEE 1838 standard, a chain of STAP interfaces
+must be inserted at the end of each chiplet's scan chain. This is done after the
+_IR Select_ MUX to ensure that both the instruction registers and TDRs from all
+enabled PTAPs in the scan chain are scannable. As a consequence, the STAPs
+require dedicated capture, shift, and update control signals that are triggered
+during both the IR and DR sequences.
+
+The PTAP has a 2-bit _3DCR_ register that is accessed with the _TAP_3DCR_
+instruction. This register provides an option to bypass all STAPs in the scan
+chain.
+
+<<ptap-3dcr-fields-table>> defines the configuration-hold and STAP-selection bits.
+
+[[ptap-3dcr-fields-table]]
+[width="100%",cols="3,1,6",options="header"]
+.PTAP 3DCR fields
+|===
+|*Bit* |*Reset* |*Description*
+|Config Hold |0 |When this bit is set, the PTAP TLR state does not reset this TDR, and it will hold its current state until TRST is asserted.
+|Select |0 |When this bit is unset, the PTAP's top-level STAP scan interface is completely bypassed: TDO does not come from the STAP chain, and the select, capture, shift and update strobes of the STAP scan interface stay low, so the STAP chain holds its state through every IR and DR scan.
+|===
+
+The select bit takes effect at Update-DR of the scan that writes it. A scan
+that sets it therefore covers only this register, and the STAP chain joins the
+scan path from the next IR or DR scan onwards. Software sets the select bit in a
+TAP_3DCR scan of its own before programming any STAP.
+
+When STAP support is disabled, the TAP_3DCR instruction has the same behavior as
+the _BYPASS_ instruction, and the STAP scan chain cannot be selected.
+
+=== IC_RESET Support
+
+The PTAP provides support for a configurable number of IEEE 1149.1-compliant
+reset controls. The IC_RESET TDR is composed of three independently-enabled
+slices:
+
+* *SMC slice* (nearest TDI): driven by the `ic_reset_smc_t` struct type and
+  gated by `IC_RESET_SMC_ENABLE`. Sized from `$bits(ic_reset_smc_t)`.
+* *SEP slice*: driven by the `ic_reset_sep_t` struct type and gated by
+  `IC_RESET_SEP_ENABLE`. Sized from `$bits(ic_reset_sep_t)`.
+* *External slice* (nearest TDO): driven by the `ic_reset_ext_t` struct type and
+  gated by `IC_RESET_EXT_ENABLE`. Sized from `$bits(ic_reset_ext_t)`. The
+  instantiator supplies this type; the PTAP does not name the external ports.
+
+Each slice's struct must contain `.ovrd` and `.val` sub-structs of identical
+width (checked via an elaboration-time assertion in `jtag_ptap`). Within
+`jtag_ic_reset_reg`, the reset-enable and reset-control bits are interleaved in
+IEEE 1149.1 §17 order: in each port's pair, `reset_enable` is nearer TDO and
+`reset_control` nearer TDI, so port _n_ occupies TDR bits `2*n+1` and `2*n+2`
+(<<ptap-ic-reset-fields-table>>). `jtag_ptap` packs the three struct slices into
+that interleaved bus and unpacks the outputs back into structured form. The TDR carries the SMC slice closest to TDI, then SEP, then
+the external slice, followed by the single `reset_hold` bit.
+
+The total length is `2 * (NumSmcIcReset + NumSepIcReset + NumExtIcReset) + 1`
+bits. Each `Num*IcReset` is half the width of its slice's struct type,
+`+$bits(ic_reset_*_t) / 2+`, when the matching `+IC_RESET_*_ENABLE+` parameter is
+set, and 0 otherwise.
+
+<<ptap-ic-reset-fields-table>> defines the reset-control, reset-enable, and bypass
+fields in the IC_RESET TDR.
+
+[[ptap-ic-reset-fields-table]]
+[width="100%",cols="2,2,1,1,6",options="header"]
+.PTAP IC_RESET fields
+|===
+|Bits |Field |Access |Reset |Description
+|2*n+2 |reset_control |RW |1 |The controlled, active-low reset value driven while _reset_enable_ is 0 (i.e. while JTAG override is active).
+|2*n+1 |reset_enable |RW |1 |Active-LOW per IEEE 1149.1 §17: 1 (default) ⇒ JTAG override DISABLED (upstream reset passes through); 0 ⇒ JTAG override ENABLED (the port is driven by _reset_control_). The "enable" in the IEEE name refers to "enabling the controlled reset state", not the override mechanism.
+|0 |reset_hold |RW |1 |When 0, TLR will *not* reset the _reset_enable_ and _reset_control_ bits. TRST/POR will always reset all bits.
+|===
+
+[IMPORTANT]
+====
+*Polarity convention* — the TDR field names come from the IEEE 1149.1 §17
+specification and use an active-low `reset_enable`. `jtag_ic_reset_reg`
+converts this into a conventional *active-high* override signal
+(`ic_reset_ovrd_o[i] = !reset_enable[i]`) before it leaves the register, so
+every downstream consumer sees `.ovrd == 1` meaning "JTAG is currently
+overriding this port". Do not re-invert this signal downstream.
+====
+
+For each of the resets defined in the TDR, the PTAP exposes two logical signals
+(grouped into the per-slice `jtag_*_reset_ctrl_t` structs):
+
+* _ic_reset_ovrd_ / `.ovrd` - *Active-high* JTAG-override flag (the bit-wise
+  inversion of _reset_enable_). 1 ⇒ JTAG is driving this reset, 0 ⇒ upstream
+  reset passes through.
+* _ic_reset_ctrl_n_ / `.val` - Active-low reset value driven when
+  _ic_reset_ovrd_ is asserted (identical to the _reset_control_ TDR bit).
+
+=== iJTAG Support
+
+The PTAP provides a scan port for an IEEE 1687-2014-compliant hierarchical iJTAG
+network. The _SELECT_IJTAG_ instruction is always decoded; no configuration
+parameter removes it. While it is the current instruction, a DR scan selects the
+iJTAG network and the network return drives TDO.
+
+[[ptap-jtag2axi-support]]
+=== JTAG2AXI Support
+
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="jtag2axi-support"></span>
+++++
+endif::backend-html5[]
+
+==== *_JTAG2AXI_CAPS
+
+This is a private instruction that accesses a read-only TDR reporting the
+configuration parameters for the given JTAG2AXI debugging instrument.
+
+<<ptap-jtag2axi-capability-fields-table>> defines the configuration fields reported by
+each JTAG2AXI instrument.
+
+[[ptap-jtag2axi-capability-fields-table]]
+[width="100%",cols="2,2,1,7",options="header"]
+.PTAP JTAG2AXI capability fields
+|===
+|Bits |Field |Access |Description
+|13:12 |rd_pl_depth |R |The depth of the transaction read queue where 0 indicates only a single outstanding transaction allowed at any given time.
+|11:10 |wr_pl_depth |R |The depth of the transaction write queue where 0 indicates only a single outstanding transaction allowed at any given time.
+|9:7 |data_size |R |The size of AxDATA in powers-of-2 bytes. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)
+|6:1 |addr_size |R |The size of AxADDR in bits.
+|0 |bus_type |R |The type of the AXI bus. 0: AXI4 1: AXI4-Lite
+|===
+
+==== *_AXI_SINGLE_OP
+
+This is a private instruction that generates a single AXI read or write
+transaction. It provides a mechanism for an external debugger to do sparse reads
+or writes to nearly any register in the design. Since the entire address must be
+shifted in for each transaction, this instruction is most useful for sparse
+accesses. This instruction uses semantics very similar to the RISC-V DTM DMI
+instruction.
+
+Let `D` be the AXI data width in bits, `A` the address width, and `S` the
+scan size-field width: 1 bit for `D <= 16`, 2 bits for `D <= 64`, and 3 bits
+otherwise. The single-operation TDR has `2 + S + D/8 + D + A` bits.
+For `D=64` and `A=51`, it has 127 bits.
+
+The size field requests a transfer of `2**size` bytes. The AXI protocol does not
+allow a transfer wider than the data bus, so the bridge uses the effective size
+`E = min(size, data_size)`, where `data_size = log2(D/8)` is the capability field of
+the same name. A size above `data_size` transfers one full `D`-bit beat: for
+`D=32`, the 2-bit size field admits 3, and the bridge transfers 4 bytes.
+
+<<jtag2axi-single-operation-layout-figure>> shows the single-operation TDR for a 64-bit
+data bus and a 51-bit address bus. In this and the following layout figures the most
+significant bit is on the left, nearest TDI, and bit 0 on the right shifts out to TDO
+first. The bit range of each field is above it and its width below it; field widths
+are not drawn to scale.
+
+[[jtag2axi-single-operation-layout-figure]]
+.JTAG2AXI single-operation layout
+image::jtag2axi-single-op.svg[alt="AXI_SINGLE_OP register layout for 64-bit data and 51-bit addresses: address 126:76, data 75:12, wstrb 11:4, size 3:2, op 1:0",width=100%,pdfwidth=100%]
+
+<<jtag2axi-single-operation-fields-table>> defines the address, data, byte-enable, size,
+and operation fields.
+
+[[jtag2axi-single-operation-fields-table]]
+[width="100%",cols="2,2,1,1,6",options="header"]
+.JTAG2AXI single-operation fields
+|===
+|Bits |Field |Access |Reset |Description
+|(2+S+D/8+D) +: A |address |RW |0 |Address used for AXI access. In Update-DR the AXI transaction is issued. On a Capture-DR, this field holds the previous value.
+|(2+S+D/8) +: D |data |RW |0 |The data to write on an AXI write during Update-DR. On a Capture-DR, this field contains the data returned from an AXI read if the previous operation was a read, or holds the write data previously used if the previous operation was a write.
+|(2+S) +: (D/8) |wstrb |RW |0 |The byte strobes for a write transaction. This value is driven on WSTRB when the transaction is a write. On a Capture-DR, this field holds the previous value.
+|2 +: S |size |RW |0 |The requested transfer size in powers-of-2 bytes. The effective size `E`, the smaller of this field and `data_size`, is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)
+|1:0 |op |RW |0 |When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop) Don't send anything over AXI during Update-DR. This operation should never result in a busy or error response. 1: Read from address (read) 2: Write data to address (write) 3: Reserved When the debugger reads this field, it means the following: 0: The previous operation completed successfully and returned an OKAY status 1: The previous operation completed but failed and returned a SLVERR status 2: The previous operation completed but failed and returned a DECERR or other error status, or a system reset discarded it (see <<jtag2axi-system-reset>>). 3: The latest operation was attempted before the previous operation completed; the previous AXI request is still in progress. The operation attempted in this access will be ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle.
+|===
+
+==== *_AXI_SERIES_CTRL
+
+This is a private instruction that preloads the start address of a region that
+will be subsequently read or written using the AXI_SERIES_DATA instruction. It
+is used when an external debugger wants to either:
+
+* Read or write a contiguous block of registers or memory.
+* Repeatedly read or write the same location (e.g., polling)
+
+Using the series instructions instead of the AXI_SINGLE_OP instruction is much
+more time efficient for these use cases.
+
+The pipeline-depth field width `P` is 1 when `FIFO_DEPTH=0`, otherwise
+`$clog2(FIFO_DEPTH+1)`. The control TDR has `2 + S + P + A + 1` bits.
+For `D=64`, `A=51`, and `FIFO_DEPTH=3`, the length is 58 bits.
+
+<<jtag2axi-series-control-layout-figure>> shows the series-control TDR for 64-bit data,
+51-bit addresses, and FIFO_DEPTH=3.
+
+[[jtag2axi-series-control-layout-figure]]
+.JTAG2AXI series-control layout
+image::jtag2axi-series-ctrl.svg[alt="AXI_SERIES_CTRL register layout for 64-bit data, 51-bit addresses and FIFO_DEPTH=3: reset 57, address 56:6, pl_depth 5:4, size 3:2, op 1:0",width=100%,pdfwidth=100%]
+
+<<jtag2axi-series-control-fields-table>> defines the control fields used to start and
+manage a series of AXI accesses.
+
+[[jtag2axi-series-control-fields-table]]
+[width="100%",cols="2,2,1,1,6",options="header"]
+.JTAG2AXI series-control fields
+|===
+|Bits |Field |Access |Reset |Description
+|(2+S+P+A) |reset |RW |0 |Reset the pending error flags reported in op.
+|(2+S+P) +: A |address |RW |0 |Address used for AXI access. In Update-DR the AXI transaction is issued.
+|(2+S) +: P |pl_depth |RW |0 |pipeline_depth For write transactions, this sets the number of pending unissued write transactions that can be queued by this block to pl_depth + 1. Setting a non-zero value allows the debugger to queue additional write transactions before the previous ones have been issued. For read transactions, this field sets the number of read responses that this block will pipeline. This allows the debugger to queue multiple reads to targets with long or variable latency while getting read data responses in a deterministic fashion. The first pl_depth + 1 reads will return DEADBEEF marker data. This field can be set to a value between 0 and the (wr/rd)_pl_depth field read from the bridge's `*_JTAG2AXI_CAPS` register. When the debugger reads this field, an indication of whether there are any pending transactions will be returned: 2'b00: There are no pending transactions 2'b01: There is at least one pending transaction
+|2 +: S |size |RW |0 |The requested transfer size in powers-of-2 bytes. The effective size `E`, the smaller of this field and `data_size`, is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)
+|1:0 |op |RW |0 |When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop). Don't do anything on Update-DR for AXI_SERIES_DATA. 1: Read from address (read). Update-DR for AXI_SERIES_DATA causes an AXI read to be performed. 2: Write data to address (write). Update-DR for AXI_SERIES_DATA causes an AXI write to be performed. 3: Reserved; treated as nop. When the debugger reads this field, it means the following: 0: All previous series operations completed successfully and returned an OKAY status. 1: At least one previous series operation completed but failed and returned a SLVERR status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. 2: At least one previous series operation completed but failed and returned a DECERR or other error status, or a system reset discarded a series operation that was in progress or queued (see <<jtag2axi-system-reset>>). This status is sticky until cleared by AXI_SERIES_CTRL.reset. Codes 1 and 2 report the first failed series operation since the last AXI_SERIES_CTRL.reset; a later failure does not replace it. The completion status of an AXI_SINGLE_OP operation is reported only through AXI_SINGLE_OP.op and does not change codes 0 to 2. 3: At least one operation was attempted before the previous operation completed. The operations attempted when there was a pending operation in progress were ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle. This status is sticky until cleared by AXI_SERIES_CTRL.reset.
+|===
+
+==== *_AXI_SERIES_DATA_INCR
+
+This is a private instruction that does the actual read/write to the address
+previously specified.
+
+After the access is completed, an internal address register used for the series,
+which was previously loaded by AXI_SERIES_CTRL, is incremented as follows:
+
+AXI_SERIES_CTRL.address += 2**E
+
+This allows the debugger to load or dump contiguous regions of address space.
+
+Note that this is a variable-length data register. The length is n bits where
+n = 8*(2**E).
+
+The data field is the logical transfer payload. The bridge places that payload
+on the AXI byte lanes selected by the current address and the effective size `E`,
+and Capture-DR returns the payload from those lanes.
+
+The data field is drawn as the payload bytes it holds, with bit 0 aligned across the
+four sizes. The incrementing payload layouts for effective sizes `E` of 0, 1, 2, and 3
+are shown in <<jtag2axi-incrementing-data-layout-for-size-0-figure>>,
+<<jtag2axi-incrementing-data-layout-for-size-1-figure>>,
+<<jtag2axi-incrementing-data-layout-for-size-2-figure>>,
+<<jtag2axi-incrementing-data-layout-for-size-3-figure>>, respectively.
+Effective size 3 needs a 64-bit data bus, which the last figure assumes.
+
+[[jtag2axi-incrementing-data-layout-for-size-0-figure]]
+.JTAG2AXI incrementing data layout for effective size 0
+image::jtag2axi-series-data-size0.svg[alt="AXI_SERIES_DATA_INCR register layout for effective size 0: data 7:0",width=100%,pdfwidth=100%]
+
+[[jtag2axi-incrementing-data-layout-for-size-1-figure]]
+.JTAG2AXI incrementing data layout for effective size 1
+image::jtag2axi-series-data-size1.svg[alt="AXI_SERIES_DATA_INCR register layout for effective size 1: data 15:0",width=100%,pdfwidth=100%]
+
+[[jtag2axi-incrementing-data-layout-for-size-2-figure]]
+.JTAG2AXI incrementing data layout for effective size 2
+image::jtag2axi-series-data-size2.svg[alt="AXI_SERIES_DATA_INCR register layout for effective size 2: data 31:0",width=100%,pdfwidth=100%]
+
+[[jtag2axi-incrementing-data-layout-for-size-3-figure]]
+.JTAG2AXI incrementing data layout for effective size 3
+image::jtag2axi-series-data-size3.svg[alt="AXI_SERIES_DATA_INCR register layout for effective size 3 on a 64-bit data bus: data 63:0",width=100%,pdfwidth=100%]
+
+<<jtag2axi-incrementing-data-fields-table>> defines the payload shifted through the
+incrementing data instruction.
+
+[[jtag2axi-incrementing-data-fields-table]]
+[width="100%",cols="2,2,1,1,6",options="header"]
+.JTAG2AXI incrementing data fields
+|===
+|Bits |Field |Access |Reset |Description
+|n-1:0 |data |RW |0 |Data value to read/write. The read data is from the previous read access.
+|===
+
+==== *_AXI_SERIES_DATA_NO_INCR
+
+This is a private instruction that does the actual read/write to the address
+previously specified.
+
+Unlike AXI_SERIES_DATA_INCR, this instruction does not change the address in
+AXI_SERIES_CTRL. This instruction allows the debugger to continue to read or
+write this same address using additional AXI_SERIES_DATA_NO_INCR instructions.
+This is useful for repeated polling or triggering.
+
+Note that this is a variable-length data register. The length is n bits where
+n = 8*(2**E).
+
+The data field is the logical transfer payload. The bridge places that payload
+on the AXI byte lanes selected by the current address and the effective size `E`,
+and Capture-DR returns the payload from those lanes.
+
+The non-incrementing data register has the same layout as the incrementing one, so
+the same figures apply. The non-incrementing payload layouts for effective sizes `E`
+of 0, 1, 2, and 3 are shown in <<jtag2axi-non-incrementing-data-layout-for-size-0-figure>>,
+<<jtag2axi-non-incrementing-data-layout-for-size-1-figure>>,
+<<jtag2axi-non-incrementing-data-layout-for-size-2-figure>>,
+<<jtag2axi-non-incrementing-data-layout-for-size-3-figure>>, respectively.
+
+[[jtag2axi-non-incrementing-data-layout-for-size-0-figure]]
+.JTAG2AXI non-incrementing data layout for effective size 0
+image::jtag2axi-series-data-size0.svg[alt="AXI_SERIES_DATA_NO_INCR register layout for effective size 0: data 7:0",width=100%,pdfwidth=100%]
+
+[[jtag2axi-non-incrementing-data-layout-for-size-1-figure]]
+.JTAG2AXI non-incrementing data layout for effective size 1
+image::jtag2axi-series-data-size1.svg[alt="AXI_SERIES_DATA_NO_INCR register layout for effective size 1: data 15:0",width=100%,pdfwidth=100%]
+
+[[jtag2axi-non-incrementing-data-layout-for-size-2-figure]]
+.JTAG2AXI non-incrementing data layout for effective size 2
+image::jtag2axi-series-data-size2.svg[alt="AXI_SERIES_DATA_NO_INCR register layout for effective size 2: data 31:0",width=100%,pdfwidth=100%]
+
+[[jtag2axi-non-incrementing-data-layout-for-size-3-figure]]
+.JTAG2AXI non-incrementing data layout for effective size 3
+image::jtag2axi-series-data-size3.svg[alt="AXI_SERIES_DATA_NO_INCR register layout for effective size 3 on a 64-bit data bus: data 63:0",width=100%,pdfwidth=100%]
+
+<<jtag2axi-non-incrementing-data-fields-table>> defines the payload shifted through the
+non-incrementing data instruction.
+
+[[jtag2axi-non-incrementing-data-fields-table]]
+[width="100%",cols="2,2,1,1,6",options="header"]
+.JTAG2AXI non-incrementing data fields
+|===
+|Bits |Field |Access |Reset |Description
+|n-1:0 |data |RW |0 |Data value to read/write. The read data is from the previous read access.
+|===
+
+==== *_AXI_SERIES_DATA_WITH_ERROR_STATUS
+
+This is a private instruction that does the actual read/write to the address
+previously specified.
+
+Unlike AXI_SERIES_DATA_INCR and AXI_SERIES_DATA_NO_INCR, the increment is
+selectable per transaction and the error status from the previous status is
+returned. This instruction is used when granular error reporting is desired
+during a block operation.
+
+Note that this is a variable-length data register. The length is n+1 bits where
+n = 8*(2**E).
+
+The data field is the logical transfer payload. The bridge places that payload
+on the AXI byte lanes selected by the current address and the effective size `E`,
+and Capture-DR returns the payload from those lanes.
+
+The error-status payload layouts for effective sizes `E` of 0, 1, 2, and 3 are
+shown in <<jtag2axi-error-status-data-layout-for-size-0-figure>>,
+<<jtag2axi-error-status-data-layout-for-size-1-figure>>,
+<<jtag2axi-error-status-data-layout-for-size-2-figure>>,
+<<jtag2axi-error-status-data-layout-for-size-3-figure>>, respectively.
+Effective size 3 needs a 64-bit data bus, which the last figure assumes.
+
+[[jtag2axi-error-status-data-layout-for-size-0-figure]]
+.JTAG2AXI error-status data layout for effective size 0
+image::jtag2axi-series-data-error-status-size0.svg[alt="AXI_SERIES_DATA_WITH_ERROR_STATUS register layout for effective size 0: increment/status 8, data 7:0",width=100%,pdfwidth=100%]
+
+[[jtag2axi-error-status-data-layout-for-size-1-figure]]
+.JTAG2AXI error-status data layout for effective size 1
+image::jtag2axi-series-data-error-status-size1.svg[alt="AXI_SERIES_DATA_WITH_ERROR_STATUS register layout for effective size 1: increment/status 16, data 15:0",width=100%,pdfwidth=100%]
+
+[[jtag2axi-error-status-data-layout-for-size-2-figure]]
+.JTAG2AXI error-status data layout for effective size 2
+image::jtag2axi-series-data-error-status-size2.svg[alt="AXI_SERIES_DATA_WITH_ERROR_STATUS register layout for effective size 2: increment/status 32, data 31:0",width=100%,pdfwidth=100%]
+
+[[jtag2axi-error-status-data-layout-for-size-3-figure]]
+.JTAG2AXI error-status data layout for effective size 3
+image::jtag2axi-series-data-error-status-size3.svg[alt="AXI_SERIES_DATA_WITH_ERROR_STATUS register layout for effective size 3 on a 64-bit data bus: increment/status 64, data 63:0",width=100%,pdfwidth=100%]
+
+<<jtag2axi-data-and-error-status-fields-table>> defines the data payload and the shared
+increment-control and error-status bit.
+
+[[jtag2axi-data-and-error-status-fields-table]]
+[width="100%",cols="2,2,1,1,6",options="header"]
+.JTAG2AXI data and error-status fields
+|===
+|Bits |Field |Access |Reset |Description
+|n |increment/status |RW |0 |The value shifted into this bit indicates whether the address should be incremented after this transaction completes. The value shifted out of this bit indicates whether the previous transaction completed successfully (0 = succeeded, 1 = failed). An AXI result of SLVERR or DECERR, a system reset that discarded the transaction, as well as attempting a new transaction while the previous was still pending will cause the status to be returned as "failed".
+|n-1:0 |data |RW |0 |Data value to read/write. The read data is from the previous read access.
+|===
+
+[[jtag2axi-system-reset]]
+==== System Reset Recovery
+
+A system reset resets the AXI side of each JTAG2AXI instrument while its JTAG
+side keeps running. The instrument recovers without a TAP reset. When the
+reset reaches its JTAG side, it discards every operation that is in flight or
+queued: the AXI transaction it was waiting on, series requests not yet issued,
+and series read data not yet shifted out. The target can still complete a
+transaction that was already on the AXI bus before the reset reached it, so
+the debugger must treat a discarded write as having an unknown effect.
+
+After the discard:
+
+* The SINGLE_OP op field reads 2 if a single operation or an error-status
+  series operation was discarded, and its captured read-data field reads 0.
+  Otherwise both keep their values.
+* The SERIES_CTRL op field reads 2 if a series operation was discarded and it
+  held no earlier series error. Otherwise it keeps its value, including a
+  sticky status of 3. Only AXI_SERIES_CTRL.reset clears it.
+* The SERIES_CTRL address, size, pl_depth and op settings keep their values,
+  but the read pipeline restarts empty. Reprogram SERIES_CTRL before resuming
+  a pipelined series read.
+
+Recovery starts when the system reset asserts and completes within 52 periods
+of the slower of TCK and the AXI clock after the system reset deasserts. TCK
+periods count only while the debugger drives TCK, for example with transitions
+in Run-Test/Idle. An operation shifted in during that time is held and issued
+once recovery completes, and the SINGLE_OP op field reads 3 until the
+operation finishes.
+
+=== Debug Disable
+
+The PTAP has three per-bridge debug-disable inputs. The JTAG interface unit
+synchronizes those bits to TCK and presents them here as ready-to-gate signals.
+Each input is active-high: when it is 1, the corresponding `jtag2axi` instance
+blocks AXI transaction generation.
+
+<<ptap-debug-disable-inputs-table>> maps the three JTAG2AXI bridges to their active-high
+disable inputs.
+
+[[ptap-debug-disable-inputs-table]]
+[width="100%",cols="<40%,<60%",options="header"]
+.PTAP debug-disable inputs
+|===
+|Debug Interface |Disable Input
+
+|SMC Fabric JTAG2AXI
+|`smc_jtag2axi_security_disable_i`
+
+|SMC OTP JTAG2AXIL
+|`smc_otp_jtag2axi_security_disable_i`
+
+|SEP OTP JTAG2AXIL
+|`sep_otp_jtag2axi_security_disable_i`
+|===

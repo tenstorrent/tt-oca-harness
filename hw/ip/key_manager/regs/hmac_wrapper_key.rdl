@@ -1,0 +1,88 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+// HMAC Wrapper Key Registers - Key Storage for OpenTitan HMAC Sideload
+// SystemRDL 2.0 Register Definition
+//
+// Copyright 2026 Tenstorrent Inc.
+//
+// This register block is an AXI4-Lite slave that receives key data from the
+// Key Manager CPU via the private key bus. The registers feed the OpenTitan
+// HMAC core's keymgr_key_i (hw_key_req_t) sideload interface.
+//
+// keymgr_pkg::hw_key_req_t requires:
+//   - valid   : 1 bit
+//   - key[0]  : 256 bits (share 0)
+//   - key[1]  : 256 bits (share 1)
+//
+// Key data registers are write-only (reads return 0) for security.
+
+addrmap hmac_wrapper_key {
+    name = "HMAC Wrapper Key Registers";
+    desc = "Key storage registers for the HMAC sideload interface.
+            Written by Key Manager CPU, drives keymgr_key_i on the OT HMAC core.";
+
+    default regwidth = 32;
+    default sw = rw;
+    default hw = r;
+
+    //=========================================================================
+    // KEY_SHARE0[0..7] - Key Share 0 (256 bits = 8 x 32-bit words)
+    // Offset: 0x000 - 0x01C
+    //=========================================================================
+    // Write-only: reads return 0 for security (no key readback).
+    // No reset: key data powers up undefined for security.
+    reg key_word_reg {
+        name = "KEY_WORD";
+        desc = "One 32-bit word of key data. Write-only; reads return 0.
+                No reset; powers up with undefined value.";
+
+        field {
+            name = "DATA";
+            desc = "32-bit key data word. Write-only for security.";
+            sw = w;
+            hw = r;
+            // No reset: key data should power up random/undefined
+        } data[31:0];
+    };
+
+    key_word_reg KEY_SHARE0[8] @ 0x000 += 0x004;
+
+    //=========================================================================
+    // KEY_SHARE1[0..7] - Key Share 1 (256 bits = 8 x 32-bit words)
+    // Offset: 0x020 - 0x03C
+    //=========================================================================
+    key_word_reg KEY_SHARE1[8] @ 0x020 += 0x004;
+
+    //=========================================================================
+    // KEY_CTRL Register (0x040)
+    //=========================================================================
+    reg key_ctrl_reg {
+        name = "KEY_CTRL";
+        desc = "Key control register. Writing KEY_VALID=1 asserts the sideload
+                valid signal to the HMAC core.";
+
+        field {
+            name = "KEY_VALID";
+            desc = "When 1, asserts keymgr_key_i.valid to indicate key is loaded.
+                    Write 0 to invalidate the current key.";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } key_valid[0:0];
+
+        field {
+            name = "RSVD";
+            desc = "Reserved";
+            sw = r;
+            hw = na;
+            reset = 31'h0;
+        } rsvd[31:1];
+    };
+
+    key_ctrl_reg KEY_CTRL @ 0x040;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+`endif
+};

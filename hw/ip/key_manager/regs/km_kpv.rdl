@@ -1,0 +1,215 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+// Copyright 2026 Tenstorrent Inc.
+
+// Key and Policy Vault (KPV) - KM Port Register Definition
+// SystemRDL 2.0
+//
+//
+// Base Address: 0x0001_2000 (KM CPU via crossbar)
+// Size: 8KB
+// 64 key entries (512 bits = 16 x 32-bit words each), 64 KM control registers.
+// The key entries alone fill the low 4 KB, which is why the window is 8 KB.
+// Access rules: lock_write/lock_use enforced in RTL; violations return SLVERR.
+
+addrmap km_kpv {
+    name = "Key and Policy Vault (KM Port)";
+    desc = "Key entry storage and KM control registers. Access conditioned by lock_write/lock_use.";
+
+    default regwidth = 32;
+    default sw = rw;
+    default hw = r;
+
+    //=========================================================================
+    // Warm reset signal declaration
+    //=========================================================================
+    // cpuif_reset quiesces the KM-port AXI CPUIF on warm reset.
+    // field_reset is intentionally NOT set: instead, every writable CTRL field
+    // (LOCK_WRITE, LOCK_USE, ERASE, SEAL) carries an explicit
+    // `resetsignal = WARM_RST_N`, so a warm reset clears a slot's full control
+    // state and it cannot carry stale metadata into a later erase/shred.
+    // Key data and the scrambler key deliberately omit a reset (default arst_n;
+    // they power up random and persist for security).
+    signal warm_rst_n {
+        activelow;
+        async = false;
+        cpuif_reset = true;
+    };
+    warm_rst_n WARM_RST_N;
+
+    //=========================================================================
+    // Key Entry Word Register (one 32-bit word of a 512-bit key)
+    //=========================================================================
+    // Key entry data: no reset for security. Power-up value is undefined.
+    reg key_word_reg {
+        name = "KEY_WORD";
+        desc = "One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.";
+
+        field {
+            name = "DATA";
+            desc = "32-bit key data word. No reset for security; power-up value undefined.
+                    Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.";
+            sw = rw;
+            hw = na;       // No HW interface: key data stored in external register file
+            // No reset: datapath must power up with random value
+        } data[31:0];
+    };
+
+    //=========================================================================
+    // Key Entry Regfile: 16 words per slot (512 bits)
+    //=========================================================================
+    regfile key_entry_rf {
+        name = "KEY_ENTRY";
+        desc = "One key entry (16 x 32-bit words = 512 bits)";
+
+        key_word_reg WORD[16] @ 0x000;
+    };
+
+    // 64 key entries: KEY_ENTRY[0] at 0x000, [1] at 0x040, ... [63] at 0xFC0
+    // External: no internal flops; RTL bridges to km_kpv_regfile via req/ack interface.
+    external key_entry_rf KEY_ENTRY[64] @ 0x000;
+
+    //=========================================================================
+    // KM Control Register (per slot)
+    // Lock_write[0], Lock_use[1], Erase[2], Seal[3], Reserved[31:4]
+    //=========================================================================
+    reg ctrl_reg {
+        name = "CTRL";
+        desc = "Per-slot control: lock bits (W1S) and the erase trigger";
+
+        field {
+            name = "LOCK_WRITE";
+            desc = "Prevents KM write to this key entry data until reset; this register stays
+                    writable so that a locked slot can still be read-locked and erased.
+                    Read-any, write-1-only. Hardware holds this bit set for as long as SEAL is
+                    set, so sealing a slot write-locks it without a separate write here.";
+            sw = rw;
+            hw = r;
+            onwrite = woset;
+            hwset = true;  // HW holds set while SEAL is set
+            hwclr = true;  // HW can clear on wipe, or on erase of an unsealed slot
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } lock_write[0:0];
+
+        field {
+            name = "LOCK_USE";
+            desc = "Prevents KM read of this key entry data until reset. Read-any, write-1-only.
+                    Hardware sets this bit when an erase of a sealed slot completes, retiring
+                    the slot: its destroyed contents cannot be read back.";
+            sw = rw;
+            hw = r;
+            onwrite = woset;
+            hwset = true;  // HW sets when an erase retires a sealed slot
+            hwclr = true;  // HW can clear on wipe, or on erase of an unsealed slot
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } lock_use[1:1];
+
+        field {
+            name = "ERASE";
+            desc = "Write-1 to start hardware erase of this slot: an LFSR fills all 16 key
+                    words (through the KPV scrambler). Hardware self-clears this bit when the
+                    erase completes. Never blocked: neither lock_write, lock_use nor seal
+                    prevents an erase. The slot's seal state when the erase completes decides
+                    the outcome. Unsealed, the slot CTRL register is cleared and the slot is
+                    reusable. Sealed, lock_write stays set and lock_use is set, retiring the
+                    slot: its data is destroyed and it can be neither read, rewritten nor
+                    reused until warm reset. A seal taken while an erase is already in flight
+                    therefore still retires the slot.";
+            sw = rw;
+            hw = r;
+            onwrite = woset;
+            hwclr = true;  // HW clears when erase FSM completes
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } erase[2:2];
+
+        field {
+            name = "SEAL";
+            desc = "Seals this key entry until warm reset. Read-any, write-1-only. Setting this
+                    bit also sets lock_write in hardware, so a single write seals the slot: its
+                    data can be read but not overwritten. Erase remains available, and erasing
+                    a sealed slot retires it rather than freeing it (see ERASE), so a sealed
+                    slot's material can be destroyed but its slot never reused.";
+            sw = rw;
+            hw = r;
+            onwrite = woset;
+            hwclr = true;  // HW can clear on wipe
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } seal[3:3];
+
+        field {
+            name = "RSVD_31_4";
+            desc = "Reserved";
+            sw = r;
+            hw = na;
+            reset = 28'h0;
+        } rsvd_31_4[31:4];
+    };
+
+    // 64 control registers at 0x1000 - 0x10FC, clear of the key-entry region
+    ctrl_reg CTRL[64] @ 0x1000;
+
+    //=========================================================================
+    // KPV Scrambler (KM port only)
+    //=========================================================================
+    // Scrambler key: no reset for security. When LOCK=1, key cannot be modified until KM reset.
+    reg kpv_scrambler_key_reg {
+        name = "KPV_SCRAMBLER_KEY";
+        desc = "32-bit key for KPV key entry scrambling. No reset; powers up random. Locked when KPV_SCRAMBLER_CTRL.LOCK=1.";
+
+        field {
+            name = "KEY";
+            desc = "Scrambler key. No reset for security. HW clears to 0 on wipe via hwclr.";
+            sw = rw;
+            hw = rw;       // HW holds value via next; clears on wipe via hwclr
+            hwclr = true;  // HW can clear all bits to 0 (used for wipe)
+            swwel = true;  // When LOCK=1, SW write does not update (RTL override)
+            // No reset: datapath security
+        } key[31:0];
+    };
+
+    kpv_scrambler_key_reg KPV_SCRAMBLER_KEY @ 0x1100;
+
+    // Scrambler control: ENABLE and LOCK; reset to 0 on KM reset.
+    reg kpv_scrambler_ctrl_reg {
+        name = "KPV_SCRAMBLER_CTRL";
+        desc = "KPV scrambler enable and lock. Reset to 0 on KM reset. LOCK is write-one-only.";
+
+        field {
+            name = "ENABLE";
+            desc = "1 = scramble key entry data on write, descramble on read; 0 = passthrough.";
+            sw = rw;
+            hw = r;
+            swwel = true;  // When LOCK=1, SW write does not update
+            hwclr = true;  // HW can clear on wipe
+            reset = 1'b0;
+        } enable[0:0];
+
+        field {
+            name = "LOCK";
+            desc = "Write-one-only. When 1, key and ENABLE cannot be modified until KM reset.";
+            sw = rw;
+            hw = r;
+            onwrite = woset;
+            hwclr = true;  // HW can clear on wipe
+            reset = 1'b0;
+        } lock[1:1];
+
+        field {
+            name = "RSVD";
+            desc = "Reserved";
+            sw = r;
+            hw = na;
+            reset = 30'h0;
+        } rsvd[31:2];
+    };
+
+    kpv_scrambler_ctrl_reg KPV_SCRAMBLER_CTRL @ 0x1104;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+`endif
+};

@@ -1,0 +1,146 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef SYSTEM_TIMER_OCTS_RDL
+`define SYSTEM_TIMER_OCTS_RDL
+
+addrmap system_timer_octs {
+    name = "OCTS System Timer Address Map";
+    desc = "Open Chiplet Time Synchronization (OCTS) System Timer Registers";
+    
+    //////////////////////////
+    // Register Definitions //
+    //////////////////////////
+
+    reg TIMER_START {
+        desc = "System Timer Start Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            singlepulse;
+            desc = "Start the system timer. In PRIMARY mode, a write of 1 loads the preset and pulses the sync-load output for PULSE_WIDTH cycles.
+                    In SECONDARY mode, the write has no effect; a secondary starts on the primary's sync-load pulse, which is what loads its preset.
+                    Ensure both primary and secondary are out of reset.";
+        } START[0:0] = 0x0;
+    };
+
+    reg CTRL {
+        desc = "System Timer Control Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Credit value factor. WARNING: This value must be greater than PULSE_WIDTH";
+        } CREDIT_VAL[7:0] = 0xA;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Pulse width for sync load and credit signals. A value of 0 will be rounded up to 1. WARNING: This value must be less than CREDIT_VAL";
+        } PULSE_WIDTH[15:8] = 0x2;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Step amount for secondary timer";
+        } STEP[23:16] = 0x1;
+    };
+
+    reg STATUS {
+        desc = "System Timer Status Register";
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Timer mode driven by the is_primary_i input: 0=PRIMARY (is_primary_i=1), 1=SECONDARY (is_primary_i=0).";
+        } MODE[0:0] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Timer is enabled and its count is nonzero.";
+        } RUNNING[4:4] = 0x0;
+    };
+
+    reg TIMER_PRESET_LO {
+        desc = "System Timer Preset Value [31:0]";
+        regwidth = 32;
+        accesswidth = 32;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Lower 32 bits of preset value";
+        } PRESET_LO[31:0] = 0x0;
+    };
+
+    reg TIMER_PRESET_HI {
+        desc = "System Timer Preset Value [63:32]";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Upper 32 bits of preset value";
+        } PRESET_HI[31:0] = 0x0;
+    };
+
+    reg TIMER_COUNT_LO {
+        desc = "Current System Timer Count [31:0]";
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Lower 32 bits of current timer count";
+        } COUNT_LO[31:0] = 0x0;
+    };
+
+    reg TIMER_COUNT_HI {
+        desc = "Current System Timer Count [63:32]";
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Upper 32 bits of current timer count";
+        } COUNT_HI[31:0] = 0x0;
+    };
+
+    reg CREDIT_EXPIRED {
+        desc = "Credit Expired Register";
+
+        field {
+            sw = rw;
+            hw = w;
+            desc = "Maximum number of clock cycles since a count credit expired (SECONDARY only). To reset the value of this register, write anything to it.
+                    If this number is very high (exact value depends on clock speed and credit value), this indicates that the secondary has not received a count credit pulse in a while, and is likely not syncing properly with the primary.
+                    This register can also be used to determine the clock skew between the primary and secondary.
+                    If PRIMARY, this field is always 0.";
+        } MAX_CYCLES_EXPIRED[31:0] = 0x0;
+    };
+
+    reg TIMER_GPIO_ENABLE {
+        desc = "System Timer GPIO Enable Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable the GPIO pad lsio interface for the system timer. This is done to prevent X-prop on reset into the secondary timer, which can cause the secondary timer to start counting early.";
+        } GPIO_ENABLE[0:0] = 0x0;
+    };
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+                TIMER_START                             TIMER_START                                     @0x0;
+                CTRL                                    CTRL                                            @0x4;
+                STATUS                                  STATUS                                          @0x8;
+                TIMER_PRESET_LO                         TIMER_PRESET_LO                                 @0xC;
+                TIMER_PRESET_HI                         TIMER_PRESET_HI                                 @0x10;
+                TIMER_COUNT_LO                          TIMER_COUNT_LO                                  @0x14;
+                TIMER_COUNT_HI                          TIMER_COUNT_HI                                  @0x18;
+    external    CREDIT_EXPIRED                          CREDIT_EXPIRED                                  @0x1C;
+                TIMER_GPIO_ENABLE                       TIMER_GPIO_ENABLE                               @0x20;
+};
+
+`endif

@@ -1,0 +1,67 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= JTAG PTAP
+:description: Primary TAP — IEEE 1149.1-2013/1687-2014/1838-2019 implementation, configuration, architecture and interface.
+
+[[jtag-ptap]]
+
+The Primary TAP (PTAP) is the main JTAG access point for the chiplet. It
+implements IEEE 1149.1-2013 with extensions for IEEE 1687-2014 (iJTAG) and
+IEEE 1838-2019 (3DIC).
+
+== Overview
+
+The PTAP provides:
+
+* Full IEEE 1149.1-2013 TAP controller with 16-state FSM and one-hot encoding.
+* Test Data Registers (TDRs) for all defined JTAG instructions.
+* Test Mode Persistence (TMP) support — gates JTAG clock stop and test
+  assertion across a configurable list of reset conditions.
+* Boundary scan with scan ports and control signals.
+* BIST support via the RUNBIST instruction.
+* 3DIC support (TAP_3DCR) for STAP selection over a JTAG scan chain.
+* iJTAG SIB-based network access.
+* JTAG2AXI debug bridges for SMC fabric, SMC OTP and SEP OTP.
+
+== Configuration Parameters
+
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="ptap-configuration-parameters-table"></span>
+++++
+endif::backend-html5[]
+
+The PTAP is configured through feature enables for the optional instructions, TMP,
+IC_RESET slices and debug bridges, the IC_RESET slice types, the IDCODE and JTAG_CAPS
+values, and the JTAG2AXI pipeline depths.
+
+ifdef::backend-html5[]
+The parameters of `jtag_ptap` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/jtag_ptap/jtag_ptap.adoc[jtag_ptap].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters of `jtag_ptap` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+:imagesdir: assets
+endif::backend-pdf[]
+
+== Architecture
+
+ifdef::backend-html5[]
+include::partial$jtag_ptap/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::architecture.adoc[]
+endif::backend-pdf[]
+
+== Interface
+
+ifdef::backend-html5[]
+include::partial$jtag_ptap/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::interface.adoc[]
+endif::backend-pdf[]

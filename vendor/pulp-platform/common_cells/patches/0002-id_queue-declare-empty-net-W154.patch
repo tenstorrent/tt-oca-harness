@@ -1,0 +1,12 @@
+diff --git a/src/id_queue.sv b/src/id_queue.sv
+index 759a90d1b..f57821608 100644
+--- a/src/id_queue.sv
++++ b/src/id_queue.sv
+@@ -115,6 +115,7 @@ module id_queue #(
+     linked_data_t [CAPACITY-1:0]    linked_data_d,  linked_data_q;
+ 
+     logic                           full,
++                                    empty,
+                                     match_in_id_valid,
+                                     match_out_id_valid,
+                                     no_in_id_match,

@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Breaks the primary magic to force failover, and declares signature type 0 in the re-signed backup.
+base = "signed"
+ops = [
+  { op = "set_signature_type", slot = "backup", args = { value = 0 } },
+]
+patch = [
+  { fill = [0x1000, 0x1004], value = 0x99 },
+]

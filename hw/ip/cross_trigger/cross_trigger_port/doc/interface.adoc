@@ -1,0 +1,34 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[ctp-interface]]
+
+=== Signal Interface
+
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="ctp-signal-interface-table"></span>
+++++
+endif::backend-html5[]
+
+Packed control and bus types remain bundles at the `cross_trigger_port` module
+boundary; their members are not separate scalar ports.
+
+ifdef::backend-html5[]
+The parameters and ports of `cross_trigger_port` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/cross_trigger_port/cross_trigger_port.adoc[cross_trigger_port].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `cross_trigger_port` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+`cross_trigger_port` includes the CSR interface. The register-free `cross_trigger_port_core` instead takes `mode_wire_or_i`,
+`invert_i`, `handshake_reset_i`, and `stretch_mult_i` as configuration inputs.
+At that core interface, `mode_wire_or_i = 1` selects wire-OR and `0` selects
+point-to-point; the CSR MODE field is inverted before reaching it.
+
+=== Dependencies
+
+The CTP depends on the following components:
+
+* `hw/common/ocah_prim` - Primitive cells (synchronizers, pulse stretcher)

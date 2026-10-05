@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# PROD lifecycle, CHIPLET fused key 1 programmed, ROM development key 0 revoked,
+# CHIPLET fused key 1 REVOKED.
+#
+# Stimulus for sep_firmware_chiplet_pubkey_1_revoke_test.
+#
+# THREE THINGS ARE PROGRAMMED, AND EACH ONE CLOSES A DIFFERENT HOLE.
+#
+# 1. CHIPLET_PUBK_HASH1 holds SHA-256 of the dev0 RSA-3072 modulus -- the same
+#    digest the ROM build compiles in for ROM slot 0 (key_digests.c, generated
+#    by hw/sys/sep/bootrom/prod/tools/generate_key_digests.py) -- because that is
+#    the key the manifest this testcase boots is signed with
+#    (hw/sys/sep/bootrom/prod/tests/signing_keys/rsa_private_key.rom_key0.pem).
+#    The tree ships rom_key0 through rom_key5. Here the fused digest equals the
+#    ROM-slot-0 digest, and the consequence is stated in the testcase docstring:
+#    the digest comparison alone cannot prove which arm of validate_signature
+#    ran. Items 2 and 3 are what close that.
+#
+#    The value is the LITTLE-ENDIAN serialisation of the digest, because
+#    fuse_read_bytes() (oca_platform.c) takes byte 0 from the LSB of word 0, and
+#    SepEfuseImage.set_int() (sep_efuse_image.py) fills word i from bits [32i+31:32i].
+#
+# 2. CHIPLET_PUBK_HASH0 holds a DECOY: the same digest with bit 0 of byte 0
+#    flipped. It is non-zero, so a ROM that addressed the WRONG chiplet fuse would
+#    pass the PUBK_OTP_EMPTY test and fail with PUBK_UNAUTHORIZED instead of booting.
+#
+# 3. CHIPLET_PUBK_REVOKE bit 0 revokes ROM key slot 0. It is inert on a correct ROM,
+#    because the manifest selects a fused key. A ROM that ignored the selector would
+#    resolve slot 0 and echo PUBK_SEL=0x00000000, which every member forbids. The
+#    CHIPLET_PUBK_REVOKE description in sep_efuse_map.rdl also requires the
+#    development-key bits to be set before a part is transferred.
+#
+# Bits 16 and 17 revoke CHIPLET_PUBK_HASH0 and HASH1 (CHIPLET_PUBK_REVOKE in
+# sep_efuse_map.rdl). They are disjoint from the ROM-slot bits [7:0]; nothing
+# here is derived by counting past ROM slot 5. Bits 6 and 7 are unused ROM-slot
+# bits in this map.
+#
+# BL1_VERSION and SBOOT_DIS stay 0: a device version flag the manifest lacks would
+# refuse the image before the signature, and SBOOT_DIS would skip the crypto chain.
+#
+# THE REVOKING MEMBER. Bit 17 revokes CHIPLET fused key 1; the library checks it
+# after key authorization and before signature verification. The paired image is
+# re-signed and bootable, so revocation is the sole cause of the rejection, and both
+# manifest slots select this key, so the run is terminal.
+
+[LC_STATE]
+  [LC_STATE.fields.lc_state]
+  value = 0xE1   # PROD (raw=0x1)
+
+[CHIPLET_PUBK_HASH1]
+  [CHIPLET_PUBK_HASH1.fields.key_hash]
+  # SHA-256(dev0 RSA-3072 modulus) = a771ca6337a8f5c21a6ec994647e3aa09cfda7d2037d61bbecdf032b848250f6, little-endian
+  value = 0xf65082842b03dfecbb617d03d2a7fd9ca03a7e6494c96e1ac2f5a83763ca71a7
+
+[CHIPLET_PUBK_HASH0]
+  [CHIPLET_PUBK_HASH0.fields.key_hash]
+  # Decoy: the same digest with byte 0 bit 0 flipped; non-zero so a ROM that
+  # reads the wrong fuse fails PUBK_UNAUTHORIZED rather than PUBK_OTP_EMPTY.
+  value = 0xf65082842b03dfecbb617d03d2a7fd9ca03a7e6494c96e1ac2f5a83763ca71a6
+
+[CHIPLET_PUBK_REVOKE]
+  [CHIPLET_PUBK_REVOKE.fields.select]
+  value = 0x00020001   # bit 0 = ROM dev key 0; bit 17 = CHIPLET_PUBK_HASH1

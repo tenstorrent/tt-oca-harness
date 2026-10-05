@@ -1,0 +1,53 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[avsbus-controller]]
+= AVSBus Controller
+
+== Overview
+
+The AVSBus Controller is a hardware IP that implements the AVSBus 1.3.1
+specification for adaptive voltage scaling communication. It acts as a
+controller (master) that communicates with a single AVS target device (slave)
+to manage voltage rails, monitor power conditions, and perform real-time
+voltage adjustments for optimal performance and energy efficiency. This
+version supports 32-bit frame-based communication without multi-target
+addressing.
+
+== Description and Features
+
+* *Single-Target Support*: Communicates with a single AVS target device
+through a two-wire protocol interface
+* *AXI4-Lite Register Interface*: A 32-bit AXI4-Lite port, bridged internally
+to the APB4 register file
+* *Command FIFO*: 8-deep command queue, crossing from the register clock
+domain to the AVS clock domain
+* *Readback FIFO*: 8-deep response buffer with automatic hardware retry on a
+failed acknowledgment or a bad CRC
+* *Flexible Clock Configuration*: AVS clock generated from either the register
+clock or a reference clock, with a programmable divider and duty cycle
+* *Maskable Interrupts*: Nine sources covering FIFO overruns, retry
+exhaustion, an unresponsive target and target-signalled interrupts
+* *Slave Resync Operation*: Automatic periodic resynchronization at a
+configurable interval, or forced by software
+* *CRC-3 Protection*: Hardware generation on every command and checking on
+every response
+
+ifdef::backend-html5[]
+include::partial$avsbus_controller/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::architecture.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$avsbus_controller/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::interface.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$avsbus_controller/doc/memmap.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::memmap.adoc[]
+endif::backend-pdf[]

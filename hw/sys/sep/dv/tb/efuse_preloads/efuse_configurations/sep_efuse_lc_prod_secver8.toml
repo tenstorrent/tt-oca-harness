@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# PROD lifecycle whose BL1_VERSION holds security-version flags 0-7.
+#
+# The ROM accepts a manifest only if its security_version carries every flag set
+# here (see sep_efuse_lc_prod_secver1.toml). The test image carries none of
+# them, so the ROM must refuse both slots; the test fails if the image boots.
+# Used by sep_firmware_backup_invalid_security_version_test.
+
+[LC_STATE]
+  [LC_STATE.fields.lc_state]
+  value = 0xE1   # PROD (raw=0x1)
+
+[BL1_VERSION]
+  [BL1_VERSION.fields.version]
+  value = 0xff

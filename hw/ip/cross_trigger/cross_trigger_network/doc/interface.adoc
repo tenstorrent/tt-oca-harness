@@ -1,0 +1,56 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[cross-trigger-network-interface]]
+
+=== Cross Trigger Port (CTP)
+
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="ctn-cross-trigger-signal-interface-table"></span>
+++++
+endif::backend-html5[]
+
+For the module diagram and signalling modes, see
+<<cross-trigger-network-architecture,CTN Architecture>>.
+
+Each CTP is built on `cross_trigger_port_core`. Its operating mode resets to
+wire-OR: the CSR MODE field of an external CTP resets to 0, which selects
+wire-OR, and 1 selects peer-to-peer. `INT_CT_MODE` sets the mode of each
+internal CTP.
+
+ifdef::backend-html5[]
+The parameters and ports of `cross_trigger_port_core` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/cross_trigger_port/cross_trigger_port_core.adoc[cross_trigger_port_core].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `cross_trigger_port_core` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+=== Cross Trigger Matrix (CTM)
+
+The CTM has the following data ports and logical structure:
+
+* *CT_Src[N-1:0]* - Cross trigger pulse output signals from the CTM to CLAs,
+  CTPs, or other cross trigger sinking devices, where N is the number of these
+  cross trigger sinks. +
+* *CT_Dst[M-1:0]* - Cross trigger pulse input signals to the CTM from CLAs,
+  CTPs, or other cross trigger generating devices, where M is the number of
+  these cross trigger sources.
+
+=== Cross Trigger Network Module Interface
+
+ifdef::backend-html5[]
+The parameters and ports of `cross_trigger_network` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/cross_trigger_network/cross_trigger_network.adoc[cross_trigger_network].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `cross_trigger_network` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+=== Dependencies
+
+The CTN depends on the following components:
+
+* `hw/ip/cross_trigger/cross_trigger_port` - Cross Trigger Port IP
+* `hw/ip/cross_trigger/cross_trigger_matrix` - Cross Trigger Matrix IP
+* `vendor/pulp-platform/axi` - AXI infrastructure (`axi_lite_xbar`)

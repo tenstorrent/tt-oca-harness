@@ -1,0 +1,191 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[stap-architecture]]
+
+IEEE 1838-2019 enables hierarchical interconnection of TAP controllers across
+multiple chiplets. Each STAP interface provides an extension of a SiP's primary
+JTAG interface across internal chiplets. When enabled, a STAP interface is part
+of the JTAG scan chain, otherwise the STAP interface is bypassed. In addition,
+STAPs can also support connection of other TAP interfaces included on the same
+chiplet as the PTAP.
+
+=== Module Hierarchy
+
+The STAP implementation consists of three main components integrated within a
+single module (<<stap-module-hierarchy-table>>).
+
+[[stap-module-hierarchy-table]]
+[width="100%",cols="<30%,<52%,<18%",options="header"]
+.STAP module hierarchy
+|===
+|Module |Purpose |Conditional
+
+|`prim_jtag_sib_mux_pre`
+|Segment Insertion Bit multiplexer for TAP control signal routing
+|Always
+
+|`prim_jtag_scan_reg`
+|3-bit 3DCR control register (config_hold, stap_sel, tms_hold)
+|Always
+
+|Lockup latches
+|TDO lockup (always), TDI lockup (optional), scan output lockup (optional)
+|Per parameter
+|===
+
+=== STAP Module
+
+Each STAP has a 3-bit 3DCR TDR that defines the control interface for the STAP.
+Note that the STAP 3DCRs take a distributed segment approach to improve timing,
+as opposed to the single monolithic PTAP 3DCR approach detailed in the IEEE 1838
+standard. This 3DCR is connected inline within each STAP's scan chain. A SIB is
+inserted at the end of the 3DCR to exclude it from the scan chain when not
+needed. The one-bit SIB is always in the scan chain, so a STAP adds one bit to
+the chain while its SIB is closed and four bits while it is open. While the
+STAP is selected, the downstream TAP's scan path is also in the chain, between
+the STAP's scan input and the SIB.
+
+When not selected, the STAP interface TMS signal is tied to the constant value
+specified by the TMS-Hold bit of the 3DCR, otherwise it follows the PTAP TMS
+signal.
+
+<<stap-scan-and-control-paths-figure>> shows the scan path, the host TDO path and the
+gating logic of one STAP. Blue lines carry scan data and grey lines carry control. A
+small circle marks an inverted gate input, and a name at the tail of a short arrow
+(`stap_sel`, `security_disable_i` and `client_scan_ctrl_i.shift_en`) is the same
+signal drawn elsewhere in the figure. `stap_scan_in` feeds both the scan-in mux and
+the TDO lockup flop, whose output leaves on `host_tdo_o` toward the secondary TAP.
+While `stap_sel` is set, the scan-in mux passes the secondary TAP's return on
+`host_tdi_i`, which splices that TAP into the chain; otherwise it passes
+`stap_scan_in`. The SIB inserts the 3DCR into the client scan path or bypasses it,
+and its one-bit register drives `client_scan_out_o`. The dashed input stages are
+optional: SCAN_IN_PIPE on `client_scan_in_i` defaults to disabled for all DTP
+instances, and TDI_LOCKUP on `host_tdi_i` defaults to disabled but is enabled for
+the I/O STAP (`gen_stap_io`) to provide timing margin for the die boundary crossing.
+
+[[stap-scan-and-control-paths-figure]]
+.STAP scan and control paths
+image::stap-architecture.svg[alt="STAP with the optional input pipeline, the TDO lockup flop and security mask to host_tdo_o, the optional TDI lockup on host_tdi_i, the scan-in mux into the SIB and 3DCR, the security-gated stap_sel and 3DCR update enable, the 3DCR reset, the host TMS mux that switches only client TMS while TCK and TRST bypass it, and the TDO output enable",width=100%,pdfwidth=100%]
+
+`security_disable_i` gates three signals through AND gates with an inverted input:
+`stap_sel`, from the 3DCR `stap_sel_int` bit; the 3DCR update enable, from the SIB's
+`update_en`; and `host_tdo_o`. Because the TMS mux and the TDO output enable take
+the gated `stap_sel`, a disabled STAP also parks the host TMS at `tms_hold` and holds
+`host_tdo_oen_o` low. `host_tap_ctrl_o` carries TCK and TRST from
+`client_tap_ctrl_i` unchanged; only its TMS passes through the mux. Where the TCK
+and TRST line crosses the shift-enable input, the gap in the shift-enable line marks
+that the two do not connect. The SIB itself is
+not gated. The 3DCR reset combines the client TRST, `config_hold_sticky` and the scan
+reset as <<stap-3dcr-fields-table>> describes.
+
+=== 3DCR Register
+
+The 3-bit 3DCR control register is implemented using `prim_jtag_scan_reg` with a
+loopback configuration. The register outputs feed back to the data inputs,
+allowing the register to retain its configuration across scan operations while
+still being scannable for updates.
+
+<<stap-3dcr-fields-table>> defines the three control bits retained in the STAP scan
+register.
+
+[[stap-3dcr-fields-table]]
+[width="100%",cols="6,20,9,65",options="header"]
+.STAP 3DCR fields
+|===
+|Bit |Field |Reset |Description
+
+|2
+|TMS-Hold
+|0
+|Defines the parked TMS value when the STAP is disabled. When `stap_sel=0`, the host TMS output is driven with this static value rather than following the client TMS input.
+
+|1
+|Select (stap_sel)
+|0
+|Enables the STAP scan interface. When `stap_sel=1`, the STAP routes scan data through the downstream TAP. When `stap_sel=0`, the downstream TAP is not in the scan path and its TMS is held at the TMS-Hold value. While `security_disable_i` is high, a capture of the 3DCR reads this bit as 0 whatever its stored value (<<stap-debug-disable-behavior-table>>).
+
+|0
+|Config-Hold
+|0
+|Preserves the 3DCR configuration across Test-Logic-Reset. The active-low register reset is `client_tap_ctrl_i.trst_n AND (config_hold_sticky OR host_sib_scan_ctrl.rst_n)`, where `config_hold_sticky` samples `config_hold` on the falling edge of TCK and resets only on TRST. TRST assertion always resets the register regardless of this bit.
+|===
+
+=== STAP Types
+
+<<dtp-stap-allocation-table>> lists the STAPs allocated for the DTP JTAG interface. The
+STAPs are serially chained TDI -> TDO according to their order in this table
+from top to bottom. In addition to the STAPs integrated into the DTP, the STAP
+scan chain is ported out of the DTP so that the chiplet integrator may add
+additional STAPs closer to their point of use.
+
+[[dtp-stap-allocation-table]]
+[width="100%",cols="<30%,<70%",options="header"]
+.DTP STAP allocation
+|===
+|Purpose |Description
+|STAP to Next Chiplet |This STAP forwards JTAG to the next chiplet in the SiP.
+|SMC Core Debug |Provides access to the internal SMC CPU core debugger TAP.
+|SEP Core Debug |Provides access to the internal SEP CPU core debugger TAP.
+|[N-1:0] Additional STAPs |Provides access to additional STAPs for on or off-chip TAP connectivity.
+|Extended STAP Scan Interface |Provides the ability to add STAPs external to the DTP closer to their point of use.
+|===
+
+=== Debug Disable
+
+The `security_disable_i` input is active-high (1 = STAP disabled). When it is
+asserted, three aspects of STAP operation are blocked (<<stap-debug-disable-behavior-table>>).
+
+[[stap-debug-disable-behavior-table]]
+[width="100%",cols="<40%,<60%",options="header"]
+.STAP debug-disable behavior
+|===
+|Signal |Behavior when asserted
+
+|`stap_sel` (internal)
+|Forced to 0 regardless of the 3DCR Select bit, so scan data is not routed through the downstream TAP. The 3DCR captures this forced value, so a scan through the 3DCR reads Select as 0.
+
+|`host_tdo_o`
+|Forced to 0, so the downstream TAP cannot leak data on the host TDO even if it is accessed.
+
+|`client_reg_scan_ctrl.update_en`
+|Forced to 0, so the 3DCR cannot be updated while the STAP is disabled. The stored Select bit keeps its value: when `security_disable_i` clears, a STAP whose stored Select bit is 1 is selected again without a 3DCR write. The disable does not block the 3DCR reset, so TRST clears the stored bit, and so does the scan reset while Config-Hold is 0.
+|===
+
+STAP selection, host TDO, and 3DCR updates are all blocked combinationally at
+the module output, so there is no timing-dependent bypass of the disable.
+
+=== Lockup Latches
+
+The STAP implements three types of lockup latches to manage timing across die
+boundaries and long scan chains. These latches are clocked on the falling edge
+of TCK to capture data during the second half of the clock cycle, providing
+setup time margin for the next rising edge.
+
+==== TDO Lockup Latch
+
+The TDO lockup latch is always present and cannot be disabled. On every falling
+edge of TCK it captures the client scan data entering the STAP and drives it on
+`host_tdo_o` to the downstream TAP's TDI. The downstream TAP samples TDI on the
+rising edge of TCK, so the latch gives that path half a TCK period of setup
+margin.
+
+==== TDI Lockup Latch
+
+The TDI lockup latch is optional and controlled by the `TDI_LOCKUP` parameter
+(default = 0). When enabled, this latch captures the host TDI input on the
+falling edge of TCK before routing it to the client TDI output. This adds one
+additional cycle of latency but provides timing margin for die boundary
+crossings where signal delays may be significant. In the DTP integration, TDI
+lockup is enabled only for the I/O STAP that crosses between chiplets.
+
+==== Scan Output Lockup Latch
+
+The scan output lockup latch is optional and controlled by the `SCAN_OUT_LOCKUP`
+parameter (default = 0). This latch is implemented within the
+`prim_jtag_sib_mux_pre` module and retimes the client scan output on the falling
+edge of TCK. Enable it where the client scan output feeds a rising-edge stage
+clocked by a later TCK branch. Leave it disabled where the output reaches a
+falling-edge stage, such as the PTAP TDO retimer: two falling-edge stages in
+series add one TCK of scan latency. The DTP integration leaves it disabled on
+every STAP.

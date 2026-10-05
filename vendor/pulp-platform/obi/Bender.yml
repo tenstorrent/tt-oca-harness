@@ -1,0 +1,39 @@
+# Copyright 2023 ETH Zurich and University of Bologna.
+# Solderpad Hardware License, Version 0.51, see LICENSE for details.
+# SPDX-License-Identifier: SHL-0.51
+
+# Sources are vendored from upstream pulp-platform/obi into upstream/ via the `vendor_package`
+# entry in the root Bender.yml (bender vendor init), pinned at v0.1.7 (the rev the TT fork was
+# based on). No TT patch is carried.
+#
+# This is a slimmed manifest pruned to the strict instantiation closure OCA actually uses:
+# obi_pkg.sv plus the include/obi/typedef.svh header. idma's obi backend does
+# `include "obi/typedef.svh"` and instantiates the OBI_TYPEDEF_* macros, which reference
+# obi_pkg::{atop_t,memtype_t,prot_t}; that type usage is the only obi dependency in OCA.
+#
+# Everything else upstream is unused by OCA and not vendored: the standalone obi modules
+# (obi_xbar, obi_mux, obi_demux, obi_atop_resolver, obi_cut, obi_err_sbr, obi_intf,
+# obi_rready_converter, obi_sram_shim) were gated behind an `obi_rtl` target OCA never passes
+# and are instantiated nowhere; apb_to_obi.sv compiled but was never instantiated (its only delta,
+# the bare-`ASSERT -> `OCAH_PULP_ASSERT rename, was the now-dropped assert-prefix patch); and
+# include/obi/assign.svh was used only by those pruned modules. Re-vendor them (and re-add any
+# needed patch) if/when OCA starts using them.
+
+package:
+  name: obi
+  authors:
+    - "Michael Rogenmoser <michaero@iis.ee.ethz.ch>"
+
+# common_cells / common_verification are forced to the locally vendored path packages for every
+# consumer via the Bender.local overrides; these declarations are inert and point at the upstream
+# pulp-platform commits actually vendored (root Bender.yml vendor_package revs).
+dependencies:
+  common_cells:        { git: "https://github.com/pulp-platform/common_cells.git",        rev: "b74f0ad63600762ef101cf1d3365d19dfbb3123b" }
+  common_verification: { git: "https://github.com/pulp-platform/common_verification.git", rev: "c5d97a1fae01d2d8e8e311dee341b6b8849dcf38" }
+
+export_include_dirs:
+  - upstream/include
+
+sources:
+  # Always-on: obi type/cfg definitions used (via include/obi/typedef.svh) by idma's obi backend.
+  - upstream/src/obi_pkg.sv

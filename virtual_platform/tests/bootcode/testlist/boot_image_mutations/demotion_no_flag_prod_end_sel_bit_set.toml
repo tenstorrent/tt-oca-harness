@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# A PROD_END part given a BL1 decision, which the lifecycle must preempt.
+base = "signed"
+ops = [
+  { op = "set_demotion", slot = "primary", args = { bl1_valid = true, bl1_enable = false, bl2_valid = false, bl2_enable = false } },
+  { op = "set_lifecycle_constraint", slot = "primary", args = { allowed = 0x4, level = "chiplet" } },
+  { op = "set_lifecycle_constraint", slot = "backup", args = { allowed = 0x4, level = "chiplet" } },
+]

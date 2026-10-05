@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# Full SPI image for the SEP boot ROM: the AES-256-CBC encrypted multi-image OCA bundle
+# at both manifest slots, primary 0x01000 and backup 0x41000, each payload 0x1000 past it.
+manifest_format: oca-combined
+name: "OCAH SEP encrypted multi-image SPI image"
+
+total_size: 0x50000
+pad_byte: 0xFF
+
+combos:
+  - name: primary
+    config: configs/oca_encrypted_multi_image_boot_test.yaml
+    manifest_offset: 0x1000
+    payload_offset: 0x2000
+
+  - name: backup
+    config: configs/oca_encrypted_multi_image_boot_test.yaml
+    manifest_offset: 0x41000
+    payload_offset: 0x42000

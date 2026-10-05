@@ -1,0 +1,95 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef EXAMPLE_SRAM_MACRO_CSR_RDL_DEFINED
+`define EXAMPLE_SRAM_MACRO_CSR_RDL_DEFINED
+
+addrmap example_sram_macro_csr {
+    name = "Example SRAM Macro CSR Address Map";
+    desc = "Control and status registers for the example SRAM macro.";
+
+   
+   ////////////////////////////////////////////////////////////////////////////
+   // Register Definitions
+   ////////////////////////////////////////////////////////////////////////////
+
+   reg STATUS_INTR {
+      desc = "Status Register with level interrupts";
+
+      field {
+         sw = rw;
+         hw = w;
+         woclr;
+         stickybit;
+         level intr;
+         desc = "Macro is busy";
+      } busy[0:0] = 0x0;
+
+      field {
+         sw = rw;
+         hw = w;
+         woclr;
+         stickybit;
+         level intr;
+         desc = "Error occurred during operation. Bit 0 - Single bit error, Bit 1 - Double bit error";
+      } error[5:4] = 0x0;
+
+      field {
+         sw = rw;
+         hw = w;
+         woclr;
+         stickybit;
+         level intr;
+         desc = "Alert occurred, due to control signal corruption";
+      } alert[8:8] = 0x0;
+   };
+
+   reg STATUS_INTR_MASK {
+      desc = "Interrupt Mask Register";
+
+      field {
+         sw = rw;
+         hw = na;
+         desc = "Busy Interrupt Enable. Disabled by default.";
+      } busy_en[0:0] = 0x0;
+
+      field {
+         sw = rw;
+         hw = na;
+         desc = "Error Interrupt Enable. Enabled by default.";
+      } error_en[5:4] = 0x3;
+
+      field {
+         sw = rw;
+         hw = na;
+         desc = "Alert Interrupt Enable. Enabled by default.";
+      } alert_en[8:8] = 0x1;
+   };
+
+   reg TEST_REG {
+      desc = "Test Register for checking reg writes";
+      field {
+         sw = rw;
+         hw = na;
+         desc = "Test Register"; 
+      } test[31:0] = 0x0;
+   };
+
+   ////////////////////////////////////////////////////////////////////////////
+   // Address Map
+   ////////////////////////////////////////////////////////////////////////////
+
+   STATUS_INTR              STATUS_INTR                    @0x0;
+   STATUS_INTR_MASK         STATUS_INTR_MASK               @0x4;
+   TEST_REG                 TEST_REG                       @0x8;
+
+   ////////////////////////////////////////////////////////////////////////////
+   // Interrupt Masking
+   ////////////////////////////////////////////////////////////////////////////
+
+   STATUS_INTR.busy  ->mask = STATUS_INTR_MASK.busy_en;
+   STATUS_INTR.error ->mask = STATUS_INTR_MASK.error_en;
+   STATUS_INTR.alert ->mask = STATUS_INTR_MASK.alert_en;
+};
+`endif
+

@@ -1,0 +1,31 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-i2c_ctrl">I2C Control Address Map</h2>
+<p>Per-instance pad-function select, SMBus pad direction, and SMBus alert enable.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>I2C_CTRL[3]</strong>: 3 registers, base 0x0, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x8</td><td><a href="#I2C_CTRL_3_">I2C_CTRL[3]</a></td><td>RW</td><td>Control Register</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="I2C_CTRL_3_">I2C_CTRL[3]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>SMBUS_EN</td><td>RW</td><td>0x0</td><td>SMBus Enable. Gates the SMBus Alert signal.</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>I2C_CONTROLLER_MODE_EN</td><td>RW</td><td>0x0</td><td>SMBus Pad Direction. When set, the SMBus alert pad is an input and the SMBus suspend pad is an output, as for an SMBus host. When clear, the alert pad is an output and the suspend pad is an input, as for an SMBus target. SCL and SDA are unaffected. Program it to agree with the core&#x27;s CTRL.ENABLEHOST and CTRL.ENABLETARGET setting.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>I2C_EN</td><td>RW</td><td>0x0</td><td>I2C Pad Function Select. When set, the integration routes this instance&#x27;s SCL, SDA, SMBus alert and SMBus suspend signals to their pads. Does not enable the I2C core; CTRL.ENABLEHOST and CTRL.ENABLETARGET select the core&#x27;s operating mode.</td></tr>
+</table>
+</div>

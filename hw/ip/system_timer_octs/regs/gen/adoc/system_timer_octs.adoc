@@ -1,0 +1,117 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-system_timer_octs]
+== OCTS System Timer Address Map
+
+Open Chiplet Time Synchronization (OCTS) System Timer Registers
+
+[cols="1,4,1,6", options="header"]
+|===
+| Address | Name | Access | Description
+| 0x0 | <<reg-{regmap-instance}-system_timer_octs-TIMER_START,TIMER_START>> | RW a| System Timer Start Register
+| 0x4 | <<reg-{regmap-instance}-system_timer_octs-CTRL,CTRL>> | RW a| System Timer Control Register
+| 0x8 | <<reg-{regmap-instance}-system_timer_octs-STATUS,STATUS>> | R a| System Timer Status Register
+| 0xC | <<reg-{regmap-instance}-system_timer_octs-TIMER_PRESET_LO,TIMER_PRESET_LO>> | RW a| System Timer Preset Value [31:0]
+| 0x10 | <<reg-{regmap-instance}-system_timer_octs-TIMER_PRESET_HI,TIMER_PRESET_HI>> | RW a| System Timer Preset Value [63:32]
+| 0x14 | <<reg-{regmap-instance}-system_timer_octs-TIMER_COUNT_LO,TIMER_COUNT_LO>> | R a| Current System Timer Count [31:0]
+| 0x18 | <<reg-{regmap-instance}-system_timer_octs-TIMER_COUNT_HI,TIMER_COUNT_HI>> | R a| Current System Timer Count [63:32]
+| 0x1C | <<reg-{regmap-instance}-system_timer_octs-CREDIT_EXPIRED,CREDIT_EXPIRED>> | RW a| Credit Expired Register
+| 0x20 | <<reg-{regmap-instance}-system_timer_octs-TIMER_GPIO_ENABLE,TIMER_GPIO_ENABLE>> | RW a| System Timer GPIO Enable Register
+|===
+
+[#reg-{regmap-instance}-system_timer_octs-TIMER_START]
+=== TIMER_START
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `Reserved` | - | - a| Reserved
+| 0 | `START` | RW 1P | 0x0 a| Start the system timer. In PRIMARY mode, a write of 1 loads the preset and pulses the sync-load output for PULSE_WIDTH cycles.
+In SECONDARY mode, the write has no effect; a secondary starts on the primary's sync-load pulse, which is what loads its preset.
+Ensure both primary and secondary are out of reset.
+|===
+
+[#reg-{regmap-instance}-system_timer_octs-CTRL]
+=== CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:24 | `Reserved` | - | - a| Reserved
+| 23:16 | `STEP` | RW | 0x1 a| Step amount for secondary timer
+| 15:8 | `PULSE_WIDTH` | RW | 0x2 a| Pulse width for sync load and credit signals. A value of 0 will be rounded up to 1. WARNING: This value must be less than CREDIT_VAL
+| 7:0 | `CREDIT_VAL` | RW | 0xA a| Credit value factor. WARNING: This value must be greater than PULSE_WIDTH
+|===
+
+[#reg-{regmap-instance}-system_timer_octs-STATUS]
+=== STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:5 | `Reserved` | - | - a| Reserved
+| 4 | `RUNNING` | R | 0x0 a| Timer is enabled and its count is nonzero.
+| 3:1 | `Reserved` | - | - a| Reserved
+| 0 | `MODE` | R | 0x0 a| Timer mode driven by the is_primary_i input: 0=PRIMARY (is_primary_i=1), 1=SECONDARY (is_primary_i=0).
+|===
+
+[#reg-{regmap-instance}-system_timer_octs-TIMER_PRESET_LO]
+=== TIMER_PRESET_LO
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `PRESET_LO` | RW | 0x0 a| Lower 32 bits of preset value
+|===
+
+[#reg-{regmap-instance}-system_timer_octs-TIMER_PRESET_HI]
+=== TIMER_PRESET_HI
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `PRESET_HI` | RW | 0x0 a| Upper 32 bits of preset value
+|===
+
+[#reg-{regmap-instance}-system_timer_octs-TIMER_COUNT_LO]
+=== TIMER_COUNT_LO
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `COUNT_LO` | R | 0x0 a| Lower 32 bits of current timer count
+|===
+
+[#reg-{regmap-instance}-system_timer_octs-TIMER_COUNT_HI]
+=== TIMER_COUNT_HI
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `COUNT_HI` | R | 0x0 a| Upper 32 bits of current timer count
+|===
+
+[#reg-{regmap-instance}-system_timer_octs-CREDIT_EXPIRED]
+=== CREDIT_EXPIRED
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `MAX_CYCLES_EXPIRED` | RW | 0x0 a| Maximum number of clock cycles since a count credit expired (SECONDARY only). To reset the value of this register, write anything to it.
+If this number is very high (exact value depends on clock speed and credit value), this indicates that the secondary has not received a count credit pulse in a while, and is likely not syncing properly with the primary.
+This register can also be used to determine the clock skew between the primary and secondary.
+If PRIMARY, this field is always 0.
+|===
+
+[#reg-{regmap-instance}-system_timer_octs-TIMER_GPIO_ENABLE]
+=== TIMER_GPIO_ENABLE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `Reserved` | - | - a| Reserved
+| 0 | `GPIO_ENABLE` | RW | 0x0 a| Enable the GPIO pad lsio interface for the system timer. This is done to prevent X-prop on reset into the secondary timer, which can cause the secondary timer to start counting early.
+|===

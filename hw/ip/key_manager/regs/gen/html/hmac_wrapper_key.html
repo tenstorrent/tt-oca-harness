@@ -1,0 +1,40 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-hmac_wrapper_key">HMAC Wrapper Key Registers</h2>
+<p>Key storage registers for the HMAC sideload interface.<br>Written by Key Manager CPU, drives keymgr_key_i on the OT HMAC core.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>KEY_SHARE0[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
+<li><strong>KEY_SHARE1[8]</strong>: 8 registers, base 0x20, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x1C</td><td><a href="#KEY_SHARE0_8_">KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x20 - 0x3C</td><td><a href="#KEY_SHARE1_8_">KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x40</td><td><a href="#KEY_CTRL">KEY_CTRL</a></td><td>RW</td><td>Key control register. Writing KEY_VALID=1 asserts the sideload<br>valid signal to the HMAC core.</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="KEY_SHARE0_8_">KEY_SHARE0[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="KEY_SHARE1_8_">KEY_SHARE1[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="KEY_CTRL">KEY_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW</td><td>0x0</td><td>When 1, asserts keymgr_key_i.valid to indicate key is loaded.<br>Write 0 to invalidate the current key.</td></tr>
+</table>
+</div>

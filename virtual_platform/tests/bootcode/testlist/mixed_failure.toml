@@ -1,0 +1,96 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[testcase]]
+name = "sep_mixed_failure_primary_backup_test"
+family = "mixed_failure"
+classification = "vp-equivalent"
+image = "mixed_primary_hash_backup_signature"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { range = [0x1e64, 0x1e65], differs_from = "signed" },
+  { range = [0x41c64, 0x41c65], differs_from = "signed" },
+  { range = [0x0, 0x1e64], same_as = "signed" },
+  { range = [0x1e65, 0x41c64], same_as = "signed" },
+  { range = [0x41c65, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MFST_VER=0x00000000",
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "MFST_VER=0x00000000",
+  "PUBK_SEL=0x00000000",
+  "PUBK_AUTHORIZED",
+  "PUBK_REVOKE=0x00000000",
+  "RSA_EXEC",
+  "RSA_CMP1",
+  "RSA_CMP2",
+  "RSA_PKCS1_FAIL",
+  "MANIFEST_ERR=0x0003000e",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x0003000e",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "RSA_OTBN_INIT_FAIL",
+  "RSA_OTBN_LOAD_FAIL",
+  "RSA_EXEC_FAIL",
+  "OTBN_TIMEOUT",
+  "RSA_INOUT_UNCHANGED",
+  "PUBK_ALGO_UNSUPPORTED",
+  "PUBK_ENCODING_UNSUPPORTED",
+  "PUBK_FIELD_TOO_SMALL",
+  "PUBK_SEL_AMBIGUOUS",
+  "PUBK_SEL_EMPTY",
+  "PUBK_SLOT_RESERVED",
+  "PUBK_SLOT_UNPROVISIONED",
+  "PUBK_UNAUTHORIZED",
+  "PUBK_HASH_TIMEOUT",
+  "SHA_START_REJECTED",
+  "SHA_OP_REJECTED",
+  "HMAC_ERR_CODE=",
+  "MANIFEST_ERR=0x0003000f",
+  "MANIFEST_ERR=0x00030022",
+  "MANIFEST_ERR=0x00030023",
+  "MANIFEST_ERR=0x00030016",
+  "MANIFEST_ERR=0x00030017",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "SBOOT_OFF",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "OCA_BODY=0x00001000" = 2, "PUBK_SEL=0x00000000" = 1, "PUBK_AUTHORIZED" = 1, "RSA_EXEC" = 1, "RSA_PKCS1_FAIL" = 1, "MANIFEST_ERR=0x0003000d" = 1, "MANIFEST_ERR=0x0003000e" = 1, "MANIFEST_ALL_FAILED" = 1, "MANIFEST_BOOT_FAIL=0x0003000e" = 1 }
+expect_status = ["INFO 0x004c", "WARN 0x0013", "INFO 0x004c", "WARN 0x000e", "ERROR 0x000e", "ERROR 0x0213"]
+forbid_status = ["ERROR 0x0013", "INFO 0x0053", "DEBUG 0x0052"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x0003000e"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_manifest"]
+markers = [
+  "The two slots fail in different classes: the primary at manifest integrity (OCA_FAIL_MANIFEST_HASH, 0x0003000d, WARN 0x0013) before key selection, the backup at authentication (OCA_FAIL_SIGNATURE, 0x0003000e, WARN 0x000e) after RSA_PKCS1_FAIL.",
+  "PUBK_SEL=, PUBK_AUTHORIZED, RSA_EXEC and RSA_PKCS1_FAIL counted once say the verifier ran on the backup only; the ordered sequence rejects a ROM that swapped the two verdicts.",
+  "The primary breaker xors manifest_hash byte 0 with 0xFF and the backup breaker xors signature byte 0 with 0x01, the DV stimuli; both fields sit outside the signed region, so the backup still passes integrity.",
+  "Both payload spans read zero times: oca_validate_manifest() refuses both slots before payload staging. Not covered: the SHA timeout arm and the mirror case (authentication on the primary, integrity on the backup).",
+]

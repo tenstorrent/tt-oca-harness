@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[gpio-peripheral]]
+= GPIO Peripheral
+
+ifdef::backend-html5[]
+++++
+<span id="description-and-features"></span>
+++++
+endif::backend-html5[]
+
+== Overview
+
+GPIO connects software and low-speed I/O (LSIO) peripherals to individual
+pads. Software can drive or sample a pad, select an interrupt trigger, and
+read its boot strap. Hardware LSIO requests take priority over software
+control unless software explicitly disables LSIO.
+
+Each pad uses two blocks: `gpio` selects data and direction; `gpio_shim`
+selects electrical settings and captures the strap. Each has its own
+32-bit AXI4-Lite register interface. The surrounding padring instantiates
+these blocks for its pads and supplies the address mapping and LSIO wiring.
+
+The sections below explain ownership and reset behavior, list the interfaces
+and give the register maps. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-gpio[GPIO section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-gpio[GPIO section]
+endif::backend-pdf[]
+of the Programmer's Guide gives the programming sequences.
+
+ifdef::backend-html5[]
+include::partial$gpio/doc/architecture.adoc[]
+include::partial$gpio/doc/interface.adoc[]
+include::partial$gpio/doc/memmap.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::architecture.adoc[]
+include::interface.adoc[]
+include::memmap.adoc[]
+endif::backend-pdf[]

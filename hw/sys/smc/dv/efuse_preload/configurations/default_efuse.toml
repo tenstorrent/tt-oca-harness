@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# Default SMC eFuse contents for DV runs, read by generate_efuse_preload.py.
+# Every block the schema declares must appear here, with its lock flags and fields.
+
+[LOCKS]
+    write_locked = "False"
+    read_locked = "False"
+    [LOCKS.fields.lock_entries]
+    value = 0x0
+
+[JTAG_PUBLIC_IDENTITY]
+    write_locked = "False"
+    read_locked = "True"
+    [JTAG_PUBLIC_IDENTITY.fields.value]
+    value = 0x0
+
+[I2C_I3C_ID]
+    write_locked = "False"
+    read_locked = "False"
+    [I2C_I3C_ID.fields.interface_id]
+    value = 0x0
+
+[SMC_CONFIG]
+    write_locked = "False"
+    read_locked = "False"
+    [SMC_CONFIG.fields.smc_config]
+    value = 0x0
+
+[OCCP_TRANSPORT_TIMEOUT]
+    write_locked = "False"
+    read_locked = "False"
+    [OCCP_TRANSPORT_TIMEOUT.fields.transport_timeout]
+    value = 0x0
+
+[SPARE]
+    write_locked = "False"
+    read_locked = "False"
+    [SPARE.fields.spare_data]
+    value = 0x0

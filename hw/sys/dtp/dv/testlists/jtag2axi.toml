@@ -1,0 +1,646 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# SMC fabric JTAG2AXI scenarios.
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_single_write_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_single_write_test", uvm = "dtp_jtag2axi_smc_axi_single_write_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_single_write_data_verify_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_single_write_data_verify_test", uvm = "dtp_jtag2axi_smc_axi_single_write_data_verify_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_series_write_incr_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_series_write_incr_test", uvm = "dtp_jtag2axi_smc_axi_series_write_incr_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_series_write_incr_narrow_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_series_write_incr_narrow_test", uvm = "dtp_jtag2axi_smc_axi_series_write_incr_narrow_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_series_write_no_incr_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_series_write_no_incr_test", uvm = "dtp_jtag2axi_smc_axi_series_write_no_incr_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_series_write_incr_with_error_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_series_write_incr_with_error_test", uvm = "dtp_jtag2axi_smc_axi_series_write_incr_with_error_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_random_ops_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_random_ops_test", uvm = "dtp_jtag2axi_smc_axi_random_ops_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_write_security_gating_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_write_security_gating_test", uvm = "dtp_jtag2axi_smc_axi_write_security_gating_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_single_write_read_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_single_write_read_test", uvm = "dtp_jtag2axi_smc_axi_single_write_read_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ci", "jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_series_write_read_incr_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_series_write_read_incr_test", uvm = "dtp_jtag2axi_smc_axi_series_write_read_incr_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test", uvm = "dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_series_write_read_no_incr_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_series_write_read_no_incr_test", uvm = "dtp_jtag2axi_smc_axi_series_write_read_no_incr_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test", uvm = "dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_read_random_ops_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_read_random_ops_test", uvm = "dtp_jtag2axi_smc_axi_read_random_ops_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_read_security_gating_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_read_security_gating_test", uvm = "dtp_jtag2axi_smc_axi_read_security_gating_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test", uvm = "dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_single_write_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_single_write_test", uvm = "dtp_jtag2axi_smc_otp_axi_single_write_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_error_single_write_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_error_single_write_test", uvm = "dtp_jtag2axi_smc_axi_error_single_write_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_error_single_read_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_error_single_read_test", uvm = "dtp_jtag2axi_smc_axi_error_single_read_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_error_series_no_incr_write_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_error_series_no_incr_write_test", uvm = "dtp_jtag2axi_smc_axi_error_series_no_incr_write_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_error_series_no_incr_read_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_error_series_no_incr_read_test", uvm = "dtp_jtag2axi_smc_axi_error_series_no_incr_read_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_error_series_incr_write_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_error_series_incr_write_test", uvm = "dtp_jtag2axi_smc_axi_error_series_incr_write_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_error_series_incr_read_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_error_series_incr_read_test", uvm = "dtp_jtag2axi_smc_axi_error_series_incr_read_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test", uvm = "dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test", uvm = "dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_axi_error_security_gating_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_error_security_gating_test", uvm = "dtp_jtag2axi_smc_axi_error_security_gating_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_error_single_write_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_error_single_write_test", uvm = "dtp_jtag2axi_smc_otp_axi_error_single_write_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_error_single_read_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_error_single_read_test", uvm = "dtp_jtag2axi_smc_otp_axi_error_single_read_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_error_series_no_incr_write_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_error_series_no_incr_write_test", uvm = "dtp_jtag2axi_smc_otp_axi_error_series_no_incr_write_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_error_series_no_incr_read_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_error_series_no_incr_read_test", uvm = "dtp_jtag2axi_smc_otp_axi_error_series_no_incr_read_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_error_series_incr_write_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_error_series_incr_write_test", uvm = "dtp_jtag2axi_smc_otp_axi_error_series_incr_write_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_error_series_incr_read_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_error_series_incr_read_test", uvm = "dtp_jtag2axi_smc_otp_axi_error_series_incr_read_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_error_series_incr_write_with_status_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_error_series_incr_write_with_status_test", uvm = "dtp_jtag2axi_smc_otp_axi_error_series_incr_write_with_status_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_error_series_incr_read_with_status_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_error_series_incr_read_with_status_test", uvm = "dtp_jtag2axi_smc_otp_axi_error_series_incr_read_with_status_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_error_security_gating_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_error_security_gating_test", uvm = "dtp_jtag2axi_smc_otp_axi_error_security_gating_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_sep_otp_axi_error_single_write_test"
+module = { cocotb = "dtp_jtag2axi_sep_otp_axi_error_single_write_test", uvm = "dtp_jtag2axi_sep_otp_axi_error_single_write_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_sep_otp_axi_error_single_read_test"
+module = { cocotb = "dtp_jtag2axi_sep_otp_axi_error_single_read_test", uvm = "dtp_jtag2axi_sep_otp_axi_error_single_read_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_sep_otp_axi_error_series_no_incr_write_test"
+module = { cocotb = "dtp_jtag2axi_sep_otp_axi_error_series_no_incr_write_test", uvm = "dtp_jtag2axi_sep_otp_axi_error_series_no_incr_write_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_sep_otp_axi_error_series_no_incr_read_test"
+module = { cocotb = "dtp_jtag2axi_sep_otp_axi_error_series_no_incr_read_test", uvm = "dtp_jtag2axi_sep_otp_axi_error_series_no_incr_read_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_sep_otp_axi_error_series_incr_write_test"
+module = { cocotb = "dtp_jtag2axi_sep_otp_axi_error_series_incr_write_test", uvm = "dtp_jtag2axi_sep_otp_axi_error_series_incr_write_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_sep_otp_axi_error_series_incr_read_test"
+module = { cocotb = "dtp_jtag2axi_sep_otp_axi_error_series_incr_read_test", uvm = "dtp_jtag2axi_sep_otp_axi_error_series_incr_read_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_sep_otp_axi_error_series_incr_write_with_status_test"
+module = { cocotb = "dtp_jtag2axi_sep_otp_axi_error_series_incr_write_with_status_test", uvm = "dtp_jtag2axi_sep_otp_axi_error_series_incr_write_with_status_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_sep_otp_axi_error_series_incr_read_with_status_test"
+module = { cocotb = "dtp_jtag2axi_sep_otp_axi_error_series_incr_read_with_status_test", uvm = "dtp_jtag2axi_sep_otp_axi_error_series_incr_read_with_status_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_sep_otp_axi_error_security_gating_test"
+module = { cocotb = "dtp_jtag2axi_sep_otp_axi_error_security_gating_test", uvm = "dtp_jtag2axi_sep_otp_axi_error_security_gating_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_backpressure_aw_before_w_test"
+module = { cocotb = "dtp_jtag2axi_backpressure_aw_before_w_test", uvm = "dtp_jtag2axi_backpressure_aw_before_w_test" }
+seed = 1
+timeout_sec = 3000
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_backpressure_long_stall_test"
+module = { cocotb = "dtp_jtag2axi_backpressure_long_stall_test", uvm = "dtp_jtag2axi_backpressure_long_stall_test" }
+seed = 1
+timeout_sec = 3000
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_backpressure_abort_at_data_w_test"
+module = { cocotb = "dtp_jtag2axi_backpressure_abort_at_data_w_test", uvm = "dtp_jtag2axi_backpressure_abort_at_data_w_test" }
+seed = 1
+timeout_sec = 3000
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test"
+module = { cocotb = "dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test", uvm = "dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test"
+module = { cocotb = "dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test", uvm = "dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_decode_error_decerr_write_test"
+module = { cocotb = "dtp_jtag2axi_decode_error_decerr_write_test", uvm = "dtp_jtag2axi_decode_error_decerr_write_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_decode_error_decerr_read_test"
+module = { cocotb = "dtp_jtag2axi_decode_error_decerr_read_test", uvm = "dtp_jtag2axi_decode_error_decerr_read_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_decode_error_mixed_test"
+module = { cocotb = "dtp_jtag2axi_decode_error_mixed_test", uvm = "dtp_jtag2axi_decode_error_mixed_test" }
+seed = 1
+timeout_sec = 3000
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_series_corner_all_bridges_test"
+module = { cocotb = "dtp_jtag2axi_series_corner_all_bridges_test", uvm = "dtp_jtag2axi_series_corner_all_bridges_test" }
+seed = 1
+timeout_sec = 3000
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_single_write_data_verify_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_single_write_data_verify_test", uvm = "dtp_jtag2axi_smc_otp_axi_single_write_data_verify_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_series_write_incr_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_series_write_incr_test", uvm = "dtp_jtag2axi_smc_otp_axi_series_write_incr_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_series_write_no_incr_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_series_write_no_incr_test", uvm = "dtp_jtag2axi_smc_otp_axi_series_write_no_incr_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_series_write_incr_with_error_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_series_write_incr_with_error_test", uvm = "dtp_jtag2axi_smc_otp_axi_series_write_incr_with_error_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_random_ops_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_random_ops_test", uvm = "dtp_jtag2axi_smc_otp_axi_random_ops_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_write_security_gating_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_write_security_gating_test", uvm = "dtp_jtag2axi_smc_otp_axi_write_security_gating_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_sep_otp_axi_single_write_test"
+module = { cocotb = "dtp_jtag2axi_sep_otp_axi_single_write_test", uvm = "dtp_jtag2axi_sep_otp_axi_single_write_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_sep_otp_axi_single_write_data_verify_test"
+module = { cocotb = "dtp_jtag2axi_sep_otp_axi_single_write_data_verify_test", uvm = "dtp_jtag2axi_sep_otp_axi_single_write_data_verify_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_sep_otp_axi_series_write_incr_test"
+module = { cocotb = "dtp_jtag2axi_sep_otp_axi_series_write_incr_test", uvm = "dtp_jtag2axi_sep_otp_axi_series_write_incr_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_sep_otp_axi_series_write_no_incr_test"
+module = { cocotb = "dtp_jtag2axi_sep_otp_axi_series_write_no_incr_test", uvm = "dtp_jtag2axi_sep_otp_axi_series_write_no_incr_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_sep_otp_axi_series_write_incr_with_error_test"
+module = { cocotb = "dtp_jtag2axi_sep_otp_axi_series_write_incr_with_error_test", uvm = "dtp_jtag2axi_sep_otp_axi_series_write_incr_with_error_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_sep_otp_axi_random_ops_test"
+module = { cocotb = "dtp_jtag2axi_sep_otp_axi_random_ops_test", uvm = "dtp_jtag2axi_sep_otp_axi_random_ops_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_sep_otp_axi_write_security_gating_test"
+module = { cocotb = "dtp_jtag2axi_sep_otp_axi_write_security_gating_test", uvm = "dtp_jtag2axi_sep_otp_axi_write_security_gating_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_single_write_read_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_single_write_read_test", uvm = "dtp_jtag2axi_smc_otp_axi_single_write_read_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_test", uvm = "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_oversize_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_oversize_test", uvm = "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_oversize_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_series_write_read_no_incr_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_series_write_read_no_incr_test", uvm = "dtp_jtag2axi_smc_otp_axi_series_write_read_no_incr_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_with_error_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_with_error_test", uvm = "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_with_error_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_read_random_ops_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_read_random_ops_test", uvm = "dtp_jtag2axi_smc_otp_axi_read_random_ops_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_read_security_gating_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_read_security_gating_test", uvm = "dtp_jtag2axi_smc_otp_axi_read_security_gating_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_sep_otp_axi_single_write_read_test"
+module = { cocotb = "dtp_jtag2axi_sep_otp_axi_single_write_read_test", uvm = "dtp_jtag2axi_sep_otp_axi_single_write_read_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_sep_otp_axi_series_write_read_incr_test"
+module = { cocotb = "dtp_jtag2axi_sep_otp_axi_series_write_read_incr_test", uvm = "dtp_jtag2axi_sep_otp_axi_series_write_read_incr_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_sep_otp_axi_series_write_read_no_incr_test"
+module = { cocotb = "dtp_jtag2axi_sep_otp_axi_series_write_read_no_incr_test", uvm = "dtp_jtag2axi_sep_otp_axi_series_write_read_no_incr_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_sep_otp_axi_series_write_read_incr_with_error_test"
+module = { cocotb = "dtp_jtag2axi_sep_otp_axi_series_write_read_incr_with_error_test", uvm = "dtp_jtag2axi_sep_otp_axi_series_write_read_incr_with_error_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_sep_otp_axi_read_random_ops_test"
+module = { cocotb = "dtp_jtag2axi_sep_otp_axi_read_random_ops_test", uvm = "dtp_jtag2axi_sep_otp_axi_read_random_ops_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_sep_otp_axi_read_security_gating_test"
+module = { cocotb = "dtp_jtag2axi_sep_otp_axi_read_security_gating_test", uvm = "dtp_jtag2axi_sep_otp_axi_read_security_gating_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_dbg_disable_matrix_test"
+module = { cocotb = "dtp_jtag2axi_dbg_disable_matrix_test", uvm = "dtp_jtag2axi_dbg_disable_matrix_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi", "dbg_disable"]
+run_modes = ["jtag2axi"]

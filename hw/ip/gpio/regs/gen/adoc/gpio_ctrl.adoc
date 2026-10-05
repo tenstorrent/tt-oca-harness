@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-gpio_ctrl]
+== GPIO Control Address Map
+
+Per-pin GPIO pad control registers: drive strength, pull configuration, and strap capture.
+
+[cols="1,4,1,6", options="header"]
+|===
+| Address | Name | Access | Description
+| 0x0 | <<reg-{regmap-instance}-gpio_ctrl-CONTROL,CONTROL>> | RW a| -
+|===
+
+[#reg-{regmap-instance}-gpio_ctrl-CONTROL]
+=== CONTROL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:25 | `Reserved` | - | - a| Reserved
+| 24 | `hw2_ovrd` | RW | 0x0 a| Setting this register will enable the secondary HW function to override the GPIO enable and data lines.
+| 23:22 | `Reserved` | - | - a| Reserved
+| 21 | `strap_value` | R | 0x0 a| This register holds the captured value that was applied to the pad when reset was de-asserted.
+| 20 | `strap_valid` | R | 0x1 a| When set, this bit indicates that the strap value is valid. This field is not set if the GPIO is not an input by default
+| 19:17 | `Reserved` | - | - a| Reserved
+| 16 | `config_enable` | RW | 0x0 a| Setting this choosing the register values for PAD settings. This includes pull_enable, pull_select, and schmitt_select
+| 15:11 | `Reserved` | - | - a| Reserved
+| 10 | `schmitt_select` | RW | 0x0 a| Register-driven schmitt select.
+| 9 | `pull_select` | RW | 0x0 a| Register-driven pull select - by default we pull down
+| 8 | `pull_enable_n0_scan` | RW | 0x0 a| Register-driven pull enable. Default is disabled
+| 7:3 | `Reserved` | - | - a| Reserved
+| 2:0 | `drive_strength` | RW | 0x2 a| Register-driven drive-strength.
+|===

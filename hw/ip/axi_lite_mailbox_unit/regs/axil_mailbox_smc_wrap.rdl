@@ -1,0 +1,87 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef AXIL_MAILBOX_SMC_WRAP_RDL_DEFINED
+`define AXIL_MAILBOX_SMC_WRAP_RDL_DEFINED
+
+`include "axil_mailbox.rdl"
+
+addrmap axil_mailbox_smc_wrap {
+    name = "SMC AXI-Lite Mailbox Wrapper Address Map";
+    desc = "SMC-side wrapper instantiating the AXI-Lite mailbox pairs.
+            Each outbound_mailbox_N / inbound_mailbox_N pair is the two apertures of one
+            bidirectional mailbox and shares a single pair of FIFOs: data written through
+            WRITE_DATA in one aperture is what READ_DATA in the other aperture returns.
+            The outbound/inbound naming reflects intended use, not an access restriction.";
+    
+    axil_mailbox     outbound_mailbox_0      @0x000_0000;
+    axil_mailbox     inbound_mailbox_0       @0x000_0800;
+    axil_mailbox     outbound_mailbox_1      @0x000_1000;
+    axil_mailbox     inbound_mailbox_1       @0x000_1800;
+    axil_mailbox     outbound_mailbox_2      @0x000_2000;
+    axil_mailbox     inbound_mailbox_2       @0x000_2800;
+    axil_mailbox     outbound_mailbox_3      @0x000_3000;
+    axil_mailbox     inbound_mailbox_3       @0x000_3800;
+    axil_mailbox     outbound_mailbox_4      @0x000_4000;
+    axil_mailbox     inbound_mailbox_4       @0x000_4800;
+    axil_mailbox     outbound_mailbox_5      @0x000_5000;
+    axil_mailbox     inbound_mailbox_5       @0x000_5800;
+    axil_mailbox     outbound_mailbox_6      @0x000_6000;
+    axil_mailbox     inbound_mailbox_6       @0x000_6800;
+    axil_mailbox     outbound_mailbox_7      @0x000_7000;
+    axil_mailbox     inbound_mailbox_7       @0x000_7800;
+    axil_mailbox     outbound_mailbox_8      @0x000_8000;
+    axil_mailbox     inbound_mailbox_8       @0x000_8800;
+    axil_mailbox     outbound_mailbox_9      @0x000_9000;
+    axil_mailbox     inbound_mailbox_9       @0x000_9800;
+    axil_mailbox     outbound_mailbox_10     @0x000_A000;
+    axil_mailbox     inbound_mailbox_10      @0x000_A800;
+    axil_mailbox     outbound_mailbox_11     @0x000_B000;
+    axil_mailbox     inbound_mailbox_11      @0x000_B800;
+    axil_mailbox     outbound_mailbox_12     @0x000_C000;
+    axil_mailbox     inbound_mailbox_12      @0x000_C800;
+    axil_mailbox     outbound_mailbox_13     @0x000_D000;
+    axil_mailbox     inbound_mailbox_13      @0x000_D800;
+    axil_mailbox     outbound_mailbox_14     @0x000_E000;
+    axil_mailbox     inbound_mailbox_14      @0x000_E800;
+    axil_mailbox     outbound_mailbox_15     @0x000_F000;
+    axil_mailbox     inbound_mailbox_15      @0x000_F800;
+    axil_mailbox     outbound_mailbox_16     @0x001_0000;
+    axil_mailbox     inbound_mailbox_16      @0x001_0800;
+    axil_mailbox     outbound_mailbox_17     @0x001_1000;
+    axil_mailbox     inbound_mailbox_17      @0x001_1800;
+    axil_mailbox     outbound_mailbox_18     @0x001_2000;
+    axil_mailbox     inbound_mailbox_18      @0x001_2800;
+    axil_mailbox     outbound_mailbox_19     @0x001_3000;
+    axil_mailbox     inbound_mailbox_19      @0x001_3800;
+    axil_mailbox     outbound_mailbox_20     @0x001_4000;
+    axil_mailbox     inbound_mailbox_20      @0x001_4800;
+    axil_mailbox     outbound_mailbox_21     @0x001_5000;
+    axil_mailbox     inbound_mailbox_21      @0x001_5800;
+    axil_mailbox     outbound_mailbox_22     @0x001_6000;
+    axil_mailbox     inbound_mailbox_22      @0x001_6800;
+    axil_mailbox     outbound_mailbox_23     @0x001_7000;
+    axil_mailbox     inbound_mailbox_23      @0x001_7800;
+    axil_mailbox     outbound_mailbox_24     @0x001_8000;
+    axil_mailbox     inbound_mailbox_24      @0x001_8800;
+    axil_mailbox     outbound_mailbox_25     @0x001_9000;
+    axil_mailbox     inbound_mailbox_25      @0x001_9800;
+    axil_mailbox     outbound_mailbox_26     @0x001_A000;
+    axil_mailbox     inbound_mailbox_26      @0x001_A800;
+    axil_mailbox     outbound_mailbox_27     @0x001_B000;
+    axil_mailbox     inbound_mailbox_27      @0x001_B800;
+    axil_mailbox     outbound_mailbox_28     @0x001_C000;
+    axil_mailbox     inbound_mailbox_28      @0x001_C800;
+    axil_mailbox     outbound_mailbox_29     @0x001_D000;
+    axil_mailbox     inbound_mailbox_29      @0x001_D800;
+    axil_mailbox     outbound_mailbox_30     @0x001_E000;
+    axil_mailbox     inbound_mailbox_30      @0x001_E800;
+    axil_mailbox     outbound_mailbox_31     @0x001_F000;
+    axil_mailbox     inbound_mailbox_31      @0x001_F800;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+`endif
+};
+
+`endif

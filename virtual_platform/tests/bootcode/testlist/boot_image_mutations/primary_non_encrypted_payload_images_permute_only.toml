@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Stores the primary non-encrypted TOC in descending offset order with no overlap and reseals the
+# slot, so the payload breaks no TOC rule.
+base = "multi"
+ops = [
+  { op = "permute_toc_entries", slot = "primary", args = { order = [2, 1, 0] } },
+]

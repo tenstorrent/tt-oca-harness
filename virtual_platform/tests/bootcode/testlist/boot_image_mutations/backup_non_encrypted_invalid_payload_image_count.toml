@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Backup TOC image_count overruns the payload, resealed; the primary magic is broken so only the backup reaches the TOC.
+base = "signed"
+ops = [
+  { op = "set_toc_image_count", slot = "backup", args = { value = 257 } },
+]
+patch = [
+  { offset = 0x1000, le = 0x99999999, size = 4 },
+]

@@ -1,0 +1,172 @@
+# This manifest mirrors the TT i3c-core fork Bender.yml, with source and
+# include paths prefixed by upstream/. The upstream tree is materialized by
+# bender vendor init from the vendor_package entries in the root Bender.yml.
+# Do not hand-edit files under upstream/.
+
+package:
+  name: i3c-core
+  authors:
+    - "CHIPS Alliance"
+    - "Antmicro"
+    - "Anshul Shah"
+
+export_include_dirs:
+  # i3c-core include directories
+  - upstream/src
+  - upstream/src/libs
+  # caliptra-rtl include directories
+  - upstream/third_party/caliptra-rtl/src/caliptra_prim/rtl
+  - upstream/third_party/caliptra-rtl/src/caliptra_prim_generic/rtl
+  - upstream/third_party/caliptra-rtl/src/libs/rtl
+  - upstream/third_party/caliptra-rtl/src/axi/rtl
+
+sources:
+  - target: not(ocah_packaged_ip)
+    files:
+      ################################################################
+      # Packages (must be compiled first)
+      ################################################################
+      # caliptra-rtl packages
+      - upstream/third_party/caliptra-rtl/src/caliptra_prim/rtl/caliptra_prim_pkg.sv
+      - upstream/third_party/caliptra-rtl/src/caliptra_prim/rtl/caliptra_prim_util_pkg.sv
+      - upstream/third_party/caliptra-rtl/src/caliptra_prim/rtl/caliptra_prim_count_pkg.sv
+      - upstream/third_party/caliptra-rtl/src/libs/rtl/ahb_defines_pkg.sv
+      - upstream/third_party/caliptra-rtl/src/axi/rtl/i3ccore_axi_pkg.sv
+      # i3c-core packages
+      - upstream/src/libs/mem/prim_ram_1p_pkg_i3ccore.sv
+      - upstream/src/ctrl/controller_pkg.sv
+
+      ################################################################
+      # caliptra-rtl primitives
+      ################################################################
+      - upstream/third_party/caliptra-rtl/src/caliptra_prim_generic/rtl/caliptra_prim_generic_flop.sv
+      - upstream/third_party/caliptra-rtl/src/caliptra_prim/rtl/caliptra_prim_flop.sv
+      - upstream/third_party/caliptra-rtl/src/caliptra_prim/rtl/caliptra_prim_cdc_rand_delay.sv
+      - upstream/third_party/caliptra-rtl/src/caliptra_prim/rtl/caliptra_prim_flop_2sync.sv
+      - upstream/third_party/caliptra-rtl/src/caliptra_prim/rtl/caliptra_prim_assert.sv
+      - upstream/third_party/caliptra-rtl/src/caliptra_prim/rtl/caliptra_prim_count.sv
+      - upstream/third_party/caliptra-rtl/src/caliptra_prim/rtl/caliptra_prim_fifo_sync_cnt.sv
+      - upstream/third_party/caliptra-rtl/src/caliptra_prim/rtl/caliptra_prim_fifo_sync.sv
+
+      ################################################################
+      # caliptra-rtl library modules
+      ################################################################
+      - upstream/third_party/caliptra-rtl/src/libs/rtl/ahb_slv_sif.sv
+      - upstream/third_party/caliptra-rtl/src/axi/rtl/axi_if.sv
+      - upstream/third_party/caliptra-rtl/src/axi/rtl/axi_addr.v
+      - upstream/third_party/caliptra-rtl/src/libs/rtl/skidbuffer.v
+
+      ################################################################
+      # i3c-core memory primitives
+      ################################################################
+      - upstream/src/libs/mem/prim_generic_ram_1p_i3ccore.sv
+      - upstream/src/libs/mem/prim_ram_1p_adv_i3ccore.sv
+      - upstream/src/libs/mem/prim_ram_1p_i3ccore.sv
+
+      ################################################################
+      # i3c-core PHY
+      ################################################################
+      - upstream/src/phy/buf_pp.sv
+      - upstream/src/phy/bufs.sv
+      - upstream/src/phy/i3c_phy.sv
+
+      ################################################################
+      # i3c-core CSR
+      ################################################################
+      # Wrapper-generated CSR files (from the parent project)
+      - upstream/src/csr/I3CCSR_pkg.sv
+      - upstream/src/csr/I3CCSR.sv
+      - upstream/src/i3c_pkg.sv
+      - upstream/src/interrupt.sv
+
+      ################################################################
+      # i3c-core AXI subordinate library
+      ################################################################
+      - upstream/src/libs/axi_sub/i3c_axi_sub_arb.sv
+      - upstream/src/libs/axi_sub/i3c_axi_sub_rd.sv
+      - upstream/src/libs/axi_sub/i3c_axi_sub.sv
+      - upstream/src/libs/axi_sub/i3c_axi_sub_wr.sv
+
+      ################################################################
+      # i3c-core HCI - Queues
+      ################################################################
+      - upstream/src/hci/queues/read_queue.sv
+      - upstream/src/hci/queues/write_queue.sv
+      - upstream/src/hci/queues/hci_ibi_fifo_sync_cnt.sv
+      - upstream/src/hci/queues/hci_ibi_fifo_sync.sv
+      - upstream/src/hci/queues/hci_ibi_queue.sv
+
+      ################################################################
+      # i3c-core HCI - Bus adapters
+      ################################################################
+      - upstream/src/hci/ahb_if.sv
+      - upstream/src/hci/axi_adapter.sv
+      - upstream/src/hci/apb_adapter.sv
+      - upstream/src/hci/axi_lite_adapter.sv
+
+      ################################################################
+      # i3c-core HCI - Core
+      ################################################################
+      - upstream/src/hci/dxt.sv
+      - upstream/src/hci/tti.sv
+      - upstream/src/hci/queues.sv
+      - upstream/src/hci/hci.sv
+      - upstream/src/hci/csri.sv
+
+      ################################################################
+      # i3c-core Controller - Utilities
+      ################################################################
+      - upstream/src/ctrl/width_converter_8toN.sv
+      - upstream/src/ctrl/width_converter_Nto8.sv
+
+      ################################################################
+      # i3c-core Recovery
+      ################################################################
+      - upstream/src/recovery/recovery_pec.sv
+      - upstream/src/recovery/recovery_receiver.sv
+      - upstream/src/recovery/recovery_transmitter.sv
+      - upstream/src/recovery/recovery_executor.sv
+      - upstream/src/recovery/recovery_handler.sv
+
+      ################################################################
+      # i3c-core Controller - Bus logic
+      ################################################################
+      - upstream/src/ctrl/bus_monitor.sv
+      - upstream/src/ctrl/ibi.sv
+      - upstream/src/ctrl/bus_tx.sv
+      - upstream/src/ctrl/bus_tx_flow.sv
+      - upstream/src/ctrl/bus_rx_flow.sv
+      - upstream/src/ctrl/bus_timers.sv
+      - upstream/src/ctrl/target_reset_detector.sv
+      - upstream/src/ctrl/i3c_bus_monitor.sv
+      - upstream/src/ctrl/ccc_entdaa.sv
+      - upstream/src/ctrl/ccc.sv
+      - upstream/src/ctrl/configuration.sv
+      - upstream/src/ctrl/edge_detector.sv
+
+      ################################################################
+      # i3c-core Controller - Descriptors
+      ################################################################
+      - upstream/src/ctrl/descriptor_rx.sv
+      - upstream/src/ctrl/descriptor_tx.sv
+      - upstream/src/ctrl/descriptor_ibi.sv
+
+      ################################################################
+      # i3c-core Controller - FSMs
+      ################################################################
+      - upstream/src/ctrl/i3ccore_i2c_controller_fsm.sv
+      - upstream/src/ctrl/i3ccore_i2c_target_fsm.sv
+      - upstream/src/ctrl/i3c_controller_fsm.sv
+      - upstream/src/ctrl/i3c_target_fsm.sv
+
+      ################################################################
+      # i3c-core Controller - Flow control
+      ################################################################
+      - upstream/src/ctrl/flow_active.sv
+      - upstream/src/ctrl/flow_standby_i2c.sv
+      - upstream/src/ctrl/controller_standby_i2c.sv
+      - upstream/src/ctrl/controller_standby_i3c.sv
+      - upstream/src/ctrl/controller_active.sv
+      - upstream/src/ctrl/controller_standby.sv
+      - upstream/src/ctrl/controller.sv
+      - upstream/src/ctrl/stable_high_detector.sv

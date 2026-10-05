@@ -1,0 +1,118 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Security Disable (SEC_DIS)
+:description: SEP emergency security-disable behavior and integration requirements.
+
+ifdef::backend-html5[]
+:dtp-ic-reset-overrides-ref: xref:dtp:clk_rst.adoc#dtp-ic-reset-overrides[IC_RESET Overrides]
+endif::backend-html5[]
+ifndef::backend-html5[]
+:dtp-ic-reset-overrides-ref: <<dtp-ic-reset-overrides>>
+endif::backend-html5[]
+
+[[security-disable-sec_dis]]
+
+Security Disable (SEC_DIS) is an emergency bring-up bypass for early (A0)
+silicon. On deassertion of power-on reset, the fuse sense logic runs before
+anything else, and a malfunction there -- the fuse state machine hanging, or
+invalid values being written into the shadow register bank -- would leave the
+life-cycle control closed and turn the chiplet into a disabled ``brick''.
+SEC_DIS provides a secure unlock mechanism to recover such a part for debug:
+it overrides the life-cycle control, forcing all feature-control bits on
+regardless of the LC state and the SIP_DIS / SYS_DIS disables.
+
+SECURE_TM is not a term in the feature-control computation, so SEC_DIS neither
+qualifies nor overrides it. In particular, SEC_DIS does not open the secure scan
+chain to a dump: that chain admits only test commands, and only at
+`secure_tm = 1`, independently of the feature-control bits (see the Lifecycle
+Controller chapter, _`secure_tm` and the Secure Scan Chain_).
+
+== Token Activation
+
+SEC_DIS is activated by presenting a secret token: SEC_DIS_TOKEN_I is passed
+into the SEP via the JTAG port, hashed, and redundantly compared against an
+embedded hash constant. On a match, i.e. hash(SEC_DIS_TOKEN_I) ==
+SEP_SEC_DISABLE_TOKEN_DIGEST, the life-cycle control is overridden to open
+debug access, and the feature-control output follows the SEC_DIS rules in the
+Lifecycle Controller chapter.
+A match does not release the SEP reset, which stays held until fuse sensing
+completes. To boot a part whose fuse sensing does not complete, override
+`sep_reset_n` through the SEP slice of the IC_RESET TDR (see
+{dtp-ic-reset-overrides-ref} in the DTP chapter). The override and the token
+match are independent JTAG steps: the override alone releases the reset but
+leaves the life-cycle control closed, so recovering such a part for debug
+takes both.
+
+[[sec-dis-fuse-sensing-and-shadow-map]]
+== Fuse Sensing and the Shadow Map
+
+While a SEC_DIS match holds:
+
+* Automatic fuse sensing does not start, and sensing already in progress stops.
+  No further fuse words are loaded into the shadow registers, and fuse sensing
+  does not complete.
+* A read of the eFuse shadow map over the SEP bus completes with OKAY.
+* The SMC eFuse controller receives the SEP security-disable status, so SMC
+  fuse sensing stops and the SMC shadow map opens in the same way.
+
+[[sec-dis-reset-persistence]]
+== Reset Persistence
+
+The token arrays, the computed digest and its valid bit survive reset, so a
+match established before a cold reset holds from cold-reset release. Fuse
+sensing then does not start, every shadow register keeps its reset value
+instead of the partial contents of an interrupted sense, and SEP samples the
+secure test-mode request one cycle after cold-reset release instead of at
+fuse-sensing completion. A match established without a following cold reset
+leaves the shadow registers holding whatever the failed sense loaded, and the
+secure test-mode request is never sampled. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-sec-dis-recovery[SEC_DIS recovery sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-sec-dis-recovery[SEC_DIS recovery sequence]
+endif::backend-pdf[]
+is in the Programmer's Guide.
+
+== Silicon Revision Scope
+
+SEC_DIS is intended for A0 silicon only and is removed in later revisions
+(A1/B0) by a simple metal-mask ECO: the token comparator's enable is
+implemented in a metal-programmable revision cell, strapped to 1 (comparator
+enabled) in A0 silicon and re-strapped to 0 at top metal in later revisions,
+so the feature is killed without a re-spin.
+
+== Implementation Requirements
+
+* The token secret itself is never stored in RTL; the RTL stores only the
+token hash value, and the hardware forces every presented token through the
+hash engine before the digest comparison -- there is no path that presents a
+digest to the comparator directly. The 256-bit SEP_SEC_DISABLE_TOKEN_DIGEST
+constant is therefore not itself a secret (recovering the token from it
+requires a SHA-256 preimage): it may be publicly known and may be carried in
+plain RTL. It resides in the fuse controller component hardware gates (_not
+the OTP fuse bank_).
+
+* The comparison logic must be purely combinational, and the
+SEP_SEC_DISABLE_TOKEN_DIGEST constant must never be latched into any
+potentially scannable register. This is an integrity requirement, not confidentiality:
+the expected digest must not be perturbable -- for example scan-shifted --
+into a value whose preimage an attacker knows.
+
+* The JTAG-accessible register holding the token input values
+(SEC_DIS_TOKEN_I, RMA_SIP_TOKEN_I, and RMA_CHIPLET_TOKEN_I) *_shall not have
+a reset_*, so that the SEC_DIS state is retained across reset for early-event
+debug. That register must also not be scannable: DFT scan tests may be
+running while SEC_DIS is asserted, and a scan pattern must not inadvertently
+overwrite the register -- dropping the security unlock and stopping the test.
+
+* The secrecy of the scheme rests entirely on the SEC_DIS_TOKEN value, never
+on the hash. The token shall be a full-entropy 256-bit random value, and
+knowledge of it shall be strictly controlled: it shall be generated and
+stored in a secure database (HSM). Because only its integrity matters, the
+SEP_SEC_DISABLE_TOKEN_DIGEST may be bound at any convenient point in the
+implementation flow -- for example as an RTL parameter passed down the
+instance hierarchy (chiplet top to SMU to SEP to fuse controller). One member of the DV team
+shall perform final verification of the SEC_DIS_TOKEN functionality on the
+post-layout extracted netlist with *_gate-level simulation_*.

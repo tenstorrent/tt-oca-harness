@@ -1,0 +1,54 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[system-timer-octs-interface]]
+== Interface
+
+The System Timer OCTS IP has a 32-bit AXI4-Lite register interface. The
+`is_primary_i` input selects PRIMARY or SECONDARY mode at runtime. All
+signals are synchronous to `clk_i` except `timer_sync_load_i` and
+`timer_cnt_credit_i`, which are synchronized internally as described in
+<<octs-pulses>>.
+
+=== Ports
+
+ifdef::backend-html5[]
+The ports of `system_timer_octs` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/system_timer_octs/system_timer_octs.adoc[system_timer_octs].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The ports of `system_timer_octs` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+`system_timer_octs` has no parameters. Its AXI4-Lite request and response
+types, with 32-bit address and data, are defined in `system_timer_octs_pkg`.
+
+=== OCTS Synchronization Interface
+
+When operating in PRIMARY mode, the timer generates synchronization
+pulses: `timer_sync_load_o` is asserted for `CTRL.PULSE_WIDTH` cycles when
+the START register is written, and `timer_cnt_credit_o` is asserted for
+`CTRL.PULSE_WIDTH` cycles every `CTRL.CREDIT_VAL` cycles. Any
+synchronization input signals are ignored in PRIMARY mode. In contrast,
+SECONDARY mode relies on input from the PRIMARY: `timer_sync_load_i`
+directs the timer to initialize using a preset value, and
+`timer_cnt_credit_i` delivers credit pulses that allow continuous
+synchronization. In this mode, the outputs remain inactive.
+
+=== Timer Count
+
+`timer_count_o` is the live 64-bit count, also readable through
+`TIMER_COUNT_LO` and `TIMER_COUNT_HI`. A PRIMARY advances it by one each
+`clk_i` cycle. A SECONDARY advances it by `CTRL.STEP` each cycle while
+credits remain.
+
+[[octs-interface-timing]]
+=== Timing
+
+The RTL defines no setup, hold or clock-to-output limit, maximum clock
+frequency or frequency ratio between OCTS clock domains. Clock frequency,
+jitter, reset timing and physical timing constraints must come from the
+integration timing specification.
+
+Synchronization inputs cross into `clk_i` as described in <<octs-pulses>>;
+derive the required pulse high and low intervals from the destination clock
+and CDC analysis. Reset behavior is described in <<octs-reset>>.

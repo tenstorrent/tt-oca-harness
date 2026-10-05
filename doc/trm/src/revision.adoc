@@ -1,0 +1,209 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Internal Revision History
+:doctype: book
+:sectanchors:
+:sectlinks:
+:sectnums:
+:source-highlighter: highlight.js
+
+This document tracks internal revisions and updates to the OCAH documentation.
+
+<<internal-revision-history-table>> tracks the internal documentation revisions.
+
+[[internal-revision-history-table]]
+.Internal revision history
+[width="100%",cols="15%,15%,15%,55%",options="header",]
+|=======================================================================
+|Version |Date |Author |Description
+|0.0.1 |2025-10-23 |Alessandro Ottaviano |Initial documentation
+structure setup. Added methodology, microarchitecture, dependencies,
+tools, and history sections. Reorganized documentation system with
+distributed IP documentation approach. Added SMC documentation draft.
+|0.0.2 |2026-01-08 |Alessandro Ottaviano |Added SMC Integration guideline.
+Added SMC eFuse shadow register address mapping. Fixed eFuse
+memory map to include detailed register field mappings (I2C/I3C_ID, CHIPLET_ID,
+etc.).
+|0.0.3 |2026-01-28 |Alessandro Ottaviano |Clarified OCTS timer architecture:
+runtime primary/secondary distinction via strap.
+|0.1.0 |2026-01-29 |Alessandro Ottaviano |Added DTP architecture and
+microarchitecture specs.
+|0.2.0 |2026-02-12 |Alessandro Ottaviano |Added OCAH SMC FuSa specs. Clarified
+SMC fabric protocols in CPU cluster and memory system size.
+|0.3.0 |2026-02-20 |Alessandro Ottaviano |Added OCAH SEP specs. Added OCAH top-level
+figure and brief description.
+|0.3.1 |2026-03-10 |Alessandro Ottaviano |Fixed SMC memory map doc (memmap.adoc) to
+match RDL: corrected ECAM, M-mode, Xvisor, PLIC, CLINT, BEU addresses/sizes;
+added missing components (DTP, DFT, CLA, I3C, Mailbox).
+|0.3.2 |2026-03-18 |Alessandro Ottaviano |Added FuSa requirement mapping to FuSa specs;
+Added SMC peripheral clock specs; updated SMC top figure with highlighted clock domains;
+updated SEP specs.
+|0.3.3 |2026-03-24 |Alessandro Ottaviano |Clarified bus and register parity generation and checking;
+Clarified strobe gating for masked (partial) writes.
+|0.3.4 |2026-03-24 |Alessandro Ottaviano |Add detailed breakdown of register types for register parity checking.
+|0.3.5 |2026-03-31 |Alessandro Ottaviano |Added parity handling for protocol converters (ID remap, burst splitter, ID prepend, address fixer).
+|0.4.0 |2026-04-09 |Alessandro Ottaviano |Expanded DTP and SEP documentation with
+microarchitecture details. Expanded Scrambler, Key Manager, Entropy Source, and DRBG
+DTP architecture specs with RTL-derived parameter tables, algorithm details, and integration
+descriptions. Enriched SEP crypto accelerator sections (OTBN, AES, KMAC, HMAC) and peripheral
+sections (SPI, WDT, eFuse) with wrapper integration details and OpenTitan cross-references.
+|0.4.1 |2026-04-11 |Alessandro Ottaviano |Refactored OCAH Architecture chapter
+with Power Domains, Clock Domains, Reset, and Address Map sections.
+Added RTL-backed port tables for SMU, SMC, SEP, and DTP. Renamed and
+streamlined Integration Guide. Replaced placeholder files with proper
+content (Motivation, OCA Compliance, Use Cases). Added cover page
+version and date.
+|0.5.0 |2026-04-11 |Alessandro Ottaviano |Open to internal review.
+|0.5.1 |2026-04-22 |Alessandro Ottaviano |Refreshed SEP crypto entropy routing
+description: AES, KMAC, and OTBN EDN ports now fed from post-CSRNG DRBG bits; generic external-entropy-stream option documented.
+|0.5.2 |2026-05-12 |Alessandro Ottaviano |Corrected SIB acronym expansion in DTP/JTAG
+architecture docs.
+|0.5.3 |2026-05-25 |Haohao Liao |Updated SEP Lifecycle Controller chapter with feedback from F2F meeting.
+|0.5.4 |2026-05-29 |Alessandro Ottaviano |Removed legacy-design
+references from OCAH AsciiDoc documentation and rewrote provenance-only
+third-party references as OCAH-owned requirements and behavior.
+|0.5.5 |2026-06-06 |Haohao Liao |Added Key Manager key-management architecture:
+per-UID software/hardware root keys, deterministic UID-derived key hierarchy,
+requester-selected chip configuration, configuration-tied key revocation, ECC
+key metadata in signatures, and user input keys.
+|0.5.6 |2026-06-06 |Haohao Liao |Refined the SEP Lifecycle Controller
+feature-control section per review: reordered it to define the disable vector
+(SIP_DIS / SYS_DIS) before the per-LC-state feature-control result, added an
+Overrides and Final Gates description (SEC_DIS override and the SECURE_TM final
+gate on the test group), and removed the obsolete screening/diagnostic test
+definitions.
+|0.5.7 |2026-06-07 |Haohao Liao |Key Manager: moved UID and hardware-root-key
+read-locks to the warm reset domain (re-applied by ROM on every boot), matching
+the warm-reset KM CPU.
+|0.5.8 |2026-06-09 |Haohao Liao |Updated Key Manager spec per review feedback:
+clarified OTP inputs (UIDs and life-cycle hardwired; demotion from LCC), the
+eFuse access path, KDF concatenation notation, 512-bit user_input, and
+mailbox-only user-input-key injection.
+|0.5.9 |2026-06-10 |Haohao Liao |SEP Lifecycle Controller per review: corrected
+DEMOTE feature-control scope (TEST_DEV honours SIP_DIS/SYS_DIS; RMA_CHIPLET
+already opens debug), unified the T/F convention (T = feature enabled), and
+reframed scan protection (removed the secure_tm shadow-register disconnect;
+Class 1 non-scannable, Class 2 scandump-gated).
+|0.5.10 |2026-06-11 |Alessandro Ottaviano |Documented PLIC and `mie` CSR
+software initialization requirements before enabling external interrupts.
+|0.5.11 |2026-06-12 |Haohao Liao |Fixed contradictory descriptions across the
+SEP spec following the Lifecycle Controller update.
+|0.5.12 |2026-06-17 |Haohao Liao |Aligned SEP scan / scan-dump asset
+protection in the Lifecycle Controller and Key Manager chapters: crypto / KM
+secret-bearing storage (including the KPV key vault) is scannable but never
+scan-dumpable (secure_tm-gated), and reconciled the Attack Countermeasures
+chapter to match.
+|0.5.13 |2026-06-25 |Haohao Liao |Addressed SEP Lifecycle Controller and Key
+Manager review comments.
+|0.5.14 |2026-06-27 |Haohao Liao |SEP Lifecycle Controller / Fuse Controller:
+terminology and English cleanup, added the PUBK_PROVISIONED co-sign-trigger
+fuse field, and standardized public-key fuse naming (*_PUBK_HASH).
+|0.5.15 |2026-06-29 |Haohao Liao |SEP secure-boot signing model: per-owner
+classical + post-quantum (ML-DSA) key hashes, new REQUIRED_SIGNERS /
+REQUIRED_ALGS policy vectors, generalized CHIPLET_PUBK_REVOKE to all owners'
+keys, and removed PUBK_PROVISIONED.
+|0.5.16 |2026-07-13 |Alessandro Ottaviano |Document dual LSIO on GPIO[25:26] in
+`ocah_gpio_table.adoc`: PSYSCRITB/VRHOTB when enabled, else UART[3].RTS/CTS when
+UART[3] is enabled.
+|0.5.17 |2026-07-13 |Alessandro Ottaviano |Clarify that GPIO[52]/[55]/[57]
+(Thermal Emergency / PLL OBS / PVT RO) claim the pad only when that function is enabled.
+|0.5.18 |2026-07-14 |Haohao Liao |Reframed the SEP secure-boot signing model as
+fuse-seeded and firmware-propagated: REQUIRED_SIGNERS is now the required-signer
+set (0 = required; firmware-writable shadow, seed made immutable by a fuse-only
+LOCK) decoupled from REQUIRED_ALGS; added KEY_PROVISIONED (per owner/algorithm)
+with a fuse-map reorg (32 fields, 8192 bits); rewrote the Signing-Model
+Enforcement section (three-fuse model, firmware propagation, manifest
+terminology) and added signing-model examples.
+|0.5.19 |2026-07-22 |Haohao Liao |Revised the Life Cycle Controller and Fuse
+Controller specification following manager review of the secure-boot and
+demotion model. Simplified the secure-boot signing model (2-bit REQUIRED_SIGNERS;
+removed KEY_PROVISIONED); reworked in-field debug demotion into two independent
+controls, Demotion 1 (local debug) and Demotion 2 (inter-chiplet debug bypass);
+added a Secure-Boot Enforcement section; added a second SiP root-key slot for key
+revocation; and revised the wording throughout for clarity.
+|0.5.20 |2026-07-26 |Haohao Liao |Lifecycle Controller: clarified that SIP_DBG
+is the SiP debug-access gate at each LCC-bearing chiplet and reworked the
+Multiple Security Domains access rules and example accordingly. Security
+Disable: restructured the section to present rationale and behavior before
+implementation requirements. Key Manager: the life-cycle state is now an input
+to the software/hardware root-key derivations, aligning the chapter with the
+KM KDF design specification; demotion is excluded from root derivation and
+binds at leaf-key derivation only.
+|0.5.21 |2026-07-28 |Haohao Liao |Addressed review feedback. Life Cycle
+Controller: aligned the scan-protection and demotion text with the SIP_DBG
+debug-access-path model (SEP_DBG / CHIPLET_DBG are local gates; external
+access additionally requires the SIP_DBG path). Key Manager: made the implicit
+life-cycle binding of UID-derived keys explicit (a life-cycle transition
+invalidates the roots and the entire UID-derived hierarchy). Security Disable:
+the comparator kill switch is a metal-programmable revision cell, and the
+token hash is not a secret -- secrecy rests on the full-entropy token held in
+the HSM.
+|0.5.22 |2026-08-05 |Haohao Liao |Expanded the SEP fuse map to relieve the
+lock-bit budget and to carry Key Manager identity inputs. LOCK is widened from
+64 to 96 bits, raising the field count from 32 to 48 slots (41 now defined).
+Added three public per-owner identity fuses, SEP_CHIPLET_ID / SEP_SIP_ID /
+SEP_SYS_ID, which personalize each owner's Key Manager identity root and,
+being public, need no read protection. Replaced the two coarse reserved blocks
+with eight individually lockable 256-bit spare fields (spare0-spare7) so an
+adopter can provision and lock spare storage one field at a time. The map
+remains 8192 bits.
+|0.5.23 |2026-08-11 |Alessandro Ottaviano |Aligned entropy-source documentation with the
+RTL: corrected the MAIN_SM_STATUS.ALERT / AlertHang description and the DRBG EDN endpoint count.
+|0.5.24 |2026-08-11 |Alessandro Ottaviano |Entropy source: the sticky
+MAIN_SM_STATUS.ALERT and ERR status bits are now also cleared by a CTRL.RESET
+soft reset, keeping the status consistent with the FSM it reflects.
+|0.5.25 |2026-08-12 |Alessandro Ottaviano |Surfaced the Entropy Source IP
+register reference in the SEP Detailed Register Map (previously only prose was
+included) and reconciled the generated register tables with the RDL. Completed
+the HT_WATERMARK description: each watermark arms when the entropy source is
+enabled (MODULE_ENABLE 0 to 1) or on a CTRL.RESET pulse -- high watermarks to
+0x0000 (running maximum), low watermarks to 0xFFFF (running minimum).
+|0.5.26 |2026-08-13 |Alessandro Ottaviano |Completed the published-document
+migration audit. Restored the shared reference-counter description and UART
+software flow-control guidance; aligned DFX status, repository path, and
+cross-document link descriptions with the current implementation.
+
+|0.5.27 |2026-08-28 |Alessandro Ottaviano |Replaced the entropy source local
+CTRL.RESET with the SEP Reset Controller's active-low TRNG reset request.
+The shared reset drains and isolates the ESRC, CSRNG, and EDN AXI ports before
+resetting the full entropy complex, scrubs post-mux adapters and the fabric
+entropy pool, and requires full TRNG reinitialization before entropy resumes.
+Outstanding consumer requests stall until fresh entropy is available.
+SW_RESET_N now resets to 0x3E; reserved CTRL[0] reads zero and ignores writes.
+|0.5.28 |2026-08-31 |Ben Melton |Documented the IC_RESET TDR as three slices
+(SMC, SEP, external) with the external ports adopter-defined.
+|0.5.29 |2026-09-02 |Alessandro Ottaviano |Aligned the SMC Boot ROM chapter
+with the current four-core hardware ROM interface, 128 KiB linker map, macro
+configuration, and response endianness control.
+|0.5.30 |2026-09-07 |Haohao Liao |Corrected the SEP Lifecycle Controller
+multi-chiplet debug model: primary-chiplet SiP-owner feature control gates DFT
+traffic before downstream forwarding, and reserved DBG_2 bits gate
+adopter-defined forwarding paths on LCC-bearing chiplets.
+|0.5.31 |2026-09-10 |Ben Melton |Recorded that the SEP TRNG aperture is a
+full-window passthrough to an adopter-defined IP, and that intra-aperture
+SLVERR and no-alias decode is an integrator constraint.
+|0.5.32 |2026-09-10 |Ben Melton |Key Manager: public identity OTP fields
+(SEP_CHIPLET_ID / SEP_SIP_ID / SEP_SYS_ID) are delivered from the sensed eFuse
+shadow, dual-rail encoded like the secrets, and not blanked in secure test mode.
+|0.5.33 |2026-09-11 |Alessandro Ottaviano |Recorded that the SMC PLIC accepts
+active-high level sources or pulses long enough to be sampled on `clk_smc`.
+|0.5.34 |2026-09-18 |Haohao Liao |SEP SPI host is the unmodified OpenTitan IP
+behind an AXI4-Lite to TL-UL bridge, so the OpenTitan register map and interrupt
+semantics are authoritative. The published register map now carries the
+OpenTitan register names; the error and SPI-event interrupts share one line into
+the SEP interrupt controller, so software reads INTR_STATE to tell them apart;
+the access-control and SPI pass-through interfaces are unused and tied off. The
+SPI busy output is withdrawn from the SEP interface, since the OpenTitan host
+reports activity only through STATUS.ACTIVE.
+|0.5.35 |2026-09-25 |Nils Wistoff |Stated in the SMC, SEP, Key Manager and
+cross-trigger network address maps how each unit answers an access that no
+register or memory backs, inside its decoded extent and past it, and how an
+address between unit apertures answers.
+|0.5.36 |2026-09-29 |Noah Betik |Reworked `ocah_gpio_table.adoc` to key each
+row by pad index instead of harness signal name, and marked the PTAP/STAP JTAG,
+reference clock, reset and powergood rows as having no dedicated interface in
+the harness. Added GPIO pad integration guidance on the bonded and unbonded pad
+counts, the pad types for the JTAG PTAP/STAP, cross trigger ports and the
+clock/reset/powergood inputs.
+|=======================================================================

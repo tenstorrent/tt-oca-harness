@@ -1,0 +1,62 @@
+From 6231eaeee7c9f173c2a86d9ba6eab6e6842ac50e Mon Sep 17 00:00:00 2001
+From: Kai Qin <kqin@tenstorrent.com>
+Date: Wed, 10 Jun 2026 13:52:08 -0400
+Subject: [PATCH] OCH prim swaps, _i3ccore mem renames, AXI defines
+
+---
+ src/hci/queues/read_queue.sv                              | 2 +-
+ src/hci/queues/write_queue.sv                             | 2 +-
+ src/phy/i3c_phy.sv                                        | 4 ++--
+ 3 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/hci/queues/read_queue.sv b/src/hci/queues/read_queue.sv
+index e7921c33..75b39844 100644
+--- a/src/hci/queues/read_queue.sv
++++ b/src/hci/queues/read_queue.sv
+@@ -142,7 +142,7 @@ module read_queue #(
+ 
+   logic unused_err;
+ 
+-  caliptra_prim_fifo_sync #(
++  prim_fifo_sync #(
+       .Width(DataWidth),
+       .Pass (1'b0),
+       .Depth(Depth)
+diff --git a/src/hci/queues/write_queue.sv b/src/hci/queues/write_queue.sv
+index fb944470..1c66e3a6 100644
+--- a/src/hci/queues/write_queue.sv
++++ b/src/hci/queues/write_queue.sv
+@@ -176,7 +176,7 @@ module write_queue #(
+ 
+   logic unused_err;
+ 
+-  caliptra_prim_fifo_sync #(
++  prim_fifo_sync #(
+       .Width(DataWidth),
+       .Pass (1'b0),
+       .Depth(Depth)
+diff --git a/src/phy/i3c_phy.sv b/src/phy/i3c_phy.sv
+index 7fe003af..033b5cf5 100644
+--- a/src/phy/i3c_phy.sv
++++ b/src/phy/i3c_phy.sv
+@@ -32,7 +32,7 @@ module i3c_phy (
+ `ifndef DISABLE_INPUT_FF
+ 
+   // Synchronize SCL to system clock
+-  caliptra_prim_flop_2sync #(
++  prim_flop_2sync #(
+       .Width(1),
+       .ResetValue(1)
+   ) scl_synchronizer (
+@@ -43,7 +43,7 @@ module i3c_phy (
+   );
+ 
+   // Synchronize SDA to system clock
+-  caliptra_prim_flop_2sync #(
++  prim_flop_2sync #(
+       .Width(1),
+       .ResetValue(1)
+   ) sda_synchronizer (
+-- 
+2.26.2
+

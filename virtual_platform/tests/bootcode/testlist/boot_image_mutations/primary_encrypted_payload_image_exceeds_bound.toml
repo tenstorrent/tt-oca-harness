@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Encrypted primary TOC entry 0 starts inside the TOC, resealed so only the placement rule can refuse it.
+base = "encrypted"
+ops = [
+  { op = "set_toc_entry_offset", slot = "primary", args = { index = 0, value = 240 } },
+]

@@ -1,0 +1,80 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# check_no_vendor_paths.yaml
+#
+# Configuration for tools/dv/check_no_vendor_paths.py.
+#
+# forbidden_prefixes: path substrings that must NOT appear in any file
+#   referenced by the public OSS filelist.  These match against the full
+#   resolved absolute path of each file and against every path token found
+#   inside -f / +incdir+ / `include lines.
+#
+# per_target_allowlist: a mapping from named "targets" (arbitrary labels) to
+#   lists of prefix patterns that are allowed in that target's filelist.  Use
+#   this sparingly — every allowlist entry is a known gap in the public flow.
+#   All entries must have a "reason" field explaining why the exception exists.
+#
+# -------------------------------------------------------------------------
+# Forbidden prefixes
+# -------------------------------------------------------------------------
+forbidden_prefixes:
+  # Any path rooted at a foundry/tech or vendor-IP tree. These roots hold
+  # process-specific simulation models and vendor simulation IP that are not
+  # available in CI or to OSS contributors.
+  - prefix: "/vendor_ip/"
+    description: "Vendor IP root — no vendor simulation IP in the public flow"
+  - prefix: "/tech/"
+    description: "Foundry/tech root — no process-specific models in the public flow"
+
+  # Internal server mounts sometimes appear in developer-local filelists
+  - prefix: "/nfs/tools"
+    description: "Internal NFS tool mount — not available in CI or to OSS contributors"
+  - prefix: "/tools_vendor"
+    description: "Internal vendor tool mount"
+  - prefix: "/tools_soc"
+    description: "Internal SoC tool mount"
+
+# -------------------------------------------------------------------------
+# Per-target allowlist overrides
+# -------------------------------------------------------------------------
+# Each entry has:
+#   target:   arbitrary label matching the --target argument of check_no_vendor_paths.py
+#   allow:    list of prefix strings to exempt from the forbidden_prefixes check
+#   reason:   mandatory explanation of the gap the exception covers
+
+per_target_allowlist:
+  # Example entry:
+  #
+  # - target: "internal_vendor_dv"
+  #   allow:
+  #     - "/vendor_ip/"
+  #     - "/tech/"
+  #   reason: >
+  #     Vendor-accurate regression flow; not part of the public OSS filelist.
+  #
+  # An exception is documented here and selected with `--target <label>`.
+  []
+
+# -------------------------------------------------------------------------
+# File extension filter
+# -------------------------------------------------------------------------
+# Only lines in filelist files whose path ends with one of these extensions
+# are checked for forbidden prefixes.  Lines that are Verilator flags
+# (+define+, -Wno-*, --cc, etc.) are skipped regardless.
+checked_extensions:
+  - ".sv"
+  - ".v"
+  - ".vp"
+  - ".svh"
+  - ".vh"
+
+# -------------------------------------------------------------------------
+# Filelist directive prefixes that introduce a path token
+# -------------------------------------------------------------------------
+# These are the leading tokens that introduce a file or directory path in a
+# Verilog/SystemVerilog filelist (.f file).  Lines starting with any of these
+# are treated as path lines and their argument is extracted and checked.
+filelist_path_directives:
+  - "+incdir+"    # +incdir+<path>
+  - "-f "         # -f <path>
+  - "-F "         # -F <path> (some tools use capital F)

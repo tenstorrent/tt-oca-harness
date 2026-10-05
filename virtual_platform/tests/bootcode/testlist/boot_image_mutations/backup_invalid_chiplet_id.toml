@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Backup chiplet_id bytes 3 and 5 mismatch the fuse; the primary magic is broken first.
+base = "signed"
+ops = [
+  { op = "set_identity", slot = "backup", args = { kind = "chiplet", value = "000000ff00ff0000000000000000000000000000000000000000000000000000", mask = 0x28 } },
+]
+patch = [
+  { field = "OFF_BOOT_MANIFEST_MAGIC", slot = "primary", le = 0x99999999, size = 4 },
+]

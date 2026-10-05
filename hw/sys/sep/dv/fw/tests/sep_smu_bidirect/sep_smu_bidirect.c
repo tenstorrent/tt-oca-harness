@@ -1,0 +1,170 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
+/* sep_smu_bidirect - SEP side of the SMU SEP<->SMC bidirectional alias test.
+ * It opens the aperture and filter windows, checks SMC scratch through the
+ * alias, then completes the SMC->SEP command/ack handshake on cold scratch0. */
+
+#include <stdint.h>
+
+#include "och_sep_common.h"
+#include "sep.h"
+
+#define XBAR_FILTER_START_ADDR 0x0000000040000000ULL
+#define XBAR_FILTER_END_ADDR 0x00000000800000FFULL
+#define SEP_INBOUND_SHARED_START_ADDR ((uint64_t)SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0))
+#define SEP_INBOUND_SHARED_END_ADDR ((uint64_t)SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7) + 7ULL)
+#define XBAR_FILTER_CONFIG 0x0000000101000013ULL
+#define SMC_TO_SEP_FILTER_CONFIG 0x0000000101030013ULL
+#define SMC_TO_SEP_NS_FILTER_CONFIG 0x0000000101030113ULL
+
+#define FILTER_CONFIG_OFFSET 0x0u
+#define FILTER_START_OFFSET 0x8u
+#define FILTER_END_OFFSET 0x10u
+#define FILTER_STRIDE 0x20u
+
+/* SMC CPU_CTRL scratch registers as SEP addresses them through the dedicated
+ * SEP-to-SMC port, which translates them to the SMC-local alias. */
+#define SMC_XBAR_CPU_CTRL_SCRATCH8_ADDR 0x400390C0u
+#define SMC_XBAR_SCRATCH_STRIDE 0x8u
+#define SMC_XBAR_CPU_CTRL_SCRATCH12_ADDR 0x400390E0u
+
+#define SEP_SHARED_ADDR SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
+#define SMC_TO_SEP_PATTERN 0xC001CAFEu
+#define SMC_TO_SEP_DONE_PATTERN 0xD0E0F00Du
+#define SEP_READY_PATTERN 0x51EAD001u
+#define SEP_TO_SMC_ACK_PATTERN 0x5E9ACCE5u
+#define SMC_TO_SEP_TIMEOUT_ITERS 1000000u
+
+/*
+ * The SMU xbar SEP aperture must cover the SEP cold scratch for SMC-to-SEP
+ * writes and readbacks, and the reset size does not. This size covers the SEP
+ * local address space without overlapping the default SMC aperture.
+ */
+#define SEP_APERTURE_SIZE 0x20000000ULL
+
+static volatile int g_xbar_status;
+
+static inline void program_sep_smu_aperture(void) {
+    WRITE_REG(SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR, (uint32_t)SEP_APERTURE_SIZE);
+    __asm__ volatile("fence iorw, iorw" ::: "memory");
+}
+
+static inline void open_sep_outbound_xbar_window(void) {
+    uintptr_t base = (uintptr_t)SEP_TOP_OUTBOUND_FILTER_CTRL_BASE_ADDR(0);
+
+    WRITE_REG64(base + FILTER_START_OFFSET, XBAR_FILTER_START_ADDR);
+    WRITE_REG64(base + FILTER_END_OFFSET, XBAR_FILTER_END_ADDR);
+    WRITE_REG64(base + FILTER_CONFIG_OFFSET, XBAR_FILTER_CONFIG);
+    __asm__ volatile("fence iorw, iorw" ::: "memory");
+}
+
+static inline void open_sep_inbound_sram_window(void) {
+    uintptr_t base = (uintptr_t)SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0);
+
+    WRITE_REG64(base + FILTER_START_OFFSET, SEP_INBOUND_SHARED_START_ADDR);
+    WRITE_REG64(base + FILTER_END_OFFSET, SEP_INBOUND_SHARED_END_ADDR);
+    WRITE_REG64(base + FILTER_CONFIG_OFFSET, SMC_TO_SEP_FILTER_CONFIG);
+
+    base += FILTER_STRIDE;
+    WRITE_REG64(base + FILTER_START_OFFSET, SEP_INBOUND_SHARED_START_ADDR);
+    WRITE_REG64(base + FILTER_END_OFFSET, SEP_INBOUND_SHARED_END_ADDR);
+    WRITE_REG64(base + FILTER_CONFIG_OFFSET, SMC_TO_SEP_NS_FILTER_CONFIG);
+    __asm__ volatile("fence iorw, iorw" ::: "memory");
+}
+
+static int smc_scratch_rw_check(uint32_t index, uint32_t pattern) {
+    uintptr_t addr =
+        (uintptr_t)(SMC_XBAR_CPU_CTRL_SCRATCH8_ADDR + (index * SMC_XBAR_SCRATCH_STRIDE));
+    WRITE_REG(addr, pattern);
+    __asm__ volatile("fence iorw, iorw" ::: "memory");
+
+    uint32_t readback = READ_REG(addr);
+    if (readback != pattern) {
+        return -((int)index + 1);
+    }
+
+    return 0;
+}
+
+static int wait_for_smc_to_sep_pattern(uint32_t expected) {
+    volatile uint32_t *shared = (volatile uint32_t *)(uintptr_t)SEP_SHARED_ADDR;
+
+    for (uint32_t i = 0; i < SMC_TO_SEP_TIMEOUT_ITERS; ++i) {
+        uint32_t value = *shared;
+        if (value == expected) {
+            return 0;
+        }
+    }
+
+    return -1;
+}
+
+static int run_smu_bidirect_sequence(void) {
+    static const uint32_t patterns[] = {
+        0x13579BDFu,
+        0x2468ACE0u,
+        0xA5A55A5Au,
+        0x5A5AA5A5u,
+    };
+
+    /*
+     * Program the SMU xbar SEP aperture BEFORE opening filter windows so
+     * that any early SMC-side write is already routable across the xbar.
+     */
+    program_sep_smu_aperture();
+
+    open_sep_outbound_xbar_window();
+    open_sep_inbound_sram_window();
+
+    for (uint32_t i = 0; i < (sizeof(patterns) / sizeof(patterns[0])); ++i) {
+        int rc = smc_scratch_rw_check(i, patterns[i]);
+        if (rc != 0) {
+            return rc;
+        }
+    }
+
+    volatile uint32_t *shared = (volatile uint32_t *)(uintptr_t)SEP_SHARED_ADDR;
+    *shared = 0u;
+    __asm__ volatile("fence iorw, iorw" ::: "memory");
+
+    WRITE_REG(SMC_XBAR_CPU_CTRL_SCRATCH12_ADDR, SEP_READY_PATTERN);
+    __asm__ volatile("fence iorw, iorw" ::: "memory");
+
+    if (wait_for_smc_to_sep_pattern(SMC_TO_SEP_PATTERN) != 0) {
+        return -100;
+    }
+
+    WRITE_REG(SMC_XBAR_CPU_CTRL_SCRATCH12_ADDR, SEP_TO_SMC_ACK_PATTERN);
+    __asm__ volatile("fence iorw, iorw" ::: "memory");
+
+    if (wait_for_smc_to_sep_pattern(SMC_TO_SEP_DONE_PATTERN) != 0) {
+        return -101;
+    }
+
+    return 0;
+}
+
+__attribute__((noinline, used)) void smu_bidirect_pass_loop(void) {
+    while (1) {
+        __asm__ volatile("wfi");
+    }
+}
+
+__attribute__((noinline, used)) void smu_bidirect_fail_loop(void) {
+    while (1) {
+        __asm__ volatile("wfi");
+    }
+}
+
+int main(void) {
+    g_xbar_status = run_smu_bidirect_sequence();
+
+    if (g_xbar_status == 0) {
+        smu_bidirect_pass_loop();
+    } else {
+        smu_bidirect_fail_loop();
+    }
+
+    return g_xbar_status;
+}

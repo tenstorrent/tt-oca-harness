@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Launch entry: selected by `--dut cross_trigger_network` (registered in
+# hw/common/dv/configs/duts.toml — the DV root is nested one level below the
+# hw/ip/<name>/dv convention). IP-level cocotb bench for the Cross Trigger
+# Network: the DUT's AXI4-Lite CSR crossbar is driven by the shared AXI
+# VIP's AXI4-Lite master; the external CTP GPIO pads, internal CT ports, and
+# clock-stop controls are pin-exposed on tb/tb_top.sv for direct cocotb
+# stimulus.
+name = "cross_trigger_network"
+profile = "native"
+default_framework = "cocotb"
+description = "Cross Trigger Network (CTN) IP-level cocotb DV flow"
+default_tool = "verilator"
+tools = ["verilator", "vcs", "xcelium"]
+
+[testlist]
+path = "testlists/all.toml"
+format = "toml_list"
+
+[native.stages.clean]
+kind = "clean"
+paths = ["{run_dir}", "hw/ip/cross_trigger/cross_trigger_network/dv/build"]
+
+[build]
+top_module = "cross_trigger_network_tb_top"
+top_file = "hw/ip/cross_trigger/cross_trigger_network/dv/tb/tb_top.sv"
+filelist = "hw/ip/cross_trigger/cross_trigger_network/dv/build/cross_trigger_network_dut_compile.f"
+bender_filelist = "hw/ip/cross_trigger/cross_trigger_network/dv/build/cross_trigger_network_bender.f"
+work_dir = "hw/ip/cross_trigger/cross_trigger_network/dv/build"
+# Shared dependency targets: the pulp AXI package/typedefs, crossbar, and the
+# common-cells closure they parse against.
+common_bender_targets = [
+  "axi_rtl",
+  "common_cells_rtl",
+]
+# The cross_trigger family target (Bender.yml): all three cross-trigger IPs'
+# packages and RTL plus the vendored OpenTitan prim closure.
+bender_targets = ["cross_trigger"]
+# The open-drain shared-wire model tb/tb_top.sv places on the CT_Req_out pads.
+sources = ["hw/common/dv/shims/analog/ocah_open_drain_bus.sv"]
+
+[frameworks.cocotb]
+python_root = "hw/ip/cross_trigger/cross_trigger_network/dv/cocotb"
+test_dir = "hw/ip/cross_trigger/cross_trigger_network/dv/cocotb/tests"
+python_paths = [
+  "hw/common/dv/vip",
+  "hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/py",
+  "hw/ip/cross_trigger/cross_trigger_port/regs/gen/py",
+]
+results_dir = "{run_dir}/{item}/results"
+cocotb_log = "{run_dir}/{item}/logs/{item}.log"
+
+[run_modes.smoke]
+description = "CTN crossbar CSR sanity and decode bring-up"
+timeout_sec = 600
+args = []
+
+[run_modes.functional]
+description = "CTN cross-mode routing, loopback, and clock-stop scenarios"
+timeout_sec = 1200
+args = []
+
+[targets.default]
+description = "CTN IP-level cocotb target"
+build_dir = "hw/ip/cross_trigger/cross_trigger_network/dv/build/cocotb"
+
+[targets.default.tools.verilator]
+flags = [
+  "-Wno-BLKLOOPINIT",
+  "+define+VERILATOR",
+]

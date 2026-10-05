@@ -1,0 +1,86 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-bus_error_unit">Bus Error Unit Address Map</h2>
+<p>Status registers reporting correctable and uncorrectable I-cache, D-cache, and TileLink bus errors.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#CAUSE">CAUSE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#PHYS_ADDR">PHYS_ADDR</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#ENABLE">ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#PLIC_ENABLE">PLIC_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#ACCRUED_ENABLE">ACCRUED_ENABLE</a></td><td>RW</td><td>Sticky accrued error status. The legacy name ACCRUED_ENABLE does not denote an enable mask. Error events set these bits independently of ENABLE. Ordinary software writes replace the bits (write zero to clear) and take priority over simultaneous events. PLIC_ENABLE and LOCAL_ENABLE mask this status for interrupt delivery.</td></tr>
+<tr><td>0x28</td><td><a href="#LOCAL_ENABLE">LOCAL_ENABLE</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="CAUSE">CAUSE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>data</td><td>RW</td><td>0x0</td><td>Cause register. Enumerates different kinds of errors</td></tr>
+</table>
+<h3 id="PHYS_ADDR">PHYS_ADDR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>55:0</td><td>value</td><td>RW</td><td>-</td><td>Physical address captured with CAUSE when an enabled error arrives and CAUSE is zero. Software may overwrite the value; writes take priority over capture. No reset value</td></tr>
+</table>
+<h3 id="ENABLE">ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>dcache_uncorrectable</td><td>RW</td><td>0x1</td><td>Enable recording error information for DCache ECC uncorrectable bus error. Enabled on reset.</td></tr>
+<tr><td>6</td><td>dcache_correctable</td><td>RW</td><td>0x1</td><td>Enable recording error information for DCache ECC correctable bus error. Enabled on reset.</td></tr>
+<tr><td>5</td><td>dcache_tlbus</td><td>RW</td><td>0x1</td><td>Enable recording error information for DCache Tilelink bus error. Enabled on reset.</td></tr>
+<tr><td>4</td><td>rsvd4</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3</td><td>rsvd3</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>2</td><td>icache_correctable</td><td>RW</td><td>0x1</td><td>Enable recording error information for ICache ECC correctable bus error. Enabled on reset.</td></tr>
+<tr><td>1</td><td>icache_tlbus</td><td>RW</td><td>0x1</td><td>Enable recording error information for ICache Tilelink bus error. Enabled on reset.</td></tr>
+<tr><td>0</td><td>rsvd0</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+</table>
+<h3 id="PLIC_ENABLE">PLIC_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>dcache_uncorrectable</td><td>RW</td><td>0x0</td><td>PLIC interrupt enable mask for DCache ECC uncorrectable bus error.</td></tr>
+<tr><td>6</td><td>dcache_correctable</td><td>RW</td><td>0x0</td><td>PLIC interrupt enable mask for DCache ECC correctable bus error.</td></tr>
+<tr><td>5</td><td>dcache_tlbus</td><td>RW</td><td>0x0</td><td>PLIC interrupt enable mask for DCache Tilelink bus error.</td></tr>
+<tr><td>4</td><td>rsvd4</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3</td><td>rsvd3</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>2</td><td>icache_correctable</td><td>RW</td><td>0x0</td><td>PLIC interrupt enable mask for ICache ECC correctable bus error.</td></tr>
+<tr><td>1</td><td>icache_tlbus</td><td>RW</td><td>0x0</td><td>PLIC interrupt enable mask for ICache Tilelink bus error.</td></tr>
+<tr><td>0</td><td>rsvd0</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+</table>
+<h3 id="ACCRUED_ENABLE">ACCRUED_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>dcache_uncorrectable</td><td>RW</td><td>0x0</td><td>Sticky accrued status for DCache ECC uncorrectable bus error.</td></tr>
+<tr><td>6</td><td>dcache_correctable</td><td>RW</td><td>0x0</td><td>Sticky accrued status for DCache ECC correctable bus error.</td></tr>
+<tr><td>5</td><td>dcache_tlbus</td><td>RW</td><td>0x0</td><td>Sticky accrued status for DCache Tilelink bus error.</td></tr>
+<tr><td>4</td><td>rsvd4</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3</td><td>rsvd3</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>2</td><td>icache_correctable</td><td>RW</td><td>0x0</td><td>Sticky accrued status for ICache ECC correctable bus error.</td></tr>
+<tr><td>1</td><td>icache_tlbus</td><td>RW</td><td>0x0</td><td>Sticky accrued status for ICache Tilelink bus error.</td></tr>
+<tr><td>0</td><td>rsvd0</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+</table>
+<h3 id="LOCAL_ENABLE">LOCAL_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>dcache_uncorrectable</td><td>RW</td><td>0x0</td><td>Core local interrupt enable mask for DCache ECC uncorrectable bus error.</td></tr>
+<tr><td>6</td><td>dcache_correctable</td><td>RW</td><td>0x0</td><td>Core local interrupt enable mask for DCache ECC correctable bus error.</td></tr>
+<tr><td>5</td><td>dcache_tlbus</td><td>RW</td><td>0x0</td><td>Core local interrupt enable mask for DCache Tilelink bus error.</td></tr>
+<tr><td>4</td><td>rsvd4</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3</td><td>rsvd3</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>2</td><td>icache_correctable</td><td>RW</td><td>0x0</td><td>Core local interrupt enable mask for ICache ECC correctable bus error.</td></tr>
+<tr><td>1</td><td>icache_tlbus</td><td>RW</td><td>0x0</td><td>Core local interrupt enable mask for ICache Tilelink bus error.</td></tr>
+<tr><td>0</td><td>rsvd0</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+</table>
+</div>

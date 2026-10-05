@@ -1,0 +1,95 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# Verilator coverage policy of the shared AXI VIP selftest harness
+# (`--dut ocah_axi_vip --cov`); the cov_report stage applies it to the merged
+# run and `--waive` re-grades a finished run against it.
+#
+# Scope: the compile-time scope file ocah_axi_vip_cov_scope.vlt keeps the
+# harness body and the vendored packages out of the database, so the measured
+# points are the VIP's SystemVerilog collateral (interface/ocah_axi_if.sv,
+# interface/ocah_axi_struct_bridge.sv, sva/ocah_axi_sva.sv). The Python
+# components carry no simulator metric; their record is the CHK-AXI-*
+# evidence of the selftests and of the scoreboard selftest.
+#
+# Two mechanisms, do not confuse them:
+#
+#   ocah_axi_vip_cov_scope.vlt  `coverage_off` -> the point never enters the
+#                               database: code this harness does not grade.
+#   [[holes]] here              the point exists and is not hit, carried with
+#                               a category, a rationale, an owner and a
+#                               reviewer.
+#
+# The file sets no [[thresholds]]: the runner reports the raw and effective
+# figure of each metric family, and the figures do not set a run's status.
+#
+# An accepted selector that matches a covered point fails the run: a waiver
+# that stimulus has overtaken has to be removed. Line selectors follow the source
+# file; a moved line fails the run (`expected_matches`) until the entry is
+# updated.
+
+schema_version = 1
+dut = "ocah_axi_vip"
+scope_epoch = "ocah-axi-vip-collateral-v1"
+
+# The harness ties `en_i` of every ocah_axi_sva instance to 1, so the branch
+# that idles a tracking block while the checker is disabled has no stimulus
+# here. A bench that drives `en_i` covers it.
+[[holes]]
+id = "sva-axi4-tracking-disabled"
+title = "AXI4 write/read tracking block with en_i low"
+category = "tied_off"
+disposition = "waive"
+status = "accepted"
+confidence = "high"
+rationale = "en_i is tied to 1 on every ocah_axi_sva instance of the harness; the disabled-checker branch of the AXI4 tracking block has no stimulus here, and a bench that drives en_i covers it."
+owner = "ocah-dv"
+reviewer = "ocah-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/476"]
+[[holes.native]]
+tool = "verilator"
+metric_family = "line"
+source = "*/hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv"
+native_locator = "*|o=else|*"
+line = 347
+
+[[holes]]
+id = "sva-lite-counters-disabled"
+title = "AXI4-Lite response-ordering counters with en_i low"
+category = "tied_off"
+disposition = "waive"
+status = "accepted"
+confidence = "high"
+rationale = "en_i is tied to 1 on the AXI4-Lite ocah_axi_sva instance of the harness; the disabled-checker branch of the response-ordering counters has no stimulus here, and a bench that drives en_i covers it."
+owner = "ocah-dv"
+reviewer = "ocah-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/476"]
+[[holes.native]]
+tool = "verilator"
+metric_family = "branch"
+source = "*/hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv"
+hierarchy = "ocah_axi_vip_tb_top.u_l_axi_sva"
+native_locator = "*|o=else|*"
+line = 455
+
+# Verilator places the then-branch count of `if (...) return` after the
+# return statement, so the point cannot increment although the WRAP beats of
+# the struct-bridge selftest take it: the function's entry count exceeds the
+# count of the statement after the return by the number of WRAP beats.
+[[holes]]
+id = "sva-active-lanes-wrap-return"
+title = "active_lanes early return for WRAP bursts"
+category = "tool_artifact"
+disposition = "waive"
+status = "accepted"
+confidence = "high"
+rationale = "The then-branch of the WRAP early return in active_lanes is counted after the return statement and cannot increment; the entry count of the function exceeds the count of the following statement by the number of WRAP beats, and CHK-AXI-BRIDGE-WRAP judges the WRAP data path in both realizations."
+owner = "ocah-dv"
+reviewer = "ocah-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/476"]
+[[holes.native]]
+tool = "verilator"
+metric_family = "branch"
+source = "*/hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv"
+native_locator = "*|o=if|*"
+line = 326

@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= SMU Design Verification Documentation
+:doctype: book
+:sectanchors:
+:sectlinks:
+:sectnums:
+:source-highlighter: highlight.js
+
+include::SMU_TB_ARCH.adoc[leveloffset=0]
+include::SMU_VPLAN.adoc[leveloffset=0]
+include::SMU_FCOV.adoc[leveloffset=0]
+include::SMU_COVERAGE_POLICY.adoc[leveloffset=+1]
+include::SMU_DEFERRED_DISPOSITION.adoc[leveloffset=+1]

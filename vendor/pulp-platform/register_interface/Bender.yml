@@ -1,0 +1,62 @@
+# Copyright 2018 ETH Zurich and University of Bologna.
+# Solderpad Hardware License, Version 0.51, see LICENSE for details.
+# SPDX-License-Identifier: SHL-0.51
+
+# Sources are vendored from upstream pulp-platform/register_interface into upstream/ via the
+# `vendor_package` entry in the root Bender.yml (bender vendor init), pinned at v0.4.7 (the commit
+# the TT fork was based on). No TT patch is carried: the only fork delta touched the deprecated
+# apb_to_reg.sv, which has no consumer in OCA and is not vendored. Do NOT hand-edit the
+# upstream/ files.
+#
+# This is a slimmed manifest pruned to the strict instantiation closure OCA actually uses:
+# axi_to_reg_v2 (the only register_interface module instantiated in OCA RTL, in
+# hw/comp/idma_wrapper/rtl/idma_frontend_wrapper.sv) plus its leaf dependencies (periph_to_reg, reg_demux,
+# reg_mux) and reg_intf (REG_BUS interface/types). The other upstream converters (apb_to_reg_v2,
+# axi_lite_to_reg, reg_cdc/cut/err_slv/filter_empty_writes, reg_to_apb/mem/tlul/axi, reg_uniform),
+# the deprecated apb_to_reg/axi_to_reg, and the testbench tree are not instantiated anywhere and
+# are not vendored. CRUCIALLY, the opentitan prim cells (prim_subreg / prim_subreg_arb /
+# prim_subreg_ext / prim_subreg_shadow / prim_subreg_pkg / prim_mubi_pkg) the TT fork bundled under
+# vendor/lowrisc_opentitan are NOT vendored or listed here: they were functionally identical
+# duplicates of OCA's own opentitan prims (vendor/lowRISC/opentitan/upstream/hw/ip/prim + hw/common/
+# ot_prim_modifications), which are already compiled by the root manifest and resolved by module
+# name at elaboration. Dropping them also drops the fork's prim_assert collision-avoidance includes
+# (OPENSOURCE_REG_INTF_ASSERT) and the unused reggen/regtool/topgen util tree.
+
+package:
+  name: register_interface
+  authors:
+    - "Fabian Schuiki <fschuiki@iis.ee.ethz.ch>"
+    - "Florian Zaruba <zarubaf@iis.ee.ethz.ch>"
+
+# axi / apb / common_cells / common_verification are forced to the locally vendored path packages
+# for every consumer via the Bender.local overrides; these declarations are inert and point at the
+# upstream pulp-platform commits actually vendored (root Bender.yml vendor_package revs). No
+# TT-internal URL enters the graph.
+dependencies:
+  axi:                 { git: "https://github.com/pulp-platform/axi.git",                 rev: "808e7b326f9f259bd2831847d9362291500db641" }
+  apb:                 { git: "https://github.com/pulp-platform/apb.git",                 rev: "77ddf073f194d44b9119949d2421be59789e69ae" }
+  common_cells:        { git: "https://github.com/pulp-platform/common_cells.git",        rev: "b74f0ad63600762ef101cf1d3365d19dfbb3123b" }
+  common_verification: { git: "https://github.com/pulp-platform/common_verification.git", rev: "c5d97a1fae01d2d8e8e311dee341b6b8849dcf38" }
+
+export_include_dirs:
+  - upstream/include
+
+sources:
+  - target: register_interface_l1
+    files:
+    # Level 0
+    # OpenTitan prim packages, referenced (NOT bundled) from OCA's own prim sources so that
+    # prim_subreg_pkg / prim_mubi_pkg are elaborated here - before the idma package - which is
+    # required because idma's generated reg_tops (idma_generated.sv) reference
+    # `prim_subreg_pkg::SwAccess*` at compile time, and OCA's root copy of these packages otherwise
+    # compiles after idma. The prim_subreg* *modules* still resolve from OCA's root at elaboration,
+    # so only the packages are listed here. (The TT fork bundled verbatim copies of these prims; we
+    # point at OCA's instead, per the de-fork goal of not duplicating prim cells.)
+    - ../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_pkg.sv
+    - ../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi_pkg.sv
+    - upstream/src/reg_intf.sv
+    - upstream/src/reg_demux.sv
+    - upstream/src/reg_mux.sv
+    - upstream/src/periph_to_reg.sv
+    # Level 1
+    - upstream/src/axi_to_reg_v2.sv

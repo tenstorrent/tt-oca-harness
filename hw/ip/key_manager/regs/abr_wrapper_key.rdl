@@ -1,0 +1,261 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+// Adams Bridge Key Sideload Registers
+// SystemRDL 2.0 Register Definition
+//
+// Copyright 2026 Tenstorrent Inc.
+//
+// Single 4KB AXI4-Lite window containing all Key Manager sideload interfaces
+// for the Adams Bridge post-quantum crypto engine.
+//
+// Sub-block layout (256-byte stride; each is 0x44 bytes or less):
+//   0x000  MLDSA_SEED       - ML-DSA-87 seed (dual-share write-only, 256-bit)
+//   0x100  MLKEM_SEED_D     - ML-KEM-1024 seed d (dual-share write-only, 256-bit)
+//   0x200  MLKEM_SEED_Z     - ML-KEM-1024 seed z (dual-share write-only, 256-bit)
+//   0x300  MLKEM_MSG        - ML-KEM-1024 message (dual-share write-only, 256-bit)
+//   0x400  MLKEM_SHARED_KEY - ML-KEM-1024 shared key output (HW-write/SW-read, 256-bit)
+//
+// Seed sub-blocks (MLDSA_SEED, MLKEM_SEED_D, MLKEM_SEED_Z, MLKEM_MSG):
+//   Written by the KM CPU via dual XOR-masked shares; identical layout to
+//   aes_wrapper_key.rdl (KEY_SHARE0[8] + KEY_SHARE1[8] + KEY_CTRL.KEY_VALID).
+//   The consumer (Adams Bridge / sep_abr_kv_shim) reads SHARE0^SHARE1 to
+//   recover the plaintext seed for delivery via the Caliptra KV read protocol.
+//
+// MLKEM_SHARED_KEY sub-block:
+//   Written by hardware (Adams Bridge kv_write) when ML-KEM encaps/decaps
+//   completes. KM firmware reads KEY[0..7] then writes KEY_CTRL=0 to consume
+//   and zeroize. Software cannot set KEY_VALID; only hardware can.
+
+addrmap abr_wrapper_key {
+    name = "Adams Bridge Key Sideload Registers";
+    desc = "Single AXI4-Lite window for all KM sideload interfaces to Adams Bridge.
+            Contains four dual-share secret-seed inputs and one shared-key output.";
+
+    default regwidth = 32;
+    default sw = rw;
+    default hw = r;
+
+    //=========================================================================
+    // Shared register type: write-only key share word (seed sub-blocks)
+    //=========================================================================
+    reg key_word_reg {
+        name = "KEY_WORD";
+        desc = "One 32-bit word of key data. Write-only; reads return 0.
+                No reset; powers up with undefined value.";
+
+        field {
+            name = "DATA";
+            desc = "32-bit key data word. Write-only for security.";
+            sw = w;
+            hw = r;
+        } data[31:0];
+    };
+
+    //=========================================================================
+    // Shared register type: key control (seed sub-blocks)
+    //=========================================================================
+    reg seed_ctrl_reg {
+        name = "KEY_CTRL";
+        desc = "Seed control register. Writing KEY_VALID=1 marks the seed as loaded.
+                Write 0 to invalidate. The KV shim gates the AB kv_read response
+                on this bit.";
+
+        field {
+            name = "KEY_VALID";
+            desc = "When 1, the seed is loaded and the KV shim will serve it to Adams Bridge.
+                    Write 0 to invalidate and allow a new seed to be written.";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } key_valid[0:0];
+
+        field {
+            name = "RSVD";
+            desc = "Reserved";
+            sw = r;
+            hw = na;
+            reset = 31'h0;
+        } rsvd[31:1];
+    };
+
+    //=========================================================================
+    // Shared register type: HW-write / SW-read key data (shared-key sub-block)
+    //=========================================================================
+    reg sk_word_reg {
+        name = "SK_WORD";
+        desc = "One 32-bit word of ML-KEM shared key output. Written by hardware
+                when key is ready; read by KM firmware to consume. Hardware clears
+                all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).";
+
+        field {
+            name = "DATA";
+            desc = "32-bit shared-key word. Hardware writes on key-ready event;
+                    hardware clears to 0 on key-consume event (KEY_VALID cleared).";
+            sw = r;
+            hw = rw;
+            we = true;
+            hwclr = true;
+            reset = 32'h0;
+        } data[31:0];
+    };
+
+    //=========================================================================
+    // Shared register type: ML-KEM shared-key control
+    //=========================================================================
+    // KEY_VALID behavior:
+    //   - hwset=true  : hardware sets the bit when the shared key is ready
+    //   - onwrite=wzc : SW write-0 clears the bit (consumes/zeroizes); SW write-1 NOP
+    //   - Software cannot set this bit; only hardware can.
+    reg sk_ctrl_reg {
+        name = "KEY_CTRL";
+        desc = "Shared-key control. HW sets KEY_VALID when a new key is ready.
+                Firmware writes 0 to clear (consume and zeroize).";
+
+        field {
+            name = "KEY_VALID";
+            desc = "1 = shared key is valid and ready for firmware consumption.
+                    Hardware sets this bit on key-ready event. Write 0 to clear;
+                    write 1 has no effect (software cannot set this bit).";
+            sw = rw;
+            hw = r;
+            hwset = true;
+            onwrite = wzc;
+            reset = 1'b0;
+        } key_valid[0:0];
+
+        field {
+            name = "RSVD";
+            desc = "Reserved";
+            sw = r;
+            hw = na;
+            reset = 31'h0;
+        } rsvd[31:1];
+    };
+
+    //=========================================================================
+    // Shared register type: shared-key IRQ status (sticky, write-1-to-clear)
+    //=========================================================================
+    // Sticky status bit (hwset + stickybit + onwrite=woclr): hardware sets it on
+    // the key-ready event, firmware writes 1 to clear. Masked CPU interrupt =
+    // IRQ_STATUS & IRQ_ENABLE.
+    reg sk_irq_status_reg {
+        name = "IRQ_STATUS";
+        desc = "Interrupt status for ML-KEM shared key. Sticky bit set by
+                hardware when a new shared key becomes valid; cleared by writing 1.";
+
+        field {
+            name = "KEY_VALID";
+            desc = "ML-KEM shared key valid. Sticky, write 1 to clear.";
+            sw = rw;
+            hw = rw;           // HW sets via hwset, value read for IRQ aggregation
+            hwset = true;      // Hardware can set this bit
+            stickybit = true;  // Bit stays set until SW clears
+            onwrite = woclr;   // Software writes 1 to clear
+            reset = 1'b0;
+        } key_valid[0:0];
+
+        field {
+            name = "RSVD";
+            desc = "Reserved";
+            sw = r;
+            hw = na;
+            reset = 31'h0;
+        } rsvd[31:1];
+    };
+
+    //=========================================================================
+    // Shared register type: shared-key IRQ enable
+    //=========================================================================
+    reg sk_irq_enable_reg {
+        name = "IRQ_ENABLE";
+        desc = "Interrupt enable for ML-KEM shared key. Mask for the
+                PicoRV32 IRQ vector bit driven by the shared-key-valid event.";
+
+        field {
+            name = "KEY_VALID_EN";
+            desc = "1 = enable PicoRV32 IRQ when ML-KEM shared key is valid.
+                    0 = mask the interrupt (KEY_CTRL.KEY_VALID can still be polled).";
+            sw = rw;
+            hw = r;
+            reset = 1'b0;
+        } key_valid_en[0:0];
+
+        field {
+            name = "RSVD";
+            desc = "Reserved";
+            sw = r;
+            hw = na;
+            reset = 31'h0;
+        } rsvd[31:1];
+    };
+
+    //=========================================================================
+    // Seed sub-block regfile
+    //
+    // Layout (matches aes_wrapper_key.rdl / rom_defs.h ENGINE_KEY_SHARE layout):
+    //   KEY_SHARE0[8] @ 0x000  (8 × 32-bit write-only words; SHARE0)
+    //   KEY_SHARE1[8] @ 0x020  (8 × 32-bit write-only words; SHARE1)
+    //   KEY_CTRL      @ 0x040  (KEY_VALID bit)
+    //=========================================================================
+    regfile abr_seed_rf {
+        name = "ABR Seed Sub-Block";
+        desc = "Dual-share 256-bit secret seed (write-only) + key_valid flag.
+                Layout identical to aes_wrapper_key for firmware reuse.";
+
+        key_word_reg  KEY_SHARE0[8] @ 0x000 += 0x004;
+        key_word_reg  KEY_SHARE1[8] @ 0x020 += 0x004;
+        seed_ctrl_reg KEY_CTRL      @ 0x040;
+    };
+
+    //=========================================================================
+    // Shared-key sub-block regfile
+    //
+    // Layout:
+    //   KEY[8]      @ 0x000  (8 × 32-bit HW-write/SW-read words)
+    //   KEY_CTRL    @ 0x020  (KEY_VALID: hwset + wzc)
+    //   IRQ_STATUS  @ 0x024  (sticky W1C; HW-set on key-ready event)
+    //   IRQ_ENABLE  @ 0x028  (mask; SW read/write)
+    //=========================================================================
+    regfile abr_sharedkey_rf {
+        name = "ABR ML-KEM Shared Key Sub-Block";
+        desc = "256-bit ML-KEM shared key output from Adams Bridge.
+                Hardware writes KEY[*] and sets KEY_CTRL.KEY_VALID when ready.
+                Firmware reads KEY[*] then writes KEY_CTRL=0 to consume/zeroize.
+                IRQ_STATUS is a sticky W1C bit set by hardware on the key-ready
+                event; the masked CPU interrupt is IRQ_STATUS & IRQ_ENABLE.";
+
+        sk_word_reg       KEY[8]      @ 0x000 += 0x004;
+        sk_ctrl_reg       KEY_CTRL    @ 0x020;
+        sk_irq_status_reg IRQ_STATUS  @ 0x024;
+        sk_irq_enable_reg IRQ_ENABLE  @ 0x028;
+    };
+
+    //=========================================================================
+    // Sub-block instantiation (0x100-byte stride; fits in one 4KB window)
+    //=========================================================================
+
+    // ML-DSA-87 seed input (AB kv_read[0])
+    // Offset 0x000 - 0x0FF
+    abr_seed_rf MLDSA_SEED @ 0x000;
+
+    // ML-KEM-1024 seed d input (lower 256b of AB kv_read[1])
+    // Offset 0x100 - 0x1FF
+    abr_seed_rf MLKEM_SEED_D @ 0x100;
+
+    // ML-KEM-1024 seed z input (upper 256b of AB kv_read[1])
+    // Offset 0x200 - 0x2FF
+    abr_seed_rf MLKEM_SEED_Z @ 0x200;
+
+    // ML-KEM-1024 message input (AB kv_read[2])
+    // Offset 0x300 - 0x3FF
+    abr_seed_rf MLKEM_MSG @ 0x300;
+
+    // ML-KEM-1024 shared key output (AB kv_write; reverse direction)
+    // Offset 0x400 - 0x4FF
+    abr_sharedkey_rf MLKEM_SHARED_KEY @ 0x400;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+`endif
+};

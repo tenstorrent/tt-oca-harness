@@ -1,0 +1,59 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# PROD lifecycle, CHIPLET fused key 0 selected, but CHIPLET_PUBK_HASH0 holds a
+# DECOY digest that the manifest's modulus does not hash to.
+#
+# Stimulus for sep_firmware_chiplet_pubkey_0_wrong_digest_test, and the ONE
+# preload in this family whose SELECTED digest fuse is WRONG.
+#
+# The selected fuse differs from the ROM's compiled-in public_key_digests[0]
+# (key_digests.h), which the dev0 digest in sep_efuse_lc_prod_chiplet_key0.toml
+# equals, so a ROM that compares the modulus against that table instead of the fuse
+# it read is detected:
+#
+#   * correct ROM: plat_is_key_authorized() (oca_platform.c) reads the HASH0 decoy,
+#     prints PUBK_UNAUTHORIZED, both slots are refused, MANIFEST_ALL_FAILED;
+#   * ROM comparing against public_key_digests[0]: BOOTS, and the testcase fails.
+#
+# These fuse values equal sep_efuse_lc_prod_chiplet_key1.toml's (HASH0 decoy, HASH1
+# real dev0 digest), so with sep_firmware_chiplet_pubkey_1_test this is a matched pair
+# that differs only in public_key_sel. A ROM that read HASH1 where HASH0 was selected
+# would also boot, so this testcase detects that class too; the sibling
+# sep_firmware_chiplet_pubkey_0_test (HASH0 real, HASH1 decoy) separates the two.
+#
+# Both digest values are the LITTLE-ENDIAN serialisation of a 32-byte digest, because
+# fuse_read_bytes() (oca_platform.c) takes byte 0 from the LSB of word 0, and
+# SepEfuseImage.set_int() (sep_efuse_image.py) fills word i from bits [32i+31:32i].
+# The decoy is non-zero: a zero fuse would produce PUBK_OTP_EMPTY, a different
+# rejection reason and a different testcase.
+#
+# CHIPLET_PUBK_REVOKE bit 0 revokes ROM development key 0, exactly as in every
+# other member of this family: it is the ROM-key-arm counterfactual, inert on a
+# correct ROM because the manifest selects a fused key. Bits 16 and 17
+# (CHIPLET_PUBK_HASH0/1) stay CLEAR so the digest comparison is the only refusal.
+#
+# BL1_VERSION and SBOOT_DIS stay 0, for the same reasons as in the sibling preloads.
+
+[LC_STATE]
+  [LC_STATE.fields.lc_state]
+  value = 0xE1   # PROD (raw=0x1)
+
+[CHIPLET_PUBK_HASH0]
+  [CHIPLET_PUBK_HASH0.fields.key_hash]
+  # DECOY, and this is the fuse the ROM must read for PUBK_SEL_FUSE_KEY_0:
+  # SHA-256(dev0 RSA-3072 modulus) with byte 0 bit 0 flipped. It must NOT match
+  # the modulus the manifest carries.
+  value = 0xf65082842b03dfecbb617d03d2a7fd9ca03a7e6494c96e1ac2f5a83763ca71a6
+
+[CHIPLET_PUBK_HASH1]
+  [CHIPLET_PUBK_HASH1.fields.key_hash]
+  # The REAL digest, in the fuse this testcase does NOT select. A ROM that read
+  # the wrong chiplet fuse would find this, verify, and boot -- so this value is
+  # what makes the wrong-fuse-address class detectable here as well.
+  # SHA-256(dev0 RSA-3072 modulus) = a771ca6337a8f5c21a6ec994647e3aa09cfda7d2037d61bbecdf032b848250f6, little-endian
+  value = 0xf65082842b03dfecbb617d03d2a7fd9ca03a7e6494c96e1ac2f5a83763ca71a7
+
+[CHIPLET_PUBK_REVOKE]
+  [CHIPLET_PUBK_REVOKE.fields.select]
+  value = 0x00000001   # bit 0 = ROM dev key 0; bits 16/17 CLEAR

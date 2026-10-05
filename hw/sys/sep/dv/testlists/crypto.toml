@@ -1,0 +1,289 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Crypto and entropy scenarios. Each test contract is in docs/SEP_VPLAN.adoc.
+
+[[tests]]
+name = "sep_otbn_mem_smoke_test"
+module = { cocotb = "otbn.sep_otbn_mem_smoke_test", uvm = "sep_otbn_mem_smoke_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "otbn", "crypto", "memory"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# OTBN EXECUTE of ADD/XOR/AND against an independent golden. +esrc_noise_force
+# feeds the post-reset URND wipe.
+name = "sep_otbn_compute_rand_test"
+module = "otbn.sep_otbn_compute_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["otbn", "crypto", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+name = "sep_esrc_e2e_smoke_test"
+module = "system.sep_esrc_e2e_smoke_test"
+firmware = { name = "km_rom_entropy", mode = "km_rom_blob" }
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "entropy", "crypto"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_entropy.parhex"]
+
+[[tests]]
+# Same module as sep_esrc_e2e_smoke_test, selected by +esrc_fifo_closed: the DRBG
+# still seeds with FIFO_CTRL.ENABLE=0, and the lock refuses ENABLE=1.
+name = "sep_esrc_e2e_fifo_closed_test"
+module = "system.sep_esrc_e2e_smoke_test"
+firmware = { name = "km_rom_entropy", mode = "km_rom_blob" }
+seed = 1
+timeout_sec = 1800
+tags = ["entropy", "crypto"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_entropy.parhex", "+esrc_fifo_closed"]
+
+[[tests]]
+# Health-test watermark arming (not the ESRC->DRBG datapath).
+# HEALTH_TEST_CTRL.ENABLE stays 0 on arming legs; +esrc_noise_force drives only the
+# low-mode fall window.
+name = "sep_esrc_ht_watermark_arming_test"
+module = "crypto.sep_esrc_ht_watermark_arming_test"
+seed = 1
+timeout_sec = 1800
+tags = ["entropy", "crypto", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# ESRC FIPS_LOCK makes the certified configuration write-once.
+name = "sep_esrc_fips_lock_test"
+module = "crypto.sep_esrc_fips_lock_test"
+seed = 1
+timeout_sec = 1800
+tags = ["entropy", "crypto", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# ESRC persistent-failure alert to PIC source 16, then W1C clear. Health-test
+# quality is out of scope.
+name = "sep_esrc_alert_delivery_test"
+module = "crypto.sep_esrc_alert_delivery_test"
+seed = 1
+timeout_sec = 1800
+tags = ["entropy", "crypto", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# CHK4 Generate segmentation at glen=4. Leave the other entropy tests'
+# boot-generate length alone: their CHK4 budgets assume one open command.
+name = "sep_drbg_gen_segmentation_test"
+module = "crypto.sep_drbg_gen_segmentation_test"
+firmware = { name = "km_rom_entropy", mode = "km_rom_blob" }
+seed = 1
+timeout_sec = 1800
+tags = ["drbg", "entropy", "crypto", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_entropy.parhex"]
+
+[[tests]]
+name = "sep_hmac_kmac_cpu_crypto_smoke_test"
+module = "cpu.sep_hmac_kmac_cpu_crypto_smoke_test"
+firmware = "hmac_kmac_smoke_test"
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "cpu", "crypto", "hmac", "kmac", "aes", "subsystem"]
+run_modes = ["cpu"]
+# +esrc_noise_force: the AES leg reseeds its masking PRNG from crypto-EDN, and
+# the firmware brings the entropy stack up itself. Under Verilator the ESRC ring
+# oscillators do not self-oscillate, so the raw noise comes from the testbench.
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# KMAC-family mode x strength breadth (RAND-REP). KMAC masking reseeds from EDN,
+# so entropy bring-up is required. CHK5 scores the KMAC sink only.
+name = "sep_kmac_mode_strength_rand_test"
+module = "crypto.sep_kmac_mode_strength_rand_test"
+seed = 1
+timeout_sec = 1800
+tags = ["crypto", "kmac", "sha3", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# AES mode x key-size breadth (RAND-REP). AES masking reseeds from crypto-EDN, so
+# entropy bring-up is required. CHK5 scores the AES sink only.
+name = "sep_aes_mode_keysize_rand_test"
+module = "crypto.sep_aes_mode_keysize_rand_test"
+seed = 1
+timeout_sec = 1800
+tags = ["crypto", "aes", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# HMAC SHA-variant breadth (RAND-REP). HMAC needs no OTP or entropy.
+name = "sep_hmac_sha_variant_rand_test"
+module = "crypto.sep_hmac_sha_variant_rand_test"
+seed = 1
+timeout_sec = 1800
+tags = ["crypto", "hmac", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# One DRBG/EDN stream feeds the KM and AES sinks at once. Dual-crypto-sink
+# bit-exact routing is sep_crypto_edn_multisink_arbitration_test's claim, not this
+# test's. Real fuse sense: KM rom_main reads OTP. c_compile builds
+# rom_main.rom.parhex (wipe defines off).
+name = "sep_drbg_real_sink_multi_km_aes_test"
+module = "crypto.sep_drbg_real_sink_multi_km_aes_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+timeout_sec = 7200
+tags = ["drbg", "entropy", "crypto", "multi_sink", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
+
+[[tests]]
+# AES and KMAC contend for the crypto-EDN leg off one verified DRBG stream.
+name = "sep_crypto_edn_multisink_arbitration_test"
+module = "crypto.sep_crypto_edn_multisink_arbitration_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["drbg", "entropy", "crypto", "multi_sink", "aes", "kmac", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Same-cycle dual crypto-EDN request across all four adapter clients; round-robin
+# order is not graded.
+name = "sep_crypto_edn_round_robin_grant_test"
+module = "crypto.sep_crypto_edn_round_robin_grant_test"
+seed = 1
+timeout_sec = 7200
+tags = ["drbg", "entropy", "crypto", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Adams Bridge ML-DSA-87 keyGen NIST KAT on the ABR aperture
+# (sep_top_addrmap_pkg::SEP_TOP_ABR_BASE_ADDR, the sep_crypto_pkg::ABR_RULE window).
+name = "sep_abr_mldsa_keygen_kat_test"
+module = "crypto.sep_abr_mldsa_keygen_kat_test"
+seed = 1
+timeout_sec = 7200
+tags = ["crypto", "abr", "mldsa", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Pipelined reads of one ABR register at depths 1, 2, 3, 4 and 8 from the SMN
+# inbound master (m_axi); each returns its value. m_axi is the port for this stimulus: the
+# CPU-LSU splice (s_axi) stands in for the VeeR LSU, which serialises MMIO loads, and the
+# inbound port is a SoC master under no such restriction. sep_abr_pipelined_read_matrix_test
+# also drives s_axi.
+name = "sep_abr_pipelined_read_test"
+module = "crypto.sep_abr_pipelined_read_test"
+seed = 1
+timeout_sec = 1800
+tags = ["crypto", "abr", "axi", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Adams Bridge ML-DSA-87 sigGen and sigVer NIST KAT.
+name = "sep_abr_mldsa_sign_verify_kat_test"
+module = "crypto.sep_abr_mldsa_sign_verify_kat_test"
+seed = 1
+timeout_sec = 10800
+tags = ["crypto", "abr", "mldsa", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Adams Bridge ML-KEM-1024 keyGen / encaps / decaps NIST KAT.
+name = "sep_abr_mlkem_kat_test"
+module = "crypto.sep_abr_mlkem_kat_test"
+seed = 1
+timeout_sec = 10800
+tags = ["crypto", "abr", "mlkem", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Adams Bridge reads held outstanding together; each returns its own word.
+name = "sep_abr_pipelined_read_matrix_test"
+module = "crypto.sep_abr_pipelined_read_matrix_test"
+seed = 1
+timeout_sec = 1800
+tags = ["crypto", "abr", "axi", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Adams Bridge access sizes and write strobes, the [[abr-access-size]] rules in
+# hw/sys/sep/doc/adams_bridge.adoc.
+name = "sep_abr_access_size_test"
+module = "crypto.sep_abr_access_size_test"
+seed = 1
+timeout_sec = 1800
+tags = ["crypto", "abr", "axi", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Adams Bridge concurrent reads and writes from s_axi and m_axi at once.
+name = "sep_abr_concurrent_rw_test"
+module = "crypto.sep_abr_concurrent_rw_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["crypto", "abr", "axi", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Adams Bridge compiled out: the ABR aperture and the KM ABR key aperture answer
+# DECERR. Pinned to Verilator: VCS coverage runs elaborate only `default`, which
+# keeps Adams Bridge. The checks grade response codes, which a two-state
+# simulator observes.
+name = "sep_abr_absent_decerr_test"
+module = "crypto.sep_abr_absent_decerr_test"
+firmware = { name = "km_rom_abr_absent", mode = "km_rom_blob" }
+seed = 1
+timeout_sec = 1800
+tags = ["crypto", "abr", "km", "subsystem"]
+tools = ["verilator"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_abr_absent"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_abr_absent.parhex"]

@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef SCRATCH_REG_RDL
+`define SCRATCH_REG_RDL
+
+addrmap scratch {
+    name = "Scratch Address Map";
+    desc = "General-purpose scratch register bank.";
+
+    reg SCRATCH {
+        field  {
+            sw=rw;
+            hw=na;
+            desc="Scratch register";
+        } data [31:0] = 0x0;
+    };
+
+    // --------------------------------------------------
+
+    SCRATCH         SCRATCH[8]         @ 0x00;
+
+};
+
+`endif

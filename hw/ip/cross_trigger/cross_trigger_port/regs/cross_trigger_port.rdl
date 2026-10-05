@@ -1,0 +1,78 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef CROSS_TRIGGER_PORT_RDL
+`define CROSS_TRIGGER_PORT_RDL
+
+//------------------------------------------------------------------------------
+// Copyright 2025 Tenstorrent Inc.
+// Cross Trigger Port Configuration and Status Registers
+//------------------------------------------------------------------------------
+
+addrmap cross_trigger_port {
+    name = "Cross Trigger Port Address Map";
+    desc = "Configuration and status registers for the cross trigger port";
+
+    reg CONFIG {
+        desc = "Cross Trigger Port Configuration";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package's cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.";
+        } MODE[0:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.";
+        } INVERT[1:1] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "While set, holds the outgoing point-to-point handshake idle with CT_Req_out deasserted and discards core-side cross trigger pulses for transmission. The incoming handshake keeps running. Set and then clear it to recover a handshake deadlock.";
+        } RESET[2:2] = 0x0;
+    };
+
+    reg STATUS {
+        desc = "Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.";
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress";
+        } BUSY[0:0] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Readout of the current CT_Req_out level with CONFIG.INVERT undone, so 1 means the request is asserted whatever the pad polarity. Reads 0 in wire-OR mode.";
+        } REQ_OUT[4:4] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Readout of the current synchronized CT_Ack_in level with CONFIG.INVERT undone, so 1 means the acknowledge is asserted whatever the pad polarity.";
+        } ACK_IN[5:5] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Readout of the current synchronized CT_Req_in level with CONFIG.INVERT undone, so 1 means the request is asserted whatever the pad polarity.";
+        } REQ_IN[6:6] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Readout of the current CT_Ack_out level with CONFIG.INVERT undone, so 1 means the acknowledge is asserted whatever the pad polarity. Reads 0 in wire-OR mode.";
+        } ACK_OUT[7:7] = 0x0;
+    };
+
+    reg STRETCH_MULT {
+        desc = "Pulse Stretch Multiplier";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.";
+        } STRETCH_MULT[15:0] = 0x0;
+    };
+
+    CONFIG    CONFIG        @0x0;
+    STATUS    STATUS        @0x4;
+    STRETCH_MULT STRETCH_MULT @0x8;
+};
+
+`endif

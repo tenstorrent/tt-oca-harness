@@ -1,0 +1,15 @@
+--- a/hw/ip/prim/rtl/prim_dom_and_2share.sv
++++ b/hw/ip/prim/rtl/prim_dom_and_2share.sv
+@@ -159,10 +159,12 @@
+     // If Pipeline is not set, the computation takes two cycles without flop
+     // crossing the domain. In this case, the signal should be stable for at
+     // least two cycles.
++`ifndef VERILATOR
+     `OCAH_OT_ASSUME(StableTwoCycles_M,
+       ($changed(a0_i)  || $changed(a1_i) || $changed(b0_i) || $changed(b1_i))
+         ##[0:$] z_valid_i |=>
+         $stable(a0_i) && $stable(a1_i) && $stable(b0_i) && $stable(b1_i))
++`endif
+   end
+ 
+   `OCAH_OT_ASSERT(UnmaskedAndMatched_A,

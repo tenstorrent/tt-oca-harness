@@ -1,0 +1,56 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[system-timer-octs-memory-map]]
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-map"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+The register bank occupies `0x00`–`0x23` and uses 32-bit AXI4-Lite accesses.
+Use the enclosing subsystem's memory map for its base address.
+
+ifdef::backend-html5[]
+++++
+<span id="address-alignment-and-access-requirements"></span>
+<span id="reset-values-and-power-on-behavior"></span>
+++++
+endif::backend-html5[]
+
+[[octs-register-reset-values-and-power-on-behavior-table]]
+.OCTS register offsets and reset values
+[cols="2,1,1,3",options="header"]
+|===
+|Register |Offset |Reset |Meaning
+|`TIMER_START` |`0x00` |0 |START is a single-cycle command.
+|`CTRL` |`0x04` |`0x0001020A` |STEP=1, PULSE_WIDTH=2, CREDIT_VAL=10.
+|`STATUS` |`0x08` |0 |MODE subsequently reflects the role input; RUNNING reflects enable and nonzero count.
+|`TIMER_PRESET_LO/HI` |`0x0C/0x10` |0 |Two independently writable preset halves.
+|`TIMER_COUNT_LO/HI` |`0x14/0x18` |0 |Live count halves, with no snapshot latch; the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-octs-read-count[timestamp read sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-octs-read-count[timestamp read sequence]
+endif::backend-pdf[]
+is in the Programmer's Guide.
+|`CREDIT_EXPIRED` |`0x1C` |0 |Saved maximum wait for credit; any write clears it.
+|`TIMER_GPIO_ENABLE` |`0x20` |0 |Timer GPIO LSIO selection starts disabled.
+|===
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::partial$system_timer_octs/regs/gen/html/system_timer_octs.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/system_timer_octs.adoc[leveloffset=+2]
+endif::backend-pdf[]

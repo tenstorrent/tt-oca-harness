@@ -1,0 +1,255 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+// OCAH SEP Top-Level Address Map
+
+// Include all peripheral RDL files
+`include "otbn.rdl"
+
+`include "hmac.rdl"
+`include "aes.rdl"
+`include "kmac.rdl"
+`include "secure_dma.rdl"
+`include "sep_sram.rdl"
+`include "sep_iccm.rdl"
+`include "sep_dccm.rdl"
+`include "sep_boot_rom.rdl"
+`include "aon_timer.rdl"
+`include "sep_efuse_map.rdl"
+`include "efuse_interface_ctrl.rdl"
+`include "efuse_mmr.rdl"
+`include "sep_lifecycle_ctrl.rdl"
+`include "km_mailbox_sep.rdl"
+`include "output_remap.rdl"
+`include "remapped_region.rdl"
+
+// System Peripherals RDL files
+`include "alias_remap.rdl"
+`include "filter_ctrl.rdl"
+`include "axil_mailbox_sep_wrap.rdl"
+`include "sep_cpu_ctrl.rdl"
+`include "sep_reset_ctrl.rdl"
+`include "csrng.rdl"
+`include "edn.rdl"
+`include "entropy_source.rdl"
+`include "sep_trng.rdl"
+`include "kv_def.rdl"
+`include "abr_reg.rdl"
+`include "sep_entropy_pool.rdl"
+
+`include "spi_controller.rdl"
+`include "sep_external.rdl"
+
+`include "sep_scratch.rdl"
+`include "el2_pic.rdl"
+
+addrmap sep_top #(
+    longint unsigned BASE_ADDR = 0x0000_0000
+) {
+    name = "OCAH SEP Top-Level Address Map";
+    desc = "Complete address map for OCAH Security Processor subsystem";
+
+    // =========================================================================
+    // System Resources (0x1000_0000 - 0x108F_FFFF)
+    // =========================================================================
+
+    // Scratch SRAM
+    external sep_sram          sep_sram                 @BASE_ADDR + 0x1000_0000;
+
+    // Boot ROM
+    external sep_boot_rom      sep_boot_rom             @BASE_ADDR + 0x1004_0000;
+
+    // Secure DMA
+    secure_dma                 secure_dma               @BASE_ADDR + 0x1080_0000;
+
+    // WDT Timer
+    aon_timer                  wdt_timer                @BASE_ADDR + 0x1080_1000;
+
+    // SEP Scratch Registers
+    sep_scratch               sep_scratch_cold          @BASE_ADDR + 0x1080_2000;
+    sep_scratch               sep_scratch_warm          @BASE_ADDR + 0x1080_2080;
+
+    // SEP Reset Controller
+    sep_reset_ctrl             sep_reset_ctrl           @BASE_ADDR + 0x1080_3000;
+
+    // =========================================================================
+    // Crypto Subsystem Peripherals (0x1090_0000 - 0x109F_FFFF)
+    // =========================================================================
+
+    // OTBN Cryptographic Accelerator
+    otbn                        otbn                     @BASE_ADDR + 0x1090_0000;
+
+    // AES Accelerator
+    aes                         aes                      @BASE_ADDR + 0x1091_0000;
+
+    // HMAC Accelerator
+    hmac                        hmac                     @BASE_ADDR + 0x1091_1000;
+
+    // KMAC/SHA3 Accelerator
+    kmac                        kmac                     @BASE_ADDR + 0x1091_3000;
+
+    // DRBG: CSRNG and EDN share one aperture
+    csrng                       csrng                   @BASE_ADDR + 0x1091_5000;
+    edn                         edn                     @BASE_ADDR + 0x1091_5800;
+
+    // Entropy Source (ESRC)
+    entropy_source              entropy_source          @BASE_ADDR + 0x1091_6000;
+
+    // External TRNG register passthrough
+    external sep_trng           trng                     @BASE_ADDR + 0x1091_7000;
+
+    // Lifecycle Controller
+    sep_lifecycle_ctrl          sep_lifecycle_ctrl      @BASE_ADDR + 0x1091_8000;
+
+    // Key Manager (SEP side)
+    km_mailbox_sep              km_mailbox_sep          @BASE_ADDR + 0x1092_0000;
+
+    // Efuse Map (OTP Shadow Memory)
+    sep_efuse_map               sep_efuse_map           @BASE_ADDR + 0x1093_0000;
+
+    // Efuse Interface
+    efuse_interface_ctrl        efuse_interface_ctrl    @BASE_ADDR + 0x1093_0400;
+
+    // Efuse MMR
+    efuse_mmr                   efuse_mmr               @BASE_ADDR + 0x1093_0500;
+
+    // Adams Bridge post-quantum cryptographic accelerator
+    external abr_reg            abr                     @BASE_ADDR + 0x1094_0000;
+
+    // Fabric entropy pool
+    external sep_entropy_pool   entropy_pool            @BASE_ADDR + 0x1095_0000;
+
+    // =========================================================================
+    // System Peripherals (0x10A0_0000 - 0x10A3_FFFF)
+    // =========================================================================
+
+    // Mailbox
+    axil_mailbox_sep_wrap       axil_mailbox             @BASE_ADDR + 0x10A0_0000;
+
+    // Local Master Alias Remap
+    alias_remap        local_master_alias_remap_ctrl[16] @BASE_ADDR + 0x10A1_0000 += 0x20;
+
+    // AP Output Remap
+    output_remap       ap_output_remap_ctrl[16]          @BASE_ADDR + 0x10A1_0200 += 0x08;
+
+    // STEE Output Remap
+    output_remap       stee_output_remap_ctrl[16]        @BASE_ADDR + 0x10A1_0300 += 0x08;
+
+    // Outbound Filter Control
+    filter_ctrl        outbound_filter_ctrl[32]          @BASE_ADDR + 0x10A2_0000 += 0x20;
+
+    // Inbound Filter Control
+    filter_ctrl        inbound_filter_ctrl[16]           @BASE_ADDR + 0x10A2_1000 += 0x20;
+
+    // SEP CPU Control
+    sep_cpu_ctrl       sep_cpu_ctrl                      @BASE_ADDR + 0x10A3_0000;
+
+    // =========================================================================
+    // I/O Subsystem Peripherals (0x10B0_0000 - 0x10BF_FFFF)
+    // =========================================================================
+
+    // OT SPI Controller
+    spi_controller       spi_controller                  @BASE_ADDR + 0x10B0_0000;
+
+    // =========================================================================
+    // Dedicated Remap Regions (0x1100_0000 - 0x11FF_FFFF)
+    // =========================================================================
+
+    external remapped_region       ap_region        @BASE_ADDR + 0x1100_0000;
+    external remapped_region       stee_region      @BASE_ADDR + 0x1180_0000;
+
+    // =========================================================================
+    // SEP External Region (0x2000_0000 - 0x3FFF_FFFF, adopter-defined window,
+    // e.g. a memory-mapped flash controller)
+    // =========================================================================
+    // Open-source builds reserve the region; an adopter overlay may override
+    // sep_external.rdl to instantiate external peripherals.
+
+    sep_external                sep_external             @BASE_ADDR + 0x2000_0000;
+
+    // =========================================================================
+    // EL2 CPU Resources (0xC000_0000 - 0xCFFF_FFFF)
+    // =========================================================================
+
+    // ITCM
+    external sep_iccm          sep_iccm                  @BASE_ADDR + 0xC000_0000;
+
+    // DTCM
+    external sep_dccm          sep_dccm                  @BASE_ADDR + 0xC004_0000;
+
+    // PIC
+    el2_pic                    pic                       @BASE_ADDR + 0xC008_0000;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    sep_boot_rom->desc = "BL0 immutable instruction memory.";
+    ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::OKAY, rdata: 0x0, bresp: ocah_resp_e::OKAY};
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    secure_dma->ocah_aperture_size = 0x1000;
+    secure_dma->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    secure_dma->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::SLVERR};
+    secure_dma->ocah_hole_note = "An access to an unmapped offset also latches PIC source 41.";
+    secure_dma->desc = "Secure DMA control and status registers.";
+    wdt_timer->ocah_aperture_size = 0x1000;
+    wdt_timer->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    sep_scratch_cold->desc = "Cold-reset scratch register bank.";
+    sep_scratch_warm->desc = "Warm-reset scratch register bank.";
+    sep_reset_ctrl->ocah_aperture_size = 0x1000;
+    sep_reset_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    otbn->ocah_aperture_size = 0x10000;
+    otbn->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    otbn->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::SLVERR};
+    aes->ocah_aperture_size = 0x1000;
+    aes->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    aes->desc = "AES block-cipher accelerator.";
+    hmac->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::SLVERR};
+    kmac->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::SLVERR};
+    trng->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::ADOPTER, rdata: 0x0, bresp: ocah_resp_e::ADOPTER};
+    trng->ocah_hole_note = "With no TRNG fitted, the reference integration answers DECERR, 0xBADCAB1E / DECERR.";
+    csrng->ocah_aperture_size = 0x800;
+    csrng->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    edn->ocah_aperture_size = 0x800;
+    edn->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    entropy_source->ocah_aperture_size = 0x1000;
+    entropy_source->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    sep_lifecycle_ctrl->ocah_aperture_size = 0x8000;
+    sep_lifecycle_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    sep_lifecycle_ctrl->desc = "Lifecycle state and transition control.";
+    km_mailbox_sep->ocah_aperture_size = 0x1000;
+    km_mailbox_sep->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    sep_efuse_map->desc = "Cached eFuse shadow registers.";
+    efuse_interface_ctrl->ocah_aperture_size = 0x100;
+    efuse_interface_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
+    efuse_interface_ctrl->desc = "eFuse command and status registers.";
+    efuse_mmr->ocah_aperture_size = 0x100;
+    efuse_mmr->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    efuse_mmr->desc = "eFuse security-token registers.";
+    abr->ocah_aperture_size = 0x10000;
+    abr->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    abr->desc = "Adams Bridge post-quantum accelerator for ML-DSA and ML-KEM.";
+    entropy_pool->ocah_aperture_size = 0x10000;
+    entropy_pool->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    entropy_pool->ocah_past_extent_note = "A 32-bit read of the upper word of a register also answers SLVERR, 0x0.";
+    axil_mailbox->ocah_aperture_size = 0x10000;
+    axil_mailbox->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    axil_mailbox->desc = "Eight bidirectional mailbox pairs.";
+    local_master_alias_remap_ctrl->ocah_aperture_size = 0x200;
+    local_master_alias_remap_ctrl->ocah_full_stride_extent = true;
+    local_master_alias_remap_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    outbound_filter_ctrl->ocah_aperture_size = 0x400;
+    outbound_filter_ctrl->ocah_full_stride_extent = true;
+    outbound_filter_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    inbound_filter_ctrl->ocah_aperture_size = 0x200;
+    inbound_filter_ctrl->ocah_full_stride_extent = true;
+    inbound_filter_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    sep_cpu_ctrl->ocah_aperture_size = 0x2000;
+    sep_cpu_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    sep_cpu_ctrl->desc = "SEP CPU control and interrupt registers.";
+    spi_controller->ocah_aperture_size = 0x100000;
+    spi_controller->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    spi_controller->desc = "External I/O SPI controller bridge.";
+    sep_external->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::ADOPTER, rdata: 0x0, bresp: ocah_resp_e::ADOPTER};
+    pic->ocah_aperture_size = 0x8000;
+    pic->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::OKAY, rdata: 0x0, bresp: ocah_resp_e::OKAY};
+`endif
+
+};

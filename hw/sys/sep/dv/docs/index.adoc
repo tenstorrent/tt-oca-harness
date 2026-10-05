@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= SEP Design Verification Documentation
+:doctype: book
+:sectanchors:
+:sectlinks:
+:sectnums:
+:source-highlighter: highlight.js
+
+// The design specification and the register maps are designer-owned and are
+// not duplicated here: the SEP design documentation
+// (`hw/sys/sep/doc/index.adoc`) is the specification the plans below cite, and
+// the register maps are the SystemRDL sources under `hw/sys/sep/regs/`. The
+// DV-owned external address map `hw/sys/sep/dv/models/regs/sep_external.rdl`
+// describes the SEP view of SMU-side windows. This book carries the
+// verification documents only.
+include::SEP_TB_ARCH.adoc[leveloffset=0]
+include::SEP_VPLAN.adoc[leveloffset=0]
+include::SEP_FCOV.adoc[leveloffset=0]

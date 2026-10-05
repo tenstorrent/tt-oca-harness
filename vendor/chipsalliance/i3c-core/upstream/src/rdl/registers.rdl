@@ -1,0 +1,103 @@
+// I3C controller register map based on MIPI HCI 1.2
+
+`include "base_registers.rdl"
+`include "pio_registers.rdl"
+`include "ec_registers.rdl"
+`include "DAT_structure.rdl"
+`include "DCT_structure.rdl"
+`include "../i3c_defines.svh"
+
+
+addrmap I3CCSR #(
+    bit PIO_offset = 0x080,
+    bit EC_offset = 0x100,
+    bit DAT_offset = 0x400,
+    bit DCT_offset = 0x800,
+    bit cmd_fifo_size = 0x40, // 64 commands by default
+    bit resp_fifo_size = 0x40, // 64 responses by default
+    bit ibi_fifo_size = 0x40, // 64 responses by default
+    bit tx_fifo_size = 0x5, // 64 DWORDs by default
+    bit rx_fifo_size = 0x5, // 64 DWORDs by default
+    bit ext_ibi_size = 1'b0, // Extend the size of IBI queue (8*ibi_fifo_size if set)
+    bit dat_depth = 0x7f, // Max allowed by default
+    bit dct_depth = 0x7f, // Max allowed by default
+    bit tti_rx_desc_fifo_size = 0x5, // 64 DWORDs by default
+    bit tti_tx_desc_fifo_size = 0x5, // 64 DWORDs by default
+    bit tti_rx_fifo_size = 0x5, // 64 DWORDs by default
+    bit tti_tx_fifo_size = 0x5, // 64 DWORDs by default
+    bit tti_ibi_fifo_size = 0x5, // 64 DWORDs by default
+    bit pid_hi_reset = 0x7FFF, // Vendor-specific values
+    bit pid_lo_reset = 0x005A00A5, // Vendor-specific values, test value
+    bit virtual_pid_hi_reset = 0x7FFF, // Virtual device Vendor-specific values
+    bit virtual_pid_lo_reset = 0x005A10A5, // Virtual device Vendor-specific values, test value
+    bit timing_width = 20 // Width of the registers holding timing constants for I3C
+){
+    signal {activelow; async; cpuif_reset; field_reset;} rst_ni;
+`ifdef CONTROLLER_SUPPORT
+    BaseRegs #(
+        .PIO_offset(PIO_offset),
+        .DMA_support(false),
+        .Ring_offset(16'h0),
+        .Ext_offset(16'h0100),
+        .Data_endianness(1'b0),
+        .AUTOCMD_separated_reporting_dynamic(false), // FUTUREFIX: check values when controller implemented
+        .AUTOCMD_separated_reporting_support(1'b0), // FUTUREFIX: check values when controller implemented
+        .DEV_CTX_SG_support(false), // FUTUREFIX: check values when controller implemented
+        .DEV_IBI_SG_support(false), // FUTUREFIX: check values when controller implemented
+        .DEV_CR_SG_support(false), // FUTUREFIX: check values when controller implemented
+        .Scheduled_commands_support(false), // FUTUREFIX: check values when controller implemented
+        .IBI_credit_count_support(false), // FUTUREFIX: check values when controller implemented
+        .IBI_data_abort_support(false), // FUTUREFIX: check values when controller implemented
+        .HDR_TS_support(false), // FUTUREFIX: check values when controller implemented
+        .HDR_DDR_support(false), // FUTUREFIX: check values when controller implemented
+        .Handoff_support(false), // FUTUREFIX: check values when controller implemented
+        .IBI_auto_command_support(false), // FUTUREFIX: check values when controller implemented
+        .Combo_command_support(false), // FUTUREFIX: check values when controller implemented
+        .MIPI_commands(15'h0035), // FUTUREFIX: check values when controller implemented
+        .DAT_entry_size(4'h0),
+        .DAT_table_size(dat_depth),
+        .DAT_offset(DAT_offset),
+        .DCT_entry_size(4'h0),
+        .DCT_table_size(dct_depth),
+        .DCT_offset(DCT_offset)
+    ) I3CBase @ 0x0;
+`endif
+`ifdef CONTROLLER_SUPPORT
+    PIORegs #(
+        .cmd_fifo_size(cmd_fifo_size),
+        .resp_fifo_size(resp_fifo_size),
+        .ibi_fifo_size(ibi_fifo_size),
+        .rx_fifo_size(rx_fifo_size),
+        .tx_fifo_size(tx_fifo_size),
+        .ext_ibi_size(ext_ibi_size)
+    ) PIOControl @ PIO_offset;
+`endif
+    ECRegisters #(
+        .tti_rx_desc_fifo_size(tti_rx_desc_fifo_size),
+        .tti_tx_desc_fifo_size(tti_tx_desc_fifo_size),
+        .tti_rx_fifo_size(tti_rx_fifo_size),
+        .tti_tx_fifo_size(tti_tx_fifo_size),
+        .tti_ibi_fifo_size(tti_ibi_fifo_size),
+        .pid_hi_reset(pid_hi_reset),
+        .pid_lo_reset(pid_lo_reset),
+        .virtual_pid_hi_reset(virtual_pid_hi_reset),
+        .virtual_pid_lo_reset(virtual_pid_lo_reset),
+        .timing_width(timing_width)
+    ) I3C_EC @ EC_offset;
+`ifdef CONTROLLER_SUPPORT
+    mem {
+        name = "Device Address Table";
+        mementries = 128;
+        memwidth = 64;
+        sw = rw;
+        DAT_structure DAT_MEMORY [128];
+    } external DAT @ DAT_offset;
+    mem {
+        name = "Device Characteristic Table";
+        mementries = 128;
+        memwidth = 128;
+        sw = rw;
+        DCT_structure DCT_MEMORY [128];
+    } external DCT @ DCT_offset;
+`endif
+};

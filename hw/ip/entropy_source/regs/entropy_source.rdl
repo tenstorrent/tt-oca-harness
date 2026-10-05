@@ -1,0 +1,1161 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef ENTROPY_SOURCE_RDL
+`define ENTROPY_SOURCE_RDL
+
+//------------------------------------------------------------------------------
+// Copyright 2025 Tenstorrent Inc.
+// Entropy Source Configuration and Status Registers
+//------------------------------------------------------------------------------
+
+addrmap entropy_source {
+    name = "Entropy Source Address Map";
+    desc = "Entropy-source configuration, status, and data registers.";
+    reg COMPONENT_ID {
+        desc = "Identifies the entropy-source register interface.";
+        field {
+            sw = r;
+            hw = na;
+            desc = "Entropy-source component identifier.";
+        } NAME[15:0] = 0x0001;
+        field {
+            sw = r;
+            hw = na;
+            desc = "Minor interface version.";
+        } MINOR_VERSION[27:24] = 0x1;
+        field {
+            sw = r;
+            hw = na;
+            desc = "Major interface version.";
+        } MAJOR_VERSION[31:28] = 0x0;
+    };
+
+    reg CTRL {
+        desc = "Controls entropy generation and conditioning.";
+        field {
+            sw = r;
+            hw = na;
+            desc = "Reserved; reads zero and ignores writes.";
+        } RSVD0[0:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            swwel = true;  // Locked by FIPS_LOCK: SW writes ignored while FIPS_LOCK.LOCK=1 (cleared only by reset).
+            desc = "Enables startup health testing and entropy output. Clearing this field holds the main state machine idle. FIPS_LOCK.LOCK prevents software changes.";
+        } MODULE_ENABLE[1:1] = 0x1;
+        field {
+            sw = rw;
+            hw = r;
+            swwel = true;  // Locked by FIPS_LOCK: forces the certified value (default 0) to hold under lock.
+            desc = "Enables per-generator automatic detuning after a lane health-test failure. FIPS_LOCK.LOCK prevents software changes.";
+        } AUTOTUNE_ENABLE[4:4] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            swwel = true;  // Locked by FIPS_LOCK: certified path is compressor-enabled (default 0); raw bypass blocked under lock.
+            desc = "Bypasses BIW extraction and writes the twelve generator bytes to the FIFO as three 32-bit words. FIPS_LOCK.LOCK prevents software changes.";
+        } BYPASS_ENTROPY_COMPRESSOR[8:8] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            swwel = true;  // Locked by FIPS_LOCK: rate is part of the validated sampling configuration.
+            desc = "Selects every (N+1)th decorrelator output while BIW extraction is bypassed. FIPS_LOCK.LOCK prevents software changes.";
+        } DOWNSAMPLE_RATE[25:16] = 0;
+        field {
+            sw = rw;
+            hw = r;
+            swwel = true;  // Locked by FIPS_LOCK: certified operation requires the SHA-256 conditioner enabled (default 1).
+            desc = "Enables SHA-256 conditioning of each 512-bit BIW input block into a 256-bit digest. When clear, BIW words pass directly to the FIFO. FIPS_LOCK.LOCK prevents software changes.";
+        } SHA256_WHITENING_ENABLE[28:28] = 0x1;
+    };
+
+    reg SHA256_STATUS {
+        desc = "Reports SHA-256 conditioner progress.";
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates that SHA-256 processing or digest output is active.";
+        } BUSY[0:0] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Number of 32-bit words currently accumulated in the 512-bit input block.";
+        } INPUT_COUNT[7:4] = 4'h0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Number of 32-bit digest words remaining for output. Reports 8 when a digest becomes available, decrements through 0 as words are accepted, and remains 0 while idle or bypassed.";
+        } OUTPUT_COUNT[11:8] = 4'h0;
+    };
+
+    reg DEBUG_CTRL {
+        desc = "Controls the external debug observation pin. FIPS_LOCK.LOCK prevents software changes to the signal selection and divider.";
+        field {
+            sw = rw;
+            hw = r;
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: SW writes ignored while locked (cleared only by reset).
+            desc = "Selects the observed signal: generator noise bits [11:0], sample clocks [27:16], BIW data [63:32], FIFO input [95:64], or generator bytes [223:128]. Other selections drive the divider input low. FIPS_LOCK.LOCK prevents software changes.";
+        } SELECT_SIGNAL[7:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: SW writes ignored while locked (cleared only by reset).
+            desc = "Selects observation division by 1, 2, 4, 8, 16, 32, 64, or 128. FIPS_LOCK.LOCK prevents software changes.";
+        } SELECT_FREQ_DIV[10:8] = 0x0;
+    };
+
+    reg INTR_STATUS {
+        desc = "Reports latched interrupt status; write one to clear a bit.";
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Indicates a failure in the 32-bit entropy-stream health tests. Write one to clear.";
+        } HEALTH_TEST_FAILED[0:0] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Indicates a FIFO integrity error. Write one to clear.";
+        } FIFO_ERROR[4:4] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Indicates that a main FIFO write was discarded while full. Write one to clear.";
+        } FIFO_OVERFLOW[8:8] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Indicates that software read the empty main FIFO. Write one to clear.";
+        } FIFO_UNDERFLOW[12:12] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Indicates a persistent health-test failure or health-test counter error. Write one to clear.";
+        } PERSISTENT_FAILURE[16:16] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Indicates a per-generator health-test failure while automatic detuning is enabled. Write one to clear.";
+        } AUTOTUNE_FAIL[20:20] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Indicates that a BIW observe FIFO word was discarded while full. Write one to clear.";
+        } BIW_OBS_OVERFLOW[24:24] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Indicates that a raw-noise observe FIFO word was discarded while full. Write one to clear.";
+        } NOISE_OBS_OVERFLOW[28:28] = 0x0;
+    };
+
+    reg INTR_ENABLE {
+        desc = "Enables individual interrupt sources.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the health-test failure interrupt.";
+        } HEALTH_TEST_FAILED[0:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the FIFO integrity-error interrupt.";
+        } FIFO_ERROR[4:4] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the main FIFO overflow interrupt.";
+        } FIFO_OVERFLOW[8:8] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the main FIFO underflow interrupt.";
+        } FIFO_UNDERFLOW[12:12] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the persistent-failure interrupt.";
+        } PERSISTENT_FAILURE[16:16] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the automatic-detuning failure interrupt.";
+        } AUTOTUNE_FAIL[20:20] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the BIW observe FIFO overflow interrupt.";
+        } BIW_OBS_OVERFLOW[24:24] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the raw-noise observe FIFO overflow interrupt.";
+        } NOISE_OBS_OVERFLOW[28:28] = 0x0;
+    };
+
+    reg INTR_TEST {
+        desc = "Triggers individual interrupt sources for testing.";
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Write one to pulse the health-test failure interrupt source.";
+        } HEALTH_TEST_FAILED[0:0] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Write one to pulse the FIFO integrity-error interrupt source.";
+        } FIFO_ERROR[4:4] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Write one to pulse the main FIFO overflow interrupt source.";
+        } FIFO_OVERFLOW[8:8] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Write one to pulse the main FIFO underflow interrupt source.";
+        } FIFO_UNDERFLOW[12:12] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Write one to pulse the persistent-failure interrupt source.";
+        } PERSISTENT_FAILURE[16:16] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Write one to pulse the automatic-detuning failure interrupt source.";
+        } AUTOTUNE_FAIL[20:20] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Write one to pulse the BIW observe FIFO overflow interrupt source.";
+        } BIW_OBS_OVERFLOW[24:24] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Write one to pulse the raw-noise observe FIFO overflow interrupt source.";
+        } NOISE_OBS_OVERFLOW[28:28] = 0x0;
+    };
+
+    reg FIFO_CTRL {
+        desc = "Controls the 64-entry main entropy FIFO.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables FIFO writes. Reads remain available while writes are disabled. Words offered to the FIFO are also the DRBG seed stream, which this field does not gate. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: freezes the software read path to the DRBG seed stream, SW writes ignored while locked (cleared only by reset).
+        } ENABLE[0:0] = 0x1;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "XORs each incoming word with the FIFO entry 32 positions ahead of the write pointer. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } ENTROPY_CHURN_ENABLE[4:4] = 0x0;
+    };
+
+    reg FIFO_STATUS {
+        desc = "Reports main FIFO occupancy and pointers.";
+        field {
+            sw = r;
+            hw = w;
+            desc = "Number of valid 32-bit words in the FIFO.";
+        } LEVEL[6:0] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current FIFO write pointer.";
+        } WPTR[13:8] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current FIFO read pointer.";
+        } RPTR[21:16] = 0x0;
+    };
+
+    reg FIFO_RDATA {
+        desc = "Provides the next main FIFO word.";
+        field {
+            sw = r;
+            hw = w;
+            onread = ruser;
+            desc = "Returns and removes the next FIFO word. Reading an empty FIFO sets INTR_STATUS.FIFO_UNDERFLOW and returns undefined data.";
+        } RDATA[31:0] = 0x0;
+    };
+
+    reg HEALTH_TEST_CTRL {
+        desc = "Controls continuous entropy health tests.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the repetition-count, adaptive-proportion, and Markov tests in bits 0, 1, and 2. Disabling a test clears its state.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } ENABLE[2:0] = 0x7;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Maximum allowed per-lane repetition count before the test fails. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } REPETITION_LIMIT[15:8] = 25;
+    };
+
+    reg HEALTH_TEST_WINDOW_SIZE {
+        desc = "Sets the APT and Markov window length.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Number of valid entropy words per APT and Markov window. FIPS_LOCK.LOCK requires a value of at least 1024 and prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } SIZE[15:0] = 16'd2048;
+    };
+
+    reg MARKOV_TEST_PROB_THRESHOLDS {
+        desc = "Sets high and low Markov alternation-count thresholds.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Maximum allowed per-lane alternation count at the window boundary. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } PROB_01_THRESHOLD[15:0] = 1200;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Minimum allowed per-lane alternation count at the window boundary. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } PROB_10_THRESHOLD[31:16] = 100;
+    };
+
+    reg HEALTH_TEST_STATUS {
+        desc = "Latches 32-bit stream health-test failures: repetition [0], APT high or low [3], Markov high [4], and Markov low [5]. Write one to clear.";
+        field {
+            sw = rw;
+            hw = w;
+            woclr;
+            stickybit;
+            desc = "Latched health-test failure bits; write one to clear.";
+        } HEALTH_STATUS[7:0] = 0x0;
+    };
+
+    reg APT_PATTERN_COUNT_1BIT {
+        desc = "Reports the highest per-lane APT one-count in the current window.";
+        field {
+            sw = r;
+            hw = w;
+            desc = "Highest current one-count among the 32 entropy lanes.";
+        } PATTERN_COUNT[15:0] = 0x0;
+    };
+
+    reg APT_PATTERN_COUNT_2BIT {
+        desc = "Reports the lowest per-lane APT one-count in the current window.";
+        field {
+            sw = r;
+            hw = w;
+            desc = "Lowest current one-count among the 32 entropy lanes.";
+        } PATTERN_COUNT[15:0] = 0x0;
+    };
+
+    reg REPETITION_TEST_COUNT {
+        desc = "Reports the highest current repetition count.";
+        field {
+            sw = r;
+            hw = w;
+            desc = "Highest current repetition count among the 32 entropy lanes.";
+        } REPETITION_COUNT[15:0] = 0x0;
+    };
+
+    reg APT_PROPORTION_1BIT {
+        desc = "Sets the APT high one-count threshold.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Maximum allowed per-lane one-count at the window boundary. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } LIMIT[15:0] = 1200;
+    };
+
+    reg APT_PROPORTION_LO {
+        desc = "Sets the APT low one-count threshold.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Minimum allowed per-lane one-count at the window boundary. Zero disables the low-side test. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } LIMIT[15:0] = 848;
+    };
+
+    reg MARKOV_TEST_COUNTS_0 {
+        desc = "Reports the highest and lowest per-lane alternation counts in the current Markov window.";
+        field {
+            sw = r;
+            hw = w;
+            desc = "Highest current per-lane alternation count.";
+        } COUNT_01[15:0] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Lowest current per-lane alternation count.";
+        } COUNT_10[31:16] = 0x0;
+    };
+
+    // Individual Generator Health Test Status Registers (Write-1-to-Clear)
+    // Latch health test failures until firmware clears by writing 1.
+    // Bit allocation: [0]=Repetition, [1:2]=Reserved, [3]=APT, [4]=Markov-Hi, [5]=Markov-Lo, [6:7]=Reserved.
+    reg GENERATOR_0_HEALTH_STATUS {
+        desc = "Latches generator 0 health-test failures; write one to clear.";
+        field {
+            sw = rw;
+            hw = w;
+            woclr;
+            stickybit;
+            desc = "Generator 0 failure bits use the HEALTH_TEST_STATUS allocation.";
+        } STATUS[7:0] = 0x0;
+    };
+
+    reg GENERATOR_1_HEALTH_STATUS {
+        desc = "Latches generator 1 health-test failures; write one to clear.";
+        field {
+            sw = rw;
+            hw = w;
+            woclr;
+            stickybit;
+            desc = "Generator 1 failure bits use the HEALTH_TEST_STATUS allocation.";
+        } STATUS[7:0] = 0x0;
+    };
+
+    reg GENERATOR_2_HEALTH_STATUS {
+        desc = "Latches generator 2 health-test failures; write one to clear.";
+        field {
+            sw = rw;
+            hw = w;
+            woclr;
+            stickybit;
+            desc = "Generator 2 failure bits use the HEALTH_TEST_STATUS allocation.";
+        } STATUS[7:0] = 0x0;
+    };
+
+    reg GENERATOR_3_HEALTH_STATUS {
+        desc = "Latches generator 3 health-test failures; write one to clear.";
+        field {
+            sw = rw;
+            hw = w;
+            woclr;
+            stickybit;
+            desc = "Generator 3 failure bits use the HEALTH_TEST_STATUS allocation.";
+        } STATUS[7:0] = 0x0;
+    };
+
+    reg GENERATOR_4_HEALTH_STATUS {
+        desc = "Latches generator 4 health-test failures; write one to clear.";
+        field {
+            sw = rw;
+            hw = w;
+            woclr;
+            stickybit;
+            desc = "Generator 4 failure bits use the HEALTH_TEST_STATUS allocation.";
+        } STATUS[7:0] = 0x0;
+    };
+
+    reg GENERATOR_5_HEALTH_STATUS {
+        desc = "Latches generator 5 health-test failures; write one to clear.";
+        field {
+            sw = rw;
+            hw = w;
+            woclr;
+            stickybit;
+            desc = "Generator 5 failure bits use the HEALTH_TEST_STATUS allocation.";
+        } STATUS[7:0] = 0x0;
+    };
+
+    reg GENERATOR_6_HEALTH_STATUS {
+        desc = "Latches generator 6 health-test failures; write one to clear.";
+        field {
+            sw = rw;
+            hw = w;
+            woclr;
+            stickybit;
+            desc = "Generator 6 failure bits use the HEALTH_TEST_STATUS allocation.";
+        } STATUS[7:0] = 0x0;
+    };
+
+    reg GENERATOR_7_HEALTH_STATUS {
+        desc = "Latches generator 7 health-test failures; write one to clear.";
+        field {
+            sw = rw;
+            hw = w;
+            woclr;
+            stickybit;
+            desc = "Generator 7 failure bits use the HEALTH_TEST_STATUS allocation.";
+        } STATUS[7:0] = 0x0;
+    };
+
+    reg GENERATOR_8_HEALTH_STATUS {
+        desc = "Latches generator 8 health-test failures; write one to clear.";
+        field {
+            sw = rw;
+            hw = w;
+            woclr;
+            stickybit;
+            desc = "Generator 8 failure bits use the HEALTH_TEST_STATUS allocation.";
+        } STATUS[7:0] = 0x0;
+    };
+
+    reg GENERATOR_9_HEALTH_STATUS {
+        desc = "Latches generator 9 health-test failures; write one to clear.";
+        field {
+            sw = rw;
+            hw = w;
+            woclr;
+            stickybit;
+            desc = "Generator 9 failure bits use the HEALTH_TEST_STATUS allocation.";
+        } STATUS[7:0] = 0x0;
+    };
+
+    reg GENERATOR_10_HEALTH_STATUS {
+        desc = "Latches generator 10 health-test failures; write one to clear.";
+        field {
+            sw = rw;
+            hw = w;
+            woclr;
+            stickybit;
+            desc = "Generator 10 failure bits use the HEALTH_TEST_STATUS allocation.";
+        } STATUS[7:0] = 0x0;
+    };
+
+    reg GENERATOR_11_HEALTH_STATUS {
+        desc = "Latches generator 11 health-test failures; write one to clear.";
+        field {
+            sw = rw;
+            hw = w;
+            woclr;
+            stickybit;
+            desc = "Generator 11 failure bits use the HEALTH_TEST_STATUS allocation.";
+        } STATUS[7:0] = 0x0;
+    };
+
+    reg RING_OSC_ENABLE {
+        desc = "Controls noise and sample-clock ring oscillators.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables each generator noise ring oscillator. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } ENABLE[11:0] = 0xFFF;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the shared sample-clock ring oscillator when any bit is set. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } SAMPLE_CLK_ENABLE[23:12] = 0xFFF;
+    };
+
+    reg RING_OSC_TUNE {
+        desc = "Selects detuned ring-oscillator tap points.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Selects the full-length (longer) tap for each noise ring oscillator, lowering its frequency, while automatic tuning is disabled; the reset value (clear) selects the shorter tap. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } DETUNE[11:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Selects the full-length (longer) shared sample-clock oscillator tap, lowering its frequency, when any bit is set. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } SAMPLE_CLK_DETUNE[23:12] = 0x0;
+    };
+
+    reg RING_OSC_CTRL {
+        desc = "Selects each generator sample-clock source.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Selects the shared internal sample clock when set and the external sample clock when clear. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } SAMPLE_CLK_SELECT[11:0] = 0xFFF;
+    };
+
+    reg DECORRELATOR_CTRL {
+        desc = "Controls generator decorrelation and byte cadence.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Bypasses the LFSR feedback path independently for each generator. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } BYPASS[11:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Sets the generator byte-output period to this value plus one sample-clock cycles. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } SAMPLE_CLK_DIV[31:12] = 63;
+    };
+
+    reg DECORRELATOR_MASK {
+        desc = "Masks bits in every generator entropy byte.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables corresponding entropy-byte bits when set. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } ENTROPY_BYTE_MASK[7:0] = 0xFF;
+    };
+
+    reg MAIN_SM_STATUS {
+        desc = "Reports the startup health-test gate state machine.";
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current sparse-encoded state-machine state.";
+        } STATE[8:0] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates that the state machine is idle.";
+        } IDLE[9:9] = 0x0;
+        field {
+            sw = rw;
+            hw = w;
+            woclr;
+            stickybit;
+            desc = "Latches entry into the persistent-failure alert path, which halts entropy output. Write one or reset the block to clear.";
+        } ALERT[10:10] = 0x0;
+        field {
+            sw = rw;
+            hw = w;
+            woclr;
+            stickybit;
+            desc = "Latches an illegal state or health-test counter integrity error. Write one or reset the block to clear.";
+        } ERR[11:11] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates successful completion of startup health testing and permits entropy output.";
+        } BOOT_PHASE_DONE[12:12] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates that a passing window may clear alert failure counters.";
+        } ALERT_CNTR_CLR_OK[13:13] = 0x0;
+    };
+
+    // Sample Clock Configuration Registers (one per generator)
+    // Defaults optimized for approximately 20x frequency ratios with 109-stage shared sampling RO:
+    // - Generators 0, 1, 6, 7: div1 (ratios: 21.8x, 15.6x, 18.2x, 13.6x)
+    // - Generators 2, 3, 8, 9: div2 (ratios: 19.8x, 16.8x, 18.2x, 15.6x)
+    // - Generators 4, 5, 10, 11: div4 (ratios: 25.6x, 22.8x, 24.4x, 21.8x)
+    reg GENERATOR_0_SAMPLE_CLK_CONFIG {
+        desc = "Controls generator 0 sample-clock division.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } SAMPLE_CLK_DIVIDE[4:0] = 0x0;
+    };
+
+    reg GENERATOR_1_SAMPLE_CLK_CONFIG {
+        desc = "Controls generator 1 sample-clock division.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } SAMPLE_CLK_DIVIDE[4:0] = 0x0;
+    };
+
+    reg GENERATOR_2_SAMPLE_CLK_CONFIG {
+        desc = "Controls generator 2 sample-clock division.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } SAMPLE_CLK_DIVIDE[4:0] = 0x1;
+    };
+
+    reg GENERATOR_3_SAMPLE_CLK_CONFIG {
+        desc = "Controls generator 3 sample-clock division.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } SAMPLE_CLK_DIVIDE[4:0] = 0x1;
+    };
+
+    reg GENERATOR_4_SAMPLE_CLK_CONFIG {
+        desc = "Controls generator 4 sample-clock division.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } SAMPLE_CLK_DIVIDE[4:0] = 0x2;
+    };
+
+    reg GENERATOR_5_SAMPLE_CLK_CONFIG {
+        desc = "Controls generator 5 sample-clock division.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } SAMPLE_CLK_DIVIDE[4:0] = 0x2;
+    };
+
+    reg GENERATOR_6_SAMPLE_CLK_CONFIG {
+        desc = "Controls generator 6 sample-clock division.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } SAMPLE_CLK_DIVIDE[4:0] = 0x0;
+    };
+
+    reg GENERATOR_7_SAMPLE_CLK_CONFIG {
+        desc = "Controls generator 7 sample-clock division.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } SAMPLE_CLK_DIVIDE[4:0] = 0x0;
+    };
+
+    reg GENERATOR_8_SAMPLE_CLK_CONFIG {
+        desc = "Controls generator 8 sample-clock division.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } SAMPLE_CLK_DIVIDE[4:0] = 0x1;
+    };
+
+    reg GENERATOR_9_SAMPLE_CLK_CONFIG {
+        desc = "Controls generator 9 sample-clock division.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } SAMPLE_CLK_DIVIDE[4:0] = 0x1;
+    };
+
+    reg GENERATOR_10_SAMPLE_CLK_CONFIG {
+        desc = "Controls generator 10 sample-clock division.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } SAMPLE_CLK_DIVIDE[4:0] = 0x2;
+    };
+
+    reg GENERATOR_11_SAMPLE_CLK_CONFIG {
+        desc = "Controls generator 11 sample-clock division.";
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
+        } SAMPLE_CLK_DIVIDE[4:0] = 0x2;
+    };
+
+    // Watermark test selector enumeration
+    enum WATERMARK_TEST {
+        REPCNT_HI   = 4'h0 { desc = "Tracks the highest repetition count."; };
+        APT_HI      = 4'h1 { desc = "Tracks the highest APT count."; };
+        APT_LO      = 4'h2 { desc = "Tracks the lowest APT count."; };
+        MARKOV_HI   = 4'h3 { desc = "Tracks the highest Markov count."; };
+        MARKOV_LO   = 4'h4 { desc = "Tracks the lowest Markov count."; };
+    };
+
+    // Watermark selector register
+    reg HT_WATERMARK_NUM {
+        desc = "Selects the counter and direction for the shared health-test watermark. Changing the selection preserves the current watermark.";
+        field {
+            sw = rw;
+            hw = rw;
+            encode = WATERMARK_TEST;
+            desc = "Selects the watermark source. Unsupported values select REPCNT_HI.";
+        } WATERMARK_NUM[3:0] = 4'h0;
+    };
+
+    // Watermark value register
+    reg HT_WATERMARK {
+        desc = "Reports one selector-dependent watermark. A CTRL.MODULE_ENABLE rising edge arms high modes to zero and low modes to 0xFFFF.";
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current shared watermark value.";
+        } WATERMARK_VALUE[15:0] = 16'h0;
+    };
+
+    // Repetition Test Total Fail Counter
+    reg REPCNT_TOTAL_FAILS {
+        desc = "Counts repetition-test failures since the last CTRL.MODULE_ENABLE rising edge.";
+        field {
+            sw = r;
+            hw = w;
+            desc = "Total repetition-test failure pulses.";
+        } FAIL_COUNT[31:0] = 32'h0;
+    };
+
+    // APT High Total Fail Counter
+    reg APT_HI_TOTAL_FAILS {
+        desc = "Counts APT high-threshold failures since the last CTRL.MODULE_ENABLE rising edge.";
+        field {
+            sw = r;
+            hw = w;
+            desc = "Total APT high-threshold failure pulses.";
+        } FAIL_COUNT[31:0] = 32'h0;
+    };
+
+    // APT Low Total Fail Counter
+    reg APT_LO_TOTAL_FAILS {
+        desc = "Counts APT low-threshold failures since the last CTRL.MODULE_ENABLE rising edge.";
+        field {
+            sw = r;
+            hw = w;
+            desc = "Total APT low-threshold failure pulses.";
+        } FAIL_COUNT[31:0] = 32'h0;
+    };
+
+    // Markov High Total Fail Counter
+    reg MARKOV_HI_TOTAL_FAILS {
+        desc = "Counts Markov high-threshold failures since the last CTRL.MODULE_ENABLE rising edge.";
+        field {
+            sw = r;
+            hw = w;
+            desc = "Total Markov high-threshold failure pulses.";
+        } FAIL_COUNT[31:0] = 32'h0;
+    };
+
+    // Markov Low Total Fail Counter
+    reg MARKOV_LO_TOTAL_FAILS {
+        desc = "Counts Markov low-threshold failures since the last CTRL.MODULE_ENABLE rising edge.";
+        field {
+            sw = r;
+            hw = w;
+            desc = "Total Markov low-threshold failure pulses.";
+        } FAIL_COUNT[31:0] = 32'h0;
+    };
+
+    // Alert Summary Fail Counter
+    reg ALERT_SUMMARY_FAIL_COUNTS {
+        desc = "Counts consecutive health-test windows containing any failure and clears after an accepted passing window.";
+        field {
+            sw = r;
+            hw = w;
+            desc = "Number of consecutive failing health-test windows.";
+        } ANY_FAIL_COUNT[15:0] = 16'h0;
+    };
+
+    // Alert Per-Test Fail Counters
+    reg ALERT_FAIL_COUNTS {
+        desc = "Reports saturating per-test failure counts for the current alert sequence.";
+        field {
+            sw = r;
+            hw = w;
+            desc = "Saturating APT low-threshold failure count.";
+        } APT_LO_FAIL_COUNT[3:0] = 4'h0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Saturating APT high-threshold failure count.";
+        } APT_HI_FAIL_COUNT[7:4] = 4'h0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Saturating Markov low-threshold failure count.";
+        } MARKOV_LO_FAIL_COUNT[11:8] = 4'h0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Saturating Markov high-threshold failure count.";
+        } MARKOV_HI_FAIL_COUNT[15:12] = 4'h0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Saturating repetition-test failure count.";
+        } REPCNT_FAIL_COUNT[19:16] = 4'h0;
+    };
+
+    //=========================================================================
+    // FIPS 140-3 / SP 800-90B certification support registers
+    //=========================================================================
+
+    // FIPS configuration lock. Write-1-only latch; once set it can only be
+    // cleared by reset (no debug-unlock path). While LOCK=1, every field marked
+    // swwel=true (the certified-configuration inventory: CTRL functional bits,
+    // health-test thresholds/window, ring-oscillator geometry, decorrelator
+    // config, entropy churn) ignores software writes. This freezes the
+    // SP 800-90B validated configuration for the operational lifetime so the
+    // entropy-source behaviour cannot silently change after firmware hands off.
+    reg FIPS_LOCK {
+        desc = "Locks entropy generation, conditioning, and health-test configuration against software writes until hardware reset.";
+        field {
+            sw = rw;
+            hw = r;
+            onwrite = woset;   // write-1-only: 1 sets, 0 has no effect
+            desc = "Write one to set the configuration lock. Only hardware reset clears it.";
+        } LOCK[0:0] = 0x0;
+    };
+
+    // Alert threshold: number of consecutive/aggregate failing health-test
+    // windows that must accumulate before main_sm's alert_thresh_fail_i fires.
+    // Locked under FIPS so the persistent-failure trip point is fixed.
+    reg ALERT_THRESHOLD {
+        desc = "Sets the failing-window count that enters the persistent-failure alert path.";
+        field {
+            sw = rw;
+            hw = r;
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified persistent-failure trip point.
+            desc = "Number of consecutive failing windows that triggers the alert; zero disables this trigger. FIPS_LOCK.LOCK prevents software changes.";
+        } THRESHOLD[15:0] = 16'd4;
+    };
+
+    // Assessed per-sample min-entropy H used to derive recommended health-test
+    // limits. Q4.4 unsigned fixed point: integer bits [7:4], fraction
+    // [3:0]; e.g. 0x0C = 0.75 bits/sample. Locked under FIPS.
+    reg MIN_ENTROPY_H {
+        desc = "Stores assessed per-sample min-entropy in unsigned Q4.4 format for advisory threshold calculation.";
+        field {
+            sw = rw;
+            hw = r;
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: certified assessed min-entropy.
+            desc = "Assessed min-entropy in bits per sample. FIPS_LOCK.LOCK prevents software changes.";
+        } H[7:0] = 8'h0C;
+    };
+
+    // Recommended RCT/APT cutoffs derived combinationally from MIN_ENTROPY_H
+    // per SP 800-90B. Read-only: hardware computes, firmware may copy the
+    // recommendation into HEALTH_TEST_CTRL.REPETITION_LIMIT /
+    // APT_PROPORTION_1BIT
+    // before locking. Purely advisory; does not gate the datapath itself.
+    reg RECOMMENDED_THRESHOLDS {
+        desc = "Reports advisory repetition and APT thresholds derived from MIN_ENTROPY_H.";
+        field {
+            sw = r;
+            hw = w;
+            desc = "Advisory repetition-count cutoff C = 1 + ceil(20 / H).";
+        } RCT_LIMIT[15:0] = 16'h0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Advisory APT high cutoff derived for a 1024-sample window.";
+        } APT_LIMIT[31:16] = 16'h0;
+    };
+
+    // Post-BIW extracted-stream diagnostic observe tap. Enables a copy-only
+    // fan-out of the post-BIW, pre-SHA 32-bit entropy stream into a dedicated
+    // observe FIFO, without disturbing the main datapath. NOTE: this is the
+    // EXTRACTED (conditioned) stream, downstream of the decorrelator and the
+    // BIW GF(2^8) extractor - it is a diagnostic/health-monitor tap and is NOT
+    // the SP 800-90B raw noise source. The raw per-lane source is NOISE_OBS_*.
+    reg BIW_OBS_CTRL {
+        desc = "Controls copy-only capture of the post-BIW, pre-SHA stream.";
+        field {
+            sw = rw;
+            hw = r;
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: SW writes ignored while locked (cleared only by reset).
+            desc = "Enables capture after startup health testing completes. FIPS_LOCK.LOCK prevents software changes.";
+        } RAW_ENABLE[0:0] = 0x0;
+    };
+
+    reg BIW_OBS_STATUS {
+        desc = "Reports BIW observe FIFO occupancy and pointers.";
+        field {
+            sw = r;
+            hw = w;
+            desc = "Number of valid 32-bit words in the BIW observe FIFO.";
+        } LEVEL[6:0] = 7'h0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current BIW observe FIFO write pointer.";
+        } WPTR[13:8] = 6'h0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current BIW observe FIFO read pointer.";
+        } RPTR[21:16] = 6'h0;
+    };
+
+    // External read-data register: reading pops one word from the BIW observe
+    // FIFO (same auto-advancing read-port pattern as FIFO_RDATA).
+    reg BIW_OBS_RDATA {
+        desc = "Provides the next post-BIW, pre-SHA observe word.";
+        field {
+            sw = r;
+            hw = w;
+            onread = ruser;
+            desc = "Returns and removes the next BIW observe FIFO word.";
+        } RDATA[31:0] = 32'h0;
+    };
+
+    // GetNoise raw per-lane noise observation control. Selects one lane's
+    // PRE-decorrelator raw metastable sample (noise_bit_monitor[LANE_SEL]),
+    // packs one bit per lane sample-clock edge into 32-bit words, and copies
+    // them into a dedicated observe FIFO. This is the SP 800-90B raw noise
+    // source (before any decorrelation/extraction) used for per-lane min-
+    // entropy estimation. Copy-only: the main datapath is unaffected.
+    reg NOISE_OBS_CTRL {
+        desc = "Controls copy-only capture of one pre-decorrelator generator lane.";
+        field {
+            sw = rw;
+            hw = r;
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: SW writes ignored while locked (cleared only by reset).
+            desc = "Enables LSB-first packing of selected-lane samples into 32-bit observe words. FIPS_LOCK.LOCK prevents software changes.";
+        } RAW_ENABLE[0:0] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Write one to discard buffered raw-noise words. Changing LANE_SEL also flushes the FIFO.";
+        } FLUSH[1:1] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Selects generator lane 0 through 11; other values select lane 0. Changing lanes restarts packing and flushes buffered words.";
+        } LANE_SEL[7:4] = 4'h0;
+    };
+
+    reg NOISE_OBS_STATUS {
+        desc = "Reports raw-noise observe FIFO occupancy and pointers.";
+        field {
+            sw = r;
+            hw = w;
+            desc = "Number of valid 32-bit words in the raw-noise observe FIFO.";
+        } LEVEL[6:0] = 7'h0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current raw-noise observe FIFO write pointer.";
+        } WPTR[13:8] = 6'h0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current raw-noise observe FIFO read pointer.";
+        } RPTR[21:16] = 6'h0;
+    };
+
+    // External read-data register: reading pops one word from the raw-noise
+    // observe FIFO (same auto-advancing read-port pattern as FIFO_RDATA).
+    reg NOISE_OBS_RDATA {
+        desc = "Provides the next packed raw-noise observe word.";
+        field {
+            sw = r;
+            hw = w;
+            onread = ruser;
+            desc = "Returns and removes 32 LSB-first pre-decorrelator samples from the selected lane.";
+        } RDATA[31:0] = 32'h0;
+    };
+
+             COMPONENT_ID                   COMPONENT_ID                       @0x0;
+             CTRL                           CTRL                               @0x4;
+             SHA256_STATUS                  SHA256_STATUS                      @0x1C;
+             DEBUG_CTRL                     DEBUG_CTRL                         @0xC;
+             INTR_STATUS                    INTR_STATUS                        @0x10;
+             INTR_ENABLE                    INTR_ENABLE                        @0x14;
+             INTR_TEST                      INTR_TEST                          @0x18;
+             FIFO_CTRL                      FIFO_CTRL                          @0x20;
+             FIFO_STATUS                    FIFO_STATUS                        @0x24;
+    external FIFO_RDATA                     FIFO_RDATA                         @0x28;
+             HEALTH_TEST_CTRL               HEALTH_TEST_CTRL                   @0x30;
+             HEALTH_TEST_WINDOW_SIZE        HEALTH_TEST_WINDOW_SIZE            @0x34;
+             MARKOV_TEST_PROB_THRESHOLDS    MARKOV_TEST_PROB_THRESHOLDS        @0x38;
+             HEALTH_TEST_STATUS             HEALTH_TEST_STATUS                 @0x40;
+             REPETITION_TEST_COUNT          REPETITION_TEST_COUNT              @0x44;
+             APT_PATTERN_COUNT_1BIT         APT_PATTERN_COUNT_1BIT             @0x50;
+             APT_PATTERN_COUNT_2BIT         APT_PATTERN_COUNT_2BIT             @0x54;
+             APT_PROPORTION_1BIT            APT_PROPORTION_1BIT                @0x60;
+             APT_PROPORTION_LO             APT_PROPORTION_LO                  @0x70;
+             MARKOV_TEST_COUNTS_0           MARKOV_TEST_COUNTS_0               @0x80;
+             // Individual Generator Health Test Status Registers at 0xC0 - 0xF0
+             RING_OSC_ENABLE                RING_OSC_ENABLE                    @0x90;
+             RING_OSC_TUNE                  RING_OSC_TUNE                      @0x94;
+             RING_OSC_CTRL                  RING_OSC_CTRL                      @0x98;
+             DECORRELATOR_CTRL              DECORRELATOR_CTRL                  @0xA0;
+             DECORRELATOR_MASK              DECORRELATOR_MASK                  @0xA4;
+             MAIN_SM_STATUS                 MAIN_SM_STATUS                     @0xB4;
+             GENERATOR_0_HEALTH_STATUS      GENERATOR_0_HEALTH_STATUS          @0xC0;
+             GENERATOR_1_HEALTH_STATUS      GENERATOR_1_HEALTH_STATUS          @0xC4;
+             GENERATOR_2_HEALTH_STATUS      GENERATOR_2_HEALTH_STATUS          @0xC8;
+             GENERATOR_3_HEALTH_STATUS      GENERATOR_3_HEALTH_STATUS          @0xCC;
+             GENERATOR_4_HEALTH_STATUS      GENERATOR_4_HEALTH_STATUS          @0xD0;
+             GENERATOR_5_HEALTH_STATUS      GENERATOR_5_HEALTH_STATUS          @0xD4;
+             GENERATOR_6_HEALTH_STATUS      GENERATOR_6_HEALTH_STATUS          @0xD8;
+             GENERATOR_7_HEALTH_STATUS      GENERATOR_7_HEALTH_STATUS          @0xDC;
+             GENERATOR_8_HEALTH_STATUS      GENERATOR_8_HEALTH_STATUS          @0xE0;
+             GENERATOR_9_HEALTH_STATUS      GENERATOR_9_HEALTH_STATUS          @0xE4;
+             GENERATOR_10_HEALTH_STATUS     GENERATOR_10_HEALTH_STATUS         @0xE8;
+             GENERATOR_11_HEALTH_STATUS     GENERATOR_11_HEALTH_STATUS         @0xEC;
+             GENERATOR_0_SAMPLE_CLK_CONFIG  GENERATOR_0_SAMPLE_CLK_CONFIG      @0x100;
+             GENERATOR_1_SAMPLE_CLK_CONFIG  GENERATOR_1_SAMPLE_CLK_CONFIG      @0x104;
+             GENERATOR_2_SAMPLE_CLK_CONFIG  GENERATOR_2_SAMPLE_CLK_CONFIG      @0x108;
+             GENERATOR_3_SAMPLE_CLK_CONFIG  GENERATOR_3_SAMPLE_CLK_CONFIG      @0x10C;
+             GENERATOR_4_SAMPLE_CLK_CONFIG  GENERATOR_4_SAMPLE_CLK_CONFIG      @0x110;
+             GENERATOR_5_SAMPLE_CLK_CONFIG  GENERATOR_5_SAMPLE_CLK_CONFIG      @0x114;
+             GENERATOR_6_SAMPLE_CLK_CONFIG  GENERATOR_6_SAMPLE_CLK_CONFIG      @0x118;
+             GENERATOR_7_SAMPLE_CLK_CONFIG  GENERATOR_7_SAMPLE_CLK_CONFIG      @0x11C;
+             GENERATOR_8_SAMPLE_CLK_CONFIG  GENERATOR_8_SAMPLE_CLK_CONFIG      @0x120;
+             GENERATOR_9_SAMPLE_CLK_CONFIG  GENERATOR_9_SAMPLE_CLK_CONFIG      @0x124;
+             GENERATOR_10_SAMPLE_CLK_CONFIG GENERATOR_10_SAMPLE_CLK_CONFIG     @0x128;
+             GENERATOR_11_SAMPLE_CLK_CONFIG GENERATOR_11_SAMPLE_CLK_CONFIG     @0x12C;
+
+             // Watermark Registers
+             HT_WATERMARK_NUM               HT_WATERMARK_NUM                   @0x130;
+             HT_WATERMARK                   HT_WATERMARK                       @0x134;
+
+             // Total Fail Counters
+             REPCNT_TOTAL_FAILS             REPCNT_TOTAL_FAILS                 @0x138;
+             APT_HI_TOTAL_FAILS             APT_HI_TOTAL_FAILS                 @0x13C;
+             APT_LO_TOTAL_FAILS             APT_LO_TOTAL_FAILS                 @0x140;
+             MARKOV_HI_TOTAL_FAILS          MARKOV_HI_TOTAL_FAILS              @0x144;
+             MARKOV_LO_TOTAL_FAILS          MARKOV_LO_TOTAL_FAILS              @0x148;
+
+             // Alert Fail Counters
+             ALERT_SUMMARY_FAIL_COUNTS      ALERT_SUMMARY_FAIL_COUNTS          @0x14C;
+             ALERT_FAIL_COUNTS              ALERT_FAIL_COUNTS                  @0x150;
+
+             // FIPS 140-3 / SP 800-90B certification support registers
+             FIPS_LOCK                      FIPS_LOCK                          @0x154;
+             ALERT_THRESHOLD                ALERT_THRESHOLD                    @0x158;
+             MIN_ENTROPY_H                  MIN_ENTROPY_H                      @0x15C;
+             RECOMMENDED_THRESHOLDS         RECOMMENDED_THRESHOLDS             @0x160;
+             BIW_OBS_CTRL                   BIW_OBS_CTRL                       @0x164;
+             BIW_OBS_STATUS                 BIW_OBS_STATUS                     @0x168;
+    external BIW_OBS_RDATA                  BIW_OBS_RDATA                      @0x16C;
+             NOISE_OBS_CTRL                 NOISE_OBS_CTRL                     @0x170;
+             NOISE_OBS_STATUS               NOISE_OBS_STATUS                   @0x174;
+    external NOISE_OBS_RDATA                NOISE_OBS_RDATA                    @0x178;
+
+};
+
+`endif

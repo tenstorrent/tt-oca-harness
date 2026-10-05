@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# A primary that declares an unsupported manifest major version, so only the backup can boot.
+base = "signed"
+ops = [
+  { op = "set_manifest_version", slot = "primary", args = { major = 99 } },
+]

@@ -1,0 +1,151 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-smc_base_config]
+== SMC Base Configuration Address Map
+
+Base-address, region-size, per-block clock-gating enable, and interrupt configuration registers.
+
+[cols="1,4,1,6", options="header"]
+|===
+| Address | Name | Access | Description
+| 0x0 | <<reg-{regmap-instance}-smc_base_config-GLOBAL_BASE,GLOBAL_BASE>> | RW a| -
+| 0x8 | <<reg-{regmap-instance}-smc_base_config-LOCAL_BASE,LOCAL_BASE>> | R a| -
+| 0x10 | <<reg-{regmap-instance}-smc_base_config-REGION_SIZE,REGION_SIZE>> | RW a| -
+| 0x18 | <<reg-{regmap-instance}-smc_base_config-CLOCK_GATE_CONTROL,CLOCK_GATE_CONTROL>> | RW a| -
+| 0x20 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_SYS_AXI_CTRL,HANG_DET_SYS_AXI_CTRL>> | RW a| AXI hang detector control.
+| 0x28 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD,HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD>> | RW a| Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.
+| 0x30 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_SEP_AXI_CTRL,HANG_DET_SEP_AXI_CTRL>> | RW a| AXI hang detector control.
+| 0x38 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD,HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD>> | RW a| Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.
+| 0x40 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_DATA_ACCEL_CTRL,HANG_DET_DATA_ACCEL_CTRL>> | RW a| AXI hang detector control.
+| 0x48 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD,HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD>> | RW a| Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.
+|===
+
+[#reg-{regmap-instance}-smc_base_config-GLOBAL_BASE]
+=== GLOBAL_BASE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:56 | `Reserved` | - | - a| Reserved
+| 55:0 | `base` | RW | 0x40000000 a| Global base address for the CPU
+|===
+
+[#reg-{regmap-instance}-smc_base_config-LOCAL_BASE]
+=== LOCAL_BASE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:56 | `Reserved` | - | - a| Reserved
+| 55:0 | `base` | R | 0xC0000000 a| Local base address for the CPU
+|===
+
+[#reg-{regmap-instance}-smc_base_config-REGION_SIZE]
+=== REGION_SIZE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:32 | `Reserved` | - | - a| Reserved
+| 31:0 | `size` | RW | 0x1000000 a| Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Inbound accesses to a unit whose window extends past this size answer DECERR. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.
+|===
+
+[#reg-{regmap-instance}-smc_base_config-CLOCK_GATE_CONTROL]
+=== CLOCK_GATE_CONTROL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:30 | `Reserved` | - | - a| Reserved
+| 29:24 | `cg_hysteresis` | RW | 0x1F a| Clockgate cg_hysteresis
+| 23:14 | `Reserved` | - | - a| Reserved
+| 13 | `telemetry_cg_en` | RW | 0x0 a| Clock gate enable for telemetry. While set, the telemetry receiver clocks are stopped and every access to the SMC_TELEMETRY_RECEIVER_WRAP window answers SLVERR with read data 0xBADCAB1E.
+| 12 | `uart_cg_en` | RW | 0x0 a| Clock gate enable for UART. While set, the UART peripheral clock is stopped and every access to the SMC_UART_WRAP window answers SLVERR with read data 0xBADCAB1E.
+| 11 | `i2c_cg_en` | RW | 0x0 a| Clock gate enable for I2C. While set, the I2C peripheral clock is stopped and every access to the SMC_I2C_WRAP window answers SLVERR with read data 0xBADCAB1E.
+| 10 | `avs_cg_en` | RW | 0x0 a| Clock gate enable for AVSBus. While set, the AVSBus controller clocks are stopped and every access to the SMC_AVSBUS_CONTROLLER window answers SLVERR with read data 0xBADCAB1E.
+| 9 | `i3c_cg_en` | RW | 0x0 a| Clock gate enable for I3C. While set, the I3C peripheral clock is stopped and every access to the OCA_I3C_WRAP window answers SLVERR with read data 0xBADCAB1E.
+| 8 | `zeroer_cg_en` | RW | 0x0 a| Clock gate enable for axi zeroer
+| 7 | `output_fabric_cg_en` | RW | 0x0 a| Clock gate enable for the output fabric remap demux and mux
+| 6 | `addr_remap_cg_en` | RW | 0x0 a| Clock gate enable for address remapper register logic
+| 5 | `filter_ib_reg_cg_en` | RW | 0x0 a| Clockgate enable for inbound filter registers
+| 4 | `filter_ib_axi_cg_en` | RW | 0x0 a| Clockgate enable for the inbound filters
+| 3 | `filter_ob_reg_cg_en` | RW | 0x0 a| Clockgate enable for outbound filter registers
+| 2 | `filter_ob_axi_cg_en` | RW | 0x0 a| Clockgate enable for the outbound filters
+| 1 | `mailbox_cg_en` | RW | 0x0 a| Clockgate enable for the mailbox
+| 0 | `dma_cg_en` | RW | 0x0 a| Clockgate enable for the DMA
+|===
+
+[#reg-{regmap-instance}-smc_base_config-HANG_DET_SYS_AXI_CTRL]
+=== HANG_DET_SYS_AXI_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:9 | `Reserved` | - | - a| Reserved
+| 8 | `irq_test` | RW | 0x0 a| Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.
+| 7:5 | `Reserved` | - | - a| Reserved
+| 4 | `irq_en` | RW | 0x0 a| Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.
+| 3:1 | `Reserved` | - | - a| Reserved
+| 0 | `enable` | RW | 0x0 a| When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.
+|===
+
+[#reg-{regmap-instance}-smc_base_config-HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD]
+=== HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:20 | `Reserved` | - | - a| Reserved
+| 19:0 | `value` | RW | 0x1000 a| Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.
+|===
+
+[#reg-{regmap-instance}-smc_base_config-HANG_DET_SEP_AXI_CTRL]
+=== HANG_DET_SEP_AXI_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:9 | `Reserved` | - | - a| Reserved
+| 8 | `irq_test` | RW | 0x0 a| Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.
+| 7:5 | `Reserved` | - | - a| Reserved
+| 4 | `irq_en` | RW | 0x0 a| Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.
+| 3:1 | `Reserved` | - | - a| Reserved
+| 0 | `enable` | RW | 0x0 a| When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.
+|===
+
+[#reg-{regmap-instance}-smc_base_config-HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD]
+=== HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:20 | `Reserved` | - | - a| Reserved
+| 19:0 | `value` | RW | 0x1000 a| Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.
+|===
+
+[#reg-{regmap-instance}-smc_base_config-HANG_DET_DATA_ACCEL_CTRL]
+=== HANG_DET_DATA_ACCEL_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:9 | `Reserved` | - | - a| Reserved
+| 8 | `irq_test` | RW | 0x0 a| Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.
+| 7:5 | `Reserved` | - | - a| Reserved
+| 4 | `irq_en` | RW | 0x0 a| Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.
+| 3:1 | `Reserved` | - | - a| Reserved
+| 0 | `enable` | RW | 0x0 a| When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.
+|===
+
+[#reg-{regmap-instance}-smc_base_config-HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD]
+=== HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:20 | `Reserved` | - | - a| Reserved
+| 19:0 | `value` | RW | 0x1000 a| Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.
+|===

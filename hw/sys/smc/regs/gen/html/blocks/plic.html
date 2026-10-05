@@ -1,0 +1,194 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-plic">PLIC Address Map</h2>
+<p>Platform-Level Interrupt Controller register interface.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>PRIORITY[337]</strong>: 337 registers, base 0x0, stride 0x4</li>
+<li><strong>PENDING[11]</strong>: 11 registers, base 0x1000, stride 0x4</li>
+<li><strong>CORE0_MEIP_ENABLE[11]</strong>: 11 registers, base 0x2000, stride 0x4</li>
+<li><strong>CORE1_MEIP_ENABLE[11]</strong>: 11 registers, base 0x2080, stride 0x4</li>
+<li><strong>CORE2_MEIP_ENABLE[11]</strong>: 11 registers, base 0x2100, stride 0x4</li>
+<li><strong>CORE3_MEIP_ENABLE[11]</strong>: 11 registers, base 0x2180, stride 0x4</li>
+<li><strong>CORE0_SEIP_ENABLE[11]</strong>: 11 registers, base 0x2200, stride 0x4</li>
+<li><strong>CORE1_SEIP_ENABLE[11]</strong>: 11 registers, base 0x2280, stride 0x4</li>
+<li><strong>CORE2_SEIP_ENABLE[11]</strong>: 11 registers, base 0x2300, stride 0x4</li>
+<li><strong>CORE3_SEIP_ENABLE[11]</strong>: 11 registers, base 0x2380, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x540</td><td><a href="#PRIORITY_337_">PRIORITY[337]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1000 - 0x1028</td><td><a href="#PENDING_11_">PENDING[11]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x2000 - 0x2028</td><td><a href="#CORE0_MEIP_ENABLE_11_">CORE0_MEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2080 - 0x20A8</td><td><a href="#CORE1_MEIP_ENABLE_11_">CORE1_MEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2100 - 0x2128</td><td><a href="#CORE2_MEIP_ENABLE_11_">CORE2_MEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2180 - 0x21A8</td><td><a href="#CORE3_MEIP_ENABLE_11_">CORE3_MEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2200 - 0x2228</td><td><a href="#CORE0_SEIP_ENABLE_11_">CORE0_SEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2280 - 0x22A8</td><td><a href="#CORE1_SEIP_ENABLE_11_">CORE1_SEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2300 - 0x2328</td><td><a href="#CORE2_SEIP_ENABLE_11_">CORE2_SEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2380 - 0x23A8</td><td><a href="#CORE3_SEIP_ENABLE_11_">CORE3_SEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x200000</td><td><a href="#CORE0_MEIP_THRESHOLD">CORE0_MEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x200004</td><td><a href="#CORE0_MEIP_CLAIM_COMPLETE">CORE0_MEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x201000</td><td><a href="#CORE1_MEIP_THRESHOLD">CORE1_MEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x201004</td><td><a href="#CORE1_MEIP_CLAIM_COMPLETE">CORE1_MEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x202000</td><td><a href="#CORE2_MEIP_THRESHOLD">CORE2_MEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x202004</td><td><a href="#CORE2_MEIP_CLAIM_COMPLETE">CORE2_MEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x203000</td><td><a href="#CORE3_MEIP_THRESHOLD">CORE3_MEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x203004</td><td><a href="#CORE3_MEIP_CLAIM_COMPLETE">CORE3_MEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x204000</td><td><a href="#CORE0_SEIP_THRESHOLD">CORE0_SEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x204004</td><td><a href="#CORE0_SEIP_CLAIM_COMPLETE">CORE0_SEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x205000</td><td><a href="#CORE1_SEIP_THRESHOLD">CORE1_SEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x205004</td><td><a href="#CORE1_SEIP_CLAIM_COMPLETE">CORE1_SEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x206000</td><td><a href="#CORE2_SEIP_THRESHOLD">CORE2_SEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x206004</td><td><a href="#CORE2_SEIP_CLAIM_COMPLETE">CORE2_SEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x207000</td><td><a href="#CORE3_SEIP_THRESHOLD">CORE3_SEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x207004</td><td><a href="#CORE3_SEIP_CLAIM_COMPLETE">CORE3_SEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="PRIORITY_337_">PRIORITY[337]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Priority of interrupt. The higher the set value, the higher the priority.<br>For interrupts with the same priority, the tie is broken by interrupt ID; interrupts with the lowest ID has highest effective priority.<br>Interrupts start counting at 1.</td></tr>
+</table>
+<h3 id="PENDING_11_">PENDING[11]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>0x0</td><td>Set to 1 if interrupt source 1 is pending, regardless of its enable or priority setting.<br>Interrupts start counting at 1.</td></tr>
+</table>
+<h3 id="CORE0_MEIP_ENABLE_11_">CORE0_MEIP_ENABLE[11]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
+</table>
+<h3 id="CORE1_MEIP_ENABLE_11_">CORE1_MEIP_ENABLE[11]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
+</table>
+<h3 id="CORE2_MEIP_ENABLE_11_">CORE2_MEIP_ENABLE[11]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
+</table>
+<h3 id="CORE3_MEIP_ENABLE_11_">CORE3_MEIP_ENABLE[11]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
+</table>
+<h3 id="CORE0_SEIP_ENABLE_11_">CORE0_SEIP_ENABLE[11]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
+</table>
+<h3 id="CORE1_SEIP_ENABLE_11_">CORE1_SEIP_ENABLE[11]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
+</table>
+<h3 id="CORE2_SEIP_ENABLE_11_">CORE2_SEIP_ENABLE[11]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
+</table>
+<h3 id="CORE3_SEIP_ENABLE_11_">CORE3_SEIP_ENABLE[11]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
+</table>
+<h3 id="CORE0_MEIP_THRESHOLD">CORE0_MEIP_THRESHOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
+</table>
+<h3 id="CORE0_MEIP_CLAIM_COMPLETE">CORE0_MEIP_CLAIM_COMPLETE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
+</table>
+<h3 id="CORE1_MEIP_THRESHOLD">CORE1_MEIP_THRESHOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
+</table>
+<h3 id="CORE1_MEIP_CLAIM_COMPLETE">CORE1_MEIP_CLAIM_COMPLETE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
+</table>
+<h3 id="CORE2_MEIP_THRESHOLD">CORE2_MEIP_THRESHOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
+</table>
+<h3 id="CORE2_MEIP_CLAIM_COMPLETE">CORE2_MEIP_CLAIM_COMPLETE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
+</table>
+<h3 id="CORE3_MEIP_THRESHOLD">CORE3_MEIP_THRESHOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
+</table>
+<h3 id="CORE3_MEIP_CLAIM_COMPLETE">CORE3_MEIP_CLAIM_COMPLETE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
+</table>
+<h3 id="CORE0_SEIP_THRESHOLD">CORE0_SEIP_THRESHOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
+</table>
+<h3 id="CORE0_SEIP_CLAIM_COMPLETE">CORE0_SEIP_CLAIM_COMPLETE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
+</table>
+<h3 id="CORE1_SEIP_THRESHOLD">CORE1_SEIP_THRESHOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
+</table>
+<h3 id="CORE1_SEIP_CLAIM_COMPLETE">CORE1_SEIP_CLAIM_COMPLETE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
+</table>
+<h3 id="CORE2_SEIP_THRESHOLD">CORE2_SEIP_THRESHOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
+</table>
+<h3 id="CORE2_SEIP_CLAIM_COMPLETE">CORE2_SEIP_CLAIM_COMPLETE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
+</table>
+<h3 id="CORE3_SEIP_THRESHOLD">CORE3_SEIP_THRESHOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
+</table>
+<h3 id="CORE3_SEIP_CLAIM_COMPLETE">CORE3_SEIP_CLAIM_COMPLETE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
+</table>
+</div>

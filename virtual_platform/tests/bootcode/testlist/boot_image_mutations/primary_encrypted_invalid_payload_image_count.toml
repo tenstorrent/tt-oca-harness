@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Encrypted primary TOC image_count overruns the plaintext, re-encrypted and resealed so the ROM decrypts first.
+base = "encrypted"
+ops = [
+  { op = "set_toc_image_count", slot = "primary", args = { value = 257 } },
+]

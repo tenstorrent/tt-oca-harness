@@ -1,0 +1,150 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef WDT_REG_RDL
+`define WDT_REG_RDL
+
+addrmap wdt {
+    name = "Watchdog Timer Address Map";
+    desc = "Watchdog timer configuration, counter, compare, and feed and key registers.
+
+            A write takes effect only if its byte enables cover all four bytes of COUNT, COUNT_HI, FEED or KEY, or bytes 0 and 1 of SCALED_COUNT or CMP; each CTRL byte is written on its own. Any other write returns OKAY and changes nothing, not even the lock.
+
+            Each effective write to a register other than KEY locks the watchdog, and changes no field if it was already locked. A 64-bit write at 0x18 writes FEED and KEY together and leaves the watchdog locked.";
+    
+    ////////////////////////////////////////////////////////////////////////////
+    // Register Definitions
+    ////////////////////////////////////////////////////////////////////////////
+
+    reg CTRL {
+        desc = "KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.";
+        field {
+            sw=rw;
+            hw=r;
+            desc="WDT counter scale value. Scales the current cycle count (time) by count / 2 ^ wdogscale value";
+        } wdogscale[3:0] = 0x0;
+
+        field {
+            sw=r;
+            hw=r;
+            desc="Reserved";
+        } rsvd0[7:4] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Enables a sticky reset signal to outputted to top level, can be used for a second stage wdt";
+        } wdogrsten[8:8] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Enable cycle counter to be reset to 0 when compare value has been reached";
+        } wdogzerocmp[9:9] = 0x0;
+
+        field {
+            sw=r;
+            hw=r;
+            desc="Reserved";
+        } rsvd1[11:10] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Enable WDT to always count. This has priority over wdogcoreawake";
+        } wdogenalways[12:12] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Enable WDT to only count when the core is not in reset";
+        } wdogcoreawake[13:13] = 0x0;
+
+        field {
+            sw=r;
+            hw=r;
+            desc="Reserved";
+        } rsvd2[27:14] = 0x0;
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Pending interrupt. Hardware sets this bit on every cycle the scaled count has reached the compare value.
+                  To clear it, write KEY and then write 0 to this bit while the scaled count is below the compare value. Writing FEED does not clear it.";
+        } wdogip0[28:28] = 0x0;
+
+        field {
+            sw=r;
+            hw=r;
+            desc="Reserved";
+        } rsvd3[31:29] = 0x0;
+
+    };
+
+    reg COUNT {
+        field {
+            sw=rw;
+            hw=r;
+            desc="31 bit wdt counter registers. On write, the counter will be set to the written value, then continue counting up.
+            KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.";
+        } wdogcount[30:0] = 0x0;
+    };
+
+    reg COUNT_HI {
+        field {
+            sw=w;
+            hw=r;
+            desc="Upper word of the counter. The counter is 31 bits wide and lies entirely in COUNT, so this register has no storage and reads 0. A write covering all four bytes leaves the counter unchanged but locks the WDT, so KEY must be written again before the next write.";
+        } wdogcounthi[31:0] = 0x0;
+    };
+
+    reg SCALED_COUNT {
+        field {
+            sw=rw;
+            hw=r;
+            desc="Scaled value of wdt counter. (i.e. count >> wdogscale). Writing to this reg has no effect, but will lock the WDT (meaning KEY must be written to KEY reg to unlock it again).
+            KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.";
+        } wdogs[15:0] = 0x0;
+    };
+
+    reg FEED {
+        field {
+            sw=rw;
+            hw=r;
+            desc="Feed register. Writing 0xD09F00D will reset the counter value back to 0. Feeding does not clear CTRL.wdogip0.
+            KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.";
+        } wdogfeed[31:0] = 0x0;
+    };
+
+    reg KEY {
+        field {
+            sw=rw;
+            hw=r;
+            desc="Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it 
+                  is unlocked, 0 otherwise.";
+        } wdogkey[31:0] = 0x0;
+    };
+
+    reg CMP {
+        field {
+            sw=rw;
+            hw=r;
+            desc="Compare register. Value that gets compared to wdogs.
+            KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.";
+        } wdogcmp0[15:0] = 0x1000;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Address Map
+    ////////////////////////////////////////////////////////////////////////////
+
+    CTRL            CTRL            @0x0;
+    COUNT           COUNT           @0x8;
+    COUNT_HI        COUNT_HI        @0xc;
+    SCALED_COUNT    SCALED_COUNT    @0x10;
+    FEED            FEED            @0x18;
+    KEY             KEY             @0x1c;
+    CMP             CMP             @0x20;
+};
+
+`endif

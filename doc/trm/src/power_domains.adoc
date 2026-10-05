@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Power Domains
+:description: The always-on OCAH power domain and the isolation and sequencing infrastructure for external domains.
+
+[[ocah-power-domains]]
+
+The SMU, SMN, and AXI-over-UCIe bridge (AoU) reside in the same always-on
+power domain. This domain remains powered whenever the chiplet has supply,
+ensuring that platform management, inter-chiplet communication, and security
+services are available even when application logic is powered down.
+
+Vendor-specific macros and subsystems that are outside the scope of OCAH --
+such as OTP/eFuse controllers, PLLs, die-to-die PHYs (e.g. UCIe PHY),
+analogue sensors, and application-specific tiles -- typically reside in their
+own dedicated power and voltage domains defined by the adopter's power
+architecture. OCAH provides the isolation and sequencing infrastructure
+(`isolate_req_o[31:0]`, `ss_reset_ctrl_o[31:0]`) that the SMC firmware uses
+to coordinate power transitions for these external domains, but their supply
+rail definitions, power gating decisions, and leakage budgets are
+adopter-specific.
+
+The SMC provides runtime power management services for the application logic,
+including dynamic voltage and frequency scaling (DVFS) through AVSBus-based
+voltage regulator control and firmware-driven Performance State (P-State)
+management. At the RTL level, the SMU accepts a `powergood_i` input that
+indicates supply stability and exposes `isolate_req_o[31:0]` to request
+isolation of individual subsystem domains before power transitions.

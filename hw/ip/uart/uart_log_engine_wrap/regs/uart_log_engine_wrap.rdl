@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef UART_LOG_ENGINE_WRAP_RDL
+`define UART_LOG_ENGINE_WRAP_RDL
+
+`include "log_engine.rdl"
+`include "uart_16550_main.rdl"
+`include "uart_log_engine_ctrl.rdl"
+
+addrmap uart_log_engine_wrap {
+    name = "UART Log Engine Wrapper Address Map";
+    desc = "Composes the UART 16550 core, log engine, and their control registers for one UART instance.";
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    uart_log_engine_ctrl    uart_log_engine_ctrl    @0x0;
+    uart_16550_main         uart                    @0x100;
+    log_engine              log_engine              @0x200;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
+`endif
+};
+
+`endif

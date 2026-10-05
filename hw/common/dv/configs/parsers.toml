@@ -1,0 +1,96 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+[policy.cocotb-default]
+require_positive_evidence = true
+strip_ansi = true
+structured_results = ["results.xml"]
+structured_format = "xunit"
+summary_patterns = [
+  "TESTS=(?P<tests>\\d+)\\s+PASS=(?P<pass>\\d+)\\s+FAIL=(?P<fail>\\d+)\\s+SKIP=(?P<skip>\\d+)",
+]
+pass_patterns = ["TEST PASSED"]
+fail_patterns = ["TEST FAILED"]
+ignore_patterns = []
+required_patterns = []
+hard_fail_patterns = [
+  "Traceback \\(most recent call last\\):",
+  "\\bModuleNotFoundError\\b",
+  "\\bImportError\\b",
+  # Match $fatal only when it appears alongside a runtime fatal marker; the
+  # bare token also appears in RTL source echoed by Xcelium under -showcfg /
+  # *W,STRINT warning context, where it is not a failure.
+  "\\*F[,:].*\\$fatal\\b",
+  "%Error[:\\-]",
+  "make(?:\\[\\d+\\])?: \\*\\*\\*",
+]
+
+[policy.uvm-log]
+require_positive_evidence = true
+strip_ansi = true
+structured_results = []
+structured_format = "none"
+summary_patterns = [
+  "UVM_ERROR\\s*:\\s*(?P<uvm_error>\\d+)",
+  "UVM_FATAL\\s*:\\s*(?P<uvm_fatal>\\d+)",
+]
+pass_patterns = ["UVM TEST PASSED"]
+fail_patterns = [
+  "^UVM_ERROR\\s[^:].*$",
+  "^UVM_FATAL\\s[^:].*$",
+  "UVM TEST FAILED",
+]
+ignore_patterns = []
+required_patterns = ["UVM Report Summary"]
+hard_fail_patterns = [
+  # Match $fatal only when it appears alongside a runtime fatal marker; the
+  # bare token also appears in RTL source echoed by Xcelium under -showcfg /
+  # *W,STRINT warning context, where it is not a failure.
+  "\\*F[,:].*\\$fatal\\b",
+  "Error-\\[",
+  "%Error[:\\-]",
+]
+
+[policy.generic-regex]
+require_positive_evidence = true
+strip_ansi = true
+structured_results = []
+structured_format = "none"
+summary_patterns = []
+pass_patterns = []
+fail_patterns = []
+ignore_patterns = []
+required_patterns = []
+hard_fail_patterns = [
+  # Match $fatal only when it appears alongside a runtime fatal marker; the
+  # bare token also appears in RTL source echoed by Xcelium under -showcfg /
+  # *W,STRINT warning context, where it is not a failure.
+  "\\*F[,:].*\\$fatal\\b",
+  "%Error[:\\-]",
+  "Error-\\[",
+  "make(?:\\[\\d+\\])?: \\*\\*\\*",
+]
+
+# Formal grader for SymbiYosys. The stage log carries one `DONE (<status>, rc=<n>)` line per
+# task; the bracketed work directory holds the task's `status` file, `config.sby`, and JUnit
+# report, from which the runner counts proven, failed, inconclusive, covered, and unreached
+# properties. sby's own exit code only encodes the match against the task's `expect` option.
+[policy.sby-summary]
+grader = "formal"
+strip_ansi = true
+task_status_patterns = [
+  "^SBY [0-9:]+ \\[(?P<workdir>[^\\]]+)\\] DONE \\((?P<status>[A-Z]+), rc=(?P<rc>\\d+)\\)\\s*$",
+]
+task_results = "sby-junit"
+evidence_patterns = [
+  "summary:\\s+(?:failed assertion|violated assumption|reached cover statement) .*$",
+  "summary:\\s+(?:counterexample trace|cover trace)\\b.*$",
+  "summary: unreached cover statements:$",
+  "summary: engine_\\d+ .*(?:returned|did not return a status).*$",
+]
+hard_fail_patterns = [
+  "^ERROR: .*$",
+  "Traceback \\(most recent call last\\):",
+]

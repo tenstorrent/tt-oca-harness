@@ -1,0 +1,97 @@
+packages:
+  aou:
+    revision: null
+    version: null
+    source:
+      Path: vendor/tenstorrent/aou
+    dependencies: []
+  apb:
+    revision: null
+    version: null
+    source:
+      Path: vendor/pulp-platform/apb
+    dependencies:
+    - common_cells
+  axi:
+    revision: null
+    version: null
+    source:
+      Path: vendor/pulp-platform/axi
+    dependencies:
+    - common_cells
+    - common_verification
+  axi_stream:
+    revision: null
+    version: null
+    source:
+      Path: vendor/pulp-platform/axi_stream
+    dependencies:
+    - common_cells
+  common_cells:
+    revision: null
+    version: null
+    source:
+      Path: vendor/pulp-platform/common_cells
+    dependencies:
+    - common_verification
+  common_verification:
+    revision: null
+    version: null
+    source:
+      Path: vendor/pulp-platform/common_verification
+    dependencies: []
+  el2:
+    revision: null
+    version: null
+    source:
+      Path: vendor/chipsalliance/Cores-VeeR-EL2
+    dependencies: []
+  idma:
+    revision: null
+    version: null
+    source:
+      Path: vendor/pulp-platform/idma
+    dependencies:
+    - axi
+    - axi_stream
+    - common_cells
+    - common_verification
+    - obi
+    - register_interface
+  obi:
+    revision: null
+    version: null
+    source:
+      Path: vendor/pulp-platform/obi
+    dependencies:
+    - common_cells
+    - common_verification
+  opentitan:
+    revision: null
+    version: null
+    source:
+      Path: vendor/lowRISC/opentitan
+    dependencies: []
+  picorv32:
+    revision: null
+    version: null
+    source:
+      Path: vendor/tenstorrent/tt-picorv32
+    dependencies: []
+  register_interface:
+    revision: null
+    version: null
+    source:
+      Path: vendor/pulp-platform/register_interface
+    dependencies:
+    - apb
+    - axi
+    - common_cells
+    - common_verification
+  tt_dfd:
+    revision: null
+    version: null
+    source:
+      Path: vendor/tenstorrent/tt-hw-debug
+    dependencies:
+    - axi

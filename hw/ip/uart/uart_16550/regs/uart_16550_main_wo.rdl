@@ -1,0 +1,93 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef UART_16550_MAIN_WO_RDL
+`define UART_16550_MAIN_WO_RDL
+
+addrmap uart_16550_main_wo {
+
+    name = "UART 16550 Main Write-Only Address Map";
+    desc = "Contains the write-only registers. THR is accessible only when `LCR.DLAB = 0`;
+            FCR is writable for either `LCR.DLAB` value.";
+
+    //////////////////////////
+    // Register Definitions //
+    //////////////////////////
+
+    reg THR {
+        desc = "Transmitter Holding Register";
+
+        field {
+            sw = w;
+            hw = r;
+            onwrite = wuser;
+            desc = "Transmit Data. Holds a character to be transmitted. If FIFOs are enabled, this
+                    field points to the top of the TX FIFO. Otherwise, this field points to a
+                    single-byte Transmitter Holding Register.";
+        } DATA[7:0] = 0x0;
+    };
+
+    reg FCR {
+        desc = "FIFO Control Register";
+
+        field {
+            sw = w;
+            hw = r;
+            desc = "FIFO Enable. When set, enables the TX and RX FIFOs (FIFO Mode). When unset,
+                    disables the FIFOs (Non-FIFO Mode).";
+        } FIFO_ENABLE[0:0] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Receiver FIFO Reset. Writing `1` clears the RX FIFO.";
+        } RCVR_FIFO_RESET[1:1] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Transmitter FIFO Reset. Writing `1` clears the TX FIFO.";
+        } XMIT_FIFO_RESET[2:2] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            desc = "DMA mode select:
+                     * `0` - DMA Mode 0
+                     * `1` - DMA Mode 1";
+        } DMA_MODE_SELECT[3:3] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            desc = "Receiver FIFO Trigger Level (Least Significant 2 Bits). To configure the most
+                    significant 2 bits, use the `ECR.RCVR_TRIGGER_MS2B` register field. The
+                    configurations for the trigger levels are:
+                     * `0x0` -    1 character
+                     * `0x1` -    4 characters
+                     * `0x2` -    8 characters
+                     * `0x3` -   14 characters
+                     * `0x4` -   32 characters
+                     * `0x5` -   64 characters
+                     * `0x6` -  128 characters
+                     * `0x7` -  256 characters
+                     * `0x8` -  512 characters
+                     * `0x9` - 1024 characters
+                     * `0xA` - 2048 characters
+                     * `0xB` - 4096 characters";
+        } RCVR_TRIGGER[7:6] = 0x0;
+    };
+
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    external THR    THR    @0x0;
+             FCR    FCR    @0x8;
+
+};
+
+`endif

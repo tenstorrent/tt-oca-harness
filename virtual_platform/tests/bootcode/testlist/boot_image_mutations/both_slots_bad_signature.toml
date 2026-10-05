@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# One signature bit per slot; the signature is outside the signed region, so every hash still holds.
+base = "signed"
+patch = [
+  { field = "OFF_SIGNATURE_CLASSIC", slot = "primary", xor = 0x01 },
+  { offset = 0x41de3, xor = 0x80 },
+]

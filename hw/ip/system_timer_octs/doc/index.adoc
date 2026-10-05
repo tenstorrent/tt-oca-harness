@@ -1,0 +1,51 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[system-timer-octs]]
+= System Timer OCTS
+
+ifdef::backend-html5[]
+++++
+<span id="description-and-features"></span>
+++++
+endif::backend-html5[]
+
+== Overview
+
+The System Timer implements Open Chiplet Time Synchronization (OCTS).
+A primary timer counts local clock cycles and sends load and credit pulses
+to secondary timers. Each secondary advances between pulses, then corrects
+its count at the next credit boundary.
+
+The counter is 64 bits. Its time unit depends on the primary clock;
+resolution and alignment accuracy also depend on the clock ratios, pulse
+routing and synchronization delay. The block does not guarantee nanosecond
+accuracy or simultaneous sampling across chiplets.
+
+Software configures the timer through a 32-bit AXI4-Lite interface.
+The `is_primary_i` input selects its role. The sections below cover counting,
+synchronization constraints, setup and register access.
+
+
+
+ifdef::backend-html5[]
+include::partial$system_timer_octs/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::architecture.adoc[]
+endif::backend-pdf[]
+
+ifdef::backend-html5[]
+include::partial$system_timer_octs/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::interface.adoc[]
+endif::backend-pdf[]
+
+
+ifdef::backend-html5[]
+include::partial$system_timer_octs/doc/memmap.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::memmap.adoc[]
+endif::backend-pdf[]

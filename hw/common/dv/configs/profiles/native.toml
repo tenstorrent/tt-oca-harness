@@ -1,0 +1,132 @@
+# Shared profile for DUTs on the native runner — "native" = the flow's stage
+# plan, tool invocation, and results are owned by this runner, not a
+# wrapped/external flow.
+#
+# Framework (cocotb | uvm) is a selectable dimension inside this one profile: shared launch
+# policy lives at the top level, per-framework residue in [frameworks.<fw>], and each DUT
+# declares the frameworks it implements as [frameworks.<fw>] tables in its own sim config.
+# The frameworks this profile supports are exactly its [frameworks.<fw>] sections below.
+
+kind = "dv"
+default_framework = "cocotb"
+visibility = "public"
+runnability = "contributor"
+license = "none"
+
+# Tool capability per framework comes from simulators.toml `frameworks`; the effective tool set
+# for a run is this list filtered by the selected framework's capability.
+default_tool = "verilator"
+tools = ["verilator", "xcelium", "vcs"]
+
+# A cluster executor takes its queue, resource defaults and limits from the site layer.
+[scheduler]
+default_executor = "local"
+allowed = ["local", "lsf", "slurm"]
+
+[defaults]
+seed = 1
+timeout_sec = 1800
+run_mode = "smoke"
+target = "default"
+
+# Shared cold-build/cache policy. Tool-specific acceleration knobs live in
+# simulators.toml [<tool>.build_defaults] or DUT [build.<tool>] overrides.
+[build.options]
+build_jobs = 0
+cflags = ""
+cache_enabled = false
+rebuild = false
+cache_key_extra = []
+
+# One simulation define set for both frameworks; a framework overlay only ADDS to it (see
+# [frameworks.uvm.target_defaults.default] below), so the flows never differ silently.
+# Tool-specific fields use nested tool tables so every simulator follows the same naming rule:
+# target.tools.<tool>.flags.
+[target_defaults.default]
+defines = [
+  "SIMULATION",
+  "RANDOM=0",
+  "RANDOMIZE_MEM_INIT",
+  "RANDOMIZE_REG_INIT",
+  "RANDOMIZE_DELAY=0.02",
+]
+
+[target_defaults.default.tools.verilator]
+flags = [
+  "-Wno-fatal",
+  "-Wno-UNOPTFLAT",
+  "-Wno-WIDTHEXPAND",
+  "-Wno-MULTIDRIVEN",
+  "-Wno-UNSIGNED",
+  "-Wno-REDEFMACRO",
+  "-Wno-MODDUP",
+  # The inline assertion blocks of the vendored common_cells do not compile
+  # under Verilator; VCS and Xcelium compile and run them.
+  "+define+COMMON_CELLS_ASSERTS_OFF",
+]
+
+[target_defaults.default.tools.xcelium]
+flags = ["-assert", "-ALLOWREDEFINITION"]
+
+[target_defaults.default.tools.vcs]
+flags = ["-sverilog"]
+
+[native]
+enabled = true
+status = "active"
+
+# ONE canonical stage graph for both frameworks. The generic kinds dispatch per
+# (tool, framework) at run time: `hdl_compile` builds the cocotb model (Verilator/Xcelium/VCS,
+# all through cocotb's Python runner) or runs the folded VCS analyze+elaborate two-step for
+# SV-UVM; `sim` launches the cocotb test or the built simv (`+UVM_TESTNAME`); `c_compile` runs
+# only for tests that declare firmware.
+[native.stages.flist]
+kind = "filelist"
+
+[native.stages.c_compile]
+kind = "c_compile"
+
+[native.stages.hdl_compile]
+kind = "hdl_compile"
+
+[native.stages.sim]
+kind = "sim"
+
+# Coverage aggregation (run automatically with --cov, or via --stage cov_merge --stage
+# cov_report). Both frameworks declare the stages: the cocotb tools consume the
+# [<tool>.coverage_defaults] args through the cocotb build/makefile path, and the vcs_* UVM
+# build/sim adapters inject the same `-cm ...` compile/sim instrumentation directly (covergroups
+# collect into the same per-test simv.vdb).
+[frameworks.cocotb.native.stages.cov_merge]
+kind = "coverage_merge"
+
+[frameworks.cocotb.native.stages.cov_report]
+kind = "coverage_report"
+
+[frameworks.uvm.native.stages.cov_merge]
+kind = "coverage_merge"
+
+[frameworks.uvm.native.stages.cov_report]
+kind = "coverage_report"
+
+# SystemVerilog UVM: the UVM library comes from the simulator itself (the VCS analyze stage
+# precompiles it with a dedicated `vlogan -ntb_opts uvm` invocation before analyzing user
+# sources).
+[frameworks.uvm]
+default_tool = "vcs"
+tools = ["vcs"]
+visibility = "maintainer"
+runnability = "maintainer"
+license = "required-commercial"
+
+# The bare `UVM` framework gate (same bare-name wording rule as SIMULATION): every DUT's
+# `--framework uvm` view selects the SV-UVM shape of its shared testbench top with it. Target-table
+# `defines` dedup-append across the framework merge layers, so this ADDS to the shared
+# [target_defaults.default] set above — SIMULATION stays on UVM builds.
+[frameworks.uvm.target_defaults.default]
+defines = ["UVM"]
+
+# -sverilog/-full64/-ntb_opts uvm/-timescale come from the vcs_* stage preamble; the analyze stage
+# also precompiles the simulator-owned UVM package before this source set.
+[frameworks.uvm.target_defaults.default.tools.vcs]
+flags = []

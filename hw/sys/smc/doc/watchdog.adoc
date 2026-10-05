@@ -1,0 +1,76 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Watchdog Timers
+
+[[smc-watchdog]]
+
+== Operation
+
+Each CPU core includes a dedicated watchdog timer (at 0xC000_0000 + N *
+0x400), providing per-core timeout monitoring. Reset effects are described in
+Clocks and Resets. Base addresses and interrupt-related context for the WDT are
+summarized in
+ifdef::backend-html5[]
+xref:smc:interrupts.adoc#interrupts[Interrupts].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<interrupts,Interrupts>>.
+endif::backend-pdf[]
+
+Timeouts are configurable to suit different workloads, and staged
+warnings (followed by reset) allow software intervention before hardware
+reset is triggered.
+
+Watchdog monitoring can be disabled during debugging to prevent false
+triggers, supporting uninterrupted development and troubleshooting.
+
+The watchdog interrupt is `CTRL.wdogip0`. Hardware sets it on every cycle the
+scaled count is at or above `CMP`, so it cannot be cleared while that holds.
+Feeding the watchdog resets the count but leaves `wdogip0` set. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-watchdog-clear[watchdog interrupt clear sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-watchdog-clear[watchdog interrupt clear sequence]
+endif::backend-pdf[]
+is in the Programmer's Guide.
+
+=== Register Access
+
+Each watchdog is locked out of reset, and a write to any register other
+than KEY locks it again. Software changes one register at a time:
+
+. Write `0x51F15E` to KEY. KEY reads 1 while the watchdog is unlocked.
+. Write the target register. The watchdog locks again on this write, so
+  the next write needs a new KEY write first.
+
+A write acts only when its byte enables cover the register's width, and a
+narrower write completes with an OKAY response without changing anything,
+so software cannot detect a dropped write from the response. Software uses
+32-bit stores for every register except CTRL, which accepts byte writes.
+The Detailed Register Map below gives the width each register requires.
+
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::partial$smc/regs/gen/html/blocks/wdt.html[]
+++++
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/wdt.adoc[leveloffset=+2]
+endif::backend-pdf[]

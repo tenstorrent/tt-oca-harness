@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+site:
+  title: Open Chiplet Atlas Harness (OCAH) Application Notes
+  url: /
+  start_page: ocah-appnotes::index.adoc
+content:
+  sources:
+    - url: .
+      branches: HEAD
+      start_path: doc/appnotes
+      edit_url: false
+asciidoc:
+  attributes:
+    kroki-default-format: svg
+    kroki-fetch-diagram: true
+  extensions:
+    - asciidoctor-kroki
+runtime:
+  log:
+    # See antora-playbook.yml for why this is raised from the default.
+    failure_level: error
+ui:
+  bundle:
+    url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable
+    snapshot: true
+  supplemental_files: ./doc/ui-supplemental
+output:
+  dir: ./doc/appnotes/_build/html_antora

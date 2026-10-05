@@ -1,0 +1,23 @@
+generic_ffs_fast: guard SIZE against WIDTH == 1
+
+SIZE defaults to $clog2(WIDTH), which is 0 when WIDTH is 1, giving a
+logic [-1:0] enc_req_out and a zero-size SIZE'(i) cast. trace_sink instantiates
+generic_ffs_fast with WIDTH(NUM_CORES), so any NUM_DST_INST = 1 build fails to
+elaborate - which is the configuration smc_dfd_wrap uses.
+
+The sibling generic_ffs_N.sv already carries this exact guard; generic_ffs_fast
+was missed. No caller overrides SIZE.
+
+diff --git a/dependencies/common/generic_ffs_fast.sv b/dependencies/common/generic_ffs_fast.sv
+index e1a8940..98ec241 100644
+--- a/dependencies/common/generic_ffs_fast.sv
++++ b/dependencies/common/generic_ffs_fast.sv
+@@ -4,7 +4,7 @@
+ module generic_ffs_fast #(
+     parameter DIR_L2H    = 1,              // Direction: 1=Low-to-High (LSB first), 0=High-to-Low (MSB first)
+     parameter WIDTH      = 8,              // Number of request inputs
+-    parameter SIZE       = $clog2(WIDTH),  // Encoded output width
++    parameter SIZE       = ($clog2(WIDTH) > 1 ? $clog2(WIDTH) : 1),  // Encoded output width
+     parameter DATA_WIDTH = 4               // Width of data associated with each request
+ ) (
+     input  logic [WIDTH-1:0]                    req_in,           // Request inputs

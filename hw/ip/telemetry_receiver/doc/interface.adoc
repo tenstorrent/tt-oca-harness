@@ -1,0 +1,87 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[telemetry-receiver-interface]]
+== Interface
+
+The Telemetry Receiver component provides AXI4-Lite register access and
+Advanced Trace Bus (ATB) telemetry data reception interfaces.
+
+=== Configuration Parameters
+
+ifdef::backend-html5[]
+The parameters and ports of `telemetry_receiver` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/telemetry_receiver/telemetry_receiver.adoc[telemetry_receiver].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `telemetry_receiver` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+The core has two elaboration parameters. `BUFFER_DEPTH` (default 8) sets the
+number of decoded messages the queue holds; it must be a power of two and at
+least 2. `MAX_NUM_COUNTERS_PER_MESSAGE` (default 4) sets the number of counters
+decoded from each message.
+
+The ATB beat width (8 bits), packet width (64 bits), counter width (32 bits)
+and ATB ID width (7 bits) are package constants.
+The core register port has an 8-bit address and 32-bit data path.
+
+=== Signal Interfaces
+
+=== Global Interface
+
+The global interface provides fundamental clock and reset signals
+required for basic operation.
+
+[[telemetry-receiver-clock-reset]]
+=== Clock and Reset
+
+`clk_i` is the core clock and `rst_ni` its asynchronous, active-low reset;
+`telemetry_receiver_wrap` adds `clk_telemetry_i` / `rst_telemetry_ni` for
+the ATB side. Clock frequency, jitter, reset duration and physical timing
+constraints must come from the integration timing specification.
+
+=== ATB Telemetry Interface
+
+The ATB (Advanced Trace Bus) interface receives telemetry data using standard
+ATB protocol.
+
+=== ATB Protocol Specifications
+
+* *Data Width*: 8 bits per beat
+* *ID Width*: 7 bits; the receiver ignores `atid_i`
+* *Flow Control*: Valid/ready handshaking for reliable data transfer
+* *Flush Support*: Bidirectional flush signaling for stream management
+* *Back-pressure*: Component can assert `atready_o` low to apply
+back-pressure
+* *Latency*: Zero-cycle latency when ready, immediate acceptance when
+`atready_o` is high
+
+=== Interrupt Interface
+
+The interrupt interface provides a single interrupt output for event
+notification.
+
+=== Interrupt Specifications
+
+* *Polarity*: Active high (asserted when high)
+* *Duration*: Level-sensitive, remains asserted until cleared
+* *Sources*: Buffer threshold and error condition interrupts
+* *Clearing*: `MISSING_LAST` is write-one-to-clear. The read-only
+`BUFFER_THRESHOLD` source remains asserted while occupancy exceeds the configured
+threshold or its test bit is set; it cannot be cleared by writing status.
+* *Latency*: Interrupt assertion within 2 clock cycles of triggering
+condition
+
+=== Subsystem Wrapper
+
+`telemetry_receiver_wrap` defaults to three receivers. It configures their queue
+depth with `TELEMETRY_RECEIVER_BUFFER_DEPTH` (default 8) and counter counts with
+`TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE` (default 4 per receiver).
+Actual subsystem values and aperture assignments come from the integration.
+
+The wrapper receives ATB traffic on `clk_telemetry_i` / `rst_telemetry_ni` and
+crosses it into `clk_i` / `rst_ni` through an eight-entry asynchronous FIFO per
+receiver. Its external ready signal reflects crossing-FIFO capacity. This does
+not turn the core's decoded-message queue into a lossless backpressured queue.
+The wrapper also contains flush-handshake synchronizers and returns a decode
+error for register addresses outside its configured receiver apertures.

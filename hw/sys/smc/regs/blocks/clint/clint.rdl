@@ -1,0 +1,62 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef CLINT_REG_RDL
+`define CLINT_REG_RDL
+
+addrmap clint {
+    name = "CLINT Address Map";
+    desc = "Core-Local Interruptor: software-interrupt, timer-compare, and machine-time registers.";
+    
+    ////////////////////////////////////////////////////////////////////////////
+    // Register Definitions
+    ////////////////////////////////////////////////////////////////////////////
+
+    reg MSIP {
+        field {
+            sw=rw; 
+            hw=r;
+            desc="MSIP bit for core";
+        } value[0:0] = 0x0;
+
+        field {
+            sw=r;
+            hw=r;
+            desc="Reserved";
+        } rsvd0[31:1] = 0x0;
+    };
+
+    reg MTIMECMP {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Timer compare value. The core's machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME.";
+        } count[63:0];
+    };
+
+    reg MTIME {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Cycle count (time) value";
+        } count[63:0];
+    };
+
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Address Map
+    ////////////////////////////////////////////////////////////////////////////
+
+    MSIP        MSIP[4]     @0x0;
+    MTIMECMP    MTIMECMP[4] @0x4000;
+    MTIME       MTIME       @0xbff8;
+
+};
+
+`endif

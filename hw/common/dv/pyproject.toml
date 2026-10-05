@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ocah-dv"
+version = "0.1.0"
+description = "Sandboxed OCAH OSS shared DV Python: protocol VIP and monitors"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  # cocotb 2.0.x supports Python 3.11-3.13 and publishes no Python 3.14
+  # wheels/sdists.
+  "cocotb>=2.0.0,<2.1",
+  "pyuvm>=4.0.0,<5",
+  # Open-source protocol backends used by the OSS testbenches (e.g. DTP):
+  # cocotbext-jtag behind ocah_jtag_vip and cocotbext-axi behind ocah_axi_vip.
+  "cocotbext-axi>=0.1.24,<0.2",
+  "cocotbext-jtag>=0.4.0,<0.5",
+  # No cocotbext-i2c: the SMC I2C/SMBus/PMBus protocol VIP (SmcI2cMasterVip /
+  # SmcI2cEepromSlave) is implemented natively in
+  # hw/sys/smc/dv/cocotb/seq_lib/smc_i2c_protocol_vip.py because cocotbext-i2c
+  # edge waits miss open-drain transitions under Verilator.
+  # No cocotbext-uart: the UART backend (line driver and sampler behind
+  # OcahUartConsole / OcahUartMonitor) is implemented natively in
+  # hw/common/dv/vip/ocah_uart_vip; the PyPI releases predate cocotb 2.0
+  # (SimHandleBase._path).
+]
+
+[tool.setuptools.packages.find]
+where = ["vip"]
+include = ["ocah_*"]

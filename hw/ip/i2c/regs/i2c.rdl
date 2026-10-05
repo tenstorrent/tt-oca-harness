@@ -1,0 +1,1352 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef I2C_RDL
+`define I2C_RDL
+
+addrmap i2c {
+    name = "I2C Address Map";
+    desc = "Interrupt status, enable, and test registers for a single I2C controller and target.";
+
+    //////////////////////////
+    // Register Definitions //
+    //////////////////////////
+
+    reg INTR_STATE {
+        desc = "Interrupt Status Register";
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Controller Mode interrupt: remains asserted while the Controller TX FIFO level
+                    is less than `HOST_FIFO_CONFIG.FMT_THRESH`.";
+        } FMT_THRESHOLD[0:0] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Controller Mode interrupt: remains asserted while the Controller RX FIFO level
+                    is greater than `HOST_FIFO_CONFIG.RX_THRESH`.";
+        } RX_THRESHOLD[1:1] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Target Mode interrupt: remains asserted while the Target RX FIFO level is
+                    greater than `TARGET_FIFO_CONFIG.ACQ_THRESH`.";
+        } ACQ_THRESHOLD[2:2] = 0x0;
+
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Controller Mode interrupt: asserted when the Controller RX FIFO overflows.
+                    Write `1` to clear.";
+        } RX_OVERFLOW[3:3] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Controller Mode interrupt: remains asserted while this controller halts. The
+                    flags in the `CONTROLLER_EVENTS` register explain the reason(s) for the
+                    halting. Clearing the `CONTROLLER_EVENTS` flags clears this interrupt.";
+        } CONTROLLER_HALT[4:4] = 0x0;
+
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Controller Mode interrupt: asserted when SCL is unexpectedly pulled LOW by
+                    another controller. Write `1` to clear.";
+        } SCL_INTERFERENCE[5:5] = 0x0;
+
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Controller Mode interrupt: asserted when SDA is unexpectedly pulled LOW by
+                    another controller. Write `1` to clear.";
+        } SDA_INTERFERENCE[6:6] = 0x0;
+
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Controller Mode interrupt: asserted when the target stretches the clock longer
+                    than `TIMEOUT_CTRL.VAL` (valid only when `TIMEOUT_CTRL.MODE = 0`). Write `1` to
+                    clear.";
+        } STRETCH_TIMEOUT[7:7] = 0x0;
+
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Controller Mode interrupt: asserted when the target fails to keep SDA stable
+                    during a transmission. Write `1` to clear.";
+        } SDA_UNSTABLE[8:8] = 0x0;
+
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Controller/Target Mode interrupt: asserted when this/the controller finishes
+                    generating a STOP or repeated START. Write `1` to clear.";
+        } CMD_COMPLETE[9:9] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Target Mode interrupt: remains asserted while this target is stretching the
+                    clock or has halted. The flags in the `TARGET_EVENTS` register explain the
+                    reason(s) for clock stretching/halting. Clearing the `TARGET_EVENTS` flags
+                    clears this interrupt.";
+        } TX_STRETCH[10:10] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Target Mode interrupt: remains asserted while the Target TX FIFO level is less
+                    than `TARGET_FIFO_CONFIG.TX_THRESH`.";
+        } TX_THRESHOLD[11:11] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Target Mode interrupt: remains asserted while the target is stretching the clock
+                    because 1) the Target RX FIFO is full or 2) the `TARGET_ACK_CTRL.NBYTES` count
+                    has reached `0` (only if `CTRL.ACK_CTRL_EN = 1`).";
+        } ACQ_STRETCH[12:12] = 0x0;
+
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Target Mode interrupt: asserted when the controller sends this target a STOP
+                    before this target NACKs. Write `1` to clear.";
+        } UNEXP_STOP[13:13] = 0x0;
+
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Target Mode interrupt: asserted when the controller stops generating the clock
+                    longer than `HOST_TIMEOUT_CTRL.VAL`. Write `1` to clear.";
+        } HOST_TIMEOUT[14:14] = 0x0;
+
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Controller Mode interrupt: asserted when `smbalert_ni` is asserted. Write `1`
+                    to clear.";
+        } SMBALERT[15:15] = 0x0;
+
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Controller Mode interrupt: asserted when the Controller TX FIFO has a parity
+                    error. Write `1` to clear.";
+        } CONTROLLER_TX_FIFO_ERROR[16:16] = 0x0;
+
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Controller Mode interrupt: asserted when the Controller RX FIFO has a parity
+                    error. Write `1` to clear.";
+        } CONTROLLER_RX_FIFO_ERROR[17:17] = 0x0;
+
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Target Mode interrupt: asserted when the Target TX FIFO has a parity error.
+                    Write `1` to clear.";
+        } TARGET_TX_FIFO_ERROR[18:18] = 0x0;
+
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Target Mode interrupt: asserted when the Target RX FIFO has a parity error.
+                    Write `1` to clear.";
+        } TARGET_RX_FIFO_ERROR[19:19] = 0x0;
+    };
+
+    reg INTR_ENABLE {
+        desc = "Interrupt Enable Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the `FMT_THRESHOLD` interrupt.";
+        } FMT_THRESHOLD[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the `RX_THRESHOLD` interrupt.";
+        } RX_THRESHOLD[1:1] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the `ACQ_THRESHOLD` interrupt.";
+        } ACQ_THRESHOLD[2:2] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the `RX_OVERFLOW` interrupt.";
+        } RX_OVERFLOW[3:3] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the `CONTROLLER_HALT` interrupt.";
+        } CONTROLLER_HALT[4:4] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the `SCL_INTERFERENCE` interrupt.";
+        } SCL_INTERFERENCE[5:5] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the `SDA_INTERFERENCE` interrupt.";
+        } SDA_INTERFERENCE[6:6] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the `STRETCH_TIMEOUT` interrupt.";
+        } STRETCH_TIMEOUT[7:7] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the `SDA_UNSTABLE` interrupt.";
+        } SDA_UNSTABLE[8:8] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the `CMD_COMPLETE` interrupt.";
+        } CMD_COMPLETE[9:9] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the `TX_STRETCH` interrupt.";
+        } TX_STRETCH[10:10] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the `TX_THRESHOLD` interrupt.";
+        } TX_THRESHOLD[11:11] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the `ACQ_STRETCH` interrupt.";
+        } ACQ_STRETCH[12:12] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the `UNEXP_STOP` interrupt.";
+        } UNEXP_STOP[13:13] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the `HOST_TIMEOUT` interrupt.";
+        } HOST_TIMEOUT[14:14] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the `SMBALERT` interrupt.";
+        } SMBALERT[15:15] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the `CONTROLLER_TX_FIFO_ERROR` interrupt.";
+        } CONTROLLER_TX_FIFO_ERROR[16:16] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the `CONTROLLER_RX_FIFO_ERROR` interrupt.";
+        } CONTROLLER_RX_FIFO_ERROR[17:17] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the `TARGET_TX_FIFO_ERROR` interrupt.";
+        } TARGET_TX_FIFO_ERROR[18:18] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables the `TARGET_RX_FIFO_ERROR` interrupt.";
+        } TARGET_RX_FIFO_ERROR[19:19] = 0x0;
+    };
+
+    reg INTR_TEST {
+        desc = "Interrupt Test Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Writing `1` forces the `FMT_THRESHOLD` interrupt. Writing `0` releases it.";
+        } FMT_THRESHOLD[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Writing `1` forces the `RX_THRESHOLD` interrupt. Writing `0` releases it.";
+        } RX_THRESHOLD[1:1] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Writing `1` forces the `ACQ_THRESHOLD` interrupt. Writing `0` releases it.";
+        } ACQ_THRESHOLD[2:2] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Writing `1` forces the `RX_OVERFLOW` interrupt.";
+        } RX_OVERFLOW[3:3] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Writing `1` forces the `CONTROLLER_HALT` interrupt. Writing `0` releases it.";
+        } CONTROLLER_HALT[4:4] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Writing `1` forces the `SCL_INTERFERENCE` interrupt.";
+        } SCL_INTERFERENCE[5:5] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Writing `1` forces the `SDA_INTERFERENCE` interrupt.";
+        } SDA_INTERFERENCE[6:6] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Writing `1` forces the `STRETCH_TIMEOUT` interrupt.";
+        } STRETCH_TIMEOUT[7:7] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Writing `1` forces the `SDA_UNSTABLE` interrupt.";
+        } SDA_UNSTABLE[8:8] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Writing `1` forces the `CMD_COMPLETE` interrupt.";
+        } CMD_COMPLETE[9:9] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Writing `1` forces the `TX_STRETCH` interrupt. Writing a `0` releases it.";
+        } TX_STRETCH[10:10] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Writing `1` forces the `TX_THRESHOLD` interrupt. Writing `0` releases it.";
+        } TX_THRESHOLD[11:11] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Writing `1` forces the `ACQ_STRETCH` interrupt. Writing `0` releases it.";
+        } ACQ_STRETCH[12:12] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Writing `1` forces the `UNEXP_STOP` interrupt.";
+        } UNEXP_STOP[13:13] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Writing `1` forces the `HOST_TIMEOUT` interrupt.";
+        } HOST_TIMEOUT[14:14] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Writing `1` forces the `SMBALERT` interrupt.";
+        } SMBALERT[15:15] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Writing `1` forces the `CONTROLLER_TX_FIFO_ERROR` interrupt.";
+        } CONTROLLER_TX_FIFO_ERROR[16:16] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Writing `1` forces the `CONTROLLER_RX_FIFO_ERROR` interrupt.";
+        } CONTROLLER_RX_FIFO_ERROR[17:17] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Writing `1` forces the `TARGET_TX_FIFO_ERROR` interrupt.";
+        } TARGET_TX_FIFO_ERROR[18:18] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Writing `1` forces the `TARGET_RX_FIFO_ERROR` interrupt.";
+        } TARGET_RX_FIFO_ERROR[19:19] = 0x0;
+    };
+
+    reg SMBUS_CTRL {
+        desc = "SMBus Control Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Controller Mode control: asserts the `smbsus_no` output.";
+        } SMBSUS[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            hwclr;
+            desc = "Target Mode control: asserts the `smbalert_no` output. This bit clears itself
+                    when the controller addresses this target.";
+        } SMBALERT[4:4] = 0x0;
+    };
+
+    reg CTRL {
+        desc = "Control Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Global control: configures this device's operating mode.
+                     * `ENABLEHOST = 1` and `ENABLETARGET = 0` — Controller Mode
+                     * `ENABLEHOST = 0` and `ENABLETARGET = 1` — Target Mode
+                     * `ENABLEHOST = 1` and `ENABLETARGET = 1` — Hybrid Mode
+                     * `ENABLEHOST = 0` and `ENABLETARGET = 0` — Monitor Mode";
+        } ENABLEHOST[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Global control: configures this device's operating mode.
+                     * `ENABLEHOST = 1` and `ENABLETARGET = 0` — Controller Mode
+                     * `ENABLEHOST = 0` and `ENABLETARGET = 1` — Target Mode
+                     * `ENABLEHOST = 1` and `ENABLETARGET = 1` — Hybrid Mode
+                     * `ENABLEHOST = 0` and `ENABLETARGET = 0` — Monitor Mode";
+        } ENABLETARGET[1:1] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Global control: enables line loop-back. In Controller Mode, the internal logic
+                    sees the `smbalert_ni` input as deasserted. In Target Mode, this target sends
+                    all received SDA data back out, and the internal logic sees received data as
+                    all 1's.";
+        } LLPBK[2:2] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target Mode control: NACK address after timeout. If this bit is:
+                     * `0` - This target ACKs the address byte even if a Stretch Timeout occurs
+                             (useful for SMBus).
+                     * `1` - This target NACKs the address byte when a Stretch Timeout occurs.";
+        } NACK_ADDR_AFTER_TIMEOUT[3:3] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target Mode control: enables the Software ACK Control Mechanism. If this bit is:
+                     * `0` - This target ACKs a data byte whenever the ACQ FIFO has space.
+                     * `1` - This target ACKs the first `TARGET_ACK_CTRL.NBYTES` bytes. If another
+                             byte arrives, this target stretches the clock and awaits software
+                             intervention (and asserts `STATUS.ACK_CTRL_STRETCH`). The software can
+                              1. accept the new byte(s) by reloading the `TARGET_ACK_CTRL.NBYTES`
+                                 counter; or
+                              2. reject the new byte(s) by writing `1` to `TARGET_ACK_CTRL.NACK`
+                                 (useful for SMBus).";
+        } ACK_CTRL_EN[4:4] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Global control: enables the Bus Monitor. Set this bit to `1`
+                    only in a multi-controller environment.
+
+                    If a `0`->`1` transition happens while `ENABLEHOST` and `ENABLETARGET` are both
+                    `0`, the Bus Monitor will enable and begin in the 'Bus Busy' state. To
+                    transition to a 'Bus Free' state, `HOST_TIMEOUT_CTRL` must be nonzero so the
+                    Bus Monitor may count out idle cycles to confirm the freedom to transmit. In
+                    addition, the Bus Monitor will track whether the bus is free based on the
+                    enabled timeouts and detected STOP symbols. For Multi-Controller Mode, ensure
+                    `MULTI_CONTROLLER_MONITOR_EN` becomes `1` no later than `ENABLEHOST` or
+                    `ENABLETARGET`. This bit can be set at the same time as either or both of the
+                    other two, though.
+
+                    Note that if `MULTI_CONTROLLER_MONITOR_EN` is set after `ENABLEHOST` or
+                    `ENABLETARGET`, the Bus Monitor will begin in the 'Bus Free' state instead.
+                    This would violate the proper protocol for a controller to join a multi-controller
+                    environment. However, if this controller is known to be the first to join, this
+                    ordering will enable skipping the idle wait.
+
+                    When `0`, the bus monitor will report that the bus is always free, so the
+                    Controller FSM is never blocked from transmitting.";
+        } MULTI_CONTROLLER_MONITOR_EN[5:5] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target mode control: enables the Software TX Stretch Control Mechanism. If this
+                    bit is:
+                     * `0` - Automatic TX Stretch: When this target receives a READ address
+                             byte, it only stretches the clock if the TX FIFO is empty; otherwise,
+                             it pops the FIFO and transmits the data byte. The target never sets
+                             the `TARGET_EVENTS` register flags in this mode.
+                     * `1` - Software TX Stretch Mode: When this target receives a READ address,
+                             it always stretches the clock and sets the `TARGET_EVENTS.TX_PENDING`
+                             flag. The software can:
+                              1. confirm the release and transmission of the TX FIFO data by
+                                 writing a 1 to clear the `TARGET_EVENTS.TX_PENDING` flag; or
+                              2. reset the TX FIFO by writing 1 to `FIFO_CTRL.TXRST` and load in
+                                 new data via the `TXDATA` register--useful whenthe READ address
+                                 is targeting a different function of the target.
+                             In this mode, the target always sets the `TARGET_EVENTS` register
+                             flags.";
+        } TX_STRETCH_CTRL_EN[6:6] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "ACQ FIFO Start/Stop Enable (Target Mode only):
+                     * `0` - Start/Stop symbols are NOT written into the ACQ FIFO. The firmware
+                             should rely on `TARGET_EVENTS.START_DETECT` and `TARGET_EVENTS.STOP_DETECT`
+                             flags to detect Start/Stop events.
+                     * `1` - Start/Stop symbols ARE written into the ACQ FIFO (legacy behavior).
+                             When a START (or repeated START) is detected, an `ACQ_START` or `ACQ_RESTART`
+                             entry is written. When a STOP is detected, an `ACQ_STOP` or `ACQ_NACK_STOP`
+                             entry is written.";
+        } ACQ_START_STOP_EN[7:7] = 0x0;
+    };
+
+    reg STATUS {
+        desc = "Status Register";
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Controller Mode status: Controller TX FIFO Full.";
+        } FMTFULL[0:0] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Controller Mode status: Controller RX FIFO Full.";
+        } RXFULL[1:1] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Controller Mode status: Controller TX FIFO Empty.";
+        } FMTEMPTY[2:2] = 0x1;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Controller Mode status: Controller FSM idle.";
+        } HOSTIDLE[3:3] = 0x1;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Target Mode status: Target FSM idle.";
+        } TARGETIDLE[4:4] = 0x1;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Controller Mode status: Controller RX FIFO empty.";
+        } RXEMPTY[5:5] = 0x1;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Target Mode status: Target TX FIFO full.";
+        } TXFULL[6:6] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Target Mode status: Target RX FIFO full.";
+        } ACQFULL[7:7] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Target Mode status: Target TX FIFO empty.";
+        } TXEMPTY[8:8] = 0x1;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Target Mode status: Target RX FIFO empty.";
+        } ACQEMPTY[9:9] = 0x1;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Target Mode status: indicates that this target is stretching the clock due to
+                    the Software ACK Control Mechanism. See `CTRL.ACK_CTRL_EN` for details.";
+        } ACK_CTRL_STRETCH[10:10] = 0x0;
+    };
+
+    reg RDATA {
+        desc = "Controller RX FIFO Access Register (Controller Mode only)";
+
+        field {
+            sw = r;
+            hw = w;
+            onread = ruser;
+            desc = "Reading this register pops the Controller RX FIFO.";
+        } DATA[7:0] = 0x0;
+    };
+
+    reg FDATA {
+        desc = "Controller TX FIFO Access Register (Controller Mode only)";
+
+        field {
+            sw = w;
+            hw = r;
+            onwrite = wuser;
+            desc = "Writing to this register pushes an entry into the Controller TX FIFO. The
+                    meaning of this field depends on the value of the `READB` field:
+                     * `READB = 0` - This field is the WRITE data byte.
+                     * `READB = 1` - This field specifies the number of bytes to read from the
+                                     target. Setting this field to 0 reads 256 bytes.";
+        } FBYTE[7:0] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            desc = "Generate a START condition on the bus before sending the byte.";
+        } START[8:8] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            desc = "Generate a STOP condition on the bus after sending the byte.";
+        } STOP[9:9] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            desc = "Read/write:
+                     * `0` - Issue WRITE transaction
+                     * `1` - Issue READ transaction";
+        } READB[10:10] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            desc = "Read continue/stop:
+                     * `0` — Read Stop: The controller NACKs the last data byte. Use this if this
+                             is the last READ in a sequence.
+                     * `1` — Read Continue: The controller ACKs the last data byte. Use this if
+                             this is an intermediate READ in a sequence.";
+        } RCONT[11:11] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            desc = "NACK OK. When set, this controller will not care if this byte is NACKed. It
+                    will not halt, set the `CONTROLLER_EVENTS.NACK` flag, or assert the
+                    `CONTROLLER_HALT` Interrupt. This behavior is useful for protocols like Serial
+                    Camera Control Bus (SCCB).";
+        } NAKOK[12:12] = 0x0;
+    };
+
+    reg FIFO_CTRL {
+        desc = "FIFO Control Register";
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Controller Mode control: writing `1` resets the Controller RX FIFO.";
+        } RXRST[0:0] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Controller Mode control: writing `1` resets the Controller TX FIFO.";
+        } FMTRST[1:1] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Target Mode control: writing `1` resets the Target RX FIFO.";
+        } ACQRST[7:7] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "Target Mode control: writing `1` resets the Target TX FIFO.";
+        } TXRST[8:8] = 0x0;
+    };
+
+    reg HOST_FIFO_CONFIG {
+        desc = "Controller FIFO Configuration Register (Controller Mode only)";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "The `RX_THRESH` interrupt remains asserted while the Controller RX FIFO level
+                    is greater than this setting.";
+        } RX_THRESH[11:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "The `FMT_THRESH` interrupt remains asserted while the Controller TX FIFO level
+                    is less than this setting.";
+        } FMT_THRESH[27:16] = 0x0;
+    };
+
+    reg TARGET_FIFO_CONFIG {
+        desc = "Target FIFOs Configuration Register (Target Mode only)";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "The `TX_THRESH` interrupt remains asserted while the Target TX FIFO level is
+                    less than this setting.";
+        } TX_THRESH[11:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "The `ACQ_THRESH` interrupt remains asserted while the Target RX FIFO level is
+                    greater than this setting.";
+        } ACQ_THRESH[27:16] = 0x0;
+    };
+
+    reg HOST_FIFO_STATUS {
+        desc = "Controller FIFOs Status Register (Controller Mode only)";
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Controller TX FIFO fill level.";
+        } FMTLVL[11:0];
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Controller RX FIFO fill level.";
+        } RXLVL[27:16];
+    };
+
+    reg TARGET_FIFO_STATUS {
+        desc = "Target FIFOs Status Register (Target Mode only)";
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Target TX FIFO fill level.";
+        } TXLVL[11:0] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Target RX FIFO fill level.";
+        } ACQLVL[27:16] = 0x0;
+    };
+
+    reg OVRD {
+        desc = "Override Control Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Global control: enables control of the SDA and SCL lines through the `SDA_VAL`
+                    and `SCL_VAL` fields, respectively.";
+        } TXOVRDEN[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Global control: SCL override value:
+                     * `0` - Pull the SCL line low
+                     * `1` - Release the SCL line";
+        } SCLVAL[1:1] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Global control: SDA override value:
+                     * `0` - Pull the SDA line low
+                     * `1` - Release the SDA line";
+        } SDAVAL[2:2] = 0x0;
+    };
+
+    reg VAL {
+        desc = "Bus Oversampled Values Register";
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Global status: contains the last 16 SCL over-sampled values. LSB is most
+                    recent.";
+        } SCL_RX[15:0] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Global status: contains the last 16 SDA over-sampled values. LSB is most
+                    recent.";
+        } SDA_RX[31:16] = 0x0;
+    };
+
+    reg TIMING0 {
+        desc = "SCL LOW and HIGH Periods Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Global control: specifies the HIGH period of SCL (`t_HIGH`) in system clock
+                    cycles. Must be `≥ 2`. See Table 11 in the I²C Specification for details. This
+                    field is sized to meet the I2C Standard-mode (100 kHz)'s minimum
+                    `t_HIGH = 4.0 μs` requirement, assuming a 1 GHz system clock.";
+        } THIGH[12:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Global control: specifies the LOW period of SCL (`t_LOW`) in system clock
+                    cycles. Must be `≥ 2`. See Table 11 in the I2C Specification for more details.
+                    This field is sized to meet the I2C Standard-mode (100 kHz) minimum
+                    `t_LOW = 4.7 μs` requirement, assuming a 1 GHz system clock.";
+        } TLOW[28:16] = 0x0;
+    };
+
+    reg TIMING1 {
+        desc = "Bus Rise and Fall Times Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Global control: specifies the rise time of SDA and SCL (`t_r`) in system clock
+                    cycles. The rise time is measured from 30% to 70% of the signal swing. See
+                    Table 11 in the I2C Specification for more details. This field is sized to meet
+                    I2C Standard-mode (100 kHz)'s maximum `t_r = 1000 ns` requirement, assuming a 1
+                    GHz system clock.";
+        } T_R[9:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Global control: specifies the fall time of SDA and SCL (`t_f`) in system clock
+                    cycles. The fall time is measured from 70% to 30% of the signal swing. See
+                    Table 11 in the I2C Specification for more details. This field is sized to meet
+                    I2C Standard-mode (100 kHz)'s maximum `t_f = 300 ns` requirement, assuming a 1
+                    GHz system clock.";
+        } T_F[24:16] = 0x0;
+    };
+
+    reg TIMING2 {
+        desc = "START Condition Setup and Hold Times Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Global control: specifies the setup time for a repeated START condition
+                    (`t_SU;STA`) in system clock cycles. See Table 11 in the I2C Specification for
+                    details. This field is sized to meet I2C Standard-mode (100 kHz)'s minimum
+                    `t_SU;STA = 4.7 μs` requirement, assuming a 1 GHz system clock.";
+        } TSU_STA[12:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Global control: specifies the setup time for a (repeated) START condition
+                    (`t_HD;STA`) in system clock cycles. See Table 11 in the I2C Specification for
+                    details. This field is sized to meet I2C Standard-mode (100 kHz)'s minimum
+                    `t_HD;STA = 4.0 μs` requirement, assuming a 1 GHz system clock.";
+        } THD_STA[28:16] = 0x0;
+    };
+
+    reg TIMING3 {
+        desc = "Data Setup and Hold Times Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Global control: specifies the data setup time (`t_SU;DAT`) in system clock
+                    cycles. See Table 11 in the I2C Specification for details. This field is sized
+                    to meet the I2C Standard-mode (100 kHz)'s `t_SU;DAT = 250 ns` minimum
+                    requirement, assuming a 1 GHz system clock.";
+        } TSU_DAT[8:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Global control: specifies the data and (N)ACK bits hold time (`t_HD;DAT`) in
+                    system clock cycles. See Table 11 in the I2C Specification for details. This
+                    field is sized to meet the I2C Standard-mode (100 kHz)'s `t_HD;DAT = 5.0 μs`
+                    minimum requirement, assuming a 1 GHz system clock.";
+        } THD_DAT[28:16] = 0x0;
+    };
+
+    reg TIMING4 {
+        desc = "STOP Condition Setup Time and Bus Free Time Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Global control: specifies the setup time for a STOP condition (`t_SU;STO`) in
+                    system clock cycles. See Table 11 in the I²C Specification for details. This
+                    field is sized to meet I2C Standard-mode (100 kHz)'s `t_SU;STO = 4.0 μs`
+                    minimum requirement, assuming a 1 GHz system clock.";
+        } TSU_STO[12:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Global control: specifies the time between a STOP and START condition (`t_BUF`)
+                    in system clock cycles. See Table 11 in the I²C Specification for details. This
+                    field is sized to meet I2C Standard-mode (100kHz)'s `t_BUF = 4.7 μs` minimum
+                    requirement, assuming a 1 GHz system clock.";
+        } T_BUF[28:16] = 0x0;
+    };
+
+    reg TIMEOUT_CTRL {
+        desc = "Timeout Control Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Global control: Specifies the timeout value in system clock cycles. The meaning
+                    of this field depends on `MODE`.";
+        } VAL[29:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Global control: timeout mode.
+                     * `0` - Stretch Timeout (Controller Mode only). If the target stretches the
+                             clock for more time than `TIMEOUT_CTRL.VAL`, the `STRETCH_TIMEOUT`
+                             interrupt will be asserted.
+                     * `1` - Bus Timeout. If SCL is LOW for more time than `TIMEOUT_CTRL.VAL`:
+                              * In Controller Mode, the `CONTROLLER_EVENTS.BUS_TIMEOUT` flag will
+                                be asserted, triggering the `CONTROLLER_HALT` interrupt.
+                              * In Target Mode, the `TARGET_EVENTS.BUS_TIMEOUT` flag will be set,
+                                triggering the `TX_STRETCH` interrupt.";
+        } MODE[30:30] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Timeout Enable.";
+        } EN[31:31] = 0x0;
+    };
+
+    reg TARGET_ID {
+        desc = "Target ID Register (Target Mode only)";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target Address 0. This target responds if the 7-bit address matches
+                    `ADDRESS0 & MASK0`. `MASK0 = 0x0` disables this address.";
+        } ADDRESS0[6:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "ADDRESS0 mask.";
+        } MASK0[13:7] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target Address 1. This target responds if the 7-bit address matches
+                    `ADDRESS1 & MASK1`. `MASK1 = 0x0` disables this address.";
+        } ADDRESS1[20:14] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "ADDRESS1 mask.";
+        } MASK1[27:21] = 0x0;
+    };
+
+    reg ACQDATA {
+        desc = "Target RX FIFO Access Register (Target Mode only)";
+
+        field {
+            sw = r;
+            hw = w;
+            onread = ruser;
+            desc = "Reading this register pops the ACQ FIFO. The meaning of this field depends on
+                    `SIGNAL`:
+                     * `SIGNAL = 0x0`, `0x1`, `0x3`, `0x4`, or `0x5` - This field contains an
+                       address or data byte sent by the controller.
+                     * `SIGNAL = 0x2`, `0x6` - This field is meaningless.";
+        } ABYTE[7:0] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "This field indicates if this FIFO entry represents/is associated with control
+                    signal(s):
+                     * `0x0` - The entry is an ordinary data byte that has been ACKed.
+                     * `0x1` - The entry is an address byte preceded by a START.
+                     * `0x2` - The entry is a STOP condition following ACKed data bytes.
+                     * `0x3` - The entry is an address byte preceded by a repeated START.
+                     * `0x4` - The entry is a NACKed data byte.
+                     * `0x5` - The entry is an address byte preceded by a (repeated) START.
+                               However, the data bytes that followed this address byte were
+                               NACKed.
+                     * `0x6` - Error. A transaction preceding ended abnormally, for example, due to
+                               an unexpected STOP condition, a Bus or Stretch Timeout, a software
+                               NACK, or a lost arbitration.
+
+                    If the FIFO does not have enough space to record a complete transaction, an
+                    Error (`0x6`) entry may appear alone.";
+        } SIGNAL[10:8] = 0x0;
+    };
+
+    reg TXDATA {
+        desc = "Target TX FIFO Access Register (Target Mode only). ";
+
+        field {
+            sw = w;
+            hw = r;
+            onwrite = wuser;
+            desc = "Writing to this register pushes data into the Target TX FIFO. The controller
+                    reads data from this FIFO during a READ transaction.";
+        } DATA[7:0] = 0x0;
+    };
+
+    reg HOST_TIMEOUT_CTRL {
+        desc = "Controller Timeout Control Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target/Monitor Mode control: controller clock generation timeout value
+                    specified in system clock cycles.
+                     * Target Mode - If the controller stops generating the clock for more time
+                       than this setting, this target asserts the Controller Timeout Interrupt.
+                     * Monitor Mode - this field is required to be nonzero for the Bus Monitor to
+                       transition out of the initial Busy state. Set this field to `0x0` to disable
+                       this behavior.";
+        } VAL[30:0] = 0x0;
+    };
+
+    reg TARGET_TIMEOUT_CTRL {
+        desc = "Target Timeout Control Register (Target Mode only)";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "When this target has stretched the clock for more time than this setting, this
+                    target will NACK incoming data bytes or release the SDA line for outgoing data
+                    bytes. The count is cumulative over an entire transaction. In other words, this
+                    is SMBus's cumulative target clock extension time.
+
+                    The behavior for the address byte is configurable via
+                    `CTRL.NACK_ADDR_AFTER_TIMEOUT`.";
+        } VAL[30:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable Target Timeout.";
+        } EN[31:31] = 0x0;
+    };
+
+    reg TARGET_NACK_COUNT {
+        desc = "Target NACK Count Register (Target Mode only)";
+
+        field {
+            sw = rw;
+            hw = na;
+            counter;
+            incrsaturate;
+            rclr;
+            desc = "Indicates the number of transactions NACKed by this target since the last read
+                    of this register, saturating at 255. This field can be used to track how many
+                    transactions were missed when the Target RX FIFO is full.";
+        } TARGET_NACK_COUNT[7:0] = 0x0;
+    };
+
+    reg TARGET_ACK_CTRL {
+        desc = "Target ACK Control Register (Target Mode only)";
+
+        field {
+            sw = rw;
+            hw = r;
+            counter;
+            decrsaturate;
+            swwe;
+            hwclr;
+            desc = "When `STATUS.ACK_CTRL_STRETCH = 1`, writing to this register specifies the
+                    number of bytes this target should ACK. The count decrements per byte ACKed.
+                    Effective only when `CTRL.ACK_CTRL_EN = 1`. See `CTRL.ACK_CTRL_EN` for details.
+
+                    This control field is used to implement SMBus's mid-transfer (N)ACK responses.";
+        } NBYTES[8:0] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse;
+            desc = "When `STATUS.ACK_CTRL_STRETCH = 1`, writing `1` to this field causes this
+                    target to NACK all bytes of the transaction. Effective only when
+                    `CTRL.ACK_CTRL_EN = 1`.";
+        } NACK[31:31] = 0x0;
+    };
+
+    reg ACQ_FIFO_NEXT_DATA {
+        desc = "Target RX FIFO Next Byte Register (Target Mode only)";
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "This field contains the next byte to be pushed into the Target RX FIFO,
+                    allowing software to decide whether to accept or reject it. Valid only when
+                    `STATUS.ACK_CTRL_STRETCH = 1`. See `CTRL.ACK_CTRL_EN` for details.";
+        } DATA[7:0] = 0x0;
+    };
+
+    reg HOST_NACK_HANDLER_TIMEOUT {
+        desc = "Controller NACK Timeout Register (Controller Mode only)";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Timeout value (specified in system clock cycles) for this controller Mode to
+                    automatically STOP a transaction when `CONTROLLER_EVENTS.NACK` is set.";
+        } VAL[30:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enables Controller NACK Timeout.";
+        } EN[31:31] = 0x0;
+    };
+
+    reg CONTROLLER_EVENTS {
+        desc = "Controller Events Register (Controller Mode only)";
+
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Indicates that this controller has halted due to an unexpected NACK sent by
+                    the target. This behavior can be disabled by writing `1` to `FDATA.NAKOK`. This
+                    bit triggers the `CONTROLLER_HALT` interrupt. Writing `1` clears this bit.";
+        } NACK[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Indicates that this controller has halted due to a Controller NACK Timeout. See
+                    `HOST_NACK_HANDLER_TIMEOUT` for details. This bit triggers the
+                    `CONTROLLER_HALT` interrupt. Writing `1` clears this bit.";
+        } UNHANDLED_NACK_TIMEOUT[1:1] = 0x0;
+
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Indicates that this controller has halted due to a Bus Timeout. See
+                    `TIMEOUT_CTRL` for details. This bit triggers the `CONTROLLER_HALT` interrupt.
+                    Writing `1` clears this bit.";
+        } BUS_TIMEOUT[2:2] = 0x0;
+
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Indicates that the controller has halted due to it losing an arbitration
+                    against another controller. This bit triggers the `CONTROLLER_HALT` interrupt.
+                    Writing `1` clears this bit.";
+        } ARBITRATION_LOST[3:3] = 0x0;
+    };
+
+    reg TARGET_EVENTS {
+        desc = "Target Events Register (Target Mode)";
+
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Indicates that the target is stretching the clock due to receiving a READ
+                    address byte and waiting for software to confirm the release of the Target
+                    TX FIFO data. Valid only if `CTRL.TX_STRETCH_CTRL_EN = 1`. See
+                    `CTRL.TX_STRETCH_CTRL_EN` for details. This bit triggers the `TX_STRETCH`
+                    interrupt. Writing `1` clears this bit.";
+        } TX_PENDING[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Indicates that this target has halted due a Bus Timeout terminating a READ
+                    transaction. See `TIMEOUT_CTRL` for details. This bit triggers the `TX_STRETCH`
+                    interrupt. Writing `1` clears this bit.";
+        } BUS_TIMEOUT[1:1] = 0x0;
+
+        field {
+            sw = rw;
+            hw = rw;
+            level intr;
+            woclr;
+            desc = "Indicates that a controller has lost arbitration, causing a READ
+                    transaction to end. This bit triggers the `TX_STRETCH` interrupt. Writing `1`
+                    clears this bit.";
+        } ARBITRATION_LOST[2:2] = 0x0;
+
+        field {
+            sw = rw;
+            hw = w;
+            stickybit;
+            woclr;
+            desc = "Start Detect Flag (Target Mode only). Set to 1 by hardware when a START
+                    (or repeated START) is detected while `CTRL.ENABLETARGET = 1`. Cleared when
+                    software writes 1.";
+        } START_DETECT[3:3] = 0x0;
+
+        field {
+            sw = rw;
+            hw = w;
+            stickybit;
+            woclr;
+            desc = "Stop Detect Flag (Target Mode only). Set to 1 by hardware when a STOP is
+                    detected while `CTRL.ENABLETARGET = 1`. Cleared when software writes 1.";
+        } STOP_DETECT[4:4] = 0x0;
+    };
+
+    reg SMBUS_STATUS {
+        desc = "SMBus Status Register";
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Target Mode status: indicates that the `smbsus_ni` input is asserted.";
+        } SMBSUS[0:0] = 0x0;
+
+       field {
+            sw = r;
+            hw = w;
+            desc = "Controller Mode status: indicates that the `smbalert_ni` input is asserted.";
+        } SMBALERT[4:4] = 0x0;
+    };
+
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+             INTR_STATE                   INTR_STATE                   @0x0;
+             INTR_ENABLE                  INTR_ENABLE                  @0x4;
+             INTR_TEST                    INTR_TEST                    @0x8;
+             SMBUS_CTRL                   SMBUS_CTRL                   @0xc;
+             CTRL                         CTRL                         @0x10;
+             STATUS                       STATUS                       @0x14;
+    external RDATA                        RDATA                        @0x18;
+    external FDATA                        FDATA                        @0x1c;
+             FIFO_CTRL                    FIFO_CTRL                    @0x20;
+             HOST_FIFO_CONFIG             HOST_FIFO_CONFIG             @0x24;
+             TARGET_FIFO_CONFIG           TARGET_FIFO_CONFIG           @0x28;
+             HOST_FIFO_STATUS             HOST_FIFO_STATUS             @0x2c;
+             TARGET_FIFO_STATUS           TARGET_FIFO_STATUS           @0x30;
+             OVRD                         OVRD                         @0x34;
+             VAL                          VAL                          @0x38;
+             TIMING0                      TIMING0                      @0x3c;
+             TIMING1                      TIMING1                      @0x40;
+             TIMING2                      TIMING2                      @0x44;
+             TIMING3                      TIMING3                      @0x48;
+             TIMING4                      TIMING4                      @0x4c;
+             TIMEOUT_CTRL                 TIMEOUT_CTRL                 @0x50;
+             TARGET_ID                    TARGET_ID                    @0x54;
+    external ACQDATA                      ACQDATA                      @0x58;
+    external TXDATA                       TXDATA                       @0x5c;
+             HOST_TIMEOUT_CTRL            HOST_TIMEOUT_CTRL            @0x60;
+             TARGET_TIMEOUT_CTRL          TARGET_TIMEOUT_CTRL          @0x64;
+             TARGET_NACK_COUNT            TARGET_NACK_COUNT            @0x68;
+             TARGET_ACK_CTRL              TARGET_ACK_CTRL              @0x6c;
+             ACQ_FIFO_NEXT_DATA           ACQ_FIFO_NEXT_DATA           @0x70;
+             HOST_NACK_HANDLER_TIMEOUT    HOST_NACK_HANDLER_TIMEOUT    @0x74;
+             CONTROLLER_EVENTS            CONTROLLER_EVENTS            @0x78;
+             TARGET_EVENTS                TARGET_EVENTS                @0x7c;
+             SMBUS_STATUS                 SMBUS_STATUS                 @0x80;
+
+};
+
+`endif

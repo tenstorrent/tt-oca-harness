@@ -1,0 +1,80 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Boot ROM
+:description: SMC Boot ROM architecture, hardware configuration, firmware, and operation.
+
+[[rom]]
+
+The SMC maps a 128 KiB read-only region at `0xC004_0000` through
+`0xC005_FFFF`. The cold-reset CPU vector is `0xC004_0000`.
+
+ifdef::backend-html5[]
+++++
+<span id="rom-architecture"></span>
+++++
+endif::backend-html5[]
+[[smc-rom-rom-architecture]]
+== ROM Architecture
+
+In the current four-core implementation, the CPU reaches the ROM over its
+internal TileLink memory path. `smc_cpu_wrapper` converts that path to the
+macro-facing `smc_rom_intf_req_o` and `smc_rom_intf_rsp_i` interface. Requests carry a
+clock, enable, and 14-bit 64-bit-word address; the write controls are tied to
+read mode. Responses return one 64-bit word. The ROM macro boundary is not an
+AXI-Lite interface and is separate from the CPU MMIO AXI and SMC peripheral
+AXI-Lite paths.
+
+ifdef::backend-html5[]
+++++
+<span id="rom-hardware-configuration"></span>
+++++
+endif::backend-html5[]
+[[smc-rom-rom-hardware-configuration]]
+== Hardware Configuration and Integrity
+
+`OCAH4CORECluster_mems` passes the 11-bit `rom_cfg_i` value unchanged to the
+ROM wrapper's `mem_cfg_i`, where it is cast to `prim_rom_pkg::rom_cfg_t` and
+forwarded to `prim_rom`. The OCAH logic assigns no repair or technology-specific
+meaning to those bits. The reference `smc_ip_integration.sv` ties the value to
+zero.
+
+On the response path, asserted `rom_flip_endianness_i` reverses the order of
+the eight bytes in each 64-bit ROM word; deasserted passes the word through
+unchanged. In `smc.sv`, this control comes from the ROM endianness bit in the
+eFuse shadow-register output.
+
+== Boot Flow
+
+The production ROM initializes SRAM and the C runtime, then services OCCP
+requests over target-mode I2C and I3C. The SMC Boot ROM appendix of the
+Programmer's Guide describes the startup checks, lifecycle policy and
+boot-handoff commands.
+
+The production ROM image fills the 128 KiB hardware region; its writable data
+runs from SRAM at `0xC006_0000`. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-cpu[SMC CPU]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-cpu[SMC CPU]
+endif::backend-pdf[]
+bring-up section of the Programmer's Guide gives the linker layout and the
+initialization it requires.
+
+ifdef::backend-html5[]
+++++
+<span id="firmware-reference"></span>
+++++
+endif::backend-html5[]
+[[smc-rom-firmware-reference]]
+== Firmware Reference
+
+The production ROM firmware is documented in the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-boot-rom[SMC Boot ROM appendix]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM appendix]
+endif::backend-pdf[]
+of the Programmer's Guide.

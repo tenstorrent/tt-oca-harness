@@ -1,0 +1,265 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+// Store WIDTH-bit beats in a synchronous FIFO with optional pass-through and pointer hardening.
+//
+// PASS forwards a write into an empty FIFO in the same cycle when set.
+// OUTPUT_ZERO_IF_EMPTY forces rdata_o to zero when the FIFO is empty.
+// SECURE replaces pointer math with prim_count, stores an odd parity bit with each entry and
+// checks it on read, and reports pointer or parity faults on err_o; NEVER_CLEARS documents
+// that clr_i stays low.
+// DEPTH 0 is a combinational pass-through and requires PASS. DEPTH 1 uses a single register
+// whose full flag SECURE duplicates inverted. Deeper FIFOs hold wready_o and rvalid_o low for
+// the first cycle after reset.
+
+// Evaluate prim_fifo_assert.svh whenever this file is included, even when the FIFO
+// assertions are otherwise unused, so including the FIFO still pulls in that assert header.
+
+module prim_fifo_sync_parity #(
+  parameter int unsigned WIDTH       = 16,  // Datapath width.
+  parameter bit PASS                 = 1'b1,  // 1 allows a write to pass through an empty FIFO in
+                                              // the same cycle.
+  parameter int unsigned DEPTH       = 4,  // Storage depth.
+  parameter bit OUTPUT_ZERO_IF_EMPTY = 1'b1,  // 1 forces rdata_o to 0 when the FIFO is empty.
+  parameter bit NEVER_CLEARS         = 1'b0,  // Declares that clr_i stays low; checked by
+                                              // assertion, and with SECURE it drops the clear from
+                                              // the pointers.
+  parameter bit SECURE               = 1'b0,  // Uses prim_count for pointers and adds per-entry
+                                              // parity.
+  localparam int          DepthW     = prim_util_pkg::vbits(DEPTH+1)  // Width of depth_o; derived.
+) (
+  input                   clk_i,  // FIFO clock.
+  input                   rst_ni,  // Async reset, active-low.
+  input                   clr_i,  // Synchronous clear / flush.
+  input                   wvalid_i,  // Write valid.
+  output                  wready_o,  // Write ready.
+  input   [WIDTH-1:0]     wdata_i,  // Write data.
+  output                  rvalid_o,  // Read valid.
+  input                   rready_i,  // Read ready.
+  output  [WIDTH-1:0]     rdata_o,  // Read data.
+  output                  full_o,  // FIFO full.
+  output  [DepthW-1:0]    depth_o,  // Current occupancy.
+  output                  err_o  // Pointer or parity integrity fault; always 0 unless SECURE.
+);
+
+  `include "prim_assert.sv"
+  `include "prim_fifo_assert.svh"
+
+
+  // FIFO is in complete passthrough mode
+  if (DEPTH == 0) begin : gen_passthru_fifo
+    `OCAH_OT_ASSERT_INIT(paramCheckPass, PASS == 1)
+
+    assign depth_o = 1'b0; //output is meaningless
+
+    // device facing
+    assign rvalid_o = wvalid_i;
+    assign rdata_o = wdata_i;
+
+    // host facing
+    assign wready_o = rready_i;
+    assign full_o = 1'b1;
+
+    // this avoids lint warnings
+    logic unused_clr;
+    assign unused_clr = clr_i;
+
+    // No error
+    assign err_o = 1'b0;
+
+    // FIFO has space for a single element (and doesn't need proper counters)
+  end else if (DEPTH == 1) begin : gen_singleton_fifo
+
+    localparam int unsigned ParityWidth = SECURE ? WIDTH + 1 : WIDTH;
+
+    // full_q is true if the (singleton) queue has data
+    logic full_d, full_q;
+
+    assign full_o = full_q;
+    assign depth_o = full_q;
+    assign wready_o = ~full_q;
+
+    // We can always read from the storage if it contains something, so rvalid_o is true if full_q
+    // is true. Enabling pass-through mode also allows data to flow through if wvalid_i is true.
+    assign rvalid_o = full_q || (PASS && wvalid_i);
+
+    // For there to be data on the next cycle, there must either be new data coming in (so !rvalid_o
+    // && wvalid_i) or we must be keeping the current data (so rvalid_o && !rready_i). Using
+    // rvalid_o instead of full_q ensures we get the right behaviour with pass-through.
+    //
+    // In either case, any stored data will be forgotten if clr_i is true.
+    assign full_d = (rvalid_o ? !rready_i : wvalid_i) && !clr_i;
+
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+      if (!rst_ni) begin
+        full_q <= 1'b0;
+      end else begin
+        full_q <= full_d;
+      end
+    end
+
+    logic [ParityWidth-1:0] storage;
+    always_ff @(posedge clk_i) begin
+      if (wvalid_i && wready_o) storage <= {~^wdata_i, wdata_i};
+    end
+
+    logic [WIDTH-1:0] rdata_int;
+    logic             parity_err;
+
+    assign rdata_int  = (full_q || PASS == 1'b0) ? WIDTH'(storage) : wdata_i;
+    assign parity_err = full_q ? ~^storage : 1'b0;
+
+    assign rdata_o = (OUTPUT_ZERO_IF_EMPTY && !rvalid_o) ? WIDTH'(0) : rdata_int;
+
+    // The larger FIFO implementation uses prim_count for read and write pointers. If SECURE is
+    // true, prim_count duplicates and checks these pointers to guard against fault injection. We do
+    // something similar here, duplicating and checking a "1 bit counter".
+    //
+    // The duplication is inverted, which means we expect full_q ^ inv_full to be true and generate
+    // an error signal if it is not. This error signal gets registered to avoid potential CDC issues
+    // downstream.
+    if (!SECURE) begin : gen_not_secure
+      assign err_o = 1'b0;
+    end else begin : gen_secure
+      logic inv_full;
+
+      prim_flop #(
+        .Width(1),
+        .ResetValue(1'b1)
+      ) u_inv_full (
+        .clk_i,
+        .rst_ni,
+        .d_i (~full_d),
+        .q_o (inv_full)
+      );
+
+      logic err_d, err_q;
+      assign err_d = ~(full_q ^ inv_full) || parity_err;
+
+      always_ff @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) begin
+          err_q <= 1'b0;
+        end else begin
+          err_q <= err_d;
+        end
+      end
+
+      assign err_o = err_q;
+    end
+
+    // Normal FIFO construction
+  end else begin : gen_normal_fifo
+
+    localparam int unsigned PtrW = prim_util_pkg::vbits(DEPTH);
+    localparam int unsigned ParityWidth = SECURE ? WIDTH + 1 : WIDTH;
+
+    logic [PtrW-1:0] fifo_wptr, fifo_rptr;
+    logic fifo_incr_wptr, fifo_incr_rptr, fifo_empty;
+    logic            fifo_ptr_err;
+
+    // module under reset flag
+    logic under_rst;
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+      if (!rst_ni) begin
+        under_rst <= 1'b1;
+      end else if (under_rst) begin
+        under_rst <= ~under_rst;
+      end
+    end
+
+    logic empty;
+
+    // full and not ready for write are two different concepts.
+    // The latter can be '0' when under reset, while the former is an indication that no more
+    // entries can be written.
+    assign wready_o = ~full_o & ~under_rst;
+
+    prim_fifo_sync_cnt #(
+      .Depth(DEPTH),
+      .Secure(SECURE),
+      .NeverClears(NEVER_CLEARS)
+    ) u_fifo_cnt (
+      .clk_i,
+      .rst_ni,
+      .clr_i,
+      .incr_wptr_i(fifo_incr_wptr),
+      .incr_rptr_i(fifo_incr_rptr),
+      .wptr_o(fifo_wptr),
+      .rptr_o(fifo_rptr),
+      .full_o,
+      .empty_o(fifo_empty),
+      .depth_o,
+      .err_o(fifo_ptr_err)
+    );
+    assign fifo_incr_wptr = wvalid_i & wready_o;
+    assign fifo_incr_rptr = rvalid_o & rready_i & ~under_rst;
+
+    logic [DEPTH-1:0][ParityWidth-1:0] storage;
+    logic            [ParityWidth-1:0] storage_rdata;
+
+    assign storage_rdata = storage[fifo_rptr];
+
+    always_ff @(posedge clk_i)
+      if (fifo_incr_wptr) begin
+        storage[fifo_wptr] <= {~^wdata_i, wdata_i};
+      end
+
+    logic [WIDTH-1:0] rdata_int;
+    logic             parity_err;
+
+    if (PASS == 1'b1) begin : gen_pass
+      assign rdata_int  = (fifo_empty && wvalid_i) ? wdata_i : WIDTH'(storage_rdata);
+      assign parity_err = fifo_empty ? 1'b0 : ~^storage_rdata;
+      assign empty = fifo_empty & ~wvalid_i;
+      assign rvalid_o = ~empty & ~under_rst;
+    end else begin : gen_nopass
+      assign rdata_int = WIDTH'(storage_rdata);
+      assign parity_err = fifo_empty ? 1'b0 : ~^storage_rdata;
+      assign empty = fifo_empty;
+      assign rvalid_o = ~empty;
+    end
+
+    if (OUTPUT_ZERO_IF_EMPTY == 1'b1) begin : gen_output_zero
+      assign rdata_o = empty ? WIDTH'(0) : rdata_int;
+    end else begin : gen_no_output_zero
+      assign rdata_o = rdata_int;
+    end
+
+    if (!SECURE) begin : gen_not_secure
+      assign err_o = 1'b0;
+    end else begin : gen_secure
+      assign err_o = fifo_ptr_err || parity_err;
+    end
+
+    `OCAH_OT_ASSERT(depthShallNotExceedParamDepth, !empty |-> depth_o <= DepthW'(DEPTH))
+    `OCAH_OT_ASSERT(OnlyRvalidWhenNotUnderRst_A, rvalid_o -> ~under_rst)
+  end  // block: gen_normal_fifo
+
+
+  if (NEVER_CLEARS) begin : gen_never_clears
+    `OCAH_OT_ASSERT(NeverClears_A, !clr_i)
+  end
+
+  //////////////////////
+  // Known Assertions //
+  //////////////////////
+
+  `OCAH_OT_ASSERT_KNOWN_IF(DataKnown_A, rdata_o, rvalid_o)
+  `OCAH_OT_ASSERT_KNOWN(DepthKnown_A, depth_o)
+  `OCAH_OT_ASSERT_KNOWN(RvalidKnown_A, rvalid_o)
+  `OCAH_OT_ASSERT_KNOWN(WreadyKnown_A, wready_o)
+
+`ifdef OCAH_OT_INC_ASSERT
+  // When DEPTH=1 and SECURE=1, there is a specialized countermeasure that works by replicating
+  // the full_q flag. To set the logic value below to one, the user must use the
+  // ASSERT_PRIM_FIFO_SYNC_SINGLETON_ERROR_TRIGGER_ALERT macro (which checks that the error signal
+  // causes an alert).
+  //
+  // If the user hasn't done so, unused_assert_connected will be zero and ASSERT_INIT_NET will
+  // fail.
+  logic unused_assert_connected;
+  if (DEPTH == 1 && SECURE) begin : gen_secure_singleton
+    `OCAH_OT_ASSERT_INIT_NET(AssertConnected_A, unused_assert_connected === 1'b1)
+  end
+`endif
+endmodule

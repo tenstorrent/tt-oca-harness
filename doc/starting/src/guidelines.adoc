@@ -1,0 +1,284 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= OCAH development guidelines
+:doctype: book
+:sectanchors:
+:sectlinks:
+:sectnums:
+:source-highlighter: highlight.js
+
+== Standards
+
+The OCAH design will follow industry or FOSS standards where appropriate:
+
+* SystemVerilog RTL
+* AMBA system buses
+* SystemRDL memory map
+* AsciiDoc documentation with Asciidoctor
+
+The hardware design is written in a synthesizable subset of
+SystemVerilog RTL language. The coding standards are adopted from the
+lowRISC organization and are also used in OpenTitan.
+
+System interconnect is implemented with AMBA standard buses. AXI4 and
+AXI4-lite is used for data interfaces and is generally configured with
+64-bit data and address. Control buses for accessing CSRs and other low
+speed sources are implemented with 32-bit APB.
+
+The system memory map and component CSRs (Control and Status
+Registers) are defined in SystemRDL. This is the single source of truth
+and all downstream representations are rendered from this source.
+Examples are documentation (HTML), C headers, SystemVerilog UVM DV and
+SystemVerilog RTL.
+
+== Development Tools
+
+We aim primarily to use open source tools for the development of OCAH in
+order to eliminate commercial dependencies and enabling open-sourcing
+not only the design, but also the associated tools.
+
+The goal is to enable new adopters of OCAH to be able to immediately
+perform simulations and other analyses of the design using readily
+available free tools.
+
+For internal development and testing we will employ commercial tools to
+validate the OCAH design, proving readiness for chip deployment i.e.
+tapeout. This includes:
+
+* Design verification
+* lint tools for code quality
+* logic synthesis
+
+[[component-directory-organization]]
+== Component Directory Organization
+
+Every component under `hw/ip/<ip>/` and `hw/sys/<sys>/` shares the same base
+layout, whether it is a leaf IP or a full subsystem:
+
+[source]
+----
+<component>/
+├── README.md   Overview and quick-start pointer into doc/
+├── doc/        AsciiDoc chapters (architecture, interface, memmap, ...)
+├── rtl/        SystemVerilog RTL sources
+├── regs/       SystemRDL register/CSR definitions and generated collateral
+├── dv/         Testbenches and verification collateral
+└── lint/       Lint waiver files
+----
+
+Not every element is present everywhere -- `regs/` only exists where the
+component owns CSRs, and a small IP may have no `lint/` waivers to carry --
+but where an element exists, it is always at this location. The `regs/`
+directory's generated collateral layout is detailed in
+xref:ocah-integrator-guide:ROOT:index.adoc#address-map-collateral[the
+Integrator Guide], and the waiver conventions under `lint/` are in
+xref:workflows.adoc#linting[Linting].
+
+A subsystem (`hw/sys/<sys>/`) additionally carries the full-chip elements a
+leaf IP does not need on its own:
+
+* `synth/` -- the block SDC (clocks, I/O delays, asynchronous clock groups)
+  and its CDC max-delay bounds
+* `cdc/` -- clock- and reset-domain-crossing sign-off constraints (the
+  `<sys>.cdc_rdc.tcl` entry, resets, case analysis, quasi-static signals,
+  synchronizer setup) and the CDC waivers
+* `rdc/` -- reset-domain-crossing waivers
+* `bootrom/` -- immutable ROM firmware sources, where the subsystem has one
+* `build/` -- local build scratch, not checked in
+* `flow.mk` -- the subsystem's entry point into the shared lint/synth flows
+
+== Coding Conventions
+
+=== License headers
+
+Every hand-authored source file must carry an SPDX license header. Use the form appropriate to the file's comment syntax.
+
+For SystemVerilog (`.sv`, `.svh`, `.v`, `.vh`) and SystemRDL (`.rdl`):
+
+```systemverilog
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+```
+
+For Python, shell, Makefile, Nix and YAML files:
+
+```makefile
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+```
+
+For C and C++ (`.c`, `.h`, `.cpp`, `.hpp`):
+
+```c
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+```
+
+For AsciiDoc (`.adoc`), use line comments. Documentation and images are
+licensed under CC-BY-4.0:
+
+```asciidoc
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+```
+
+For JavaScript (`.js`), use line comments:
+
+```javascript
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+```
+
+For shell and Python scripts that begin with a `#!` shebang line, place the header immediately after the shebang. Keep the year current for new files; do not edit the year on files you only modify.
+
+The CC-BY-4.0 AsciiDoc header above is for hand-authored documentation. Generated
+register collateral under `hw/**/regs/gen/` -- including its `.adoc` and `.html`
+tables -- is a mechanical rendering of the Apache-2.0-licensed SystemRDL source it
+is generated from, not hand-authored documentation, so it keeps the Apache-2.0
+header across every emitted extension (`.sv`, `.c`, `.py`, `.adoc`, `.html`, ...)
+rather than switching to CC-BY-4.0 by file extension. `tools/regs/stamp_spdx.py`
+stamps this header uniformly; do not hand-edit it into CC-BY-4.0.
+
+=== Vendored code
+
+Third-party RTL and tools are vendored under `vendor/` via Bender `vendor_package` entries. Do not hand-edit files under `vendor/*/upstream/`; use `patches/` and local overlays instead. See the README for the full vendor workflow.
+
+When adding a new vendored dependency, confirm its license is Apache-2.0 compatible and note the dependency, source, version, and license in the pull request description.
+
+=== SystemVerilog Coding Guidelines
+
+The high level goals are:
+
+* avoid SystemVerilog constructs that are error prone or not consistently supported,
+particularly across open source tools
+* ensure that the code is tidy and easy to read
+* keep the code style consistent across the project's code base regardless of who authored it
+
+OCAH will _mostly_ follow the OpenTitan SystemVerilog coding rules
+defined by lowRISC group in
+https://github.com/lowRISC/style-guides/blob/master/VerilogCodingStyle.md[Verilog
+Coding Style].
+
+This section highlights a few of the most important aspects as well as a
+few deviations from the OpenTitan rules. If there is a conflict between
+the two, the specification here takes precedence.
+
+* Use two spaces for indentation, matching the lowRISC style guide.
+* Use all upper case letters to name enums and parameters instead of
+UpperCamelCase, and UpperCamelCase to name constants (localparam).
+* Name enum types in lower_snake_case with an `_e` suffix.
+* TT-owned RTL uses postfix *_i / *_o / *_io; active-low _n sits immediately
+before the direction suffix so resets are rst_ni.
+* As stated in the lowRISC guidelines, SystemVerilog Interfaces can be
+limited in terms of tool support, so we _highly discourage_ their use as
+they are not uniformly supported by open source tools. As an
+alternative, struct types can be used instead to bundle groups of input
+or output signals to make ports more abstract.
+* Finite State Machines (FSMs) are powerful sequence control constructs
+but can spiral out of control quickly. Consequences are difficult to
+understand "next state" logic and long timing paths. Separate the
+combinatorial "next state" logic from the sequential state update into
+distinct always blocks. *Do not* combine the two into a single clocked
+always block. Opt for a
+https://en.wikipedia.org/wiki/Moore_machine[Moore machine]
+implementation when possible to aid in timing closure. If you have
+complexity of more than ten states or so, use a microsequencer approach.
+This is more scalable and maintainable.
+
+There will be additional rules that apply to security sensitive
+components such as ciphers. These will be documented in more detail, but
+here is a summary for now:
+
+* FSM state encodings are one-hot with error checking
+* Error detection is implemented on storage elements and some bus and
+computational elements
+* Secret data is transferred and stored in secret-split fashion
+
+=== RTL Code Comments
+
+Every hand-maintained module, interface, and package uses the same `//`
+header, after the SPDX lines. Generated register RTL and
+`vendor/**/upstream/**` stay as their generator or upstream left them.
+
+The header is two parts. The first line is one imperative sentence: the RTL
+job of this module. One blank `//` line follows, then the behavior the
+declarations do not carry: resets, clock domains, ordering, and constraints
+an integrator or reviewer would otherwise have to rediscover. Keep it
+concise, but keep every fact. The same paragraphs are the text at the top of
+that module's page in RTL Modules Reference.
+
+Every parameter, input, and output has a `//` clause that starts on the
+same line as the declaration. The clause is that item's role in this
+module. Polarity, clock domain, or synchronizer behavior goes in the clause
+when the name does not already say it. The clause does not say "input" or
+"output", and it does not restate the type or the default. A clause that
+needs more than one line continues on the next `//` lines, each starting at
+or right of the clause's `//`.
+
+No other `//` line sits between two parameters or two ports. A group banner
+in the gap is published as part of the previous item. A blank line may
+separate groups. Section banners stay in the body, below the port list.
+
+Write each comment so it reads on its own, without the diff or the
+surrounding discussion. A comment that records why a change was made
+belongs in the commit message.
+
+Do not use `// File:`, `// Module:`, `// Author:`, `@file`, `@brief`,
+`@param`, `@author`, or a `/** */` file header.
+
+Body comments stay sparse. Do not restate a line the code already makes
+obvious. Comment a constraint, an ordering, or a hardware behavior a reader
+would otherwise have to rediscover.
+
+[source,systemverilog]
+----
+// Condition the cold and warm resets for the Key Manager.
+//
+// Synchronize cold_rst_ni onto rst_cold_aasd_no, which resets every flop in
+// this block. Assert rst_warm_sync_no on warm_rst_ni, soft_rst_ni, or a cold
+// reset, and hold it for MIN_RESET_CYCLES. scanmode_i bypasses both outputs.
+
+module km_reset_conditioner #(
+  parameter int unsigned MIN_RESET_CYCLES = 10  // Warm-reset hold, in clk_i cycles.
+) (
+  input  logic clk_i,             // Clock for the warm-hold counter.
+  input  logic cold_rst_ni,       // Active-low. Async assert, sync deassert.
+                                  // Resets every flop in the block.
+  output logic rst_warm_sync_no   // Active-low warm reset, held MIN_RESET_CYCLES.
+);
+----
+
+This header is the one to reject. The banner repeats the filename, and each
+`@param` repeats a name the declaration already has:
+
+[source,systemverilog]
+----
+// File: km_reset_conditioner.sv
+// Author: example
+/**
+ * @file km_reset_conditioner.sv
+ * @brief Reset conditioner.
+ * @param MIN_RESET_CYCLES Minimum hold.
+ * @param clk_i Clock.
+ */
+----
+
+Check files with:
+
+[source,shell]
+----
+python3 tools/doc/check_sv_comments.py hw/ip/key_manager/rtl/*.sv
+----
+
+`make lint-sv-comments` checks every source the RTL Modules Reference
+documents, except the generated CPU RTL, and is the `lint-sv-comments` CI job.
+
+The checker covers every module in a file. It fails when the two-part `//`
+block is missing, when a parameter or port has no same-line `//` clause, when
+a `//` line that is not a continuation sits between two of those
+declarations, when a clause only restates the declared name, repeats a
+literal default, is a single word, or repeats another clause of the same
+module word for word, or when a banned banner or tag is present. A group
+label such as "Debug outputs." shared by several ports is such a repeat:
+give each port its own clause.

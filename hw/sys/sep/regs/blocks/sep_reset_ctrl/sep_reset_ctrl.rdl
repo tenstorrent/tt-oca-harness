@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef SEP_RESET_CTRL_RDL_DEFINED
+`define SEP_RESET_CTRL_RDL_DEFINED
+addrmap sep_reset_ctrl {
+    name = "SEP Reset Control Address Map";
+    desc = "Software resets for KM, OTBN, AES, HMAC, KMAC, the internal TRNG, and Adams Bridge.";
+    
+    reg SW_RESET_N {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field { sw=rw; hw=r; desc="KM reset (0=assert, 1=release)"; }   km_sw_rst_n[0:0] = 0x0;
+        field { sw=rw; hw=r; desc="OTBN reset (0=assert, 1=release)"; }  otbn_sw_rst_n[1:1] = 0x1;
+        field { sw=rw; hw=r; desc="AES reset (0=assert, 1=release)"; }   aes_sw_rst_n[2:2] = 0x1;
+        field { sw=rw; hw=r; desc="HMAC reset (0=assert, 1=release)"; }  hmac_sw_rst_n[3:3] = 0x1;
+        field { sw=rw; hw=r; desc="KMAC reset (0=assert, 1=release)"; }  kmac_sw_rst_n[4:4] = 0x1;
+        field {
+            sw=rw;
+            hw=r;
+            desc="Internal TRNG reset request (0=assert, 1=release). Hardware drains and isolates the entropy-source, CSRNG, and EDN AXI ports before asserting the shared TRNG reset.";
+        } trng_sw_rst_n[5:5] = 0x1;
+        field { sw=rw; hw=r; desc="Adams Bridge reset (0=assert, 1=release)"; } abr_sw_rst_n[6:6] = 0x1;
+    };
+
+    SW_RESET_N SW_RESET_N @0x0;
+};
+`endif

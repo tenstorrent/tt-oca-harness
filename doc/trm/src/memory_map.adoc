@@ -1,0 +1,118 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= OCAH Memory Map
+:description: The chiplet-visible SMU aperture and the SEP/SMC global apertures firmware programs.
+
+[[ocah-memory-map]]
+
+OCAH separates the chiplet-visible SMU aperture from the internal address
+maps used by SEP and SMC firmware. The chiplet integrator decides which
+system address range reaches the SMU external AXI input. Firmware then
+programs the SEP and SMC global base/size CSRs so the SMU crossbar can
+route incoming traffic to the correct inbound port.
+
+<<ocah-address-map-configuration-layers-table>> distinguishes the chiplet envelope,
+programmable apertures, and internal address maps.
+
+[[ocah-address-map-configuration-layers-table]]
+[cols="<24%,<24%,<32%,<20%",options="header"]
+.OCAH address-map configuration layers
+|===
+|Concept |Configured by |Purpose |Example
+
+|Chiplet NoC envelope
+|Integrator / chiplet address map
+|Controls which external-master addresses reach SMU `ext_in`
+|Example only: 64 MiB total SMU aperture
+
+|SEP global aperture
+|SEP firmware via `SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE`
+|Controls SMU `ext_in` to `sep_in` routing and SEP inbound global-to-local remap
+|Example only: 32 MiB SEP slot in a 32 MiB + 32 MiB SEP/SMC partition
+
+|SMC global aperture
+|SMC firmware via `GLOBAL_BASE` / `REGION_SIZE`
+|Controls SMU `ext_in` to `smc_in` routing and SEP-to-SMC decode
+|Example only: 32 MiB SMC slot in a 32 MiB + 32 MiB SEP/SMC partition
+|===
+
+External masters use chiplet-global addresses and are bounded first by the
+chiplet NoC decode. The SMU crossbar applies the firmware-programmed SEP and
+SMC global apertures to route those transactions to `sep_in` or `smc_in`.
+Subsystem-internal CPU maps and local aliases are described in the SEP and SMC
+chapters.
+
+At reset, `SEP_GLOBAL_BASE_ADDR` is `0x0000_0000` and the SMC's
+`GLOBAL_BASE` register is `0x4000_0000`. Their separate size registers,
+`SEP_REGION_SIZE` and SMC `REGION_SIZE`, both reset to `0x0100_0000`
+(16 MiB). The corresponding half-open address ranges are therefore
+`[0x0000_0000, 0x0100_0000)` for SEP and
+`[0x4000_0000, 0x4100_0000)` for SMC.
+
+The global base addresses and region sizes are software-programmed and must
+not overlap. The hardware does not derive them from a chiplet ID. The
+Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-smc-address-remapping[aperture programming sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-address-remapping[aperture programming sequence]
+endif::backend-pdf[]
+for early boot.
+
+Register tables throughout this manual report each field's software access as a
+compact token in their *Access* column; xref:register-field-access.adoc#trm-register-field-access[Register Field Access Notation]
+decodes that notation.
+
+[[ocah-decode-response-codes]]
+== Decode Response Codes
+
+The SMC, SEP, Key Manager and cross-trigger network address maps state, for
+each unit, how a 32-bit access that no register or memory backs is answered.
+A cell reads _read response, read data / write response_, for example
+`DECERR, 0xBADCAB1E / SLVERR`. `OKAY`, `SLVERR` and `DECERR` are the AXI
+response codes returned on `RRESP` and `BRESP`.
+The read data is the word a 32-bit read returns in either half of a 64-bit
+data bus. Where the two halves differ, a note on the cell gives the word
+returned when address bit 2 is set.
+
+* The _Hole in Extent_ column covers an unbacked offset inside the unit's
+  decoded extent. Where the space between a wrapper's sub-blocks, or the
+  padding after each element of an array, answers differently, the cell names
+  it separately as `between sub-blocks` or `between instances`.
+* The _Past Extent_ column covers the rest of the unit's aperture, the range
+  its Size column gives.
+* A `Reserved` row is an address between unit apertures.
+
+[[ocah-decode-response-codes-table]]
+.Decode response codes
+[cols="<24%,<76%",options="header"]
+|===
+|Code |Meaning
+
+|`OKAY`
+|The access completes. A read returns the listed data, and a write has no
+effect.
+
+|`SLVERR`
+|The access reaches a component that refuses it.
+
+|`DECERR`
+|No unit or sub-block claims the address, and a decoder refuses the access
+before it reaches one.
+
+|Aliases registers
+|The access reaches a live register at another offset, which answers it.
+
+|Forwarded
+|The subsystem passes the access on without decoding it, and its target
+answers.
+
+|Adopter-defined
+|The adopter's implementation answers.
+
+|`-`
+|The region does not exist: the unit is memory, its registers fill its
+extent, or its aperture ends at its extent.
+|===

@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+name: ocah-docs
+title: Technical Reference Manual
+version: latest
+start_page: index.adoc
+nav:
+- modules/ROOT/nav.adoc
+asciidoc:
+  attributes:
+    source-highlighter: highlight.js
+    page-toclevels: 5
+    sectanchors: ''
+    sectlinks: ''
+    sectnums: ''
+    sectnumlevels: 9
+    xrefstyle: short
+    idprefix: ''
+    idseparator: '-'
+    safe-mode: unsafe
+    allow-uri-read: ''
+    basedir: doc/trm
+    verbose: ''
+    ocah-trm: ''
+    page-pagination: ''

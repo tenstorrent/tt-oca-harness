@@ -1,0 +1,88 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+name: slurm-qualify
+
+# The Slurm executor against a live scheduler, on demand: one hosted runner
+# carries a single-node Slurm with accounting, and the selected DUT's tests
+# run through `--executor slurm` as sbatch jobs of that runner. The unit tests
+# check both cluster drivers against fake scheduler commands on every pull
+# request; this workflow is the qualification of the open-source executor
+# path on a real controller, run by hand when the driver, the registry's
+# Slurm table or the worker changes. It is not a scale-out: one node has the
+# runner's cores whether Slurm or the runner's own process starts the
+# simulator.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dut:
+        description: "DUT, as run_dv.py --dut"
+        type: string
+        default: dtp
+      items:
+        description: "Test group or test, as run_dv.py --items"
+        type: string
+        default: smoke
+      sim-jobs:
+        description: "Leaves in flight (--sim-jobs); the node has two CPUs"
+        type: string
+        default: "2"
+
+run-name: ${{ format('slurm-qualify {0} {1}', inputs.dut, inputs.items) }}
+
+jobs:
+  slurm-qualify:
+    name: slurm-qualify (${{ inputs.dut }})
+    runs-on: ubuntu-latest
+    # Slurm and its database install from apt through ansible before the
+    # usual Verilator setup and the tests; the setup action's own srun test
+    # has no bound of its own, so this budget is the only one.
+    timeout-minutes: 40
+    permissions: { contents: read }
+    services:
+      # slurmdbd's database; setup-slurm-action expects it on this port with
+      # these credentials.
+      mysql:
+        image: mysql:8.0
+        env: { MYSQL_ROOT_PASSWORD: root }
+        ports: ['8888:3306']
+        options: >-
+          --health-cmd="mysqladmin ping" --health-interval=10s
+          --health-timeout=5s --health-retries=3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Checkout submodules
+        run: |
+          git submodule update --init --recursive
+
+      # One node named localhost. `cpus` is the socket count of the node
+      # definition, two cores each; a count above the runner's real socket
+      # count leaves the node invalid and the action's own srun test pending
+      # forever. One socket gives two CPUs, and 6000 MB lets two leaves that
+      # each ask for 2000 MB run at once.
+      - name: Set up a single-node Slurm with accounting
+        uses: koesterlab/setup-slurm-action@v1.1.0
+        with:
+          cpus: 1
+          memory: 6000
+
+      - name: Show the cluster
+        run: |
+          sinfo
+          scontrol show config | grep -E '^(AccountingStorageType|MinJobAge|SelectType|SelectTypeParameters)'
+
+      - name: Run the tests through Slurm
+        uses: ./.github/actions/dv-run
+        with:
+          dut: ${{ inputs.dut }}
+          tool: verilator
+          tier: qualify
+          label: slurm
+          items: ${{ inputs.items }}
+          executor: slurm
+          extra-args: --mem-mb 2000 --walltime 30
+          sim-jobs: ${{ inputs.sim-jobs }}
+          run-dir: build/ci/runs/${{ inputs.dut }}/verilator/qualify/slurm-${{ github.run_id }}

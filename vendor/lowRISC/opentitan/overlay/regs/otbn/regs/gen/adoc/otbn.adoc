@@ -1,0 +1,181 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-otbn]
+== OpenTitan Big Number Accelerator
+
+Programmable coprocessor for asymmetric cryptography with SCA and FI countermeasures
+
+[cols="1,4,1,6", options="header"]
+|===
+| Address | Name | Access | Description
+| 0x0 | <<reg-{regmap-instance}-otbn-INTR_STATE,INTR_STATE>> | RW a| -
+| 0x4 | <<reg-{regmap-instance}-otbn-INTR_ENABLE,INTR_ENABLE>> | RW a| -
+| 0x8 | <<reg-{regmap-instance}-otbn-INTR_TEST,INTR_TEST>> | W a| -
+| 0xC | <<reg-{regmap-instance}-otbn-ALERT_TEST,ALERT_TEST>> | W a| -
+| 0x10 | <<reg-{regmap-instance}-otbn-CMD,CMD>> | W a| -
+| 0x14 | <<reg-{regmap-instance}-otbn-CTRL,CTRL>> | RW a| -
+| 0x18 | <<reg-{regmap-instance}-otbn-STATUS,STATUS>> | R a| -
+| 0x1C | <<reg-{regmap-instance}-otbn-ERR_BITS,ERR_BITS>> | RW a| -
+| 0x20 | <<reg-{regmap-instance}-otbn-FATAL_ALERT_CAUSE,FATAL_ALERT_CAUSE>> | R a| -
+| 0x24 | <<reg-{regmap-instance}-otbn-INSN_CNT,INSN_CNT>> | RW a| -
+| 0x28 | <<reg-{regmap-instance}-otbn-LOAD_CHECKSUM,LOAD_CHECKSUM>> | RW a| -
+|===
+
+[#reg-{regmap-instance}-otbn-INTR_STATE]
+=== INTR_STATE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `Reserved` | - | - a| Reserved
+| 0 | `done` | RW1C | 0x0 a| OTBN has completed the operation.
+|===
+
+[#reg-{regmap-instance}-otbn-INTR_ENABLE]
+=== INTR_ENABLE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `Reserved` | - | - a| Reserved
+| 0 | `done` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.done is set.
+|===
+
+[#reg-{regmap-instance}-otbn-INTR_TEST]
+=== INTR_TEST
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `Reserved` | - | - a| Reserved
+| 0 | `done` | W | 0x0 a| Write 1 to force !!INTR_STATE.done to 1.
+|===
+
+[#reg-{regmap-instance}-otbn-ALERT_TEST]
+=== ALERT_TEST
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:2 | `Reserved` | - | - a| Reserved
+| 1 | `recov` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
+| 0 | `fatal` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
+|===
+
+[#reg-{regmap-instance}-otbn-CMD]
+=== CMD
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `cmd` | W | 0x0 a| The operation to perform.
+
+\| Value \| Name          \| Description \|
+\|:------\|:--------------\|:------------\|
+\| 0xd8  \| EXECUTE       \| Starts the execution of the program stored in the instruction memory, starting at address zero. \|
+\| 0xc3  \| SEC_WIPE_DMEM \| Securely removes all contents from the data memory. \|
+\| 0x1e  \| SEC_WIPE_IMEM \| Securely removes all contents from the instruction  memory. \|
+|===
+
+[#reg-{regmap-instance}-otbn-CTRL]
+=== CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `Reserved` | - | - a| Reserved
+| 0 | `software_errs_fatal` | RW | 0x0 a| Controls the reaction to software errors.
+
+When set software errors produce fatal errors, rather than
+recoverable errors.
+
+Writes are ignored if OTBN is not idle.
+|===
+
+[#reg-{regmap-instance}-otbn-STATUS]
+=== STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `status` | R | 0x4 a| Indicates the current operational state OTBN is in.
+
+All BUSY values represent an operation started by a write to the
+!!CMD register.
+
+\| Value \| Name               \| Description                                           \|
+\|:------\|:-------------------\|:------------------------------------------------------\|
+\| 0x00  \| IDLE               \| OTBN is idle: it is not performing any action.        \|
+\| 0x01  \| BUSY_EXECUTE       \| OTBN is busy executing software.                      \|
+\| 0x02  \| BUSY_SEC_WIPE_DMEM \| OTBN is busy securely wiping the data memory.         \|
+\| 0x03  \| BUSY_SEC_WIPE_IMEM \| OTBN is busy securely wiping the instruction memory.  \|
+\| 0x04  \| BUSY_SEC_WIPE_INT  \| OTBN is busy securely wiping the internal state.      \|
+\| 0xFF  \| LOCKED             \| OTBN is locked as reaction to a fatal error, and must be reset to unlock it again. See also the section "Reaction to Fatal Errors". \|
+|===
+
+[#reg-{regmap-instance}-otbn-ERR_BITS]
+=== ERR_BITS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:24 | `Reserved` | - | - a| Reserved
+| 23 | `fatal_software` | RW | 0x0 a| A `FATAL_SOFTWARE` error was observed.
+| 22 | `lifecycle_escalation` | RW | 0x0 a| A `LIFECYCLE_ESCALATION` error was observed.
+| 21 | `illegal_bus_access` | RW | 0x0 a| An `ILLEGAL_BUS_ACCESS` error was observed.
+| 20 | `bad_internal_state` | RW | 0x0 a| A `BAD_INTERNAL_STATE` error was observed.
+| 19 | `bus_intg_violation` | RW | 0x0 a| A `BUS_INTG_VIOLATION` error was observed.
+| 18 | `reg_intg_violation` | RW | 0x0 a| A `REG_INTG_VIOLATION` error was observed.
+| 17 | `dmem_intg_violation` | RW | 0x0 a| A `DMEM_INTG_VIOLATION` error was observed.
+| 16 | `imem_intg_violation` | RW | 0x0 a| A `IMEM_INTG_VIOLATION` error was observed.
+| 15:9 | `Reserved` | - | - a| Reserved
+| 8 | `mai_software_error` | RW | 0x0 a| An `MAI_SOFTWARE_ERROR` error was observed.
+| 7 | `rnd_fips_chk_fail` | RW | 0x0 a| An `RND_FIPS_CHK_FAIL` error was observed.
+| 6 | `rnd_rep_chk_fail` | RW | 0x0 a| An `RND_REP_CHK_FAIL` error was observed.
+| 5 | `key_invalid` | RW | 0x0 a| A `KEY_INVALID` error was observed.
+| 4 | `loop` | RW | 0x0 a| A `LOOP` error was observed.
+| 3 | `illegal_insn` | RW | 0x0 a| An `ILLEGAL_INSN` error was observed.
+| 2 | `call_stack` | RW | 0x0 a| A `CALL_STACK` error was observed.
+| 1 | `bad_insn_addr` | RW | 0x0 a| A `BAD_INSN_ADDR` error was observed.
+| 0 | `bad_data_addr` | RW | 0x0 a| A `BAD_DATA_ADDR` error was observed.
+|===
+
+[#reg-{regmap-instance}-otbn-FATAL_ALERT_CAUSE]
+=== FATAL_ALERT_CAUSE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7 | `fatal_software` | R | 0x0 a| A `FATAL_SOFTWARE` error was observed.
+| 6 | `lifecycle_escalation` | R | 0x0 a| A `LIFECYCLE_ESCALATION` error was observed.
+| 5 | `illegal_bus_access` | R | 0x0 a| A `ILLEGAL_BUS_ACCESS` error was observed.
+| 4 | `bad_internal_state` | R | 0x0 a| A `BAD_INTERNAL_STATE` error was observed.
+| 3 | `bus_intg_violation` | R | 0x0 a| A `BUS_INTG_VIOLATION` error was observed.
+| 2 | `reg_intg_violation` | R | 0x0 a| A `REG_INTG_VIOLATION` error was observed.
+| 1 | `dmem_intg_violation` | R | 0x0 a| A `DMEM_INTG_VIOLATION` error was observed.
+| 0 | `imem_intg_violation` | R | 0x0 a| A `IMEM_INTG_VIOLATION` error was observed.
+|===
+
+[#reg-{regmap-instance}-otbn-INSN_CNT]
+=== INSN_CNT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `insn_cnt` | RW | 0x0 a| The number of executed instructions.
+|===
+
+[#reg-{regmap-instance}-otbn-LOAD_CHECKSUM]
+=== LOAD_CHECKSUM
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `checksum` | RW | 0x0 a| Checksum accumulator
+|===

@@ -1,0 +1,48 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-km_drbg_sampler">DRBG Sampler</h2>
+<p>DRBG random data interface and configuration/status registers</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#DATA">DATA</a></td><td>R</td><td>One word of random data. Read triggers request or returns prefetch. Writes return SLVERR. No reset.</td></tr>
+<tr><td>0x4</td><td><a href="#CFG">CFG</a></td><td>RW</td><td>Configuration: PREFETCH enable, TIMEOUT cycles for active CPU read.</td></tr>
+<tr><td>0x8</td><td><a href="#STATUS">STATUS</a></td><td>RW</td><td>Status: DRBG_READY, PREFETCHED, TIMEOUT_ERR (W1C), STREAM_ERR (W1C), COUNT_BAD, COUNT_GOOD.</td></tr>
+<tr><td>0xC</td><td><a href="#PREFETCH_DATA">PREFETCH_DATA</a></td><td>R</td><td>Prefetched word (read-only, for debugging). Cleared when PREFETCH=0. No reset; power-up undefined.</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="DATA">DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>R</td><td>-</td><td>32-bit random data from DRBG. No reset for security; power-up value undefined.</td></tr>
+</table>
+<h3 id="CFG">CFG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>timeout</td><td>RW</td><td>0x100</td><td>Cycles to wait for DRBG on active CPU read; 0 = disable. Default 256.</td></tr>
+<tr><td>15:1</td><td>rsvd</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>prefetch</td><td>RW</td><td>0x0</td><td>Enable prefetch. When 0, prefetch data register is cleared.</td></tr>
+</table>
+<h3 id="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>count_good</td><td>RW</td><td>0x0</td><td>Counts only reads completed through ST_RESPOND, excluding prefetched words. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</td></tr>
+<tr><td>15:8</td><td>count_bad</td><td>RW</td><td>0x0</td><td>Failed transactions (timeout or error). Saturates at 0xFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</td></tr>
+<tr><td>7:4</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3</td><td>stream_err</td><td>RW1C</td><td>0x0</td><td>Set when there is an error on the DRBG AXI-Stream interface (e.g. TVALID deasserted before TREADY). Write 1 to clear.</td></tr>
+<tr><td>2</td><td>timeout_err</td><td>RW1C</td><td>0x0</td><td>Set when a DRBG read from the KM CPU times out. Write 1 to clear.</td></tr>
+<tr><td>1</td><td>prefetched</td><td>R</td><td>0x0</td><td>Prefetched data available</td></tr>
+<tr><td>0</td><td>drbg_ready</td><td>R</td><td>0x0</td><td>TVALID asserted from DRBG</td></tr>
+</table>
+<h3 id="PREFETCH_DATA">PREFETCH_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>R</td><td>-</td><td>Prefetched 32-bit random data. No reset for security; power-up value undefined.</td></tr>
+</table>
+</div>

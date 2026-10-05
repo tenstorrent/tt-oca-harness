@@ -1,0 +1,34 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[telemetry-receiver-memory-map]]
+== Memory Map and Register Reference
+
+=== Memory Map
+
+ifdef::backend-html5[]
+// Preserve incoming links to the consolidated sections.
+++++
+<span id="address-space-overview"></span>
+++++
+endif::backend-html5[]
+
+Each core occupies 256 bytes with 32-bit registers at four-byte offsets.
+Control, status, interrupt and message-header registers occupy `0x00`–`0x18`;
+32 counter registers occupy `0x80`–`0xFC`. The wrapper map places each receiver
+in its integration-defined aperture. Reset values and field access types are
+specified below; reset and flush storage behavior is described in Architecture.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::partial$telemetry_receiver/regs/gen/html/telemetry_receiver.html[]
+include::partial$telemetry_receiver/regs/gen/html/telemetry_receiver_wrap.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/telemetry_receiver.adoc[leveloffset=+2]
+include::../regs/gen/adoc/telemetry_receiver_wrap.adoc[leveloffset=+2]
+endif::backend-pdf[]

@@ -1,0 +1,231 @@
+.Hardware Safety Requirements
+[cols="1,1,4", options="header"]
+|===
+|Requirement ID |Category |Requirement Description
+
+|OCAH-HWSR-GENERAL-000 |GENERAL |OCAH shall always generate level sensitive, active-high, wired interrupts upon detection of an error
+|OCAH-HWSR-GENERAL-001 |GENERAL |OCAH shall be capable of performing HW-driven error injection to test against latent faults in diagnostic mechanisms
+|OCAH-HWSR-GENERAL-002 |GENERAL |OCAH shall integrate a Safety Bus ingress port to all of its subsystems to control/access error injection interface and error logging registers
+|OCAH-HWSR-GENERAL-003 |GENERAL |OCAH safety bus shall be isolated from the subsystem's local fabric to achieve freedom from interference (FFI)
+|OCAH-HWSR-SMC-000 |COMPUTE_CPU |The OCAH SMC shall implement a Dual-Core Lockstep architecture for the CPU pipeline to detect random transient faults in the execution path, including Cache Controller Logic.
+|OCAH-HWSR-SMC-001 |FAULT_DETECTED_STATE |When the OCAH SMC Dual-Core Lockstep comparator detects a mismatch between master and checker CPU outputs, the OCAH SMC shall activate a manager isolation mechanism to prevent the faulty CPU from injecting corrupted data into the subsystem.
+|OCAH-HWSR-SMC-002 |ERROR_REPORTING |When the OCAH SMC Dual-Core Lockstep comparator detects a mismatch between master and checker CPU outputs, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-003 |FAULT_REACTION |When the OCAH SMC Dual-Core Lockstep comparator detects a mismatch between master and checker CPU outputs, the OCAH SMC shall trigger a reset of the specific CPU core to restore safe operation.
+|OCAH-HWSR-SMC-004 |ERROR_LOGGING |When the OCAH SMC Dual-Core Lockstep comparator detects a mismatch between master and checker CPU outputs, the OCAH SMC shall record the program counter and data values from both master and checker CPUs for diagnostic purposes.
+|OCAH-HWSR-SMC-005 |COMPUTE_CPU |The OCAH SMC shall implement a Windowed Watchdog Timer for each CPU core to detect execution hangs and runaway conditions.
+|OCAH-HWSR-SMC-006 |FAULT_DETECTED_STATE |When the OCAH SMC CPU Windowed Watchdog Timer detects a timeout or early feed violation, the OCAH SMC shall activate a manager isolation mechanism to prevent the faulty CPU from injecting corrupted data into the subsystem.
+|OCAH-HWSR-SMC-007 |ERROR_REPORTING |When the OCAH SMC CPU Windowed Watchdog Timer detects a timeout or early feed violation, the OCAH SMC shall signal an interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-008 |FAULT_REACTION |When the OCAH SMC CPU Windowed Watchdog Timer detects a timeout or early feed violation, the OCAH SMC shall trigger a reset of the specific CPU core.
+|OCAH-HWSR-SMC-009 |COMPUTE_CPU |The OCAH SMC shall implement ECC SECDED protection on all CPU Instruction Cache SRAM macros to detect and correct memory faults.
+|OCAH-HWSR-SMC-010 |COMPUTE_CPU |When a single-bit error is detected in the OCAH SMC CPU Instruction Cache SRAM, the OCAH SMC shall correct the error using ECC and continue normal operation.
+|OCAH-HWSR-SMC-011 |FAULT_DETECTED_STATE |When a double-bit error is detected in the OCAH SMC CPU Instruction Cache SRAM, the OCAH SMC shall activate a memory system isolation mechanism to prevent corrupted data propagation.
+|OCAH-HWSR-SMC-012 |ERROR_REPORTING |When a double-bit error is detected in the OCAH SMC CPU Instruction Cache SRAM, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-013 |FAULT_REACTION |When a double-bit error is detected in the OCAH SMC CPU Instruction Cache SRAM, the OCAH SMC shall trigger a reset of the specific CPU core.
+|OCAH-HWSR-SMC-014 |ERROR_LOGGING |When a single-bit or double-bit error is detected in the OCAH SMC CPU Instruction Cache SRAM, the OCAH SMC shall record the faulty address and increment the corresponding error counter.
+|OCAH-HWSR-SMC-015 |ERROR_LOGGING |When the count of single-bit errors in the OCAH SMC CPU Instruction Cache SRAM exceeds a programmable threshold, the OCAH SMC shall trigger an interrupt.
+|OCAH-HWSR-SMC-016 |COMPUTE_CPU |The OCAH SMC shall implement ECC SECDED protection on all CPU Data Cache SRAM macros to detect and correct memory faults.
+|OCAH-HWSR-SMC-017 |COMPUTE_CPU |When a single-bit error is detected in the OCAH SMC CPU Data Cache SRAM, the OCAH SMC shall correct the error using ECC and continue normal operation.
+|OCAH-HWSR-SMC-018 |FAULT_DETECTED_STATE |When a double-bit error is detected in the OCAH SMC CPU Data Cache SRAM, the OCAH SMC shall activate a memory system isolation mechanism to prevent corrupted data propagation.
+|OCAH-HWSR-SMC-019 |ERROR_REPORTING |When a double-bit error is detected in the OCAH SMC CPU Data Cache SRAM, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-020 |FAULT_REACTION |When a double-bit error is detected in the OCAH SMC CPU Data Cache SRAM, the OCAH SMC shall trigger a reset of the specific CPU core.
+|OCAH-HWSR-SMC-021 |ERROR_LOGGING |When a single-bit or double-bit error is detected in the OCAH SMC CPU Data Cache SRAM, the OCAH SMC shall record the faulty address and increment the corresponding error counter.
+|OCAH-HWSR-SMC-022 |ERROR_LOGGING |When the count of single-bit errors in the OCAH SMC CPU Data Cache SRAM exceeds a programmable threshold, the OCAH SMC shall trigger an interrupt.
+|OCAH-HWSR-SMC-023 |MEMORY |The OCAH SMC shall implement ECC SECDED protection on all Scratchpad SRAM macros to detect and correct memory faults.
+|OCAH-HWSR-SMC-024 |MEMORY |When a single-bit error is detected in the OCAH SMC Scratchpad SRAM, the OCAH SMC shall correct the error using ECC and continue normal operation.
+|OCAH-HWSR-SMC-025 |FAULT_DETECTED_STATE |When a double-bit error is detected in the OCAH SMC Scratchpad SRAM, the OCAH SMC shall activate a memory system isolation mechanism to prevent corrupted data propagation.
+|OCAH-HWSR-SMC-026 |ERROR_REPORTING |When a double-bit error is detected in the OCAH SMC Scratchpad SRAM, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-027 |FAULT_REACTION |When a double-bit error is detected in the OCAH SMC Scratchpad SRAM, the OCAH SMC shall trigger a reset of the whole SMC subsystem.
+|OCAH-HWSR-SMC-028 |ERROR_LOGGING |When a single-bit or double-bit error is detected in the OCAH SMC Scratchpad SRAM, the OCAH SMC shall record the faulty address and increment the corresponding error counter.
+|OCAH-HWSR-SMC-029 |ERROR_LOGGING |When the count of single-bit errors in the OCAH SMC CPU Scratchpad SRAM exceeds a programmable threshold, the OCAH SMC shall trigger an interrupt.
+|OCAH-HWSR-SMC-030 |ERROR_LOGGING |The OCAH SMC shall provide memory-mapped registers for reading ECC error counts, last corrected address, and last uncorrectable address for each protected SRAM (caches, scratchpad).
+|OCAH-HWSR-SMC-031 |INTERRUPTS_PLIC |The OCAH SMC PLIC shall implement parity protection on all configuration registers to detect single-bit upsets.
+|OCAH-HWSR-SMC-032 |INTERRUPTS_PLIC |The OCAH SMC PLIC shall implement Lockstep Arbitration logic to detect transient faults in the interrupt prioritization path.
+|OCAH-HWSR-SMC-033 |INTERRUPTS_PLIC |The OCAH SMC PLIC shall implement Lockstep Interrupt Generation logic to detect transient faults in the interrupt assertion path.
+|OCAH-HWSR-SMC-034 |FAULT_DETECTED_STATE |When a parity error is detected on the OCAH SMC PLIC configuration registers, the OCAH SMC shall activate an interrupt clamping mechanism to de-assert and disable the affected interrupt line.
+|OCAH-HWSR-SMC-035 |ERROR_REPORTING |When a parity error is detected on the OCAH SMC PLIC configuration registers, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-036 |FAULT_REACTION |When a parity error is detected on the OCAH SMC PLIC configuration registers, the OCAH SMC shall trigger a reset of the CPU cluster including caches and interrupt controllers.
+|OCAH-HWSR-SMC-037 |FAULT_DETECTED_STATE |When the OCAH SMC PLIC Lockstep Arbitration logic detects a mismatch between redundant arbitration paths, the OCAH SMC shall activate an interrupt clamping mechanism to de-assert and disable the affected interrupt line.
+|OCAH-HWSR-SMC-038 |ERROR_REPORTING |When the OCAH SMC PLIC Lockstep Arbitration logic detects a mismatch between redundant arbitration paths, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-039 |FAULT_REACTION |When the OCAH SMC PLIC Lockstep Arbitration logic detects a mismatch, the OCAH SMC shall trigger a reset of the CPU cluster including caches and interrupt controllers.
+|OCAH-HWSR-SMC-040 |FAULT_DETECTED_STATE |When the OCAH SMC PLIC Lockstep Interrupt Generation logic detects a mismatch, the OCAH SMC shall activate an interrupt clamping mechanism to de-assert and disable the affected interrupt line.
+|OCAH-HWSR-SMC-041 |ERROR_REPORTING |When the OCAH SMC PLIC Lockstep Interrupt Generation logic detects a mismatch between redundant arbitration paths, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-042 |FAULT_REACTION |When the OCAH SMC PLIC Lockstep Interrupt Generation logic detects a mismatch, the OCAH SMC shall trigger a reset of the CPU cluster including caches and interrupt controllers.
+|OCAH-HWSR-SMC-043 |INTERRUPTS_CLINT |The OCAH SMC CLINT shall implement parity protection on all configuration registers to detect single-bit upsets.
+|OCAH-HWSR-SMC-044 |INTERRUPTS_CLINT |The OCAH SMC CLINT shall implement Lockstep Interrupt Generation logic to detect transient faults in timer interrupt generation.
+|OCAH-HWSR-SMC-045 |FAULT_DETECTED_STATE |When a parity error is detected on the OCAH SMC CLINT configuration registers, the OCAH SMC shall activate an interrupt clamping mechanism to de-assert and disable the affected interrupt line.
+|OCAH-HWSR-SMC-046 |ERROR_REPORTING |When a parity error is detected on the OCAH SMC CLINT configuration registers, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-047 |FAULT_REACTION |When a parity error is detected on the OCAH SMC CLINT configuration registers, the OCAH SMC shall trigger a reset of the CPU cluster including caches and interrupt controllers.
+|OCAH-HWSR-SMC-048 |FAULT_DETECTED_STATE |When the OCAH SMC CLINT Lockstep Interrupt Generation logic detects a mismatch, the OCAH SMC shall activate an interrupt clamping mechanism to de-assert and disable the affected interrupt line.
+|OCAH-HWSR-SMC-049 |ERROR_REPORTING |When the OCAH SMC CLINT Lockstep Interrupt Generation logic detects a mismatch, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-050 |FAULT_REACTION |When the OCAH SMC CLINT Lockstep Interrupt Generation logic detects a mismatch, the OCAH SMC shall trigger a reset of the CPU cluster including caches and interrupt controllers.
+|OCAH-HWSR-SMC-051 |DATA_MOVEMENT_ACC |The OCAH SMC DMA shall implement Address Generation Lockstep using Dual Modular Redundancy to detect transient faults in address calculation.
+|OCAH-HWSR-SMC-052 |DATA_MOVEMENT_ACC |The OCAH SMC DMA shall implement an Address Range Legalizer to validate that generated addresses fall within configured allowed ranges.
+|OCAH-HWSR-SMC-053 |DATA_MOVEMENT_ACC |The OCAH SMC DMA shall implement parity protection on configuration registers and internal FIFO buffers to detect single-bit upsets.
+|OCAH-HWSR-SMC-054 |FAULT_DETECTED_STATE |When the OCAH SMC DMA Address Generation Lockstep logic detects a mismatch, the OCAH SMC shall activate a manager isolation mechanism to prevent corrupted addresses from reaching memory.
+|OCAH-HWSR-SMC-055 |ERROR_REPORTING |When the OCAH SMC DMA Address Generation Lockstep logic detects a mismatch, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-056 |FAULT_REACTION |When the OCAH SMC DMA Address Generation Lockstep logic detects a mismatch, the OCAH SMC shall trigger a reset of the whole SMC subsystem.
+|OCAH-HWSR-SMC-057 |FAULT_DETECTED_STATE |When the OCAH SMC DMA Address Range Legalizer detects an address outside the configured legal range, the OCAH SMC shall activate a manager isolation mechanism to prevent the illegal access.
+|OCAH-HWSR-SMC-058 |ERROR_REPORTING |When the OCAH SMC DMA Address Range Legalizer detects an address outside the configured legal range, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-059 |FAULT_REACTION |When the OCAH SMC DMA Address Range Legalizer detects an address outside the configured legal range, the OCAH SMC shall trigger a reset of the whole SMC subsystem.
+|OCAH-HWSR-SMC-060 |ERROR_LOGGING |When the OCAH SMC DMA detects an address generation or range violation error, the OCAH SMC shall record the invalid address and error cause for diagnostic purposes.
+|OCAH-HWSR-SMC-061 |FAULT_DETECTED_STATE |When a parity error is detected on the OCAH SMC DMA configuration registers or FIFO buffers, the OCAH SMC shall activate a manager isolation mechanism to prevent corrupted data propagation.
+|OCAH-HWSR-SMC-062 |ERROR_REPORTING |When a parity error is detected on the OCAH SMC DMA configuration registers or FIFO buffers, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-063 |FAULT_REACTION |When a parity error is detected on the OCAH SMC DMA configuration registers or FIFO buffers, the OCAH SMC shall trigger a reset of the whole SMC subsystem.
+|OCAH-HWSR-SMC-064 |DATA_MOVEMENT_ACC |The OCAH SMC Zeroer shall implement parity protection on configuration registers to detect single-bit upsets.
+|OCAH-HWSR-SMC-065 |DATA_MOVEMENT_ACC |The OCAH SMC Zeroer shall implement address range checking to validate memory access ranges during zeroing operations.
+|OCAH-HWSR-SMC-066 |FAULT_DETECTED_STATE |When the OCAH SMC Zeroer detects a parity error on its configuration registers, the OCAH SMC shall activate a manager isolation mechanism to prevent corrupted data propagation.
+|OCAH-HWSR-SMC-067 |DATA_MOVEMENT_ACC |When the OCAH SMC Zeroer detects a parity error on its configuration registers, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-068 |FAULT_REACTION |When the OCAH SMC Zeroer detects a parity error on its configuration registers, the OCAH SMC shall trigger a reset of the whole SMC subsystem.
+|OCAH-HWSR-SMC-069 |FAULT_DETECTED_STATE |When the OCAH SMC Zeroer detects an address outside the configured legal range, the OCAH SMC shall activate a manager isolation mechanism to prevent the illegal access.
+|OCAH-HWSR-SMC-070 |DATA_MOVEMENT_ACC |When the OCAH SMC Zeroer detects an address outside the configured legal range, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-071 |FAULT_REACTION |When the OCAH SMC Zeroer detects an address outside the configured legal range, the OCAH SMC shall trigger a reset of the whole SMC subsystem.
+|OCAH-HWSR-SMC-072 |LOG |The OCAH SMC Log Engine shall implement parity protection on configuration registers to detect single-bit upsets.
+|OCAH-HWSR-SMC-073 |LOG |The OCAH SMC Log Engine shall implement address range checking to validate memory access ranges.
+|OCAH-HWSR-SMC-074 |FAULT_DETECTED_STATE |When the OCAH SMC Log Engine detects a parity error on its configuration registers, the OCAH SMC shall activate a subordinate isolation mechanism to prevent corrupted data reaching the peripheral.
+|OCAH-HWSR-SMC-075 |ERROR_REPORTING |When the OCAH SMC Log Engine detects a parity error on its configuration registers, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-076 |FAULT_REACTION |When the OCAH SMC Log Engine detects a parity error on its configuration registers, the OCAH SMC shall trigger a reset of the whole SMC subsystem.
+|OCAH-HWSR-SMC-077 |FAULT_DETECTED_STATE |When the OCAH SMC Log Engine detects an address outside the configured legal range, the OCAH SMC shall activate a manager isolation mechanism to prevent the illegal access.
+|OCAH-HWSR-SMC-078 |ERROR_REPORTING |When the OCAH SMC Log Engine detects an address outside the configured legal range, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-079 |ERROR_LOGGING |When the OCAH SMC Log Engine detects an address outside the configured legal range, the OCAH SMC shall record the out-of-bound address for diagnostic purposes.
+|OCAH-HWSR-SMC-080 |INTERRUPTS_MBOX |The OCAH SMC Mailbox Unit shall implement parity protection on configuration registers to detect single-bit upsets.
+|OCAH-HWSR-SMC-081 |INTERRUPTS_MBOX |The OCAH SMC Mailbox Unit shall implement Lockstep Interrupt Generation logic to detect transient faults in mailbox interrupt assertion.
+|OCAH-HWSR-SMC-082 |FAULT_DETECTED_STATE |When the OCAH SMC Mailbox Unit detects a parity error on its configuration registers, the OCAH SMC shall activate a subordinate isolation mechanism to prevent corrupted data reaching the peripheral.
+|OCAH-HWSR-SMC-083 |ERROR_REPORTING |When the OCAH SMC Mailbox Unit detects a parity error on its configuration registers, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-084 |FAULT_REACTION |When the OCAH SMC Mailbox Unit detects a parity error on its configuration registers, the OCAH SMC shall trigger a reset of the whole SMC subsystem.
+|OCAH-HWSR-SMC-085 |FAULT_DETECTED_STATE |When the OCAH SMC Mailbox Unit Lockstep Interrupt Generation logic detects a mismatch, the OCAH SMC shall activate an interrupt clamping mechanism to de-assert and disable the affected interrupt line.
+|OCAH-HWSR-SMC-086 |ERROR_REPORTING |When the OCAH SMC Mailbox Unit Lockstep Interrupt Generation logic detects a mismatch, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-087 |FAULT_REACTION |When the OCAH SMC Mailbox Unit Lockstep Interrupt Generation logic detects a mismatch, the OCAH SMC shall trigger a reset of the whole SMC subsystem.
+|OCAH-HWSR-SMC-088 |FABRIC |The OCAH SMC fabric shall implement odd parity protection on all data and address payloads to detect single-bit transient faults during transmission.
+|OCAH-HWSR-SMC-089 |FABRIC |The OCAH SMC fabric shall implement parity protection on configuration registers to detect single-bit upsets.
+|OCAH-HWSR-SMC-090 |FAULT_DETECTED_STATE |When a parity error is detected on the OCAH SMC fabric data or address payloads, the OCAH SMC shall activate a subordinate isolation mechanism to prevent corrupted data reaching the destination.
+|OCAH-HWSR-SMC-091 |ERROR_REPORTING |When a parity error is detected on the OCAH SMC fabric data or address payloads, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-092 |FAULT_REACTION |When a parity error is detected on the OCAH SMC fabric data or address payloads, the OCAH SMC shall trigger a reset of the whole SMC subsystem.
+|OCAH-HWSR-SMC-093 |FAULT_DETECTED_STATE |When a parity error is detected on the OCAH SMC fabric configuration registers, the OCAH SMC shall activate a manager isolation mechanism to prevent corrupted configuration.
+|OCAH-HWSR-SMC-094 |ERROR_REPORTING |When a parity error is detected on the OCAH SMC fabric configuration registers, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-095 |FAULT_REACTION |When a parity error is detected on the OCAH SMC fabric configuration registers, the OCAH SMC shall trigger a reset of the whole SMC subsystem.
+|OCAH-HWSR-SMC-096 |ERROR_LOGGING |The OCAH SMC shall integrate a Bus Error Unit to detect and report transactions targeting unmapped regions or illegal access types on the SMC fabric.
+|OCAH-HWSR-SMC-097 |ERROR_LOGGING |When a transaction targets an unmapped memory region or performs an illegal access type, the OCAH SMC Bus Error Unit shall record the faulty address and error type.
+|OCAH-HWSR-SMC-098 |ERROR_LOGGING |When a transaction targets an unmapped memory region or performs an illegal access type, the OCAH SMC shall signal a bus error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-099 |SYS_MGMT_RST |The OCAH SMC Reset Unit shall implement parity protection on all configuration registers to detect single-bit upsets.
+|OCAH-HWSR-SMC-100 |ERROR_REPORTING |When a parity error is detected on the OCAH SMC Reset Unit configuration registers, the OCAH SMC shall signal a fatal error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-101 |FAULT_REACTION |When a parity error is detected on the OCAH SMC Reset Unit configuration registers, the OCAH SMC shall trigger a reset of the whole SMC subsystem.
+|OCAH-HWSR-SMC-102 |SYS_MGMT_CLK |The OCAH SMC Clock Control logic shall implement parity protection on all configuration registers to detect single-bit upsets.
+|OCAH-HWSR-SMC-103 |SYS_MGMT_CLK |The OCAH SMC shall implement a Clock Handshake Monitor with a timeout counter to detect stopped or non-responsive clocks.
+|OCAH-HWSR-SMC-104 |ERROR_REPORTING |When a parity error is detected on the OCAH SMC Clock Control configuration registers, the OCAH SMC shall signal a fatal error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-105 |FAULT_REACTION |When a parity error is detected on the OCAH SMC Clock Control configuration registers, the OCAH SMC shall trigger a reset of the whole SMC subsystem.
+|OCAH-HWSR-SMC-106 |ERROR_REPORTING |When the OCAH SMC Clock Handshake Monitor detects a non-responsive subsystem clock exceeding the timeout threshold, the OCAH SMC shall signal a fatal error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-107 |BOOT_ROM |The OCAH SMC shall calculate a CRC checksum over the entire ROM address range at startup and compare it against a Golden CRC stored in eFuse.
+|OCAH-HWSR-SMC-108 |FAULT_DETECTED_STATE |When the OCAH SMC ROM integrity check calculates a CRC mismatch against the Golden CRC stored in eFuse, the OCAH SMC shall activate a memory system isolation mechanism to prevent execution of corrupted instructions.
+|OCAH-HWSR-SMC-109 |ERROR_REPORTING |When the OCAH SMC ROM integrity check calculates a CRC mismatch against the Golden CRC stored in eFuse, the OCAH SMC shall signal a fatal error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-110 |FAULT_REACTION |When the OCAH SMC ROM integrity check calculates a CRC mismatch against the Golden CRC stored in eFuse, the OCAH SMC shall halt the boot process and trigger a reset of the whole SMC subsystem.
+|OCAH-HWSR-SMC-111 |PERIPHS_GPIO |The OCAH SMC GPIO Module shall replicate the strap latch logic upon Power-on-Reset and compare the copies to detect mismatches.
+|OCAH-HWSR-SMC-112 |PERIPHS_GPIO |The OCAH SMC GPIO Module shall implement parity protection on configuration registers to detect single-bit upsets.
+|OCAH-HWSR-SMC-113 |FAULT_DETECTED_STATE |When the OCAH SMC GPIO Module detects a mismatch between redundant strap latch copies, the OCAH SMC shall activate a subordinate isolation mechanism to prevent corrupted strap values from being used.
+|OCAH-HWSR-SMC-114 |ERROR_REPORTING |When the OCAH SMC GPIO Module detects a mismatch between redundant strap latch copies, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-115 |FAULT_REACTION |When the OCAH SMC GPIO Module detects a mismatch between redundant strap latch copies, the OCAH SMC shall trigger a reset of the whole SMC subsystem.
+|OCAH-HWSR-SMC-116 |FAULT_DETECTED_STATE |When a parity error is detected on the OCAH SMC GPIO configuration registers, the OCAH SMC shall activate a manager isolation mechanism to prevent corrupted configuration.
+|OCAH-HWSR-SMC-117 |ERROR_REPORTING |When a parity error is detected on the OCAH SMC GPIO configuration registers, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-118 |PERIPHS_EFUSE |The OCAH SMC eFuse Controller shall implement parity protection on all shadow registers to detect corruption of loaded configuration data.
+|OCAH-HWSR-SMC-119 |PERIPHS_EFUSE |The OCAH SMC shall calculate a CRC of the eFuse bank content from shadow registers at startup and compare it against a Golden CRC stored in the bootloader manifest.
+|OCAH-HWSR-SMC-120 |FAULT_DETECTED_STATE |When a parity error is detected on the OCAH SMC eFuse Controller shadow registers, the OCAH SMC shall activate a subordinate isolation mechanism to prevent corrupted fuse data from being used.
+|OCAH-HWSR-SMC-121 |ERROR_REPORTING |When a parity error is detected on the OCAH SMC eFuse Controller shadow registers, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-122 |FAULT_REACTION |When a parity error is detected on the OCAH SMC eFuse Controller shadow registers, the OCAH SMC shall trigger a reset of the whole SMC subsystem.
+|OCAH-HWSR-SMC-123 |PERIPHS_TIMER |The OCAH SMC System Timer shall implement parity protection on configuration registers to detect single-bit upsets.
+|OCAH-HWSR-SMC-124 |PERIPHS_TIMER |The OCAH SMC System Timer shall implement Lockstep Counter logic to detect faults in the timer increment path.
+|OCAH-HWSR-SMC-125 |FAULT_DETECTED_STATE |When the OCAH SMC System Timer detects a parity error on its configuration registers, the OCAH SMC shall activate a manager isolation mechanism to prevent corrupted timer values.
+|OCAH-HWSR-SMC-126 |ERROR_REPORTING |When the OCAH SMC System Timer detects a parity error on its configuration registers, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-127 |FAULT_REACTION |When the OCAH SMC System Timer detects a parity error on its configuration registers, the OCAH SMC shall trigger a reset of the whole SMC subsystem.
+|OCAH-HWSR-SMC-128 |FAULT_DETECTED_STATE |When the OCAH SMC System Timer Lockstep Counter logic detects a mismatch, the OCAH SMC shall activate a manager isolation mechanism to prevent corrupted timer values.
+|OCAH-HWSR-SMC-129 |ERROR_REPORTING |When the OCAH SMC System Timer Lockstep Counter logic detects a mismatch, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-130 |FAULT_REACTION |When the OCAH SMC System Timer Lockstep Counter logic detects a mismatch, the OCAH SMC shall trigger a reset of the whole SMC subsystem.
+|OCAH-HWSR-SMC-131 |PERIPHS_I2C |The OCAH SMC I2C Controller shall implement parity protection on registers, FIFO buffers, and FSM state encoding to detect transient faults.
+|OCAH-HWSR-SMC-132 |FAULT_DETECTED_STATE |When a parity error is detected on the OCAH SMC I2C Controller registers, FIFO buffers, or FSM state, the OCAH SMC shall activate a manager isolation mechanism to prevent corrupted data propagation.
+|OCAH-HWSR-SMC-133 |ERROR_REPORTING |When a parity error is detected on the OCAH SMC I2C Controller registers, FIFO buffers, or FSM state, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-134 |FAULT_REACTION |When a parity error is detected on the OCAH SMC I2C Controller registers, FIFO buffers, or FSM state, the OCAH SMC shall trigger a reset of the whole SMC subsystem.
+|OCAH-HWSR-SMC-135 |ERROR_REPORTING |When the OCAH SMC I2C Controller FSM enters an illegal state, the OCAH SMC shall transition to a known safe state and signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-136 |PERIPHS_AVSBUS |The OCAH SMC AVSBus Controller shall implement hardware CRC checking on all received frames to ensure protocol integrity.
+|OCAH-HWSR-SMC-137 |PERIPHS_AVSBUS |The OCAH SMC AVSBus Controller shall implement parity protection on registers, FIFO buffers, and FSM state encoding to detect transient faults.
+|OCAH-HWSR-SMC-138 |FAULT_DETECTED_STATE |When a CRC mismatch is detected on an AVSBus frame, the OCAH SMC AVSBus Controller shall activate a subordinate isolation mechanism to prevent corrupted data from being used.
+|OCAH-HWSR-SMC-139 |ERROR_REPORTING |When a CRC mismatch is detected on an AVSBus frame, the OCAH SMC AVSBus Controller shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-140 |FAULT_REACTION |When a CRC mismatch is detected on an AVSBus frame, the OCAH SMC AVSBus Controller shall trigger a reset of the whole SMC subsystem.
+|OCAH-HWSR-SMC-141 |FAULT_DETECTED_STATE |When a parity error is detected on the OCAH SMC AVSBus Controller registers, FIFO buffers, or FSM state, the OCAH SMC shall activate a manager isolation mechanism to prevent corrupted data propagation.
+|OCAH-HWSR-SMC-142 |ERROR_REPORTING |When a parity error is detected on the OCAH SMC AVSBus Controller registers, FIFO buffers, or FSM state, the OCAH SMC shall signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-143 |FAULT_REACTION |When a parity error is detected on the OCAH SMC AVSBus Controller registers, FIFO buffers, or FSM state, the OCAH SMC shall trigger a reset of the whole SMC subsystem.
+|OCAH-HWSR-SMC-144 |PERIPHS_AVSBUS |When the OCAH SMC AVSBus Controller FSM enters an illegal state, the OCAH SMC shall transition to a known safe state and signal an uncorrectable error interrupt to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-145 |GENERAL |All OCAH SMC FSMs shall encode state registers with parity to detect illegal states caused by single-bit upsets.
+|OCAH-HWSR-SMC-146 |GENERAL |All OCAH SMC FSMs shall implement a default catch-all case that transitions the FSM to a known safe state if an undefined state is reached.
+|OCAH-HWSR-SMC-147 |GENERAL |When any OCAH SMC FSM detects an illegal state via parity check, the OCAH SMC shall report an error and transition the FSM to a known safe state.
+|OCAH-HWSR-SMC-148 |GENERAL |The OCAH SMC shall support point-to-point, active-high, level-sensitive wired interrupt lines for hierarchical error signal propagation to an external safety entity.
+|OCAH-HWSR-SMC-149 |GENERAL |The OCAH SMC shall provide memory-mapped registers for configuring safety mechanisms, enabling test for diagnostics, and reading error status and statistics.
+|OCAH-HWSR-SMC-150 |SYS_MGMT_RST |The OCAH SMC shall coordinate hierarchical reset sequencing to ensure all chiplet resources achieve a safe, known initial state.
+|OCAH-HWSR-SMC-151 |SYS_MGMT_CLK |When any clock or reset signal is asserted or de-asserted, the OCAH SMC shall guarantee the signal is glitch-free.
+|OCAH-HWSR-SMC-152 |PERIPHS_PVT |When an Over-Voltage, Under-Voltage, or Over-Current condition occurs on a main power rail, the OCAH SMC shall override firmware commands and initiate a safe state transition.
+|OCAH-HWSR-SMC-153 |PERIPHS_PVT |The OCAH SMC shall periodically monitor voltage sensors on high-current rails via AVSBus and autonomously trigger power capping if a defined safety threshold is exceeded.
+|OCAH-HWSR-SMC-154 |PERIPHS_PVT |The OCAH SMC shall periodically monitor, detect, and report sensor faults such as values stuck at minimum or maximum or rapid unrealistic toggling to an external safety entity in the chiplet.
+|OCAH-HWSR-SMC-155 |GENERAL |The OCAH SMC shall autonomously recover from interface communication errors by unlatching failed interfaces after error thresholds are reached.
+|OCAH-HWSR-SMC-156 |D2D |When data is transmitted between chiplets via I3C or I2C, the OCAH SMC shall enforce a CRC check to ensure reliable error detection.
+|OCAH-HWSR-SMC-157 |D2D |When payload data is transmitted to or received from a remote chiplet, the OCAH SMC shall verify the integrity of the payload.
+|OCAH-HWSR-SMC-158 |TEST_DIAGNOSTICS |The OCAH SMC shall provide hardware error injection interfaces on all protected components to enable test for diagnostics of latent faults.
+|OCAH-HWSR-SMC-159 |TEST_DIAGNOSTICS |The OCAH SMC shall support Software-Based Self-Test of the Dual-Core Lockstep comparator by injecting errors into the comparator path.
+|OCAH-HWSR-SMC-160 |TEST_DIAGNOSTICS |The OCAH SMC shall support Watchdog Self-Test by allowing software to force timeout and force early feed conditions.
+|OCAH-HWSR-SMC-161 |TEST_DIAGNOSTICS |The OCAH SMC shall support ECC Self-Test by allowing software to inject single-bit and multi-bit errors into protected SRAM.
+|OCAH-HWSR-SMC-162 |TEST_DIAGNOSTICS |The OCAH SMC shall support Parity Self-Test by allowing software to inject parity bit errors into protected registers and buffers.
+|OCAH-HWSR-SMC-163 |TEST_DIAGNOSTICS |The OCAH SMC shall support Lockstep Comparator Self-Test by allowing software to inject mismatches into redundant logic paths.
+|OCAH-HWSR-SMC-164 |TEST_DIAGNOSTICS |The OCAH SMC shall support FSM State Parity Self-Test by allowing software to inject invalid state patterns.
+|OCAH-HWSR-SMC-165 |TEST_DIAGNOSTICS |The OCAH SMC shall support ROM Integrity Logic Verification by allowing software to corrupt the Golden CRC reference value and trigger the integrity check.
+|OCAH-HWSR-SMC-166 |TEST_DIAGNOSTICS |The OCAH SMC shall support Strap Logic Mismatch Test by allowing software to inject bit flips into redundant strap latch copies.
+|OCAH-HWSR-SMC-167 |TEST_DIAGNOSTICS |The OCAH SMC shall support eFuse FSM Timeout Test by allowing software to manipulate the timeout threshold.
+|OCAH-HWSR-SMC-168 |TEST_DIAGNOSTICS |The OCAH SMC shall support Clock Handshake Monitor Test by allowing software to simulate a stopped subsystem clock.
+|OCAH-HWSR-SMC-169 |TEST_DIAGNOSTICS |The OCAH SMC shall support Bus Parity Checker Test by allowing software to inject parity bit errors into fabric payloads.
+|OCAH-HWSR-SMC-170 |TEST_DIAGNOSTICS |The OCAH SMC shall support Address Range Legalizer Test by allowing software to configure boundaries and attempt out-of-range accesses.
+|OCAH-HWSR-SMC-171 |TEST_DIAGNOSTICS |The OCAH SMC shall support Interrupt Controller Functional Self-Test by allowing software to trigger test interrupt events and verify prioritization and clearing.
+|OCAH-HWSR-SMC-172 |GENERAL |The OCAH SMC error injection interface shall include a memory-mapped enable bit to activate error injection for the target signal.
+|OCAH-HWSR-SMC-173 |GENERAL |The OCAH SMC error injection interface shall include a memory-mapped XOR mask register with width matching the protected signal.
+|OCAH-HWSR-SMC-174 |GENERAL |When error injection is enabled, the error injection logic shall XOR the mask register value with the target signal to flip corresponding bits.
+|OCAH-HWSR-SMC-175 |GENERAL |All safety mechanism error injection in the OCAH SMC shall use this XOR mask-based interface structure unless otherwise specified.
+|OCAH-HWSR-SMC-176 |SECURITY |The error injection enable bit shall be gated by lifecycle state such that it is disabled in production states.
+|OCAH-HWSR-SMC-177 |GENERAL |The FSM parity bit shall be computed using odd parity over all state register bits.
+|OCAH-HWSR-SMC-178 |GENERAL |On each clock cycle, safety-critical FSMs shall verify the parity of the state register against the stored parity bit.
+|OCAH-HWSR-SMC-179 |SYS_MGMT_CLK |The clock timeout detector shall use a reference clock to measure whether a target clock has stopped ticking.
+|OCAH-HWSR-SMC-180 |SYS_MGMT_CLK |The clock timeout detector shall include a configurable timeout counter that increments while the target clock is not responding.
+|OCAH-HWSR-SMC-181 |SYS_MGMT_CLK |The clock timeout detector shall use a synchronous request-acknowledge handshake to detect activity on the target clock.
+|OCAH-HWSR-SMC-182 |SYS_MGMT_CLK |When the target clock resumes, the timeout counter shall reset to zero.
+|OCAH-HWSR-SMC-183 |COMPUTE_CPU |The DCLS comparator shall compare register file write-back values between the two cores.
+|OCAH-HWSR-SMC-184 |COMPUTE_CPU |The DCLS comparator shall compare memory store addresses and data between the two cores.
+|OCAH-HWSR-SMC-185 |COMPUTE_CPU |The DCLS comparator shall compare branch target addresses between the two cores.
+|OCAH-HWSR-SMC-186 |FAULT_DETECTED_STATE |The DCLS corruption detection signal shall remain asserted until the CPU core is reset.
+|OCAH-HWSR-SMC-187 |COMPUTE_CPU |The WDT shall implement windowed operation with a configurable service window.
+|OCAH-HWSR-SMC-188 |COMPUTE_CPU |When the WDT is serviced outside the valid window, the WDT shall treat it as a violation and assert an error signal.
+|OCAH-HWSR-SMC-189 |COMPUTE_CPU |The WDT shall provide a feed mechanism that resets the counter when written with a specific key value.
+|OCAH-HWSR-SMC-190 |COMPUTE_CPU |The WDT shall provide a register field to pause counting when the core is in sleep mode.
+|OCAH-HWSR-SMC-191 |INTERRUPTS_PLIC |The WDT bark interrupt signal shall be routable to the PLIC as an interrupt source.
+|OCAH-HWSR-SMC-192 |ERROR_LOGGING |The BEU shall store the error source address in a FIFO when a bus error response is received.
+|OCAH-HWSR-SMC-193 |ERROR_LOGGING |The BEU shall store the error code in a FIFO when a bus error response is received.
+|OCAH-HWSR-SMC-194 |ERROR_LOGGING |The BEU shall support AXI4 error response codes including SLVERR and DECERR.
+|OCAH-HWSR-SMC-195 |ERROR_REPORTING |The BEU interrupt signal shall remain asserted while errors are stored in the error FIFO.
+|OCAH-HWSR-SMC-196 |ERROR_LOGGING |When the error code register is read, the BEU shall pop the error from the FIFO.
+|OCAH-HWSR-SMC-197 |ERROR_LOGGING |The BEU FIFO depth shall be configurable to match the maximum number of outstanding transactions.
+|OCAH-HWSR-SMC-198 |DATA_MOVEMENT_ACC |The DMA controller shall implement a legalizer module that splits transfers at page boundaries.
+|OCAH-HWSR-SMC-199 |DATA_MOVEMENT_ACC |The DMA legalizer shall ensure burst transfers do not cross 4KB address boundaries as required by AXI protocol.
+|OCAH-HWSR-SMC-200 |DATA_MOVEMENT_ACC |The DMA error handler shall support CONTINUE and ABORT actions in response to bus errors.
+|OCAH-HWSR-SMC-201 |DATA_MOVEMENT_ACC |When ABORT action is selected, the DMA error handler shall flush the legalizer and terminate the active transfer.
+|OCAH-HWSR-SMC-202 |DATA_MOVEMENT_ACC |The DMA error handler shall track outstanding transfers in the datapath using a credit counter.
+|OCAH-HWSR-SMC-203 |INTERRUPTS_PLIC |The OCAH SMC PLIC shall implement odd parity protection on priority configuration registers.
+|OCAH-HWSR-SMC-204 |INTERRUPTS_PLIC |The OCAH SMC PLIC shall implement odd parity protection on enable configuration registers.
+|OCAH-HWSR-SMC-205 |INTERRUPTS_PLIC |The OCAH SMC PLIC shall implement odd parity protection on threshold configuration registers.
+|OCAH-HWSR-SMC-206 |FAULT_DETECTED_STATE |When a PLIC parity or lockstep error is detected, the PLIC shall clamp the affected interrupt line to a safe state.
+|OCAH-HWSR-SMC-207 |INTERRUPTS_CLINT |The OCAH SMC CLINT shall implement odd parity protection on timer compare registers.
+|OCAH-HWSR-SMC-208 |INTERRUPTS_CLINT |The OCAH SMC CLINT shall implement odd parity protection on software interrupt registers.
+|OCAH-HWSR-SMC-209 |FAULT_DETECTED_STATE |When a CLINT parity or lockstep error is detected, the CLINT shall clamp the affected interrupt line to a safe state.
+|OCAH-HWSR-SMC-210 |PERIPHS_TIMER |The OCAH SMC System Timer shall implement counter lockstep using dual replicated counters.
+|OCAH-HWSR-SMC-211 |PERIPHS_TIMER |Both replicated counters shall increment simultaneously from the same clock source.
+|OCAH-HWSR-SMC-212 |PERIPHS_TIMER |The timer lockstep comparator shall compare the two counter values on each clock cycle.
+|OCAH-HWSR-SMC-213 |FABRIC |When an inbound transaction is blocked by the address filter, the fabric shall route the transaction to an error slave.
+|OCAH-HWSR-SMC-214 |FABRIC |The error slave shall generate an AXI error response for blocked transactions.
+|OCAH-HWSR-SMC-215 |FABRIC |The error slave response shall be captured by the Bus Error Unit for error recording and interrupt generation.
+|OCAH-HWSR-SMC-216 |BOOT_ROM |The OCAH SMC shall be capable of accessing a golden CRC associated with ROM code from the eFuse bank.
+|OCAH-HWSR-SMC-217 |BOOT_ROM |The OCAH SMC shall provide a memory-mapped status register indicating ROM integrity error state.
+|OCAH-HWSR-SMC-218 |MEMORY |The OCAH SMC shall provide memory-mapped registers for reading ECC error counts per protected SRAM.
+|OCAH-HWSR-SMC-219 |MEMORY |The OCAH SMC shall provide memory-mapped registers for reading last corrected address per protected SRAM.
+|OCAH-HWSR-SMC-220 |MEMORY |The OCAH SMC shall provide memory-mapped registers for reading last uncorrectable address per protected SRAM.
+|===
