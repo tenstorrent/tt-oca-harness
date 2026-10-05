@@ -46,6 +46,8 @@ _MARKERS = [
     "spi_dma: SPI-controller -> secure-DMA RX streaming integration checks on sep-vp.",
     "fw_sep: hw/sys/sep/dv/fw test compatibility runs (printf markers).",
     "needs_debug: requires a DEBUG firmware build (SIM_OUT); skipped on --build-type=release.",
+    "smoke: one clean boot per ROM path (non-secure, and secure with an encrypted payload); "
+    "the sep-vp CI legs run only these.",
     "long: a test that takes a long time to run.",
     "slow: a slow simulation case.",
     "release: only meaningful on a release firmware build.",
