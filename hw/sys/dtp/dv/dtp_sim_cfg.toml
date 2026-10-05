@@ -27,7 +27,6 @@ top_file = "hw/sys/dtp/dv/tb/tb_top.sv"
 filelist = "hw/sys/dtp/dv/build/dtp_dut_compile.f"
 bender_filelist = "hw/sys/dtp/dv/build/dtp_bender.f"
 work_dir = "hw/sys/dtp/dv/build"
-# Shared dependency targets.
 common_bender_targets = [
   "axi_rtl",
   "apb_rtl",
@@ -35,7 +34,6 @@ common_bender_targets = [
   "common_cell_sync_shim",
   "register_interface_l1",
 ]
-# DUT and simulation targets.
 bender_targets = ["dtp", "simulation"]
 incdirs = ["hw/common/assert"]
 # The bench configuration package, the shared TB interfaces, the
@@ -154,7 +152,7 @@ build_args = ["--coverage-line", "--coverage-expr", "--coverage-user", "--output
 # the inherited list, then scopes and tunes the compile; the per-leaf dump stays
 # the inherited `[vcs.coverage_defaults].sim_args`. `cov/config/vcs/dtp_cov_scope.hier`
 # states what each number covers; `cov/config/vcs/coverage_policy.toml` carries
-# the exclusion list the report applies.
+# the exclusion lists the report applies.
 compile_args = [
   "-cm",
   "line+cond+tgl+fsm+branch+assert",

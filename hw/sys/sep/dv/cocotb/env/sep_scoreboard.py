@@ -24,6 +24,8 @@ from .sep_axi_agent import SepAxiItem, SepAxiOp
 
 
 class SepScoreboard(uvm_subscriber):
+    """Response check on every completed CPU-LSU AXI access; value check on reads that carry an expected value."""
+
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.errors: list[str] = []
@@ -115,8 +117,6 @@ class SepScoreboard(uvm_subscriber):
         assert not self.errors, f"SEP scoreboard found {len(self.errors)} error(s): " + "; ".join(
             self.errors
         )
-        # Positive evidence: a clean run must have actually observed
-        # transactions, not passed vacuously on zero activity.
         assert self.checks > 0, "SEP scoreboard saw no AXI transactions (no positive evidence)"
         if self.expected_reads:
             assert self.value_checks > 0, (

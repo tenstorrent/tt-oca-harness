@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""CSR reset / RW / RO / reserved sweep over the generated SEP register export.
+"""Every walked SEP CSR reads its reset value; write-lands registers move exactly their usable bits.
 
-no_cpu / +skip_fuse_sense. RANDCFG: block order and complement-vs-ones
+Run mode: no_cpu with +skip_fuse_sense. RANDCFG: block order and complement-vs-ones
 order come from the run seed. The reset walk is the inventory after
 reasoned skips, not the raw OFFSET export.
 
@@ -11,10 +11,16 @@ register returns no storage on a read, and a read-only register the RDL gives
 no reset value is driven by hardware, so the generated DEFAULT is a field
 default and not a POR value. Both read back 0 against a DEFAULT of 0 in most
 cases, so keeping them would pass without the DUT having shown anything. The
-ABR identity registers in that second group are proven frontdoor by the ABR
-KAT tests, and the entropy-pool pair by sep_entropy_pool_aperture_test. Full-mask write-lands covers the
-scratch-cold, scratch-warm and CPU_CTRL registers; the inbound START/END
-registers use the wrap model.
+ABR identity registers in that second group are proven frontdoor by
+crypto/sep_abr_*_kat_test, and the entropy-pool pair by sep_entropy_pool_aperture_test.
+
+The same rule applies per field. A field the RDL gives no reset value has no
+POR value, and the generated DEFAULT holds a 0 placeholder for it. A word made
+only of such fields is skipped (HMAC DIGEST_*, MSG_LENGTH_*); a word with some
+stays in the walk, and CHK-RESET masks those bits out of its compare (HMAC
+CFG.hmac_en/sha_en). Full-mask write-lands covers the scratch-cold,
+scratch-warm and CPU_CTRL registers; the inbound START/END registers use the
+wrap model.
 
 Write-lands is the anti-vacuity control: a complement write must move
 exactly the software-usable mask bits. Inbound-filter START/END use the
@@ -79,7 +85,12 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
                 f"CHK-RESET FAIL: {len(reset_fails)} register(s) missed the "
                 f"exported reset ({bash.reset_ok} matched)"
             )
-        self.logger.info("CHK-RESET PASS: %d register(s) matched the exported reset", bash.reset_ok)
+        self.logger.info(
+            "CHK-RESET PASS: %d register(s) matched the exported reset; %d of them "
+            "under a mask that drops fields with no RDL reset",
+            bash.reset_ok,
+            bash.reset_masked,
+        )
 
         write_fails: list[str] = []
         for info in cfg.write_regs:
@@ -153,7 +164,7 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
             "the software-usable mask and restored reset",
             bash.touch_ok,
         )
-        # Completeness, in the house CHK-RANDCFG sense: the whole seed-built
+        # Completeness (CHK-RANDCFG): the whole seed-built
         # configuration ran in this one invocation. The counts are cfg-computed,
         # so this is not evidence about the DUT -- it is evidence that no part of
         # the walk was skipped. The walk sizes are printed with it so a shrunken

@@ -500,6 +500,12 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-DTP-SMC-STAP-IDCODE",
             "selected SMC STAP sees the same TMS edge count as the PTAP during IDCODE",
         ),
+        (
+            "CHK-DTP-SMC-STAP-TRST-DESEL",
+            "CHK-DTP-SMC-STAP-TRST-DESEL",
+            "after TRST and before any re-select, an IDCODE scan leaves SMC STAP TMS and "
+            "tdo_oen quiet",
+        ),
     ],
     "smu_dtp_sep_dm_dmi_test": [
         (

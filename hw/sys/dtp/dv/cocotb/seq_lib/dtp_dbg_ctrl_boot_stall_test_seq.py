@@ -60,8 +60,8 @@ class dtp_dbg_ctrl_boot_stall_test_seq(dtp_debug_tdr_base_test_seq):
         self.log_step(1, "Reset TAP and verify boot-stall reset value")
         await self.reset_to_tlr()
         # The DEBUG_CONTROL reset check below includes the live cla_clock_stop
-        # status bit, which mirrors the xtrig_clk_stop_req TB input: clear it
-        # explicitly instead of relying on one-time bring-up state.
+        # status bit, which mirrors the xtrig_clk_stop_req TB input, so that
+        # input must be zero before the read.
         await self.set_clk_stop_requests(0)
 
         reset_value = await self.read_debug_control()

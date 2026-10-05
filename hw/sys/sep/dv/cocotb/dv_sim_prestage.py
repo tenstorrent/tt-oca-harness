@@ -159,11 +159,9 @@ _SIP_SYS_DIS_PINS_DBG_OPEN = {
 }
 
 # test name -> OTP image spec. mode "random" => randomize(seed+seed_offset, **kw);
-# mode "preload" => load(preload); mode "blank" => SepEfuseImage() unchanged. Mirrors each test's select_efuse_image(...).
+# mode "preload" => load(preload); mode "blank" => SepEfuseImage() unchanged.
+# Mirrors each test's select_efuse_image(...).
 EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
-    # Full-shadow proof + W1S persistence: seed-random with CHIPLET_UID pinned to 0
-    # (the test programs one bit of it after the first sense). Must match the test's
-    # select_efuse_image(fixed={"CHIPLET_UID": 0}).
     # Full-shadow proof + W1S persistence: seed-random with CHIPLET_UID pinned to 0
     # (the test programs one bit of it after the first sense). The disable vectors
     # stay random; feat_ctrl_nonvacuous_fixed() replaces them ONLY on a draw that
@@ -209,10 +207,19 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
     "sep_km_command_set_rand_test": {"mode": "random", "lc_raw": 0x1},
     "sep_km_abr_seed_sideload_test": {"mode": "random", "lc_raw": 0x1},
     "sep_km_abr_mlkem_sideload_test": {"mode": "random", "lc_raw": 0x1},
+    "sep_km_abr_mldsa_kat_test": {"mode": "random", "lc_raw": 0x1},
+    "sep_km_sideload_share_walk_test": {"mode": "random", "lc_raw": 0x1},
     "sep_drbg_real_sink_multi_km_aes_test": {"mode": "random", "lc_raw": 0x1},
     # Spare-field lock x program. Every spare field is pinned 0 so the
     # unlocked-then-lock walk starts from a known-zero field (lock_prob stays 0).
     "sep_efuse_program_lock_matrix_test": {
+        "mode": "random",
+        "lc_raw": 0x0,
+        "fixed_from": "program_lock_spares",
+    },
+    # Same spare-zero image as the lock matrix: the read-back select test
+    # programs bits of one seed-selected spare field.
+    "sep_efuse_program_read_back_select_test": {
         "mode": "random",
         "lc_raw": 0x0,
         "fixed_from": "program_lock_spares",

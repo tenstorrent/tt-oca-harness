@@ -12,34 +12,30 @@ instance, one field at a time, each field set and put straight back to its
 reset with a read-back on either side, and nothing held between fields.** At no
 point is more than one field off its reset value.
 
-**The instance is GPIO 60, and it is idle by construction.** `smc_padring.sv`
-gives a function to every index except 13, 14, 17, 18, 21, 22, 25, 26, 52, 59
-and 60: SPI takes 0-10, the UARTs 11, 12, 15, 16, 19, 20, 23 and 24, I3C 27-36,
-I2C 37-48, and the remaining named pads 49-51 and 53-58 and 61-64 carry boot,
-OCCP, cool reset and the rest. Index 60 is in none of them, `tb_top.sv` never
-names it -- it is not in the testbench's pad table and nothing drives or
-observes it -- and the only `DATA_CTRL` index any other leaf touches is 0.
+**The instance is a pad the integrator table reserves.** The integrator pad
+table (`doc/integrator/meta/ocah_gpio_table.csv`) assigns a function to every
+pad; its row for index 60 reads "Reserved", so no peripheral owns the pad and
+the bench pad table (`tb/tb_top.sv`) names no function on it either. The only
+`DATA_CTRL` index any other leaf writes is 0. The leaf reads the register
+against its RDL reset before it starts and again at the end.
 
-**What the pad does during the cycle: nothing.** `gpio.sv` builds the output
-enable as `lsio_pin ? ~lsio_core2pad_en_ni : sel_reg_tx ? enable_rx_tx[0] :
-lsio_sw ? ~lsio_core2pad_en_ni : 1'b0`, where `lsio_pin` is
-`lsio_interface_select_i && ~lsio_disable` and `sel_reg_tx` is
-`interface_enable || use_reg_tx`. For index 60 the padring leaves both LSIO
-inputs at the defaults it assigns at the top of its comb block --
-`lsio_interface_select_o = '0` and `lsio_core2pad_en_n = DISABLED`, which
-`smc_padring_pkg` defines as `1'b1` -- so `lsio_pin` is 0 and both LSIO
-branches give an output enable of 0. The only branch that can drive the pad is
-`sel_reg_tx && enable_rx_tx[0]`, and that needs **two** fields off their reset
-at once: `enable_rx_tx` and either `interface_enable` or
-`DATA_CTRL_ENABLE.use_reg_tx`. One field at a time is exactly what makes that
-unreachable, so the output enable is 0 at every step of this leaf and the pad
-stays in its reset drive state throughout.
+**What the pad does during the cycle is measured, not assumed.** The GPIO
+ownership table (`hw/ip/gpio/doc/architecture.adoc`, "Data and Direction
+Ownership") gives the transmit enable to the hardware LSIO request first, then
+to `enable_rx_tx[0]` when `interface_enable` or `use_reg_tx` selects the
+register, then to the LSIO inputs when `lsio_select` forces them, and
+otherwise disables it. With one field off its reset at a time the register
+row needs two fields at once and is unreachable, and the bench never raises a
+hardware LSIO request. The `lsio_select` step hands the pad to its LSIO
+inputs, and no document states what the LSIO plane carries on a Reserved pad:
+the bench records that as a DV-owned fact (`RESERVED_PAD_LSIO_TX_ENABLE`) and
+samples the pad's `core2pad_en_o` bit after every write, so a pad that drove
+during any step fails here rather than being argued away.
 
 The order still puts the fields that cannot touch the pad mux first --
 `interrupt_enable`, `interrupt_type`, `core2pad`, `enable_rx_tx` -- then
 `lsio_disable`, which only ever withdraws LSIO ownership, then `lsio_select`
-and `interface_enable` last. The leaf reads the register against its RDL reset
-before it starts and again at the end.
+and `interface_enable` last.
 """
 
 from __future__ import annotations
@@ -47,6 +43,7 @@ from __future__ import annotations
 import cocotb
 
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_pad_table import pad_function
 from .smc_regblock_field_sweep_utils import RegInstance, reg_instances
 
 _DATA_CTRL = (
@@ -56,10 +53,15 @@ _DATA_CTRL = (
     "GPIO_INTF_{index}__DATA_CTRL_REG_ADDR",
 )
 
-# The GPIO index this leaf drives. `smc_padring.sv` assigns no LSIO function to
-# it, `tb_top.sv` never names it, and no other leaf writes a DATA_CTRL but
-# index 0.
+# The GPIO index this leaf drives: a pad the integrator pad table reserves, so
+# no peripheral function owns it. `body` checks the table still says so.
 _INSTANCE = 60
+_INSTANCE_FUNCTION = "Reserved"
+
+# The transmit enable a Reserved pad presents while `lsio_select` hands it to
+# its LSIO inputs. No specification states what the LSIO plane carries on a
+# pad the table reserves; the bench takes it as not driving, and measures it.
+RESERVED_PAD_LSIO_TX_ENABLE = 0
 
 # Fields in the order they are driven: the four that cannot reach the pad mux,
 # then the LSIO ownership fields with `lsio_disable` -- which only withdraws
@@ -87,6 +89,21 @@ class smc_gpio_data_ctrl_field_test_seq(SmcCsrSeq):
         super().__init__(name)
         self.fields_driven = 0
 
+    @staticmethod
+    def _tx_enable() -> int:
+        """The pad's bit of `core2pad_en_o`, mirrored on `tb_core2pad_en_o`."""
+        raw = cocotb.top.tb_core2pad_en_o.value
+        assert raw.is_resolvable, f"tb_core2pad_en_o is X/Z: {raw}"
+        return (int(raw) >> _INSTANCE) & 1
+
+    def _require_pad_idle(self, step: str) -> None:
+        oe = self._tx_enable()
+        assert oe == RESERVED_PAD_LSIO_TX_ENABLE, (
+            f"GPIO {_INSTANCE} core2pad_en_o reads {oe} {step}; the pad drove while this leaf "
+            f"held one DATA_CTRL field off its reset, so the pad did not stay in its reset "
+            f"drive state"
+        )
+
     async def _field_leg(self, inst: RegInstance, name: str, mask: int) -> None:
         reset = inst.reg.reset_word
         word = reset | mask
@@ -94,6 +111,7 @@ class smc_gpio_data_ctrl_field_test_seq(SmcCsrSeq):
 
         await self.csr_write(f"GPIO{_INSTANCE}_{name}_SET", inst.addr, word)
         got = await self.csr_read(f"GPIO{_INSTANCE}_{name}_SET_RB", inst.addr)
+        self._require_pad_idle(f"with {name} set")
         assert got & inst.reg.rw_mask == word & inst.reg.rw_mask, (
             f"GPIO {_INSTANCE} DATA_CTRL after writing {name}: the software-writable bits "
             f"read 0x{got & inst.reg.rw_mask:08x}, 0x{word & inst.reg.rw_mask:08x} was "
@@ -106,6 +124,7 @@ class smc_gpio_data_ctrl_field_test_seq(SmcCsrSeq):
 
         await self.csr_write(f"GPIO{_INSTANCE}_{name}_CLR", inst.addr, reset)
         back = await self.csr_read(f"GPIO{_INSTANCE}_{name}_CLR_RB", inst.addr)
+        self._require_pad_idle(f"after {name} was put back")
         assert back & inst.reg.rw_mask == reset & inst.reg.rw_mask, (
             f"GPIO {_INSTANCE} DATA_CTRL after putting {name} back: the software-writable "
             f"bits read 0x{back & inst.reg.rw_mask:08x}, the RDL reset is "
@@ -115,6 +134,12 @@ class smc_gpio_data_ctrl_field_test_seq(SmcCsrSeq):
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
+
+        function = pad_function(_INSTANCE)
+        assert function == _INSTANCE_FUNCTION, (
+            f"the integrator pad table gives pad {_INSTANCE} the function {function!r}, not "
+            f"{_INSTANCE_FUNCTION!r}; this leaf drives a pad no peripheral owns"
+        )
 
         instances = reg_instances(*_DATA_CTRL)
         assert _INSTANCE < len(instances), (
@@ -136,6 +161,7 @@ class smc_gpio_data_ctrl_field_test_seq(SmcCsrSeq):
             f"RDL reset is 0x{inst.reg.reset_word:08x}, so the instance is not idle and "
             f"something else owns it"
         )
+        self._require_pad_idle("before the first field was written")
 
         for name in _ORDER:
             await self._field_leg(inst, name, by_name[name].mask)
@@ -152,12 +178,14 @@ class smc_gpio_data_ctrl_field_test_seq(SmcCsrSeq):
         assert sb is not None, "no scoreboard on this sequence's env"
 
         cocotb.log.info(
-            "CHK-GPIO-DATA-CTRL-FIELDS: on GPIO instance %d, which the padring gives no "
-            "LSIO function and the testbench never drives, each of the %d software-writable "
+            "CHK-GPIO-DATA-CTRL-FIELDS: on GPIO instance %d, which the integrator pad table "
+            "marks %s and the testbench never drives, each of the %d software-writable "
             "DATA_CTRL fields was set on its own and put straight back to its reset, with "
             "the whole register read after each write; no field was ever set alongside "
-            "another, which is what keeps the pad output enable at 0 throughout, and the "
+            "another, the pad's core2pad_en_o bit read %d after every write, and the "
             "register began and ended at its RDL reset",
             _INSTANCE,
+            function,
             self.fields_driven,
+            RESERVED_PAD_LSIO_TX_ENABLE,
         )

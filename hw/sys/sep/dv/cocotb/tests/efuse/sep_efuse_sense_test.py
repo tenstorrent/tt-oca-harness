@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP eFuse sense + backdoor shadow-readout test (OSS).
+"""The sensed eFuse shadow registers equal the staged OTP image.
 
 Selects an OTP image through the shared eFuse image policy and senses it through
 the behavioral OTP responder. The common sense-done helper compares the sensed
@@ -18,7 +18,7 @@ _MAX_SENSE_CYCLES = 20_000
 
 @pyuvm.test()
 class sep_efuse_sense_test(sep_base_test):
-    """Fuse-sense with backdoor shadow comparison."""
+    """After sense-done every shadow register equals the staged image (backdoor probe compare)."""
 
     # Backdoor-only: no AXI sequencer/scoreboard needed (the shadow probe is
     # read directly), so skip the AXI env -- otherwise its check_phase fails the

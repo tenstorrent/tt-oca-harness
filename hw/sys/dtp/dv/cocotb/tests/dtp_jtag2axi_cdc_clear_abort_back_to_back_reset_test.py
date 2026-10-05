@@ -26,7 +26,12 @@ class dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test(dtp_base_test):
         "CHK-AXI-STREAM-MIN",
         "CHK-RESET-COUNT",
     )
-    axi_checker_target_required_ids = ("CHK-J2A-CDC-CLEAR", "CHK-J2A-ABORT-RECOVERY")
+    axi_checker_target_required_ids = (
+        "CHK-J2A-CDC-CLEAR",
+        "CHK-J2A-CDC-PHASE",
+        "CHK-J2A-ABORT-FSM",
+        "CHK-J2A-ABORT-RECOVERY",
+    )
     axi_checker_stream_minimums = {"smc_axi": 2, "smc_otp": 2, "sep_otp": 2}
 
     async def run_scenario(self) -> None:

@@ -10,12 +10,9 @@ its write-lock is OTP bit (32+k)*2. The same slot map lives in
 ``env/sep_locked_field_irq.py``, which takes the spare count from the generated
 eFuse map.
 
-Walking all nine is what makes the slot numbering falsifiable. Selecting one
-spare per seed samples the lane instead: a lock bit wired to the wrong slot is
-caught only on the run that happens to draw that spare, and reseeding widens the
-sample without ever guaranteeing the set. Ordering the walk also makes it a
-containment proof for free -- spare k+1 is programmed after spare k has been
-locked, so a lock that reached beyond its own slot fails the next iteration.
+Walking all nine spares in order makes the slot numbering falsifiable and the
+walk a containment proof: spare k+1 is programmed after spare k is locked, so a
+lock that reaches beyond its own slot fails the next iteration.
 
 Only the bit offsets within each spare stay seed-selected; which spares are
 visited does not depend on the seed.

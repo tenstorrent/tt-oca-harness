@@ -17,7 +17,7 @@ naming.
     python3 tools/dv/fcov_owners.py --dut smc --run-dir <run dir> --output <adoc>
     python3 tools/dv/fcov_owners.py --dut smc --run-dir <run dir> --output <adoc> --check
 
-Only Verilator databases are read today; the per-leaf `coverage.dat` files are
+Only Verilator databases are read: the per-leaf `coverage.dat` files, which are
 the runner's own inputs to the merge stage.
 """
 

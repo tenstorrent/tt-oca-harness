@@ -322,7 +322,14 @@ Each seed uses the two-share masked layout (two key-share register banks
 whose XOR is the real value, plus a `key_valid` bit) and is write-only to KM
 firmware. The seeds are valid `dest_valid` destinations (bits 4–7), so they
 are targets of `CMD_KEY_TRANSFER` and `CMD_ENGINE_SHRED`, and ROM shreds them
-during the mutable-firmware handover.
+during the mutable-firmware handover. Word order matches the other engines:
+share word `i` is word `i` of the seed the engine consumes, as stated in
+ifdef::backend-html5[]
+xref:sep:adams_bridge.adoc#abr-seed-word-order[ABR seed word order].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<abr-seed-word-order>>.
+endif::backend-pdf[]
 
 *ML-KEM shared-key output (ABR → KM).* ABR computes an ML-KEM shared key and
 presents it to the KM. The interface comprises a 256-bit (8-word) key register

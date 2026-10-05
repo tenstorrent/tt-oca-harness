@@ -188,7 +188,6 @@ class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
     // The raw TMS walks visit Shift-x outside the scans this sequence
     // issues, so the family checker skips the scan-count cross-check.
     attach_family_checker('{"CHK-TAP-GOTO", "CHK-IR-DECODE"}, 1'b0);
-    // Start-of-pass banner: intent, per-pass seed, and randomized volume.
     `uvm_info(get_type_name(),
               $sformatf({"DTP SV-UVM sanity (VPLAN 0.1): FSM 32-edge closure + BYPASS 1-TCK ",
                          "latency + IDCODE + scan path; scenario_seed=%0d rand_walks=%0dx%0d steps"

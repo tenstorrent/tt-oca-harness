@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Entropy-pool aperture: status, pop, write-SLVERR, unmapped, PIC [36]/[37].
+"""Entropy-pool aperture: status, pop, write-SLVERR, unmapped, aggregator bits [36]/[37].
 
 no_cpu host-AXI. The pool fills from the native EDN endpoint after the
 shared entropy bring-up. Empty-pop SLVERR is taken only after at least one
@@ -10,10 +10,14 @@ STALL_THRESH cycles with the pool not full. CHK-STALL-DURATION holds the same
 stall three times past STALL_THRESH and requires [37] and the fill-stall cause
 to stay set. Drain-under-fill is not claimed.
 
+CHK-HALF-READ: a 32-bit read at a register's upper word is refused with RDATA 0
+and does not pop. CHK-WRITE-ORDER: aw-first and w-first writes each get one
+SLVERR and leave the pool level unchanged.
+
 RANDCFG: extra accepted pops come from the run seed. Every seed walks the
 high-bit mirrors of the live registers (the offsets that catch a truncated
-decode) and all three unique-dead offsets. no_cpu / +skip_fuse_sense /
-+esrc_noise_force.
+decode) and all three unique-dead offsets. Run mode: no_cpu with
++skip_fuse_sense and +esrc_noise_force.
 """
 
 from __future__ import annotations
@@ -104,7 +108,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
 
         The pool packs two native EDN beats into each 64-bit word. This record
         is the reference CHK-HALF-READ grades a popped word against. It reads
-        the signed-off ``pool_edn_*`` observation ports and drives nothing.
+        the accepted ``pool_edn_*`` observation ports and drives nothing.
         """
         top = cocotb.top
         while True:
@@ -249,10 +253,10 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             st0,
         )
 
-        # Observe-mode CHK5_pool: this test owns the 0x1095 aperture, not
-        # bit-exact EDN routing (that is sep_esrc_e2e_smoke_test). report()
-        # still gates the >=1-beat floor; a started scoreboard that is never
-        # asked cannot fail.
+        # Observe-mode CHK5_pool: this test owns the entropy-pool aperture
+        # (0x1095_0000), not bit-exact EDN routing (that is
+        # sep_esrc_e2e_smoke_test). report() still gates the >=1-beat floor; a
+        # started scoreboard that is never asked cannot fail.
         capture = cocotb.start_soon(self._capture_pool_beats())
         await self.bring_up_entropy(strict=False, score_km=False, score_sinks={"pool": "observe"})
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
@@ -435,8 +439,8 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         )
 
         # The stall counter saturates at STALL_THRESH and the flag clears only on
-        # forward progress, so holding the same
-        # stall far past the threshold must leave [37] asserted. A counter that
+        # forward progress, so holding the same stall far past the threshold
+        # must leave [37] asserted. A counter that
         # wrapped, or a flag that self-cleared on saturation, would drop the
         # fault here and let a real EDN outage go unreported.
         await ClockCycles(cocotb.top.clk_i, STALL_THRESH * 3)

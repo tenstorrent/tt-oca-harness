@@ -31,7 +31,8 @@ class dtp_base_test_seq extends ocah_sequence;
   `uvm_declare_p_sequencer(dtp_virtual_sequencer)
 
   localparam int unsigned IrWidth = DtpIrWidth;
-  // Cycles the reset ladder holds each reset (cocotb _bring_up parity).
+  // Cycles the reset ladder holds each reset (parity with the cocotb
+  // dtp_base_test.bring_up).
   localparam int unsigned PorHoldCycles = 5;
   localparam int unsigned SysResetHoldCycles = 5;
   localparam int unsigned PostResetCycles = 10;

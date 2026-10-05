@@ -226,13 +226,19 @@ run as part of `occp_rom`; it still builds the harness directly, so it prints no
 
 `--cov` collects native coverage. VCS grades the SV covergroups under
 `cov/sv/` (`cov/config/vcs/`); on Verilator, `cov/config/verilator/coverage_policy.toml`
-grades the `cov/sv` cover properties in the `user` family together with line,
-branch and expression. Neither
+grades the `cov/sv` cover properties in the `user` family and reports line,
+branch and expression beside them. The `user` row is the only threshold in
+either policy: no code-metric family carries a floor, as on DTP and SEP.
+Neither
 scheduled tier collects coverage (`.github/workflows/regress.yml`): the coverage
 regression runs on the licensed flow outside hosted CI. Coverage intent, the
 VPLAN-to-FCOV traceability and the closure policy (public versus commercial
-evidence, structural OUT versus waiver holes, waiver fields) are in
-`docs/SMC_FCOV.adoc`.
+evidence, structural OUT versus waiver holes, waiver fields, who reviews an
+exclusion and what reopens it) are in `docs/SMC_FCOV.adoc`; the class facts
+behind the exclusion files are in `cov/config/vcs/README.md`. The companion's
+SV-UVM bench grades a different top with its own hierarchy file and its own
+exclusion set, which this policy does not read and the runner does not merge
+(`cov/config/vcs/README.md`, "The companion bench's exclusion set").
 
 ```bash
 # Coverage merge accepts one elaboration. `hosted` and `fw` build the default
@@ -257,13 +263,15 @@ leaf set. Use `--dut smc --items all --list` for the catalog.
 | `fw` | firmware class: the fifteen CPU-boot leaves whose image `c_compile` builds |
 | `sanity` | SMC_DUAL class: the three `target = "dual"` leaves enrolled in `all`, each loading a ROM or firmware image |
 | `axil`, `clock`, `combined`, `gpio`, `i2c`, `irq`, `reset`, `uart` | feature subsets of `all` for a local run of one area |
-| `occp_rom` | all 34 BL0/SMC ROM cases; includes the hours-long `smc_occp_dual_unsecure_boot_test` and is run on demand |
+| `occp_rom` | 33 of the 34 BL0/SMC ROM cases (`smc_occp_ring_buffer_stress_test` is left out for runtime); includes the hours-long `smc_occp_dual_unsecure_boot_test` and is run on demand |
 | `occp_boot`, `held_out` | on-demand hold-outs (runtime, or waiting on an RTL fix); not in `all` |
 
 Non-ROM leaves outside `all` are defined in `testlists/holdout.toml`, which
 states why. ROM/OCCP leaves outside `all` are defined in
 `testlists/smc_rom.toml` and selected together with `--items occp_rom`.
-That group runs all 34 ROM cases, including the hours-long unsecure-boot leaf:
+That group runs 33 of the 34 ROM cases, including the hours-long unsecure-boot leaf.
+`smc_occp_ring_buffer_stress_test` is left out for its runtime; run it by name with
+`--items smc_occp_ring_buffer_stress_test`. The group run is:
 
 ```bash
 python3 tools/dv/run_dv.py --dut smc --items occp_rom --tool verilator --regress
@@ -541,6 +549,17 @@ Set `CCACHE_DISABLE=1` for the build, or clear the entry.
 
 **Two builds race** -- the Bender filelist step is shared, so run concurrent
 builds serially.
+
+**`[ocah_path_plusargs] +<name>=<path> is not a readable file`** at time 0 --
+every file-path plusarg the bench consumes (`+rom_hex`, `+rom_bin64`,
+`+smc_scratch_ram_hex`, `+bfm_rom_hex`, ...) is opened before any clock or
+image load, by `ocah_require_file_plusargs` (`hw/common/dv/vip/ocah_lib/uvm/`
+`ocah_path_plusargs.svh`) from `tb/tb_top.sv` and by `require_file_plusargs`
+(`ocah_lib`) from `smc_base_test.build_phase`, so a stale or mistyped path fails
+the run at once rather than minutes in. Fix the path in the testlist entry or
+run mode. `+smc_efuse_hex` is checked by the bench base test and, once reset is
+released, by `efuse_bank_model`; the eFuse image leaves write that file during
+the run, so `tb_top.sv` does not open it at time 0.
 
 PASS/FAIL is classified by the global parser registry
 (`hw/common/dv/configs/parsers.toml`). The cocotb flow requires positive

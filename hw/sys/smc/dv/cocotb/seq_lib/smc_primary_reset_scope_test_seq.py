@@ -34,9 +34,13 @@ observed held for a whole window rather than at one instant:
   start bit, with the pad's output enable asserted) when the reset lands;
   during the window the pad's output enable is released at every sample, so
   the transmitter no longer drives the frame, and after release the UART
-  enable and the ungated clock gate read their reset values. The pad
-  *value* probe cannot carry this claim: ``tb_uart0_tx_from_dut`` mirrors
-  ``core2pad_o``, which a GPIO wrap in reset parks at 0 with its driver off.
+  enable reads its reset value. ``CLOCK_GATE_CONTROL`` is armed before the
+  reset with ``I3C_CG_EN`` set, a field the RDL resets to 0 and whose effect
+  (the I3C clock stopped, its window answering SLVERR) touches nothing this
+  sequence observes; the armed word is read back before the reset and the
+  generated reset word after it. The pad *value* probe cannot carry this
+  claim: ``tb_uart0_tx_from_dut`` mirrors ``core2pad_o``, which a GPIO wrap
+  in reset parks at 0 with its driver off.
 
 The core and peripheral held-state claims are per-sample compares across the
 window, so a consumer released anywhere inside it fails. The fabric has no
@@ -52,8 +56,9 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge, Timer
 from env.smc_reset_item import SmcResetItem, SmcResetOp
 
-from .smc_addr_map import CLOCK_GATE_CONTROL, UART_CG_EN, smc_indexed_addr
+from .smc_addr_map import CLOCK_GATE_CONTROL, I3C_CG_EN, UART_CG_EN, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_pad_table import pad_index
 from .smc_probe_positive_control import _pad_vec
 from .smc_reset_seq_base import SmcResetSeqBase
 
@@ -75,8 +80,8 @@ UART0_THR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RB
 UART0_IER = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR", 0)
 UART0_LCR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR", 0)
 
-# smc_padring.sv gen_uart_connections: UART u drives pad 12 + 4u.
-UART0_TX_PAD = 12
+# The pad UART 0 transmits on, from the integrator pad table.
+UART0_TX_PAD = pad_index("UART[0].TX")
 UART_EN = 0x1
 LCR_DLAB = 0x80
 LCR_8N1 = 0x03
@@ -105,10 +110,10 @@ PAD_SETTLE_REF_CYCLES = 16
 TX_START_BOUND_BIT_TIMES = 3
 CORE_RELEASE_BOUND_SMC_CYCLES = 20000
 
-# 8 UART programming accesses, filter pattern write + readback, three
-# post-reset reads.
-EXPECTED_ACCESSES = 13
-EXPECTED_VALUE_CHECKS = 4
+# CLOCK_GATE_CONTROL read, armed write and readback, 6 UART programming
+# accesses, filter pattern write + readback, three post-reset reads.
+EXPECTED_ACCESSES = 14
+EXPECTED_VALUE_CHECKS = 5
 
 
 class smc_primary_reset_scope_test_seq(SmcResetSeqBase, SmcCsrSeq):
@@ -129,6 +134,7 @@ class smc_primary_reset_scope_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self.awready_high_samples = 0
         self.tx_oe_high_after_settle = 0
         self.rom_count_frozen_from: int | None = None
+        self.cg_armed = 0
 
     async def _dispatch_reset_item(self, item: SmcResetItem) -> None:
         assert self.dispatch_reset is not None, "dispatch_reset not bound by the test"
@@ -180,8 +186,15 @@ class smc_primary_reset_scope_test_seq(SmcResetSeqBase, SmcCsrSeq):
 
     async def _arm_uart_mid_frame(self) -> None:
         dut = cocotb.top
-        cg = await self.csr_read("UART_CG_SAVE", CLOCK_GATE_CONTROL)
-        await self.csr_write("UART_UNGATE", CLOCK_GATE_CONTROL, cg & ~UART_CG_EN)
+        cg = await self.csr_read("CLOCK_GATE_SAVE", CLOCK_GATE_CONTROL)
+        cg_armed = (cg & ~UART_CG_EN) | I3C_CG_EN
+        assert cg_armed != (SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_REG_DEFAULT & 0xFFFF_FFFF), (
+            f"CLOCK_GATE_CONTROL armed word 0x{cg_armed:08x} equals the generated reset; the "
+            f"post-reset read could not tell a reverted register from an untouched one"
+        )
+        await self.csr_write("CLOCK_GATE_ARM", CLOCK_GATE_CONTROL, cg_armed)
+        await self.csr_read("CLOCK_GATE_ARMED", CLOCK_GATE_CONTROL, expected=cg_armed)
+        self.cg_armed = cg_armed
         await self.csr_write("UART0_EN", UART0_CTRL, UART_EN)
         await self.csr_write("UART0_LCR_DLAB", UART0_LCR, LCR_8N1 | LCR_DLAB)
         await self.csr_write("UART0_DLL", UART0_THR, UART_DIVISOR & 0xFF)
@@ -359,10 +372,13 @@ class smc_primary_reset_scope_test_seq(SmcResetSeqBase, SmcCsrSeq):
         cocotb.log.info(
             "CHK-PRIMARY-RESET-PERIPHERALS-HELD: UART0 was mid-frame (TX pad %d driven low, output "
             "enable asserted) when the cool reset landed; the output enable read 0 at every sample "
-            "after the first %d clk_ref_i cycles of the window; UART0 CTRL and CLOCK_GATE_CONTROL "
-            "read their generated resets afterwards",
+            "after the first %d clk_ref_i cycles of the window; UART0 CTRL read its generated "
+            "reset afterwards and CLOCK_GATE_CONTROL, armed to 0x%08x (I3C_CG_EN set) and read "
+            "back so before the reset, read its generated reset 0x%08x",
             UART0_TX_PAD,
             PAD_SETTLE_REF_CYCLES,
+            self.cg_armed,
+            SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_REG_DEFAULT & 0xFFFF_FFFF,
         )
         for line in self._timeout_paths:
             cocotb.log.info("CHK-TIMEOUT-PATHS: %s", line)

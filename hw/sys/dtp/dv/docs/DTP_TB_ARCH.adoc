@@ -201,9 +201,9 @@ through `OcahAxiConfig.bus()` at each bus's real geometry.
 |===
 |DUT Interface |`tb_top` Handling
 |JTAG TAP |`u_jtag_if` (`ocah_jtag_if`): the shared JTAG master drives tck/tms/trst_n/tdi, the DUT drives tdo/tdo_oen
-|SMC fabric AXI4 |`+axi_smc_dbg_*+` structs flattened onto `u_smc_axi_slave_if` (responder) and mirrored onto `u_m_axi_if` (monitor); real geometry ID 2 / ADDR 56 / DATA 64 / USER 12 in the VIP configs; on an R beat the responder answers with SLVERR or DECERR, the DUT and the monitor see the port's `dtp_tb_if` errored-beat word in place of the responder's data
+|SMC fabric AXI4 |`+axi_smc_dbg_*+` structs flattened onto `u_smc_axi_slave_if` (responder) and mirrored onto `u_m_axi_if` (monitor); real geometry ID 2 / ADDR 56 / DATA 64 / USER 12 in the VIP configs; on an R beat the responder answers with SLVERR or DECERR, the DUT and the monitor see the port's `dtp_tb_if` errored-beat word in place of the responder's data; `tb_top` drives BUSER and RUSER from a per-channel LFSR that steps on that channel's handshake, and drives RLAST low while RVALID is low
 |Debug disables |One named `dtp_tb_if.dbg_disable_<field>` member per `dbg_disable_i` path (init 1 = fail-closed), bound by field name into the typed `sep_lifecycle_ctrl_pkg::dbg_disable_t` that `tb_top` forwards to `dbg_disable_i`; cocotb deposits the members by name and SV-UVM writes them through `dtp_tb_if.drive_dbg_disable`; base bring-up drives the all-clear/full-debug startup vector and tests assert disables explicitly. The path-to-field binding is the "DTP debug-disable paths" table of `hw/sys/dtp/doc/jtag.adoc`; SV-UVM holds it once, as `dtp_dbg_path_e` with `dtp_dbg_path_set` / `dtp_dbg_path_disabled` in `uvm/env/dtp_types.svh`, and every driven vector and every gating prediction starts from a path
-|JTAG2AXI bridge state |`dtp_tb_if.<target>_fsm_idle`, `<target>_fsm_write_path`, `<target>_fsm_read_path`, `<target>_op_pending` and the sticky `<target>_cdc_clear_seen` per bridge, driven by `tb_top` from the bridges' TCK-domain state machines (decoded by state name) and pending registers and the `axi_cdc_clearable` instance's `src_clear_pending_o` through the hierarchical references the coverage instance uses; `cdc_clear_seen_clear` clears the sticky flags. cocotb reads them through `DtpTbIf.bridge_fsm_state`, `bridge_op_pending` and `cdc_clear_seen`; SV-UVM through the JTAG2AXI base sequence's functions of the same names. The `dtp_j2a_state_flags` instance `tb_top` binds into each bridge, which decodes those states, also hands the coverage instance the transaction each bridge's state machine completes, its SINGLE_OP update with the scanned op field, its synchronized disable, and its CDC clear with what the clear discards
+|JTAG2AXI bridge state |`dtp_tb_if.<target>_fsm_idle`, `<target>_fsm_write_path`, `<target>_fsm_read_path`, `<target>_op_pending` and the sticky `<target>_cdc_clear_seen` per bridge, driven by `tb_top` from the bridges' TCK-domain state machines (decoded by state name) and pending registers and the `axi_cdc_clearable` instance's `src_clear_pending_o` through the hierarchical references the coverage instance uses; `cdc_clear_seen_clear` clears the sticky flags. The phase of the CDC clear sequences, `j2a_cdc_aclk_clear`, `j2a_cdc_aclk_wait_clear_phase_ack`, `j2a_cdc_aclk_post_clear` and `j2a_cdc_aclk_finished` for the ACLK-side initiator and `j2a_cdc_tck_dst_wait_ack` and `j2a_cdc_aclk_dst_wait_ack` for the four-phase receivers in `WAIT_DOWNSTREAM_ACK`, read by `tb_top` from the smc_axi bridge's AW crossing; the bridges' controllers share `rst_n_i`, `clk_i`, TCK and the TAP's Test-Logic-Reset, so that crossing's phase is every crossing's phase. cocotb reads them through `DtpTbIf.bridge_fsm_state`, `bridge_op_pending` and `cdc_clear_seen`; SV-UVM through the JTAG2AXI base sequence's functions of the same names. The `dtp_j2a_state_flags` instance `tb_top` binds into each bridge, which decodes those states, also hands the coverage instance the transaction each bridge's state machine completes, its SINGLE_OP update with the scanned op field, its synchronized disable, and its CDC clear with what the clear discards
 |BSR |Looped back; the chain controls mirrored onto `dtp_scan_if`
 |iJTAG SIB host chains |One `prim_jtag_scan_reg` instrument stub per SIB (4, 5, 6 bits behind secure DFT, non-secure DFT, DFD) that captures its own update register, so open-SIB subsets have distinct chain lengths and a written value reads back on the next scan; the chain controls and host scan outputs mirrored onto `dtp_scan_if`
 |STAP host ports |Loopback (`tdi <- tdo`) by default; `dtp_scan_if.stap_<x>_ds_en` splices the downstream `u_stap_<x>_ds_if` TAP behind the port for the STAP-selection and zero-length-bypass scenarios; the forwarded TAP pins mirrored onto `dtp_scan_if`, with a per-port flag that records whether the forwarded TMS differed from the primary TMS at the last rising TCK edge, which the forwarding windows require to stay low, and a per-port count of forwarded TRST assertions, which the STAP-selection scenarios require to stay flat across the gate
@@ -320,11 +320,12 @@ transaction on the lane of its port. The bridge model follows the jtag2axi
 update, capture, and completion rules (single-operation rejection while
 pending, the series address and read budget per CTRL programming, the
 byte-lane placement of series transfers, the queued requests a completion
-drops while the bridge is disabled, reset on Test-Logic-Reset) and applies
-completions at the capture or update that follows them, so a capture during
-a shift sees the state of its own Capture-DR; a capture inside the CDC
-settle window after a completion carries no contract; the series read-data
-FIFO is not predicted. Each feature ends the run as one `CHK-SB-<FEATURE>`
+drops while the bridge is disabled, reset on Test-Logic-Reset, where the
+requests already on the fabric complete as orphans the AXI side consumes)
+and applies completions at the capture or update that follows them, so a
+capture during a shift sees the state of its own Capture-DR; a capture
+inside the CDC settle window after a completion carries no contract; the
+series read-data FIFO is not predicted. Each feature ends the run as one `CHK-SB-<FEATURE>`
 record through the shared evidence recorder; a required feature with zero
 comparisons fails, and so does any item left unpaired.
 
@@ -426,7 +427,7 @@ each scenario pass from its per-pass seed.
 [cols=",",options="header",]
 |===
 |Area |Strategy
-|Smoke |Verify TAP FSM traversal and IDCODE readout through focused JTAG tests
+|Smoke |Verify one basic scenario per feature area: TAP FSM traversal and IDCODE readout, TMP_STATUS readback, an iJTAG scan with every SIB open, an SMC fabric JTAG2AXI write and read-back, and CTP wire-OR routing
 |Basic JTAG |Verify primary TAP instruction decode, bypass variants, reset behavior, and compact BSR loopback smoke behavior
 |Debug TDR |Verify TMP_STATUS, IC_RESET, DEBUG_CONTROL, JTAG_CAPS, and JTAG2AXI_CAPS with decoded logs, deterministic loops, seeded random patterns, and read-only sweeps
 |JTAG2AXI write |Shift a single-op write request, poll completion, check the responder memory
@@ -500,7 +501,9 @@ corrupted addresses so the scoreboard pairing fails against the observed bus,
 `DTP_J2A_GEOMETRY_NEGATIVE` corrupts the expected address size of the per-pass
 CAPS comparison,
 `DTP_J2A_BUS_REQ_NEGATIVE` corrupts the address each `CHK-J2A-BUS-REQ` record
-expects, and
+expects,
+`DTP_J2A_ORPHAN_NEGATIVE` flips bit 0 of the value each `CHK-J2A-ORPHAN-*`
+record expects, and
 `DTP_J2A_STATUS_BIT_NEGATIVE` leaves the with-status fault beat unarmed while
 its expectation stands; a run with any of them set must fail. The same
 knob names are environment variables in cocotb and plusargs in SV-UVM.

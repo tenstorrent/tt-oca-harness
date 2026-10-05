@@ -24,10 +24,10 @@ void smc_scratchpad_init(void) {
      * already cleared in assembly for async reset safety */
 }
 
-void smc_scratchpad_set_manifest_offset(uint32_t manifest_addr) {
+void smc_scratchpad_set_manifest_offset(uint64_t manifest_addr) {
     /* Validate address is within accessible SRAM bounds (excluding ROM regions) */
     if (manifest_addr < SMC_SRAM_OCCP_BASE_ADDR || manifest_addr >= SMC_SRAM_STACK_LIMIT_ADDR) {
-        simputshex32("Invalid manifest address - out of accessible SRAM range: ", manifest_addr);
+        simputshex64("Invalid manifest address - out of accessible SRAM range: ", manifest_addr);
         simputshex32("Valid accessible SRAM range: ", SMC_SRAM_OCCP_BASE_ADDR);
         simputshex32("Valid SRAM limit: ", SMC_SRAM_STACK_LIMIT_ADDR);
         /* Write invalid offset to indicate error */

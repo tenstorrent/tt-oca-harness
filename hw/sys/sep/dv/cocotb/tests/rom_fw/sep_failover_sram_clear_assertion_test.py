@@ -115,9 +115,9 @@ from sep_reg_meta import sym
 # 0x1000_0000. From the RDL export, not a literal, so the test cannot drift from
 # the address the ROM's SRAM_BASE macro resolves to.
 _SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
-# prim_ram_1p_adv Depth for u_sep_sram: 256 KiB / 8 B (hw/top/sep_ip_integration.sv:148).
-_SRAM_WORDS = 32768
+# u_sep_sram word width (sep_sram memwidth = 64).
 _WORD_BYTES = 8
+_SRAM_WORDS = sym("SEP_SRAM_MEM_SIZE") // _WORD_BYTES
 _LAST_WORD = _SRAM_WORDS - 1
 
 # Hierarchy from cocotb.top (= sep_uvm_top) down to the macro's storage array.

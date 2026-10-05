@@ -5,7 +5,6 @@
 // SHA-256 software reference (public-domain implementation by Brad Conte,
 // brad AT bradconte.com, "presented as is"). Used as the golden reference the
 // dma_hash test compares the Secure-DMA inline-SHA hardware digest against.
-// Identical API to the reference suite fw/sep/tests/common/sha256 so the test ports 1:1.
 
 #ifndef SEP_SHA256_H
 #define SEP_SHA256_H

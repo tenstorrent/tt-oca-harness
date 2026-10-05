@@ -7,8 +7,9 @@ CPU-LSU master programs inbound FILTER_CONFIG allow-entries, then the EXTERNAL
 SMN master (m_axi, the only path through u_inbound_filter) probes them:
   * allowed address (covered by the entry, read_allowed/write_allowed set, src_id
     match) -> the access traverses the filter and reaches the SEP-local CSR
-    -> OKAY + exact value (no inbound global-to-local remap sits inside this
-    DUT, so the external master presents the SEP-local address);
+    -> OKAY + exact value (the external master presents the SEP-local address;
+    u_inbound_global_to_local_addr_remap passes addresses outside the global
+    window unchanged);
   * any other address (block-by-default) -> the filter's err-slave ->
     DECERR, and the read data is not the value staged at that address;
   * clearing read_allowed/write_allowed flips the matched read/write to DECERR.
@@ -91,10 +92,9 @@ RESP_SLVERR = 2
 RESP_DECERR = 3
 
 
-# Entry count from the generated export, not a literal: the bank is an RDL
-# array (`inbound_filter_ctrl[16]`), and a sequence that carries its own number
-# goes stale the moment the array changes. disable_all() must clear every entry
-# or a leftover allow window survives a walk that assumes it cleared them.
+# Entry count from the generated export (`inbound_filter_ctrl[16]`).
+# disable_all() must clear every entry or a leftover allow window survives a
+# walk that assumes it cleared them.
 INFILT_N_ENTRIES = indexed_block_count("INBOUND_FILTER_CTRL")
 WALK_ENTRIES = (0, 7)
 ALLOW_MODES = (("rw", True, True), ("r", True, False), ("w", False, True))
@@ -115,10 +115,10 @@ BURST_ALLOW_SPAN = 0x2000
 # --- same-page 4 KB widen -----------------------------------------------------
 # axi_filter_wrap.sv rewrites an allow_burst=1 window whose START and END share a
 # 4 KB page to that whole page, and traffic_filter.sv then compares only
-# addr[ADDR_WIDTH-1:12]. memory_map.adoc packs distinct blocks of the SEP System
-# aperture at that same 4 KB pitch -- DMA CSR 0x1080_0000, WDT 0x1080_1000, the
-# dual scratch banks 0x1080_2000 -- so a grant that crossed the page edge would
-# reach a neighbouring block.
+# addr[ADDR_WIDTH-1:12]. `hw/sys/sep/doc/memory_map.adoc` packs distinct blocks of
+# the SEP System aperture at that same 4 KB pitch -- DMA CSR 0x1080_0000, WDT
+# 0x1080_1000, the dual scratch banks 0x1080_2000 -- so a grant that crossed the
+# page edge would reach a neighbouring block.
 PAGE_SHIFT = 12
 PAGE_SIZE = 1 << PAGE_SHIFT
 GRANULE_BYTES = 1 << DBW_RO_VAL
@@ -226,11 +226,20 @@ class SepInboundFilterCfg:
         return INFILT_BASE + self.entry * FILTER_STRIDE + FILTER_END_ADDR
 
     def config_word(
-        self, *, read_allowed: bool, write_allowed: bool, allow_burst: bool = False
+        self,
+        *,
+        read_allowed: bool,
+        write_allowed: bool,
+        allow_burst: bool = False,
+        allow_ns: bool = True,
     ) -> int:
         """FILTER_CONFIG lo: entry_enabled + allow_ns + src_id + per-dir enables.
-        Never sets the locked (woset) bit, so the entry stays reprogrammable."""
-        v = F_ENTRY_ENABLED | F_ALLOW_NS | (self.src_id << F_SRC_ID_LSB)
+        Never sets the locked (woset) bit, so the entry stays reprogrammable.
+        ``allow_ns`` is an equality match on prot[1], not a grant: False makes
+        the entry match secure transactions only."""
+        v = F_ENTRY_ENABLED | (self.src_id << F_SRC_ID_LSB)
+        if allow_ns:
+            v |= F_ALLOW_NS
         if read_allowed:
             v |= F_READ_ALLOWED
         if write_allowed:
@@ -255,7 +264,7 @@ class SepInboundFilterMatrixCfg:
     and one src-mismatch cell (src_id=5 / user=0xA, both allows set).
     Continuous knobs (window values) come from the run seed so a failing seed
     reproduces the staged data. Entry 0 / window A / rw / match-all is always
-    first so the allow-rule proof line still appears.
+    first, so the allow-rule proof line comes first in the log.
     """
 
     def __init__(
@@ -270,9 +279,7 @@ class SepInboundFilterMatrixCfg:
 
     @classmethod
     def from_seed(cls, seed: int) -> "SepInboundFilterMatrixCfg":
-        # Seed-reproducible by requirement: `--stage sim --seed N` must replay
-        # the exact stimulus. These are AXI payload words written to a
-        # simulated DUT, never secrets.
+        # Seed-reproducible: `--stage sim --seed N` replays the exact stimulus.
         rng = SepSeededRng(seed)
         va = rng.getrandbits(32) or TARGET_VALUE
         vb = rng.getrandbits(32) or WINDOW_B_VALUE
@@ -445,6 +452,7 @@ class SepInboundFilter(SepAxiRegDriver):
         allow_burst: bool = False,
         end_addr: int | None = None,
         expect_page_widen: bool = False,
+        allow_ns: bool = True,
     ) -> None:
         """Program the inbound filter entry.
 
@@ -482,7 +490,10 @@ class SepInboundFilter(SepAxiRegDriver):
         await self._wr(
             cfg.cfg_addr,
             cfg.config_word(
-                read_allowed=read_allowed, write_allowed=write_allowed, allow_burst=allow_burst
+                read_allowed=read_allowed,
+                write_allowed=write_allowed,
+                allow_burst=allow_burst,
+                allow_ns=allow_ns,
             ),
         )
 

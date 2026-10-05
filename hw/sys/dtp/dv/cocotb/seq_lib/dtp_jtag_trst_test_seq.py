@@ -4,11 +4,15 @@
 
 TRST_N is asynchronous: the TAP is in Test-Logic-Reset as soon as the pin is
 low, before any TCK edge, and stays there through TCK cycles with TMS low,
-which would otherwise leave Test-Logic-Reset. After release a single TMS-low
-step reaches Run-Test/Idle and a DR scan with no instruction load reads the
+which would otherwise leave Test-Logic-Reset. Each pass asserts it once from
+every other TAP state, in a seeded order. After release a single TMS-low step
+reaches Run-Test/Idle and a DR scan with no instruction load reads the
 device-identification register the reset selected over the instruction loaded
-before it. Every comparison lands as named ``CHK-*`` evidence through the
-family checker, finalized once per pass.
+before it. The path ``goto_tap_state`` takes to Update-IR leaves Capture-IR
+with no Shift-IR, and that update itself selects IDCODE, so from Update-IR
+only the two reset checks tell a working reset from a broken one. Every
+comparison lands as named ``CHK-*`` evidence through the family checker,
+finalized once per pass.
 """
 
 from __future__ import annotations
@@ -78,12 +82,8 @@ class dtp_jtag_trst_test_seq(dtp_jtag_base_test_seq):
             },
         )
 
-        states = [
-            DtpTapState.RUN_TEST_IDLE,
-            DtpTapState.SHIFT_IR,
-            DtpTapState.SHIFT_DR,
-            rng.choice([DtpTapState.CAPTURE_IR, DtpTapState.CAPTURE_DR]),
-        ]
+        states = [state for state in DtpTapState if state != DtpTapState.TEST_LOGIC_RESET]
+        rng.shuffle(states)
 
         trst_cycles: list[int] = []
         idcode_ok = 0
@@ -93,12 +93,15 @@ class dtp_jtag_trst_test_seq(dtp_jtag_base_test_seq):
             trst_cycles.append(cycles)
             idcode_ok += int(recovered)
 
+        non_reset_states = len(DtpTapState) - 1
         checker.expect_true(
             "CHK-NONVAC",
-            len(set(states)) == len(states) and min(trst_cycles) >= 2 and idcode_ok == len(states),
+            len(set(states)) == non_reset_states
+            and min(trst_cycles) >= 2
+            and idcode_ok == non_reset_states,
             context=(
-                f"start_states={len(set(states))} "
-                f"trst_cycles={trst_cycles} idcode_recovered={idcode_ok}/{len(states)}"
+                f"start_states={len(set(states))}/{non_reset_states} "
+                f"trst_cycles={trst_cycles} idcode_recovered={idcode_ok}/{non_reset_states}"
             ),
         )
         await self.finalize_family_checker()

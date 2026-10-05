@@ -66,6 +66,8 @@ class SepAxiAccessSeq(uvm_sequence):
         user: int = 0,
         burst: int | None = None,
         axi_id: int = 0,
+        prot: int | None = None,
+        attrs: dict[str, int] | None = None,
     ) -> None:
         super().__init__(name)
         self._op = op
@@ -95,14 +97,19 @@ class SepAxiAccessSeq(uvm_sequence):
         self._expect_error = expect_error
         # Packed AWUSER/ARUSER (inbound FILTER_CONFIG.src_id matches user[3:0]).
         self._user = user
-        # AXI AxBURST. None = VIP default (single beat).
+        # AXI AxBURST. None keeps the VIP default (INCR).
         self._burst = burst
-        # AXI AxID. Default 0 matches every pre-existing caller.
+        # AXI AxID. Default 0.
         self._axi_id = axi_id
+        # AxPROT, and the lock/cache/qos/region/wuser attributes. None and an
+        # empty dict keep the VIP defaults (SepAxiItem.prot / .attrs).
+        self._prot = prot
+        self._attrs = dict(attrs or {})
         self.rdata: int = 0
         self.resp_ok: bool = False
         self.resp_code: int = -1
         self.resp_list: tuple[int, ...] = ()
+        self.resp_id: int | None = None
         self.timed_out: bool = False
 
     async def body(self) -> None:
@@ -120,10 +127,13 @@ class SepAxiAccessSeq(uvm_sequence):
         item.user = self._user
         item.burst = self._burst
         item.axi_id = self._axi_id
+        item.prot = self._prot
+        item.attrs = dict(self._attrs)
         await self.start_item(item)
         await self.finish_item(item)
         self.rdata = item.rdata
         self.resp_ok = item.resp_ok
         self.resp_code = item.resp_code
         self.resp_list = item.resp_list
+        self.resp_id = item.resp_id
         self.timed_out = item.timed_out

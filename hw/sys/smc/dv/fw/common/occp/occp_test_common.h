@@ -42,10 +42,11 @@
 #define MAX_OCCP_READ_SIZE 2047
 
 // Standardized OCCP test address range
-#define SMC_SRAM_BASE_ADDR 0xC0060000ULL
+#define SMC_SRAM_BASE_ADDR ((uint64_t)SMC_TOP_SPM_MEMORY_BASE_ADDR)
 #define OCCP_TEST_BASE_ADDR 0xC0066400ULL              // First OCCP-accessible SRAM address
 #define OCCP_TEST_BUFFER_SAFE_UPPER_ADDR 0xC0157000ULL // Exclusive bound for random test addresses
-#define OCCP_TEST_UPPER_ADDR 0xC0160000ULL             // End of SRAM, exclusive
+#define OCCP_TEST_UPPER_ADDR \
+    (SMC_SRAM_BASE_ADDR + SMC_TOP_SPM_MEMORY_SIZE) // End of SRAM, exclusive
 
 // OCCP Command definitions
 typedef enum {

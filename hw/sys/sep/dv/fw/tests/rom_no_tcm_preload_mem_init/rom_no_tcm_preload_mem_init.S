@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+/* Boot-ROM-resident image with no TCM preload. It proves DCCM access from ROM,
+ * stages a PASS routine in SEP SRAM, copies it to ICCM by secure DMA and jumps
+ * to it. */
+
 .option norvc
 .option norelax
 

@@ -15,6 +15,10 @@ state, each paired with a privileged access as its positive control:
   * SWEEP -- each of the eight AxPROT requirement values is programmed in turn
     and every AxPROT value is then driven against it on both halves; only the
     value equal to the requirement is admitted, every other one is refused.
+    Each refused write carries the word that would move the requirement to
+    its own AxPROT value, so a write that landed would re-target the filter
+    and the readback with the admitted value would differ from the
+    programmed word.
     The RDL describes the requirement fields as "only allow accesses with this
     prot value", and the filter compares the whole 3-bit field, so the
     admitted set is exactly one value, not a privilege threshold.
@@ -141,8 +145,11 @@ class smc_gpio_filter_access_sep_test_seq(SmcCsrSeq):
         Each requirement value is programmed with a write the previous
         requirement admits, then all eight AxPROT values are driven on both
         halves: the read and the write whose AxPROT equals the requirement must
-        succeed, every other one must be refused, and a readback with the
-        admitted value proves the refused writes left the register unchanged.
+        succeed, every other one must be refused. A refused write carries the
+        filter word for its own AxPROT value, the value the register would
+        hold had the write landed, so the readback with the admitted value
+        that closes each requirement distinguishes a refused write from one
+        that took effect.
         Returns the AWPROT value the filter admits when the sweep ends.
         """
         admitted = 0
@@ -159,7 +166,7 @@ class smc_gpio_filter_access_sep_test_seq(SmcCsrSeq):
                     admitted += 2
                 else:
                     await self._read_denied_decerr(f"{tag}_RD", addr, prot=prot)
-                    await self._write_denied(f"{tag}_WR", addr, word, prot=prot)
+                    await self._write_denied(f"{tag}_WR", addr, self._filter_word(prot), prot=prot)
                     denied += 2
             await self.csr_read(
                 f"GPIO0_FILTER_REQ{requirement}_AFTER", addr, expected=word, prot=requirement
@@ -167,7 +174,9 @@ class smc_gpio_filter_access_sep_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-GPIO-FILTER-SWEEP: GPIO0 ACCESS_FILTER admitted %d and refused %d "
             "accesses over %d requirement values x %d AxPROT values on both halves; "
-            "each requirement admits exactly the AxPROT value equal to it",
+            "each requirement admits exactly the AxPROT value equal to it, and the "
+            "register still read the programmed word after refused writes that "
+            "carried a different requirement",
             admitted,
             denied,
             len(_PROT_VALUES),

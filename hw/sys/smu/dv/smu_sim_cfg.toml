@@ -61,7 +61,42 @@ extra_ignore_patterns = [
   'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_crypto\.u_key_manager_s3c_scan\..*: at time',
   'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_dma_wrap\.(u_secure_dma|gen_alert_receivers)\b.*: at time',
 ]
-extra_hard_fail_patterns = ['assert_bad_ext_(wr|rd)_ack: started at .* failed at [1-9]']
+# A guard per ignore class whose firings keep to a known window, in the form SEP
+# (`sep_sim_cfg.toml`) and SMC (`smc_sim_cfg.toml`) use for `abr_reg`. The
+# runner reads `hard_fail_patterns` before `ignore_patterns`
+# (`tools/dv/runlib/logparse.py`), so a guard here overrides the ignore it pairs
+# with, and a firing outside the window fails the run.
+#
+# In the entropy source and the EDN endpoints any assertion firing after time 0
+# fails the run, except two that do so whatever the DUT does. AssertConnected_A
+# is an ASSERT_INIT_NET, an immediate assert after `#1ps` in an initial block,
+# so it reports at 1 ps. The entropy source's SHA-256 whitener is a SHA-256-only
+# prim_sha2_32, whose ValidDigestModeFlag_A fires whenever it hashes.
+#
+# The SPI host, key manager and secure DMA checks fire only on the X of the
+# first microsecond, so their guards start at ten digits of femtoseconds, where
+# the SPI host's ignore stops.
+#
+# The eFuse token processing's ValidDigestModeFlag_A and otbn_rnd's
+# UrndNoReseedOnReset_A have no guard: no window separates their firings from
+# a real event. The first fires whenever a SHA-256-only token instance hashes.
+# The second fires on every clock edge that asserts OTBN's flop-generated
+# reset, because its `disable iff` reads the current reset and its property
+# the sampled one.
+#
+# The `abr_reg` class takes no time bound: on this SEP=1 profile the ABR
+# datapath is not exercised and the assertion fires at time 0 and again after
+# reset release, which the first pattern below still catches on the
+# companion timestamped line. Narrowing its ignore in time would fail every
+# run rather than guard it.
+extra_hard_fail_patterns = [
+  'assert_bad_ext_(wr|rd)_ack: started at .* failed at [1-9]',
+  'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_crypto\.u_sep_trng\.(?!.*\.(AssertConnected_A|ValidDigestModeFlag_A):).*(: at time [1-9]|failed at [1-9])',
+  'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_crypto\.u_axis_edn_(crypto|pool)_s3c_scan\.(?!.*\.AssertConnected_A:).*(: at time [1-9]|failed at [1-9])',
+  'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_io\.u_sep_ot_spi_wrap\.u_spi_host\..*: at time \d{10,}',
+  'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_crypto\.u_key_manager_s3c_scan\..*(: at time|failed at) \d{10,}',
+  'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_dma_wrap\.(u_secure_dma|gen_alert_receivers)\b.*(: at time|failed at) \d{10,}',
+]
 
 [native.stages.clean]
 kind = "clean"
@@ -102,6 +137,8 @@ incdirs = [
   "hw/sys/smu/dv/tb",
   # ocah_fcov_macros.svh, included by the cov/sv functional-coverage modules.
   "hw/common/assert",
+  # ocah_path_plusargs.svh, the file-path plusarg guard tb_wrapper_top runs at time 0.
+  "hw/common/dv/vip/ocah_lib/uvm",
 ]
 stubs = [
   # Stand-in for the ocah_prim prim_sync3 cell, emitted ahead of the Bender
@@ -207,7 +244,7 @@ policy_file = "hw/sys/smu/dv/cov/config/verilator/smu_wrapper_coverage_policy.to
 # directory this DUT never compiles into, so design_db names the database the
 # profile writes. cov/config/vcs/README.md explains the scope file and how a
 # finished run is read.
-# `smu_wrapper_cov_scope.hier` is written by gen_smu_cov_scope.py beside it;
+# `smu_wrapper_cov_scope.hier` is written by the companion's gen_smu_cov_scope.py;
 # regenerate it after a build, then `--rebuild`.
 # Two DUTs share this dv tree, so the policy is named per DUT rather than
 # discovered at cov/config/vcs/coverage_policy.toml.

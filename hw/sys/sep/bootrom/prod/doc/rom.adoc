@@ -322,11 +322,9 @@ SEP↔SMC interface contract (`sep_smc_interface.h`).
 (<<sec:straps>>).
 |`CHIP_CONFIG_CHIP_ID` |`0x2908` |Chip identification, diagnostic only ([S12]).
 |`CHIP_CONFIG_LC_STATE` |`0x290C` |SMC-side lifecycle mirror (low 4 bits); informational.
-|SMC CPU_CTRL scratch registers |`0x10100 + 8·index` |Coordination protocol
+|SMC CPU_CTRL scratch registers |`0x39080 + 8·index` |Coordination protocol
 (<<tbl:smc_scratch>>).
-|SMC fuse map: chiplet ID / package ID |`0xB008` / `0xB028` |8×32-bit words each; manifest
-usage-constraint identity checks ([S23]).
-|`DFX_CTRL_STATUS_SMU` |`0xF800` |Memory-repair/MBIST completion gate (<<sec:smc_sync>>).
+|`DFX_CTRL_STATUS_SMU` |`0xB800` |Memory-repair/MBIST completion gate (<<sec:smc_sync>>).
 |SMC SRAM |`0x60000` |1 MiB shared memory: status ring buffer; manifest/payload staging for
 recovery and secondary boot.
 |SMC `CPU_CTRL_RESET_CTRL` |`0x39020` |Written only on invalid LC state to hold all SMC cores
@@ -739,7 +737,7 @@ outbound path to the SMC responds before the boot flow depends on it. Mismatch i
 |[S08] fuse sense |`smc_fuse_sense_done` polled to completion (<<sec:fuses>>). Unconditional,
 and ahead of every fuse consumer in the flow.
 |[S09] clocks |`pll_init()`: if the `bl0_pll_clk` strap is clear, stay on the 100 MHz
-reference clock. If set: read the target sysclk frequency from the `smu_pll_sysclk` fuse
+reference clock. If set: read the target sysclk frequency from the `SYSCLK_FREQ_MHZ` fuse
 field (blank fuses fall back to refclk with a warning), poll PLL lock detect, then switch the
 clock mux to the PLL. The resulting sysclk frequency parameterizes the SPI clock divider
 (<<sec:spi>>). The PLL and the mux are SMC-owned; SEP has none of its own.
@@ -1055,7 +1053,7 @@ before fuse sensing has completed. Completion is indicated by
 timeout (the accepted BL0 hang failure mode, SEP-ROM-CPU-080).
 
 The poll is a discrete stage ([S08]) that runs unconditionally, ahead of every fuse consumer:
-the `smu_pll_sysclk` read in [S09], the lifecycle state in [S11], `SBOOT_DIS` and the disable
+the `SYSCLK_FREQ_MHZ` read in [S09], the lifecycle state in [S11], `SBOOT_DIS` and the disable
 vectors in [S18], and the
 key digests, revocation bits, security version and identity fields read during manifest
 validation. The ROM does not rely on sensing having completed before the SEP core reset
@@ -1069,7 +1067,7 @@ fail open.
 === Lifecycle State ([S11])
 
 The 4-bit lifecycle state is read from the low nibble of `SEP_EFUSE_MAP_LC_STATE`
-(`0x1093_0008`).
+(`0x1093_000C`).
 
 [[tbl:lc_states]]
 .Lifecycle states
@@ -1183,6 +1181,9 @@ derivation, chiplet scope. The ROM never reads it; it read-locks it before hand-
 Read-locked, never read ([SEP-ROM-HOFF-030]).
 |`SYS_UID` |`0x1093014C` |256 b |*Secret.* Per-device key-derivation seed, system scope.
 Read-locked, never read ([SEP-ROM-HOFF-030]).
+|`SEP_CHIPLET_ID` / `SEP_SIP_ID` / `SEP_SYS_ID` |`0x10930280` / `0x109302A0` / `0x109302C0`
+|256 b each |Device identity compared against the manifest's chiplet / package / system ID
+usage constraints ([S23], [SEP-ROM-MAN-040]). Public; the ROM does not lock them.
 |===
 
 [NOTE]
@@ -1208,7 +1209,7 @@ map SMC SRAM at different addresses).
 === Scratch-Register Protocol
 
 [[tbl:smc_scratch]]
-.SMC scratch registers used in the SEP↔SMC protocol (offset `0x10100 + 8·index` in the SMC window)
+.SMC scratch registers used in the SEP↔SMC protocol (offset `0x39080 + 8·index` in the SMC window)
 [width="100%",cols="10%,20%,15%,55%",options="header"]
 [grid=rows]
 [frame=ends]
@@ -1267,7 +1268,7 @@ success.
 === Memory-Repair / DFT Gate ([S03])
 
 [[req-SEP-ROM-SMC-030]]*[SEP-ROM-SMC-030]* The ROM shall not proceed past [S03] unless memory
-repair completed successfully: `DFX_CTRL_STATUS_SMU` (SMC window offset `0xF800`) bit 1
+repair completed successfully: `DFX_CTRL_STATUS_SMU` (SMC window offset `0xB800`) bit 1
 (`mem_repair_success`) set. On failure the ROM shall dump the raw status to scratch[10], emit
 a `MBIST_FAIL` warning, and then fail fatally (`ROM_ERR_DFT_GATE_BLOCKED`, `0xD001`) *unless*
 the `mem_repair_bypass` strap (`STRAPS_LO[13]`) is set, in which case boot continues with the
@@ -1330,11 +1331,13 @@ NOR flash. 0 = secondary: manifest+payload delivered by the SMC (I3C → SMC SRA
 failure (<<sec:smc_sync>>).
 |`status_report_disable` |`STRAPS_LO[21]` |1 = skip status ring-buffer initialization;
 status codes still go to `cold_scratch[1]`.
-|`boot_recovery` |`STRAPS_HI[23]` (abs. 55) |1 = recovery mode: even a primary chiplet
-ignores SPI and waits for a manifest from SMC SRAM.
-|`bl0_pll_clk` |`STRAPS_HI[24]` (abs. 56) |1 = initialize the PLL from fuses; 0 = stay on
-the 100 MHz reference clock.
-|`rotate_update` |`STRAPS_HI[29]` (abs. 61) |1 = swap the primary/backup manifest slot order
+|`boot_recovery` |`STRAPS_LO[19]` |1 = recovery mode: even a primary chiplet ignores SPI and
+waits for a manifest from SMC SRAM.
+|`bl0_pll_clk` |`STRAPS_LO[20]` |1 = initialize the PLL from fuses; 0 = stay on the 100 MHz
+reference clock.
+|`mbist_bypass` |`STRAPS_HI[22]` |1 = ignore the power-on MBIST verdict at the pre-C
+memory-health gate (<<sec:smc_sync>>).
+|`rotate_update` |`STRAPS_HI[26]` |1 = swap the primary/backup manifest slot order
 for this boot (<<sec:retry>>).
 |===
 
@@ -1706,8 +1709,9 @@ tabulated in <<sec:security_inventory>>.
 * *Bounds:* manifest (4096 B) plus payload must fit in SEP SRAM; `payload_offset` must be
   positive and place the payload beyond the manifest (no overlap); all arithmetic is
   overflow-checked.
-* *Usage constraints:* `selector_bits` enables per-word identity comparisons against the SMC
-  fuse map (chiplet/package ID) and lifecycle/version-range windows. The device's LC state
+* *Usage constraints:* `selector_bits` enables per-word identity comparisons against the SEP
+  efuse map (`SEP_CHIPLET_ID` / `SEP_SIP_ID` / `SEP_SYS_ID`, <<tbl:fuse_fields>>) and
+  lifecycle/version-range windows. The device's LC state
   must map to a set bit in the applicable `lifecycle_*_states` mask (mapping per
   <<tbl:lc_states>>). [[req-SEP-ROM-MAN-040]]*[SEP-ROM-MAN-040]* A selected constraint whose
   device-side value cannot be read shall fail the check — "unavailable" is a failure, never a
@@ -2730,7 +2734,7 @@ register and confirm every lock bit is set ([S26]). Failure to confirm is fatal
 All six are secrets, the UIDs no less than the keys and tokens. Each UID is the per-device
 secret seed the Key Manager derives keys from, so a UID that leaks compromises every key
 derived from it. A UID is *not* an identifier — the non-secret per-part identifiers are the
-ID fuses (`CHIPLET_ID`, `SIP_ID`, `SYSTEM_ID`), which a manifest binds to
+ID fuses (`SEP_CHIPLET_ID`, `SEP_SIP_ID`, `SEP_SYS_ID`), which a manifest binds to
 (<<sec:manifest>>) and which are not read-locked. All six locked fields declare the same
 `sw=rw, onwrite=woset, hw=r` properties in `sep_efuse_map.rdl`, so one SET-only write latches
 them together.

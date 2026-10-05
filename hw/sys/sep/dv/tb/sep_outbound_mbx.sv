@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP outbound mailbox responder + firmware-console monitor for the OSS flow.
 //
@@ -10,10 +11,10 @@
 // firmware has opened the SEP outbound filter.
 //
 // This module is a minimal always-ready AXI subordinate (so the firmware's
-// stores/loads never stall) plus a write-channel monitor that mirrors the reference suite
-// internal env decode: it assembles console characters
-// (byte-strobe stores) and latches fw_done/fw_pass on the magic sequence. The
-// decoded signals are surfaced to cocotb through tb_top.
+// stores/loads never stall) plus a write-channel monitor. The monitor
+// assembles console characters (byte-strobe stores) and latches
+// fw_done/fw_pass on the magic sequence. tb_top surfaces the decoded signals
+// to cocotb.
 
 `timescale 1ps / 1fs
 
@@ -72,9 +73,8 @@ module sep_outbound_mbx
     resp_o.r.last   = (r_beats_q == 9'd1);
   end
 
-  // Debug: surface the first handful of outbound writes so a first-run console
-  // miss (e.g. an unexpected post-filter address) is diagnosable from the log
-  // without a rebuild.
+  // Log the first 40 outbound writes, so a console decode miss (e.g. an
+  // unexpected post-filter address) shows in the log.
   int unsigned dbg_cnt;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin

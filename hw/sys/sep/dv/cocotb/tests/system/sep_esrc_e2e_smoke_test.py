@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP ESRC -> DRBG -> CSRNG -> EDN -> KM entropy alive smoke (PyUVM).
+"""Entropy from ESRC reaches the KM through DRBG, CSRNG and EDN, and every stage matches its golden.
 
 Proves the real entropy datapath produces genbits that the Key Manager actually
-CONSUMES, with NO force on the DRBG/EDN -- only the permitted ESRC raw-noise force
+consumes, with no force on the DRBG/EDN -- only the permitted ESRC raw-noise force
 (+esrc_noise_force) that makes the ring oscillators alive under Verilator. Bring-up
-follows reference suite order via the reusable sep_esrc_bringup_seq API: select internal DRBG,
+uses the order of the reusable sep_esrc_bringup_seq API: select internal DRBG,
 configure ESRC (generators off), enable CSRNG, stage EDN commands, start the
 generators, wait for a seed, then enable EDN last.
 
@@ -20,13 +20,14 @@ genbits word (a real tvalid && tready handshake) and store it to KM SRAM word0.
 This is a positive-evidence alive smoke (no vacuous pass): the force is proven to
 have taken (lane-0 DUT noise_i tracks the driven bit), a seed is accumulated, the
 CSRNG CTR_DRBG produces genbits, the KM consumes a word (post-mux tvalid && tready
-handshake) AND lands it in KM SRAM, and CSRNG/EDN err_code + recov_alert are zero.
+handshake) and lands it in KM SRAM, and CSRNG/EDN err_code + recov_alert are zero.
 On top of the alive checks, the CHK1..CHK5 golden-vs-probe scoreboard
-(sep_drbg_scoreboard + sep_entropy_golden) runs bit-exact and STRICT: decorrelator
+(sep_drbg_scoreboard + sep_entropy_golden) runs bit-exact and strict: decorrelator
 SR -> BIW+SHA whitener -> 384b seed -> CTR_DRBG genbits -> EDN/KM beats, each stage
 the golden input to the next, every stage compared against its DUT probe. CHK5_pool
-scores mux endpoint [2] (AXIS2 == pool native EDN beats). The 0x1095 FIFO drain is
-not this smoke.
+scores mux endpoint [2] (AXIS2 == pool native EDN beats). This smoke does not
+drain the entropy-pool aperture (0x1095_0000); sep_entropy_pool_aperture_test
+owns it.
 
 Closed read path (+esrc_fifo_closed). hw/ip/entropy_source/doc/architecture.adoc:
 ``FIFO_CTRL.ENABLE`` gates only the FIFO write, so the DRBG seed stream continues
@@ -119,7 +120,7 @@ class _SeedPortTap:
 
 @pyuvm.test()
 class sep_esrc_e2e_smoke_test(sep_base_test):
-    """Bring up the real entropy stack and prove genbits reach + are consumed by the KM."""
+    """The KM consumes a genbits word and stores it, and the CHK1..CHK5 scoreboard passes."""
 
     async def run_scenario(self) -> None:
         closed = CLOSED_PLUSARG in cocotb.plusargs
@@ -142,13 +143,13 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
         await self.bring_up_no_cpu()
         tap = _SeedPortTap(cocotb.top) if closed else None
 
-        # Shared entropy bring-up: starts the STRICT CHK1..CHK5 scoreboard (report()
+        # Shared entropy bring-up: starts the strict CHK1..CHK5 scoreboard (report()
         # fails on any stage mismatch; CHK2 actual data = AXI frontdoor FIFO_RDATA
         # by default, the FIFO input tap in the closed mode), drives the ESRC
-        # noise, and runs the reference suite config order through EDN-enable.
+        # noise, and runs the sep_esrc_bringup_seq config order through EDN-enable.
         # CHK5_pool golden: the entropy FIFO already pulls mux endpoint [2] from
         # reset, so this smoke also proves AXIS2==pool native routing. This smoke
-        # does not drain the 0x1095_0000 FIFO aperture.
+        # does not drain the entropy-pool aperture (0x1095_0000).
         await self.bring_up_entropy(cfg, strict=True, score_sinks={"pool": "golden"})
 
         # Release the KM only after the initial TRNG reset/reinitialization. Its

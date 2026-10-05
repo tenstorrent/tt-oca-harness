@@ -315,29 +315,37 @@ class OcahJtagMasterDriver:
         self._current_instruction = instruction
         self.log.debug("%s: sync_model state=%s", self.name, self._state.name)
 
-    async def assert_trst(self, *, tck_cycles: int = 1) -> None:
-        """Assert the bound TRST net and run ``tck_cycles`` TCK cycles with TMS high.
+    async def assert_trst(self, *, tck_cycles: int = 1, tms: int = 1) -> None:
+        """Assert the bound TRST net and run ``tck_cycles`` TCK cycles with TMS at ``tms``.
 
-        The tracked state becomes Test-Logic-Reset and the tracked instruction
-        is cleared.
+        TMS high is the Test-Logic-Reset self-loop. TMS low never enters
+        Test-Logic-Reset through those clocks, so only the reset can put the
+        controller there. The tracked state becomes
+        Test-Logic-Reset and the tracked instruction is cleared.
         """
-        await self._trst_level(asserted=True, tck_cycles=tck_cycles)
+        await self._trst_level(asserted=True, tck_cycles=tck_cycles, tms=tms)
 
-    async def release_trst(self, *, tck_cycles: int = 0) -> None:
-        """Release the bound TRST net, then run ``tck_cycles`` TCK cycles with TMS high."""
-        await self._trst_level(asserted=False, tck_cycles=tck_cycles)
+    async def release_trst(self, *, tck_cycles: int = 0, tms: int = 1) -> None:
+        """Release the bound TRST net, then run ``tck_cycles`` TCK cycles with TMS at ``tms``."""
+        await self._trst_level(asserted=False, tck_cycles=tck_cycles, tms=tms)
 
-    async def _trst_level(self, *, asserted: bool, tck_cycles: int) -> None:
+    async def _trst_level(self, *, asserted: bool, tck_cycles: int, tms: int) -> None:
         if not hasattr(self.bus, "trst"):
             raise OcahJtagMasterDriverError(f"{self.name}: no TRST net is bound")
         self._drive_trst(asserted=asserted)
         for _ in range(max(int(tck_cycles), 0)):
-            await self._cycle(1, 0)
+            await self._cycle(int(tms) & 0x1, 0)
         if asserted:
             self._state = OcahJtagState.TEST_LOGIC_RESET
             self._current_instruction = None
             self._stats_resets += 1
-        self.log.debug("%s: trst asserted=%s tck_cycles=%d", self.name, asserted, int(tck_cycles))
+        self.log.debug(
+            "%s: trst asserted=%s tck_cycles=%d tms=%d",
+            self.name,
+            asserted,
+            int(tck_cycles),
+            int(tms) & 0x1,
+        )
 
     async def goto_state(self, state) -> None:
         """Navigate to a TAP state using a shortest TMS path."""

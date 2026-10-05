@@ -23,6 +23,7 @@
 //
 // This file is NOT standalone-compilable; it exists only for inclusion
 // inside the sep_uvm_top module header.
+
 // Clocks (driven by cocotb)
 `SEP_TB_IN_FIRST(logic, clk_i)
 `SEP_TB_IN(logic, clk_wdt_i)
@@ -74,7 +75,7 @@
 `SEP_TB_OUT(logic, jtag_ic_reset_tdo_o)
 // LC differential-integrity error inject. Default 0. When 1, tb forces a broken
 // pair onto the LCC decoder input (no legal OTP image can present one). See
-// the force block below.
+// the force block in tb_top.sv.
 `SEP_TB_IN(logic, lc_sigint_inject_i)
 // Token-comparator redundancy fault inject. Default 0. Encoding:
 //   3'b000 off
@@ -95,7 +96,7 @@
 //          a unanimous legal pair raises no fault, not that any particular
 //          token compares a particular way.
 // No legal token/OTP image can break the three identical compare cones. See
-// the force block below.
+// the force block in tb_top.sv.
 `SEP_TB_IN(logic [2:0], token_cmp_fault_inject_i)
 // Which token comparator the inject hits. Default 0.
 //   2'b00 RMA_SIP  2'b01 RMA_CHIPLET  2'b10 SEC_DISABLE
@@ -107,12 +108,12 @@
 // broken codeword onto the host-adapter command-integrity decoder input
 // (software cannot emit a bad TL-UL user code). The checker
 // still gates on a_valid, so a DMA-issued command is required. See the
-// force block below.
+// force block in tb_top.sv.
 `SEP_TB_IN(logic, dma_host_intg_inject_i)
 // HMAC message-FIFO drain stall. Default 0. When 1, tb holds the FIFO's read
 // side idle so the hash engine stops consuming and the FIFO fills. A port rather
 // than a plusarg so a test can raise it after the ROM's short self-test hash.
-// See the force block below.
+// See the force block in tb_top.sv.
 `SEP_TB_IN(logic, hmac_fifo_drain_stall_i)
 
 // ------------------------------------------------------------------
@@ -172,7 +173,7 @@
 // ------------------------------------------------------------------
 // Flat SMN-inbound external AXI manager (cocotbext-axi AxiMaster, prefix
 // m_axi). This is the DUT's REAL external inbound port (smn_inbound_axi_*,
-// sep_56_64_6_12: addr56/data64/id6/user12) — a true frontdoor master on a
+// sep_56_64_6_12: addr56/data64/id6/user12) -- a true frontdoor master on a
 // real DUT port. Unlike the CPU-LSU splice (s_axi), which attaches to the
 // internal LSU bus, this path traverses the SEP inbound filter
 // (u_inbound_filter), which is block-by-default and is skipped
@@ -263,7 +264,8 @@
 // CPU firmware-boot controls/observables (driven/read by cocotb in the
 // `+cpu_boot` run mode; left at 0 by the no-CPU smoke tests).
 // ------------------------------------------------------------------
-`SEP_TB_IN(logic [31:1], rst_vec_i)  // desired reset PC[31:1] for JTAG TDR setup
+// Desired reset PC[31:1], driven to the wrapper's rst_vec input.
+`SEP_TB_IN(logic [31:1], rst_vec_i)
 `SEP_TB_IN(logic, i_cpu_run_req_i)  // async run request to the core
 `SEP_TB_IN(logic, tcm_load_i)  // strobe: backdoor-load TCM image
 // WDT reset INPUT to the DUT (a real sep primary input). Default-driven 1
@@ -309,7 +311,7 @@
 // the dual-CPU eFuse-mux coexistence test can read the EL2 firmware's measured
 // summary (host loop count + KM-contention error counters) with no AXI master
 // -- the EL2 owns the LSU bus under +cpu_boot. The cold block survives the KM
-// warm reset. Mirrors the reference UVM observer's uvm_hdl_read of the same registers.
+// warm reset.
 `SEP_TB_OUT(logic [255:0], scratch_cold_probe_o)
 // Read-only XMRs observe the loaded manifest header and three decrypted AES
 // payload blocks. The CPU owns the SRAM frontdoor during firmware boot, so
@@ -317,6 +319,13 @@
 // the AXI ready/valid combinational cones.
 `SEP_TB_OUT(logic [63:0], sram_word0_probe_o)
 `SEP_TB_OUT(logic [383:0], sram_payload_probe_o)
+// The ML-KEM seed Z words inside the Adams Bridge engine (the scratch copy the
+// ML-KEM KEYGEN reads). Software cannot read Z back, and after a KV seed read
+// the decapsulation key reads as zero, so this read-only XMR is the only view of
+// the Z a KV read delivered. Word i occupies bits [32*i +: 32]. Zero in a build
+// without Adams Bridge. Owners: sep_km_sideload_share_walk_test,
+// sep_km_abr_mlkem_sideload_test.
+`SEP_TB_OUT(logic [255:0], abr_mlkem_seed_z_probe_o)
 // Count of SEP->SMC accesses that landed outside every register window the
 // generated SMC map declares. Non-zero means the ROM used an offset this
 // design does not implement -- see the SMC address decode check in tb_top.
@@ -388,6 +397,10 @@
 // signature: the adapter has accepted nothing and no channel can retire.
 `SEP_TB_OUT(logic [5:0], drbg_csrng_axil_chan_o)  // CSRNG lane adapter port
 `SEP_TB_OUT(logic [5:0], drbg_edn_axil_chan_o)  // EDN lane adapter port
+// {ar_valid, aw_valid | w_valid} on each DUT lane adapter's AXI-Lite-32 side:
+// the adapter presents a request to its TL-UL bridge.
+`SEP_TB_OUT(logic [1:0], drbg_csrng_fwd_o)
+`SEP_TB_OUT(logic [1:0], drbg_edn_fwd_o)
 
 // Port-level arbitration vehicle for drbg_axil64_lane_adapter.
 //
@@ -421,6 +434,10 @@
 `SEP_TB_OUT(logic [63:0], tbadp_r_data_o)
 `SEP_TB_OUT(logic [1:0], tbadp_b_resp_o)  // BRESP: OKAY vs the unsupported-access SLVERR
 `SEP_TB_OUT(logic [1:0], tbadp_r_resp_o)  // RRESP: same, for the read leg
+// {ar_valid, aw_valid | w_valid} on the vehicle's AXI-Lite-32 side: the
+// adapter presents a downstream request. An unsupported access must leave both
+// bits low, because the adapter answers it itself and forwards nothing.
+`SEP_TB_OUT(logic [1:0], tbadp_fwd_o)
 `SEP_TB_OUT(logic, km_entropy_tvalid_o)  // CHK5: post-mux EDN->KM tvalid (entropy_muxed_req[0])
 `SEP_TB_OUT(logic [31:0], km_entropy_tdata_o)  // CHK5: post-mux EDN->KM tdata word
 `SEP_TB_OUT(logic, km_entropy_tready_o)  // CHK5: KM tready (entropy_muxed_rsp[0]) -> real handshake
@@ -438,8 +455,8 @@
 // (sep_crypto.entropy_muxed_req[1]). This is the authoritative ordered word
 // sequence the adapter hands to the crypto endpoints; with a single active
 // crypto sink the adapter is in-order so AES's post-adapter beats equal this
-// stream 1:1, and each word is also chained to the CHK4 genbits golden. Mirrors
-// the reference suite's hw_axis1_* tap. Read-only XMR, no force.
+// stream 1:1, and each word is also chained to the CHK4 genbits golden.
+// Read-only XMR, no force.
 `SEP_TB_OUT(logic, axis1_tvalid_o)  // entropy_muxed_req[1].tvalid
 `SEP_TB_OUT(logic, axis1_tready_o)  // entropy_muxed_rsp[1].tready
 `SEP_TB_OUT(logic [31:0], axis1_tdata_o)  // entropy_muxed_req[1].tdata (32b word)
@@ -447,7 +464,7 @@
 // stream (entropy_muxed_req[2]); pool_edn_* is the post-adapter native EDN
 // handshake into sep_entropy_fifo (one client, so AXIS2==pool beats in order).
 // Observation-only XMR, no force. No frontdoor equivalent of the 32-bit EDN
-// beat -- the 0x1095 aperture is a packed 64-bit drain, Phase 3 FIFO consume.
+// beat -- the 0x1095 aperture is a packed 64-bit FIFO drain.
 `SEP_TB_OUT(logic, axis2_tvalid_o)  // entropy_muxed_req[2].tvalid
 `SEP_TB_OUT(logic, axis2_tready_o)  // entropy_muxed_rsp[2].tready
 `SEP_TB_OUT(logic [31:0], axis2_tdata_o)  // entropy_muxed_req[2].tdata (32b word)
@@ -490,21 +507,35 @@
 // IP-interrupt aggregator: observation-only mirror of the NUM_INTERNAL_IRQS-bit
 // sep_internal_interrupts vector that sep.sv assembles and feeds to the VeeR
 // PIC. The IP->aggregator test injects each CSRNG/EDN INTR_TEST and watches the
-// mapped bit here. Mirrors the reference sep_irq_probe_if wire-tap of
-// sep_interrupts[idx]; read-only XMR, no force (same class as the probes above).
+// mapped bit here. Read-only XMR, no force (same class as the probes above).
 `SEP_TB_OUT(logic [sep_pkg::NUM_INTERNAL_IRQS-1:0], sep_internal_interrupts_probe_o)
 // Saturating count of cycles where CPU-LSU and DMA simultaneously present an
 // SRAM request on the same local-crossbar address channel.
 `SEP_TB_OUT(logic [31:0], dma_cpu_sram_overlap_count_o)
+// SPI-to-DMA transmit pacing, observation-only: the OpenTitan SPI host
+// transmit-FIFO depth, the SPI trigger bit at the secure DMA input, and the
+// DMA STATUS.busy flop. No CSR shows the trigger or the FIFO depth while the
+// DMA moves data, so the DMA-TX test reads them here to grade the refill
+// pacing (owner `sep_spi_ot_dma_tx_test`).
+`SEP_TB_OUT(logic [7:0], spi_tx_qd_probe_o)
+`SEP_TB_OUT(logic, spi_lsio_trigger_probe_o)
+`SEP_TB_OUT(logic, dma_busy_probe_o)
+// W handshakes at the AXI-Lite port of each fabric remap/filter slot register
+// block in sep_system_csr: saturating count of all beats, saturating count of
+// beats with non-zero data on a byte lane whose WSTRB bit is 0, and one sticky
+// bit per slot for the second kind. Slot order: alias [15:0], AP [31:16],
+// STEE [47:32], outbound filter [79:48], inbound filter [95:80].
+`SEP_TB_OUT(logic [31:0], fabric_slot_w_beats_o)
+`SEP_TB_OUT(logic [31:0], fabric_slot_w_fill_beats_o)
+`SEP_TB_OUT(logic [95:0], fabric_slot_w_fill_seen_o)
 // The production SEP debug-bus output, exposed read-only for lane-packing checks.
 `SEP_TB_OUT(logic [383:0], ext_debug_bus_o)
 `SEP_TB_OUT(logic [15:0], efuse_debug_bus_o)
 // System-CSR AXI4-Lite AR/AW handshakes after axi_to_axi_lite
 // (sep_system_peripherals_xbar u_system_csr_a2l_1). Observation-only.
 // fabric.adoc "convert burst to single" is this bridge. The external master
-// sees AxLEN=1;
-// Lite has no AxLEN, so the split is not a frontdoor CSR. Addr is the
-// local 32 bits (scratch is in the 32-bit map). Outside the tb s_axi /
+// sees AxLEN=1; Lite has no AxLEN, so the split is not a frontdoor CSR. Addr
+// is the local 32 bits (scratch is in the 32-bit map). Outside the tb s_axi /
 // m_axi ready/valid cones.
 `SEP_TB_OUT(logic, sys_csr_axil_arvalid_o)
 `SEP_TB_OUT(logic, sys_csr_axil_arready_o)
@@ -575,7 +606,8 @@
 `SEP_TB_OUT(logic [1:0], lcc_demote_state_2_probe_o)
 `SEP_TB_OUT(logic, lcc_demote_lock_1_probe_o)
 `SEP_TB_OUT(logic, lcc_demote_lock_2_probe_o)
-// The packed 64-bit sep_efuse_map_lc_disable_reg_t feature-control vector, read-only XMR.
+// The packed 64-bit sep_efuse_map_lc_disable_reg_t feature-control vector,
+// read-only XMR.
 `SEP_TB_OUT(logic [63:0], lcc_feat_ctrl_probe_o)
 // Each dbg_disable_o bit as its own DUT-output port (frontdoor). Checkers
 // read these by name so a packed-struct reorder cannot swap two same-case
@@ -601,8 +633,8 @@
 // WDT bite reset request: a REAL `sep` output port (sep.sv wdt_timer_rst_req_o,
 // asserted when the WDT count reaches BITE_THOLD). Brought out so the
 // reset/WDT sanity test (`sep_reset_wdt_sanity_test`) can observe the bite ->
-// reset-request edge. This
-// is a DUT output (frontdoor), not an internal-signal probe.
+// reset-request edge. This is a DUT output (frontdoor), not an
+// internal-signal probe.
 `SEP_TB_OUT(logic, wdt_timer_rst_req_o)
 // SMC-facing mailbox interrupt: a REAL `sep` output port
 // (sep.sv smc_mailbox_interrupt_o, fed by the mailbox block's

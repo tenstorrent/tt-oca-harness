@@ -4,8 +4,9 @@
 
 Drives the SEP outbound_mailbox_0 aperture (0x10A0_0000) over the CPU-LSU master, the SEP side
 of the two-port cross-FIFO, with no inbound filter. WRITE_DATA pushes the TX FIFO as one native
-64-bit beat per entry (``memory_map.adoc``). READ_DATA pops the RX FIFO; with no peer port wired
-it is empty and returns the 0xFEEDDEAD sentinel with SLVERR. 32-bit CSRs use 4-byte beats.
+64-bit beat per entry (``hw/sys/sep/doc/memory_map.adoc``). READ_DATA pops the RX FIFO; with no
+peer port wired it is empty and returns the 0xFEEDDEAD sentinel with SLVERR. 32-bit CSRs use
+4-byte beats.
 
 Register constants and the golden depth model are in env/sep_mbox_golden.py.
 """
@@ -59,10 +60,11 @@ class SepMbox(SepAxiRegDriver):
         await self.test.start_seq(seq)
         return seq.resp_code
 
-    # --- RX FIFO pop (READ_DATA; empty on bare-sep -> SLVERR) ---------------
+    # --- RX FIFO pop (READ_DATA; empty in this testbench -> SLVERR) --------
     async def pop64(self, *, expect_error: bool = False) -> tuple[int, int]:
-        """Pop a 64-bit entry via READ_DATA. On bare-sep the RX FIFO is empty, so this
-        returns (SLVERR, 0xFEEDDEAD); expect_error tolerates that. Returns (resp, data)."""
+        """Pop a 64-bit entry via READ_DATA. In this testbench (no peer driver) the RX
+        FIFO is empty, so this returns (SLVERR, 0xFEEDDEAD); expect_error tolerates
+        that. Returns (resp, data)."""
         seq = SepAxiAccessSeq(
             "mbox_pop64",
             op=SepAxiOp.READ,

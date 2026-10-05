@@ -14,7 +14,7 @@ Contract:
 
 Buses:
   * CONTROL (CPU-LSU, ``s_axi``, unfiltered): reads FEAT_CTRL with an exact
-    ``expected`` value and writes DEMOTE_1 to move PROD -> PROD_DBG_1.
+    ``expected`` value and writes DEMOTE_1 to relax DBG_1 in PROD.
   * EXTERNAL (SMN-inbound, ``m_axi``, filtered): ``SepExtAxiProbeSeq`` issues one
     read; a blocked access is proven by DECERR, and a timeout is fatal by default.
 """
@@ -70,10 +70,8 @@ class SepLccFeatCtrlCheckSeq(uvm_sequence):
 class SepLccDemoteSeq(uvm_sequence):
     """Write DEMOTE_{1,2} on the CONTROL bus and read it back.
 
-    The two demote registers act independently, each on its own debug group:
-    DEMOTE_1 relaxes DBG_1 ([23:0]) and DEMOTE_2 relaxes DBG_2 ([47:24]). Which
-    register this sequence drives is therefore load-bearing, not a detail -- so
-    it is a parameter rather than being baked into the class.
+    DEMOTE_1 relaxes DBG_1 ([23:0]) and DEMOTE_2 relaxes DBG_2 ([47:24]);
+    ``group`` selects which one this sequence drives.
 
     ``group`` is 1 or 2. ``value`` is the demote and/or lock bits (W1S). When
     ``lock`` is set, ``demote.swwe`` is 0 and a later demote write is ignored

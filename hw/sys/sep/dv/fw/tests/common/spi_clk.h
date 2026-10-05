@@ -13,11 +13,10 @@
  *
  * Target = 25 MHz. The divider is coarse at a 100 MHz core (only clkdiv=0 -> 50
  * MHz or clkdiv=1 -> 25 MHz are reachable, nothing between), and 50 MHz is too
- * fast @800: spi_ot_dual_spi reads the RX FIFO while rdata_o is X
+ * fast @800: a dual-SPI read samples the RX FIFO while rdata_o is X
  * (prim_fifo_sync DataKnown_A). 25 MHz is the highest CONSTANT SCLK that is safe
  * for all OT tests at both frequencies: clkdiv=15 -> 800/32 = 25 MHz @800,
- * clkdiv=1 -> 100/4 = 25 MHz @100. Well within the modeled flash devices'
- * rating (S25FL064L 108 MHz, W25Q128JV 104 MHz).
+ * clkdiv=1 -> 100/4 = 25 MHz @100. Well within the flash model's rated clock.
  *
  * SPI tests should use eFuse/shadow preloads whose sysclk_freq_mhz value matches
  * the simulated core clock. If unset (0), helpers fall back to the 100 MHz

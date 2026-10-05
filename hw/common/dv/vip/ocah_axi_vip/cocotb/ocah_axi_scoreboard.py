@@ -6,12 +6,12 @@ Composes the protocol-neutral ``ocah_checker.OcahChecker`` evidence core per the
 contract in ``hw/common/dv/docs/vip-checker-model.adoc``. Pure Python (no cocotb
 imports) so the mechanics are validated simulator-free.
 
-Expected-vs-unexpected non-OKAY classification generalizes the SEP pattern:
-tests arm response credits (``arm_expected_resp``); a completed transaction whose
-worst response consumes a matching credit is *expected* (``CHK-AXI-RESP-EXPECTED``),
-any other non-OKAY fails the plain ``CHK-AXI-RESP`` comparison against the
-reference-model policy. Unconsumed credits fail at finalization
-(``CHK-AXI-CREDITS``) so an armed error that never happened is also a failure.
+Non-OKAY responses are classified as expected or unexpected. Tests arm response
+credits (``arm_expected_resp``); a completed transaction whose worst response
+consumes a matching credit is *expected* (``CHK-AXI-RESP-EXPECTED``), any other
+non-OKAY fails the plain ``CHK-AXI-RESP`` comparison against the reference-model
+policy. Unconsumed credits fail at finalization (``CHK-AXI-CREDITS``) so an armed
+error that never happened is also a failure.
 """
 
 from __future__ import annotations
@@ -208,7 +208,7 @@ class OcahAxiScoreboard:
         """Release commit slots whose requests a reset ended without a completion.
 
         Replay skips a voided slot, so completions that took later slots are
-        no longer held behind it.
+        not held behind it.
         """
         state = self._stream(stream)
         for order in sorted(int(order) for order in orders):
@@ -262,9 +262,9 @@ class OcahAxiScoreboard:
         model = state.model or self.model
         prediction = self._predict(model, item)
 
-        # Declarative blocked-region policy: a transaction observed inside a
-        # blocked region is a violation regardless of its response — the whole
-        # point is that it must never reach the subordinate. Always fails.
+        # Blocked-region policy: a transaction inside a blocked region must
+        # never reach the subordinate, so observing one is a violation
+        # whatever its response.
         if prediction is not None and prediction.blocked:
             self.evidence.expect_equal(
                 CHK_BLOCKED,
@@ -335,7 +335,7 @@ class OcahAxiScoreboard:
                 state.checks += 1
 
     # ------------------------------------------------------------------
-    # Expected-vs-unexpected non-OKAY (generalizes SEP arm_expected_decerr)
+    # Expected-vs-unexpected non-OKAY
     # ------------------------------------------------------------------
 
     def arm_expected_resp(

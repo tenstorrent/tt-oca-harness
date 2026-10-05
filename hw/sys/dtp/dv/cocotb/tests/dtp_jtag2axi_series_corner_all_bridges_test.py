@@ -17,12 +17,23 @@ class dtp_jtag2axi_series_corner_all_bridges_test(dtp_base_test):
     use_axi_scoreboard = True
     axi_checker_required_ids = (
         "CHK-AXI-RESP",
+        "CHK-AXI-RESP-EXPECTED",
+        "CHK-AXI-RDATA",
+        "CHK-AXI-STRB",
+        "CHK-AXI-WMEM",
         "CHK-AXI-COMPLETION",
+        "CHK-AXI-CREDITS",
         "CHK-AXI-STREAM-MIN",
+        "CHK-AXI-NONVAC",
+        "CHK-RESET-COUNT",
     )
     axi_checker_target_required_ids = (
         "CHK-J2A-SERIES-ADDR",
         "CHK-J2A-FAULT-STATUS",
+        "CHK-J2A-ERR-RDATA",
+        "CHK-J2A-CDC-CLEAR",
+        "CHK-J2A-ABORT-FSM",
+        "CHK-J2A-ABORT-RECOVERY",
     )
     axi_checker_stream_minimums = {"smc_axi": 2, "smc_otp": 2, "sep_otp": 2}
 

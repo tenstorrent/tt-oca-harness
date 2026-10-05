@@ -16,6 +16,7 @@ from .ocah_env import OcahEnv
 from .ocah_env_cfg import OcahEnvCfg
 from .ocah_knobs import OcahKnobError, OcahKnobs
 from .ocah_monitor import OcahMonitor
+from .ocah_path_plusargs import OcahPathPlusargError, require_file_plusargs
 from .ocah_ref_model import OcahRefModel
 from .ocah_rng import OcahRng
 from .ocah_scoreboard import OcahScoreboard, OcahScoreboardError
@@ -34,6 +35,7 @@ __all__ = [
     "OcahKnobError",
     "OcahKnobs",
     "OcahMonitor",
+    "OcahPathPlusargError",
     "OcahRefModel",
     "OcahRng",
     "OcahScoreboard",
@@ -46,4 +48,5 @@ __all__ = [
     "OcahTest",
     "OcahTestCfg",
     "OcahTestError",
+    "require_file_plusargs",
 ]

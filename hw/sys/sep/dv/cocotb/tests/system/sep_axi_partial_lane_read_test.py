@@ -2,10 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Partial-lane read determinism on the 64-bit CPU-LSU bus.
 
-no_cpu / +skip_fuse_sense. A read narrower than the bus beat only obligates
-the responder to drive the addressed byte lanes — a 32-bit CSR endpoint
+Run mode: no_cpu with +skip_fuse_sense. A read narrower than the bus beat only obligates
+the responder to drive the addressed byte lanes. A 32-bit CSR endpoint
 leaves RDATA[63:32] undriven, a narrow-ARSIZE beat leaves every non-addressed
-lane undriven — yet the value the VIP hands the test must be a pure function
+lane undriven. Yet the value the VIP hands the test must be a pure function
 of the addressed lanes. Complements ``sep_axi_strobe_window_test`` (write-side
 lane masking): here the WRITE is trusted and the READ extraction is on trial.
 
@@ -14,7 +14,7 @@ disturbing read of an unrelated value, so a result that depends on undriven
 lanes or leftover channel state fails as a mismatch rather than passing by
 coincidence.
 
-`[RANDCFG]` — ``SepAxiPartialLaneReadCfg`` owns stimulus + goldens. Required
+`[RANDCFG]`: ``SepAxiPartialLaneReadCfg`` owns stimulus + goldens. Required
 cells run on every seed; the seed varies order, addresses, and data only.
 
   CHK-CSR-LANE   : SEP_SW_DEBUG (64-bit register, one field [31:0]) write ->

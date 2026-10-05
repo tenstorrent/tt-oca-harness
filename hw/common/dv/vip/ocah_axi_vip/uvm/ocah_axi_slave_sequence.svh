@@ -91,6 +91,13 @@ class ocah_axi_slave_sequence extends uvm_object;
     responder.cfg.inject_id_corruption(mask, for_read, for_write);
   endfunction
 
+  // Arm a one-shot missing RLAST: the next read whose AR address aligns at
+  // addr answers its final beat with RLAST low and sends no further beat.
+  function void inject_missing_rlast(bit [63:0] addr);
+    check_bound();
+    responder.cfg.inject_missing_rlast(addr);
+  endfunction
+
   function void clear_errors();
     check_bound();
     responder.cfg.clear_errors();

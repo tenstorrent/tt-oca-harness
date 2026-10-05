@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Crypto-EDN round-robin grant: two adapter clients held requesting at once.
+"""The crypto-EDN adapter grants two clients that request at once, and every client is served.
 
 ``sep_crypto_edn_multisink_arbitration_test`` proves AES and KMAC complete and
 that their beat time-spans overlap. It cannot create a same-cycle dual
@@ -8,14 +8,18 @@ that their beat time-spans overlap. It cannot create a same-cycle dual
 configuration. This test holds AES (crypto_edn[0]) and OTBN URND
 (crypto_edn[3]) with ``edn_req`` high *before* EDN is enabled, then brings up
 the real entropy chain so ``prim_arbiter_ppc`` inside ``drbg_axis_edn_adapter``
-has to grant both.
+has to grant both. CHK-GRANT-ALT grades sharing and an alternating grant
+prefix. It does not prove round-robin order under simultaneous request: a
+fixed-priority arbiter that serves URND whenever AES has dropped ``edn_req``
+gives the same stream.
 
 The grant monitor starts only after the ESRC seed is ready so the dual-req
 window is not sampled during ``wait_seed_ready``. CHK1..CHK4 stay bit-exact
 on that bring-up.
 
-OTBN RND (crypto_edn[2]) is the adapter's fourth client and joins after the
-alternation proof rather than inside it: RND only requests while an OTBN
+OTBN RND (crypto_edn[2]) joins after the alternation proof as the third client
+driven, and KMAC (crypto_edn[1]) follows as the fourth. RND is not inside the
+alternation proof: RND only requests while an OTBN
 program is blocked on the RND CSR, and OTBN cannot execute until its
 post-reset secure wipe has consumed URND, which already needs EDN enabled. So
 this test drives it as its own client -- a program that reads RND four times
@@ -24,6 +28,16 @@ this test drives it as its own client -- a program that reads RND four times
 Four crypto sinks are live (AES, KMAC, OTBN URND and OTBN RND) plus the entropy
 pool, so CHK5 is five-sink ROUTING: each post-adapter beat equals the AXIS1 word
 the adapter granted that cycle.
+
+Checkers:
+  CHK-DUAL-REQ     AES and URND hold crypto_edn_req high together.
+  CHK-NO-STARVE    both requesting clients get edn_ack.
+  CHK-GRANT-ALT    the post-adapter grants share and alternate (see the limit above).
+  CHK-RND-REQ      OTBN raises its RND request bit.
+  CHK-RND-CONSUME  the RND CSR reads retire with ERR_BITS=0.
+  CHK-KMAC-CLIENT  a keyed KMAC-256 on the KMAC client matches the Keccak golden.
+  CHK-FOUR-CLIENT  all four adapter clients are granted in one run.
+  CHK1..CHK4, CHK-ROUTING  bit-exact entropy golden and five-sink routing.
 
 Probes: ``tb_top.crypto_edn_req_o`` / ``crypto_edn_ack_o`` (observation
 ports).
@@ -114,7 +128,7 @@ def _ack() -> int:
 
 @pyuvm.test()
 class sep_crypto_edn_round_robin_grant_test(sep_base_test):
-    """Hold AES + OTBN URND edn_req together, then prove the arbiter grants both."""
+    """AES and OTBN URND, requesting together, are both granted; all four clients are served."""
 
     async def run_scenario(self) -> None:
         dut = cocotb.top
@@ -186,10 +200,9 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
 
         grants: list[int] = []
         dual_grants: list[int] = []
-        # Which adapter clients were granted anywhere in the run. The grant list
-        # above is the AES/URND alternation sample and deliberately watches only
-        # those two; CHK-FOUR-CLIENT needs every client, including the two driven
-        # later.
+        # Which adapter clients were granted anywhere in the run. `grants` is the
+        # AES/URND alternation sample and records only those two bits; CHK-FOUR-CLIENT
+        # needs every client, including the two driven later.
         acked = {"mask": 0}
 
         async def _monitor() -> None:
@@ -215,9 +228,7 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         cocotb.start_soon(_monitor())
         await self.start_seq(SepEsrcEnableEdnSeq("esrc_enable_edn"))
 
-        # Collect grants for a fixed budget and let the asserts below decide.
-        # Breaking out on the same condition the asserts test would make them
-        # restatements of the loop guard, unable to fail at their own sites.
+        # Collect grants for a fixed budget; the asserts below decide.
         for _ in range(_GRANT_POLLS):
             if len(grants) >= _GRANT_SAMPLE_TARGET:
                 break
@@ -238,11 +249,12 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             grants.count(_URND_BIT),
         )
 
-        # Round-robin while both clients are in the fight: the grant stream
-        # must strictly alternate until the first same-client pair. A repeat
+        # Sharing between the two clients: the grant stream must strictly
+        # alternate until the first same-client pair. This does not separate
+        # round-robin from fixed priority, because a URND grant may follow AES
+        # dropping edn_req (dual_grants is logged, not graded). A repeat
         # after both clients have already been served is the legal tail (one
-        # client dropped req). `any(a != b)` would be a tautology once
-        # CHK-NO-STARVE has both values in the list.
+        # client dropped req).
         pairs = list(zip(grants, grants[1:]))
         alt_pairs = 0
         for a, b in pairs:
@@ -255,10 +267,8 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             f"(alt_pairs={alt_pairs} need>={min_alt} grants={grants} "
             f"dual_grants={dual_grants})"
         )
-        # No "both clients appear in the prefix" assert here: the monitor only
-        # records the two bits, so an alternating prefix of length >= 2 contains
-        # both by construction and such an assert could never fail. The
-        # alternation floor above is what carries the claim.
+        # An alternating prefix of two or more grants contains both clients by
+        # construction; the alternation floor above carries the claim.
         self.logger.info(
             "CHK-GRANT-ALT PASS: %d consecutive post-adapter grant pairs "
             "strictly alternate between AES and OTBN URND (grants=%s "
@@ -313,8 +323,6 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             f"({[f'0x{w:08x}' for w in rnd_words]}) -- RND was not refetched "
             "per read"
         )
-        # No "not all zero" assert: distinctness above already makes at most one
-        # of the words zero, so that assert could never fail.
         self.logger.info(
             "CHK-RND-CONSUME PASS: %d RND CSR reads retired with ERR_BITS=0 and "
             "returned %d distinct words %s",
@@ -387,13 +395,10 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         #   KMAC, seed produces, so a seed change does not trip them. They do
         #   pool  NOT bound their sink's full stimulus.
         #
-        # The floors stay constants rather than tracking the observed grant
-        # count. The scoreboard scores one item per cycle where
-        # crypto_edn_req_o & crypto_edn_ack_o for that client, which is the same
-        # pair of ports the grant monitor edge-counts, so items >= grants holds
-        # by construction and a grant-derived floor could not fail for any DUT
-        # behaviour. The grant counts are logged below as diagnostics, which is
-        # what they can honestly be.
+        # The floors are constants. The scoreboard scores one item per
+        # req && ack cycle on the same ports the grant monitor counts, so a
+        # grant-derived floor would hold by construction. The grant counts are
+        # logged below as diagnostics.
         #
         # What still carries each unbounded sink: AES and URND by CHK-NO-STARVE
         # and CHK-GRANT-ALT on the grant stream; KMAC by CHK-KMAC-CLIENT, whose

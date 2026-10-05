@@ -6,19 +6,21 @@ from __future__ import annotations
 
 import cocotb
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
+from env.sep_spec_tables import ot_rdl_table_code
 from pyuvm import uvm_sequence
 from sep_reg_meta import OTBN, sym
 
 OTBN_BASE = sym("OTBN_REG_MAP_BASE_ADDR")
 OTBN_ADDR_STATUS = OTBN.addr("STATUS")
+OTBN_STATUS_MASK = OTBN.field_mask("STATUS", "status")
 OTBN_IMEM_BASE = sym("OTBN_IMEM_MEM_BASE_ADDR")
 OTBN_DMEM_BASE = sym("OTBN_DMEM_MEM_BASE_ADDR")
 OTBN_IMEM_SMOKE_WORD = 0x0000_0013
 OTBN_DMEM_SMOKE_WORD = 0xA5A5_5A5A
 
-# OTBN STATUS encoding, from the generated otbn.adoc STATUS field.
-OTBN_STATUS_BUSY_EXECUTE = 0x01
-OTBN_STATUS_LOCKED = 0xFF
+# OTBN STATUS codes, from the value table in the otbn.rdl STATUS description.
+OTBN_STATUS_BUSY_EXECUTE = ot_rdl_table_code("otbn", "STATUS", "BUSY_EXECUTE")
+OTBN_STATUS_LOCKED = ot_rdl_table_code("otbn", "STATUS", "LOCKED")
 
 # The state in which a bus access to IMEM/DMEM is illegal. While STATUS
 # is BusyExecute, a host request is diverted and latches illegal_bus_access.
@@ -69,7 +71,7 @@ class sep_otbn_mem_smoke_seq(uvm_sequence):
         are checked rather than assumed, so this test fails loudly if OTBN's reset
         behaviour ever changes.
         """
-        st = await self._read(OTBN_ADDR_STATUS) & 0xFF
+        st = await self._read(OTBN_ADDR_STATUS) & OTBN_STATUS_MASK
         assert st != OTBN_STATUS_LOCKED, f"OTBN LOCKED (STATUS=0x{st:02x}) before memory smoke"
         assert st not in OTBN_MEM_ACCESS_ILLEGAL_STATES, (
             f"OTBN is executing (STATUS=0x{st:02x}); a bus access to IMEM/DMEM would "
@@ -83,6 +85,6 @@ class sep_otbn_mem_smoke_seq(uvm_sequence):
     async def body(self) -> None:
         await self._check_mem_access_precondition()
         await self._write(OTBN_IMEM_BASE, OTBN_IMEM_SMOKE_WORD)
-        await self._read(OTBN_IMEM_BASE, OTBN_IMEM_SMOKE_WORD)
+        self.imem_rdata = await self._read(OTBN_IMEM_BASE, OTBN_IMEM_SMOKE_WORD)
         await self._write(OTBN_DMEM_BASE, OTBN_DMEM_SMOKE_WORD)
-        await self._read(OTBN_DMEM_BASE, OTBN_DMEM_SMOKE_WORD)
+        self.dmem_rdata = await self._read(OTBN_DMEM_BASE, OTBN_DMEM_SMOKE_WORD)

@@ -90,10 +90,8 @@ CTRL_TX_WM_LSB = SPI_CONTROLLER.field_lsb("CONTROL", "tx_watermark")
 ERR_STATUS_MASK = SPI_CONTROLLER.mask32("ERROR_STATUS")
 INTR_STATE_MASK = SPI_CONTROLLER.mask32("INTR_STATE")
 
-# No FIFO depth constant lives here on purpose. The OVERFLOW and CMDBUSY
-# triggers find their boundary from STATUS (TXFULL, READY) and then write one
-# beat past it, so neither stimulus needs a depth the RDL does not carry and
-# neither is sized from the design's own source.
+# The OVERFLOW and CMDBUSY triggers find their boundary from STATUS (TXFULL,
+# READY) and write one beat past it, so they need no FIFO depth constant.
 
 # COMMAND fields, positioned from the generated export. COMMAND is write-only
 # upstream, so these compose stimulus; nothing reads the register back.
@@ -113,6 +111,13 @@ RESET_VALUES = {
     "ERROR_STATUS": (ERROR_STATUS, SPI_CONTROLLER.reset32("ERROR_STATUS")),
     "EVENT_ENABLE": (EVENT_ENABLE, SPI_CONTROLLER.reset32("EVENT_ENABLE")),
 }
+
+
+# TX_WATERMARK draw ranges, (half, lo, hi) inclusive. The two halves match the
+# low and high bins of sep_spi_host_rand_cg.cp_tx_wm (cov/sv/sep_fcov.sv).
+# wm <= 1 makes the "one word below the mark" step vacuous, so the range
+# starts at 2.
+TX_WM_HALVES = (("low", 2, 4), ("high", 5, 8))
 
 
 class SepSpiHostCfg:
@@ -160,14 +165,22 @@ class SepSpiHostCfg:
             ),
         ]
         rng.shuffle(self.rw_regs)
-        # Watermark facet: a TX_WATERMARK threshold in a range a small fill can cross.
-        # wm in [2, 8]: wm <= 1 makes the "one word below the mark" step vacuous.
-        self.tx_watermark = rng.randrange(2, 9)
-        self.tx_fill_words = self.tx_watermark + rng.randrange(2, 5)
+        # Watermark facet: one TX_WATERMARK threshold from each half of
+        # TX_WM_HALVES, in seeded order, each with its own fill depth past the
+        # mark. A run then grades a low and a high threshold on every seed
+        # instead of one threshold whose half the seed decides.
+        halves = list(TX_WM_HALVES)
+        if rng.getrandbits(1):
+            halves.reverse()
+        self.tx_wm_reps: list[tuple[str, int, int]] = []
+        for half, lo, hi in halves:
+            wm = rng.randrange(lo, hi + 1)
+            self.tx_wm_reps.append((half, wm, wm + rng.randrange(2, 5)))
 
     def summary(self) -> str:
         regs = " ".join(f"{n}=0x{v:08x}" for n, _, _, _, v in self.rw_regs)
-        return f"seed={self.seed} tx_wm={self.tx_watermark} tx_fill={self.tx_fill_words} rw[{regs}]"
+        wms = " ".join(f"{h}:wm={wm},fill={fill}" for h, wm, fill in self.tx_wm_reps)
+        return f"seed={self.seed} tx_wm[{wms}] rw[{regs}]"
 
 
 class SepSpiHost:

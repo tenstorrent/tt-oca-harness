@@ -268,6 +268,78 @@ class ocah_axi_master_sequence extends uvm_sequence #(ocah_axi_item);
     second = pair;
   endtask
 
+  // One single-beat write of a pipeline_result operation; aw/w_valid_delay
+  // count the cycles from the start of the operation before that channel's
+  // VALID may assert for this access.
+  function ocah_axi_item pipeline_write(
+      bit [63:0] addr, bit [63:0] data, int unsigned aw_valid_delay = 0,
+      int unsigned w_valid_delay = 0, bit [7:0] strb = 8'hFF, bit [2:0] prot = '0);
+    ocah_axi_item it = ocah_axi_item::type_id::create("pipeline_write");
+    it.protocol       = resolve_cfg().protocol;
+    it.direction      = OCAH_AXI_DIR_WRITE;
+    it.address        = addr;
+    it.data_words.push_back(data);
+    it.strobes.push_back(resolve_strb(strb));
+    it.size           = resolve_size(-1);
+    it.prot           = prot;
+    it.expected_beats = 1;
+    it.aw_valid_delay = aw_valid_delay;
+    it.w_valid_delay  = w_valid_delay;
+    return it;
+  endfunction
+
+  // One single-beat read of a pipeline_result operation; ar_valid_delay
+  // counts the cycles from the start of the operation before ARVALID may
+  // assert for this access.
+  function ocah_axi_item pipeline_read(bit [63:0] addr, int unsigned ar_valid_delay = 0,
+                                       bit [2:0] prot = '0);
+    ocah_axi_item it = ocah_axi_item::type_id::create("pipeline_read");
+    it.protocol       = resolve_cfg().protocol;
+    it.direction      = OCAH_AXI_DIR_READ;
+    it.address        = addr;
+    it.size           = resolve_size(-1);
+    it.prot           = prot;
+    it.expected_beats = 1;
+    it.ar_valid_delay = ar_valid_delay;
+    return it;
+  endfunction
+
+  // Single-beat reads and writes with several in flight (the cocotb
+  // pipeline_result parity operation): each op launches its beats no
+  // earlier than its channel delays and no earlier than the acceptance of
+  // the beat ahead of it on the same channel, so reads and writes overlap
+  // and a responder meets as many requests as it accepts. BREADY and RREADY
+  // stay low until b_hold_cycles and r_hold_cycles cycles after the first
+  // BVALID and RVALID. Each op is filled like a plain result; `result`
+  // carries the ops and the stall cycles of each request channel. On a
+  // timeout, `result` and each op whose final response handshake has not
+  // completed report timed_out (a read keeps the beats it received), the
+  // other ops keep their results, and only completed ops count in the
+  // statistics. An invalid op fails the whole operation before anything is
+  // driven.
+  task pipeline_result(input ocah_axi_item ops[$], output ocah_axi_item result,
+                       input int unsigned b_hold_cycles = 0, input int unsigned r_hold_cycles = 0,
+                       input bit check_response = 1'b1, input bit allow_timeout = 1'b0);
+    ocah_axi_item it = ocah_axi_item::type_id::create("pipeline");
+    if (ops.size() == 0) `uvm_fatal(get_type_name(), "pipeline_result called with no ops")
+    it.protocol      = resolve_cfg().protocol;
+    it.ops           = ops;
+    it.b_ready_delay = b_hold_cycles;
+    it.r_ready_delay = r_hold_cycles;
+    do_axi(it);
+    foreach (ops[i]) begin
+      // Neither a response nor a timeout: the driver rejected the operation
+      // and reported why.
+      if (ops[i].resp_list.size() == 0 && !ops[i].timed_out) continue;
+      if (!ops[i].timed_out) begin
+        if (ops[i].direction == OCAH_AXI_DIR_WRITE) write_transactions++;
+        else read_transactions++;
+      end
+      enforce_result(ops[i], "pipelined access at", check_response, allow_timeout);
+    end
+    result = it;
+  endtask
+
   // Multi-beat write burst (one raw bus word per beat; strb_words empty =
   // full-beat strobes on every beat). AXI4 only.
   task burst_write_result(

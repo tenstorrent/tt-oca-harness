@@ -11,7 +11,23 @@ from the build filelists; regenerate it after a build and `--rebuild`, and
 fingerprinted, and VCS accepts a stale file silently.
 
     python3 tools/dv/run_dv.py --dut smu --items smoke      # any build
-    python3 hw/sys/smu/dv/cov/config/vcs/gen_smu_cov_scope.py
+    python3 nonfree/hw/sys/smu/dv/cov/config/vcs/gen_smu_cov_scope.py
+
+## Generators
+
+Every `.hier` and `.el` file in this directory is generated. The generators
+are the `hw/sys/smu/dv/cov/config/vcs/` scripts of the `nonfree` companion,
+which this README names by file name: `gen_smu_cov_scope.py`,
+`gen_smu_cov_toggle_exclusions.py`, `gen_smu_wrapper_toggle_exclusions.py` and
+`gen_smu_wrapper_group_exclusions.py`. The commands in this README run them
+from the repository root with the companion at `nonfree/`. Each takes
+`--check`, which exits 1 when the committed file differs from what it would
+write. The facts stay here: the class tables below state what each class
+excludes, why, and what retires it. A reader without the companion derives
+the same files from the same merged database: urg's `-dump full_exclusions`
+templates carry every checksum and signature, the run's raw report
+(`cov/report_raw/modinfo.txt`) marks which points are uncovered where a class
+is gated on it, and the class tables say which points each class takes.
 
 ## The rule
 
@@ -108,7 +124,7 @@ run's raw report, so every checksum and signature comes from urg, and
 `--check` tells whether the committed file is stale:
 
     urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+line+cond+branch -report <dir>
-    python3 hw/sys/smu/dv/cov/config/vcs/gen_smu_cov_toggle_exclusions.py \
+    python3 nonfree/hw/sys/smu/dv/cov/config/vcs/gen_smu_cov_toggle_exclusions.py \
         fullexclude_module.tgl <run dir>/cov/report_raw/modinfo.txt \
         --cond fullexclude_module.cond --branch fullexclude_module.branch \
         --line fullexclude_module.line
@@ -212,6 +228,20 @@ What remains in GROUP is the `u_smu_*_fcov::cg_*` set, the covergroup half of
 the wrapper's functional coverage; `cov/sv` cover properties are the other
 half and are read under `assertion`.
 
+## The companion bench's exclusion set
+
+The companion carries an SV-UVM bench for the SMU, and it grades a different
+top from the one `--dut smu` builds. That bench has its own coverage
+regression configuration and its own exclusion set, several of whose file
+names read like the classes here; this policy reads none of them, and the
+runner merges none of them with the files here. The two flows therefore
+answer over two populations, and the figure
+`hw/sys/smu/dv/docs/SMU_COVERAGE_POLICY.adoc` quotes is the `run_dv.py` one:
+scoped by `smu_wrapper_cov_scope.hier` at compile time and graded after the
+lists `smu_wrapper_coverage_policy.toml` names. A file under that bench whose
+name resembles a class here is not in this population, and an exclusion
+accepted on one flow argues nothing on the other.
+
 ## Reading a finished run
 
 ```
@@ -226,8 +256,8 @@ toolchain-free subset the workflows run and leaves that stimulus out.
 The runner compiles with the scope, runs the group, merges, writes the urg
 report with the exclusion files, and prints one `coverage` line with every
 family as raw/effective; `smu_wrapper_coverage_policy.toml` floors `user` at
-100 percent and `toggle` and `assertion` at 80 percent, and the result carries
-`coverage=PASS` or `FAIL`. Nothing else is run. `toggle` is urg's TOGGLE column
+100 percent and sets no code-metric floor, so the `coverage=PASS` or `FAIL`
+the result carries grades the cover-property population alone. Nothing else is run. `toggle` is urg's TOGGLE column
 after the exclusions; `user` is the cov/sv `cover property` points, which the
 runner reads from the cover-property summary of `cov/report/asserts.txt`;
 `assertion` is urg's ASSERT column, those points together with the

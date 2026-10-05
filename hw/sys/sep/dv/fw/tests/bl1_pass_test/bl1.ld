@@ -5,7 +5,7 @@
  *
  * Memory layout:
  *   ICCM: 0xC0000000 - 0xC003FFFF (256 KiB)  — .text, and the load image
- *   DCCM: 0xC0040000 - 0xC005FF7F (128 KiB minus the ROM's bl0_state reserve)
+ *   DCCM: 0xC0040000 - 0xC005FEFF (128 KiB minus the ROM's bl0_state reserve)
  *
  * The split is what the hardware allows.  The IFU
  * fetches from ICCM directly, but the LSU cannot reach ICCM at all: ICCM and
@@ -24,21 +24,21 @@
  * .rodata is merged into .data because that makes it one copy with one pair of
  * symbols; the cost is that BL1's read-only data is writable at runtime.
  *
- * The DCCM window stops __bl0_state_reserve (128) bytes short of the top of
+ * The DCCM window stops __bl0_state_reserve (256) bytes short of the top of
  * DCCM.  bl0_state lives up there and BL1 reads it, so BL1's own data must not
  * reach it.  The stack is NOT described here: BL1 inherits the ROM's sp, which
  * starts just below that same reserve and grows down toward this data.
  *
- * IMPORTANT: .text.init MUST come first — _start lives there.
+ * .text.init comes first: _start lives there.
  *
- * The binary MUST be 4-byte aligned (copy width = 4 bytes).
+ * The image is a multiple of 4 bytes (the copy width).
  */
 
 OUTPUT_ARCH("riscv")
 
 MEMORY {
     iccm (rx) : ORIGIN = 0xC0000000, LENGTH = 0x40000   /* 256 KiB */
-    dccm (rw) : ORIGIN = 0xC0040000, LENGTH = 0x1FF80   /* 128 KiB - 128 B reserve */
+    dccm (rw) : ORIGIN = 0xC0040000, LENGTH = 0x1FF00   /* 128 KiB - 256 B reserve */
 }
 
 ENTRY(_start)

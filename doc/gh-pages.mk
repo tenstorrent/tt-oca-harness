@@ -13,6 +13,8 @@ OCAH_COMBINED_PLAYBOOK ?= $(OCAH_ROOT)/antora-playbook.yml
 # org.github.io/repo host with no custom domain, or empty/unset if a
 # custom domain fronts the repo root. Left as an override, not hardcoded.
 OCAH_DOC_SITE_URL ?=
+# 1 also publishes the release documentation snapshots (needs gh).
+OCAH_DOC_RELEASE_SNAPSHOTS ?= 0
 
 ## Build the combined multi-book site (Home + every book, one Antora run).
 .PHONY: ocah-doc-combined-html
@@ -75,6 +77,9 @@ ocah-doc-push-ghpages: ocah-doc-stage-ghpages
 		echo "install uv, or see https://docs.astral.sh/uv/"; \
 		exit 1; \
 	}
+ifeq ($(OCAH_DOC_RELEASE_SNAPSHOTS),1)
+	@cd "$(OCAH_ROOT)" && uv run python tools/doc/release_docs.py restore "$(OCAH_GHPAGES_DIR)"
+endif
 	@cd "$(OCAH_ROOT)" && uv run ghp-import -n -p -f "$(OCAH_GHPAGES_DIR)"
 	@echo "Deployed to GitHub Pages (gh-pages branch)."
 

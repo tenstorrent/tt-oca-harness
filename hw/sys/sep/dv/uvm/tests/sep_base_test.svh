@@ -19,7 +19,7 @@
 //      on m_env.m_vseqr once per pass with scenario_seed = seed + pass.
 //
 // Knobs (plusargs here, environment variables in the cocotb twin
-// tests/sep_base_test.py): +<specific>=N per test, +<group>=N per group,
+// cocotb/tests/sep_base_test.py): +<specific>=N per test, +<group>=N per group,
 // +SEP_TEST_LOOPS=N suite-wide, +SEP_RANDOM_COUNT=N random volume per pass;
 // the negative-validation switch is read into sep_test_cfg (read_knobs).
 // The pass banner comes from ocah_test.

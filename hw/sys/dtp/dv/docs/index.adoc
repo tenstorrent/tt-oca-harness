@@ -8,13 +8,10 @@
 :sectnums:
 :source-highlighter: highlight.js
 
-// The design specification and the register maps are designer-owned and are
-// not duplicated here: the DTP design documentation
-// (`hw/sys/dtp/doc/index.adoc`, which includes the JTAG and cross-trigger IP
-// chapters) is the specification the plans below cite, and the cross-trigger
-// register maps are the SystemRDL sources under
-// `hw/ip/cross_trigger/*/regs/`. This book carries the verification
-// documents only.
+// The plans below cite the DTP design documentation
+// (`hw/sys/dtp/doc/index.adoc`, with the JTAG and cross-trigger IP chapters)
+// as the specification and the SystemRDL sources under
+// `hw/ip/cross_trigger/*/regs/` as the cross-trigger register maps.
 include::DTP_TB_ARCH.adoc[leveloffset=0]
 include::DTP_VPLAN.adoc[leveloffset=0]
 include::DTP_FCOV.adoc[leveloffset=0]

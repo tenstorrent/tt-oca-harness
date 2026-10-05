@@ -71,7 +71,6 @@ static int test_enable_disable_state_transitions(void) {
                 return -1;
             }
 
-            // Rapid state-transition sequence
             if (toggle_output_remap_region_enable(entry) != 0) return -1; // enable
             if (toggle_output_remap_region_enable(entry) != 0) return -1; // disable
             if (toggle_output_remap_region_enable(entry) != 0) return -1; // enable

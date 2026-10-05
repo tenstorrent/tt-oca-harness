@@ -205,20 +205,13 @@ static bool enable_i3c_gpio_overrides(uint32_t controller_id) {
     (void)controller_id;
 
 #ifdef I3C_USE_HCI_CORE
-    /* I3C_CORE=chipsalliance (OCA/HCI i3c-core as the OCCP target): the OCA core reaches the i3c
-     * pads via the gpio LSIO path (lsio_interface_select, driven by smc_padring), NOT the
-     * smc_ip_integration hw2_ovrd override path that the Cadence core uses. Setting hw2_ovrd here
-     * would force the gpio_shim onto the override path, whose drive/input-enable signals are gated
-     * OFF for the OCA instance (SwapI3cCore=1) -> the pad INPUT buffer stays disabled and the OCA
-     * target never sees the bus (root cause of the ENTDAA M2 timeout). So leave hw2_ovrd=0 (reset
-     * default) for the i3c GPIOs; the OCA core's LSIO routing then serves the shared bus (mirrors
-     * the cocotb OCA target).
+    /* The OCA/HCI core reaches the I3C pads through the GPIO LSIO path. Enabling hw2_ovrd would
+     * select a path whose drive and input-enable signals are gated off when SwapI3cCore=1,
+     * disabling the pad input buffer. Leave hw2_ovrd at its reset value for these GPIOs.
      */
     return true;
 #else
-    /* Mirror the proven bring-up sequence used by i3c_loop_back:
-     * enable hw2_ovrd on all I3C-related GPIOs so the I3C HW function reaches the pads.
-     */
+    /* Enable hw2_ovrd on all I3C-related GPIOs so the I3C hardware reaches the pads. */
     bool ok = true;
     enable_gpio_hw_override(SMC_I3C_0_SCL_GPIO); /* I3C0 SCL */
     enable_gpio_hw_override(SMC_I3C_0_SDA_GPIO); /* I3C0 SDA */
@@ -297,8 +290,6 @@ static int g_last_unlatched_interface = -1; /* Track last unlatched interface fo
 
 /* Max message body plus up to 4 bytes CRC overhead */
 static uint8_t g_occp_data_buffer[OCCP_MAX_MSG_SIZE + 4];
-static uint8_t
-    read_response_packet_buffer[sizeof(packet_header) + OCCP_MAX_RD_SIZE + sizeof(uint32_t)];
 
 /**
  * @brief Calculates CRC8 checksum for a given data buffer using polynomial 0xD3.
@@ -614,7 +605,6 @@ static bool smc_occp_interface_has_data(int interface_index) {
 static void smc_occp_handle_transport_error(interface_driver_t drv, driver_type_t drv_type,
                                             packet_header command_packet, bool hdr_valid,
                                             occp_error_code_t occp_status) {
-    error_response err;
     if (hdr_valid == 0) {
         command_packet.hdr.app_id = 0xFF;
         command_packet.hdr.msg_id = 0xFF;
@@ -789,7 +779,7 @@ void smc_occp_process(void) {
                                                 occp_status);
             }
             simputs("Error reading OCCP command from bus\n");
-            occp_status_set_error_code(ret);
+            occp_status_set_error_code(occp_status);
             smc_status_report(SMC_STATUS_TYPE_ERROR,
                               SMC_OCCP_ERROR_CMD_READ); /* Command read error */
             /* Handle interface error and potentially unlatch */
@@ -829,7 +819,6 @@ static occp_error_code_t smc_occp_handle_error_response(interface_driver_t drv,
     simputshex16("OCCP: Error code to report: ", (uint16_t)err);
     /* Fill the occp_error_resp struct fields correctly. */
     error_response err_response;
-    uint32_t error_code;
     // Access header fields through the hdr member
     if (err == Corrupt_header) {
         err_response.hdr.app_id = 0xFF;
@@ -1173,10 +1162,6 @@ static int smc_occp_handle_write(interface_driver_t drv, driver_type_t drv_type,
     uint16_t write_size;
     memcpy(&write_size, &g_occp_data_buffer[8], sizeof(write_size));
     write_size &= 0x7FF; // 11-bit length field
-    // Extract 5-bit attr from bits [7:3] of byte 9
-    uint8_t attr = (g_occp_data_buffer[9] >> 3) & 0x1F;
-    // Extract 16-bit reserved field (little-endian) from bytes 10 and 11
-    uint16_t reserved = g_occp_data_buffer[10] | (g_occp_data_buffer[11] << 8);
 
     if (write_size == 0) {
         simputs("WRITE command with zero length not allowed\n");
@@ -1258,9 +1243,8 @@ static int smc_occp_handle_write(interface_driver_t drv, driver_type_t drv_type,
 
     // Set response ready state before sending
     smc_post_code_set_occp_state(POST_CODE_OCCP_STATE_RESP_READY);
-    smc_occp_send_to_bus(drv, drv_type, (uint8_t *)&write_response_header,
-                         sizeof(write_response_header), TRANSPORT_TIMEOUT);
-    return ret;
+    return smc_occp_send_to_bus(drv, drv_type, (uint8_t *)&write_response_header,
+                                sizeof(write_response_header), TRANSPORT_TIMEOUT);
 }
 
 static int smc_occp_handle_read(interface_driver_t drv, driver_type_t drv_type, occp_header hdr,
@@ -1318,8 +1302,7 @@ static int smc_occp_handle_read(interface_driver_t drv, driver_type_t drv_type, 
         memcpy(&addr, g_occp_data_buffer, sizeof(addr));
         uint16_t num_bytes_to_send;
         memcpy(&num_bytes_to_send, &g_occp_data_buffer[8], sizeof(num_bytes_to_send));
-        num_bytes_to_send &= 0x7FF;                         // 11-bit length field
-        uint8_t attr = (g_occp_data_buffer[9] >> 3) & 0x1F; // Correct extraction of 5-bit field
+        num_bytes_to_send &= 0x7FF; // 11-bit length field
 
         if (num_bytes_to_send == 0) {
             simputs("READ command with zero length not allowed\n");
@@ -1354,7 +1337,6 @@ static int smc_occp_handle_read(interface_driver_t drv, driver_type_t drv_type, 
         simputshex16("Number of bytes to read: ", num_bytes_to_send);
         simputshex64("Address to read from: ", addr);
 
-        uint8_t read_status = 0;
         ret = smc_occp_check_addr_access_allowed(addr, num_bytes_to_send);
         if (ret != OCCP_ERROR_NONE) {
             simputshex16("Read denied. Returning 0s. Access check returned code: ", ret);
@@ -1427,10 +1409,9 @@ static int smc_occp_handle_read(interface_driver_t drv, driver_type_t drv_type, 
             }*/
             // Set response ready state before sending
             smc_post_code_set_occp_state(POST_CODE_OCCP_STATE_RESP_READY);
-            smc_occp_send_to_bus(
+            return smc_occp_send_to_bus(
                 drv, drv_type, packet_buffer, sizeof(read_response_header) + num_bytes_to_send,
                 TRANSPORT_TIMEOUT); // Combined header and body send to transport layer
-            return ret;
         }
     } else {
         simputs("Error in READ command body, Ignoring READ Command \n");
@@ -1717,10 +1698,10 @@ static int smc_occp_init_i3c_channel(bool use_channel, uint8_t peripheral_contro
         enable_i3c_gpio_overrides(peripheral_controller_id);
 
         I3C_Driver *drv = I3C_GetDriverInstance(peripheral_controller_id);
-        ret = (drv->init(drv, peripheral_controller_id, i3c_id, SUBORDINATE) == I3C_OK)
-                  ? OCCP_ERROR_NONE
-                  : OCCP_ERROR_INTERFACE_ERROR;
-        ret = (drv->start(drv) == I3C_OK) ? OCCP_ERROR_NONE : OCCP_ERROR_INTERFACE_ERROR;
+        if (drv->init(drv, peripheral_controller_id, i3c_id, SUBORDINATE) != I3C_OK ||
+            drv->start(drv) != I3C_OK) {
+            ret = OCCP_ERROR_INTERFACE_ERROR;
+        }
         if (ret == OCCP_ERROR_NONE) {
             // simputshex16("Initialized I3C Channel: ", peripheral_controller_id);
             g_smc_active_interfaces.channel_drivers[g_smc_active_interfaces.num_channels] =
@@ -1919,14 +1900,9 @@ static int smc_occp_flush_interface_fifo(interface_driver_t drv, driver_type_t d
         I3C_Driver *i3c_drv = (I3C_Driver *)drv;
         const uint32_t MAX_FLUSH_BYTES = OCCP_MAX_MSG_SIZE + 32; /* Conservative limit */
 
-        /* Frame-aware flush: let the DRIVER decide how much belongs to dead frames and
-         * report it per 4-byte step; got==0 means its frame ledger is clean -> done. The previous
-         * loop drained anything that appeared within a TRANSPORT_TIMEOUT quiet window (and reset
-         * the window on every byte), so a NEW command sent by a compliant controller right after
-         * our error response was swallowed whole -> both sides waited forever
-         * (smc_occp_zero_length_rw_test). The swap/HCI driver drains by its frame accounting
-         * (exact, instant when clean); the Cadence driver's stream read keeps its own
-         * fill-level/timeout behavior inside the same call, so its net behavior is unchanged. */
+        /* Let the driver decide how much belongs to dead frames and report it per 4-byte step;
+         * got==0 means its frame ledger or implementation-specific receive state is clean. This
+         * prevents the flush from consuming a new command sent after the error response. */
         while (flush_count < MAX_FLUSH_BYTES) {
             uint8_t dummy_data[4]; /* I3C reads are typically 4-byte aligned */
             size_t got = 0;

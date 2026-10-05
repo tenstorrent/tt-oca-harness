@@ -13,8 +13,10 @@
 //       CHK-ISO   in one sample while the source is asserted, the other
 //                 covered bits are 0 (each of them is 1 in its own CHK-SET of
 //                 the same pass, which is the control);
-//       CHK-CLR   Event: INTR_TEST=0 and W1C INTR_STATE; Status: INTR_TEST=0;
-//                 then the aggregate bit and the INTR_STATE bit are 0;
+//       CHK-CLR   Event: INTR_TEST=0 alone leaves the aggregate bit at 1 for
+//                 StickyHoldCycles clocks and the INTR_STATE bit at 1, then
+//                 W1C INTR_STATE; Status: INTR_TEST=0; then the aggregate bit
+//                 and the INTR_STATE bit are 0;
 //     then INTR_ENABLE returns to 0, so each pass starts from the reset
 //     enables; CHK-AGG requires every covered source to pass all four;
 //   * one in-window unmapped read through the Secure DMA adapter, the same
@@ -27,8 +29,8 @@
 // undriven (X) bit cannot satisfy "== 0". Expected values come from the
 // generated register header (addresses, field masks), the DV-owned PIC
 // table below, and the stimulus. The cocotb twin is
-// tests/system/sep_irq_ip_to_aggregator_test.py with
-// seq_lib/sep_irq_aggregator_seq.py.
+// cocotb/tests/system/sep_irq_ip_to_aggregator_test.py with
+// cocotb/seq_lib/sep_irq_aggregator_seq.py.
 
 class sep_irq_ip_to_aggregator_test_seq extends sep_base_test_seq;
   `uvm_object_utils(sep_irq_ip_to_aggregator_test_seq)
@@ -69,6 +71,15 @@ class sep_irq_ip_to_aggregator_test_seq extends sep_base_test_seq;
 
   // System clocks an aggregate-bit poll waits (cocotb _poll_agg parity).
   localparam int unsigned AggPollCycles = 200;
+  // System clocks an Event source must hold its aggregate bit at 1 after
+  // INTR_TEST=0 and before the W1C (cocotb _STICKY_HOLD).
+  localparam int unsigned StickyHoldCycles = 32;
+
+  // System clocks the last check_agg_bit() poll took to see its value, and
+  // the slowest Status-source release of the pass (cocotb
+  // status_release_max).
+  int unsigned m_agg_cycles;
+  int unsigned m_status_release_max;
 
   // One covered interrupt source: its IP INTR_* registers, its bit in each,
   // and its aggregate bit. A Status source has a read-only INTR_STATE and
@@ -205,6 +216,7 @@ class sep_irq_ip_to_aggregator_test_seq extends sep_base_test_seq;
       sample_agg(vec);
       if (vec[idx] === expected) break;
     end
+    m_agg_cycles = cycles;
     passed = m_check.expect_true(
         check_id,
         vec[idx] === expected,
@@ -276,9 +288,9 @@ class sep_irq_ip_to_aggregator_test_seq extends sep_base_test_seq;
     int unsigned  walked = 0;
 
     seed_scenario_rng();
-    attach_evidence('{ChkFuseSense, ChkCsrResp, ChkBase, ChkSet, ChkIso, ChkClr, ChkAgg,
-                    ChkBusErrBase, ChkBusErrDma, ChkBusErrDmaWr, ChkBusErrDmaWrClr, ChkBusErrPeriph,
-                    ChkBusErrClr});
+    attach_evidence('{ChkCsrResp, ChkBase, ChkSet, ChkIso, ChkClr, ChkAgg, ChkBusErrBase,
+                    ChkBusErrDma, ChkBusErrDmaWr, ChkBusErrDmaWrClr, ChkBusErrPeriph, ChkBusErrClr
+                    });
     irq_sources(srcs);
     periph_holes(holes);
     foreach (srcs[i]) covered_mask |= 64'(1) << srcs[i].agg_idx;
@@ -291,6 +303,7 @@ class sep_irq_ip_to_aggregator_test_seq extends sep_base_test_seq;
     wait_fuse_sense_done();
 
     log_step("1", "INTR_TEST walk of every covered source into the aggregate");
+    m_status_release_max = 0;
     foreach (srcs[i]) begin
       bit src_ok;
       walk_source(srcs[i], covered_mask, src_ok);
@@ -298,6 +311,20 @@ class sep_irq_ip_to_aggregator_test_seq extends sep_base_test_seq;
     end
     check_evidence(ChkAgg, "sources_walked", 64'(walked), 64'(srcs.size()),
                    "covered sources with BASE, SET, ISO and CLR all PASS");
+    // The Event sticky hold is a valid check only if every Status source has
+    // dropped inside it: a state that follows the test level would otherwise
+    // still read 1 at the end of the hold.
+    void'(m_check.expect_true(
+        ChkAgg,
+        m_status_release_max > 0 && m_status_release_max < StickyHoldCycles,
+        $sformatf(
+            {
+              "slowest Status INTR_TEST release took %0d system clocks; ",
+              "the Event hold of %0d must exceed it"
+            },
+            m_status_release_max,
+            StickyHoldCycles)
+    ));
 
     log_step("2", "adapter SLVERR into DMA_BUS_ERR_STATUS / PERIPH_BUS_ERR_STATUS");
     check_bus_err_paths(holes);
@@ -333,9 +360,35 @@ class sep_irq_ip_to_aggregator_test_seq extends sep_base_test_seq;
 
     // CHK-CLR: Event sources W1C INTR_STATE; Status sources drop INTR_TEST.
     csr_write(src.test_addr, '0, {src.name, ".INTR_TEST=0"});
-    if (!src.is_status) csr_write(src.state_addr, src.state_mask, {src.name, ".INTR_STATE.w1c"});
+    if (!src.is_status) begin
+      // The INTR_TEST release alone must not clear an Event source, so the
+      // W1C is what the clear checks below credit.
+      logic [63:0] vec;
+      int unsigned held;
+      for (held = 0; held < StickyHoldCycles; held++) begin
+        sample_agg(vec);
+        if (vec[src.agg_idx] !== 1'b1) break;
+      end
+      ok = m_check.expect_true(
+          ChkClr,
+          held == StickyHoldCycles,
+          $sformatf(
+              "%s.sticky INTR_TEST=0 without W1C agg[%0d] held=%0d of %0d last=%b",
+              src.name,
+              src.agg_idx,
+              held,
+              StickyHoldCycles,
+              vec[src.agg_idx])
+      );
+      all_ok &= ok;
+      check_csr_bits(ChkClr, src.state_addr, src.state_mask, src.state_mask, {
+                     src.name, ".INTR_STATE.sticky"}, ok);
+      all_ok &= ok;
+      csr_write(src.state_addr, src.state_mask, {src.name, ".INTR_STATE.w1c"});
+    end
     check_agg_bit(ChkClr, src.agg_idx, 1'b0, {src.name, src.is_status ? ".release" : ".w1c"}, ok);
     all_ok &= ok;
+    if (src.is_status && m_agg_cycles > m_status_release_max) m_status_release_max = m_agg_cycles;
     check_csr_bits(ChkClr, src.state_addr, src.state_mask, '0, {src.name, ".INTR_STATE.clr"}, ok);
     all_ok &= ok;
 

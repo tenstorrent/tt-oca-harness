@@ -1,23 +1,24 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""ESRC FIPS_LOCK: certified-configuration write-1 lock.
+"""ESRC FIPS_LOCK freezes every locked field class, and only rst_ni clears the lock.
 
-no_cpu / +skip_fuse_sense. RANDCFG walks every locked field class every
-seed (CTRL functional, health-test window/enable, decorrelator,
+no_cpu / +skip_fuse_sense. RANDCFG: every locked field class is walked on every
+seed, and the seed picks the values (CTRL functional, health-test window/enable, decorrelator,
 ring-osc enable/tune, every generator sample-clock divider, FIFO enable and churn,
 alert threshold, debug-pin mux). A pre-lock write moves the field off reset so the
 post-lock reject is not a stuck register. Write-0 leaves LOCK=1.
 Reserved CTRL.RSVD0 is RAZ/WI before the lock and does not clear it after;
-rst_ni does. The advisory RCT/APT cutoffs track MIN_ENTROPY_H against an
-SP 800-90B oracle. Both observe-tap enables are writable before the lock and
+rst_ni does. The RCT cutoff is checked against an SP 800-90B 4.4.1 oracle. The
+APT cutoff is checked to stay in the 1024-sample window and to fall as
+MIN_ENTROPY_H rises. Both observe-tap enables are writable before the lock and
 frozen after it: one tap is held at 1 and rejects a clear, the other is held
 at 0 and rejects a set (CHK-OBS-ENABLE-LOCKED). NOISE_OBS_CTRL.LANE_SEL stays
 writable under the lock (CHK-OBS-LANE-SEL), and after rst_ni the tap held at 0
 can be set again (CHK-OBS-POST-UNLOCK). Health-test ENABLE
-stays 0 so this vehicle does not trip the alert path.
+stays 0 so this test does not trip the alert path.
 
-Accepted scope: class walk, not an invert of every swwel bit. Alert
-delivery is the sibling vehicle.
+Scope: one field per locked class, not every swwel bit.
+`sep_esrc_alert_delivery_test` covers alert delivery.
 """
 
 from __future__ import annotations

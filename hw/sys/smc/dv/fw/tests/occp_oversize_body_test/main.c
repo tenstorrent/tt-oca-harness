@@ -53,10 +53,17 @@ int main(void) {
     ctx.exp_response_code = OCCP_OVERSIZE_MSG;
 
     if (!is_secure_mode()) {
-        occp_send_jump_command(&ctx, ctx.slave_addr, OCCP_TEST_BASE_ADDR);
+        if (occp_send_jump_command(&ctx, ctx.slave_addr, OCCP_TEST_BASE_ADDR) != OCCP_SUCCESS) {
+            simputs("FAIL: JUMP did not return the expected error\n");
+            ctx.overall_result = false;
+        }
         increment_cmd_count(&ctx);
     }
-    occp_send_validate_boot_command(&ctx, ctx.slave_addr, OCCP_TEST_BASE_ADDR);
+    if (occp_send_validate_boot_command(&ctx, ctx.slave_addr, OCCP_TEST_BASE_ADDR) !=
+        OCCP_SUCCESS) {
+        simputs("FAIL: VALIDATE_BOOT did not return the expected error\n");
+        ctx.overall_result = false;
+    }
     increment_cmd_count(&ctx);
 
     retval = occp_send_get_version_command(&ctx, ctx.slave_addr, &status_data);

@@ -49,11 +49,9 @@
     .equ MBOX_READ_DATA,   (KEY_MANAGER_MAILBOX_KM_KM_READ_DATA_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
     .equ MBOX_STATUS,      (KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
 
-    # The KM SRAM is a memory, not a register block, so the generated register
-    # header carries no symbol for its base. km_csr.rdl documents SRAM lock
-    # region 0 as 0x8000-0x83FF, which is where the region map starts and so
-    # where the memory starts.
-    .equ KM_SRAM_BASE, 0x00008000
+    # KM SRAM base from the generated map. km_csr.rdl SRAM lock region 0
+    # starts at this base.
+    .equ KM_SRAM_BASE, KEY_MANAGER_SRAM_BASE_ADDR
 
     # IRQ_STATUS AXI_SLVERR | AXI_DECERR -- the mask that carries
     # CHK-KM-ISO-TERM, so it comes from the generated field masks, not from a
@@ -137,7 +135,7 @@ legC_done:
     # Block until the inbound mailbox holds a word, then consume it.
 wait_mbox:
     lw    x6, MBOX_STATUS(x1)
-    andi  x6, x6, 0x1              # inbound_empty
+    andi  x6, x6, KM_MAILBOX_KM__STATUS_REG__INBOUND_EMPTY_bm
     bnez  x6, wait_mbox
     lw    x6, MBOX_READ_DATA(x1)
     jr    x13

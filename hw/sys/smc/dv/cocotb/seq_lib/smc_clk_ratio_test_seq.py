@@ -139,23 +139,36 @@ class smc_clk_ratio_test_seq(SmcDecodeProbeSeq):
             self.periods_ps[name] = (get_sim_time("ps") - start) / RATIO_WINDOW_EDGES
 
     async def _count_relation(self) -> None:
-        """Count SMC and peripheral rising edges across RELATION_WINDOW_REF_EDGES ref edges."""
-        dut = cocotb.top
-        self.relation_edges = {"smc": 0, "periph": 0}
+        """Count SMC and peripheral rising edges across one window of reference periods.
 
-        async def count(name: str, clk) -> None:
+        Each clock's rising edges are timestamped by a task of its own, and the
+        window is a half-open span of simulation time that opens on a reference
+        edge every task is already waiting for. An edge that coincides with a
+        window bound is therefore counted by its timestamp, not by the order in
+        which the simulator wakes the tasks in that timestep.
+        """
+        dut = cocotb.top
+        stamps: dict[str, list[float]] = {"smc": [], "periph": []}
+
+        async def stamp(name: str, clk) -> None:
             while True:
                 await RisingEdge(clk)
-                self.relation_edges[name] += 1
+                stamps[name].append(get_sim_time("ps"))
 
+        ref_period_ps = self.declared_ns["ref"] * 1000
         await RisingEdge(dut.clk_ref_i)
         tasks = [
-            cocotb.start_soon(count("smc", dut.clk_smc_i)),
-            cocotb.start_soon(count("periph", dut.clk_periph_i)),
+            cocotb.start_soon(stamp("smc", dut.clk_smc_i)),
+            cocotb.start_soon(stamp("periph", dut.clk_periph_i)),
         ]
-        await ClockCycles(dut.clk_ref_i, RELATION_WINDOW_REF_EDGES)
+        start = get_sim_time("ps") + ref_period_ps
+        end = start + RELATION_WINDOW_REF_EDGES * ref_period_ps
+        await ClockCycles(dut.clk_ref_i, RELATION_WINDOW_REF_EDGES + 2)
         for task in tasks:
             task.cancel()
+        self.relation_edges = {
+            name: sum(1 for t in edges if start <= t < end) for name, edges in stamps.items()
+        }
 
     def _check_ratio(self) -> None:
         want = self.declared_ns

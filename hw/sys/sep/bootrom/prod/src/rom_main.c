@@ -601,7 +601,7 @@ void rom_main(void) {
     rom_status_reporting_init(&straps);
 
     // ── [S08] Fuse-sense readiness ──
-    // Gates every later fuse read, [S09]'s smu_pll_sysclk included.
+    // Gates every later fuse read, [S09]'s SYSCLK_FREQ_MHZ included.
     report_status(STATUS_TYPE_DEBUG, SEP_MSG_FUSE_SENSE_WAIT);
     simputs("FUSE_SENSE_WAIT\n");
     smc_wait_fuse_sense();

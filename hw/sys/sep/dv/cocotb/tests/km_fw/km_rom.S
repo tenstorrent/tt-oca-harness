@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 #
-# KM (PicoRV32) ROM firmware for the SEP OSS KM memory smoke test
+# KM (PicoRV32) ROM firmware for the SEP DV KM memory smoke test
 # (sep_km_mem_smoke_test). It fetches from the KM ROM, reads KM SRAM through
 # the enabled SRAM scrambler, and stores one known marker word to KM SRAM
 # word0, so the ROM-fetch counter, the SRAM request/write counters, the

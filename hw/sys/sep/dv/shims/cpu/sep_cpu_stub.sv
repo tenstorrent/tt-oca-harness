@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // DV-only compile-time STUB of sep_cpu (no VeeR EL2) for the no_cpu
-// (Verilator and VCS) targets.
+// lsu_stub_* targets: cocotb on Verilator and SV-UVM on VCS. The cocotb VCS
+// coverage build (--target default) does not use this stub; it keeps the full
+// sep_cpu and tb_top force-splices the LSU request instead.
 //
 // The real sep_cpu (hw/sys/sep/rtl/sep_cpu.sv) instantiates el2_veer_wrapper (the full
 // VeeR EL2 RISC-V core complex), which is heavy to elaborate/build and is not
@@ -9,8 +12,7 @@
 // CPU's LSU master, it drives the LSU request net directly from the tb's
 // assembled cocotb-AXI struct (sep_uvm_top.lsu_req_drive, an upward reference)
 // and the tb reads back the LSU response net by hierarchical name
-// (u_dut.u_sep_cpu.lsu_axi_resp). No `force` is used in the stub model -- the LSU
-// request is single-driven, so it is driven, not forced.
+// (u_dut.u_sep_cpu.lsu_axi_resp).
 //
 // This stub removes el2_veer_wrapper, the IFU demux, the debug/DMI logic, and
 // the LSU/IFU/DBG local-alias remappers, but faithfully reproduces the LSU AXI
@@ -23,9 +25,8 @@
 // +define+SEP_CPU_STUB, drops the real hw/sys/sep/rtl/sep_cpu.sv via per-target
 // `exclude_files`, and appends THIS file via per-target `sources` (after the bender
 // filelist, so all DUT packages are already declared). So this stub is the single
-// `sep_cpu` definition for that target -- no -Wno-MODDUP/first-wins reliance. The
-// `ifdef SEP_CPU_STUB wrapper keeps the file inert if it is ever compiled without
-// the macro (e.g. the full-CPU `default` target, which does not list it).
+// `sep_cpu` definition for that target. The `ifdef SEP_CPU_STUB wrapper keeps the
+// file inert when compiled without the macro (the full-CPU `default` target).
 
 `ifdef SEP_CPU_STUB
 
@@ -57,13 +58,11 @@ module sep_cpu
   input  logic cpu_halt_req_i,      // Async halt req to CPU
   output logic cpu_halt_ack_o,      // core response to halt
   output logic cpu_halt_status_o,   // 1'b1 indicates core is halted
-  output logic debug_mode_status_o, // Core to the PMU that core is in debug mode. When core is in debug mode, the PMU should refrain from sendng a halt or run request
+  output logic debug_mode_status_o, // Core to the PMU that core is in debug mode. When core is in debug mode, the PMU should refrain from sending a halt or run request
   input  logic cpu_run_req_i,       // Async restart req to CPU
   output logic cpu_run_ack_o,       // Core response to run req
 
-  // Excluding from coverage as usage is determined by the integrator of the VeeR core.
-  // Note: VeeR reset bypass (scan_rst_n) not exposed on the el2_veer_wrapper boundary.
-  input logic test_en_i,  // DFT test-enable
+  input logic test_en_i,  // DFT test-enable, passed to the LSU demux test_i
 
   // DMI port for uncore
   input  logic        dmi_core_enable_i,

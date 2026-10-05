@@ -24,8 +24,8 @@ owned elsewhere for live programming.
 The TRNG window is forwarded whole to an adopter endpoint on
 ``ext_trng_axil``; SEP allocates no register in it. With no external TRNG
 connected, as in the reference integration, no offset owns a register, and
-``hw/sys/sep/doc/memory_map.adoc`` requires the access to be refused: a read
-answers DECERR and a write SLVERR. The test grades that code per probe.
+``hw/sys/sep/doc/memory_map.adoc`` requires the access to be refused: a
+single-beat read or write answers DECERR. The test grades that code per probe.
 Its alias targets are the neighbouring ESRC registers, which an access
 that drops address bit 12 reaches.
 
@@ -48,6 +48,7 @@ from sep_reg_meta import (
     ot_reg_offsets,
     reg_hw_updating,
     reg_write_destructive,
+    register_fields,
     sym,
 )
 
@@ -98,11 +99,9 @@ class DeadWindow:
     # CLEARED in the DUT, so the "restore" destroys the live status it claims to
     # put back.
     #
-    # Populated for entropy_src only, the one leaf whose Python header carries
-    # generated field-access metadata. For the other windows restore() writes
-    # back W1C registers such as spi_controller ERROR_STATUS and km_mailbox
-    # status_reg / irq_status_reg. restore() runs only after a probe has failed,
-    # so the corruption is confined to a run that is already reporting failure.
+    # Populated for entropy_src, whose Python header carries generated
+    # field-access metadata. For the other windows restore() writes back W1C
+    # registers and clears them.
     write_destructive: frozenset[int] = frozenset()
     # The window is forwarded whole to an adopter endpoint and allocates no SEP
     # register. ``watch`` then holds the neighbouring registers an aliasing
@@ -112,12 +111,33 @@ class DeadWindow:
     watch_from: str = ""
 
     @property
+    def store_visible(self) -> frozenset[int]:
+        """Watched addresses on which a stored write can show.
+
+        A register qualifies when the generated IP-XACT gives it at least one
+        ``read-write`` field. A ``read-only`` field has no bus write path and a
+        ``write-only`` field reads back nothing, so a register made only of
+        those is compared but cannot show a store.
+        """
+        return _store_visible(self.watch)
+
+    def armed(self, snap: dict[int, int]) -> int:
+        """Snapshot registers the change compare reads that can show a store."""
+        return sum(1 for a in snap if a not in self.hw_updating and a in self.store_visible)
+
+    @property
     def dead_lo(self) -> int:
         return self.base + self.alloc
 
     @property
     def dead_hi(self) -> int:
         return self.window_end
+
+
+def _store_visible(watch: tuple[int, ...]) -> frozenset[int]:
+    return frozenset(
+        addr for addr in watch if any(f.access == "read-write" for f in register_fields(addr)[1])
+    )
 
 
 def _watch_skip(name: str) -> bool:
@@ -401,6 +421,12 @@ class SepDeadspace:
         self.flavour_findings: list[str] = []
         # Response of the last probe(); -1 when it timed out.
         self.last_resp: int = -1
+        # Watched addresses of the last snapshot() that a read refused or timed
+        # out on, one "+0x<offset> resp=<r1>/<r2> timed_out=<t1>/<t2>" entry each.
+        self.snapshot_unread: list[str] = []
+        # Count of watched addresses the last snapshot() read two different
+        # values from.
+        self.snapshot_volatile: int = 0
 
     async def _access(
         self,
@@ -431,8 +457,8 @@ class SepDeadspace:
         boundary, which is what normally makes a refused address unreachable. An
         extent that does not end on a 4 KB boundary breaks that: a burst begun in
         the last live words is routed wholly to this block, and its later beats
-        land past ``REG_MAP_SIZE`` -- the span `memory_map.adoc` says is
-        refused at the fabric and never reaches a unit.
+        land past ``REG_MAP_SIZE`` -- the span ``hw/sys/sep/doc/memory_map.adoc``
+        says is refused at the fabric and never reaches a unit.
 
         ``start`` overrides the first address, for a window with no burst that
         crosses its extent; the caller then grades the burst rule alone.
@@ -542,12 +568,26 @@ class SepDeadspace:
         return resp, False, await self.changed_registers(win, snap, f"write burst 0x{start:08x}")
 
     async def snapshot(self, win) -> dict[int, int]:
+        """Read every watched address twice; return the stable values.
+
+        A watched address that reads two different values is self-changing and
+        stays out of the snapshot; ``snapshot_volatile`` counts them. A watched
+        address that a read refuses or times out on also stays out, and
+        ``snapshot_unread`` names each one, so the caller can fail on it: a
+        store that aliases onto an unread register cannot show in the change
+        compare.
+        """
         snap: dict[int, int] = {}
         volatile: set[int] = set()
+        unread: list[str] = []
         for addr in win.watch:
             resp1, a, to1 = await self._access(SepAxiOp.READ, addr)
             resp2, b, to2 = await self._access(SepAxiOp.READ, addr)
             if to1 or to2 or resp1 != RESP_OKAY or resp2 != RESP_OKAY:
+                unread.append(
+                    f"0x{addr:08x} (+0x{addr - win.base:x}) resp={resp1}/{resp2} "
+                    f"timed_out={to1}/{to2}"
+                )
                 continue
             if a != b:
                 volatile.add(addr)
@@ -559,12 +599,16 @@ class SepDeadspace:
                 win.name,
                 len(volatile),
             )
+        self.snapshot_unread = unread
+        self.snapshot_volatile = len(volatile)
         return snap
 
     async def restore(self, win, snap: dict[int, int]) -> None:
         """Put the allocated image back after a probe disturbed it.
 
-        Write-one-to-clear registers are skipped, and the skip is reported. On a
+        Write-destructive registers (woclr/woset; only the windows that watch
+        entropy_source registers populate ``write_destructive``) are skipped,
+        and the skip is reported. On a
         W1C field, writing the sampled value back does not restore it -- every
         bit that READ as 1 is CLEARED in the DUT, so the restore would destroy
         the live status it claims to put back. entropy_source has 15 such
@@ -656,7 +700,7 @@ class SepDeadspace:
                 item.addr,
                 expect_error=True,
             )
-            # `memory_map.adoc` says an address past the extent a unit
+            # `hw/sys/sep/doc/memory_map.adoc` says an address past the extent a unit
             # allocates is refused at the fabric and never reaches a unit. The
             # second half holds whatever the response flavour was, so the
             # alias compare is not gated on OKAY -- a refused read that still
@@ -698,15 +742,15 @@ class SepDeadspace:
         # read-to-clear field without returning anything that matches the
         # snapshot.
         #
-        # The change compare covers software-WRITABLE registers only. A field
-        # declared `sw = r` has no bus write path -- the generated regblock
-        # answers a write to one with OKAY and no error (entropy_source_reg.sv
-        # `is_valid_rw = '1'`, `cpuif_wr_err = '0'`) and stores nothing -- so
-        # such an address can never hold evidence of a store, aliased or
-        # otherwise. It stays in `snap` for the read-alias compare above.
-        # Leaving it in this compare instead measures the entropy source's own
-        # health-test counters advancing over the microseconds the readback
-        # takes, and reports that drift as a wrap. Every `sw = rw` register
+        # The change compare skips the window's hardware-updating registers
+        # (`hw_updating`, from sep_reg_meta.reg_hw_updating). Only the windows
+        # that watch entropy_source registers populate that set; in every other
+        # window each watched register is compared. A field declared `sw = r`
+        # has no bus write path -- the generated regblock answers a write to one
+        # with OKAY and no error (entropy_source_reg.sv `is_valid_rw = '1'`,
+        # `cpuif_wr_err = '0'`) and stores nothing -- so such an address can
+        # never hold evidence of a store, aliased or otherwise. It stays in
+        # `snap` for the read-alias compare above. Every `sw = rw` register
         # stays armed, so an access that aliases onto a control register is
         # still caught -- at that control register, where it lands.
         fails.extend(await self.changed_registers(win, snap, f"{item.op} 0x{item.addr:08x}"))

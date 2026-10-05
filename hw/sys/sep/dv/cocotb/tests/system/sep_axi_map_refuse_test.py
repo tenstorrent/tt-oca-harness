@@ -2,16 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Reserved addresses in the SEP memory map must be refused.
 
-Ports the negative-decode behaviour of the OCAH ``sep_cpu_lsu_negative_matrix``,
-``sep_cpu_ifu_invalid_target`` and ``sep_fabric_xbar_error_closure`` tests.
-
 no_cpu / +skip_fuse_sense. RANDCFG: reserved gaps just above each live block
 every seed, plus seed-selected addresses drawn from every reserved row.
 
 The expectation comes from ``env/sep_axi_decode_map.py``. A reserved
-row allocates nothing, so an access there must not answer OKAY. This test
+row allocates nothing, so an access there must be refused. This test
 grades refusal only, so DECERR and SLVERR both satisfy the check and the split
-is counted and logged.
+is counted and logged. OKAY, EXOKAY and a timeout fail it.
 
 CHK-MAP-REFUSE-DATA: a refused read returns none of the live words sampled on
 the same bus (the live-bus control, SW_RESET_N, boot-ROM word 0). A refused
@@ -71,8 +68,12 @@ class sep_axi_map_refuse_test(sep_base_test):
             "refused-read data compare cannot fail"
         )
 
-        # Every probe is a reserved address this test asserts. Unnamed-refuse
-        # spans are excluded when the set is built.
+        # Every probe is a reserved address this test asserts. The spans in
+        # _PROBE_EXCLUDE are dropped when the set is built, each with its reason:
+        # the CPU TCM aperture (not fabric-decoded with the core held off), the
+        # TB-terminated external apertures, the adopter-defined SEP External
+        # window, and the system-bus reserved span that
+        # sep_unmapped_access_policy_test grades.
         fails: list[str] = []
         for item in cfg.probes:
             tag = "anchor" if item.anchor else "rand"

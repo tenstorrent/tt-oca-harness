@@ -39,8 +39,8 @@ int main(void) {
     }
     sep_mbx_puts("CHK-SENSE PASS: eFuse sense-done\n");
 
-    // TOKEN_I storage intentionally has no reset. Establish a defined CPU-side
-    // value before using it as the corruption sentinel for the mux window.
+    // TOKEN_I storage has no reset, so write a defined CPU-side value before
+    // using it as the corruption sentinel for the mux window.
     sep_efuse_wr(SEP_EFUSE_MMR0, CPU_TOKEN_SEED);
     if (sep_efuse_rd(SEP_EFUSE_MMR0) != CPU_TOKEN_SEED) {
         sep_mbx_puts("FAIL: CPU token seed did not read back\n");

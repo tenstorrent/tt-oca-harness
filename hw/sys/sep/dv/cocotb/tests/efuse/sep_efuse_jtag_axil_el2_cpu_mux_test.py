@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP eFuse JTAG-AXIL + EL2-CPU mux arbitration test (PyUVM).
+"""JTAG AXI-Lite and EL2 CPU traffic share the eFuse mux, and PROD gates JTAG per window.
 
-Boots VeeR EL2 with the efuse_jtag_el2_mux firmware (a continuous eFuse-MMR read loop) while
-``ocah_axi_vip.OcahAxiLiteMasterSequence`` drives the real SEP-OTP JTAG AXI-Lite port
-(``axil_sep_otp_jtag``, ``j_axi_*`` in tb_top). Both masters arbitrate at the eFuse interface
-controller's AXI-Lite mux.
+The test boots VeeR EL2 with the efuse_jtag_el2_mux firmware (a continuous eFuse-MMR read
+loop) while ``ocah_axi_vip.OcahAxiLiteMasterSequence`` drives the real SEP-OTP JTAG AXI-Lite
+port (``axil_sep_otp_jtag``, ``j_axi_*`` in tb_top). Both masters arbitrate at the eFuse
+interface controller's AXI-Lite mux.
 
 The OTP image is real-sensed at LC_STATE=PROD, which restricts the JTAG path: MMR token accesses
 are allowed, and shadow-map and interface-CSR accesses get the error response and data that
@@ -13,8 +13,8 @@ are allowed, and shadow-map and interface-CSR accesses get the error response an
 coexistence and the LC-gated deny without forcing lc_state.
 
 Checkers (each logged):
-  * CHK-SENSE / firmware self-checks: fuse sense completed, the CPU seeded its token0 word, the
-    read loop ran, and the CPU MMR read error count stayed zero.
+  * CHK-CPU-MMR: the CPU published CPU_READY, its MMR read error count was zero before the
+    JTAG burst, and it stayed zero after it.
   * CHK-JTAG-MMR: every JTAG MMR op returns OKAY (token1 seed write, per-round token1 reads of
     the seeded word, token3 writes + readbacks). TOKEN_I is an ``external`` sw=rw word with no
     reset, so it is seeded before any read.
@@ -82,7 +82,7 @@ _JTAG_MAX_ROUNDS = 512
 
 @pyuvm.test()
 class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
-    """EL2 eFuse-MMR loop + concurrent JTAG-AXIL traffic arbitrating at the mux."""
+    """CPU and JTAG eFuse traffic both complete at the mux; PROD denies the gated JTAG windows."""
 
     build_env = False
 
@@ -116,7 +116,7 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
         # Non-vacuity guard: select_efuse_image ignores lc_raw under
         # +sep_efuse_preload, so a non-PROD preload would un-gate JTAG and the
         # shadow-deny check could pass for the wrong reason. Require PROD here
-        # (mirrors the inbound-filter gating test).
+        # (as lcc/sep_lcc_uvm_inbound_filter_gating_test does).
         assert image.lc_raw() == LC_PROD, (
             f"test bug: image LC_STATE is not PROD (0x{image.lc_raw():x}); "
             "the JTAG LC-gating proof requires a PROD image"

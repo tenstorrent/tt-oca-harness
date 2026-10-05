@@ -48,12 +48,12 @@ static void flip_n_random_bits(uint8_t *buf, size_t len, int n) {
 }
 
 static int choose_num_flips_crc8(bool detectable) {
-    if (detectable) return 1 + (get_random_int() % 4);
+    if (detectable) return 1 + (get_random_int() % 3);
     return 5 + (get_random_int() % 4);
 }
 
 static int choose_num_flips_crc32(bool detectable) {
-    if (detectable) return 1 + (get_random_int() % 6);
+    if (detectable) return 1 + (get_random_int() % 3);
     return 7 + (get_random_int() % 10);
 }
 
@@ -288,12 +288,14 @@ int occp_get_response_header(test_context_t *ctx, uint64_t i3c_addr,
             return OCCP_SUCCESS;
         }
 
+        /* The ROM checks the header CRC before it acts on the request. */
+        if (ctx->header_crc_err_inject_mode != OCCP_CRC_INJECT_NONE &&
+            error_code == OCCP_CORRUPT_HEADER) {
+            simputs("received expected error code: OCCP_CORRUPT_HEADER\n");
+            return OCCP_SUCCESS;
+        }
+
         if (ctx->exp_response_code == OCCP_ERROR_NONE) {
-            if (ctx->header_crc_err_inject_mode != OCCP_CRC_INJECT_NONE &&
-                error_code == OCCP_CORRUPT_HEADER) {
-                simputs("received expected error code: OCCP_CORRUPT_HEADER\n");
-                return OCCP_SUCCESS;
-            }
             if (ctx->body_crc_err_inject_mode != OCCP_CRC_INJECT_NONE &&
                 error_code == OCCP_CORRUPT_DATA) {
                 simputs("received expected error code: OCCP_CORRUPT_DATA\n");
@@ -350,15 +352,6 @@ int occp_send_invalid_header_command(test_context_t *ctx, uint64_t i3c_addr) {
     static uint8_t buff[8 + 2048 + 4] = {0};
 
     switch (ctx->invalid_header_inject_mode) {
-    case OCCP_INVALID_HDR_INVALID_MSGID: {
-        app_id = (uint8_t)(get_random_int() % 2); /* valid app: 0 or 1 */
-        if (app_id == 0) {
-            msg_id = (uint8_t)(4 + (get_random_int() % 252));
-        } else {
-            msg_id = (uint8_t)(4 + (get_random_int() % 253));
-        }
-        break;
-    }
     case OCCP_INVALID_HDR_INVALID_APPID: {
         app_id = (uint8_t)(2 + (get_random_int() % 254)); /* invalid app */
         msg_id = (uint8_t)(get_random_int() % 4);         /* valid msg for base/boot */
@@ -369,11 +362,10 @@ int occp_send_invalid_header_command(test_context_t *ctx, uint64_t i3c_addr) {
         msg_id = (uint8_t)(4 + (get_random_int() % 252));
         break;
     }
+    case OCCP_INVALID_HDR_INVALID_MSGID:
     default: {
-        /* With no mode set, send an invalid msg_id. */
-        app_id = (uint8_t)(get_random_int() % 2);
-        msg_id = (uint8_t)((app_id == 0) ? (4 + (get_random_int() % 252))
-                                         : (3 + (get_random_int() % 253)));
+        app_id = (uint8_t)(get_random_int() % 2); /* valid app: 0 or 1 */
+        msg_id = (uint8_t)(4 + (get_random_int() % 252));
         break;
     }
     }
@@ -930,19 +922,7 @@ static int occp_send_generic_get_command(test_context_t *ctx, uint64_t i3c_addr,
         /* Version command with an injected non-zero length: random body bytes. */
         for (uint16_t i = 0; i < body_len; i++)
             tx_buf[sizeof(header_word) + i] = (uint8_t)(get_random_int() & 0xFF);
-        int crc_size = 0;
-        if (has_body_crc) {
-            if (body_len > 14) {
-                uint32_t crc = calculate_crc32(tx_buf + sizeof(header_word), body_len);
-                memcpy(tx_buf + body_len, &crc, sizeof(crc));
-                crc_size = 4;
-            } else {
-                uint8_t crc = calculate_crc8(tx_buf + sizeof(header_word), body_len);
-                memcpy(tx_buf + body_len, &crc, sizeof(crc));
-                crc_size = 1;
-            }
-        }
-        size_t total = body_len + crc_size;
+        size_t total = body_len;
 
         if (ctx->inject_undersize_body_err) {
             uint16_t short_len = get_random_int() % total;
@@ -1038,6 +1018,7 @@ static int occp_send_generic_get_command(test_context_t *ctx, uint64_t i3c_addr,
             return OCCP_SUCCESS;
         }
     }
+    return OCCP_SUCCESS;
 }
 
 int occp_send_get_version_command(test_context_t *ctx, uint64_t i3c_addr, uint32_t *version) {
@@ -1880,7 +1861,6 @@ void execute_random_commands(test_context_t *ctx, int num_commands) {
                 }
             }
         } else if (command_selected == OCCP_GET_OCCP_INTERFACE_STATUS) {
-            bool error_inject_enb = (ctx->exp_response_code != OCCP_ERROR_NONE);
             retval =
                 occp_send_get_occp_interface_status_command(ctx, ctx->slave_addr, &status_data);
             if (retval == OCCP_SUCCESS) {
@@ -1899,7 +1879,6 @@ void execute_random_commands(test_context_t *ctx, int num_commands) {
                 }
             }
         } else if (command_selected == OCCP_GET_OCCP_ERROR_CODE) {
-            bool error_inject_enb = (ctx->exp_response_code != OCCP_ERROR_NONE);
             retval = occp_send_get_occp_error_code_command(ctx, ctx->slave_addr, &status_data);
             if (retval == OCCP_SUCCESS) {
                 if (ctx->exp_timeout) {

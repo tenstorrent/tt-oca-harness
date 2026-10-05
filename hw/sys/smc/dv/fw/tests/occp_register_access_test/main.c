@@ -88,8 +88,11 @@ static void run_test_suite(test_context_t *ctx) {
         return;
     }
 
+    static const uint64_t dummy_rom_addrs[] = {
+        SMC_TOP_SMC_CPU_CTRL_DUMMY_ROM_0_BASE_ADDR, SMC_TOP_SMC_CPU_CTRL_DUMMY_ROM_1_BASE_ADDR,
+        SMC_TOP_SMC_CPU_CTRL_DUMMY_ROM_2_BASE_ADDR, SMC_TOP_SMC_CPU_CTRL_DUMMY_ROM_3_BASE_ADDR};
     for (int i = 0; i < 4; i++) {
-        uint64_t addr = SMC_CPU_CTRL_DUMMY_ROM_0_REG_ADDR + (uint64_t)(i * 8);
+        uint64_t addr = dummy_rom_addrs[i];
         uint64_t data =
             ((uint64_t)(uint32_t)get_random_int() << 32) | (uint64_t)(uint32_t)get_random_int();
         if (!write_readback_reg64(ctx, addr, data)) {
@@ -101,14 +104,14 @@ static void run_test_suite(test_context_t *ctx) {
         uint64_t addr = SMC_CPU_CTRL_GLOBAL_BASE_REG_ADDR;
         uint64_t data =
             (((uint64_t)(uint32_t)get_random_int() << 32) | (uint64_t)(uint32_t)get_random_int()) &
-            0xffffffffffffff;
+            SMC_BASE_CONFIG__GLOBAL_BASE__BASE_bm;
         if (!write_readback_reg64(ctx, addr, data)) {
             ctx->overall_result = false;
         }
     }
 
     for (int i = 0; i < 8; i++) {
-        uint64_t addr = SMC_MISC_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR + (uint64_t)(i * 4);
+        uint64_t addr = SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR((uint64_t)i);
         uint32_t data = (uint32_t)get_random_int();
         if (!write_readback_reg32(ctx, addr, data)) {
             ctx->overall_result = false;
@@ -116,7 +119,7 @@ static void run_test_suite(test_context_t *ctx) {
     }
 
     for (int i = 3; i < 8; i++) {
-        uint64_t addr = SMC_CPU_CTRL_SCRATCH_0__REG_ADDR + (uint64_t)(i * 8);
+        uint64_t addr = SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR((uint64_t)i);
         uint32_t data = (uint32_t)get_random_int();
         if (!write_readback_reg32(ctx, addr, data)) {
             ctx->overall_result = false;
@@ -139,7 +142,6 @@ static void finalize_test_results(test_context_t *ctx) {
         result_code = SMC_SCRATCHPAD_SIM_PASS_CODE;
     } else {
         simputs("SOME TESTS FAILED!\n");
-        result_code = SMC_SCRATCHPAD_SIM_FAIL_CODE;
         test_fail(0);
     }
     occp_send_write_command(ctx, ctx->slave_addr, SMC_CPU_CTRL_SCRATCH_0__REG_ADDR,

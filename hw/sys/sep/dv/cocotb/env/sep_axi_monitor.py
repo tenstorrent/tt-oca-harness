@@ -2,11 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Passive AXI protocol/integrity monitor for the SEP AXI buses.
 
-Snoops a top-level AXI bus directly (by signal prefix) -- independent of the
-cocotbext-axi master, which resolves X/Z away in ``int.from_bytes(resp.data)``.
-This is the in-testbench substitute for the RTL SVA assertions, which the OSS
-Verilator build cannot run (gated off by ``VERILATOR``). It
-checks, per accepted bus beat:
+Snoops a top-level AXI bus directly (by signal prefix), independent of the
+cocotbext-axi master. The Verilator targets run without --assert, so the RTL
+SVA rules do not fire there. This monitor runs its read-data, decode and
+ready-wait checks on both simulators. It checks, per accepted bus beat:
 
   * **read-data integrity** -- an accepted R beat (``rvalid && rready``) that
     returns OKAY/EXOKAY must not carry an X/Z bit in the byte lanes the read
@@ -14,9 +13,10 @@ checks, per accepted bus beat:
     ARSIZE, ARBURST, ARID) and joins each R beat to its AR by RID, so it knows
     which lanes each beat carries (AMBA IHI 0022, "Transfer address" and
     "Data read and write structure"). Lanes outside the transfer are not
-    checked. The driver resolves X/Z to 0 when it packs ``item.rdata``, so this
-    is the only place an unknown read value is visible: without it a
-    zero-expecting compare passes on an undriven read path. An R beat with no
+    checked. cocotbext-axi raises on an X/Z bit of a beat it converts, so a
+    read issued through the SEP driver with unknown data already fails at the
+    read; this check is the independent net on the bus, and the only one for
+    beats that no SEP driver read issued. An R beat with no
     recorded AR (for example CPU traffic on the shared response path) gets the
     weaker whole-bus check: it fails only when every data bit is X/Z. Error
     responses (SLVERR/DECERR) may legitimately carry X data, so both checks
@@ -243,7 +243,7 @@ class SepAxiMonitor(uvm_component):
 
         By default only OKAY/EXOKAY beats are lane-checked for X/Z. A caller that
         grades the data of an error response (a specified error payload, or 0)
-        opens this window so an X/Z in that payload fails instead of reading as 0.
+        opens this window so an X/Z in that payload fails the run.
         """
         self._error_rdata_window += 1
 
@@ -306,8 +306,7 @@ class SepAxiMonitor(uvm_component):
             self._fail(
                 f"R beat {beat} (resp={code}) of the read at {where} (RID {rid}) carries X/Z "
                 f"in accessed bit(s) {unknown[:16]}{' ...' if len(unknown) > 16 else ''}: "
-                f"rdata={bits!r}. The driver packs these bits as 0, so a "
-                "zero-expecting compare on this read would pass on an unknown value"
+                f"rdata={bits!r}: the read returned an unknown value"
             )
         return True
 

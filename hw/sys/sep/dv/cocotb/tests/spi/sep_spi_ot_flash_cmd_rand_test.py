@@ -1,23 +1,20 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP OpenTitan-SPI flash command-breadth test (PyUVM, cpu-firmware, randomized).
+"""The OT SPI host drives the exact flash command sequence, and program, erase and read land.
 
-SPI flash command breadth. A
-cpu-firmware port of the reference spi_ot_flash_write_read_test +
-spi_ot_flash_sector_erase_test, upgraded to a randomized representative
-([RAND-REP], stronger than the directed reference suite source). Boots the VeeR EL2 core
-and runs the spi_ot_flash_cmd firmware, which drives the OT SPI host (@
-0x10B0_0000) against the OcahSpiFlash BFM:
+A cpu-firmware test, randomized ([RAND-REP]). It boots the VeeR EL2 core and runs the
+spi_ot_flash_cmd firmware, which drives the OT SPI host (@ 0x10B0_0000) against the
+OcahSpiFlash BFM:
 
     WREN -> PAGE PROGRAM -> READ + verify == pattern ->
     WREN -> SECTOR ERASE -> READ + verify == 0xFF, ERROR_STATUS == 0 throughout,
     then the write-protect / RDSR2 breadth and the ERROR_STATUS injections.
 
-cpu-firmware mode (not no_cpu): every reference spi_ot flash test and
-sep_spi_ot_dma_rx run the multi-command SPI flash sequence from firmware.
-Distinct from `sep_spi_ot_dma_rx_test` (RX+DMA) and the JEDEC smoke.
+cpu-firmware mode (not no_cpu): the firmware runs the multi-command SPI flash
+sequence, as in `sep_spi_ot_dma_rx_test`.
+Distinct from `sep_spi_ot_dma_rx_test` (RX+DMA) and `sep_spi_flash_jedec_smoke_test`.
 
-Randomization (this test is the SINGLE source of randomness):
+Randomization (this test is the single source of randomness):
   The scenario -- flash address (page-aligned), word count (1..16), and the data
   words -- is generated here from the runner seed (RANDOM_SEED) and patched into
   the staged DTCM image at the firmware's SPI1_PARAM_MAGIC sentinel. The same
@@ -29,7 +26,7 @@ Checks:
   firmware self-check (each logs a positive PASS line):
     CHK-PROGRAM/CHK-READ : WREN+PP writes the words; READ returns them.
     CHK-ERASE            : sector ERASE -> READ returns all 0xFF.
-    CHK-WEL-AUTOCLR      : the erase CONSUMED the write-enable latch (WEL clear).
+    CHK-WEL-AUTOCLR      : the erase consumed the write-enable latch (WEL clear).
     CHK-WP-PP            : the controller completes the third PAGE PROGRAM, the
                            one issued with WEL clear. WEL is state of the flash
                            device model, not of SEP: the model refuses any PAGE
@@ -50,8 +47,8 @@ Checks:
     CHK-ERR-RECOVER      : JEDEC works again afterwards, so the host was really
                            released rather than left disabled by a stuck latch.
   cocotb golden cross-check (independent of the firmware readback):
-    - exactly the BFM-visible opcode sequence (JEDEC, WRDI, RDSR, WREN, primary
-      program/read, FAST_READ, neighbour program/read, erase, primary read,
+    - exactly the BFM-visible opcode sequence (JEDEC, WREN, RDSR, WRDI, RDSR,
+      primary program/read, FAST_READ, neighbour program/read, erase, primary read,
       neighbour read, post-erase RDSR, the ignored WEL-clear PP and its read,
       WREN, RDSR2, WRDI, recovery JEDEC);
     - the PAGE PROGRAM (0x02) landed at the random addr with the random data;
@@ -63,10 +60,10 @@ Checks:
     - device-model self-check (no SEP feature credit): the model took no payload
       from the WEL-clear PAGE PROGRAM, and its stored array at addr is still 0xFF.
 
-main() returns the error count; start.S emits PASS (0xCAFEBABE) / FAIL
+main() returns the error count; fw/startup/crt0.s emits PASS (0xCAFEBABE) / FAIL
 (0xDEADBEEF) magic, which the boot scoreboard gates on (+ banner + ICCM exec).
 
-cpu / +skip_fuse_sense (no fuse data is read).
+Run mode: cpu with +skip_fuse_sense (no fuse data is read).
 """
 
 from __future__ import annotations
@@ -101,7 +98,7 @@ _PARAM_MAGIC = 0x5A11C0DE
 # Status register 2 the device model is built with. Non-zero and
 # distinct from the 0x02 SR1 reads with the write-enable latch set, so a decode
 # that folds 0x35 onto 0x05 and an all-zero receive path both fail CHK-RDSR2.
-# Must equal FLASH_SR2_SEEDED in fw/tests/spi_ot_flash_cmd_test.
+# Must equal FLASH_SR2_SEEDED in fw/tests/spi_ot_flash_cmd_test/spi_ot_flash_cmd_test.c.
 _SR2_SEED = 0x5A
 _MAX_WORDS = 16
 _PAGE_SIZE = 256
@@ -123,7 +120,7 @@ class SepSpiFlashCmdCfg:
     data: list[int]
 
     # BFM opcode order the firmware must drive (bare class attr, not a field):
-    # JEDEC, WRDI, RDSR, WREN, RDSR, then WREN/PP/READ (primary), FAST_READ,
+    # JEDEC, WREN, RDSR, WRDI, RDSR, then WREN/PP/READ (primary), FAST_READ,
     # WREN/PP/READ (neighbour), WREN/ERASE/READ (primary), READ (neighbour),
     # then the protect/status breadth -- RDSR (post-erase WIP+WEL), the PAGE
     # PROGRAM the device model ignores because WEL is clear, its READ, WREN,
@@ -198,7 +195,7 @@ class SepSpiFlashCmdCfg:
 
 @pyuvm.test()
 class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
-    """Boot VeeR EL2 and run the randomized OT SPI flash command-breadth firmware."""
+    """The BFM sees exactly EXPECTED_OPS, and the program, erase and protect results match."""
 
     build_env = False
 

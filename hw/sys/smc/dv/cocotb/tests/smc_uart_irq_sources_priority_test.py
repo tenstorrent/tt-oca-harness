@@ -28,7 +28,7 @@ EXPECTED_SOURCE_IDS = {
     "FIFO": _INTR_FIFO_ERR,
     "TIMEOUT": _INTR_TIMEOUT,
 }
-EXPECTED_PRIORITY_PAIRS = 5
+EXPECTED_PRIORITY_PAIRS = 6
 
 
 @pyuvm.test()
@@ -47,12 +47,13 @@ class smc_uart_irq_sources_priority_test(smc_base_test):
         "CHK-UART-IRQ-MAP-TIMEOUT",
         "CHK-UART-IRQ-PRI-FIFO_vs_LSR",
         "CHK-UART-IRQ-PRI-LSR_vs_RDR",
+        "CHK-UART-IRQ-PRI-LSR_vs_TO",
         "CHK-UART-IRQ-PRI-RDR_vs_THRE",
         "CHK-UART-IRQ-PRI-THRE_vs_MODEM",
         "CHK-UART-IRQ-PRI-TO_vs_RDR",
         "CHK-UART-MSR-SINGLE-DELTA",
     )
-    min_evidence = 15
+    min_evidence = 16
 
     auto_protocol_vip = False
 

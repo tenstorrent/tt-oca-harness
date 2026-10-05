@@ -16,6 +16,7 @@ from env import sep_manifest_mutate as mm
 from env import sep_oca_console as oc
 from env import sep_payload_mutate as pm
 from env import sep_spi_slot_evidence as ev
+from env.sep_efuse_image import SBOOT_DIS_MASK
 from rom_fw import sep_manifest_field_defect as fd
 from rom_fw.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE
 from rom_fw.sep_rom_ot_secure_boot_test import sep_rom_ot_secure_boot_test
@@ -137,12 +138,11 @@ def refused_markers() -> tuple[tuple[str, ...], tuple[str, ...]]:
 
 
 def _served_intervals(flash) -> list[tuple[int, int]]:
-    # The flash model streams one byte past each request until CS deasserts; drop it from coverage.
     spans = []
     for txn in ev.reads(flash.get_transactions()):
         start, end = ev.read_span(txn)
-        if end - 1 > start:
-            spans.append((start, end - 1))
+        if end > start:
+            spans.append((start, end))
     spans.sort()
     merged: list[tuple[int, int]] = []
     for start, end in spans:
@@ -192,7 +192,7 @@ class _PayloadSizeTest(sep_rom_ot_secure_boot_test):
         image = self.select_efuse_image(default_preload=self.efuse_preload)
         lc = image.lc_raw()
         assert lc == 0x1, f"LC_STATE raw is 0x{lc:x}, expected 0x1 (PROD)"
-        assert (image.field_int("SBOOT_DIS") & 0x1) == 0, (
+        assert (image.field_int("SBOOT_DIS") & SBOOT_DIS_MASK) == 0, (
             "SBOOT_DIS is set: the crypto chain would be skipped"
         )
         fd.assert_clean_key_fuses(image)

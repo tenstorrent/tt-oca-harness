@@ -1,9 +1,0 @@
-c0000000 T _start
-c000045c t bl1_puts
-c00004e0 t bl1_puthex32
-c0000544 A __data_load_start
-c0040000 R __data_start
-c0040168 B BSS_START
-c0040168 R __data_end
-c0040168 b g_vconsole_prev
-c004016c B BSS_END

@@ -211,6 +211,21 @@ interface dtp_tb_if;
   logic sep_otp_cdc_clear_seen;
   logic cdc_clear_seen_clear = 1'b0;
 
+  // Phase of the JTAG2AXI bridges' CDC clear sequences (driven by tb_top
+  // from the smc_axi bridge's AW crossing): the ACLK-side initiator in
+  // CLEAR, WAIT_CLEAR_PHASE_ACK, POST_CLEAR or FINISHED, and the TCK-side
+  // and ACLK-side four-phase receivers in WAIT_DOWNSTREAM_ACK. The three
+  // bridges' controllers share rst_n_i, clk_i, TCK and the TAP's
+  // Test-Logic-Reset, and the CDC jitter model passes data through unless
+  // +cdc_instrumentation_enabled is set, so one crossing's phase is the
+  // phase of every crossing.
+  logic j2a_cdc_aclk_clear;
+  logic j2a_cdc_aclk_wait_clear_phase_ack;
+  logic j2a_cdc_aclk_post_clear;
+  logic j2a_cdc_aclk_finished;
+  logic j2a_cdc_tck_dst_wait_ack;
+  logic j2a_cdc_aclk_dst_wait_ack;
+
   // Errored-beat read word per JTAG2AXI bridge port (driven by the JTAG2AXI
   // sequences): tb_top drives it onto the DUT-facing RDATA of every R beat
   // the port's responder answers with SLVERR or DECERR.

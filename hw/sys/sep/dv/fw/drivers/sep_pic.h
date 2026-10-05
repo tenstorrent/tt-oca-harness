@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // VeeR EL2 PIC (programmable interrupt controller) firmware driver for the SEP
-// OSS tests. Header-only (static inline). PIC register addresses come from
+// DV tests. Header-only (static inline). PIC register addresses come from
 // generated sep_addr.h (via sep.h).
 //
 // VeeR EL2 is built with fast_interrupt_redirect: on an external interrupt the
@@ -97,7 +97,7 @@ static inline void pic_clear_gateway(uint32_t source_id) {
 
 static inline uint32_t pic_source_pending(uint32_t source_id) {
     /* meip bitmap is indexed by raw source_id (bit0 unused); neighbours use source_id-1. */
-    uint32_t word = *(volatile uint32_t *)(SEP_TOP_PIC_MEIP_BASE_ADDR(0) + (source_id / 32u) * 4u);
+    uint32_t word = *(volatile uint32_t *)SEP_TOP_PIC_MEIP_BASE_ADDR(source_id / 32u);
     return (word >> (source_id % 32u)) & 1u;
 }
 

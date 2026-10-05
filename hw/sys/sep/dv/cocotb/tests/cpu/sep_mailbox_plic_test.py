@@ -1,24 +1,29 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP inbound-mailbox -> PIC -> CPU interrupt-delivery test (PyUVM).
+"""Each inbound mailbox threshold interrupt reaches the CPU on PIC source ch+1 and not the SMC line.
 
-OSS port of the reference suite ``sep_mailbox_plic_test``. Boots the VeeR EL2 core and runs
-the mailbox_plic firmware, which walks all eight inbound mailbox channels
-(axil_mailbox @ 0x10A0_0800, stride 0x1000). Each channel self-triggers its
+The test boots the VeeR EL2 core and runs the mailbox_plic firmware, which walks all eight
+inbound mailbox channels (axil_mailbox @ 0x10A0_0800, stride 0x1000). Each channel self-triggers its
 threshold interrupt by pushing a word into that FIFO, and proves the interrupt
 reaches the CPU through the VeeR PIC (WFI + ISR):
 PIC source ``ch+1`` (``interrupts.adoc`` Mailbox interrupt ``ch``) -> CPU trap
 -> ISR. The whole path is internal to bare ``sep`` -- no testbench injection.
 
 Like the other FW-boot tests this is firmware-self-checking: the firmware
-returns its error count and start.S emits the PASS (0xCAFEBABE) / FAIL
+returns its error count and fw/startup/crt0.s emits the PASS (0xCAFEBABE) / FAIL
 (0xDEADBEEF) magic on the 0x8000_0000 mailbox, which the boot scoreboard gates
 on. The firmware self-checks the exact PIC claim id (== ch+1), the asserted IRQP/
 IRQS write bit, the IRQS/IRQP W1C-clear readback, and the absence of an
-interrupt storm; a failed check makes start.S emit FAIL. The host also counts
+interrupt storm; a failed check makes fw/startup/crt0.s emit FAIL. The host also counts
 eight ``CHK-DELIVER`` / ``CHK-RW1C`` / ``CHK-NOSTORM`` lines so a skip of one
 channel cannot hide behind the PASS magic. The scoreboard also checks the
 firmware banner and that the core executed out of ICCM.
+
+The host also grades the direction:
+  CHK-DIRECTION : the firmware's outbound channel-0 push raises none of the eight
+                  inbound PIC sources.
+  CHK-SMC-LINE  : no inbound pending interrupt appears on smc_mailbox_interrupt_o,
+                  and the outbound channel-0 push leaves exactly bit 0 set.
 
 No fuse data is read, so the testlist entry uses ``+skip_fuse_sense``.
 """
@@ -54,7 +59,7 @@ _MBOX_N = pic("Mailbox interrupt 7")
 
 @pyuvm.test()
 class sep_mailbox_plic_test(sep_base_test):
-    """Boot VeeR EL2 and run the inbound-mailbox PIC-delivery firmware."""
+    """Inbound mailbox interrupts reach the PIC with the exact claim id and skip the SMC line."""
 
     build_env = False
 

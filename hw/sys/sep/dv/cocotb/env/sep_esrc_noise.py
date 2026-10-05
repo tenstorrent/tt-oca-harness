@@ -9,8 +9,8 @@ zero: the repetition health test trips on the first window, `MAIN_SM_STATUS.ALER
 latches, and `BOOT_PHASE_DONE` never asserts. A ROM that brings the entropy chain
 up correctly then correctly refuses to boot.
 
-Only `SepDrbgScoreboard` drove this port before, and no ROM test instantiates it
-(it also brings a bit-exact golden chain that a ROM boot cannot predict). This
+`SepDrbgScoreboard` also drives this port, but no ROM test instantiates it (it
+brings a bit-exact golden chain that a ROM boot cannot predict). This
 module is the small piece those tests actually need: the same
 `EntropyNoiseModel` generator, driven into the port, with no golden and no checking.
 
@@ -18,9 +18,7 @@ Update rate: the decorrelator samples `noise_i` on its divided sample clock, so
 the port only has to change faster than that to look random downstream. The ROM
 programs `SAMPLE_CLK_DIV` to divide by 64 (`sep_entropy.c`), so an update every
 `interval` cycles with `interval` well under 64 gives every sample a fresh value.
-Driving every cycle instead would be ~64x the Python callbacks across a
-multi-million-cycle boot for no benefit -- this is the one knob worth getting
-right here.
+At the default interval of 8, driving every cycle costs 8x the Python callbacks.
 """
 
 from __future__ import annotations

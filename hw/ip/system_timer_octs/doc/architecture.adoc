@@ -10,9 +10,10 @@ as `is_primary_i` selects it; the enable and the 64-bit count serve both. The in
 sync-load and credit pulses cross into `clk_i` through a flop and a `prim_edge_detector`,
 which synchronizes them with two flops and turns each rising edge into a one-cycle pulse;
 an AND gate with `is_primary_i` on its inverted input masks each pulse in PRIMARY mode.
-The enable flop is sticky: an OR gate holds it set once `TIMER_START.START` or a
-sync-load pulse has set it. In SECONDARY mode, the sync-load pulse loads the preset, a
-credit pulse moves the count to the expected count plus CREDIT_VAL, and between pulses
+The enable flop is sticky: an OR gate holds it set once a PRIMARY-mode
+`TIMER_START.START` or a sync-load pulse has set it. In SECONDARY mode, the
+sync-load pulse loads the preset, a credit pulse moves the count to the
+expected count plus CREDIT_VAL, and between pulses
 the count advances by `CTRL.STEP`, which drives the core's `timer_cnt_step_i`, while
 credits are left. The credit tracking block holds the `cur_credits` accumulator, which
 adds STEP each cycle while it is below CREDIT_VAL (`credits_left`); the expected count,
@@ -145,6 +146,6 @@ endif::backend-html5[]
 registers. Reset release must meet the integration's timing requirements;
 this block does not synchronize reset deassertion internally.
 
-Enable is sticky after START or a received load edge. There is no stop CSR;
+Enable is sticky after a PRIMARY-mode START or a received load edge. There is no stop CSR;
 writing START=0 does not stop counting. Configure role and timing before
 starting, and use system reset when a coordinated reconfiguration is needed.

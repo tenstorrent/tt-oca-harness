@@ -14,13 +14,13 @@ the reset-default CONFIG.INVERT=0 implies with no chiplet pulling.
 smu_xtrig_ctp_pad_test is the live control: there a request on req_in moves
 ack_out at the pads.
 
-Every width that carries an evidence token is a specification value:
-`hw/sys/smu/doc/port_table.adoc` for the port rows, `doc/integrator/src/smu.adoc`
-for the parameter defaults, the SMC port table for the external interrupt
-count and the system AXI input ID width, and the generated
-`reset_unit` register header for `SS_CONFIG`. The SMN struct widths and the
-crossbar-side and SEP-side ID widths have no specification in this tree; those
-compares are drift checks and carry no token.
+Every width compared is a specification value: `hw/sys/smu/doc/port_table.adoc`
+for the port rows, `doc/integrator/src/smu.adoc` for the parameter defaults,
+`doc/integrator/src/smu-smc.adoc` and the SMC port table for the external
+interrupt count and the system AXI input ID width, and the generated
+`reset_unit` register header for `SS_CONFIG`. The SMN struct widths, the
+crossbar-side ID width of the two ID-width converters and the SEP-side ID
+width have no specification in this tree and are not compared.
 
 The two "idle value" compares read an output after bring-up and compare it
 with the value the specification gives for that state: `ss_config_o` presents
@@ -48,14 +48,9 @@ from seq_lib.smu_compose_helpers import (
     LCC_DEMOTE_WIDTH,
     NUM_INT_TO_SMC,
     NUM_SUBSYSTEMS,
-    SEP_IN_ID_WIDTH,
     SMC_SYS_IN_ID_WIDTH,
-    SMN_IN_ID_WIDTH,
-    SMN_OUT_ID_WIDTH,
     XTRIG_NUM_CTP,
     XTRIG_NUM_INT_CT,
-    axi_req_bits,
-    axi_resp_bits,
     bit_width,
     hier,
     sample,
@@ -144,29 +139,32 @@ class smu_boundary_port_composition_seq:
         # SMU-INT-AGG.S1
         self._width(smu, "smc_ext_interrupts_i", NUM_INT_TO_SMC, "CHK-SMU-INT-AGG-S1")
 
-        # SMU-EXT-SMN.S4. Drift: the SMN struct widths and the crossbar-side
-        # ID width have no specification in this tree. Token: the SMC-side
-        # converter presents the 6-bit ID the SMC system AXI input specifies.
-        self._width(smu, "smu_axi_in_req_i", axi_req_bits(SMN_IN_ID_WIDTH))
-        self._width(smu, "smu_axi_in_resp_o", axi_resp_bits(SMN_IN_ID_WIDTH))
-        self._width(smu, "smu_axi_out_req_o", axi_req_bits(SMN_OUT_ID_WIDTH))
-        self._width(smu, "smu_axi_out_resp_i", axi_resp_bits(SMN_OUT_ID_WIDTH))
-        for conv, subsys_id_width, evidence in (
-            ("u_iw_conv_smc", SMC_SYS_IN_ID_WIDTH, "CHK-SMU-EXT-SMN-S4"),
-            ("u_iw_conv_sep", SEP_IN_ID_WIDTH, None),
+        # SMU-EXT-SMN.S4: the SMC-side converter presents the 6-bit ID the
+        # SMC system AXI input specifies. The SMN port structs, the
+        # crossbar-side ID width of the two converters and the SEP-side ID
+        # width have no specified value and are logged, not compared.
+        for port in (
+            "smu_axi_in_req_i",
+            "smu_axi_in_resp_o",
+            "smu_axi_out_req_o",
+            "smu_axi_out_resp_i",
         ):
+            self.log.info("OBSERVATION %s width=%d", port, bit_width(hier(smu, port), port))
+        for conv in ("u_iw_conv_smc", "u_iw_conv_sep"):
             inst = hier(smu, f"gen_sep.{conv}")
-            sb.expect_eq(
-                f"{conv} crossbar-side ID width drift",
+            self.log.info(
+                "OBSERVATION %s AxiSlvPortIdWidth=%d AxiMstPortIdWidth=%d",
+                conv,
                 sample(inst.AxiSlvPortIdWidth, f"{conv}.AxiSlvPortIdWidth"),
-                SMN_OUT_ID_WIDTH,
-            )
-            sb.expect_eq(
-                f"{conv} subsystem-side ID width",
                 sample(inst.AxiMstPortIdWidth, f"{conv}.AxiMstPortIdWidth"),
-                subsys_id_width,
-                evidence=evidence,
             )
+        smc_conv = hier(smu, "gen_sep.u_iw_conv_smc")
+        sb.expect_eq(
+            "u_iw_conv_smc subsystem-side ID width",
+            sample(smc_conv.AxiMstPortIdWidth, "u_iw_conv_smc.AxiMstPortIdWidth"),
+            SMC_SYS_IN_ID_WIDTH,
+            evidence="CHK-SMU-EXT-SMN-S4",
+        )
 
         # SMU-XTRIG-CTP.S1
         for group in CTP_GROUPS:

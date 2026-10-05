@@ -1,9 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""DV-owned apertures, PIC IDs, and mailbox constants.
+"""DV-owned specification tables and spec-source parsers.
 
 ``WINDOWS``, ``PIC``, mailbox sentinels, and ``OUTPUT_REMAP_REGIONS`` are
-the expectation. ABR offsets come from ``abr_reg.rdl``.
+the expectation. ABR offsets come from ``abr_reg.rdl``. OpenTitan field value
+codes that the overlay RDL states only in field descriptions come from
+``ot_rdl_table_code`` and ``ot_rdl_named_codes``. The module also carries:
+
+* KV register fields, status fields and error codes, from ``kv_def.rdl``;
+* KPV scrambler control fields, from ``km_kpv.rdl``;
+* ESRC FIPS-locked fields, from ``entropy_source.rdl``;
+* aon_timer REGWEN gates and the wakeup prescaler rule;
+* the KMAC strength and key-length walk;
+* BIW lane packing, AXI lane strobes, and the eFuse error-slave read data.
 """
 
 from __future__ import annotations
@@ -28,6 +37,53 @@ _ABR_RDL = (
 
 # Key-Vault control register types instantiated by abr_reg.rdl.
 _KV_RDL = _ABR_RDL.with_name("kv_def.rdl")
+
+# OpenTitan register descriptions as SEP builds them: <ip>/regs/<ip>.rdl.
+_OT_OVERLAY_REGS = _REPO / "vendor" / "lowRISC" / "opentitan" / "overlay" / "regs"
+# End of one register instance: `} [external] NAME[[n]] @ offset`.
+_OT_REG_END = re.compile(r"\}\s*(?:external\s+)?([A-Za-z0-9_]+)(?:\[\d+\])?\s*@")
+# A row of a value table in a field description: `| 0xd8 | EXECUTE | ... |`.
+_OT_TABLE_ROW = re.compile(r"^\s*\|\s*(0x[0-9A-Fa-f]+)\s*\|\s*([A-Z][A-Z0-9_]*)\s*\|", re.M)
+# A named code in a field description: `AES_ENC (2'b01)`.
+_OT_NAMED_BITS = re.compile(r"\b([A-Z][A-Z0-9_]*) \((\d+)'b([01_]+)\)")
+
+
+@lru_cache(maxsize=None)
+def _ot_rdl_reg_text(ip: str, reg: str) -> str:
+    """Source text of register ``reg`` in the overlay ``<ip>.rdl``."""
+    path = _OT_OVERLAY_REGS / ip / "regs" / f"{ip}.rdl"
+    text = path.read_text(encoding="utf-8")
+    start = 0
+    for m in _OT_REG_END.finditer(text):
+        if m.group(1) == reg:
+            return text[start : m.end()]
+        start = m.end()
+    raise KeyError(f"register {reg} not found in {path}")
+
+
+def ot_rdl_table_code(ip: str, reg: str, name: str) -> int:
+    """Value of ``name`` in the value table of a ``<ip>.rdl`` field description.
+
+    The overlay RDL gives some OpenTitan field codes only as a table in the
+    field ``desc`` (for example OTBN ``CMD`` and ``STATUS``), not as an enum.
+    """
+    codes = {n: int(v, 16) for v, n in _OT_TABLE_ROW.findall(_ot_rdl_reg_text(ip, reg))}
+    if name not in codes:
+        raise KeyError(f"{ip}.rdl {reg}: no table row named {name} (rows: {sorted(codes)})")
+    return codes[name]
+
+
+def ot_rdl_named_codes(ip: str, reg: str) -> dict[str, int]:
+    """Every ``NAME (N'bBITS)`` code that the ``<ip>.rdl`` text of ``reg`` states."""
+    out: dict[str, int] = {}
+    for name, width, bits in _OT_NAMED_BITS.findall(_ot_rdl_reg_text(ip, reg)):
+        value = int(bits.replace("_", ""), 2)
+        if value >= 1 << int(width):
+            raise ValueError(f"{ip}.rdl {reg}: {name} ({width}'b{bits}) overflows its width")
+        if out.setdefault(name, value) != value:
+            raise ValueError(f"{ip}.rdl {reg}: {name} is stated with two different codes")
+    return out
+
 
 _ABR_CLOSE = re.compile(
     r"^    \} ([A-Za-z0-9_]+)(?:\[(\d+)\])?(?:\s*@(0x[0-9A-Fa-f]+))?;",
@@ -107,14 +163,9 @@ MAILBOX_WRITE_DATA_RD_SENTINEL = 0xFEEDC0DE
 # From hw/sys/sep/doc/fabric.adoc ("Sixteen remap regions").
 OUTPUT_REMAP_REGIONS = 16
 
-# DV-owned concurrency depth for the crypto CSR apertures. This is how hard
-# the wide-access leaf pushes each crypto host path, NOT a hardware parameter
-# and NOT a scored contract: the claim graded against it is that concurrent
-# reads each return their own data, which holds at any depth. Deliberately not
-# read from a hardware slot count -- scoring "every read slot was occupied"
-# against the RTL's own slot count is the DUT agreeing with itself.
-# Eight is chosen because it is the most a single SEP master holds outstanding
-# on this path today; raising it only strengthens the stimulus.
+# Concurrency depth for the crypto CSR apertures. The graded claim is that
+# concurrent reads each return their own data, which holds at any depth; eight
+# is the most a single SEP master holds outstanding on this path.
 CRYPTO_CONCURRENT_READS = 8
 
 # DV-owned BIW lane packing: out[i] = (b[i] * b[i+4]) + b[i+8]; out[0] is MSB.
@@ -363,6 +414,64 @@ def kv_field_mask(reg_type: str, field: str) -> int:
     return ((1 << width) - 1) << lsb
 
 
+def _kv_type_body(reg_type: str) -> str:
+    text = _KV_RDL.read_text(encoding="utf-8")
+    m = re.search(rf"reg {reg_type}\s*(?:#\([^)]*\))?\s*\{{", text)
+    if not m:
+        raise KeyError(f"reg {reg_type} missing from kv_def.rdl")
+    depth, i = 1, m.end()
+    while depth:
+        depth += {"{": 1, "}": -1}.get(text[i], 0)
+        i += 1
+    return text[m.end() : i - 1]
+
+
+@lru_cache(maxsize=1)
+def kv_status_fields() -> dict[str, tuple[int, int]]:
+    """``field -> (lsb, width)`` for ``kv_status_reg`` in ``kv_def.rdl``.
+
+    ``kv_reg_fields`` skips this type: its ERROR field nests an enum, and its
+    fields do not fill 32 bits. Fields pack from bit 0 in declaration order.
+    """
+    body = _kv_type_body("kv_status_reg")
+    out: dict[str, tuple[int, int]] = {}
+    lsb, pos = 0, 0
+    while (start := body.find("field", pos)) >= 0:
+        depth, i = 0, body.index("{", start)
+        while True:
+            depth += {"{": 1, "}": -1}.get(body[i], 0)
+            i += 1
+            if depth == 0:
+                break
+        m = re.match(r"\s*(\w+)(?:\[(\d+)\])?\s*=", body[i:])
+        if not m:
+            raise KeyError("kv_status_reg field without a name in kv_def.rdl")
+        width = int(m.group(2)) if m.group(2) else 1
+        out[m.group(1)] = (lsb, width)
+        lsb += width
+        pos = i
+    return out
+
+
+def kv_status_field(status: int, field: str) -> int:
+    """Extract ``field`` of a ``kv_status_reg`` readback."""
+    try:
+        lsb, width = kv_status_fields()[field]
+    except KeyError as exc:
+        raise KeyError(f"kv_status_reg.{field} missing from kv_def.rdl") from exc
+    return (status >> lsb) & ((1 << width) - 1)
+
+
+@lru_cache(maxsize=None)
+def kv_error_code(name: str) -> int:
+    """Encoding of ``name`` in the ``kv_error_e`` enum of ``kv_def.rdl``."""
+    body = _kv_type_body("kv_status_reg")
+    m = re.search(rf"\b{name}\s*=\s*\d+'h([0-9A-Fa-f]+)", body)
+    if not m:
+        raise KeyError(f"kv_error_e.{name} missing from kv_def.rdl")
+    return int(m.group(1), 16)
+
+
 def abr_field_mask(reg: str, field: str) -> int:
     try:
         lsb, width = abr_reg_fields()[reg][field]
@@ -443,10 +552,9 @@ def esrc_fips_locked_fields() -> dict[str, frozenset[str]]:
     Python and C exports drop ``swwel``, so the property is read from the RDL
     source, as ``abr_offsets`` reads ``abr_reg.rdl``.
 
-    This is the DV-side expectation of what must freeze. It is deliberately not
-    taken from ``entropy_source.sv``: the RTL is hand-written and maintained
-    separately from this file, so a lock the RTL adds or drops on its own shows
-    up here as a disagreement instead of being copied into the expectation.
+    The expectation is read from the RDL rather than from
+    ``entropy_source.sv``, so a lock the RTL adds or drops on its own surfaces
+    as a disagreement instead of being copied into the expectation.
     """
     text = _ESRC_RDL.read_text(encoding="utf-8")
     bounds = [(m.group(1), m.start()) for m in _RDL_REG.finditer(text)]
@@ -553,10 +661,6 @@ def aon_timer_wkup_ticks_per_count(prescaler: int) -> int:
 # lane n. A 32-bit access on a 64-bit bus therefore uses lanes 0-3 when
 # address[2] is 0 and lanes 4-7 when it is 1. Alignment is the protocol's, not
 # any one adapter's: address[1:0] must be 0 for a 32-bit transfer.
-#
-# DV-owned, so a lane adapter that disagreed with AMBA is driven with a
-# protocol-legal access and answers for itself, rather than defining what legal
-# means.
 AXI_BUS_BYTES = 8
 
 # Read data of a JTAG access the eFuse lifecycle demux blocks:

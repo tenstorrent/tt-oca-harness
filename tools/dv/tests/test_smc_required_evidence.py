@@ -56,8 +56,8 @@ PLACEHOLDER = re.compile(r"<[^>]+>")
 # fails if an entry stops being declared or starts being required.
 PLAN_CODE_MISMATCH: dict[str, dict[str, str]] = {}
 
-# Set when the list was introduced. `PLAN_CODE_MISMATCH` may lose entries,
-# never gain them: a new mismatch is fixed on the card or in the leaf.
+# Every `PLAN_CODE_MISMATCH` entry must be in this set, which never grows:
+# a new mismatch is fixed on the card or in the leaf.
 PLAN_CODE_MISMATCH_CEILING = frozenset(
     {
         ("smc_input_output_fabric_wr_rd_test", "CHK-ALIAS-REMAP-RESET-DEFAULT"),

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP UVM base test helpers.
+"""SEP PyUVM base test.
 
 Concrete tests inherit this class for common import setup, environment build,
 clock/reset bring-up, CPU hold/run controls, and fuse-sense synchronization.
@@ -44,6 +44,7 @@ from cocotb.triggers import (
     with_timeout,
 )
 from ocah_axi_vip import OcahAxiLiteMasterAgent, OcahAxiSlaveAgent
+from ocah_lib import require_file_plusargs
 from pyuvm import ConfigDB, uvm_test
 
 # The cocotb runner only puts the test dir on sys.path. Make the cocotb root
@@ -96,8 +97,9 @@ class _EvidenceFilter(logging.Filter):
 
     _CHK = re.compile(r"\b(CHK-[A-Z0-9_-]+)\b\s*(?:\([^)]*\)\s*)?(PASS|OK)\b")
 
-    # IDs sep_base_test itself emits. Counted in `observed` but excluded from
-    # `own`, which is what a floor grades. Empty: bring-up logs no named CHK.
+    # IDs excluded from `own`, which is what a floor grades; `observed` counts
+    # them. Empty, so the CHK records the base-class helpers emit
+    # (CHK-FW-IDENTITY, CHK-VERDICT, CHK-FW-CONSOLE, ...) count as the leaf's own.
     BASE_IDS: frozenset[str] = frozenset()
 
     # Leaves allowed to pass with no own CHK record. A new entry hides a logging gap.
@@ -115,6 +117,19 @@ class _EvidenceFilter(logging.Filter):
         for check_id, _status in self._CHK.findall(message):
             self.seen.add(check_id)
         return True
+
+
+# Every file-path plusarg the SEP bench and its models consume, the
+# path_plusarg_guard list of tb/tb_top.sv.
+FILE_PLUSARGS: tuple[str, ...] = (
+    "sep_boot_rom_hex",
+    "sep_sram_hex",
+    "km_rom_hex",
+    "sep_efuse_hex",
+    "sep_efuse_shadow_hex",
+    "sep_shadow_reg_preload",
+    "sep_smc_mem_hex",
+)
 
 
 class sep_base_test(uvm_test):
@@ -141,8 +156,8 @@ class sep_base_test(uvm_test):
     # class counts what this run actually emitted and fails a silent one.
     #
     #   required_evidence -- IDs this test must emit. Missing any one fails.
-    #   min_evidence      -- fewest distinct IDs of the test's OWN (records the
-    #                        base class emits do not count). 0 disables it.
+    #   min_evidence      -- fewest distinct IDs of the test's OWN (IDs not in
+    #                        _EvidenceFilter.BASE_IDS). 0 disables it.
     #
     # Both default to off. They tighten a leaf that already emits records; they
     # do not replace the unconditional floor in `_finalize_evidence`. A leaf
@@ -177,10 +192,9 @@ class sep_base_test(uvm_test):
         the read: a diagnostic log line, or a poll that waits for a nonzero
         value and so fails closed on X (it times out rather than passing).
 
-        Two cocotb versions are in use here: the Verilator flow runs 2.x and
-        the VCS flow runs 1.x. Both expose the per-bit string (``binstr`` on
-        1.x, ``str()`` on 2.x), which is what is inspected. Verilator is built
-        two-state here, so an unknown bit can only occur under VCS.
+        cocotb 1.x exposes the per-bit string as ``binstr`` and 2.x as ``str()``;
+        both are inspected. Verilator is built two-state, so an unknown bit can
+        only occur under a four-state simulator.
         """
         value = sig.value
         if isinstance(value, int):
@@ -215,8 +229,8 @@ class sep_base_test(uvm_test):
     def rd_known(sig, mask: int | None = None) -> int:
         """Read a signal, raising if any bit selected by ``mask`` is not 0 or 1.
 
-        Same contract as ``rd`` with ``allow_unknown=False``. Kept as the
-        explicit name at zero-expecting compares.
+        Same contract as ``rd`` with ``allow_unknown=False``. The explicit name
+        for zero-expecting compares.
         """
         return sep_base_test.rd(sig, mask)
 
@@ -228,6 +242,7 @@ class sep_base_test(uvm_test):
             pass
 
     def build_phase(self) -> None:
+        require_file_plusargs(FILE_PLUSARGS)
         # Installed before anything can log, so no evidence predates the filter.
         self._evidence = _EvidenceFilter()
         self._install_evidence_filter(self._evidence)
@@ -341,7 +356,8 @@ class sep_base_test(uvm_test):
         # reset with its request channels idle. It is a live instance in every
         # build, so leaving its inputs unresolved would drive X into its
         # ASSERT_KNOWN checks in tests that never use it.
-        # sep_drbg_axil_adapter_port_arbitration_test releases it itself.
+        # sep_drbg_axil_adapter_port_arbitration_test and
+        # sep_drbg_axil_adapter_refusal_test release it themselves.
         self._set_if_exists(dut, "tbadp_rst_ni_i", 0)
         for pin in ("aw_valid", "w_valid", "ar_valid"):
             self._set_if_exists(dut, f"tbadp_{pin}_i", 0)
@@ -377,8 +393,7 @@ class sep_base_test(uvm_test):
         the done flop ~1 cycle after reset release; without it the real 256-word
         sense runs and the sensed shadow is compared against the staged eFuse
         image. A skip without ``+sep_efuse_preload`` leaves the shadow at its
-        reset (zero). That is the intended default: no skip-mode leaf grades a
-        shadow value.
+        reset (zero); a skip-mode leaf must not grade a shadow value.
         """
         dut = cocotb.top
         for cycle in range(max_cycles):
@@ -826,7 +841,7 @@ class sep_base_test(uvm_test):
     def write_efuse_image(self, image) -> str:
         """Write an eFuse OTP image to ``<run_cwd>/out/sep_efuse.hex``.
 
-        The responder loads that default path unless ``+sep_efuse_hex=<path>``
+        The efuse bank model loads that default path unless ``+sep_efuse_hex=<path>``
         overrides it for a special run. The image is also kept as
         the golden for the automatic post-sense shadow comparison.
         """
@@ -920,7 +935,8 @@ class sep_base_test(uvm_test):
 
         This master traverses the inbound filter (block-by-default; skipped only
         when feat_ctrl.sep_debug=1), so it is the path the inbound-filter-gating
-        test uses to prove external AXI is blocked (PROD) / allowed (PROD_DBG_1).
+        test uses to prove external AXI is blocked (PROD) / allowed (PROD with
+        DEMOTE_1).
         """
         await seq.start(self.env.ext_axi_agent.sequencer)
 
@@ -1517,8 +1533,8 @@ class sep_base_test(uvm_test):
         # that cannot be recovered after the fact.
         #
         # Hashed ONCE PER BUILD, not once per test. A regression reuses one
-        # binary across every leaf, and sha256 runs at ~45 MB/s here, so a
-        # 512 MiB VCS simv would cost ~11 s on every one of them. The digest is
+        # binary across every leaf, and sha256 of a large simv takes seconds, so
+        # every leaf would pay it. The digest is
         # a property of the binary, so it is cached beside it, keyed on size
         # and mtime; an unwritable or mismatched cache costs a rehash, never a
         # wrong answer. The line says which it was: `cached` is trusted on
@@ -1679,8 +1695,8 @@ class sep_base_test(uvm_test):
         Runs only after run_scenario() returns normally. A test that already
         failed raised, and this must not turn that into a different complaint.
 
-        `own` excludes the records sep_base_test emits itself, so a declared
-        floor grades what the leaf proved rather than what bring-up logged.
+        `own` excludes the IDs in ``_EvidenceFilter.BASE_IDS``. That set is empty,
+        so base-class CHK records count toward a declared floor.
         """
         seen = sorted(getattr(self, "_evidence", _EvidenceFilter()).seen)
         own = [c for c in seen if c not in _EvidenceFilter.BASE_IDS]

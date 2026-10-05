@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Every legal AW/W/AR ordering at a drbg_axil64_lane_adapter port.
 
-no_cpu / +skip_fuse_sense. AW, W and AR are independent AXI channels
+Run mode: no_cpu with +skip_fuse_sense. AW, W and AR are independent AXI channels
 (IHI 0022 A3.3). In idle the adapter accepts each write half independently
 until that half is pending, and accepts a read only when neither write half
 is pending. Both accesses must retire under every ordering.
@@ -15,17 +15,17 @@ drives a TB-owned second instance of the same module at its port, so all
 three orderings are presentable to the cycle, and the vehicle's own reset
 keeps cells independent.
 
-Division of labour: this leaf grades the MODULE's arbitration,
+Division of labour: this leaf grades the module's arbitration,
 the fabric-driven leaves grade the SEP integration. Neither substitutes for
 the other, and this one does not claim the integration.
 
 CHK-PORT-ANCHOR: a plain read of the live CSRNG lane answers OKAY before the
-vehicle is touched. The vehicle is a TB-owned instance, so without this the
-leaf could pass against a DUT that never left reset, and the scoreboard --
-fed from the AXI agent -- would see no transaction and refuse a pass at all.
+vehicle is touched. This proves that the DUT lane is out of reset, and it gives
+the scoreboard (fed from the AXI agent) a transaction, without which the
+scoreboard refuses a pass.
 
 CHK-PORT-CONTROL: a lone write, a lone read, and a write whose AW and W are
-separated by the same gap the overlap cells use, all retire AND answer OKAY.
+separated by the same gap the overlap cells use, all retire and answer OKAY.
 The gapped leg is what excludes the channel separation itself as the cause of
 an overlap-cell failure; without it that exclusion would rest on reading the
 RTL. Both halves matter: an access the adapter rejects as unsupported is
@@ -35,8 +35,10 @@ forwarding leg is alive. Without the controls every ordering would report as
 stalled on a broken driver.
 
 CHK-PORT-STIM: the ordering the port actually presented, read off
-`tbadp_chan_o`, not the offsets requested. A cell whose presentation does not
-match is a stimulus failure and is reported as one, not scored as coverage.
+`tbadp_chan_o`, not the offsets requested. In `aw-then-ar` and `w-then-ar` the
+cell must also reach the half-committed state: a cycle with AR valid, one write
+half handshaken and the other pending. A cell that misses either is a stimulus
+failure and is reported as one, not scored as coverage.
 
 CHK-PORT-PROGRESS: both accesses retire -- BVALID and RVALID both seen.
 The check is a bounded cycle count plus the longest run of
@@ -62,7 +64,7 @@ from seq_lib.sep_drbg_adapter_port_seq import (
 
 @pyuvm.test()
 class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
-    """All three AW/W/AR orderings at the lane adapter's own port."""
+    """Under all three AW/W/AR orderings at the lane adapter's port, both accesses retire."""
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
@@ -203,8 +205,31 @@ class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
                     hs["ar"],
                 )
             if order in ("aw-then-ar", "w-then-ar"):
-                # AR is presented after the leading write half, so it arrives
-                # while that half is pending and must wait for both.
+                # The cell grades the half-committed state: AR valid while one
+                # write half has handshaken and the other is still pending. That
+                # state spans cycles first_w+1 .. last_w, so it exists only if
+                # the halves handshook in different cycles and AR went valid by
+                # last_w. A cell that never reached it is a stimulus miss.
+                if not (first_w < last_w and obs["valid"]["ar"] <= last_w):
+                    stim_fails.append(
+                        f"[{order}] the half-committed state was not reached: "
+                        f"AR valid at cycle {obs['valid']['ar']}, write halves "
+                        f"handshook at AW={hs['aw']} W={hs['w']}, so no cycle "
+                        f"had AR valid with one half accepted and the other "
+                        f"pending; {summary}"
+                    )
+                    self.logger.error("CHK-PORT-STIM FAIL: %s", stim_fails[-1])
+                    continue
+                self.logger.info(
+                    "CHK-PORT-STIM OK: %s reached the half-committed state "
+                    "(AR valid=%d, first write half hs=%d, second hs=%d)",
+                    order,
+                    obs["valid"]["ar"],
+                    first_w,
+                    last_w,
+                )
+                # AR arrives while the leading half is pending and must wait
+                # for both.
                 if hs["ar"] <= max(hs["aw"], hs["w"]):
                     fails.append(
                         f"[{order}] AR handshook at cycle {hs['ar']} before both "
@@ -239,7 +264,8 @@ class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
             f"exercised for them: {'; '.join(stim_fails)}"
         )
         self.logger.info(
-            "CHK-PORT-STIM PASS: all %d ordering(s) presented at the port: %s",
+            "CHK-PORT-STIM PASS: all %d ordering(s) presented at the port: %s; "
+            "aw-then-ar and w-then-ar reached the half-committed state",
             len(ORDER_NAMES),
             ", ".join(ORDER_NAMES),
         )

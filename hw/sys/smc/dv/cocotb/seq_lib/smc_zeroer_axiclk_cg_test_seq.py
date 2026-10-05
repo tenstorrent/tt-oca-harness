@@ -58,6 +58,9 @@ IDLE_OBSERVE = 16
 GATE_OFF_TIMEOUT_SMC = 256
 BUSY_TIMEOUT_SMC = 256
 ZEROER_WAIT_CYCLES = 200
+# Bound on the frontdoor accesses that program the gate enable, from the start
+# of the latency sampling task to the enable's rising edge.
+ENABLE_EDGE_TIMEOUT_SMC = 256
 
 # Authoritative map (also re-exported via smc_cg_obs_utils).
 CLOCK_GATE_CONTROL = _addr.CLOCK_GATE_CONTROL
@@ -718,18 +721,25 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
         await ClockCycles(dut.clk_smc_i, 4)
         free = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_axi_clk", 4)
         assert free == 4, f"axi_clk not free-running under disable_cg: {free}"
-        # Arm: measure latency from tb_zeroer_cg_en==1 (idle disable_cg=0) to gated-off.
-        await self._program_cg(zeroer_en=True)
-        assert cg.sample_bit(dut, "tb_zeroer_cg_en") == 1
         assert cg.sample_bit(dut, "tb_zeroer_busy") == 0
-        gate_off_lat = await cg.measure_gate_off_latency(
-            dut,
-            "tb_zeroer_gated_axi_clk",
-            max_smc=GATE_OFF_TIMEOUT_SMC,
-            diag_names=("tb_zeroer_busy", "tb_zeroer_cg_en"),
+        # The latency origin is the enable's own rising edge on
+        # tb_zeroer_cg_en: the sampling task starts before the enable write,
+        # so the frontdoor accesses that program the enable cannot move it.
+        gate_off = cocotb.start_soon(
+            cg.measure_gate_off_from_enable(
+                dut,
+                "tb_zeroer_cg_en",
+                "tb_zeroer_gated_axi_clk",
+                enable_wait_smc=ENABLE_EDGE_TIMEOUT_SMC,
+                max_smc=GATE_OFF_TIMEOUT_SMC,
+                diag_names=("tb_zeroer_busy", "tb_zeroer_cg_en"),
+            )
         )
+        await self._program_cg(zeroer_en=True)
+        enable_at, gate_off_lat = await gate_off
+        assert cg.sample_bit(dut, "tb_zeroer_cg_en") == 1
         assert gate_off_lat <= 1, (
-            f"axi_clk gate-off not within 1 cycle of idle: latency={gate_off_lat}"
+            f"axi_clk gate-off not within 1 cycle of tb_zeroer_cg_en rising: latency={gate_off_lat}"
         )
         idle_enabled = await cg.count_enabled_at_smc_rise(
             dut, "tb_zeroer_gated_axi_clk", IDLE_OBSERVE
@@ -741,7 +751,8 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
             self.chk_seen,
             "CHK-ZAXI-GATE-OFF-IDLE",
             f"CHK-ZAXI-GATE-OFF-IDLE: gate_off_within_1cyc={within_1} "
-            f"gate_off_latency={gate_off_lat} zero_toggles_idle={IDLE_OBSERVE}",
+            f"gate_off_latency={gate_off_lat} origin=tb_zeroer_cg_en_rise "
+            f"enable_edge_sample={enable_at} zero_toggles_idle={IDLE_OBSERVE}",
         )
         cg.mark_fence(self.fence, "idle-gate-off-observed")
 
@@ -813,15 +824,15 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
             timeout_smc=GATE_OFF_TIMEOUT_SMC,
             diag_names=("tb_zeroer_busy", "tb_zeroer_cg_en"),
         )
-        # Assert cool reset (frontdoor).
+        # Assert cool reset (frontdoor); the primary reset follows it through
+        # the reference-clock de-glitcher.
         dut.rst_cool_ni.value = 0
-        # Wait for primary reset to assert (active-low out).
-        for _ in range(BUSY_TIMEOUT_SMC):
-            if int(dut.rst_primary_smc_clk_no.value) == 0:
-                break
-            await RisingEdge(dut.clk_smc_i)
-        else:
-            raise AssertionError("TIMEOUT waiting rst_primary_smc_clk_no assert")
+        await cg.wait_reset_asserted(
+            dut,
+            "rst_primary_smc_clk_no",
+            ref_cycles=cg.COOL_RESET_ASSERT_BOUND_REF_CYCLES,
+            ref_period_ns=self.cfg.ref_clk_period_ns,
+        )
         edges = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_axi_clk", IDLE_OBSERVE)
         assert edges == IDLE_OBSERVE, (
             f"axi_clk gated during reset: edges={edges} "
@@ -861,18 +872,27 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
         # released: same probe, same IDLE_OBSERVE window as S4. A gater that
         # latches the reset override reads IDLE_OBSERVE here and fails at
         # CHK-NONVAC below. Both waits are bounded and raise on expiry.
-        await self._program_cg(zeroer_en=True)
+        await self._program_cg(zeroer_en=False)
+        assert cg.sample_bit(dut, "tb_zeroer_cg_en") == 0
         assert cg.sample_bit(dut, "tb_zeroer_busy") == 0
-        post_reset_gate_off_lat = await cg.measure_gate_off_latency(
-            dut,
-            "tb_zeroer_gated_axi_clk",
-            max_smc=GATE_OFF_TIMEOUT_SMC,
-            diag_names=(
-                "tb_zeroer_busy",
+        # Same origin as S1: the enable's own rising edge, sampled by a task
+        # that starts before the enable write.
+        post_reset_gate_off = cocotb.start_soon(
+            cg.measure_gate_off_from_enable(
+                dut,
                 "tb_zeroer_cg_en",
-                "rst_primary_smc_clk_no",
-            ),
+                "tb_zeroer_gated_axi_clk",
+                enable_wait_smc=ENABLE_EDGE_TIMEOUT_SMC,
+                max_smc=GATE_OFF_TIMEOUT_SMC,
+                diag_names=(
+                    "tb_zeroer_busy",
+                    "tb_zeroer_cg_en",
+                    "rst_primary_smc_clk_no",
+                ),
+            )
         )
+        await self._program_cg(zeroer_en=True)
+        _, post_reset_gate_off_lat = await post_reset_gate_off
         post_reset_idle_enabled = await cg.count_enabled_at_smc_rise(
             dut, "tb_zeroer_gated_axi_clk", IDLE_OBSERVE
         )
@@ -925,7 +945,8 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
             "< post-reset-regate-observed@{}ns < PASS "
             "idle_enabled={}/{} busy_enabled={}/{} disable_cg_enabled={}/{} "
             "reset_override_enabled={}/{} "
-            "post_reset_gate_off_latency={} post_reset_idle_enabled={}/{}".format(
+            "post_reset_gate_off_latency={} (origin=tb_zeroer_cg_en_rise) "
+            "post_reset_idle_enabled={}/{}".format(
                 fence_times[0],
                 fence_times[1],
                 fence_times[2],

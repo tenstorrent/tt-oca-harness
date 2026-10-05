@@ -34,7 +34,8 @@
  * DV fixed-vector table — not sampled from DUT RTL under test.
  */
 #define SEP_HMAC_ERR_NO_ERROR ((uint32_t)0x0u)
-#define SEP_HMAC_ERR_SW_PUSH_MSG_WHEN_SHA_DISABLED ((uint32_t)0x1u) /* unused */
+#define SEP_HMAC_ERR_SW_PUSH_MSG_WHEN_SHA_DISABLED \
+    ((uint32_t)0x1u) /* Never reported: the RTL drops the push when sha_en is clear. */
 #define SEP_HMAC_ERR_SW_HASH_START_WHEN_SHA_DISABLED ((uint32_t)0x2u)
 #define SEP_HMAC_ERR_SW_UPDATE_SECRET_KEY_IN_PROCESS ((uint32_t)0x3u)
 #define SEP_HMAC_ERR_SW_HASH_START_WHEN_ACTIVE ((uint32_t)0x4u)
@@ -52,7 +53,8 @@ static inline void sep_hmac_wr(uint32_t addr, uint32_t value) {
 
 // SHA-256 over `msg[0..len)`. Returns 0 on success (digest in digest_out[8],
 // byte-compatible with a standard SHA-256 byte array), 1 on done-timeout,
-// 2 on a nonzero HMAC ERR_CODE, 3 if the done status did not RW1C-clear.
+// 2 on a nonzero HMAC ERR_CODE, 3 if the done status did not RW1C-clear,
+// 4 if the done status did not still read set on a second read after the poll.
 static inline int sep_hmac_sha256(const uint8_t *msg, uint32_t len, uint32_t digest_out[8]) {
     uint32_t cfg = HMAC__CFG__SHA_EN_bm | HMAC__CFG__DIGEST_SWAP_bm |
                    (SEP_HMAC_DIGEST_SIZE_SHA2_256 << HMAC__CFG__DIGEST_SIZE_bp);
@@ -82,6 +84,12 @@ static inline int sep_hmac_sha256(const uint8_t *msg, uint32_t len, uint32_t dig
     }
     if (t <= 0) {
         return 1;
+    }
+    // A read has no side effect on the done event, so it must still be set here.
+    // That rules out a bit that clears on read or drops by itself, and credits
+    // the clear below to the write-one.
+    if (!(sep_hmac_rd(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR) & HMAC__INTR_STATE__HMAC_DONE_bm)) {
+        return 4;
     }
     sep_hmac_wr(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, HMAC__INTR_STATE__HMAC_DONE_bm);
     if (sep_hmac_rd(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR) & HMAC__INTR_STATE__HMAC_DONE_bm) {

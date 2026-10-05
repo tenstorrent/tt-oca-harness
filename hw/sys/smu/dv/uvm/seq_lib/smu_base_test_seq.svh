@@ -413,13 +413,15 @@ class smu_base_test_seq extends ocah_sequence;
   endtask
 
   // Hold or release TRST (`value` is the trst_n level, 0 = asserted)
-  // through the VIP TRST operation, stepping TCK with TMS=1 so the env's
-  // per-cycle FSM checker prediction (TLR self-loop) stays valid while the
-  // asynchronous reset dominates.
-  task set_trst(bit value, int unsigned cycles = 1);
+  // through the VIP TRST operation, stepping TCK `cycles` times with TMS at
+  // `tms`. The env's per-cycle FSM checker predicts Test-Logic-Reset while
+  // trst_n is low whatever TMS is; TMS=0 under an asserted TRST leaves the
+  // controller nothing but the reset to reach Test-Logic-Reset by.
+  task set_trst(bit value, int unsigned cycles = 1, bit tms = 1'b1);
     smu_jtag_trst_seq op = smu_jtag_trst_seq::type_id::create("set_trst");
     op.asserted   = (value == 1'b0);
     op.tck_cycles = cycles > 0 ? cycles : 1;
+    op.tms        = tms;
     run_jtag_op(op);
     m_trst_asserted = op.asserted;
     if (op.asserted && evidence != null) evidence.reset_model();

@@ -1,23 +1,22 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# PROD lifecycle, CHIPLET fused key 1 programmed, ROM development key 0 revoked, CHIPLET fused key 1 REVOKED.
+# PROD lifecycle, CHIPLET fused key 1 programmed, ROM development key 0 revoked,
+# CHIPLET fused key 1 REVOKED.
 #
 # Stimulus for sep_firmware_chiplet_pubkey_1_revoke_test.
 #
 # THREE THINGS ARE PROGRAMMED, AND EACH ONE CLOSES A DIFFERENT HOLE.
 #
 # 1. CHIPLET_PUBK_HASH1 holds SHA-256 of the dev0 RSA-3072 modulus -- the same
-#    digest the ROM has compiled in at key_digests.c for ROM slot 0 -- because
-#    that is the key the manifest this testcase boots is signed with
-#    (bootrom/prod/tests/signing_keys/rsa_private_key.rom_key0.pem). The tree
-#    ships rom_key0 through rom_key5, so a dedicated fused key is available if
-#    this member is ever tightened. The reference generates a DEDICATED
-#    key per fused slot (generate_rsa3072_key.sh) and signs
-#    with it, so its fused digest differs from its ROM-slot digest. Here they are
-#    equal, and the consequence is stated in the testcase docstring: the digest
-#    comparison alone cannot prove which arm of validate_signature ran. Items 2 and
-#    3 are what close that.
+#    digest the ROM build compiles in for ROM slot 0 (key_digests.c, generated
+#    by hw/sys/sep/bootrom/prod/tools/generate_key_digests.py) -- because that is
+#    the key the manifest this testcase boots is signed with
+#    (hw/sys/sep/bootrom/prod/tests/signing_keys/rsa_private_key.rom_key0.pem).
+#    The tree ships rom_key0 through rom_key5. Here the fused digest equals the
+#    ROM-slot-0 digest, and the consequence is stated in the testcase docstring:
+#    the digest comparison alone cannot prove which arm of validate_signature
+#    ran. Items 2 and 3 are what close that.
 #
 #    The value is the LITTLE-ENDIAN serialisation of the digest, because
 #    fuse_read_bytes() (oca_platform.c) takes byte 0 from the LSB of word 0, and
@@ -33,10 +32,10 @@
 #    CHIPLET_PUBK_REVOKE description in sep_efuse_map.rdl also requires the
 #    development-key bits to be set before a part is transferred.
 #
-# Bits 16 and 17 revoke CHIPLET_PUBK_HASH0 and HASH1 (sep_efuse_map.rdl:727). They
-# are disjoint from the ROM-slot bits [7:0]; nothing here is derived by counting
-# past ROM slot 5. The reference uses bits 6 and 7, which are unused ROM-slot
-# bits in THIS map -- do not copy them.
+# Bits 16 and 17 revoke CHIPLET_PUBK_HASH0 and HASH1 (CHIPLET_PUBK_REVOKE in
+# sep_efuse_map.rdl). They are disjoint from the ROM-slot bits [7:0]; nothing
+# here is derived by counting past ROM slot 5. Bits 6 and 7 are unused ROM-slot
+# bits in this map.
 #
 # BL1_VERSION and SBOOT_DIS stay 0: a device version flag the manifest lacks would
 # refuse the image before the signature, and SBOOT_DIS would skip the crypto chain.
@@ -57,7 +56,8 @@
 
 [CHIPLET_PUBK_HASH0]
   [CHIPLET_PUBK_HASH0.fields.key_hash]
-  # Decoy: the same digest with byte 0 bit 0 flipped. Non-zero on purpose.
+  # Decoy: the same digest with byte 0 bit 0 flipped; non-zero so a ROM that
+  # reads the wrong fuse fails PUBK_UNAUTHORIZED rather than PUBK_OTP_EMPTY.
   value = 0xf65082842b03dfecbb617d03d2a7fd9ca03a7e6494c96e1ac2f5a83763ca71a6
 
 [CHIPLET_PUBK_REVOKE]

@@ -359,7 +359,8 @@ async def check_cpu_firmware_boot_contract(
     Plusargs:
       * ``+smc_rom_hex=<path>`` — ROM window preload (vector 0xC004_0000)
       * ``+smc_scratch_ram_hex=<path>`` — scratch ECC hex, scattered across the
-        32 banks by smc_scratch_map_pkg (vector 0xC006_0000)
+        32 banks by the DV-owned ``models/smc_scratch_map_pkg.sv`` table
+        (vector 0xC006_0000)
       * ``+smc_hold_cpu_boot`` — assert boot_stall from time-0 (preferred for
         scratch)
 

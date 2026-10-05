@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Unmapped-access policy points for sep_unmapped_access_policy_test.
 
-The SEP components view of the SystemRDL memory map
+The SEP components' view of the SystemRDL memory map
 (``hw/sys/sep/regs/gen/py/sep_memory_map.py``, read through
 ``env/sep_decode_resp.py``) states, per unit, its Decoded Extent and how a
 32-bit access that no register backs answers: one response for a hole inside
@@ -107,9 +107,10 @@ RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 # Data every probe write carries. Bit 31 is clear so an aliased write cannot set
 # a filter FILTER_CONFIG.locked or a remap REGION_ATTRS.valid (both bit 31 of a
 # hi word); bits 27 and 28 are clear so it cannot set the eFuse program or read
-# enable; bit 4 is clear so it cannot set a filter entry_enabled. The value
-# still differs from every programmed live word under that word's mask, which
-# the config checks, so an aliased write is visible.
+# enable; bit 4 is clear so it cannot set a filter entry_enabled. The config
+# checks that the value differs from every programmed live word as a full word,
+# not under each word's mask. An alias onto a word whose mask hides every
+# differing bit is not seen.
 PROBE_WDATA = 0x4141_4140
 
 # Reserved-row walk granularity. A DV stimulus spacing, not a register value.
@@ -711,8 +712,8 @@ class SepUnmappedAccess:
         )
         checked0 = mon.r_beats_lane_checked
         if check_err_lanes:
-            # Lane-check the read data of an error response for X/Z too: the
-            # caller grades that data, and the driver would read X as 0.
+            # Lane-check the read data of an error response for X/Z too, because
+            # the caller grades that data.
             mon.open_error_rdata_window()
         try:
             await self.test.start_seq(seq)

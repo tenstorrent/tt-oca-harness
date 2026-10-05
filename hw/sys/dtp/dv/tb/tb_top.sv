@@ -275,6 +275,7 @@ module dtp_uvm_top
   wire xtrig_dmx_ar_ready = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.slv_ar_ready;
   wire xtrig_dmx_r_valid  = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.slv_r_valid;
   wire xtrig_dmx_r_ready  = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.slv_r_ready;
+  wire xtrig_dmx_aw_lock  = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.lock_aw_valid_q;
   wire xtrig_dmx_aw_hs = xtrig_dmx_aw_valid & xtrig_dmx_aw_ready;
   wire xtrig_dmx_w_hs  = xtrig_dmx_w_valid & xtrig_dmx_w_ready;
   wire xtrig_dmx_b_hs  = xtrig_dmx_b_valid & xtrig_dmx_b_ready;
@@ -1366,10 +1367,13 @@ module dtp_uvm_top
     .axil_rresp_i          (xtrig_axil_rresp),
     .axil_rvalid_i         (xtrig_axil_rvalid),
     .axil_rready_i         (xtrig_axil_rready),
+    .axil_aw_spill_full_i  (xtrig_spill_aw_occ == 2),
     .axil_w_spill_full_i   (xtrig_spill_w_occ == 2),
+    .axil_ar_spill_full_i  (xtrig_spill_ar_occ == 2),
     .axil_r_spill_full_i   (xtrig_spill_r_occ == 2),
     .demux_aw_held_i       (xtrig_dmx_aw_valid & ~xtrig_dmx_aw_ready & (xtrig_demux_aw_open > 0)),
     .demux_ar_held_i       (xtrig_dmx_ar_valid & ~xtrig_dmx_ar_ready & (xtrig_demux_ar_open > 0)),
+    .demux_aw_lock_i       (xtrig_dmx_aw_lock),
     .ctm_src_req_i         (xtrig_ctm_src_req),
     .ctm_dst_req_i         (xtrig_ctm_dst_req),
     .ctp_req_out_dout_i    (xtrig_ctp_req_out_dout),
@@ -1721,20 +1725,42 @@ module dtp_uvm_top
   assign u_smc_axi_slave_if.arvalid  = m_axi_arvalid;
   assign u_smc_axi_slave_if.rready   = m_axi_rready;
 
+  // The bridge carries response USER across its CDC and never reads it, so
+  // any value is legal. Each channel's value is a 32-bit maximal LFSR
+  // (x^32 + x^22 + x^2 + x + 1) that steps only on that channel's handshake,
+  // which keeps it stable while a response waits for READY.
+  logic [31:0] smc_axi_buser_q;
+  logic [31:0] smc_axi_ruser_q;
+  always_ff @(posedge clk_i or negedge rst_n_i) begin
+    if (!rst_n_i) begin
+      smc_axi_buser_q <= 32'h1D87_2B41;
+      smc_axi_ruser_q <= 32'h6A0F_93C5;
+    end else begin
+      if (m_axi_bvalid && m_axi_bready) begin
+        smc_axi_buser_q <= {smc_axi_buser_q[30:0], smc_axi_buser_q[31] ^ smc_axi_buser_q[21]
+                            ^ smc_axi_buser_q[1] ^ smc_axi_buser_q[0]};
+      end
+      if (m_axi_rvalid && m_axi_rready) begin
+        smc_axi_ruser_q <= {smc_axi_ruser_q[30:0], smc_axi_ruser_q[31] ^ smc_axi_ruser_q[21]
+                            ^ smc_axi_ruser_q[1] ^ smc_axi_ruser_q[0]};
+      end
+    end
+  end
+
   // Responder-side signals: agent driver -> DUT response inputs.
   assign m_axi_awready = u_smc_axi_slave_if.awready;
   assign m_axi_wready  = u_smc_axi_slave_if.wready;
   assign m_axi_bid     = u_smc_axi_slave_if.bid[1:0];
   assign m_axi_bresp   = u_smc_axi_slave_if.bresp;
-  assign m_axi_buser   = '0;
+  assign m_axi_buser   = smc_axi_buser_q[dtp_dv_cfg_pkg::SmcAxiUserWidth-1:0];
   assign m_axi_bvalid  = u_smc_axi_slave_if.bvalid && rst_n_i;
   assign m_axi_arready = u_smc_axi_slave_if.arready;
   assign m_axi_rid     = u_smc_axi_slave_if.rid[1:0];
   assign m_axi_rdata   = (u_smc_axi_slave_if.rvalid && u_smc_axi_slave_if.rresp[1])
                          ? u_tb_if.smc_axi_err_rdata : u_smc_axi_slave_if.rdata;
   assign m_axi_rresp   = u_smc_axi_slave_if.rresp;
-  assign m_axi_rlast   = u_smc_axi_slave_if.rlast;
-  assign m_axi_ruser   = '0;
+  assign m_axi_rlast   = u_smc_axi_slave_if.rlast && m_axi_rvalid;
+  assign m_axi_ruser   = smc_axi_ruser_q[dtp_dv_cfg_pkg::SmcAxiUserWidth-1:0];
   assign m_axi_rvalid  = u_smc_axi_slave_if.rvalid && rst_n_i;
 
   // Shared-VIP passive monitor interfaces at the default geometry (the
@@ -1976,6 +2002,23 @@ module dtp_uvm_top
   assign u_tb_if.sep_otp_op_pending     = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.single_op_pending_tclk;
   assign u_tb_if.sep_otp_cdc_clear_seen = sep_otp_cdc_clear_seen;
 
+  // Phase of the CDC clear sequences, read from the smc_axi bridge's AW
+  // crossing, whose reset controller clocks half_a with TCK and half_b with
+  // the system clock. The bridges' controllers run in lockstep (dtp_tb_if),
+  // so this crossing stands for every crossing of every bridge.
+  assign u_tb_if.j2a_cdc_aclk_clear =
+      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b.initiator_state_q.name() == "CLEAR");
+  assign u_tb_if.j2a_cdc_aclk_wait_clear_phase_ack =
+      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b.initiator_state_q.name() == "WAIT_CLEAR_PHASE_ACK");
+  assign u_tb_if.j2a_cdc_aclk_post_clear =
+      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b.initiator_state_q.name() == "POST_CLEAR");
+  assign u_tb_if.j2a_cdc_aclk_finished =
+      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b.initiator_state_q.name() == "FINISHED");
+  assign u_tb_if.j2a_cdc_tck_dst_wait_ack =
+      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a.i_state_transition_cdc_dst.state_q.name() == "WAIT_DOWNSTREAM_ACK");
+  assign u_tb_if.j2a_cdc_aclk_dst_wait_ack =
+      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b.i_state_transition_cdc_dst.state_q.name() == "WAIT_DOWNSTREAM_ACK");
+
   // XTRIG CSR AXI-Lite initiator: the shared ocah_axi_vip master (SV-UVM
   // agent or cocotb BFM) drives the CSR port (the initiator mirror of the
   // slave-port pattern: the master drives the request-side signals on the
@@ -2078,7 +2121,7 @@ module dtp_uvm_top
 
   // XTRIG crossbar demux state (the single subordinate port's AXI-Lite
   // demux) and the external CTP busy flops, sampled from the DUT.
-  assign u_tb_if.xtrig_demux_aw_lock   = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.lock_aw_valid_q;
+  assign u_tb_if.xtrig_demux_aw_lock   = xtrig_dmx_aw_lock;
   assign u_tb_if.xtrig_demux_w_pending = ~u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.w_fifo_empty;
   for (genvar ctp = 0; ctp < dtp_dv_cfg_pkg::NumCtp; ctp++) begin : gen_xtrig_ctp_busy
     assign u_tb_if.xtrig_ctp_busy[ctp] = u_dut.u_cross_trigger_network.gen_ext_ctp[ctp].u_ctp.busy_o;

@@ -11,11 +11,18 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 from .smc_addr_map import (
     GPIO_INTF_STRIDE,
     I2C_CG_EN,
+    gpio_intf_u32,
     smc_addr,
     smc_indexed_addr,
 )
 from .smc_base_test_seq import smc_base_test_seq
 from .smc_efuse_vip_utils import EFUSE_BLOCKED_READ_DATA
+from .smc_pad_table import pad_index
+
+#: A one on every bit of a 32-bit word.
+ALL_ONES_WORD = 0xFFFF_FFFF
+#: Strobe that enables only the top byte lane of a 32-bit word.
+TOP_BYTE_LANE = 0b1000
 
 
 class SmcCsrSeq(smc_base_test_seq):
@@ -55,6 +62,28 @@ class SmcCsrSeq(smc_base_test_seq):
         item.addr = addr
         item.length = length
         item.wdata = data
+        item.prot = prot
+        await self.start_item(item)
+        await self.finish_item(item)
+        self.accesses += 1
+
+    async def csr_write_strobed(
+        self, name: str, addr: int, data: int, wstrb: int, length: int = 4, prot: int = 0
+    ) -> None:
+        """Write `data` at `addr` with only the byte lanes `wstrb` selects enabled.
+
+        `data` is presented on every lane of the `length`-byte transfer, so a
+        lane the strobe disables still carries its byte of `data`, where the
+        strobe `csr_write` derives from the address puts zeros. A field on a
+        disabled lane whose byte of `data` would change it therefore tells a
+        strobe the register honoured from one it ignored.
+        """
+        item = SmcSysAxiItem(f"wr_{name}")
+        item.op = SmcSysAxiOp.WRITE
+        item.addr = addr
+        item.length = length
+        item.wdata = data
+        item.wstrb = wstrb
         item.prot = prot
         await self.start_item(item)
         await self.finish_item(item)
@@ -359,16 +388,14 @@ class SmcCsrSeq(smc_base_test_seq):
             self._I2C0_PAD_STABLE_CYCLES,
         )
 
-    # I2C0 pads 37..40 (SCL/SDA/ALERT/SUS). DATA_CTRL stride 0x10 from GPIO0.
+    # The integrator pad table (`doc/integrator/meta/ocah_gpio_table.csv`) gives
+    # each I2C instance four consecutive pads, SCL, SDA, SMB_A and SMB_D, with
+    # instance `i` starting at its "I2C[i] SCL" row. DATA_CTRL stride from GPIO0.
     _GPIO_INTF0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
     _GPIO_INTF_STRIDE = GPIO_INTF_STRIDE
-    _I2C0_SCL_PAD = 37
-    _GPIO_LSIO_SELECT = 1 << 17
-
-    # Pads per I2C instance in the padring: SCL, SDA, SMBALERT#, SMBSUS#, with
-    # instance `i` starting at `_I2C0_SCL_PAD + 4 * i` (tb_top.sv records the
-    # same 37 + 4*i mapping over its I2C pad localparams).
-    _I2C_PADS_PER_INSTANCE = 4
+    _I2C0_SCL_PAD = pad_index("I2C[0] SCL")
+    _GPIO_LSIO_SELECT = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_SELECT_bm")
+    _I2C_PADS_PER_INSTANCE = pad_index("I2C[1] SCL") - pad_index("I2C[0] SCL")
 
     async def arm_i2c_gpio_lsio(self, idx: int, label: str) -> None:
         """Force the I2C``idx`` pad group onto LSIO via GPIO DATA_CTRL.lsio_select.
@@ -379,7 +406,11 @@ class SmcCsrSeq(smc_base_test_seq):
         at 0. Software ``lsio_select`` is the supported override (same as
         gpio_intf.rdl) and restores pad sense without touching RTL.
         """
-        first = self._I2C0_SCL_PAD + idx * self._I2C_PADS_PER_INSTANCE
+        first = pad_index(f"I2C[{idx}] SCL")
+        assert first == self._I2C0_SCL_PAD + idx * self._I2C_PADS_PER_INSTANCE, (
+            f"the integrator pad table places I2C[{idx}] SCL on pad {first}, off the "
+            f"{self._I2C_PADS_PER_INSTANCE}-pad stride from I2C[0] SCL ({self._I2C0_SCL_PAD})"
+        )
         for pad in range(first, first + self._I2C_PADS_PER_INSTANCE):
             addr = self._GPIO_INTF0_DATA_CTRL + pad * self._GPIO_INTF_STRIDE
             cur = await self.csr_read(f"{label}_GPIO{pad}_SAVE", addr)

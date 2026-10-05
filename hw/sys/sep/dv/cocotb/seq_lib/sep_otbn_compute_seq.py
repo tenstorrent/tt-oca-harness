@@ -91,11 +91,9 @@ class SepOtbnCompute(SepOtbn):
         await self.load_program(otbn_compute_prog(op))
         await self.write_dmem(0, a)
         await self.write_dmem(4, b)
-        # Seed the result word with the golden's exact complement rather than 0.
-        # An `and`/`xor` golden can legitimately be 0, so a zero seed lets a
-        # program that never stores its result pass the comparison. The
-        # complement can never equal the golden, so the sentinel readback below
-        # is a real missing-store detector.
+        # Seed the result word with the complement of the golden: it can never
+        # equal the golden, so the readback below detects a missing store even
+        # when the golden is 0.
         sentinel = expect ^ 0xFFFF_FFFF
         await self.write_dmem(8, sentinel)
         await self.execute()

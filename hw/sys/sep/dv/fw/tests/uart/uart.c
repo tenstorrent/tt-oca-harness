@@ -9,15 +9,13 @@
 #include "sep_outbound_filter.h"
 
 int main(void) {
-    // Initialize outbound filter to allow testpass mailbox access
     sep_outbound_filter_init();
 
     uint32_t wr_data, rd_data;
     int rc = 0;
 
-    srand(1234); // TODO: Replace with dynamic seeding
+    srand(1234); // Fixed seed: the register walk must replay identically.
 
-    // Register sanity test
     printf("Checking register interface connectivity...\n");
     wr_data = rand() & 0xff;
     *((volatile uint32_t *)(0x44000000 + SCR_REG_OFFSET)) = wr_data;
@@ -31,7 +29,6 @@ int main(void) {
     }
     printf("Successfully read back write value 0x%x from SCR register!\n", rd_data);
 
-    // UART loopback test
     printf("Configuring UART...\n");
     uint32_t baud_rate = 921600;
     uint32_t uart_clk_hz = 100000000; // 100 MHz
@@ -81,7 +78,6 @@ done:
         test_fail(1);
     }
 
-    // Keep CPU alive after signaling completion.
     while (1) {
         __asm__("wfi");
     }

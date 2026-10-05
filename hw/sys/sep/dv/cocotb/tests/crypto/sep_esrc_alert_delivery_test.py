@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""ESRC persistent-failure alert to PIC source 16, then W1C-clear.
+"""An ESRC persistent failure raises the alert on PIC source 16, and W1C clears it.
 
 no_cpu / +skip_fuse_sense / +esrc_noise_force. RAND-NONE. A short
 health-test window plus stuck forced noise accumulates one failing
@@ -14,8 +14,8 @@ failing windows, ALERT_FAIL_COUNTS attributes the trip to the repetition lane,
 HEALTH_TEST_STATUS latches the failing tests, and MAIN_SM_STATUS.ERR must stay 0
 so PERSISTENT_FAILURE is attributable to AlertHang rather than to a counter or
 state fault. An opening INTR_TEST sweep, before the trip, drives each interrupt
-source the RDL defines on its own, which proves the aggregate slot per source independently of
-any real failure.
+source the RDL defines on its own. This proves the aggregate slot per source
+without a real failure.
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ _TRIP_POLL_EVERY = 64
 
 @pyuvm.test()
 class sep_esrc_alert_delivery_test(sep_base_test):
-    """Trip persistent failure, claim PIC source 16, W1C-clear."""
+    """A persistent failure sets ALERT and PIC source 16, and W1C clears both."""
 
     def _irq_bit(self) -> int:
         vec = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask=1 << IRQ_AGG_IDX)
@@ -154,9 +154,10 @@ class sep_esrc_alert_delivery_test(sep_base_test):
             "PERSISTENT_FAILURE came from the alert threshold"
         )
 
-        # ANY_FAIL_COUNT's event input is the once-per-window ht_fail_pulse, so the
-        # counter is denominated in failing WINDOWS. The per-lane alert counters
-        # take the individual per-test fail pulses instead, so their sum bounds
+        # entropy_source.rdl ALERT_SUMMARY_FAIL_COUNTS counts "consecutive
+        # health-test windows containing any failure", so the counter is
+        # denominated in failing WINDOWS. ALERT_FAIL_COUNTS counts the individual
+        # per-test failures instead, so the sum of its lanes bounds
         # ANY_FAIL_COUNT from above. Both halves are needed: the lower bound alone
         # is implied by the alert comparator that already fired, and the upper
         # bound is what rejects a build that counts events where the register is
@@ -184,12 +185,13 @@ class sep_esrc_alert_delivery_test(sep_base_test):
             alert_counts,
         )
 
-        # Stuck noise with REPETITION_LIMIT=5 fails the repetition lane. Two
-        # separate counters see that one pulse -- a 32-bit total cleared by
-        # health_test_clr and a 4-bit alert counter cleared by alert_cntrs_clr --
-        # so the total must cover the alert counter. The reverse does not hold:
-        # alert_cntrs_clr also fires on a passing window, so a lane's alert
-        # counter can return to zero while its total keeps the history.
+        # Stuck noise with REPETITION_LIMIT=5 fails the repetition lane. Per
+        # entropy_source.rdl two separate counters see that one pulse --
+        # <lane>_TOTAL_FAILS counts since the last CTRL.MODULE_ENABLE rising
+        # edge, and ALERT_FAIL_COUNTS counts for the current alert sequence only
+        # -- so the total must cover the alert counter. The reverse does not
+        # hold: an accepted passing window ends the alert sequence, so a lane's
+        # alert counter can return to zero while its total keeps the history.
         totals = await esrc.read_total_fails()
         assert totals["REPCNT"] > 0, (
             f"CHK-FAIL-ATTRIB FAIL: REPCNT_TOTAL_FAILS={totals['REPCNT']} with stuck "

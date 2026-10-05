@@ -20,6 +20,7 @@ from pathlib import Path
 
 import pyuvm
 from env import sep_manifest_mutate as mm
+from env.sep_efuse_image import SBOOT_DIS_MASK
 from rom_fw.sep_backup_manifest_fail_base import (
     MANIFEST_ERR_SIG_CLASS_CONTROL,
     sep_backup_manifest_fail_base,
@@ -163,7 +164,7 @@ class sep_firmware_cntl_secure_boot_flow_test(sep_backup_manifest_fail_base):
 
     def check_efuse(self, image) -> None:
         lc = image.lc_raw()
-        sboot_dis = image.field_int("SBOOT_DIS") & 0x1
+        sboot_dis = image.field_int("SBOOT_DIS") & SBOOT_DIS_MASK
         bl1_ver = image.field_int("BL1_VERSION")
         revoke = image.field_int("CHIPLET_PUBK_REVOKE")
         assert lc == 0x1, (

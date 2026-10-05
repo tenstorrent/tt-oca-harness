@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""RMA token match vs mismatch -> LC update (standalone RANDCFG).
+"""An RMA token match updates LC_STATE; a mismatch and a comparator fault do not.
+
+RANDCFG.
 
 A matching token authorizes the LC_STATE OTP bit and the resense shows the
 new lifecycle code plus the spec-derived FEAT_CTRL. A mismatch does not
@@ -8,16 +10,19 @@ match, the program is rejected, and LC/FEAT_CTRL stay at the pre-attempt
 golden. Token values come from the run seed. Both SIP and CHIPLET kinds
 walk match and mismatch.
 
-After that walk, the same vehicle covers the token-comparator redundancy
+After that walk, the same test covers the token-comparator redundancy
 fault path: common-mode invert of a match (legal mismatch, no sticky),
-common-mode invert of a mismatch (legal match, no sticky — the fail-open
+common-mode invert of a mismatch (legal match, no sticky -- the fail-open
 hole), collapsed pair, two-instance disagreement, 6'b111111 on the match
 status, sticky bit / IRQ survive a valid-token retry, and
 ``sep_internal_interrupts[39]`` (PIC source 40). Collapse and disagreement
-have no frontdoor; the tb injects them on the RMA_SIP comparator rails.
+have no frontdoor; the tb injects them on the RMA_SIP comparator rails. A cold
+reset clears the sticky fault bits and the interrupt, and the detector re-arms
+after it (CHK-FAULT-RESET). At RMA_CHIP_1 a JTAG read of TOKEN_MATCH_FAULT
+equals the AXI read (CHK-JTAG-FAULT).
 
-Does not stretch the stitch e2e. Real fuse sense. Starts in PROD
-so the SIP then CHIPLET walk is W1S-legal.
+The end-to-end LC stitch is graded by lcc/sep_efuse_lcc_lc_state_stitch_test.
+Real fuse sense. Starts in PROD so the SIP then CHIPLET walk is W1S-legal.
 """
 
 from __future__ import annotations
@@ -240,6 +245,12 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         irq = self._irq39()
         assert code == TOKEN_ERROR, f"collapsed pair must force 6'b111111, got 0x{code:02x}"
         assert fault & FAULT_RMA_SIP, f"collapse did not set SIP fault: 0x{fault:x}"
+        all_three = FAULT_RMA_SIP | FAULT_RMA_CHIPLET | FAULT_SEC_DISABLE
+        fault_after_sip = fault & all_three
+        assert fault_after_sip == FAULT_RMA_SIP, (
+            f"CHK-WHICH-TOKEN FAIL: FAULT=0x{fault:08x} after the SIP collapse; of "
+            f"0x{all_three:08x} only SIP bit0 (0x{FAULT_RMA_SIP:08x}) may be set"
+        )
         assert irq == 1, "collapse did not raise sep_internal_interrupts[39]"
         self.logger.info(
             "CHK-COLLAPSE PASS: pair collapse -> code=0x%02x FAULT=0x%08x irq39=1", code, fault
@@ -284,6 +295,12 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         fault = await self._rd_fault()
         assert code == TOKEN_ERROR, f"CHIPLET collapse must force 6'b111111, got 0x{code:02x}"
         assert fault & FAULT_RMA_CHIPLET, f"CHIPLET collapse did not set bit 8: FAULT=0x{fault:x}"
+        fault_after_chiplet = fault & all_three
+        assert fault_after_chiplet == FAULT_RMA_SIP | FAULT_RMA_CHIPLET, (
+            f"CHK-WHICH-TOKEN FAIL: FAULT=0x{fault:08x} after the CHIPLET collapse; of "
+            f"0x{all_three:08x} only SIP bit0 and CHIPLET bit8 "
+            f"(0x{FAULT_RMA_SIP | FAULT_RMA_CHIPLET:08x}) may be set"
+        )
         await self._set_inject(TOKEN_CMP_INJECT_OFF)
 
         await self._set_inject(TOKEN_CMP_INJECT_COLLAPSE, TOKEN_CMP_SEL_SEC)
@@ -294,13 +311,19 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
             f"SEC_DISABLE collapse did not set bit 16: FAULT=0x{fault:x}"
         )
         await self._set_inject(TOKEN_CMP_INJECT_OFF)
-        all_three = FAULT_RMA_SIP | FAULT_RMA_CHIPLET | FAULT_SEC_DISABLE
         assert (fault & all_three) == all_three, (
             f"CHK-WHICH-TOKEN FAIL: FAULT=0x{fault:08x} after the third collapse; each fault "
             f"bit is sticky, so all of 0x{all_three:08x} must still be set"
         )
         self.logger.info(
-            "CHK-WHICH-TOKEN PASS: FAULT=0x%08x (SIP bit0 + CHIPLET bit8 + SEC_DISABLE bit16)",
+            "CHK-WHICH-TOKEN PASS: fault bits after each collapse SIP=0x%08x (want 0x%08x) "
+            "CHIPLET=0x%08x (want 0x%08x) SEC_DISABLE=0x%08x (want 0x%08x); FAULT=0x%08x",
+            fault_after_sip,
+            FAULT_RMA_SIP,
+            fault_after_chiplet,
+            FAULT_RMA_SIP | FAULT_RMA_CHIPLET,
+            fault & all_three,
+            all_three,
             fault,
         )
 

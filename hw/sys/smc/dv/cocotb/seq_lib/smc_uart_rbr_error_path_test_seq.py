@@ -214,6 +214,10 @@ class smc_uart_rbr_error_path_test_seq(SmcCsrSeq):
             f"a character sent with odd parity to a receiver set to even did not set LSR.PE "
             f"on the register path (LSR=0x{parity:08x})"
         )
+        assert parity & (LSR_FE | LSR_BI | LSR_OE) == 0, (
+            f"the parity character also carried another error flag (LSR=0x{parity:08x}); a "
+            f"parity disagreement alone sets PE and no other of FE, BI, OE"
+        )
         self.seen.append(("parity", parity))
 
         framing = await self._leg("FRAMING", WLS_8, WLS_5, True, FRAMING_BYTE)
@@ -229,6 +233,10 @@ class smc_uart_rbr_error_path_test_seq(SmcCsrSeq):
         assert framing & LSR_BI == 0, (
             f"the framing character also read as a break (LSR=0x{framing:08x}); it carries a "
             f"one, so the frame is not the all-zero one a break is"
+        )
+        assert framing & (LSR_PE | LSR_OE) == 0, (
+            f"the framing character also carried another error flag (LSR=0x{framing:08x}); "
+            f"with parity off and one character in flight neither PE nor OE can be set"
         )
         self.seen.append(("framing", framing))
         cocotb.log.info(

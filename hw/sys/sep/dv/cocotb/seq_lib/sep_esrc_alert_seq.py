@@ -49,9 +49,11 @@ ERR_BIT = ERR_MASK.bit_length() - 1
 # Aggregator slot, not an RDL CSR field: no symbol exists for it.
 IRQ_AGG_IDX = 15  # PIC source 16
 TRIP_WINDOW = 64
-# Three failing windows, not one. At a threshold of one the alert comparator
-# (entropy_source.sv: alert_thresh_fail = ANY_FAIL_COUNT >= THRESHOLD) already
-# implies ANY_FAIL_COUNT >= 1, so the counter check could not fail on its own,
+# Three failing windows, not one. entropy_source.rdl ALERT_THRESHOLD.THRESHOLD is
+# the "number of consecutive failing windows that triggers the alert", and
+# ALERT_SUMMARY_FAIL_COUNTS.ANY_FAIL_COUNT is the "number of consecutive failing
+# health-test windows". At a threshold of one the trip already implies
+# ANY_FAIL_COUNT >= 1, so the counter check could not fail on its own,
 # and no denomination -- windows, per-test pulses, or per-lane events -- is
 # distinguishable at a count of one.
 TRIP_THRESHOLD = 3
@@ -86,11 +88,12 @@ HEALTH_STATUS_MASK = ENTROPY_SOURCE.fields("HEALTH_TEST_STATUS")["HEALTH_STATUS"
 HEALTH_LANE_MASK = (1 << 0) | (1 << 3) | (1 << 4) | (1 << 5)
 HEALTH_RSVD_MASK = HEALTH_STATUS_MASK & ~HEALTH_LANE_MASK
 
-# The five per-lane fail counters. Each pair counts one pulse twice: a 32-bit
-# total cleared by health_test_clr, and a 4-bit alert counter cleared by
-# alert_cntrs_clr (entropy_source.sv u_entropy_src_cntr_reg_* instances). Two
-# different widths and two different clears off one event, so comparing them is
-# a DUT-to-DUT contract rather than a restatement.
+# The five per-lane fail counters. entropy_source.rdl gives each test two counts
+# of one failure pulse: <lane>_TOTAL_FAILS, a 32-bit count "since the last
+# CTRL.MODULE_ENABLE rising edge", and ALERT_FAIL_COUNTS.<lane>_FAIL_COUNT, a
+# 4-bit saturating count "for the current alert sequence". Two different widths
+# and two different clear points off one event, so comparing them is a
+# DUT-to-DUT contract rather than a restatement.
 FAIL_LANES = ("REPCNT", "APT_HI", "APT_LO", "MARKOV_HI", "MARKOV_LO")
 TOTAL_FAILS_ADDR = {lane: sym(f"ENTROPY_SOURCE_{lane}_TOTAL_FAILS_REG_ADDR") for lane in FAIL_LANES}
 ALERT_FAIL_FIELD = {lane: f"{lane}_FAIL_COUNT" for lane in FAIL_LANES}
@@ -100,6 +103,9 @@ GENERATOR_HEALTH_ADDR = tuple(
     sym(f"ENTROPY_SOURCE_GENERATOR_{n}_HEALTH_STATUS_REG_ADDR") for n in range(12)
 )
 assert len(GENERATOR_HEALTH_ADDR) == 12
+GENERATOR_HEALTH_MASK = tuple(
+    ENTROPY_SOURCE.fields(f"GENERATOR_{n}_HEALTH_STATUS")["STATUS"]["bm"] for n in range(12)
+)
 
 
 class SepEsrcAlert(SepAxiRegDriver):
@@ -157,7 +163,10 @@ class SepEsrcAlert(SepAxiRegDriver):
 
     async def read_generator_health(self) -> list[int]:
         """The twelve per-generator latched health-status bytes."""
-        return [(await self._rd(addr)) & 0xFF for addr in GENERATOR_HEALTH_ADDR]
+        return [
+            (await self._rd(addr)) & mask
+            for addr, mask in zip(GENERATOR_HEALTH_ADDR, GENERATOR_HEALTH_MASK)
+        ]
 
     async def disable_health_tests(self) -> None:
         """Clear HEALTH_TEST_CTRL.ENABLE so no test can re-latch HEALTH_STATUS.

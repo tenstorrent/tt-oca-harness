@@ -32,9 +32,9 @@ installs exactly that set or fails.
 [[shared-vip-dependencies]]
 === Dependencies and Licenses
 
-The `dv` dependency group carries four runtime dependencies. Each row names
-the pinned range, the SPDX license the distribution declares, the packages
-that bind it, and what happens without it.
+The runtime dependencies of the `dv` dependency group are listed below. Each
+row names the pinned range, the SPDX license the distribution declares, the
+packages that bind it, and what happens without it.
 
 [cols="<2,<2,<2,<3,<4",options="header"]
 |===

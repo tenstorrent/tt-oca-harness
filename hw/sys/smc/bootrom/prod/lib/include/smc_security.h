@@ -9,7 +9,7 @@
 #define SMC_SECURITY_H
 
 #include <stdint.h>
-#include "smc_rom_defs.h" /* For SMC_LC_STATE_REG_ADDR and SMC_LC_STATE_MASK */
+#include "smc_rom_defs.h" /* For SMC_LC_STATE_MASK */
 
 /*
  * Lifecycle State (LC) Values and Security Mode Definitions
@@ -32,7 +32,6 @@
  * SMC latches the full byte in CHIP_CONFIG.LC_STATE; the low nibble is the
  * decoded lifecycle value when the high nibble equals its bitwise complement.
  */
-#define SMC_LC_STATE_RAW_MASK 0xFF
 #define SMC_LC_STATE_NIBBLE_MASK 0xF
 #define SMC_LC_STATE_DIFF_IS_VALID(raw) \
     (((((uint8_t)(raw)) >> 4) & SMC_LC_STATE_NIBBLE_MASK) == \
