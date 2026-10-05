@@ -5,9 +5,9 @@
 //
 // Rule provenance: every rule below is implemented from the public AMBA AXI4
 // specification (ARM IHI 0022) rule DESCRIPTIONS. No third-party protocol
-// checker source (including ARM's Axi4PC) was consulted or copied; all rule
-// names are OCAH-original. Reviewers: verify additions cite an IHI 0022
-// section, never another checker implementation.
+// checker source was consulted or copied; all rule names are OCAH-original.
+// Reviewers: verify additions cite an IHI 0022 section, never another
+// checker implementation.
 //
 // Shape: a module with explicit flat ports so it can be instantiated at TB
 // scope next to flattened DUT nets (the DTP integration) or bound into a
