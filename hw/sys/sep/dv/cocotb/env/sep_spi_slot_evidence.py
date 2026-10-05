@@ -4,8 +4,7 @@
 
 The console cannot establish which flash ADDRESS the ROM interrogated, what the
 device answered, or in what order -- ``MANIFEST_SRC=`` proves only what the ROM
-intended to read. Without the device side, these tests would check only
-manifest integrity.
+intended to read.
 
 ``OcahSpiFlash.get_transactions()`` records are
 ``{opcode, addr, data_out, data_in, ok}``, ``data_out`` holding the bytes the flash

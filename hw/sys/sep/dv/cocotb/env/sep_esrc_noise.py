@@ -18,8 +18,7 @@ Update rate: the decorrelator samples `noise_i` on its divided sample clock, so
 the port only has to change faster than that to look random downstream. The ROM
 programs `SAMPLE_CLK_DIV` to divide by 64 (`sep_entropy.c`), so an update every
 `interval` cycles with `interval` well under 64 gives every sample a fresh value.
-Driving every cycle costs `interval` times the Python callbacks (8x at the default)
-for no benefit.
+At the default interval of 8, driving every cycle costs 8x the Python callbacks.
 """
 
 from __future__ import annotations

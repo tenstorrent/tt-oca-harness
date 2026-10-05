@@ -10,9 +10,9 @@ dedicated ROM drives it. It cannot be ``rom_main`` either: that image
 programs the scrambler key, enables it and takes the sticky lock during boot,
 so the enable toggle this test needs is already gone before the host can act.
 
-No hierarchical peek is needed. The ROM writes plaintext with scrambling on,
-disables it, and reads the stored words back through the disabled path, a
-legitimate frontdoor. That the disabled path addresses the register file
+The ROM writes plaintext with scrambling on, disables it, and reads the
+stored words back through the disabled path, a frontdoor.
+That the disabled path addresses the register file
 logically and passes data through unmodified is the observation aperture this
 test relies on, not a contract it grades: no non-zero word is written while
 disabled, so a self-consistent non-identity disabled mapping also passes.

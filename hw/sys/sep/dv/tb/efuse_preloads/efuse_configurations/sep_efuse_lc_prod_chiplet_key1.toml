@@ -50,7 +50,8 @@
 
 [CHIPLET_PUBK_HASH0]
   [CHIPLET_PUBK_HASH0.fields.key_hash]
-  # Decoy: the same digest with byte 0 bit 0 flipped. Non-zero on purpose.
+  # Decoy: the same digest with byte 0 bit 0 flipped; non-zero so a ROM that
+  # reads the wrong fuse fails PUBK_UNAUTHORIZED rather than PUBK_OTP_EMPTY.
   value = 0xf65082842b03dfecbb617d03d2a7fd9ca03a7e6494c96e1ac2f5a83763ca71a6
 
 [CHIPLET_PUBK_REVOKE]

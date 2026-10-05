@@ -30,9 +30,8 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 # --- mailbox register map (SEP/host side) ---------------------------------
 KM_MBOX_BASE = sym("KM_MAILBOX_SEP_REG_MAP_BASE_ADDR")
-# Offsets come from the generated map, not literals, so a moved or missing
-# register is an import-time error, not a stale constant that reads or writes
-# the wrong port.
+# Offsets come from the generated map, so a register-flow rename or a moved
+# register fails at import.
 KM_MBOX_WRITE_DATA = sym("KM_MAILBOX_SEP_SEP_WRITE_DATA_REG_OFFSET")
 KM_MBOX_WRITE_SEPARATOR = sym("KM_MAILBOX_SEP_SEP_WRITE_SEPARATOR_REG_OFFSET")
 KM_MBOX_READ_DATA = sym("KM_MAILBOX_SEP_SEP_READ_DATA_REG_OFFSET")

@@ -50,8 +50,6 @@
 #define LC_HANDOFF_PVT_EN 0x00920001u
 #define LC_HANDOFF_ARMED 0x00920002u
 #define LC_HANDOFF_DEMOTE1 0x00920003u
-/* For the DEMOTE_2 image. This one stops after DEMOTE_1 so the checker
- * still has a DEMOTE_1-only run to grade. */
 #define LC_HANDOFF_DEMOTE2 0x00920004u
 #define LC_HANDOFF_PASS 0x0092000Fu
 #define LC_HANDOFF_SMC_FAIL 0x009CFFEEu

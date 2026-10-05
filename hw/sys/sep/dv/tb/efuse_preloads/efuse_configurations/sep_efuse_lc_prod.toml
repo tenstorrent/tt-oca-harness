@@ -6,16 +6,9 @@
 # The baseline secure-boot preload: PROD is what makes SEP ROM enforce signature
 # verification, and SBOOT_DIS stays 0 so nothing can opt out of it.
 #
-# It is the default preload for every secure-boot testcase that needs no other
-# fuse. The list is not kept here (a hand-kept list drifts); enumerate it
-# mechanically:
-#
-#   awk 'BEGIN{RS="\\[\\[tests\\]\\]"} /efuse_configurations\/sep_efuse_lc_prod\.toml"/ \
-#     {match($0,/name = "[^"]+"/); print substr($0,RSTART+8,RLENGTH-9)}' \
-#     ../../../testlists/rom_fw.toml
-#
-# Splitting on [[tests]] is what makes that correct; a line-window grep spills
-# into the neighbouring entries and over-reports.
+# It is the default preload for every secure-boot testcase in
+# testlists/rom_fw.toml that needs no other fuse; that testlist is the list of
+# users.
 #
 # Anything that changes in this file changes all of them at once, so treat it as
 # shared state and prefer a sibling preload over an edit here.

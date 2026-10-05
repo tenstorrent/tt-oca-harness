@@ -14,9 +14,8 @@
 // therefore what notifies the SEP CPU, and channel ch drives PIC source
 // (ch + 1).
 //
-// CLOCK_GATE_CTRL in this map implements only pka_cg_enable (bit 0).
-// SEP_CLOCK_GATE_MAILBOX (bit 2) is not a defined field, and no check depends
-// on it.
+// CLOCK_GATE_CTRL implements only pka_cg_enable (bit 0); writes to bit 2 have
+// no hardware effect.
 //
 // IRQS is write-1-to-clear. Because the IRQ is level-based on FIFO occupancy
 // (usage > WIRQT), W1C alone re-asserts next cycle while the FIFO stays above

@@ -51,8 +51,9 @@
 //   * smc_fuse_sense_done_i     (TB-modelled; +sep_smc_fuse_sense_hold holds it low)
 //   * mpc_reset_run_req         (0 = hold the CPU off [no_cpu]; 1 = run [cpu])
 //
-// The CPU LSU req/resp struct (deps/axi AXI_TYPEDEF_ALL) is bridged to flat
-// `s_axi_*` ports so cocotb binds via AxiBus.from_prefix(dut, "s_axi").
+// The CPU LSU req/resp struct (vendor/pulp-platform/axi AXI_TYPEDEF_ALL) is
+// bridged to flat `s_axi_*` ports so cocotb binds via
+// AxiBus.from_prefix(dut, "s_axi").
 
 `timescale 1ps/1fs
 
@@ -1724,17 +1725,15 @@ module sep_uvm_top
     // landed; it is not fail-closed evidence. After release the recovered
     // encoding must be a legal idle/wait value (DUT-driven). Command
     // withdraw and the error/done/busy/data terms are claimed only on the
-    // in-flight leg. Accepted claim: the legal encodings 2'b01 idle and
-    // 2'b10 wait are taken from the design's state encoding, because no
-    // document names them; this leaf grades recovery against that set and
-    // injects its complement. Owner: sep_efuse_illegal_state_fail_closed_test.
-    // Re-check when the state encoding in efuse_read_interface.sv or
-    // efuse_program_interface.sv changes.
+    // in-flight leg. The legal encodings 2'b01 idle and 2'b10 wait are the
+    // design's state encoding in efuse_read_interface.sv and
+    // efuse_program_interface.sv; this leaf grades recovery against that set
+    // and injects its complement. Owner:
+    // sep_efuse_illegal_state_fail_closed_test.
     //
-    // The registers are enum-typed and the injected encodings are, by
-    // construction, not members of those enums -- that is the property under
-    // test. The conversion is therefore deliberate and scoped to these two
-    // forces rather than waived file-wide.
+    // The registers are enum-typed and the injected encodings are not members
+    // of those enums, which is the property under test; ENUMVALUE is waived
+    // for these two forces only.
     /* verilator lint_off ENUMVALUE */
     always @(posedge clk_i) begin
         if (efuse_read_state_inject_en_i === 1'b1) begin

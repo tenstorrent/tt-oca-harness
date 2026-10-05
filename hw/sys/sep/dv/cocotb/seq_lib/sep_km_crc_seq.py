@@ -45,17 +45,13 @@ N_RAND_VECTORS = 4
 class SepKmCrcCfg:
     """Seeded operand set for one run.
 
-    Operands are screened, not merely drawn. A CRC step over an all-zero state
-    and an all-zero byte returns zero for both polynomials, so a run that drew
-    those would pass against a dead engine; a word whose four bytes are equal
-    cannot tell a little-endian consumption order from a big-endian one; and
-    every mode has legal FIXED POINTS, operands the engine correctly maps back
-    onto their own input state. A fixed point is not a defect, but it makes the
-    "the engine moved the state" check unfalsifiable for that vector, so the
-    draw rejects one rather than letting the checker tolerate it. Fixed points
-    are identified with the independent golden, never by asking the DUT: in
-    CRC-8/ROHC one byte in 256 is a fixed point for any given state, so drawing
-    without this screen fails a few percent of seeds on correct hardware.
+    Operands are screened. A CRC step over an all-zero state and an all-zero
+    byte returns zero for both polynomials and would pass against a dead engine;
+    a word whose four bytes are equal cannot tell a little-endian consumption
+    order from a big-endian one; and every mode has legal FIXED POINTS,
+    operands the engine correctly maps back onto their own input state. The
+    "the engine moved the state" check requires a non-fixed-point vector, so
+    fixed points are identified with the independent golden and screened out.
     """
 
     def __init__(self, seed: int) -> None:
@@ -66,11 +62,9 @@ class SepKmCrcCfg:
         self.rohc_vectors = tuple(self._draw_rohc(rng) for _ in range(N_RAND_VECTORS))
         # The chained cross-check needs one word whose bytes are all distinct.
         self.chain_state, self.chain_word = self._draw_word(rng)
-        # CHK-POLY compares the two polynomial families over the low byte, and
-        # two different polynomials agree there for about one operand in 256.
-        # That is correct hardware, so the operand is screened rather than the
-        # checker loosened -- otherwise the test would fail a fraction of a
-        # percent of seeds for no defect.
+        # CHK-POLY compares the two polynomial families over the low byte, where
+        # two different polynomials agree for about one operand in 256 on
+        # correct hardware, so the draw screens such operands out.
         self.poly_state, self.poly_data = self._draw_poly(rng)
 
     @staticmethod

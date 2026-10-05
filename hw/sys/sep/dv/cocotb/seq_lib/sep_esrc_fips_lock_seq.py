@@ -125,8 +125,9 @@ _WALK_FIELDS: dict[str, frozenset[str]] = {
     **{f"GENERATOR_{idx}_SAMPLE_CLK_CONFIG": frozenset({"SAMPLE_CLK_DIVIDE"}) for idx in range(12)},
 }
 
-# Locked fields this walk deliberately does not poke, each with the reason it
-# cannot be reached here. An entry is a standing exception, not a gap to ignore.
+# Locked fields this walk cannot reach, each with the reason;
+# _reconcile_walk_with_rdl() fails import when an entry stops being locked in
+# the RDL.
 _WALK_EXCLUDED: dict[tuple[str, str], str] = {
     ("CTRL", "MODULE_ENABLE"): (
         "clearing it idles the main state machine for the rest of the walk; its "

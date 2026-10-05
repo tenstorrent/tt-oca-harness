@@ -259,10 +259,9 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         for i in range(self.cfg_mb.first_batch):
             rc = await self.mb.push64(self.cfg_mb.payloads[i])
             assert rc == RESP_OKAY, f"CHK-64B FAIL: push {i} answered resp={rc}, expected OKAY"
-            # Advance the model. Not asserted: gold.push() only returns False when the
-            # model is already full, which a range(first_batch < depth) loop cannot
-            # reach, so asserting it tests the model's arithmetic rather than the DUT.
-            # _check_status below is what compares the model against the DUT.
+            # gold.push() returns False only when the model is already full, which
+            # range(first_batch < depth) cannot reach; _check_status compares the model
+            # against the DUT.
             self.gold.push()
             await self._check_status(f"push64 #{i + 1}", "CHK-64B")
             await self._check_wtirq(f"push64 #{i + 1}")

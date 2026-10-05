@@ -196,8 +196,6 @@ class SepDrbgScoreboard:
         self.glen = int(self._gk.get("glen", 32))
         # Default the legal set to the sequence's own commanded glen, so the
         # segmentation check in report() is always an exact membership test.
-        # There is no looser fallback: a width-derived ceiling no block count
-        # these tests reach could violate is not a check.
         if self.legal_gen_lengths is None:
             self.legal_gen_lengths = {self.glen}
         self._fips_violations = 0
@@ -478,8 +476,8 @@ class SepDrbgScoreboard:
 
     def _seed_golden(self, sr_packed):
         """Re-create the CHK1 SR golden and seed it from the live RTL ff_stage
-        snapshot. clk_divider=8 is unused by the raw-SR CHK1 compare but phase-
-        aligns the model divider to the RTL's /8 downsampler for completeness."""
+        snapshot; clk_divider=8 phase-aligns the model divider with the RTL /8
+        downsampler."""
         self.golden = SepEntropyGolden(**self._gk)
         self.golden.seed_decor_sr(sr_packed, clk_divider=8)
 
@@ -1287,12 +1285,9 @@ class SepDrbgScoreboard:
                 "inside csrng_cmd_stage.",
                 self.results["CHK4_genbits"].dut_items,
             )
-        # A completed command must carry a legal number of blocks: one of the
-        # lengths the endpoints actually request, and never zero, which would
-        # mean gen_last fired with no genbits at all. legal_gen_lengths is the
-        # only bound, and __init__ always leaves it a set -- the caller's
-        # declared lengths, else the sequence's own commanded glen -- so the
-        # predicate is an exact membership test on every path.
+        # A completed command must carry one of the legal block counts (the
+        # caller's declared lengths, else the sequence's own commanded glen),
+        # and never zero, which would mean gen_last fired with no genbits at all.
         for seg_len, count in sorted(self._gen_lengths.items()):
             if seg_len < 1 or seg_len not in self.legal_gen_lengths:
                 self.log.error(

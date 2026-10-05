@@ -106,10 +106,8 @@ class sep_clock_gate_control_test(sep_base_test):
                 got,
             )
 
-        # The walk covers both polarities by construction: enables is a frozen
-        # default this test does not override, so a guard on it would restate the
-        # dataclass. What makes the compare above meaningful is that each witness
-        # is read twice, once per polarity.
+        # Each witness is read twice, once per polarity; enables is a frozen default
+        # this test does not override.
         self.logger.info(
             "CHK-STUB-CONST PASS: %d witness(es) read the same value with "
             "pka_cg_enable set and clear (%s) -- the bit gates none of them",

@@ -60,11 +60,8 @@ from seq_lib.sep_inbound_filter_rule_seq import (
 )
 from seq_lib.sep_mailbox_iface_seq import SepMbox
 
-# The peer aperture, by symbol from the register export rather than derived from
-# the host base, so a map change moves it here too.
 INBOUND_BASE = sym("AXIL_MAILBOX_INBOUND_MAILBOX_0_REG_MAP_BASE_ADDR")
-# The filter window spans the peer aperture up to the next block, taken as the
-# gap between the two mailbox bases rather than written as a literal size.
+# The filter window spans the peer aperture up to the next block.
 _MAILBOX_STRIDE = INBOUND_BASE - OUTBOUND_BASE
 
 # Two distinct entries whose halves are all different, so a check can tell which

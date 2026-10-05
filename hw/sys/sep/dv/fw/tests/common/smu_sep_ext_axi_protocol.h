@@ -21,10 +21,9 @@
  * the DECERR and the recovery read, ext_in writes ROUTE_DONE_* and each firmware
  * publishes its final PASS marker and parks in a named pass loop.
  *
- * The firmware keeps the SEP egress store (it is the CHK-SEP-OUT stimulus) and bounds
- * every post-egress wait so it never hangs; if ROUTE_DONE/PASS cannot be reached the
- * firmware parks at a defined, named PC and DV reports the observed PC/phase.  Whether
- * the SEP egress reaches ext_out is adjudicated from the run, not preassigned.
+ * The SEP egress store is the CHK-SEP-OUT stimulus. Every post-egress wait is
+ * bounded; failure to reach ROUTE_DONE/PASS parks firmware at a named PC for
+ * phase reporting.
  *
  * ADDRESSING (firmware uses LOCAL register-header symbols; the GLOBAL forms below
  * are what the external tb.ext_in master uses through the programmed apertures):

@@ -201,11 +201,9 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
             _SYS_DIS,
         )
 
-        # security_disable read from the DUT, not assumed. It asserts only after a
-        # SEC_DIS token match, which this no-token PROD flow never performs, so the
-        # expected value is 0 -- but "expected 0" and "observed 0" are different
-        # claims, and the probe makes it the second one. The exact 64-bit golden
-        # compare below remains the safety net either way.
+        # security_disable asserts only after a SEC_DIS token match, which this
+        # no-token PROD flow never performs; the golden takes the observed value and
+        # the exact 64-bit FEAT_CTRL compare below guards it.
         sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
 
         # ---- PROD: sep_debug=0, inbound filter active -> external blocked ----

@@ -22,19 +22,13 @@
 /* common CLA arm token (scratch1) the SV real-CLA liveness monitor waits for */
 #define SMU_STALL_ARM_TOKEN 0x02200100
 
-/* Frontdoor SMC bring-up over the SEP->SMC port -- no net force, no ext_in master, and
- * NOT behind the SMC sys-INBOUND filter. (The SEP's own OUTBOUND egress filter IS
- * configured as required setup -- see open_sep_outbound_xbar_window; that is what "no
- * filter" excludes: only the SMC sys-inbound BLOCK_BY_DEFAULT filter, which this port does
- * not traverse.) The TB backdoor-preloads the SMC image into SRAM (accepted setup that
- * stands in for the SMC-ROM-loads-SRAM step; this test does not verify the production SMC
- * secure-boot / manifest / BL1 flow). The real SEP firmware then, over the same alias
- * path used for scratch, (a) polls SMC SRAM until the exact preload cookie lands (fails
- * to S0_FAIL on timeout), (b) re-vectors all four SMC cores to the entry and pulses their
- * reset -- releasing them to run the image. SEP alias = SMC-internal - 0x8000_0000
- * (0xC0039000 -> 0x40039000, 0xC0060000 -> 0x40060000). SMU_STALL_SMC_ENTRY is the
- * SMC-internal reset-vector value; SMU_STALL_SMC_IMAGE_FIRST_WORD is the first image word
- * (both cocotb-drift-checked against the built image). */
+/* Frontdoor SMC bring-up over the SEP->SMC port: no net force and no ext_in
+ * master. The port does not traverse the SMC sys-inbound BLOCK_BY_DEFAULT
+ * filter; the SEP outbound egress filter is opened first. The testbench
+ * preloads the SMC image into SRAM; this test does not verify secure boot,
+ * manifest processing or BL1 handoff. SEP firmware polls for the image cookie,
+ * re-vectors all four SMC cores and pulses their reset. SEP alias =
+ * SMC-internal - 0x8000_0000. */
 #define SMU_STALL_SMC_SRAM_BASE_ALIAS 0x40060000  /* SEP-view of SMC SRAM base */
 #define SMU_STALL_SMC_IMAGE_FIRST_WORD 0x41014081 /* exact preload cookie (SRAM[0]) */
 #define SMU_STALL_S0_FAIL 0x00460FA1              /* SEP->scratch3: preload never landed */

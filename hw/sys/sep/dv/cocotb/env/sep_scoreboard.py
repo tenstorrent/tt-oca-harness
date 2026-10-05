@@ -117,8 +117,6 @@ class SepScoreboard(uvm_subscriber):
         assert not self.errors, f"SEP scoreboard found {len(self.errors)} error(s): " + "; ".join(
             self.errors
         )
-        # Positive evidence: a clean run must have actually observed
-        # transactions, not passed vacuously on zero activity.
         assert self.checks > 0, "SEP scoreboard saw no AXI transactions (no positive evidence)"
         if self.expected_reads:
             assert self.value_checks > 0, (

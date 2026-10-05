@@ -99,11 +99,9 @@ class DeadWindow:
     # CLEARED in the DUT, so the "restore" destroys the live status it claims to
     # put back.
     #
-    # Populated for entropy_src only, the one leaf whose Python header carries
-    # generated field-access metadata. For the other windows restore() writes
-    # back W1C registers such as spi_controller ERROR_STATUS and km_mailbox
-    # status_reg / irq_status_reg. restore() runs only after a probe has failed,
-    # so the corruption is confined to a run that is already reporting failure.
+    # Populated for entropy_src, whose Python header carries generated
+    # field-access metadata. For the other windows restore() writes back W1C
+    # registers and clears them.
     write_destructive: frozenset[int] = frozenset()
     # The window is forwarded whole to an adopter endpoint and allocates no SEP
     # register. ``watch`` then holds the neighbouring registers an aliasing
@@ -752,10 +750,7 @@ class SepDeadspace:
         # with OKAY and no error (entropy_source_reg.sv `is_valid_rw = '1'`,
         # `cpuif_wr_err = '0'`) and stores nothing -- so such an address can
         # never hold evidence of a store, aliased or otherwise. It stays in
-        # `snap` for the read-alias compare above. Leaving the entropy source's
-        # hardware-updating registers in this compare instead measures its own
-        # health-test counters advancing over the microseconds the readback
-        # takes, and reports that drift as a wrap. Every `sw = rw` register
+        # `snap` for the read-alias compare above. Every `sw = rw` register
         # stays armed, so an access that aliases onto a control register is
         # still caught -- at that control register, where it lands.
         fails.extend(await self.changed_registers(win, snap, f"{item.op} 0x{item.addr:08x}"))

@@ -56,12 +56,9 @@ HMAC_DIGEST_WORDS = {256: 8, 384: 12, 512: 16}
 # be greater than the block size: up to 1024-bit for SHA-2 384/512 and up to
 # 512-bit for SHA-2 256."
 HMAC_BLOCK_BITS = {256: 512, 384: 1024, 512: 1024}
-# Keyed cells the register specification blocks, derived from that rule rather
-# than listed: hmac.adoc states a start with KEY_LENGTH = Key_1024 while
-# DIGEST_SIZE = SHA2_256 "is blocked and an error is signalled to SW". Deriving
-# it keeps the legal set the specification's, not the design's -- an RTL bound
-# that disagreed with the block-size rule would then drive a cell this set calls
-# legal.
+# Keyed cells hmac.adoc blocks: a start with KEY_LENGTH = Key_1024 while
+# DIGEST_SIZE = SHA2_256 "is blocked and an error is signalled to SW". The set
+# follows the block-size rule above, so it is the specification's legal set.
 HMAC_ILLEGAL_KEYED = {
     (sha_bits, key_bits)
     for sha_bits in HMAC_DIGEST_SIZE

@@ -245,10 +245,9 @@ class sep_abr_mlkem_kat_test(sep_base_test):
             self._compare(k, list(k_exp), chk=chk, what=f"the decaps-{tag} shared key")
             await self._zeroize(kem, what=f"after decaps-{tag}")
 
-        # Each case already matched its own published key, so this cannot fail
-        # unless the vectors themselves collide -- which the loader refuses at
-        # import. It is asserted anyway so the log line below states something
-        # this test checked rather than something a reader must infer.
+        # The two published shared keys differ (the vector loader refuses a
+        # colliding pair at import), so the accept and reject cases must return
+        # different keys.
         assert shared["reject"] != shared["accept"], (
             "CHK-KEM-DECAPS-REJECT FAIL: the valid and modified-ciphertext cases "
             "returned the same shared key, so implicit rejection is not observable"

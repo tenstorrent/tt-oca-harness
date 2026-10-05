@@ -14,7 +14,8 @@
  * (CHK-PMU-HALT-DIAG) and is NOT required to freeze a busy core. action[2]
  * (mpc_reset_run_req_i, inverted) and action[5] (unmapped) are checked for mapping only.
  *
- * Included by BOTH firmwares + parsed by the cocotb checker. Plain integer/hex #defines only.
+ * Included by hw/sys/smc/dv/fw/tests/smu_cla_sep_cpu_debug/main.c and parsed
+ * by the cocotb checker. Plain integer/hex #defines only.
  * Channels: SMC CPU_CTRL scratch (base 0xC0039080, 8-byte stride); s0=SMC status, s1=CLA arm
  * token, s2=SMC->SEP cmd, s3=SEP->SMC rsp. SEP reaches them via the SEP->SMC alias 0x40039080+.
  */

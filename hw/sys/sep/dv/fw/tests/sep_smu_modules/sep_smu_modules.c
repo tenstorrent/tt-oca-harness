@@ -322,11 +322,8 @@ int main(void) {
     if ((stage_mask & (1u << 1)) && stage_wdt_regs() != 0) smu_sep_modules_fail_wdt_loop();
 
     /* OpenTitan AES reseeds its masking PRNG from crypto-EDN, so the AES stage
-     * hangs in wait_for_idle unless the entropy stack is up. Bring it up here
-     * rather than leaving it to the environment: this image runs under both
-     * hw/sys/sep/dv (where a cocotb sequence may have done it already) and the
-     * SMU wrapper (where nothing does), and sep_entropy_bringup() skips itself
-     * when the boot gate is already open. */
+     * does not leave wait_for_idle until the entropy stack runs.
+     * sep_entropy_bringup() returns without resetting an already-open stack. */
     if ((stage_mask & (1u << 2)) && sep_entropy_bringup() != SEP_ENTROPY_OK) {
         smu_sep_modules_fail_entropy_loop();
     }

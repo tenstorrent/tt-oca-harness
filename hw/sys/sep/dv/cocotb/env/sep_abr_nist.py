@@ -13,10 +13,9 @@ test drives ``MLDSA_EXTERNAL_MU`` and writes mu rather than a raw message.
 
 These are transcribed authority values, not a recomputable construction, so
 there is no independent self-test available the way ``sep_hmac_golden`` checks
-itself against RFC 4231. The import-time assertions below are shape and
-non-degeneracy only, and that limit is real: they would not catch a
-transcription error that preserved length. The defence is that the header is
-generated, never hand-edited.
+itself against RFC 4231. The generated header is the vector source. Import-time
+assertions check shape and non-degeneracy only; they do not detect a same-length
+transcription error.
 """
 
 from __future__ import annotations
@@ -74,7 +73,8 @@ NIST_SV_BAD_MU = _load_u32_array("nist_sv_bad_mu")
 NIST_SV_BAD_SIG = _load_u32_array("nist_sv_bad_sig")
 NIST_SV_BAD_VERDICT = _load_define("NIST_SV_BAD_VERDICT")
 
-# Shapes, from the header's own word-count defines rather than repeated here.
+# Shapes: the ML-DSA-87 word counts, mirroring the header's *_WORDS defines, so a
+# header regenerated for another parameter set or a truncated array fails at import.
 assert len(NIST_KG_SEED) == 8
 assert len(NIST_KG_PK) == 648
 assert len(NIST_SG_SK) == 1224

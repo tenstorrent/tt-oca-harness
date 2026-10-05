@@ -17,15 +17,11 @@
 
 #include "sep.h"
 
-// eFuse MAP shadow block (sensed OTP). CHIPLET_UID's offset comes from the generated
-// map, not a literal: a hardcoded offset silently follows a stale layout when a
-// field is inserted ahead of it, and a model carrying the same stale copy hides it.
+// eFuse MAP shadow block (sensed OTP).
 #define SEP_EFUSE_MAP_BASE SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR
 #define SEP_EFUSE_CHIPLET_UID0 SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR
 
-// eFuse interface-control STATUS: bit0 = efuse_sense_done. Block base from the
-// generated map, not a literal, so a relocated block cannot leave this pointing
-// at whatever occupies its former address.
+// eFuse interface-control STATUS: bit0 = efuse_sense_done.
 #define SEP_EFUSE_IFC_STATUS SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR
 #define SEP_EFUSE_SENSE_DONE EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_SENSE_DONE_bm
 

@@ -12,8 +12,7 @@
 // CPU's LSU master, it drives the LSU request net directly from the tb's
 // assembled cocotb-AXI struct (sep_uvm_top.lsu_req_drive, an upward reference)
 // and the tb reads back the LSU response net by hierarchical name
-// (u_dut.u_sep_cpu.lsu_axi_resp). No `force` is used in the stub model -- the LSU
-// request is single-driven, so it is driven, not forced.
+// (u_dut.u_sep_cpu.lsu_axi_resp).
 //
 // This stub removes el2_veer_wrapper, the IFU demux, the debug/DMI logic, and
 // the LSU/IFU/DBG local-alias remappers, but faithfully reproduces the LSU AXI
@@ -26,9 +25,8 @@
 // +define+SEP_CPU_STUB, drops the real hw/sys/sep/rtl/sep_cpu.sv via per-target
 // `exclude_files`, and appends THIS file via per-target `sources` (after the bender
 // filelist, so all DUT packages are already declared). So this stub is the single
-// `sep_cpu` definition for that target -- no -Wno-MODDUP/first-wins reliance. The
-// `ifdef SEP_CPU_STUB wrapper keeps the file inert if it is ever compiled without
-// the macro (e.g. the full-CPU `default` target, which does not list it).
+// `sep_cpu` definition for that target. The `ifdef SEP_CPU_STUB wrapper keeps the
+// file inert when compiled without the macro (the full-CPU `default` target).
 
 `ifdef SEP_CPU_STUB
 

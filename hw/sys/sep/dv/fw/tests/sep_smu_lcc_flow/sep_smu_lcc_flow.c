@@ -100,8 +100,6 @@ static inline void fence_io(void) {
 }
 
 int main(void) {
-    /* Keep the outbound window open like the other SMU SEP images, even though
-     * every result here goes to SEP-local scratch. */
     sep_outbound_filter_init();
     WRITE_REG(SC_STAGE, STAGE_ENTER);
     fence_io();

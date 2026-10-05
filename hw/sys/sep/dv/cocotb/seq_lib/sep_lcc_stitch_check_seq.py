@@ -77,10 +77,8 @@ class sep_lcc_stitch_check_seq(uvm_sequence):
         shadow_rdata = await self._read_expect(
             LC_STATE_SHADOW, self.image.shadow_word(LC_WORD_IDX), "lc_state_shadow"
         )
-        # Publish the code the DUT actually returned, not the one the image was
-        # built with. The test's transition check consumes this, so that check is
-        # driven by DUT data; sourcing it from the image would make it a compare
-        # between two test-side constants and it could never fail.
+        # Publish the code the DUT returned: the test's transition check
+        # consumes it, so that check stays driven by DUT data.
         self.observed_lc_raw = shadow_rdata & 0xF
 
         # (2) LCC decoded that lc_state into the expected feature-control vector.

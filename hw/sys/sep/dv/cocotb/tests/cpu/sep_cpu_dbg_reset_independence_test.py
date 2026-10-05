@@ -5,8 +5,7 @@
 Proves both reset observables are released at rest and that the CPU observable is live under a
 real reset source. ``dbg_rstb_i`` isolation is not covered: in ``lsu_stub_all_live`` the pin (a
 ``sep`` primary input that ``sep_base_test`` drives released) has no netlist path to either
-observable, so a pulse-and-check cannot fail. Adding one needs a cpu run-mode that reaches
-``sep_cpu`` and a specification statement to check against.
+observable, so no isolation check is graded.
 
 Checks (exact values; ``self.rd`` raises on X/Z, so an undriven reset tree fails):
   CHK-BASELINE : with dbg_rstb_i high, sep_reset_n and sep_cpu_reset_n are released.

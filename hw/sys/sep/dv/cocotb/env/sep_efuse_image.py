@@ -29,18 +29,12 @@ import sep_reg  # noqa: E402
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-# Stimulus randomness is the seeded, NON-cryptographic SepSeededRng. This generator
-# is run TWICE per simulation from two different
+# Stimulus randomness uses SepSeededRng. This generator is run twice per
+# simulation from two different
 # processes -- once by dv_sim_prestage.py to stage the t=0 OTP image the RTL $readmemh
 # reads, and once inside the cocotb test to build the golden that the post-sense
 # backdoor compare checks that image against. The two runs agree only because
-# SepSeededRng is a pure function of RANDOM_SEED. A cryptographically secure source
-# (``secrets``, ``random.SystemRandom``, ``os.urandom``) cannot be seeded, so adopting
-# one here would make every real-fuse-sense test fail its own shadow compare.
-#
-# Nothing this module produces is a secret, a token, or an access-control decision: the
-# values are fuse-array contents for a simulated DUT, written to a plaintext hex file in
-# the run directory and printed to the log.
+# SepSeededRng is a pure function of RANDOM_SEED, so the stream must stay seedable.
 #
 # Bare sibling import: cocotb/env is on sys.path both in the sim (sep_sim_cfg.toml
 # ``python_paths``) and in the prestage hook, which inserts it explicitly.
@@ -90,14 +84,12 @@ LEGAL_LC_RAW: Tuple[int, ...] = (
 # SBOOT_DIS.disable_secure_boot, the chicken bit that turns secure boot off.
 SBOOT_DIS_MASK = RegBlock("SEP_EFUSE_MAP").field_mask("SBOOT_DIS", "disable_secure_boot")
 
-# Field schema: (name, byte_offset, n_words, kind). Offsets and lengths come from
-# the generated `sep_reg` map (contiguous, summing to 256 words); only the kind
-# lives here, so the layout cannot drift from the generated map.
-# kind drives randomization + the expected-shadow transform:
-#   "lc"       — LC_STATE: word holds raw code, shadow reads {~raw, raw}.
-#   "locks"    — LOCKS table: left unlocked by default so all fields read back.
-#   "data"     — freely randomizable keys/digests/UIDs/ctrl fields.
-# Every register not named here is "data".
+# Kinds, keyed by generated register name; offsets and lengths come from the
+# generated map (_derive_fields). kind drives randomization and the
+# expected-shadow transform:
+#   "lc" -- LC_STATE: word holds the raw code, shadow reads {~raw, raw}.
+#   "locks" -- LOCKS table: unlocked by default so every field reads back.
+# Everything else is "data": freely randomizable.
 _LOCK_REGS = ("LOCKS", "LOCKS_SPARE")
 _LC_REGS = ("LC_STATE",)
 
@@ -284,8 +276,7 @@ class SepEfuseImage:
         return self.load_hex(path)
 
     def load_hex(self, path: str | Path) -> "SepEfuseImage":
-        """Load a 256-word ``$readmemh`` image (our format, or a
-        ``*_shadow_reg.preload`` with the same LSB-first word layout) as the golden.
+        """Load a 256-word ``$readmemh`` image (LSB-first word layout) as the golden.
 
         LC_STATE may be stored raw or differential-encoded in the file; either
         works because only the LC_STATE word's [3:0] (== the raw nibble) is significant.
@@ -354,9 +345,6 @@ class SepEfuseImage:
         Constraints:
           * LC_STATE is restricted to the 7 legal raw codes (never an illegal
             encoding) — pinned via ``lc_raw`` or drawn from the legal set.
-          * The map has no reserved tail: the whole range is real registers
-            (PQC hashes, SEP_*_ID, SPARE0-8), and every one is randomized like
-            any other data field. Nothing here is pinned to zero.
           * LOCKS stays unlocked unless ``lock_prob`` > 0, so every field reads
             back (read-locks would return 0xbadcab1e instead of data).
           * ``fixed`` pins named fields to explicit values after randomization.

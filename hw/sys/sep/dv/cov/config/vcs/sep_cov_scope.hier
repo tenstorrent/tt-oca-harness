@@ -26,7 +26,7 @@
 // register is in the JTAG PTAP, outside the SEP hierarchy, and the JTAG DV
 // grades it there.
 -tree sep_uvm_top.u_ic_reset_sep
-// Kept graded on purpose: u_tbadp_vehicle is a drbg_axil64_lane_adapter
+// u_tbadp_vehicle stays graded: it is a drbg_axil64_lane_adapter
 // (hw/ip/drbg/rtl) that the TB instantiates as a test vehicle.
 // sep_drbg_axil_adapter_port_arbitration_test drives its ports directly and
 // grades the adapter contract, so its coverage is SEP RTL coverage.
@@ -216,10 +216,10 @@
 // imem and dmem). The pulp-platform AXI modules are not this set; the
 // ownership scope excludes them.
 //
-// Also held back on purpose: prim_carry_select_adder, which forms the remapped
+// prim_carry_select_adder stays graded because it forms the remapped
 // address in u_axi_alias_remap's AW and AR adders, so a wrong sum is a wrong
-// remap; and prim_diff_encode_multi / prim_diff_decode_multi, which carry the
-// lifecycle, class-key and chiplet-UID redundant encodings.
+// remap. prim_diff_encode_multi and prim_diff_decode_multi stay graded because
+// they carry the lifecycle, class-key and chiplet-UID redundant encodings.
 -module prim_bin2gray
 -module prim_gray2bin
 -module prim_rev_cell

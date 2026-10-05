@@ -150,11 +150,9 @@ OUTSTANDING_REGS = (
     "ENTROPY_SOURCE_ALERT_THRESHOLD_REG_ADDR",
 )
 
-# How many reads are held in flight. DV-owned (sep_spec_tables), deliberately
-# NOT a hardware slot count: the graded claim is that concurrent reads each
-# return their own data, which holds at any depth. Scoring "every read slot
-# was occupied" against the RTL's own slot count would be the DUT agreeing
-# with itself.
+# How many reads are held in flight. DV-owned (sep_spec_tables): the graded
+# claim is that concurrent reads each return their own data, which holds at
+# any depth, so no hardware slot count enters it.
 OUTSTANDING_DEPTH = CRYPTO_CONCURRENT_READS
 
 # A response must arrive within this window. Eight 64-bit reads on a 32-bit

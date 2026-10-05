@@ -168,9 +168,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         await self._chk_wdog_pet()
         await self._chk_reference_counter()
         await self._chk_regwen_lock_and_nonvac()
-        # No CHK-ALL summary line: every facet above logs its own PASS, and a plan
-        # row keyed on a bare summary string would record coverage with no checker
-        # behind it.
+        # Each facet logs its own PASS line, and the plan rows key on those.
 
     async def _read_refcnt(self) -> int:
         """The 64-bit reference count, high half first.
@@ -215,15 +213,11 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             second,
         )
 
-        # CHK-REFCNT-LOAD is deliberately NOT claimed here. A software load of
-        # this counter can be lost when clk_i runs far faster than clk_ref_i.
-        # This bench drives clk_i at 1.25 ns and clk_ref_i at 10 ns. The update
-        # crosses on a depth-1 async FIFO; prim_refclk_count_w_cdc.sv states that
-        # an update that arrives before the previous one has crossed is "dropped
-        # with no error indication", and the guard assertion in that primitive
-        # (CntUpdateAccepted_A) is compiled out of this build by
-        # COMMON_CELLS_ASSERTS_OFF, so the loss is silent. Claiming the load
-        # needs a measurement at this ratio.
+        # A software load of REFERENCE_COUNTER is not graded. The update crosses a
+        # depth-1 async FIFO that drops an update arriving before the previous one
+        # has crossed, with no error indication, and CntUpdateAccepted_A is compiled
+        # out by COMMON_CELLS_ASSERTS_OFF; with clk_i at 1.25 ns and clk_ref_i at
+        # 10 ns the loss is silent.
 
     async def _chk_wkup_count(self) -> None:
         """CHK-WKUP-COUNT: WKUP_COUNT advances on clk_wdt with a high (non-expiring) thold."""

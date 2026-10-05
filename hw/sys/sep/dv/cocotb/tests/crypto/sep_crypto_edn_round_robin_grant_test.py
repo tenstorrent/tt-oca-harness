@@ -200,10 +200,9 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
 
         grants: list[int] = []
         dual_grants: list[int] = []
-        # Which adapter clients were granted anywhere in the run. The grant list
-        # above is the AES/URND alternation sample and deliberately watches only
-        # those two; CHK-FOUR-CLIENT needs every client, including the two driven
-        # later.
+        # Which adapter clients were granted anywhere in the run. `grants` is the
+        # AES/URND alternation sample and records only those two bits; CHK-FOUR-CLIENT
+        # needs every client, including the two driven later.
         acked = {"mask": 0}
 
         async def _monitor() -> None:
@@ -271,10 +270,8 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             f"(alt_pairs={alt_pairs} need>={min_alt} grants={grants} "
             f"dual_grants={dual_grants})"
         )
-        # No "both clients appear in the prefix" assert here: the monitor only
-        # records the two bits, so an alternating prefix of length >= 2 contains
-        # both by construction and such an assert could never fail. The
-        # alternation floor above is what carries the claim.
+        # An alternating prefix of two or more grants contains both clients by
+        # construction; the alternation floor above carries the claim.
         self.logger.info(
             "CHK-GRANT-ALT PASS: %d consecutive post-adapter grant pairs "
             "strictly alternate between AES and OTBN URND (grants=%s "
@@ -329,8 +326,6 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             f"({[f'0x{w:08x}' for w in rnd_words]}) -- RND was not refetched "
             "per read"
         )
-        # No "not all zero" assert: distinctness above already makes at most one
-        # of the words zero, so that assert could never fail.
         self.logger.info(
             "CHK-RND-CONSUME PASS: %d RND CSR reads retired with ERR_BITS=0 and "
             "returned %d distinct words %s",

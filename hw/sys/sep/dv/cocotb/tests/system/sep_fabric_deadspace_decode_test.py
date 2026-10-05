@@ -247,10 +247,8 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                     )
                 burst_fails.extend(moved)
 
-        # Config report, not a checker. Every anchor is placed unconditionally
-        # and nothing filters them, so a count against the list that built them
-        # cannot fail; the real failure -- an anchor whose window is absent from
-        # the map -- raises when the config is built.
+        # Config report. An anchor whose window is absent from the map raises when
+        # the config is built.
         self.logger.info(
             "deadspace config: %d probes including %d directed anchors, seed %d",
             len(cfg.probes),

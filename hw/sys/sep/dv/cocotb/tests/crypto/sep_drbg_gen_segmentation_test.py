@@ -93,8 +93,8 @@ class sep_drbg_gen_segmentation_test(sep_base_test):
         # not arrive however long the poll runs (see the class docstring), so
         # this waits for completion, not for a boundary.
         sb = self.drbg_sb
-        # Exit once one command has completed and its glen blocks are scored.
-        # A higher block target adds sim time for no extra contract.
+        # Poll window for the completed Generate command; the loop exits after
+        # MIN_COMPLETED_COMMANDS retire and their target block count is scored.
         target_blocks = SEGMENTATION_GLEN * MIN_COMPLETED_COMMANDS
         for _ in range(POLL_ITERATIONS):
             if (

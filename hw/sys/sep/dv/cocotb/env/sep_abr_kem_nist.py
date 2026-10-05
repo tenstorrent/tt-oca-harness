@@ -15,9 +15,9 @@ ACVP decaps case has its own decapsulation key, so the two are not one key
 walked twice and neither can be derived from the other.
 
 Same limit as ``sep_abr_nist``: these are transcribed authority values, not a
-recomputable construction, so the import-time assertions are shape and
-non-degeneracy only. They would not catch a transcription error that preserved
-length. The defence is that the header is generated, never hand-edited.
+recomputable construction. The generated header is the vector source.
+Import-time assertions check shape and non-degeneracy only; they do not detect
+a same-length transcription error.
 """
 
 from __future__ import annotations

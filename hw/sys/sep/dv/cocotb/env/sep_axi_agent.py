@@ -94,10 +94,10 @@ class SepAxiItem(uvm_sequence_item):
         # except the inbound-filter burst checkers, which opt in with INCR and
         # a multi-beat length so AxLEN != 0.
         self.burst: int | None = None
-        # AXI AxID. Every access defaults to 0. A test that wants the
-        # transaction ID as a dimension sets it. The crossbars prepend
-        # the master index to it, and the demux keeps one outstanding counter
-        # per ID, so an access that never leaves 0 exercises one ID slot.
+        # AXI AxID. Defaults to 0, so the transaction ID is a dimension a test
+        # opts into. The crossbars prepend the master index to it, and the demux
+        # keeps one outstanding counter per ID, so an access that never leaves 0
+        # exercises one ID slot.
         self.axi_id: int = 0
         # AxPROT. None keeps the VIP default (data, non-secure, unprivileged).
         # The inbound filter matches prot[1] against FILTER_CONFIG.allow_ns.

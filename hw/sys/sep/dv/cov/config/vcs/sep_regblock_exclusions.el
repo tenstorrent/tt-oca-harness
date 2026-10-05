@@ -28,13 +28,13 @@
 // gets A2 on its internal error nets only; the interface bresp/rresp are not
 // listed.
 //
-// A2 IS DELIBERATELY NOT APPLIED to the *_wrapper_key_reg blocks or the KM
-// km_csr/km_drbg_sampler/km_mailbox_* blocks. Those DO decode errors --
+// A2 does not hold for the *_wrapper_key_reg blocks or the KM
+// km_csr/km_drbg_sampler/km_mailbox_* blocks. Those blocks decode errors:
 //   decoded_err = (~is_valid_addr | (is_valid_addr & ~is_valid_rw)) & decoded_req
 //   and cpuif_wr_err / readback_err follow decoded_err
 //   (e.g. aes_wrapper_key_reg.sv, abr_wrapper_key_reg.sv)
-// -- and their SLVERR is reachable by an out-of-window or wrong-direction
-// access on the KM private key bus. Do not "complete" the set by adding them.
+// Their SLVERR is reachable by an out-of-window or wrong-direction access on
+// the KM private key bus, so they are not listed.
 //
 // SEP returns SLVERR from the fabric -- the AXI-Lite demux default slave
 // (the sep_pkg::ERR_SLV leg, u_err_slv in sep_system_csr.sv), the axi_filter

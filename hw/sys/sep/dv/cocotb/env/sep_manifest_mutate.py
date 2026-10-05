@@ -303,9 +303,8 @@ def erase_slot(buf: bytearray, slot: str) -> tuple[int, int]:
     only presence test is the manifest magic, and an erased slot is therefore
     indistinguishable from an absent device.
 
-    The layout is verified BEFORE erasing, which is the point: it proves a valid
-    manifest really was at this address, so the test is removing a working slot
-    rather than erasing empty space and asserting on a no-op.
+    The layout is verified before erase, proving a valid manifest occupied the
+    address.
     """
     variant_at(buf, slot_base(slot))  # a valid manifest really is here
     start, end = slot_span(buf, slot)
@@ -335,10 +334,7 @@ def signature_size(buf: bytes, slot: str) -> int:
 def describe(buf: bytes, slot: str) -> str:
     """One-line summary of a slot, for test log lines. Works for either variant.
 
-    Reports an unrecognised magic rather than raising on it: a caller logging a
-    slot it has just corrupted on purpose needs the description in exactly that
-    case, and a diagnostic that refuses to describe a malformed image is of no
-    use where it matters most.
+    Reports an unrecognised magic so diagnostics can describe a corrupted slot.
     """
     base = slot_base(slot)
     magic = bytes(buf[base : base + 4])
@@ -578,11 +574,11 @@ def corrupt_manifest_hash(
 def break_magic(buf: bytearray, slot: str, value: bytes = b"\x99\x99\x99\x99") -> bytes:
     """Corrupt a slot's magic so the ROM refuses it. Returns what was written.
 
-    The standard primary->backup failover trigger. Deliberately does NOT rehash:
-    the magic leads the body and ``oca_peek_manifest`` reads it before anything
-    reads or hashes the rest, so the slot is rejected before the stale hash is
-    ever examined. Rehashing is also impossible after the fact -- every helper
-    here resolves the variant from the magic.
+    The standard primary->backup failover trigger. No rehash: the magic leads
+    the body and ``oca_peek_manifest`` reads it before anything reads or hashes
+    the rest, so the slot is rejected before the stale hash is examined;
+    rehashing is also impossible afterwards, since every helper resolves the
+    variant from the magic.
     """
     variant_at(buf, slot_base(slot))  # a valid manifest really was here
     if len(value) != 4:
@@ -962,9 +958,9 @@ def verify_usage_constraints_layout(buf: bytes, slot: str) -> None:
     """Assert the constraint fields satisfy the format's own invariants.
 
     A wrong offset lands on neighbouring bytes, which fail these masks -- but
-    only if those bytes are non-zero. The shipped images select no constraints
-    (selector_bits, all three lifecycle_states and demotion_control are zero), so
-    on them this is a weak anchor: it catches an offset that lands on a populated
+    only if those bytes are non-zero. On an image that selects no constraints
+    (selector_bits, all three lifecycle_states and demotion_control zero) this is
+    a weak anchor: it catches an offset that lands on a populated
     field such as chiplet_id or a version range, not one that lands on other
     zeroes. Treat it as an invariant check, not a value anchor.
     """
@@ -1140,7 +1136,7 @@ def public_key_modulus(buf: bytes, slot: str) -> bytes:
     """The 384-byte big-endian RSA-3072 modulus, which the digests cover.
 
     A raw RSA public key is the modulus followed by a 4-byte exponent; only the
-    modulus is hashed, so the exponent is deliberately excluded here.
+    modulus is hashed, so the exponent is excluded.
     """
     require_classic(buf, slot)
     base = slot_base(slot) + OFF_PUBLIC_KEY
@@ -1279,10 +1275,10 @@ def flip_signature_byte(
 ) -> int:
     """XOR one signature byte. Returns the byte's offset within the field.
 
-    No rehash: the signature sits outside the signed region, so the manifest hash
-    still matches and the run reaches signature verification -- which is the
-    point, since a hash mismatch would reject the image earlier and prove nothing
-    about the verifier.
+    No rehash: the signature sits outside the signed region, so the manifest
+    hash still matches and the run reaches signature verification; a hash
+    mismatch would reject the image earlier and prove nothing about the
+    verifier.
 
     The default is a single-bit flip. A minimal change is the stronger stimulus:
     it leaves the signature the right length and shape, so it exercises the
@@ -1308,7 +1304,7 @@ def forge_pkcs1_signature(buf: bytearray, slot: str) -> bytes:
     unverified boot reported as a verified one.
 
     Nothing secret is used to build it: the structure is public and the digest is
-    the manifest's own. That is the point. A device whose verifier actually runs
+    the manifest's own. A device whose verifier actually runs
     rejects this signature, because ``sig^e mod n`` of a block nobody signed is
     not that block.
 
@@ -1415,7 +1411,7 @@ def _selftest() -> int:
             verify_usage_constraints_layout(u, "primary")
 
             # break_magic makes the slot unrecognisable and leaves the hash
-            # stale on purpose, so nothing that resolves the variant works after.
+            # stale, so nothing that resolves the variant works after.
             b = bytearray(buf)
             break_magic(b, "primary")
             try:

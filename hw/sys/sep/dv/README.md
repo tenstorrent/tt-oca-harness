@@ -72,7 +72,7 @@ evidence from `results.xml`. A clean simulator exit is not evidence.
 
 | Need | Why | Notes |
 |---|---|---|
-| Verilator 5.x (CI pin `v5.052`) | the acceptance backend | `.github/actions/dv-run/action.yml`. 5.046 fails the `--cov` C++ compile (`__PVT__MLKEM_SHARED_KEY`) |
+| Verilator 5.x (the tag `.github/actions/dv-run/action.yml` pins) | the acceptance backend | 5.046 fails the `--cov` C++ compile (`__PVT__MLKEM_SHARED_KEY`) |
 | g++ ≥ 10 | Verilator `--timing` / `-fcoroutines` | g++ 8.5 fails with `unrecognized command line option '-fcoroutines'` |
 | Python ≥ 3.11 | launcher | `pyproject.toml` `requires-python` |
 | uv | every stage, including `--items smoke` | Must be on `PATH`. `run_dv.py` runs itself again inside the locked DV environment (root `uv.lock`, `dv` group). A missing binary exits 2 before any stage runs |

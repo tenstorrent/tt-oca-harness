@@ -592,10 +592,9 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         # feat_ctrl_expected.
         self.write_efuse_image(image)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
-        # security_disable read from the DUT rather than passed as a literal. This
-        # test value-checks FEAT_CTRL against the lifecycle golden, so every
-        # input to that golden should be observed where it can be; sec_dis can be, via
-        # lcc_security_disable_probe_o.
+        # sec_dis is the one FEAT_CTRL golden input the DUT exposes
+        # (lcc_security_disable_probe_o); the lifecycle and DIS inputs are the
+        # values written into the fuse image above.
         sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
         feat = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=sec_dis)
         ctl = SepLccFeatCtrlCheckSeq(feat)

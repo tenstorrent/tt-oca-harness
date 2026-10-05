@@ -1859,9 +1859,8 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         # anyway and the order could not fail.
         abr_rst = SepCryptoResetIso(self)
         # Host reads go out with the reset request, so the full-AXI isolate has
-        # accepted traffic to drain. This is the only full-AXI host isolate in the
-        # design; every other accelerator path is AXI-Lite, so
-        # TerminateTransaction and NumPending are exercised nowhere else.
+        # accepted traffic to drain. ABR's host path is the only full-AXI host
+        # isolate in the design; the other accelerator paths are AXI-Lite.
         rec = await self._drain_with_arrival(
             name="ABR",
             addr=MLKEM_STATUS,

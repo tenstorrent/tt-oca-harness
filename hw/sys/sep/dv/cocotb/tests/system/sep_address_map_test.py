@@ -114,10 +114,9 @@ class sep_address_map_test(sep_base_test):
         # accepts it, reads return zero and writes are discarded, both OKAY.
         # That is the graded expectation here.
         #
-        # The same passage says such an offset cannot alias a live register
-        # because register decode is an exact address match rather than a range
-        # -- not because the access is refused. So the alias check is the second
-        # half of the contract, not a consolation for not grading the response.
+        # The same passage says such an offset cannot alias a live register:
+        # register decode is an exact address match rather than a range, so the
+        # alias check is the second half of the contract.
         sw_addr = SEP_CPU_CTRL.addr("SEP_SW_DEBUG")
 
         # Positive control for the alias check. SEP_SW_DEBUG is `sw = rw`

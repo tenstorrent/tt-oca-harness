@@ -152,6 +152,5 @@ SECTIONS {
     stack  = STACK;
     _stack = STACK;
 
-    /* Sanity check: ensure BSS doesn't overlap with stack minimum */
     ASSERT(BSS_END < (STACK - 0x1000), "BSS overlaps with minimum stack space!")
 }

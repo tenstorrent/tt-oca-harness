@@ -155,9 +155,8 @@ class SepAxiStrobeWindow:
         return seq.resp_code, seq.rdata & 0xFFFF_FFFF
 
     async def _wr(self, addr: int, data: int, *, size: int = 2, tolerate: bool = False) -> int:
-        # tolerate uses allow_unverified_write_resp, whose documented meaning
-        # is "the sequence verifies by readback". expect_error would be wrong:
-        # it DEMANDS a refusal, and a window that stores would then fail.
+        # tolerate maps to allow_unverified_write_resp: the sequence grades the
+        # write by readback, and a refused window write is a skip, not a failure.
         seq = SepAxiAccessSeq(
             f"sw_wr_0x{addr:08x}",
             op=SepAxiOp.WRITE,
@@ -218,12 +217,10 @@ class SepAxiStrobeWindow:
         observable on a window that stores.
 
         The write uses allow_unverified_write_resp so a refusal is the
-        sequence's own result rather than a scoreboard failure. expect_error
-        would be wrong: it demands a refusal, and a window that stores would
-        then fail. Whether a window accepts a bare CSR-path write depends on
-        the engine's state (OTBN IMEM/DMEM are gated), and that is a skip
-        here, not a defect -- the contract under test is the DATA, on a
-        window that stores. A write that is accepted and a read that then
+        sequence's own result rather than a scoreboard failure. Whether a
+        window accepts a bare CSR-path write depends on the engine's state, and
+        that is a skip here, not a defect: the contract under test is the data
+        on a window that stores. A write that is accepted and a read that then
         refuses is a failure: the window stored, so the readback must return.
         """
         resp = await self._wr(p.addr, p.value, tolerate=True)

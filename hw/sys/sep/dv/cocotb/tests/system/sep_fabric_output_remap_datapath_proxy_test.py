@@ -106,9 +106,6 @@ class sep_fabric_output_remap_datapath_proxy_test(sep_base_test):
             cfg.neighbor_expect,
             cfg.expect_addr,
         )
-        # Config report, not a checker. The seed picks one region and one entry,
-        # and a bound on an index the same seed generated cannot fail. The
-        # coverage this entry does claim is asserted above, against the DUT.
         self.logger.info(
             "output-remap config: bank=%s region=%d of %d entry=%d of %d, seed %d",
             cfg.bank,

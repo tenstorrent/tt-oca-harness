@@ -934,8 +934,8 @@ def reg_hw_updating(block: str) -> frozenset[str]:
     * a dead-space store compare on one measures the same drift and reports it
       as an aliased write.
 
-    Default is "hardware may change it", so a newly added ``sw = r`` register is
-    excluded until someone shows it is constant -- the safe direction.
+    A ``sw = r`` register not named in ``_CONSTANT_RO`` is treated as
+    hardware-updating.
     """
     readonly = reg_sw_readonly(block)
     constant = _CONSTANT_RO.get(block, frozenset())
@@ -1028,10 +1028,9 @@ AP_OUTPUT_REMAP_CTRL_0 = RegBlock("AP_OUTPUT_REMAP_CTRL_0_")
 def _selftest() -> int:
     """Assert the accessor against values read directly out of sep_cpu_ctrl.rdl.
 
-    These are not a second copy of the register map — they are a handful of
-    tripwires that fail loudly if the generated header stops matching the RDL
-    (or if the generator changes its naming), which would otherwise silently
-    weaken every source-derived checker built on this module.
+    Tripwires: they fail when the generated header stops matching the RDL or the
+    generator changes its naming, which would otherwise silently weaken every
+    source-derived checker built on this module.
     """
     cpu = SEP_CPU_CTRL
     checks = [
@@ -1188,7 +1187,7 @@ def _selftest() -> int:
     # look hardware-driven, so a sweep filtering on either one silently
     # filters the wrong set. Without these four the next generator change can
     # walk those rows back into a reset compare against a DEFAULT the RDL never
-    # declared, or drop the 154 read-only rows that carry a real one.
+    # declared, or drop the read-only rows that carry a real one.
     shapes = iter_register_walk().regs
     hw_driven = sorted(f"{i.block}.{i.name}" for i in shapes if i.access.hw_driven)
     expect_hw_driven = [

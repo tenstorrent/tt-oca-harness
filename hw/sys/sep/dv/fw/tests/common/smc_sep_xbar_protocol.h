@@ -69,14 +69,11 @@
 /* SMU xbar SEP aperture: cover 0x10802000 for SMC->SEP without overlapping SMC @0x40000000 */
 #define XBAR_SEP_APERTURE_SIZE 0x20000000ULL
 
-/* Firmware poll bounds (loop iterations; never hang). Secondary bound only -- the cocotb
- * MONITOR_TIMEOUT (~3ms sim) is the primary fail-loud gate. Sized to comfortably cover the
- * legit cookie / SMC_READY waits (the whole post-fuse datapath is <~0.1ms sim) with wide
- * margin, without being absurdly long. */
+/* Firmware poll bound in loop iterations. MONITOR_TIMEOUT is the primary
+ * fail-loud gate; this bound covers the cookie and SMC_READY waits. */
 #define XBAR_FW_POLL_LIMIT 200000
 
-/* CLA node0 EAP CSR values (verbatim, matching the real-CLA release; satisfies the SV
- * testbench real-CLA liveness monitor). */
+/* CLA EAP CSR release values. */
 #define XBAR_CLA_CTRLSTATUS_EXPECT 0x60
 #define XBAR_CLA_EAP0_RELEASE 0x341FBFC000ULL
 #define XBAR_CLA_EAP1_RELEASE 0x144FBFC000ULL

@@ -158,8 +158,9 @@ class sep_efuse_km_axil_cpu_mux_coexist_test(sep_base_test):
             f"(COUNT={count} != {_CONTENDED_LOOPS}) -- possible starvation"
         )
         # A floor, not just non-zero: a mux that starved the Key Manager down to a
-        # single write across 512 host iterations would otherwise pass. Half is well
-        # under the count a healthy run records (about one change per host iteration).
+        # single write across the host iterations would otherwise pass. Half the
+        # host iterations leaves a fair mux, which changes the payload on nearly
+        # every iteration, well clear of it.
         assert changes >= _CONTENDED_LOOPS // 2, (
             f"KM progress starved: {changes} payload changes across "
             f"{_CONTENDED_LOOPS} host iterations (expected >= {_CONTENDED_LOOPS // 2})"

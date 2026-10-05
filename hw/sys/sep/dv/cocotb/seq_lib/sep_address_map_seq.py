@@ -40,9 +40,9 @@ reset. Per-block CSR clocks are not gated in this RDL, so every walked
 block is unconditionally clocked.
 
 Most side-effecting registers are NOT written. The only address-aperture
-exception is the SEP local/global base/size triplet: it is write/read/restored
-immediately to close the CPU-control CSR write-path gap, before the fabric walk
-runs. SMU base/size remain reset-checked only. woset LOCK regs are never written
+exception is the SEP local/global base/size triplet: it is written, read back
+and restored before the fabric walk runs, so the remap CSRs still get write-path
+coverage. SMU base/size remain reset-checked only. woset LOCK regs are never written
 because they would latch permanently. The scoreboard checks the AXI response on
 every access and the value on every checked read.
 
@@ -272,8 +272,8 @@ class sep_address_map_seq(uvm_sequence):
         # satisfied by a dead decode: a neighbouring register's storage, a stuck
         # all-ones or a zero return all hold still between the two reads.
         #
-        # expected=None on these two reads is deliberate and is not an unchecked
-        # read -- the advance below is the check. Every other read in this sweep
+        # expected=None on these two reads: the advance below is the check.
+        # Every other read in this sweep
         # keeps its pinned expectation.
         ref_off = SEP_CPU_CTRL.offset("REFERENCE_COUNTER")
         first_low = await self._read(BASE + ref_off, expected=None, name="REFERENCE_COUNTER_lo")

@@ -39,8 +39,8 @@ are in flight together.
 ONE ordering per lane per simulation so a wedge cannot contaminate a later
 cell. Driving one scenario per leaf is what makes each verdict independent.
 
-Delays are not guessed, they are CALIBRATED. The walk first issues a lone
-write and a lone read and measures when AW, W and AR actually arrive at the
+Delays are calibrated: the walk first issues a lone write and a lone read and
+measures when AW, W and AR arrive at the
 adapter port through the crossbar and axi_to_axi_lite. The target ordering is
 then placed using those measured latencies, and fired once. A calibration
 that cannot reach the ordering is reported as unreachable rather than fired

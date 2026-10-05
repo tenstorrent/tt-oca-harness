@@ -418,9 +418,8 @@ int main(void) {
         sep_mbx_puthex(g_sel[i].pic_src);
     }
     sep_mbx_putc('\n');
-    /* Params resolved. Whether the HOST patch actually landed is graded by
-     * the SCENARIO needle the cocotb test greps -- the compiled default
-     * satisfies resolve_params(), so this line is not that proof. */
+    /* The cocotb test grades the HOST patch from the SCENARIO line; the compiled
+     * default also satisfies resolve_params(). */
     sep_mbx_puts("STEP params resolved from the DTCM block\n");
 
     arm_sources();

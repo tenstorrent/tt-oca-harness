@@ -32,8 +32,8 @@ _BOUND = 20_000
 class sep_efuse_digest_latch_fault_test(sep_base_test):
     """The digest latch captures the token hash and holds it while test_en is injected."""
 
-    # The whole contract is one record, so name it: a refactor that stops
-    # reaching the freeze leg would otherwise still exit clean.
+    # The freeze leg logs the only evidence record, so a run that never reaches
+    # it fails here.
     required_evidence = ("CHK-DIGEST-LATCH",)
     min_evidence = 1
 

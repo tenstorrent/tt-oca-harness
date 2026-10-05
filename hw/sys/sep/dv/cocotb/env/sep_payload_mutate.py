@@ -39,12 +39,10 @@ broken seal.
 
 BOTH PAYLOAD DIGESTS COME FROM THE PACKER. ``oca.payload.compute_payload_hashes``
 computes them, so this module does not restate the chain construction and cannot
-drift from it. A digest this layer computed itself would be a second opinion on
-something the packer already owns, and a reseal that got it wrong produces an
-image the ROM rejects for a field :func:`verify_sealed` called sound.
+drift from it.
 
-The signer is stdlib-only, by necessity rather than preference: the DV virtualenv
-has no ``cryptography``. It is PKCS#1 v1.5 over SHA-256 with a 384-byte modulus,
+The signer is stdlib-only: the DV virtualenv has no ``cryptography``. It is
+PKCS#1 v1.5 over SHA-256 with a 384-byte modulus,
 which is the one signature type this ROM accepts (SEP-ROM-SB-090).
 
 Run ``python3 sep_payload_mutate.py`` to check every packed image against all three
@@ -439,17 +437,13 @@ def slot_signing_key(buf, slot: str) -> tuple[int, int, int]:
 
 
 def signing_key_for_slot(buf, slot: str) -> int:
-    """The ROM key slot whose private key signed this slot, found from the modulus.
-
-    Not from ``public_key_sel``. A manifest names the anchor the CONSUMER should
-    check it against, which is not always a ROM slot: a fused-key manifest selects
-    slot 16 or 17, where the anchor is a digest in a chiplet fuse and no private
-    key exists in the tree. The modulus the slot carries is what a re-seal has to
-    sign with, and it is a ROM key in every image this tree packs.
-
-    So this matches the embedded modulus against the ROM signing keys rather than
-    trusting the selector, which is correct for both: for a ROM-slot manifest the
-    two agree, and for a fused-key manifest only this one has an answer.
+    """The ROM key slot whose private key signed this slot, found from the
+    modulus rather than from ``public_key_sel``. A manifest names the anchor the
+    consumer checks it against, which is not always a ROM slot: a fused-key
+    manifest selects slot 16 or 17, where the anchor is a digest in a chiplet
+    fuse and no private key exists in the tree. The modulus the slot carries is
+    what a re-seal has to sign with, and it is a ROM key in every image this
+    tree packs.
     """
     modulus = mm.public_key_modulus(buf, slot)
     digest = hashlib.sha256(modulus).digest()

@@ -11,8 +11,8 @@
 //   2. sep_entropy_start_generators()-- enable the ring-osc generators.
 //   3. (allow time for the first seed to accumulate)
 //   4. sep_entropy_enable_edn()      -- PHASE-B: lock ESRC config, enable EDN last.
-// Under Verilator the ESRC ring oscillators do not self-oscillate, so the tb-side
-// +esrc_noise_force supplies the raw noise; the DRBG/CSRNG/EDN math below is real.
+// Under Verilator the ESRC ring oscillators do not self-oscillate, so
+// +esrc_noise_force supplies the raw noise.
 // CSRNG/EDN sit behind a 64-bit lane adapter; an aligned 32-bit store at the
 // register byte address lands on the correct lane.
 // Addresses and field masks come from generated sep_addr.h / entropy_source.h /
@@ -158,10 +158,8 @@ static inline void sep_entropy_enable_edn(void) {
     sep_entropy_wr(SEP_EDN_CTRL, SEP_EDN_CTRL_AUTO);
 }
 
-// Full bring-up, for a test that needs entropy to exist rather than one that is
-// testing the bring-up itself. Idempotent by inspection: if the boot gate is
-// already open the stack is running, and re-running PHASE-A would pulse
-// CTRL.RESET and tear down a source a consumer may already be drawing from.
+// Full bring-up for an entropy consumer. If the boot gate is open, return
+// without pulsing CTRL.RESET, which would tear down a source in use.
 static inline int sep_entropy_bringup(void) {
     if (sep_entropy_boot_phase_done()) {
         sep_entropy_enable_edn();

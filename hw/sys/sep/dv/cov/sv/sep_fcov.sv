@@ -1775,13 +1775,12 @@ module sep_fcov (
     // OUTPUT_VALID and returned a data word. The suite walks nine ENC cells
     // plus the ECB/CBC decrypt legs of the round-trip.
     //
-    // CTR x DECRYPT is excluded because the cell has nothing to score, not
-    // because no test happens to drive it. CTR is a stream mode: the engine
+    // CTR x DECRYPT has nothing to score. CTR is a stream mode: the engine
     // runs the forward cipher whichever way OPERATION is programmed, so
     // decryption is the same operation as encryption and re-encrypting the
-    // ciphertext is what recovers the plaintext. A test that programmed
-    // DECRYPT here would pass with the OPERATION field disconnected. Filling
-    // this cell would record configuration, not consume.
+    // ciphertext recovers the plaintext. A test that programmed DECRYPT here
+    // would pass with the OPERATION field disconnected, so the cell would
+    // record configuration, not consumption.
     //
     // The scoreable neighbour is OPERATION's shadowed-register behaviour --
     // one-hot readback and the update/storage-error alerts -- which is
@@ -2195,7 +2194,7 @@ module sep_fcov (
   covergroup sep_efuse_fail_closed_cg with function sample (logic [1:0] state, logic is_program);
     option.per_instance = 1;
     option.name = "sep_efuse_fail_closed_cg";
-    // The two illegal encodings are separate cells on purpose: they fail the
+    // The two illegal encodings are separate cells: they fail the
     // legal-set test for different reasons, so a recovery written as a compare
     // against one value would fill one cell and leave the other dead.
     cp_illegal: coverpoint state {

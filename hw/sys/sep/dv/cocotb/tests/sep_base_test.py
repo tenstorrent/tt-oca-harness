@@ -192,10 +192,9 @@ class sep_base_test(uvm_test):
         the read: a diagnostic log line, or a poll that waits for a nonzero
         value and so fails closed on X (it times out rather than passing).
 
-        Two cocotb versions are in use here: the Verilator flow runs 2.x and
-        the VCS flow runs 1.x. Both expose the per-bit string (``binstr`` on
-        1.x, ``str()`` on 2.x), which is what is inspected. Verilator is built
-        two-state here, so an unknown bit can only occur under VCS.
+        cocotb 1.x exposes the per-bit string as ``binstr`` and 2.x as ``str()``;
+        both are inspected. Verilator is built two-state, so an unknown bit can
+        only occur under a four-state simulator.
         """
         value = sig.value
         if isinstance(value, int):
@@ -394,8 +393,7 @@ class sep_base_test(uvm_test):
         the done flop ~1 cycle after reset release; without it the real 256-word
         sense runs and the sensed shadow is compared against the staged eFuse
         image. A skip without ``+sep_efuse_preload`` leaves the shadow at its
-        reset (zero). That is the intended default: no skip-mode leaf grades a
-        shadow value.
+        reset (zero); a skip-mode leaf must not grade a shadow value.
         """
         dut = cocotb.top
         for cycle in range(max_cycles):

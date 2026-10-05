@@ -163,14 +163,9 @@ MAILBOX_WRITE_DATA_RD_SENTINEL = 0xFEEDC0DE
 # From hw/sys/sep/doc/fabric.adoc ("Sixteen remap regions").
 OUTPUT_REMAP_REGIONS = 16
 
-# DV-owned concurrency depth for the crypto CSR apertures. This is how hard
-# the wide-access leaf pushes each crypto host path, NOT a hardware parameter
-# and NOT a scored contract: the claim graded against it is that concurrent
-# reads each return their own data, which holds at any depth. Deliberately not
-# read from a hardware slot count -- scoring "every read slot was occupied"
-# against the RTL's own slot count is the DUT agreeing with itself.
-# Eight is the most a single SEP master holds outstanding on this path; a
-# larger value only strengthens the stimulus.
+# Concurrency depth for the crypto CSR apertures. The graded claim is that
+# concurrent reads each return their own data, which holds at any depth; eight
+# is the most a single SEP master holds outstanding on this path.
 CRYPTO_CONCURRENT_READS = 8
 
 # DV-owned BIW lane packing: out[i] = (b[i] * b[i+4]) + b[i+8]; out[0] is MSB.
@@ -557,10 +552,9 @@ def esrc_fips_locked_fields() -> dict[str, frozenset[str]]:
     Python and C exports drop ``swwel``, so the property is read from the RDL
     source, as ``abr_offsets`` reads ``abr_reg.rdl``.
 
-    This is the DV-side expectation of what must freeze. It is deliberately not
-    taken from ``entropy_source.sv``: the RTL is hand-written and maintained
-    separately from this file, so a lock the RTL adds or drops on its own shows
-    up here as a disagreement instead of being copied into the expectation.
+    The expectation is read from the RDL rather than from
+    ``entropy_source.sv``, so a lock the RTL adds or drops on its own surfaces
+    as a disagreement instead of being copied into the expectation.
     """
     text = _ESRC_RDL.read_text(encoding="utf-8")
     bounds = [(m.group(1), m.start()) for m in _RDL_REG.finditer(text)]
@@ -667,10 +661,6 @@ def aon_timer_wkup_ticks_per_count(prescaler: int) -> int:
 # lane n. A 32-bit access on a 64-bit bus therefore uses lanes 0-3 when
 # address[2] is 0 and lanes 4-7 when it is 1. Alignment is the protocol's, not
 # any one adapter's: address[1:0] must be 0 for a 32-bit transfer.
-#
-# DV-owned, so a lane adapter that disagreed with AMBA is driven with a
-# protocol-legal access and answers for itself, rather than defining what legal
-# means.
 AXI_BUS_BYTES = 8
 
 # Read data of a JTAG access the eFuse lifecycle demux blocks:

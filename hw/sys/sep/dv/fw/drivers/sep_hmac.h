@@ -34,7 +34,8 @@
  * DV fixed-vector table — not sampled from DUT RTL under test.
  */
 #define SEP_HMAC_ERR_NO_ERROR ((uint32_t)0x0u)
-#define SEP_HMAC_ERR_SW_PUSH_MSG_WHEN_SHA_DISABLED ((uint32_t)0x1u) /* unused */
+#define SEP_HMAC_ERR_SW_PUSH_MSG_WHEN_SHA_DISABLED \
+    ((uint32_t)0x1u) /* Never reported: the RTL drops the push when sha_en is clear. */
 #define SEP_HMAC_ERR_SW_HASH_START_WHEN_SHA_DISABLED ((uint32_t)0x2u)
 #define SEP_HMAC_ERR_SW_UPDATE_SECRET_KEY_IN_PROCESS ((uint32_t)0x3u)
 #define SEP_HMAC_ERR_SW_HASH_START_WHEN_ACTIVE ((uint32_t)0x4u)

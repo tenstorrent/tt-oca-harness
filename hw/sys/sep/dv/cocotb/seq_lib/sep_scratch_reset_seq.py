@@ -39,10 +39,8 @@ if RegBlock("SEP_SCRATCH_WARM").reset32("SCRATCH_0_") != SCRATCH_RESET_DEFAULT:
 def _bank_addrs(bank: str) -> tuple[int, ...]:
     """Every SCRATCH register of one bank, in index order, from the register export.
 
-    The depth is the array the RDL declares, not a number a sequence carries: a
-    sweep with its own literal silently stops short of the tail the day
-    ``sep_scratch.rdl`` grows the array, and reports a clean pass over the part
-    it still reaches.
+    The depth is the array ``sep_scratch.rdl`` declares, read from the register
+    export so the sweep covers every register the RDL adds.
     """
     addrs: list[int] = []
     while True:

@@ -52,9 +52,8 @@ args = ["-elfile", "{path}"]
 # elaboration -- sep_ip_integration.sv ties ext_trng_axis_req_o to
 # '{default: '0} in RTL, not in the testbench -- so tvalid/tdata/tstrb cannot present a second
 # value on any of the three modules the struct crosses. The source-select mux
-# that consumes the stream is deliberately NOT in this file: its select is a
-# CSR field, so both arms stay graded. SEP_FCOV.adoc, "External TRNG
-# payload".
+# that consumes the stream stays graded: its select is a CSR field, so both
+# arms are reachable. SEP_FCOV.adoc, "External TRNG payload".
 [[native_files]]
 tool = "vcs"
 role = "exclude"

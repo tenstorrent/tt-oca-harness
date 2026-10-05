@@ -55,9 +55,8 @@ void __attribute__((interrupt("machine"))) dma_isr(void) {
 #define SHA384_DIGEST_WORDS 12
 #define SHA384_DIGEST_BYTES 48
 
-// FIPS 180-4 two-block SHA-2 test message and its published digests. Chosen
-// over the one-block "abc" vector because the DMA transfers whole 4-byte words,
-// and 56 is a multiple of 4 where 3 is not.
+// FIPS 180-4 two-block SHA-2 test message and published digests. The DMA
+// transfers whole 4-byte words, so the message length is a multiple of 4.
 static const char kFips1804Msg[] = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
 #define FIPS_MSG_LEN 56
 static const char kFips1804Sha384Hex[] =
@@ -139,7 +138,7 @@ int main(void) {
     WRITE_REG(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, range_valid.w);
     printf("  RANGE_VALID = 0x%x\n", READ_REG(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR));
 
-    // The source data lives in SRAM rather than on the stack.
+    // Stage the source in SRAM, outside the DCCM destination region.
     printf("  Generating random data in SRAM...\n");
     volatile uint32_t *src_ptr = (volatile uint32_t *)SEP_TOP_SEP_SRAM_BASE_ADDR;
     for (int i = 0; i < TEST_DATA_SIZE / 4; i++) {
@@ -299,7 +298,7 @@ int main(void) {
     // Second pass: inline SHA-384 over the FIPS 180-4 test message.
     printf("\n=== Secure DMA SHA-384 (FIPS 180-4 vector) ===\n");
 
-    // Stage the fixed message in SRAM, where the SHA-256 pass left random data.
+    // Stage the source in SRAM, outside the DCCM region written by the copy.
     volatile uint8_t *msg_ptr = (volatile uint8_t *)SEP_TOP_SEP_SRAM_BASE_ADDR;
     for (int i = 0; i < FIPS_MSG_LEN; i++) {
         msg_ptr[i] = (uint8_t)kFips1804Msg[i];

@@ -92,10 +92,9 @@ RESP_SLVERR = 2
 RESP_DECERR = 3
 
 
-# Entry count from the generated export, not a literal: the bank is an RDL
-# array (`inbound_filter_ctrl[16]`), and a sequence that carries its own number
-# goes stale the moment the array changes. disable_all() must clear every entry
-# or a leftover allow window survives a walk that assumes it cleared them.
+# Entry count from the generated export (`inbound_filter_ctrl[16]`).
+# disable_all() must clear every entry or a leftover allow window survives a
+# walk that assumes it cleared them.
 INFILT_N_ENTRIES = indexed_block_count("INBOUND_FILTER_CTRL")
 WALK_ENTRIES = (0, 7)
 ALLOW_MODES = (("rw", True, True), ("r", True, False), ("w", False, True))
@@ -280,9 +279,7 @@ class SepInboundFilterMatrixCfg:
 
     @classmethod
     def from_seed(cls, seed: int) -> "SepInboundFilterMatrixCfg":
-        # Seed-reproducible by requirement: `--stage sim --seed N` must replay
-        # the exact stimulus. These are AXI payload words written to a
-        # simulated DUT, never secrets.
+        # Seed-reproducible: `--stage sim --seed N` replays the exact stimulus.
         rng = SepSeededRng(seed)
         va = rng.getrandbits(32) or TARGET_VALUE
         vb = rng.getrandbits(32) or WINDOW_B_VALUE

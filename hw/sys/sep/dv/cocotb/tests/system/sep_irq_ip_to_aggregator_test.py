@@ -14,8 +14,8 @@ Status bits are idle-true and are not walked.
 
 The aggregate vector has no frontdoor CSR mirror and the PIC is on the CPU bus
 (unreachable with the CPU held off), so the test observes it through the tb_top
-`sep_internal_interrupts_probe_o` (observation-only XMR mirror; the counterpart
-of the OCAH bench's `sep_irq_probe_if` wire-tap of sep_interrupts[idx]). The
+`sep_internal_interrupts_probe_o` observation-only XMR mirror. The OCAH
+`sep_irq_ip_to_aggregator_test` observes the same aggregate bit. The
 IP-local INTR_STATE RW1C contract is checked frontdoor over AXI.
 
 Per source (CSRNG bits 23..26, EDN bits 27..28, HMAC error bit 19, DMA done /
@@ -47,7 +47,7 @@ each HMAC / KMAC / OTBN CSR gap:
 A beat past an adapter window is DECERR and never sets err_o. AES, CSRNG,
 EDN and WDT windows are packed to the last register. This leaf does not
 start a DMA transfer, so it does not prove host_path_err / bit 41.
-Lockstep punch-through has no frontdoor on this build.
+Lockstep punch-through has no frontdoor.
 
 INTR_TEST sets INTR_STATE regardless of IP functional state, so no entropy bring-
 up is needed: +skip_fuse_sense, no_cpu.

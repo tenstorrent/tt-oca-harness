@@ -96,8 +96,8 @@ fault paths, illegal encodings. Named in <<sep-fcov-planned>>. Not collected.
 |Seed-dependent stimulus values |`sep_spi_host_rand_cg`, `sep_mbox_rand_cg`, `sep_dma_rand_cg` (see <<sep-fcov-rand>>)
 |===
 
-Thirty-five deterministic Phase 1 covergroups and three seed-dependent
-`*_rand_cg` groups, compiled and sampled for VCS only (`ifndef VERILATOR`). Several IPs carry
+The deterministic Phase 1 covergroups and the seed-dependent `*_rand_cg`
+groups are compiled and sampled for VCS only (`ifndef VERILATOR`). Several IPs carry
 more than one group, because their Phase 1 contract has independent halves that different tests reach: the Key
 Manager splits generate from consume; lifecycle splits the sensed state, the
 transition taken, the `FEAT_CTRL` profile, demotion, and the SEC_DIS window
@@ -210,12 +210,10 @@ scoreboard. A covergroup counts hits, not distinct values.
 |`x_mode_key_op` |15 cells: the 9 ENC cells plus the ECB/CBC decrypt legs of the round-trip. CTR x DECRYPT is excluded, see below. A cell is sampled when that configuration reached `STATUS.output_valid` and its `DATA_OUT_0` word was read
 |===
 
-CTR x DECRYPT is an `ignore_bins` in the cross because the cell has nothing
-to score, not because the suite happens not to drive it. CTR is a stream
-mode: the engine runs the forward cipher whichever way `OPERATION` is
-programmed, so a test that programmed DECRYPT there would pass with the
-field disconnected. It is not a deferral -- there is no cipher contract
-behind that cell for a later phase to claim. The scoreable neighbour is
+CTR x DECRYPT is an `ignore_bins` in the cross. CTR is a stream mode: the
+engine runs the forward cipher whichever way `OPERATION` is programmed, so a
+test that programmed DECRYPT there would pass with the field disconnected.
+No cipher contract stands behind that cell. The scoreable neighbour is
 `OPERATION`'s shadowed-register behaviour, which is mode-independent and
 belongs on a CSR vehicle. `cp_op` and the decrypt cells are owned by
 `sep_aes_mode_keysize_rand_test` CHK-CELL (the engine round trip);
@@ -307,9 +305,9 @@ command's genuine completion into no bin. Each arms only on an observed
 previous operation cannot be credited to a command the engine dropped
 |===
 
-Split from `sep_abr_keygen_cg` rather than added to it: KEYGEN, SIGNING and
-VERIFYING are separate `MLDSA_CTRL.CTRL` encodings with separate owning leaves,
-and folding them would let the keygen leaf report a sign cell. The
+KEYGEN, SIGNING and VERIFYING are separate `MLDSA_CTRL.CTRL` encodings with
+separate owning leaves, so they are separate groups: one group would let the
+keygen leaf report a sign cell. The
 signature-equals-ACVP and verify-accept-vs-reject claims stay on
 `sep_abr_mldsa_sign_verify_kat_test`. KEYGEN_SIGN (0x4) is not covered.
 
@@ -657,7 +655,7 @@ encoding.
 |`x_fsm_illegal` |Four cells. `sep_efuse_illegal_state_fail_closed_test` walks the product in one seed
 |===
 
-Both illegal encodings are separate cells on purpose: they fail the legal-set
+The two illegal encodings are separate cells: they fail the legal-set
 test for different reasons, so a recovery written as a comparison against one
 value would fill one cell and leave the other dead. The cells record that the
 injection matrix was walked, not that the recovery was correct -- that stays on

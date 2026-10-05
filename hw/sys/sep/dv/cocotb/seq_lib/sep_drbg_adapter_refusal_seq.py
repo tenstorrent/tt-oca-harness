@@ -83,8 +83,8 @@ LANE_BYTES = 4
 LOWER_LANE = 0x0
 UPPER_LANE = LANE_BYTES
 
-# Logged on every observation the verdict does not use: the spec states no rule
-# for these cells.
+# Logged with every observation the verdict does not use: the architecture
+# document does not state the rule.
 NOT_GRADED_NOTE = "not graded until #2822 specifies the rule"
 
 # Vehicle cells: (name, op, addr, strobe). Strobes are AMBA's

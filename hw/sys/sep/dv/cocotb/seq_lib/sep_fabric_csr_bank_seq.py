@@ -45,9 +45,8 @@ from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 # --- fabric clock ungate ------------------------------------------------------
 # Derived from the generated SystemRDL export, never hardcoded.
-# sep_cpu_ctrl.rdl declares CLOCK_GATE_CTRL as a placeholder with ONE implemented
-# bit (pka_cg_enable[0:0], reset 0). There are no per-block gates, so every bank
-# below is unconditionally clocked and there is nothing to ungate.
+# No CLOCK_GATE_CTRL field gates a fabric bank (sep_cpu_ctrl.rdl), so the banks
+# are clocked without this write; it exercises the CSR write path only.
 # Writing the full implemented mask keeps this step's CSR write-path coverage.
 CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
 CLOCK_GATE_UNGATE = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
@@ -132,9 +131,8 @@ FILTER_RW_MASK = ~(DBW_MASK << DBW_LSB) & 0xFFFF_FFFF  # compare RW fields, excl
 # and no RO data_bus_width. A pattern inverted under this mask reads back exactly.
 FILTER_CFG_LO_FIELDS = INBOUND_FILTER_CTRL_0.mask32("FILTER_CONFIG") & FILTER_RW_MASK
 
-# Bank sizes (entries) for index randomization. Every count comes from the
-# register export: a literal that goes short simply never reaches the tail
-# entries and still reports a clean pass.
+# Bank sizes (entries) for index randomization. The counts must track the RDL
+# arrays: an undersized count leaves the tail entries unswept with a clean pass.
 ALIAS_REGIONS = indexed_block_count("LOCAL_MASTER_ALIAS_REMAP_CTRL")
 REMAP_REGIONS = indexed_block_count("AP_OUTPUT_REMAP_CTRL")
 # Both banks are RDL arrays; take the counts from the export so this sweep and
@@ -400,7 +398,6 @@ class SepFabricCsrBank(SepAxiRegDriver):
         """Prove a RO field ignores writes. Returns (orig_field, after_write_field)."""
         field_mask = (1 << width) - 1
         orig = (await self._rd(addr) >> lsb) & field_mask
-        # Try to write the field to its inverse, and leave the other bits at their read value.
         cur = await self._rd(addr)
         await self._wr(addr, cur ^ (field_mask << lsb))
         after = (await self._rd(addr) >> lsb) & field_mask

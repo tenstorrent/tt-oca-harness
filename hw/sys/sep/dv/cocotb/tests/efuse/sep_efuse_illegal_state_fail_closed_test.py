@@ -5,9 +5,9 @@
 ``efuse_read_interface`` and ``efuse_program_interface`` each hold a two-bit
 state. ``hw/ip/efuse/doc/architecture.adoc`` names a two-state sequence
 (idle, then waiting for a bank response). No document names the encodings.
-The legal encodings, ``2'b01`` idle and ``2'b10`` wait, come from the
-accepted state-inject record in ``tb/tb_top.sv``, which accepts them as the
-legal set for this leaf. The leaf injects the other two values for one cycle.
+The legal encodings, ``2'b01`` idle and ``2'b10`` wait, are the set the
+state-inject record in ``tb/tb_top.sv`` accepts for this leaf.
+The leaf injects the other two values for one cycle.
 Those two codes have no frontdoor.
 
 The recovery this leaf grades is DV-owned:
@@ -50,7 +50,7 @@ from seq_lib.sep_efuse_direct_read_seq import sep_efuse_direct_read_seq
 from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
 
 # hw/ip/efuse/doc/architecture.adoc names a two-state sequence (idle, waiting)
-# and no encodings. The legal set below is the one the accepted state-inject
+# and no encodings. The legal set below is the one the state-inject
 # record in tb/tb_top.sv accepts. The injection walks its complement, and each
 # recovery must return the state register to a member of it.
 _ST_IDLE = 0b01
@@ -108,8 +108,8 @@ _REQ_ERROR_CLEAR = EFUSE_INTERFACE_CTRL.field_mask(
 _SETTLE_LIMIT = 400
 _SETTLE_CYCLES = 64
 
-# How many SPARE7 bits the program legs consume: two live controls and one per
-# illegal encoding. The bits themselves are NOT hardcoded -- see _pick_pg_bits.
+# SPARE7 bits the program legs consume: two live controls and one per illegal
+# encoding.
 _PROGRAM_BITS_NEEDED = 2 + len(_ILLEGAL_STATES)
 
 
@@ -443,17 +443,11 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
                 "would land in an idle window and grade nothing"
             )
 
-        # Pre-state control for the error term, where it can hold. error_o is one
-        # of the three things the verdict rests on, and on the program leg the
-        # injection lands in an idle window where the other two are already true.
-        #
-        # error_o is cleared by the NEXT REQUEST, not by a status write (the same
-        # rule CHK-READ-ERR-CLEAR-REQUEST grades), and _quiesce only clears the
-        # interface-level efuse_req_error. So on the first injection of an
-        # interface the control is real and is asserted; on a later one the
-        # latch is carried over from the previous leg by design, and the error
-        # term is NOT attributable there -- that leg rests on done and on the
-        # data mismatch instead. Recorded rather than asserted away.
+        # error_o is cleared by the next request, not by a status write (the rule
+        # CHK-READ-ERR-CLEAR-REQUEST grades), and _quiesce clears only the
+        # interface-level efuse_req_error. On the first injection of an interface
+        # the error term starts low and is asserted; on a later one the latch carries
+        # over from the previous leg, so that leg rests on done and the data mismatch.
         await ReadOnly()
         err_before = int(getattr(dut, f"efuse_{which}_error_o").value)
         done_before = int(getattr(dut, f"efuse_{which}_done_o").value)
@@ -502,11 +496,9 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             f"{state:#04x} -- the force did not reach the register (inject "
             "confirmation, not fail-closed evidence)"
         )
-        # Suppression is claimed ONLY for the in-flight leg. Injected into an
-        # idle interface this signal is already low, so requiring it to be low
-        # holds whether or not the design suppresses anything -- it would pass
-        # with the RTL's suppression term deleted, and counting it as evidence
-        # would inflate the floor with a check that cannot fail.
+        # Suppression is graded only on the in-flight leg: on an idle interface the
+        # bank request is already low, so requiring it low holds whether or not the
+        # design suppresses anything.
         req = int(getattr(dut, f"efuse_{which}_cmd_req_valid_o").value)
         if in_flight:
             assert req == 0, (

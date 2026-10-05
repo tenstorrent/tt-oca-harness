@@ -92,9 +92,8 @@ class sep_sec_dis_override_test(sep_base_test):
         observed = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
         feat = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=sec_dis)
         if sec_dis:
-            # hw/sys/sep/doc/lifecycle_controller.adoc: SEC_DIS=1 forces
-            # feat_ctrl to all ones. That constant is the contract, not a
-            # collapse. The fail-closed branch below is the contrast.
+            # hw/sys/sep/doc/lifecycle_controller.adoc: SEC_DIS=1 forces feat_ctrl
+            # to all ones; the fail-closed word above is the contrast.
             assert feat == M64, f"{label} FAIL: override golden 0x{feat:016x} is not all ones"
         else:
             assert feat not in (0, M64), (

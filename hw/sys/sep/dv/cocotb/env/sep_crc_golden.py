@@ -4,10 +4,9 @@
 
 A reflected (LSB-first) bit-serial CRC step, applied once per byte, with the
 running state masked to the mode's width after the load XOR and after every
-shift. It is written fresh here rather than copied from an existing model in
-the tree, and its parameters are pinned by the published check values asserted
-at the bottom of this file -- so its authority is those external values, not
-the design it is used to grade.
+shift. Its parameters are pinned by the published check values asserted at the
+bottom of this file, so its authority is those external values, not the design
+it grades.
 
 The engine applies NO initial value and NO final inversion -- both belong to
 the caller -- so :func:`step` and :func:`word_update` return the raw chaining

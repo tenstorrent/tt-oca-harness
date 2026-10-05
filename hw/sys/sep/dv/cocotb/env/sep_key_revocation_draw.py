@@ -65,7 +65,7 @@ CLASSES: Tuple[str, ...] = (
     CLASS_BOTH_REVOKED_TERMINAL,
 )
 
-# The three observable outcomes. Two classes share PROCEED on purpose.
+# The three observable outcomes; clean and noisy proceed map to the same one.
 OUTCOME_PROCEED = "proceed"
 OUTCOME_FAILOVER = "failover"
 OUTCOME_TERMINAL = "terminal"
