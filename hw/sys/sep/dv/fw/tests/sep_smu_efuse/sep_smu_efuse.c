@@ -24,9 +24,8 @@ static int run_efuse_reg_sequence(void) {
         return -1;
     if (rw_check32(SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR, 0x00000001u) != 0)
         return -2;
-    /* This check proves only that the external eFuse shim CSR path is
-     * read/writable. */
 #ifdef SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR
+    /* This check proves only that the external eFuse shim CSR path is read/writable. */
     if (rw_check32(SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR,
                    0x0000ABCDu) != 0)
         return -3;

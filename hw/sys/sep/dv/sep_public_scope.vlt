@@ -7,10 +7,12 @@
 //
 // cocotb's runner forces a global --public-flat-rw, which disables the split_var
 // pragmas in the AXI fabric cells and wedges the Verilator runtime in the
-// input-combinational settle. This file exposes the tb top only (cocotb drives only
-// its ports; the CPU-LSU splice is SV-side), so the fabric internals stay private.
-// It works only with the global flag removed: cocotb_public_scope() in
-// tools/dv/runlib/stages.py removes it and injects this file.
+// input-combinational settle. This file gives broad access only to the tb top
+// and the shared AXI VIP interface. The named memory exceptions below support
+// image initialization, and the scratch exception supports a timed deposit.
+// Other fabric internals stay private.
+// cocotb_public_scope() in tools/dv/runlib/stages.py removes the global flag
+// and injects this file.
 public_flat_rw -module "sep_uvm_top" -var "*"
 
 // The shared AXI VIP interface on the SEP->SMC boundary (rom_boot target):

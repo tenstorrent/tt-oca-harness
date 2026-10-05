@@ -35,8 +35,8 @@
 //     assigns it from the tb's assembled request (`assign`, no `force`; see
 //     shims/cpu/sep_cpu_stub.sv). The full-CPU VCS build force-splices the
 //     same post-remap `lsu_axi_req` and holds `lsu_axi_resp_raw` idle.
-//     Verilator no_cpu stays on the stub. The tb reads lsu_axi_resp back by
-//     name.
+//     The Verilator no_cpu build stays on the stub. The tb reads lsu_axi_resp
+//     back by name.
 //   * CPU firmware boot (+cpu_boot): runs on the full-CPU build, the core owns all of
 //     its master buses, fetches firmware out of the wrapper's real TCM macros, and
 //     runs. The boot test backdoor-loads the TCM (tb_backdoor_mem, on tcm_load_i),

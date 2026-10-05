@@ -243,9 +243,8 @@ static int stage_kmac(void) {
 static int stage_efuse(void) {
     if (rw_check32(SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR, 0x00001234u) != 0)
         return -1;
-    /* Shim timing-register read/write check, compiled only when the register
-     * is defined. */
 #ifdef SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR
+    /* The shim timing-register check compiles only when the register is defined. */
     if (rw_check32(SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR,
                    0x0000ABCDu) != 0)
         return -1;

@@ -133,8 +133,7 @@
 
 /* ---- SMC scratch0 progress markers (SMC-owned; ordered evidence, CHK-SETUP/CHK-BOTH-PASS) ---- */
 #define XBAR_SMC_SETUP_OK 0x0035E100u /* SMC: cleared + outbound filter programmed & read back */
-#define XBAR_SMC_CMD_SENT \
-    0x00C0DDE1u /* SMC: wrote CMD to SEP cold scratch0 (CHK-BOTH-PASS: CMD) */
+#define XBAR_SMC_CMD_SENT 0x00C0DDE1u /* SMC wrote CMD to SEP cold scratch0. */
 #define XBAR_SMC_DONE_SENT \
     0x00D0DDE1u /* SMC: wrote DONE to SEP cold scratch0 (CHK-BOTH-PASS: DONE) */
 

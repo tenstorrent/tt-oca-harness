@@ -7,10 +7,10 @@
 # image differs from sep_efuse_lc_prod: a test that reached the non-secure path
 # because the lifecycle was permissive would prove nothing about the chicken bit.
 #
-# Used by sep_firmware_device_cntl_non_secure_boot_flow_test and by all four PROD
-# members of the [S25] demotion group, where it is one of the three surfaces
-# that must move together for an unsigned primary to boot -- the other two are
-# manifest fields. Those members present an UNSIGNED primary, so
+# Used by sep_firmware_device_cntl_non_secure_boot_flow_test and by the PROD
+# demotion scenarios, where it is one of the three surfaces that must move
+# together for an unsigned primary to boot -- the other two are manifest fields.
+# Those scenarios present an UNSIGNED primary, so
 # this fuse is what lets it boot at all: the SBOOT_DIS shadow reaches the
 # validator through plat_is_secure_boot_disabled() (oca_platform.c) and disables
 # the crypto chain the PROD lifecycle would otherwise enforce. Remove it and

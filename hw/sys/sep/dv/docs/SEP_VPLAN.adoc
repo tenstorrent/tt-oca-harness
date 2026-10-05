@@ -53,9 +53,11 @@ One DUT. Two phases on cocotb, plus a SystemVerilog UVM smoke set
 
 Phase 1 and Phase 2 are scope tiers, not a schedule. Phase 1 is the bring-up
 and representative set. Phase 2 is the dense, breadth and fault set. Each test
-entry names its phase. `SEP_FCOV.adoc` splits coverage on the same tiers. A tier
-says what a test is asked to prove, never when it was written. The contracts
-this plan does not claim are in <<sep-vplan-scope>>.
+entry names its phase. `SEP_FCOV.adoc` has its own Phase 1 / Phase 2 taxonomy
+for implemented basic-mode groups and planned dense groups; an FCOV phase does
+not follow the phase of its owning test. A tier says what a test is asked to
+prove, never when it was written. The contracts this plan does not claim are
+in <<sep-vplan-scope>>.
 
 [arabic]
 . *Stimulus*: no-CPU tests drive the CPU-LSU AXI splice through

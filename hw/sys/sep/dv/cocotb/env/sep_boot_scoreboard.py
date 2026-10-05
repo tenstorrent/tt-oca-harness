@@ -24,7 +24,7 @@ _MIN_DISTINCT_PCS = 16
 
 
 class SepBootScoreboard(uvm_component):
-    """PC advance, console banner when set, and the expected PASS or refusal verdict."""
+    """Check PC advance, an optional banner, and PASS or no-PASS as configured."""
 
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")

@@ -29,7 +29,7 @@
  * brings the SMC up over sep_axi_in (common sep_smc_bringup.h). Entry/cookie are the built SMC
  * image's values (cocotb drift-checks both). */
 #define CLADBG_SMC_IMAGE_FIRST_WORD 0x41014081 /* SEP bring-up cookie; stale image -> S0_FAIL */
-#define CLADBG_SMC_ENTRY 0x00000000C00601B2ULL /* built SMC image entry (.dis +SMC_RESET_SYMBOL) */
+#define CLADBG_SMC_ENTRY 0x00000000C00601B2ULL /* SMC_RESET_SYMBOL image entry. */
 
 /* SEP-side alias addresses for the SMC status/command/response scratch registers */
 #define CLADBG_STATUS_ALIAS_ADDR 0x40039080

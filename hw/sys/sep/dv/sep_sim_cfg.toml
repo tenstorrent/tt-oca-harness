@@ -297,9 +297,8 @@ design_artifact = "{build_dir}/../cov_build.vdb"
 # bwrap forwards the caller environment. `uv run` exports UV as the host
 # binary and preamble.mk keeps it, so the rom_only post-process
 # (elf-to-vmem.py, which imports pyelftools) cannot use that path. Drop UV
-# and VIRTUAL_ENV, and keep uv's project environment, cache and interpreters
-# under local/. The container image has no uv, so this post-process needs the
-# sandbox uv on PATH.
+# and VIRTUAL_ENV so the sandbox selects the uv available on its PATH. Keep
+# uv's project environment, cache and interpreters under local/.
 cwd = "."
 argv = [
   "bash",
