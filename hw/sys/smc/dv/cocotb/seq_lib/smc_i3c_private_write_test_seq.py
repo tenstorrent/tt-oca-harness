@@ -14,9 +14,9 @@ and queues one Immediate Data Transfer of one byte to that entry.
 
 The command descriptor the PIO `COMMAND_PORT` takes is the HCI one, carried
 here as the sequence's own field table (`CMD_ATTR`, `TID`, `DEV_INDEX`,
-`DTT`, `WROC`, `TOC`); the DV controller driver
-`hw/sys/smc/dv/fw/common/occp/i3c_controller_driver.c` builds its descriptors
-from the same table.
+`DTT`, `WROC`, `TOC`); the DV OCCP controller driver
+`hw/sys/smc/dv/fw/common/occp/i3c_controller_driver.c` carries the same bit
+layout in its own descriptor macros.
 
 Nothing on the single build answers that address, so the header is not
 acknowledged. The response descriptor's `ERR_STATUS` reports an address NACK

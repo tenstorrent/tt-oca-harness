@@ -318,9 +318,9 @@ class OcahJtagMasterDriver:
     async def assert_trst(self, *, tck_cycles: int = 1, tms: int = 1) -> None:
         """Assert the bound TRST net and run ``tck_cycles`` TCK cycles with TMS at ``tms``.
 
-        TMS high is the Test-Logic-Reset self-loop. TMS low holds the
-        controller in the state it is in through those clocks, so only the
-        reset can move it to Test-Logic-Reset. The tracked state becomes
+        TMS high is the Test-Logic-Reset self-loop. TMS low never enters
+        Test-Logic-Reset through those clocks, so only the reset can put the
+        controller there. The tracked state becomes
         Test-Logic-Reset and the tracked instruction is cleared.
         """
         await self._trst_level(asserted=True, tck_cycles=tck_cycles, tms=tms)
