@@ -19,10 +19,10 @@ store that replicates its byte across the bus does, so a register that ignored
 the strobe would take the fill and fail the readback. The TB counts the fill at
 both ends of the fabric: on the ``s_axi`` pins and at the AXI-Lite W port of
 each slot register block (``fabric_slot_w_*`` in ``tb/tb_top.sv``), so the
-sweep shows the fill reaches the block that applies WSTRB, on every slot. The fill always sets the
-write-once-set ``FILTER_CONFIG.locked`` bit and the alias-remap
-``REGION_ATTRS.valid`` bit when their lane is inactive: a block that ignored the
-strobe there would lock the entry or arm the remap.
+sweep shows the fill reaches the block that applies WSTRB, on every slot. The
+fill always sets the write-once-set ``FILTER_CONFIG.locked`` bit and the
+alias-remap ``REGION_ATTRS.valid`` bit when their lane is inactive: a block that
+ignored the strobe there would lock the entry or arm the remap.
 
 ``START_ADDR`` and ``END_ADDR`` of a filter entry are ``hw = rw``. The model
 applies the write-back that ``filter_ctrl.rdl`` describes: when both land in

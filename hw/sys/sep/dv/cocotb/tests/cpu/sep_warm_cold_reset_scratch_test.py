@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP warm/cold reset scratch-bank retention (PyUVM).
+"""A warm reset clears only SCRATCH_WARM, and a cold reset clears both scratch banks.
 
-Proves the SEP System-block dual scratch banks honor their reset domains:
+The test proves the SEP System-block dual scratch banks honor their reset domains:
 
   * SCRATCH_WARM (0x1080_2080) is in the WARM domain: a warm reset (``wdt_rst_ni_i`` low)
     clears it.
@@ -20,6 +20,8 @@ Checks (exact values, so a stuck or X register fails):
   CHK-WARM-RETAIN : after the warm reset, SCRATCH_COLD[0] keeps its pattern (probe too).
   CHK-WARM-BANK   : the warm reset clears every warm register and keeps every cold one.
   CHK-WARM-RECOVER: both banks accept a new pattern after the warm reset.
+  CHK-COLD-ARM    : both banks hold distinct patterns just before the cold reset, so
+                    CHK-COLD-BANK cannot pass on state the warm reset left.
   CHK-COLD-REINIT : after a cold reset (rst_ni resense), both banks == reset default (probe too).
   CHK-COLD-BANK   : the cold reset clears every register of both banks.
 

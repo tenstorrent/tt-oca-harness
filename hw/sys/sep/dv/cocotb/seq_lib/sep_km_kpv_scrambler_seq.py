@@ -138,12 +138,9 @@ class SepKpvScrambler:
     async def _next_word(self, what: str, *, timeout: int = 20_000, poll_cycles: int = 20) -> int:
         """Read one reported word, bounded and attributed.
 
-        The budget is sized against the ROM's longest silence -- the two
-        whole-file scans before the first report -- with room to spare, and
-        well inside the leaf's own timeout. A bound that outlives
-        the leaf is not a bound: the runner would kill the run first and the
-        attributed message below would never be printed, which is the whole
-        reason for polling with a limit rather than waiting forever.
+        The budget covers the ROM's longest silence (the two whole-file scans
+        before the first report) and stays inside the leaf's own timeout, so
+        this message is printed before the runner kills the run.
         """
         for _ in range(timeout):
             if not (await self._rd(KM_MBOX_STATUS) & (1 << KM_STATUS_OUTBOUND_EMPTY)):

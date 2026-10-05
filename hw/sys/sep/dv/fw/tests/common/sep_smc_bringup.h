@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
-/*******************************************************************************
+/*
  * SEP-driven SMC bring-up over the SEP->SMC port (sep_axi_in) -- common helper.
  *
  * The SEP->SMC port maps the SEP-view region 0x4000_0000 to the SMC-local 0xC000_0000
@@ -16,7 +16,7 @@
  *   sep_smc_open_window();                                    // outbound egress filter
  *   if (sep_smc_bringup_from_sram(SMC_ENTRY, SMC_COOKIE, LIM) != 0) { ...fail... }
  *   // ...then SEP<->SMC scratch handshake via sep_smc_scratch_write/_wait...
- ******************************************************************************/
+ */
 #ifndef SEP_SMC_BRINGUP_H
 #define SEP_SMC_BRINGUP_H
 

@@ -4,7 +4,7 @@
 #define SEP_SMU_FUSE_SENSE_PROTOCOL_H
 
 /*
- * smu_sep_fuse_sense_test firmware <-> cocotb contract.
+ * sep_smu_fuse_sense firmware <-> SMU testbench contract.
  *
  * Cold scratch4 = first SMC_FUSE_SENSE_STATUS (0x10A30140)
  * Cold scratch5 = first EFUSE_INTERFACE_CTRL_STATUS (0x10930400)

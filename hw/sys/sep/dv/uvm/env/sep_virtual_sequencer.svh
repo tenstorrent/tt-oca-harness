@@ -5,8 +5,7 @@
 // sep_env in connect_phase, and nothing else. Scenario virtual sequences
 // (sep_base_test_seq family) run on it and start reusable operation
 // sequences on the handle each step needs: CPU-LSU CSR accesses on
-// m_lsu_seqr. Further initiators (the SMN-inbound external master, the
-// SEP-OTP JTAG AXI-Lite master) add a handle here with their agents. The
+// m_lsu_seqr. An added initiator adds its sequencer handle here. The
 // scoreboard handle is read-only: scenarios read its per-feature compare
 // count for their non-vacuity evidence and never push items into it.
 

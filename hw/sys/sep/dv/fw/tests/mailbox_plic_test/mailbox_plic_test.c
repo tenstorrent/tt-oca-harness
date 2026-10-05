@@ -72,7 +72,6 @@ void __attribute__((interrupt("machine"))) mailbox_isr(void) {
     g_irqs_after = sep_axil_mbox_rd(sep_axil_mbox_ch(ch, SEP_AXIL_MBOX0_IRQS));
     g_irqp_after = sep_axil_mbox_rd(sep_axil_mbox_ch(ch, SEP_AXIL_MBOX0_IRQP));
 
-    // Also mask the enable; harmless once the status is clear.
     sep_axil_mbox_wr(sep_axil_mbox_ch(ch, SEP_AXIL_MBOX0_IRQEN), 0u);
 
     g_isr_count++;
@@ -193,8 +192,8 @@ static int run_channel(uint32_t ch) {
 // interrupts (hw/sys/sep/doc/interrupts.adoc); the interrupts toward the SMC
 // leave on smc_mailbox_interrupt_o (hw/sys/sep/doc/port_table.adoc). Arm the
 // outbound channel-0 aperture with every mailbox PIC source enabled and push one
-// word; the ISR must stay silent. The entry is left pending on purpose so the
-// testbench can see the outbound interrupt asserted at end of run.
+// word; the ISR must stay silent. The entry stays pending so the testbench can
+// observe the outbound interrupt at the end of the run.
 static int run_outbound_no_cpu_delivery(void) {
     uint32_t pic_src = SEP_AXIL_MBOX0_PIC_SRC;
 
@@ -245,8 +244,8 @@ int main(void) {
     sep_mbx_puts("SEP mailbox PLIC test\n");
     sep_mbx_puts("STEP filter init done\n");
 
-    // This clock-enable write targets no defined register field; it is not on
-    // the checked path.
+    // CLOCK_GATE_CTRL bit 2 is not a defined field; the write has no hardware
+    // effect.
     sep_axil_mbox_clock_enable();
 
     pic_enable_interrupts();

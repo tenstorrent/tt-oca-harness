@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP firmware-boot test (PyUVM): boot the VeeR EL2 core from ICCM and run the
-prebuilt hello_world firmware.
+"""The VeeR EL2 core boots from ICCM, runs hello_world, prints its banner and signals PASS.
 
-Brings up clocks, backdoor-loads the TCM responder with the hello_world image,
+The test brings up clocks, backdoor-loads the TCM responder with the hello_world image,
 passes the desired reset vector to tb_top.sv, which programs the EL2 reset-vector
 TDR through JTAG, and asserts mpc_reset_run_req so the core boots and runs firmware
 out of the TCM. The scoreboard checks:
@@ -49,7 +48,7 @@ _PROGRESS_EVERY = 2_000
 
 @pyuvm.test()
 class sep_hello_world_test(sep_base_test):
-    """Boot VeeR EL2 from ICCM and run the hello_world firmware."""
+    """The core executes from ICCM, prints the banner and reaches the PASS magic."""
 
     build_env = False
 
@@ -68,7 +67,7 @@ class sep_hello_world_test(sep_base_test):
             progress_every=_PROGRESS_EVERY,
         )
 
-        # CHK-BOOT: the console line is the evidence the card names -- only executed
+        # CHK-BOOT: the console line is the evidence the VPLAN row names -- only executed
         # code out of tightly-coupled memory can produce it. The boot scoreboard
         # raises on its absence; assert it here too so the record rests on the text
         # rather than on the run having ended.

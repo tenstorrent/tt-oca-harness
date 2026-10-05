@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Access sizes and write strobes on the Adams Bridge aperture.
+"""ABR accesses of every size, offset and strobe pattern follow the adams_bridge.adoc rules.
 
 no_cpu / +skip_fuse_sense. s_axi, one access at a time through the SEP AXI
 sequencer, so the SEP scoreboard grades every response as well.
@@ -19,11 +19,12 @@ sequencer, so the SEP scoreboard grades every response as well.
 * A narrow read is performed as a read of the whole register that contains it.
   Only the bytes it names are returned; the other byte lanes read as zero.
 
-``abr_top`` ties the register block's byte enables high and the AHB slave
-zero-extends a narrow write, so a partial write that got through would
-overwrite the rest of the register. Every refused write therefore targets a
-register primed with a value that has a set bit in every byte it holds, and
-writes the complement: a write that lands on any byte changes the readback.
+``abr_top`` ties the register block's byte enables high and the ABR AHB slave
+interface (``abr_ahb_slv_sif``) zero-extends a narrow write, so a partial write
+that got through would overwrite the rest of the register. Every refused write
+therefore targets a register primed with a value that has a set bit in every
+byte it holds, and writes the complement: a write that lands on any byte
+changes the readback.
 
 Narrow reads, and 64-bit reads at addr[2]=1, are graded on the whole 64-bit R
 beat that ``AbrBusWatch`` records on the ``s_axi`` pins as well as through the
@@ -116,8 +117,8 @@ if ABR_MAP_END != sep_map_row(ABR_BASE).extent:
         f"abr_reg.rdl map ends at +0x{ABR_MAP_END:x}; the SEP memory map's ABR extent is "
         f"0x{sep_map_row(ABR_BASE).extent:x}"
     )
-# Offset bit that a decode dropping it folds the upper quarter onto the
-# populated map: every graded register at or above 0x8000 mirrors past the end.
+# A decode that drops this offset bit folds the upper quarter onto the populated
+# map, so every graded register at or above 0x8000 has a mirror past the end.
 _MIRROR_BIT = 0x4000
 
 

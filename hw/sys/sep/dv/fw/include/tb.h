@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
+/* Testbench mailbox address and completion magic words, shared by C and
+ * crt0.s. */
+
 #ifndef TB_H
 #define TB_H
 

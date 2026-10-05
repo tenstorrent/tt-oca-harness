@@ -36,7 +36,8 @@ Checks:
                    least one landing per probe and op comes before the response
                    is accepted, and for each such landing the master abandons
                    the access (its completion carries no response). A landing
-                   the response beat is logged and grades recovery only.
+                   that comes after the response beat is logged and grades
+                   recovery only.
   CHK-RESET-VALUE  the first read after the reset returns OKAY and the RDL
                    reset value of the probe, within half the AXI timeout.
   CHK-RECOVER      a write after the reset reads back exactly, OKAY.

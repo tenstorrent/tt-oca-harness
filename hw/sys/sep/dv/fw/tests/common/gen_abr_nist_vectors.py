@@ -10,9 +10,8 @@
 Each algorithm writes its own header and neither mode touches the other's file.
 That separation is deliberate: the upstream ACVP-Server periodically re-rolls its
 projection files, so a plain re-run does NOT reproduce a header byte-for-byte.
-The vectors committed here are a snapshot the DUT has been graded against, and
-regenerating one algorithm must not silently swap the other's expected values
-underneath a passing test.
+The vectors committed here are a fixed snapshot, and regenerating one algorithm
+must not silently swap the other's expected values.
 
 The golden inputs/outputs are the official NIST ACVP "internalProjection" files
 (they contain both inputs and expected outputs). Download them first:
@@ -42,10 +41,6 @@ counted in. Note the scope: the description states this for the message window,
 and the same packing is applied to the key, signature and ciphertext windows,
 which is an inference from one block-wide convention rather than a separate
 statement about each window.
-
-Corroborated, not merely asserted: a byte-order error could not survive the
-compares these vectors feed -- 1157 signature words against a deterministic ACVP
-value, and the full ek/dk/ciphertext windows on the ML-KEM side.
 
 Outputs are FIPS-204 layout (PUBKEY=rho||t1, SIGNATURE=c~||z||h). Default
 signing computes mu internally from the raw message with an empty context, so
@@ -107,12 +102,9 @@ def find_kem_group(path, function=None):
 
 
 def emit(f, name, words, nbytes, comment):
-    # Eight words a line overruns the 100-column clang-format limit, so the
-    # emitted file is NOT final: run
+    # Eight words per line exceed the 100-column limit. After regeneration, run:
     #   make ocah-format-c FORMAT_C_PATH=hw/sys/sep/dv/fw/tests/common
-    # after regenerating, and commit the reflowed result. Both committed
-    # headers are 7-a-line because they went through that step; a raw
-    # regeneration that skips it fails the format-c CI job.
+    # An unformatted generated header fails format-c.
     f.write(f"/* {comment} ({nbytes} bytes, {len(words)} words) */\n")
     f.write(f"static const uint32_t {name}[{len(words)}] = {{\n")
     for i in range(0, len(words), 8):

@@ -68,9 +68,8 @@ int main(void) {
     sep_outbound_filter_init();
 
     /* OpenTitan AES reseeds its masking PRNG from crypto-EDN, so wait_for_idle()
-     * never clears unless the entropy stack is up. sep_entropy_bringup() skips
-     * itself when the boot gate is already open, so this is safe under
-     * hw/sys/sep/dv, where a cocotb sequence may have done the bring-up first. */
+     * does not clear until the entropy stack runs. sep_entropy_bringup() returns
+     * without resetting the stack when the boot gate is already open. */
     if (sep_entropy_bringup() != SEP_ENTROPY_OK) {
         smu_sep_aes_fail_entropy_loop();
     }

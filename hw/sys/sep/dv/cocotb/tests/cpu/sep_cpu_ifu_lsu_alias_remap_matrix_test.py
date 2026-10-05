@@ -1,17 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP CPU IFU/LSU local-alias-remap test (PyUVM).
+"""CPU LSU and IFU accesses at 0xD000_xxxx reach SEP SRAM at 0x1000_xxxx; others pass through.
 
-Boots VeeR EL2 with the cpu_alias_remap firmware, which programs the CPU-side alias window base
-(SEP_LOCAL_BASE=0xD000_0000, its reset value) and checks the LSU and IFU remap in
-hw/sys/sep/rtl/sep_cpu.sv (axi_window_remap): 0xD000_xxxx maps to SEP SRAM at 0x1000_xxxx and
-accesses outside the window pass through. The window is a fixed 768 MiB (memory_map.adoc, SEP
-Local Alias) positioned by the base CSR only; REGION_SIZE does not size it. The IFU check fetches
-and executes an instruction through the alias.
+The test boots VeeR EL2 with the cpu_alias_remap firmware. The firmware programs the CPU-side
+alias window base (SEP_LOCAL_BASE_ADDR = 0xD000_0000, its reset value) and checks the LSU and
+IFU remap in hw/sys/sep/rtl/sep_cpu.sv (axi_window_remap): 0xD000_xxxx maps to SEP SRAM at
+0x1000_xxxx and accesses outside the window pass through. The window is a fixed 768 MiB
+(memory_map.adoc, SEP Local Alias) positioned by the base CSR only; REGION_SIZE does not size
+it. The IFU check fetches and executes an instruction through the alias.
 
 This must be a CPU-firmware test: the no_cpu AXI splice is after the remap, so a no_cpu driver
-bypasses the remapper. Firmware-self-checking (start.S PASS/FAIL magic); no fuse data is read, so
-the testlist entry uses +skip_fuse_sense.
+bypasses the remapper. Firmware-self-checking (fw/startup/crt0.s PASS/FAIL magic); no fuse data
+is read, so the testlist entry uses +skip_fuse_sense.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ _BANNER = "SEP CPU IFU/LSU alias-remap test"
 
 @pyuvm.test()
 class sep_cpu_ifu_lsu_alias_remap_matrix_test(sep_base_test):
-    """Boot VeeR EL2 and run the CPU IFU/LSU local-alias-remap firmware."""
+    """Alias-window LSU and IFU accesses reach SEP SRAM; other accesses pass through unchanged."""
 
     build_env = False
 

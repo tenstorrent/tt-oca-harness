@@ -135,8 +135,8 @@ SECTIONS {
      *
      * Layout:
      *   BSS_END     ... grows upward
-     *   STACK       ... grows downward from 0x5FBFC
-     *   INTVEC_BASE ... fixed at 0x5FC00 (1KB reserved)
+     *   STACK       ... grows downward from 0xC005FBFC
+     *   INTVEC_BASE ... fixed at 0xC005FC00 (1KB reserved)
      *========================================================================*/
 
     /* Interrupt vector table for VeeR EL2 fast_interrupt_redirect
@@ -152,6 +152,5 @@ SECTIONS {
     stack  = STACK;
     _stack = STACK;
 
-    /* Sanity check: ensure BSS doesn't overlap with stack minimum */
     ASSERT(BSS_END < (STACK - 0x1000), "BSS overlaps with minimum stack space!")
 }

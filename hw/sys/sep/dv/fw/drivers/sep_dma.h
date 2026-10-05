@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP Secure-DMA firmware helpers for the OSS tests. Header-only.
+// SEP Secure-DMA firmware helpers for the SEP DV tests. Header-only.
 // Addresses and field masks come from generated sep_addr.h / secure_dma.h
 // (via sep.h). Do not alias those symbols — call them by their PeakRDL names.
 

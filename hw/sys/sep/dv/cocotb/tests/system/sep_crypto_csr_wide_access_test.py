@@ -2,27 +2,28 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """A 64-bit CSR read on each crypto host path returns the data its spec defines.
 
-`hw/sys/sep/doc/crypto.adoc:66-72` states that one 64-bit AXI slave port from
-the SEP system fabric is decoded to the accelerators, and that the host paths to
-OTBN, HMAC, AES, KMAC, ESRC, CSRNG and EDN are converted to AXI4-Lite "with
-data-width conversion where required by the endpoint". This test walks every
-host path the spec names. The shared register driver issues 32-bit beats
-(`SepAxiRegDriver._AXI_SIZE = 2`), so this test issues its 64-bit beats
-directly.
+`hw/sys/sep/doc/crypto.adoc` (integration-layer paragraph) states that one
+64-bit AXI slave port from the SEP system fabric is decoded to the accelerators,
+and that the host paths to OTBN, HMAC, AES, KMAC, ESRC, CSRNG and EDN are
+converted to AXI4-Lite "with data-width conversion where required by the
+endpoint". This test walks every host path the spec names. The shared register
+driver issues 32-bit beats (`SepAxiRegDriver._AXI_SIZE = 2`), so this test
+issues its 64-bit beats directly.
 
 Two contracts apply, one per kind of path:
 
-* CSRNG and EDN. `hw/ip/drbg/doc/architecture.adoc:69` defines their 64-bit
-  AXI4-Lite port: the lane adapter narrows a 64-bit access to one 32-bit lane,
-  selected by address bit [2]. A 64-bit read at an 8-byte aligned address
-  therefore returns the 32-bit register at that address in bits [31:0]. The
-  spec does not define the other lane, so it is not graded (CHK-WIDE-LANE).
+* CSRNG and EDN. `hw/ip/drbg/doc/architecture.adoc` ("Bus Protocol
+  Adaptation") defines their 64-bit AXI4-Lite port: the lane adapter narrows a
+  64-bit access to one 32-bit lane, selected by address bit [2]. A 64-bit read
+  at an 8-byte aligned address therefore returns the 32-bit register at that
+  address in bits [31:0]. The spec does not define the other lane, so it is not
+  graded (CHK-WIDE-LANE).
 * OTBN, HMAC, AES, KMAC and ESRC. Nothing narrows these paths, so the
   data-width conversion must return both words: a 64-bit read equals the two
   32-bit reads of the same words (CHK-WIDE-SPLIT).
 
 `AxSIZE=3` is the whole stimulus. No burst is involved and none is possible:
-`hw/sys/sep/doc/crypto.adoc:135-141` ("Single-Beat Access Only") states that any
+`hw/sys/sep/doc/crypto.adoc` section "Single-Beat Access Only" states that any
 crypto access with a non-zero `AxLEN` is answered DECERR and reaches no
 accelerator. A single 64-bit beat is legal and is what software issues for a
 64-bit load.
@@ -64,15 +65,14 @@ Checkers:
                    in bits [31:0], at CSRNG and EDN
   CHK-WIDE-NONVAC  every aperture in the table was presented and compared
   CHK-WIDE-OUTSTANDING  eight concurrent 64-bit reads at the entropy source,
-                   distinct ids AND distinct addresses, each returning its own
+                   distinct ids and distinct addresses, each returning its own
                    data -- the shape that catches one slot answering with
                    another's
   CHK-WIDE-SLOTS   concurrent 64-bit reads at every aperture, distinct ids,
-                   each returning the golden of that aperture's contract -- the same integrity claim as
-                   CHK-WIDE-OUTSTANDING, carried to every host path in the
-                   table rather than only the entropy source
-
-Pass Criteria: every named checker PASSes. UVM_ERROR == 0.
+                   each returning the golden of that aperture's contract --
+                   the same integrity claim as CHK-WIDE-OUTSTANDING, carried
+                   to every host path in the table rather than only the
+                   entropy source
 """
 
 from __future__ import annotations
@@ -92,7 +92,7 @@ SIZE_8B = 3
 # AXI read-response encoding (IHI 0022 A3.4.4).
 RESP_OKAY = 0
 
-# One entry per crypto host path named in hw/sys/sep/doc/crypto.adoc:66-72
+# One entry per crypto host path named in hw/sys/sep/doc/crypto.adoc (integration layer)
 # (OTBN, HMAC, AES, KMAC, ESRC, CSRNG, EDN), in that order. Each names an 8-byte
 # aligned pair of 32-bit registers whose generated reset values are NOT both
 # zero.
@@ -115,8 +115,9 @@ APERTURES = (
 )
 
 # The paths whose 64-bit port selects one 32-bit lane by address bit [2]
-# (hw/ip/drbg/doc/architecture.adoc:69). An 8-byte aligned 64-bit read carries
-# the register at that address in bits [31:0]; the other lane is undefined.
+# (hw/ip/drbg/doc/architecture.adoc, "Bus Protocol Adaptation"). An 8-byte
+# aligned 64-bit read carries the register at that address in bits [31:0];
+# the other lane is undefined.
 LANE_SELECT = frozenset({"csrng", "edn"})
 LANE_MASK = 0xFFFF_FFFF
 
@@ -147,11 +148,9 @@ OUTSTANDING_REGS = (
     "ENTROPY_SOURCE_ALERT_THRESHOLD_REG_ADDR",
 )
 
-# How many reads are held in flight. DV-owned (sep_spec_tables), deliberately
-# NOT a hardware slot count: the graded claim is that concurrent reads each
-# return their own data, which holds at any depth. Scoring "every read slot
-# was occupied" against the RTL's own slot count would be the DUT agreeing
-# with itself.
+# How many reads are held in flight. DV-owned (sep_spec_tables): the graded
+# claim is that concurrent reads each return their own data, which holds at
+# any depth, so no hardware slot count enters it.
 OUTSTANDING_DEPTH = CRYPTO_CONCURRENT_READS
 
 # A response must arrive within this window. Eight 64-bit reads on a 32-bit
@@ -245,8 +244,8 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
             "data would compare equal and go unseen"
         )
 
-        # Non-blocking: every AR is presented before any R is consumed, which is
-        # what holds the low slots busy. Awaiting each read in turn would retire
+        # Non-blocking: every AR is presented before any R is consumed, so
+        # all eight reads are in flight together. Awaiting each read in turn would retire
         # it before the next is issued, leaving nothing concurrent.
         axi = self.env.axi_agent.driver.axi
         events = [
@@ -288,9 +287,9 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
         Integrity under concurrency, carried to every host path in the table:
         each read must return the golden of that path's contract (both words,
         or the low lane at CSRNG and EDN), so an aperture answering a
-        concurrent read with zeros or stale data fails. A cross-wire between concurrent reads
-        is NOT visible here, because every id reads the same word -- the
-        entropy-source phase owns that case with distinct addresses. Nothing
+        concurrent read with zeros or stale data fails. A cross-wire between
+        concurrent reads is not visible here, because every id reads the same
+        word -- the entropy-source phase owns that case with distinct addresses. Nothing
         here scores how many reads the path can hold in flight.
         """
         lo = await self._rd(addr, SIZE_4B) & 0xFFFF_FFFF

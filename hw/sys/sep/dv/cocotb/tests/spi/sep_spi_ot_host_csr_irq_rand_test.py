@@ -1,21 +1,22 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP OpenTitan-SPI host control-plane CSR / IRQ / error breadth (PyUVM, no_cpu).
+"""The OT SPI host CSRs, interrupts, error bits, watermark and enable follow the spi_host spec.
 
-SPI host CSR/IRQ breadth. A combined-per-group `[RAND-REP]` that folds the
-reference suite OT-SPI host-control directed family (fw spi_ot_reg / tx_fifo /
-cmd_queue / interrupt / error_handling / watermark / enable_disable) into ONE rep.
-Not folded, because nothing here checks them: clock_config (CFG.CLKDIV is
-R/W-walked but no transfer runs at a programmed divider) and rx_fifo (the only RX
-touch is the empty-FIFO read that triggers UNDERFLOW). Drives the upstream OpenTitan
-spi_host CSRs (@0x10B0_0000, NUM_CS=1) directly over the CPU-LSU AXI splice (no_cpu, no
-firmware, no flash BFM) -- this is the host CONTROL plane, DISTINCT from SPI flash command breadth
+A combined-per-group `[RAND-REP]` for the OT SPI host control plane: register R/W,
+TX FIFO, command queue, interrupts, error handling, watermark and enable/disable.
+Not covered, because nothing here checks them: the clock configuration (CFG.CLKDIV
+is R/W-walked but no transfer runs at a programmed divider) and the RX FIFO (the
+only RX touch is the empty-FIFO read that triggers UNDERFLOW). Drives the upstream
+OpenTitan spi_host CSRs (@0x10B0_0000, NUM_CS=1) directly over the CPU-LSU AXI splice
+(no_cpu, no firmware, no flash BFM).
+This is the host control plane, distinct from `sep_spi_ot_flash_cmd_rand_test`
 (flash command datapath) and `sep_spi_ot_dma_rx_test` (flash READ + DMA).
 
-Randomization (SINGLE source of randomness): SepSpiHostCfg seeds
+Randomization (single source of randomness): SepSpiHostCfg seeds
 legal field values for the register R/W walk + two watermark thresholds from the
 runner seed, one from 2-4 and one from 5-8, in seeded order, each with its own
-fill depth. CHK-WATERMARK grades both on every seed. The golden is the documented reset values + RW/W1C/RO field semantics
+fill depth. CHK-WATERMARK grades both on every seed. The golden is the documented
+reset values + RW/W1C/RO field semantics
 (seq_lib/sep_spi_host_csr_seq.py, taken from the generated spi_controller reg
 block, which reggen derives from upstream spi_host.hjson).
 
@@ -53,7 +54,7 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
 RXWM is covered by the RX-path tests (`sep_spi_ot_flash_cmd_rand_test` /
 `sep_spi_ot_dma_rx_test`).
 
-no_cpu / +skip_fuse_sense.
+Run mode: no_cpu with +skip_fuse_sense.
 """
 
 from __future__ import annotations
@@ -123,7 +124,7 @@ _SPI_AGG = agg_from_pic("SPI IRQ")
 
 @pyuvm.test()
 class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
-    """Walk the OT SPI host control plane (CSR/IRQ/error/watermark/enable)."""
+    """Each control-plane CHK (CSR, IRQ, error, watermark, enable) holds on the OT SPI host."""
 
     required_evidence = (
         "CHK-RESET",
@@ -370,7 +371,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         assert es & bit, f"CHK-ERR-W1C {label}: bit 0x{bit:06x} not set (ERROR_STATUS 0x{es:08x})"
         # Exclusivity: the baseline above established ERROR_STATUS == 0, so this
         # trigger is the only thing that can have set a bit. Without it a DUT that
-        # raises every error bit on any stimulus passes all six sub-checks.
+        # raises every error bit on any stimulus passes all five sub-checks.
         assert es == bit, (
             f"CHK-ERR-W1C {label}: trigger also set 0x{es & ~bit & 0xFFFF_FFFF:06x} "
             f"(ERROR_STATUS 0x{es:08x}, expected only 0x{bit:06x})"

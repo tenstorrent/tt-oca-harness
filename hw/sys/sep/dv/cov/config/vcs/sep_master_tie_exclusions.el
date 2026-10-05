@@ -16,12 +16,12 @@
 // own nets, from the VeeR boundary through the window remaps and demuxes.
 //
 // Two rules keep this file honest:
-//   * A port that the inbound SoC port, the JTAG bridge or a second master can
+//   * A port that the SMN inbound port, the JTAG bridge or a second master can
 //     reach is NOT listed. Those fields are an integrator's to drive, so a hole
 //     there is a stimulus gap.
 //   * A tied field that any leaf moved (for example, the no_cpu TB force on the
-//     LSU path) is NOT listed. Every listed signal had no 0->1 and no 1->0
-//     toggle in the merged `all` database that supplies the checksums.
+//     LSU path) is NOT listed. No listed bit toggles in either direction in the
+//     merged `all` database that supplies the checksums.
 //
 // Checksums come from `urg -dump full_exclusions tgl` on the merged VDB.
 //==================================================

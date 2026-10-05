@@ -30,9 +30,11 @@
 #     SRAM_WRITE_LOCK_VIOLATION and IRQ_STATUS.SRAM_WRITE_LOCK_ERR, then W1C
 #   seal a slot (one write; hardware raises lock_write with it), erase it, and
 #     require it comes back RETIRED: lock_write held and lock_use gained
+#   erase the retired slot again and require it stays retired
 #   mark an unsealed slot with lock_write, erase it, and require it comes
 #     back FREE with CTRL all clear -- the mark is what makes a no-op erase
 #     fail rather than pass on the reset value
+#   inject DRBG_ERR through IRQ_SET, require it in IRQ_STATUS, then W1C it
 #
 # Register addresses, array strides and word offsets come from the generated
 # map, included below. Field masks come from km_fields.inc (lifted from
@@ -43,8 +45,10 @@
 # completes is what decides retired versus reusable.
 #
 # Result at KM SRAM word0 (0x8000), which the host probes:
-#   0xA11A0000 | slot[15:10] | slot_ok | extent | dropped | viol | irq | w1c
-#              | seal | retire | free
+#   0xA1 << 24 | cfg_fold[7:0] << 16 | flags[13:0]
+#   flags: b0 slot_ok, b1 extent, b2 dropped, b3 viol, b4 irq, b5 w1c, b6 seal,
+#          b7 retire, b8 free, b9 lockwr, b10 lockuse, b11 erasedata,
+#          b12 retstick, b13 irqset
 # KM SRAM word1 (0x8004) holds the data of the refused lock_use read. The host
 # reads it with no unknown bits allowed and requires zero.
 #
@@ -412,7 +416,7 @@ seal_erased:
     need_eq x11, x12, seal_done # retired: write stays locked, use becomes locked
     ori   x5, x5, 0x80          # CHK-RETIRE
 
-    # Retirement is stated to hold until warm reset. Erase the retired slot
+    # km_kpv.rdl: retirement holds until warm reset. Erase the retired slot
     # again: it must come back retired, not freed. Without this the retire is
     # only shown as a one-shot transition, not as a sticky property.
     addi  x7, x0, CTRL_ERASE
@@ -496,8 +500,8 @@ free_done:
     # matching IRQ_STATUS bit so an ISR can be exercised without the hardware
     # condition. DRBG_ERR is used here because it is the one status bit whose
     # own fault source has no frontdoor from the SEP side. This grades the
-    # set/W1C plumbing and the aggregation ONLY -- it does not prove a DRBG
-    # fault is detected, and must not be recorded as coverage of that source.
+    # set/W1C plumbing and the aggregation only; it does not show that a DRBG
+    # fault is detected.
     addi  x11, x0, IRQ_DRBG_ERR
     sw    x11, 0(x9)            # W1C first: the bit is sticky
     lw    x7, 0(x9)

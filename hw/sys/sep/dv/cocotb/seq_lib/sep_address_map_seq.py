@@ -15,9 +15,9 @@ Full sweep of every sep_cpu_ctrl register (base 0x10A3_0000) over the CPU LSU bu
 
 The reserved span after the 64-bit ``SEP_FUSE_SENSE_STATUS`` and before
 ``SEP_SW_DEBUG`` is not a live register. ``CPU_CTRL_INTERIOR_HOLES`` names
-three words in that span. ``memory_map.adoc`` states the contract for an
-offset inside a unit's allocated extent that owns no register: the unit accepts
-it, reads return zero and writes are discarded, both OKAY. The test grades that,
+three words in that span. ``hw/sys/sep/doc/memory_map.adoc`` states the
+contract for an offset inside a unit's allocated extent that owns no register:
+the unit accepts it, reads return zero and writes are discarded, both OKAY. The test grades that,
 and that the offset does not alias a live register. Then a walk
 of one readable CSR per LSU-reachable block — Secure DMA,
 WDT, cold/warm scratch, reset_ctrl, OTBN, AES, HMAC, KMAC, CSRNG, EDN, entropy
@@ -40,9 +40,9 @@ reset. Per-block CSR clocks are not gated in this RDL, so every walked
 block is unconditionally clocked.
 
 Most side-effecting registers are NOT written. The only address-aperture
-exception is the SEP local/global base/size triplet: it is write/read/restored
-immediately to close the CPU-control CSR write-path gap, before the fabric walk
-runs. SMU base/size remain reset-checked only. woset LOCK regs are never written
+exception is the SEP local/global base/size triplet: it is written, read back
+and restored before the fabric walk runs, so the remap CSRs still get write-path
+coverage. SMU base/size remain reset-checked only. woset LOCK regs are never written
 because they would latch permanently. The scoreboard checks the AXI response on
 every access and the value on every checked read.
 
@@ -74,9 +74,10 @@ BASE = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")
 
 # Interior reserved span in sep_cpu_ctrl. SEP_FUSE_SENSE_STATUS is 64-bit
 # (sep_cpu_ctrl.rdl), so the hole starts at the next 8-byte offset and runs
-# up to SEP_SW_DEBUG. The xbar still claims the window, and `memory_map.adoc`
-# says a unit accepts an offset inside its extent that owns no register: reads
-# return zero and writes are discarded, both OKAY.
+# up to SEP_SW_DEBUG. The xbar still claims the window, and
+# `hw/sys/sep/doc/memory_map.adoc` says a unit accepts an offset inside its
+# extent that owns no register: reads return zero and writes are discarded,
+# both OKAY.
 _FUSE_OFF = SEP_CPU_CTRL.offset("SEP_FUSE_SENSE_STATUS")
 _SW_DEBUG_OFF = SEP_CPU_CTRL.offset("SEP_SW_DEBUG")
 _HOLE_LO = _FUSE_OFF + 8
@@ -138,14 +139,14 @@ BASE_ADDR_RW = [
 
 # (name, pattern) — pure-RW, no side effects. The readback is compared against
 # `pattern & mask` where mask is the register's implemented-field mask from the
-# generated header, so a placeholder register that implements one bit is
-# checked honestly instead of against a full 32-bit pattern.
+# generated header, so a register whose only field is an RDL `reserved` field
+# declared sw=rw is compared on that one bit, not on a full 32-bit pattern.
 WRITE_READBACK = [
     ("SEP_SW_DEBUG", 0xDEAD_BEEF),
-    # Odd literal: TIMEOUT_COUNT* implement only bit 0 (a placeholder
-    # `reserved` field declared sw=rw), and its reset is 0. An even pattern would
+    # Odd literal: TIMEOUT_COUNT* implement only bit 0 (an RDL `reserved`
+    # field declared sw=rw), and its reset is 0. An even pattern would
     # mask to 0 == reset, so the readback could not tell a stored write from an
-    # ignored one. 0x…DE would have been exactly that; 0x…DF is not.
+    # ignored one. An even pattern such as 0x…DE masks to the reset; 0x…DF does not.
     ("TIMEOUT_COUNT_DMA", 0x0BAD_C0DF),
     ("TIMEOUT_COUNT_SYS_IN", 0xCAFE_F00D),
     ("TIMEOUT_ENABLE", 0x0000_00FF),
@@ -166,7 +167,7 @@ WRITE_ONLY = [
 # eFuse interface regs (0x1093_04xx+) are NOT probed — they would hang.
 # Pool pop (0x1095_0010) is destructive — only STATUS is walked.
 #
-# Blocks whose address AND reset value are exported take both from the header;
+# Blocks whose address AND reset value are exported take both from the header.
 # The ABR NAME0 and entropy-pool STATUS addresses come from their owning seq
 # modules.
 _INFILT0 = sym("INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
@@ -208,7 +209,7 @@ FABRIC_BLOCKS = [
     # MLDSA_NAME[0]. abr_reg.rdl declares it sw=r with no reset, and no SEP
     # document gives its value, so the row checks accessibility only.
     ("ADAMS_BRIDGE", ABR_NAME0, None),
-    ("ENTROPY_POOL", POOL_STATUS, None),  # adapter not in PeakRDL
+    ("ENTROPY_POOL", POOL_STATUS, None),  # status only: DATA pop is destructive
     ("SEP_LIFECYCLE", sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR"), None),
     ("KM_MAILBOX", sym("KM_MAILBOX_SEP_SEP_STATUS_REG_ADDR"), None),
     ("SEP_EFUSE_SHADOW", sym("SEP_EFUSE_MAP_LC_STATE_REG_ADDR"), None),
@@ -228,7 +229,7 @@ class sep_address_map_seq(uvm_sequence):
         self.base_addr_rw_checks = 0
         self.write_readback_checks = 0
         self.fabric_walk_checks = 0
-        # Registers whose only fields are RDL `reserved` placeholders. They are
+        # Registers whose only fields are RDL `reserved` fields. They are
         # still fully checked above (real sw=rw storage), but what they prove is
         # storage rather than an implemented-field readback -- noted so the
         # evidence line can say so.
@@ -271,9 +272,8 @@ class sep_address_map_seq(uvm_sequence):
         # satisfied by a dead decode: a neighbouring register's storage, a stuck
         # all-ones or a zero return all hold still between the two reads.
         #
-        # expected=None on these two reads is deliberate and is not an unchecked
-        # read -- the advance below is the check. Every other read in this sweep
-        # keeps its pinned expectation.
+        # expected=None on these two reads: the advance below is the check.
+        # Every other read in this sweep keeps its pinned expectation.
         ref_off = SEP_CPU_CTRL.offset("REFERENCE_COUNTER")
         first_low = await self._read(BASE + ref_off, expected=None, name="REFERENCE_COUNTER_lo")
         self.ref_counter_high = await self._read(

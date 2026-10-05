@@ -1,12 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP CPU reset-observable baseline and liveness (PyUVM).
+"""Both reset observables are released at rest, and a watchdog reset drops the CPU reset.
 
 Proves both reset observables are released at rest and that the CPU observable is live under a
 real reset source. ``dbg_rstb_i`` isolation is not covered: in ``lsu_stub_all_live`` the pin (a
 ``sep`` primary input that ``sep_base_test`` drives released) has no netlist path to either
-observable, so a pulse-and-check cannot fail. Adding one needs a cpu run-mode that reaches
-``sep_cpu`` and a specification statement to check against.
+observable, so no isolation check is graded.
 
 Checks (exact values; ``self.rd`` raises on X/Z, so an undriven reset tree fails):
   CHK-BASELINE : with dbg_rstb_i high, sep_reset_n and sep_cpu_reset_n are released.
@@ -54,9 +53,6 @@ class sep_cpu_dbg_reset_independence_test(sep_base_test):
         await self._check_reset(dut.dbg_sep_reset_n_o, "CHK-BASELINE sep_reset_n released", 1)
         await self._check_reset(dut.sep_cpu_reset_n_o, "CHK-BASELINE sep_cpu_reset_n released", 1)
         self.logger.info("CHK-BASELINE PASS: both reset observables released with dbg_rstb_i high")
-
-        # No CHK-ISO: in lsu_stub_all_live dbg_rstb_i has no netlist path to either
-        # observable (module docstring), so a pulse-and-check could not fail.
 
         # CHK-LIVE: a real reset source (wdt_rst_ni_i low) MUST drop sep_cpu_reset_n,
         # proving the observable is live rather than stuck at 1.

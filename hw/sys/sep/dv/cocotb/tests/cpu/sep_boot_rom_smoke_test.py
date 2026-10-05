@@ -1,9 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP boot-ROM smoke test.
+"""VeeR EL2 fetches and retires every instruction of the staged boot-ROM program.
 
-Boots VeeR EL2 from the OSS behavioral boot-ROM responder and checks that the
-retired-instruction trace advances through the expected ROM addresses.
+The test boots VeeR EL2 from the behavioral boot-ROM responder and samples the
+retired-instruction trace from before the CPU release.
+
+Checks:
+  CHK-ROM-EXEC : the trace retires base+0/4/8/12 of cocotb/tests/sep_boot_rom.hex, so a
+                 fetch path that skips a ROM word or breaks control flow fails.
+                 sep_boot_rom_lsu_read_test checks the ROM content.
+
+cpu / +skip_fuse_sense (no fuse data is read).
 """
 
 from __future__ import annotations
@@ -21,7 +28,7 @@ _MAX_CYCLES = 50_000
 
 @pyuvm.test()
 class sep_boot_rom_smoke_test(sep_base_test):
-    """Fetch and retire instructions out of the OSS boot-ROM responder."""
+    """All four boot-ROM PCs retire, not only the final loop PC."""
 
     build_env = False
 

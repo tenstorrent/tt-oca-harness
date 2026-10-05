@@ -12,7 +12,8 @@ the writes whose strobe is not 0x0F or 0xF0 and the writes whose address is not
 Driven only (``VEHICLE_HEADER_ONLY``, and the DUT misaligned read): the
 architecture document does not state that a read must be 4-byte aligned, that
 a legal strobe must match address bit 2, or that a read returns zero in the
-other lane. Those rules are in the adapter RTL header only (#2822). Their cells
+other lane. Those rules are stated only in the adapter RTL header, not in
+``hw/ip/drbg/doc/architecture.adoc``. Their cells
 run on every seed and their response, data and forward probe are logged at
 info level as ``NOT_GRADED_NOTE``, outside the verdict.
 
@@ -29,7 +30,7 @@ Two drivers:
   ``drbg_edn_fwd_o``, sampled every cycle of the access by ``FwdWatch``), and
   through two DUT-visible consequences: the target register keeps its value,
   and the lane's ``PERIPH_BUS_ERR_STATUS`` bit (the bridge's sticky TL-UL
-  error, hw/sys/sep/doc/crypto.adoc "Crypto Register-Bridge Faults") stays
+  error, hw/sys/sep/doc/crypto.adoc "OpenTitan Alert Termination") stays
   clear. ``PortWatch`` samples the lane adapter's AXI-Lite-64 input
   (``drbg_csrng_axil_chan_o`` / ``drbg_edn_axil_chan_o``) over the same
   window, so the SLVERR is shown to answer a beat the adapter accepted and
@@ -82,8 +83,8 @@ LANE_BYTES = 4
 LOWER_LANE = 0x0
 UPPER_LANE = LANE_BYTES
 
-# Not graded until the spec states the rule. The text goes into every log line
-# that reports an observation the verdict does not use.
+# Logged with every observation the verdict does not use: the architecture
+# document does not state the rule.
 NOT_GRADED_NOTE = "not graded: no specification states the rule"
 
 # Vehicle cells: (name, op, addr, strobe). Strobes are AMBA's

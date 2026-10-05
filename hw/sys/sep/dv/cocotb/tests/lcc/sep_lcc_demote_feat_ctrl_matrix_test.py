@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Lifecycle demote product: LC x DEMOTE_1/2 x a small DIS subset.
+"""FEAT_CTRL and the inbound filter follow the golden for every LC x DEMOTE_1/2 x DIS cell.
 
-RAND-REP. Walks TEST_DEV and PROD against (0,0)/(1,0)/(0,1)/(1,1) demote
+RAND-REP. The test walks TEST_DEV and PROD against (0,0)/(1,0)/(0,1)/(1,1) demote
 cells, first with DIS=0, then one PROD compose cell that closes
 ``sep_fuse_dbg`` / ``smc_fuse_dbg`` while the DTP cases stay open, then a
 seed-extended pinned DIS pair. ``feat_ctrl`` is checked against the
@@ -10,10 +10,11 @@ spec-derived golden. One live inbound filter probe per cell follows
 ``sep_debug`` (DECERR when 0, OKAY when 1); that rule is the specification
 contract recorded in ``seq_lib/sep_lcc_inbound_filter_gating_seq.py``
 (``lifecycle_controller.adoc``, ``fabric.adoc`` sep-traffic-filter-decode,
-``hw/ip/axi_filter/doc/index.adoc`` axi-traffic-filter-blocked). The two DFT-inserted fuse-path
-disable ports follow the same FEAT_CTRL.
+``hw/ip/axi_filter/doc/index.adoc`` axi-traffic-filter-blocked). The two
+DFT-inserted fuse-path disable ports follow the same FEAT_CTRL.
 
-The stitch test stays the LC->feat_ctrl e2e. This test owns the product.
+``sep_efuse_lcc_lc_state_stitch_test`` covers the end-to-end LC -> FEAT_CTRL
+path. This test covers the LC x DEMOTE x DIS product.
 Real fuse sense. DEMOTE is write-once-set; resense returns the CSRs to 0.
 After the product walk, one seed-selected group is locked: a later demote
 write is ignored until rst_ni.
@@ -57,7 +58,7 @@ RESP_OKAY = 0
 
 @pyuvm.test()
 class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
-    """Walk the demote product; feat_ctrl vs golden and one live filter gate."""
+    """Every demote cell matches the feat_ctrl golden and gates one live filter probe."""
 
     def _check_dbg_disable(self, feat_ctrl: int, tag: str) -> None:
         """dbg_disable against the DTP gating ladder, for this same FEAT_CTRL.

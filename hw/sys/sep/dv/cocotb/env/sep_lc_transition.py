@@ -18,9 +18,6 @@ be a fixed constant:
 ``dv_sim_prestage.py`` loads this module to stage the t=0 hex; the test builds
 the same ``SepLcTransitionCfg(seed)`` as its golden. Do not switch the stream to
 ``random.Random`` -- that would desynchronize the two processes.
-
-Not a CSPRNG: the stream is predictable from the seed by design. It never leaves
-the simulation.
 """
 
 from __future__ import annotations

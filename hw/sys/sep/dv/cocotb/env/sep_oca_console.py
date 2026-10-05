@@ -152,6 +152,7 @@ def assert_attempt(
 
 def _selftest() -> int:
     assert "MANIFEST_OK" in ROM_MARKERS and "RSA_VERIFY_OK" in ROM_MARKERS
+    # Tokens this ROM does not print: assert_known must refuse them.
     assert "PLD_HASH_OK" not in ROM_MARKERS and "SIG_VALID" not in ROM_MARKERS
     # Ternary print sites, apply_lock's split print, and a BL1 leading-"\n" literal all scan in.
     assert_known(

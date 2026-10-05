@@ -1,10 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-schema_version = 1
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# Daily regression policy: run the cpu_stub and cpu groups separately,
-# `python3 tools/dv/run_dv.py --dut sep --items <cpu_stub|cpu> --regress`. Tests with run_modes=["no_cpu"]
-# select target="lsu_stub_all_live"; CPU firmware tests omit target and use the
-# full-CPU default model.
+schema_version = 1
 
 [[tests]]
 name = "sep_spi_flash_jedec_smoke_test"
@@ -17,13 +14,9 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# OT SPI flash command breadth (the reference suite spi_ot flash_write_read + sector_erase).
-# cpu-firmware port: the OT spi_host multi-command flash sequence runs from the
-# CPU, like every reference-suite spi_ot flash test. [RAND-REP] -- the cocotb test seeds
-# legal flash address/word-count/data and patches them into the firmware param
-# block per run (+spi1_directed pins the directed defaults). Walks BFM-visible
-# opcodes (JEDEC/WREN/RDSR/WRDI/PP/READ/FAST_READ/ERASE). The dual/quad opcode+lane
-# path is not walked: the BFM is single-bit (no 0x3B/0x6B). cpu; +skip_fuse_sense.
+# OT SPI flash command breadth from CPU firmware. RAND-REP: seeded flash address, word
+# count and data; +spi1_directed pins the directed defaults. Dual/quad paths are not
+# walked: the BFM is single-bit.
 name = "sep_spi_ot_flash_cmd_rand_test"
 module = "spi.sep_spi_ot_flash_cmd_rand_test"
 firmware = "spi_ot_flash_cmd_test"
@@ -35,10 +28,8 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# OT SPI host control-plane breadth: CSR reset/R-W, Event/Status INTR + aggregator,
-# ERROR_STATUS W1C, zero-strobe bridge ack, TX watermark, SPIEN enable-gate. [RAND-REP]
-# folds the reference suite OT-SPI host-control directed family. no_cpu (AXI drives the host
-# CSRs); pure control plane, no flash BFM. DISTINCT from SPI flash command breadth (flash datapath).
+# OT SPI host control plane (CSRs, interrupts, ERROR_STATUS W1C, TX watermark, SPIEN gate),
+# no flash BFM. RAND-REP. Distinct from sep_spi_ot_flash_cmd_rand_test (flash datapath).
 name = "sep_spi_ot_host_csr_irq_rand_test"
 module = "spi.sep_spi_ot_host_csr_irq_rand_test"
 seed = 1
@@ -60,10 +51,9 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# OT SPI DMA-TX: SRAM -> Secure DMA (HW handshake on TX watermark) -> SPI TXFIFO
-# -> flash. The TX complement of `sep_spi_ot_dma_rx_test`. [RAND-REP] seeds the flash
-# address/data (patched into the firmware param block). DMA-feeds a real flash
-# PAGE PROGRAM stream + reads it back; cocotb BFM golden cross-checks. cpu-fw.
+# SRAM -> Secure DMA (TX-watermark handshake) -> SPI TXFIFO -> flash page program, read back
+# against the BFM golden. The TX complement of `sep_spi_ot_dma_rx_test`. RAND-REP seeds the
+# flash address and data.
 name = "sep_spi_ot_dma_tx_test"
 module = "spi.sep_spi_ot_dma_tx_test"
 firmware = "spi_ot_dma_tx_test"

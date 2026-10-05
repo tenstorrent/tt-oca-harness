@@ -67,9 +67,11 @@ FLAG_ALL = (
 def cfg_fold(cfg_word: int) -> int:
     """The eight-bit fold of the config word that the ROM echoes back.
 
-    Every field the host packs feeds this, so a ROM that ignored the region or
-    either seal-walk slot returns a different value. Echoing only the slot
-    would leave three of the four seeded operands unproven.
+    Every field the host packs -- slot, region, seal slot and free slot -- feeds
+    this. The fold is a byte XOR, so a ROM that ignores a field returns a
+    different value only when that field is non-zero. Region, seal slot and free
+    slot are never 0; slot can be 0, so a ROM that ignores slot is caught only on
+    a seed that draws a non-zero slot.
     """
     folded = cfg_word ^ (cfg_word >> 8) ^ (cfg_word >> 16) ^ (cfg_word >> 24)
     return folded & 0xFF

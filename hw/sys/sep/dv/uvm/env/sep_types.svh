@@ -8,7 +8,7 @@
 // hw/sys/sep/regs/gen/svh/sep_reg.svh (the SystemVerilog export of
 // hw/sys/sep/regs/sep.rdl); the few bench-only constants cite their source.
 // No class lives here: everything is a package-scope type, constant, or
-// `function automatic`. The cocotb twin is env/sep_reg_meta.py plus the
+// `function automatic`. The cocotb twin is cocotb/env/sep_reg_meta.py plus the
 // SepAxiItem access contract.
 //
 // The TB modules compiled ahead of this package (tb/sep_outbound_mbx.sv,

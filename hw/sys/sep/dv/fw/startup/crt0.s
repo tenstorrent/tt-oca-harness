@@ -9,7 +9,7 @@
 #   2. Set mtvec trap handler
 #   3. Set meivt for fast interrupt redirect
 #   4. Pre-fill vector table to prevent 'X' state fetches
-#   5. Initialize gp, zero BSS, initialize sp
+#   5. Initialize gp and tp, zero BSS, initialize sp
 #   6. Call main() and handle exit
 #
 # Test-specific configuration (PIC priorities, interrupt enables, etc.)
@@ -144,7 +144,7 @@ _start:
     #   - Trap handler set (mtvec)
     #   - Interrupt vector table initialized (meivt + entries)
     #   - BSS zeroed
-    #   - gp and sp initialized
+    #   - gp, tp and sp initialized
     #   - Interrupts DISABLED (mstatus.mie = 0, mie = 0)
     #
     # Test code in main() is responsible for:
@@ -318,8 +318,6 @@ _dummy_int_handler:
     srli    t0, t0, 2
     andi    t0, t0, 0xFF            # t0 = claimid (0-255)
 
-    # Disable this interrupt source at PIC to prevent infinite re-entry.
-    # Source 0 is the tied no-interrupt source, so its MEIE word is reserved.
     # Witness for firmware quiet-window checks: an unregistered source that
     # reaches this handler must fail the test that looks at the count.
     la      t1, sep_dummy_int_count
@@ -327,6 +325,8 @@ _dummy_int_handler:
     addi    t2, t2, 1
     sw      t2, 0(t1)
 
+    # Disable this interrupt source at PIC to prevent infinite re-entry.
+    # Source 0 is the tied no-interrupt source, so its MEIE word is reserved.
     beqz    t0, .L_dummy_int_done
     slli    t2, t0, 2               # t2 = claimid * 4
     li      t1, SEP_TOP_PIC_MEIE_BASE_ADDR(0)

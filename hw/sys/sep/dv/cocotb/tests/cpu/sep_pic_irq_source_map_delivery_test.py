@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP PIC interrupt-source map + multi-source delivery test (PyUVM).
+"""Each interrupt source reaches the CPU on PIC source id = sep_internal_interrupts index + 1.
 
-Boots the VeeR EL2 core and runs the `pic_irq_source_map_test` firmware, which
+The test boots the VeeR EL2 core and runs the `pic_irq_source_map_test` firmware, which
 registers PIC ISRs for every source in its catalog and proves the real
 source -> PIC source-id map plus ISR delivery to the CPU:
 
@@ -14,7 +14,7 @@ source -> PIC source-id map plus ISR delivery to the CPU:
 PIC source id = sep_internal_interrupts index + 1 (VeeR EL2 extintsrc_req is
 1-based). The whole path is internal to bare `sep` -- no testbench injection.
 
-SepPicSrcCfg is the single source of truth: the MUST sources and all eight
+SepPicSrcCfg is the single source of truth: the required sources and all eight
 extras walk every seed, so every catalog source is graded in every run. The
 seed sets only the order of the extras, which is patched into the firmware
 param block. Distinct from `sep_mailbox_plic_test` (all eight mailbox channels) and from
@@ -23,7 +23,8 @@ param block. Distinct from `sep_mailbox_plic_test` (all eight mailbox channels) 
 Firmware-self-checking: the firmware returns its error count and fw/startup/crt0.s emits
 the PASS / FAIL magic on the 0x8000_0000 mailbox, which the boot scoreboard
 gates on. Per source: CHK-DELIVER, CHK-IP-RW1C, CHK-ONEHOT; plus CHK-NONVAC,
-CHK-PIC-COMPLETE, and CHK-RANDCFG (patched list echoed).
+CHK-PIC-COMPLETE, CHK-DUMMY (no unregistered source is served) and CHK-RANDCFG
+(patched list echoed).
 
 cpu / +skip_fuse_sense (no fuse data is read).
 """
@@ -53,13 +54,13 @@ _PROGRESS_EVERY = 5_000
 _BANNER = "SEP PIC IRQ source map delivery test"
 
 _PARAM_MAGIC = 0x91C0A11C
-# Matches PIC_SRC_MAX in pic_irq_source_map_test.c: the MUST trio plus every
+# Matches PIC_SRC_MAX in pic_irq_source_map_test.c: the required trio plus every
 # extra.
 _SRC_MAX = 11
-# MUST first, in this order, every seed: mailbox, OTBN done, HMAC done.
+# Required first, in this order, every seed: mailbox, OTBN done, HMAC done.
 _MUST = (1, 30, 18)
-# The rest of the firmware catalog. HMAC-err shares HMAC's INTR_ENABLE with
-# MUST HMAC-done, and the three DMA sources and the two KMAC sources share
+# The rest of the firmware catalog. HMAC-err shares HMAC's INTR_ENABLE with the
+# required HMAC-done, and the three DMA sources and the two KMAC sources share
 # theirs; arm_sources ORs those bits. Every extra walks every seed.
 _EXTRAS = (9, 10, 11, 20, 21, 23, 24, 28)
 assert len(_MUST) + len(_EXTRAS) == _SRC_MAX
@@ -102,7 +103,7 @@ class SepPicSrcCfg:
 
 @pyuvm.test()
 class sep_pic_irq_source_map_delivery_test(sep_base_test):
-    """Boot VeeR EL2 and run the multi-source PIC source-map delivery firmware."""
+    """Every armed source is delivered on its mapped PIC id and its IP status clears by RW1C."""
 
     build_env = False
 

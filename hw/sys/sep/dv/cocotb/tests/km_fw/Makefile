@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 GCC_PREFIX ?= riscv64-unknown-elf
 RISCV_CC ?= $(GCC_PREFIX)-gcc

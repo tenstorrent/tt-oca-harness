@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP watchdog-timer (WDT) firmware driver for the OSS tests. Header-only.
+// SEP watchdog-timer (WDT) firmware driver for the SEP DV tests. Header-only.
 // Addresses and field masks come from generated sep_addr.h / aon_timer.h
 // (via sep.h).
 //

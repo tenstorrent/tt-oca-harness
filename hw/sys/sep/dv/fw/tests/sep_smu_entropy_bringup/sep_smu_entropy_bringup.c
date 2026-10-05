@@ -17,10 +17,8 @@
  * which one did not take. The test calls the phases rather than
  * sep_entropy_bringup() because the phase boundaries are what it checks.
  *
- * The raw noise comes from the testbench: under Verilator the ESRC ring
- * oscillators do not self-oscillate, so +esrc_noise_force drives the
- * decorrelator lanes. Everything this firmware programs, and everything the
- * hardware then does with that noise, is real.
+ * Under Verilator the ESRC ring oscillators do not self-oscillate, so
+ * +esrc_noise_force drives the decorrelator lanes from the testbench.
  *
  * Progress is published to SEP-local cold scratch so a stalled run says which
  * phase it reached without needing the outbound mailbox.

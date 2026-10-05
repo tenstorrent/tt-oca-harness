@@ -7,7 +7,8 @@
 // ExclMode: default
 //
 // Scope: the cocotb VCS elaboration of sep_uvm_top, target `default`, TT-owned
-// modules only. Third-party modules are a scope (.hier) decision and are not here.
+// modules only. Third-party modules are a scope (.hier) decision and are not
+// here.
 //
 // What this file waives, and nothing else:
 //   - PeakRDL regblocks whose cpuif hardwires cpuif_req_stall_rd/wr to '0: the

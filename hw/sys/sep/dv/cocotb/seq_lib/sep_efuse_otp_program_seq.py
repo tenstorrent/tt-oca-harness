@@ -105,7 +105,7 @@ class sep_efuse_otp_program_seq(uvm_sequence):
                 )
                 if not (status & _EFUSE_PROGRAM_DONE_BIT):
                     continue
-                # Clear program_enable BEFORE any subsequent read .
+                # Clear program_enable BEFORE any subsequent read.
                 await self._access(
                     SepAxiOp.WRITE, _EFUSE_PROGRAM_CTRL, data=0, label="program_ctrl_clear"
                 )

@@ -11,8 +11,8 @@ This is SHA-256 in counter mode over the seed. It is deterministic across
 hosts, Python builds, and interpreter runs -- unlike ``random.Random``, whose
 stream is only guaranteed stable within a Python major version.
 
-Not a CSPRNG substitute. The stream is fully predictable from the seed, which
-is the entire point. Never use it for a key, token, nonce, or any value that
+It is not a CSPRNG. The stream is fully predictable from the seed, which is
+the entire point. Never use it for a key, token, nonce, or any value that
 leaves the simulation.
 
 A per-seed value is a function of this generator's stream, so it must never be

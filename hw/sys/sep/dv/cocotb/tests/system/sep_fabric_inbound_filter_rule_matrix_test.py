@@ -1,29 +1,30 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Inbound-filter per-entry RULE matrix.
+"""Each inbound-filter entry admits only the traffic its rule allows; all other traffic is DECERR.
 
-With the SEP inbound filter ACTIVE (feat_ctrl.sep_debug=0, real PROD fuse), the
-CPU-LSU master programs inbound FILTER_CONFIG allow-entries and the EXTERNAL SMN
+With the SEP inbound filter active (feat_ctrl.sep_debug=0, real PROD fuse), the
+CPU-LSU master programs inbound FILTER_CONFIG allow-entries and the external SMN
 master (m_axi, the only path through u_inbound_filter) proves per-entry rule
 enforcement: an allowed address -> OKAY + exact CSR value; any other address ->
-DECERR, never the value staged there (block-by-default); read_allowed/write_allowed gate the matched
-read/write. No inbound global-to-local remap sits inside this DUT, so the
-external master drives the SEP-local address directly.
+DECERR, never the value staged there (block-by-default); read_allowed and
+write_allowed gate the matched read/write. The external master drives the
+SEP-local address directly; u_inbound_global_to_local_addr_remap passes addresses
+outside the global window unchanged.
 
-Walks entries 0 and 7 x two address windows x {rw, read-only,
-write-only} at src_id=0 (match-all), plus entry 0 / window 0 x {rw, r, w} at
-src_id=5 with a matching AXI user and one src-mismatch cell. SepInboundFilterMatrixCfg
-is the single source of truth. Stays at sep_debug=0 the whole time and proves
-the PER-ENTRY allow-by-rule vs block-by-default policy, not the global
+Walks entries 0 and 7 x two address windows x {rw, read-only, write-only} at
+src_id=0 (match-all), plus entry 0 / window 0 x {rw, r, w} at src_id=5 with a
+matching AXI user and one src-mismatch cell. SepInboundFilterMatrixCfg is the
+single source of truth. Stays at sep_debug=0 the whole time and proves
+the per-entry allow-by-rule vs block-by-default policy, not the global
 sep_debug skip gate (sep_lcc_uvm_inbound_filter_gating_test).
 
-CHK-OWNERSHIP ports the CPU-vs-external asymmetry at the CSRs that
+CHK-OWNERSHIP grades the CPU-vs-external asymmetry at the CSRs that
 reposition the inbound remap or program a filter: inbound CFG, outbound
 CFG[0], alias/AP/STEE remap bases, SEP_GLOBAL_BASE_ADDR, and
 SEP_REGION_SIZE. CPU-LSU reads each register; the external master
 completes DECERR on read and write; the denied write does not land.
-That is the spec's "only the SEP CPU can program these filters" under
-correct programming (those CSRs stay outside every allow window).
+This checks that the external master can neither read nor write the filter
+and remap CSRs while they stay outside every allow window.
 Firmware must not allow-list them; HW does not hard-block that SW hole,
 so this test never opens one. SEP_GLOBAL_BASE_ADDR and SEP_REGION_SIZE
 share the window-0 (SEP_SW_DEBUG) 4 KB page, so they also prove the
@@ -41,15 +42,16 @@ widen does not fire; the checker asserts the programmed range.
 CHK-BURST-TO-SINGLE watches the system-CSR AXI-Lite AR/AW after
 ``u_system_csr_a2l_1``: a denied AxLEN=1 produces zero Lite handshakes
 (filter before the converter); an allowed AxLEN=1 produces two Lite
-singles (fabric.adoc convert burst to single). WRAP/FIXED/AxLEN>1 are
+singles (fabric.adoc: axi_to_axi_lite splits bursts into individual
+transactions). WRAP/FIXED/AxLEN>1 are
 not walked.
 CHK-PAGE-WIDEN / CHK-PAGE-BOUND / CHK-CONFIG-LOCK cover the same-page
 allow_burst=1 window on entry 15. An 8-byte window inside the
 dual-scratch page (0x1080_2000) is rewritten by axi_filter_wrap.sv to the
 whole page, and traffic_filter.sv then compares only addr[ADDR_WIDTH-1:12].
-CHK-PAGE-WIDEN proves the 4 KB page grant ON THE BUS
+CHK-PAGE-WIDEN proves the 4 KB page grant on the bus
 (hw/ip/axi_filter/doc/index.adoc: START down, END up):
-an external access to an address inside the granted page but OUTSIDE the
+an external access to an address inside the granted page but outside the
 programmed START..END is OKAY for read and write, with the exact staged
 value.
 CHK-PAGE-BOUND is the security contract: memory_map.adoc packs distinct
@@ -71,9 +73,9 @@ with allow_burst 0 or 1. The response codes are logged at once and graded after
 the 2-beat INCR, so the burst is checked whatever code the writes answered. The
 lock is sticky until reset, so this cell runs last on entry 15.
 
-RUN-MODE: no_cpu + external SMN master. FUSE-MODE: real PROD fuse sense (sep_debug=0
-=> filter active). RAND-REP (entry x window x R/W-allow x src-id class; window
-values from seed).
+Run mode: no_cpu with the external SMN master and real PROD fuse sense
+(sep_debug=0, so the filter is active). RAND-REP: entry x window x R/W-allow x
+src-id class; the seed sets the window values.
 """
 
 from __future__ import annotations
@@ -108,7 +110,7 @@ _SYS_DIS = 0x00FF_00FF_00FF_00FF
 
 @pyuvm.test()
 class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
-    """Per-entry inbound-filter allow-rule vs block-by-default, via the external master."""
+    """External traffic gets OKAY only where an entry's rule allows it, and DECERR elsewhere."""
 
     async def _ext_read(self, addr: int, *, user: int = 0) -> tuple[int, int]:
         seq = ext_read_seq(addr, user=user)
@@ -591,10 +593,9 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         # feat_ctrl_expected.
         self.write_efuse_image(image)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
-        # security_disable read from the DUT rather than passed as a literal. This
-        # entry value-checks FEAT_CTRL against the lifecycle golden, so every
-        # input to that golden should be observed where it can be; sec_dis can be, via
-        # lcc_security_disable_probe_o.
+        # sec_dis is the one FEAT_CTRL golden input the DUT exposes
+        # (lcc_security_disable_probe_o); the lifecycle and DIS inputs are the
+        # values written into the fuse image above.
         sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
         feat = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=sec_dis)
         ctl = SepLccFeatCtrlCheckSeq(feat)
