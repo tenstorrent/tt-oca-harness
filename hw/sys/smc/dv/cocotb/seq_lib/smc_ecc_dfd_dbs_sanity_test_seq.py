@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""RAS-bank / NDM-reset / DFX-debug diagnostic representative precheck.
+"""NDM-reset / DFX-debug diagnostic representative precheck.
 
-No ECC and no DBS register is addressed here: neither surface is exposed at the
-SMC CSR boundary (the authoritative map ``hw/sys/smc/regs/gen/c/smc_addr.h``
-carries no ECC and no ``DBS_``/``_DBS`` symbol). This sequence reads the RAS
-bank type/instance ID pair, the NDM-reset registers, and the DFX debug
-control/bus-mux registers.
+No ECC, DBS or RAS-bank register is addressed here: none of those surfaces is
+exposed at the SMC CSR boundary (the authoritative map
+``hw/sys/smc/regs/gen/c/smc_addr.h`` carries no ECC, ``DBS_``/``_DBS`` or RAS
+symbol). This sequence reads the NDM-reset registers (``NDMRESET_PROCESS``,
+``NDMRESET_CLUSTER_COUNT``) and the DFX debug control/bus-mux registers.
 
 Every expectation is taken from the RDL / PeakRDL-generated headers under
 ``hw/sys/smc/regs/``; nothing is read from the RTL under test.
@@ -96,7 +96,7 @@ DIAGNOSTIC_READS = [
 
 
 class smc_ecc_dfd_dbs_sanity_test_seq(SmcCsrSeq):
-    """Use safe RAS/debug CSRs as the diagnostic representative."""
+    """Use the NDM-reset and DFX debug CSRs as the diagnostic representative."""
 
     def __init__(self, name: str = "smc_ecc_dfd_dbs_sanity_test_seq") -> None:
         super().__init__(name)

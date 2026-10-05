@@ -22,10 +22,12 @@ the bench controller (`SmcI2cMasterVip`) on the pads:
   `TIMING4.T_BUF` before calling the bus free. `T_BUF` is lengthened, and the
   bench controller pulls SCL low inside that wait. The target has to answer
   the next transfer as before.
-* **An access past the wrapper's control registers.** The I2C wrapper decodes
-  its control registers and its instances; an address above the control
-  registers, inside the wrapper's window, belongs to neither and must be
-  refused on the bus for both a read and a write.
+* **An access the wrapper decodes to nothing.** The I2C wrapper decodes its
+  three instances and its control registers; an address inside the wrapper's
+  window that lies above the last instance stride and below the control
+  registers belongs to neither and must be refused on the bus for both a read
+  and a write. The window extent, the instance strides and the control
+  register base all come from the generated address map.
 * **LSIO ownership withdrawn from the SCL pad.** `gpio_intf.rdl`:
   `DATA_CTRL.lsio_disable` "blocks LSIO accesses from the GPIO interface", and
   `lsio_enable` is "set while `lsio_interface_select_i` is asserted and
@@ -88,12 +90,20 @@ I2C0_INTR_STATE = _i2c0("INTR_STATE")
 I2C0_TXDATA = _i2c0("TXDATA")
 INTR_UNEXP_STOP = _i2c_u32("I2C__INTR_STATE__UNEXP_STOP_bm")
 ACK_CTRL_NACK = _i2c_u32("I2C__TARGET_ACK_CTRL__NACK_bm")
-#: Past the control registers, inside the wrapper's window.
+#: Inside the wrapper's window, above its last instance stride and below its
+#: control registers: no register map covers it.
 WRAP_BASE = smc_addr("SMC_TOP_SMC_I2C_WRAP_BASE_ADDR")
-CTRL_REGS_END = smc_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_BASE_ADDR") + smc_addr(
-    "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_SIZE"
+WRAP_END = WRAP_BASE + smc_addr("SMC_TOP_SMC_I2C_WRAP_SIZE")
+INSTANCES_END = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR", 0) + smc_addr(
+    "SMC_TOP_SMC_I2C_WRAP_I2C_TOTAL_SIZE"
 )
-PAST_CTRL = CTRL_REGS_END + 0x4
+CTRL_REGS_BASE = smc_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_BASE_ADDR")
+UNMAPPED_IN_WRAP = INSTANCES_END
+assert WRAP_BASE <= INSTANCES_END <= UNMAPPED_IN_WRAP < CTRL_REGS_BASE < WRAP_END, (
+    f"0x{UNMAPPED_IN_WRAP:08x} is not between the I2C instances (end 0x{INSTANCES_END:08x}) "
+    f"and the control registers (0x{CTRL_REGS_BASE:08x}) inside the wrapper window "
+    f"0x{WRAP_BASE:08x}..0x{WRAP_END:08x}"
+)
 #: The I2C0 SCL pad in `smc_padring.sv` (37 + 4 * instance).
 SCL_PAD = 37
 DATA_CTRL_SCL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", SCL_PAD)
@@ -267,7 +277,7 @@ class smc_i2c_bus_corners_test_seq(SmcCsrSeq):
     async def _refused(self, label: str, op: SmcSysAxiOp) -> int:
         item = SmcSysAxiItem(f"{'wr' if op == SmcSysAxiOp.WRITE else 'rd'}_{label}")
         item.op = op
-        item.addr = PAST_CTRL
+        item.addr = UNMAPPED_IN_WRAP
         item.length = 4
         item.wdata = 0
         item.allow_error = True
@@ -278,16 +288,25 @@ class smc_i2c_bus_corners_test_seq(SmcCsrSeq):
         return item.resp_code
 
     async def _decode_leg(self) -> None:
-        read = await self._refused("PAST_CTRL_READ", SmcSysAxiOp.READ)
-        write = await self._refused("PAST_CTRL_WRITE", SmcSysAxiOp.WRITE)
+        monitor = getattr(getattr(self, "env", None), "axi_monitor", None)
+        if monitor is not None:
+            monitor.expected_decerr_addrs.add(UNMAPPED_IN_WRAP)
+        read = await self._refused("WRAP_UNMAPPED_READ", SmcSysAxiOp.READ)
+        write = await self._refused("WRAP_UNMAPPED_WRITE", SmcSysAxiOp.WRITE)
         assert read != 0 and write != 0, (
-            f"an access at 0x{PAST_CTRL:08x}, above the I2C control registers, was answered "
-            f"OKAY (read {read}, write {write}); it belongs to no register map"
+            f"an access at 0x{UNMAPPED_IN_WRAP:08x}, inside the I2C wrapper window "
+            f"0x{WRAP_BASE:08x}..0x{WRAP_END:08x} but above its instances and below its "
+            f"control registers, was answered OKAY (read {read}, write {write}); it belongs "
+            f"to no register map"
         )
         cocotb.log.info(
-            "CHK-I2C-WRAP-PAST-CTRL: a read and a write at 0x%08x, above the I2C wrapper's "
-            "control registers, were refused (responses %d and %d)",
-            PAST_CTRL,
+            "CHK-I2C-WRAP-PAST-CTRL: a read and a write at 0x%08x, inside the I2C wrapper "
+            "window ending at 0x%08x, above its instances (end 0x%08x) and below its control "
+            "registers (0x%08x), were refused (responses %d and %d)",
+            UNMAPPED_IN_WRAP,
+            WRAP_END,
+            INSTANCES_END,
+            CTRL_REGS_BASE,
             read,
             write,
         )
