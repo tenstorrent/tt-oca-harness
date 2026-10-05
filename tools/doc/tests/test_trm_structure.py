@@ -108,7 +108,7 @@ class Structure(unittest.TestCase):
             self.assertIn(f"* xref:rom.adoc[Boot ROM]\n** {manual}", landing)
         pg = (ROOT / "doc/programmer/src/index.adoc").read_text()
         appendices = re.findall(
-            r"^\[appendix\]\n(?:ifdef::backend-pdf\[\]\n)?include::([^\[]+)\[", pg, re.M
+            r"^\[appendix\]\nifdef::backend-pdf\[\]\ninclude::([^\[]+)\[", pg, re.M
         )
         self.assertEqual(
             appendices,
@@ -116,7 +116,6 @@ class Structure(unittest.TestCase):
                 "../../../hw/sys/smc/bootrom/prod/doc/index.adoc",
                 "../../../hw/sys/sep/bootrom/prod/doc/index.adoc",
                 "../../../hw/ip/key_manager/doc/firmware.adoc",
-                "resets.adoc",
             ],
         )
         self.assertLess(

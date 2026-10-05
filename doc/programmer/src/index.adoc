@@ -33,18 +33,19 @@ itself, and this guide links to it for register and block details.
 
 The guide is organized as follows:
 
-* <<smc-programming-guide>> covers SMC bring-up and its peripherals.
+* <<smc-programming-guide>> covers SMC bring-up and its peripherals, and
+  <<smc-reset-overview>> lists the resets SMC software can request.
 * <<sep-programming-guide>> covers SEP bring-up, entropy, the cryptographic
-  engines and the security procedures.
+  engines and the security procedures, and <<sep-reset-overview>> lists the
+  resets SEP software can request.
 * <<sep-smc-common-blocks-communication>> covers the address remapping,
   filters, mailboxes and reference counter that both subsystems share.
 * <<dtp-programming-guide>> covers cross-trigger configuration and the debug
   host procedures.
 * <<aou-software-operation-guide>> covers the AXI-over-UCIe bridge registers,
-  debug features and the activation and deactivation flows.
+  debug features, the activation and deactivation flows and the core reset.
 * The appendices document the production SMC and SEP Boot ROMs and the Key
-  Manager Application ROM, and <<reset-control>> lists every software- and
-  debugger-requested reset with the section that gives its sequence.
+  Manager Application ROM.
 
 ifndef::release[]
 include::revision.adoc[leveloffset=+1]
@@ -70,6 +71,14 @@ endif::backend-html5[]
 
 :imagesdir: {pg-imagesdir}
 
+[[aou-core-reset]]
+=== AoU Core Reset
+
+Firmware handling a LinkReset resets the AoU core by setting
+`AOU_CON0.AOU_SW_RESET`, as <<aou-linkreset-error-reporting>> describes. This
+reset does not drain the AXI paths through the bridge, so software quiesces
+traffic to and from the AoU core before requesting it.
+
 [appendix]
 ifdef::backend-pdf[]
 include::../../../hw/sys/smc/bootrom/prod/doc/index.adoc[leveloffset=1]
@@ -93,6 +102,3 @@ endif::backend-pdf[]
 ifdef::backend-html5[]
 include::ip:partial$key_manager/doc/firmware.adoc[leveloffset=1]
 endif::backend-html5[]
-
-[appendix]
-include::resets.adoc[]

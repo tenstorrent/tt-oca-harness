@@ -14,9 +14,8 @@ one book, `src/index.adoc`, built from:
   debug-host procedures;
 - the AoU chapter: the vendored AoU software operation guide, staged by
   `doc/stage-docs.sh`; and
-- appendices A to D: the SMC Boot ROM, SEP Boot ROM and Key Manager Application
-  ROM manuals, staged from `hw/**/doc`, and the reset reference
-  (`src/resets.adoc`).
+- appendices A to C: the SMC Boot ROM, SEP Boot ROM and Key Manager Application
+  ROM manuals, staged from `hw/**/doc`.
 
 Build it with `make ocah-doc-programmer-pdf` or as part of
 `make ocah-doc-combined-html`.

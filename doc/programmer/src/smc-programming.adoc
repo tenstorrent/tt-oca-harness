@@ -1793,6 +1793,62 @@ void dma_copy(uint64_t dst, uint64_t src, uint32_t len) {
 }
 ----
 
+[[smc-reset-overview]]
+==== Reset Overview
+
+SMC firmware, or a manager outside the SMC cluster, can request the resets
+below. Resets from pins and power-good are described in the
+ifdef::backend-html5[]
+xref:ocah-docs::reset.adoc#ocah-reset[Reset chapter]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/reset.html#ocah-reset[Reset chapter]
+endif::backend-pdf[]
+of the Technical Reference Manual. A debugger can also drive the SMC reset
+ports through <<dtp-ic-reset-overrides>>.
+
+[[smc-reset-table]]
+[cols="2,3,2,2",options="header"]
+.SMC software-requested resets
+|===
+|Reset |Control |Requested by |Sequence
+
+|CPU core or uncore, held
+|`CPU_CTRL.RESET_CTRL` reset bits, `RESET_TIMEOUT`
+|SEP, or another manager outside the SMC cluster
+|<<smc-core-reset-sequence>>
+
+|CPU core restart
+|`RESET_CTRL.core<n>_reset_pulse_start`, `CORE_RESET_PULSE_COUNT`,
+`RESET_VECTOR[n]`
+|SEP, or another manager outside the SMC cluster
+|<<smc-core-reset-pulse>>
+
+|Warm reset on watchdog expiry
+|SMC WDT `CTRL.wdogrsten`, `CPU_CTRL.WDT_TIMEOUT`, `WDT_TIMEOUT_RESET`
+|SMC firmware arms it; an unserviced WDT triggers it
+|<<smc-watchdog>>
+
+|Managed subsystem cold or warm reset
+|Reset unit `SS_COLD_RESET_N`, `SS_WARM_RESET_N`, hold and lock registers
+|SMC firmware
+|<<smc-subsystem-resets>>
+
+|Function-level cool reset and isolation
+|Reset unit `ISOLATE_REQ_*` registers
+|SMC firmware prepares and recovers; a PCIe FLR triggers it
+|<<smc-flr-isolation>>
+
+|External CPU cluster non-debug-module reset
+|`NDMRESET_REQUEST`, `NDMRESET_PROCESS`
+|External cluster requests; SMC firmware answers
+|<<smc-ndm-reset>>
+|===
+
+The CPU cluster resets drain and isolate the cluster's AXI paths in hardware
+before the reset takes effect. The reset unit's subsystem resets do not, so
+software quiesces traffic to and from the target before requesting them.
+
 [[smc-subsystem-resets]]
 ==== Subsystem Resets
 

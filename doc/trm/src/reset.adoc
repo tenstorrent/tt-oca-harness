@@ -100,11 +100,12 @@ ifdef::backend-pdf[]
 endif::backend-pdf[]
 
 For integration-level reset procedures, refer to the Integrator Guide. The
-Programmer's Guide collects every reset that software or a debugger requests
-in its
+Programmer's Guide lists the resets that software requests in its
 ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#reset-control[Reset Control appendix].
+xref:ocah-programmer-guide::index.adoc#smc-reset-overview[SMC] and
+xref:ocah-programmer-guide::index.adoc#sep-reset-overview[SEP] reset overviews.
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#reset-control[Reset Control appendix].
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-reset-overview[SMC] and
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-reset-overview[SEP] reset overviews.
 endif::backend-pdf[]
