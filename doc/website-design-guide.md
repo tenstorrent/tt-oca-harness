@@ -92,6 +92,8 @@ This is Antora's native, content-driven navigation tree — generated automatica
 For the book components, this is deliberately kept **flat, at chapter level only** — no deep per-section sub-entries. 
 This matches the single-file PDF's own chapter structure and avoids the numbering/duplication problems that arise if HTML and PDF chapter structures diverge.
 
+`doc/ui-supplemental/partials/nav-tree.hbs` overrides the stock partial so every top-level entry with children starts expanded, in every component; the reader can still collapse it. Deeper levels open only along the current page's path, which keeps the TRM's deep tree manageable.
+
 Getting Started's `nav.adoc` groups its eight sub-pages into two labeled sections rather than a flat list, since Getting Started's content is two audiences' worth of material.
 The matching PDF structure achieves the same visual grouping via two `== ` group headings with `leveloffset=+1` applied to the includes underneath each, so the included 
 pages nest correctly one level below the group heading rather than becoming siblings of it.
