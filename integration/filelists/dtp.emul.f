@@ -22,10 +22,10 @@
 +define+TARGET_COMMON_CELLS_RTL
 +define+TARGET_COMMON_CELL_SYNC_SHIM
 +define+TARGET_DTP
++define+TARGET_EMULATION
 +define+TARGET_FLIST
 +define+TARGET_REGISTER_INTERFACE_L1
 +define+TARGET_SYNTH
-+define+SYNTHESIS=1
 +define+EMULATION=1
 vendor/pulp-platform/common_cells/upstream/src/cf_math_pkg.sv
 vendor/pulp-platform/common_cells/upstream/src/fifo_v3.sv
