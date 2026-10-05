@@ -67,8 +67,8 @@ from smu_base_test import smu_base_test
 
 SCRATCH = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR")
 EXT_BASE = smc_addr("SMC_TOP_SMC_EXTERNAL_BASE_ADDR")
-# The window spans its whole slot in smc_top, up to ecam_region.
-EXT_SIZE = smc_addr("SMC_TOP_ECAM_REGION_BASE_ADDR") - EXT_BASE
+# smc_pkg::SmcExternalWindowSize: the decoded window, not just what smc_external allocates.
+EXT_SIZE = 0x40_0000
 DTP_BASE = smc_addr("SMC_TOP_DTP_CTRL_REG_BASE_ADDR")
 DTP_SIZE = smc_addr("SMC_TOP_DTP_CTRL_REG_SIZE")
 SEP_APERTURE_ADDR = 0x1000

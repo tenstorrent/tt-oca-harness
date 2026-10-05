@@ -195,9 +195,7 @@ module smc_ip_integration (
         smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_BASE_ADDR - ExtBase);
     localparam int unsigned ExtStrapsSize = 32'(
         smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_SIZE);
-    localparam int unsigned ExtWindowSize = 32'(
-        smc_top_addrmap_pkg::SMC_TOP_ECAM_REGION_BASE_ADDR -
-        smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR);
+    localparam int unsigned ExtWindowSize = smc_pkg::SmcExternalWindowSize;
 
     // Targets, in demux port order. Anything unclaimed lands on ExtUnmapped,
     // which answers DECERR.
