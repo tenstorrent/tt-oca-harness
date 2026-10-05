@@ -34,7 +34,7 @@ static uint32_t expected_head;
 static uint32_t expected_tail;
 static uint32_t consecutive_failures;
 
-#define ROM_PROTECTED_SRAM_BASE 0xC0060000ULL
+#define ROM_PROTECTED_SRAM_BASE SMC_SRAM_BASE_ADDR
 
 typedef enum {
     STATUS_OP_WRITE_UNALIGNED = 0,

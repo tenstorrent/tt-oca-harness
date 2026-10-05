@@ -21,7 +21,8 @@ static void run_validate_boot_test(test_context_t *ctx) {
     simputs("=== Test validate and boot ===\n");
     uint32_t random_manifest_addr =
         (ctx->test_base_addr +
-         (get_random_int() % (ctx->test_upper_addr_bound - ctx->test_base_addr))) &
+         (get_random_int() %
+          (ctx->test_upper_addr_bound - (sizeof(uint64_t) - 1) - ctx->test_base_addr))) &
         0xfffffffc;
     simputshex32("Random manifest address: ", random_manifest_addr);
     write_scratch(8, random_manifest_addr);
