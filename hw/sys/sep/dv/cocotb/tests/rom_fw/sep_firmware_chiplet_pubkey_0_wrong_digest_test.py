@@ -33,6 +33,7 @@ import pyuvm
 from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 from env import sep_spi_slot_evidence as ev
+from env.sep_efuse_image import SBOOT_DIS_MASK
 from rom_fw.sep_backup_manifest_fail_base import (
     MANIFEST_ERR_KEY_HASH_MISMATCH,
     sep_backup_manifest_fail_base,
@@ -125,7 +126,7 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
     def check_efuse(self, image) -> None:
         """The fuse image IS the defect here, so every word of it is asserted."""
         lc = image.lc_raw()
-        sboot_dis = image.field_int("SBOOT_DIS") & 0x1
+        sboot_dis = image.field_int("SBOOT_DIS") & SBOOT_DIS_MASK
         assert lc == 0x1, (
             f"LC_STATE raw is 0x{lc:x}, expected 0x1 (PROD): secure boot must be "
             f"enforced by the lifecycle, or key selection is never reached"

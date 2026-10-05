@@ -26,6 +26,7 @@ import os
 from pathlib import Path
 
 import pyuvm
+from env.sep_efuse_image import SBOOT_DIS_MASK
 from rom_fw.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE, sep_rom_ot_dma_boot_test
 
 # Emitted only when the ROM decides secure boot is OFF (rom_main.c).
@@ -79,7 +80,7 @@ class sep_firmware_device_cntl_non_secure_boot_flow_test(sep_rom_ot_dma_boot_tes
         # image when the plusarg is absent. A random image would not set
         # SBOOT_DIS, so the precedence would be untested.
         lc = image.lc_raw()
-        sboot_dis = image.field_int("SBOOT_DIS") & 0x1
+        sboot_dis = image.field_int("SBOOT_DIS") & SBOOT_DIS_MASK
         assert sboot_dis == 1, (
             f"SBOOT_DIS is {sboot_dis}, expected 1: the testlist must pass "
             f"+sep_efuse_preload={_EFUSE_PRELOAD}"

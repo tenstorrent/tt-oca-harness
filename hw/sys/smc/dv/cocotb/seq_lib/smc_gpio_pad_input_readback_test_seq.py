@@ -24,6 +24,7 @@ from cocotb.triggers import ClockCycles
 
 from .smc_addr_map import gpio_intf_u32, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_pad_table import pad_function, pad_index
 from .smc_probe_positive_control import _pad_vec
 
 # Field positions from the generated gpio_intf.h.
@@ -36,13 +37,24 @@ DATA_CTRL_REG_INPUT = _IF_ENABLE | (2 << _RX_TX_BP)
 DATA_CTRL_REG_OUTPUT_HIGH = _IF_ENABLE | (1 << _RX_TX_BP) | _CORE2PAD
 DATA_CTRL_RESET = 0
 
-# Bonded, input-by-default wraps that no LSIO function owns while the SPI mux
-# is off and that no bench block drives permanently: smc_padring.sv binds
-# 11..26 to the UARTs, 27..36 and 63/64 to I3C (enabled at reset, so their
-# output enables are LSIO-owned), 37..48 to I2C, 49..51 to AVSBus, 53..57 to
-# isolate/rebar/OCTS/boot-stall; tb_top additionally forces pads 11, 27, 28,
-# 37, 38, 51, 55 and 56.
-WRAPS = (0, 1, 2, 8, 52, 60)
+# Wraps chosen from the integrator pad table (`doc/integrator/meta/
+# ocah_gpio_table.csv`): three SPI data lanes and the SPI chip select, whose
+# function the bench leaves disabled, the thermal-emergency input and a pad the
+# table reserves. Whether a wrap is free is measured, not assumed: each must
+# read its enable bit clear before it is programmed and follow the bench drive
+# on `pad2core`, so a wrap some function or bench block owns fails here.
+_RESERVED_WRAP = 60
+assert pad_function(_RESERVED_WRAP) == "Reserved", (
+    f"the integrator pad table no longer reserves pad {_RESERVED_WRAP}"
+)
+WRAPS = (
+    pad_index("SPI.DATA[0]"),
+    pad_index("SPI.DATA[1]"),
+    pad_index("SPI.DATA[2]"),
+    pad_index("SPI.CS"),
+    pad_index("Thermal Emergency N"),
+    _RESERVED_WRAP,
+)
 # DATA_CTRL reads polled until pad2core follows the pad; the path is the pad
 # shim, a two-flop synchronizer and the register read.
 CAPTURE_BOUND_READS = 8

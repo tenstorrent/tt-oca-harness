@@ -36,8 +36,8 @@ _FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
 # WARM_HANDLER_ICCM_BASE / _END in vector.S, named by symbol rather than line.
-RANGE_BASE = 0xC000_0000
-RANGE_END = 0xC004_0000
+RANGE_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
+RANGE_END = RANGE_BASE + sym("SEP_ICCM_MEM_SIZE")
 
 # cold_scratch[1] status words, all from vector.S / status_values.h.
 STATUS_WARM_HANG = 0x0F01_0069  # ERROR + SEP_MSG_WARM_RESET_HANG

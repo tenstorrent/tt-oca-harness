@@ -23,8 +23,6 @@ from rom_fw.sep_primary_fail_backup_boot_base import sep_primary_fail_backup_boo
 
 _EFUSE_DIR = Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations"
 
-PUBK_SEL_ROM_KEY = 0
-
 
 def select_primary_rom_slot(buf: bytearray, slot_index: int) -> tuple[int, bool]:
     grafted = slot_index != 0
@@ -32,7 +30,7 @@ def select_primary_rom_slot(buf: bytearray, slot_index: int) -> tuple[int, bool]
         mm.graft_slot(buf, mm.rom_key_image(slot_index).read_bytes(), "primary")
 
     got = mm.get_public_key_sel(buf, "primary")
-    expected = slot_index & 0xF
+    expected = slot_index
     assert got == expected, (
         f"primary public_key_sel is 0x{got:04x}, expected 0x{expected:04x}: the "
         f"{'grafted' if grafted else 'shipped'} primary slot does not select ROM key "
@@ -76,7 +74,7 @@ class _primary_revoked_slot_mixin:
             f"revocation testcase"
         )
         cls._REVOKE_BITMAP = 1 << slot
-        cls._PUBK_SEL_VALUE = slot & 0xF
+        cls._PUBK_SEL_VALUE = slot
         cls._KEY_REVOKED_ECHO = f"MANIFEST_ERR=0x{MANIFEST_ERR_KEY_REVOKED:08x}"
         cls._REVOKE_ECHO = f"PUBK_REVOKE=0x{cls._REVOKE_BITMAP:08x}"
         cls._PUBK_SEL_ECHO = f"PUBK_SEL=0x{cls._PUBK_SEL_VALUE:08x}"
@@ -106,10 +104,7 @@ class _primary_revoked_slot_mixin:
 
     def _assert_outcome_shape(self, buf: bytearray) -> None:
         backup_sel = mm.get_public_key_sel(buf, "backup")
-        backup_revoked = (
-            bool(self._REVOKE_BITMAP & (1 << (backup_sel & 0xF)))
-            and ((backup_sel >> 4) & 0x7) == PUBK_SEL_ROM_KEY
-        )
+        backup_revoked = bool(self._REVOKE_BITMAP & (1 << backup_sel))
         assert backup_revoked == self._BACKUP_ALSO_REVOKED, (
             f"slot {self._REVOKED_SLOT}: the backup selector is 0x{backup_sel:04x}, "
             f"so 'the backup is refused by the same fuse bit' is {backup_revoked}, "

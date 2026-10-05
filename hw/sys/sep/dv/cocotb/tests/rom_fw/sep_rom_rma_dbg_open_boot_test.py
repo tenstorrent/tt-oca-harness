@@ -18,6 +18,7 @@ from __future__ import annotations
 import os
 
 import pyuvm
+from env.sep_efuse_image import SBOOT_DIS_MASK
 from rom_fw.sep_rom_dbg_lock_sip_dis_refuse_test import (
     _CHIPLET_DBG_BIT,
     _EFUSE_DIR,
@@ -48,7 +49,7 @@ class sep_rom_rma_dbg_open_boot_test(sep_rom_ot_dma_boot_test):
         sip_dis = image.field_int("SIP_DIS")
         sys_dis = image.field_int("SYS_DIS")
         locks = image.field_int("LOCKS")
-        sboot_dis = image.field_int("SBOOT_DIS") & 0x1
+        sboot_dis = image.field_int("SBOOT_DIS") & SBOOT_DIS_MASK
         assert lc == 0x2, f"LC_STATE raw is 0x{lc:x}, expected 0x2 (RMA_SiP)"
         assert not (sip_dis | sys_dis) & _CHIPLET_DBG_BIT, (
             f"CHIPLET_DBG is set (SIP_DIS=0x{sip_dis:x}, SYS_DIS=0x{sys_dis:x}), so "

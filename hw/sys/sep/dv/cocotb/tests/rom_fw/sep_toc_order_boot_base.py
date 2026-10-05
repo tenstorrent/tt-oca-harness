@@ -14,6 +14,7 @@ import pyuvm  # noqa: F401  (members register themselves with @pyuvm.test)
 from env import sep_manifest_mutate as mm
 from env import sep_oca_console as oc
 from env import sep_payload_mutate as pm
+from env.sep_efuse_image import SBOOT_DIS_MASK
 from rom_fw import sep_manifest_field_defect as fd
 from rom_fw import sep_toc_defect as td
 from rom_fw.sep_backup_payload_fail_base import PLACEMENT_MARKERS
@@ -50,7 +51,7 @@ class sep_toc_order_boot_base(sep_rom_ot_secure_boot_test):
             f"eFuse preload missing: {self.efuse_preload}"
         )
         image = self.select_efuse_image(default_preload=self.efuse_preload)
-        assert image.lc_raw() == 0x1 and image.field_int("SBOOT_DIS") & 0x1 == 0, (
+        assert image.lc_raw() == 0x1 and image.field_int("SBOOT_DIS") & SBOOT_DIS_MASK == 0, (
             f"LC raw 0x{image.lc_raw():x}, SBOOT_DIS {image.field_int('SBOOT_DIS')}: the "
             f"run must enforce secure boot, or the rearranged slot's seals are never checked"
         )

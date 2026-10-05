@@ -15,7 +15,5 @@
   value = 0xD2
 
 [SIP_DIS]
-  # SIP_DIS has no named bitfields in the generated header, so the whole 64-bit
-  # vector is written at once. CHIPLET_DBG is bit 1.
-  [SIP_DIS.fields.sip_dis]
-  value = 0x2
+  [SIP_DIS.fields.chiplet_dbg]
+  value = 1

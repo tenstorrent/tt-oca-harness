@@ -24,9 +24,12 @@ _BANK_COUNTER_WIDTH = 32
 _BANK_COUNTER_MASK = (1 << _BANK_COUNTER_WIDTH) - 1
 
 # The hello_world link map (sram.ld ORIGIN 0xC006_0000, 4 KB stacks and 2 KB
-# heap from toolchain.mk) ends at offset 0x8730, inside the first 128 KB group;
-# smc_scratch_map_pkg maps that group to banks 0-3 and, because the footprint
-# spans more than one 256-byte stripe cycle, to all four of them.
+# heap from toolchain.mk) ends at offset 0x8730, inside the first 128 KiB group.
+# The SMC CPU spec fixes the bank count and no specification states the
+# interleave; the DV-owned table in `hw/sys/smc/dv/models/smc_scratch_map_pkg.sv`
+# (measured against the design by `smc_dual_axi_sram_probe_test`) places that
+# group in banks 0-3 and, because the footprint spans more than one stripe
+# cycle, in all four of them.
 HELLO_WORLD_RESIDENT_BANKS = frozenset(range(4))
 
 

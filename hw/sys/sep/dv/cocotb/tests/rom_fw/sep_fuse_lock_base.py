@@ -15,8 +15,10 @@ import cocotb
 from env import sep_manifest_mutate as mm
 from env import sep_oca_console as oc
 from env import sep_payload_mutate as pm
+from env.sep_efuse_image import SBOOT_DIS_MASK
 from rom_fw import sep_manifest_field_defect as fd
 from rom_fw.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE, sep_rom_ot_dma_boot_test
+from sep_reg_meta import RegBlock, sym
 
 EFUSE_DIR = Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations"
 UNSIGNED_FLASH_IMAGE = sep_rom_ot_dma_boot_test.flash_image
@@ -72,14 +74,12 @@ BOOT_FAILURE_TOKENS = (
 )
 
 KEY_AND_UID_LOCK_BITS = {
-    "CLASS_KEY": 15,
-    "CHIPLET_UID": 23,
-    "SIP_UID": 27,
-    "SYS_UID": 31,
+    name: RegBlock("SEP_EFUSE_MAP").field_lsb("LOCKS", f"{name.lower()}_read_lock")
+    for name in ("CLASS_KEY", "CHIPLET_UID", "SIP_UID", "SYS_UID")
 }
 EXTRA_LOCK_BITS = {
-    "RMA_SIP_TOKEN_DIGEST": 11,
-    "RMA_CHIPLET_TOKEN_DIGEST": 13,
+    name: RegBlock("SEP_EFUSE_MAP").field_lsb("LOCKS", f"{name.lower()}_read_lock")
+    for name in ("RMA_SIP_TOKEN_DIGEST", "RMA_CHIPLET_TOKEN_DIGEST")
 }
 ALL_LOCK_BITS = {**KEY_AND_UID_LOCK_BITS, **EXTRA_LOCK_BITS}
 FUSE_SECRET_READ_LOCK_MASK = 0
@@ -87,7 +87,7 @@ for _bit in ALL_LOCK_BITS.values():
     FUSE_SECRET_READ_LOCK_MASK |= 1 << _bit
 
 # efuse_shadow_probe_o puts OTP word i at bits 32*i; LOCKS[31:0] is word 0.
-_LOCKS_WORD = 0
+_LOCKS_WORD = sym("SEP_EFUSE_MAP_LOCKS_REG_OFFSET") // 4
 
 
 def bl1_locks_echo() -> str:
@@ -189,7 +189,7 @@ class sep_fuse_lock_base(sep_rom_ot_dma_boot_test):
     def check_efuse(self, image) -> None:
         # select_efuse_image() silently falls back to a random image when the plusarg is absent.
         lc = image.lc_raw()
-        sboot_dis = image.field_int("SBOOT_DIS") & 0x1
+        sboot_dis = image.field_int("SBOOT_DIS") & SBOOT_DIS_MASK
         assert lc == self.expected_lc_raw, (
             f"LC_STATE raw is 0x{lc:x}, expected 0x{self.expected_lc_raw:x}: the "
             f"testlist must pass +sep_efuse_preload={self.efuse_preload}"
