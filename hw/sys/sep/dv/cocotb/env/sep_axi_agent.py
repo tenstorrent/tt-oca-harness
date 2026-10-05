@@ -79,11 +79,13 @@ class SepAxiItem(uvm_sequence_item):
         # Independent of allow_timeout: an expect_error probe still requires a real
         # error response, not a wedge, unless allow_timeout is also set.
         self.expect_error: bool = False
-        # Read-data X/Z policy. The driver packs rdata from the VIP's bytes,
-        # which carry X/Z as 0, so the unknown bits are checked on the bus by
-        # SepAxiMonitor: an OKAY/EXOKAY beat with an X/Z bit in a lane this
-        # read accesses fails the run. Set True only for a read whose data is
-        # legitimately partly unknown; the monitor then skips its lane check.
+        # Read-data X/Z policy. cocotbext-axi converts each R beat with int(),
+        # which raises on any X/Z bit, so a read through this driver fails at
+        # the read when RDATA carries an unknown bit in any lane. SepAxiMonitor
+        # checks the accessed lanes on the bus independently: an OKAY/EXOKAY
+        # beat with an X/Z bit in a lane this read accesses fails the run. True
+        # skips only that monitor lane check for this read; it does not stop
+        # cocotbext-axi from raising on an X/Z bit.
         self.allow_unknown_rdata: bool = False
         # Packed AWUSER/ARUSER. The inbound filter matches FILTER_CONFIG.src_id
         # against user[3:0] (SRC_ID_USER_BIT_START=0, SRC_ID_WIDTH=4).
@@ -215,8 +217,8 @@ class SepAxiDriver(uvm_driver):
                 if self.monitor is not None:
                     self.monitor.forget_pending_reads(item.axi_id)
                 return
-            # X/Z bits arrive here as 0; SepAxiMonitor fails the run on an
-            # OKAY beat with X/Z in an accessed lane unless allow_unknown_rdata.
+            # cocotbext-axi raised already if any RDATA bit of the read was X/Z,
+            # so the bytes here are known values.
             item.rdata = (
                 int.from_bytes(result.data_bytes, "little") if result.data_bytes else result.data
             )
