@@ -71,14 +71,6 @@ endif::backend-html5[]
 
 :imagesdir: {pg-imagesdir}
 
-[[aou-core-reset]]
-=== AoU Core Reset
-
-Firmware handling a LinkReset resets the AoU core by setting
-`AOU_CON0.AOU_SW_RESET`, as <<aou-linkreset-error-reporting>> describes. This
-reset does not drain the AXI paths through the bridge, so software quiesces
-traffic to and from the AoU core before requesting it.
-
 [appendix]
 ifdef::backend-pdf[]
 include::../../../hw/sys/smc/bootrom/prod/doc/index.adoc[leveloffset=1]
