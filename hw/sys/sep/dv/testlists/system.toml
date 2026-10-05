@@ -33,7 +33,8 @@ args = ["+skip_fuse_sense"]
 # EDN INTR_TEST -> sep_internal_interrupts bits 17/20/23/27, per sep.sv) AT ONCE and
 # proves the OR-packing assembles exactly those bits, with no neighbor alias and no
 # unresolved bit in [8:33] -- the mailbox-8->1-truncation bug class, re-run for the
-# crypto/KM region. Distinct from
+# crypto/KM region. Each source alone and every subset of two or more of the four
+# walk on every run, so one seed covers every combination. Distinct from
 # `sep_irq_ip_to_aggregator_test` (one source at a time). Reuses that test's
 # sep_internal_interrupts_probe_o mirror.
 # no_cpu (aggregator read via probe); +skip_fuse_sense (INTR_TEST is functional-state
@@ -41,7 +42,6 @@ args = ["+skip_fuse_sense"]
 name = "sep_irq_simultaneous_fanin_no_alias_test"
 module = "system.sep_irq_simultaneous_fanin_no_alias_test"
 seed = 1
-reseed = 3
 timeout_sec = 1800
 tags = ["interrupt", "aggregator", "anti_alias", "system", "subsystem"]
 run_modes = ["no_cpu"]

@@ -1062,8 +1062,7 @@ count values, not behaviour.
 |`sep_esrc_ht_watermark_arming_test` |Unsupported selector 5-15 |`sep_esrc_edn_flow_cg.cp_ht_sel.unsupported` records that one was written. One draw per regression, so a bin per value would stay mostly empty
 |`sep_fabric_output_remap_datapath_proxy_test` |AP or STEE bank, region, outbound entry |None: `sep_fabric_outbound_remap_filter_walk_test` walks every region of both banks each seed, so a bank or index bin is deterministic and says nothing about this leaf
 |`sep_fabric_remap_filter_csr_bank_test`, `sep_fabric_local_alias_datapath_test` |Bank entry indices |None, for the same reason: the three entry-walk leaves write every entry each seed
-|`sep_pic_irq_source_map_delivery_test` |Two extra sources from an 8-source pool |None: deterministic leaves raise the same sources, so a merged bin cannot tell the seed's pick, and the full interrupt vector is not a sampler input. The 42-source map is Phase 2
-|`sep_irq_simultaneous_fanin_no_alias_test` |Source subset, baseline source |None, for the same reason
+|`sep_pic_irq_source_map_delivery_test` |Order of the eight extra sources |None: every catalog source is delivered and graded on every seed, so a source bin would be full by construction. The 42-source map is Phase 2
 |`sep_hmac_sha_variant_rand_test` |Message length 1-16 words |None: one draw per regression, and only 3 of the 16 values need a second SHA-256 padding block
 |`sep_km_key_policy_vault_test` |KPV slot, SRAM lock region, seal pair |None: the ROM writes KPV `CTRL` and `SRAM_LOCK` on the KM CPU bus, which the sampler does not see, and it walks slot 0, the pick and slot 63 every seed
 |`sep_lcc_demote_feat_ctrl_matrix_test` |Which DEMOTE register carries the lock proof |None: the lock proof is a refusal (Phase 2 `sep_lc_demote_lock_cg`)
