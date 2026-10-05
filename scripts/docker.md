@@ -110,7 +110,10 @@ On hosts **without Nix installed**, all nix operations (`build`, `ensure`,
 with an empty store, so evaluating the hash downloads the flake inputs each time
 and takes several minutes before every `docker-run.sh` command, even when the
 image is already loaded; one invocation evaluates it once. Installing Nix on
-the host keeps the inputs cached between commands. The `nixos-shell`
+the host keeps the inputs cached between commands. The evaluation reads the
+submodules from the working tree, so with uncommitted changes and uninitialised
+submodules it fails with `Failed to fetch git repository`; run
+`git submodule update --init --recursive`. The `nixos-shell`
 command opens an interactive shell in that same image, which is useful for
 debugging the container build without a local Nix install.
 

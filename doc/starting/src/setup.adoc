@@ -22,7 +22,9 @@ cd tt-oca-harness
 
 The repository contains a Python environment used for scripting workflows. Some of
 these workflows are contained within submodules, meaning the Python environment requires
-the submodules to be initialised. To do this, run the following command:
+the submodules to be initialised. The container image tag needs them too: once you
+modify any file, `docker-run.sh` fails with `Failed to fetch git repository` if they
+are missing. To initialise them, run the following command:
 
 ```bash
 git submodule update --init --recursive
