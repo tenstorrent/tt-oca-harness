@@ -223,6 +223,104 @@ async def measure_gate_off_latency(
     )
 
 
+async def measure_gate_off_from_enable(
+    dut,
+    enable_name: str,
+    gated_clk_name: str,
+    *,
+    enable_wait_smc: int,
+    max_smc: int,
+    diag_names: tuple[str, ...] = (),
+) -> tuple[int, int]:
+    """Cycles from the gate enable's own rising edge until the gated clock samples 0.
+
+    Both nets are sampled at every clk_smc_i rise. The enable must read 0 on
+    the first sample, so the origin is a real edge and not a level already
+    present, and must rise within ``enable_wait_smc`` samples. The sample on
+    which it first reads 1 is cycle 0; the result is ``(enable_at, latency)``
+    with ``enable_at`` that sample's index and ``latency`` the number of
+    samples after it on which the gated clock first read 0. Start this as a
+    task before the enable is written: the frontdoor accesses that program the
+    enable, and any readback after it, then cannot move the origin. Either
+    wait expiring is a failure, never a pass ([TIMEOUT-MUST-FAIL]).
+    """
+    enable = getattr(dut, enable_name)
+    gated = getattr(dut, gated_clk_name)
+    enable_at = -1
+    for cyc in range(enable_wait_smc + max_smc):
+        await RisingEdge(dut.clk_smc_i)
+        await ReadOnly()
+        en_val = enable.value
+        g_val = gated.value
+        if en_val.is_resolvable is False:
+            raise AssertionError(f"{enable_name} sample is X/Z (unobservable)")
+        if g_val.is_resolvable is False:
+            raise AssertionError(f"{gated_clk_name} sample is X/Z (unobservable)")
+        en_on = int(en_val) == 1
+        off = int(g_val) == 0
+        await Timer(1, unit="ps")
+        if enable_at < 0:
+            if en_on and cyc == 0:
+                raise AssertionError(
+                    f"{enable_name} already reads 1 on the first sample: the gate-off "
+                    f"latency origin must be the enable's own rising edge"
+                )
+            if not en_on:
+                if cyc + 1 >= enable_wait_smc:
+                    diag = " ".join(f"{n}={sample_bit(dut, n)}" for n in diag_names)
+                    raise AssertionError(
+                        f"TIMEOUT waiting {enable_name} to rise within {enable_wait_smc} "
+                        f"smc cycles {diag}"
+                    )
+                continue
+            enable_at = cyc
+        if off:
+            return enable_at, cyc - enable_at
+        if cyc - enable_at >= max_smc:
+            break
+    diag = " ".join(f"{n}={sample_bit(dut, n)}" for n in diag_names)
+    raise AssertionError(
+        f"TIMEOUT waiting {gated_clk_name} gate-off within {max_smc} smc cycles of "
+        f"{enable_name} rising {diag}"
+    )
+
+
+async def wait_gate_off_edge(
+    dut,
+    gated_clk_name: str,
+    *,
+    max_smc: int,
+    diag_names: tuple[str, ...] = (),
+) -> tuple[float, int]:
+    """Wait for the gated clock to sample 1 and then 0 at successive clk_smc_i rises.
+
+    Returns the simulation time in ns of the first gated-off sample that
+    follows an enabled one, and the number of samples taken to reach it. A
+    caller that starts this as a task before waking the clock is handed the
+    gate-off boundary that wake produces and can issue its next access from
+    that instant. Expiry is a failure ([TIMEOUT-MUST-FAIL]).
+    """
+    gated = getattr(dut, gated_clk_name)
+    seen_on = False
+    for cyc in range(max_smc):
+        await RisingEdge(dut.clk_smc_i)
+        await ReadOnly()
+        val = gated.value
+        if val.is_resolvable is False:
+            raise AssertionError(f"{gated_clk_name} sample is X/Z (unobservable)")
+        on = int(val) == 1
+        await Timer(1, unit="ps")
+        if on:
+            seen_on = True
+        elif seen_on:
+            return get_sim_time(unit="ns"), cyc + 1
+    diag = " ".join(f"{n}={sample_bit(dut, n)}" for n in diag_names)
+    raise AssertionError(
+        f"TIMEOUT waiting {gated_clk_name} to run and gate off again within {max_smc} smc "
+        f"cycles (seen_enabled={seen_on}) {diag}"
+    )
+
+
 async def wait_gated_off(
     dut,
     gated_clk_name: str,

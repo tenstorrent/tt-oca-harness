@@ -7,8 +7,9 @@ DV-CARD: SMC_CG_P2_003 ANCHOR: smc_zeroer_regclk_cg_test
 
 The P2 card shares this anchor: the P1 steps and checkers run first and emit
 their evidence tokens verbatim; `_p2_extension` sweeps the
-pending-access-while-gated race across 3 required cells (immediately after
-gate, long after gate, back-to-back across the gate boundary), per SF-004:
+pending-access-while-gated race across 3 required cells (at the gate-off
+boundary with the gap to the access measured and bounded, long after gate,
+back-to-back across the gate boundary), per SF-004:
 register_activity asserts on any AXI4-Lite access; pending-access service must
 complete within the card's own declared bounded wait (there is no separate SPEC
 max-wait constant).
@@ -18,6 +19,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
+from cocotb.utils import get_sim_time
 
 from . import smc_addr_map as _addr
 from . import smc_cg_obs_utils as cg
@@ -28,6 +30,9 @@ HYST = 0
 IDLE_OBSERVE = 16
 GATE_OFF_TIMEOUT_SMC = 256
 BUSY_TIMEOUT_SMC = 256
+# Bound on the frontdoor accesses that program the gate enable, from the start
+# of the latency sampling task to the enable's rising edge.
+ENABLE_EDGE_TIMEOUT_SMC = 256
 
 # Authoritative map (also re-exported via smc_cg_obs_utils).
 CLOCK_GATE_CONTROL = _addr.CLOCK_GATE_CONTROL
@@ -40,6 +45,13 @@ ZEROER_CTRL_DEST_ADDR = _addr.ZEROER_CTRL_DEST_ADDR
 P2_LONG_IDLE_CYCLES = 40
 P2_UNGATE_BOUND_SMC = 32
 P2_SERVICE_BOUND_SMC = 128
+# Cell 1 issues its write on the sample that shows reg_clk gated; bus_active
+# then follows after the SYS AXI driver's and the fabric's issue latency, which
+# no specification states. This bound is a bench fact: a gap at or beyond it
+# means the access was not issued at the boundary. It stays below
+# P2_LONG_IDLE_CYCLES so the cell is distinct from the long-after cell.
+P2_IMMEDIATE_GAP_BOUND_SMC = 16
+assert P2_IMMEDIATE_GAP_BOUND_SMC < P2_LONG_IDLE_CYCLES
 P2_ACCESS_VALUES = {
     "access-immediately-after-reg_clk-gates": 0xA5A5_0001,
     "access-long-after-reg_clk-gates": 0xA5A5_0002,
@@ -135,6 +147,7 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         dut = self._dut()
         state = {
             "active_at": -1,
+            "active_ns": -1.0,
             "resume_at": -1,
             "post_resume_cycles": 0,
             "enabled_hits": 0,
@@ -157,6 +170,7 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
                 await Timer(1, unit="ps")
                 if state["active_at"] < 0 and active:
                     state["active_at"] = state["smc"]
+                    state["active_ns"] = get_sim_time(unit="ns")
                     state["seen_active"] = True
                 if state["active_at"] >= 0 and state["resume_at"] < 0 and gated_on:
                     state["resume_at"] = state["smc"]
@@ -213,6 +227,7 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         # reported in CHK-TIMEOUT-PATHS.
         return {
             "delta": delta,
+            "active_ns": state["active_ns"],
             "service_cycles": state["smc"],
             "post_resume_cycles": state["post_resume_cycles"],
             "enabled_hits": state["enabled_hits"],
@@ -255,12 +270,27 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         )
         results: dict[str, dict] = {}
 
-        # Cell 1: immediately after reg_clk gates.
+        # Cell 1: the access issued at the gate-off boundary. A read wakes
+        # reg_clk; the boundary task returns on the sample that shows the
+        # clock gated again, and the write is issued from that instant. The
+        # gap from that sample to the write's bus_active is measured in smc
+        # cycles and bounded.
         label = "access-immediately-after-reg_clk-gates"
         val = P2_ACCESS_VALUES[label]
+        boundary = cocotb.start_soon(
+            cg.wait_gate_off_edge(
+                dut,
+                "tb_zeroer_gated_reg_clk",
+                max_smc=GATE_OFF_TIMEOUT_SMC,
+                diag_names=("tb_zeroer_cg_en", "tb_zeroer_bus_active"),
+            )
+        )
+        await self.csr_read("P2_ZREG_WAKE_RD", ZEROER_CTRL_DEST_ADDR, length=8)
+        gate_off_ns, _ = await boundary
         meas = await self._p2_timed_access(
             self.csr_write("P2_ZREG_IMM_WR", ZEROER_CTRL_DEST_ADDR, val, length=8)
         )
+        gap = round((meas["active_ns"] - gate_off_ns) / self.cfg.smc_clk_period_ns)
         rb = await self.csr_read(
             "P2_ZREG_IMM_RB", ZEROER_CTRL_DEST_ADDR, expected=val, length=8
         )  # The `expected=` is what enforces the compare that
@@ -268,6 +298,11 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         # applies an exact 64-bit comparison and raises on mismatch, so the
         # printed field describes a verdict that was actually applied
         # ([NO-ALWAYS-PASS-CHECKER]).
+        assert 0 <= gap <= P2_IMMEDIATE_GAP_BOUND_SMC, (
+            f"{label}: bus_active followed the gate-off sample by {gap} smc cycles, "
+            f"outside [0, {P2_IMMEDIATE_GAP_BOUND_SMC}]; the access was not issued at "
+            f"the gate boundary"
+        )
         assert meas["delta"] <= P2_UNGATE_BOUND_SMC, (
             f"{label}: reg_clk_enable did not rise within {P2_UNGATE_BOUND_SMC} "
             f"cycles of the access: delta={meas['delta']}"
@@ -275,6 +310,7 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         assert rb == val, f"{label}: write not reflected: wrote {val:#x} read {rb:#x}"
         results[label] = {
             "resume_delta": meas["delta"],
+            "gap_after_gate_off": gap,
             "service_cycles": meas["service_cycles"],
             "post_resume_cycles": meas["post_resume_cycles"],
             "enabled_hits": meas["enabled_hits"],
@@ -371,7 +407,9 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
             self.chk_seen,
             "CHK-ZEROER-REGCLK-UNGATE",
             "CHK-ZEROER-REGCLK-UNGATE: "
-            f"immediately-after(resume_delta={results['access-immediately-after-reg_clk-gates']['resume_delta']}) "
+            f"immediately-after(resume_delta={results['access-immediately-after-reg_clk-gates']['resume_delta']},"
+            f"gap_after_gate_off_smc={results['access-immediately-after-reg_clk-gates']['gap_after_gate_off']},"
+            f"gap_bound_smc={P2_IMMEDIATE_GAP_BOUND_SMC}) "
             f"long-after(resume_delta={results['access-long-after-reg_clk-gates']['resume_delta']}) "
             "back-to-back("
             f"resume_delta_a={results['back-to-back-accesses-across-gate-boundary']['resume_delta_a']},"
@@ -545,17 +583,26 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         await ClockCycles(dut.clk_smc_i, 4)
         free = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_reg_clk", 4)
         assert free == 4, f"reg_clk not free-running under disable_cg: {free}"
-        await self._program_cg(zeroer_en=True)
-        assert cg.sample_bit(dut, "tb_zeroer_cg_en") == 1
+        assert cg.sample_bit(dut, "tb_zeroer_cg_en") == 0
         assert cg.sample_bit(dut, "tb_zeroer_bus_active") == 0
-        gate_off_lat = await cg.measure_gate_off_latency(
-            dut,
-            "tb_zeroer_gated_reg_clk",
-            max_smc=GATE_OFF_TIMEOUT_SMC,
-            diag_names=("tb_zeroer_cg_en", "tb_zeroer_bus_active"),
+        # The latency origin is the enable's own rising edge on
+        # tb_zeroer_cg_en: the sampling task starts before the enable write,
+        # so the frontdoor accesses that program the enable cannot move it.
+        gate_off = cocotb.start_soon(
+            cg.measure_gate_off_from_enable(
+                dut,
+                "tb_zeroer_cg_en",
+                "tb_zeroer_gated_reg_clk",
+                enable_wait_smc=ENABLE_EDGE_TIMEOUT_SMC,
+                max_smc=GATE_OFF_TIMEOUT_SMC,
+                diag_names=("tb_zeroer_cg_en", "tb_zeroer_bus_active"),
+            )
         )
+        await self._program_cg(zeroer_en=True)
+        enable_at, gate_off_lat = await gate_off
+        assert cg.sample_bit(dut, "tb_zeroer_cg_en") == 1
         assert gate_off_lat <= 1, (
-            f"reg_clk gate-off not within 1 cycle of idle: latency={gate_off_lat}"
+            f"reg_clk gate-off not within 1 cycle of tb_zeroer_cg_en rising: latency={gate_off_lat}"
         )
         idle_enabled = await cg.count_enabled_at_smc_rise(
             dut, "tb_zeroer_gated_reg_clk", IDLE_OBSERVE
@@ -567,7 +614,8 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
             self.chk_seen,
             "CHK-ZREG-GATE-OFF-IDLE",
             f"CHK-ZREG-GATE-OFF-IDLE: gate_off_within_1cyc={within_1} "
-            f"gate_off_latency={gate_off_lat} zero_toggles_idle={IDLE_OBSERVE}",
+            f"gate_off_latency={gate_off_lat} origin=tb_zeroer_cg_en_rise "
+            f"enable_edge_sample={enable_at} zero_toggles_idle={IDLE_OBSERVE}",
         )
         cg.mark_fence(self.fence, "idle-gate-off-observed")
 

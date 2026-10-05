@@ -34,10 +34,12 @@ MAILBOX_CG_EN = _field_mask(
     _SMC_BASE_CFG_H, "SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__MAILBOX_CG_EN_bm"
 )
 
-# CPU_CTRL.SMC_ATTRIBUTES publishes the integration's MailboxDepth to software
-# (smc_cpu_ctrl_wrap.sv drives the field from the same parameter that sizes the
-# mailbox FIFOs), so the threshold clamp below is computed from a value the DUT
-# reports rather than from a literal copied out of the RTL package.
+#: MailboxDepth of the SMC integration, from the peripheral parameter table in
+#: `hw/sys/smc/doc/periphs.adoc` (SMC Peripheral Parameter Overrides: Mailbox
+#: `MailboxDepth`, IP default 8, SMC value 2). The threshold clamp below is
+#: computed from this value; the depth CPU_CTRL.SMC_ATTRIBUTES publishes to
+#: software is compared against it, not used in its place.
+MAILBOX_DEPTH = 2
 SMC_ATTRIBUTES = smc_addr("SMC_TOP_SMC_CPU_CTRL_SMC_ATTRIBUTES_BASE_ADDR")
 MAILBOX_DEPTH_BM = _field_mask(_CPU_CTRL_H, "CPU_CTRL__SMC_ATTRIBUTES__MAILBOX_DEPTH_bm")
 MAILBOX_DEPTH_BP = _field_mask(_CPU_CTRL_H, "CPU_CTRL__SMC_ATTRIBUTES__MAILBOX_DEPTH_bp")
@@ -67,10 +69,9 @@ MAILBOX_ERROR_FLAGS_IDLE = 0
 # field descriptions -- regs/axil_mailbox.rdl:85,95 and the generated
 # regs/gen/adoc/axil_mailbox_smc_wrap.adoc:59,67; the depth parameter itself is
 # documented in hw/ip/axi_lite_mailbox_unit/doc/architecture.adoc). So the exact
-# readback is `min(written, depth - 1)` with `depth` read from
-# CPU_CTRL.SMC_ATTRIBUTES.MAILBOX_DEPTH -- a stated exact expectation that an
-# all-zero dead register fails ([EXACT-EXPECTATION]). Their restore-to-0 leg is
-# exact either way (0 is always in range).
+# readback is `min(written, MAILBOX_DEPTH - 1)` -- a stated exact expectation
+# that an all-zero dead register fails ([EXACT-EXPECTATION]). Their
+# restore-to-0 leg is exact either way (0 is always in range).
 CLAMPED_THRESHOLD = "clamped-to-depth"
 
 
@@ -140,14 +141,16 @@ class smc_mailbox_irq_test_seq(smc_base_test_seq):
             "MAILBOX_ERROR_FLAGS", MAILBOX_ERROR_FLAGS, expected=MAILBOX_ERROR_FLAGS_IDLE
         )
 
-        # MailboxDepth as the DUT publishes it, for the SPEC threshold clamp.
+        # The depth the DUT publishes must be the documented integration value;
+        # the clamp expectation is computed from the documented value.
         attrs = await self._read("SMC_ATTRIBUTES", SMC_ATTRIBUTES)
-        depth = (attrs & MAILBOX_DEPTH_BM) >> MAILBOX_DEPTH_BP
-        assert depth >= 1, (
-            f"CPU_CTRL.SMC_ATTRIBUTES.MAILBOX_DEPTH reads {depth} "
-            f"(SMC_ATTRIBUTES=0x{attrs:x}); a mailbox has at least one entry, "
-            f"so the WIRQT/RIRQT clamp expectation cannot be derived"
+        published_depth = (attrs & MAILBOX_DEPTH_BM) >> MAILBOX_DEPTH_BP
+        assert published_depth == MAILBOX_DEPTH, (
+            f"CPU_CTRL.SMC_ATTRIBUTES.MAILBOX_DEPTH reads {published_depth} "
+            f"(SMC_ATTRIBUTES=0x{attrs:x}); the SMC peripheral parameter table gives "
+            f"MailboxDepth={MAILBOX_DEPTH}"
         )
+        depth = MAILBOX_DEPTH
 
         clamped: list[tuple[str, int, int]] = []
         for name, addr, pattern, readback in WRITE_READBACK:
@@ -159,10 +162,11 @@ class smc_mailbox_irq_test_seq(smc_base_test_seq):
             await self._write(name, addr, pattern)
             await self._read(name, addr, expected=expected)
         cocotb.log.info(
-            "CHK-MAILBOX-IRQT-CLAMP: MailboxDepth=%d from "
-            "CPU_CTRL.SMC_ATTRIBUTES; %s each read back the SPEC clamp "
-            "min(written, depth-1) exactly",
+            "CHK-MAILBOX-IRQT-CLAMP: MailboxDepth=%d from the SMC peripheral parameter "
+            "table, and CPU_CTRL.SMC_ATTRIBUTES publishes %d; %s each read back the SPEC "
+            "clamp min(written, depth-1) exactly",
             depth,
+            published_depth,
             ", ".join(f"{n} (wrote 0x{w:x}, expected 0x{e:x})" for n, w, e in clamped),
         )
 
@@ -191,9 +195,8 @@ class smc_mailbox_irq_test_seq(smc_base_test_seq):
         await self._read(
             "CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, expected=self.clock_gate_value
         )
-        # 19 mailbox/clock-gate accesses, the SMC_ATTRIBUTES read that sources
-        # the threshold-clamp expectation, and the two in-range
-        # write/readback pairs.
+        # 19 mailbox/clock-gate accesses, the SMC_ATTRIBUTES read compared with
+        # the documented depth, and the two in-range write/readback pairs.
         assert self.accesses == EXPECTED_ACCESSES, (
             f"mailbox CSR access sequence issued {self.accesses} accesses, "
             f"expected {EXPECTED_ACCESSES}"
