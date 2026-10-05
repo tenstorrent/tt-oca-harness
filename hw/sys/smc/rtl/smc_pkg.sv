@@ -36,6 +36,10 @@ package smc_pkg;
   localparam int unsigned AxiAddrWidth = 56;  // General AXI address width.
   localparam int unsigned SmcLocalAddrWidth = 32;  // Within SMC.
 
+  // The adopter external window spans this much from SMC_TOP_SMC_EXTERNAL_BASE_ADDR,
+  // however much of it the smc_external map allocates.
+  localparam int unsigned SmcExternalWindowSize = 32'h40_0000;
+
   localparam int unsigned AxiDataWidth = 64;
   localparam int unsigned AxiStrbWidth = AxiDataWidth / 8;
   localparam int unsigned AxiUserWidth = 12;

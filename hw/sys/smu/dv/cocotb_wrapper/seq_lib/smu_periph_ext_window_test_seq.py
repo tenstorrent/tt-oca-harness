@@ -6,17 +6,15 @@
 at SMC BASE + 0x040_0000, splits it into a mandatory region at the window base
 and a supplementary region at +0x4000, and passes whatever no block claims
 through to the adopter external port. The register map generated from
-``smc.rdl`` for the boot ROM (``hw/sys/smc/bootrom/prod/registers/smc_top_regs.h``)
-places EFUSE_SHIM_CTRL at the mandatory-region base and records how far the
-allocated blocks reach; the straps pair sits in the supplementary region at
-the address ``hw/sys/smc/bootrom/prod/doc/hardware-initialization.adoc``
-gives.
+``smc.rdl`` (``hw/sys/smc/regs/gen/c/smc_addr.h``) places EFUSE_SHIM_CTRL at
+the mandatory-region base, the straps pair in the mandatory region, and
+records how far the allocated blocks reach.
 
 S1: EFUSE_SHIM_CTRL.EFUSE_BANK_INIT_TIME reads its RDL reset value, takes a
     new value, and takes the reset value back -- the shim port carries both a
     request and a response.
-S2: the straps pair answers, and the first page above every allocation those
-    sources record returns DECERR. The pair is what separates "the window is
+S2: the straps pair answers, and the first word past it, which no block claims,
+    returns DECERR. The pair is what separates "the window is
     decoded" from "nothing is behind it": a default slave returning zeros
     would answer the straps read too.
 S3: the SMC aperture decides whether any of that is reachable at all. Shrink
@@ -41,7 +39,6 @@ from ocah_jtag_vip import OcahJtagState
 from seq_lib.smu_addr_map import (
     c_header_u32,
     smc_addr,
-    smc_bootrom_addr,
 )
 from seq_lib.smu_boundary_regs import smc_base_config_u32
 from seq_lib.smu_jtag_helpers import (
@@ -59,18 +56,12 @@ _REPO_ROOT = Path(__file__).resolve().parents[6]
 _EFUSE_SHIM_CTRL_C = _REPO_ROOT / "hw" / "ip" / "efuse" / "dv" / "models" / "regs" / "gen" / "c"
 
 # hw/sys/smc/doc/memmap.adoc, "AXI-Lite External Window": the window, its
-# mandatory region at the base and its supplementary region at +0x4000.
+# mandatory region at the base and its supplementary region above it.
 EXTERNAL_BASE = smc_addr("SMC_TOP_SMC_EXTERNAL_BASE_ADDR")
-EXTERNAL_END = EXTERNAL_BASE + smc_addr("SMC_TOP_SMC_EXTERNAL_SIZE")
-EXT_MANDATORY_BASE = smc_bootrom_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_BASE_ADDR")
-EXT_SUPPLEMENTARY_BASE = smc_bootrom_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_BASE_ADDR")
-# smc_top_regs.h sizes the window by its last allocated block, not by the
-# aperture smc_addr.h reserves for it.
-EXT_ALLOCATED_END = smc_bootrom_addr("SMC_TOP_SMC_EXTERNAL_BASE_ADDR") + smc_bootrom_addr(
-    "SMC_TOP_SMC_EXTERNAL_SIZE"
-)
+EXT_MANDATORY_BASE = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_BASE_ADDR")
+EXT_SUPPLEMENTARY_BASE = smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_BASE_ADDR")
 
-EFUSE_SHIM_BASE = smc_bootrom_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_BASE_ADDR")
+EFUSE_SHIM_BASE = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_BASE_ADDR")
 # The shim behind the eFuse bank-control port follows efuse_shim_ctrl.rdl; the
 # SMC map fixes only where the block sits.
 EFUSE_BANK_INIT_TIME = EFUSE_SHIM_BASE + c_header_u32(
@@ -84,18 +75,15 @@ EFUSE_BANK_INIT_TIME_RESET = c_header_u32(
 # A value the reset cannot be mistaken for, inside the 32-bit field.
 EFUSE_BANK_INIT_TIME_PROBE = 0x0000_0155
 
-# hw/sys/smc/bootrom/prod/doc/hardware-initialization.adoc, "Straps and
-# eFuses": the boot ROM reads the strap registers at 0xC0405800 and 0xC0405804.
-# straps.rdl keeps STRAPS_HI at STRAPS_LO + 4. The SMC memory map lists the
-# pair among the supplementary functions and leaves its placement to the
-# adopter.
-EXT_STRAPS_LO = 0xC040_5800
-EXT_STRAPS_HI = 0xC040_5804
-# The first 4 KiB page above every allocation the sources above record, still
-# inside the window. memmap.adoc passes what no block claims through to the
-# adopter external port, and hw/sys/smu/doc/port_table.adoc ties that port's
+# The boot ROM reads the strap registers the SMC map places in the
+# mandatory region.
+EXT_STRAPS_LO = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_BASE_ADDR")
+EXT_STRAPS_HI = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_BASE_ADDR")
+# The first word past the straps pair: inside the mandatory region, below the
+# supplementary region, and claimed by no block. memmap.adoc passes what no block
+# claims through to the adopter external port, and hw/sys/smu/doc/port_table.adoc ties that port's
 # response to DECERR when nothing is attached.
-EXT_UNMAPPED = (max(EXT_ALLOCATED_END, EXT_STRAPS_HI + 4) + 0xFFF) & ~0xFFF
+EXT_UNMAPPED = EXT_STRAPS_HI + 4
 
 REGION_SIZE_ADDR = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
 REGION_SIZE_RESET = smc_base_config_u32("SMC_BASE_CONFIG__REGION_SIZE__SIZE_reset")
@@ -121,10 +109,10 @@ def _require_window_map() -> None:
             "eFuse shim is outside the mandatory region",
         ),
         (
-            EXT_SUPPLEMENTARY_BASE <= EXT_STRAPS_LO and EXT_STRAPS_HI + 4 <= EXTERNAL_END,
-            "straps pair is outside the supplementary region",
+            EXT_MANDATORY_BASE <= EXT_STRAPS_LO and EXT_STRAPS_HI + 4 <= EXT_SUPPLEMENTARY_BASE,
+            "straps pair is outside the mandatory region",
         ),
-        (EXT_UNMAPPED < EXTERNAL_END, "unallocated probe is outside the window"),
+        (EXT_UNMAPPED < EXT_SUPPLEMENTARY_BASE, "unallocated probe is outside the mandatory region"),
         (
             (REGION_SIZE_SHRUNK & (REGION_SIZE_SHRUNK - 1)) == 0
             and LOCAL_BASE_RESET % REGION_SIZE_SHRUNK == 0,

@@ -166,7 +166,7 @@ integration choice.
 * `skip_mem_repair_o`: Reset unit output that bypasses repair when asserted,
   activating during FLR operations or when the `BYPASS_SRAM_REPAIR` strap is set.
 
-* `BYPASS_SRAM_REPAIR` strap (GPIO pin 13): Hardware-level bypass control that
+* `BYPASS_SRAM_REPAIR` strap (`STRAPS_LO[13]`): Hardware-level bypass control that
   bypasses repair logic when asserted, assuming SRAM arrays are defect-free.
 
 **Status Reporting:**

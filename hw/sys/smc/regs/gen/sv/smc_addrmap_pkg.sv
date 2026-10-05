@@ -489,10 +489,42 @@ localparam longint unsigned SMC_TOP_SMC_CLA_DST_STRIDE = 64'h1000;
 localparam longint unsigned SMC_TOP_SMC_CLA_DST_TOTAL_SIZE = 64'h1000;
 
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_BASE_ADDR = 64'hC0400000;
-localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SIZE = 64'h400000;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SIZE = 64'h6548;
 
-localparam longint unsigned SMC_TOP_SMC_EXTERNAL_REGION_BASE_ADDR = 64'hC0400000;
-localparam longint unsigned SMC_TOP_SMC_EXTERNAL_REGION_SIZE = 64'h400000;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_BASE_ADDR = 64'hC0400000;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_SIZE = 64'h3008;
+
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_BASE_ADDR = 64'hC0400000;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_SIZE = 64'h4;
+
+function automatic longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_BASE_ADDR(input int unsigned gpio_ctrl_idx);
+    return 64'hC0401000 + (gpio_ctrl_idx * 64'h20);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_NUM = 64'h41;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_SIZE = 64'h4;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_STRIDE = 64'h20;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_TOTAL_SIZE = 64'h820;
+
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_BASE_ADDR = 64'hC0402000;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_SIZE = 64'hEE8;
+
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_BASE_ADDR = 64'hC0403000;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_SIZE = 64'h8;
+
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_BASE_ADDR = 64'hC0404000;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_SIZE = 64'h2548;
+
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_CONTROLLER_WRAP_BASE_ADDR = 64'hC0404000;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_CONTROLLER_WRAP_SIZE = 64'h390;
+
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_INTF_BASE_ADDR = 64'hC0405000;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_INTF_SIZE = 64'hC;
+
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_CTRL_BASE_ADDR = 64'hC040500C;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_CTRL_SIZE = 64'h4;
+
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_BASE_ADDR = 64'hC0405C00;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_SIZE = 64'h948;
 
 localparam longint unsigned SMC_TOP_MMODE_REGION_BASE_ADDR = 64'hC1000000;
 localparam longint unsigned SMC_TOP_MMODE_REGION_SIZE = 64'h800000;
@@ -2830,6 +2862,9 @@ function automatic longint unsigned SMC_TOP_SMC_CLA_DST_SCRATCHHI_BASE_ADDR(inpu
     return 64'hC0163FFC + (dst_idx * 64'h1000);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_CLA_DST_SCRATCHHI_NUM = 64'h1;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_BASE_ADDR = 64'hC0400000;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_BASE_ADDR = 64'hC0403000;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_BASE_ADDR = 64'hC0403004;
 function automatic longint unsigned SMC_TOP_SMC_CLUSTER_PLIC_PRIORITY_BASE_ADDR(input int unsigned PRIORITY_idx);
     return 64'hC4000000 + (PRIORITY_idx * 64'h4);
 endfunction
