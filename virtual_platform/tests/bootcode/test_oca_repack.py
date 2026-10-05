@@ -14,7 +14,7 @@ pytestmark = pytest.mark.hostonly
 @pytest.fixture(scope="module")
 def ready():
     if not paths.MANIFEST_VENV_PYTHON.is_file() or not paths.OCA_IMAGE_PATHS["signed"].is_file():
-        pytest.skip("manifest venv or oca-images missing (P0.0)")
+        pytest.skip("manifest venv or oca-images missing; see tests/bootcode/README.md")
 
 
 def test_identity_pack_is_byte_identical_to_the_make_build(ready, tmp_path):

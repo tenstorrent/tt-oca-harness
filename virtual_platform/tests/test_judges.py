@@ -571,7 +571,7 @@ def test_silence_contract_still_checks_spi_reads():
         )
 
 
-def test_regloger_banner_is_platform_noise():
+def test_reglogger_banner_is_platform_noise():
     output = "RegLogger global log file: och_sep_ss.log\n[SIM_OUT] - COLD\n"
     assert _judges().console_tokens(output) == ["COLD"]
 

@@ -123,10 +123,10 @@ class SimConfig:
         return [("string", "och_sep_ss1.init_writes", deposits)]
 
     def overrides(self) -> List[Override]:
-        """All run-specific overrides (straps + fuses + caller extras).
+        """Run-specific overrides: straps, fuses, init writes, then caller extras.
 
-        Absolute path overrides (targets/configFile) are added by the backend,
-        which knows the platform paths; they are kept out of SimConfig on purpose.
+        Path overrides (targets, configFile, SPI/SMC backdoor files, traceFile) come from the
+        backend, which owns the run directory.
         """
         return [
             *self.strap_overrides(),

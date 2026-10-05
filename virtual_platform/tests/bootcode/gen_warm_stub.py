@@ -89,7 +89,9 @@ def assemble(spec: ProgramSpec) -> tuple[list[int], str]:
         ).stdout
 
     if len(raw) % 4:
-        raise RuntimeError(f"warm handler is {len(raw)} bytes, not a multiple of four")
+        raise RuntimeError(
+            f"{spec.source.name} assembles to {len(raw)} bytes, not a multiple of four"
+        )
     words = [int.from_bytes(raw[offset : offset + 4], "little") for offset in range(0, len(raw), 4)]
     return words, disassembly
 

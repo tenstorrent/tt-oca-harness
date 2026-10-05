@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# TP025: payload_offset / payload_length values beyond 32 bits. oca_locate_payload works in int64,
+# Rows whose payload start or end in flash reaches 2^32. oca_locate_payload works in int64,
 # so every row is refused by the slot-window bound before any payload read; no row reaches the
 # int64 overflow branches.
 

@@ -123,7 +123,7 @@ def test_recovery_is_off_by_default(tmp_path):
 
 
 _SENTINEL_EXTRA = (
-    'xfail_reason = "DV B7: x"\nxfail_match = "forbidden status present: \'INFO 0x0055\'"'
+    'xfail_reason = "ROM accepts it"\nxfail_match = "forbidden status present: \'INFO 0x0055\'"'
 )
 
 

@@ -16,6 +16,7 @@ Options (mirroring the example bootcode harness where it makes sense):
   --no-build           do not (re)build firmware; use whatever ELF already exists
   --build-type T       'test' (DEBUG: SIM_OUT on) or 'release' (default test)
   --stream             tee sep-vp stdout to the console live
+  --iss-trace          write each run's ISS trace to <run dir>/veer_trace.log
   --riscv-toolchain P  RISC-V toolchain prefix dir (for firmware builds)
 
 Fixtures:
@@ -223,17 +224,11 @@ def bootcode_elf(request):
 
 @pytest.fixture(scope="session")
 def oca_images(request):
-    """Build (unless --no-build) every prebuilt OCA boot image and return their paths.
+    """Build (unless --no-build) every prebuilt OCA image and return a copy of OCA_IMAGE_PATHS.
 
-    Returns a copy of paths.OCA_IMAGE_PATHS. One fixture rather than one per image
-    because the images come from two make targets that share every prerequisite.
-    A missing paths.TESTLIST_ONLY_IMAGES entry does not skip the fixture; the testlist
-    skips the entries that read it.
-
-    container_ok=False because the pack step
-    is Python and wants uv, which the toolchain container does not carry. The BL1
-    payload it packs needs a host RISC-V toolchain -- without one this skips
-    rather than fails, which is a coverage hole worth knowing about.
+    A missing paths.TESTLIST_ONLY_IMAGES entry does not skip the fixture; the testlist skips
+    the entries that read it. container_ok=False because the pack step needs uv, which the
+    toolchain container does not carry; without a host RISC-V toolchain for BL1 this skips.
     """
     imgs = dict(paths.OCA_IMAGE_PATHS)
     if request.config.getoption("build"):
@@ -248,10 +243,8 @@ def oca_images(request):
         )
         if res.returncode != 0:
             detail = f"{res.stdout[-1500:]}\n{res.stderr[-1500:]}"
-            # Skipping is for a dependency this checkout does not have -- the
-            # manifest submodule is private, and a tree without it should not
-            # report 51 failures. A build that fails with the submodule in place
-            # is broken, and a skip there hides it behind a green run.
+            # Skip only when the manifest submodule is not checked out; with it present, a build
+            # failure is a real break and a skip would hide it.
             if (paths.MANIFEST_DIR / "pyproject.toml").is_file():
                 pytest.fail(
                     f"oca-images build failed with {paths.MANIFEST_DIR.name} present:\n{detail}",

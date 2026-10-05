@@ -41,7 +41,6 @@ FAMILY_ORDER = (
     "mixed_failure",
     "measurement",
 )
-_XFAIL_REASON_RE = re.compile(r"\bB\d+\b")
 # Cold scratch past the verdict word, SMC scratch and SMC DFX_CTRL_STATUS; the model drops ROM
 # and ICCM writes, and a pre-boot write to cold scratch 0 would forge the run's verdict.
 _INIT_WRITE_WINDOWS = (
@@ -929,8 +928,6 @@ def _parse_testcase(
     if xfail_reason is not None:
         if not isinstance(xfail_reason, str) or not xfail_reason.strip():
             raise ValueError(f"testcase {name!r} xfail_reason must be a non-empty string")
-        if _XFAIL_REASON_RE.search(xfail_reason) is None:
-            raise ValueError(f"testcase {name!r} xfail_reason must cite a DV B-number such as 'B7'")
         if not isinstance(xfail_match, str) or not xfail_match:
             raise ValueError(
                 f"testcase {name!r} xfail_match must be a non-empty regex string; a sentinel "

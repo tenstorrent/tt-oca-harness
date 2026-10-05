@@ -65,6 +65,6 @@ markers = [
   "BL1 prints the soft PCR it reads from bl0_state, so a match also shows the value survived the handoff; all 32 bytes are compared.",
   "The record inputs are pinned on the console: LC_STATE=0x00000001, FUSE: SBOOT_DIS: 0, the RSA chain for secure_boot, and DEMOTE_LOCKED with BL2_DEMOTE_DEC=0 for demotion 0x2.",
   "INFO 0x0051 with INFO_EXT 0x0001 after INFO 0x0055 is the slot-1 enrollment, after the payload was accepted.",
-  "One point of TP063 step 7 (PROD, secure boot, no demotion, SBOOT_DIS clear), as in DV; other lifecycle, demotion and SBOOT_DIS combinations are not covered.",
+  "One combination only (PROD, secure boot, no demotion, SBOOT_DIS clear), as in DV; other lifecycle, demotion and SBOOT_DIS combinations are not covered.",
   "Runs the golden image, as DV does, so the audit reports it as sharing the golden stimulus.",
 ]

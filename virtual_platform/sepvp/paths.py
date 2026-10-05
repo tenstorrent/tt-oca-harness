@@ -9,7 +9,8 @@ independent. Environment variables override the defaults:
 
   SEP_VP_BIN     full path to the sep-vp executable
   SEP_VP_BASE_INI  base accellera_config.ini to @include
-  SEPVP_LOGS_DIR   per-run log root, so a negative-control rerun keeps the positive logs
+  SEPVP_LOGS_DIR   per-run working-directory root (logs and staged inputs)
+  SEPVP_MANIFEST_PYTHON  interpreter that imports tt_boot_manifest and ruamel.yaml
 """
 
 import os

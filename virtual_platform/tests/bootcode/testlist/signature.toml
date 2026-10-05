@@ -434,7 +434,7 @@ spi_reads = [
 ]
 spi_read_order = ["primary_manifest", "backup_manifest"]
 markers = [
-  "Both slots carry the same defect, as in DV TP041-B, so the pair with the primary-only entry differs in the backup alone.",
+  "Both slots carry the same defect, as in DV, so the pair with the primary-only entry differs in the backup alone.",
   "RSA_EXEC and PUBK_REVOKE= forbidden show the bind refuses each slot before revocation and before any modexp.",
   "Both slots are signed with the generated untrusted key, where DV flips a modulus bit in each.",
 ]
@@ -493,7 +493,7 @@ spi_reads = [
 ]
 spi_read_order = ["primary_manifest", "primary_payload"]
 markers = [
-  "Partial compliance with MAS 5.5.4 step 27: the comparison repeats and both passes must succeed, but no random delay separates them (waiver W-001).",
+  "Partial: the comparison repeats and both passes must succeed, but no random delay separates them.",
   "RSA_EXEC once with RSA_CMP1 and RSA_CMP2 once each pins the reading that only the comparison repeats over one modexp result.",
   "The counts are per verified slot; MANIFEST_BACKUP forbidden and no backup-span read keep this a single-slot boot.",
   "The tokens are the firmware's own report, not an independent witness of the two DMEM reads; no fault is injected.",

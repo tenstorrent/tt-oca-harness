@@ -407,7 +407,7 @@ def test_measurement_tokens_use_the_image_manifest_hash(golden):
 @pytest.fixture
 def packer():
     if not paths.MANIFEST_VENV_PYTHON.is_file():
-        pytest.skip("manifest venv missing (P0.0)")
+        pytest.skip("manifest venv missing; see tests/bootcode/README.md")
 
 
 def test_a_patched_repack_writes_a_separate_file(golden, tmp_path, specs, packer):

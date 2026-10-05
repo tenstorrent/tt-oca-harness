@@ -201,14 +201,14 @@ Image facts:
 
 Known failures:
 
-- `xfail_reason` must cite a DV B-number (for example `"DV B7: ..."`). `xfail_match` is a
-  required regex for the failure the sentinel expects, and it may not match an empty message.
+- `xfail_reason` is a short statement of the defect (for example
+  `"ROM accepts a TOC major version above 1"`). `xfail_match` is a required regex for the
+  failure the sentinel expects, and it may not match an empty message.
   Verdict, forbidden-status and missing-status failures quote the console or status tail, so
   the regex can require the tokens of the slot the entry targets. The case is a strict xfail on
   `JudgeError`. A different judge failure fails the case, and an output-provenance failure
   fails it as unjudgeable. When the DUT is fixed the case XPASSes and strict mode turns that
-  into a failure, which tells you to remove the sentinel. An xfail cannot combine with a
-  blocked classification.
+  into a failure, which tells you to remove the sentinel.
 
 ## Boot image spec schema
 
@@ -383,6 +383,6 @@ A testcase is done when all applicable items are true:
 - The targeted pytest case ran with `--no-build`, and `sep-vp.log` shows that the expected
   judgment, and not a wrong-reason pass, produced the result.
 - A failure of the DUT is not hidden. Keep the spec-correct expectation as a strict xfail
-  sentinel with `xfail_reason` and `xfail_match`, or classify the entry as blocked, after the
-  owner decides. Do not weaken an expectation to match the output.
+  sentinel with `xfail_reason` and `xfail_match`, after the owner decides. Do not weaken an
+  expectation to match the output.
 - `markers` state what the VP does not prove for this entry.

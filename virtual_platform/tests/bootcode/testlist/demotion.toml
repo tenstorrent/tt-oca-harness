@@ -17,7 +17,7 @@ timeout = 180
 expect_verdict = "PASSED"
 pytest_markers = ["needs_debug"]
 efuse = { lc_state = "PROD_END" }
-# demotion_control 0x2 = BL1_VALID 0, BL1_ENABLE 1, BL2 pair 0; outcome O1.
+# demotion_control 0x2 = BL1_VALID 0, BL1_ENABLE 1, BL2 pair 0.
 image_asserts = [
   { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0x2 } },
   { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x4 } },
@@ -107,7 +107,7 @@ timeout = 180
 expect_verdict = "PASSED"
 pytest_markers = ["needs_debug"]
 efuse = { sboot_dis = 1 }
-# demotion_control 0x3 = BL1_VALID 1, BL1_ENABLE 1, BL2 pair 0; outcome O2a.
+# demotion_control 0x3 = BL1_VALID 1, BL1_ENABLE 1, BL2 pair 0.
 image_asserts = [
   { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0x3 } },
   { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x2 } },
@@ -203,7 +203,7 @@ timeout = 180
 expect_verdict = "PASSED"
 pytest_markers = ["needs_debug"]
 efuse = { sboot_dis = 1 }
-# demotion_control 0xE = BL1_VALID 0, BL1_ENABLE 1, BL2 pair 1; outcome O4.
+# demotion_control 0xE = BL1_VALID 0, BL1_ENABLE 1, BL2 pair 1.
 image_asserts = [
   { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0xE } },
   { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x2 } },
@@ -299,7 +299,7 @@ timeout = 180
 expect_verdict = "PASSED"
 pytest_markers = ["needs_debug"]
 efuse = { sboot_dis = 1 }
-# demotion_control 0x2 = BL1_VALID 0, BL1_ENABLE 1, BL2 pair 0; outcome O5.
+# demotion_control 0x2 = BL1_VALID 0, BL1_ENABLE 1, BL2 pair 0.
 image_asserts = [
   { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0x2 } },
   { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x2 } },
@@ -394,7 +394,7 @@ timeout = 180
 expect_verdict = "PASSED"
 pytest_markers = ["needs_debug"]
 efuse = { sboot_dis = 1 }
-# demotion_control 0x1 = BL1_VALID 1, BL1_ENABLE 0, BL2 pair 0; outcome O3a.
+# demotion_control 0x1 = BL1_VALID 1, BL1_ENABLE 0, BL2 pair 0.
 image_asserts = [
   { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0x1 } },
   { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x2 } },
@@ -490,7 +490,7 @@ timeout = 180
 expect_verdict = "PASSED"
 pytest_markers = ["needs_debug"]
 efuse = { sboot_dis = 1 }
-# demotion_control 0xF = BL1_VALID 1, BL1_ENABLE 1, BL2 pair 1; outcome O2b.
+# demotion_control 0xF = BL1_VALID 1, BL1_ENABLE 1, BL2 pair 1.
 image_asserts = [
   { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0xF } },
   { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x2 } },
@@ -586,7 +586,7 @@ timeout = 180
 expect_verdict = "PASSED"
 pytest_markers = ["needs_debug"]
 efuse = { lc_state = "PROD_END" }
-# demotion_control 0x0 = BL1_VALID 0, BL1_ENABLE 0, BL2 pair 0; outcome O1.
+# demotion_control 0x0 = BL1_VALID 0, BL1_ENABLE 0, BL2 pair 0.
 image_asserts = [
   { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0x0 } },
   { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x4 } },
@@ -676,7 +676,7 @@ timeout = 180
 expect_verdict = "PASSED"
 pytest_markers = ["needs_debug"]
 efuse = { lc_state = "PROD_END" }
-# demotion_control 0x1 = BL1_VALID 1, BL1_ENABLE 0, BL2 pair 0; outcome O1.
+# demotion_control 0x1 = BL1_VALID 1, BL1_ENABLE 0, BL2 pair 0.
 image_asserts = [
   { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0x1 } },
   { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x4 } },
@@ -766,7 +766,7 @@ timeout = 180
 expect_verdict = "PASSED"
 pytest_markers = ["needs_debug"]
 efuse = { lc_state = "PROD_END" }
-# demotion_control 0xC = BL1_VALID 0, BL1_ENABLE 0, BL2 pair 1; outcome O1.
+# demotion_control 0xC = BL1_VALID 0, BL1_ENABLE 0, BL2 pair 1.
 image_asserts = [
   { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0xC } },
   { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x4 } },
@@ -856,7 +856,7 @@ timeout = 180
 expect_verdict = "PASSED"
 pytest_markers = ["needs_debug"]
 efuse = { sboot_dis = 1 }
-# demotion_control 0xD = BL1_VALID 1, BL1_ENABLE 0, BL2 pair 1; outcome O3b.
+# demotion_control 0xD = BL1_VALID 1, BL1_ENABLE 0, BL2 pair 1.
 image_asserts = [
   { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0xD } },
   { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x2 } },
@@ -952,7 +952,7 @@ timeout = 180
 expect_verdict = "PASSED"
 pytest_markers = ["needs_debug"]
 efuse = { lc_state = "PROD_END" }
-# demotion_control 0x3 = BL1_VALID 1, BL1_ENABLE 1, BL2 pair 0; outcome O1.
+# demotion_control 0x3 = BL1_VALID 1, BL1_ENABLE 1, BL2 pair 0.
 image_asserts = [
   { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0x3 } },
   { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x4 } },
@@ -1042,7 +1042,7 @@ observation = "complete"
 timeout = 180
 expect_verdict = "PASSED"
 pytest_markers = ["needs_debug"]
-# demotion_control 0x1 = BL1_VALID 1, BL1_ENABLE 0, BL2 pair 0; outcome O3a.
+# demotion_control 0x1 = BL1_VALID 1, BL1_ENABLE 0, BL2 pair 0.
 image_asserts = [
   { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0x1 } },
   { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x2 } },
@@ -1133,7 +1133,7 @@ observation = "complete"
 timeout = 180
 expect_verdict = "PASSED"
 pytest_markers = ["needs_debug"]
-# demotion_control 0x0 = BL1_VALID 0, BL1_ENABLE 0, BL2 pair 0; outcome O5.
+# demotion_control 0x0 = BL1_VALID 0, BL1_ENABLE 0, BL2 pair 0.
 image_asserts = [
   { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0x0 } },
   { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x2 } },
@@ -1223,7 +1223,7 @@ timeout = 180
 expect_verdict = "PASSED"
 pytest_markers = ["needs_debug"]
 efuse = { sboot_dis = 1 }
-# demotion_control 0xC = BL1_VALID 0, BL1_ENABLE 0, BL2 pair 1; outcome O4.
+# demotion_control 0xC = BL1_VALID 0, BL1_ENABLE 0, BL2 pair 1.
 image_asserts = [
   { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0xC } },
   { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x2 } },

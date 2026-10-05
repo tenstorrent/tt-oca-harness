@@ -816,20 +816,20 @@ def test_dir_rejects_an_empty_directory(tmp_path):
         load_testlist_dir(tmp_path)
 
 
-def test_xfail_reason_must_cite_a_dv_b_number(tmp_path):
+def test_xfail_reason_must_state_a_reason(tmp_path):
     path = _write(tmp_path, "payload_metadata", "a")
-    path.write_text(path.read_text() + 'xfail_reason = "ROM accepts it"\n')
-    with pytest.raises(ValueError, match="B-number"):
+    path.write_text(path.read_text() + 'xfail_reason = " "\nxfail_match = "x"\n')
+    with pytest.raises(ValueError, match="xfail_reason must be a non-empty string"):
         load_testlist(path, known_images={"signed"})
     path.write_text(
-        path.read_text().replace("ROM accepts it", "DV B7: ROM accepts it") + 'xfail_match = "x"\n'
+        path.read_text().replace('xfail_reason = " "', 'xfail_reason = "ROM accepts it"')
     )
-    assert load_testlist(path, known_images={"signed"})[0].xfail_reason.startswith("DV B7")
+    assert load_testlist(path, known_images={"signed"})[0].xfail_reason == "ROM accepts it"
 
 
 def test_xfail_match_is_required_with_xfail_reason(tmp_path):
     path = _write(tmp_path, "payload_metadata", "a")
-    path.write_text(path.read_text() + 'xfail_reason = "DV B7: x"\n')
+    path.write_text(path.read_text() + 'xfail_reason = "ROM accepts it"\n')
     with pytest.raises(ValueError, match="xfail_match"):
         load_testlist(path, known_images={"signed"})
 
@@ -844,7 +844,7 @@ def test_xfail_match_is_forbidden_without_xfail_reason(tmp_path):
 @pytest.mark.parametrize("value", ['""', "5", '"("'])
 def test_xfail_match_must_be_a_compilable_regex(tmp_path, value):
     path = _write(tmp_path, "payload_metadata", "a")
-    path.write_text(path.read_text() + f'xfail_reason = "DV B7: x"\nxfail_match = {value}\n')
+    path.write_text(path.read_text() + f'xfail_reason = "ROM accepts it"\nxfail_match = {value}\n')
     with pytest.raises(ValueError, match="xfail_match"):
         load_testlist(path, known_images={"signed"})
 
@@ -852,7 +852,8 @@ def test_xfail_match_must_be_a_compilable_regex(tmp_path, value):
 def test_xfail_match_loads_as_a_regex_string(tmp_path):
     path = _write(tmp_path, "payload_metadata", "a")
     path.write_text(
-        path.read_text() + 'xfail_reason = "DV B7: x"\nxfail_match = "status: \'INFO 0x0055\'"\n'
+        path.read_text()
+        + 'xfail_reason = "ROM accepts it"\nxfail_match = "status: \'INFO 0x0055\'"\n'
     )
     assert load_testlist(path, known_images={"signed"})[0].xfail_match == "status: 'INFO 0x0055'"
 
@@ -1016,7 +1017,7 @@ def test_a_complete_entry_must_declare_its_verdict(tmp_path):
 @pytest.mark.parametrize("value", ['".*"', '"x?"', '"(?:)"'])
 def test_xfail_match_that_matches_an_empty_message_is_refused(tmp_path, value):
     path = _write(tmp_path, "payload_metadata", "a")
-    path.write_text(path.read_text() + f'xfail_reason = "DV B7: x"\nxfail_match = {value}\n')
+    path.write_text(path.read_text() + f'xfail_reason = "ROM accepts it"\nxfail_match = {value}\n')
     with pytest.raises(ValueError, match="matches an empty message"):
         load_testlist(path, known_images={"signed"})
 

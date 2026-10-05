@@ -234,7 +234,7 @@ def _check_toc_field(testcase: RomTestCase, index: int, data: bytes, facts, refe
 
 
 def _check_decrypt_pad(testcase: RomTestCase, index: int, data: bytes) -> None:
-    """Decrypt with the slot's IV and KDF input under the class key the images are packed with."""
+    """Require the slot payload's PKCS#7 pad, decrypted as the ROM would, to match ``valid``."""
     check = testcase.image_asserts[index].decrypt_pad
     valid, _plain = _PM.rom_view_decrypt(data, check.slot)
     if valid != check.valid:

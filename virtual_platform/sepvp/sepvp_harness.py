@@ -4,9 +4,9 @@
 """SepVpHarness — the sep-vp backend for :class:`sepvp.harness.Harness`.
 
 Per run it:
-  1. makes a clean working dir under ``logs/sepvp/<name>/`` (so logs/artifacts don't collide),
-  2. stages the SPI flash image to ``<run_dir>/data/flash_memory.bin`` and names it to the
-     platform via ``spiBackdoorFile``,
+  1. makes a clean working dir ``<paths.LOGS_DIR>/<name>/`` (so logs/artifacts don't collide),
+  2. stages the SPI flash image to ``data/flash_memory.bin`` and any SMC SRAM image to
+     ``data/smc_sram_image.bin``, and names each to the platform by absolute path,
   3. writes an overlay ini (``@include base`` + straps + fuses + absolute targets/
      configFile),
   4. ``pexpect.spawn``s ``sep-vp overlay.ini <abs elf>`` from ``<run_dir>`` so main.cpp
