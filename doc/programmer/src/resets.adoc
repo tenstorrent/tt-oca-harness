@@ -4,7 +4,7 @@
 [[reset-control]]
 == Reset Control
 
-This chapter lists every reset that firmware or a debugger can request in the
+This appendix lists every reset that firmware or a debugger can request in the
 OCA Harness, and the section that gives its programming sequence. Resets from pins and power-good are described in the
 ifdef::backend-html5[]
 xref:ocah-docs::reset.adoc#ocah-reset[Reset chapter]
