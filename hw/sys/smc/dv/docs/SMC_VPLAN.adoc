@@ -127,10 +127,10 @@ Executable membership is resolved from the testlists; the groups and their
 |Group |Role
 |`smoke` |PR gate (`sim.yml`): canonical bring-up, cold reset, and a CSR frontdoor read
 |`hosted` |Nightly and weekly (`regress.yml`): `all` minus the twenty leaves that need the RISC-V toolchain (fifteen `fw` leaves, three dual-target leaves that run a ROM or firmware image, and the two `mmio_wedge` leaves of `cpu`)
-|`sanity` |The three dual-target leaves enrolled in `all`
+|`sanity` |The three dual-target leaves, held out of `all`
 |`occp_rom` |33 of the 34 BL0/SMC ROM cases (`smc_occp_ring_buffer_stress_test` is left out for runtime), including the hours-long dual-SMC unsecure boot
 |`rtl_issue` |Weekly on its own `regress.yml` row: defect reproducers graded under `expect_fail`; no feature credit
-|`all` |The package regression, `hosted` + `fw` + `sanity`; `holdout.toml` defines the non-ROM leaves outside it and <<smc-held-out-testcases>> records the sign-off holdouts
+|`all` |The package regression, `hosted` + `fw`; `holdout.toml` defines the non-ROM leaves outside it, `sanity` holds the dual-target leaves, and <<smc-held-out-testcases>> records the sign-off holdouts
 |===
 
 `smoke` is the three-leaf PR gate (`smc_canonical_smoke_test`,
@@ -8616,7 +8616,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`CHK-DUAL-I3C-IDLE` |The shared I3C0 wired-AND resolves, and resolves high, with no driver
 |===
 
-*Pass Criteria*: `CHK-DUAL-I3C-INDEXING`, `CHK-DUAL-ELAB`, `CHK-DUAL-RESET`, `CHK-DUAL-FUSE-SENSE`, `CHK-DUAL-BOOT-STALL`, `CHK-DUAL-MEM-INIT` (and 1 more) hold after their compares; a bound expiry or an unresolvable sample raises. Enrolled in: `all`, `sanity`.
+*Pass Criteria*: `CHK-DUAL-I3C-INDEXING`, `CHK-DUAL-ELAB`, `CHK-DUAL-RESET`, `CHK-DUAL-FUSE-SENSE`, `CHK-DUAL-BOOT-STALL`, `CHK-DUAL-MEM-INIT` (and 1 more) hold after their compares; a bound expiry or an unresolvable sample raises. Enrolled in: `sanity` only -- held out of `all` because it elaborates `[targets.dual]`, and a coverage regression builds one target per run.
 
 '''''
 
@@ -8655,7 +8655,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`CHK-SCRATCH-BACKDOOR-DECODE` |For every offset, the macro word `smc_scratch_map_pkg` resolves to holds what AXI wrote. Checked only where the AXI readback already matched, so a decode complaint cannot be raised about a write that never took
 |===
 
-*Pass Criteria*: every pattern reads back exactly as written and the backdoor resolves to the same macro word; any mismatch raises. The +0x100 pattern carries the weight: it is the first offset at which a flat 32-bank round-robin model parts from the cluster's four-bank-per-group decode, so a backdoor built on the wrong model agrees with AXI below it and disagrees from there on. `init_mem_done_o` must be 1 on both instances within the watch bound before the first probe access; the watcher raises otherwise. Enrolled in: `all`, `sanity`.
+*Pass Criteria*: every pattern reads back exactly as written and the backdoor resolves to the same macro word; any mismatch raises. The +0x100 pattern carries the weight: it is the first offset at which a flat 32-bank round-robin model parts from the cluster's four-bank-per-group decode, so a backdoor built on the wrong model agrees with AXI below it and disagrees from there on. `init_mem_done_o` must be 1 on both instances within the watch bound before the first probe access; the watcher raises otherwise. Enrolled in: `sanity` only -- held out of `all` because it elaborates `[targets.dual]`, and a coverage regression builds one target per run.
 
 '''''
 
@@ -8689,7 +8689,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`CHK-OCCP-SANITY` |Target and controller scratch 0, sampled together; `TEST_FAIL` from either fails the test
 |===
 
-*Pass Criteria*: `TEST_PASS` reaches a scratch 0 and neither instance reports `TEST_FAIL`. `CHK-OCCP-JUMP-EXECUTED` and `CHK-OCCP-CONTROLLER-NO-FAIL` are *not* carried over from the boot test: nothing executes on the target here, and `occp_sanity/main.c` never writes its own scratch 0, so both would be checks that cannot fail. The firmware consoles, I3C counters and POST code are diagnostic only. Enrolled in: `all`, `sanity`.
+*Pass Criteria*: `TEST_PASS` reaches a scratch 0 and neither instance reports `TEST_FAIL`. `CHK-OCCP-JUMP-EXECUTED` and `CHK-OCCP-CONTROLLER-NO-FAIL` are *not* carried over from the boot test: nothing executes on the target here, and `occp_sanity/main.c` never writes its own scratch 0, so both would be checks that cannot fail. The firmware consoles, I3C counters and POST code are diagnostic only. Enrolled in: `sanity` only -- held out of `all` because it elaborates `[targets.dual]`, and a coverage regression builds one target per run.
 
 '''''
 
@@ -12641,7 +12641,7 @@ the `expected_count` guards in `hw/sys/smc/dv/testlists/all.toml`.
 |`smoke` |PR gate: canonical bring-up, cold reset, and a CSR frontdoor read
 |`hosted` |Nightly and weekly: `all` minus the twenty leaves that need the RISC-V toolchain (fifteen `fw` leaves, three dual-target leaves that run a ROM or firmware image, and the two `mmio_wedge` leaves of `cpu`)
 |`rtl_issue` |Weekly on its own `regress.yml` row: defect reproducers graded under `expect_fail`; no bring-up credit
-|`all` |The package regression, `hosted` + `fw` + `sanity`; `holdout.toml` defines the non-ROM leaves outside it and <<smc-held-out-testcases>> records the sign-off holdouts
+|`all` |The package regression, `hosted` + `fw`; `holdout.toml` defines the non-ROM leaves outside it, `sanity` holds the dual-target leaves, and <<smc-held-out-testcases>> records the sign-off holdouts
 |===
 
 [[smc-canonical-credit]]
@@ -12797,6 +12797,18 @@ Every leaf defined in `testlists/holdout.toml`, plus the hours-long
 `smc_occp_dual_unsecure_boot_test` defined in `testlists/smc_rom.toml`.
 None is a member of `all`; each card below states what a run of the leaf must
 show and records no pass.
+
+The `sanity` group is held out for a different reason, and keeps its cards
+with the feature areas it exercises rather than below. Its three leaves --
+`smc_dual_elaboration_test`, `smc_dual_axi_sram_probe_test` and
+`smc_occp_sanity_test` -- elaborate `[targets.dual]`, while the rest of `all`
+elaborates `[targets.default]`. A regression that collects coverage builds one
+target per run, so a selection spanning both cannot be graded in one pass and
+the dual leaves are measured by selecting `sanity`. They are not waiting on a
+defect or a ruling: each passes on the dual bench. Issue #2479 tracks giving
+the package regression both elaborations, and these three rejoin `all` when it
+closes.
+
 The reproducers are the `rtl_issue` group:
 
 Tests whose job is to fail. Each holds the runnable evidence for one RTL
