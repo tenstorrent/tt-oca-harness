@@ -248,57 +248,6 @@
     color: var(--oca-gold) !important;
 }
 
-/* Home sidebar: a titled list in doc/home/modules/ROOT/nav.adoc (Guides)
-   renders as a section that is always open, with a label rather than a
-   collapsible entry, so the books are visible without scrolling Home. */
-.nav-container[data-component="ocah-home"] .nav-menu > .nav-list > .nav-item[data-depth="0"] > .nav-item-toggle {
-    display: none;
-}
-
-.nav-container[data-component="ocah-home"] .nav-menu > .nav-list > .nav-item[data-depth="0"] > .nav-text ~ .nav-list {
-    display: block;
-}
-
-.nav-container[data-component="ocah-home"] .nav-menu > .nav-list > .nav-item[data-depth="0"] > .nav-text {
-    display: block;
-    margin-top: 1.5rem;
-    padding-top: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-    color: var(--oca-gold) !important;
-    font-size: 0.75rem;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    cursor: default !important;
-}
-
-.nav-container[data-component="ocah-home"] .nav-menu > .nav-list > .nav-item[data-depth="0"] > .nav-text ~ .nav-list > .nav-item > .nav-link {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin: 0 -0.5rem;
-    padding: 0.35rem 0.5rem;
-    border-left: 2px solid transparent;
-    border-radius: 2px;
-}
-
-.nav-container[data-component="ocah-home"] .nav-menu > .nav-list > .nav-item[data-depth="0"] > .nav-text ~ .nav-list > .nav-item > .nav-link::after {
-    content: "\2192";
-    padding-left: 0.5rem;
-    opacity: 0.5;
-}
-
-.nav-container[data-component="ocah-home"] .nav-menu > .nav-list > .nav-item[data-depth="0"] > .nav-text ~ .nav-list > .nav-item > .nav-link:hover,
-.nav-container[data-component="ocah-home"] .nav-menu > .nav-list > .nav-item[data-depth="0"] > .nav-text ~ .nav-list > .nav-item > .nav-link:focus-visible {
-    background-color: rgba(255, 255, 255, 0.08);
-    border-left-color: var(--oca-gold);
-}
-
-.nav-container[data-component="ocah-home"] .nav-menu > .nav-list > .nav-item[data-depth="0"] > .nav-text ~ .nav-list > .nav-item > .nav-link:hover::after,
-.nav-container[data-component="ocah-home"] .nav-menu > .nav-list > .nav-item[data-depth="0"] > .nav-text ~ .nav-list > .nav-item > .nav-link:focus-visible::after {
-    opacity: 1;
-}
-
 /* Home page Guides card (doc/home/src/index.adoc). Shown only below the
    stock theme's 1024px breakpoint, where the sidebar starts hidden; above
    it the sidebar Guides section is on screen instead. */

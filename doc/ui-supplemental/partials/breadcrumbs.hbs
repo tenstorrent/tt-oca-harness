@@ -1,0 +1,37 @@
+{{!-- SPDX-License-Identifier: Apache-2.0 --}}
+{{!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. --}}
+{{!-- Trails start at a Home sidebar group. A book's trail opens with the Home
+     sidebar group and entry that link to the book's start page, in place of
+     the book's own start-page crumb, so a book must be listed in the Home
+     sidebar for its trail to name it. --}}
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  {{#if page.breadcrumbs}}
+  <ul>
+    {{#unless (eq page.component.name 'ocah-home')}}
+    {{#with (lookup site.components 'ocah-home')}}
+    {{#each ./latest.navigation}}
+    {{#each ./items}}
+    {{#each ./items}}
+    {{#if (eq ./url @root.page.componentVersion.url)}}
+    <li>{{{../content}}}</li>
+    <li><a href="{{{relativize ./url}}}">{{{./content}}}</a></li>
+    {{/if}}
+    {{/each}}
+    {{/each}}
+    {{/each}}
+    {{/with}}
+    {{/unless}}
+    {{#each page.breadcrumbs}}
+    {{#unless (and (ne @root.page.component.name 'ocah-home') (eq ./url @root.page.componentVersion.url))}}
+    <li>
+    {{~#if (and ./url (eq ./urlType 'internal'))~}}
+    <a href="{{{relativize ./url}}}">{{{./content}}}</a>
+    {{~else~}}
+    {{{./content}}}
+    {{~/if~}}
+    </li>
+    {{/unless}}
+    {{/each}}
+  </ul>
+  {{/if}}
+</nav>

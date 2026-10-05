@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 name: ocah-integrator-guide
-title: Open Chiplet Atlas (OCA) Harness Integrator Guide
+title: Integrator Guide
 version: latest
 start_page: index.adoc
 nav:

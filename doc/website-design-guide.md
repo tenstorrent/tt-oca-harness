@@ -71,7 +71,7 @@ The navbar contains:
 - Three dropdown menus: 
   - **Guides** links to each book's home page — Getting Started, TRM, Integrator Guide, Programmer's Guide, Application Notes, in that order 
   - **Downloads** PDF downloads for every book that has one — all five except Home
-  - **Datasheets** per-subsystem datasheet PDFs, kept as a separate menu from Downloads for clarity, since combining them read as cluttered.
+  - **Datasheets** per-subsystem datasheet PDFs, kept as a separate menu from Downloads for clarity, since combining them read as cluttered. Entries end in `(PDF)`, as Downloads entries do.
 - A Tenstorrent logo linking to tenstorrent.com.
 
 The Guides/Downloads/Datasheets menus are static, hand-written link lists rather than dynamically generated from Antora's component catalog. 
@@ -92,14 +92,24 @@ This is Antora's native, content-driven navigation tree — generated automatica
 For the book components, this is deliberately kept **flat, at chapter level only** — no deep per-section sub-entries. 
 This matches the single-file PDF's own chapter structure and avoids the numbering/duplication problems that arise if HTML and PDF chapter structures diverge.
 
+`doc/ui-supplemental/partials/nav-tree.hbs` overrides the stock partial so every top-level entry with children starts expanded, in every component; the reader can still collapse it. Deeper levels open only along the current page's path, which keeps the TRM's deep tree manageable.
+
 Getting Started's `nav.adoc` groups its eight sub-pages into two labeled sections rather than a flat list, since Getting Started's content is two audiences' worth of material.
 The matching PDF structure achieves the same visual grouping via two `== ` group headings with `leveloffset=+1` applied to the includes underneath each, so the included 
 pages nest correctly one level below the group heading rather than becoming siblings of it.
 
-Home's `nav.adoc` carries a second, titled list (`.Guides`) that links to each book's start page, in the same order as the navbar's Guides menu, so the books are visible from the Home sidebar without scrolling the page.
+Home's `nav.adoc` has two top-level entries, `Home` and `Guides`, and both collapse and expand the same way. `Guides` is an unlinked entry whose children link to each book's start page, in the same order as the navbar's Guides menu.
 Below the theme's 1024px breakpoint the sidebar starts hidden, so Home's `index.adoc` also carries a `[.home-guides]` list under the intro paragraph; `extra.css` shows it as a card only at those widths and sets it to `display: none` above them.
 All three are hand-written lists, so a new book needs a line in each. The nav entries are `xref:` links, so a renamed or removed book fails the combined build rather than leaving a dead link.
-`extra.css` styles a titled list in the Home sidebar as an always-open section with a label, scoped by the `data-component="ocah-home"` attribute that the stock `nav.hbs` puts on `.nav-container`; other books' sidebars are unaffected.
+
+Book titles in each `antora.yml` omit the "Open Chiplet Atlas (OCA) Harness" prefix, which Home's title already carries; the title heads the book's sidebar and its switcher entry.
+Each book's document title does the same on the website: the `= ` heading in its `src/index.adoc` is the short name under `ifndef::backend-pdf[]` (so the page heading and the browser tab read "Starting with OCAH"), and the full "Open Chiplet Atlas Harness (OCAH): …" title stays inside `ifdef::backend-pdf[]` for the PDF cover.
+
+### Breadcrumbs
+
+`doc/ui-supplemental/partials/breadcrumbs.hbs` overrides the stock partial so every trail starts at one of the Home sidebar's two groups, without the component title in front.
+Home pages read `Home / Feature Overview`; book pages read `Guides / Starting with OCAH / Starting as a user / Environment Setup`.
+A book's first two crumbs are the Home sidebar's `Guides` entry and its child that links to the book's start page, which stands in for the book's own start-page crumb; a book must therefore be listed in Home's `nav.adoc` for its trail to name it.
 
 Below the navigation tree sits a collapsible panel (`.nav-panel-explore`, toggled via the `.context-bar` strip) — Antora's native book/version switcher. 
 It lists every component known to the combined playbook automatically, including Home; adding a new component to `content.sources` is the only thing needed to make it appear here, no additional code.

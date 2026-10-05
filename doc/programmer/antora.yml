@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 name: ocah-programmer-guide
-title: Open Chiplet Atlas (OCA) Harness Programmer's Guide
+title: Programmer's Guide
 version: latest
 start_page: index.adoc
 nav:

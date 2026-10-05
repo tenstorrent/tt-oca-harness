@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+ifdef::backend-pdf[]
 = Open Chiplet Atlas Harness (OCAH): Technical Reference Manual
+endif::[]
+ifndef::backend-pdf[]
+= Technical Reference Manual
+endif::[]
 :doctype: book
 :sectanchors:
 :sectlinks:
