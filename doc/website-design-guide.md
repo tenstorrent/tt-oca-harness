@@ -103,6 +103,7 @@ Below the theme's 1024px breakpoint the sidebar starts hidden, so Home's `index.
 All three are hand-written lists, so a new book needs a line in each. The nav entries are `xref:` links, so a renamed or removed book fails the combined build rather than leaving a dead link.
 
 Book titles in each `antora.yml` omit the "Open Chiplet Atlas (OCA) Harness" prefix, which Home's title already carries; the title heads the book's sidebar and its switcher entry.
+Each book's document title does the same on the website: the `= ` heading in its `src/index.adoc` is the short name under `ifndef::backend-pdf[]` (so the page heading and the browser tab read "Starting with OCAH"), and the full "Open Chiplet Atlas Harness (OCAH): …" title stays inside `ifdef::backend-pdf[]` for the PDF cover.
 
 ### Breadcrumbs
 

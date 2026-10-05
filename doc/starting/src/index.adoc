@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+ifdef::backend-pdf[]
 = Open Chiplet Atlas Harness (OCAH): Starting with OCAH
+endif::[]
+ifndef::backend-pdf[]
+= Starting with OCAH
+endif::[]
 :doctype: book
 :sectanchors:
 :sectlinks:
