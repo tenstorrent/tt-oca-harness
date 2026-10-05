@@ -7,8 +7,8 @@
 //     (TMS held 1), release, leave the TAP in Test-Logic-Reset.
 //   OCAH_JTAG_TRST_LEVEL — drive TRST to `trst_asserted` (trst_n low when
 //     asserted), then hold TMS at `trst_tms` for `trst_tck_cycles` TCK
-//     cycles. TMS 1 is the Test-Logic-Reset self-loop; TMS 0 holds the
-//     controller where it is, so only the reset can move it. Asserting
+//     cycles. TMS 1 is the Test-Logic-Reset self-loop; TMS 0 never enters
+//     Test-Logic-Reset, so only the reset can put the controller there. Asserting
 //     leaves the TAP in Test-Logic-Reset; releasing moves nothing.
 //   OCAH_JTAG_IR_SCAN   — from Run-Test/Idle: load `width` IR bits from
 //     `wdata` (LSB-first), return to Run-Test/Idle. Observed TDO in `tdo`.

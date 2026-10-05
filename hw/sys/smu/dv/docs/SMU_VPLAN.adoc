@@ -3939,7 +3939,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 |Checker |Description
 |`CHK-SEP-LCC-SENSE` |the SEP eFuse sense ran (`sep_fuse_sense_skipped_o` = 0) and completed within its bound; SMC `lc_state` moved off `0x0f` to the table's value for the sensed image and DTP `dbg_disable` moved from not-all-open to the table's value
 |`CHK-SEP-LCC-FW-STAGES` |the firmware cleared all four stages on-chip: FEAT_CTRL readable, DEMOTE_1 locked while clear with the lock read back, the DEMOTE_1 demote write refused (register still clear), and DEMOTE_2 accepted and read back
-|`CHK-SEP-LCC-FANOUT` |`lcc_demote_state_2_o` moved off the baseline and `lcc_demote_state_1_o` held it; SMC `lc_state` and DTP `dbg_disable` hold the table's value for the state; `feat_ctrl` is reported, not asserted on
+|`CHK-SEP-LCC-FANOUT` |`lcc_demote_state_2_o` moved off the baseline and `lcc_demote_state_1_o` held it (the state-matrix leaves, whose unlocked DEMOTE_1 moves that output, are the live control for the hold); SMC `lc_state` and DTP `dbg_disable` hold the table's value for the state; `feat_ctrl` is reported, not asserted on
 |`CHK-SEP-LCC-NONVAC` |every sense claim is a delta against the pre-sense posture sampled at cold-reset release *and* a compare against the lifecycle table's value for the sensed image, and the locked DEMOTE_1 refusing the demote the unlocked DEMOTE_2 takes rules out plain storage
 |===
 
