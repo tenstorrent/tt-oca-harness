@@ -22,7 +22,8 @@ bit0 = <ip>_done (OpenTitan INTR layout).
 
 from __future__ import annotations
 
-from env.sep_seeded_rng import SepSeededRng
+from itertools import combinations
+
 from sep_reg_meta import CSRNG, EDN, HMAC, KMAC, sym
 
 from seq_lib.sep_irq_aggregator_seq import (
@@ -83,23 +84,22 @@ def driven_mask(sources) -> int:
 
 
 class SepIrqFaninCfg:
-    """Seeded selection of the simultaneous cross-IP source subset.
+    """Every simultaneous subset of FANIN_SOURCES, walked on every run.
 
-    Picks a RANDOM subset (size >= 2, so it stays a genuine multi-source fan-in) of
-    FANIN_SOURCES to assert together, plus one baseline source for the non-vacuity
-    single-bit check. Every subset exercises the same anti-alias contract over the
-    full [8:33] region; the randomization varies which non-adjacent bits fan in per
-    seed. Seed + resolved subset logged; regression mode can sweep this via TOML ``reseed = N``.
+    ``subsets`` holds each combination of two or more sources (six pairs, four
+    triples and the full set), so a run proves the exact OR-packing for every
+    combination rather than a seed-drawn one. ``baselines`` holds each source
+    alone for the non-vacuity single-bit check. Nothing here depends on the
+    seed.
     """
 
-    def __init__(self, seed: int) -> None:
-        self.seed = seed
-        rng = SepSeededRng(seed)
-        n = rng.randrange(2, len(FANIN_SOURCES) + 1)
-        self.sources = rng.sample(list(FANIN_SOURCES), n)
-        # Baseline single source for non-vacuity (any one source; reproducible).
-        self.baseline = rng.choice(list(FANIN_SOURCES))
+    def __init__(self) -> None:
+        srcs = list(FANIN_SOURCES)
+        self.subsets = [tuple(c) for n in range(2, len(srcs) + 1) for c in combinations(srcs, n)]
+        self.baselines = tuple(srcs)
 
     def summary(self) -> str:
-        names = ",".join(f"{s.name}[{s.agg_idx}]" for s in self.sources)
-        return f"seed={self.seed} fanin={{{names}}} baseline={self.baseline.name}[{self.baseline.agg_idx}]"
+        return (
+            f"{len(self.baselines)} single sources, {len(self.subsets)} simultaneous "
+            f"subsets of {len(FANIN_SOURCES)} sources"
+        )

@@ -79,8 +79,9 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # Multi-source PIC source-id map + ISR delivery. EL2 firmware registers PIC
 # ISRs for the MUST trio (mailbox[0]=src1, OTBN-done=src30, HMAC-done=src18)
-# plus two seed-selected INTR_TEST extras from the eight-member pool
-# (DMA done/chunk/error, HMAC-err, KMAC, CSRNG, EDN, KMAC-err), and proves the source->PIC-id map
+# plus all eight INTR_TEST extras (DMA done/chunk/error, HMAC-err, KMAC, CSRNG,
+# EDN, KMAC-err) on every seed; the seed sets only the order of the extras.
+# Proves the source->PIC-id map
 # (id == sep_internal_interrupts idx + 1) + real ISR claim + IP RW1C-clear
 # + one-hot isolation + no re-fire storm. mailbox via a real FIFO push;
 # others via INTR_TEST. cpu run mode; +skip_fuse_sense (no OTP read).
