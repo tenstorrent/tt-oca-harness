@@ -214,7 +214,7 @@ class sep_mixed_failure_primary_backup_test(sep_backup_manifest_fail_base):
             f"integrity verdict. Observed {[hex(v) for v in status_seq]}"
         )
         self.logger.info(
-            "CHK-PRIMARY-STATUS: cold_scratch[1] held 0x%08x then 0x%08x -- the "
+            "CHK-PRIMARY-STATUS: cold_scratch[1] held 0x%08x and 0x%08x -- the "
             "integrity check was entered and reported its own rejection on the "
             "architected channel",
             entered,

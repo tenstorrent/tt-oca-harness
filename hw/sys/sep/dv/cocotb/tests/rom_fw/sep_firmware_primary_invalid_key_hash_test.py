@@ -98,8 +98,9 @@ class sep_firmware_primary_invalid_key_hash_test(sep_rom_ot_dma_boot_test):
         assert sboot_dis == 0, (
             f"SBOOT_DIS is {sboot_dis}: the crypto chain would be skipped entirely"
         )
-        # Both of these are evaluated before the key bind and would end the run
-        # first, making the verdict unattributable.
+        # Revocation and anti-rollback run after the key bind. With both fuses
+        # clear, a primary that passes the bind by mistake reaches RSA_EXEC before
+        # the backup read, which check_transport() catches.
         assert bl1_ver == 0, (
             f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: anti-rollback cannot reject a "
             f"manifest when the device carries no security flags, and that is what "
@@ -107,8 +108,8 @@ class sep_firmware_primary_invalid_key_hash_test(sep_rom_ot_dma_boot_test):
         )
         assert revoke == 0, (
             f"CHIPLET_PUBK_REVOKE is 0x{revoke:x}, expected 0: revocation runs "
-            f"before the hash bind, and the backup must "
-            f"be able to use slot 0"
+            f"after the hash bind, so a set bit could refuse a primary that wrongly "
+            f"passed the bind, and the backup must be able to use slot 0"
         )
         self.logger.info(
             "CHK-STIMULUS-EFUSE: LC raw=0x%x (PROD), SBOOT_DIS=%d, "

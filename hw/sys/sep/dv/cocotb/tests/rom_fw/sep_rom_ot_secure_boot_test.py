@@ -28,10 +28,9 @@ from rom_fw.sep_rom_ot_dma_boot_test import (
 
 # Emitted only on the signed path.
 #
-# PUBK_AUTHORIZED is the one worth having beyond the RSA pair: it says the key was
-# matched against a trust anchor -- a ROM digest or an OTP hash bank -- rather
-# than merely carried by the manifest. A boot that verified a signature made by a
-# key nothing vouched for would print RSA_VERIFY_OK and not this.
+# PUBK_AUTHORIZED says the key matched a trust anchor (a ROM digest or an OTP
+# hash bank), not only that the manifest carried it. A signature made by a key
+# nothing vouches for prints RSA_VERIFY_OK without it.
 _PUBK_AUTH = "PUBK_AUTHORIZED"
 _ENTROPY_OK = "ENTROPY_OK"
 _RSA_EXEC = "RSA_EXEC"

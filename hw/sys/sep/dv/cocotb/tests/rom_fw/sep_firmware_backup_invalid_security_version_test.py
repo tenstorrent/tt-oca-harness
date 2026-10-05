@@ -33,7 +33,7 @@ _EFUSE_PRELOAD = (
 )
 
 # Fuse thermometer count in the preload above, and the version planted in the
-# backup manifest. The ROM rejects when manifest < fuse.
+# backup manifest. 3 (0b11) lacks fuse flags 2..7, so the superset check refuses it.
 _FUSE_SECURITY_VERSION = 8
 _BACKUP_SECURITY_VERSION = 3
 
@@ -58,7 +58,7 @@ class sep_firmware_backup_invalid_security_version_test(sep_backup_manifest_fail
         mm.verify_layout(buf, "backup")
         self.logger.info(
             "CHK-STIMULUS-VERSION: backup security_version=%d vs fuse count %d "
-            "(reject expected because %d < %d), signed region re-hashed",
+            "(reject expected: %d lacks fuse flags that count %d sets), signed region re-hashed",
             _BACKUP_SECURITY_VERSION,
             _FUSE_SECURITY_VERSION,
             _BACKUP_SECURITY_VERSION,
@@ -87,9 +87,8 @@ class sep_firmware_backup_invalid_security_version_test(sep_backup_manifest_fail
 
     def _check(self, console, status_seq, fw_done, fw_pass, retired) -> None:
         super()._check(console, status_seq, fw_done, fw_pass, retired)
-        # The two values the ROM actually compared. Without these the test would
-        # accept a VERSION_ROLLBACK produced by any version pair, including one
-        # this stimulus did not create.
+        # The two values the ROM compared. They tie the rollback verdict to the
+        # version pair this stimulus created.
         fuse_marker = f"FUSE_VER=0x{self._fuse_version_word:08x}"
         mfst_marker = f"MFST_VER=0x{_BACKUP_SECURITY_VERSION:08x}"
         for marker in (fuse_marker, mfst_marker):

@@ -44,10 +44,9 @@ _SRAM_SCOPE = ("u_dut", "u_sep_ip_integration", "u_sep_sram")
 _SRAM_GEN = "gen_ram_inst"
 _SRAM_LEAF = ("u_mem", "mem")
 
-# Scoreboard sampling period, in clocks. The two windows this has to resolve are
-# ~30k cycles (primary DMA -> clear start) and >=1.4k cycles (clear end -> backup
-# fetch), both measured on this testbench. 100 is well inside
-# the smaller of the two and costs two VPI reads per sample.
+# Scoreboard sampling period, in clocks. It must be shorter than the smaller of
+# the two windows the scoreboard resolves (primary DMA -> clear start, clear end
+# -> backup fetch). Each sample costs two VPI reads.
 _SAMPLE_EVERY = 100
 
 # An erased primary slot: what the flash device returns, and therefore what the
@@ -119,11 +118,9 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
             raise AssertionError(
                 f"cannot reach the SEP SRAM array from cocotb.top; the walk reached "
                 f"{'.'.join(walked)} and then failed with {type(exc).__name__}: {exc}. "
-                f"The built model does register this scope -- see "
-                f'Vtop__Syms__ctor__1__Slow.cpp varInsert("mem", ...) under '
-                f"sep_uvm_top.u_dut.u_sep_ip_integration.u_sep_sram.gen_ram_inst[0].u_mem "
-                f"-- so a failure here means the public scope in "
-                f"hw/sys/sep/dv/sep_public_scope.vlt changed, not that the test is wrong"
+                f"The array is reachable only through the public scope in "
+                f"hw/sys/sep/dv/sep_public_scope.vlt (prim_ram_1p mem public_flat_rw); "
+                f"check that file"
             ) from exc
         self.logger.info("CHK-SRAM-HANDLE: resolved %s", ".".join(walked))
         return node
@@ -345,7 +342,7 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
         )
         self.logger.info(
             "CHK-SRAM-CLEARED: at t=%sns all %d words (0x%08x..0x%08x, %d KiB) read 0 "
-            "-- the clear pattern is zero, which answers TP080's open item",
+            "-- the clear pattern is zero",
             self._cleared["time_ns"],
             _SRAM_WORDS,
             _SRAM_BASE,
@@ -373,8 +370,8 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
         self.logger.info(
             "CHK-CLEAR-WINDOW: the clear completed at t=%sns, after %r and before %r "
             "-- i.e. inside the primary-fail -> backup-retry window. boot_flash_reinit() "
-            "is the instruction immediately after the store loop "
-            "(boot_rom.dis 10042750 -> 10042754), so it had not yet been called",
+            "is the next call after clear_sram_region() in rom_manifest_boot() "
+            "(oca_boot.c), so it had not yet been called",
             self._cleared["time_ns"],
             _PRIMARY_ERR,
             _BACKUP_LABEL,

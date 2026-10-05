@@ -104,11 +104,10 @@ class sep_firmware_primary_invalid_security_version_test(sep_primary_fail_backup
         )
 
     def prepare_backup(self, buf: bytearray) -> None:
-        # Anchor first: verify_sealed proves the offsets address the fields they
-        # claim, and verify_signing_key proves the local signer reproduces the
-        # packer's signature byte for byte. Without the second, a re-seal would be
-        # an unverified claim whose failure mode -- the ROM refusing the backup as
-        # SIG_FAILED -- looks like a plausible negative-test result.
+        # verify_sealed checks that the offsets address the fields they claim, and
+        # verify_signing_key checks that the local signer reproduces the packer's
+        # signature byte for byte. A bad re-seal makes the ROM refuse the backup as
+        # SIG_FAILED, which looks like a negative-test result.
         pm.verify_sealed(buf, "backup")
         pm.verify_signing_key(buf, "backup")
         before = mm.security_version(buf, "backup")

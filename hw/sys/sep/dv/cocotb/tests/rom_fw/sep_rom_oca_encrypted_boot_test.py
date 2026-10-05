@@ -48,11 +48,10 @@ _CLASS_KEY_WORDS = [
 # Printed by plat_decrypt_payload() once the AES engine has drained and the
 # PKCS#7 padding stripped clean.
 _DECRYPT_OK = "DECRYPT_OK"
-# The three ways that callback can fail. Forbidding them individually rather
-# than relying on the boot failing is what separates "decrypted correctly" from
-# "never tried": an unprovisioned CLASS_KEY reads as all-zeroes, which is a
-# refusal the ROM makes deliberately (DECRYPT_CLASS_KEY_EMPTY) rather than a
-# key it would derive from.
+# Two of the four refusals that callback prints; KDF_FAIL and AES_DEC_FAIL below
+# are the others. Each is forbidden by name, so "never tried" cannot pass as
+# "decrypted correctly": an unprovisioned CLASS_KEY reads as all-zeroes, and the
+# ROM refuses it (DECRYPT_CLASS_KEY_EMPTY) rather than deriving a key from it.
 _DECRYPT_NO_SECRET = "DECRYPT_NO_SECRET"
 _DECRYPT_KEY_EMPTY = "DECRYPT_CLASS_KEY_EMPTY"
 

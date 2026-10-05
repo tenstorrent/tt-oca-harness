@@ -173,7 +173,7 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
         self.logger.info("KM consumed a genbits word (post-mux handshake)")
 
         assert await self.wait_km_consumed_word(), (
-            "KM consumed a word but never stored it to SRAM (CPU wedged?)"
+            "KM consumed a word but never stored it to KM SRAM word0"
         )
         self.logger.info("KM landed the consumed entropy word in SRAM word0")
 

@@ -49,7 +49,7 @@ class sep_firmware_payload_overlaps_manifest_test(sep_primary_fail_backup_boot_b
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
         for slot in ("primary", "backup"):
             assert not pm.is_encrypted(buf, slot), (
-                f"{slot} payload carries encrypted_payload = 1; this row is the "
+                f"{slot} payload carries encrypted_payload = 1; this test is the "
                 f"PLAINTEXT stimulus and the loaded image ({self.flash_image}) is "
                 f"not the one it is about"
             )

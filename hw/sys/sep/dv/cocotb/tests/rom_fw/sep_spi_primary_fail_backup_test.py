@@ -121,10 +121,9 @@ class sep_spi_primary_fail_backup_test(sep_rom_ot_dma_boot_test):
             f"interrogated the primary address, so it did not fail over FROM it"
         )
         p_idx, p_txn = p_hit
-        # Every byte the device returned for this read, not just the 4 magic bytes:
-        # the ROM fetches the whole manifest body here, so checking the lot
-        # makes the device-side claim ("this address is blank") as strong as the
-        # stimulus self-check already guarantees, instead of resting on it.
+        # Every byte the device returned for this read, not only the 4 magic bytes:
+        # the ROM fetches the whole manifest body here, so the device record shows
+        # the whole body is blank.
         p_all = bytes(p_txn["data_out"])
         assert ev.all_erased(p_all), (
             f"device returned non-erased bytes in the {len(p_all)}-byte read at "

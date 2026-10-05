@@ -234,7 +234,8 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         await ClockCycles(cocotb.top.clk_i, 60 * self._tick)  # ~60 wdt ticks
         count2 = await self.wdt.read(WKUP_COUNT_LO)
         assert count2 > count1, (
-            f"WKUP_COUNT did not advance on clk_wdt: count1={count1} count2={count2}"
+            f"CHK-WKUP-COUNT: WKUP_COUNT did not advance on clk_wdt: "
+            f"count1={count1} count2={count2}"
         )
         intr = await self.wdt.read(INTR_STATE)
         assert (intr & INTR_WKUP_EXPIRED) == 0, (

@@ -46,8 +46,8 @@ _EFUSE_PRELOAD = (
 #
 # The platform reads the LOW 16 BYTES of the 32-byte BL1_VERSION bank, so only
 # these four words of the preload participate. They carry distinct flags, so a
-# manifest omitting any one of them rejects -- which is what makes a truncated
-# read observable through the verdict even though the echo shows 32 bits.
+# manifest that omits any one of them is refused, and a truncated read changes
+# the verdict even though the echo shows only 32 bits.
 _DEVICE_FLAGS = 0x0000000F_00000007_00000003_00000001
 _FUSE_VER_ECHO = f"FUSE_VER=0x{_DEVICE_FLAGS & 0xFFFF_FFFF:08x}"
 _MFST_VER_ECHO = f"MFST_VER=0x{_DEVICE_FLAGS & 0xFFFF_FFFF:08x}"
@@ -78,9 +78,10 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
         "BL1_COPIED",
         "BL1_JUMP=",
     )
-    # VERSION_ROLLBACK is the load-bearing forbid: it is the arm this boundary must
-    # NOT take. The rest exclude a boot that completed for some other reason -- a
-    # failover, a skipped crypto chain, or a different rejecting arm firing first.
+    # MANIFEST_ERR= excludes every manifest refusal, which includes the rollback
+    # refusal this boundary must not take. The rest exclude a boot that completed
+    # for another reason: a failover, a skipped crypto chain, or a different
+    # rejecting arm that fires first.
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
         "SBOOT_OFF",
         "FUSE: SBOOT_DIS: 1",
@@ -122,7 +123,7 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
         assert low16 == _DEVICE_FLAGS, (
             f"BL1_VERSION's low 16 bytes are 0x{low16:032x}, expected "
             f"0x{_DEVICE_FLAGS:032x}: the device flags must EQUAL what this testcase "
-            f"writes into both manifests, or the run is no longer the accept boundary"
+            f"writes into both manifests, or the run does not sit on the accept boundary"
         )
         assert all(words), (
             f"BL1_VERSION's low 16 bytes have an empty word ({[hex(w) for w in words]}): "
@@ -153,10 +154,10 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
 
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
         for slot in ("primary", "backup"):
-            # Anchor before mutating: the shipped slot is fully sealed, its modulus
-            # is the dev0 key the ROM has in slot 0, and the local signer reproduces
-            # the packer's own signature byte for byte. Only then is a re-seal a
-            # sound operation rather than an assumption.
+            # A re-seal reproduces a valid slot only when the shipped slot is fully
+            # sealed, carries the dev0 modulus the ROM holds in slot 0, and the local
+            # signer reproduces the packer's signature byte for byte. Check all three
+            # before mutating.
             pm.verify_sealed(buf, slot)
             mm.verify_public_key(buf, slot)
             pm.verify_signing_key(buf, slot)
@@ -219,10 +220,9 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
             f"{_RSA_VERIFY_OK}@{i_sig} -> {_CRYPTO_OK}@{i_ok}. Console: {console}"
         )
         # CHK-ROLLBACK-AFTER-KEYSEL-BEFORE-SIGNATURE: anti-rollback sits BETWEEN
-        # root-key authorization and the signature. Both halves are load-bearing and
-        # neither is inherited: the key-selection testcases rely on reaching the key
-        # decision before this check can reject, and the reject siblings rely on a
-        # rolled-back manifest never being handed to the verifier.
+        # root-key authorization and the signature. The key-selection testcases need
+        # the key decision before this check can reject, and the reject siblings need
+        # a rolled-back manifest never to reach the verifier.
         assert 0 <= i_sel < i_fuse < i_rsa, (
             f"the version comparison is not between key selection and the "
             f"verifier: {_PUBK_SEL}@{i_sel} -> {_FUSE_VER_ECHO}@{i_fuse} -> "
@@ -245,7 +245,8 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
             )
         self.logger.info(
             "CHK-ROLLBACK-BOUNDARY: primary@%d -> %s@%d -> %s@%d (equal, so accepted) "
-            "-> %s@%d -> %s@%d -> %s@%d, each exactly once; and it followed %s@%d",
+            "-> %s@%d -> %s@%d -> %s@%d; FUSE_VER= twice (recheck after the signature), "
+            "the others once; and it followed %s@%d",
             i_psrc,
             _MFST_VER_ECHO,
             i_mfst,

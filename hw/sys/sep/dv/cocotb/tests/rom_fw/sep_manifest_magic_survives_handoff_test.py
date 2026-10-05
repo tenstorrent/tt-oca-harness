@@ -48,8 +48,8 @@ class sep_manifest_magic_survives_handoff_test(sep_rom_ot_dma_boot_test):
         assert magic == expected, (
             f"SEP SRAM word 0 is {magic!r} (word0=0x{word0:016x}), expected "
             f"{expected!r}. bl0_state.sep_sram_manifest_addr points here, so BL1 "
-            f"was handed a manifest that no longer parses. The [S29] ICCM pad "
-            f"filled from the staged body -- see sep_dma_zero()."
+            f"was handed a manifest that no longer parses. A [S29] ICCM pad fill "
+            f"sourced from SEP SRAM word 0 (sep_dma_zero()) overwrites the staged body."
         )
         self.logger.info(
             "CHK-MANIFEST-INTACT PASS: SRAM word 0 = %r after hand-off (word0=0x%016x)",

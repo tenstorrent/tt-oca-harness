@@ -9,9 +9,9 @@ are byte-identical. ``sep_efuse_lc_prod_chiplet_key0_wrong_digest.toml`` puts a 
 digest bind on both slots and ends in ``MANIFEST_ALL_FAILED`` with
 ``MANIFEST_ERR_KEY_HASH_MISMATCH``. A ROM that compares against the compiled-in table
 (``public_key_digests[0]``) or reads the wrong chiplet fuse boots, violating the terminal-refusal
-contract. The sibling ``sep_firmware_chiplet_pubkey_0_test`` tells those two apart. This fuse image matches
-``sep_efuse_lc_prod_chiplet_key1.toml``, so ``sep_firmware_chiplet_pubkey_1_test`` is the
-fuse-side pair: one fuse image, opposite verdicts.
+contract. The sibling ``sep_firmware_chiplet_pubkey_0_test`` tells those two apart. This fuse
+image matches ``sep_efuse_lc_prod_chiplet_key1.toml``, so ``sep_firmware_chiplet_pubkey_1_test``
+is the fuse-side pair: one fuse image, opposite verdicts.
 
 Not caught: a fuse-digest base 0x10 below ``CHIPLET_PUBK_HASH0`` reads a digest that matches
 nothing and gives the same ``PUBK_UNAUTHORIZED`` result. The positive members catch a malformed
@@ -21,8 +21,9 @@ Authorization runs before revocation, so ``PUBK_REVOKE=`` must be absent, ``CHIP
 bits 16 and 17 are clear, and ``KEY_REVOKED`` is forbidden. Bit 0 (ROM dev key 0) is blown: a ROM
 that ignored the selector and took the ROM-key arm would refuse with ``KEY_REVOKED``. ``RSA_EXEC``
 and ``RSA_VERIFY_OK`` are forbidden, because the digest bind precedes ``rsa_3072_verify``; no
-``+esrc_noise_force`` is needed. ``PUBK_HASH_TIMEOUT`` is forbidden, so the SHA-256 timeout path
-is named on the console.
+``+esrc_noise_force`` is needed. ``PUBK_HASH_TIMEOUT`` is forbidden: a SHA-256 timeout returns a
+different error code, so the required code already excludes it, and the forbidden token names that
+path on the console.
 """
 
 from __future__ import annotations
@@ -155,10 +156,10 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
         )
         assert h1 == want, (
             f"CHIPLET_PUBK_HASH1 is 0x{h1:064x}, expected the REAL dev0 digest "
-            f"0x{want:064x}. The unselected fuse holds the real digest on purpose: "
-            f"it is what makes a ROM that read the WRONG chiplet fuse address boot "
-            f"and so fail this testcase. Putting a second decoy here would leave "
-            f"only the compiled-in-table class detectable"
+            f"0x{want:064x}. The unselected fuse holds the real digest, so a ROM "
+            f"that reads the WRONG chiplet fuse address boots and fails this "
+            f"testcase; a second decoy here would leave only the compiled-in-table "
+            f"class detectable"
         )
         bl1_ver = image.field_int("BL1_VERSION")
         assert bl1_ver == 0, (

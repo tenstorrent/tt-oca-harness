@@ -143,8 +143,8 @@ def require_classic(buf: bytes, slot: str):
     if v.magic != K.OCAC_MAGIC:
         raise AssertionError(
             f"{slot} manifest is {v.format_name}; field-level mutation is "
-            f"classic-only because constants.py does not publish per-field PQC "
-            f"offsets yet. Geometry (slot_span, erase_slot) works for both."
+            f"classic-only because constants.py publishes no per-field PQC "
+            f"offsets. Geometry (slot_span, erase_slot) works for both."
         )
     return v
 

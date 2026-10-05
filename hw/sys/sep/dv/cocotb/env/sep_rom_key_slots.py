@@ -146,5 +146,5 @@ def _check_index(index: int) -> None:
         raise AssertionError(
             f"ROM key slot {index} is outside the table [0, "
             f"{mm.PUBK_SEL_NUM_ROM_KEYS}); an out-of-range index is the separate "
-            f"BAD_KEY_IDX arm, not a key binding"
+            f"PUBK_SLOT_RESERVED refusal, not a key binding"
         )

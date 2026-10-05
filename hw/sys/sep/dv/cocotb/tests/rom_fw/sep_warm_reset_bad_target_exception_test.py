@@ -7,9 +7,9 @@ corrupted handler slot would. ``sep_scratch_7_test`` covers the accept arm with 
 instruction at the target.
 
 The trap lands in ``trap_vector_early`` (``vector.S``): the warm path jumps away before
-``cold_boot`` installs the stack-using handler. That handler writes status, ``mcause``,
-``mtval``, ``mepc`` and status again into cold_scratch[1], which the testbench samples on
-every cycle, so the test requires ``mepc`` to equal the seeded address. No
+``cold_boot`` installs the stack-using handler. ``trap_vector_early`` writes status,
+``mcause``, ``mtval``, ``mepc`` and status again into cold_scratch[1], which the testbench
+samples on every cycle, so the test requires ``mepc`` to equal the seeded address. No
 ``+sep_iccm_word`` is passed and ``stage_tcm`` is off: ``sep_itcm.hex`` is the ROM's own
 .text, so staging would put real code at the target. ICCM then keeps its all-zero default
 with valid ECC, and an all-zero word is an illegal RISC-V instruction.

@@ -50,8 +50,8 @@ class sep_firmware_backup_rom_key_index_invalid_test(sep_backup_manifest_fail_ba
     backup_defect_marker = "PUBK_SLOT_RESERVED"
     expected_error = MANIFEST_ERR_KEY_UNAUTHORIZED
     efuse_preload = _EFUSE_PRELOAD
-    # PUBK_REVOKE= and PUBK_SLOT_UNPROVISIONED are the load-bearing pair: they are the next
-    # two things an accepted index would have caused, and an out-of-range index
+    # PUBK_REVOKE= and PUBK_SLOT_UNPROVISIONED are the next two things an
+    # accepted index would have caused, and an out-of-range index
     # reaching either would be indexing past its own table. The rest are the arms
     # that would make the verdict mean something other than "the index was out of
     # range".

@@ -46,9 +46,8 @@ class sep_bl1_size_invalid_test(sep_bl1_image_invalid_base):
         was = pm.set_bl1_zero_length(buf, slot)
         assert was == before
         assert pm.bl1_field(buf, slot, pm.E_LENGTH) == 0
-        # The entry must still be a SEP BL1 entry: find_image() locates it by type,
-        # so a mutation that damaged the type would raise there rather than here,
-        # but stating it makes the "size is the only defect" claim explicit.
+        # The entry must still be a SEP BL1 entry, so length is the only defect;
+        # find_image() locates it by type and raises on a damaged type.
         # entry_type, not bl1_field: the type is a 16-byte string, and bl1_field
         # reads u64 fields.
         got_type = pm.entry_type(buf, pm.find_image(buf, slot))

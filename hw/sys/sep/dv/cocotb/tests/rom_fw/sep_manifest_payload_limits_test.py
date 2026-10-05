@@ -116,7 +116,7 @@ class sep_manifest_payload_limits_test(sep_backup_payload_fail_base):
         at = base + pm.OFF_PAYLOAD_OFFSET
         sealed = int.from_bytes(bytes(buf[at : at + 8]), "little", signed=True)
         pool = tuple(sealed + k * _WORD for k in _BACKUP_WRAPS)
-        # At least one slot carries the 32-bit wrap this row exists for.
+        # At least one slot carries a 32-bit wrap.
         if self._primary_wraps:
             pool += (_INT64_MAX,)
         offset = self._rng.choice(pool)

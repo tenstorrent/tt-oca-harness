@@ -131,7 +131,7 @@ class sep_efuse_image_test(sep_base_test):
         await self.start_seq(rd)
         got = rd.rdata & 0xFFFF_FFFF
         assert ((got >> (nc_a % 32)) & 1) and ((got >> (nc_b % 32)) & 1), (
-            f"after programming bit {nc_b}, earlier bit {nc_a} is not "
+            f"CHK-W1S-NOCLOBBER FAIL: after programming bit {nc_b}, earlier bit {nc_a} is not "
             f"set (direct OTP word {nc_word} = 0x{got:08x}); bank must be OR, not overwrite"
         )
 

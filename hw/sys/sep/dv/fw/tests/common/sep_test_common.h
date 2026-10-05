@@ -46,11 +46,11 @@ static inline void test_log(const char *msg) {
 
 // Test completion helpers
 static inline void test_pass(const char *test_name) {
-    printf("✅ PASS: %s\n", test_name);
+    printf("PASS: %s\n", test_name);
 }
 
 static inline void test_fail(const char *test_name) {
-    printf("❌ FAIL: %s\n", test_name);
+    printf("FAIL: %s\n", test_name);
 }
 
 #endif // SEP_TEST_COMMON_H

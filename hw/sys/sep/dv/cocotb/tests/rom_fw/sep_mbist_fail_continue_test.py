@@ -93,10 +93,9 @@ class sep_mbist_fail_continue_test(sep_rom_ot_dma_boot_test):
     async def _gate_monitor(self) -> None:
         """Record every change of cold_scratch[1], SMC scratch[10] and the DFT word.
 
-        Continuous sampling is required, not stylistic: cold_scratch[1] is
-        overwritten by each subsequent report_status(), and on this arm the boot
-        CONTINUES, so the WARN word is guaranteed to be gone by the end of the run.
-        A single final read could not see it.
+        cold_scratch[1] is overwritten by each later report_status(), and on this
+        arm the boot continues, so the WARN word is gone by the end of the run. A
+        single final read cannot see it, so the monitor samples every cycle.
         """
         dut = cocotb.top
         smc_mem = self.cfg.smc_mem

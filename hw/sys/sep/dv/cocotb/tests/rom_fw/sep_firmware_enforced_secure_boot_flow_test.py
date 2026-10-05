@@ -72,14 +72,13 @@ class sep_firmware_enforced_secure_boot_flow_test(sep_rom_ot_dma_boot_test):
         bl1_ver = image.field_int("BL1_VERSION")
         revoke = image.field_int("CHIPLET_PUBK_REVOKE")
         assert lc == 0x1, (
-            f"LC_STATE raw is 0x{lc:x}, expected 0x1 (PROD). Under TEST_DEV the "
-            f"manifest flag would explain the crypto chain running, so the "
-            f"enforcement arm would be untested and this test would duplicate "
-            f"sep_rom_ot_secure_boot_test"
+            f"LC_STATE raw is 0x{lc:x}, expected 0x1 (PROD): the test covers the "
+            f"PROD path through rom_lifecycle_policy and the PROD bit of "
+            f"life_cycle_states; under TEST_DEV it repeats sep_rom_ot_secure_boot_test"
         )
         assert sboot_dis == 0, (
             f"SBOOT_DIS is {sboot_dis}: the chicken bit would disable secure boot "
-            f"and the enforcement arm would never be reached"
+            f"and the crypto chain would never be reached"
         )
         # These two would make the run fail for an unrelated reason, which on a
         # negative-looking marker set is easy to misread as "enforcement broken".

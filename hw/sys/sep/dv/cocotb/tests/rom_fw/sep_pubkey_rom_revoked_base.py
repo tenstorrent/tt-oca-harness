@@ -63,9 +63,9 @@ def select_backup_rom_slot(buf: bytearray, slot_index: int) -> tuple[int, bool]:
         f"{'grafted' if grafted else 'shipped'} backup slot does not select ROM key "
         f"{slot_index}, so this testcase would revoke a slot it never named"
     )
-    # Selector and modulus agree after the graft, so resolving the selector is the
-    # right check and needs no override -- and it is what separates an authorized
-    # manifest the fuse refuses from one the ROM would have refused anyway.
+    # Selector and modulus agree after the graft, so resolving the selector needs
+    # no override; it separates an authorized manifest the fuse refuses from one
+    # the ROM refuses anyway.
     mm.verify_public_key(buf, "backup")
     # Fully sealed, every slot: payload hash, TOC digests, manifest_hash over the signed region
     # and a signature that verifies under the key the slot carries.
@@ -140,9 +140,9 @@ class sep_pubkey_rom_revoked_base(sep_backup_manifest_fail_base):
         expect_grafted = self._REVOKED_SLOT != 0
         assert grafted == expect_grafted, (
             f"slot {self._REVOKED_SLOT}: backup grafted={grafted}, expected "
-            f"{expect_grafted}. The shipped backup manifest no longer selects ROM "
-            f"slot 0 (configs/oca_secure_boot_test.yaml), so this member is no longer "
-            f"testing what its docstring claims"
+            f"{expect_grafted}. The shipped backup manifest does not select ROM "
+            f"slot 0 (configs/oca_secure_boot_test.yaml), so this member does not "
+            f"test what its docstring claims"
         )
         self.logger.info(
             "CHK-STIMULUS-REVOKED-SLOT: backup public_key_sel=0x%04x (ROM key slot "
@@ -174,10 +174,9 @@ class sep_pubkey_rom_revoked_base(sep_backup_manifest_fail_base):
     # --- checks ------------------------------------------------------------
     def _check(self, console, status_seq, fw_done, fw_pass, retired) -> None:
         super()._check(console, status_seq, fw_done, fw_pass, retired)
-        # The selector and the fuse word the ROM actually read. Without these the
-        # KEY_REVOKED verdict could belong to some other slot or some other
-        # bitmap, and this member's "slot N" claim would be unsupported -- which
-        # is exactly the risk a shared implementation introduces.
+        # The selector and the fuse word the ROM read. Without them the
+        # KEY_REVOKED verdict could belong to another slot or another bitmap, and
+        # this member's "slot N" claim would be unsupported.
         for marker in (self._PUBK_SEL_ECHO, self._REVOKE_ECHO):
             assert any(marker in line for line in console), (
                 f"ROM never printed {marker}: the revocation verdict cannot be "

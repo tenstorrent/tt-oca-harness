@@ -79,7 +79,7 @@ class sep_lifecycle_invalid_smc_reset_test(sep_base_test):
         self.write_efuse_image(image)
         self.logger.info(
             "CHK-STIMULUS-LC: preloaded LC_STATE raw=0x%x, which lifecycle.c "
-            "rejects (valid set is 0x0..0x8)",
+            "rejects (valid set is 0x0-0x3 and 0x6-0x8)",
             lc,
         )
 

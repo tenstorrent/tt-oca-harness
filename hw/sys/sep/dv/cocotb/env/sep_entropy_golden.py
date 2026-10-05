@@ -348,7 +348,7 @@ if __name__ == "__main__":
             valids.append(c)
     deltas = [valids[i + 1] - valids[i] for i in range(len(valids) - 1)]
     assert valids and valids[0] == 8, f"first decor-valid at {valids[0]}, expected 8"
-    assert all(d == 8 for d in deltas), f"decor-valid cadence not /8: {deltas}"
+    assert all(d == 8 for d in deltas), f"decor-valid interval is not 8 cycles: {deltas}"
 
     # ----- (b) seed produced after the right number of compressor words -----
     # With whitening + ingress_skip, the FIRST seed completes exactly when the

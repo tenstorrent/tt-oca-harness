@@ -227,7 +227,7 @@ class sep_otbn_rsa_verify_failure_test(sep_backup_manifest_fail_base):
             log.info("CHK-OTBN-%s: %s@%d -> %s@%d", tag.upper(), _RSA_EXEC, x[0], _PKCS1_FAIL, p[0])
 
         log.info(
-            "CHK-OTBN-EXEC-COUNT: %d OTBN execution(s) observed this boot, "
+            "CHK-OTBN-EXEC-COUNT: %d rsa_3072_verify call(s) (RSA_EXEC) observed this boot, "
             "one per slot; indices %s",
             len(execs),
             execs,

@@ -744,7 +744,7 @@ static int chk_host_intg(void) {
 
     uint32_t bus = rd(status_addr);
     if (bus != 0) {
-        sep_mbx_puts("FAIL: CHK-HOSTINTG DMA_BUS_ERR_STATUS=0x");
+        sep_mbx_puts("FAIL: CHK-HOSTINTG DMA_BUS_ERR_STATUS=");
         sep_mbx_puthex(bus);
         sep_mbx_puts(" at baseline, expected 0\n");
         return 1;
@@ -765,14 +765,14 @@ static int chk_host_intg(void) {
                                SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                                SECURE_DMA__DST_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
     if (!(st_intg & DONE_OR_ERR)) {
-        sep_mbx_puts("FAIL: CHK-HOSTINTG DMA neither completed nor errored, STATUS=0x");
+        sep_mbx_puts("FAIL: CHK-HOSTINTG DMA neither completed nor errored, STATUS=");
         sep_mbx_puthex(st_intg);
         sep_mbx_putc('\n');
         e++;
     }
     bus = rd(status_addr);
     if (bus != host_bit) {
-        sep_mbx_puts("FAIL: CHK-HOSTINTG DMA_BUS_ERR_STATUS=0x");
+        sep_mbx_puts("FAIL: CHK-HOSTINTG DMA_BUS_ERR_STATUS=");
         sep_mbx_puthex(bus);
         sep_mbx_puts(" after the injected command, expected exclusive host_path_err\n");
         e++;
@@ -787,7 +787,7 @@ static int chk_host_intg(void) {
     wr(clear_addr, SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_bm);
     bus = rd(status_addr);
     if (bus != 0) {
-        sep_mbx_puts("FAIL: CHK-HOSTINTG after CLEAR STATUS=0x");
+        sep_mbx_puts("FAIL: CHK-HOSTINTG after CLEAR STATUS=");
         sep_mbx_puthex(bus);
         sep_mbx_puts(", expected 0\n");
         e++;
@@ -844,7 +844,7 @@ static int chk_host_fabric(void) {
 
     uint32_t bus = rd(status_addr);
     if (bus != 0) {
-        sep_mbx_puts("FAIL: CHK-HOSTFABRIC DMA_BUS_ERR_STATUS=0x");
+        sep_mbx_puts("FAIL: CHK-HOSTFABRIC DMA_BUS_ERR_STATUS=");
         sep_mbx_puthex(bus);
         sep_mbx_puts(" at baseline, expected 0\n");
         return 1;
@@ -858,16 +858,16 @@ static int chk_host_fabric(void) {
                               SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                               SECURE_DMA__DST_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
     if (!(st_fab & DONE_OR_ERR)) {
-        sep_mbx_puts("FAIL: CHK-HOSTFABRIC DMA neither completed nor errored, STATUS=0x");
+        sep_mbx_puts("FAIL: CHK-HOSTFABRIC DMA neither completed nor errored, STATUS=");
         sep_mbx_puthex(st_fab);
         sep_mbx_putc('\n');
         e++;
     }
     bus = rd(status_addr);
     if (bus != host_bit) {
-        sep_mbx_puts("FAIL: CHK-HOSTFABRIC DMA_BUS_ERR_STATUS=0x");
+        sep_mbx_puts("FAIL: CHK-HOSTFABRIC DMA_BUS_ERR_STATUS=");
         sep_mbx_puthex(bus);
-        sep_mbx_puts(" after dest 0x");
+        sep_mbx_puts(" after dest ");
         sep_mbx_puthex(dead);
         sep_mbx_puts(", expected exclusive host_path_err\n");
         e++;
@@ -878,7 +878,7 @@ static int chk_host_fabric(void) {
     wr(clear_addr, SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_bm);
     bus = rd(status_addr);
     if (bus != 0) {
-        sep_mbx_puts("FAIL: CHK-HOSTFABRIC after CLEAR STATUS=0x");
+        sep_mbx_puts("FAIL: CHK-HOSTFABRIC after CLEAR STATUS=");
         sep_mbx_puthex(bus);
         sep_mbx_puts(", expected 0\n");
         e++;

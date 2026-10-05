@@ -45,8 +45,8 @@ class sep_firmware_backup_invalid_signature_type_test(sep_backup_manifest_fail_b
     backup_defect_marker = _BAD_SIG_TYPE_ECHO
     expected_error = MANIFEST_ERR_SIG_TYPE_INVALID
     efuse_preload = _EFUSE_PRELOAD
-    # PUBK_SEL= is the load-bearing one: it is the next thing the signature
-    # path prints, so its absence proves the type check ran first.
+    # PUBK_SEL= is the next thing the signature path prints, so its absence
+    # proves the type check ran first.
     # RSA_PKCS1_FAIL is forbidden: only the signature-value sibling reaches the
     # verifier. The rest are later arms, none of which may be reached.
     extra_forbidden = (

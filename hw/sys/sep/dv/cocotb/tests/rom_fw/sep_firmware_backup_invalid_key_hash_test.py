@@ -4,7 +4,7 @@
 
 The terminal partner of ``sep_firmware_primary_invalid_key_hash_test``: the same
 defect is in both slots, so the ROM stops with ``MANIFEST_ERR_KEY_HASH_MISMATCH``.
-This is the one member of the family whose primary defect is not BAD_MAGIC, so
+The primary carries the same defect as the backup, not BAD_MAGIC, so
 ``corrupt_primary`` and ``primary_expected_error`` are overridden.
 
 Both slots print ``PUBK_UNAUTHORIZED``, so :meth:`check_defect_attribution`
@@ -66,8 +66,9 @@ class sep_firmware_backup_invalid_key_hash_test(sep_backup_manifest_fail_base):
         mm.corrupt_public_key(buf, "backup", offset=383)
 
     def check_efuse(self, image) -> None:
-        # Both run before the key bind and would terminate the run first, making
-        # the KEY_HASH_MISMATCH verdict unreachable and this test vacuous.
+        # Revocation and anti-rollback run after the key bind. With both fuses
+        # clear, a slot that passes the bind by mistake goes on to RSA_EXEC, which
+        # extra_forbidden catches.
         bl1_ver = image.field_int("BL1_VERSION")
         assert bl1_ver == 0, (
             f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: anti-rollback cannot reject a "
@@ -77,8 +78,8 @@ class sep_firmware_backup_invalid_key_hash_test(sep_backup_manifest_fail_base):
         revoke = image.field_int("CHIPLET_PUBK_REVOKE")
         assert revoke == 0, (
             f"CHIPLET_PUBK_REVOKE is 0x{revoke:x}, expected 0: revocation runs "
-            f"before the hash bind, so a set bit would "
-            f"make the rejection attributable to revocation instead"
+            f"after the hash bind, so a set bit would refuse a slot that wrongly "
+            f"passed the bind with KEY_REVOKED instead of letting it reach RSA_EXEC"
         )
 
     def check_defect_attribution(self, console, i_backup: int) -> None:

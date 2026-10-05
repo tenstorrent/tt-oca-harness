@@ -3196,7 +3196,6 @@ args = [
 # LC_STATE raw 0x4 is INVALID to the lifecycle controller, which decodes
 # RMA_CHIPLET as 4'b011?, and the ROM must agree (SEP-ROM-FUSE-020). [S11] halts
 # before boot-mode selection, so no SPI transport or entropy plusarg is needed.
-# Budget matches sep_firmware_sboot_dis_rsvd_terminal_test, which halts later.
 name = "sep_rom_lc_state_invalid_0x4_test"
 module = "rom_fw.sep_rom_lc_state_invalid_0x4_test"
 target = "rom_boot"
@@ -3214,7 +3213,6 @@ args = [
 # LC_STATE raw 0x5 is INVALID to the lifecycle controller, which decodes
 # RMA_CHIPLET as 4'b011?, and the ROM must agree (SEP-ROM-FUSE-020). [S11] halts
 # before boot-mode selection, so no SPI transport or entropy plusarg is needed.
-# Budget matches sep_firmware_sboot_dis_rsvd_terminal_test, which halts later.
 name = "sep_rom_lc_state_invalid_0x5_test"
 module = "rom_fw.sep_rom_lc_state_invalid_0x5_test"
 target = "rom_boot"

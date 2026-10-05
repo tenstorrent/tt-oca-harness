@@ -10,9 +10,8 @@ manifest modulus against the fuse, not against the compiled-in digest table
 Both slots select the fused key and are re-sealed, so one revocation bit is the only cause
 of a refusal.
 
-Provenance: OCAH ``sep_firmware_pub_key_test`` selects the fused chiplet public keys and
-checks acceptance when the selected key is valid and refusal when it is revoked. This
-family applies that behavior to both manifest slots.
+Each member requires acceptance when the selected fused key is valid and refusal when it is
+revoked, on both manifest slots.
 
 Two fuse-side discriminators: ROM key 0 is revoked in every preload, so a ROM that ignores
 the selector echoes the forbidden ``PUBK_SEL=0x00000000``; the other chiplet digest fuse
@@ -102,9 +101,7 @@ class _chiplet_key_mixin:
     """Per-member derivations shared by both outcome shapes of the family.
 
     Members set ``_CHIPLET_KEY`` (and, on the revoking base, inherit ``_REVOKED``).
-    Everything else is derived in :meth:`__init_subclass__`, so the per-member values
-    are real class attributes -- greppable, and visible in the run log -- rather than
-    hidden inside a method.
+    Everything else is derived in :meth:`__init_subclass__` as class attributes.
     """
 
     # Set by every concrete member. -1 makes an unset subclass fail immediately
@@ -132,9 +129,8 @@ class _chiplet_key_mixin:
         assert key in (0, 1), (
             f"{cls.__name__}: _CHIPLET_KEY {key} is not a CHIPLET fused key. Only "
             f"PUBK_SEL_FUSE_KEY_0 and _1 are covered here; PUBK_SEL_FUSE_SOP_KEY (4) "
-            f"and PUBK_SEL_FUSE_SYS_KEY (5) are two more arms of the same switch "
-            f" with revoke bits 20 and 22, and have no "
-            f"testcase yet"
+            f"and PUBK_SEL_FUSE_SYS_KEY (5) are two more arms of the same switch, "
+            f"with revoke bits 20 and 22"
         )
         selection = (mm.PUBK_SEL_FUSE_KEY_0, mm.PUBK_SEL_FUSE_KEY_1)[key]
         # The SLOT number, because that is what the ROM echoes:

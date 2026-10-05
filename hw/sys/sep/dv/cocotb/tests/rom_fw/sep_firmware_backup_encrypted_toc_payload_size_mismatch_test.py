@@ -3,9 +3,9 @@
 """Backup's ENCRYPTED TOC payload_length disagrees with the manifest; the ROM halts.
 
 The decrypted TOC payload_length must sit within one AES block below the manifest's, so 0x2000
-must be refused with ``OCA_FAIL_PAYLOAD_TOC``. Known gap: the library does not compare the
-decrypted length, so the DUT accepts the slot and this test fails. Needs ``+esrc_noise_force``: an
-RSA-3072 modexp and an AES decryption.
+must be refused with ``OCA_FAIL_PAYLOAD_TOC``. The encrypted payload path does not compare the
+decrypted payload_length with the manifest's, so the slot is accepted. Needs
+``+esrc_noise_force``: an RSA-3072 modexp and an AES decryption.
 """
 
 from __future__ import annotations

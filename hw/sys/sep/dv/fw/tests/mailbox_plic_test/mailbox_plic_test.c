@@ -243,14 +243,14 @@ int main(void) {
 
     sep_outbound_filter_init(); // open the mailbox window
     sep_mbx_puts("SEP mailbox PLIC test\n");
-    sep_mbx_puts("STEP filter init done; mailbox CSR clock ungate written\n");
+    sep_mbx_puts("STEP filter init done\n");
 
     // This clock-enable write targets no defined register field; it is not on
     // the checked path.
     sep_axil_mbox_clock_enable();
 
     pic_enable_interrupts();
-    sep_mbx_puts("STEP ISR registered per inbound mailbox PIC source\n");
+    sep_mbx_puts("STEP PIC external interrupts enabled\n");
 
     for (uint32_t ch = 0; ch < SEP_AXIL_MBOX_N; ch++) {
         errors += run_channel(ch);

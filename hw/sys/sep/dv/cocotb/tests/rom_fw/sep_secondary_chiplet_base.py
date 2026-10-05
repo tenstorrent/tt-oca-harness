@@ -45,7 +45,8 @@ SPI_INIT_MARKERS = (">>SPI_INIT", "SPI_INIT_OK")
 
 _MAX_RUN_CYCLES = 8_000_000
 _PROGRESS_EVERY = 200_000
-# Must exceed the ~559k-cycle silent DCCM scrub, or a healthy run reads as a stall.
+# Must exceed the silent DCCM scrub, during which neither cold_scratch[1] nor the
+# console moves, or a healthy run reads as a stall.
 _STALL_CYCLES = 2_000_000
 # rom_err_fail() writes the verdict before it halts, so watch that nothing moves after it.
 _QUIESCE_CYCLES = 20_000

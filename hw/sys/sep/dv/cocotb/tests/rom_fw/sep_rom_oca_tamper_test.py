@@ -43,14 +43,14 @@ _PAYLOAD_OK = "PAYLOAD_OK"
 class sep_rom_oca_tamper_test(sep_rom_ot_secure_boot_test):
     """Flip a byte in both manifest copies and require the ROM to refuse the boot."""
 
-    # Inherits flash_image (the signed image) from the secure test, then mutates
-    # it in run_scenario.
+    # Inherits flash_image (the signed image) from the secure test;
+    # mutate_flash_image() tampers it before load.
     #
     # The positive parent's marker tuples require MANIFEST_OK, PUBK_AUTHORIZED,
     # RSA_VERIFY_OK and PAYLOAD_OK, none of which may happen here. This test keeps
     # only the transport evidence needed to prove a real SPI boot attempt.
-    # Both slots are refused within about 3M cycles. The bounded margin reports a
-    # refusal-path hang before the inherited 24M-cycle limit.
+    # The limit must exceed the time both slots take to be refused. It reports a
+    # refusal-path hang before the inherited cycle limit.
     max_run_cycles = 3_500_000
     verdict_source = "scratch0"
     verify_otbn_edn = False
@@ -88,8 +88,7 @@ class sep_rom_oca_tamper_test(sep_rom_ot_secure_boot_test):
         return bytearray(tampered)
 
     async def run_scenario(self) -> None:
-        # This boot must NOT reach BL1. Without this the scoreboard would fail the
-        # test for the very outcome it exists to require.
+        # The refused boot must not reach BL1, so the scoreboard expects fw_pass low.
         self.sb.expect_fw_pass = False
         await super().run_scenario()
         # rom_err_fail records the terminal verdict in cold_scratch[0], so

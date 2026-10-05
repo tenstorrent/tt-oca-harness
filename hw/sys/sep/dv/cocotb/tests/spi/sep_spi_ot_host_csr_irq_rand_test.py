@@ -560,7 +560,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         )
         assert not await self._poll_drain(window), (
             f"CHK-ENABLE: command executed while SPIEN=0 (drained within {window} "
-            f"polls, {_NEG_WINDOW_MARGIN}x the {calib}-poll enabled drain)"
+            f"polls, at least {_NEG_WINDOW_MARGIN}x the {calib}-poll enabled drain)"
         )
         st_held = await self.spi.rd(STATUS)
         assert (st_held & ST_TXQD) == 1, (
@@ -583,7 +583,8 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         assert released, "CHK-ENABLE: command did not execute after SPIEN=1"
         self.logger.info(
             "CHK-ENABLE PASS: CONTROL=0x%08x (SPIEN=0, OUTPUT_EN=1) held the command for "
-            "%d polls (%dx the %d-poll enabled drain, TXQD stayed 1); CONTROL=0x%08x "
+            "%d polls (at least %dx the %d-poll enabled drain, TXQD stayed 1); "
+            "CONTROL=0x%08x "
             "(SPIEN only changed) drained it in %d",
             ctrl_hold,
             window,

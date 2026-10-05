@@ -17,7 +17,7 @@
 #   $(OTBN_APP_NAME)_otbn.h - Header with extern declarations
 
 ifndef OCAH_ROOT
-$(error OCAH_ROOT is not set. Please run: export OCAH_ROOT=<path to the tt-oca checkout>)
+$(error OCAH_ROOT is not set. Please run: export OCAH_ROOT=<path to the repository root>)
 endif
 
 

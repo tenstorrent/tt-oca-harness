@@ -172,7 +172,7 @@ def _selftest() -> int:
     except AssertionError:
         pass
     else:
-        raise AssertionError("assert_known accepted an old-ROM token")
+        raise AssertionError("assert_known accepted PLD_HASH_OK, a token the ROM does not print")
     assert_known(["MANIFEST_ERR=0x00030015", "PUBK_REVOKE=0x00000000"], "selftest")
     for bad in ("MANIFEST_OK.junk", "LC=PROD-END"):
         try:

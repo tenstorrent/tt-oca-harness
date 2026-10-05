@@ -59,10 +59,9 @@ class sep_firmware_cntl_secure_boot_flow_test(sep_backup_manifest_fail_base):
     # NOT the base's BAD_MAGIC default: the primary carries the same cleared flag
     # and is refused for the same reason, rather than being a failover trigger.
     primary_expected_error = MANIFEST_ERR_SIG_CLASS_CONTROL
-    # PUBK_SEL= is the load-bearing one. The refusal is inside
-    # oca_validate_manifest() ahead of key authorization, so neither slot may echo
-    # a selector -- its absence is what places the rejection before key selection
-    # rather than merely somewhere in the crypto chain. MANIFEST_OK would mean a
+    # The refusal is inside oca_validate_manifest() ahead of key authorization,
+    # so neither slot may echo PUBK_SEL=; its absence places the rejection before
+    # key selection, not only somewhere in the crypto chain. MANIFEST_OK would mean a
     # slot was accepted; the RSA pair would mean the verifier ran on an image that
     # carries no signature at all.
     extra_forbidden = (

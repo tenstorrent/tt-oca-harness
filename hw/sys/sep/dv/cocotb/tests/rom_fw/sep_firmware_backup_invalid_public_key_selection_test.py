@@ -88,9 +88,9 @@ class sep_firmware_backup_invalid_public_key_selection_test(sep_backup_manifest_
     def _check(self, console, status_seq, fw_done, fw_pass, retired) -> None:
         super()._check(console, status_seq, fw_done, fw_pass, retired)
         # PUBK_SEL= is refused BEFORE it can be echoed: the ambiguity is detected
-        # inside the resolution loop, so no slot number is ever printed for this
-        # slot. Its absence for anything but the booting slot is therefore the
-        # positive evidence that resolution stopped rather than picked.
+        # inside the resolution loop, so no slot number is printed. The primary
+        # fails on its magic and never reaches selection, so no PUBK_SEL= line may
+        # appear in the run.
         sels = [line for line in console if "PUBK_SEL=" in line]
         assert not sels, (
             f"ROM echoed a resolved slot {sels}: an ambiguous bitmap must be "

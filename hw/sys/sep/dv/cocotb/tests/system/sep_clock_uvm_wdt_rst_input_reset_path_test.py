@@ -155,7 +155,7 @@ class sep_clock_uvm_wdt_rst_input_reset_path_test(sep_base_test):
         await ClockCycles(dut.clk_i, _SETTLE)
 
         self.logger.info(
-            " PASS: wdt_rst_ni -> sep_cpu_reset_n path verified "
+            "PASS: wdt_rst_ni -> sep_cpu_reset_n path verified "
             "(A baseline / B assert / B-iso isolation / C release / D isolation "
             "observable proven live)"
         )

@@ -103,7 +103,7 @@ class sep_abr_pipelined_read_test(sep_base_test):
         await self.start_ext_seq(seq)
         alone = seq.rdata & 0xFFFF_FFFF
         self.logger.info(
-            "REPRO m_axi control: 0x%08x read alone -> 0x%08x (resp=%d)",
+            "m_axi control: 0x%08x read alone -> 0x%08x (resp=%d)",
             A_VERSION1,
             alone,
             seq.resp_code,
@@ -194,7 +194,7 @@ class sep_abr_pipelined_read_test(sep_base_test):
             + "; ".join(f"depth {d} read {i} answered resp={c}" for d, i, c in bad_resp)
             + f". Every read is of 0x{A_VERSION1:08x}, which answers OKAY when "
             "read on its own, so the aperture refused a read it had already "
-            "accepted an AR for. See issue #2253."
+            "accepted an AR for."
         )
         assert not wrong, (
             "CHK-ABR-PIPELINED-READ FAIL: "
@@ -205,7 +205,7 @@ class sep_abr_pipelined_read_test(sep_base_test):
             + f". Every read is of 0x{A_VERSION1:08x}, which returns 0x{alone:08x} when "
             "read on its own. MLDSA_VERSION1 is read-only with unconditional "
             "combinational readback, so it holds one value and the response carried "
-            "something else. See issue #2253."
+            "something else."
         )
         self.logger.info(
             "CHK-ABR-PIPELINED-READ PASS: every read at depths %s returned 0x%08x",

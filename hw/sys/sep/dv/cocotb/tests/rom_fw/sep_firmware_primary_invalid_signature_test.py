@@ -139,7 +139,7 @@ class sep_firmware_primary_invalid_signature_test(sep_primary_fail_backup_boot_b
         assert len(sels) == 2, (
             f"{_KEY_AUTHORIZED} appeared {len(sels)} times at {sels}, expected exactly 2 "
             f"(one per manifest slot). One occurrence would mean a slot was refused "
-            f"before the selector echo, i.e. not by its signature value. "
+            f"before its key was authorized, i.e. not by its signature value. "
             f"Console: {console}"
         )
         assert 0 <= i_bsrc and sels[0] < i_bsrc < sels[1], (

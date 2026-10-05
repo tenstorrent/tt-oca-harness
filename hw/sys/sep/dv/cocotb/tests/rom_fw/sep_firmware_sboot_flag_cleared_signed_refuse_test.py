@@ -11,7 +11,7 @@ non-secure must carry no signing material, so ``oca_check_secure_boot_invariant(
 The refusal is structural and holds in any lifecycle state. It runs under PROD because the
 question is whether a production image can shed its enable flag and still be considered: it
 cannot, and the slot never reaches key selection or the verifier.
-``sep_firmware_cntl_secure_boot_flow_test`` is the companion case, where the signing material is
+``sep_firmware_cntl_secure_boot_flow_test`` is the sibling case, where the signing material is
 removed as well.
 """
 

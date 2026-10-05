@@ -195,8 +195,8 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         )
         self.logger.info(
             "PUB-OBSERVATION KMAC public KEY_SHARE0/1 frontdoor reads zero after "
-            "sideload. Not scored: kmac.hjson declares them swaccess=wo, so this read "
-            "cannot fail. Read path alive: STATUS=%#010x",
+            "sideload. Asserted, but kmac.hjson declares them swaccess=wo, so this read "
+            "alone cannot fail. Read path alive: STATUS=%#010x",
             ctl_pub,
         )
 

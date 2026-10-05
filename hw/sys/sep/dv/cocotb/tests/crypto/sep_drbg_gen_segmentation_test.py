@@ -154,7 +154,7 @@ class sep_drbg_gen_segmentation_test(sep_base_test):
         self.logger.info(
             "CHK-SEGMENTATION PASS: %d Generate command(s) completed, each exactly "
             "%d blocks. The trailing Update is NOT observed: no golden-compared "
-            "block lands on its far side in this vehicle",
+            "block lands on its far side in this test",
             completed,
             SEGMENTATION_GLEN,
         )

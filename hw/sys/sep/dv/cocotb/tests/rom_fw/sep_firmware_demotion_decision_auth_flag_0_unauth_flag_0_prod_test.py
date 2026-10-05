@@ -44,8 +44,7 @@ class sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_test(sep_dem
     expect_demote_1 = (0, 0)
     expect_demote_2 = (0, 0)
 
-    # The whole simulation must contain exactly ONE probe sample -- the reset one.
-    # See the docstring: this is what makes "never written" an observation rather
-    # than a value that happens to match, and it covers BL1's execution too.
+    # Exactly one probe sample, the reset one, for the whole simulation, BL1
+    # included; see the docstring.
     demote_changes_min = 1
     demote_changes_max = 1

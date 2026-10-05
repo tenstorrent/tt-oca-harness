@@ -26,8 +26,8 @@ from rom_fw.sep_demotion_decision_base import (
 )
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
-# Console tokens, each verified to occur exactly once in bootrom/prod/src/ so no
-# forbid below is inert.
+# Console tokens the ROM prints; the trailing comment names the source file.
+# lifecycle.c prints "FUSE: SBOOT_DIS: " and then the fuse value in decimal.
 _LC_PROD = "LC=PROD"  # lifecycle.c
 _LC_PROD_END = "LC=PROD_END"  # lifecycle.c
 _SBOOT_DIS_FUSE = "FUSE: SBOOT_DIS: 1"  # lifecycle.c
@@ -117,8 +117,8 @@ def outcome_for(sel: int, auth: int, bl2: int) -> dict:
             "demote_1": (0, 0),
             "demote_2": (0, 0),
             # The one outcome that writes neither register, so the monitor records
-            # only the reset sample. Pinned EXACTLY rather than relaxed: see
-            # sep_demotion_decision_base.demote_changes_min.
+            # only the reset sample; the count is exact (see
+            # sep_demotion_decision_base.demote_changes_min).
             "changes": (1, 1),
         }
     return {
@@ -147,9 +147,8 @@ class _demotion_prod_mixin:
             raise ValueError(f"{cls.__name__}: _SEL/_AUTH/_BL2 must each be 0 or 1, got {bits}")
         want = outcome_for(*bits)
         cls._OUTCOME = want["label"]
-        # The member wrote its own expectations; this requires them to agree with
-        # the table above. A copy-paste between two members of this family is the
-        # realistic failure mode, and it is exactly what this catches.
+        # Each member writes its own expectations; they must agree with
+        # outcome_for().
         mismatches = []
         if tuple(cls.demotion_required) != want["required"]:
             mismatches.append(
@@ -170,7 +169,7 @@ class _demotion_prod_mixin:
         if mismatches:
             raise AssertionError(
                 f"{cls.__name__} declares (sel, auth, bl2) = {bits}, which "
-                f"rom_main.c:388-409 and :431-436 make outcome {want['label']}, but "
+                f"the [S25] demotion decision in rom_main.c makes outcome {want['label']}, but "
                 f"its written expectations disagree: "
                 + "; ".join(mismatches)
                 + ". Either the declared inputs or the declared outcome is wrong; "
@@ -235,7 +234,7 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
     def mutate_manifest(self, buf: bytearray) -> None:
         """Drive the member's three inputs, then ``+SECURE_BOOT_DIS``, then PROD.
 
-        Order matters and is not arbitrary. Every write here lands inside the
+        Order matters. Every write here lands inside the
         signed region and re-hashes, and ``narrow_life_cycle_states`` is the last
         of them, so it re-hashes over everything above and re-seals the backup
         afterwards. Each mutator verifies the layout first, so a step that left
@@ -258,19 +257,17 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
             bl2_enable=bool(self._BL2),
         )
         apply_secure_boot_dis(self, buf)
-        # The PRIMARY is deliberately NOT re-sealed: it is unsigned by
-        # construction and re-signing it would undo the surface just set.
+        # The primary is not re-sealed: it is unsigned by construction, and
+        # re-signing it would undo the surface set above.
         narrow_life_cycle_states(self, buf, LC_STATES_PROD_ONLY, reseal_slots=("backup",))
 
     def check_manifest_stimulus(self, buf: bytearray) -> None:
         """Read all five mutated fields back out of the packed image.
 
-        Not duplication of the console. The ROM echoes BL1_DEMOTION_ENABLE
-        (``BL1_DEMOTE=``) only when BL1_DEMOTION_VALID is set and never echoes
-        VALID itself, so on three
-        of the four members at least one input is invisible in the log and a
-        stimulus that silently failed to land would produce exactly the log a
-        correct run produces. The stimulus is asserted, not only the outcome.
+        The ROM echoes BL1_DEMOTION_ENABLE (``BL1_DEMOTE=``) only when
+        BL1_DEMOTION_VALID is set and never echoes VALID itself, so on three of the
+        four members at least one input is not in the log. The stimulus is asserted
+        here, not only the outcome.
         """
         dc = mm.demotion_control(buf, "primary")
         sel = (dc >> mm.DEMOTION_BITS["BL1_DEMOTION_VALID"]) & 1

@@ -92,8 +92,8 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_end_test(sep_demotion_deci
             f"0x{_LC_STATES_PROD_END_ONLY:08x} (PROD_END only)"
         )
         self.logger.info(
-            "CHK-STIMULUS-DEMOTION: primary demotion_control bit %d = 1 "
-            "(BL1 demotion REQUESTED with BL1_VALID clear and no BL2 request), "
+            "CHK-STIMULUS-DEMOTION: primary demotion_control = %d (decimal; BL1 "
+            "demotion enable set, BL1_VALID clear, no BL2 request), "
             "life_cycle_states = 0x%08x. The ROM must ignore all three because the "
             "part is at PROD_END",
             dc,

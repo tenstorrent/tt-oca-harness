@@ -54,7 +54,7 @@ class sep_firmware_bad_manifest_hash_test(sep_primary_fail_backup_boot_base):
         assert after != before, "the manifest_hash write did not land"
         assert mm.signed_region_hash(buf, "primary") == computed, (
             "the signed-region digest changed, so the mutation reached inside the signed "
-            "region: the rejection would no longer be attributable to the stored "
+            "region: the rejection would not be attributable to the stored "
             "hash alone"
         )
         self.logger.info(

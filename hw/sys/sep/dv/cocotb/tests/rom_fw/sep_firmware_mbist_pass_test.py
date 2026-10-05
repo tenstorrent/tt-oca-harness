@@ -12,12 +12,12 @@ for ``mbist_done``. ``hw/sys/smc/regs/gen/c/smc_addr.h`` places
 responder is a flat memory, so this test cannot fail on the address; ``tb_top.sv`` flags an access
 outside a declared window through ``smc_addr_violations_o``.
 
-The pass path emits nothing (no C runtime yet), so the checks assert that execution continued and
-that no failure-arm observable appeared. ``+sep_dft_status=00000112`` is exactly bits 1, 4 and 8.
-The testbench default 0x113 also boots, so the injection is what makes the run a test. 0x112 hangs
-a gate on ``mem_repair_done``, on the whole word equal to 0x113, or on a required abort bit. "Any
-bit set" is ruled out by the fail tests: 0xFFFFFFFD must block on repair and 0x12 must block on
-MBIST.
+The gate runs before the C runtime starts and its pass arm prints nothing, so the checks assert
+that execution reached the C runtime and that no failure-arm observable appeared.
+``+sep_dft_status=00000112`` is exactly bits 1, 4 and 8. The testbench default 0x113 also boots, so
+the injection is what makes the run a test. 0x112 hangs a gate on ``mem_repair_done``, on the whole
+word equal to 0x113, or on a required abort bit. "Any bit set" is ruled out by the fail tests:
+0xFFFFFFFD must block on repair and 0x12 must block on MBIST.
 
 Not covered: the ``BYPASS_SRAM_REPAIR`` and ``MBIST_BYPASS`` strap arms, the ``mbist_abort``
 branch, the poll timeout, and an MBIST failure followed by a blown ``SKIP_MEM_CHECK`` fuse
@@ -168,7 +168,7 @@ class sep_firmware_mbist_pass_test(sep_rom_ot_dma_boot_test):
         self.logger.info(
             "CHK-DFT-PASS-STIMULUS: DFX_CTRL_STATUS_SMU = 0x%08x "
             "(mem_repair_success + mbist_done + mbist_pass; repair_done=%d "
-            "repair_abort=%d mbist_abort=%d -- all deliberately clear)",
+            "repair_abort=%d mbist_abort=%d -- all clear)",
             _DFT_STATUS_PASS,
             (_DFT_STATUS_PASS >> _MEM_REPAIR_DONE_BIT) & 1,
             (_DFT_STATUS_PASS >> _MEM_REPAIR_ABORT_BIT) & 1,
@@ -191,11 +191,9 @@ class sep_firmware_mbist_pass_test(sep_rom_ot_dma_boot_test):
         # CHK-DFT-INJECTED: the word the ROM's gate reads over AXI really is the
         # one this test asked for, measured at the SMC model rather than at
         # cocotb's copy of the command line. The plusarg guard above proves only
-        # that the run was LAUNCHED with the injection; if the plusarg failed to
-        # apply on the RTL side the model would still hold the testbench default
-        # 0x113, which passes both arms -- so the boot would still succeed, every
-        # check below would still hold, and the exact-bits discrimination this
-        # whole testcase rests on would be silently untested.
+        # that the run was LAUNCHED with the injection. If the plusarg does not
+        # apply on the RTL side, the model holds the testbench default 0x113,
+        # which passes both arms, and the boot still succeeds.
         #
         # _gate_monitor reads the SMC responder on each clock. The checker permits
         # only 0 and the injected word, and requires the final sample to equal the

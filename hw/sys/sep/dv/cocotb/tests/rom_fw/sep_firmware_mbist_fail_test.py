@@ -91,13 +91,11 @@ _PROGRESS_EVERY = 50_000
 
 # How long to watch after the terminal status before believing the ROM halted,
 # and how far the PC may roam while it does. The halt is `wfi; j back` -- two
-# instructions, 8 bytes -- so the span is tiny; 64 bytes leaves room for the
-# spin to be restructured without rewriting this test, while still being three
-# orders of magnitude below the range forward execution would cover.
+# instructions, 8 bytes. Forward execution into C covers hundreds of addresses,
+# so a 64-byte span bounds the spin.
 #
-# Retirement COUNT is not used: the spin retires roughly one
-# instruction every five cycles, so volume looks identical to slow forward
-# progress. Location is what separates them.
+# Retirement COUNT is not used: the spin keeps retiring, so volume cannot tell
+# it from slow forward progress. Location separates them.
 _QUIESCE_CYCLES = 2_000
 _QUIESCE_PC_SPAN_MAX = 64
 
@@ -217,11 +215,10 @@ class sep_firmware_mbist_fail_test(sep_base_test):
                 )
         # Did it actually STOP, or just pass through the terminal status on its
         # way somewhere else? Watch a little longer and check WHERE it executes,
-        # not how much: the halt is `wfi; j back`, so it keeps retiring -- about
-        # one instruction every five cycles -- while never leaving those two
-        # addresses. Retirement volume therefore cannot tell a spin from forward
-        # progress, but PC locality can, and it is the stronger evidence: code
-        # that continued into C would walk across hundreds of addresses.
+        # not how much: the halt is `wfi; j back`, so it keeps retiring while it
+        # never leaves those two addresses. Retirement volume cannot tell a spin
+        # from forward progress, but PC locality can: code that continued into C
+        # would walk across hundreds of addresses.
         post_pcs: set[int] = set()
         post_status_moved = False
         if halted:

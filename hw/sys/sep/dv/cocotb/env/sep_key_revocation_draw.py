@@ -148,9 +148,8 @@ def coverage_bins(bitmap: int, primary_slot: int, backup_slot: int) -> Tuple[str
 CLOSURE_CAVEATS: Tuple[str, ...] = (
     "A noisy_proceed__pN bin can be closed by a seed whose only set bits are 6 "
     "and 7, which carry no ROM slot and so do not exercise the property that "
-    "class exists for. Six of the 24 grid bins are affected. Before claiming "
-    "closure, either split the noisy bins by sub-mode (27 -> 33) or require "
-    "bitmap & 0x3f != 0 for a noisy_proceed bin to count.",
+    "class exists for. Six of the 24 grid bins are affected, so a full bin set "
+    "does not show that those six bins saw a set ROM slot bit (bitmap & 0x3f).",
 )
 
 
@@ -227,7 +226,7 @@ def _check_slot(slot: int, what: str) -> None:
     if not 0 <= slot < PUBK_SEL_NUM_ROM_KEYS:
         raise ValueError(
             f"{what}={slot} is outside the ROM key table [0, {PUBK_SEL_NUM_ROM_KEYS}); "
-            f"an out-of-range index is the separate BAD_KEY_IDX arm, not a "
+            f"an out-of-range index is the separate PUBK_SLOT_RESERVED refusal, not a "
             f"revocation stimulus"
         )
 

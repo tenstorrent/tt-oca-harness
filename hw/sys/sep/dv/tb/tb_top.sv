@@ -805,11 +805,11 @@ module sep_uvm_top
             smc_addr_violations <=
                 smc_addr_violations + smc_aw_violation + smc_ar_violation;
             if (smc_aw_violation) begin
-                $error("[tb] SMC ADDRESS DECODE: write to 0x%0h is outside every register window in smc_addr.h -- the ROM is using an offset this design does not implement",
+                $error("[tb] SMC ADDRESS DECODE: write to 0x%0h is outside every SMC register window tb_top maps from smc_top_addrmap_pkg -- the ROM is using an offset this design does not implement",
                        ext_to_smc_req_w.aw.addr);
             end
             if (smc_ar_violation) begin
-                $error("[tb] SMC ADDRESS DECODE: read from 0x%0h is outside every register window in smc_addr.h -- the ROM is using an offset this design does not implement",
+                $error("[tb] SMC ADDRESS DECODE: read from 0x%0h is outside every SMC register window tb_top maps from smc_top_addrmap_pkg -- the ROM is using an offset this design does not implement",
                        ext_to_smc_req_w.ar.addr);
             end
         end

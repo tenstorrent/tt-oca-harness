@@ -70,10 +70,9 @@ _BOOT_PROGRESS = ("PRE_JUMP", "BL1_COPIED", "BL1_JUMP=")
 
 _MAX_RUN_CYCLES = 24_000_000
 _PROGRESS_EVERY = 200_000
-# Cycles to keep watching after the terminal verdict, to establish that the ROM
-# stayed in its terminal state. The ROM's hang is `for(;;) wfi` in rom_err_fail();
-# 20k cycles is ~15x the longest single ROM step, so a ROM that was going to do
-# anything else would have started doing it.
+# Cycles to keep watching after the terminal verdict. The ROM hangs in
+# `for(;;) wfi` in rom_err_fail(), so any further status or verdict write in this
+# window is a failure. The window must exceed the longest single ROM step.
 _HANG_OBSERVE_CYCLES = 20_000
 
 

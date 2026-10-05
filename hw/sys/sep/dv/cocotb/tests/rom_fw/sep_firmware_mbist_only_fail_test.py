@@ -56,8 +56,8 @@ class sep_firmware_mbist_only_fail_test(sep_firmware_mbist_fail_test):
         assert (word >> _MEM_REPAIR_SUCCESS_BIT) & 1, (
             f"injected DFT status 0x{word:08x} has mem_repair_success "
             f"(bit {_MEM_REPAIR_SUCCESS_BIT}) CLEAR. The gate would then stop on "
-            f"the REPAIR arm and never evaluate MBIST, which is precisely the "
-            f"coverage hole this test exists to close"
+            f"the REPAIR arm and never evaluate MBIST, so the MBIST verdict would "
+            f"not be under test"
         )
         assert (word >> _MBIST_DONE_BIT) & 1, (
             f"injected DFT status 0x{word:08x} has mbist_done "
