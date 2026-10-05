@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Breaks the primary magic so the ROM fails over, and gives the backup encrypted TOC the same
+# descending order with entry 1 starting eight bytes into entry 2.
+base = "encrypted_multi"
+ops = [
+  { op = "permute_toc_entries", slot = "backup", args = { order = [2, 1, 0] } },
+  { op = "set_toc_entry_offset", slot = "backup", args = { index = 1, value = 880 } },
+]
+patch = [
+  { offset = 0x1000, le = 0x99999999, size = 4 },
+]

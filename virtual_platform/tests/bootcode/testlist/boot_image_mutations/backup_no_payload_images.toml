@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Backup TOC declares zero images, resealed; the primary entry 0 digest is zeroed unsealed so it fails payload_hash.
+base = "signed"
+ops = [
+  { op = "set_toc_image_count", slot = "backup", args = { value = 0, hashed_to_span = true } },
+]
+patch = [
+  { fill = [0x2070, 0x2090], value = 0x00 },
+]

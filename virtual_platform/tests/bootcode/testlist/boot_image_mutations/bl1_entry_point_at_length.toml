@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Sets the BL1 entry_point to its length, the smallest rejected value, in both slots and reseals
+# them, so only the ROM placement check can refuse them.
+base = "signed"
+ops = [
+  { op = "set_bl1_entry_point", slot = "primary" },
+  { op = "set_bl1_entry_point", slot = "backup" },
+]

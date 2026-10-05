@@ -13,6 +13,17 @@ See ``virtual_platform/sepvp/README.md`` for the design.
 
 from sepvp.config import SimConfig
 from sepvp.harness import Harness, HarnessError
+from sepvp.judges import JudgeError, UnjudgeableError
+from sepvp.run_result import RunResult, StopReason
 from sepvp.sepvp_harness import SepVpHarness
 
-__all__ = ["SimConfig", "Harness", "HarnessError", "SepVpHarness"]
+__all__ = [
+    "Harness",
+    "HarnessError",
+    "JudgeError",
+    "RunResult",
+    "SepVpHarness",
+    "SimConfig",
+    "StopReason",
+    "UnjudgeableError",
+]

@@ -1,0 +1,289 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[testcase]]
+name = "sep_firmware_payload_correct_ext_4kb_test"
+family = "payload_size"
+classification = "vp-equivalent"
+image = "payload_ext_4kb"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# The fill between the one-entry TOC, which ends at payload 0x138, and BL1 is zero.
+image_asserts = [
+  { field = { name = "OFF_PAYLOAD_LENGTH", slot = "primary", size = 8, value = 4092 } },
+  { field = { name = "OFF_PAYLOAD_LENGTH", slot = "backup", size = 8, value_from = { image = "toc_cap" } } },
+  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 0, size = 8, value = "4092 - primary.bl1_len" } },
+  { toc_field = { name = "OFF_TOC_ENTRY_LENGTH", slot = "primary", entry = 0, size = 8, value_from = { image = "toc_cap", entry = 0 } } },
+  { range = [0x2138, "primary.bl1_start"], all = 0x00 },
+  { range = [0x2ffc, 0x40000], all = 0xFF },
+  { range = [0x2038, 0x203b], differs_from = "toc_cap" },
+  { range = [0x0, 0x1000], same_as = "toc_cap" },
+  { range = [0x40000, "end"], same_as = "toc_cap" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "LOAD=0xc0000000",
+  "LEN={primary.bl1_len}",
+  "COPY_SRC={primary.bl1_copy_src}",
+  "COPY_LEN={primary.bl1_copy_len}",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_BACKUP",
+  "MANIFEST_ERR=",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "NO_BL1_IMAGE",
+  "BL1_ADDR_RANGE",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "COPY_SRC={primary.bl1_copy_src}" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0054"]
+forbid_status = ["WARN 0x007a", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], exact = 18 },
+  { name = "primary_payload", range = [0x2000, 0x2ffc], exact = 17 },
+  { name = "primary_tail", range = [0x2ffc, 0x40000], exact = 0 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+markers = [
+  "The payload is 4092 bytes, 4 short of 4 KiB: the packer ends the payload at BL1 and entry offsets must be 8-aligned, so with a BL1 of 4 mod 8 bytes 4096 is not reachable, and the packer refuses the repack if BL1 ever breaks that; DV writes exactly 4096 with repack_payload, which is not a whitelisted op.",
+  "The repack moves BL1 behind a zero fill to the TOC entry offset that ends it at 4092, so COPY_SRC (SEP SRAM payload 0x10001000 + that offset) shows the ROM located BL1 from the TOC entry rather than the shipped offset 312.",
+  "The read count is derived from ot_dma_read_once: 16-byte-aligned bulk in 256-byte DMA segments plus one PIO read for the 12-byte remainder; primary_tail exact 0 shows the fetch stopped at payload_length.",
+  "Built from the oca_toc_cap_boot packer config, the only one that declares payload_images.0.offset; its backup slot is the unchanged TOC-cap bundle and is never read.",
+  "DV places BL1 right after the TOC and zero-fills the rest; here the fill precedes BL1. Both make payload_hash cover bytes outside the TOC and the image, so a short fetch fails either way.",
+]
+
+[[testcase]]
+name = "sep_firmware_payload_correct_ext_29kb_test"
+family = "payload_size"
+classification = "vp-equivalent"
+image = "payload_ext_29kb"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# The fill between the one-entry TOC, which ends at payload 0x138, and BL1 is zero.
+image_asserts = [
+  { field = { name = "OFF_PAYLOAD_LENGTH", slot = "primary", size = 8, value = 29692 } },
+  { field = { name = "OFF_PAYLOAD_LENGTH", slot = "backup", size = 8, value_from = { image = "toc_cap" } } },
+  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 0, size = 8, value = "29692 - primary.bl1_len" } },
+  { toc_field = { name = "OFF_TOC_ENTRY_LENGTH", slot = "primary", entry = 0, size = 8, value_from = { image = "toc_cap", entry = 0 } } },
+  { range = [0x2138, "primary.bl1_start"], all = 0x00 },
+  { range = [0x93fc, 0x40000], all = 0xFF },
+  { range = [0x2038, 0x203b], differs_from = "toc_cap" },
+  { range = [0x0, 0x1000], same_as = "toc_cap" },
+  { range = [0x40000, "end"], same_as = "toc_cap" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "LOAD=0xc0000000",
+  "LEN={primary.bl1_len}",
+  "COPY_SRC={primary.bl1_copy_src}",
+  "COPY_LEN={primary.bl1_copy_len}",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_BACKUP",
+  "MANIFEST_ERR=",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "NO_BL1_IMAGE",
+  "BL1_ADDR_RANGE",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "COPY_SRC={primary.bl1_copy_src}" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0054"]
+forbid_status = ["WARN 0x007a", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], exact = 18 },
+  { name = "primary_payload", range = [0x2000, 0x93fc], exact = 117 },
+  { name = "primary_tail", range = [0x93fc, 0x40000], exact = 0 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+markers = [
+  "The payload is 29692 bytes, 4 short of 29 KiB, for the same alignment reason as the 4 KiB row; both rows stay inside the 0x3E000-byte slot window, so neither touches a bound.",
+  "The repack moves BL1 behind a zero fill to the TOC entry offset that ends it at 29692, so COPY_SRC (SEP SRAM payload 0x10001000 + that offset) shows the ROM located BL1 from the TOC entry rather than the shipped offset 312.",
+  "The read count is derived from ot_dma_read_once: 16-byte-aligned bulk in 256-byte DMA segments plus one PIO read for the 12-byte remainder; primary_tail exact 0 shows the fetch stopped at payload_length.",
+  "Built from the oca_toc_cap_boot packer config, the only one that declares payload_images.0.offset; its backup slot is the unchanged TOC-cap bundle and is never read.",
+  "DV places BL1 right after the TOC and zero-fills the rest; here the fill precedes BL1. Both make payload_hash cover bytes outside the TOC and the image, so a short fetch fails either way.",
+]
+
+[[testcase]]
+name = "sep_firmware_payload_incorrect_ext_62kb_test"
+family = "payload_size"
+classification = "vp-equivalent"
+image = "payload_ext_over_capacity_min"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { field = { name = "OFF_PAYLOAD_LENGTH", slot = "primary", size = 8, value = 0x3F400 } },
+  { range = [0x1b90, 0x1b98], differs_from = "signed" },
+  { range = [0x0, 0x1b90], same_as = "signed" },
+  { range = [0x1b98, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_LOC_FAIL",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "NO_BL1_IMAGE",
+  "MANIFEST_ERR=0x00030101",
+  "MANIFEST_ERR=0x00030106",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030015",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "PAYLOAD_LOC_FAIL" = 1, "MANIFEST_ERR=0x0003001b" = 1, "RSA_EXEC" = 2, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "PAYLOAD_OK" = 1 }
+expect_status = ["INFO 0x0053", "WARN 0x007a", "INFO 0x0053", "INFO 0x0055"]
+forbid_status = ["ERROR 0x007a", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], exact = 18 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], exact = 18 },
+  { name = "backup_payload", range = [0x42000, 0x80000], exact = 10 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_manifest", "backup_payload"]
+markers = [
+  "Matches DV sep_firmware_payload_exceeds_slot_window_fixed_test: 0x3F400 is one KiB past the DV capacity 0x3F000 (SEP SRAM less the body).",
+  "payload_length sits in the signed region, so declare_payload_length re-signs the primary; the slot passes RSA and oca_locate_payload refuses it on the region bound before any payload read.",
+  "Follows DV PayloadSizeRefusedTest: the oversized primary fails over to the backup, with no rotate_update; the TOC still holds the shipped 2156-byte length, which the ROM would check only after staging.",
+  "PAYLOAD_TOO_LARGE (0x00030101) cannot fire on the SPI path, because the slot window (at most 0x3E000 payload bytes) is tighter than the SEP SRAM staging room (0x3EFF8); it stays forbidden.",
+]
+
+[[testcase]]
+name = "sep_firmware_payload_incorrect_ext_test"
+family = "payload_size"
+classification = "vp-equivalent"
+image = "payload_ext_over_capacity_wide"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { field = { name = "OFF_PAYLOAD_LENGTH", slot = "primary", size = 8, value = 0x58000 } },
+  { range = [0x1b90, 0x1b98], differs_from = "signed" },
+  { range = [0x0, 0x1b90], same_as = "signed" },
+  { range = [0x1b98, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_LOC_FAIL",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "NO_BL1_IMAGE",
+  "MANIFEST_ERR=0x00030101",
+  "MANIFEST_ERR=0x00030106",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030015",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "PAYLOAD_LOC_FAIL" = 1, "MANIFEST_ERR=0x0003001b" = 1, "RSA_EXEC" = 2, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "PAYLOAD_OK" = 1 }
+expect_status = ["INFO 0x0053", "WARN 0x007a", "INFO 0x0053", "INFO 0x0055"]
+forbid_status = ["ERROR 0x007a", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], exact = 18 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], exact = 18 },
+  { name = "backup_payload", range = [0x42000, 0x80000], exact = 10 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_manifest", "backup_payload"]
+markers = [
+  "DV sep_firmware_payload_exceeds_slot_window_random_test draws 1 to 100 KiB past 0x3F000 by seed; this entry pins the 100 KiB end, 0x58000, which also runs past the backup manifest at 0x41000.",
+  "payload_length sits in the signed region, so declare_payload_length re-signs the primary; the slot passes RSA and oca_locate_payload refuses it on the region bound before any payload read.",
+  "Follows DV PayloadSizeRefusedTest: the oversized primary fails over to the backup, with no rotate_update; the TOC still holds the shipped 2156-byte length, which the ROM would check only after staging.",
+  "PAYLOAD_TOO_LARGE (0x00030101) cannot fire on the SPI path, because the slot window (at most 0x3E000 payload bytes) is tighter than the SEP SRAM staging room (0x3EFF8); it stays forbidden.",
+]
+

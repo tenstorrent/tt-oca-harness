@@ -4,9 +4,9 @@
 """SepVpHarness — the sep-vp backend for :class:`sepvp.harness.Harness`.
 
 Per run it:
-  1. makes a clean working dir under ``logs/sepvp/<name>/`` (so logs/artifacts don't collide),
-  2. stages the SPI flash image to ``<run_dir>/data/flash_memory.bin`` and names it to the
-     platform via ``spiBackdoorFile``,
+  1. makes a clean working dir ``<paths.LOGS_DIR>/<name>/`` (so logs/artifacts don't collide),
+  2. stages the SPI flash image to ``data/flash_memory.bin`` and any SMC SRAM image to
+     ``data/smc_sram_image.bin``, and names each to the platform by absolute path,
   3. writes an overlay ini (``@include base`` + straps + fuses + absolute targets/
      configFile),
   4. ``pexpect.spawn``s ``sep-vp overlay.ini <abs elf>`` from ``<run_dir>`` so main.cpp
@@ -24,12 +24,15 @@ from pathlib import Path
 import pexpect
 
 from sepvp import paths
+from sepvp.config import SMC_SRAM_DEFAULT_OFFSET, SMC_SRAM_SIZE_BYTES
 from sepvp.harness import Harness, HarnessError
 from sepvp.inifile import render_overlay, stage_base_config
 
 # Where the staged raw-binary flash image lands, relative to the run dir. Any path works
 # now that `spiBackdoorFile` names it explicitly; kept for continuity with the model's tests.
 _FLASH_REL = Path("data") / "flash_memory.bin"
+_SMC_SRAM_REL = Path("data") / "smc_sram_image.bin"
+_TRACE_REL = Path("veer_trace.log")
 
 
 class _Tee:
@@ -107,13 +110,9 @@ class SepVpHarness(Harness):
             # still override it through SimConfig.extra_ini, which composes after
             # these.
             ("string", "och_sep_ss1.otbn.algorithm_type", "rsa_3072"),
-            # The platform config enables VeeR-ISS instruction tracing: one line per
-            # retired instruction, ~862 MB for a ROM boot, which fills a CI runner
-            # partway through the suite. whisper opens the file only when the name is
-            # non-empty and the ini parser cannot express an empty value, so discard
-            # it instead. extra_ini composes after these, so a test that wants the
-            # trace can point it at a real path.
-            ("string", "och_sep_ss1.traceFile", "/dev/null"),
+            # The base config traces every retired instruction (~862 MB per ROM boot); an empty
+            # name cannot be expressed, so the trace goes to /dev/null unless iss_trace is set.
+            ("string", "och_sep_ss1.traceFile", self._trace_sink()),
         ]
         if self.config.spi_preload:
             overrides.append(
@@ -131,7 +130,22 @@ class SepVpHarness(Harness):
                     str((self.run_dir / _FLASH_REL).resolve()),
                 )
             )
+        if self.config.smc_sram_image:
+            overrides.append(
+                (
+                    "string",
+                    "och_sep_ss1.smcSramBackdoorFile",
+                    str((self.run_dir / _SMC_SRAM_REL).resolve()),
+                )
+            )
+            if self.config.smc_sram_offset is not None:
+                overrides.append(
+                    ("uint", "och_sep_ss1.smcSramBackdoorOffset", self.config.smc_sram_offset)
+                )
         return overrides
+
+    def _trace_sink(self) -> str:
+        return str((self.run_dir / _TRACE_REL).resolve()) if self.config.iss_trace else "/dev/null"
 
     def render_ini(self) -> str:
         """The overlay ini text for this run (also used by ``--ini-only``).
@@ -152,6 +166,23 @@ class SepVpHarness(Harness):
             if not src.is_file():
                 raise FileNotFoundError(f"SPI flash image not found: {src}")
             dst = self.run_dir / _FLASH_REL
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(src, dst)
+        if self.config.smc_sram_image:
+            src = Path(self.config.smc_sram_image)
+            if not src.is_file():
+                raise FileNotFoundError(f"SMC SRAM image not found: {src}")
+            offset = (
+                SMC_SRAM_DEFAULT_OFFSET
+                if self.config.smc_sram_offset is None
+                else self.config.smc_sram_offset
+            )
+            if offset + src.stat().st_size > SMC_SRAM_SIZE_BYTES:
+                raise HarnessError(
+                    f"SMC SRAM image ({src.stat().st_size} bytes) at offset 0x{offset:x} runs "
+                    "past the 1 MiB window; the platform would boot from an erased window"
+                )
+            dst = self.run_dir / _SMC_SRAM_REL
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(src, dst)
         # Stage the base config + its @includes so the overlay's basename @include resolves.

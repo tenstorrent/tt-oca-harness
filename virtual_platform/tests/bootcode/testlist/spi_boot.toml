@@ -1,0 +1,179 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[testcase]]
+name = "sep_spi_detect_success_test"
+family = "spi_boot"
+classification = "vp-equivalent"
+image = "signed"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+expect = [
+  "BOOT_SPI",
+  "OT_SPI: init ok",
+  "SPI_INIT_OK",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ALL_FAILED",
+  "SPI_INIT_ERR=",
+  "SPI init failed, using backup manifest",
+  "WAIT_SMC_MANIFEST",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1 }
+forbid_status = ["ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+markers = [
+  "Not covered: flash device detection; the ROM issues no probe before its first read, so detection is shown by the primary slot serving the boot.",
+  "The backup exact-0 span is the discriminating assertion; a silent failover also reaches MANIFEST_OK.",
+  "Each slot window is BOOT_SLOT_SIZE - BOOT_SLOT_MANIFEST_OFFSET = 0x3F000 from its manifest, so the primary window ends at 0x40000.",
+  "Shares its image with rom_ot_secure_boot_golden at PROD; DV runs the unsigned image at TEST_DEV, and the stimulus here is the slot address, not the crypto.",
+]
+
+[[testcase]]
+name = "sep_spi_not_detected_terminal_test"
+family = "spi_boot"
+classification = "vp-equivalent"
+image = "spi_both_slots_blank"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { range = [0x1000, "end"], all = 0xFF },
+  { range = [0x0, 0x1000], same_as = "signed" },
+  { range = [0x1000, 0x1004], differs_from = "signed" },
+  { range = [0x41000, 0x41004], differs_from = "signed" },
+]
+expect = [
+  "BOOT_SPI",
+  "SPI_INIT_OK",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030002",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "OCA_BODY=0x00001000",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "SPI_INIT_ERR=",
+  "SPI init failed, using backup manifest",
+  "WAIT_SMC_MANIFEST",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_ERR=0x00030002" = 2, "MANIFEST_ALL_FAILED" = 1, "MANIFEST_BOOT_FAIL=0x00030002" = 1 }
+expect_status = ["WARN 0x0006", "WARN 0x0006", "ERROR 0x0006", "ERROR 0x0213"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030002"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_peek", range = [0x41000, 0x41014], min = 1 },
+  { name = "backup_rest", range = [0x41014, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_peek", "backup_peek"]
+markers = [
+  "Not covered: flash device detection; the content is blank throughout, so the ROM rejects each slot on its magic word.",
+  "SEP_MSG_SPI_NOT_DETECTED_DEFAULT is unreachable in this ROM; the terminal is asserted as each slot's WARN, the final ERROR 0x0006 and ERROR 0x0213, then MANIFEST_BOOT_FAIL.",
+  "The peek is OCA_MANIFEST_PEEK_MIN = 20 bytes; the exact-0 rest spans show neither slot read its body or payload.",
+  "Both slots fail for the same reason by construction, so this does not cover a mixed-failure terminal.",
+  "The hang is asserted by terminal_token and the FAILED verdict from cold scratch 0; it does not prove the CPU stays in the WFI loop.",
+]
+
+[[testcase]]
+name = "sep_spi_primary_fail_backup_test"
+family = "spi_boot"
+classification = "vp-equivalent"
+image = "spi_primary_slot_blank"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { range = [0x1000, 0x41000], all = 0xFF },
+  { range = [0x1000, 0x1004], differs_from = "signed" },
+  { range = [0x0, 0x1000], same_as = "signed" },
+  { range = [0x41000, "end"], same_as = "signed" },
+]
+expect = [
+  "BOOT_SPI",
+  "SPI_INIT_OK",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "SPI_INIT_ERR=",
+  "SPI init failed, using backup manifest",
+  "SBOOT_OFF",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030002" = 1, "OCA_BODY=0x00001000" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1 }
+expect_status = ["WARN 0x0006", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0006", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_peek", "backup_manifest", "backup_payload"]
+markers = [
+  "Not covered: flash device detection; the ROM issues no probe, so a blank primary address stands for an absent one.",
+  "primary_rest exact 0 is the discriminating device assertion: the ROM abandons the primary at the 20-byte peek and never fetches its body or payload.",
+  "OCA_BODY=0x00001000 counted once shows only the backup passed the magic peek.",
+  "clear_sram_region() and boot_flash_reinit() run on the failover path but print nothing.",
+]

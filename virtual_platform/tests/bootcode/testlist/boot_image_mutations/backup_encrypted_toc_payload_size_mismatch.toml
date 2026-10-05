@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Encrypted backup TOC payload_length disagrees with the manifest payload_length, resealed; the primary magic is broken.
+base = "encrypted"
+ops = [
+  { op = "set_toc_payload_length", slot = "backup", args = { value = 0x2000 } },
+]
+patch = [
+  { offset = 0x1000, le = 0x99999999, size = 4 },
+]

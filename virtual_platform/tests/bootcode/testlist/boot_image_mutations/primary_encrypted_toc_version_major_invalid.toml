@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Sets the primary encrypted TOC major_version to 2, one above the supported major, and reseals the
+# slot so the ROM reaches the TOC.
+base = "encrypted"
+ops = [
+  { op = "set_toc_version_major", slot = "primary", args = { value = 2 } },
+]

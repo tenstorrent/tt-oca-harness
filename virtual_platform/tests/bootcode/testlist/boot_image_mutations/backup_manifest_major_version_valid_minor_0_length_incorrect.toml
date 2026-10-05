@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# A v1.0 backup one word above the body size behind a primary with a broken magic.
+base = "signed"
+ops = [
+  { op = "set_manifest_length", slot = "backup", args = { value = 4100 } },
+]
+patch = [
+  { field = "OFF_BOOT_MANIFEST_MAGIC", slot = "primary", le = 0x99999999, size = 4 },
+]

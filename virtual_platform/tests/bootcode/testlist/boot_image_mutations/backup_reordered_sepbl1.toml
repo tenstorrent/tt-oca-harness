@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# A primary refused on package identity byte 1 ahead of the multi-image backup, BL1 last.
+base = "multi"
+ops = [
+  { op = "set_identity", slot = "primary", args = { kind = "package", value = "a5ffa5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5", mask = 0x200000000 } },
+]

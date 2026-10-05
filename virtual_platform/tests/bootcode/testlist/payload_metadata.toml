@@ -1,0 +1,2353 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[testcase]]
+name = "sep_firmware_primary_non_encrypted_invalid_payload_image_count_test"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "primary_non_encrypted_invalid_payload_image_count"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { range = [0x2010, 0x2012], all = 0x01 },
+  { range = [0x2012, 0x2018], all = 0x00 },
+  { range = [0x2010, 0x2018], differs_from = "signed" },
+  { range = [0x1c64, 0x1de4], differs_from = "signed" },
+  { range = [0x0, 0x1ad7], same_as = "signed" },
+  { range = [0x1af7, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x2010], same_as = "signed" },
+  { range = [0x2018, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_ERR=0x0003000e",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001a",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003001b",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DMA_STS=",
+  "NO_BL1_IMAGE",
+  "BL1_ADDR_RANGE",
+  "BL1_SIZE",
+  "BL1_ENTRY_RANGE",
+  "SBOOT_OFF",
+  "DECRYPT_OK",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030015" = 1, "PUBK_AUTHORIZED" = 2, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "DEBUG 0x0052", "WARN 0x000f", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055"]
+forbid_status = ["ERROR 0x000f", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "An op, not a repack: neither packer config declares toc.image_count, and a byte patch would leave payload_hash stale so the run would stop at 0x00030012 first.",
+  "257 matches the DV member: read_toc_span() refuses a count whose entry array does not fit the payload before the OCA_TOC_MAX_IMAGES cap, so the code is OCA_FAIL_PAYLOAD_TOC rather than TOO_MANY_IMAGES.",
+  "The count==0 arm of the same predicate is covered by the no_payload_images rows, not here.",
+  "The packed config carries one payload image, so the true count the mutation departs from is 1.",
+  "RSA_VERIFY_OK and MANIFEST_OK are counted twice, so the re-signed primary passed the crypto chain before its TOC was refused.",
+]
+
+[[testcase]]
+name = "sep_firmware_primary_encrypted_invalid_payload_image_count_test"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "primary_encrypted_invalid_payload_image_count"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# The secret 00..1f of configs/oca_encrypted_boot_test.yaml.
+efuse = { class_key = [0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c] }
+image_asserts = [
+  { range = [0x2010, 0x2020], differs_from = "encrypted" },
+  { range = [0x1c64, 0x1de4], differs_from = "encrypted" },
+  { range = [0x0, 0x1ad7], same_as = "encrypted" },
+  { range = [0x1af7, 0x1c64], same_as = "encrypted" },
+  { range = [0x1de4, 0x1e64], same_as = "encrypted" },
+  { range = [0x1e84, 0x2010], same_as = "encrypted" },
+  { range = ["primary.payload_end", "end"], same_as = "encrypted" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_ERR=0x0003000e",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001a",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003001b",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DMA_STS=",
+  "NO_BL1_IMAGE",
+  "BL1_ADDR_RANGE",
+  "BL1_SIZE",
+  "BL1_ENTRY_RANGE",
+  "SBOOT_OFF",
+  "DECRYPT_NO_SECRET",
+  "DECRYPT_CLASS_KEY_EMPTY",
+  "KDF_FAIL",
+  "KDF_HMAC_FAIL",
+  "AES_DEC_FAIL",
+  "AES_PAD_BAD",
+  "AES_INIT_BUSY",
+  "AES_IDLE_TIMEOUT=",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030015" = 1, "PUBK_AUTHORIZED" = 2, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "DECRYPT_OK" = 2, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "DEBUG 0x0052", "INFO 0x0040", "INFO 0x0042", "WARN 0x000f", "INFO 0x004c", "INFO 0x0053", "INFO 0x0040", "INFO 0x0042", "INFO 0x0055"]
+forbid_status = ["ERROR 0x000f", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "An op, not a repack: neither packer config declares toc.image_count, and a byte patch would leave payload_hash stale so the run would stop at 0x00030012 first.",
+  "257 matches the DV member: read_toc_span() refuses a count whose entry array does not fit the payload before the OCA_TOC_MAX_IMAGES cap, so the code is OCA_FAIL_PAYLOAD_TOC rather than TOO_MANY_IMAGES.",
+  "The count==0 arm of the same predicate is covered by the no_payload_images rows, not here.",
+  "The packed config carries one payload image, so the true count the mutation departs from is 1.",
+  "The count sits in ciphertext: the image_asserts bound the first changed AES block at TOC offset 0x10 and the run's own DECRYPT_OK before MANIFEST_ERR carries the planted value.",
+  "RSA_VERIFY_OK and MANIFEST_OK are counted twice, so the re-signed primary passed the crypto chain before its TOC was refused.",
+]
+
+[[testcase]]
+name = "sep_firmware_backup_non_encrypted_invalid_payload_image_count_test"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "backup_non_encrypted_invalid_payload_image_count"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { range = [0x1000, 0x1004], all = 0x99 },
+  { range = [0x42010, 0x42012], all = 0x01 },
+  { range = [0x42012, 0x42018], all = 0x00 },
+  { range = [0x42010, 0x42018], differs_from = "signed" },
+  { range = [0x41c64, 0x41de4], differs_from = "signed" },
+  { range = [0x0, 0x1000], same_as = "signed" },
+  { range = [0x1004, 0x41ad7], same_as = "signed" },
+  { range = [0x41af7, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, 0x42010], same_as = "signed" },
+  { range = [0x42018, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030015",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_ERR=0x0003000e",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001a",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003001b",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DMA_STS=",
+  "NO_BL1_IMAGE",
+  "BL1_ADDR_RANGE",
+  "BL1_SIZE",
+  "BL1_ENTRY_RANGE",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "SBOOT_OFF",
+  "DECRYPT_OK",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "OCA_BODY=0x00001000" = 1, "RSA_EXEC" = 1, "MANIFEST_OK" = 1, "MANIFEST_ERR=0x00030002" = 1, "MANIFEST_ERR=0x00030015" = 1, "MANIFEST_ALL_FAILED" = 1, "MANIFEST_BOOT_FAIL=0x00030015" = 1 }
+expect_status = ["WARN 0x0006", "INFO 0x004c", "INFO 0x0053", "DEBUG 0x0052", "WARN 0x000f", "ERROR 0x000f", "ERROR 0x0213"]
+forbid_status = ["ERROR 0x0006", "INFO 0x0055"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030015"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_peek", "backup_manifest", "backup_payload"]
+markers = [
+  "An op, not a repack: neither packer config declares toc.image_count, and a byte patch would leave payload_hash stale so the run would stop at 0x00030012 first.",
+  "257 matches the DV member: read_toc_span() refuses a count whose entry array does not fit the payload before the OCA_TOC_MAX_IMAGES cap, so the code is OCA_FAIL_PAYLOAD_TOC rather than TOO_MANY_IMAGES.",
+  "The count==0 arm of the same predicate is covered by the no_payload_images rows, not here.",
+  "The packed config carries one payload image, so the true count the mutation departs from is 1.",
+  "The primary magic is broken with a plain byte patch, so oca_peek_manifest refuses it with 0x00030002 before any hash or crypto; OCA_BODY= and RSA_EXEC counted once attribute the crypto chain to the backup.",
+]
+
+[[testcase]]
+name = "sep_firmware_backup_encrypted_invalid_payload_image_count_test"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "backup_encrypted_invalid_payload_image_count"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+# The secret 00..1f of configs/oca_encrypted_boot_test.yaml.
+efuse = { class_key = [0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c] }
+image_asserts = [
+  { range = [0x1000, 0x1004], all = 0x99 },
+  { range = [0x42010, 0x42020], differs_from = "encrypted" },
+  { range = [0x41c64, 0x41de4], differs_from = "encrypted" },
+  { range = [0x0, 0x1000], same_as = "encrypted" },
+  { range = [0x1004, 0x41ad7], same_as = "encrypted" },
+  { range = [0x41af7, 0x41c64], same_as = "encrypted" },
+  { range = [0x41de4, 0x41e64], same_as = "encrypted" },
+  { range = [0x41e84, 0x42010], same_as = "encrypted" },
+  { range = ["backup.payload_end", "end"], same_as = "encrypted" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030015",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_ERR=0x0003000e",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001a",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003001b",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DMA_STS=",
+  "NO_BL1_IMAGE",
+  "BL1_ADDR_RANGE",
+  "BL1_SIZE",
+  "BL1_ENTRY_RANGE",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "SBOOT_OFF",
+  "DECRYPT_NO_SECRET",
+  "DECRYPT_CLASS_KEY_EMPTY",
+  "KDF_FAIL",
+  "KDF_HMAC_FAIL",
+  "AES_DEC_FAIL",
+  "AES_PAD_BAD",
+  "AES_INIT_BUSY",
+  "AES_IDLE_TIMEOUT=",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "OCA_BODY=0x00001000" = 1, "RSA_EXEC" = 1, "MANIFEST_OK" = 1, "DECRYPT_OK" = 1, "MANIFEST_ERR=0x00030002" = 1, "MANIFEST_ERR=0x00030015" = 1, "MANIFEST_ALL_FAILED" = 1, "MANIFEST_BOOT_FAIL=0x00030015" = 1 }
+expect_status = ["WARN 0x0006", "INFO 0x004c", "INFO 0x0053", "DEBUG 0x0052", "INFO 0x0040", "INFO 0x0042", "WARN 0x000f", "ERROR 0x000f", "ERROR 0x0213"]
+forbid_status = ["ERROR 0x0006", "INFO 0x0055"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030015"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_peek", "backup_manifest", "backup_payload"]
+markers = [
+  "An op, not a repack: neither packer config declares toc.image_count, and a byte patch would leave payload_hash stale so the run would stop at 0x00030012 first.",
+  "257 matches the DV member: read_toc_span() refuses a count whose entry array does not fit the payload before the OCA_TOC_MAX_IMAGES cap, so the code is OCA_FAIL_PAYLOAD_TOC rather than TOO_MANY_IMAGES.",
+  "The count==0 arm of the same predicate is covered by the no_payload_images rows, not here.",
+  "The packed config carries one payload image, so the true count the mutation departs from is 1.",
+  "The count sits in ciphertext: the image_asserts bound the first changed AES block at TOC offset 0x10 and the run's own DECRYPT_OK before MANIFEST_ERR carries the planted value.",
+  "The primary magic is broken with a plain byte patch, so oca_peek_manifest refuses it with 0x00030002 before any hash or crypto; OCA_BODY= and RSA_EXEC counted once attribute the crypto chain to the backup.",
+]
+
+[[testcase]]
+name = "sep_firmware_primary_non_encrypted_payload_image_exceeds_bound_test"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "primary_non_encrypted_payload_image_exceeds_bound"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 0, size = 8, value = 240 } },
+  { range = [0x1c64, 0x1de4], differs_from = "signed" },
+  { range = [0x0, 0x1ad7], same_as = "signed" },
+  { range = [0x1af7, 0x1b1f], same_as = "signed" },
+  { range = [0x1b3f, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x2038], same_as = "signed" },
+  { range = [0x2040, 0x2070], same_as = "signed" },
+  { range = [0x2090, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_ERR=0x0003000e",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001a",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003001b",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DMA_STS=",
+  "NO_BL1_IMAGE",
+  "BL1_ADDR_RANGE",
+  "BL1_SIZE",
+  "BL1_ENTRY_RANGE",
+  "SBOOT_OFF",
+  "DECRYPT_OK",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030015" = 1, "PUBK_AUTHORIZED" = 2, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "DEBUG 0x0052", "WARN 0x000f", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055"]
+forbid_status = ["ERROR 0x000f", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "An op, not a repack: the packer places images itself and declares no entry offset; set_toc_entry_offset reseals the entry digest, payload_hash_chain, payload_hash and the signature, so only the placement rule can refuse the slot.",
+  "Offset 240 (0xF0) is the DV value: 8-byte aligned and past entry 0's digest, inside the 312-byte TOC, so only the rule that an image starts after the TOC refuses it.",
+]
+
+[[testcase]]
+name = "sep_firmware_primary_encrypted_payload_image_exceeds_bound_test"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "primary_encrypted_payload_image_exceeds_bound"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# The secret 00..1f of configs/oca_encrypted_boot_test.yaml.
+efuse = { class_key = [0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c] }
+image_asserts = [
+  { range = [0x2030, 0x2040], differs_from = "encrypted" },
+  { range = [0x1c64, 0x1de4], differs_from = "encrypted" },
+  { range = [0x0, 0x1ad7], same_as = "encrypted" },
+  { range = [0x1af7, 0x1b1f], same_as = "encrypted" },
+  { range = [0x1b3f, 0x1c64], same_as = "encrypted" },
+  { range = [0x1de4, 0x1e64], same_as = "encrypted" },
+  { range = [0x1e84, 0x2030], same_as = "encrypted" },
+  { range = ["primary.payload_end", "end"], same_as = "encrypted" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_ERR=0x0003000e",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001a",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003001b",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DMA_STS=",
+  "NO_BL1_IMAGE",
+  "BL1_ADDR_RANGE",
+  "BL1_SIZE",
+  "BL1_ENTRY_RANGE",
+  "SBOOT_OFF",
+  "DECRYPT_NO_SECRET",
+  "DECRYPT_CLASS_KEY_EMPTY",
+  "KDF_FAIL",
+  "KDF_HMAC_FAIL",
+  "AES_DEC_FAIL",
+  "AES_PAD_BAD",
+  "AES_INIT_BUSY",
+  "AES_IDLE_TIMEOUT=",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030015" = 1, "PUBK_AUTHORIZED" = 2, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "DECRYPT_OK" = 2, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "DEBUG 0x0052", "INFO 0x0040", "INFO 0x0042", "WARN 0x000f", "INFO 0x004c", "INFO 0x0053", "INFO 0x0040", "INFO 0x0042", "INFO 0x0055"]
+forbid_status = ["ERROR 0x000f", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "An op, not a repack: the packer places images itself and declares no entry offset; set_toc_entry_offset reseals the entry digest, payload_hash_chain, payload_hash and the signature, so only the placement rule can refuse the slot.",
+  "Offset 240 (0xF0) is the DV value: 8-byte aligned and past entry 0's digest, inside the 312-byte TOC, so only the rule that an image starts after the TOC refuses it.",
+  "The edited field sits in ciphertext, so the image_asserts bound the first changed AES block and DECRYPT_OK places the check after decryption.",
+]
+
+[[testcase]]
+name = "sep_firmware_backup_non_encrypted_payload_image_exceeds_bound_test"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "backup_non_encrypted_payload_image_exceeds_bound"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { range = [0x1000, 0x1004], all = 0x99 },
+  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "backup", entry = 0, size = 8, value = 240 } },
+  { range = [0x41c64, 0x41de4], differs_from = "signed" },
+  { range = [0x0, 0x1000], same_as = "signed" },
+  { range = [0x1004, 0x41ad7], same_as = "signed" },
+  { range = [0x41af7, 0x41b1f], same_as = "signed" },
+  { range = [0x41b3f, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, 0x42038], same_as = "signed" },
+  { range = [0x42040, 0x42070], same_as = "signed" },
+  { range = [0x42090, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030015",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_ERR=0x0003000e",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001a",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003001b",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DMA_STS=",
+  "NO_BL1_IMAGE",
+  "BL1_ADDR_RANGE",
+  "BL1_SIZE",
+  "BL1_ENTRY_RANGE",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "SBOOT_OFF",
+  "DECRYPT_OK",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "OCA_BODY=0x00001000" = 1, "RSA_EXEC" = 1, "MANIFEST_OK" = 1, "MANIFEST_ERR=0x00030002" = 1, "MANIFEST_ERR=0x00030015" = 1, "MANIFEST_ALL_FAILED" = 1, "MANIFEST_BOOT_FAIL=0x00030015" = 1 }
+expect_status = ["WARN 0x0006", "INFO 0x004c", "INFO 0x0053", "DEBUG 0x0052", "WARN 0x000f", "ERROR 0x000f", "ERROR 0x0213"]
+forbid_status = ["ERROR 0x0006", "INFO 0x0055"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030015"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_peek", "backup_manifest", "backup_payload"]
+markers = [
+  "An op, not a repack: the packer places images itself and declares no entry offset; set_toc_entry_offset reseals the entry digest, payload_hash_chain, payload_hash and the signature, so only the placement rule can refuse the slot.",
+  "Offset 240 (0xF0) is the DV value: 8-byte aligned and past entry 0's digest, inside the 312-byte TOC, so only the rule that an image starts after the TOC refuses it.",
+  "The primary magic is broken with a plain byte patch, so the backup is the only slot that reaches its TOC.",
+]
+
+[[testcase]]
+name = "sep_firmware_backup_encrypted_payload_image_exceeds_bound_test"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "backup_encrypted_payload_image_exceeds_bound"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+# The secret 00..1f of configs/oca_encrypted_boot_test.yaml.
+efuse = { class_key = [0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c] }
+image_asserts = [
+  { range = [0x1000, 0x1004], all = 0x99 },
+  { range = [0x42030, 0x42040], differs_from = "encrypted" },
+  { range = [0x41c64, 0x41de4], differs_from = "encrypted" },
+  { range = [0x0, 0x1000], same_as = "encrypted" },
+  { range = [0x1004, 0x41ad7], same_as = "encrypted" },
+  { range = [0x41af7, 0x41b1f], same_as = "encrypted" },
+  { range = [0x41b3f, 0x41c64], same_as = "encrypted" },
+  { range = [0x41de4, 0x41e64], same_as = "encrypted" },
+  { range = [0x41e84, 0x42030], same_as = "encrypted" },
+  { range = ["backup.payload_end", "end"], same_as = "encrypted" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030015",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_ERR=0x0003000e",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001a",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003001b",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DMA_STS=",
+  "NO_BL1_IMAGE",
+  "BL1_ADDR_RANGE",
+  "BL1_SIZE",
+  "BL1_ENTRY_RANGE",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "SBOOT_OFF",
+  "DECRYPT_NO_SECRET",
+  "DECRYPT_CLASS_KEY_EMPTY",
+  "KDF_FAIL",
+  "KDF_HMAC_FAIL",
+  "AES_DEC_FAIL",
+  "AES_PAD_BAD",
+  "AES_INIT_BUSY",
+  "AES_IDLE_TIMEOUT=",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "OCA_BODY=0x00001000" = 1, "RSA_EXEC" = 1, "MANIFEST_OK" = 1, "DECRYPT_OK" = 1, "MANIFEST_ERR=0x00030002" = 1, "MANIFEST_ERR=0x00030015" = 1, "MANIFEST_ALL_FAILED" = 1, "MANIFEST_BOOT_FAIL=0x00030015" = 1 }
+expect_status = ["WARN 0x0006", "INFO 0x004c", "INFO 0x0053", "DEBUG 0x0052", "INFO 0x0040", "INFO 0x0042", "WARN 0x000f", "ERROR 0x000f", "ERROR 0x0213"]
+forbid_status = ["ERROR 0x0006", "INFO 0x0055"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030015"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_peek", "backup_manifest", "backup_payload"]
+markers = [
+  "An op, not a repack: the packer places images itself and declares no entry offset; set_toc_entry_offset reseals the entry digest, payload_hash_chain, payload_hash and the signature, so only the placement rule can refuse the slot.",
+  "Offset 240 (0xF0) is the DV value: 8-byte aligned and past entry 0's digest, inside the 312-byte TOC, so only the rule that an image starts after the TOC refuses it.",
+  "The edited field sits in ciphertext, so the image_asserts bound the first changed AES block and DECRYPT_OK places the check after decryption.",
+  "The primary magic is broken with a plain byte patch, so the backup is the only slot that reaches its TOC.",
+]
+
+[[testcase]]
+name = "sep_firmware_primary_non_encrypted_toc_payload_size_mismatch_test"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "primary_non_encrypted_toc_payload_size_mismatch"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { range = [0x2008, 0x2009], all = 0x00 },
+  { range = [0x2009, 0x200a], all = 0x20 },
+  { range = [0x200a, 0x2010], all = 0x00 },
+  { range = [0x1c64, 0x1de4], differs_from = "signed" },
+  { range = [0x0, 0x1ad7], same_as = "signed" },
+  { range = [0x1af7, 0x1b1f], same_as = "signed" },
+  { range = [0x1b3f, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x2008], same_as = "signed" },
+  { range = [0x2010, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_ERR=0x0003000e",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001a",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003001b",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DMA_STS=",
+  "NO_BL1_IMAGE",
+  "BL1_ADDR_RANGE",
+  "BL1_SIZE",
+  "BL1_ENTRY_RANGE",
+  "SBOOT_OFF",
+  "DECRYPT_OK",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030015" = 1, "PUBK_AUTHORIZED" = 2, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "DEBUG 0x0052", "WARN 0x000f", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055"]
+forbid_status = ["ERROR 0x000f", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "An op, not a repack: neither packer config declares toc.payload_length, and a byte patch would leave payload_hash stale so the run would stop at 0x00030012 first.",
+  "0x2000 is the DV value and exceeds the manifest payload_length of both goldens, a one-entry TOC plus BL1.",
+  "check_cleartext_payload() refuses a TOC payload_length other than the manifest payload_length after payload_hash and the span check pass.",
+]
+
+[[testcase]]
+name = "sep_firmware_primary_encrypted_toc_payload_size_mismatch_test"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "primary_encrypted_toc_payload_size_mismatch"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# The secret 00..1f of configs/oca_encrypted_boot_test.yaml.
+efuse = { class_key = [0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c] }
+image_asserts = [
+  { range = [0x2000, 0x2010], differs_from = "encrypted" },
+  { range = [0x1c64, 0x1de4], differs_from = "encrypted" },
+  { range = [0x0, 0x1ad7], same_as = "encrypted" },
+  { range = [0x1af7, 0x1b1f], same_as = "encrypted" },
+  { range = [0x1b3f, 0x1c64], same_as = "encrypted" },
+  { range = [0x1de4, 0x1e64], same_as = "encrypted" },
+  { range = [0x1e84, 0x2000], same_as = "encrypted" },
+  { range = ["primary.payload_end", "end"], same_as = "encrypted" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_ERR=0x0003000e",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001a",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003001b",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DMA_STS=",
+  "NO_BL1_IMAGE",
+  "BL1_ADDR_RANGE",
+  "BL1_SIZE",
+  "BL1_ENTRY_RANGE",
+  "SBOOT_OFF",
+  "DECRYPT_NO_SECRET",
+  "DECRYPT_CLASS_KEY_EMPTY",
+  "KDF_FAIL",
+  "KDF_HMAC_FAIL",
+  "AES_DEC_FAIL",
+  "AES_PAD_BAD",
+  "AES_INIT_BUSY",
+  "AES_IDLE_TIMEOUT=",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030015" = 1, "PUBK_AUTHORIZED" = 2, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "DECRYPT_OK" = 2, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "DEBUG 0x0052", "INFO 0x0040", "INFO 0x0042", "WARN 0x000f", "INFO 0x004c", "INFO 0x0053", "INFO 0x0040", "INFO 0x0042", "INFO 0x0055"]
+forbid_status = ["ERROR 0x000f", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "An op, not a repack: neither packer config declares toc.payload_length, and a byte patch would leave payload_hash stale so the run would stop at 0x00030012 first.",
+  "0x2000 is the DV value and exceeds the manifest payload_length of both goldens, a one-entry TOC plus BL1.",
+  "The TOC payload_length check compares the decrypted TOC field with the ciphertext length, which may exceed it by one PKCS#7 block at most.",
+  "The edited field sits in ciphertext, so the image_asserts bound the first changed AES block and DECRYPT_OK places the check after decryption.",
+]
+
+[[testcase]]
+name = "sep_firmware_backup_non_encrypted_toc_payload_size_mismatch_test"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "backup_non_encrypted_toc_payload_size_mismatch"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { range = [0x1000, 0x1004], all = 0x99 },
+  { range = [0x42008, 0x42009], all = 0x00 },
+  { range = [0x42009, 0x4200a], all = 0x20 },
+  { range = [0x4200a, 0x42010], all = 0x00 },
+  { range = [0x41c64, 0x41de4], differs_from = "signed" },
+  { range = [0x0, 0x1000], same_as = "signed" },
+  { range = [0x1004, 0x41ad7], same_as = "signed" },
+  { range = [0x41af7, 0x41b1f], same_as = "signed" },
+  { range = [0x41b3f, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, 0x42008], same_as = "signed" },
+  { range = [0x42010, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030015",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_ERR=0x0003000e",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001a",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003001b",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DMA_STS=",
+  "NO_BL1_IMAGE",
+  "BL1_ADDR_RANGE",
+  "BL1_SIZE",
+  "BL1_ENTRY_RANGE",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "SBOOT_OFF",
+  "DECRYPT_OK",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "OCA_BODY=0x00001000" = 1, "RSA_EXEC" = 1, "MANIFEST_OK" = 1, "MANIFEST_ERR=0x00030002" = 1, "MANIFEST_ERR=0x00030015" = 1, "MANIFEST_ALL_FAILED" = 1, "MANIFEST_BOOT_FAIL=0x00030015" = 1 }
+expect_status = ["WARN 0x0006", "INFO 0x004c", "INFO 0x0053", "DEBUG 0x0052", "WARN 0x000f", "ERROR 0x000f", "ERROR 0x0213"]
+forbid_status = ["ERROR 0x0006", "INFO 0x0055"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030015"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_peek", "backup_manifest", "backup_payload"]
+markers = [
+  "An op, not a repack: neither packer config declares toc.payload_length, and a byte patch would leave payload_hash stale so the run would stop at 0x00030012 first.",
+  "0x2000 is the DV value and exceeds the manifest payload_length of both goldens, a one-entry TOC plus BL1.",
+  "check_cleartext_payload() refuses a TOC payload_length other than the manifest payload_length after payload_hash and the span check pass.",
+  "The primary magic is broken with a plain byte patch, so the backup is the only slot that reaches its TOC.",
+]
+
+[[testcase]]
+name = "sep_firmware_backup_encrypted_toc_payload_size_mismatch_test"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "backup_encrypted_toc_payload_size_mismatch"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+# The secret 00..1f of configs/oca_encrypted_boot_test.yaml.
+efuse = { class_key = [0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c] }
+image_asserts = [
+  { range = [0x1000, 0x1004], all = 0x99 },
+  { range = [0x42000, 0x42010], differs_from = "encrypted" },
+  { range = [0x41c64, 0x41de4], differs_from = "encrypted" },
+  { range = [0x0, 0x1000], same_as = "encrypted" },
+  { range = [0x1004, 0x41ad7], same_as = "encrypted" },
+  { range = [0x41af7, 0x41b1f], same_as = "encrypted" },
+  { range = [0x41b3f, 0x41c64], same_as = "encrypted" },
+  { range = [0x41de4, 0x41e64], same_as = "encrypted" },
+  { range = [0x41e84, 0x42000], same_as = "encrypted" },
+  { range = ["backup.payload_end", "end"], same_as = "encrypted" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030015",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_ERR=0x0003000e",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001a",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003001b",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DMA_STS=",
+  "NO_BL1_IMAGE",
+  "BL1_ADDR_RANGE",
+  "BL1_SIZE",
+  "BL1_ENTRY_RANGE",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "SBOOT_OFF",
+  "DECRYPT_NO_SECRET",
+  "DECRYPT_CLASS_KEY_EMPTY",
+  "KDF_FAIL",
+  "KDF_HMAC_FAIL",
+  "AES_DEC_FAIL",
+  "AES_PAD_BAD",
+  "AES_INIT_BUSY",
+  "AES_IDLE_TIMEOUT=",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "OCA_BODY=0x00001000" = 1, "RSA_EXEC" = 1, "MANIFEST_OK" = 1, "DECRYPT_OK" = 1, "MANIFEST_ERR=0x00030002" = 1, "MANIFEST_ERR=0x00030015" = 1, "MANIFEST_ALL_FAILED" = 1, "MANIFEST_BOOT_FAIL=0x00030015" = 1 }
+expect_status = ["WARN 0x0006", "INFO 0x004c", "INFO 0x0053", "DEBUG 0x0052", "INFO 0x0040", "INFO 0x0042", "WARN 0x000f", "ERROR 0x000f", "ERROR 0x0213"]
+forbid_status = ["ERROR 0x0006", "INFO 0x0055"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030015"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_peek", "backup_manifest", "backup_payload"]
+markers = [
+  "An op, not a repack: neither packer config declares toc.payload_length, and a byte patch would leave payload_hash stale so the run would stop at 0x00030012 first.",
+  "0x2000 is the DV value and exceeds the manifest payload_length of both goldens, a one-entry TOC plus BL1.",
+  "The TOC payload_length check compares the decrypted TOC field with the ciphertext length, which may exceed it by one PKCS#7 block at most.",
+  "The edited field sits in ciphertext, so the image_asserts bound the first changed AES block and DECRYPT_OK places the check after decryption.",
+  "The primary magic is broken with a plain byte patch, so the backup is the only slot that reaches its TOC.",
+]
+
+[[testcase]]
+name = "sep_firmware_primary_no_payload_images_test"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "primary_no_payload_images"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { range = [0x2010, 0x2018], all = 0x00 },
+  { field = { name = "OFF_PAYLOAD_HASHED_LENGTH", slot = "primary", size = 8, value = 0x20 } },
+  { range = [0x1c64, 0x1de4], differs_from = "signed" },
+  { range = [0x0, 0x1ad7], same_as = "signed" },
+  { range = [0x1af7, 0x1b5f], same_as = "signed" },
+  { range = [0x1b67, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x2010], same_as = "signed" },
+  { range = [0x2018, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_ERR=0x0003000e",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001a",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003001b",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DMA_STS=",
+  "NO_BL1_IMAGE",
+  "BL1_ADDR_RANGE",
+  "BL1_SIZE",
+  "BL1_ENTRY_RANGE",
+  "SBOOT_OFF",
+  "DECRYPT_OK",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030015" = 1, "PUBK_AUTHORIZED" = 2, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "DEBUG 0x0052", "WARN 0x000f", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055"]
+forbid_status = ["ERROR 0x000f", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "set_toc_image_count value 0 with hashed_to_span, the DV stimulus: payload_hashed_length follows the 32-byte header-only span and payload_hash and the signature are recomputed, so read_toc_span()'s image_count == 0 arm is the only rule broken.",
+  "An op, not a repack: derive_pack_config sets integers and strings only and cannot empty payload_images.",
+  "The payload bytes after the header stay in place, so the slot still stages its full payload_length; the over-large half of the count bound is the invalid_payload_image_count rows.",
+]
+
+[[testcase]]
+name = "sep_firmware_backup_no_payload_images_test"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "backup_no_payload_images"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { range = [0x2070, 0x2090], all = 0x00 },
+  { range = [0x42010, 0x42018], all = 0x00 },
+  { field = { name = "OFF_PAYLOAD_HASHED_LENGTH", slot = "backup", size = 8, value = 0x20 } },
+  { range = [0x41c64, 0x41de4], differs_from = "signed" },
+  { range = [0x0, 0x2070], same_as = "signed" },
+  { range = [0x2090, 0x41ad7], same_as = "signed" },
+  { range = [0x41af7, 0x41b5f], same_as = "signed" },
+  { range = [0x41b67, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, 0x42010], same_as = "signed" },
+  { range = [0x42018, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030015",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_ERR=0x0003000e",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001a",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003001b",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DMA_STS=",
+  "NO_BL1_IMAGE",
+  "BL1_ADDR_RANGE",
+  "BL1_SIZE",
+  "BL1_ENTRY_RANGE",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "SBOOT_OFF",
+  "DECRYPT_OK",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "MANIFEST_ERR=0x00030012" = 1, "MANIFEST_ERR=0x00030015" = 1, "MANIFEST_ALL_FAILED" = 1, "MANIFEST_BOOT_FAIL=0x00030015" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "DEBUG 0x0052", "WARN 0x0066", "INFO 0x004c", "INFO 0x0053", "DEBUG 0x0052", "WARN 0x000f", "ERROR 0x000f", "ERROR 0x0213"]
+forbid_status = ["ERROR 0x0066", "INFO 0x0055"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030015"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "set_toc_image_count value 0 with hashed_to_span, the DV stimulus: payload_hashed_length follows the 32-byte header-only span and payload_hash and the signature are recomputed, so read_toc_span()'s image_count == 0 arm is the only rule broken.",
+  "An op, not a repack: derive_pack_config sets integers and strings only and cannot empty payload_images.",
+  "The primary breaker is the DV one: TOC entry 0's digest zeroed inside the payload_hash span with nothing resealed, so the primary passes the crypto chain and fails at payload_hash with 0x00030012; the two codes tell the slots apart.",
+  "ERROR 0x000f and not ERROR 0x0066 is the terminal status, because rom_manifest_boot() re-reports only the last slot's verdict.",
+]
+
+[[testcase]]
+name = "sep_firmware_primary_and_backup_no_payload_images_test"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "primary_and_backup_no_payload_images"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { range = [0x2010, 0x2018], all = 0x00 },
+  { field = { name = "OFF_PAYLOAD_HASHED_LENGTH", slot = "primary", size = 8, value = 0x20 } },
+  { range = [0x1c64, 0x1de4], differs_from = "signed" },
+  { range = [0x42010, 0x42018], all = 0x00 },
+  { field = { name = "OFF_PAYLOAD_HASHED_LENGTH", slot = "backup", size = 8, value = 0x20 } },
+  { range = [0x41c64, 0x41de4], differs_from = "signed" },
+  { range = [0x0, 0x1ad7], same_as = "signed" },
+  { range = [0x1af7, 0x1b5f], same_as = "signed" },
+  { range = [0x1b67, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x2010], same_as = "signed" },
+  { range = [0x2018, 0x41ad7], same_as = "signed" },
+  { range = [0x41af7, 0x41b5f], same_as = "signed" },
+  { range = [0x41b67, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, 0x42010], same_as = "signed" },
+  { range = [0x42018, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030015",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_ERR=0x0003000e",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001a",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003001b",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DMA_STS=",
+  "NO_BL1_IMAGE",
+  "BL1_ADDR_RANGE",
+  "BL1_SIZE",
+  "BL1_ENTRY_RANGE",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "SBOOT_OFF",
+  "DECRYPT_OK",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "MANIFEST_ERR=0x00030015" = 2, "MANIFEST_ALL_FAILED" = 1, "MANIFEST_BOOT_FAIL=0x00030015" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "DEBUG 0x0052", "WARN 0x000f", "INFO 0x004c", "INFO 0x0053", "DEBUG 0x0052", "WARN 0x000f", "ERROR 0x000f", "ERROR 0x0213"]
+forbid_status = ["INFO 0x0055"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030015"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "set_toc_image_count value 0 with hashed_to_span, the DV stimulus: payload_hashed_length follows the 32-byte header-only span and payload_hash and the signature are recomputed, so read_toc_span()'s image_count == 0 arm is the only rule broken.",
+  "An op, not a repack: derive_pack_config sets integers and strings only and cannot empty payload_images.",
+  "MANIFEST_ERR=0x00030015 exactly twice, with RSA_VERIFY_OK twice, separates this row from the two single-slot rows.",
+]
+
+[[testcase]]
+name = "sep_firmware_cleartext_image_corrupt_hash_test"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "primary_cleartext_image_zero_hash"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { range = [0x2070, 0x2090], all = 0x00 },
+  { range = [0x0, 0x2070], same_as = "signed" },
+  { range = [0x2090, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_ERR=0x0003000e",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003001b",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DMA_STS=",
+  "NO_BL1_IMAGE",
+  "BL1_ADDR_RANGE",
+  "BL1_SIZE",
+  "BL1_ENTRY_RANGE",
+  "SBOOT_OFF",
+  "DECRYPT_OK",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030012" = 1, "PUBK_AUTHORIZED" = 2, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "DEBUG 0x0052", "WARN 0x0066", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055"]
+forbid_status = ["ERROR 0x0066", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "A byte patch with nothing resealed, the DV stimulus: entry 0's digest at payload offset 0x70 sits inside payload_hashed_length 0x138, so check_cleartext_payload() refuses the payload_hash with 0x00030012 while manifest_hash and the signature still verify.",
+  "Ordering is the claim: the same zeroed digest would fail the per-entry check (0x00030019), which runs later; that code and the chain code 0x00030014 are forbidden.",
+  "WARN 0x0066 is SEP_MSG_PAYLOAD_HASH_INVALID, status_for_result() of OCA_FAIL_PAYLOAD_HASH.",
+]
+
+[[testcase]]
+name = "sep_firmware_primary_payload_invalid_payload_hash_length_test"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "primary_payload_invalid_payload_hash_length"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# payload_hashed_length is the u64 at manifest offset 0xb5f; the shipped value is 312, the TOC span.
+image_asserts = [
+  { field = { name = "OFF_PAYLOAD_HASHED_LENGTH", slot = "primary", size = 8, value = 0 } },
+  { range = [0x1b5f, 0x1b61], differs_from = "signed" },
+  { range = [0x0, 0x1ad7], same_as = "signed" },
+  { range = [0x1af7, 0x1b1f], same_as = "signed" },
+  { range = [0x1b3f, 0x1b5f], same_as = "signed" },
+  { range = [0x1b67, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003000d",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DECRYPT_OK",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030015" = 1, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x0053", "WARN 0x000f", "INFO 0x0053", "INFO 0x0055", "INFO 0x0054"]
+forbid_status = ["ERROR 0x000f", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "check_cleartext_payload refuses hashed_len == 0 before any digest, as OCA_FAIL_PAYLOAD_TOC (0x00030015, status 0x000f); the encrypted arm of the same field is a different check and is not planted here.",
+  "The field is inside the signed region, so the op reseals and re-signs the slot; RSA_VERIFY_OK then MANIFEST_OK show it passed the manifest stage, and the payload span is read before the refusal.",
+  "Covers the zero arm only; a hashed length above payload_length or unequal to the TOC span takes the same code and is not planted.",
+]
+
+[[testcase]]
+name = "sep_firmware_backup_payload_invalid_payload_hash_length_test"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "backup_payload_invalid_payload_hash_length"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+# payload_hashed_length is the u64 at manifest offset 0xb5f; the shipped value is 312, the TOC span.
+image_asserts = [
+  { range = [0x1000, 0x1004], all = 0x99 },
+  { field = { name = "OFF_PAYLOAD_HASHED_LENGTH", slot = "backup", size = 8, value = 0 } },
+  { range = [0x41b5f, 0x41b61], differs_from = "signed" },
+  { range = [0x0, 0x1000], same_as = "signed" },
+  { range = [0x1004, 0x41ad7], same_as = "signed" },
+  { range = [0x41af7, 0x41b1f], same_as = "signed" },
+  { range = [0x41b3f, 0x41b5f], same_as = "signed" },
+  { range = [0x41b67, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030015",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003000d",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DECRYPT_OK",
+  "SBOOT_OFF",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_ERR=0x00030002" = 1, "MANIFEST_ERR=0x00030015" = 1, "OCA_BODY=0x00001000" = 1, "RSA_EXEC" = 1, "MANIFEST_OK" = 1, "MANIFEST_ALL_FAILED" = 1 }
+expect_status = ["WARN 0x0006", "INFO 0x004c", "INFO 0x0053", "WARN 0x000f", "ERROR 0x000f", "ERROR 0x0213"]
+forbid_status = ["INFO 0x0055"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030015"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_peek", "backup_manifest", "backup_payload"]
+markers = [
+  "The primary is refused at the magic peek (0x00030002), so OCA_BODY=, RSA_EXEC and MANIFEST_OK once each belong to the backup.",
+  "check_cleartext_payload refuses hashed_len == 0 before any digest, as OCA_FAIL_PAYLOAD_TOC (0x00030015, status 0x000f); the encrypted arm of the same field is a different check and is not planted here.",
+  "The field is inside the signed region, so the op reseals and re-signs the slot; RSA_VERIFY_OK then MANIFEST_OK show it passed the manifest stage, and the payload span is read before the refusal.",
+  "Covers the zero arm only; a hashed length above payload_length or unequal to the TOC span takes the same code and is not planted.",
+]
+
+[[testcase]]
+name = "sep_firmware_primary_non_encrypted_payload_toc_version_major_invalid_test"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "primary_non_encrypted_toc_version_major_invalid"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# major_version is the u16 at TOC offset 4; the shipped value is 1.
+image_asserts = [
+  { range = [0x2004, 0x2005], all = 0x02 },
+  { range = [0x2005, 0x2006], all = 0x00 },
+  { range = [0x2004, 0x2005], differs_from = "signed" },
+  { range = [0x0, 0x1ad7], same_as = "signed" },
+  { range = [0x1af7, 0x1b1f], same_as = "signed" },
+  { range = [0x1b3f, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x2004], same_as = "signed" },
+  { range = [0x2005, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003000d",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DECRYPT_OK",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030015" = 1, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x0053", "WARN 0x000f", "INFO 0x0053", "INFO 0x0055", "INFO 0x0054"]
+forbid_status = ["ERROR 0x000f", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "The spec verdict is OCA_FAIL_PAYLOAD_TOC (0x00030015) after the signature verified.",
+  "Value 2 is the DV member's TOC_MAJOR_VERSION + 1, the nearest unsupported major.",
+]
+
+[[testcase]]
+name = "sep_firmware_backup_non_encrypted_payload_toc_version_major_invalid_test"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "backup_non_encrypted_toc_version_major_invalid"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+# major_version is the u16 at TOC offset 4; the shipped value is 1.
+image_asserts = [
+  { range = [0x1000, 0x1004], all = 0x99 },
+  { range = [0x42004, 0x42005], all = 0x02 },
+  { range = [0x42005, 0x42006], all = 0x00 },
+  { range = [0x42004, 0x42005], differs_from = "signed" },
+  { range = [0x0, 0x1000], same_as = "signed" },
+  { range = [0x1004, 0x41ad7], same_as = "signed" },
+  { range = [0x41af7, 0x41b1f], same_as = "signed" },
+  { range = [0x41b3f, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, 0x42004], same_as = "signed" },
+  { range = [0x42005, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030015",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003000d",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DECRYPT_OK",
+  "SBOOT_OFF",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_ERR=0x00030002" = 1, "MANIFEST_ERR=0x00030015" = 1, "OCA_BODY=0x00001000" = 1, "RSA_EXEC" = 1, "MANIFEST_OK" = 1, "MANIFEST_ALL_FAILED" = 1 }
+expect_status = ["WARN 0x0006", "INFO 0x004c", "INFO 0x0053", "WARN 0x000f", "ERROR 0x000f", "ERROR 0x0213"]
+forbid_status = ["INFO 0x0055"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030015"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_peek", "backup_manifest", "backup_payload"]
+markers = [
+  "The primary is refused at the magic peek (0x00030002), so the single signature check and TOC belong to the backup.",
+  "The spec verdict is OCA_FAIL_PAYLOAD_TOC (0x00030015) after the signature verified.",
+  "Value 2 is the DV member's TOC_MAJOR_VERSION + 1, the nearest unsupported major.",
+]
+
+[[testcase]]
+name = "sep_firmware_primary_encrypted_payload_toc_version_major_invalid_test"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "primary_encrypted_toc_version_major_invalid"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# The secret 00..1f of the encrypted packer configs, as the CLASS_KEY bank holds it.
+efuse = { class_key = [0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c] }
+# Ciphertext TOC: the first AES block (major_version) must differ; bytes outside the reseal match.
+image_asserts = [
+  { range = [0x2000, 0x2010], differs_from = "encrypted" },
+  { range = [0x1ad7, 0x1af7], differs_from = "encrypted" },
+  { range = [0x0, 0x1ad7], same_as = "encrypted" },
+  { range = [0x1af7, 0x1b1f], same_as = "encrypted" },
+  { range = [0x1b3f, 0x1c64], same_as = "encrypted" },
+  { range = [0x1de4, 0x1e64], same_as = "encrypted" },
+  { range = [0x1e84, 0x2000], same_as = "encrypted" },
+  { range = ["primary.payload_end", "end"], same_as = "encrypted" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003000d",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DECRYPT_NO_SECRET",
+  "DECRYPT_CLASS_KEY_EMPTY",
+  "KDF_FAIL",
+  "KDF_HMAC_FAIL",
+  "AES_DEC_FAIL",
+  "AES_PAD_BAD",
+  "AES_INIT_BUSY",
+  "AES_IDLE_TIMEOUT=",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_ERR=0x0003001e",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030015" = 1, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "DECRYPT_OK" = 2, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x0053", "INFO 0x0040", "INFO 0x0042", "WARN 0x000f", "INFO 0x0053", "INFO 0x0040", "INFO 0x0042", "INFO 0x0055", "INFO 0x0054"]
+forbid_status = ["ERROR 0x000f", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "The spec verdict is OCA_FAIL_PAYLOAD_TOC (0x00030015) after the signature verified.",
+  "Value 2 is the DV member's TOC_MAJOR_VERSION + 1, the nearest unsupported major.",
+  "DECRYPT_OK before the expected refusal is what makes this the encrypted arm: the TOC is read only after decryption.",
+]
+
+[[testcase]]
+name = "sep_firmware_backup_encrypted_payload_toc_version_major_invalid_test"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "backup_encrypted_toc_version_major_invalid"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+# The secret 00..1f of the encrypted packer configs, as the CLASS_KEY bank holds it.
+efuse = { class_key = [0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c] }
+# Ciphertext TOC: the first AES block (major_version) must differ; bytes outside the reseal match.
+image_asserts = [
+  { range = [0x1000, 0x1004], all = 0x99 },
+  { range = [0x42000, 0x42010], differs_from = "encrypted" },
+  { range = [0x41ad7, 0x41af7], differs_from = "encrypted" },
+  { range = [0x0, 0x1000], same_as = "encrypted" },
+  { range = [0x1004, 0x41ad7], same_as = "encrypted" },
+  { range = [0x41af7, 0x41b1f], same_as = "encrypted" },
+  { range = [0x41b3f, 0x41c64], same_as = "encrypted" },
+  { range = [0x41de4, 0x41e64], same_as = "encrypted" },
+  { range = [0x41e84, 0x42000], same_as = "encrypted" },
+  { range = ["backup.payload_end", "end"], same_as = "encrypted" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030015",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003000d",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DECRYPT_NO_SECRET",
+  "DECRYPT_CLASS_KEY_EMPTY",
+  "KDF_FAIL",
+  "KDF_HMAC_FAIL",
+  "AES_DEC_FAIL",
+  "AES_PAD_BAD",
+  "AES_INIT_BUSY",
+  "AES_IDLE_TIMEOUT=",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_ERR=0x0003001e",
+  "SBOOT_OFF",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_ERR=0x00030002" = 1, "MANIFEST_ERR=0x00030015" = 1, "OCA_BODY=0x00001000" = 1, "RSA_EXEC" = 1, "MANIFEST_OK" = 1, "DECRYPT_OK" = 1, "MANIFEST_ALL_FAILED" = 1 }
+expect_status = ["WARN 0x0006", "INFO 0x004c", "INFO 0x0053", "INFO 0x0040", "INFO 0x0042", "WARN 0x000f", "ERROR 0x000f", "ERROR 0x0213"]
+forbid_status = ["INFO 0x0055"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030015"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_peek", "backup_manifest", "backup_payload"]
+markers = [
+  "The primary is refused at the magic peek (0x00030002), so the single signature check and TOC belong to the backup.",
+  "The spec verdict is OCA_FAIL_PAYLOAD_TOC (0x00030015) after the signature verified.",
+  "Value 2 is the DV member's TOC_MAJOR_VERSION + 1, the nearest unsupported major.",
+  "DECRYPT_OK before the expected refusal is what makes this the encrypted arm: the TOC is read only after decryption.",
+]
+
+[[testcase]]
+name = "sep_firmware_primary_non_encrypted_payload_images_out_of_order_test"
+family = "payload_metadata"
+classification = "partial"
+image = "primary_non_encrypted_payload_images_out_of_order"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# Entry offsets after the edit: entry 0 is the shipped entry 2 (BLSTAGE1), entry 1 = 880 (_VENDOR1) starts inside entry 2 = 872 (BLMEMMAP).
+image_asserts = [
+  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 0, size = 8, value_from = { image = "multi", entry = 2 } } },
+  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 1, size = 8, value = 880 } },
+  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 2, size = 8, value = 872 } },
+  { range = [0x2150, 0x2152], differs_from = "multi" },
+  { range = [0x0, 0x1ad7], same_as = "multi" },
+  { range = [0x1af7, 0x1b1f], same_as = "multi" },
+  { range = [0x1b3f, 0x1c64], same_as = "multi" },
+  { range = [0x1de4, 0x1e64], same_as = "multi" },
+  { range = [0x1e84, 0x2020], same_as = "multi" },
+  { range = [0x2368, "end"], same_as = "multi" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003000d",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DECRYPT_OK",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030015" = 1, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x0053", "WARN 0x000f", "INFO 0x0053", "INFO 0x0055", "INFO 0x0054"]
+forbid_status = ["ERROR 0x000f", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "Partial: proves that an overlapping TOC entry is refused; it proves no ordering check, because OCA accepts descending image order (the __ctrl_permute_only entry boots).",
+  "validate_toc_structure checks every entry pairwise against every earlier one, so descending order alone is legal; entry 1 at 880 overlaps entry 2 at [872, 2716) and the slot is refused as OCA_FAIL_PAYLOAD_TOC (0x00030015, status 0x000f) after the signature verified.",
+  "The OCA ROM has no inter-image ordering rule and prints no index, so the stimulus follows the DV member (images_overlapping): permute to (2, 1, 0), then move entry 1 eight bytes into entry 2.",
+  "Both ops reseal the entry hashes, chain, payload hash and signature, so the overlap is the only broken rule; MANIFEST_ERR=0x00030014 and 0x00030019 are forbidden.",
+]
+
+[[testcase]]
+name = "sep_firmware_primary_non_encrypted_payload_images_out_of_order_test__ctrl_permute_only"
+family = "payload_metadata"
+classification = "vp-equivalent"
+image = "primary_non_encrypted_payload_images_permute_only"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# The permutation reverses the shipped entries: BLSTAGE1 moves to entry 0, _VENDOR1 stays entry 1 and BLMEMMAP (872) moves to entry 2.
+image_asserts = [
+  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 0, size = 8, value_from = { image = "multi", entry = 2 } } },
+  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 1, size = 8, value_from = { image = "multi", entry = 1 } } },
+  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "primary", entry = 2, size = 8, value = 872 } },
+  { range = [0x2038, 0x203a], differs_from = "multi" },
+  { range = [0x2268, 0x226a], differs_from = "multi" },
+  { range = [0x0, 0x1ad7], same_as = "multi" },
+  { range = [0x1af7, 0x1b1f], same_as = "multi" },
+  { range = [0x1b3f, 0x1c64], same_as = "multi" },
+  { range = [0x1de4, 0x1e64], same_as = "multi" },
+  { range = [0x1e84, 0x2020], same_as = "multi" },
+  { range = [0x2368, "end"], same_as = "multi" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "LOAD=0xc0000000",
+  "LEN={primary.bl1_len}",
+  "ENTRY=0x00000000",
+  "BL1_DST=ICCM",
+  "COPY_SRC={primary.bl1_copy_src}",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ERR=",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "NO_BL1_IMAGE",
+  "BL1_ADDR_RANGE",
+  "BL1_ENTRY_RANGE",
+  "BL1_SIZE",
+  "DECRYPT_OK",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "COPY_SRC={primary.bl1_copy_src}" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x020e", "INFO 0x0054"]
+forbid_status = ["WARN 0x000f", "ERROR 0x000f", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+markers = [
+  "validate_toc_structure checks offset alignment, non-zero length, bounds and pairwise overlap but no order, and check_payload_hash_chain_and_entries chains entries in stored order, so a resealed descending TOC is legal and the primary boots.",
+  "find_bl1 selects BL1 by type: it is entry 0 here and entry 2 in the shipped image, and COPY_SRC is the staged payload base 0x10001000 plus its TOC offset either way.",
+  "Pairs with the overlap entries of this name: those carry DV images_overlapping, this one DV images_descending_order, so the reordering in their stimulus is shown legal on every run.",
+]
+
+[[testcase]]
+name = "sep_firmware_backup_non_encrypted_payload_images_out_of_order_test"
+family = "payload_metadata"
+classification = "partial"
+image = "backup_non_encrypted_payload_images_out_of_order"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+# Entry offsets after the edit: entry 0 is the shipped entry 2 (BLSTAGE1), entry 1 = 880 (_VENDOR1) starts inside entry 2 = 872 (BLMEMMAP).
+image_asserts = [
+  { range = [0x1000, 0x1004], all = 0x99 },
+  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "backup", entry = 0, size = 8, value_from = { image = "multi", entry = 2 } } },
+  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "backup", entry = 1, size = 8, value = 880 } },
+  { toc_field = { name = "OFF_TOC_ENTRY_OFFSET", slot = "backup", entry = 2, size = 8, value = 872 } },
+  { range = [0x42150, 0x42152], differs_from = "multi" },
+  { range = [0x0, 0x1000], same_as = "multi" },
+  { range = [0x1004, 0x41ad7], same_as = "multi" },
+  { range = [0x41af7, 0x41b1f], same_as = "multi" },
+  { range = [0x41b3f, 0x41c64], same_as = "multi" },
+  { range = [0x41de4, 0x41e64], same_as = "multi" },
+  { range = [0x41e84, 0x42020], same_as = "multi" },
+  { range = [0x42368, "end"], same_as = "multi" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030015",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003000d",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DECRYPT_OK",
+  "SBOOT_OFF",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_ERR=0x00030002" = 1, "MANIFEST_ERR=0x00030015" = 1, "OCA_BODY=0x00001000" = 1, "RSA_EXEC" = 1, "MANIFEST_OK" = 1, "MANIFEST_ALL_FAILED" = 1 }
+expect_status = ["WARN 0x0006", "INFO 0x004c", "INFO 0x0053", "WARN 0x000f", "ERROR 0x000f", "ERROR 0x0213"]
+forbid_status = ["INFO 0x0055"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030015"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_peek", "backup_manifest", "backup_payload"]
+markers = [
+  "Partial: proves that an overlapping TOC entry is refused; it proves no ordering check, because OCA accepts descending image order (the __ctrl_permute_only entry boots).",
+  "The primary is refused at the magic peek (0x00030002), so the single signature check and TOC belong to the backup.",
+  "validate_toc_structure checks every entry pairwise against every earlier one, so descending order alone is legal; entry 1 at 880 overlaps entry 2 at [872, 2716) and the slot is refused as OCA_FAIL_PAYLOAD_TOC (0x00030015, status 0x000f) after the signature verified.",
+  "The OCA ROM has no inter-image ordering rule and prints no index, so the stimulus follows the DV member (images_overlapping): permute to (2, 1, 0), then move entry 1 eight bytes into entry 2.",
+  "Both ops reseal the entry hashes, chain, payload hash and signature, so the overlap is the only broken rule; MANIFEST_ERR=0x00030014 and 0x00030019 are forbidden.",
+]
+
+[[testcase]]
+name = "sep_firmware_primary_encrypted_payload_images_out_of_order_test"
+family = "payload_metadata"
+classification = "partial"
+image = "primary_encrypted_payload_images_out_of_order"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# The secret 00..1f of the encrypted packer configs, as the CLASS_KEY bank holds it.
+efuse = { class_key = [0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c] }
+# The entry array is ciphertext: header blocks must match and the first entry block must differ.
+image_asserts = [
+  { range = [0x2020, 0x2030], differs_from = "encrypted_multi" },
+  { range = [0x1ad7, 0x1af7], differs_from = "encrypted_multi" },
+  { range = [0x0, 0x1ad7], same_as = "encrypted_multi" },
+  { range = [0x1af7, 0x1b1f], same_as = "encrypted_multi" },
+  { range = [0x1b3f, 0x1c64], same_as = "encrypted_multi" },
+  { range = [0x1de4, 0x1e64], same_as = "encrypted_multi" },
+  { range = [0x1e84, 0x2020], same_as = "encrypted_multi" },
+  { range = ["primary.payload_end", "end"], same_as = "encrypted_multi" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003000d",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DECRYPT_NO_SECRET",
+  "DECRYPT_CLASS_KEY_EMPTY",
+  "KDF_FAIL",
+  "KDF_HMAC_FAIL",
+  "AES_DEC_FAIL",
+  "AES_PAD_BAD",
+  "AES_INIT_BUSY",
+  "AES_IDLE_TIMEOUT=",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_ERR=0x0003001e",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030015" = 1, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "DECRYPT_OK" = 2, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x0053", "INFO 0x0040", "INFO 0x0042", "WARN 0x000f", "INFO 0x0053", "INFO 0x0040", "INFO 0x0042", "INFO 0x0055", "INFO 0x0054"]
+forbid_status = ["ERROR 0x000f", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "Partial: proves that an overlapping TOC entry is refused; it proves no ordering check, because OCA accepts descending image order (the __ctrl_permute_only entry boots).",
+  "validate_toc_structure checks every entry pairwise against every earlier one, so descending order alone is legal; entry 1 at 880 overlaps entry 2 at [872, 2716) and the slot is refused as OCA_FAIL_PAYLOAD_TOC (0x00030015, status 0x000f) after the signature verified.",
+  "The OCA ROM has no inter-image ordering rule and prints no index, so the stimulus follows the DV member (images_overlapping): permute to (2, 1, 0), then move entry 1 eight bytes into entry 2.",
+  "Both ops reseal the entry hashes, chain, payload hash and signature, so the overlap is the only broken rule; MANIFEST_ERR=0x00030014 and 0x00030019 are forbidden.",
+  "DECRYPT_OK before the refusal shows the overlap rule ran on recovered plaintext.",
+]
+
+[[testcase]]
+name = "sep_firmware_backup_encrypted_payload_images_out_of_order_test"
+family = "payload_metadata"
+classification = "partial"
+image = "backup_encrypted_payload_images_out_of_order"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+# The secret 00..1f of the encrypted packer configs, as the CLASS_KEY bank holds it.
+efuse = { class_key = [0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c] }
+# The entry array is ciphertext: header blocks must match and the first entry block must differ.
+image_asserts = [
+  { range = [0x1000, 0x1004], all = 0x99 },
+  { range = [0x42020, 0x42030], differs_from = "encrypted_multi" },
+  { range = [0x41ad7, 0x41af7], differs_from = "encrypted_multi" },
+  { range = [0x0, 0x1000], same_as = "encrypted_multi" },
+  { range = [0x1004, 0x41ad7], same_as = "encrypted_multi" },
+  { range = [0x41af7, 0x41b1f], same_as = "encrypted_multi" },
+  { range = [0x41b3f, 0x41c64], same_as = "encrypted_multi" },
+  { range = [0x41de4, 0x41e64], same_as = "encrypted_multi" },
+  { range = [0x41e84, 0x42020], same_as = "encrypted_multi" },
+  { range = ["backup.payload_end", "end"], same_as = "encrypted_multi" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030015",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x0003000d",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DECRYPT_NO_SECRET",
+  "DECRYPT_CLASS_KEY_EMPTY",
+  "KDF_FAIL",
+  "KDF_HMAC_FAIL",
+  "AES_DEC_FAIL",
+  "AES_PAD_BAD",
+  "AES_INIT_BUSY",
+  "AES_IDLE_TIMEOUT=",
+  "MANIFEST_ERR=0x00030013",
+  "MANIFEST_ERR=0x0003001e",
+  "SBOOT_OFF",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_ERR=0x00030002" = 1, "MANIFEST_ERR=0x00030015" = 1, "OCA_BODY=0x00001000" = 1, "RSA_EXEC" = 1, "MANIFEST_OK" = 1, "DECRYPT_OK" = 1, "MANIFEST_ALL_FAILED" = 1 }
+expect_status = ["WARN 0x0006", "INFO 0x004c", "INFO 0x0053", "INFO 0x0040", "INFO 0x0042", "WARN 0x000f", "ERROR 0x000f", "ERROR 0x0213"]
+forbid_status = ["INFO 0x0055"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030015"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_peek", "backup_manifest", "backup_payload"]
+markers = [
+  "Partial: proves that an overlapping TOC entry is refused; it proves no ordering check, because OCA accepts descending image order (the __ctrl_permute_only entry boots).",
+  "The primary is refused at the magic peek (0x00030002), so the single signature check and TOC belong to the backup.",
+  "validate_toc_structure checks every entry pairwise against every earlier one, so descending order alone is legal; entry 1 at 880 overlaps entry 2 at [872, 2716) and the slot is refused as OCA_FAIL_PAYLOAD_TOC (0x00030015, status 0x000f) after the signature verified.",
+  "The OCA ROM has no inter-image ordering rule and prints no index, so the stimulus follows the DV member (images_overlapping): permute to (2, 1, 0), then move entry 1 eight bytes into entry 2.",
+  "Both ops reseal the entry hashes, chain, payload hash and signature, so the overlap is the only broken rule; MANIFEST_ERR=0x00030014 and 0x00030019 are forbidden.",
+  "DECRYPT_OK before the refusal shows the overlap rule ran on recovered plaintext.",
+]
+

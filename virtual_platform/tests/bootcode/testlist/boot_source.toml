@@ -1,0 +1,160 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[testcase]]
+name = "sep_rotate_update_set_test"
+family = "boot_source"
+classification = "vp-equivalent"
+image = "spi_primary_slot_blank"
+base_ini = "secure"
+boot = "primary"
+rotate_update = true
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { range = [0x1000, 0x41000], all = 0xFF },
+  { range = [0x1000, 0x1004], differs_from = "signed" },
+  { range = [0x0, 0x1000], same_as = "signed" },
+  { range = [0x41000, "end"], same_as = "signed" },
+]
+expect = [
+  "STRAPS_LO=0x02000000",
+  "STRAPS_HI=0x04000000",
+  "rotate=1",
+  "BOOT_SPI",
+  "SPI_ROTATE=1",
+  "OT_SPI: init ok",
+  "SPI_INIT_OK",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "SPI_ROTATE=0",
+  "rotate=0",
+  "SPI init failed, using backup manifest",
+  "BOOT_RECOVERY",
+  "BOOT_SECONDARY",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+expect_counts = { "MANIFEST_BACKUP" = 1, "MANIFEST_SRC=0x00041000" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1 }
+expect_status = ["INFO 0x0023", "INFO 0x0090", "INFO_EXT 0x0001", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055"]
+forbid_status = ["WARN 0x0006", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_slot", range = [0x1000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["backup_manifest", "backup_payload"]
+markers = [
+  "The OCA ROM labels the attempt by slot, so the rotated first attempt prints MANIFEST_BACKUP with the backup address.",
+  "primary_slot exact 0 separates rotation from failover on the device side: the primary span is erased, and a ROM that tried it first would read its 20-byte peek there.",
+  "INFO_EXT 0x0001 straight after INFO 0x0090 is the ROM's own report of the rotate strap.",
+  "Shares its image with sep_spi_primary_fail_backup_test, which boots the same bytes without the strap and fails over; the two differ in one input.",
+]
+
+[[testcase]]
+name = "sep_otbn_rsa_verify_failure_test"
+family = "boot_source"
+classification = "partial"
+image = "both_slots_bad_signature"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { range = [0x1c64, 0x1c65], differs_from = "signed" },
+  { range = [0x41de3, 0x41de4], differs_from = "signed" },
+  { range = [0x0, 0x1c64], same_as = "signed" },
+  { range = [0x1c65, 0x41de3], same_as = "signed" },
+  { range = [0x41de4, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_SEL=0x00000000",
+  "PUBK_AUTHORIZED",
+  "PUBK_REVOKE=0x00000000",
+  "RSA_EXEC",
+  "RSA_PKCS1_FAIL",
+  "MANIFEST_ERR=0x0003000e",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_SEL=0x00000000",
+  "PUBK_AUTHORIZED",
+  "PUBK_REVOKE=0x00000000",
+  "RSA_EXEC",
+  "RSA_PKCS1_FAIL",
+  "MANIFEST_ERR=0x0003000e",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x0003000e",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "RSA_VERIFY_OK",
+  "RSA_OTBN_INIT_FAIL",
+  "RSA_OTBN_LOAD_FAIL",
+  "RSA_EXEC_FAIL",
+  "RSA_INOUT_UNCHANGED",
+  "OTBN_ERR=",
+  "OTBN_RST_FAIL",
+  "PUBK_ALGO_UNSUPPORTED",
+  "PUBK_SLOT_RESERVED",
+  "PUBK_SEL_AMBIGUOUS",
+  "PUBK_SLOT_UNPROVISIONED",
+  "PUBK_OTP_EMPTY",
+  "PUBK_HASH_TIMEOUT",
+  "PUBK_UNAUTHORIZED",
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_ERR=0x00030016",
+  "MANIFEST_ERR=0x00030017",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "SBOOT_OFF",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "PUBK_SEL=0x00000000" = 2, "RSA_EXEC" = 2, "RSA_PKCS1_FAIL" = 2, "MANIFEST_ERR=0x0003000e" = 2, "MANIFEST_ALL_FAILED" = 1, "MANIFEST_BOOT_FAIL=0x0003000e" = 1 }
+terminal_token = "MANIFEST_BOOT_FAIL=0x0003000e"
+expect_status = ["INFO 0x004c", "WARN 0x000e", "INFO 0x004c", "WARN 0x000e", "ERROR 0x000e", "ERROR 0x0213"]
+forbid_status = ["INFO 0x0053", "INFO 0x0055"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_manifest"]
+markers = [
+  "Partial: DV also requires the OTBN command register to be written EXECUTE exactly twice, which needs an ISS-trace judge; RSA_EXEC counted twice is the firmware's own report of the same event.",
+  "One bit per slot as DV plants it: primary signature byte 0 ^ 0x01, backup byte 383 ^ 0x80. The signature is outside the signed region, so manifest_hash still matches and the run reaches the verifier.",
+  "Forbidding the OTBN engine failures and every key-selection refusal places the rejection in the PKCS#1 comparison after a completed modexp.",
+  "The signature is checked inside oca_validate_manifest, so neither payload is read; both payload spans are exact 0.",
+]

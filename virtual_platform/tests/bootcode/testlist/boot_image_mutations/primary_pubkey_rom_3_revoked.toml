@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# The shipped ROM key slot 3 primary beside the shipped slot 0 backup, each signed by its own key.
+base = "rom_key3"
+ops = [
+  { op = "graft_slot_from", slot = "backup", args = { image = "signed" } },
+]

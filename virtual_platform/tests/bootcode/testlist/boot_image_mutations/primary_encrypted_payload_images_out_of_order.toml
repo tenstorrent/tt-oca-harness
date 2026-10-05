@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Stores the primary encrypted TOC in descending offset order, which is legal, then starts entry 1
+# eight bytes into entry 2, so only the overlap rule is broken.
+base = "encrypted_multi"
+ops = [
+  { op = "permute_toc_entries", slot = "primary", args = { order = [2, 1, 0] } },
+  { op = "set_toc_entry_offset", slot = "primary", args = { index = 1, value = 880 } },
+]

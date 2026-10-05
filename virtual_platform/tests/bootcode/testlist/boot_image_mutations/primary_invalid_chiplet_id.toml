@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Selects primary chiplet_id bytes 3 and 5 with values unlike the erased SEP_CHIPLET_ID fuse.
+base = "signed"
+ops = [
+  { op = "set_identity", slot = "primary", args = { kind = "chiplet", value = "000000ff00ff0000000000000000000000000000000000000000000000000000", mask = 0x28 } },
+]

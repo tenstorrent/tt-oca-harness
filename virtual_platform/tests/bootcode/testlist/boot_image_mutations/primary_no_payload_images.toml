@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Primary TOC declares zero images with payload_hashed_length on the header-only span and every seal refreshed.
+base = "signed"
+ops = [
+  { op = "set_toc_image_count", slot = "primary", args = { value = 0, hashed_to_span = true } },
+]

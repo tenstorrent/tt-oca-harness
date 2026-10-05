@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Declares a re-signed primary payload 100 KiB past 0x3F000, ending past its slot window.
+base = "signed"
+ops = [
+  { op = "declare_payload_length", slot = "primary", args = { payload_length = 0x58000 } },
+]

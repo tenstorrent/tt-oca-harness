@@ -19,6 +19,8 @@ import re
 
 import pexpect
 
+from sepvp.run_result import RunResult, supervise
+
 log = logging.getLogger("sepvp")
 
 # A decoded status/console line carries the CSML prefix or not, depending on the model
@@ -158,6 +160,19 @@ class Harness:
             allow_error = type == "ERROR"
         error_patterns = [] if allow_error else None
         return self.expect(pattern, error_patterns=error_patterns, timeout=timeout)
+
+    def run_to_completion(self, timeout=None, verdict_settle=2.0) -> RunResult:
+        """Spawn and capture one complete run over a single wall-clock deadline."""
+        if self.child is not None:
+            raise HarnessError("run_to_completion() requires a fresh harness")
+        timeout = self.config.boot_timeout if timeout is None else timeout
+        try:
+            self.spawn()
+            if self.child is None:
+                raise HarnessError("spawn() did not create a child process")
+            return supervise(self.child, timeout=timeout, verdict_settle=verdict_settle)
+        finally:
+            self._close_log()
 
     # -- teardown --------------------------------------------------------------
     def finish(self, timeout=None, expect_pass=None):

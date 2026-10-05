@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Flips the first byte of the primary stored manifest_hash, outside the signed region, so the
+# stored copy is the only defect.
+base = "signed"
+patch = [
+  { field = "OFF_MANIFEST_HASH", slot = "primary", xor = 0xFF },
+]

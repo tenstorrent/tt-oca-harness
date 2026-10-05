@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Points the primary payload at the last 8-byte-aligned offset still inside its manifest body.
+base = "signed"
+patch = [
+  { field = "OFF_PAYLOAD_OFFSET", slot = "primary", le = 4088, size = 8 },
+]

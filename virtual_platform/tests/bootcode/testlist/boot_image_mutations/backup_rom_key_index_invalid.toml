@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Breaks the primary magic, then names reserved key slot 26 in the re-signed backup.
+pack_config = "oca_secure_boot"
+set = [
+  { target = "bundle", slot = "backup", path = "public_key_select_classic", value = 0x4000000 },
+]
+patch = [
+  { fill = [0x1000, 0x1004], value = 0x99 },
+]

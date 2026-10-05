@@ -1,0 +1,127 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[testcase]]
+name = "sep_scratch_7_test"
+family = "warm_reset"
+classification = "partial"
+image = "signed"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 90
+expect_verdict = "none"
+pytest_markers = ["needs_debug"]
+preloaded_test_programs = ["warm_jump"]
+init_writes = [{ address = 0x10802038, value = 0xC0030000 }]
+expect = ["WARM_JUMP_OK"]
+forbid = ["SMC_MEM_CHK", "ROM", "COLD", "MEM_INIT_OK", "TRAP H0"]
+expect_counts = { "WARM_JUMP_OK" = 1 }
+terminal_token = "WARM_JUMP_OK"
+expect_status = ["INFO 0x0068"]
+forbid_status = ["ERROR 0x0069", "DEBUG 0x0056"]
+markers = [
+  "Does not model a real watchdog warm reset or reset sequencing; cold scratch 7 is deposited before the first instruction.",
+  "INFO 0x0068 is the ROM's own warm-dispatch announcement; WARM_JUMP_OK proves the handler in ICCM then ran.",
+  "DEBUG 0x0056 is written only by cold_boot, so forbidding it stands in for the DV check that the -1 poison never appears.",
+  "Not covered: the zero write to cold scratch 7 before the jump; the VP does not report scratch writes.",
+  "The handler sits at 0xC0030000 and prints, where DV places a silent j . at 0xC0000100; both are inside the ICCM accept window.",
+]
+
+[[testcase]]
+name = "sep_scratch_7_test__ctrl_no_pointer"
+family = "warm_reset"
+classification = "partial"
+image = "signed"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+preloaded_test_programs = ["warm_jump"]
+expect = ["COLD", "MEM_INIT_OK", "BOOT_SPI", "MANIFEST_OK", "PAYLOAD_OK", "BL1_COPIED", "GO!"]
+forbid = ["WARM_JUMP_OK", "TRAP H0", "MANIFEST_ERR=", "MANIFEST_BACKUP"]
+expect_status = ["DEBUG 0x0044", "DEBUG 0x0056", "DEBUG 0x0057", "INFO 0x0055"]
+forbid_status = ["INFO 0x0068", "ERROR 0x0069", "ERROR 0x0213"]
+markers = [
+  "Negative control for sep_scratch_7_test: the same handler sits in ICCM, but cold scratch 7 stays 0, so vector.S takes the beqz to cold_boot.",
+  "DEBUG 0x0044 is the first status cold_boot writes and INFO 0x0068 is the warm-dispatch announcement, so the status pair names the branch taken.",
+  "No standalone coverage beyond that control; the ICCM clear and BL1 copy leave 0xC0030000 untouched.",
+]
+
+[[testcase]]
+name = "sep_scratch_7_test__ctrl_relocated"
+family = "warm_reset"
+classification = "partial"
+image = "signed"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 90
+expect_verdict = "none"
+pytest_markers = ["needs_debug"]
+preloaded_test_programs = ["warm_jump_relocated"]
+init_writes = [{ address = 0x10802038, value = 0xC0038000 }]
+expect = ["WARM_JUMP_OK"]
+forbid = ["SMC_MEM_CHK", "ROM", "COLD", "MEM_INIT_OK", "TRAP H0"]
+expect_counts = { "WARM_JUMP_OK" = 1 }
+terminal_token = "WARM_JUMP_OK"
+expect_status = ["INFO 0x0068"]
+forbid_status = ["ERROR 0x0069", "DEBUG 0x0044", "DEBUG 0x0056"]
+markers = [
+  "Control for sep_scratch_7_test with the same handler at 0xC0038000, which rules out a jump to a hardwired address.",
+  "Both addresses are inside the ICCM accept window [0xC0000000, 0xC0040000), so this does not test the range boundary.",
+  "Not covered: the zero write to cold scratch 7 before the jump; the VP does not report scratch writes.",
+]
+
+[[testcase]]
+name = "sep_scratch_7_test__fault_halts"
+family = "warm_reset"
+classification = "partial"
+image = "signed"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 90
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+preloaded_test_programs = ["warm_fault"]
+init_writes = [{ address = 0x10802038, value = 0xC0030000 }]
+expect = ["WARM_JUMP_OK", "[VP] SIMULATION OF THE TEST FAILED"]
+forbid = ["PST", "TRAP H0", "COLD", "MEM_INIT_OK", "SMC_MEM_CHK"]
+expect_counts = { "WARM_JUMP_OK" = 1 }
+terminal_token = "WARM_JUMP_OK"
+# trap_vector_early stores status, mcause, mtval, mepc, status; the decoder renders the raw CSR words.
+expect_status = ["INFO 0x0068", "ERROR 0x0028", "T0x00 0x0002", "T0x00 0x0000", "T0xc0 0x0044", "ERROR 0x0028"]
+forbid_status = ["ERROR 0x0069", "DEBUG 0x0044", "DEBUG 0x0056"]
+markers = [
+  "The handler announces itself and then executes an illegal instruction; mtvec still holds trap_vector_early, which writes ERROR 0x0028 and the 0xDEADBEEF FAILED verdict to cold scratch 0.",
+  "PST is the stub's post-fault line, so its absence shows execution did not continue past the fault.",
+  "mcause 2 (illegal instruction), mtval 0 and mepc 0xC0030044, the stub's zero word, pin the fault to the planted instruction.",
+  "TRAP H0 forbidden shows the C trap handler, which needs the cold-boot stack, never ran.",
+  "Does not exercise the range-reject branch.",
+]
+
+[[testcase]]
+name = "sep_scratch_7_test__reject_out_of_range"
+family = "warm_reset"
+classification = "partial"
+image = "signed"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 90
+expect_verdict = "none"
+pytest_markers = ["needs_debug"]
+# Below ICCM and outside SEP SRAM, so the BL1_SRAM_EXEC_ENABLE window check refuses it too.
+init_writes = [{ address = 0x10802038, value = 0x70018000 }]
+expect_silence = true
+forbid = ["SMC_MEM_CHK", "COLD", "MEM_INIT_OK", "GO!", "BL1_COPIED"]
+expect_status = ["ERROR 0x0069"]
+forbid_status = ["INFO 0x0068", "DEBUG 0x0044", "DEBUG 0x0056"]
+markers = [
+  "ERROR 0x0069 is warm_reset_hang's only status write, and DEBUG 0x0044 forbidden shows the ROM did not fall back to cold_boot.",
+  "Silence is fenced by the init-write witness and by the run reaching its timeout; the PC in the WFI loop is not observed.",
+  "Exercises the SRAM-window branch below ICCM; sep_warm_reset_invalid_hang_test covers the ICCM upper bound.",
+]

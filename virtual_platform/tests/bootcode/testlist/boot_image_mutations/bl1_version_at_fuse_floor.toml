@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Sets both slots security_version to exactly the device flag set and re-signs them, so the
+# primary sits on the accept boundary of the superset rule.
+base = "signed"
+ops = [
+  { op = "set_security_version", slot = "primary", args = { value = 0x0000000300000001 } },
+  { op = "set_security_version", slot = "backup", args = { value = 0x0000000300000001 } },
+]

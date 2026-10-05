@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# A PROD part with secure boot enforced and no demotion input, which must lock DEMOTE_1 undemoted.
+base = "signed"
+ops = [
+  { op = "set_lifecycle_constraint", slot = "primary", args = { allowed = 0x2, level = "chiplet" } },
+  { op = "set_lifecycle_constraint", slot = "backup", args = { allowed = 0x2, level = "chiplet" } },
+]

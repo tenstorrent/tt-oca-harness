@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Breaks the primary manifest_hash and one backup signature bit, so the slots fail integrity and authentication.
+base = "signed"
+patch = [
+  { offset = 0x1e64, xor = 0xFF },
+  { offset = 0x41c64, xor = 0x01 },
+]

@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Breaks the primary magic word, so the peek refuses the slot before its body is read.
+base = "signed"
+patch = [
+  { field = "OFF_BOOT_MANIFEST_MAGIC", slot = "primary", le = 0x99999999, size = 4 },
+]

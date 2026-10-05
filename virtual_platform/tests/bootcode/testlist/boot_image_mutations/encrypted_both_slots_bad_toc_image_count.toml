@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Both decrypted TOCs claim more entries than the payload holds, with the outer seals refreshed.
+base = "encrypted"
+ops = [
+  { op = "set_toc_image_count", slot = "primary", args = { value = 254, reseal_entries = false } },
+  { op = "set_toc_image_count", slot = "backup", args = { value = 254, reseal_entries = false } },
+]

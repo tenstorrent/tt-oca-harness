@@ -72,6 +72,11 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="SEP_MSG_NAME",
         help="run until this SEP_STATUS message appears (success); else fail on timeout",
     )
+    p.add_argument(
+        "--iss-trace",
+        action="store_true",
+        help="write the ISS instruction trace to <run dir>/veer_trace.log",
+    )
     p.add_argument("--timeout", type=int, default=120, help="seconds to run (default 120)")
     p.add_argument(
         "--ini-only", action="store_true", help="print the generated overlay ini and exit"
@@ -97,6 +102,7 @@ def config_from_args(args) -> SimConfig:
         status_report_disable=args.status_report_disable,
         sim_out=args.sim_out,
         sep_status=args.sep_status,
+        iss_trace=args.iss_trace,
         boot_timeout=args.timeout,
     )
 

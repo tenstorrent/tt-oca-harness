@@ -60,7 +60,7 @@ virtual_platform/
   tests/            pytest suites
     test_fuses.py   sepvp.fuses unit tests (no VP build needed)
     fuse_maps/      YAML fuse-map fixtures
-    bootcode/       SEP boot ROM tests (positive + OT-SPI negative)
+    bootcode/       SEP boot ROM tests and the declarative ROM testlist (see its README.md)
     sim/            OT SPI mux/DMA tests (firmware from tt-oca-harness-model/sw/sep-vp-tests)
     fw/             DV-engine firmware tests run on the VP
 ```

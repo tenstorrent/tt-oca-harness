@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Erases both boot slots so neither manifest address answers with a magic word.
+base = "signed"
+patch = [
+  { fill = [0x1000, "end"], value = 0xFF },
+]

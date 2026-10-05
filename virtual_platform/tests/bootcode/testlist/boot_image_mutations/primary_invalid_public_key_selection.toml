@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Names ROM key slots 0 and 1 at once in the primary, re-signed so only the selector is wrong.
+pack_config = "oca_secure_boot"
+set = [
+  { target = "bundle", slot = "primary", path = "public_key_select_classic", value = 0x03 },
+]

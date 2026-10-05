@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# A primary KDF context that derives the wrong key, re-signed so decryption is reached.
+# Byte 0 is 0xa4 rather than DV's 0x5a, whose wrong key leaves a valid pad on some BL1 builds.
+base = "encrypted"
+ops = [
+  { op = "set_encryption_kdf_input", slot = "primary", args = { kdf_input = "a4a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8" } },
+]

@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Breaks the primary magic so the ROM fails over, and gives the re-signed backup a
+# security_version that omits device flags, so the backup is refused on rollback.
+base = "signed"
+ops = [
+  { op = "set_security_version", slot = "backup", args = { value = 3 } },
+]
+patch = [
+  { offset = 0x1000, le = 0x99999999, size = 4 },
+]

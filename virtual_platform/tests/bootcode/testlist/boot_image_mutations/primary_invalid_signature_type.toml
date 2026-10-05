@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Declares signature type 0 in the primary, re-signed so only the crypto field-size check can refuse it.
+base = "signed"
+ops = [
+  { op = "set_signature_type", slot = "primary", args = { value = 0 } },
+]

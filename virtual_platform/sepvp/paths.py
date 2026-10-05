@@ -9,6 +9,8 @@ independent. Environment variables override the defaults:
 
   SEP_VP_BIN     full path to the sep-vp executable
   SEP_VP_BASE_INI  base accellera_config.ini to @include
+  SEPVP_LOGS_DIR   per-run working-directory root (logs and staged inputs)
+  SEPVP_MANIFEST_PYTHON  interpreter that imports tt_boot_manifest and ruamel.yaml
 """
 
 import os
@@ -68,6 +70,47 @@ OCA_ROM_KEY_IMAGES = {
     0: OCA_SEC_IMAGE,
     **{n: BOOTCODE_DIR / "build" / f"oca_rom_key{n}_boot.bin" for n in range(1, 6)},
 }
+OCA_ENC_MULTI_IMAGE = BOOTCODE_DIR / "build" / "oca_encrypted_multi_image_boot.bin"
+OCA_TOC_CAP_IMAGE = BOOTCODE_DIR / "build" / "oca_toc_cap_boot.bin"
+OCA_ENC_TOC_CAP_IMAGE = BOOTCODE_DIR / "build" / "oca_encrypted_toc_cap_boot.bin"
+# Encrypted primary with an unencrypted backup; built by `decrypt_negative_images`.
+OCA_INVALID_CLASS_KEY_IMAGE = BOOTCODE_DIR / "build" / "invalid_class_key.bin"
+
+# Every prebuilt OCA image, keyed by the name a testlist or the oca_images fixture uses.
+OCA_IMAGE_PATHS = {
+    "unsigned": OCA_NS_IMAGE,
+    "signed": OCA_SEC_IMAGE,
+    "encrypted": OCA_ENC_IMAGE,
+    # Signed with the ROM key 0 signing key, but anchored to an OTP public-key hash.
+    "otp_key": OCA_OTP_IMAGE,
+    # Bare bundle for the SMC-SRAM path, not a combined SPI image.
+    "smc_bundle": OCA_SMC_BUNDLE,
+    "identity": OCA_ID_IMAGE,
+    "pqc": OCA_PQC_IMAGE,
+    "ecdsa": OCA_ECDSA_IMAGE,
+    "der": OCA_DER_IMAGE,
+    "aes128": OCA_AES128_IMAGE,
+    "sip_key": OCA_SIP_KEY_IMAGE,
+    "multi": OCA_MULTI_IMAGE,
+    "no_bl1": OCA_NO_BL1_IMAGE,
+    **{f"rom_key{n}": OCA_ROM_KEY_IMAGES[n] for n in range(1, 6)},
+    "encrypted_multi": OCA_ENC_MULTI_IMAGE,
+    "toc_cap": OCA_TOC_CAP_IMAGE,
+    "encrypted_toc_cap": OCA_ENC_TOC_CAP_IMAGE,
+    "invalid_class_key": OCA_INVALID_CLASS_KEY_IMAGE,
+}
+# Prebuilt images only testlist entries read; a missing one skips just those entries.
+TESTLIST_ONLY_IMAGES = frozenset(
+    {"encrypted_multi", "toc_cap", "encrypted_toc_cap", "invalid_class_key"}
+)
+
+# Packer inputs for images derived from a prebuilt config.
+BOOTCODE_CONFIGS = BOOTCODE_DIR / "configs"
+DERIVE_PACK_CONFIG = BOOTCODE_DIR / "scripts" / "derive_pack_config.py"
+# Interpreter that imports tt_boot_manifest and ruamel.yaml (env SEPVP_MANIFEST_PYTHON wins).
+MANIFEST_VENV_PYTHON = Path(
+    os.environ.get("SEPVP_MANIFEST_PYTHON", VP_DIR / "local" / "manifest-venv" / "bin" / "python")
+)
 
 # --- SEP DV firmware engine ---------------------------------------------------
 # Tests live in hw/sys/sep/dv/fw/tests/ and are built by the shared engine
@@ -77,7 +120,7 @@ FW_TESTS_DIR = FW_DIR / "tests"
 FW_TEST_BUILD_DIR = FW_DIR / "build" / "tests"
 
 # Default per-run working-directory root (logs + staged artifacts land here).
-LOGS_DIR = VP_DIR / "logs" / "sepvp"
+LOGS_DIR = Path(os.environ.get("SEPVP_LOGS_DIR", VP_DIR / "logs" / "sepvp"))
 
 
 def default_riscv_toolchain() -> str:

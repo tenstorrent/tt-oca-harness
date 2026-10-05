@@ -1,0 +1,240 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[testcase]]
+name = "sep_firmware_primary_invalid_security_version_test"
+family = "security_version"
+classification = "vp-equivalent"
+image = "primary_invalid_security_version"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# One device flag; the shipped primary carries none, the re-signed backup carries exactly it.
+efuse = { bl1_version = [0x1, 0, 0, 0, 0, 0, 0, 0] }
+image_asserts = [
+  { field = { name = "OFF_MANIFEST_SECURITY_VERSION", slot = "backup", size = 8, value = 1 } },
+  { field = { name = "OFF_MANIFEST_SECURITY_VERSION", slot = "primary", size = 8, value = 0 } },
+  { range = [0x41802, 0x4180a], all = 0x00 },
+  { range = [0x417fa, 0x417fb], differs_from = "signed" },
+  { range = [0x41e64, 0x41e84], differs_from = "signed" },
+  { range = [0x0, 0x417fa], same_as = "signed" },
+  { range = [0x4180a, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MFST_VER=0x00000000",
+  "PUBK_SEL=0x00000000",
+  "PUBK_AUTHORIZED",
+  "PUBK_REVOKE=0x00000000",
+  "FUSE_VER=0x00000001",
+  "MANIFEST_ERR=0x00030017",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "MFST_VER=0x00000001",
+  "PUBK_AUTHORIZED",
+  "FUSE_VER=0x00000001",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "FUSE_VER=0x00000001",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "MANIFEST_ERR=0x00030016",
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_ERR=0x0003000e",
+  "PUBK_UNAUTHORIZED",
+  "PUBK_SLOT_RESERVED",
+  "PUBK_SEL_AMBIGUOUS",
+  "PUBK_SLOT_UNPROVISIONED",
+  "PUBK_OTP_EMPTY",
+  "RSA_PKCS1_FAIL",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030017" = 1, "MFST_VER=0x00000000" = 1, "MFST_VER=0x00000001" = 1, "PUBK_AUTHORIZED" = 2, "FUSE_VER=0x00000001" = 3, "RSA_EXEC" = 1, "RSA_VERIFY_OK" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1 }
+expect_status = ["INFO 0x004c", "WARN 0x0008", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0008", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_manifest", "backup_payload"]
+markers = [
+  "oca_check_security_version runs after key authorization and revocation and before oca_check_signature, so the primary prints PUBK_AUTHORIZED and FUSE_VER= once and never reaches RSA_EXEC.",
+  "FUSE_VER=0x00000001 three times: once for the refused primary, twice for the backup, whose check runs again after the signature (OCA_RECHECK_SECURITY_VERSION).",
+  "The backup sits exactly on the accept boundary of the bit-superset rule; FUSE_VER= and MFST_VER= echo only the low 32 of the 128 flags.",
+  "An op, not a repack: neither packer config declares security_version, and the op re-signs the backup so the version is its only change.",
+]
+
+[[testcase]]
+name = "sep_firmware_backup_invalid_security_version_test"
+family = "security_version"
+classification = "vp-equivalent"
+image = "backup_bad_security_version"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+# Eight device flags; the backup carries only the low two.
+efuse = { bl1_version = [0xFF, 0, 0, 0, 0, 0, 0, 0] }
+image_asserts = [
+  { range = [0x1000, 0x1004], all = 0x99 },
+  { field = { name = "OFF_MANIFEST_SECURITY_VERSION", slot = "backup", size = 8, value = 3 } },
+  { range = [0x41802, 0x4180a], all = 0x00 },
+  { range = [0x417fa, 0x417fb], differs_from = "signed" },
+  { range = [0x41e64, 0x41e84], differs_from = "signed" },
+  { range = [0x0, 0x1000], same_as = "signed" },
+  { range = [0x1004, 0x417fa], same_as = "signed" },
+  { range = [0x4180a, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "MFST_VER=0x00000003",
+  "PUBK_AUTHORIZED",
+  "PUBK_REVOKE=0x00000000",
+  "FUSE_VER=0x000000ff",
+  "MANIFEST_ERR=0x00030017",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030017",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "PUBK_UNAUTHORIZED",
+  "MANIFEST_ERR=0x00030016",
+  "SBOOT_OFF",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_ERR=0x00030002" = 1, "MANIFEST_ERR=0x00030017" = 1, "OCA_BODY=0x00001000" = 1, "FUSE_VER=0x000000ff" = 1, "MANIFEST_ALL_FAILED" = 1 }
+expect_status = ["WARN 0x0006", "INFO 0x004c", "WARN 0x0008", "ERROR 0x0008", "ERROR 0x0213"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030017"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_peek", "backup_manifest"]
+markers = [
+  "The primary is refused at the magic peek (0x00030002), so OCA_BODY= once and FUSE_VER= once both belong to the backup.",
+  "Device 0xff against manifest 0x3 omits flags 2..7; the backup is re-signed, so the rollback is its only defect and RSA_EXEC must not run.",
+  "FUSE_VER=0x000000ff is the raw flag set, not a popcount: plat_get_security_version echoes oca_flags_low32 of the fuse bytes.",
+  "Covers the reject direction only; the accept boundary is in sep_firmware_primary_invalid_security_version_test and sep_firmware_bl1_ver_test.",
+]
+
+[[testcase]]
+name = "sep_firmware_bl1_ver_test"
+family = "security_version"
+classification = "partial"
+image = "bl1_version_at_fuse_floor"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# Flags in words 0 and 1; word 7 lies above bit 127, which the ROM does not read.
+efuse = { bl1_version = [0x1, 0x3, 0, 0, 0, 0, 0, 0x80000000] }
+image_asserts = [
+  { field = { name = "OFF_MANIFEST_SECURITY_VERSION", slot = "primary", size = 8, value = 0x0000000300000001 } },
+  { field = { name = "OFF_MANIFEST_SECURITY_VERSION", slot = "backup", size = 8, value = 0x0000000300000001 } },
+  { range = [0x1802, 0x180a], all = 0x00 },
+  { range = [0x41802, 0x4180a], all = 0x00 },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x17fa], same_as = "signed" },
+  { range = [0x180a, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x417fa], same_as = "signed" },
+  { range = [0x4180a, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MFST_VER=0x00000001",
+  "PUBK_SEL=0x00000000",
+  "PUBK_AUTHORIZED",
+  "PUBK_REVOKE=0x00000000",
+  "FUSE_VER=0x00000001",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "FUSE_VER=0x00000001",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ERR=",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "SBOOT_OFF",
+  "RSA_PKCS1_FAIL",
+  "PUBK_UNAUTHORIZED",
+  "PUBK_SLOT_RESERVED",
+  "PUBK_SEL_AMBIGUOUS",
+  "PUBK_SLOT_UNPROVISIONED",
+  "PUBK_OTP_EMPTY",
+  "PUBK_HASH_TIMEOUT",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MFST_VER=0x00000001" = 1, "FUSE_VER=0x00000001" = 2, "RSA_EXEC" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0054"]
+forbid_status = ["WARN 0x0008", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+markers = [
+  "The accept boundary at a non-zero version: the manifest carries exactly the device flags in fuse words 0 and 1, and the primary boots without failover.",
+  "Partial against the DV member, which spreads distinct flags over all four words of the 128-bit field: an op argument is a TOML integer, so a manifest flag above bit 63 cannot be written here.",
+  "Word 1 is visible only through the verdict, since FUSE_VER= and MFST_VER= echo the low 32 flags; the negative control drops it from the manifest.",
+  "Fuse word 7 bit 31 lies above the 128 flags plat_get_security_version reads, so a ROM that read the whole 32-byte bank would refuse this manifest.",
+  "FUSE_VER= twice: the check runs again after the signature (OCA_RECHECK_SECURITY_VERSION).",
+  "Does not cover security_version update after boot: the ROM leaves set_security_version unwired.",
+]

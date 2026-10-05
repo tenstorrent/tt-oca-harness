@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# A v1.1 classic primary that declares the PQC body size as its manifest_length.
+base = "signed"
+ops = [
+  { op = "set_manifest_version", slot = "primary", args = { minor = 1 } },
+  { op = "set_manifest_length", slot = "primary", args = { value = 36864 } },
+]

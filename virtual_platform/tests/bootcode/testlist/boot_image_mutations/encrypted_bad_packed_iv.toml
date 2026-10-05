@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# A primary IV the payload was not encrypted under, re-signed so decryption is reached.
+base = "encrypted"
+ops = [
+  { op = "set_encryption_iv", slot = "primary", args = { iv = "ef1112131415161718191a1b1c1d1e1f" } },
+]

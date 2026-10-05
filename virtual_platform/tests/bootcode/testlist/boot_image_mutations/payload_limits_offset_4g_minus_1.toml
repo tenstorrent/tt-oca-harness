@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Both slots: payload_offset 0xFFFFFFFF and a re-signed payload_length 1.
+base = "signed"
+ops = [
+  { op = "declare_payload_length", slot = "primary", args = { payload_length = 0x1 } },
+  { op = "declare_payload_length", slot = "backup", args = { payload_length = 0x1 } },
+]
+patch = [
+  { field = "OFF_PAYLOAD_OFFSET", slot = "primary", le = 0xFFFFFFFF, size = 8 },
+  { field = "OFF_PAYLOAD_OFFSET", slot = "backup", le = 0xFFFFFFFF, size = 8 },
+]

@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# A backup with an unsupported manifest major version behind a primary with a broken magic.
+base = "signed"
+ops = [
+  { op = "set_manifest_version", slot = "backup", args = { major = 2 } },
+]
+patch = [
+  { field = "OFF_BOOT_MANIFEST_MAGIC", slot = "primary", le = 0x99999999, size = 4 },
+]
