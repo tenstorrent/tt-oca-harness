@@ -121,9 +121,7 @@ class SmcAxiMonitor(uvm_component):
         queue = pending.get(key)
         if not queue:
             self.unmatched_resps += 1
-            self.logger.warning(
-                "SMC AXI monitor: %s beat on ID %s with no request outstanding", channel, key
-            )
+            self._fail(f"{channel} beat on ID {key} with no request outstanding")
             return None
         return queue.popleft() if last else queue[0]
 
