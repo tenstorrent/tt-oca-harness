@@ -337,6 +337,7 @@ run_modes = ["dual"]
 firmware = { name = "occp_boot_sequence_status_test", mode = "occp_rom_only" }
 args = [
     "+BOOT_I3C",
+    "+FORCE_STATUS_REPORTING",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_boot_sequence_status_test.rom.hex",
     "+occp_case=smc_occp_boot_sequence_status_test",
@@ -428,6 +429,7 @@ firmware = { name = "occp_interface_latch_test", mode = "occp_rom_only" }
 # cannot be told from "the ROM answered on both".
 args = [
     "+BOOT_I3C",
+    "+FORCE_STATUS_REPORTING",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_interface_latch_test.rom.hex",
     "+occp_case=smc_occp_interface_latch_test",
