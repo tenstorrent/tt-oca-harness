@@ -42,7 +42,7 @@ import cocotb
 from cocotb.triggers import ClockCycles, Timer
 
 from .smc_addr_map import I2C_CG_EN, smc_indexed_addr
-from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_csr_seq_utils import ALL_ONES_WORD, TOP_BYTE_LANE, SmcCsrSeq
 from .smc_i2c_field_masks import (
     I2C_TIMEOUT_CTRL_EN,
     I2C_TIMEOUT_MODE_BUS,
@@ -358,10 +358,14 @@ class smc_i2c_controller_scl_events_test_seq(SmcCsrSeq):
         await self.csr_write(f"{name}_ZERO", I2C0_CONTROLLER_EVENTS, 0)
         after_zero = await self.csr_read(f"{name}_AFTER_ZERO", I2C0_CONTROLLER_EVENTS)
         assert after_zero & bit, f"{name}: cleared on a word of zeros (0x{after_zero:08x})"
-        await self.csr_write(f"{name}_LANE", I2C0_CONTROLLER_EVENTS + 3, 0xFF, length=1)
+        await self.csr_write_strobed(
+            f"{name}_LANE", I2C0_CONTROLLER_EVENTS, ALL_ONES_WORD, wstrb=TOP_BYTE_LANE
+        )
         after_lane = await self.csr_read(f"{name}_AFTER_LANE", I2C0_CONTROLLER_EVENTS)
         assert after_lane & bit, (
-            f"{name}: cleared on a byte write that left its lane disabled (0x{after_lane:08x})"
+            f"{name}: cleared on a word of ones that strobed only the top byte lane "
+            f"(0x{after_lane:08x}); its own lane was disabled, so the one it carried must "
+            f"not land"
         )
         await self.csr_write(f"{name}_CLEAR", I2C0_CONTROLLER_EVENTS, bit)
         cleared = await self.csr_read(f"{name}_CLEARED", I2C0_CONTROLLER_EVENTS)
@@ -442,7 +446,8 @@ class smc_i2c_controller_scl_events_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-I2C-CTRL-BUS-TIMEOUT: SCL held low for %d ns against a bus timeout of %d core "
             "clocks raised CONTROLLER_EVENTS.BUS_TIMEOUT, which survived a word of zeros and a "
-            "byte write that left its lane disabled, and cleared only on a written one",
+            "word of ones that strobed only the top byte lane, so its own lane carried a one it "
+            "was not enabled to take, and cleared only on a written one",
             BUS_TIMEOUT_HOLD_NS,
             BUS_TIMEOUT_CYCLES,
         )

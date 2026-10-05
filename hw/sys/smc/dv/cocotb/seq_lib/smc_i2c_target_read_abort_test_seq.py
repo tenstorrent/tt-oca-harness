@@ -25,9 +25,10 @@ monitor would take for a START after `THD_DAT`, and the target gives a START
 priority over arbitration loss. A hold of twenty core clocks is still well
 inside the START the bench itself issues.
 
-Each flag is then checked as a register: a word of zeros and a byte-sized
-write to the far end of `TARGET_EVENTS`, which leaves the lane carrying the
-bit disabled, must both leave it set, and only a written one clears it.
+Each flag is then checked as a register: a word of zeros and a word of ones
+that strobes only the top byte lane of `TARGET_EVENTS`, so the lane carrying
+the bit is disabled while carrying a one, must both leave it set, and only a
+written one clears it.
 `TARGET_NACK_COUNT` is the second witness for arbitration loss, since the
 target refuses the transaction on the same edge.
 """
@@ -38,7 +39,7 @@ import cocotb
 from cocotb.triggers import ClockCycles, Timer
 
 from .smc_addr_map import I2C_CG_EN, _field_mask, smc_addr, smc_indexed_addr
-from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_csr_seq_utils import ALL_ONES_WORD, TOP_BYTE_LANE, SmcCsrSeq
 from .smc_i2c_field_masks import (
     _I2C_H,
     I2C_CTRL_ACQ_START_STOP_EN,
@@ -195,7 +196,7 @@ class smc_i2c_target_read_abort_test_seq(SmcCsrSeq):
         raise AssertionError(f"{label}: only {seen} of {ARB_RISE} SCL rises appeared")
 
     async def _retain(self, bit: int, name: str) -> None:
-        """A set TARGET_EVENTS bit survives zeros and a disabled lane, and a one clears it."""
+        """A set TARGET_EVENTS bit survives zeros and a one on a disabled lane; a one clears it."""
         before = await self.csr_read(f"{name}_BEFORE", R["target_events"])
         assert before & bit, f"{name}: not set before the retain checks (0x{before:08x})"
         await self.csr_write(f"{name}_ZERO", R["target_events"], 0)
@@ -204,11 +205,14 @@ class smc_i2c_target_read_abort_test_seq(SmcCsrSeq):
             f"{name}: cleared on a word of zeros (0x{after_zero:08x}); the field clears on a "
             f"written one"
         )
-        await self.csr_write(f"{name}_LANE", R["target_events"] + 3, 0xFF, length=1)
+        await self.csr_write_strobed(
+            f"{name}_LANE", R["target_events"], ALL_ONES_WORD, wstrb=TOP_BYTE_LANE
+        )
         after_lane = await self.csr_read(f"{name}_AFTER_LANE", R["target_events"])
         assert after_lane & bit, (
-            f"{name}: cleared on a byte write to the far end of the register "
-            f"(0x{after_lane:08x}); that write leaves its lane disabled"
+            f"{name}: cleared on a word of ones that strobed only the top byte lane "
+            f"(0x{after_lane:08x}); its own lane was disabled, so the one it carried must "
+            f"not land"
         )
         await self.csr_write(f"{name}_CLEAR", R["target_events"], bit)
         cleared = await self.csr_read(f"{name}_CLEARED", R["target_events"])
@@ -290,7 +294,8 @@ class smc_i2c_target_read_abort_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "CHK-I2C-TGT-EVENTS-RETAIN-ABORT: %s, each set by the target itself, survived a "
-            "word of zeros written over it and a byte write that left its lane disabled, and "
-            "cleared only on a written one",
+            "word of zeros written over it and a word of ones that strobed only the top byte "
+            "lane, so its own lane carried a one it was not enabled to take, and cleared only "
+            "on a written one",
             " and ".join(self.retained),
         )
