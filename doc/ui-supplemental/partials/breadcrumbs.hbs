@@ -1,0 +1,44 @@
+{{!-- SPDX-License-Identifier: Apache-2.0 --}}
+{{!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. --}}
+{{!-- A book's trail starts from Home: the Home title, then the Home sidebar
+     group and entry that link to the book's start page, in place of the
+     book's own start-page crumb. A book must be listed in the Home sidebar
+     for its trail to name it. --}}
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  {{#if page.breadcrumbs}}
+  <ul>
+    {{#if (eq page.component.name 'ocah-home')}}
+    {{#with page.componentVersion}}
+    {{#if (and ./title (ne ./title @root.page.breadcrumbs.0.content))}}
+    <li><a href="{{{relativize ./url}}}">{{{./title}}}</a></li>
+    {{/if}}
+    {{/with}}
+    {{else}}
+    {{#with (lookup site.components 'ocah-home')}}
+    <li><a href="{{{relativize ./latest.url}}}">{{{./latest.title}}}</a></li>
+    {{#each ./latest.navigation}}
+    {{#each ./items}}
+    {{#each ./items}}
+    {{#if (eq ./url @root.page.componentVersion.url)}}
+    <li>{{{../content}}}</li>
+    <li><a href="{{{relativize ./url}}}">{{{./content}}}</a></li>
+    {{/if}}
+    {{/each}}
+    {{/each}}
+    {{/each}}
+    {{/with}}
+    {{/if}}
+    {{#each page.breadcrumbs}}
+    {{#unless (and (ne @root.page.component.name 'ocah-home') (eq ./url @root.page.componentVersion.url))}}
+    <li>
+    {{~#if (and ./url (eq ./urlType 'internal'))~}}
+    <a href="{{{relativize ./url}}}">{{{./content}}}</a>
+    {{~else~}}
+    {{{./content}}}
+    {{~/if~}}
+    </li>
+    {{/unless}}
+    {{/each}}
+  </ul>
+  {{/if}}
+</nav>
