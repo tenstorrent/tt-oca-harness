@@ -22,8 +22,10 @@ class smc_hang_detector_sys_timeout_test(smc_base_test):
         "CHK-HANG-SYS-TIMEOUT-DISABLED",
         "CHK-HANG-SYS-TIMEOUT-DROP",
         "CHK-HANG-SYS-TIMEOUT-FIRE",
+        "CHK-HANG-SYS-TIMEOUT-STATUS-DROP",
+        "CHK-HANG-SYS-TIMEOUT-STATUS-FIRE",
     )
-    min_evidence = 6
+    min_evidence = 8
 
     auto_protocol_vip = False
 

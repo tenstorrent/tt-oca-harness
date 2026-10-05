@@ -7,6 +7,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import RisingEdge
 
+from ._hang_status import check_hang_status
 from .smc_addr_map import (
     HANG_DET_DATA_ACCEL_CTRL,
     HANG_DET_ENABLE,
@@ -76,6 +77,7 @@ class smc_hang_detector_sanity_test_seq(SmcCsrSeq):
         dut = cocotb.top
         await self.wait_fuse_sense_done()
         await self._await_irqs(dut, {"tb_axi_hang_irq": 0}, "IDLE")
+        await check_hang_status(self.csr_read, "IDLE", set())
 
         # Poison: irq_test alone must not fire (enable and irq_en gate irq_o).
         await self.csr_write("HANG_SYS_TEST_ONLY", HANG_DET_SYS_AXI_CTRL, HANG_DET_IRQ_TEST)
@@ -84,10 +86,12 @@ class smc_hang_detector_sanity_test_seq(SmcCsrSeq):
             {"tb_axi_hang_irq": 0, "tb_axi_hang_irq_sys": 0},
             "POISON_TEST_ONLY",
         )
+        await check_hang_status(self.csr_read, "POISON_TEST_ONLY", set())
         await self.csr_write(
             "HANG_SYS_EN_TEST", HANG_DET_SYS_AXI_CTRL, HANG_DET_ENABLE | HANG_DET_IRQ_TEST
         )
         await self._await_irqs(dut, {"tb_axi_hang_irq": 0}, "POISON_NO_IRQ_EN")
+        await check_hang_status(self.csr_read, "POISON_NO_IRQ_EN", set())
         # irq_en and irq_test without enable: enable gates irq_o as well.
         await self.csr_write(
             "HANG_SYS_IRQEN_TEST", HANG_DET_SYS_AXI_CTRL, HANG_DET_IRQ_EN | HANG_DET_IRQ_TEST
@@ -97,11 +101,16 @@ class smc_hang_detector_sanity_test_seq(SmcCsrSeq):
             {"tb_axi_hang_irq": 0, "tb_axi_hang_irq_sys": 0},
             "POISON_NO_ENABLE",
         )
+        await check_hang_status(self.csr_read, "POISON_NO_ENABLE", set())
         await self.csr_write("HANG_SYS_CLEAR_POISON", HANG_DET_SYS_AXI_CTRL, 0)
         await self._await_irqs(dut, {"tb_axi_hang_irq": 0}, "POISON_CLR")
         cocotb.log.info(
             "CHK-HANG-POISON: irq_test gated by enable+irq_en (test alone, enable+test and "
             "irq_en+test each left irq_o low)"
+        )
+        cocotb.log.info(
+            "CHK-HANG-STATUS-GATED: every HANG_DET_*_STATUS.irq read 0 at idle and on each "
+            "poison leg"
         )
 
         # Per-detector: fire one, others off, then clear.
@@ -111,10 +120,16 @@ class smc_hang_detector_sanity_test_seq(SmcCsrSeq):
             expect_fire[pin] = 1
             expect_fire["tb_axi_hang_irq"] = 1
             await self._await_irqs(dut, expect_fire, f"{label}_FIRE")
+            await check_hang_status(self.csr_read, f"{label}_FIRE", {label})
             cocotb.log.info("CHK-HANG-%s-FIRE: source=1 OR=1 others=0", label)
             await self.csr_write(f"HANG_{label}_CLR", addr, 0)
             await self._await_irqs(dut, {pin: 0, "tb_axi_hang_irq": 0}, f"{label}_CLR")
+            await check_hang_status(self.csr_read, f"{label}_CLR", set())
             cocotb.log.info("CHK-HANG-%s-CLR: source=0 OR=0", label)
+        cocotb.log.info(
+            "CHK-HANG-STATUS-MAP: firing each detector alone set its own HANG_DET_*_STATUS.irq "
+            "and no other, and clearing it returned all three to 0"
+        )
 
         # OR: all three fire, then drop SYS+SEP, DATA keeps OR, then last clear.
         for label, addr, _pin in _DETECTORS:
@@ -129,6 +144,7 @@ class smc_hang_detector_sanity_test_seq(SmcCsrSeq):
             },
             "OR_ALL",
         )
+        await check_hang_status(self.csr_read, "OR_ALL", {"SYS", "SEP", "DATA"})
         cocotb.log.info("CHK-HANG-OR-ALL: OR=1 sys=1 sep=1 data=1")
 
         await self.csr_write("HANG_SYS_OR_DROP", HANG_DET_SYS_AXI_CTRL, 0)
@@ -143,11 +159,17 @@ class smc_hang_detector_sanity_test_seq(SmcCsrSeq):
             },
             "OR_HOLD",
         )
+        await check_hang_status(self.csr_read, "OR_HOLD", {"DATA"})
         cocotb.log.info("CHK-HANG-OR-HOLD: DATA keeps OR=1 after SYS+SEP clear")
 
         await self.csr_write("HANG_DATA_OR_DROP", HANG_DET_DATA_ACCEL_CTRL, 0)
         await self._await_irqs(dut, {"tb_axi_hang_irq": 0, "tb_axi_hang_irq_data": 0}, "OR_CLR")
+        await check_hang_status(self.csr_read, "OR_CLR", set())
         cocotb.log.info("CHK-HANG-OR-CLR: OR=0 after last detector clear")
+        cocotb.log.info(
+            "CHK-HANG-STATUS-OR: HANG_DET_*_STATUS.irq read all three set, then DATA alone, "
+            "then none, following the OR legs"
+        )
         cocotb.log.info(
             "CHK-HANG-BASIC: %d irq handshakes completed across the poison, per-source and OR legs",
             self.irq_legs_handshaked,
