@@ -34,7 +34,7 @@ name = "dtp_xtrig_wire_or_test"
 module = { cocotb = "dtp_xtrig_wire_or_test", uvm = "dtp_xtrig_wire_or_test" }
 seed = 1
 timeout_sec = 1800
-tags = ["xtrig"]
+tags = ["smoke", "ci", "xtrig"]
 run_modes = ["xtrig"]
 
 [[tests]]
