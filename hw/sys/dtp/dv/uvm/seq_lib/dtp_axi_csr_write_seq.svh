@@ -10,7 +10,9 @@
 // Response checking stays with the caller (check_response = 0), so
 // error-path scenarios judge the response themselves. Started by
 // dtp_xtrig_base_test_seq::csr_write(), csr_write_skewed(), and
-// write_pair_skewed(). The cocotb twin is seq_lib/dtp_axi_csr_write_seq.py.
+// write_pair_skewed(). In the cocotb realization, dtp_xtrig_base_test_seq
+// calls the VIP master sequence's write, write_skewed_result and
+// write_pair_skewed_result itself.
 
 class dtp_axi_csr_write_seq extends ocah_axi_master_sequence;
   `uvm_object_utils(dtp_axi_csr_write_seq)

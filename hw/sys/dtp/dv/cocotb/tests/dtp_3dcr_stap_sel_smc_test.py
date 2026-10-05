@@ -7,7 +7,7 @@ TAP_3DCR chain scans, with a downstream ocah_jtag_vip TAP behind every STAP
 host port so the primary evidence is end-to-end: downstream IDCODE and
 DS_TDR readback through the selected STAP, the downstream register frozen
 in Test-Logic-Reset while the port is gated, and recovery against real
-downstream state. The host-port temporal windows remain as corroboration.
+downstream state. The host-port temporal windows corroborate that evidence.
 """
 
 import pyuvm

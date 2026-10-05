@@ -237,11 +237,10 @@ class OcahSpiMonitor:
         mosi_bits: List[int] = []
         miso_bits: List[int] = []
 
-        # Sample bits on rising SCLK edges until CS_N goes high.
         while True:
             await First(RisingEdge(self._sclk), RisingEdge(self._cs_n))
             if int(self._cs_n.value) != 0:
-                break  # CS deasserted
+                break
 
             if self._mosi is not None:
                 mosi_bits.append(int(self._mosi.value) & 0x1)
@@ -334,7 +333,7 @@ def _bits_to_bytes(bits: List[int]) -> bytes:
             if i + j < len(bits):
                 byte_val = (byte_val << 1) | (bits[i + j] & 0x1)
             else:
-                byte_val <<= 1  # zero-pad last partial byte
+                byte_val <<= 1
         out.append(byte_val)
         i += 8
     return bytes(out)

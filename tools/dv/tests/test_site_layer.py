@@ -244,14 +244,14 @@ class MergeTest(SiteCase):
             f"""
             [simulators.vcs]
             binary = "vcs-2026"
-            license_env = ["SNPSLMD_LICENSE_FILE"]
+            license_env = ["SIMTOOL_LICENSE_FILE"]
             launcher = {LAUNCHER_TOML}
             extra_env = {{ VCS_HOME = "/opt/vcs" }}
             """
         )
         vcs = merged["vcs"]
         self.assertEqual(vcs["binary"], "vcs-2026")
-        self.assertEqual(vcs["license_env"], ["SNPSLMD_LICENSE_FILE"])
+        self.assertEqual(vcs["license_env"], ["SIMTOOL_LICENSE_FILE"])
         self.assertEqual(vcs["launcher"], LAUNCHER)
         self.assertEqual(vcs["extra_env"], {"VCS_HOME": "/opt/vcs"})
         self.assertEqual(vcs["frameworks"], base["vcs"]["frameworks"])

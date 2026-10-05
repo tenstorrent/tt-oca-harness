@@ -131,8 +131,7 @@ chapters it includes; the Test Procedures below state what each canonical
 scenario verifies; `DTP_FCOV.adoc` states the coverage intent; live group
 membership is `testlists/all.toml` and the per-area lists it includes. This
 section is the reconciliation between them: which scenarios count as feature
-credit, which names are compatibility aliases that count for nothing, and
-which requirements have no credit on this bench.
+credit, and which requirements have no credit on this bench.
 
 [[dtp-source-of-truth]]
 ==== Source of truth
@@ -198,7 +197,6 @@ Executable membership is resolved from the testlists; each group's
 * The cocotb and SV-UVM realizations of one name are one scenario. A row is
   credited once; a realization whose evidence differs is named in the
   row's Checker-evidence cell.
-* Compatibility aliases receive no credit and appear in no row.
 * Coverage credit is the covergroup bins of the `cov/sv/` modules,
   collected on VCS from both realizations and merged. The `cover property`
   points the modules record under Verilator carry no crosses, so they are
@@ -7248,17 +7246,16 @@ five-edge TMS reset sequence with one edge of margin.
 |===
 |Check |Path |Targets |What it establishes
 |Property checking (`fpv`) |Open, `sby` |T1 to T9 as listed |The properties above, with `prove` for the P0 set and bounded `bmc` plus `cover` at the block depth.
-|Connectivity |Licensed connectivity app, companion-owned config |T4, T5 and the static wiring of `dtp`: the STAP chain order I/O, SMC, SEP, extra, return; each `dbg_disable_i` field to exactly its path (the eleven fields of the simulation bench's 22-cell contract); the IC_RESET slice packing SMC, SEP, EXT to `reset_hold`; the pad-ring tie-offs on the unused CTP directions |Point-to-point wiring the property style cannot express as a single boolean without naming every net; on the open path the tie-offs and the chain order are constant assertions inside T4 and T5.
+|Connectivity |Licensed connectivity app |T4, T5 and the static wiring of `dtp`: the STAP chain order I/O, SMC, SEP, extra, return; each `dbg_disable_i` field to exactly its path (the eleven fields of the simulation bench's 22-cell contract); the IC_RESET slice packing SMC, SEP, EXT to `reset_hold`; the pad-ring tie-offs on the unused CTP directions |Point-to-point wiring the property style cannot express as a single boolean without naming every net; on the open path the tie-offs and the chain order are constant assertions inside T4 and T5.
 |CSR access policy from the register description |Licensed register app driven by the SystemRDL under `hw/ip/cross_trigger/*/regs/` |T9 |Every field's access, reset value and side effect for the sixteen CTPs and the CTM; the open path carries the address map and one slice.
 |Security-path checks for the debug-disable gating |Open, `sby`, the P0 set of T4, T5 and T7 |T4, T5, T7 |With a disable field high, its path's select, TDO, host enables and bridge machine are quiet, and a release replays nothing; unbounded by `prove`.
 |Reset X-safety |Licensed X-propagation app |T6, T7 |The two unreset paths named in <<dtp-formal-observations>>, and the JTAG2AXI CDC after an ACLK reset mid-transaction.
 |Unreachability |Licensed unreachability app over the merged simulation coverage database, in the bench's environment |The code-coverage points the `all` regression leaves uncovered |The URG exclusion list `cov/config/vcs/dtp_unreachable.el` that the VCS coverage policy applies, re-checked after an RTL change (`DTP_FCOV.adoc`, Unreachability exclusion list).
 |===
 
-The licensed apps run through the same runner from the companion's formal
-configuration, named by the site layer (`run-dv.adoc`, Formal verification);
-their scripts read the same property files. The open tree carries no licensed
-collateral.
+The licensed apps run through the same runner as site-supplied backends
+(`run-dv.adoc`, Formal verification) and take the same property files as the
+open path. The open tree carries no licensed collateral.
 
 [[dtp-formal-running]]
 ==== Running and grading
@@ -7306,9 +7303,9 @@ T3 and T4 hold the P0 set and stand alone on the `dtp` top. T7 and T9 take
 the AXI and AXI-Lite handshake rules from the shared checker `ocah_axi_fv`,
 bound with the environment's side assumed, and T1 takes the host's phase
 rule from `ocah_jtag_fv`; the point-to-point peer model stays in the
-`cross_trigger_network` environment, which T8 needs. The
-licensed connectivity, register, X-propagation and unreachability apps read
-the same property files from the companion's formal configuration. A target
+`cross_trigger_network` environment, which T8 needs. The licensed
+connectivity, register, X-propagation and unreachability apps take the same
+property files; their configuration lives outside the open tree. A target
 is complete when its item passes with every cover reached and its FAIL path
 is checked.
 

@@ -793,7 +793,7 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     end else begin
       write_target_single_and_check(t, addr, data, status, size, full_wstrb(size), {
                                     context_s, ".recover_write"});
-      // CHK-AXI-WMEM against the STIMULUS intent (non-circular).
+      // CHK-AXI-WMEM: the responder memory against the stimulus intent.
       check_target_memory(t, addr, data, size, {context_s, ".recover_write"});
     end
   endtask

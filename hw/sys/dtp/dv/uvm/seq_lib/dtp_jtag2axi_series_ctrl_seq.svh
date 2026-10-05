@@ -7,8 +7,8 @@
 // captured word for the caller to decode. A WRITE or READ op arms a stream,
 // NOP with reset clears it, and a NOP image reads the settled status.
 // Started by dtp_jtag2axi_base_test_seq::series_ctrl_op() and
-// read_series_ctrl(). The cocotb twin is
-// seq_lib/dtp_jtag2axi_series_ctrl_seq.py.
+// read_series_ctrl(). The cocotb realization issues this access from
+// dtp_jtag2axi_base_test_seq.jtag2axi_series_ctrl and read_series_ctrl.
 
 class dtp_jtag2axi_series_ctrl_seq extends dtp_jtag_op_seq;
   `uvm_object_utils(dtp_jtag2axi_series_ctrl_seq)

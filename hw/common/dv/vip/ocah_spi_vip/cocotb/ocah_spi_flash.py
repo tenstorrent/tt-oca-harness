@@ -3,8 +3,7 @@
 """
 OcahSpiFlash — OCAH-stable NOR-flash device BFM for SPI / QSPI / OSPI.
 
-This module provides a self-contained, cocotb-native flash device behavioural
-model.  It does NOT depend on any external cocotb extension package.
+A self-contained flash device behavioural model built on cocotb triggers alone.
 
 Supported commands
 ------------------
@@ -193,7 +192,6 @@ class OcahSpiFlash:
         self._running = False
         self._transactions: List[Dict[str, Any]] = []
 
-        # Apply plusargs
         self._apply_plusargs()
 
     # ------------------------------------------------------------------
@@ -410,7 +408,6 @@ class OcahSpiFlash:
     async def _protocol_engine(self) -> None:
         """Main async loop — wait for CS assertion, then handle one transfer."""
         while self._running:
-            # Wait for CS_N to go low (transaction start).
             await FallingEdge(self._cs_n)
             if not self._running:
                 break

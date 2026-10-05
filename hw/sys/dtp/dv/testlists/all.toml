@@ -154,8 +154,8 @@ tests = [
 ]
 
 # Debug-disable closure group: the two per-gate matrices plus the directed
-# tests that carry the per-field gating contract for all eleven
-# sep_lifecycle_ctrl_pkg::dbg_disable_t fields.
+# tests that carry the per-field gating contract for every
+# sep_lifecycle_ctrl_pkg::dbg_disable_t field.
 [[groups]]
 name = "dbg_disable"
 expected_count = 19

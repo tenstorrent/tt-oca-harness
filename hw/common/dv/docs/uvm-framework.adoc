@@ -46,9 +46,11 @@ flow:
   (`hw/common/dv/vip/ocah_checker/uvm/`). Run verdicts come from the
   `uvm-log` parse policy: `UVM_ERROR`/`UVM_FATAL` counts plus the pass
   banner, so a failing check is a failing run by construction.
-* *Coverage.* The `uvm` framework declares no coverage stages, so `--cov`
-  is rejected before any stage runs; an adopter does not wire coverage
-  itself.
+* *Coverage.* The `native` profile declares the `cov_merge` and `cov_report`
+  stages for both frameworks, and the UVM build and sim adapters inject the
+  simulator's coverage instrumentation, so `--cov` on the UVM view collects,
+  merges and reports coverage like the cocotb view; an adopter does not wire
+  coverage itself.
 
 [[shared-uvm-conventions]]
 === Normative Conventions

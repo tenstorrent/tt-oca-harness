@@ -2369,10 +2369,10 @@ def _validate_tool_references(flow: Flow, tests: dict[str, TestEntry]) -> None:
     """
     for test in tests.values():
         if not test.tools or not test.module:
-            # No binding for the selected framework means this view never runs the
-            # scenario at all (see _resolve_catalog_frameworks), so which simulators it
-            # would need is not this view's business -- and a framework overlay may
-            # legitimately declare a narrower `tools` list than the tool the scenario names.
+            # A scenario with no binding for the selected framework never runs in this view
+            # (see _resolve_catalog_frameworks), so its `tools` list is checked only in the
+            # views that run it; a framework overlay may declare a narrower `tools` list than
+            # the scenario names.
             continue
         where = f"{test.source or flow.path}: test `{test.name}`"
         unknown = [name for name in test.tools if name not in flow.tools]

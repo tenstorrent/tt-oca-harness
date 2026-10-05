@@ -6,8 +6,8 @@
 One git-ignored ``hw/common/dv/configs/site.local.toml``, or the file named by ``OCAH_DV_SITE``,
 merges over ``simulators.toml`` and ``executors.toml``: a deployment renames a tool binary,
 wraps every tool command in a launcher (a container), sources an environment hook before the
-tool starts, adds a tool table the checked-in registry lacks, or names the formal config a
-companion checkout owns for one DUT. ``runlib.cli.load_registries`` applies the layer once, so
+tool starts, adds a tool table the checked-in registry lacks, or names a DUT's formal config
+that lives outside this checkout. ``runlib.cli.load_registries`` applies the layer once, so
 ``--validate-configs``, ``--doctor``, ``--dry-run``, and the run path resolve one merged view.
 Nothing but the site file itself, or the environment variable, activates the layer.
 

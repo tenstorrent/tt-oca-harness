@@ -10,7 +10,9 @@
 // mask and host segment attach, the scoreboard features a test requires, and
 // the shared-VIP evidence policy per recorder. The base test fills the knobs
 // (read_knobs), seeds and randomizes it once, then derives dtp_env_cfg from
-// it. The cocotb twin is env/dtp_test_cfg.py.
+// it. In the cocotb realization, DtpEnvCfg.randomize_timing
+// (env/dtp_env_cfg.py) owns the timing draw and each test reads its knobs
+// through OcahKnobs.
 
 class dtp_test_cfg extends ocah_test_cfg;
   `uvm_object_utils(dtp_test_cfg)
