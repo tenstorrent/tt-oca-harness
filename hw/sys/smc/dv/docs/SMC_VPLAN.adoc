@@ -128,7 +128,7 @@ Executable membership is resolved from the testlists; the groups and their
 |`smoke` |PR gate (`sim.yml`): canonical bring-up, cold reset, and a CSR frontdoor read
 |`hosted` |Nightly and weekly (`regress.yml`): `all` minus the twenty leaves that need the RISC-V toolchain (fifteen `fw` leaves, three dual-target leaves that run a ROM or firmware image, and the two `mmio_wedge` leaves of `cpu`)
 |`sanity` |The three dual-target leaves enrolled in `all`
-|`occp_rom` |All 34 BL0/SMC ROM cases, including the hours-long dual-SMC unsecure boot
+|`occp_rom` |33 of the 34 BL0/SMC ROM cases (`smc_occp_ring_buffer_stress_test` is left out for runtime), including the hours-long dual-SMC unsecure boot
 |`rtl_issue` |Weekly on its own `regress.yml` row: defect reproducers graded under `expect_fail`; no feature credit
 |`all` |The package regression, `hosted` + `fw` + `sanity`; `holdout.toml` defines the non-ROM leaves outside it and <<smc-held-out-testcases>> records the sign-off holdouts
 |===
@@ -12513,7 +12513,7 @@ checked by inverting one assertion. `--validate-configs` then lists
 |`fw` |Firmware class of `all`: the fifteen CPU-boot leaves whose image the `c_compile` stage builds with a picolibc-enabled RISC-V GCC or the toolchain container
 |`sanity` |SMC_DUAL class of `all`: the three `target = "dual"` leaves, each loading a ROM or firmware image
 |`axil`, `clock`, `combined`, `cpu`, `gpio`, `i2c`, `irq`, `reset`, `uart` |Feature subsets of `all` for a local run of one area; each lives in its feature testlist
-|`occp_rom` |All 34 BL0/SMC ROM cases, including the hours-long dual-SMC unsecure boot; run on demand
+|`occp_rom` |33 of the 34 BL0/SMC ROM cases (`smc_occp_ring_buffer_stress_test` is left out for runtime), including the hours-long dual-SMC unsecure boot; run on demand
 |`occp_boot` |Runtime hold-out run on demand: the production ROM to its OCCP loop. Not in `all`
 |`held_out` |Leaves waiting on an RTL fix or ruling, run on demand to re-measure. Not in `all`
 |===
@@ -13462,7 +13462,7 @@ to make, and waits on a ruling.
 |`smc_dual_elaboration_test` |`all`, `sanity` |`target = "dual"` and `firmware = prod_rom`: the `SMC_DUAL` elaboration alone `$error`s at time zero without a ROM image (`smc_rom.toml` header), so the leaf is not toolchain-free. It also TIMEOUTs on `dut_fuse_sense_done` (undeclared nets in the dual harness) |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above and #1802 (the dual-harness net declarations) merged; then covered by the weekly `all` row. Its checkers read boot-sequencer and AXI signals only, so pointing `+rom_hex` at `assets/smc_rom_default.hex` and `+smc_efuse_hex` at `assets/smc_efuse_default.hex` and dropping `firmware` would make it toolchain-free; that is a test-behaviour change for the SMC owner, not this record
 |`smc_dual_axi_sram_probe_test` |`all`, `sanity` |`target = "dual"` and `firmware = prod_rom` |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above; the same zero-ROM re-pointing applies
 |`smc_occp_sanity_test` |`all`, `sanity` |`target = "dual"` and `firmware = occp_sanity` (the production ROM plus one DV controller image); genuinely needs the built images |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above
-|`smc_occp_dual_unsecure_boot_test` |`occp_rom` |`target = "dual"`, `firmware = dual_occp` (three images), `timeout_sec = 21600`: hours of wall clock while a full sram image crosses a ~2.6 MHz serial bus |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above and a runner budget that fits the complete 34-case `items: occp_rom` group, including this hours-long member
+|`smc_occp_dual_unsecure_boot_test` |`occp_rom` |`target = "dual"`, `firmware = dual_occp` (three images), `timeout_sec = 21600`: hours of wall clock while a full sram image crosses a ~2.6 MHz serial bus |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above and a runner budget that fits the complete 33-case `items: occp_rom` group, including this hours-long member
 |`smc_cpu_mmio_read_wedge_test` |`cpu`, `all` |`firmware = "mmio_wedge"`: the wedge image is built with RISC-V GCC and picolibc, so no hosted-runner tier can run it. The two `smc_cpu_l2_*_wedge_test` leaves beside it in `cpu.toml` need no image and are enrolled in `hosted`; these two are not |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above; the leaf then joins `hosted` alongside the L2 pair and this row closes
 |`smc_cpu_mmio_write_wedge_test` |`cpu`, `all` |`firmware = "mmio_wedge"`, the same image and the same build path |minshaoho (`9282d8c14`) |2026-12-15 |As above
 |`smc_ref_clock_timer_rate_test` |none |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It fails the rate comparison it was written to make: `clk_rst.adoc:37-39` places the OCTS system timer in the reference clock domain, `smc_peripherals.sv:945-947` clocks `system_timer_octs` from `clk_smc_i`, and on seed 608337836 TIMER_COUNT advanced 992 counts while 428 `clk_ref_i` and 1026 `clk_smc_i` edges elapsed over the same window, against a tolerance of 14. It keeps its `[[tests]]` entry in `cpu.toml` and runs on demand (`--items smc_ref_clock_timer_rate_test`) |minshaoho (`9282d8c14`) |2026-12-15 |The clock-domain discrepancy is ruled: either `system_timer_octs` takes `clk_ref_i` and the leaf joins the `clock` group with the `ci` tag, or `clk_rst.adoc` is corrected and the leaf's expectation moves to `clk_smc_i`; if neither is ruled, the leaf joins `rtl_issue` under `expect_fail` with the rate assertion as `expect_fail_match`
@@ -13470,7 +13470,7 @@ to make, and waits on a ruling.
 
 `smc_rom.toml` is therefore in the toolchain bucket, not an "elaboration only"
 bucket: all 36 of its leaves declare `firmware`. `sanity` is the class group
-of the three leaves in `all`; `--items occp_rom` selects all 34 ROM cases,
+of the three leaves in `all`; `--items occp_rom` selects 33 of the 34 ROM cases,
 including the hours-long unsecure-boot leaf.
 
 `rtl_issue` reproducers are not hold-outs. Such an entry carries

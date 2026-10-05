@@ -6,8 +6,9 @@ schema_version = 1
 # `Main_SMC_BL0_Regression_Small`, plus the two dual-SMC infrastructure tests.
 # The dual harness forces per-instance straps before their capture window;
 # +BOOT_I3C selects I3C, while supported named strap plusargs are applied by
-# smc_dual_base_test. The `occp_rom` group runs all 34 ROM cases, including
+# smc_dual_base_test. The `occp_rom` group runs 33 of the 34 ROM cases, including
 # smc_occp_dual_unsecure_boot_test, whose full payload transfer takes hours.
+# smc_occp_ring_buffer_stress_test is left out for its runtime; run it by name.
 # `sanity` preserves the three-leaf dual-SMC bring-up set enrolled in `all`.
 
 [[tests]]
@@ -736,7 +737,7 @@ tests = [
 
 [[groups]]
 name = "occp_rom"
-expected_count = 34
+expected_count = 33
 tests = [
     "smc_occp_sanity_test",
     "smc_occp_random_command_test",
@@ -759,7 +760,6 @@ tests = [
     "smc_occp_unsupported_status_id_test",
     "smc_occp_interface_latch_test",
     "smc_occp_interface_unlatch_test",
-    "smc_occp_ring_buffer_stress_test",
     "smc_sep_ring_buffer_test",
     "smc_sep_ring_buffer_overflow_test",
     "smc_sep_ring_buffer_underflow_test",

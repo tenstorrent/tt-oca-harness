@@ -191,7 +191,8 @@ static void run_validate_boot_invalid_region_test(test_context_t *ctx) {
     simputs("=== Test 5: Validate and Boot with valid address for comparison ===\n");
 
     uint64_t valid_addr =
-        (ctx->test_base_addr + (get_random_int() % (OCCP_TEST_UPPER_ADDR - ctx->test_base_addr))) &
+        (ctx->test_base_addr + (get_random_int() % (OCCP_TEST_UPPER_ADDR - (sizeof(uint64_t) - 1) -
+                                                    ctx->test_base_addr))) &
         0xfffffffc;
     simputshex64("Attempting VALIDATE_AND_BOOT to valid address: 0x", valid_addr);
 

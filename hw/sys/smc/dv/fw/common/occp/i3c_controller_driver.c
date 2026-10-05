@@ -73,7 +73,6 @@ static inline uint32_t hr(uint8_t id, uint64_t abs0) {
  *  Field positions (vendor/chipsalliance/i3c-core/upstream/src/csr/I3CCSR_pkg.sv)
  *------------------------------------------------------------------------*/
 #define HC_BUS_ENABLE (1u << 31)
-#define HC_MODE_PIO (1u << 6)                       /* mode_selector = 1 (PIO) */
 #define STBYCR_ENABLE_INIT(v) ((uint32_t)(v) << 30) /* 1 ACM_INIT, 3 SCM_HOT_JOIN */
 #define STBYCR_TARGET_XACT (1u << 12)
 #define PIO_EN (1u << 0)
@@ -236,10 +235,10 @@ static I3C_Status I3C_Start(I3C_Driver *drv, int sys_clk_freq) {
     }
     uint8_t id = drv->ctx.controller_id;
 
-    hw(id, R_HC_CONTROL, HC_BUS_ENABLE | HC_MODE_PIO);
+    hw(id, R_HC_CONTROL, HC_BUS_ENABLE);
 
-    /* ENABLE_INIT 1 or 3 with BUS_ENABLE makes the core the active controller. */
-    hw(id, R_STBY_CR, STBYCR_ENABLE_INIT(3u) | STBYCR_TARGET_XACT);
+    /* ENABLE_INIT 1 (ACM_INIT) with BUS_ENABLE makes the core the active controller. */
+    hw(id, R_STBY_CR, STBYCR_ENABLE_INIT(1u) | STBYCR_TARGET_XACT);
 
     /* Status enables make PIO_INTR_STATUS report the events this driver polls. */
     hw(id, R_PIO_INTR_SE, PI_TX_THLD | PI_RX_THLD | PI_RESP_READY | PI_CMD_QUEUE_READY);
@@ -434,18 +433,7 @@ static I3C_Status hci_write_xfer(I3C_Driver *drv, uint8_t dat_idx, const uint8_t
         }
     }
 
-    uint32_t resp = 0;
-    for (uint32_t i = 0; i < I3C_POLL_LIMIT; i++) {
-        if (hr(id, R_PIO_INTR) & PI_RESP_READY) {
-            resp = hr(id, R_RESP_PORT);
-            break;
-        }
-    }
-    if (RESP_ERR(resp) != 0u) {
-        decode_cmdr_error((uint8_t)RESP_ERR(resp));
-        return I3C_ERR_CMD_FAILED;
-    }
-    return I3C_OK;
+    return hci_wait_response(id, NULL);
 }
 
 /*--------------------------------------------------------------------------

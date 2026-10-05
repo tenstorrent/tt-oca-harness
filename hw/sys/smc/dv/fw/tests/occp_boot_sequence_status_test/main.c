@@ -509,7 +509,7 @@ static bool test_active_status_generation(boot_status_test_context_t *ctx) {
     scenarios_tested++;
 
     uint8_t test_data[8] = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x11, 0x22};
-    result = occp_send_write_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, 0xC0060000,
+    result = occp_send_write_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, SMC_SRAM_BASE_ADDR,
                                      test_data, sizeof(test_data));
     if (result != OCCP_SUCCESS) {
         simputs("Expected: ROM-protected write denied\n");

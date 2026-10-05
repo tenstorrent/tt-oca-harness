@@ -263,13 +263,15 @@ leaf set. Use `--dut smc --items all --list` for the catalog.
 | `fw` | firmware class: the fifteen CPU-boot leaves whose image `c_compile` builds |
 | `sanity` | SMC_DUAL class: the three `target = "dual"` leaves enrolled in `all`, each loading a ROM or firmware image |
 | `axil`, `clock`, `combined`, `gpio`, `i2c`, `irq`, `reset`, `uart` | feature subsets of `all` for a local run of one area |
-| `occp_rom` | all 34 BL0/SMC ROM cases; includes the hours-long `smc_occp_dual_unsecure_boot_test` and is run on demand |
+| `occp_rom` | 33 of the 34 BL0/SMC ROM cases (`smc_occp_ring_buffer_stress_test` is left out for runtime); includes the hours-long `smc_occp_dual_unsecure_boot_test` and is run on demand |
 | `occp_boot`, `held_out` | on-demand hold-outs (runtime, or waiting on an RTL fix); not in `all` |
 
 Non-ROM leaves outside `all` are defined in `testlists/holdout.toml`, which
 states why. ROM/OCCP leaves outside `all` are defined in
 `testlists/smc_rom.toml` and selected together with `--items occp_rom`.
-That group runs all 34 ROM cases, including the hours-long unsecure-boot leaf:
+That group runs 33 of the 34 ROM cases, including the hours-long unsecure-boot leaf.
+`smc_occp_ring_buffer_stress_test` is left out for its runtime; run it by name with
+`--items smc_occp_ring_buffer_stress_test`. The group run is:
 
 ```bash
 python3 tools/dv/run_dv.py --dut smc --items occp_rom --tool verilator --regress
