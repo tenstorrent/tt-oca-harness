@@ -22,8 +22,8 @@ class smc_zeroer_unaligned_test(smc_base_test):
     """Unaligned in-page jobs whose final beat is partial."""
 
     required_evidence = (
-        "CHK-ZEROER-UNALIGNED-TAIL",
         "CHK-ZEROER-UNALIGNED-SPAN",
+        "CHK-ZEROER-UNALIGNED-TAIL",
     )
     min_evidence = 2
 

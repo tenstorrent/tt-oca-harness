@@ -250,6 +250,7 @@ feature rows.
 |`smc_wdt_timeout_pin_test` |A programmed first timeout raises `smc_wdt_first_timeout_o`; uncleared, the second timeout raises `smc_wdt_second_timeout_o` and the warm reset follows.
 |`smc_zeroer_dma_timeout_test` |Run zeroer over output-fabric payload bytes and check the model.
 |`smc_zeroer_multi_burst_test` |Clear a region larger than one AXI burst and check the first and last word of each half, with a witness word past the end.
+|`smc_zeroer_unaligned_test` |Run two in-page jobs that start partway into a word and check that exactly their bytes are zeroed, with the rest of each edge word and the guard words either side keeping their poison.
 |`smc_zeroer_sanity_test` |Run zeroer over output-fabric payload bytes and check the model.
 |===
 
@@ -9561,6 +9562,37 @@ Drive `smc_zeroer_multi_burst_test_seq`. Each checker below is a named compare t
 |===
 
 *Pass Criteria*: `CHK-ZEROER-BACKPRESSURE`, `CHK-ZEROER-INT-EN-HALF-WRITE`, `CHK-ZEROER-MULTI-BURST-PRELOAD`, `CHK-ZEROER-MULTI-BURST-STATUS`, `CHK-ZEROER-MULTI-BURST-ZEROED` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+[[sec-324-smc_zeroer_unaligned_test]]
+===== 324 `smc_zeroer_unaligned_test`
+
+*Source Module*: `smc_zeroer_unaligned_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); the TB SYS_OUT output-fabric responder
+
+*Objective*: Zero a byte range that starts partway into a word, inside one 4 KB page, and touch no byte outside it.
+
+*Test Coverage*:
+
+* `hw/sys/smc/doc/zeroer.adoc` lists unaligned start addresses among what the zeroer handles, and the RDL gives `DEST_ADDR` as a byte address and `SIZE` as a byte count. With an unaligned start, the end offset `DEST_ADDR[2:0] + SIZE` sets both the number of beats and the width of the final beat; a design that derives either from `SIZE` alone corrupts the edges. The page-crossing job in `smc_zeroer_size_corners_test` does not reach this case, because the 4 KB split makes each fragment end on a word.
+* A 13-byte job from five bytes into a word covers the top three bytes of the first word, the whole second word and the low two bytes of the third. A beat count taken from `SIZE` alone leaves the third word's bytes poisoned; a final-beat width taken from `SIZE` clears too many bytes of it.
+* A 4-byte job from six bytes into a word straddles two words by two bytes each. A single beat from `SIZE` alone leaves the second word's bytes poisoned.
+* Each covered word and a guard word below and above each job are poisoned and read back first, so the compares after the job can fail. `SIZE` and `DEST_ADDR` are cleared afterwards, so a later write to `CTRL_STATUS` cannot start a job.
+
+*Test Procedure*:
+
+Drive `smc_zeroer_unaligned_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-ZEROER-UNALIGNED-TAIL` |After the 13-byte job, each of the three words reads its poison with exactly the job's bytes cleared, the guard words below and above keep their poison, `CTRL_STATUS.STATUS` returned to idle, and the output responder booked at least one write transaction
+|`CHK-ZEROER-UNALIGNED-SPAN` |After the 4-byte job, the two straddled words read their poison with exactly the job's two bytes in each cleared, and the guard words below and above keep their poison
+|===
+
+*Pass Criteria*: `CHK-ZEROER-UNALIGNED-SPAN`, `CHK-ZEROER-UNALIGNED-TAIL` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
