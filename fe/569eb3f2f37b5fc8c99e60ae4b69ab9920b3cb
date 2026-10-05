@@ -1,0 +1,26 @@
+.github/issue-taxonomy.yml
+  s_8a9b8e56b5dc3f::t_aa2238e474695a 31
+  s_8a9b8e56b5dc3f::t_67d85d04316b2c 118
+.github/ISSUE_TEMPLATE/03-feature.yml
+  s_8a9b8e56b5dc3f::t_e63e86916c85b1 31
+.github/ISSUE_TEMPLATE/02-task.yml
+  s_8a9b8e56b5dc3f::t_0d9f039d476415 31
+.github/ISSUE_TEMPLATE/01-bug.yml
+  s_8a9b8e56b5dc3f::t_c1845a7dc46aa1 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "fe569eb3f2f37b5fc8c99e60ae4b69ab9920b3cb",
+  "prompts": {},
+  "sessions": {
+    "s_8a9b8e56b5dc3f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "04203c6f-c215-4b0e-814b-5c8666884008",
+        "model": "grok-4.6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

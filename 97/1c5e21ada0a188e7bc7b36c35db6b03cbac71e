@@ -1,0 +1,23 @@
+doc/stage-docs.sh
+  s_c5151d462a6a92::t_ab8d0b530cec54 127-138
+hw/ip/drbg/doc/architecture.adoc
+  s_c5151d462a6a92::t_f9d4c5edffcde9 64-67
+hw/sys/sep/doc/memory_map.adoc
+  s_c5151d462a6a92::t_a2e56ebb40af42 200-219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "971c5e21ada0a188e7bc7b36c35db6b03cbac71e",
+  "prompts": {},
+  "sessions": {
+    "s_c5151d462a6a92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e6b5a7b-8db1-4886-87ca-37b7ffada441",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

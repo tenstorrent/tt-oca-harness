@@ -1,0 +1,68 @@
+hw/ip/cross_trigger/cross_trigger_network/README.md
+  s_d605cb93395a31::t_e7536854eb89dd 45-48
+hw/ip/memory_interface/README.adoc
+  s_d605cb93395a31::t_d2bb9152f898ca 269-278
+hw/common/regs/rules.mk
+  s_d605cb93395a31::t_cf1c9c938f9b9c 23
+hw/common/regs/out.mk
+  s_d605cb93395a31::t_13fce13b39a5d1 23
+hw/ip/cross_trigger/cross_trigger_matrix/README.md
+  s_d605cb93395a31::t_f850596a1d2b3c 37,39-40,43,46-47
+  s_d605cb93395a31::t_27f281fc785098 48
+hw/common/regs/classify.mk
+  s_d605cb93395a31::t_d94ef2e07732ab 79-85
+tools/regs/rdlchdr.py
+  s_d605cb93395a31::t_14f0c9905a04fb 196-204
+  s_d605cb93395a31::t_02c482eae10e4d 220-223
+  s_d605cb93395a31::t_f6c4d67ee96f04 46
+hw/ip/cross_trigger/cross_trigger_port/README.md
+  s_d605cb93395a31::t_07870fef9ebcfb 10,13-14,19,24,26-30,34-35
+hw/ip/cross_trigger/cross_trigger_port/dv/tb_vcs/README.md
+  s_d605cb93395a31::t_9770ebdbf95395 27
+hw/ip/entropy_source/dv/cocotb/README.adoc
+  s_d605cb93395a31::t_dd867c50ac802d 23
+hw/ip/entropy_source/dv/syn/entropy_source_rtl.f
+  s_d605cb93395a31::t_f627c6289b3dec 19
+hw/ip/uart/log_engine/dv/tb/README.adoc
+  s_d605cb93395a31::t_d3f76e328b863e 22
+hw/ip/uart/log_engine/dv/tb_vcs/README.adoc
+  s_d605cb93395a31::t_fdfe3aa453b1f8 22
+hw/ip/uart/uart_16550/dv/tb/README.adoc
+  s_d605cb93395a31::t_55eb3e770bfee7 22
+hw/ip/uart/uart_16550/dv/tb_vcs/README.adoc
+  s_d605cb93395a31::t_c0c4e3853ac3d0 22
+hw/ip/uart/uart_log_engine_wrap/dv/tb/README.adoc
+  s_d605cb93395a31::t_ab60a51bd84dc0 23
+hw/ip/uart/uart_log_engine_wrap/dv/tb_vcs/README.adoc
+  s_d605cb93395a31::t_5552cf0ebe7d1c 23
+hw/sys/sep/dv/cocotb/seq_lib/sep_fabric_csr_bank_seq.py
+  s_d605cb93395a31::t_b17f34da0b6a86 15
+hw/sys/sep/dv/cocotb/seq_lib/sep_lcc_stitch_check_seq.py
+  s_d605cb93395a31::t_67052d4a6525b6 28
+hw/sys/sep/dv/cocotb/seq_lib/sep_sram_breadth_seq.py
+  s_d605cb93395a31::t_61958acd42f2b0 30
+hw/sys/smc/dv/cocotb/seq_lib/smc_efuse_jtag_lc_negative_test_seq.py
+  s_d605cb93395a31::t_fbb802072de7c3 31
+hw/sys/smc/dv/cocotb/seq_lib/smc_efuse_map_read_test_seq.py
+  s_d605cb93395a31::t_20abadf38d9cbe 12
+hw/sys/smc/dv/cocotb/tests/smc_efuse_jtag_lc_access_matrix_test.py
+  s_d605cb93395a31::t_d89e07b58b737d 37
+hw/sys/smu/dv/cocotb/seq_lib/smu_jtag_helpers.py
+  s_d605cb93395a31::t_8481ab48a7af22 56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "6d398ff864b954ffb9508d9c23c2714c4fa17acf",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+hw/ip/entropy_source/rtl/gen_recommended_thresholds.py
+  s_42d98e48086972::t_cc30a57f774d2a 1-210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5334e5a4f64f14f155380f5e4c1071daf3d17fa0",
+  "prompts": {},
+  "sessions": {
+    "s_42d98e48086972": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b3b78d8-5ce4-41c5-b7f4-8bd5173c9e98",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+doc/contributing/src/issues.adoc
+  s_c8ce40a7fc1aa0::t_735434e4d1c737 15,17
+AGENTS.md
+  s_c8ce40a7fc1aa0::t_767cf05b091f3a 429
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "0f89266a713701f04849260681177f57d045662d",
+  "prompts": {},
+  "sessions": {
+    "s_c8ce40a7fc1aa0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0d5abf2b-6a5c-43f3-8443-62ecff30dc52",
+        "model": "grok-4.6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

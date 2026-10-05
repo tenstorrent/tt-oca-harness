@@ -1,0 +1,153 @@
+hw/common/assert/ocah_assert.svh
+  s_d605cb93395a31::t_399fe941475418 4-5,8-9,12,14-15,17,19,23-26,28-33,35-39,41-48,50-53,59-60,63-64,67-69,71
+hw/common/assert/ocah_assert_standard_macros.svh
+  s_d605cb93395a31::t_c8ab78f8c294a6 3-9,11-17,19-27,29-40,42-50,52-58,60-65,68-70,72-73,76-78,80-81,83-86,88-89,92-94,96-102,104-106,108-110
+hw/common/axi/axi_cg_snoop.sv
+  s_d605cb93395a31::t_34f8095318bcb1 69-71,187-189,192,195-196,199
+hw/common/axi/axi_hang_detector/rtl/axi_hang_detector.sv
+  s_d605cb93395a31::t_eb888b6f0267b1 142-144
+hw/common/axi/axi_lite_to_tlul.sv
+  s_d605cb93395a31::t_86f2e681153d68 267
+hw/common/axi/tlul_to_axi_lite.sv
+  s_d605cb93395a31::t_d3f6f17a091f97 315
+hw/common/och_prim/rtl/prim_ag_clk_mux.sv
+  s_d605cb93395a31::t_802c7ffd84e351 118,120
+hw/common/och_prim/rtl/prim_axi_id_prepend_wrap.sv
+  s_d605cb93395a31::t_127240b4bcd379 27,78
+hw/common/och_prim/rtl/prim_axi_snoop.sv
+  s_d605cb93395a31::t_3b8ff0295316b7 128,131,136
+hw/common/och_prim/rtl/prim_axil_err_slv.sv
+  s_d605cb93395a31::t_8209be0ad91c3e 40,44,47,50
+hw/common/och_prim/rtl/prim_cg_req.sv
+  s_d605cb93395a31::t_6791867cf144f2 85,88-90,93
+hw/common/och_prim/rtl/prim_diff_decode_multi.sv
+  s_d605cb93395a31::t_326894175bc70c 72
+hw/common/och_prim/rtl/prim_diff_encode_multi.sv
+  s_d605cb93395a31::t_5f8497f9cbca14 52
+hw/common/och_prim/rtl/prim_fair_rr_arb.sv
+  s_d605cb93395a31::t_d00611492374a6 74,127,129,253-258
+hw/common/och_prim/rtl/prim_fifo_sync_parity.sv
+  s_d605cb93395a31::t_f976066f00b598 47,230-231,236,243-246,248,258
+hw/common/och_prim/rtl/prim_jtag_scan_reg.sv
+  s_d605cb93395a31::t_0bceaa710b1bff 30
+hw/common/och_prim/rtl/prim_ram_1p_adv_ext.sv
+  s_d605cb93395a31::t_20ff3b405a1299 74,149,232,235,292-293
+hw/common/och_prim/rtl/prim_ram_1p_scr_ext.sv
+  s_d605cb93395a31::t_a32df745f519ff 108-110
+hw/common/och_prim/rtl/prim_zero_counter.sv
+  s_d605cb93395a31::t_ad58ee3ddc864d 27,92
+hw/common/och_prim_generic/rtl/prim_clock_mux2.sv
+  s_d605cb93395a31::t_c2ba71210d33d9 26-27
+hw/common/ot_pkg/rtl/lc_ctrl_pkg.sv
+  s_d605cb93395a31::t_10edb5bf911a1a 89,91
+hw/common/tlul/rtl/tlul_adapter_host.sv
+  s_d605cb93395a31::t_ac820c852e2b42 162,192
+hw/common/tlul/rtl/tlul_adapter_reg.sv
+  s_d605cb93395a31::t_f0da2314e28fc4 136,309
+hw/common/tlul/rtl/tlul_adapter_sram.sv
+  s_d605cb93395a31::t_8abaa8dd10459f 639,643,646,648-649,652,655-659,669-670,673
+hw/common/tlul/rtl/tlul_cmd_intg_chk.sv
+  s_d605cb93395a31::t_d8d966e8b3b725 55
+hw/common/tlul/rtl/tlul_cmd_intg_gen.sv
+  s_d605cb93395a31::t_bbdd83956d3252 60
+hw/common/tlul/rtl/tlul_err.sv
+  s_d605cb93395a31::t_2bc9ded2f6e4ed 100
+hw/common/tlul/rtl/tlul_rsp_intg_chk.sv
+  s_d605cb93395a31::t_fb45f2dc74c316 56
+hw/common/tlul/rtl/tlul_rsp_intg_gen.sv
+  s_d605cb93395a31::t_5d74711cf0e1b0 79-80,86-87
+hw/common/tlul/rtl/tlul_socket_1n.sv
+  s_d605cb93395a31::t_9d473960623e5b 74,133
+hw/common/tlul/rtl/tlul_sram_byte.sv
+  s_d605cb93395a31::t_ada31f739650d2 217,225,634,683,686,694,699,706,731
+hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix.sv
+  s_d605cb93395a31::t_3968ae6ab90bf1 49-50
+hw/ip/drbg/rtl/drbg.sv
+  s_d605cb93395a31::t_bf539e85b907ec 335-356,359-361
+hw/ip/drbg/rtl/drbg_axil64_lane_adapter.sv
+  s_d605cb93395a31::t_22dc3ef9f28f7d 308-312,314,316,318-325
+hw/ip/drbg/rtl/drbg_axis_edn_adapter.sv
+  s_d605cb93395a31::t_397209f7b8f3f3 203,205,207,209,211
+hw/ip/drbg/rtl/drbg_csrng_seed_adapter.sv
+  s_d605cb93395a31::t_f5b7cf955eea58 112-114,116-118,121-131
+hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv
+  s_d605cb93395a31::t_9e4a2a68334dd1 81,83,85,87,90-96,99-100
+hw/ip/drbg/rtl/drbg_entropy_router.sv
+  s_d605cb93395a31::t_8bc8c8435260c7 123-125,127,129,131,133,136-149
+hw/ip/efuse/rtl/efuse_guard.sv
+  s_d605cb93395a31::t_fdc719f91ff1ec 167,169
+hw/ip/efuse/rtl/efuse_interface_controller.sv
+  s_d605cb93395a31::t_938947f39009a9 837,841
+hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv
+  s_d605cb93395a31::t_517b2599c73363 66-67,236,238,242,244
+hw/ip/i2c/rtl/i2c.sv
+  s_d605cb93395a31::t_bef51383ccba89 152-162
+hw/ip/i2c/rtl/i2c_controller_fsm.sv
+  s_d605cb93395a31::t_ae4ea48e866e7a 1012,1027
+hw/ip/i2c/rtl/i2c_core.sv
+  s_d605cb93395a31::t_4fca985118b3d1 515,520,525,530,535,540,545,550,1168,1170,1172,1174
+hw/ip/i2c/rtl/i2c_target_fsm.sv
+  s_d605cb93395a31::t_6cc4c0f579297e 1049,1054,1059
+hw/ip/i2c/rtl/i2c_wrap.sv
+  s_d605cb93395a31::t_933b80590b202d 287-301
+hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv
+  s_d605cb93395a31::t_826f2b6cc3704e 235-237
+hw/ip/jtag/jtag_ptap/rtl/jtag_caps_reg.sv
+  s_d605cb93395a31::t_dff97d04490103 63-68
+hw/ip/jtag/jtag_ptap/rtl/jtag_ptap.sv
+  s_d605cb93395a31::t_5cd21ffc834f9d 660,673,686
+hw/ip/key_manager/rtl/key_manager.sv
+  s_d605cb93395a31::t_385d806051b654 159-162
+hw/ip/key_manager/rtl/km_crc_engine.sv
+  s_d605cb93395a31::t_cf783ea0e66875 26,141-142,145,148-149,153-156
+hw/ip/key_manager/rtl/km_csr.sv
+  s_d605cb93395a31::t_b0354d1beae397 116,775-777
+hw/ip/key_manager/rtl/km_drbg_sampler.sv
+  s_d605cb93395a31::t_8cf3a5bdcfdcd0 498
+hw/ip/key_manager/rtl/km_mailbox.sv
+  s_d605cb93395a31::t_c6624e759764fc 758-759
+hw/ip/key_manager/rtl/km_reset_conditioner.sv
+  s_d605cb93395a31::t_851d6fb6b972a5 137,140
+hw/ip/key_manager/rtl/km_rom_interface.sv
+  s_d605cb93395a31::t_8cf4acb9bee15c 201,206,211
+hw/ip/key_manager/rtl/km_sram_interface.sv
+  s_d605cb93395a31::t_e08036522b98de 332,337,342
+hw/ip/key_manager/rtl/picorv32_pcpi_crc.sv
+  s_d605cb93395a31::t_fb34616d7a6a37 27,141-143,146,151,158-163
+hw/ip/memory_interface/rtl/memory_interface.sv
+  s_d605cb93395a31::t_a53c268d18192c 54,61-62,77-78,96-98
+hw/ip/system_timer_octs/rtl/system_timer_octs_core.sv
+  s_d605cb93395a31::t_911ea7bbd260ea 242,288,325-327,337-339
+hw/ip/telemetry_receiver/rtl/telemetry_receiver.sv
+  s_d605cb93395a31::t_2b42d3565a1626 401,403-407
+hw/ip/telemetry_receiver/rtl/telemetry_receiver_wrap.sv
+  s_d605cb93395a31::t_6ff9bef915944b 243,248-252
+hw/ip/uart/log_engine/rtl/log_engine.sv
+  s_d605cb93395a31::t_4a5a3adf62f313 486,488-491
+hw/ip/uart/uart_16550/rtl/uart_16550.sv
+  s_d605cb93395a31::t_6db22638c93c29 319,321,324-335,340,345,350
+hw/ip/uart/uart_log_engine_wrap/rtl/uart_log_engine_wrap.sv
+  s_d605cb93395a31::t_c3b48b05b1dc49 374-386
+hw/ip/uart/uart_wrap/rtl/uart_wrap.sv
+  s_d605cb93395a31::t_5ea1527c13d9db 264-278
+hw/ip/zeroer/rtl/zeroer.sv
+  s_d605cb93395a31::t_432a8ebd0b7530 56,427-428
+hw/sys/smc/rtl/smc_fabric/smc_output_fabric/rtl/smc_output_fabric.sv
+  s_d605cb93395a31::t_14d371625c771f 55,304-305
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.17",
+  "base_commit_sha": "5f14c97b6f9f2f9722ef7d43e5664d977b83f913",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

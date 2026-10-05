@@ -1,0 +1,169 @@
+hw/sys/smc/doc/fabric.adoc
+  s_d605cb93395a31::t_fa84ed5d6f2040 447-449
+hw/sys/smu/doc/port_table.adoc
+  s_d605cb93395a31::t_ef307b8b94f464 218-219
+  s_d605cb93395a31::t_051452d2ca7283 93-94
+hw/sys/smu/regs/include/smu.rdl
+  s_d605cb93395a31::t_5bd658902ea4da 6-7
+hw/sys/smc/doc/memmap.adoc
+  s_d605cb93395a31::t_e47ec64c7f6234 26,29
+hw/ip/efuse/doc/memmap.adoc
+  s_d605cb93395a31::t_e1e95c0b09a4ed 4,22-27,29-33,35-42,46,52-65,67-80
+  s_d605cb93395a31::t_ea23a7de70a07a 1-3
+hw/ip/uart/uart_log_engine_wrap/doc/uart_log_engine_wrap.adoc
+  s_d605cb93395a31::t_d1d3fc0cea1152 91-93
+hw/common/axi/axi_filter/regs/gen/adoc/filter_ctrl.adoc
+  s_d605cb93395a31::t_62f21557dd8b37 14,17-18,22,24,26-27
+hw/ip/avsbus_controller/doc/memmap.adoc
+  s_d605cb93395a31::t_d7daee0272f3f6 1-3
+hw/ip/axi_lite_mailbox_unit/doc/memmap.adoc
+  s_d605cb93395a31::t_5c8e271fbcbcfc 1-3
+hw/ip/drbg/doc/architecture.adoc
+  s_d605cb93395a31::t_daebc268a19ec2 1-3
+hw/ip/efuse/doc/architecture.adoc
+  s_d605cb93395a31::t_ef1d67538cd956 1-4,33,39,44,53,56,68,75-107,109-129,141,144-152,154-156,158-162,164,166-171,175-181,186-189,193-227,231,233-336
+hw/ip/efuse/doc/index.adoc
+  s_d605cb93395a31::t_3edfcbc00a5899 1-3
+hw/ip/efuse/doc/interface.adoc
+  s_d605cb93395a31::t_0eb61d6f924390 1-4,107,110-120,122,124,126,128,130,132,134
+hw/ip/efuse/doc/programming.adoc
+  s_d605cb93395a31::t_194398021c40a8 1-3
+hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc
+  s_d605cb93395a31::t_8e1d84cf29e38a 38,72-81,99,101,103,105-107,132-140,154-162,176-184,426,429-435,700-788
+hw/ip/gpio/doc/architecture.adoc
+  s_d605cb93395a31::t_8a23da25dd0079 1-3
+hw/ip/gpio/doc/interface.adoc
+  s_d605cb93395a31::t_f2516f8e1e68eb 1-3
+hw/ip/gpio/doc/memmap.adoc
+  s_d605cb93395a31::t_eacc46031bd347 1-3
+hw/ip/i2c/doc/i2c_wrap.adoc
+  s_d605cb93395a31::t_da92065f1fad5f 1-3
+hw/ip/i2c/doc/memmap.adoc
+  s_d605cb93395a31::t_3052c6b6dd2d76 1-3
+hw/ip/i3ccore_wrap/doc/architecture.adoc
+  s_d605cb93395a31::t_3a8b66bef5f8eb 1-3
+hw/ip/i3ccore_wrap/doc/memmap.adoc
+  s_d605cb93395a31::t_4a2f5a60a4e82b 1-3
+hw/ip/jtag/jtag_ptap/doc/architecture.adoc
+  s_d605cb93395a31::t_d88ef3fe1b5996 1-3
+hw/ip/jtag/jtag_ptap/doc/interface.adoc
+  s_d605cb93395a31::t_b4e9589056f675 1-3
+hw/ip/key_manager/doc/architecture.adoc
+  s_d605cb93395a31::t_a776d38e4de721 1-3
+hw/ip/key_manager/doc/firmware.adoc
+  s_d605cb93395a31::t_e6731db8392aae 1-3
+hw/ip/key_manager/regs/gen/adoc/key_manager.adoc
+  s_d605cb93395a31::t_9889d98bfd8ecf 148,150,246,248-252,1002-1014
+hw/ip/key_manager/regs/gen/adoc/km_csr.adoc
+  s_d605cb93395a31::t_0e78a9af6a24be 98,100,831-843
+hw/ip/key_manager/regs/gen/adoc/km_kpv.adoc
+  s_d605cb93395a31::t_8e7226f5d4c7ca 39,41-45
+hw/ip/system_timer_octs/doc/memmap.adoc
+  s_d605cb93395a31::t_dad58b6ac8724c 1-3
+hw/ip/telemetry_receiver/doc/memmap.adoc
+  s_d605cb93395a31::t_ad20b986b9670d 1-3
+hw/ip/uart/log_engine/doc/memmap.adoc
+  s_d605cb93395a31::t_843035ce52223b 1-3
+hw/ip/uart/uart_16550/doc/memmap.adoc
+  s_d605cb93395a31::t_fb0f19e1354698 1-3
+hw/sys/dtp/doc/index.adoc
+  s_d605cb93395a31::t_251b87d6dd9682 1-3,17-18,21-23
+hw/sys/dtp/doc/port_table.adoc
+  s_d605cb93395a31::t_be2095be676a44 1-3
+hw/sys/sep/doc/attack_countermeasures.adoc
+  s_d605cb93395a31::t_221d5a5d14be62 1-3
+hw/sys/sep/doc/cpu.adoc
+  s_d605cb93395a31::t_9ae0ddfbebe863 1-3
+hw/sys/sep/doc/crypto.adoc
+  s_d605cb93395a31::t_643c612834d271 1-3,317,320,324,327
+hw/sys/sep/doc/fabric.adoc
+  s_d605cb93395a31::t_7052632e87f056 1-3
+hw/sys/sep/doc/lifecycle_controller.adoc
+  s_d605cb93395a31::t_5507010642b1ed 1-3
+hw/sys/sep/doc/memory_map.adoc
+  s_d605cb93395a31::t_f59ac3ce12a580 1-3
+hw/sys/sep/doc/overview.adoc
+  s_d605cb93395a31::t_00fd6ccfb5b708 1-3
+hw/sys/sep/doc/periphs.adoc
+  s_d605cb93395a31::t_e1ebf4c59e7605 1-3,407
+hw/sys/sep/doc/port_table.adoc
+  s_d605cb93395a31::t_008bc5b7f789f0 1-3
+hw/sys/sep/doc/security_disable.adoc
+  s_d605cb93395a31::t_9e29762cdb1bec 1-3
+hw/sys/sep/doc/test_mode.adoc
+  s_d605cb93395a31::t_3b3436813a09b1 1-3
+hw/sys/sep/dv/cocotb/tests/cpu/sep_hmac_kmac_cpu_crypto_smoke_test.py
+  s_d605cb93395a31::t_c09004d4c88e50 10
+hw/sys/sep/dv/docs/SEP_OSS_VPLAN_PHASE1.md
+  s_d605cb93395a31::t_568df986fec29b 451,591
+hw/sys/sep/dv/fw/tests/hmac_kmac_smoke_test/hmac_kmac_smoke_test.c
+  s_d605cb93395a31::t_4210448b735582 9
+hw/sys/sep/regs/gen/adoc/blocks/aes.adoc
+  s_d605cb93395a31::t_b00db4e5197923 5,9,13,17,21,31-35,45,48,50-60,64,67-79,83,86-101,105,108-118,122,125-133,141-175,183-194,202-204,212-228,236-271,279-293
+hw/sys/sep/regs/gen/adoc/blocks/aon_timer.adoc
+  s_d605cb93395a31::t_7a8f1f96c98077 5-18,26,34-35,42,49,56,63,71,79-80,87,94,101,109-110,118-119,127
+hw/sys/sep/regs/gen/adoc/blocks/hmac.adoc
+  s_d605cb93395a31::t_76de5a8b6c3b08 5,9,28-29,39-40,46,54-56,64-66,74,82,94,98,101,105,112,116,126-127,130-131,140,142-144,152,160,164,167,171,174,181,188
+hw/sys/sep/regs/gen/adoc/blocks/kmac.adoc
+  s_d605cb93395a31::t_4312b06f4aa349 5,9,13,35-36,38,47-48,55,63-65,73-75,83-84,92,100,108,113,117,126,133,140,148,160,165,171,182,185-186,191,211-212,224,226,228-229,236,247,259,267,274,278,281,285,288,296,300,303,310
+hw/sys/sep/regs/gen/adoc/blocks/otbn.adoc
+  s_d605cb93395a31::t_b3716ce6beee00 23,31,39,47-48,56,70,83,103-110,112-119,127-134,141,148
+hw/sys/sep/regs/gen/adoc/blocks/secure_dma.adoc
+  s_d605cb93395a31::t_b1b0ca3c01bd7a 5-67,85-87,95-97,112,119,126,133,172,180,187,194,202,209,211,213,215-216,225-226,234-235,243-245,247-248,267-351,354-375,403-543,546,550,553
+hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc
+  s_d605cb93395a31::t_d2d61eb5d8eba0 5-19,37,45-46,53,60-61,68-71,78-79,86-87,94-95,102-103,110-111,118-119,126-127,134-135,142-143,150-151,158-159,171-172,188,282-284,296-303
+hw/sys/sep/regs/gen/adoc/blocks/spi_controller.adoc
+  s_d605cb93395a31::t_86ff4660248326 5-14,21,24-28,35-38,45-50,54,57,59-60,86,109-111,115,120,164,167-181,185,191-204,211-212,214-215,218-219,222-223,225,235-236,238-241,244-245,247-249,257-258,260-261,263-264,268-269,273-274,276
+hw/sys/smc/bootrom/prod/README.adoc
+  s_d605cb93395a31::t_58b4edf6a7f35e 1-3
+hw/sys/smc/doc/clk_rst.adoc
+  s_d605cb93395a31::t_3e987cb9e50aa2 1-3
+hw/sys/smc/doc/cpu.adoc
+  s_d605cb93395a31::t_557c28e93b69ab 1-3
+hw/sys/smc/doc/dma.adoc
+  s_d605cb93395a31::t_4f5aeaeb179466 1-3
+hw/sys/smc/doc/index.adoc
+  s_d605cb93395a31::t_a437f98c458594 1-3
+hw/sys/smc/doc/interrupts.adoc
+  s_d605cb93395a31::t_e06cb42fde0cab 1-3
+hw/sys/smc/doc/periphs.adoc
+  s_d605cb93395a31::t_bac3e77f27b588 1-3,30,34,38,42,49,53,116-119,121-122,128,130,132,134,136,138,140,142
+hw/sys/smc/doc/port_table.adoc
+  s_d605cb93395a31::t_c9c2f7c2927545 1-3
+hw/sys/smc/doc/rom.adoc
+  s_d605cb93395a31::t_22f9e81cac0aac 1-3
+hw/sys/smc/doc/scan_protection.adoc
+  s_d605cb93395a31::t_be95c1c12578ad 1-3
+hw/sys/smc/doc/zeroer.adoc
+  s_d605cb93395a31::t_914e0eec16e6ee 1-3
+hw/sys/smc/dv/models/regs/gen/adoc/pll_wrap.adoc
+  s_d605cb93395a31::t_0747ad326aa71e 1-23
+hw/sys/smc/dv/models/regs/gen/adoc/pvt_wrap.adoc
+  s_d605cb93395a31::t_80eb24bdd3ed68 1-23
+hw/sys/smc/dv/models/regs/gen/adoc/smc_axil_extension.adoc
+  s_d605cb93395a31::t_030c3fd0ec65df 1-23
+hw/sys/smc/regs/gen/adoc/blocks/smc_efuse_map.adoc
+  s_d605cb93395a31::t_4aca348fbeb064 73,86
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc
+  s_d605cb93395a31::t_0abee7b81a2f58 5-7,13-15,32,36-39,43,47-50,54,58-61,69-70,104-123,142-156,190,232,235-236,264,277,290,294,300,304,308,311,313,316,319,329,333,335,337,339,342,344-353,355-357,359-360,363,367,371-428,432,443,455-456
+vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/adoc/edn.adoc
+  s_d605cb93395a31::t_623da3efb0d7ec 30-31,39-40,48-49,57-58
+vendor/pulp-platform/idma/overlay/rdl/gen/adoc/dma_ctrl.adoc
+  s_d605cb93395a31::t_88af53c53e2e49 1-516
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "9f2390e436f3aa8dbb3d0aba2e5111558e62c6c9",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

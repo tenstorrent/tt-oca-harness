@@ -1,0 +1,35 @@
+hw/ip/drbg/doc/architecture.adoc
+  s_c8ce40a7fc1aa0::t_63a1bdac2cd520 59
+  s_c8ce40a7fc1aa0::t_4d02c00a2ba4c4 56-58
+hw/ip/key_manager/doc/architecture.adoc
+  s_c8ce40a7fc1aa0::t_59c255bcdb2876 22-24,26-27
+  s_c8ce40a7fc1aa0::t_a94203485750a6 25
+hw/sys/sep/doc/periphs.adoc
+  s_c8ce40a7fc1aa0::t_d840a24d1dccb0 391-394
+  s_c8ce40a7fc1aa0::t_cac5d9edcd4e2c 412-415
+hw/sys/sep/doc/crypto.adoc
+  s_c8ce40a7fc1aa0::t_f9816e47604b29 146,148-149
+  s_c8ce40a7fc1aa0::t_79a1d85cb83933 80-83
+  s_c8ce40a7fc1aa0::t_5909689eee0583 187-190
+  s_c8ce40a7fc1aa0::t_c0c17985c20926 216-219
+hw/sys/sep/doc/memory_map.adoc
+  s_c8ce40a7fc1aa0::t_d7d04e65e72255 233-239
+hw/sys/sep/doc/cpu.adoc
+  s_c8ce40a7fc1aa0::t_a76f85172aee56 180-184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7e27f22fd2c1685724b595401e50b8c690ce6363",
+  "prompts": {},
+  "sessions": {
+    "s_c8ce40a7fc1aa0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0d5abf2b-6a5c-43f3-8443-62ecff30dc52",
+        "model": "grok-4.6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

@@ -1,0 +1,95 @@
+hw/common/macro/doc/OCH_Vendor_Macro_Interfaces.adoc
+  s_d605cb93395a31::t_06260047dc5644 1-96
+hw/ip/axi_lite_mailbox_unit/doc/memmap.adoc
+  s_d605cb93395a31::t_5388c1fafc405c 1
+hw/ip/cross_trigger/cross_trigger_network/doc/memmap.adoc
+  s_d605cb93395a31::t_030a68c4e6f719 14
+hw/ip/drbg/doc/architecture.adoc
+  s_d605cb93395a31::t_d4766e2893a802 13,22,33,35,45
+hw/ip/efuse/doc/architecture.adoc
+  s_d605cb93395a31::t_9dd2176a3e1d13 1,30,36-37,42-43,52,55-56,68,75,77-78,86-122,126-128,133-136,140-145,149,151
+hw/ip/efuse/doc/index.adoc
+  s_d605cb93395a31::t_4a96dc84609ced 4-5
+hw/ip/efuse/doc/interface.adoc
+  s_d605cb93395a31::t_2608cc6a464db0 1,12,105,108-109,111,113,115,117,119,121,123
+hw/ip/efuse/doc/memmap.adoc
+  s_d605cb93395a31::t_8dc389e3d7fce8 1,19,21,23-24,28,33
+hw/ip/efuse/doc/programming.adoc
+  s_d605cb93395a31::t_bdb7615cf1831a 1
+hw/ip/gpio/doc/architecture.adoc
+  s_d605cb93395a31::t_95593a80f629f3 49
+hw/ip/gpio/doc/interface.adoc
+  s_d605cb93395a31::t_72cbec64c91dbb 12
+hw/ip/i3ccore_wrap/doc/architecture.adoc
+  s_d605cb93395a31::t_bf6e9bb6ea4b1a 538-539
+hw/ip/i3ccore_wrap/doc/memmap.adoc
+  s_d605cb93395a31::t_aff1288952320e 8-9,18,20,22-30,36-37,111,113,115,117,442-443,448,450-451,695
+hw/ip/jtag/jtag_ptap/doc/architecture.adoc
+  s_d605cb93395a31::t_5f9b61875b4bd6 422,424,426,428,431-432,435-436,439-440
+hw/ip/jtag/jtag_ptap/doc/interface.adoc
+  s_d605cb93395a31::t_cd923fd8c8742f 66
+hw/ip/key_manager/doc/architecture.adoc
+  s_d605cb93395a31::t_4b8010a54b01f7 57-61,152-153,160-161,269-274,433,446-454,461,521-528,532-535,537,540-577,600-610,662,949,969-970,1032-1041,1045-1046,1048-1049,1052-1059,1102-1104,1112-1117,1120-1125,1143-1153,1157-1160,1164-1166
+hw/ip/key_manager/doc/firmware.adoc
+  s_d605cb93395a31::t_084beb1ae39763 25,109,506,759-761,810-870,1228-1231,1811,1813-1815,1817-1825,1829-1831,1833-1836,1952-2017,2091-2092,2116-2121,2128,2137-2138,2215-2218,2236-2237
+hw/ip/uart/uart_log_engine_wrap/doc/uart_log_engine_wrap.adoc
+  s_d605cb93395a31::t_5f0f0092cd9ddb 87-93
+hw/sys/dtp/doc/index.adoc
+  s_d605cb93395a31::t_68d3d60a481e31 14-15,18-20
+hw/sys/dtp/doc/port_table.adoc
+  s_d605cb93395a31::t_1c180e219edad9 10
+hw/sys/sep/doc/attack_countermeasures.adoc
+  s_d605cb93395a31::t_a9f2be48b70fc3 48,55-56,60-64,82-118
+hw/sys/sep/doc/cpu.adoc
+  s_d605cb93395a31::t_b13e830b00bdaf 51-64
+hw/sys/sep/doc/crypto.adoc
+  s_d605cb93395a31::t_14a3f4fc45910f 28-50,64-73,75-76,117-142,167-181,195-208,258,264,274-286,292-301,314,317,321,324
+hw/sys/sep/doc/fabric.adoc
+  s_d605cb93395a31::t_ed75a154fcf95b 30,47-61,63-70,73-103
+hw/sys/sep/doc/lifecycle_controller.adoc
+  s_d605cb93395a31::t_91e232b4324dde 4-7,11-12,14-20,27,31-70,73-185,190-191,193-196,199-203,209-210,215-216,218-221,223-224,226-231,233,235-268,277-307,311-313,315-321,327,329,333-334,337-338,340-344,349,351-352,355,357-358,361-363,365,368-369,373,377-379,384,391,400-405,410,412,414,416,418,439,443-445,449-451,454-455,482-487,495-497,502-506,508,529-531,549-560,563-564,566-599,602-611,632,651,658-660,663-670,674-675,700,710-716,721-722,724-727,735-737,739,745,755-757,763,765,770,772,778,787,799,805,810-811,813,816-818
+hw/sys/sep/doc/memory_map.adoc
+  s_d605cb93395a31::t_41652aa5cc25cb 15,71,77,79-81,83,88
+hw/sys/sep/doc/overview.adoc
+  s_d605cb93395a31::t_792d441edfb322 43-44
+hw/sys/sep/doc/periphs.adoc
+  s_d605cb93395a31::t_97e3078265a603 6-7,10-42,46-75,84-87,90,96-99,102-107,109-115,125-146,149,155-156,167,175-178,180-182,199-253,256,262-265,268-272,284,345,355,377-381,388-399
+hw/sys/sep/doc/security_disable.adoc
+  s_d605cb93395a31::t_52c48c018b3ae2 4-61
+hw/sys/sep/doc/test_mode.adoc
+  s_d605cb93395a31::t_87250c0eb33a6d 16
+hw/sys/smc/doc/cpu.adoc
+  s_d605cb93395a31::t_d9491adadb3d91 103-104
+hw/sys/smc/doc/fabric.adoc
+  s_d605cb93395a31::t_baf8dcc8ec1acd 444
+hw/sys/smc/doc/index.adoc
+  s_d605cb93395a31::t_36a4139a775770 20
+hw/sys/smc/doc/interrupts.adoc
+  s_d605cb93395a31::t_4da1fc7726e4b8 50-51,53-54
+hw/sys/smc/doc/memmap.adoc
+  s_d605cb93395a31::t_05779985da4d23 23,26,44,47-51,53,56,73-75,107,110,113-114,116,119,122,125,128,131,134,137,140,178-180,197-231
+hw/sys/smc/doc/periphs.adoc
+  s_d605cb93395a31::t_7c68e766a65de8 27,31,35,39,46,50,113-116,118-119,125,127,129,131,133,135,137,139
+hw/sys/smc/doc/port_table.adoc
+  s_d605cb93395a31::t_db45bf7d3db459 46
+hw/sys/smc/doc/rom.adoc
+  s_d605cb93395a31::t_5dd224e1e12055 25
+hw/sys/smc/doc/scan_protection.adoc
+  s_d605cb93395a31::t_5139202d167b6b 1-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.17",
+  "base_commit_sha": "95baf03b8c16611d371d145de9310ee1f0ba76da",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

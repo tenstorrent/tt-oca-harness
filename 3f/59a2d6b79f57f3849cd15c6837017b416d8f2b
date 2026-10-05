@@ -1,0 +1,137 @@
+.github/workflows/sim.yml
+  s_d605cb93395a31::t_df82ece5747c40 1-99
+doc/ui-supplemental/css/extra.css
+  s_d605cb93395a31::t_dc46cd4da6f55c 406
+doc/ui-supplemental/partials/footer-content.hbs
+  s_d605cb93395a31::t_8c9e82f621a012 8
+doc/ui-supplemental/partials/header-content.hbs
+  s_d605cb93395a31::t_bea1c7b9f5855d 59
+hw/common/dv/README.md
+  s_d605cb93395a31::t_0862326184b24f 16-36,42-136,161-163,167-171
+hw/common/dv/configs/duts.toml
+  s_d605cb93395a31::t_4f5b2f2963c64c 30-35
+hw/common/dv/configs/profiles/native-uvm.toml
+  s_d605cb93395a31::t_354f73394fe8e6 1-77
+hw/common/dv/vip/ocah_apb_vip/MANUAL.md
+  s_d605cb93395a31::t_2a7b61e963fbb2 46-50
+hw/common/dv/vip/ocah_apb_vip/README.md
+  s_d605cb93395a31::t_cae26108c1c555 22-26,119-136
+hw/common/dv/vip/ocah_apb_vip/__init__.py
+  s_d605cb93395a31::t_38ae8b0dcf52f6 2-9,11-12
+hw/common/dv/vip/ocah_apb_vip/cocotb/__init__.py
+  s_d605cb93395a31::t_9245c67dfe3be0 3-61
+hw/common/dv/vip/ocah_axi_vip/MANUAL.md
+  s_d605cb93395a31::t_ebde4ae3bbec1c 28-34
+hw/common/dv/vip/ocah_axi_vip/README.md
+  s_d605cb93395a31::t_31091cb7666163 74-80,375-392
+hw/common/dv/vip/ocah_axi_vip/__init__.py
+  s_d605cb93395a31::t_6d4cc8d541d340 2-9,11-12
+hw/common/dv/vip/ocah_axi_vip/cocotb/__init__.py
+  s_d605cb93395a31::t_64d56e545bc4aa 4-44,47-64,68-140
+hw/common/dv/vip/ocah_entropy_vip/README.md
+  s_d605cb93395a31::t_14de44b0074116 39-40,274-288
+hw/common/dv/vip/ocah_entropy_vip/__init__.py
+  s_d605cb93395a31::t_44d3322bc2b317 2-9,11-12
+hw/common/dv/vip/ocah_entropy_vip/cocotb/__init__.py
+  s_d605cb93395a31::t_e5e322c2748063 1-99
+hw/common/dv/vip/ocah_i2c_vip/README.md
+  s_d605cb93395a31::t_22211f3866dc81 49-52,305-319
+hw/common/dv/vip/ocah_i2c_vip/__init__.py
+  s_d605cb93395a31::t_0194f7a3d1234c 2-9,11-12
+hw/common/dv/vip/ocah_i2c_vip/cocotb/__init__.py
+  s_d605cb93395a31::t_cfb57f7149abc0 3-4,6-8,10-13,15-21,23-25,27,29-32,34-73
+hw/common/dv/vip/ocah_i3c_vip/README.md
+  s_d605cb93395a31::t_06572b002a38b0 100-102,336-350
+hw/common/dv/vip/ocah_i3c_vip/__init__.py
+  s_d605cb93395a31::t_5e4fdfad69b8b0 2-9,11-12
+hw/common/dv/vip/ocah_i3c_vip/cocotb/__init__.py
+  s_d605cb93395a31::t_a187acd173a032 1-89
+hw/common/dv/vip/ocah_jtag_vip/README.md
+  s_d605cb93395a31::t_767873c808d927 26-32,34-37,40-114
+hw/common/dv/vip/ocah_jtag_vip/__init__.py
+  s_d605cb93395a31::t_bb9b45ed63b01b 2-9,11-12
+hw/common/dv/vip/ocah_jtag_vip/cocotb/__init__.py
+  s_d605cb93395a31::t_63e9221aca2cc0 1-73
+hw/common/dv/vip/ocah_jtag_vip/interface/ocah_jtag_if.sv
+  s_d605cb93395a31::t_cf91edeef7de42 1-42
+hw/common/dv/vip/ocah_jtag_vip/uvm/ocah_jtag_agent.svh
+  s_d605cb93395a31::t_20716927818a8f 1-41
+hw/common/dv/vip/ocah_jtag_vip/uvm/ocah_jtag_cfg.svh
+  s_d605cb93395a31::t_666f78b4c42231 1-36
+hw/common/dv/vip/ocah_jtag_vip/uvm/ocah_jtag_driver.svh
+  s_d605cb93395a31::t_e8c0e91eaf1276 1-100
+hw/common/dv/vip/ocah_jtag_vip/uvm/ocah_jtag_env.svh
+  s_d605cb93395a31::t_066120506691ac 1-56
+hw/common/dv/vip/ocah_jtag_vip/uvm/ocah_jtag_event.svh
+  s_d605cb93395a31::t_16b696c68ae8ef 1-45
+hw/common/dv/vip/ocah_jtag_vip/uvm/ocah_jtag_item.svh
+  s_d605cb93395a31::t_9860d6b791392f 1-56
+hw/common/dv/vip/ocah_jtag_vip/uvm/ocah_jtag_monitor.svh
+  s_d605cb93395a31::t_60a1fd78ada088 1-89
+hw/common/dv/vip/ocah_jtag_vip/uvm/ocah_jtag_sequencer.svh
+  s_d605cb93395a31::t_deb831fcfbc910 1-6
+hw/common/dv/vip/ocah_jtag_vip/uvm/ocah_jtag_types.svh
+  s_d605cb93395a31::t_38e0085f5defa3 1-52
+hw/common/dv/vip/ocah_jtag_vip/uvm/ocah_jtag_uvm_pkg.sv
+  s_d605cb93395a31::t_7061879012559f 1-42
+hw/common/dv/vip/ocah_spi_vip/README.md
+  s_d605cb93395a31::t_94c569b9694855 69-71,281-295
+hw/common/dv/vip/ocah_spi_vip/__init__.py
+  s_d605cb93395a31::t_a69846076c2856 2-9,11-12
+hw/common/dv/vip/ocah_spi_vip/cocotb/__init__.py
+  s_d605cb93395a31::t_9b2b4c5dda0e08 1-82
+hw/common/dv/vip/ocah_uart_vip/README.md
+  s_d605cb93395a31::t_6d5426a51114dc 49-50,223-237
+hw/common/dv/vip/ocah_uart_vip/__init__.py
+  s_d605cb93395a31::t_0f9816a3884e74 2-9,11-12
+hw/common/dv/vip/ocah_uart_vip/cocotb/__init__.py
+  s_d605cb93395a31::t_e4cf5dcc1e1ca3 4,6-13,17-18,24-43,46-47,50-56
+hw/sys/dtp/dv/README.md
+  s_d605cb93395a31::t_9d33b9fbd2f876 45-49,53,81-115,140-144
+hw/sys/dtp/dv/docs/DTP_TB_ARCH.adoc
+  s_d605cb93395a31::t_cdb4a386f25a4b 15,17,43,49-70,284-336,349-352,371-372
+hw/sys/dtp/dv/dtp_uvm_sim_cfg.toml
+  s_d605cb93395a31::t_bae222e0b1f13e 1-74
+hw/sys/dtp/dv/tb/dtp_tb_if.sv
+  s_d605cb93395a31::t_6023c1b8b6f5ed 1-18
+hw/sys/dtp/dv/tb/tb_top.sv
+  s_d605cb93395a31::t_86f7ebc7f7452f 3-4,6-13,32,214-333,796-882
+hw/sys/dtp/dv/testlists/uvm.toml
+  s_d605cb93395a31::t_c3b08768068c25 1-17
+hw/sys/dtp/dv/uvm/env/dtp_env_pkg.sv
+  s_d605cb93395a31::t_11daad415bab3e 1-22
+hw/sys/dtp/dv/uvm/env/dtp_tap_fsm_checker.svh
+  s_d605cb93395a31::t_8f692e7f082f63 1-92
+hw/sys/dtp/dv/uvm/env/dtp_uvm_env.svh
+  s_d605cb93395a31::t_e86fa2a34e510f 1-46
+hw/sys/dtp/dv/uvm/seq_lib/dtp_jtag_base_seq.svh
+  s_d605cb93395a31::t_acd3a9e318acd7 1-132
+hw/sys/dtp/dv/uvm/seq_lib/dtp_sanity_seq.svh
+  s_d605cb93395a31::t_4ee8e638ba4a21 1-115
+hw/sys/dtp/dv/uvm/seq_lib/dtp_seq_lib_pkg.sv
+  s_d605cb93395a31::t_d93cda401cd4a6 1-28
+hw/sys/dtp/dv/uvm/tests/dtp_tests.sv
+  s_d605cb93395a31::t_6e5d2071551476 1-72
+hw/sys/smc/dv/docs/smc_oss_execution_guide.md
+  s_d605cb93395a31::t_e33221442af3d5 171-216,426,443-446,450
+tools/dv/doc/run-dv.adoc
+  s_d605cb93395a31::t_7c7d1ac785e481 191-198,329-333,377-382
+tools/dv/runlib/cli.py
+  s_d605cb93395a31::t_44d803f0dc6f78 732,747-750,1066-1072
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3f59a2d6b79f57f3849cd15c6837017b416d8f2b",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+hw/sys/sep/dv/fw/tests/common/smu_sep_ext_axi_protocol.h
+  s_d605cb93395a31::t_91df1676504cef 107-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "23cd1e49a02c9399d6cd777b909e6904c8953db6",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "grok-4.5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+hw/ip/entropy_source/rtl/entropy_generator_complex.sv
+  s_8a5cfbd7ae04eb::t_529520b6d69814 46-49
+  s_8a5cfbd7ae04eb::t_ad7a97dc2b1683 259-260
+  s_8a5cfbd7ae04eb::t_4ad0b459fb243e 189-190
+  s_8a5cfbd7ae04eb::t_0cf6a60d54feea 156-157
+hw/ip/entropy_source/rtl/entropy_generator.sv
+  s_8a5cfbd7ae04eb::t_f70fbe7f7fc9a4 156-157
+  s_8a5cfbd7ae04eb::t_dd696bfcd31b5e 55-57
+hw/ip/entropy_source/rtl/entropy_source.sv
+  s_8a5cfbd7ae04eb::t_c5835c3df35845 1001
+  s_8a5cfbd7ae04eb::t_43913292bb488b 187
+  s_8a5cfbd7ae04eb::t_4238d6feadc935 329-331
+hw/ip/entropy_source/rtl/entropy_health_test.sv
+  s_8a5cfbd7ae04eb::t_c1e3ca452d0770 56-61
+  s_8a5cfbd7ae04eb::t_273af605d3b015 138-139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ac45311982440d37f0fc0b09aa7c7f7161ea2b2b",
+  "prompts": {},
+  "sessions": {
+    "s_8a5cfbd7ae04eb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a1d72c2f-f90b-4a57-bca4-e3b65d6ca3d3",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

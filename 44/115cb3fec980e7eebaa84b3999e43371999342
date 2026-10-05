@@ -1,0 +1,14 @@
+hw/sys/smu/regs/include/smu.rdl
+  h_1abe2da33d4938 6-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "44115cb3fec980e7eebaa84b3999e43371999342",
+  "prompts": {},
+  "humans": {
+    "h_1abe2da33d4938": {
+      "author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

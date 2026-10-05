@@ -1,0 +1,32 @@
+hw/sys/sep/dv/fw/link/modes/tcm.ld
+  s_d605cb93395a31::t_1887565ff2c7ed 75-96,99-107
+hw/sys/sep/dv/fw/fw.mk
+  s_d605cb93395a31::t_f975e9eb8345c8 153
+hw/sys/sep/dv/fw/startup/crt0.s
+  s_d605cb93395a31::t_cb589aca3841ba 95,99-103,110
+  s_cb075850d0c8a6::t_42e9f075a03834 111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "366a5b8ed106635feb2503f74a6fb652e40e389a",
+  "prompts": {},
+  "sessions": {
+    "s_cb075850d0c8a6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a5e2a8b9-ee89-455f-b2a0-f3def2b286f1",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    },
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

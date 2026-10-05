@@ -1,0 +1,19 @@
+ocah.mk
+  s_f4152cdd87b91e::t_b9650acc4eb227 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "e093799126f6e2c408764159da999bc947a1cb60",
+  "prompts": {},
+  "sessions": {
+    "s_f4152cdd87b91e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e4ece2c2-4f8b-4f7c-92e9-eb653447771c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
