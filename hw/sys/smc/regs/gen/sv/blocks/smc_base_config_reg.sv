@@ -28,6 +28,7 @@ module smc_base_config_reg (
         output logic [63:0] s_axil_rdata,
         output logic [1:0] s_axil_rresp,
 
+        input smc_base_config_reg_pkg::smc_base_config__in_t hwif_in,
         output smc_base_config_reg_pkg::smc_base_config__out_t hwif_out
     );
 
@@ -237,6 +238,9 @@ module smc_base_config_reg (
         logic HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD;
         logic HANG_DET_DATA_ACCEL_CTRL;
         logic HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD;
+        logic HANG_DET_SYS_AXI_STATUS;
+        logic HANG_DET_SEP_AXI_STATUS;
+        logic HANG_DET_DATA_ACCEL_STATUS;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
     logic decoded_err;
@@ -261,6 +265,9 @@ module smc_base_config_reg (
         decoded_reg_strb.HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD = cpuif_req_masked & (cpuif_addr == 7'h38);
         decoded_reg_strb.HANG_DET_DATA_ACCEL_CTRL = cpuif_req_masked & (cpuif_addr == 7'h40);
         decoded_reg_strb.HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD = cpuif_req_masked & (cpuif_addr == 7'h48);
+        decoded_reg_strb.HANG_DET_SYS_AXI_STATUS = cpuif_req_masked & (cpuif_addr == 7'h50) & !cpuif_req_is_wr;
+        decoded_reg_strb.HANG_DET_SEP_AXI_STATUS = cpuif_req_masked & (cpuif_addr == 7'h58) & !cpuif_req_is_wr;
+        decoded_reg_strb.HANG_DET_DATA_ACCEL_STATUS = cpuif_req_masked & (cpuif_addr == 7'h60) & !cpuif_req_is_wr;
         decoded_err = '0;
     end
 
@@ -1259,6 +1266,15 @@ module smc_base_config_reg (
         end
         if(rd_mux_addr == 7'h48) begin
             readback_data_var[19:0] = field_storage.HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD.value.value;
+        end
+        if(rd_mux_addr == 7'h50) begin
+            readback_data_var[0] = hwif_in.HANG_DET_SYS_AXI_STATUS.irq.next;
+        end
+        if(rd_mux_addr == 7'h58) begin
+            readback_data_var[0] = hwif_in.HANG_DET_SEP_AXI_STATUS.irq.next;
+        end
+        if(rd_mux_addr == 7'h60) begin
+            readback_data_var[0] = hwif_in.HANG_DET_DATA_ACCEL_STATUS.irq.next;
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr;

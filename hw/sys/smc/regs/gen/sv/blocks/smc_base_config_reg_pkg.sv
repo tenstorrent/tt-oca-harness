@@ -8,7 +8,21 @@ package smc_base_config_reg_pkg;
 
     localparam SMC_BASE_CONFIG_REG_DATA_WIDTH = 64;
     localparam SMC_BASE_CONFIG_REG_MIN_ADDR_WIDTH = 7;
-    localparam SMC_BASE_CONFIG_REG_SIZE = 'h4c;
+    localparam SMC_BASE_CONFIG_REG_SIZE = 'h64;
+
+    typedef struct {
+        logic next;
+    } smc_base_config__HANG_DET_STATUS__irq__in_t;
+
+    typedef struct {
+        smc_base_config__HANG_DET_STATUS__irq__in_t irq;
+    } smc_base_config__HANG_DET_STATUS__in_t;
+
+    typedef struct {
+        smc_base_config__HANG_DET_STATUS__in_t HANG_DET_SYS_AXI_STATUS;
+        smc_base_config__HANG_DET_STATUS__in_t HANG_DET_SEP_AXI_STATUS;
+        smc_base_config__HANG_DET_STATUS__in_t HANG_DET_DATA_ACCEL_STATUS;
+    } smc_base_config__in_t;
 
     typedef struct {
         logic [55:0] value;

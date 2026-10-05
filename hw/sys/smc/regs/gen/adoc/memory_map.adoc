@@ -45,7 +45,7 @@
 |BASE + 0xA000 – BASE + 0xAFFF |4 KiB |36 B |OCTS System Timer Address Map |1 instance |- |Open Chiplet Time Synchronization (OCTS) System Timer Registers |- |DECERR, 0xBADCAB1E / SLVERR
 |BASE + 0xB000 – BASE + 0xB7FF |2 KiB |2 KiB |dtp_ctrl_reg |1 instance |- |512-entry DTP control block. |Forwarded |-
 |BASE + 0xB800 – BASE + 0xBFFF |2 KiB |24 B |DFX Control and Status Address Map |1 instance |- |DFT status exposed to boot firmware. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
-|BASE + 0x10000 – BASE + 0x11FFF |8 KiB |76 B |SMC Base Configuration Address Map |1 instance |- |SMC base-address and aperture configuration. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / SLVERR
+|BASE + 0x10000 – BASE + 0x11FFF |8 KiB |100 B |SMC Base Configuration Address Map |1 instance |- |SMC base-address and aperture configuration. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / SLVERR
 |BASE + 0x12000 – BASE + 0x12FFF |4 KiB |256 B |AXI Alias Remap Address Map |8 instances |32 B |TLB Registers for address remapping and attribute tagging |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / SLVERR
 |BASE + 0x13000 – BASE + 0x13FFF |4 KiB |64 B |Output Remap Address Map |8 instances |8 B |Address-translation registers that remap outbound transactions and tag their attributes. |- |DECERR, 0xBADCAB1E / SLVERR
 |BASE + 0x14000 – BASE + 0x14FFF |4 KiB |64 B |Output Remap Address Map |8 instances |8 B |Address-translation registers that remap outbound transactions and tag their attributes. |- |DECERR, 0xBADCAB1E / SLVERR

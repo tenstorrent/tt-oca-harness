@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Clearing the hang detector's enable while it has fired, and irq_test with it clear.
 
-`HANG_DET_CTRL.enable` reads: "When 0, it is held at 0 and irq_o is forced
-low", and `irq_test` is "Gated by enable and irq_en". The hang detector leaves
+`HANG_DET_CTRL.enable` reads: "When 0, the counter reloads from the threshold
+and irq_o is forced low", and `irq_test` is "Gated by enable and irq_en". The hang detector leaves
 so far clear `enable` only while the detector is quiet, and drive `irq_test`
 only with `enable` set, so two cases the RDL settles have never run:
 

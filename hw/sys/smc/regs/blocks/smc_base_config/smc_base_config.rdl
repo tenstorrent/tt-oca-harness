@@ -140,7 +140,7 @@ addrmap smc_base_config {
         desc = "AXI hang detector control.";
         field {
             sw = rw; hw = r;
-            desc = "When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.";
+            desc = "When 1, the timeout counter runs. When 0, the counter reloads from the threshold and irq_o is forced low.";
         } enable[0:0] = 0x0;
         field {
             sw = rw; hw = r;
@@ -160,6 +160,14 @@ addrmap smc_base_config {
         } value[19:0] = 0x1000;
     };
 
+    reg HANG_DET_STATUS {
+        desc = "AXI hang detector status.";
+        field {
+            sw = r; hw = w;
+            desc = "Reads 1 while this detector's interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops.";
+        } irq[0:0] = 0x0;
+    };
+
     // --------------------------------------------------
 
     GLOBAL_BASE                     GLOBAL_BASE                     @ 0x0;
@@ -174,6 +182,9 @@ addrmap smc_base_config {
     HANG_DET_TIMEOUT_THRESHOLD HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD    @ 0x38;
     HANG_DET_CTRL              HANG_DET_DATA_ACCEL_CTRL              @ 0x40;
     HANG_DET_TIMEOUT_THRESHOLD HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD @ 0x48;
+    HANG_DET_STATUS            HANG_DET_SYS_AXI_STATUS               @ 0x50;
+    HANG_DET_STATUS            HANG_DET_SEP_AXI_STATUS               @ 0x58;
+    HANG_DET_STATUS            HANG_DET_DATA_ACCEL_STATUS            @ 0x60;
 };
 
 `endif

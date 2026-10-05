@@ -220,6 +220,19 @@ typedef union {
     uint32_t w;
 } smc_base_config__HANG_DET_TIMEOUT_THRESHOLD_t;
 
+// reg - smc_base_config::HANG_DET_STATUS
+#define SMC_BASE_CONFIG__HANG_DET_STATUS__IRQ_bm 0x1
+#define SMC_BASE_CONFIG__HANG_DET_STATUS__IRQ_bp 0
+#define SMC_BASE_CONFIG__HANG_DET_STATUS__IRQ_bw 1
+#define SMC_BASE_CONFIG__HANG_DET_STATUS__IRQ_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t irq :1;
+        uint32_t :31;
+    } f;
+    uint32_t w;
+} smc_base_config__HANG_DET_STATUS_t;
+
 // addrmap - smc_base_config
 // Base-address, region-size, per-block clock-gating enable, and interrupt configuration registers.
 typedef struct __attribute__ ((__packed__)) {
@@ -238,10 +251,16 @@ typedef struct __attribute__ ((__packed__)) {
     smc_base_config__HANG_DET_CTRL_t HANG_DET_DATA_ACCEL_CTRL;
     uint8_t RESERVED_44_47[0x4];
     smc_base_config__HANG_DET_TIMEOUT_THRESHOLD_t HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD;
+    uint8_t RESERVED_4c_4f[0x4];
+    smc_base_config__HANG_DET_STATUS_t HANG_DET_SYS_AXI_STATUS;
+    uint8_t RESERVED_54_57[0x4];
+    smc_base_config__HANG_DET_STATUS_t HANG_DET_SEP_AXI_STATUS;
+    uint8_t RESERVED_5c_5f[0x4];
+    smc_base_config__HANG_DET_STATUS_t HANG_DET_DATA_ACCEL_STATUS;
 } smc_base_config_t;
 
 
-static_assert(sizeof(smc_base_config_t) == 0x4c, "Packing error");
+static_assert(sizeof(smc_base_config_t) == 0x64, "Packing error");
 
 #ifdef __cplusplus
 }

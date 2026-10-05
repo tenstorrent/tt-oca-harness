@@ -12236,7 +12236,7 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 *Test Coverage*:
 
-* `HANG_DET_CTRL.enable`: "When 0, it is held at 0 and irq_o is forced low." With threshold 0x10 and a read held, the SEP interrupt fires. `enable` is then cleared with `irq_en` kept, and the interrupt has to read low at once and stay low for four thresholds while the read is still held.
+* `HANG_DET_CTRL.enable`: "When 0, the counter reloads from the threshold and irq_o is forced low." With threshold 0x10 and a read held, the SEP interrupt fires. `enable` is then cleared with `irq_en` kept, and the interrupt has to read low at once and stay low for four thresholds while the read is still held.
 * `irq_test` is "Gated by enable and irq_en". With `irq_en` and `irq_test` set and `enable` clear, the interrupt has to stay low for four thresholds. Setting `enable` as well has to raise it, and clearing the control has to drop it.
 
 *Test Procedure*:

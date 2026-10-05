@@ -122,7 +122,7 @@ localparam longint unsigned SMC_TOP_DFX_CTRL_BASE_ADDR = 64'hC000B800;
 localparam longint unsigned SMC_TOP_DFX_CTRL_SIZE = 64'h18;
 
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR = 64'hC0010000;
-localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_SIZE = 64'h4C;
+localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_SIZE = 64'h64;
 
 function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_BASE_ADDR(input int unsigned smc_alias_remap_idx);
     return 64'hC0012000 + (smc_alias_remap_idx * 64'h20);
@@ -916,6 +916,9 @@ localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SEP_AXI_CTRL_BASE_A
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD_BASE_ADDR = 64'hC0010038;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_CTRL_BASE_ADDR = 64'hC0010040;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD_BASE_ADDR = 64'hC0010048;
+localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SYS_AXI_STATUS_BASE_ADDR = 64'hC0010050;
+localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SEP_AXI_STATUS_BASE_ADDR = 64'hC0010058;
+localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_STATUS_BASE_ADDR = 64'hC0010060;
 function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR(input int unsigned smc_alias_remap_idx);
     return 64'hC0012000 + (smc_alias_remap_idx * 64'h20);
 endfunction
