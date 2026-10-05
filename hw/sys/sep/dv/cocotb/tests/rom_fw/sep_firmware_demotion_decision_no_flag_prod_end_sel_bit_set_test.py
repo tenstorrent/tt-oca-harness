@@ -31,8 +31,6 @@ from rom_fw.sep_demotion_prod_end_base import sep_demotion_prod_end_base
 class sep_firmware_demotion_decision_no_flag_prod_end_sel_bit_set_test(sep_demotion_prod_end_base):
     """PROD_END with BL1_DEMOTION_VALID set: the request is never consulted."""
 
-    # OCAH plusargs: +LC_STATE_END_PROD +SET_SELECTOR_BIT_17, no +AUTH_FLAG_0 and
-    # no +UNAUTH_FLAG_0.
     _SEL = 1
     _AUTH = 0
     _BL2 = 0

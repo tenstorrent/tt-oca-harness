@@ -37,9 +37,8 @@ from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
-# Same ROM build as the OT boot tests: the DFT gate runs well before any manifest
-# transport is selected, so the SPI variant is irrelevant and this adds no new
-# firmware build profile.
+# The DFT gate runs before any manifest transport is selected, so the SPI
+# variant is irrelevant.
 _FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
@@ -110,9 +109,8 @@ class sep_firmware_mbist_fail_test(sep_base_test):
     build_env = False
     rom_build_dir = _FW_DIR
 
-    # The injection this test expects, as a class attribute so a subclass can
-    # target a different arm of the same gate without duplicating the halt
-    # machinery below. Default unchanged: the repair arm.
+    # A class attribute lets a subclass target another arm of the gate without
+    # duplicating the halt checks.
     dft_status_injected = _DFT_STATUS_FAIL
 
     def check_stimulus_shape(self) -> None:

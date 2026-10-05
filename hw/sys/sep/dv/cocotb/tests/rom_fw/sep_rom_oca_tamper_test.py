@@ -10,7 +10,7 @@ fail with exactly ``OCA_FAIL_MANIFEST_HASH`` (13); a bad-magic or length refusal
 satisfy the test. ``MANIFEST_OK`` and ``PAYLOAD_OK`` are forbidden, and the
 cold_scratch[0] verdict must be FAIL.
 
-The tamper is applied in memory, next to the assertion it justifies.
+The tamper is applied in memory through :meth:`mutate_flash_image`.
 """
 
 from __future__ import annotations
@@ -22,9 +22,9 @@ from rom_fw.sep_rom_ot_secure_boot_test import sep_rom_ot_secure_boot_test
 
 _PRIMARY_MANIFEST_OFFSET = mm.PRIMARY_MANIFEST_OFFSET
 _BACKUP_MANIFEST_OFFSET = mm.BACKUP_MANIFEST_OFFSET
-# Byte to corrupt, relative to a manifest's start: inside CHIPLET_ID (OFF_CHIPLET_ID
-# = 40, 32 bytes wide). Deliberately not in the unsigned tail past 3172, where a
-# flip would change nothing the hash covers and the boot would succeed.
+# Byte to corrupt, relative to a manifest's start: inside CHIPLET_ID
+# (OFF_CHIPLET_ID = 40, 32 bytes wide) and the signed region [0, 3172). A flip
+# in the unsigned tail changes nothing the hash covers.
 _TAMPER_OFFSET = 64
 
 # The staged body does not hash to manifest_hash; reported per slot.
@@ -46,14 +46,11 @@ class sep_rom_oca_tamper_test(sep_rom_ot_secure_boot_test):
     # Inherits flash_image (the signed image) from the secure test, then mutates
     # it in run_scenario.
     #
-    # The parent's marker tuples are discarded rather than extended: they assert a
-    # SUCCESSFUL signed boot (MANIFEST_OK, PUBK_AUTHORIZED, RSA_VERIFY_OK,
-    # PAYLOAD_OK), none of which may happen here. What survives is the transport
-    # evidence -- this must still be a real SPI boot, or the refusal proves
-    # nothing about the SPI path.
-    # Both slots complete just above 3M cycles on the acceptance backend. Keep a
-    # bounded margin rather than the inherited 24M: if the refusal path hangs,
-    # the cycle budget determines when the test reports a useful failure.
+    # The positive parent's marker tuples require MANIFEST_OK, PUBK_AUTHORIZED,
+    # RSA_VERIFY_OK and PAYLOAD_OK, none of which may happen here. This test keeps
+    # only the transport evidence needed to prove a real SPI boot attempt.
+    # Both slots are refused within about 3M cycles. The bounded margin reports a
+    # refusal-path hang before the inherited 24M-cycle limit.
     max_run_cycles = 3_500_000
     verdict_source = "scratch0"
     verify_otbn_edn = False
@@ -71,7 +68,7 @@ class sep_rom_oca_tamper_test(sep_rom_ot_secure_boot_test):
 
     @staticmethod
     def _tamper(image: bytes) -> bytes:
-        """Flip one bit in the signed region of both manifest slots."""
+        """Flip one byte in the signed region of both manifest slots."""
         buf = bytearray(image)
         for base in (_PRIMARY_MANIFEST_OFFSET, _BACKUP_MANIFEST_OFFSET):
             idx = base + _TAMPER_OFFSET

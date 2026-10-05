@@ -84,17 +84,16 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
     # trim it. poll_boot breaks out on fw_done, so this is normally a backstop;
     # it only becomes the runtime if the firmware neither passes nor reports.
     max_run_cycles = _MAX_RUN_CYCLES
-    # Console lines that must appear / must not appear. The subclass appends the
-    # RSA markers; keeping them as class data is what lets the two variants share
-    # one scenario without a copy.
+    # Console lines that must appear or must not appear. The signed subclass
+    # extends both tuples with the RSA markers.
     required_markers = (
         _SPI_PATH_MARKER,
         _MANIFEST_SRC_MARKER,
         _MANIFEST_OK_MARKER,
         _PAYLOAD_OK_MARKER,
     )
-    # Kept as a cheap guard, but it is NOT independent evidence: BOOT_SPI and
-    # WAIT_SMC_MANIFEST sit on complementary arms of the same predicate
+    # This is not independent evidence: BOOT_SPI and WAIT_SMC_MANIFEST sit on
+    # complementary arms of the same predicate
     # (boot_from_spi(straps)) within one boot, and there is no fallback edge -- if every
     # SPI manifest slot fails the ROM errors out rather than retrying via SMC. So given
     # the required BOOT_SPI marker passed, this forbid cannot fail. The non-entailed
@@ -164,10 +163,6 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
         # only FORCES the decorrelator inputs from this port -- it generates
         # nothing. Without a driver the port sits at 0, the repetition health test
         # trips, and the ROM correctly refuses to boot on a dead entropy source.
-        #
-        # Started for every SPI ROM test, not just the crypto ones: it is cheap,
-        # and a test that later grows a crypto dependency should not have to
-        # rediscover this.
         cocotb.start_soon(esrc_noise_task(dut, logger=self.logger))
 
         efuse_img = self.build_efuse_image()
@@ -185,9 +180,8 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
         )
         # Image at flash address 0: the packer's primary manifest lands at 0x1000
         # and the payload at 0x2000, matching the ROM's compiled-in offsets.
-        # Loaded as bytes so mutate_flash_image() can inject a defect; preload()
-        # accepts a buffer as readily as a path, so a negative testcase needs no
-        # build step and no new firmware profile.
+        # Loaded as bytes so mutate_flash_image() can inject a defect before
+        # preload() receives the buffer.
         with open(self.flash_image, "rb") as fh:
             image = bytearray(fh.read())
         loaded = bytes(self.mutate_flash_image(image))

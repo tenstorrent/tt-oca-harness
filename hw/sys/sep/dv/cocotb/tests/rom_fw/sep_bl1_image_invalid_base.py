@@ -30,12 +30,9 @@ _BACKUP_SRC = "MANIFEST_SRC=0x00041000"
 _ALL_FAILED = "MANIFEST_ALL_FAILED"
 _SBOOT_OFF = "SBOOT_OFF"
 
-# rom_handoff.c -- anything from here on means BL1 was copied or entered. "BL0
-# does not copy BL1 into IRAM" and "BL0 does not jump to the invalid entry
-# address" are exactly the absence of these.
-# "LOAD=" and "LEN=" are deliberately NOT used: "LEN=" is a substring of
-# "DMA_LEN=" and "SRAM_SCRUB_LEN=", so a marker check would false-positive on an
-# ordinary transfer report.
+# rom_handoff.c emits these only while loading or entering BL1, so any of them
+# means the hand-off began. The checks use complete marker names because the
+# substring "LEN=" also occurs in SRAM_SCRUB_LEN= and DMA_LEN=.
 _BL1_PROGRESS = (
     "BL1_TYPE=",
     "COPY_SRC=",

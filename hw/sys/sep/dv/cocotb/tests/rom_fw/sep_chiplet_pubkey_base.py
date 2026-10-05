@@ -10,6 +10,10 @@ manifest modulus against the fuse, not against the compiled-in digest table
 Both slots select the fused key and are re-sealed, so one revocation bit is the only cause
 of a refusal.
 
+Provenance: OCAH ``sep_firmware_pub_key_test`` selects the fused chiplet public keys and
+checks acceptance when the selected key is valid and refusal when it is revoked. This
+family applies that behavior to both manifest slots.
+
 Two fuse-side discriminators: ROM key 0 is revoked in every preload, so a ROM that ignores
 the selector echoes the forbidden ``PUBK_SEL=0x00000000``; the other chiplet digest fuse
 holds a non-zero decoy, so a wrong fuse address fails ``PUBK_UNAUTHORIZED``. Not caught:
@@ -76,10 +80,8 @@ def select_chiplet_fuse_key(buf: bytearray, key_index: int) -> tuple[int, int]:
         pm.verify_signing_key(buf, slot)
 
         mm.set_public_key_sel(buf, slot, selection=selection, index=0)
-        # Ask the mutator which slot that pair names rather than repacking the
-        # field here. ``public_key_select`` is a BITMAP under OCA -- one bit per
-        # key slot -- and :func:`mm.get_public_key_sel` returns the slot NUMBER,
-        # not a packed field.
+        # ``public_key_select`` is a bitmap with one bit per key slot, and
+        # mm.get_public_key_sel() returns the slot number.
         expected = mm.key_slot_for(selection, 0)
         sel = mm.get_public_key_sel(buf, slot)
         assert sel == expected, (
@@ -201,7 +203,8 @@ class _chiplet_key_mixin:
         want = int.from_bytes(mm.rom_key_digest(0), "little")
         assert mine == want, (
             f"CHIPLET_PUBK_HASH{key} is 0x{mine:064x}, expected 0x{want:064x} -- the "
-            f"little-endian SHA-256 of the dev0 modulus (key_digests.c:18-21). The "
+            f"little-endian SHA-256 of the dev0 modulus in "
+            f"bootrom/prod/include/key_digests.h public_key_digests[0]. The "
             f"manifest is signed with dev0 and carries its modulus, so any other "
             f"value makes this a PUBK_UNAUTHORIZED testcase instead"
         )
@@ -441,10 +444,8 @@ class sep_chiplet_pubkey_revoked_base(_chiplet_key_mixin, sep_backup_manifest_fa
 
     # --- stimulus ----------------------------------------------------------
     def corrupt_primary(self, buf: bytearray) -> None:
-        # NOT the base's default BAD_MAGIC trigger. The primary is the first slot
-        # under test here and must reach the signature path, so the selection is set
-        # on both slots rather than one slot being broken (OCAH
-        # sep_firmware_pub_key_test does the same). One call does both slots.
+        # The primary is the first slot under test and must reach the signature
+        # path, so one call sets the selection on both slots.
         self._plant_fused_selector(buf)
 
     def corrupt_backup(self, buf: bytearray) -> None:

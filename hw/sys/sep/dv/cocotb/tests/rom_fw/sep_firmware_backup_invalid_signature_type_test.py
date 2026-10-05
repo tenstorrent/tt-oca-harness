@@ -27,8 +27,8 @@ _EFUSE_PRELOAD = (
     / "sep_efuse_lc_prod.toml"
 )
 
-# Fixed rather than drawn at random, so the refusal is attributable to this
-# stimulus.
+# Type 0 declares no signature, so the field-size check refuses it before key
+# selection.
 _BAD_SIG_TYPE = 0
 # The refusal is structural -- oca_check_crypto_field_sizes() rejects a type that
 # disagrees with the field sizes before plat_is_key_authorized() is called -- so
@@ -51,8 +51,8 @@ class sep_firmware_backup_invalid_signature_type_test(sep_backup_manifest_fail_b
     # verifier. The rest are later arms, none of which may be reached.
     extra_forbidden = (
         "PUBK_SEL=",
-        # The whole of plat_is_key_authorized() is unreachable here, its own
-        # algorithm arm included: the structural check refuses first.
+        # The structural check runs before plat_is_key_authorized(), including
+        # its algorithm arm.
         "PUBK_ALGO_UNSUPPORTED",
         "RSA_EXEC",
         "RSA_PKCS1_FAIL",

@@ -79,10 +79,9 @@ class sep_firmware_primary_invalid_security_version_test(sep_primary_fail_backup
     )
 
     def corrupt_primary(self, buf: bytearray) -> None:
-        # The shipped primary already carries 0, which omits the flag this preload
-        # sets. Assert that rather than write it: a write would be a no-op
-        # wearing a mutation's name, and reading the real value is what proves the
-        # rollback is the fuse's verdict on an untouched, still-sealed slot.
+        # The shipped primary carries 0, which omits the flag this preload sets.
+        # The slot is read and asserted without modification, so the rollback is
+        # the fuse's verdict on an untouched, sealed slot.
         got = mm.security_version(buf, "primary")
         assert got == _PRIMARY_SECURITY_VERSION, (
             f"primary security_version is {got}, expected "
@@ -172,11 +171,9 @@ class sep_firmware_primary_invalid_security_version_test(sep_primary_fail_backup
             f"{_PRIMARY_VER_ECHO}@{i_pver} -> {_ROLLBACK_ERR}@{i_roll} -> "
             f"backup@{i_bsrc}. Console: {console}"
         )
-        # CHK-ROLLBACK-PREEMPTS-SIGNATURE: the ordering claim, asserted rather
-        # than argued. Anti-rollback is checked after the root key is authorized
-        # and BEFORE the signature, so the primary must never reach the verifier:
-        # if the first RSA_EXEC in the run came before the backup read, a manifest
-        # missing a required device flag was handed to the verifier anyway.
+        # CHK-ROLLBACK-PREEMPTS-SIGNATURE: anti-rollback runs after root-key
+        # authorization and before signature verification. The primary must not
+        # reach RSA_EXEC before the backup read.
         assert i_prsa > i_bsrc, (
             f"RSA_EXEC@{i_prsa} appeared before the backup read@{i_bsrc}: the "
             f"primary reached the verifier, so the rollback check did not preempt "

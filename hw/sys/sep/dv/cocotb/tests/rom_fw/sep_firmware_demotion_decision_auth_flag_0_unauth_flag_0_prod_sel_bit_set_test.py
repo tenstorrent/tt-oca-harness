@@ -31,7 +31,6 @@ class sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_sel_bit_set_
 ):
     """PROD, selector set, both flags set: DEMOTE_1 demoted and locked, BL2 dec 1."""
 
-    # OCAH plusargs: +LC_STATE_PROD +SET_SELECTOR_BIT_17 +AUTH_FLAG_0 +UNAUTH_FLAG_0.
     _SEL = 1
     _AUTH = 1
     _BL2 = 1

@@ -81,7 +81,8 @@ class sep_spi_detect_success_test(sep_rom_ot_dma_boot_test):
             magic,
         )
 
-        # Without this, the primary-fail/backup-success run would also pass here.
+        # A silent failover also reaches MANIFEST_OK; an unread backup span proves
+        # that the primary served the boot.
         backup_hits = ev.slot_read_indices(rds, "backup", image_len)
         assert not backup_hits, (
             f"device served {len(backup_hits)} read(s) inside the backup slot span "

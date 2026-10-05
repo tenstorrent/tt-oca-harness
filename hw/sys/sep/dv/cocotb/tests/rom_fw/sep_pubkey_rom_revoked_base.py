@@ -76,10 +76,8 @@ def select_backup_rom_slot(buf: bytearray, slot_index: int) -> tuple[int, bool]:
 class sep_pubkey_rom_revoked_base(sep_backup_manifest_fail_base):
     """Primary fails over -> backup selects revoked ROM slot N -> terminal.
 
-    Subclasses set ``_REVOKED_SLOT`` and nothing else. Everything a member needs
-    is derived from it in :meth:`__init_subclass__`, so the per-slot values are
-    real class attributes -- greppable, and visible in the run log -- rather than
-    hidden inside a method.
+    Subclasses set ``_REVOKED_SLOT``; :meth:`__init_subclass__` derives the
+    per-slot class attributes from it.
     """
 
     # Set by every concrete member. -1 makes an unset subclass fail immediately

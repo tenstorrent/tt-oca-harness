@@ -48,10 +48,8 @@ _STATUS_DFT_GATE_BLOCKED = 0x0F01_0000 | 0xD001  # ERROR + ROM_ERR_DFT_GATE_BLOC
 # vector.S, written immediately BEFORE the gate.
 _STATUS_PRESTART_DONE = 0x8001_0056
 
-# C-runtime console markers. The gate stops the ROM before C on the blocked arm,
-# so requiring these is how "it continued" is established.
-#   SMC_MEM_CHK  rom_main.c
-#   CHIP_ID=     rom_main.c
+# C-runtime markers printed by rom_main.c. Their presence proves that execution
+# continued past the pre-C gate.
 _POST_GATE_MARKERS = ("SMC_MEM_CHK", "CHIP_ID=")
 # The boot must reach manifest validation. The base class already requires
 # MANIFEST_SRC= and MANIFEST_OK, so the gate-specific addition is the C-runtime
@@ -73,10 +71,7 @@ class sep_mbist_fail_continue_test(sep_rom_ot_dma_boot_test):
     def build_efuse_image(self):
         """TEST_DEV plus the MEM_REPAIR bypass bit.
 
-        Built here rather than taken from a TOML preload because the only field
-        that differs from the base's default image is this one bit, and the
-        failure-arm sibling establishes that an image built at this point reaches
-        the model (the base's own eFuse backdoor check verifies it word by word).
+        The base eFuse check verifies the generated image word by word.
         """
         image = SepEfuseImage()
         image.set_lc_state(LC_TEST_DEV)
@@ -174,9 +169,8 @@ class sep_mbist_fail_continue_test(sep_rom_ot_dma_boot_test):
         self._s10_seq = []
         self._dft_seq = []
         cocotb.start_soon(self._gate_monitor())
-        # Boots, and asserts the SPI path markers plus fw_done/fw_pass. Reaching
-        # the end of this call is the "boot continued" half of the result, and it
-        # requires the cold_scratch[0] PASS verdict.
+        # Reaching the end proves that execution continued through the SPI path
+        # to the cold_scratch[0] PASS verdict.
         await super().run_scenario()
 
         status_hex = [hex(v) for v in self._status_seq]
@@ -188,8 +182,9 @@ class sep_mbist_fail_continue_test(sep_rom_ot_dma_boot_test):
         # line. If the plusarg failed to apply, the model would hold the tb default
         # 0x113 -- which passes both arms, so the boot would still succeed and every
         # remaining check would still hold while the bypass was never
-        # exercised. The leading 0 is the probe flop's own power-up value, sampled
-        # before its first clocked update, not a value the DUT ever presented.
+        # exercised. _gate_monitor reads the SMC responder on each clock; the
+        # checker permits only 0 and the injected word, and requires the final
+        # sample to equal the injected word.
         assert self._dft_seq, (
             "DFX_CTRL_STATUS_SMU was never sampled; the monitor did not run, so the "
             "injection is unverified"
@@ -200,8 +195,8 @@ class sep_mbist_fail_continue_test(sep_rom_ot_dma_boot_test):
             f"MEM_REPAIR gate reads. Observed {dft_hex}"
         )
         assert set(self._dft_seq) <= {0, _DFT_STATUS_FAIL}, (
-            f"DFX_CTRL_STATUS_SMU held {dft_hex}; the only values allowed are the "
-            f"probe's power-up 0 and the injected 0x{_DFT_STATUS_FAIL:08x}. The tb "
+            f"DFX_CTRL_STATUS_SMU held {dft_hex}; the only values allowed are "
+            f"0 and the injected 0x{_DFT_STATUS_FAIL:08x}. The tb "
             f"default 0x00000113 appearing would mean the gate read a passing word"
         )
         self.logger.info(

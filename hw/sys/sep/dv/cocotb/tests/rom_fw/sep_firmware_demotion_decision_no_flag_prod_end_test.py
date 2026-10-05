@@ -31,8 +31,6 @@ from rom_fw.sep_demotion_prod_end_base import sep_demotion_prod_end_base
 class sep_firmware_demotion_decision_no_flag_prod_end_test(sep_demotion_prod_end_base):
     """PROD_END, no manifest demotion request: not demoted, both registers locked."""
 
-    # OCAH plusargs: +LC_STATE_END_PROD only -- no +SET_SELECTOR_BIT_17,
-    # +AUTH_FLAG_0 or +UNAUTH_FLAG_0.
     _SEL = 0
     _AUTH = 0
     _BL2 = 0

@@ -197,15 +197,9 @@ class sep_firmware_mbist_pass_test(sep_rom_ot_dma_boot_test):
         # check below would still hold, and the exact-bits discrimination this
         # whole testcase rests on would be silently untested.
         #
-        # The probe is a flop (``tb_top.sv``, ``always @(posedge clk_i)``), so the
-        # sequence legitimately opens with the flop's own power-up 0 before its
-        # first clocked sample. That leading 0 is a property of the observation
-        # path, not a value the DUT ever saw: the injection is written into the
-        # SMC model at #1, long before reset release and millions of ns before the
-        # gate reads it. So the claim is "settled on the injected word, and never
-        # held anything else" -- which is still exactly the discriminating check,
-        # because a plusarg that failed to apply would leave the testbench default
-        # 0x113 and put 0x113 in this set.
+        # _gate_monitor reads the SMC responder on each clock. The checker permits
+        # only 0 and the injected word, and requires the final sample to equal the
+        # injected word; the testbench default 0x113 is not permitted.
         assert self._dft_seq, (
             "DFX_CTRL_STATUS_SMU was never sampled; the monitor did not run, so "
             "the injection is unverified"
@@ -217,8 +211,8 @@ class sep_firmware_mbist_pass_test(sep_rom_ot_dma_boot_test):
             f"this testcase claims. Observed {dft_hex}"
         )
         assert set(self._dft_seq) <= {0, _DFT_STATUS_PASS}, (
-            f"DFX_CTRL_STATUS_SMU held {dft_hex}; the only values allowed are the "
-            f"probe's power-up 0 and the injected 0x{_DFT_STATUS_PASS:08x}. Any "
+            f"DFX_CTRL_STATUS_SMU held {dft_hex}; the only values allowed are "
+            f"0 and the injected 0x{_DFT_STATUS_PASS:08x}. Any "
             f"other value -- in particular the testbench default 0x00000113 -- "
             f"means the gate read something this testcase did not choose"
         )

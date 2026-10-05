@@ -21,8 +21,8 @@ import pyuvm
 from env import sep_manifest_mutate as mm
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
-# Printed by rom_handoff.c only when the [S29] ICCM ECC pad runs -- the call
-# site that runs after the manifest is staged.
+# rom_handoff.c prints this only when the [S29] ICCM ECC pad runs after the
+# manifest is staged.
 _ICCM_PAD = "ICCM_PAD="
 # Printed immediately before the jump, so the pad is known to have run as part
 # of a hand-off rather than of an aborted attempt.

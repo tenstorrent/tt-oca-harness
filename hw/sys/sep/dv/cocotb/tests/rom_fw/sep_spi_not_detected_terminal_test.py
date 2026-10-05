@@ -202,10 +202,8 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
                     if hang_status != last_status:
                         last_status = hang_status
                         status_seq.append(hang_status)
-                    # "Did it claim PASS after the terminal error?" The loop
-                    # above latched the FAIL and stopped, so a later PASS has to
-                    # be looked for directly -- that is the whole point of this
-                    # window.
+                    # The poll loop stops at the first verdict, so this window
+                    # checks directly for a later PASS.
                     if (probe & 0xFFFF_FFFF) == TEST_PASS_CODE:
                         fw_pass = 1
                 post_lines = console[lines_at_done:]
@@ -294,7 +292,8 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
             _BAD_MAGIC_ERR,
         )
 
-        # Without this, a run where the backup booted could still show the above.
+        # A backup boot also prints both source and rejection markers;
+        # MANIFEST_OK distinguishes that outcome.
         assert not any(_MANIFEST_OK in line for line in console), (
             f"ROM printed {_MANIFEST_OK}: a slot validated, so 'both addresses "
             f"no-detect' did not hold. Console: {console}"

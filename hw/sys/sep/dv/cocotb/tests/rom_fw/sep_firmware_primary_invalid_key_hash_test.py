@@ -3,11 +3,9 @@
 """Primary manifest fails the public-key hash bind; the backup boots.
 
 One bit of the primary's RSA-3072 modulus is flipped and the signed region is re-hashed, so the
-slot fails only the SHA-256(modulus) comparison against the ROM's compiled-in digest for the
-selected slot. A wholesale overwrite could be caught by a coarser check; one bit is caught only
-by the hash comparison. The flipped modulus does not match its signature, so this shows that
-the bind fires before the verifier, not that the bind alone stops a self-consistent foreign
-key; a variant re-signed with another ROM key would show that.
+slot fails the SHA-256(modulus) comparison against the ROM's compiled-in digest for the selected
+slot. The flipped modulus does not match its signature; the test proves that the bind fires
+before the verifier.
 
 Key authorization runs before ``rsa_3072_verify``, so the stale signature is never examined and
 no ``RSA_EXEC`` may appear between the primary read and the backup read. The refusal returns to

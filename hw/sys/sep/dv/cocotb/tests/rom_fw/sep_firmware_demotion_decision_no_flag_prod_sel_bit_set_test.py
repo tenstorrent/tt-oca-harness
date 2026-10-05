@@ -33,8 +33,6 @@ from rom_fw.sep_demotion_prod_base import sep_demotion_prod_base
 class sep_firmware_demotion_decision_no_flag_prod_sel_bit_set_test(sep_demotion_prod_base):
     """PROD, selector set, BL1 flag clear: DEMOTE_1 not demoted but locked."""
 
-    # OCAH plusargs: +LC_STATE_PROD +SET_SELECTOR_BIT_17, no +AUTH_FLAG_0 and no
-    # +UNAUTH_FLAG_0.
     _SEL = 1
     _AUTH = 0
     _BL2 = 0

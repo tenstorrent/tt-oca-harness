@@ -137,17 +137,16 @@ class sep_firmware_primary_rom_key_index_invalid_test(sep_primary_fail_backup_bo
             f"primary's); the backup must not carry this defect. Console: {console}"
         )
 
-        # CHK-BOUND-PREEMPTS-REVOKE: the ordering security property. The revocation
-        # bitmap is consulted after the bound, so the primary must not reach it:
-        # the single occurrence in the run belongs to the booting backup and must
-        # follow the backup read. An out-of-range index reaching `1u << index`
-        # would consult a bit belonging to no ROM slot.
+        # CHK-BOUND-PREEMPTS-REVOKE: the revocation bitmap is consulted after the
+        # bound. The primary must not reach it; the single occurrence belongs to
+        # the booting backup and follows the backup read. An out-of-range index
+        # reaching `1u << index` would consult a bit belonging to no ROM slot.
         n_revoke = sum(1 for line in console if _REVOKE_ECHO in line)
         assert n_revoke == 1, (
             f"{_REVOKE_ECHO} appeared {n_revoke} times, expected exactly 1 (the "
             f"backup's). More than one means the primary reached "
-            f"the revocation check, so the index bound at "
-            f":174-177 did not preempt it. Console: {console}"
+            f"the revocation check, so the key-slot bound in "
+            f"plat_is_key_authorized() did not preempt it. Console: {console}"
         )
         assert i_bsrc < i_revoke, (
             f"{_REVOKE_ECHO}@{i_revoke} did not follow the backup read@{i_bsrc}: "

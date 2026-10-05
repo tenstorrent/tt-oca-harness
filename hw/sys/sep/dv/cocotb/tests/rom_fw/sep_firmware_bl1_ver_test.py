@@ -40,10 +40,9 @@ _EFUSE_PRELOAD = (
     / "sep_efuse_lc_prod_bl1ver36_spread.toml"
 )
 
-# The device flag word the preload burns, and the value this testcase writes into
-# both manifests. Equal on purpose: under the superset rule
-# ``(device & ~manifest) == 0``, equality IS the accept boundary -- one flag fewer
-# and the slot is refused.
+# The device flag word the preload burns is also written into both manifests.
+# Under the superset rule ``(device & ~manifest) == 0``, equality is the accept
+# boundary; one flag fewer is refused.
 #
 # The platform reads the LOW 16 BYTES of the 32-byte BL1_VERSION bank, so only
 # these four words of the preload participate. They carry distinct flags, so a

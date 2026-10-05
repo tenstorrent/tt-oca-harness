@@ -8,8 +8,8 @@ are byte-identical. ``sep_efuse_lc_prod_chiplet_key0_wrong_digest.toml`` puts a 
 ``CHIPLET_PUBK_HASH0`` and the real dev0 digest in ``CHIPLET_PUBK_HASH1``. A correct ROM fails the
 digest bind on both slots and ends in ``MANIFEST_ALL_FAILED`` with
 ``MANIFEST_ERR_KEY_HASH_MISMATCH``. A ROM that compares against the compiled-in table
-(``public_key_digests[0]``) or reads the wrong chiplet fuse boots, and this test fails. The
-sibling ``sep_firmware_chiplet_pubkey_0_test`` tells those two apart. This fuse image matches
+(``public_key_digests[0]``) or reads the wrong chiplet fuse boots, violating the terminal-refusal
+contract. The sibling ``sep_firmware_chiplet_pubkey_0_test`` tells those two apart. This fuse image matches
 ``sep_efuse_lc_prod_chiplet_key1.toml``, so ``sep_firmware_chiplet_pubkey_1_test`` is the
 fuse-side pair: one fuse image, opposite verdicts.
 
@@ -139,9 +139,8 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
             f"CHIPLET_PUBK_REVOKE is 0x{revoke:08x}, expected 0x{_REVOKE_BITMAP:08x} "
             f"-- exactly bit 0 (ROM dev key 0, the ROM-key-arm counterfactual). Bits "
             f"{PUBK_REVOKE_BIT_CHIPLET_HASH[0]} and "
-            f"{PUBK_REVOKE_BIT_CHIPLET_HASH[1]} MUST be clear: revocation is tested "
-            f", before the digest bind at :236, so a revoked "
-            f"chiplet key would refuse this image before the check under test ran"
+            f"{PUBK_REVOKE_BIT_CHIPLET_HASH[1]} MUST be clear so a revocation "
+            f"verdict cannot replace the digest-mismatch verdict under test"
         )
         want = int.from_bytes(mm.rom_key_digest(0), "little")
         h0 = image.field_int("CHIPLET_PUBK_HASH0")
@@ -150,8 +149,8 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
             f"CHIPLET_PUBK_HASH0 is 0x{h0:064x}; it must be NON-ZERO and NOT the "
             f"dev0 digest 0x{want:064x}. This is the fuse PUBK_SEL_FUSE_KEY_0 "
             f"selects and the whole defect of this run. Zero would make it a "
-            f"PUBK_OTP_EMPTY testcase instead (the fuse-digest read's non-zero test at "
-            f", token at :233), and the real digest would "
+            f"PUBK_OTP_EMPTY testcase through the fuse-digest non-zero check, and "
+            f"the real digest would "
             f"make it the positive member"
         )
         assert h1 == want, (

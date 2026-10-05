@@ -15,10 +15,10 @@ because the register is written at all, and here because it holds the wrong valu
 secure boot enforced and reaches the same O5 outcome; this member differs on the demotion inputs
 only in ENABLE, which it asserts from the packed image because the ROM does not echo it.
 
-The registers are read at the end of the run. That is sound: DEMOTE_1 is written locked,
-``sep_lifecycle_ctrl.sv`` gates the DEMOTE write-enable on ``~lock``, and LOCK is write-one-to-set
-(``sep_lifecycle_ctrl.rdl``, ``DEMOTE.lock``). No ``+esrc_noise_force``: secure boot is off and
-``RSA_EXEC`` is forbidden.
+The registers are read at the end of the run. DEMOTE_1 is written locked,
+``sep_lifecycle_ctrl.sv`` gates the DEMOTE write-enable on ``~lock``, and
+``sep_lifecycle_ctrl.rdl`` defines ``DEMOTE.lock`` as write-one-to-set. No
+``+esrc_noise_force``: secure boot is off and ``RSA_EXEC`` is forbidden.
 """
 
 from __future__ import annotations
@@ -31,8 +31,6 @@ from rom_fw.sep_demotion_prod_base import sep_demotion_prod_base
 class sep_firmware_demotion_decision_auth_flag_0_prod_test(sep_demotion_prod_base):
     """PROD, BL1_DEMOTION_VALID clear, ENABLE set: request ignored, DEMOTE_1 (0, 1)."""
 
-    # OCAH plusargs: +LC_STATE_PROD +AUTH_FLAG_0, no +SET_SELECTOR_BIT_17 and no
-    # +UNAUTH_FLAG_0.
     _SEL = 0
     _AUTH = 1
     _BL2 = 0
@@ -44,9 +42,9 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_test(sep_demotion_prod_bas
     )
     demotion_values = ("BL2_DEMOTE_DEC=0",)
 
-    # rom_main.c lc_write_demotion(demotion_reg=false, lock=true). demotion_reg
-    # keeps its initialiser because the BL1_VALID arm does not run. BL0 writes
-    # DEMOTE_2 only at PROD_END, so lock 0 here means never written -- sound
-    # because the field is write-one-to-set (sep_lifecycle_ctrl.rdl, DEMOTE.lock).
+    # rom_main.c calls lc_write_demotion(demotion_reg=false, lock=true):
+    # demotion_reg keeps its initialiser because the BL1_VALID arm does not run.
+    # DEMOTE_2 is written only at PROD_END, and its lock is write-one-to-set, so
+    # lock 0 here means it was never written.
     expect_demote_1 = (0, 1)
     expect_demote_2 = (0, 0)

@@ -38,8 +38,8 @@ _EFUSE_PRELOAD = (
     / "sep_efuse_lc_prod.toml"
 )
 
-# Fixed rather than drawn at random, so the refusal is attributable to this
-# stimulus.
+# The check is a single comparison against RSA-3072, so one unsupported value
+# exercises the refusal.
 _BAD_SIG_TYPE = 0
 # The refusal is structural -- oca_check_crypto_field_sizes() rejects a type that
 # disagrees with the field sizes before plat_is_key_authorized() is called -- so
@@ -147,7 +147,7 @@ class sep_firmware_primary_invalid_signature_type_test(sep_primary_fail_backup_b
         assert n_sel == 1, (
             f"PUBK_SEL= appeared {n_sel} times, expected exactly 1 (the backup's). "
             f"More than one means the primary reached the selector echo at "
-            f", so the signature-type check at :162-165 did "
+            f"key selection, so oca_check_crypto_field_sizes() did "
             f"not preempt key selection. Console: {console}"
         )
         assert 0 <= i_bsrc < i_bsel, (

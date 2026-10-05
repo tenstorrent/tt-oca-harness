@@ -48,9 +48,8 @@ class sep_firmware_mbist_only_fail_test(sep_firmware_mbist_fail_test):
     def check_stimulus_shape(self) -> None:
         """Enforce this arm's contract, replacing the repair arm's.
 
-        The base class asserts mem_repair_success is CLEAR, which is the exact
-        opposite of what this test needs, so overriding is mandatory rather than
-        cosmetic.
+        The repair-arm base requires ``mem_repair_success`` clear; this arm
+        requires it set.
         """
         word = self.dft_status_injected
 
