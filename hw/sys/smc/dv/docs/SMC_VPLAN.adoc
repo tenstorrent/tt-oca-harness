@@ -10842,7 +10842,7 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 *Source Module*: `smc_i2c_controller_control_symbol_test`
 
-*BFM / Model*: `SmcI2cEepromSlave` on the `tb_i2c0_*` pads as the target, a second bench pad driver as the device that makes the edge; observation on `INTR_STATE.SDA_UNSTABLE` and `STATUS.HOSTIDLE`
+*BFM / Model*: `SmcI2cEepromSlave` on the `tb_i2c0_*` pads as the target, a second bench pad driver as the device that makes the edge; observation on `INTR_STATE.SDA_UNSTABLE`, `INTR_STATE.SDA_INTERFERENCE` and `STATUS.HOSTIDLE`
 
 *Objective*: An SDA edge inside an SCL high window is a START or a STOP; in a pulse the controller receives it must report `SDA_UNSTABLE`, in a pulse the controller drives high it must report `SDA_INTERFERENCE`, and the transfer is dropped.
 
@@ -11345,7 +11345,7 @@ SDA changing while the controller holds a pulse high is not driven here; `smc_i2
 * The controller parked mid-transaction. When the format FIFO runs dry without a STOP, `STATUS.FMTEMPTY` sets, `STATUS.HOSTIDLE` stays clear and the controller holds SCL low. Clearing the enable there must put one STOP on the pads, raise `INTR_STATE.CMD_COMPLETE`, release both pads and return the controller to idle.
 * The controller halted on a NACK, the case the theory of operation describes: the address nobody on the bench bus answers is NACKed, `CONTROLLER_EVENTS.NACK` sets, `INTR_STATE.CONTROLLER_HALT` is raised, SCL is held low and the byte queued behind the address keeps `STATUS.FMTEMPTY` clear. Clearing the enable there must put one STOP on the pads, raise `CMD_COMPLETE` and release both pads; the controller returns to idle once the halt events are cleared.
 * `INTR_STATE.CMD_COMPLETE` is raised only when the controller finishes a STOP or a repeated START (`i2c.rdl`), so it tells a STOP the controller made from any other edge on the pads, and the bench target must count exactly one STOP after each disable.
-* The enable cleared between two format entries of a transfer in flight is not driven: no document states whether a STOP follows there.
+* The enable cleared between two format entries of a transfer in flight is not driven: no document states whether a STOP follows there, and the `CHK-I2C-CTRL-DISABLE-STOP-POP` token that graded it is withdrawn.
 
 *Test Procedure*:
 

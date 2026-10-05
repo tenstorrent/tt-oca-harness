@@ -87,9 +87,10 @@ STOP_WAIT_CYCLES = 20_000
 
 
 class _PadWatch:
-    """Counts STOPs on the `tb_i2c0_*` pads while it runs."""
+    """Counts SCL rises and STOPs on the `tb_i2c0_*` pads while it runs."""
 
     def __init__(self) -> None:
+        self.rises = 0
         self.stops = 0
         self._task = cocotb.start_soon(self._run())
 
@@ -102,6 +103,8 @@ class _PadWatch:
             await ClockCycles(cocotb.top.clk_smc_i, 1)
             scl = int(scl_pad.value)
             sda = int(sda_pad.value)
+            if scl and not prev_scl:
+                self.rises += 1
             if scl and prev_scl and sda and not prev_sda:
                 self.stops += 1
             prev_scl = scl
