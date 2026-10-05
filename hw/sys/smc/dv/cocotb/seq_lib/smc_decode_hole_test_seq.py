@@ -7,8 +7,9 @@ GPIO interfaces 4 KiB and the DMA controller 512 B, and each a smaller decoded
 extent: misc_wrap's ``SIZE``, ``GPIO_INTF_TOTAL_SIZE`` and the DMA's ``SIZE``.
 The crossbars decode each block to that extent, so an address in the tail
 between the extent and the end of the aperture reaches no block and the
-fabric's error slave answers it (``memmap.adoc``: the fabric refuses an address
-past a unit's decoded extent).
+fabric's error slave answers it: the RDL gives each unit the response an
+access past its decoded extent receives (``ocah_past_extent_resp``, the
+generated map's ``past_response``), a DECERR read for all three.
 
 For each aperture the leaf seeds a live register near the start of the block,
 writes and reads the word halfway through the unmapped tail, and requires the
@@ -26,6 +27,7 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 from .smc_addr_map import (
     LOCAL_BASE_RESET,
     generated_decoded_extent,
+    generated_past_extent_resp,
     generated_unit_at,
     generated_window,
     smc_addr,
@@ -82,6 +84,8 @@ def _holes() -> tuple[Hole, ...]:
     dma_base = smc_addr("SMC_TOP_DMA_CTRL_BASE_ADDR")
     assert generated_decoded_extent("smc_misc_wrap") == smc_addr("SMC_TOP_SMC_MISC_WRAP_SIZE")
     assert generated_decoded_extent("dma_ctrl") == smc_addr("SMC_TOP_DMA_CTRL_SIZE")
+    for unit in ("smc_misc_wrap", "gpio_intf", "dma_ctrl"):
+        assert generated_past_extent_resp(unit)[0] == "DECERR", unit
     return (
         Hole(
             "MISC",

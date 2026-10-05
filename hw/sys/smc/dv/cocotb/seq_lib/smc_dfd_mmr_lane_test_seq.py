@@ -60,8 +60,8 @@ _UNMAPPED = {"dst": (0x40,), "dst_sink": (0x8,), "funnel": (0x10, 0x14, 0x18, 0x
 _BYTE_MASK = 0xFF
 _AXI_RESP_DECERR = 3
 # The DFD port's window is the generated SMC_CLA block: base and size from
-# smc_addr.h, cross-checked against the Decoded Extent column of the generated
-# memory map.
+# smc_addr.h, cross-checked against the decoded extent of the generated memory
+# map.
 _CLA_BASE = smc_addr("SMC_TOP_SMC_CLA_BASE_ADDR")
 _CLA_END = _CLA_BASE + smc_addr("SMC_TOP_SMC_CLA_SIZE")
 assert generated_decoded_extent(_CLA_ADDRMAP) == smc_addr("SMC_TOP_SMC_CLA_SIZE")

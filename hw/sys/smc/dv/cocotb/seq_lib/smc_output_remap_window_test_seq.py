@@ -29,15 +29,21 @@ memory at the address the entry predicts, and nowhere else:
 * a read through the same window returns the word.
 
 **Source-ID matching in the outbound filter.** `fabric.adoc` ("SMC Source ID by
-Traffic Path") has traffic through the M-mode remap carry `MMODE_ID` and
-traffic through the hypervisor remap carry `OTHER_ID`. The document names the
-values; `smc_pkg.sv` defines them, and the leaf reads `MMODE_ID` from there.
+Traffic Path", and the output-fabric figure `assets/smc-output-fabric.svg`)
+has the M-mode output remap set the AxUSER source ID to `MMODE_ID` (0xC) and
+the Xvisor remap set it to `OTHER_ID` (0); the leaf carries both as its own
+constants. `filter_ctrl.rdl` makes a `src_id` of 0 the wildcard, so only
+`MMODE_ID` can be matched.
 
 While the words go out, outbound filter entry 0 allows reads and writes to the
 M-mode targets for source `MMODE_ID`. Entry 1 matches the hypervisor target for
 the same source and allows nothing. The hypervisor words carry `OTHER_ID`, so
 entry 1 must not match them: if source-ID matching were ignored, entry 1 would
-deny them and those legs would fail. Both entries are restored to their RDL
+deny them and those legs would fail. Entry 0 is then re-armed to deny the
+M-mode targets for `MMODE_ID`, and a further M-mode word must be refused with
+DECERR (`fabric.adoc`: a matching deny entry routes the transaction to an error
+slave that returns a decode error) and leave its target untouched, which only
+a path carrying exactly `MMODE_ID` does. Both entries are restored to their RDL
 reset.
 
 The remap entries are restored to their reset afterwards.
@@ -45,7 +51,6 @@ The remap entries are restored to their reset afterwards.
 
 from __future__ import annotations
 
-import re
 import sys
 from pathlib import Path
 
@@ -106,19 +111,14 @@ _ENTRIES = (
 )
 
 _WORD = 8
+AXI_RESP_DECERR = 3
 
-_SMC_PKG = Path(__file__).resolve().parents[6] / "hw" / "sys" / "smc" / "rtl" / "smc_pkg.sv"
-
-
-def _pkg_user(name: str) -> int:
-    match = re.search(rf"{name}\s*=\s*smc_axi_user_t'\('?h?([0-9A-Fa-f]+)\)", _SMC_PKG.read_text())
-    assert match, f"{name} not found in {_SMC_PKG}"
-    text = match.group(0)
-    return int(match.group(1), 16 if "'h" in text else 10)
-
-
-MMODE_ID = _pkg_user("MmodeSrcId")
-OTHER_ID = _pkg_user("OthersSrcId")
+# fabric.adoc, "SMC Source ID by Traffic Path" and the output-fabric figure
+# (assets/smc-output-fabric.svg): the M-mode output remap sets the AxUSER
+# source ID to MMODE (0xC), the Xvisor remap to OTHERS (0) and the direct path
+# to SMC (3). filter_ctrl.rdl makes src_id 0 the wildcard.
+MMODE_ID = 0xC
+OTHER_ID = 0x0
 assert MMODE_ID != 0 and MMODE_ID != OTHER_ID, "entry 0 needs a non-wildcard M-mode source ID"
 
 _FILTER_H = _REPO / "hw" / "ip" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
@@ -155,6 +155,7 @@ def _outbound(reg: str, entry: int) -> int:
 
 
 _SENTINEL = 0x5A5A_5A5A_5A5A_5A5A
+_DENIED_WORD = 0xDE1E_D000_0000_0000
 
 
 def _remapped(addr: int, region_base: int, targets: dict[int, int]) -> int:
@@ -221,18 +222,32 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
     def __init__(self, name: str = "smc_output_remap_window_test_seq") -> None:
         super().__init__(name)
         self.legs_checked = 0
+        self.mmode_denied = 0
 
-    async def _jtag(self, op: SmcSysAxiOp, addr: int, data: int | None = None) -> SmcSysAxiItem:
+    async def _jtag(
+        self, op: SmcSysAxiOp, addr: int, data: int | None = None, *, denied: bool = False
+    ) -> SmcSysAxiItem:
         item = SmcSysAxiItem(f"remap_{op.value}_0x{addr:x}")
         item.op = op
         item.addr = addr
         item.length = _WORD
         if data is not None:
             item.wdata = data
+        if denied:
+            item.allow_error = True
+            item.expect_error = True
+            item.expected_resp = AXI_RESP_DECERR
         await _OneShot(item, f"{item.get_name()}_os").start(self.env.jtag_axi_agent.sequencer)
-        assert item.resp_code == 0, (
-            f"JTAG {op.value} at 0x{addr:x} completed with resp {item.resp_code}, not OKAY"
-        )
+        if denied:
+            assert item.resp_code == AXI_RESP_DECERR, (
+                f"JTAG {op.value} at 0x{addr:x} completed with resp {item.resp_code}; the "
+                f"outbound filter entry denying source 0x{MMODE_ID:x} routes it to the error "
+                f"slave, which answers DECERR"
+            )
+        else:
+            assert item.resp_code == 0, (
+                f"JTAG {op.value} at 0x{addr:x} completed with resp {item.resp_code}, not OKAY"
+            )
         return item
 
     async def body(self) -> None:
@@ -317,6 +332,34 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
                 "[%s] 0x%x -> SYS_OUT 0x%x: written, landed and read back", label, addr, target
             )
 
+        # Entry 0 re-armed to deny the M-mode targets for the same source. Only
+        # a word carrying exactly MMODE_ID is caught, so the refusal and the
+        # untouched target tie the M-mode remap path to that source ID.
+        deny_label, deny_addr, deny_target = _LEGS[0]
+        await self.csr_write(
+            "OB0_CONFIG_DENY", _outbound("FILTER_CONFIG", 0), _FILTER_BASE, length=_WORD
+        )
+        await self.csr_read(
+            "OB0_CONFIG_DENY_RB", _outbound("FILTER_CONFIG", 0), expected=_FILTER_BASE, length=_WORD
+        )
+        responder.write_int(deny_target, _SENTINEL, _WORD)
+        await self._jtag(SmcSysAxiOp.WRITE, deny_addr, _DENIED_WORD, denied=True)
+        kept = responder.read_int(deny_target, _WORD)
+        assert kept == _SENTINEL, (
+            f"[{deny_label}_DENIED] SYS_OUT 0x{deny_target:x} holds 0x{kept:016x} after a write "
+            f"the outbound filter denies for source 0x{MMODE_ID:x}; the M-mode word reached its "
+            f"target, so the M-mode remap path does not carry source 0x{MMODE_ID:x}"
+        )
+        self.mmode_denied += 1
+        cocotb.log.info(
+            "[%s_DENIED] 0x%x: refused with DECERR by entry 0 denying source 0x%x; SYS_OUT 0x%x "
+            "kept its sentinel",
+            deny_label,
+            deny_addr,
+            MMODE_ID,
+            deny_target,
+        )
+
         for entry, _start, _end, _config in _FILTER_ENTRIES:
             for reg in ("FILTER_CONFIG", "START_ADDR", "END_ADDR"):
                 await self.csr_write(
@@ -349,11 +392,13 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
             "hypervisor window; each landed in SYS_OUT memory at the address the "
             "programmed entry predicts (%s), left the unremapped address alone, and read "
             "back through the same window; the word through the M-mode entry with valid "
-            "clear passed through and left that entry's offset target alone; outbound filter entries matching source 0x%x "
-            "(M-mode) allowed the M-mode words and did not catch the hypervisor words, which "
-            "carry source 0x%x",
+            "clear passed through and left that entry's offset target alone; outbound filter "
+            "entries matching source 0x%x (M-mode) allowed the M-mode words and did not catch "
+            "the hypervisor words, which carry source 0x%x, and %d M-mode word was refused with "
+            "DECERR once entry 0 denied that source",
             self.legs_checked,
             ", ".join(f"0x{a:x}->0x{t:x}" for _l, a, t in _LEGS),
             MMODE_ID,
             OTHER_ID,
+            self.mmode_denied,
         )

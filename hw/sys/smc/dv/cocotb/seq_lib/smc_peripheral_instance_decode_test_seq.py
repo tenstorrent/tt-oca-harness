@@ -149,7 +149,7 @@ PVT_MODEL_RDATA = 0
 _CLA_PATTERNS = (0x3C3C_C3C3, 0xC3C3_3C3C)
 
 # One word past the middle of each aperture, well beyond the unit's decoded
-# extent (smc_addr.h *_SIZE) and inside its aperture (memory_map.adoc Size).
+# extent (smc_addr.h *_SIZE) and inside its aperture (smc.rdl ocah_aperture_size).
 WDT0_BASE = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR")
 WDT_DECODED_EXTENT = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_SIZE")
 WDT0_PAST_EXTENT = WDT0_BASE + 0x200

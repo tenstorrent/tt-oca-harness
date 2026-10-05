@@ -20,10 +20,11 @@ patterns and generated resets are what prove the aperture widened:
 * PLIC: priority and per-core enable words hold distinct co-resident patterns,
   are then written to the priority-0 / disabled state ``interrupts.adoc``
   requires of firmware and read back; the last word of the PLIC's decoded
-  extent (generated memory map, ``Decoded Extent``) must answer without
-  returning either pattern, and the top word of the 4 MiB window and the first
-  word above it, both past the decoded extent, must be refused with DECERR --
-  ``memmap.adoc``: the fabric refuses an address past a unit's decoded extent.
+  extent (generated memory map, ``regs/gen/py/smc_memory_map.py``) must answer
+  without returning either pattern, and the top word of the 4 MiB window and
+  the first word above it, both past the decoded extent, must be refused with
+  DECERR -- the response the RDL gives an access past a unit's decoded extent
+  (``ocah_past_extent_resp``, the map's ``past_response``).
 * CLINT: ``MSIP_0`` and ``MTIMECMP_0`` hold distinct co-resident patterns; the
   last word of the 48 KiB decoded extent must not return them, and the top
   word of the 64 KiB aperture must be refused.
@@ -49,6 +50,7 @@ from .smc_addr_map import (
     LOCAL_BASE_RESET,
     REGION_SIZE_RESET,
     generated_decoded_extent,
+    generated_past_extent_resp,
     generated_window,
     reg_reset_word,
     smc_addr,
@@ -135,6 +137,8 @@ _BEU_PATTERNS = (0x02, 0x04, 0x20, 0x40)
 
 TIMER_BUSERROR_SPEC_TOP = LOCAL_BASE + 0x0801_3FF8
 BEU3_DECODED_TOP = _decoded_top("smc_cluster_core3_beu", "SMC_TOP_SMC_CLUSTER_CORE3_BEU_SIZE")
+for _unit in ("smc_cluster_plic", "smc_cluster_clint", "smc_cluster_core3_beu"):
+    assert generated_past_extent_resp(_unit)[0] == "DECERR", _unit
 assert BEU_ENABLE[3] <= BEU3_DECODED_TOP < TIMER_BUSERROR_SPEC_TOP
 
 EXPECTED_ACCESSES = 56
@@ -224,7 +228,7 @@ class smc_region_size_plic_clint_beu_decode_test_seq(SmcDecodeProbeSeq):
             f"0x{PLIC_DECODED_TOP:08x}, the last word of the PLIC decoded extent, returned the "
             f"priority pattern {_PRIORITY_PATTERN:#x}: the extent aliases onto the priority array"
         )
-        # Past the decoded extent the fabric refuses the access (memmap.adoc).
+        # Past the decoded extent the fabric refuses the access (RDL ocah_past_extent_resp).
         await self.read_decerr("PLIC_SPEC_TOP", PLIC_SPEC_TOP, length=8)
         await self.read_decerr("PLIC_SPEC_ABOVE", PLIC_SPEC_ABOVE, length=8)
         await self.csr_write("PLIC_PRIORITY_1_RESTORE", PLIC_PRIORITY_1, PLIC_PRIORITY_ZERO)
@@ -237,7 +241,7 @@ class smc_region_size_plic_clint_beu_decode_test_seq(SmcDecodeProbeSeq):
             f"{generated_decoded_extent('smc_cluster_plic')} B decoded extent) answered OKAY with "
             f"0x{top:x}, not the resident priority pattern {_PRIORITY_PATTERN:#x}; "
             f"0x{PLIC_SPEC_TOP:08x} (last word of the 4 MiB window, past the decoded extent) was "
-            f"refused with DECERR as memmap.adoc requires",
+            f"refused with DECERR as the RDL's past-extent response requires",
         )
         self.close_cell(
             "just-above-plic-not-plic",
@@ -279,7 +283,8 @@ class smc_region_size_plic_clint_beu_decode_test_seq(SmcDecodeProbeSeq):
             f"{generated_decoded_extent('smc_cluster_clint') // 1024} KiB decoded extent) "
             f"answered OKAY with 0x{top:x}, not the resident MTIMECMP pattern "
             f"0x{_MTIMECMP_PATTERN:x}; 0x{CLINT_SPEC_TOP:08x} (last word of the 64 KiB window, "
-            f"past the decoded extent) was refused with DECERR as memmap.adoc requires",
+            f"past the decoded extent) was refused with DECERR as the RDL's past-extent "
+            f"response requires",
         )
         self.close_cell(
             "just-above-clint-not-clint",
@@ -319,7 +324,7 @@ class smc_region_size_plic_clint_beu_decode_test_seq(SmcDecodeProbeSeq):
             f"the 80 KiB region answered at its CLINT base 0x{CLINT_MSIP_0:08x}, at all four BEU "
             f"instances and at the last word of core 3's decoded extent 0x{BEU3_DECODED_TOP:08x} "
             f"(0x{top:x}); its top word 0x{TIMER_BUSERROR_SPEC_TOP:08x}, past that extent, was "
-            f"refused with DECERR as memmap.adoc requires",
+            f"refused with DECERR as the RDL's past-extent response requires",
         )
 
     async def _restore_region_size(self) -> None:
