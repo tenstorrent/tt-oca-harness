@@ -1057,12 +1057,6 @@ SEP↔SMC interface contract (<code>sep_smc_interface.h</code>).</p>
 (<a href="#tbl:smc_scratch">SMC scratch registers used in the SEP↔SMC protocol (offset <code>0x39080 + 8·index</code> in the SMC window)</a>).</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC fuse map: chiplet ID / package ID</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x7008</code> / <code>0x7028</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8×32-bit words each; manifest
-usage-constraint identity checks ([S23]).</p></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>DFX_CTRL_STATUS_SMU</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xB800</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Memory-repair/MBIST completion gate (<a href="#sec:smc_sync">SMC Synchronization</a>).</p></td>
@@ -1666,7 +1660,7 @@ and ahead of every fuse consumer in the flow.</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S09] clocks</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>pll_init()</code>: if the <code>bl0_pll_clk</code> strap is clear, stay on the 100 MHz
-reference clock. If set: read the target sysclk frequency from the <code>smu_pll_sysclk</code> fuse
+reference clock. If set: read the target sysclk frequency from the <code>SYSCLK_FREQ_MHZ</code> fuse
 field (blank fuses fall back to refclk with a warning), poll PLL lock detect, then switch the
 clock mux to the PLL. The resulting sysclk frequency parameterizes the SPI clock divider
 (<a href="#sec:spi">SPI Initialization and Manifest Transfer</a>). The PLL and the mux are SMC-owned; SEP has none of its own.</p></td>
@@ -2151,7 +2145,7 @@ timeout (the accepted BL0 hang failure mode, SEP-ROM-CPU-080).</p>
 </div>
 <div class="paragraph">
 <p>The poll is a discrete stage ([S08]) that runs unconditionally, ahead of every fuse consumer:
-the <code>smu_pll_sysclk</code> read in [S09], the lifecycle state in [S11], <code>SBOOT_DIS</code> and the disable
+the <code>SYSCLK_FREQ_MHZ</code> read in [S09], the lifecycle state in [S11], <code>SBOOT_DIS</code> and the disable
 vectors in [S18], and the
 key digests, revocation bits, security version and identity fields read during manifest
 validation. The ROM does not rely on sensing having completed before the SEP core reset
@@ -2168,7 +2162,7 @@ fail open.</p>
 <h3 id="lifecycle-state-s11"><a class="anchor" href="#lifecycle-state-s11"></a><a class="link" href="#lifecycle-state-s11">9.2. Lifecycle State ([S11])</a></h3>
 <div class="paragraph">
 <p>The 4-bit lifecycle state is read from the low nibble of <code>SEP_EFUSE_MAP_LC_STATE</code>
-(<code>0x1093_0008</code>).</p>
+(<code>0x1093_000C</code>).</p>
 </div>
 <table id="tbl:lc_states" class="tableblock frame-ends grid-rows stretch">
 <caption class="title">Table 9. Lifecycle states</caption>
@@ -2419,6 +2413,13 @@ Read-locked, never read ([SEP-ROM-HOFF-030]).</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Secret.</strong> Per-device key-derivation seed, system scope.
 Read-locked, never read ([SEP-ROM-HOFF-030]).</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_CHIPLET_ID</code> / <code>SEP_SIP_ID</code> / <code>SEP_SYS_ID</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10930280</code> / <code>0x109302A0</code> / <code>0x109302C0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 b each</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Device identity compared against the manifest&#8217;s chiplet / package / system ID
+usage constraints ([S23], [SEP-ROM-MAN-040]). Public; the ROM does not lock them.</p></td>
+</tr>
 </tbody>
 </table>
 <div class="admonitionblock note">
@@ -2668,19 +2669,25 @@ status codes still go to <code>cold_scratch[1]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>boot_recovery</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_HI[23]</code> (abs. 55)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 = recovery mode: even a primary chiplet
-ignores SPI and waits for a manifest from SMC SRAM.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_LO[19]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 = recovery mode: even a primary chiplet ignores SPI and
+waits for a manifest from SMC SRAM.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>bl0_pll_clk</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_HI[24]</code> (abs. 56)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 = initialize the PLL from fuses; 0 = stay on
-the 100 MHz reference clock.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_LO[20]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 = initialize the PLL from fuses; 0 = stay on the 100 MHz
+reference clock.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>mbist_bypass</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_HI[22]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 = ignore the power-on MBIST verdict at the pre-C
+memory-health gate (<a href="#sec:smc_sync">SMC Synchronization</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>rotate_update</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_HI[29]</code> (abs. 61)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_HI[26]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 = swap the primary/backup manifest slot order
 for this boot (<a href="#sec:retry">Retry and Backup Bank</a>).</p></td>
 </tr>
@@ -3295,8 +3302,9 @@ positive and place the payload beyond the manifest (no overlap); all arithmetic 
 overflow-checked.</p>
 </li>
 <li>
-<p><strong>Usage constraints:</strong> <code>selector_bits</code> enables per-word identity comparisons against the SMC
-fuse map (chiplet/package ID) and lifecycle/version-range windows. The device&#8217;s LC state
+<p><strong>Usage constraints:</strong> <code>selector_bits</code> enables per-word identity comparisons against the SEP
+efuse map (<code>SEP_CHIPLET_ID</code> / <code>SEP_SIP_ID</code> / <code>SEP_SYS_ID</code>, <a href="#tbl:fuse_fields">SEP efuse map fields touched by BL0</a>) and
+lifecycle/version-range windows. The device&#8217;s LC state
 must map to a set bit in the applicable <code>lifecycle_*_states</code> mask (mapping per
 <a href="#tbl:lc_states">Lifecycle states</a>). <a id="req-SEP-ROM-MAN-040"></a><strong>[SEP-ROM-MAN-040]</strong> A selected constraint whose
 device-side value cannot be read shall fail the check — "unavailable" is a failure, never a
@@ -4683,7 +4691,7 @@ register and confirm every lock bit is set ([S26]). Failure to confirm is fatal
 <p>All six are secrets, the UIDs no less than the keys and tokens. Each UID is the per-device
 secret seed the Key Manager derives keys from, so a UID that leaks compromises every key
 derived from it. A UID is <strong>not</strong> an identifier — the non-secret per-part identifiers are the
-ID fuses (<code>CHIPLET_ID</code>, <code>SIP_ID</code>, <code>SYSTEM_ID</code>), which a manifest binds to
+ID fuses (<code>SEP_CHIPLET_ID</code>, <code>SEP_SIP_ID</code>, <code>SEP_SYS_ID</code>), which a manifest binds to
 (<a href="#sec:manifest">OCA Manifest Format and Parsing</a>) and which are not read-locked. All six locked fields declare the same
 <code>sw=rw, onwrite=woset, hw=r</code> properties in <code>sep_efuse_map.rdl</code>, so one SET-only write latches
 them together.</p>
