@@ -137,12 +137,11 @@ def refused_markers() -> tuple[tuple[str, ...], tuple[str, ...]]:
 
 
 def _served_intervals(flash) -> list[tuple[int, int]]:
-    # The flash model streams one byte past each request until CS deasserts; drop it from coverage.
     spans = []
     for txn in ev.reads(flash.get_transactions()):
         start, end = ev.read_span(txn)
-        if end - 1 > start:
-            spans.append((start, end - 1))
+        if end > start:
+            spans.append((start, end))
     spans.sort()
     merged: list[tuple[int, int]] = []
     for start, end in spans:
