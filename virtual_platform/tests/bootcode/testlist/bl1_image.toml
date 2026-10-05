@@ -69,7 +69,6 @@ markers = [
 
 [[testcase]]
 name = "sep_firmware_bl1_image_body_corrupted_test"
-tp_id = "TP052"
 family = "bl1_image"
 classification = "vp-equivalent"
 image = "bl1_image_body_corrupted"
@@ -145,7 +144,6 @@ markers = [
 
 [[testcase]]
 name = "sep_bl1_size_invalid_test"
-tp_id = "TP053-S"
 family = "bl1_image"
 classification = "vp-equivalent"
 image = "bl1_zero_length"
@@ -233,7 +231,6 @@ markers = [
 
 [[testcase]]
 name = "sep_bl1_entry_invalid_test"
-tp_id = "TP053-E"
 family = "bl1_image"
 classification = "vp-equivalent"
 image = "bl1_entry_point_at_length"

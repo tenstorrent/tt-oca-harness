@@ -415,7 +415,6 @@ markers = [
 
 [[testcase]]
 name = "sep_firmware_primary_pubkey_rom_5_revoked_key_test"
-tp_id = "TP042-R5B"
 family = "pubkey_revocation"
 classification = "vp-equivalent"
 image = "primary_pubkey_rom_5_revoked"
@@ -916,7 +915,6 @@ markers = [
 
 [[testcase]]
 name = "sep_firmware_backup_pubkey_rom_5_revoked_key_test"
-tp_id = "TP042-R5B"
 family = "pubkey_revocation"
 classification = "vp-equivalent"
 image = "backup_pubkey_rom_5_revoked"
@@ -1001,7 +999,6 @@ markers = [
 
 [[testcase]]
 name = "sep_key_revocation_bitmap_random_test"
-tp_id = "TP074"
 family = "pubkey_revocation"
 classification = "partial"
 image = "key_revocation_seed17"

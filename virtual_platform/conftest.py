@@ -12,4 +12,4 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-pytest_plugins = ["sepvp.pytest_plugin", "pytester"]
+pytest_plugins = ["sepvp.pytest_plugin"]

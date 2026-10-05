@@ -641,17 +641,8 @@ spi_reads = [
 spi_read_order = ["primary_manifest", "backup_manifest", "backup_payload"]
 markers = [
   "v1.1 with manifest_length 4092 (body-4), the DV member's values; a short declared length is refused by the same equality as a long one, not by a lower range bound.",
-  "OCA has no 4-byte alignment rule on manifest_length; the legacy 1185 alignment stimulus has no OCA counterpart, and 4092 is aligned.",
+  "OCA has no alignment rule on manifest_length, so the entry proves only the equality check; 4092 is 4-byte aligned.",
   "MANIFEST_ERR=0x00030001 is forbidden so a short declared length cannot pass as a truncated buffer: the ROM hands the library the full magic-selected body.",
-]
-
-[[testcase]]
-name = "sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_small_correct_test"
-family = "manifest_toc"
-classification = "retired"
-reason = "OCA accepts only manifest_length equal to the variant body size (oca_check_manifest_length); there is no minor-dependent range in which a length other than 4096 is accepted, so no OCA image can make this case true."
-markers = [
-  "The accept side at a non-zero minor with the body size is the same predicate as sep_firmware_primary_manifest_major_version_valid_minor_0_length_correct_test.",
 ]
 
 [[testcase]]
@@ -944,15 +935,6 @@ markers = [
 ]
 
 [[testcase]]
-name = "sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_small_correct_test"
-family = "manifest_toc"
-classification = "retired"
-reason = "OCA accepts only manifest_length equal to the variant body size (oca_check_manifest_length); there is no minor-dependent range in which a length other than 4096 is accepted, so no OCA image can make this case true."
-markers = [
-  "The backup accept side with the body size is covered by sep_firmware_backup_manifest_major_version_valid_minor_0_length_correct_test.",
-]
-
-[[testcase]]
 name = "sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_large_test"
 family = "manifest_toc"
 classification = "vp-equivalent"
@@ -1094,7 +1076,7 @@ spi_reads = [
 ]
 spi_read_order = ["primary_peek", "backup_manifest"]
 markers = [
-  "v1.1 backup with manifest_length 4092 (body-4), the DV member's values; OCA has no alignment rule, so the legacy 1185 alignment stimulus has no counterpart and the short length is refused by the equality.",
+  "v1.1 backup with manifest_length 4092 (body-4), the DV member's values; the short length is refused by the equality check, and OCA has no alignment rule to test.",
   "MANIFEST_ERR=0x00030001 is forbidden so a short declared length cannot pass as a truncated buffer.",
   "Both payload spans are exact 0: neither slot got as far as fetching a payload, which the console cannot show.",
   "The FAILED verdict and terminal_token assert the halt; they do not prove the CPU stays in the WFI loop.",

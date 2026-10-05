@@ -10,7 +10,7 @@ from sepvp import paths
 
 pytestmark = pytest.mark.hostonly
 
-_MAP = Path(__file__).parent / "reference" / "oca_token_map.md"
+_MAP = Path(__file__).parent / "reference" / "oca_rom_tokens.md"
 _ROM_SRC = paths.BOOTCODE_DIR / "src"
 _TICKED = re.compile(r"`([^`]+)`")
 
@@ -29,8 +29,8 @@ def _tables() -> list[list[list[str]]]:
     return tables
 
 
-def _column(table_index: int, column: int) -> list[tuple[str, str]]:
-    return [(row[0], row[column]) for row in _tables()[table_index]]
+def _column(table_index: int, column: int) -> list[str]:
+    return [row[column] for row in _tables()[table_index]]
 
 
 def _rom_boot_err(name: str) -> int:
@@ -51,27 +51,24 @@ def test_the_map_says_it_is_not_an_expected_value_source():
     assert "not a source of expected values" in first
 
 
-def test_the_map_has_four_tables():
-    assert len(_tables()) == 4
+def test_the_map_has_three_tables():
+    assert len(_tables()) == 3
 
 
-@pytest.mark.parametrize("old, cell", _column(0, 1))
-def test_every_oca_token_is_printed_by_the_rom_or_bl1(old, cell):
+@pytest.mark.parametrize("cell", _column(0, 0))
+def test_every_oca_token_is_printed_by_the_rom_or_bl1(cell):
     console = dv_env.load("sep_oca_console")
     tokens = _TICKED.findall(cell)
-    assert tokens or cell.startswith("none"), f"{old}: OCA token cell {cell!r} names nothing"
+    assert tokens, f"token cell {cell!r} names nothing"
     assembly = _assembly_strings()
     unknown = [t for t in tokens if not console._printed(t) and t not in assembly]
-    assert not unknown, f"{old}: the OCA ROM and BL1 never print {unknown}"
+    assert not unknown, f"the OCA ROM and BL1 never print {unknown}"
 
 
-@pytest.mark.parametrize("old, cell", [(o, c) for o, c in _column(1, 2) if c != "none"])
-def test_every_oca_result_name_has_the_listed_code(old, cell):
+@pytest.mark.parametrize("code, name", list(zip(_column(1, 0), _column(1, 1))))
+def test_every_oca_result_name_has_the_listed_code(code, name):
     mm = dv_env.load("sep_manifest_mutate")
-    codes = dict(_column(1, 1))[old]
-    listed = [int(code, 16) for code in _TICKED.findall(codes)]
-    names = _TICKED.findall(cell)
-    assert len(names) == len(listed), f"{old}: {len(listed)} codes but {len(names)} names"
-    for name, code in zip(names, listed):
-        value = _rom_boot_err(name) if name.startswith("OCA_BOOT_ERR_") else mm.boot_err(name)
-        assert value == code, f"{old}: {name} is 0x{value:08x}, the map says 0x{code:08x}"
+    (listed,) = [int(c, 16) for c in _TICKED.findall(code)]
+    (name,) = _TICKED.findall(name)
+    value = _rom_boot_err(name) if name.startswith("OCA_BOOT_ERR_") else mm.boot_err(name)
+    assert value == listed, f"{name} is 0x{value:08x}, the map says 0x{listed:08x}"

@@ -3,7 +3,6 @@
 
 [[testcase]]
 name = "sep_mixed_failure_primary_backup_test"
-tp_id = "TP079"
 family = "mixed_failure"
 classification = "vp-equivalent"
 image = "mixed_primary_hash_backup_signature"

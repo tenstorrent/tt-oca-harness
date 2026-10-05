@@ -7,7 +7,6 @@
 
 [[testcase]]
 name = "sep_manifest_payload_limits_test__offset_4g_minus_4k"
-tp_id = "TP025"
 family = "payload_limits"
 classification = "vp-equivalent"
 image = "payload_limits_offset_4g_minus_4k"
@@ -90,7 +89,6 @@ markers = [
 
 [[testcase]]
 name = "sep_manifest_payload_limits_test__offset_4g_minus_1"
-tp_id = "TP025"
 family = "payload_limits"
 classification = "vp-equivalent"
 image = "payload_limits_offset_4g_minus_1"
@@ -173,7 +171,6 @@ markers = [
 
 [[testcase]]
 name = "sep_manifest_payload_limits_test__offset_and_length_2g"
-tp_id = "TP025"
 family = "payload_limits"
 classification = "vp-equivalent"
 image = "payload_limits_offset_and_length_2g"
@@ -256,7 +253,6 @@ markers = [
 
 [[testcase]]
 name = "sep_manifest_payload_limits_test__length_4g_minus_1"
-tp_id = "TP025"
 family = "payload_limits"
 classification = "vp-equivalent"
 image = "payload_limits_length_4g_minus_1"

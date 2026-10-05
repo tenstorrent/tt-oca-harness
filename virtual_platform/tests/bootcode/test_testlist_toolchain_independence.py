@@ -118,11 +118,7 @@ def _literals(testcase):
                 yield bound, f"image_asserts[{index}] range", "image"
 
 
-_IMAGE_CASES = [
-    case
-    for case in TESTCASES
-    if case.classification != "retired" and (case.image or case.smc_sram_image)
-]
+_IMAGE_CASES = [case for case in TESTCASES if case.image or case.smc_sram_image]
 
 
 @pytest.mark.parametrize("testcase", _IMAGE_CASES, ids=lambda case: case.name)

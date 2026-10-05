@@ -13,6 +13,10 @@ The hand-written tests (`test_bootcode.py`, `test_bootcode_oca.py`,
 `test_bootcode_oca_negative.py`, `test_bootcode_oca_rom_keys.py`, with `shared.py`) are
 separate from the testlist and are not described here.
 
+The testlist has no entries for four checks that the OCA ROM does not make: external-SRAM
+staging selection, manifest-selected SMC SRAM staging, TOC image-length alignment, and a
+minor-version-dependent `manifest_length` range.
+
 ## Quick start
 
 Run these from the repository root on a host with `uv`, CMake and g++ 10 or newer.
@@ -24,9 +28,11 @@ git submodule update --init --recursive
 # 2. Build sep-vp; the first run also builds its SystemC, CCI, Boost and OpenSSL dependencies
 make -C virtual_platform vp
 
-# 3. Build the boot ROM and the OCA images (see Prerequisites for the toolchain choice)
+# 3. Load the firmware toolchain image, then build the boot ROM and the OCA images in it
+#    (with RISCV_TOOLCHAIN naming a host toolchain with picolibc, drop verify and run-here)
+./scripts/docker-run.sh verify
 make -C hw/sys/sep/bootrom/prod toolchain-images
-make -C hw/sys/sep/bootrom/prod oca-images decrypt_negative_images
+./scripts/docker-run.sh run-here make -C hw/sys/sep/bootrom/prod oca-images decrypt_negative_images
 
 # 4. Create the manifest venv that repack specs use
 PLAT=$(python3 -c 'import platform; libc, ver = platform.libc_ver(); p = tuple(int(x) for x in ver.split(".")[:2]) if ver else (0,0); m = platform.machine(); print("" if libc != "glibc" or p >= (2,34) else f"{m}-manylinux_2_28" if p >= (2,28) else f"{m}-manylinux_2_17")')
@@ -43,8 +49,10 @@ uv --project .. run --group vp --locked python3 -m pytest \
 
 Step 5 passes when pytest reports `1 passed` and
 `logs/sepvp/rom_ot_secure_boot_golden/sep-vp.log` contains `[VP] SIMULATION OF THE TEST PASSED`.
-If `make vp` stops at `check-cxx`, follow the compiler fix it prints. If step 3 prints
-`absent locally and in cache; building`, stop it and read the toolchain note under Prerequisites.
+If `make vp` stops at `check-cxx`, follow the compiler fix it prints. In step 3, `verify` builds
+the toolchain image from the Nix flake, which takes a long time; set
+`OCAH_CONTAINER_REGISTRY_IMAGE=ghcr.io/tenstorrent/ocah-container` and `OCAH_IMAGE_WITH_UV=true`
+first to pull the published image instead.
 
 ## File map
 
@@ -52,7 +60,7 @@ If `make vp` stops at `check-cxx`, follow the compiler fix it prints. If step 3 
 |---|---|
 | `testlist_loader.py` | Parses and validates the testlist into `RomTestCase`; owns `FAMILY_ORDER`, the allowed fields and every cross-field rule |
 | `testlist_adapter.py` | Converts a resolved `RomTestCase` into a `SimConfig`, builds the fuse map, runs the case and calls `sepvp.judges.judge` |
-| `test_sep_rom_testlist.py` | The pytest entry point; one parametrized case per non-retired testcase |
+| `test_sep_rom_testlist.py` | The pytest entry point; one parametrized case per testcase, plus the audit run |
 | `boot_images.py` | Produces the image a testcase names (prebuilt, byte patch, ops or repack), runs `image_asserts`, cuts the SMC SRAM bytes, and resolves image facts and the measurement token (`resolve_case`) |
 | `boot_image_mutations.py` | Loads and validates mutation specs; applies byte patches; defines `SEPVP_TESTLIST_DIR` handling |
 | `oca_image_ops.py` | Whitelist `OPS` of DV mutation helpers a spec may run, with the re-sign rules |
@@ -63,7 +71,7 @@ If `make vp` stops at `check-cxx`, follow the compiler fix it prints. If step 3 
 | `preloaded_test_programs.py`, `warm_handler_stub.S`, `warm_fault_stub.S`, `*_words.py`, `gen_warm_stub.py` | Executable stubs deposited through init writes before the run; `gen_warm_stub.py` regenerates the checked-in words from the `.S` sources |
 | `untrusted_signing_key.py`, `keys/` | RSA-3072 signing key whose modulus digest is in no ROM key slot; generated with `openssl genrsa` on first use and git-ignored |
 | `testlist_audit.py` | Flags entries that a healthy boot would also satisfy |
-| `reference/oca_token_map.md` | Lookup table from legacy tokens and error codes to the OCA ROM; a reference, not a source of expected values |
+| `reference/oca_rom_tokens.md` | The console tokens and result codes the OCA ROM and BL1 print; a reference, not a source of expected values |
 | `testlist/<family>.toml` | One file per family; the file name must be in `FAMILY_ORDER` and every entry's `family` must equal it |
 | `testlist/boot_image_mutations/<image>.toml` | One mutation spec per generated image; the file stem is the image name |
 | `test_*.py` for the modules above | Host-only unit tests (`hostonly` marker) |
@@ -78,14 +86,9 @@ error. Defaults are in parentheses.
 
 Identity:
 
-- `name`, `family`, `tp_id` (optional). `name` is unique across the whole testlist.
-- `classification`: `vp-equivalent`, `partial`, `harness-blocked`, `model-blocked`,
-  `rtl-only` or `retired`.
-  - `harness-blocked`, `model-blocked` and `rtl-only` need a non-empty `Blocked:` entry in
-    `markers`. The adapter skips the case with that text as the reason.
-  - `retired` takes only `name`, `family`, `tp_id`, `classification`, `reason` and `markers`.
-    It is not run. `reason` is required and is valid only on retired entries.
-  - `partial` runs; use `markers` to state what the VP does not prove.
+- `name`, `family`. `name` is unique across the whole testlist.
+- `classification`: `vp-equivalent` or `partial`. A `partial` entry uses `markers` to state
+  what the VP does not prove.
 - `markers`: free-text limitations. `pytest_markers`: pytest markers to apply (for example
   `needs_debug`, which `--build-type=release` deselects).
 
@@ -279,7 +282,8 @@ declare.
   With `RISCV_TOOLCHAIN` set to a host RISC-V toolchain that provides picolibc, the ROM builds on
   the host. Without it, `toolchain-images` compiles in the OCAH toolchain container through
   `scripts/docker-run.sh`, which builds the image from the Nix flake when none is loaded,
-  pullable or cached. That build takes a long time; `scripts/docker.md` describes pulling the
+  pullable or cached. `oca-images` rebuilds the BL1 payload with the RISC-V compiler on `PATH`,
+  so run it through `scripts/docker-run.sh run-here` when the host has none. That build takes a long time; `scripts/docker.md` describes pulling the
   prebuilt image or using a bubblewrap rootfs instead.
 
   Without `--no-build`, the `oca_images` fixture builds the images itself. With `--no-build`,
@@ -343,7 +347,8 @@ positive run's logs.
 ### Audit
 
 `testlist_audit.audit(testcase, golden_output)` reports three findings against the output of a
-healthy boot (the `rom_ot_secure_boot_golden` entry):
+healthy boot. `test_no_testcase_passes_for_the_wrong_reason` in `test_sep_rom_testlist.py`
+runs the `rom_ot_secure_boot_golden` entry itself and audits every entry against that output:
 
 - `insensitive`: the entry expects an error-class token that the golden boot also emits.
 - `golden_satisfiable`: a healthy boot satisfies the whole contract and nothing outside the run
@@ -357,7 +362,7 @@ A testcase is done when all applicable items are true:
 
 - The ROM symbol that reads the stimulus and decides the outcome is identified in
   `hw/sys/sep/bootrom/prod/src/`, and the expected tokens, error codes and status sequence
-  are derived from that source. `reference/oca_token_map.md` is only a lookup.
+  are derived from that source. `reference/oca_rom_tokens.md` is only a lookup.
 - The entry agrees with the DV test in `hw/sys/sep/dv/testlists/rom_fw.toml` and
   `hw/sys/sep/dv/cocotb/tests/rom_fw/`. A disagreement is reported with evidence from both
   sides, not resolved inside the entry.
@@ -372,9 +377,8 @@ A testcase is done when all applicable items are true:
 - A failure entry also forbids the success tokens.
 - A failover entry forbids `ERROR 0x0213` and does not forbid every `ERROR`, because a
   rejected slot still emits status ERROR lines when the backup succeeds.
-- No token that exists only in the legacy ROM (for example `MANIFEST_HASH_OK`, `SIG_VALID`,
-  `CRYPTO_VALIDATE_OK`, `PLD_HASH_OK`, `RSA_VERIFY_START`) and no legacy error code is in
-  `expect`. Legacy error numbers collide with different OCA meanings; never copy a literal.
+- Every token the entry names is one that `sep_oca_console.assert_known` accepts
+  (`test_testlist_tokens.py`).
 - A negative control was run and went red.
 - The targeted pytest case ran with `--no-build`, and `sep-vp.log` shows that the expected
   judgment, and not a wrong-reason pass, produced the result.

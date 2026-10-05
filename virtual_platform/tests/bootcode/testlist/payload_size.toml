@@ -146,24 +146,6 @@ markers = [
 ]
 
 [[testcase]]
-name = "sep_firmware_payload_correct_smc_64kb_test"
-family = "payload_size"
-classification = "retired"
-reason = "The OCA ROM has no manifest-selected SMC SRAM staging: try_manifest_slot always stages the payload in SEP SRAM and never reads the SEP-safe window in SMC scratch 13/14; DV keeps these modules unregistered in rom_fw.toml."
-
-[[testcase]]
-name = "sep_firmware_payload_correct_smc_128kb_test"
-family = "payload_size"
-classification = "retired"
-reason = "The OCA ROM has no manifest-selected SMC SRAM staging: try_manifest_slot always stages the payload in SEP SRAM and never reads the SEP-safe window in SMC scratch 13/14; DV keeps these modules unregistered in rom_fw.toml."
-
-[[testcase]]
-name = "sep_firmware_payload_correct_smc_200kb_test"
-family = "payload_size"
-classification = "retired"
-reason = "The OCA ROM has no manifest-selected SMC SRAM staging: try_manifest_slot always stages the payload in SEP SRAM and never reads the SEP-safe window in SMC scratch 13/14; DV keeps these modules unregistered in rom_fw.toml."
-
-[[testcase]]
 name = "sep_firmware_payload_incorrect_ext_62kb_test"
 family = "payload_size"
 classification = "vp-equivalent"
@@ -228,7 +210,7 @@ spi_reads = [
 ]
 spi_read_order = ["primary_manifest", "backup_manifest", "backup_payload"]
 markers = [
-  "Matches DV sep_firmware_payload_exceeds_slot_window_fixed_test: 0x3F400 is one KiB past the DV capacity 0x3F000 (SEP SRAM less the body), not the 62 KiB the legacy name states.",
+  "Matches DV sep_firmware_payload_exceeds_slot_window_fixed_test: 0x3F400 is one KiB past the DV capacity 0x3F000 (SEP SRAM less the body).",
   "payload_length sits in the signed region, so declare_payload_length re-signs the primary; the slot passes RSA and oca_locate_payload refuses it on the region bound before any payload read.",
   "Follows DV PayloadSizeRefusedTest: the oversized primary fails over to the backup, with no rotate_update; the TOC still holds the shipped 2156-byte length, which the ROM would check only after staging.",
   "PAYLOAD_TOO_LARGE (0x00030101) cannot fire on the SPI path, because the slot window (at most 0x3E000 payload bytes) is tighter than the SEP SRAM staging room (0x3EFF8); it stays forbidden.",
@@ -305,8 +287,3 @@ markers = [
   "PAYLOAD_TOO_LARGE (0x00030101) cannot fire on the SPI path, because the slot window (at most 0x3E000 payload bytes) is tighter than the SEP SRAM staging room (0x3EFF8); it stays forbidden.",
 ]
 
-[[testcase]]
-name = "sep_firmware_payload_incorrect_smc_test"
-family = "payload_size"
-classification = "retired"
-reason = "The OCA ROM has no manifest-selected SMC SRAM staging: try_manifest_slot always stages the payload in SEP SRAM and never reads the SEP-safe window in SMC scratch 13/14; DV keeps these modules unregistered in rom_fw.toml."

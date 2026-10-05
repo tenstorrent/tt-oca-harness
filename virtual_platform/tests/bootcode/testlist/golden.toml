@@ -6,7 +6,6 @@
 
 [[testcase]]
 name = "rom_ot_secure_boot_golden"
-tp_id = "TP000"
 family = "golden"
 classification = "vp-equivalent"
 image = "signed"
@@ -62,7 +61,6 @@ markers = [
 
 [[testcase]]
 name = "rom_ot_encrypted_boot_golden"
-tp_id = "TP000-ENC"
 family = "golden"
 classification = "vp-equivalent"
 image = "encrypted"

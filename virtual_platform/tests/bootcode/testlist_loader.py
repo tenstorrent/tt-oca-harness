@@ -14,15 +14,7 @@ from typing import AbstractSet
 from sepvp.config import SMC_SRAM_SIZE_BYTES
 from sepvp.judges import SpiReadSpan
 
-_CLASSIFICATIONS = {
-    "vp-equivalent",
-    "harness-blocked",
-    "model-blocked",
-    "rtl-only",
-    "partial",
-    "retired",
-}
-RUNNABLE_BLOCKED = frozenset({"harness-blocked", "model-blocked", "rtl-only"})
+_CLASSIFICATIONS = {"vp-equivalent", "partial"}
 FAMILY_ORDER = (
     "warm_reset",
     "spi_boot",
@@ -43,14 +35,12 @@ FAMILY_ORDER = (
     "platform_gating",
     "payload_location",
     "payload_size",
-    "sram_selection",
     "fuse_lock",
     "secondary_chiplet",
     "payload_limits",
     "mixed_failure",
     "measurement",
 )
-_RETIRED_FIELDS = {"name", "family", "tp_id", "classification", "reason", "markers"}
 _XFAIL_REASON_RE = re.compile(r"\bB\d+\b")
 # Cold scratch past the verdict word, SMC scratch and SMC DFX_CTRL_STATUS; the model drops ROM
 # and ICCM writes, and a pre-boot write to cold scratch 0 would forge the run's verdict.
@@ -66,7 +56,6 @@ _FAILED_VERDICT_TOKEN = "[VP] SIMULATION OF THE TEST FAILED"
 _TESTCASE_FIELDS = {
     "name",
     "family",
-    "tp_id",
     "classification",
     "image",
     "base_ini",
@@ -96,7 +85,6 @@ _TESTCASE_FIELDS = {
     "smc_sram_offset",
     "smc_sram_manifest_at",
     "measurement_golden",
-    "reason",
     "xfail_reason",
     "xfail_match",
 }
@@ -256,7 +244,6 @@ class RomTestCase:
     rotate_update: bool
     recovery: bool
     timeout: int
-    tp_id: str | None
     markers: tuple[str, ...]
     pytest_markers: tuple[str, ...]
     expect: tuple[str, ...]
@@ -277,7 +264,6 @@ class RomTestCase:
     smc_sram_offset: int | None
     smc_sram_manifest_at: int | None
     measurement_golden: MeasurementGolden | None
-    reason: str | None = None
     xfail_reason: str | None = None
     xfail_match: str | None = None
 
@@ -879,9 +865,6 @@ def _parse_testcase(
     if unknown:
         raise ValueError(f"unknown field in testcase: {sorted(unknown)[0]}")
 
-    if entry.get("classification") == "retired":
-        return _retired_case(entry)
-
     name = _required_string(entry, "name", "<unnamed>")
     family = _required_string(entry, "family", name)
     classification = _required_string(entry, "classification", name)
@@ -935,16 +918,10 @@ def _parse_testcase(
     if type(timeout) is not int or timeout <= 0:
         raise ValueError(f"testcase {name!r} timeout must be a positive integer")
 
-    tp_id = entry.get("tp_id")
-    if tp_id is not None and (not isinstance(tp_id, str) or not tp_id):
-        raise ValueError(f"testcase {name!r} tp_id must be a non-empty string")
-
     efuse = _efuse(entry, name)
     if efuse and base_ini is None:
         raise ValueError(f"testcase {name!r} efuse needs a base_ini to layer its overrides on")
 
-    if "reason" in entry:
-        raise ValueError(f"testcase {name!r} reason is only for retired entries")
     xfail_reason = entry.get("xfail_reason")
     xfail_match = entry.get("xfail_match")
     if xfail_reason is None and xfail_match is not None:
@@ -968,20 +945,8 @@ def _parse_testcase(
                 f"testcase {name!r} xfail_match matches an empty message, so it would "
                 "accept any judge failure"
             )
-        if classification in RUNNABLE_BLOCKED:
-            raise ValueError(
-                f"testcase {name!r} xfail_reason cannot combine with a blocked classification"
-            )
 
     markers = _string_tuple(entry, "markers", name)
-    if classification in RUNNABLE_BLOCKED and not any(
-        marker.startswith("Blocked:") and marker.removeprefix("Blocked:").strip()
-        for marker in markers
-    ):
-        raise ValueError(
-            f"testcase {name!r} classification {classification!r} "
-            "requires a non-empty 'Blocked:' marker"
-        )
 
     programs = _string_tuple(entry, "preloaded_test_programs", name)
     init_writes = _init_writes(entry, name)
@@ -1080,7 +1045,6 @@ def _parse_testcase(
         rotate_update=rotate_update,
         recovery=recovery,
         timeout=timeout,
-        tp_id=tp_id,
         markers=markers,
         pytest_markers=_string_tuple(entry, "pytest_markers", name),
         expect=expect,
@@ -1103,51 +1067,6 @@ def _parse_testcase(
         measurement_golden=measurement_golden,
         xfail_reason=xfail_reason,
         xfail_match=xfail_match,
-    )
-
-
-def _retired_case(entry: dict) -> RomTestCase:
-    name = _required_string(entry, "name", "<unnamed>")
-    extra = set(entry) - _RETIRED_FIELDS
-    if extra:
-        raise ValueError(f"testcase {name!r} is retired; it cannot declare {sorted(extra)[0]!r}")
-    tp_id = entry.get("tp_id")
-    if tp_id is not None and (not isinstance(tp_id, str) or not tp_id):
-        raise ValueError(f"testcase {name!r} tp_id must be a non-empty string")
-    return RomTestCase(
-        name=name,
-        family=_required_string(entry, "family", name),
-        classification="retired",
-        image=None,
-        base_ini=None,
-        efuse=MappingProxyType({}),
-        observation="complete",
-        boot="secondary",
-        rotate_update=False,
-        recovery=False,
-        timeout=1,
-        tp_id=tp_id,
-        markers=_string_tuple(entry, "markers", name),
-        pytest_markers=(),
-        expect=(),
-        forbid=(),
-        expect_counts=MappingProxyType({}),
-        terminal_token=None,
-        expect_silence=False,
-        expect_status=(),
-        forbid_status=(),
-        expect_verdict=None,
-        preloaded_test_programs=(),
-        init_writes=(),
-        spi_reads=(),
-        spi_read_order=(),
-        image_asserts=(),
-        smc_sram_image=None,
-        smc_sram_source=None,
-        smc_sram_offset=None,
-        smc_sram_manifest_at=None,
-        measurement_golden=None,
-        reason=_required_string(entry, "reason", name),
     )
 
 

@@ -3,7 +3,6 @@
 
 [[testcase]]
 name = "sep_firmware_mbist_fail_test"
-tp_id = "TP007"
 family = "platform_gating"
 classification = "partial"
 image = "signed"
@@ -43,7 +42,6 @@ markers = [
 
 [[testcase]]
 name = "sep_firmware_mbist_pass_test"
-tp_id = "TP-MBIST-PASS"
 family = "platform_gating"
 classification = "partial"
 image = "signed"
@@ -79,7 +77,6 @@ markers = [
 
 [[testcase]]
 name = "sep_mbist_fail_continue_test"
-tp_id = "TP008"
 family = "platform_gating"
 classification = "partial"
 image = "signed"
@@ -116,7 +113,6 @@ markers = [
 
 [[testcase]]
 name = "sep_warm_reset_invalid_hang_test"
-tp_id = "TP006"
 family = "platform_gating"
 classification = "partial"
 image = "signed"
@@ -140,7 +136,6 @@ markers = [
 
 [[testcase]]
 name = "sep_failover_sram_clear_assertion_test"
-tp_id = "TP080"
 family = "platform_gating"
 classification = "partial"
 image = "spi_primary_slot_blank"
@@ -199,7 +194,6 @@ markers = [
 
 [[testcase]]
 name = "sep_boot_recovery_test"
-tp_id = "TP004"
 family = "platform_gating"
 classification = "vp-equivalent"
 image = "signed"

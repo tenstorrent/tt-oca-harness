@@ -9,6 +9,7 @@ import pytest
 from sepvp import paths
 
 pytestmark = pytest.mark.hostonly
+pytest_plugins = ["pytester"]
 
 
 def test_every_oca_image_in_the_rom_makefile_is_reachable():

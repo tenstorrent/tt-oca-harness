@@ -3,7 +3,6 @@
 
 [[testcase]]
 name = "sep_boot_measurement_golden_test"
-tp_id = "TP063"
 family = "measurement"
 classification = "vp-equivalent"
 image = "signed"

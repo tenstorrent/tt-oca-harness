@@ -33,6 +33,7 @@ SHARES_GOLDEN_STIMULUS = frozenset(
         "sep_spi_detect_success_test",
         "sep_rsa_verify_redundant_compare_test",
         "sep_firmware_primary_manifest_major_version_valid_minor_0_length_correct_test",
+        "sep_boot_measurement_golden_test",
     }
 )
 

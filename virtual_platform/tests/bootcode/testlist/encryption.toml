@@ -322,7 +322,6 @@ markers = [
 
 [[testcase]]
 name = "sep_decryption_failure_terminal_test"
-tp_id = "TP049"
 family = "encryption"
 classification = "partial"
 image = "encrypted_both_slots_bad_toc_image_count"

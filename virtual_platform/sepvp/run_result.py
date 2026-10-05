@@ -71,13 +71,15 @@ def _exited_result(
     observed_at: float,
     verdict: str | None,
 ) -> RunResult:
-    exit_code, signal = _close_and_status(child)
+    exit_code, term_signal = _close_and_status(child)
     return RunResult(
         output=output,
-        stop_reason=(StopReason.SIMULATOR_CRASH if signal is not None else StopReason.PROCESS_EXIT),
+        stop_reason=(
+            StopReason.SIMULATOR_CRASH if term_signal is not None else StopReason.PROCESS_EXIT
+        ),
         duration=observed_at - started,
         exit_code=exit_code,
-        signal=signal,
+        signal=term_signal,
         firmware_verdict=verdict,
         timed_out=False,
         harness_terminated=False,
@@ -94,13 +96,13 @@ def _terminated_result(
     verdict: str | None,
 ) -> RunResult:
     _terminate(child)
-    exit_code, signal = _close_and_status(child)
+    exit_code, term_signal = _close_and_status(child)
     return RunResult(
         output=output,
         stop_reason=reason,
         duration=observed_at - started,
         exit_code=exit_code,
-        signal=signal,
+        signal=term_signal,
         firmware_verdict=verdict,
         timed_out=reason is StopReason.TIMEOUT,
         harness_terminated=True,

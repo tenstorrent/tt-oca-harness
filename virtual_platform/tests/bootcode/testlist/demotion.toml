@@ -1027,7 +1027,7 @@ spi_read_order = ["primary_manifest", "primary_payload"]
 measurement_golden = { slot = "primary", lc_state = 0x8, demotion_decision = 0x2, secure_boot = 1, sboot_dis = 0 }
 markers = [
   "At PROD_END the ROM reads no demotion_control bit; the planted input only proves the branch ignores it.",
-  "The legacy stimulus, unsigned boot_arguments bit 30, has no OCA field; the entry carries the DV member's signed demotion_control input instead.",
+  "The stimulus is the DV member's signed demotion_control input.",
   "DEMOTE_1, DEMOTE_2 and FEAT_CTRL are not read back; the decision is shown by the console and the boot-state PCR only.",
 ]
 
@@ -1118,7 +1118,7 @@ spi_reads = [
 spi_read_order = ["primary_manifest", "primary_payload"]
 measurement_golden = { slot = "primary", lc_state = 0x1, demotion_decision = 0x2, secure_boot = 1, sboot_dis = 0 }
 markers = [
-  "The legacy stimulus, unsigned boot_arguments bit 30, has no OCA field; the entry carries the DV member's signed demotion_control input instead.",
+  "The stimulus is the DV member's signed demotion_control input.",
   "DEMOTE_1, DEMOTE_2 and FEAT_CTRL are not read back; the decision is shown by the console and the boot-state PCR only.",
 ]
 

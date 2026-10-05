@@ -94,9 +94,8 @@ init_writes = [
             "base_ini",
         ),
         (
-            'family = "warm_reset"\nclassification = "model-blocked"\n'
-            'markers = ["Needs more work."]',
-            "requires a non-empty 'Blocked:' marker",
+            'family = "warm_reset"\nclassification = "model-blocked"',
+            "classification must be one of",
         ),
         (
             'family = "warm_reset"\nclassification = "partial"\n'
@@ -152,7 +151,6 @@ expect_verdict = "PASSED"
 _SPI_DETECT_ENTRY = """
 [[testcase]]
 name = "spi_detect"
-tp_id = "TP013"
 family = "spi_boot"
 classification = "vp-equivalent"
 image = "signed"
@@ -181,7 +179,6 @@ def test_loads_spi_read_contract(tmp_path):
 
     testcase = testlist_loader.load_testlist(testlist_path, known_images={"signed"})[0]
 
-    assert testcase.tp_id == "TP013"
     assert testcase.expect_counts == {"GO": 1}
     assert [
         (span.name, span.low, span.high, span.exact, span.minimum, span.maximum)
@@ -819,35 +816,6 @@ def test_dir_rejects_an_empty_directory(tmp_path):
         load_testlist_dir(tmp_path)
 
 
-def test_retired_entry_needs_a_reason_and_nothing_runnable(tmp_path):
-    path = tmp_path / "t.toml"
-    path.write_text(
-        '[[testcase]]\nname = "r"\nfamily = "sram_selection"\nclassification = "retired"\n'
-        'reason = "use_ext_sram is gone from the OCA manifest"\n'
-    )
-    (case,) = load_testlist(path)
-    assert case.classification == "retired" and case.reason
-    path.write_text(path.read_text() + 'image = "signed"\n')
-    with pytest.raises(ValueError, match="retired"):
-        load_testlist(path, known_images={"signed"})
-
-
-def test_retired_entry_without_a_reason_is_refused(tmp_path):
-    path = tmp_path / "t.toml"
-    path.write_text(
-        '[[testcase]]\nname = "r"\nfamily = "sram_selection"\nclassification = "retired"\n'
-    )
-    with pytest.raises(ValueError, match="reason"):
-        load_testlist(path)
-
-
-def test_reason_is_only_for_retired_entries(tmp_path):
-    path = _write(tmp_path, "spi_boot", "a")
-    path.write_text(path.read_text() + 'reason = "x"\n')
-    with pytest.raises(ValueError, match="reason"):
-        load_testlist(path, known_images={"signed"})
-
-
 def test_xfail_reason_must_cite_a_dv_b_number(tmp_path):
     path = _write(tmp_path, "payload_metadata", "a")
     path.write_text(path.read_text() + 'xfail_reason = "ROM accepts it"\n')
@@ -887,16 +855,6 @@ def test_xfail_match_loads_as_a_regex_string(tmp_path):
         path.read_text() + 'xfail_reason = "DV B7: x"\nxfail_match = "status: \'INFO 0x0055\'"\n'
     )
     assert load_testlist(path, known_images={"signed"})[0].xfail_match == "status: 'INFO 0x0055'"
-
-
-def test_xfail_reason_cannot_combine_with_a_blocked_classification(tmp_path):
-    path = _write(tmp_path, "payload_metadata", "a")
-    path.write_text(
-        path.read_text().replace("vp-equivalent", "model-blocked")
-        + 'markers = ["Blocked: model"]\nxfail_reason = "DV B7: x"\nxfail_match = "x"\n'
-    )
-    with pytest.raises(ValueError, match="blocked classification"):
-        load_testlist(path, known_images={"signed"})
 
 
 def test_field_image_assert(tmp_path):

@@ -3,7 +3,6 @@
 
 [[testcase]]
 name = "sep_spi_detect_success_test"
-tp_id = "TP013"
 family = "spi_boot"
 classification = "vp-equivalent"
 image = "signed"
@@ -52,7 +51,6 @@ markers = [
 
 [[testcase]]
 name = "sep_spi_not_detected_terminal_test"
-tp_id = "TP016"
 family = "spi_boot"
 classification = "vp-equivalent"
 image = "spi_both_slots_blank"
@@ -119,7 +117,6 @@ markers = [
 
 [[testcase]]
 name = "sep_spi_primary_fail_backup_test"
-tp_id = "TP015"
 family = "spi_boot"
 classification = "vp-equivalent"
 image = "spi_primary_slot_blank"

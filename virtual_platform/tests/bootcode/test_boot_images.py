@@ -66,7 +66,6 @@ def _case(**fields) -> RomTestCase:
         rotate_update=False,
         recovery=False,
         timeout=60,
-        tp_id=None,
         markers=(),
         pytest_markers=(),
         expect=(),

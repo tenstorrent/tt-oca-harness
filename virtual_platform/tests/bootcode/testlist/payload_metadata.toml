@@ -2008,7 +2008,7 @@ spi_reads = [
 ]
 spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
 markers = [
-  "Partial: OCA has no inter-image ordering rule, so the legacy ordering verdict maps to DV images_descending_order, which boots (see the __ctrl_permute_only entry); this entry carries DV images_overlapping instead.",
+  "Partial: proves that an overlapping TOC entry is refused; it proves no ordering check, because OCA accepts descending image order (the __ctrl_permute_only entry boots).",
   "validate_toc_structure checks every entry pairwise against every earlier one, so descending order alone is legal; entry 1 at 880 overlaps entry 2 at [872, 2716) and the slot is refused as OCA_FAIL_PAYLOAD_TOC (0x00030015, status 0x000f) after the signature verified.",
   "The OCA ROM has no inter-image ordering rule and prints no index, so the stimulus follows the DV member (images_overlapping): permute to (2, 1, 0), then move entry 1 eight bytes into entry 2.",
   "Both ops reseal the entry hashes, chain, payload hash and signature, so the overlap is the only broken rule; MANIFEST_ERR=0x00030014 and 0x00030019 are forbidden.",
@@ -2162,7 +2162,7 @@ spi_reads = [
 ]
 spi_read_order = ["primary_peek", "backup_manifest", "backup_payload"]
 markers = [
-  "Partial: OCA has no inter-image ordering rule, so the legacy ordering verdict maps to DV images_descending_order, which boots (see the __ctrl_permute_only entry); this entry carries DV images_overlapping instead.",
+  "Partial: proves that an overlapping TOC entry is refused; it proves no ordering check, because OCA accepts descending image order (the __ctrl_permute_only entry boots).",
   "The primary is refused at the magic peek (0x00030002), so the single signature check and TOC belong to the backup.",
   "validate_toc_structure checks every entry pairwise against every earlier one, so descending order alone is legal; entry 1 at 880 overlaps entry 2 at [872, 2716) and the slot is refused as OCA_FAIL_PAYLOAD_TOC (0x00030015, status 0x000f) after the signature verified.",
   "The OCA ROM has no inter-image ordering rule and prints no index, so the stimulus follows the DV member (images_overlapping): permute to (2, 1, 0), then move entry 1 eight bytes into entry 2.",
@@ -2250,7 +2250,7 @@ spi_reads = [
 ]
 spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
 markers = [
-  "Partial: OCA has no inter-image ordering rule, so the legacy ordering verdict maps to DV images_descending_order, which boots (see the __ctrl_permute_only entry); this entry carries DV images_overlapping instead.",
+  "Partial: proves that an overlapping TOC entry is refused; it proves no ordering check, because OCA accepts descending image order (the __ctrl_permute_only entry boots).",
   "validate_toc_structure checks every entry pairwise against every earlier one, so descending order alone is legal; entry 1 at 880 overlaps entry 2 at [872, 2716) and the slot is refused as OCA_FAIL_PAYLOAD_TOC (0x00030015, status 0x000f) after the signature verified.",
   "The OCA ROM has no inter-image ordering rule and prints no index, so the stimulus follows the DV member (images_overlapping): permute to (2, 1, 0), then move entry 1 eight bytes into entry 2.",
   "Both ops reseal the entry hashes, chain, payload hash and signature, so the overlap is the only broken rule; MANIFEST_ERR=0x00030014 and 0x00030019 are forbidden.",
@@ -2343,7 +2343,7 @@ spi_reads = [
 ]
 spi_read_order = ["primary_peek", "backup_manifest", "backup_payload"]
 markers = [
-  "Partial: OCA has no inter-image ordering rule, so the legacy ordering verdict maps to DV images_descending_order, which boots (see the __ctrl_permute_only entry); this entry carries DV images_overlapping instead.",
+  "Partial: proves that an overlapping TOC entry is refused; it proves no ordering check, because OCA accepts descending image order (the __ctrl_permute_only entry boots).",
   "The primary is refused at the magic peek (0x00030002), so the single signature check and TOC belong to the backup.",
   "validate_toc_structure checks every entry pairwise against every earlier one, so descending order alone is legal; entry 1 at 880 overlaps entry 2 at [872, 2716) and the slot is refused as OCA_FAIL_PAYLOAD_TOC (0x00030015, status 0x000f) after the signature verified.",
   "The OCA ROM has no inter-image ordering rule and prints no index, so the stimulus follows the DV member (images_overlapping): permute to (2, 1, 0), then move entry 1 eight bytes into entry 2.",
@@ -2351,26 +2351,3 @@ markers = [
   "DECRYPT_OK before the refusal shows the overlap rule ran on recovered plaintext.",
 ]
 
-[[testcase]]
-name = "sep_firmware_primary_non_encrypted_invalid_payload_image_size_test"
-family = "payload_metadata"
-classification = "retired"
-reason = "OCA has no TOC image length alignment rule: validate_toc_structure requires a non-zero, in-bounds length and an 8-byte aligned offset, so an unaligned length is a legal image and the IMAGE_LEN_ALIGN verdict has no OCA equivalent."
-
-[[testcase]]
-name = "sep_firmware_primary_encrypted_invalid_payload_image_size_test"
-family = "payload_metadata"
-classification = "retired"
-reason = "OCA has no TOC image length alignment rule: validate_toc_structure requires a non-zero, in-bounds length and an 8-byte aligned offset, so an unaligned length is a legal image and the IMAGE_LEN_ALIGN verdict has no OCA equivalent."
-
-[[testcase]]
-name = "sep_firmware_backup_non_encrypted_invalid_payload_image_size_test"
-family = "payload_metadata"
-classification = "retired"
-reason = "OCA has no TOC image length alignment rule: validate_toc_structure requires a non-zero, in-bounds length and an 8-byte aligned offset, so an unaligned length is a legal image and the IMAGE_LEN_ALIGN verdict has no OCA equivalent."
-
-[[testcase]]
-name = "sep_firmware_backup_encrypted_invalid_payload_image_size_test"
-family = "payload_metadata"
-classification = "retired"
-reason = "OCA has no TOC image length alignment rule: validate_toc_structure requires a non-zero, in-bounds length and an 8-byte aligned offset, so an unaligned length is a legal image and the IMAGE_LEN_ALIGN verdict has no OCA equivalent."

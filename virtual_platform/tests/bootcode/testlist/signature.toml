@@ -295,7 +295,6 @@ markers = [
 
 [[testcase]]
 name = "sep_firmware_primary_invalid_key_hash_test"
-tp_id = "TP041-P"
 family = "signature"
 classification = "vp-equivalent"
 image = "primary_invalid_key_hash"
@@ -366,7 +365,6 @@ markers = [
 
 [[testcase]]
 name = "sep_firmware_backup_invalid_key_hash_test"
-tp_id = "TP041-B"
 family = "signature"
 classification = "vp-equivalent"
 image = "backup_invalid_key_hash"
@@ -443,7 +441,6 @@ markers = [
 
 [[testcase]]
 name = "sep_rsa_verify_redundant_compare_test"
-tp_id = "TP061G"
 family = "signature"
 classification = "partial"
 image = "signed"

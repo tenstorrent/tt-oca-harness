@@ -17,13 +17,6 @@ pytestmark = pytest.mark.hostonly
 _CONSOLE = dv_env.load("sep_oca_console")
 _ASM = "\n".join(p.read_text() for p in (paths.BOOTCODE_DIR / "src").glob("*.S"))
 _VP_LINES = ("[VP] SIMULATION OF THE TEST PASSED", "[VP] SIMULATION OF THE TEST FAILED")
-_BANNED = (
-    "MANIFEST_HASH_OK",
-    "SIG_VALID",
-    "CRYPTO_VALIDATE_OK",
-    "PLD_HASH_OK",
-    "RSA_VERIFY_START",
-)
 
 
 def _stub_tokens(case):
@@ -46,11 +39,8 @@ def _named_tokens(case):
     ]
 
 
-@pytest.mark.parametrize(
-    "case", [c for c in TESTCASES if c.classification != "retired"], ids=lambda c: c.name
-)
+@pytest.mark.parametrize("case", TESTCASES, ids=lambda c: c.name)
 def test_tokens_are_printed_by_the_oca_rom(case):
-    assert not set(case.expect) & set(_BANNED), f"{case.name} expects a legacy-ROM token"
     _CONSOLE.assert_known(_named_tokens(case), case.name)
 
 

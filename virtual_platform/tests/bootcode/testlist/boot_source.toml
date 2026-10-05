@@ -3,7 +3,6 @@
 
 [[testcase]]
 name = "sep_rotate_update_set_test"
-tp_id = "TP033"
 family = "boot_source"
 classification = "vp-equivalent"
 image = "spi_primary_slot_blank"
@@ -72,7 +71,6 @@ markers = [
 
 [[testcase]]
 name = "sep_otbn_rsa_verify_failure_test"
-tp_id = "TP061E"
 family = "boot_source"
 classification = "partial"
 image = "both_slots_bad_signature"

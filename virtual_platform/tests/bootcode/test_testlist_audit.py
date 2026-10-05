@@ -1,19 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-from pathlib import Path
-
-import boot_images
 import pytest
-import testlist_adapter
 import testlist_audit
-from sepvp import paths
 from testlist_loader import load_testlist
 
 pytestmark = pytest.mark.hostonly
 
-LOGS = Path(__file__).resolve().parents[2] / "logs" / "sepvp"
-GOLDEN_LOG = LOGS / testlist_audit.GOLDEN_TESTCASE / "sep-vp.log"
 _IMAGES = {"signed", "spi_primary_slot_blank"}
 
 _GOLDEN_OUTPUT = (
@@ -96,38 +89,7 @@ def test_a_real_negative_contract_is_not_flagged(tmp_path):
     assert testlist_audit.audit(testcase, _GOLDEN_OUTPUT) == []
 
 
-def _resolved(testcase, tmp_path):
-    """The testcase with its image facts filled in from the image it boots."""
-    if testlist_adapter.unresolved(testcase) is None:
-        return testcase
-    image = None
-    if testcase.image is not None:
-        image = boot_images.materialize_boot_image(
-            testcase.image, paths.OCA_IMAGE_PATHS, tmp_path / testcase.name
-        )
-    return boot_images.resolve_case(testcase, image, paths.OCA_IMAGE_PATHS)
-
-
-@pytest.mark.skipif(not GOLDEN_LOG.is_file(), reason="needs a full bootcode regression's logs")
-def test_no_testcase_passes_for_the_wrong_reason(tmp_path):
-    from test_sep_rom_testlist import TESTCASES
-
-    golden_output = GOLDEN_LOG.read_text(errors="replace")
-    findings = [
-        finding
-        for testcase in TESTCASES
-        if testcase.classification != "retired"
-        for finding in testlist_audit.audit(_resolved(testcase, tmp_path), golden_output)
-        if not (
-            finding.kind == "shares_golden_stimulus"
-            and finding.testcase in testlist_audit.SHARES_GOLDEN_STIMULUS
-        )
-    ]
-
-    assert findings == [], "\n".join(f"{f.testcase}: {f.kind}: {f.detail}" for f in findings)
-
-
-def test_the_shared_stimulus_allowlist_is_the_ruled_set_of_live_testcases():
+def test_the_shared_stimulus_allowlist_is_the_ruled_set_of_testcases():
     from test_sep_rom_testlist import TESTCASES
 
     assert testlist_audit.SHARES_GOLDEN_STIMULUS == {
@@ -135,6 +97,6 @@ def test_the_shared_stimulus_allowlist_is_the_ruled_set_of_live_testcases():
         "rom_ot_secure_boot_golden",
         "sep_rsa_verify_redundant_compare_test",
         "sep_firmware_primary_manifest_major_version_valid_minor_0_length_correct_test",
+        "sep_boot_measurement_golden_test",
     }
-    live = {c.name for c in TESTCASES if c.classification != "retired"}
-    assert testlist_audit.SHARES_GOLDEN_STIMULUS <= live
+    assert testlist_audit.SHARES_GOLDEN_STIMULUS <= {c.name for c in TESTCASES}

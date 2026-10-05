@@ -8,6 +8,7 @@ from sepvp.harness import HarnessError
 from sepvp.sepvp_harness import SepVpHarness
 
 pytestmark = pytest.mark.hostonly
+pytest_plugins = ["pytester"]
 
 BASE_INI = "och_sep_ss1.spiPreload : flash.spi_preload\n"
 
