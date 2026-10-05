@@ -273,7 +273,7 @@ cross_trigger_network cross_trigger_port cross_trigger_matrix
 avsbus_controller axi_lite_mailbox_unit efuse gpio i2c system_timer_octs
 telemetry_receiver uart_16550 log_engine i3ccore_wrap
 drbg entropy_source key_manager scrambler"
-IP_FRAGMENTS="architecture.adoc interface.adoc memmap.adoc firmware.adoc"
+IP_FRAGMENTS="architecture.adoc future-architecture.adoc interface.adoc memmap.adoc firmware.adoc"
 for ip in $IP_PAGE_OWNERS; do
   src="$MOD/ip/pages/$ip/doc"
   dst="$MOD/ip/partials/$ip/doc"

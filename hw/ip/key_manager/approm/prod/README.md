@@ -105,6 +105,9 @@ This means the main C stack and the IRQ stack are distinct:
 | `rom_defs.h` | Memory map, version, command/response/fault enums, message header layout |
 | `rom_state.h` | Global firmware state symbol declarations (`rom_prng_state`, `rom_rx_msgbuf`, `rom_tx_msgbuf`, `rom_keyreg_state`, sequence counters) |
 | `rom_crc.h` | Public CRC-8/ROHC and CRC-32C APIs backed by PicoRV32 PCPI helpers |
+| `rom_sha256.h` | Software SHA-256 API |
+| `rom_hmac.h` | Software HMAC-SHA256 API |
+| `rom_kdf.h` | Key derivation built on HMAC-SHA256 |
 | `rom_secutil.h` | Side-channel/fault-hardened helpers |
 | `rom_picorv32.h` | Low-level PicoRV32 helper wrappers, including custom instructions |
 | `rom_prng.h` | xoshiro128++ PRNG |
@@ -147,6 +150,9 @@ This means the main C stack and the IRQ stack are distinct:
 | `rom_handover.c` | ROM-to-SRAM handover: bounds check, direct confirmation, FIFO image stream, CRC-32C verify, sensitive-data locking, SRAM write-lock mask, IRQ disable + vector, PRNG seed capture |
 | `rom_handover_jump.S` | Stack-less assembly handoff: scrambles entire SRAM with xoshiro128++, clears GPRs, jumps to 0x8000 (noreturn) |
 | `rom_crc.c` | Public CRC-8/ROHC + CRC-32C drivers routed through PCPI update helpers |
+| `rom_sha256.c` | Software SHA-256 with length/overflow hardening |
+| `rom_hmac.c` | Software HMAC-SHA256 |
+| `rom_kdf.c` | Key derivation built on HMAC-SHA256 |
 | `rom_secutil.c` | Constant-time compare, pointer-equality check, and non-elided secure memzero |
 | `rom_picorv32.c` | Low-level PicoRV32 helper wrappers and custom-instruction shims |
 | `rom_prng.c` | xoshiro128++ seed + next |
