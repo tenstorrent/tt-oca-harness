@@ -14,6 +14,7 @@ from pathlib import Path
 import pyuvm
 from env import sep_manifest_mutate as mm
 from env import sep_oca_console as oc
+from env.sep_efuse_image import SBOOT_DIS_MASK
 from rom_fw import sep_manifest_field_defect as fd
 from rom_fw import sep_measurement_golden as mg
 from rom_fw.sep_rom_ot_secure_boot_test import sep_rom_ot_secure_boot_test
@@ -63,7 +64,7 @@ class sep_boot_measurement_golden_test(sep_rom_ot_secure_boot_test):
         )
         image = self.select_efuse_image(default_preload=self.efuse_preload)
         lc = image.lc_raw()
-        sboot_dis = image.field_int("SBOOT_DIS") & 0x1
+        sboot_dis = image.field_int("SBOOT_DIS") & SBOOT_DIS_MASK
         assert lc == _LC_PROD, (
             f"LC_STATE raw is 0x{lc:x}, expected 0x{_LC_PROD:x} (PROD): the "
             f"golden below is computed for that state"

@@ -98,7 +98,7 @@ class sep_firmware_demotion_decision_no_flag_prod_test(
             f"testcase exercises the no-request row of the OCA demotion decision "
             f"table, so any valid or enable bit would be a different row"
         )
-        assert secure_boot & (1 << mm.SECURE_BOOT_ENFORCED_BIT), (
+        assert secure_boot & mm.SECURE_BOOT_ENFORCED_BIT, (
             f"primary secure_boot_control is 0x{secure_boot:08x} and does not "
             f"request signed OCA secure boot; PROD must evaluate this row through "
             f"the authenticated path"

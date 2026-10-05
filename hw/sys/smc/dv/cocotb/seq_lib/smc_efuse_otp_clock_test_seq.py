@@ -50,9 +50,10 @@ CLOCK_GATE_CONTROL_RESET = SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_REG_DEFAULT
 # literals, so address and value share one regenerated source.
 #
 # CHIP_ID carries an exact expectation: misc_wrap.h defines
-# CHIP_CONFIG__CHIP_ID__CHIP_ID_reset = 0x0 (chip_config.rdl ``chip_id = 0x0``),
-# and the field is driven ``hw=w`` from the smc_config_pkg::ChipId integration
-# parameter, which is 0 for this chiplet.
+# CHIP_CONFIG__CHIP_ID__CHIP_ID_reset = 0x0 (chip_config.rdl ``chip_id = 0x0``).
+# No document states the chip identifier of this reference integration, so the
+# bench takes the RDL reset as the expected value, a DV-owned fact: an
+# integration that publishes another identifier fails here and is reported.
 CHIP_CONFIG_READS = [
     (
         "CHIP_CONFIG_VERSION_LO",

@@ -26,8 +26,8 @@ _FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
 # Must match WARM_HANDLER_RANGE_BASE / _END in vector.S: the SEP ICCM base and base + size.
-_RANGE_BASE = 0xC000_0000
-_RANGE_END = 0xC004_0000
+_RANGE_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
+_RANGE_END = _RANGE_BASE + sym("SEP_ICCM_MEM_SIZE")
 # Must match +sep_cold_scratch7 in the testlist.
 _INVALID_HANDLER = _RANGE_END
 

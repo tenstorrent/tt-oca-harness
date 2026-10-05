@@ -273,7 +273,7 @@ feature rows.
 |`smc_filter_lock_window_test` |Two FILTER_CONFIG writes queued directly behind the write that locks filter 15 of each bank are answered DECERR and the entry reads its reset word plus `locked`.
 |`smc_filter_region_span_test` |A filter region spanning two granules on every outbound entry, with one of them enabled and enforced against a DMA copy.
 |`smc_dma_decouple_rw_test` |DMA transfers with CONFIG.DECOUPLE_RW set -- a scatter and a gather -- and two descriptors queued back to back.
-|`smc_gpio_data_ctrl_field_test` |Each software-writable DATA_CTRL field of one idle GPIO instance driven on its own, with the pad left in its reset drive state throughout.
+|`smc_gpio_data_ctrl_field_test` |Each software-writable DATA_CTRL field of one idle GPIO instance driven on its own, with the pad's output enable measured at 0 after every write.
 |`smc_alias_remap_region_attrs_test` |One alias-remap region marked cacheable and valid over an empty window, with both bits held across a write of the other half of the register.
 |`smc_cpuif_handshake_test` |Every register block's AXI-Lite front end driven with outstanding, W-first and backpressured traffic on a side-effect-free probe register.
 |`smc_cpuif_external_stall_test` |Requests presented to each register block while one of its external registers is still pending.
@@ -604,7 +604,7 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 |`smc_fw_i2c_acq_fifo_stretch_reset_test` |The target's ACQ FIFO stretches SCL automatically when full, and ACQ reset releases the stretch, observed on the target's own SCL driver.
 |`smc_fw_i2c_p1_fifo_depth_xfer_test` |A full-FIFO-depth 64-byte transfer with the controller pushing while the target drains; length and every byte compared, NACKed entries excluded from the payload.
 |`smc_fw_i2c_tx_stretch_timeout_recovery_test` |The controller's stretch timeout fires on a read the empty target TX FIFO stretches; the recovery -- target disable releases SCL, controller disable drives the automatic STOP, both re-initialised -- ends in a clean 16-byte write.
-|`smc_fw_i2c_fifo_full_test` |Fill and reset of the four FIFOs of an I2C pair: FMT and TX by software stores to the declared depth, RX and ACQ by real 8-byte transfers, with the driver's software-drain repair flag read back so a repaired FIFO fails.
+|`smc_fw_i2c_fifo_full_test` |Fill and reset of the four FIFOs of an I2C pair: FMT and TX by software stores to the specified depth, RX and ACQ by real 8-byte transfers, with the driver's software-drain repair flag read back so a repaired FIFO fails.
 |`smc_fw_uart_log_engine_single_entry_test` |Log-engine golden path: one 16-byte SRAM entry fetched and written to UART0, returned through MCR.LOOP and read back from RBR in order; LOG_CTRL[0] hwclr; INTR_STATUS 0.
 |`smc_fw_uart_log_engine_boundary_backpressure_test` |Log-engine effective-length boundaries -- request shorter than the slot, request clamped to the slot, non-word-aligned slot rounded to one beat -- and a log write under UART TX backpressure.
 |`smc_fw_uart_log_engine_disable_during_xfer_test` |CTRL.EN cleared mid-transfer halts the engine, measured as at least one but fewer bytes than the entry reaching the UART and none after it goes idle; a re-trigger delivers exactly its bytes; four entries triggered together all hwclr; the same halt measurement on an abort from WAIT; replica 1 runs an entry.
@@ -6748,6 +6748,8 @@ Drive `smc_gpio_p0_int_test_seq`. Each checker below is a named compare the DUT 
 
 *Test Coverage*:
 
+* The pad is wrap 0, which the integrator pad table (`doc/integrator/meta/ocah_gpio_table.csv`) assigns SPI.DATA[0]; the bench drives that data lane through its `tb_spi_dq_oe_n` / `tb_spi_txd` pins with the SPI enable pin held low. The expectations are the GPIO ownership table (`hw/ip/gpio/doc/architecture.adoc`, "Data and Direction Ownership"): the register interface outranks a software-forced `lsio_select`, and a software-forced `lsio_select` routes the LSIO inputs to the pad.
+* `DATA_CTRL.lsio_enable`, which the RDL says reports the hardware LSIO request after the disable gate, is read back clear in every leg, so the first row of the ownership table is shown not to be in play and the routing the LSIO leg measures is the software-forced one.
 * `lsio_select` alone is shown to ROUTE the LSIO function to the pad -- the positive control that separates a live select bit from one tied to 0, since with the source parked both produce `core2pad_en[0] = 0`; and
 * the priority leg runs against a competitor that is actually contributing a different value, so "interface_enable wins" is a distinguishable outcome rather than one both hypotheses satisfy.
 
@@ -6817,7 +6819,7 @@ Drive `smc_external_window_pad_ctrl_decode_test_seq` on the SEP_IN AXI sequencer
 
 *Test Coverage*:
 
-* The six wraps are chosen as bonded, input-by-default wraps that no LSIO function owns while the SPI mux is off and that no bench block drives permanently; the padring and `tb_top` bindings that rule the others out are recorded in the sequence.
+* The six wraps are taken from the integrator pad table (`doc/integrator/meta/ocah_gpio_table.csv`): three SPI data lanes and the SPI chip select, whose function the bench leaves disabled, the thermal-emergency input and a pad the table reserves. Whether a wrap is free is measured: each must read its enable bit clear before it is programmed and follow the bench drive on `pad2core`.
 * Each wrap's `core2pad_en_o` bit is required to read 0 before it is programmed, so the bit that later moves is the one this test caused to move; a wrap already enabled fails rather than being skipped.
 * The pad is driven 0, then 1, then 0, and `DATA_CTRL.pad2core` is polled to follow each level within a bounded number of reads; the bound raises, and the number of reads each level needed is reported.
 * While a wrap's output enable is programmed, exactly one bit of `tb_core2pad_en_o` may move: any other bit moving raises, which is what attributes the change to that wrap rather than to the write itself.
@@ -7834,9 +7836,9 @@ Drive `smc_smbus_pmbus_test_seq`. Each checker below is a named compare the DUT 
 
 *Test Coverage*:
 
-* `CMD_COMPLETE`, whose `(event || test) && enable` set path at `i2c_core.sv:1001` is the exact shape under test.
+* The contract is the OpenTitan interrupt register convention the block carries (comportability specification: `INTR_ENABLE` "enables/masks the output of INTR_STATE", `INTR_STATE` is "not qualified by INTR_ENABLE", an Event interrupt is cleared only by a W1C and a Status interrupt follows its input), as `i2c.rdl` declares it per field. `CMD_COMPLETE`, an Event source raised by `INTR_TEST` on the same line as the real event, is the vehicle.
 * Both the held and the dropped consequence, as for the log engine.
-* Every one of the twenty sources in the `irq_o` reduction, each raised as the only enabled source so the output move belongs to that term and no other. `i2c.rdl` splits them: a latched source is `woclr` in `INTR_STATE` with a `singlepulse` `INTR_TEST` field and is released by a W1C; a level source is read-only in `INTR_STATE` with a plain `rw` `INTR_TEST` field and is released by writing that field back to 0. A source the bench holds asserted cannot be swept from a measured clear, so it is named in the evidence and skipped, and the leg states the minimum number of sources it still requires.
+* Every one of the twenty sources in the `irq_o` reduction, each raised as the only enabled source so the output move belongs to that term and no other. The Event/Status split is read from the generated IP-XACT export of `i2c.rdl`: an Event source has a write-only (`singlepulse`) `INTR_TEST` field and a write-one-to-clear `INTR_STATE` field and is released by a W1C; a Status source has a read-write `INTR_TEST` field and a read-only `INTR_STATE` field and is released by writing that field back to 0; the two registers must agree on every field. A source the bench holds asserted cannot be swept from a measured clear, so it is named in the evidence and skipped, and the leg states the minimum number of sources it still requires.
 
 *Test Procedure*:
 
@@ -8727,7 +8729,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`CHK-FW-HELLO-WORLD-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start, and every scratch bank the CPU read between the two counter snapshots is one of banks 0-3
 |===
 
-*Pass Criteria*: the PASS magic is read back. The image is resident in scratch banks 0-3 only, and that bank distribution is asserted from the per-bank scratch read counters: the `hello_world` link map ends at offset `0x8730` (code, data, four 4 KB stacks and the 2 KB heap), inside the first 128 KB group, which the `smc_scratch_map_pkg` decode places in banks 0-3, and an image spread across all 32 banks would mean the loader disagrees with the cluster and the CPU is fetching where the image was never written. No `ci` tag: the hosted runners have no RISC-V toolchain. On failure the report carries per-hart PCs, per-hart mcause/mepc, and a comparison of the image reachable over AXI against the built image, which is what distinguishes a mis-loaded image from a trapping one. Enrolled in: `all`, `fw`.
+*Pass Criteria*: the PASS magic is read back. The image is resident in scratch banks 0-3 only, and that bank distribution is asserted from the per-bank scratch read counters: the `hello_world` link map ends at offset `0x8730` (code, data, four 4 KB stacks and the 2 KB heap), inside the first 128 KiB group. No specification states how scratch addresses are placed over the 32 banks the SMC CPU spec gives; the DV-owned interleave table in `hw/sys/smc/dv/models/smc_scratch_map_pkg.sv`, which `smc_dual_axi_sram_probe_test` measures against the design, places that group in banks 0-3 (`HELLO_WORLD_RESIDENT_BANKS` in `smc_scratch_residency_utils.py`), and an image spread across all 32 banks would mean the loader disagrees with the cluster and the CPU is fetching where the image was never written. No `ci` tag: the hosted runners have no RISC-V toolchain. On failure the report carries per-hart PCs, per-hart mcause/mepc, and a comparison of the image reachable over AXI against the built image, which is what distinguishes a mis-loaded image from a trapping one. Enrolled in: `all`, `fw`.
 
 '''''
 
@@ -8990,11 +8992,11 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 *BFM / Model*: the SMC C image `fw/tests/i2c_fifo_full`, executed by the CPU cluster, I2C_0 as controller against I2C_1 as target on the shared pad bus; `SmcFwI2cWireMonitor` decoding `tb_i2c0_scl/sda`; verdict read over SEP_IN AXI
 
-*Objective*: Fill and reset of the four FIFOs of an I2C pair: FMT and TX by software stores to the declared depth, RX and ACQ by real 8-byte transfers, with the driver's software-drain repair flag read back so a repaired FIFO fails.
+*Objective*: Fill and reset of the four FIFOs of an I2C pair: FMT and TX by software stores to the specified depth, RX and ACQ by real 8-byte transfers, with the driver's software-drain repair flag read back so a repaired FIFO fails.
 
 *Test Coverage*:
 
-* FMT and TX filled by software stores to the depth the RTL declares and reset; RX and ACQ filled by a real 8-byte read and a real 8-byte write between I2C_0 and I2C_1, their levels proven non-zero before the reset and zero after, with the driver's software-drain repair flag read back so a FIFO the driver emptied for it fails instead of passing. Those compares are the firmware's.
+* FMT and TX filled by software stores to the depth the specification gives (the OpenTitan I2C `FifoDepth` default of 64 that `hw/ip/i2c/doc/index.adoc` adopts, transcribed with the `periphs.adoc` override table in `fw/include/i2c_opentitan.h`) and reset; RX and ACQ filled by a real 8-byte read and a real 8-byte write between I2C_0 and I2C_1, their levels proven non-zero before the reset and zero after, with the driver's software-drain repair flag read back so a FIFO the driver emptied for it fails instead of passing. Those compares are the firmware's.
 * The cocotb `smc_i2c_fifo_full_test` covers the CSR-level full/empty flags only; this leaf is the one that fills RX and ACQ by transfers.
 * The wire, graded by the bench as on card 169.
 
@@ -10092,8 +10094,8 @@ Drive `smc_intr_status_partial_clear_test_seq`. Each checker below is a named co
 
 * `smc_gpio_intf_regblock_sweep_test` cycles `DATA_CTRL_ENABLE` and `ACCESS_FILTER` on every GPIO_INTF instance but leaves `DATA_CTRL` at its reset word, because writing it moves the pad mux and can drive the pad. The write side of its seven software-writable fields had therefore never run.
 * The footprint is the smallest that reaches them: **one instance, one field at a time, each field set and put straight back to its reset with a read-back on either side, and nothing held between fields.** At no point is more than one field off its reset value, and the register is read against its RDL reset before the first field and after the last.
-* **Which instance, and why it is safe.** `smc_padring.sv` gives a function to every index except 13, 14, 17, 18, 21, 22, 25, 26, 52, 59 and 60 -- SPI takes 0-10, the UARTs 11, 12, 15, 16, 19, 20, 23 and 24, I3C 27-36, I2C 37-48, and the named pads 49-51, 53-58 and 61-64 carry boot, OCCP, cool reset and the rest. Index 60 is in none of them; `tb_top.sv` never names it, so the bench neither drives nor observes it; and the only `DATA_CTRL` index any other leaf touches is 0. The leaf also reads the register first and fails if it is not at its reset, so an instance somebody else had taken would stop it.
-* **What the pad does during the cycle: nothing.** `gpio.sv` builds the output enable as `lsio_pin ? ~lsio_core2pad_en_ni : sel_reg_tx ? enable_rx_tx[0] : lsio_sw ? ~lsio_core2pad_en_ni : 1'b0`, with `lsio_pin = lsio_interface_select_i && ~lsio_disable` and `sel_reg_tx = interface_enable || use_reg_tx`. For index 60 the padring leaves both LSIO inputs at the defaults it assigns at the top of its comb block -- `lsio_interface_select_o = '0` and `lsio_core2pad_en_n = DISABLED`, which `smc_padring_pkg` defines as `1'b1` -- so `lsio_pin` is 0 and both LSIO branches give an output enable of 0. The only branch that can drive the pad is `sel_reg_tx && enable_rx_tx[0]`, and that needs two fields off their reset at once: `enable_rx_tx` together with either `interface_enable` or `DATA_CTRL_ENABLE.use_reg_tx`. One field at a time is exactly what makes that combination unreachable, so the output enable is 0 at every step and the pad stays in its reset drive state throughout.
+* **Which instance, and why it is safe.** The integrator pad table (`doc/integrator/meta/ocah_gpio_table.csv`) assigns a function to every pad and marks index 60 "Reserved"; the leaf checks that row before it starts. The bench pad table (`tb/tb_top.sv`) names no function on it, and the only `DATA_CTRL` index any other leaf writes is 0. The leaf also reads the register first and fails if it is not at its reset, so an instance somebody else had taken would stop it.
+* **What the pad does during the cycle is measured.** The GPIO ownership table (`hw/ip/gpio/doc/architecture.adoc`, "Data and Direction Ownership") gives the transmit enable to a hardware LSIO request first, then to `enable_rx_tx[0]` when `interface_enable` or `use_reg_tx` selects the register, then to the LSIO inputs when `lsio_select` forces them, and otherwise disables it. With one field off its reset at a time the register row needs two fields at once and is unreachable, and the bench raises no hardware LSIO request. The `lsio_select` step hands the pad to its LSIO inputs, and no document states what the LSIO plane carries on a Reserved pad: the sequence records that as a DV-owned fact (`RESERVED_PAD_LSIO_TX_ENABLE = 0`) and samples the pad's `core2pad_en_o` bit on `tb_core2pad_en_o` after every write, so a pad that drove during any step fails.
 * The order still puts the fields that cannot reach the pad mux first -- `interrupt_enable`, `interrupt_type`, `core2pad`, `enable_rx_tx` -- then `lsio_disable`, which only ever withdraws LSIO ownership, then `lsio_select` and `interface_enable` last.
 * The set of fields the leaf drives is compared against the generated contract, so a regenerated map that adds or removes a software-writable field stops the leaf rather than silently skipping it.
 
@@ -10106,7 +10108,7 @@ Drive `smc_gpio_data_ctrl_field_test_seq`. Each checker below is a named compare
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-GPIO-DATA-CTRL-FIELDS` |On GPIO instance 60 each of the seven software-writable DATA_CTRL fields was set on its own and put straight back to its reset, with the whole register read after every write, no bit outside the declared fields driven, and the register at its RDL reset before the first field and after the last
+|`CHK-GPIO-DATA-CTRL-FIELDS` |On GPIO instance 60, a pad the integrator table reserves, each of the seven software-writable DATA_CTRL fields was set on its own and put straight back to its reset, with the whole register read and the pad's `core2pad_en_o` bit read 0 after every write, no bit outside the declared fields driven, and the register at its RDL reset before the first field and after the last
 |===
 
 *Pass Criteria*: `CHK-GPIO-DATA-CTRL-FIELDS` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
@@ -10873,16 +10875,16 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 *Source Module*: `smc_i2c_controller_control_symbol_test`
 
-*BFM / Model*: `SmcI2cEepromSlave` on the `tb_i2c0_*` pads as the target, a second bench pad driver as the device that makes the edge; observation on `INTR_STATE.SDA_UNSTABLE` and `STATUS.HOSTIDLE`
+*BFM / Model*: `SmcI2cEepromSlave` on the `tb_i2c0_*` pads as the target, a second bench pad driver as the device that makes the edge; observation on `INTR_STATE.SDA_UNSTABLE`, `INTR_STATE.SDA_INTERFERENCE` and `STATUS.HOSTIDLE`
 
-*Objective*: An SDA edge inside an SCL high window is a START or a STOP, and the controller must report it and drop the transfer.
+*Objective*: An SDA edge inside an SCL high window is a START or a STOP; in a pulse the controller receives it must report `SDA_UNSTABLE`, in a pulse the controller drives high it must report `SDA_INTERFERENCE`, and the transfer is dropped.
 
 *Test Coverage*:
 
-* The control-symbol check the controller makes in every state where it holds SCL released. `smc_i2c_controller_sda_interference_test` pulls SDA low at time offsets measured in bit periods, which lands the edge wherever it falls -- with this controller's timing usually while SCL is low, where it is a different event. This leaf counts SCL rising edges from the START on the bus and pulls inside the high window of a chosen one, so the edge is a control symbol by construction and lands in a chosen slot.
-* The two slots where the line is high because it is released: the acknowledge of an address nobody answers (`CLOCK_PULSE_ACK`), and a one bit of a byte the target is returning (`READ_CLOCK_PULSE`).
-* The two slots where the line is high because the controller drives it: the first address bit of a write (`CLOCK_PULSE`), and the not-acknowledge the controller drives after the last byte of a read (`HOST_CLOCK_PULSE_ACK`). An external pull there is also interference, which the design detects from a single sample of SCL high; the control-symbol check needs SCL high on two consecutive samples as well. A pull made the instant SCL rises therefore raises interference alone, so these two are made a fixed 60 ns into the high window, after both samples are high, and still released inside it.
-* The pull is released inside the same high window, because one that outlasts the slot reaches a state where the controller drives the line and is interference there instead.
+* The expectations are the OpenTitan I2C theory of operation, which `hw/ip/i2c/doc/index.adoc` adopts: "the sda_unstable interrupt is asserted if, when receiving data or acknowledgement pulse, the value of the SDA signal does not remain constant over the duration of the SCL pulse, causing an unexpected START or STOP symbol", and "the sda_interference interrupt is raised whenever the Controller Module detects that another device is pulling SDA low while the Controller Module is trying to transmit logic high". `smc_i2c_controller_sda_interference_test` pulls SDA low at time offsets measured in bit periods, which lands the edge wherever it falls -- with this controller's timing usually while SCL is low. This leaf counts SCL rising edges from the START on the bus and pulls inside the high window of a chosen one, so the edge is a control symbol by construction and lands in a chosen pulse.
+* The two pulses the controller receives, where the line is high because it is released: the acknowledge of an address nobody answers, and a one bit of a byte the target is returning. Each must raise `SDA_UNSTABLE`.
+* The two pulses the controller drives high itself: the first address bit of a write, and the not-acknowledge the controller drives after the last byte of a read. Each must raise `SDA_INTERFERENCE`. The pull there is made a fixed 60 ns into the high window rather than at the rise, so the edge lies inside the high the controller is transmitting; no specification states a sampling requirement, the delay is a bench choice. Whether a driven pulse also reports `SDA_UNSTABLE`, or a received one `SDA_INTERFERENCE`, is not specified and not graded; the `INTR_STATE` word each pulse left is logged.
+* The pull is released inside the same high window, because one that outlasts the pulse reaches the next one, where the line may belong to another device.
 * The slot numbering is anchored on the START seen on the pads, not on a status read: a poll returns some cycles after the controller leaves idle, by which time bits have already been clocked.
 * The read abandoned mid-byte runs last. The transfer the controller makes after it starts with the offset byte in place of the address, so no slot numbered from the START would be where it should be. Between legs the bus is clocked until the bench target lets SDA go and is given a STOP, since an abandoned transfer can leave the target part-way through a byte.
 
@@ -10890,19 +10892,20 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 [arabic]
 . Bring up I2C0 as a host with the bench EEPROM target on the pads, and run one uninterrupted write.
-. For each slot: re-enable the controller from scratch, arm the injector, queue the transfer, wait for the START on the bus, count SCL rises and pull SDA low inside the chosen one -- at the rise for a released slot, 60 ns after it for a driven one.
-. Require `INTR_STATE.SDA_UNSTABLE` and a return to idle, then clear `CTRL`, clock the bus back to idle and give it a STOP.
+. For each pulse: re-enable the controller from scratch, arm the injector, queue the transfer, wait for the START on the bus, count SCL rises and pull SDA low inside the chosen one -- at the rise for a received pulse, 60 ns after it for a driven one.
+. Require the interrupt the specification names for that pulse and a return to idle, then clear `CTRL`, clock the bus back to idle and give it a STOP.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-I2C-CTRL-SYMBOL-CLEAN` |An uninterrupted write reached the target and left `SDA_UNSTABLE` clear
-|`CHK-I2C-CTRL-SYMBOL-UNSTABLE` |An edge made inside a chosen SCL high window raised `SDA_UNSTABLE` and returned the controller to idle, at all four slots: two where the line is released and two where the controller drives it
+|`CHK-I2C-CTRL-SYMBOL-CLEAN` |An uninterrupted write reached the target and left `SDA_UNSTABLE` and `SDA_INTERFERENCE` clear
+|`CHK-I2C-CTRL-SYMBOL-INTERFERENCE` |An edge made inside the high window of a pulse the controller drives high raised `SDA_INTERFERENCE` and returned the controller to idle, at both driven pulses
+|`CHK-I2C-CTRL-SYMBOL-UNSTABLE` |An edge made inside the high window of a pulse the controller receives raised `SDA_UNSTABLE` and returned the controller to idle, at both received pulses
 |===
 
-*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Nothing is asserted about the transfer after an injection: on this DUT the next transaction from the same controller is NACKed even once the events are cleared, so each leg re-enables the controller from scratch. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Nothing is asserted about the transfer after an injection: on this DUT the next transaction from the same controller is NACKed even once the events are cleared, so each leg re-enables the controller from scratch. Enrolled in: `all`, `hosted`, `i2c`.
 
 '''''
 
@@ -10963,7 +10966,7 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 * A read count of zero. `i2c.rdl` gives `FBYTE` of zero with `READB` as a 256-byte read -- one more than any nonzero count can express, and four times the depth of the controller's receive FIFO, so software drains `RDATA` while it runs. The controller's bit period is shortened for this leg so the read costs a few hundred microseconds; the bench target samples on the SMC clock, far faster.
 * `CONTROLLER_EVENTS` clears on a written one, so two writes that must *not* clear it are made first: a word of zeros over a set bit, and a word of ones that strobes only the top byte lane, so the lane carrying the bit is disabled while carrying a one. The bit is read back set after each, and only a written one clears it. Both set fields are checked this way.
 
-The controller's third ending, the automatic stop it makes when `CTRL.ENABLEHOST` is cleared with a transaction still open, is driven by `smc_i2c_controller_disable_stop_test`.
+The controller's third ending, the STOP it makes when `CTRL.ENABLEHOST` is cleared with a transaction still open, is driven by `smc_i2c_controller_disable_stop_test`.
 
 *Test Procedure*:
 
@@ -11333,7 +11336,7 @@ Drive `smc_cpuif_wrong_direction_test_seq`. Each checker below is a named compar
 * The controller disabled while held in the setup of a repeated START: the restart it was about to issue is still pending, and it must not reach the bus. The bench target has to see one START for the transfer, not two.
 * Every point is placed by counting edges on the pads -- the START, the Nth SCL rise, or the fall after it -- so each lands in the same state on every run. Each leg re-enables the controller from scratch and returns the bus to idle afterwards, clocking the target out of any byte a halted transfer left it in.
 
-SDA changing while the controller holds a pulse high is not driven here; `smc_i2c_controller_control_symbol_test` covers it, in the pulses where the line is released and in those the controller drives.
+SDA changing while the controller holds a pulse high is not driven here; `smc_i2c_controller_control_symbol_test` covers it, in the pulses the controller receives (`SDA_UNSTABLE`) and in those it drives (`SDA_INTERFERENCE`).
 
 *Test Procedure*:
 
@@ -11365,32 +11368,32 @@ SDA changing while the controller holds a pulse high is not driven here; `smc_i2
 
 *Source Module*: `smc_i2c_controller_disable_stop_test`
 
-*BFM / Model*: `SmcI2cEepromSlave` on the `tb_i2c0_*` pads as the target, a pad watcher counting SCL rises and STOPs, and a second bench pad driver that returns the bus to idle between tries; observation on the pads, `INTR_STATE.CMD_COMPLETE` and `STATUS`
+*BFM / Model*: `SmcI2cEepromSlave` on the `tb_i2c0_*` pads as the target and a pad watcher counting STOPs; observation on the pads, `INTR_STATE`, `CONTROLLER_EVENTS` and `STATUS`
 
-*Objective*: A controller that has started a transaction owns the bus until it gives a STOP; if software clears `CTRL.ENABLEHOST` with the transaction still open, the controller must give that STOP itself.
+*Objective*: A controller that has started a transaction owns the bus until it gives a STOP; if software clears `CTRL.ENABLEHOST` with the transaction still open, the controller gives that STOP itself.
 
 *Test Coverage*:
 
-* The controller parked mid-transaction. When the format FIFO runs dry without a STOP, the controller waits holding SCL low with `STATUS.HOSTIDLE` clear. Clearing the enable there must put one STOP on the pads, raise `INTR_STATE.CMD_COMPLETE` and return the controller to idle.
-* The enable cleared on the single cycle the controller spends in `POP_FMT_FIFO` between two format entries. Both automatic-stop arms test `trans_started && !host_enable_i`, and `trans_started` clears on the cycle after the enable is seen low; anywhere else in a transfer it is clear before the controller reaches either arm, and the controller goes idle without a STOP. A STOP on the pads is therefore proof the disable landed on that one cycle.
-* The cycle is found on the bus. The transfer is a START and address, an offset byte, and a data byte with a STOP. The disable is written a chosen number of SMC clock cycles after the last address bit's SCL rise, and each try ends one of three ways: a STOP; SCL released after the acknowledge with no STOP (the disable landed before `POP_FMT_FIFO`); or the offset byte clocked out first (it landed after). Bisection between an early and a late offset closes on the cycle between them. The write crosses into the I2C clock, whose phase is not locked to the SMC clock, so the landing cycle of one offset can move by one between tries; the offsets either side of the close are tried again, up to four passes, until one lands.
-* `INTR_STATE.CMD_COMPLETE` is raised only when the controller finishes a STOP or a repeated START (`i2c.rdl`), so it tells a STOP the controller made from any other edge on the pads. Every try without a STOP must leave it clear, and the bench target must count exactly one STOP after each disable that makes one.
+* The expectation is the OpenTitan I2C theory of operation, which `hw/ip/i2c/doc/index.adoc` adopts: software may "end the current transaction by setting CTRL.ENABLEHOST to 1'b0", and "if a NACK handling timeout occurs or CTRL.ENABLEHOST is cleared, then the FSM will halt again after the STOP condition is sent. The STOP condition terminates the transaction, leaving the FSM halted in the 'bus idle' state, with SDA and SCL released."
+* The controller parked mid-transaction. When the format FIFO runs dry without a STOP, `STATUS.FMTEMPTY` sets, `STATUS.HOSTIDLE` stays clear and the controller holds SCL low. Clearing the enable there must put one STOP on the pads, raise `INTR_STATE.CMD_COMPLETE`, release both pads and return the controller to idle.
+* The controller halted on a NACK, the case the theory of operation describes: the address nobody on the bench bus answers is NACKed, `CONTROLLER_EVENTS.NACK` sets, `INTR_STATE.CONTROLLER_HALT` is raised, SCL is held low and the byte queued behind the address keeps `STATUS.FMTEMPTY` clear. Clearing the enable there must put one STOP on the pads, raise `CMD_COMPLETE` and release both pads; the controller returns to idle once the halt events are cleared.
+* `INTR_STATE.CMD_COMPLETE` is raised only when the controller finishes a STOP or a repeated START (`i2c.rdl`), so it tells a STOP the controller made from any other edge on the pads, and the bench target must count exactly one STOP after each disable.
+* The enable cleared between two format entries of a transfer in flight is not driven: no document states whether a STOP follows there, and the `CHK-I2C-CTRL-DISABLE-STOP-POP` token that graded it is withdrawn.
 
 *Test Procedure*:
 
 [arabic]
 . Bring up I2C0 as a host with the bench EEPROM target on the pads.
-. Queue a START and address and an offset byte with no STOP; wait for the format FIFO to drain and require SCL low and `STATUS.HOSTIDLE` clear. Clear `CTRL.ENABLEHOST` and require a STOP on the pads, `CMD_COMPLETE`, one STOP at the target and an idle controller.
-. With the controller disabled, queue a START and address, an offset byte and a data byte with a STOP. Enable it, count SCL rises to the last address bit, wait the chosen offset and clear the enable. Classify the try by the STOP and the SCL rises that follow, and return the bus to idle when there is no STOP.
-. Try offset 0 (must be early) and the upper end of the range (must be late), then bisect; retry around the close if needed. Require a STOP within the search, with at least one early and one late try beside it.
+. Queue a START and address and an offset byte with no STOP; wait for `STATUS.FMTEMPTY` and require SCL low and `STATUS.HOSTIDLE` clear. Clear `CTRL.ENABLEHOST` and require a STOP on the pads, `CMD_COMPLETE`, one STOP at the target, both pads released and an idle controller.
+. Queue a START and the absent address and an offset byte; wait for `CONTROLLER_EVENTS.NACK` and require `STATUS.HOSTIDLE` clear, `STATUS.FMTEMPTY` clear, `INTR_STATE.CONTROLLER_HALT` set and SCL low. Clear `CTRL.ENABLEHOST` and require a STOP on the pads, `CMD_COMPLETE`, one STOP at the target and both pads released; clear the controller events and the FIFOs and require an idle controller.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-I2C-CTRL-DISABLE-STOP-IDLE` |Clearing the enable with the controller parked mid-transaction made one STOP on the pads, raised `CMD_COMPLETE` and returned the controller to idle
-|`CHK-I2C-CTRL-DISABLE-STOP-POP` |Clearing the enable on the `POP_FMT_FIFO` cycle made one STOP and raised `CMD_COMPLETE`, where at least one earlier and one later disable ended the transfer without a STOP
+|`CHK-I2C-CTRL-DISABLE-STOP-HALTED` |Clearing the enable with the controller halted on a NACKed address made one STOP on the pads, raised `CMD_COMPLETE` and released both pads
+|`CHK-I2C-CTRL-DISABLE-STOP-IDLE` |Clearing the enable with the controller parked mid-transaction made one STOP on the pads, raised `CMD_COMPLETE`, released both pads and returned the controller to idle
 |===
 
 *Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
@@ -12086,7 +12089,7 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 * SCL taken during the bus-free time. `TIMING4.T_BUF` is lengthened and SCL is pulled low inside the wait after a STOP. The target must still answer the next write.
 * An access inside the I2C wrapper's window, above its last instance stride and below its control registers, belongs to no register map. A read and a write there must both be refused on the bus. The window extent, the instance strides and the control register base come from the generated address map, and the probe is asserted to lie inside the window.
 * LSIO ownership withdrawn. `gpio_intf.rdl` sets `lsio_enable` "while `lsio_interface_select_i` is asserted and `lsio_disable` is clear".
-** With I2C0 enabled, its SCL pad (`DATA_CTRL[37]`) must report `lsio_enable`.
+** With I2C0 enabled, its SCL pad (`DATA_CTRL[37]`, the "I2C[0] SCL" row of the integrator pad table `doc/integrator/meta/ocah_gpio_table.csv`) must report `lsio_enable`.
 ** With `lsio_disable` set, `lsio_enable` must read clear, also with `lsio_select` forced.
 ** Clearing `lsio_disable` must restore the register.
 

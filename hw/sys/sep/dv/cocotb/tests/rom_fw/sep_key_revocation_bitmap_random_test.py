@@ -21,7 +21,7 @@ from env import sep_manifest_mutate as mm
 from env import sep_oca_console as oc
 from env import sep_rom_key_slots as ks
 from env import sep_spi_slot_evidence as ev
-from env.sep_efuse_image import SepEfuseImage
+from env.sep_efuse_image import SBOOT_DIS_MASK, SepEfuseImage
 from env.sep_esrc_noise import esrc_noise_task
 from env.sep_rom_console import log_scratch_cold, rom_console_task
 from env.sep_verdict import decode_verdict
@@ -128,7 +128,7 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
 
         bitmap = image.field_int("CHIPLET_PUBK_REVOKE")
         lc = image.lc_raw()
-        sboot_dis = image.field_int("SBOOT_DIS") & 0x1
+        sboot_dis = image.field_int("SBOOT_DIS") & SBOOT_DIS_MASK
         bl1_ver = image.field_int("BL1_VERSION")
         assert lc == kr.LC_RAW_PROD, (
             f"LC_STATE raw is 0x{lc:x}, expected 0x{kr.LC_RAW_PROD:x} (PROD): "

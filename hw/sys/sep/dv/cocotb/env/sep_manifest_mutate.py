@@ -492,6 +492,8 @@ MANIFEST_MAJOR_VERSION = 1
 CONSUMER_BODY_SIZE = _c_define(
     _OCA_VALIDATOR_H.with_name("oca_layout_classic.h"), "OCA_CLASSIC_BODY_SIZE"
 )
+# Bytes the ROM reads from a slot before it knows the body size.
+MANIFEST_PEEK_MIN = _c_define(_OCA_VALIDATOR_H, "OCA_MANIFEST_PEEK_MIN")
 
 
 def manifest_version(buf: bytes, slot: str) -> tuple[int, int]:

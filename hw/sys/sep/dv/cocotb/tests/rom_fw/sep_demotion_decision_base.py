@@ -17,6 +17,7 @@ from env import sep_manifest_mutate as mm
 from env import sep_oca_console as oc
 from env import sep_payload_mutate as pm
 from env import sep_spi_slot_evidence as ev
+from env.sep_efuse_image import SBOOT_DIS_MASK
 from env.sep_lcc_golden import LC_PROD, LC_PROD_END, feat_ctrl_expected
 from rom_fw import sep_measurement_golden as mg
 from rom_fw.sep_rom_ot_dma_boot_test import (
@@ -141,7 +142,7 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
         assert self.expected_lc_raw >= 0, "subclass must set expected_lc_raw"
         image = self.select_efuse_image(default_preload=self.efuse_preload)
         lc = image.lc_raw()
-        sboot_dis = image.field_int("SBOOT_DIS") & 0x1
+        sboot_dis = image.field_int("SBOOT_DIS") & SBOOT_DIS_MASK
         assert lc == self.expected_lc_raw, (
             f"LC_STATE raw is 0x{lc:x}, expected 0x{self.expected_lc_raw:x}; fix "
             f"efuse_preload or expected_lc_raw"

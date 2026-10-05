@@ -86,6 +86,9 @@ LEGAL_LC_RAW: Tuple[int, ...] = (
     LC_PROD_END,
 )
 
+# SBOOT_DIS.disable_secure_boot, the chicken bit that turns secure boot off.
+SBOOT_DIS_MASK = RegBlock("SEP_EFUSE_MAP").field_mask("SBOOT_DIS", "disable_secure_boot")
+
 # Field schema: (name, byte_offset, n_words, kind). Offsets/widths come from the
 # generated `sep_reg` map imported above; contiguous and summing to 256 words.
 # kind drives randomization + the expected-shadow transform:
