@@ -14,9 +14,9 @@
 +incdir+vendor/tenstorrent/tt-hw-debug/upstream/rtl/mmr
 +incdir+vendor/tenstorrent/tt-hw-debug/upstream/rtl/trace
 +define+TARGET_AOU
++define+TARGET_EMULATION
 +define+TARGET_FLIST
 +define+TARGET_SYNTH
-+define+SYNTHESIS=1
 +define+EMULATION=1
 vendor/pulp-platform/common_cells/upstream/src/cf_math_pkg.sv
 vendor/pulp-platform/apb/upstream/apb_pkg.sv

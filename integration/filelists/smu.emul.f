@@ -57,6 +57,7 @@
 +define+TARGET_COMMON_CELLS_RTL
 +define+TARGET_COMMON_CELL_SYNC_SHIM
 +define+TARGET_DTP
++define+TARGET_EMULATION
 +define+TARGET_FLIST
 +define+TARGET_IDMA_RTL
 +define+TARGET_REGISTER_INTERFACE_L1
@@ -65,11 +66,10 @@
 +define+TARGET_SMC
 +define+TARGET_SYNTH
 +define+TECH_SPECIFIC_EC_RV_ICG
-+define+SYNTHESIS=1
++define+EMULATION=1
 +define+CALIPTRA
 +define+SEP_ABR_EN
 +define+TECH_SPECIFIC_ICG
-+define+EMULATION=1
 vendor/pulp-platform/common_cells/upstream/src/cf_math_pkg.sv
 vendor/pulp-platform/common_cells/upstream/src/fifo_v3.sv
 vendor/pulp-platform/common_cells/upstream/src/counter.sv

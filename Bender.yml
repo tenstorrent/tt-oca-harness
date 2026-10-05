@@ -686,13 +686,20 @@ sources:
     files:
       - hw/common/ocah_prim/rtl/prim_ram_1p_adv_ext.sv
       - hw/common/ocah_prim/rtl/prim_ram_1p_scr_ext.sv
-  # Adopter synthesis flows read `+define+` lines from the generated filelist;
-  # SYNTHESIS selects the implementation view in every source it compiles.
-  # Bender drops a fileless group's defines, so the group carries the vendor
-  # alias header, which compiles as an empty unit.
-  - target: synth
+  # Adopter synthesis and emulation flows read `+define+` lines from the
+  # generated filelist; SYNTHESIS selects the implementation view and EMULATION
+  # the emulation view in every source they compile. The emulation view keeps
+  # the synth file set but must not define SYNTHESIS. Bender drops a fileless
+  # group's defines, so each group carries the vendor alias header, which
+  # compiles as an empty unit.
+  - target: all(synth, not(emulation))
     defines:
       SYNTHESIS: 1
+    files:
+      - hw/common/defs/ocah_vendor_defines.svh
+  - target: all(synth, emulation)
+    defines:
+      EMULATION: 1
     files:
       - hw/common/defs/ocah_vendor_defines.svh
   - target: all(any(dtp, sep, smc, key_manager, uart, system_timer_octs, entropy_source), not(synth))

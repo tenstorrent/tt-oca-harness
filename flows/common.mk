@@ -92,7 +92,7 @@ endif
 	@cd "$(OCAH_ROOT)" && $(call ocah_bender_flist,-t synth,$(FLOW_BENDER_TARGETS)) \
 		> "$(OCAH_INTEGRATION_SYNTH_FLIST)"
 	@sed -i 's|$(OCAH_ROOT)/||g' "$(OCAH_INTEGRATION_SYNTH_FLIST)"
-	@cd "$(OCAH_ROOT)" && $(call ocah_bender_flist,-t synth -D EMULATION=1,$(FLOW_BENDER_TARGETS)) \
+	@cd "$(OCAH_ROOT)" && $(call ocah_bender_flist,-t synth -t emulation,$(FLOW_BENDER_TARGETS)) \
 		> "$(OCAH_INTEGRATION_EMUL_FLIST)"
 	@sed -i 's|$(OCAH_ROOT)/||g' "$(OCAH_INTEGRATION_EMUL_FLIST)"
 
