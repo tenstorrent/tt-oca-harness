@@ -655,7 +655,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">idma_frontend_wrapper</h1>
-<p>Accept AXI control traffic in an iDMA register frontend and emit 1-D iDMA requests.</p><p>Each control interface has its own chain: an axi_cut, an axi_dw_converter to 32-bit AXI, an axi_to_reg_v2 bridge to a 32-bit register interface, the idma_reg64_2d register frontend, a stream_fifo that buffers 2-D requests between the register frontend and the 2-D midend, and an idma_nd_midend that splits each 2-D request into 1-D requests. An idma_transfer_id_gen per interface issues transfer IDs and retires one on each midend completion. NUM_CTRL_INTERFACES and NUM_CTRL_STREAMS must be &gt;= 1. F2M_FIFO_DEPTH is passed unchanged to the stream_fifo DEPTH and is the FIFO depth in requests; fifo_v3 asserts DEPTH &gt; 0.</p>
+<p>Accept AXI control traffic in an iDMA register frontend and emit 1-D iDMA requests.</p><p>Each control interface has its own chain: an axi_cut, an axi_dw_converter to 32-bit AXI, a second axi_cut, an axi_to_reg_v2 bridge to a 32-bit register interface, the idma_reg64_2d register frontend, a stream_fifo that buffers 2-D requests between the register frontend and the 2-D midend, and an idma_nd_midend that splits each 2-D request into 1-D requests. An idma_transfer_id_gen per interface issues transfer IDs and retires one on each midend completion. NUM_CTRL_INTERFACES and NUM_CTRL_STREAMS must be &gt;= 1. F2M_FIFO_DEPTH is passed unchanged to the stream_fifo DEPTH and is the FIFO depth in requests; fifo_v3 asserts DEPTH &gt; 0.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
@@ -663,7 +663,7 @@
 <tr><td><code>NUM_CTRL_INTERFACES</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Independent control ports, each with its own frontend, FIFO and midend; must be &gt;= 1.</td></tr>
 <tr><td><code>NUM_CTRL_STREAMS</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Register-frontend streams per control port; must be &gt;= 1. The stream index is unconnected, so all streams share one FIFO and midend.</td></tr>
 <tr><td><code>F2M_FIFO_DEPTH</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Depth in requests of the FIFO between the register frontend and the 2-D midend; passed unchanged to stream_fifo DEPTH and must be &gt; 0.</td></tr>
-<tr><td><code>BYPASS_DMA_CTRL_FLOPS</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>When set, the control-port axi_cut is a pass-through with no registers.</td></tr>
+<tr><td><code>BYPASS_DMA_CTRL_FLOPS</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>When set, the control-port axi_cut is a pass-through with no registers. The axi_cut between the width converter and axi_to_reg_v2 is always registered.</td></tr>
 <tr><td><code>NUM_DIM</code></td><td><code>int unsigned</code></td><td><code>2</code></td><td>Transfer dimension count of the midend; the 2-D register frontend and two-entry RepWidths match only 2.</td></tr>
 <tr><td><code>REP_WIDTH</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Width of each midend repetition counter.</td></tr>
 <tr><td><code>CTRL_ADDR_WIDTH</code></td><td><code>int unsigned</code></td><td><code>9</code></td><td>Ctrl AXI address width.</td></tr>
