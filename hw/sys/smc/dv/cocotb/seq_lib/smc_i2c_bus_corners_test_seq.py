@@ -42,7 +42,7 @@ import cocotb
 from cocotb.triggers import RisingEdge, Timer
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import I2C_CG_EN, smc_addr, smc_indexed_addr
+from .smc_addr_map import I2C_CG_EN, gpio_intf_u32, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_i2c_field_masks import (
     I2C_ACQ_SIGNAL_NONE,
@@ -80,6 +80,7 @@ from .smc_i2c_target_ack_ctrl_test_seq import (
     _pack_timing3,
     _pack_timing4,
 )
+from .smc_pad_table import pad_index
 
 
 def _i2c0(register: str) -> int:
@@ -104,12 +105,12 @@ assert WRAP_BASE <= INSTANCES_END <= UNMAPPED_IN_WRAP < CTRL_REGS_BASE < WRAP_EN
     f"and the control registers (0x{CTRL_REGS_BASE:08x}) inside the wrapper window "
     f"0x{WRAP_BASE:08x}..0x{WRAP_END:08x}"
 )
-#: The I2C0 SCL pad in `smc_padring.sv` (37 + 4 * instance).
-SCL_PAD = 37
+#: The I2C0 SCL pad, from the integrator pad table.
+SCL_PAD = pad_index("I2C[0] SCL")
 DATA_CTRL_SCL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", SCL_PAD)
-LSIO_SELECT = 1 << 17
-LSIO_DISABLE = 1 << 19
-LSIO_ENABLE = 1 << 25
+LSIO_SELECT = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_SELECT_bm")
+LSIO_DISABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_DISABLE_bm")
+LSIO_ENABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_ENABLE_bm")
 
 TARGET_ADDR = 0x2E
 VIP_SPEED = 2_000_000

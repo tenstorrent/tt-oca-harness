@@ -4,39 +4,42 @@
 
 An SDA edge while SCL is high is a START or a STOP, so one that appears in the
 middle of somebody else's transfer is a protocol violation the controller has
-to notice. `i2c_controller_fsm.sv` checks for it in every state where it holds
-SCL released, names it "Unexpected Stop / Start", raises
-`INTR_STATE.SDA_UNSTABLE` and abandons the transfer.
+to notice. The OpenTitan I2C theory of operation, which
+`hw/ip/i2c/doc/index.adoc` adopts for controller behaviour, states it: "Except
+for START and STOP symbols, the I2C specification requires that the SDA signal
+remains constant whenever SCL is high. The sda_unstable interrupt is asserted
+if, when receiving data or acknowledgement pulse, the value of the SDA signal
+does not remain constant over the duration of the SCL pulse, causing an
+unexpected START or STOP symbol." For the pulses the controller drives itself
+it states a different event: "The sda_interference interrupt is raised
+whenever the Controller Module detects that another device is pulling SDA low
+while the Controller Module is trying to transmit logic high."
 
 `smc_i2c_controller_sda_interference_test` pulls SDA low at time offsets
 measured in bit periods, which lands the edge wherever it falls -- and with
-this controller's timing that is usually while SCL is low, where it is a
-different event (`SDA_INTERFERENCE`, another device driving against the
-controller). This leaf synchronises instead: it counts SCL rising edges and
-pulls SDA low inside the high window of a chosen one, so the edge is a control
-symbol by construction and lands in a chosen part of the bit loop.
+this controller's timing that is usually while SCL is low, where it is
+another device driving against the controller rather than a control symbol.
+This leaf synchronises instead: it counts SCL rising edges and pulls SDA low
+inside the high window of a chosen one, so the edge is a control symbol by
+construction and lands in a chosen pulse of the transfer.
 
-Four points are driven, one in each state where the controller holds SCL
-released: the acknowledge of an address nobody answers and a one bit of a
-byte the target is returning, where the line is high because it is released,
-and a one bit of the address the controller is sending and the
-not-acknowledge it drives at the end of a read, where the line is high
-because the controller drives it. By the SCL rise each is made on, those
-are the controller states `CLOCK_PULSE_ACK`, `READ_CLOCK_PULSE`, `CLOCK_PULSE` and
-`HOST_CLOCK_PULSE_ACK`. The read points need a device that answers, so the bench
-EEPROM target is on the pads throughout.
+Four pulses are driven. Two the controller receives, where the line is high
+because it is released: the acknowledge of an address nobody answers and a
+one bit of a byte the target is returning; there the edge must raise
+`INTR_STATE.SDA_UNSTABLE`. Two the controller drives high itself: a one bit
+of the address it is sending and the not-acknowledge it drives at the end of
+a read; there the edge must raise `INTR_STATE.SDA_INTERFERENCE`. The read
+pulses need a device that answers, so the bench EEPROM target is on the pads
+throughout. Whether a driven pulse also reports `SDA_UNSTABLE`, or a received
+one `SDA_INTERFERENCE`, is not specified and is not graded; the `INTR_STATE`
+word each pulse left is logged.
 
-Where the controller drives the high, the same pull is also interference,
-which the design detects from a single sample of SCL high. The control-symbol
-check needs SCL high on two consecutive samples as well as the SDA change, so
-a pull made the instant SCL rises reaches the core while only one high sample
-of SCL has, and raises interference alone. Those two points are therefore
-made a fixed delay into the high window, after both samples of SCL are high,
-and the pull still ends inside the window.
-
-The pull is released inside the same SCL high window. A longer one reaches the
-next state, where the controller may be driving the line low, and there the
-same pull is interference rather than a control symbol.
+In a driven pulse the pull is made a fixed delay into the high window rather
+than at the rise (`DRIVEN_DELAY_NS`), so the edge lies inside the high the
+controller is transmitting; no specification states a sampling requirement,
+the delay is a bench choice. The pull is released inside the same SCL high
+window: a longer one reaches the next pulse, where the line may belong to
+another device.
 
 A clean transfer runs first, so the abandons are the difference the injection
 makes. Nothing is asserted about the transfer after an injection: on this DUT
@@ -53,7 +56,7 @@ from cocotb.triggers import ClockCycles, Timer
 
 from .smc_addr_map import I2C_CG_EN, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
-from .smc_i2c_field_masks import I2C_INTR_SDA_UNSTABLE
+from .smc_i2c_field_masks import I2C_INTR_SDA_INTERFERENCE, I2C_INTR_SDA_UNSTABLE
 from .smc_i2c_master_target_test_seq import (
     CLOCK_GATE_CONTROL,
     I2C0_CONTROLLER_EVENTS,
@@ -95,9 +98,18 @@ CLEAN_BYTE = 0x5A
 
 I2C0_INTR_STATE = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 0)
 
+#: The two interrupts a control symbol can raise, by which device holds the
+#: line high in the pulse it lands in.
+_EVENT_NAME = {
+    I2C_INTR_SDA_UNSTABLE: "SDA_UNSTABLE",
+    I2C_INTR_SDA_INTERFERENCE: "SDA_INTERFERENCE",
+}
+_SYMBOL_EVENTS = I2C_INTR_SDA_UNSTABLE | I2C_INTR_SDA_INTERFERENCE
+
 #: Which SCL rising edge of the transfer the edge is injected on, counted
-#: from the START, and how far into that high window. SDA is open-drain, so a
-#: pull only makes an edge where the line is already high:
+#: from the START, how far into that high window, and the interrupt the
+#: specification names for that pulse. SDA is open-drain, so a pull only
+#: makes an edge where the line is already high:
 #:
 #: * rise 1 of a write, the first address bit, a one the controller sends;
 #: * rise 37 of the read, the not-acknowledge the controller drives after the
@@ -106,26 +118,24 @@ I2C0_INTR_STATE = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADD
 #: * rise 9 of a write to `ABSENT_ADDR`, the acknowledge nobody gives;
 #: * rise 30 of the read, a one bit of `CLEAN_BYTE` the target returns.
 #:
-#: The first two are driven by the controller, so they carry a delay; see the
-#: module docstring. The read abandoned mid-byte runs last: the transfer the
+#: The first two are driven by the controller, so they carry a delay and
+#: expect `SDA_INTERFERENCE`; the last two are received and expect
+#: `SDA_UNSTABLE`. The read abandoned mid-byte runs last: the transfer the
 #: controller makes after it starts with the offset byte in place of the
 #: address, so no slot numbered from the START is where it should be.
 DRIVEN_DELAY_NS = 60
 INJECTIONS = (
-    ("ADDR_BIT", EEPROM_ADDR, False, 1, DRIVEN_DELAY_NS),
-    ("READ_NACK", EEPROM_ADDR, True, 37, DRIVEN_DELAY_NS),
-    ("ADDR_ACK", ABSENT_ADDR, False, 9, 0),
-    ("READ_BIT", EEPROM_ADDR, True, 30, 0),
+    ("ADDR_BIT", EEPROM_ADDR, False, 1, DRIVEN_DELAY_NS, I2C_INTR_SDA_INTERFERENCE),
+    ("READ_NACK", EEPROM_ADDR, True, 37, DRIVEN_DELAY_NS, I2C_INTR_SDA_INTERFERENCE),
+    ("ADDR_ACK", ABSENT_ADDR, False, 9, 0, I2C_INTR_SDA_UNSTABLE),
+    ("READ_BIT", EEPROM_ADDR, True, 30, 0, I2C_INTR_SDA_UNSTABLE),
 )
 #: TIMING0 of the controller under test, in cycles of its peripheral clock.
 THIGH_CYCLES = 0x1A
 TLOW_CYCLES = 0x32
 #: How long SDA is held low once the edge has been made, as a share of the SCL
-#: high window (THIGH_CYCLES at the peripheral clock period). Long enough for
-#: the core to sample the change on two consecutive cycles of its own clock,
-#: and short enough to be released inside the same SCL high window: a pull that
-#: outlasted the slot would reach a state where the controller is driving the
-#: line, where it is interference rather than a control symbol.
+#: high window (THIGH_CYCLES at the peripheral clock period): released inside
+#: the same SCL high window, so the pull never reaches the next pulse.
 HOLD_HIGH_FRACTION = 0.5
 EDGE_WAIT_CYCLES = 200_000
 POLL_CYCLES = 200
@@ -140,7 +150,7 @@ class smc_i2c_controller_control_symbol_test_seq(SmcCsrSeq):
         super().__init__(name)
         self.slave: SmcI2cEepromSlave | None = None
         self.injector: SmcI2cMasterVip | None = None
-        self.hits: list[tuple[str, int]] = []
+        self.hits: list[tuple[str, int, int, int]] = []
 
     @staticmethod
     def _scl() -> int:
@@ -181,10 +191,11 @@ class smc_i2c_controller_control_symbol_test_seq(SmcCsrSeq):
         await self.csr_write(
             f"{label}_EVENTS_CLR", I2C0_CONTROLLER_EVENTS, I2C_CONTROLLER_EVENTS_ALL
         )
-        await self.csr_write(f"{label}_INTR_CLR", I2C0_INTR_STATE, I2C_INTR_SDA_UNSTABLE)
+        await self.csr_write(f"{label}_INTR_CLR", I2C0_INTR_STATE, _SYMBOL_EVENTS)
         intr = await self.csr_read(f"{label}_INTR_ENTRY", I2C0_INTR_STATE)
-        assert intr & I2C_INTR_SDA_UNSTABLE == 0, (
-            f"{label}: INTR_STATE.SDA_UNSTABLE is still set before the leg starts (0x{intr:08x})"
+        assert intr & _SYMBOL_EVENTS == 0, (
+            f"{label}: INTR_STATE still reports SDA_UNSTABLE or SDA_INTERFERENCE before the "
+            f"leg starts (0x{intr:08x})"
         )
         await self.csr_write(f"{label}_ENABLEHOST", I2C0_CTRL, I2C_CTRL_ENABLEHOST)
         await ClockCycles(cocotb.top.clk_smc_i, 20)
@@ -299,15 +310,16 @@ class smc_i2c_controller_control_symbol_test_seq(SmcCsrSeq):
             f"the injected legs below are the difference the edge makes"
         )
         intr = await self.csr_read("CLEAN_INTR", I2C0_INTR_STATE)
-        assert intr & I2C_INTR_SDA_UNSTABLE == 0, (
-            f"INTR_STATE.SDA_UNSTABLE is set after a transfer nobody interfered with (0x{intr:08x})"
+        assert intr & _SYMBOL_EVENTS == 0, (
+            f"INTR_STATE reports SDA_UNSTABLE or SDA_INTERFERENCE after a transfer nobody "
+            f"interfered with (0x{intr:08x})"
         )
         cocotb.log.info(
             "CHK-I2C-CTRL-SYMBOL-CLEAN: an uninterrupted write reached the target and left "
-            "INTR_STATE.SDA_UNSTABLE clear"
+            "INTR_STATE.SDA_UNSTABLE and SDA_INTERFERENCE clear"
         )
 
-        for label, addr7, read, nth, delay_ns in INJECTIONS:
+        for label, addr7, read, nth, delay_ns, expect in INJECTIONS:
             await self._enable_host(label)
             injector = cocotb.start_soon(self._inject_on_rise(label, nth, delay_ns))
             await self._queue(label, addr7, read, EEPROM_OFFSET, CLEAN_BYTE)
@@ -315,24 +327,38 @@ class smc_i2c_controller_control_symbol_test_seq(SmcCsrSeq):
             seen = 0
             for _ in range(INTR_POLLS):
                 seen = await self.csr_read(f"{label}_INTR", I2C0_INTR_STATE)
-                if seen & I2C_INTR_SDA_UNSTABLE:
+                if seen & expect:
                     break
                 await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES)
             else:
                 raise AssertionError(
-                    f"{label}: the controller reported no SDA_UNSTABLE after SDA was pulled "
-                    f"low inside the high window of SCL rise {nth} (INTR_STATE=0x{seen:08x}); "
-                    f"an SDA edge while SCL is high is a START or a STOP, not data"
+                    f"{label}: the controller reported no {_EVENT_NAME[expect]} after SDA was "
+                    f"pulled low inside the high window of SCL rise {nth} "
+                    f"(INTR_STATE=0x{seen:08x}); an SDA edge while SCL is high is a START or "
+                    f"a STOP, not data"
                 )
             await self._wait_hostidle(label)
             await self.csr_write(f"{label}_HALT_OFF", I2C0_CTRL, 0)
             await self._recover_bus(label)
-            self.hits.append((label, nth))
+            self.hits.append((label, nth, expect, seen))
 
+        def _report(event: int) -> str:
+            return ", ".join(
+                f"{name} (SCL rise {n}, INTR_STATE 0x{word:08x})"
+                for name, n, got, word in self.hits
+                if got == event
+            )
+
+        assert len(self.hits) == len(INJECTIONS), f"{len(self.hits)} of {len(INJECTIONS)} legs ran"
         cocotb.log.info(
-            "CHK-I2C-CTRL-SYMBOL-UNSTABLE: an SDA edge made inside the high window of a chosen "
-            "SCL pulse raised INTR_STATE.SDA_UNSTABLE and returned the controller to idle at "
-            "all %d points of the bit loop it was injected into: %s",
-            len(self.hits),
-            ", ".join(f"{name} (SCL rise {n})" for name, n in self.hits),
+            "CHK-I2C-CTRL-SYMBOL-UNSTABLE: an SDA edge made inside the high window of a pulse "
+            "the controller receives raised INTR_STATE.SDA_UNSTABLE and returned the "
+            "controller to idle: %s",
+            _report(I2C_INTR_SDA_UNSTABLE),
+        )
+        cocotb.log.info(
+            "CHK-I2C-CTRL-SYMBOL-INTERFERENCE: an SDA edge made inside the high window of a "
+            "pulse the controller drives high raised INTR_STATE.SDA_INTERFERENCE and returned "
+            "the controller to idle: %s",
+            _report(I2C_INTR_SDA_INTERFERENCE),
         )

@@ -58,6 +58,7 @@ from env.smc_reset_item import SmcResetItem, SmcResetOp
 
 from .smc_addr_map import CLOCK_GATE_CONTROL, I3C_CG_EN, UART_CG_EN, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_pad_table import pad_index
 from .smc_probe_positive_control import _pad_vec
 from .smc_reset_seq_base import SmcResetSeqBase
 
@@ -79,8 +80,8 @@ UART0_THR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RB
 UART0_IER = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR", 0)
 UART0_LCR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR", 0)
 
-# smc_padring.sv gen_uart_connections: UART u drives pad 12 + 4u.
-UART0_TX_PAD = 12
+# The pad UART 0 transmits on, from the integrator pad table.
+UART0_TX_PAD = pad_index("UART[0].TX")
 UART_EN = 0x1
 LCR_DLAB = 0x80
 LCR_8N1 = 0x03

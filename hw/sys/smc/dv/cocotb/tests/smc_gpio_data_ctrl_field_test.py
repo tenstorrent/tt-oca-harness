@@ -4,9 +4,9 @@
 
 Drives each of the seven software-writable DATA_CTRL fields of GPIO instance
 60 on its own -- set, read back, put straight back to its reset, read back --
-with nothing held between fields. The padring gives index 60 no LSIO function
-and the testbench never drives it, and one field at a time is what keeps the
-pad output enable at zero throughout.
+with nothing held between fields. The integrator pad table reserves index 60
+and the testbench never drives it; the pad's output enable is sampled after
+every write and must stay at zero.
 """
 
 from __future__ import annotations
