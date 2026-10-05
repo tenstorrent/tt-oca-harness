@@ -60,7 +60,7 @@
       "coverage_total_percent": 94.71,
       "flow": "smc",
       "framework": "cocotb",
-      "pass_rate": 97.81,
+      "pass_rate": 99.06,
       "tests_total": 319,
       "tool": "vcs"
     },
@@ -76,7 +76,7 @@
       "coverage_total_percent": 94.38,
       "flow": "smc",
       "framework": "",
-      "pass_rate": 97.85,
+      "pass_rate": 99.08,
       "tests_total": 325,
       "tool": "vcs"
     },
@@ -105,7 +105,7 @@
       "tool": "vcs"
     }
   ],
-  "generated_at": "2026-10-05T04:05:45+00:00",
+  "generated_at": "2026-10-05T04:09:32+00:00",
   "results": [
     {
       "coverage": {
