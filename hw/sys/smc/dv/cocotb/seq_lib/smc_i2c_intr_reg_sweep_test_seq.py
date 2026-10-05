@@ -98,8 +98,9 @@ class smc_i2c_intr_reg_sweep_test_seq(SmcRegblockFieldSweepSeq):
         )
 
         # INTR_STATE also carries status-type events hardware drives from the
-        # FIFO levels, so the whole word is not predicted here; the event bits
-        # this leg raises are.
+        # FIFO levels, so the whole word is not predicted here. The word read
+        # before the pulse is the reference: the pulse must change exactly the
+        # pulsed bits, and the clear must return the word to it.
         before = await self.csr_read(f"{state.label}:idle", state.addr)
         assert before & pulse == 0, (
             f"{state.label} @ 0x{state.addr:08x}: reads 0x{before & pulse:x} in the "
@@ -111,11 +112,22 @@ class smc_i2c_intr_reg_sweep_test_seq(SmcRegblockFieldSweepSeq):
             f"{state.label} @ 0x{state.addr:08x}: a write of 0x{pulse:x} into the "
             f"write-only test fields left the matching events at 0x{raised & pulse:x}"
         )
+        extra = (raised ^ before) & ~pulse
+        assert extra == 0, (
+            f"{state.label} @ 0x{state.addr:08x}: a write of 0x{pulse:x} into the "
+            f"write-only test fields also changed 0x{extra:x} outside them "
+            f"(before=0x{before:08x} after=0x{raised:08x}); the events raised are not "
+            f"exactly the ones pulsed"
+        )
         await self.csr_write(f"{state.label}:clear", state.addr, pulse)
         cleared = await self.csr_read(f"{state.label}:cleared", state.addr)
         assert cleared & pulse == 0, (
             f"{state.label} @ 0x{state.addr:08x}: a write of 0x{pulse:x} into the "
             f"`oneToClear` events left 0x{cleared & pulse:x} of them set"
+        )
+        assert cleared == before, (
+            f"{state.label} @ 0x{state.addr:08x}: reads 0x{cleared:08x} after the pulsed "
+            f"events were cleared, not the 0x{before:08x} measured before the pulse"
         )
         self.pulses += 1
 

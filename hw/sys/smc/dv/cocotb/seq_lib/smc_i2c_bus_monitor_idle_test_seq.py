@@ -19,9 +19,13 @@ Three legs per instance:
 * **Idle timeout** -- park the bus mid-transaction with SCL released and SDA
   stable, and let the timeout expire.
 * **Resume and stop** -- park, then take SCL low again, and separately park and
-  then drive a STOP, so the monitor leaves the idling state both ways.
-  `TIMING4.T_BUF` is programmed long for this leaf so the post-STOP window is
-  wide enough to drive into rather than a handful of cycles.
+  then drive a STOP, so the monitor leaves the idling state both ways. Each
+  exit is witnessed twice: with the cleared interrupt staying clear through a
+  hold as long as the park that raised it (SCL held low, or the bus released
+  after the STOP), and with a further park raising it again, which a counter
+  that never left the idling state cannot do once cleared. `TIMING4.T_BUF` is
+  programmed long for this leaf so the post-STOP window is wide enough to
+  drive into rather than a handful of cycles.
 * **Enable with multi-controller monitoring** -- the monitor enters the idling
   state directly when it is enabled with `CTRL.MULTI_CONTROLLER_MONITOR_EN`
   set, which is the only way to reach it without the bus being busy first.
@@ -211,25 +215,70 @@ class smc_i2c_bus_monitor_idle_test_seq(SmcCsrSeq):
             HOST_TIMEOUT_VAL,
         )
 
+    async def _expect_timeout(self, idx: int, label: str, how: str) -> None:
+        intr = await self._intr(idx, label)
+        assert intr & I2C_INTR_HOST_TIMEOUT, (
+            f"I2C{idx} raised no HOST_TIMEOUT {how} with HOST_TIMEOUT_CTRL.VAL="
+            f"{HOST_TIMEOUT_VAL} (INTR_STATE=0x{intr:08x})"
+        )
+
+    async def _expect_no_timeout(self, idx: int, label: str, how: str) -> None:
+        intr = await self._intr(idx, label)
+        assert not intr & I2C_INTR_HOST_TIMEOUT, (
+            f"I2C{idx} raised HOST_TIMEOUT {how}, so the monitor was still counting the "
+            f"idle timeout there (INTR_STATE=0x{intr:08x})"
+        )
+
     # --- leg: leave the idling state by clocking again and by a STOP ------
     async def _resume_and_stop(self, vip: SmcI2cMasterVip, idx: int) -> None:
         await self._clear_intr(idx)
         await self._reset_fifos(idx)
 
         # Park, then take SCL low again before any STOP: the monitor goes back
-        # to tracking a clocking bus.
+        # to tracking a clocking bus. The park raises HOST_TIMEOUT; with SCL
+        # held low for the same hold the cleared interrupt stays clear.
         await drive_to_slot(vip, TARGET_ADDR[idx], SWEEP_BYTE, "data", 3)
         await park_scl_high(vip, PARK_NS)
+        await self._expect_timeout(
+            idx, f"I2C{idx}_BM_RESUME_PARK", f"after the bench released SCL for {PARK_NS} ns"
+        )
         vip._pull_scl(True)
-        await Timer(vip._bit_ns, unit="ns")
+        await self._clear_intr(idx)
+        await Timer(PARK_NS, unit="ns")
+        await self._expect_no_timeout(
+            idx,
+            f"I2C{idx}_BM_RESUME_SCL_LOW",
+            f"while the bench held SCL low for {PARK_NS} ns after the park",
+        )
         vip._pull_scl(False)
         await vip._wait_scl_high()
         await Timer(vip._half_ns, unit="ns")
 
-        # Park again, then drive a STOP out of the idling state. T_BUF is long
-        # for this leaf, so the bus-free window after it is wide enough to
-        # drive the bus low inside.
+        # Park again: the monitor is back in the idling state and the timeout
+        # fires a second time. Then drive a STOP out of it and release the
+        # bus; the same hold on the free bus leaves the cleared interrupt
+        # clear.
         await park_scl_high(vip, PARK_NS)
+        await self._expect_timeout(
+            idx, f"I2C{idx}_BM_RESUME_REPARK", "on a second park after SCL had been taken low"
+        )
+        await vip.send_stop()
+        await release_bus(vip)
+        await self._clear_intr(idx)
+        await Timer(PARK_NS, unit="ns")
+        await self._expect_no_timeout(
+            idx,
+            f"I2C{idx}_BM_STOP_FREE",
+            f"while the bus stayed free for {PARK_NS} ns after a STOP",
+        )
+
+        # A further park raises it once more, and a STOP out of that one is
+        # followed by the bus pulled low inside the bus-free window. T_BUF is
+        # long for this leaf, so that window is wide enough to drive into.
+        await self._reset_fifos(idx)
+        await drive_to_slot(vip, TARGET_ADDR[idx], SWEEP_BYTE, "data", 3)
+        await park_scl_high(vip, PARK_NS)
+        await self._expect_timeout(idx, f"I2C{idx}_BM_STOP_REPARK", "on a park following the STOP")
         await vip.send_stop()
         vip._pull_scl(True)
         vip._pull_sda(True)
@@ -239,10 +288,15 @@ class smc_i2c_bus_monitor_idle_test_seq(SmcCsrSeq):
         await self._clear_intr(idx)
         await self._clean_transaction(vip, idx, f"I2C{idx}_BM_RESUME_RECOVER")
         cocotb.log.info(
-            "CHK-I2C%d-BUSMON-RESUME: the monitor left the idling state both ways -- SCL "
-            "taken low again, and a STOP driven out of it followed by the bus pulled low "
-            "inside the %d-cycle bus-free window -- and the instance ran a clean write after",
+            "CHK-I2C%d-BUSMON-RESUME: the monitor left the idling state both ways -- after a "
+            "park raised HOST_TIMEOUT, SCL held low for %d ns kept the cleared interrupt "
+            "clear and a second park raised it again; after a STOP, the released bus held for "
+            "%d ns kept it clear and a further park raised it again, whose STOP was followed "
+            "by the bus pulled low inside the %d-cycle bus-free window -- and the instance "
+            "ran a clean write after",
             idx,
+            PARK_NS,
+            PARK_NS,
             T_BUF_LONG,
         )
 
