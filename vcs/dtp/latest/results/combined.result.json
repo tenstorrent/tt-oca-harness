@@ -8,12 +8,12 @@
     "run_dir": "vcs/dtp/runs/combined"
   },
   "coverage": {
-    "comparison_key": "COVCMP-f4119147330e3e3a",
+    "comparison_key": "COVCMP-0d63c99ed36553c7",
     "details_available": true,
     "effective_metrics": {
       "assertion": 100.0,
       "branch": 97.85,
-      "condition": 97.08,
+      "condition": 97.07,
       "fsm_state": 89.59,
       "functional": 100.0,
       "line": 99.0,
@@ -38,11 +38,11 @@
     "policy_thresholds": [],
     "raw_metrics": {
       "assertion": 98.59,
-      "branch": 92.39,
-      "condition": 92.26,
+      "branch": 92.2,
+      "condition": 92.11,
       "fsm_state": 60.21,
       "functional": 100.0,
-      "line": 96.52,
+      "line": 96.44,
       "toggle": 77.9,
       "user": 99.6988
     },
@@ -61,11 +61,11 @@
   "failure_buckets": [],
   "flow": "dtp",
   "framework": "",
-  "generated_at": "2026-10-05T11:04:19+00:00",
+  "generated_at": "2026-10-06T11:09:48+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "ea533e73618f005e04ecebe66efbd907280df306",
-    "short_sha": "ea533e736"
+    "sha": "c9a64717c456b7efe3d3bf056165cbd35737920a",
+    "short_sha": "c9a64717"
   },
   "junit_xml": {
     "missing": 0,
@@ -74,10 +74,10 @@
   "kind": "dv",
   "run_metadata": {
     "executor": "local",
-    "generated_at": "2026-10-05T11:04:13.621993+00:00",
+    "generated_at": "2026-10-06T11:09:43.214214+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "ea533e73618f005e04ecebe66efbd907280df306",
+      "commit": "c9a64717c456b7efe3d3bf056165cbd35737920a",
       "dirty": "false"
     },
     "label": "combine",
@@ -102,9 +102,9 @@
   },
   "tests_detail": [],
   "timing": {
-    "duration_sec": 18.444,
-    "end_time": "2026-10-05T11:04:12.929337+00:00",
-    "start_time": "2026-10-05T11:03:54.462605+00:00"
+    "duration_sec": 17.876,
+    "end_time": "2026-10-06T11:09:42.428740+00:00",
+    "start_time": "2026-10-06T11:09:24.537486+00:00"
   },
   "tool": "vcs"
 }
