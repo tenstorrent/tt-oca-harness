@@ -702,8 +702,8 @@ Platform-wide clock, power and reset behaviour is described in the
 </div>
 <div class="paragraph">
 <p>The SMU composition is shown in <a href="#smu-composition-diagram">Figure 1</a>.
-The dashed SEP boundary denotes the optional subsystem controlled by the
-<code>CFG.SEP</code> field. Memory capacities in the diagram describe the
+Dashed outlines mark the blocks present only when <code>CFG.SEP</code> is 1: the SEP and
+the AXI4 crossbar. Memory capacities in the diagram describe the
 illustrated configuration. Hatched blocks are future: the safety bus and the
 safety monitor, whose connections to the SEP and SMC are drawn dashed.</p>
 </div>
@@ -718,6 +718,12 @@ fabric between SEP, SMC, and the rest of the chiplet (reached through the
 <code>smu_axi_in</code> / <code>smu_axi_out</code> boundary pair). It is a 3×3 AXI4 crossbar with
 non-reflexive connectivity: each master can reach the other two subordinates
 but never its own inbound port.</p>
+</div>
+<div class="paragraph">
+<p>The SMU instantiates the crossbar only when <code>CFG.SEP</code> is 1. When <code>CFG.SEP</code> is
+0, AXI ID-width converters connect the SMC system AXI ports to the
+<code>smu_axi_in</code> / <code>smu_axi_out</code> pair: every SMC-initiated transaction leaves
+through <code>smu_axi_out</code>, and every <code>smu_axi_in</code> transaction targets the SMC.</p>
 </div>
 <div id="smu-crossbar-connectivity-diagram" class="imageblock">
 <div class="content">

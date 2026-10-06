@@ -343,6 +343,14 @@ SMC inbound subordinates, and the external SMU AXI output
 (<code>ext_out</code> / <code>smu_axi_out</code>).</p>
 </div>
 <div class="paragraph">
+<p>The SMU instantiates <code>smu_axi_xbar</code> only when <code>CFG.SEP</code> is 1. When <code>CFG.SEP</code>
+is 0, AXI ID-width converters connect the SMC system AXI ports to
+<code>smu_axi_in</code> / <code>smu_axi_out</code> instead: every SMC-initiated transaction leaves
+through <code>smu_axi_out</code>, every <code>smu_axi_in</code> transaction targets the SMC, and the
+aperture rules below do not apply. The <code>smu_axi_in</code> / <code>smu_axi_out</code> port types
+are the same in both configurations.</p>
+</div>
+<div class="paragraph">
 <p>Connectivity is described in
 <a href="../../ocah-docs/latest/architecture.html#smu-axi-crossbar" class="xref page">SMU AXI Crossbar</a>;
 the split between hardware-fixed behavior and firmware-programmable apertures
@@ -3186,6 +3194,11 @@ depends on <code>CFG.SEP</code>.</p>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU AXI fabric</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_axi_xbar</code> when <code>CFG.SEP=1</code>, else <code>u_iw_conv_smc_out</code> / <code>u_iw_conv_smc_in</code> between the SMC system AXI ports and <code>smu_axi_out</code> / <code>smu_axi_in</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System-level AXI routing between SEP, SMC and the SMU boundary</p></td>
+</tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC SEP AXI Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_axi_in_req_i</code> = SEP traffic when <code>CFG.SEP=1</code>, else <code>'0</code></p></td>
