@@ -1,11 +1,11 @@
 {
   "dut_status": [
     {
-      "coverage_total_percent": 70.97,
+      "coverage_total_percent": 71.38,
       "flow": "aou",
       "framework": "uvm",
       "pass_rate": 100.0,
-      "tests_total": 71,
+      "tests_total": 72,
       "tool": "vcs"
     },
     {
@@ -105,17 +105,17 @@
       "tool": "vcs"
     }
   ],
-  "generated_at": "2026-10-06T11:31:22+00:00",
+  "generated_at": "2026-10-06T12:17:52+00:00",
   "results": [
     {
       "coverage": {
         "effective_metrics": {
-          "branch": 86.27,
-          "condition": 83.57,
+          "branch": 87.06,
+          "condition": 84.51,
           "fsm_state": 36.62,
-          "functional": 55.41,
-          "line": 90.14,
-          "toggle": 73.78
+          "functional": 55.44,
+          "line": 90.83,
+          "toggle": 73.82
         }
       },
       "flow": "aou",
