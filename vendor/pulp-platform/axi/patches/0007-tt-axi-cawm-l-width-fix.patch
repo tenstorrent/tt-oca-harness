@@ -1,0 +1,39 @@
+diff --git a/vendor/pulp-platform/axi/upstream/src/axi_burst_splitter_gran.sv b/vendor/pulp-platform/axi/upstream/src/axi_burst_splitter_gran.sv
+index fa8e8ab31..bb124378e 100644
+--- a/vendor/pulp-platform/axi/upstream/src/axi_burst_splitter_gran.sv
++++ b/vendor/pulp-platform/axi/upstream/src/axi_burst_splitter_gran.sv
+@@ -669,7 +669,7 @@ module axi_burst_splitter_gran_counters #(
+     );
+     assign cnt_free[i] = (cnt_oup[i] == '0);
+   end
+-  assign cnt_inp = {1'b0, alloc_pld_out.len} + 1;
++  assign cnt_inp = {1'b0, alloc_pld_out.len} + 1'b1;
+ 
+   lzc #(
+     .WIDTH  ( MaxTxns ),
+@@ -712,7 +712,7 @@ module axi_burst_splitter_gran_counters #(
+   assign alloc_gnt   = idq_inp_gnt & |(cnt_free);
+   assign cnt_gnt_o   = idq_oup_gnt & idq_oup_valid;
+   logic [8:0] read_len;
+-  assign read_len    = cnt_oup[cnt_r_idx] - 1;
++  assign read_len    = cnt_oup[cnt_r_idx] - 1'b1;
+   assign cnt_len_o   = read_len[7:0];
+ 
+   assign idq_oup_pop = cnt_req_i & cnt_gnt_o & cnt_dec_i & (cnt_len_o < cnt_delta_i);
+diff --git a/vendor/pulp-platform/axi/upstream/src/axi_demux_id_counters.sv b/vendor/pulp-platform/axi/upstream/src/axi_demux_id_counters.sv
+index 7e8c88da5..028f2a892 100644
+--- a/vendor/pulp-platform/axi/upstream/src/axi_demux_id_counters.sv
++++ b/vendor/pulp-platform/axi/upstream/src/axi_demux_id_counters.sv
+@@ -59,9 +59,9 @@ module axi_demux_id_counters #(
+   //-----------------------------------
+   // Push and Pop
+   //-----------------------------------
+-  assign push_en   = (push_i)   ? (1 << push_axi_id_i)   : '0;
+-  assign inject_en = (inject_i) ? (1 << inject_axi_id_i) : '0;
+-  assign pop_en    = (pop_i)    ? (1 << pop_axi_id_i)    : '0;
++  assign push_en   = (push_i)   ? (NoCounters'(1) << push_axi_id_i)   : '0;
++  assign inject_en = (inject_i) ? (NoCounters'(1) << inject_axi_id_i) : '0;
++  assign pop_en    = (pop_i)    ? (NoCounters'(1) << pop_axi_id_i)    : '0;
+   assign full_o    = |cnt_full;
+   //-----------------------------------
+   // Status

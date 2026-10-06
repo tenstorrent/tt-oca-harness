@@ -25,7 +25,7 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_fifo_sync_cnt.sv
   # prim_generic cells that the current synth overlay replaces.
   # Add a cell here only if the overlay supplies a replacement.
-  - target: all(any(dtp, cross_trigger, drbg, uart, system_timer_octs, entropy_source, sep, smc, opentitan_smu, smu, key_manager), not(synth))
+  - target: not(synth)
     files:
       - upstream/hw/ip/prim_generic/rtl/prim_and2.sv
       - upstream/hw/ip/prim_generic/rtl/prim_buf.sv
@@ -35,6 +35,8 @@ sources:
       - upstream/hw/ip/prim_generic/rtl/prim_clock_mux2.sv
       - upstream/hw/ip/prim_generic/rtl/prim_flop.sv
       - upstream/hw/ip/prim_generic/rtl/prim_flop_2sync.sv
+      - upstream/hw/ip/prim_generic/rtl/prim_flop_en.sv
+      - upstream/hw/ip/prim_generic/rtl/prim_flop_no_rst.sv
       - upstream/hw/ip/prim_generic/rtl/prim_inv.sv
       - upstream/hw/ip/prim_generic/rtl/prim_xnor2.sv
       - upstream/hw/ip/prim_generic/rtl/prim_xor2.sv
@@ -225,8 +227,6 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_subst_perm.sv
       - upstream/hw/ip/prim/rtl/prim_trivium.sv
       - upstream/hw/ip/prim/rtl/prim_xoshiro256pp.sv
-      - upstream/hw/ip/prim_generic/rtl/prim_flop_en.sv
-      - upstream/hw/ip/prim_generic/rtl/prim_flop_no_rst.sv
       - upstream/hw/ip/prim_generic/rtl/prim_rom.sv
       - upstream/hw/ip/prim/rtl/prim_flop_macros.sv
       - upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv

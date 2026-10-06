@@ -671,7 +671,7 @@ sources:
       EMULATION: 1
     files:
       - hw/common/defs/ocah_vendor_defines.svh
-  - target: all(any(dtp, sep, smc, key_manager, uart, system_timer_octs, entropy_source), not(synth))
+  - target: not(synth)
     files:
       - hw/common/ocah_prim_generic/rtl/prim_and3.sv
       - hw/common/ocah_prim_generic/rtl/prim_ao222.sv
