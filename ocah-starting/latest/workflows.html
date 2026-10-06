@@ -246,13 +246,25 @@
 Makefiles are used for build automation.</p>
 </div>
 <div class="paragraph">
-<p>To initialise or update the Bender-generated file list, run the following
-command:</p>
+<p>Each subsystem ships repository-relative filelists under
+<code>integration/filelists/</code>: <code>&lt;system&gt;.synth.f</code> for synthesis, <code>&lt;system&gt;.emul.f</code>
+for emulation, and <code>&lt;system&gt;.&lt;tool&gt;.sim.f</code> for simulation. Bender selects the
+synthesis view with <code>-t synth</code> and the emulation view with
+<code>-t synth -t emulation</code>; each subsystem adds its own targets in its <code>flow.mk</code>.
+A bare <code>bender script flist</code> emits only the default target and omits the
+subsystems.</p>
+</div>
+<div class="paragraph">
+<p>Regenerate every filelist from the repository root:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">make generate_filelist</code></pre>
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">make update-integration-filelists</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>Add <code>CHECK=1</code> to verify the committed filelists instead of rewriting them. The
+weekly <code>update-integration-filelists</code> workflow runs the same target.</p>
 </div>
 <div class="sect2">
 <h3 id="vendor-packages"><a class="anchor" href="#vendor-packages"></a><a class="link" href="#vendor-packages">1.1. Third-party (vendor) package imports with Bender</a></h3>

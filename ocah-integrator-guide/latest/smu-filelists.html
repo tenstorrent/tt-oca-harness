@@ -227,15 +227,17 @@ needed to synthesize or simulate each system.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 25%;">
-<col style="width: 25%;">
-<col style="width: 25%;">
-<col style="width: 25%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">System</th>
 <th class="tableblock halign-left valign-top">Synthesis</th>
+<th class="tableblock halign-left valign-top">Emulation</th>
 <th class="tableblock halign-left valign-top">Simulation (Verilator)</th>
 <th class="tableblock halign-left valign-top">Simulation (VCS)</th>
 </tr>
@@ -244,24 +246,28 @@ needed to synthesize or simulate each system.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu.synth.f</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smu.emul.f</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu.verilator.sim.f</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu.vcs.sim.f</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smc.synth.f</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc.emul.f</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smc.verilator.sim.f</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smc.vcs.sim.f</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DTP</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">dtp.synth.f</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">dtp.emul.f</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">dtp.verilator.sim.f</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">dtp.vcs.sim.f</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AoU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">aou.synth.f</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">aou.emul.f</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
@@ -285,8 +291,8 @@ it is not provided at the OCAH level.</p>
 <code>define</code> lines. Preserve these lines when passing the filelist to a simulator.</p>
 </div>
 <div class="paragraph">
-<p>Regenerate all filelists with <code>python3 scripts/update_integration_filelists.py</code>.
-Add the <code>--check</code> argument to verify that committed outputs are current.</p>
+<p>Regenerate all filelists with <code>make update-integration-filelists</code> from the
+repository root. Add <code>CHECK=1</code> to verify that committed outputs are current.</p>
 </div>
 </article>
   </div>
