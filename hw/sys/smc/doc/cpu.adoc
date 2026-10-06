@@ -6,22 +6,15 @@
 
 [[cpu-memory-system]]
 
-This section describes the SMC's CPU subsystem, which is based on the
-Rocket RV64GC RISC-V processor core (see:
-https://chipyard.readthedocs.io/en/stable/Generators/Rocket.html[Rocket
-Chip]). The cluster is generated using the Chipyard Rocket-chip
-generator and supports 4 processor cores, each with private L1
-cache and access to a shared local SRAM.
+The SMC CPU subsystem contains four Rocket RV64GC cores, each with private
+instruction and data caches. The cores share a 1 MiB scratchpad and a 128 KiB
+boot ROM through the Chipyard-generated TileLink interconnect. AXI4 bridges
+connect the cluster to the SMC fabric.
 
-Key features include:
-
-* 4 Rocket CPU cores (RV64GC ISA, 56-bit physical addressing)
-* Core-local L1 instruction and data caches, each configurable in size
-and associativity
-* Shared local SRAM/Scratchpad and Boot ROM
-* Multi-core system management, deterministic performance for embedded
-management workloads
-* Full support for RISC-V privilege levels (Machine, Supervisor, User)
+This chapter describes the generated configuration, memory interfaces and
+CPU reset boundary. The
+https://chipyard.readthedocs.io/en/stable/Generators/Rocket.html[Rocket Chip documentation]
+provides background on the core and generator.
 
 <<smc-cpu-cluster-diagram>> shows the CPU cluster, memory hierarchy, and fabric bridge.
 
@@ -29,29 +22,31 @@ management workloads
 .SMC CPU cluster and TileLink-to-AXI integration
 image::smc-cpu-cluster.svg[alt="SMC CPU cluster: four Rocket tiles on the TileLink system bus, the control, front and memory buses, and the AXI4 bridges and isolation at the cluster boundary, with the scratchpad SRAM and boot ROM macros outside the SMC",width=100%,pdfwidth=100%]
 
-The figure shows three nested boundaries: `u_digital_top`, the Chipyard-generated
-cluster; `u_smc_cpu`, which adds the boundary isolation, reset sequencing and scratch
-RAM zero-fill; and `u_smc_cpu_wrapper`, which adds the front-port demux, the `cpu_ctrl`
-registers and the boot ROM bridge. Thick lines are AXI4 and thin dark lines are
-TileLink, except for the AXI-Lite link to `cpu_ctrl`. Each tile has one manager port
-on the system bus (`sbus`) and one subordinate port, from the control bus (`cbus`),
-that reaches its Bus Error Unit (BEU). Debug-module system bus accesses (SBA) and
-the L2 frontend port enter the system bus through the front bus (`fbus`). The
-coherence manager (`coh_wrapper`, a TileLink broadcast hub) leads to the memory bus
-(`mbus`), which serves the scratchpad and the boot ROM port. The scratchpad block is
-logic only: 32 TLRAM banks with their SECDED ECC encode and decode. The
-technology-dependent SRAM macros that hold the scratchpad data, drawn in grey, sit
-outside the SMC, as do the boot ROM macro and the L1 cache tag and data arrays.
-`u_smc_cpu_wrapper` reaches them through memory interface ports, one 72-bit port per
-scratchpad bank, that `smc` carries to its own boundary. Interrupts from
-the four watchdog timers and the four BEUs reach the PLIC inside the cluster, which
-the figure does not draw.
+The figure separates three implementation boundaries:
+
+* `u_digital_top` contains the generated cluster and TileLink buses.
+* `u_smc_cpu` adds AXI isolation, reset sequencing and scratchpad zero-fill.
+* `u_smc_cpu_wrapper` adds the front-port demultiplexer, `cpu_ctrl` registers
+  and boot ROM bridge.
+
+Each tile connects to the system bus (`sbus`) as a manager and to the control
+bus (`cbus`) through its Bus Error Unit (BEU) subordinate port. Debug system
+bus accesses and the L2 frontend port enter `sbus` through the front bus
+(`fbus`). The coherence manager (`coh_wrapper`, a TileLink broadcast hub)
+connects to the memory bus (`mbus`), which serves the scratchpad and boot ROM.
+The PLIC receives four watchdog and four BEU interrupt sources; these paths
+are omitted from the figure.
+
+Thick lines denote AXI4; thin dark lines denote TileLink, except for the
+AXI-Lite link to `cpu_ctrl`. The scratchpad contains 32 TLRAM banks with SECDED
+encode/decode logic. The SRAM macros, L1 tag/data arrays and boot ROM macro
+sit outside SMC. Memory interface ports carry their requests through the SMC
+boundary, including one 72-bit port for each scratchpad bank.
 
 [[processor-core-overview]]
 == Processor Core
 
-<<smc-processor-core-features-table>> summarizes the key features of the Rocket CPU core, and
-its cache hierarchy
+<<smc-processor-core-features-table>> summarizes the processor configuration.
 
 [[smc-processor-core-features-table]]
 [cols="30%,70%",options="header"]
@@ -59,7 +54,8 @@ its cache hierarchy
 |========================================================
 |Attribute |Description
 |Cores |4, Rocket RV64GC
-|ISA |RV64GC (I, M, A, F, D, C extensions)
+|Base ISA |RV64GC (I, M, A, F, D, C extensions)
+|Additional configured extensions |Zba, Zbb, Zbs and conditional-zero instructions
 |Microarchitecture |In-order, 5-stage pipeline
 |Privilege Levels |M/S/U
 |Phys. Address |56 bits
@@ -69,8 +65,8 @@ its cache hierarchy
 [[cache-and-memory-hierarchy]]
 == Local Memory
 
-<<smc-cache-and-memory-hierarchy-table>> lists the default memory sizes and their
-configurability.
+<<smc-cache-and-memory-hierarchy-table>> lists the memory geometry in the generated cluster and
+the associated macro controls.
 
 ifdef::backend-html5[]
 ++++
@@ -82,17 +78,17 @@ endif::backend-html5[]
 [cols="25%,20%,30%,25%",options="header",role="smc-memory-table"]
 .SMC cache and memory hierarchy
 |=======================================================================
-|Component |Default Size |Notes |Macro configuration bus
-|L1 I-Cache per core |4 KiB (32 sets × 2 ways) |Read-only, Parity
-|icache_tag/data_cfg
+|Component |Configured Size |Protection / role |Macro controls
+|L1 I-Cache per core |4 KiB (32 sets × 2 ways) |Read-only instruction cache; tag/data parity
+|`icache_tag_cfg` / `icache_data_cfg`
 
-|L1 D-Cache per core |4 KiB (32 sets × 2 ways) |Write-back, SECDED ECC
-|dcache_tag/data_cfg
+|L1 D-Cache per core |4 KiB (32 sets × 2 ways) |Write-back data cache; tag/data SECDED ECC
+|`dcache_tag_cfg` / `dcache_data_cfg`
 
-|Local SRAM/Scratchpad |1 MiB (32 banks) |Deterministic access, SECDED ECC, bank power gating
-|scratch_ram_cfg
+|Local SRAM/Scratchpad |1 MiB (32 banks) |Shared local memory; SECDED ECC
+|`scratch_ram_cfg`
 
-|Boot ROM |128 KiB |Read-only, stores boot firmware |rom_cfg
+|Boot ROM |128 KiB |Read-only, stores boot firmware |`rom_cfg`
 |=======================================================================
 
 ifdef::backend-html5[]
@@ -101,21 +97,25 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-The sizes are fixed by the Chipyard generator configuration. The
-`*_cfg` buses are foundry memory configuration inputs, one per macro, passed
-unchanged to each SRAM or ROM macro; they do not change memory size. The
-scratchpad SRAM allows deterministic accesses, independent of cache state,
-and supports per-bank power management.
+The sizes and associativity above are set by the Chipyard configuration and
+its generated memory interfaces. Changing them requires a matching generated
+cluster and memory implementation. The `*_cfg` signals configure the external
+memory macros; they are passed unchanged to each macro and do not resize
+caches or the scratchpad. Macro-specific repair and power controls depend on
+the selected memory implementation.
 
-Internally, the CPU cluster uses TileLink buses to connect the cores to the scratchpad and Boot ROM, to the PLIC, CLINT and Bus Error Units on the control bus, and to the watchdog timers on the peripheral bus.
-At the cluster boundary, TileLink is bridged to AXI4 for the MMIO manager port, and AXI4 is bridged to TileLink for the L2 frontend port. The only AXI4-Lite link is the one in `smc_cpu_wrapper` from the front-port demux to the `cpu_ctrl` registers. Both AXI4 ports connect to the SMC fabric (see
+The cluster uses TileLink internally for the scratchpad and boot ROM, for
+the PLIC, CLINT and BEUs on the control bus, and for watchdog timers on the
+peripheral bus. At its boundary, the MMIO manager bridge converts TileLink
+to AXI4; the L2 frontend bridge converts incoming AXI4 to TileLink. The
+front-port branch serving `cpu_ctrl` uses AXI4-Lite. Both AXI4 ports connect
+to the SMC
 ifdef::backend-html5[]
-xref:smc:fabric.adoc#fabric[Fabric]
+xref:smc:fabric.adoc#fabric[Fabric].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-<<fabric>>
+<<fabric,Fabric>>.
 endif::backend-pdf[]
-).
 
 [[smc-per-core-reset]]
 == Reset and Boot
@@ -126,70 +126,64 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-Each CPU core supports an independent reset mechanism and a programmable
-reset vector, configured via rst_core_N_ni and reset_vector_N_i signals
-for cores N=0 to 3. The design provides separate reset controls for the
-uncore logic and debug subsystems, enabling flexible platform management
-and debug flows.
+`CPU_CTRL.RESET_CTRL` provides per-core reset controls and reset-pulse
+requests, plus separate uncore and debug-module reset controls. Each core has
+a 56-bit `RESET_VECTOR` register, reset to the boot ROM base `0xC004_0000`.
+The wrapper supplies these values to the generated cluster. While warm reset
+is asserted, it selects `0xC004_0000` instead of the programmed vectors.
 
 Individual core reset clears the core's private L1 cache and TileLink client
 state without resetting the shared coherence manager. The current SMC Rocket
 integration provides no reset-aware coherence mechanism to drain outstanding
-transactions or preserve dirty cache data.
+transactions or preserve dirty cache data. The AXI boundary drain described
+below does not remove this limitation.
 
-SRAM initialization is handled automatically by hardware on reset,
-ensuring memory consistency and error-free operation at startup; this
-feature can be disabled using smc_disable_sram_auto_init_i to support
-specialized or custom boot procedures. The completion of SRAM
-initialization is reported through the smc_init_mem_done_o status signal,
-allowing software to reliably detect when memory is ready for use.
+The scratchpad zero-fill sequencer starts when its memory-initialization reset
+releases. It writes zeros across the scratchpad banks and holds the cores in
+reset until initialization completes. `smc_disable_sram_auto_init_i` bypasses
+this operation. `smc_init_mem_done_o` reports either completion or bypass;
+it does not certify memory repair, MBIST success or initialized contents when
+zero-fill is skipped. The integrator must provide suitable memory contents
+and ECC state before use when bypassing initialization.
 
 == Memory Repair
 
-The SMC CPU subsystem includes Built-In Redundancy Analysis (BIRA) memory repair
-support to address manufacturing defects in SRAM arrays. Repair uses redundant
-memory elements configured by an external repair controller, applied during the
-boot sequence.
+Memory repair and memory built-in self-test (MBIST) are external DFT
+responsibilities. The external repair controller applies redundant memory
+elements as required by the selected SRAM implementation. The SMC fuse map
+provides no repair-data storage; the integrator supplies the repair data and
+its storage location.
 
-Memory repair executes automatically after eFuse sensing completes and before
-MBIST operations. The external controller configures the redundant memory
-elements and reports completion through `mem_repair_done` / `mem_repair_success`,
-ensuring SRAM arrays are functional before the CPU cluster begins execution. The
-SMC fuse map provides no repair-data storage; where that data lives is an
-integration choice.
+The intended cold-boot sequence is fuse sensing, external repair, then MBIST
+before normal CPU use. SMC supplies the following sequencing and status
+interfaces; it does not implement the external repair algorithm.
 
-**Control Mechanisms:**
+`smc_fuse_sense_done_o`::
+Signals completion of fuse sensing into shadow registers. External DFT logic
+can use it to begin the repair/MBIST sequence.
+`ext_boot_seq_done_i`::
+Reports completion of the external boot sequence. Its qualified value gates
+fuse-reset release together with fuse sensing; the repair and MBIST status
+bits themselves are not this handshake.
+`skip_mem_repair_o`::
+Asserted by the synchronized isolation pin or the FLR-set
+`ISOLATE_REQ_SMC_REG` latch. Software writes can clear this latch but cannot
+set it. A request through the separate `ISOLATE_REQ_REG` register does not
+assert this output. External logic determines how it bypasses repair/MBIST.
+`BYPASS_SRAM_REPAIR` (`STRAPS_LO[13]`)::
+Requests repair bypass. The ROM skips its repair-status check when this
+strap is set; the external integration owns the repair bypass behavior.
+`mem_repair_done` / `mem_repair_success`::
+External completion and success status, visible in
+`DFX_CTRL_STATUS.STATUS_SMU` at `0xC000_B800`.
 
-* `smc_fuse_sense_done_o`: eFuse controller output indicating sensing completion.
-  External DFT logic monitors this signal to trigger repair operations.
-
-* `skip_mem_repair_o`: Reset unit output that bypasses repair when asserted,
-  activating during FLR operations or when the `BYPASS_SRAM_REPAIR` strap is set.
-
-* `BYPASS_SRAM_REPAIR` strap (`STRAPS_LO[13]`): Hardware-level bypass control that
-  bypasses repair logic when asserted, assuming SRAM arrays are defect-free.
-
-**Status Reporting:**
-
-Repair completion and success are reported through
-`DFX_CTRL_STATUS.STATUS_SMU` at `0xC000_B800`. The `mem_repair_done` bit
-indicates completion, while `mem_repair_success` indicates successful repair.
-The SMC ROM firmware monitors these bits during initialization to verify repair
-completion before proceeding with boot operations.
-
-**Boot Sequence Integration:**
-
-Memory repair integrates into the boot sequence as follows: after power-on reset
-deasserts and eFuse sensing begins, `smc_fuse_sense_done_o` assertion triggers
-repair operations. The external repair controller applies the repair data to
-SRAM, with completion reported through DFT Control Status registers. MBIST
-operations begin after repair completes (or is bypassed), and the CPU cluster
-reset releases after both repair and MBIST complete. The repair process must
-complete successfully before the CPU cluster can safely access SRAM arrays.
-
-During FLR operations, repair is automatically bypassed via `skip_mem_repair_o`
-to enable rapid reset sequences. Normal cold reset sequences always execute
-repair unless explicitly bypassed via strap configuration.
+The ROM checks repair status during early startup, before normal stack use.
+It treats a clear `mem_repair_done` as repair not required rather than waiting
+for completion. When repair reports done, the ROM checks success; the
+`SMC_CONFIG` DFT-ignore-error setting can permit boot to continue after a
+reported failure. These firmware checks do not establish that repair has
+completed successfully. The external sequencer must enforce the platform's
+repair and MBIST requirements before reporting boot-sequence completion.
 
 == System Interfaces
 
@@ -202,7 +196,8 @@ cluster interfaces.
 |==============================================
 |Interface |Protocol |Description
 |MMIO |AXI4 |Manager port to the SMC fabric; 56-bit address, 64-bit data, 3-bit ID
-|L2 Frontend |AXI4 |For shared memory/coherency
+|L2 Frontend |AXI4 |Subordinate port into the cluster through the front bus;
+32-bit SMC-local address, 64-bit data, 8-bit ID
 |Debug |JTAG |JTAG debug transport module into the debug module on the control bus;
 system bus access through the front bus
 |==============================================
@@ -351,10 +346,11 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-== Advanced Bus Infrastructure Monitoring and Error Management
+[[advanced-bus-infrastructure-monitoring-and-error-management]]
+== Bus Error Reporting
 
-Each core has a Bus Error Unit (BEU) at 0xC801_0000 + N * 0x1000. It reports
-errors seen by that core's L1 caches:
+Each core has a Bus Error Unit (BEU) at `0xC801_0000 + N * 0x1000`, for
+N = 0 through 3. It reports errors seen by that core's L1 caches:
 
 * instruction-cache correctable errors,
 * instruction-cache bus errors,
@@ -362,13 +358,20 @@ errors seen by that core's L1 caches:
 * data-cache uncorrectable errors, and
 * data-cache bus errors.
 
-The BEU records a cause code for the first enabled error and, except for
-instruction-cache correctable errors, its physical address. It does not
-capture transaction data. An error response from the SMC fabric reaches the
-BEU only as a cache bus error; the BEU does not distinguish decode, slave or
-timeout errors.
+An error response from the SMC fabric reaches the BEU only as a cache bus
+error; the BEU does not distinguish decode, slave or timeout errors. It is
+not a general AXI transaction monitor and has no independent AXI timeout
+detector or transaction-data log.
 
-Delivery and clearing are described in
+`ENABLE` selects events that capture `CAUSE` and `PHYS_ADDR` while `CAUSE`
+is zero. Instruction-cache correctable errors capture a physical address
+of zero. The register named `ACCRUED_ENABLE` is instead sticky event status:
+events accumulate independently of `ENABLE`, and ordinary software writes
+replace the bits. `PLIC_ENABLE` and `LOCAL_ENABLE` select from that accrued
+status for the PLIC and direct-core interrupt paths. Capture the diagnostic
+state before clearing status or rearming cause capture. The generated
+register map below lists the implemented fields. Delivery and clearing
+are described in
 ifdef::backend-html5[]
 xref:smc:interrupts.adoc#smc-interrupts-bus-error-unit-interrupts[Bus Error Units].
 endif::backend-html5[]
@@ -386,12 +389,17 @@ receive DECERR at every address in the region. Debugger-facing registers such as
 Module Interface (DMI), not through that memory region.
 <<smc-debug-module-configuration>> describes them.
 
-Debugging is facilitated by JTAG, through the cluster's debug transport module and
-debug module, enabling
-per-core access to registers, memory, and both hardware and software
-breakpoints. These debug capabilities function independently of
-functional resets and allow override of reset vectors to support
-firmware development and diagnostics.
+JTAG reaches the cluster's debug transport module and debug module. The
+configured debug facilities provide per-core register access, program-buffer
+execution, breakpoints and system bus access. Debug system bus transactions
+enter through `fbus` and use the cluster's interconnect and reset/isolation
+conditions.
+
+Debug-module reset is separately controlled by `CPU_CTRL.RESET_CTRL`; its
+reset value holds the debug module in reset. Separate control does not make
+debug memory accesses independent of cluster reset or boundary isolation.
+Per-core boot addresses are controlled by the `RESET_VECTOR` registers
+described above.
 
 [[smc-debug-module-configuration]]
 === Debug Module Configuration

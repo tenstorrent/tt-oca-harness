@@ -71,7 +71,7 @@ name = "sep_pic_irq_source_map_delivery_test"
 module = "cpu.sep_pic_irq_source_map_delivery_test"
 firmware = "pic_irq_source_map_test"
 seed = 1
-reseed = 3
+# No reseed: every source runs every seed.
 timeout_sec = 1800
 tags = ["boot", "cpu", "interrupt", "pic", "subsystem"]
 run_modes = ["cpu"]
