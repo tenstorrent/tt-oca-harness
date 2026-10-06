@@ -25,11 +25,14 @@ typedef union {
 } pll_wrap_placeholder_mem__mem_word_t;
 
 // mem - pll_wrap_placeholder_mem
+// Placeholder footprint (adopter clock-control block; no CSRs modeled)
+// Placeholder footprint (adopter clock-control block; no CSRs modeled)
 typedef struct __attribute__ ((__packed__)) {
     pll_wrap_placeholder_mem__mem_word_t mem_array[954];
 } pll_wrap_placeholder_mem_t;
 
 // addrmap - pll_wrap
+// Adopter clock-control placeholder reserving the PLL map slot; no CSRs are modeled.
 typedef struct __attribute__ ((__packed__)) {
     pll_wrap_placeholder_mem_t footprint;
 } pll_wrap_t;

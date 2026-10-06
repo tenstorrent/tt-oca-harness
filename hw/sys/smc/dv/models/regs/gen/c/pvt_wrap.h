@@ -25,11 +25,14 @@ typedef union {
 } pvt_wrap_placeholder_mem__mem_word_t;
 
 // mem - pvt_wrap_placeholder_mem
+// Placeholder footprint (adopter PVT/monitor block; no CSRs modeled)
+// Placeholder footprint (adopter PVT/monitor block; no CSRs modeled)
 typedef struct __attribute__ ((__packed__)) {
     pvt_wrap_placeholder_mem__mem_word_t mem_array[594];
 } pvt_wrap_placeholder_mem_t;
 
 // addrmap - pvt_wrap
+// Adopter PVT and monitor placeholder reserving the map slot; no CSRs are modeled.
 typedef struct __attribute__ ((__packed__)) {
     pvt_wrap_placeholder_mem_t footprint;
 } pvt_wrap_t;

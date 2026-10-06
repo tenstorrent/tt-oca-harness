@@ -14,12 +14,14 @@ extern "C" {
 #include <assert.h>
 
 // reg - bus_error_unit::CAUSE
+// Cause register. Enumerates different kinds of errors
 #define BUS_ERROR_UNIT__CAUSE__DATA_bm 0x7
 #define BUS_ERROR_UNIT__CAUSE__DATA_bp 0
 #define BUS_ERROR_UNIT__CAUSE__DATA_bw 3
 #define BUS_ERROR_UNIT__CAUSE__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Cause register. Enumerates different kinds of errors
         uint64_t data :3;
         uint64_t :61;
     } f;
@@ -27,11 +29,13 @@ typedef union {
 } bus_error_unit__CAUSE_t;
 
 // reg - bus_error_unit::PHYS_ADDR
+// Physical address captured with CAUSE when an enabled error arrives and CAUSE is zero. Software may overwrite the value; writes take priority over capture. No reset value
 #define BUS_ERROR_UNIT__PHYS_ADDR__VALUE_bm 0xffffffffffffff
 #define BUS_ERROR_UNIT__PHYS_ADDR__VALUE_bp 0
 #define BUS_ERROR_UNIT__PHYS_ADDR__VALUE_bw 56
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Physical address captured with CAUSE when an enabled error arrives and CAUSE is zero. Software may overwrite the value; writes take priority over capture. No reset value
         uint64_t value :56;
         uint64_t :8;
     } f;
@@ -39,47 +43,63 @@ typedef union {
 } bus_error_unit__PHYS_ADDR_t;
 
 // reg - bus_error_unit::ENABLE
+// Reserved
 #define BUS_ERROR_UNIT__ENABLE__RSVD0_bm 0x1
 #define BUS_ERROR_UNIT__ENABLE__RSVD0_bp 0
 #define BUS_ERROR_UNIT__ENABLE__RSVD0_bw 1
 #define BUS_ERROR_UNIT__ENABLE__RSVD0_reset 0x0
+// Enable recording error information for ICache Tilelink bus error. Enabled on reset.
 #define BUS_ERROR_UNIT__ENABLE__ICACHE_TLBUS_bm 0x2
 #define BUS_ERROR_UNIT__ENABLE__ICACHE_TLBUS_bp 1
 #define BUS_ERROR_UNIT__ENABLE__ICACHE_TLBUS_bw 1
 #define BUS_ERROR_UNIT__ENABLE__ICACHE_TLBUS_reset 0x1
+// Enable recording error information for ICache ECC correctable bus error. Enabled on reset.
 #define BUS_ERROR_UNIT__ENABLE__ICACHE_CORRECTABLE_bm 0x4
 #define BUS_ERROR_UNIT__ENABLE__ICACHE_CORRECTABLE_bp 2
 #define BUS_ERROR_UNIT__ENABLE__ICACHE_CORRECTABLE_bw 1
 #define BUS_ERROR_UNIT__ENABLE__ICACHE_CORRECTABLE_reset 0x1
+// Reserved
 #define BUS_ERROR_UNIT__ENABLE__RSVD3_bm 0x8
 #define BUS_ERROR_UNIT__ENABLE__RSVD3_bp 3
 #define BUS_ERROR_UNIT__ENABLE__RSVD3_bw 1
 #define BUS_ERROR_UNIT__ENABLE__RSVD3_reset 0x0
+// Reserved
 #define BUS_ERROR_UNIT__ENABLE__RSVD4_bm 0x10
 #define BUS_ERROR_UNIT__ENABLE__RSVD4_bp 4
 #define BUS_ERROR_UNIT__ENABLE__RSVD4_bw 1
 #define BUS_ERROR_UNIT__ENABLE__RSVD4_reset 0x0
+// Enable recording error information for DCache Tilelink bus error. Enabled on reset.
 #define BUS_ERROR_UNIT__ENABLE__DCACHE_TLBUS_bm 0x20
 #define BUS_ERROR_UNIT__ENABLE__DCACHE_TLBUS_bp 5
 #define BUS_ERROR_UNIT__ENABLE__DCACHE_TLBUS_bw 1
 #define BUS_ERROR_UNIT__ENABLE__DCACHE_TLBUS_reset 0x1
+// Enable recording error information for DCache ECC correctable bus error. Enabled on reset.
 #define BUS_ERROR_UNIT__ENABLE__DCACHE_CORRECTABLE_bm 0x40
 #define BUS_ERROR_UNIT__ENABLE__DCACHE_CORRECTABLE_bp 6
 #define BUS_ERROR_UNIT__ENABLE__DCACHE_CORRECTABLE_bw 1
 #define BUS_ERROR_UNIT__ENABLE__DCACHE_CORRECTABLE_reset 0x1
+// Enable recording error information for DCache ECC uncorrectable bus error. Enabled on reset.
 #define BUS_ERROR_UNIT__ENABLE__DCACHE_UNCORRECTABLE_bm 0x80
 #define BUS_ERROR_UNIT__ENABLE__DCACHE_UNCORRECTABLE_bp 7
 #define BUS_ERROR_UNIT__ENABLE__DCACHE_UNCORRECTABLE_bw 1
 #define BUS_ERROR_UNIT__ENABLE__DCACHE_UNCORRECTABLE_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reserved
         uint64_t rsvd0 :1;
+        // Enable recording error information for ICache Tilelink bus error. Enabled on reset.
         uint64_t icache_tlbus :1;
+        // Enable recording error information for ICache ECC correctable bus error. Enabled on reset.
         uint64_t icache_correctable :1;
+        // Reserved
         uint64_t rsvd3 :1;
+        // Reserved
         uint64_t rsvd4 :1;
+        // Enable recording error information for DCache Tilelink bus error. Enabled on reset.
         uint64_t dcache_tlbus :1;
+        // Enable recording error information for DCache ECC correctable bus error. Enabled on reset.
         uint64_t dcache_correctable :1;
+        // Enable recording error information for DCache ECC uncorrectable bus error. Enabled on reset.
         uint64_t dcache_uncorrectable :1;
         uint64_t :56;
     } f;
@@ -87,47 +107,63 @@ typedef union {
 } bus_error_unit__ENABLE_t;
 
 // reg - bus_error_unit::PLIC_ENABLE
+// Reserved
 #define BUS_ERROR_UNIT__PLIC_ENABLE__RSVD0_bm 0x1
 #define BUS_ERROR_UNIT__PLIC_ENABLE__RSVD0_bp 0
 #define BUS_ERROR_UNIT__PLIC_ENABLE__RSVD0_bw 1
 #define BUS_ERROR_UNIT__PLIC_ENABLE__RSVD0_reset 0x0
+// PLIC interrupt enable mask for ICache Tilelink bus error.
 #define BUS_ERROR_UNIT__PLIC_ENABLE__ICACHE_TLBUS_bm 0x2
 #define BUS_ERROR_UNIT__PLIC_ENABLE__ICACHE_TLBUS_bp 1
 #define BUS_ERROR_UNIT__PLIC_ENABLE__ICACHE_TLBUS_bw 1
 #define BUS_ERROR_UNIT__PLIC_ENABLE__ICACHE_TLBUS_reset 0x0
+// PLIC interrupt enable mask for ICache ECC correctable bus error.
 #define BUS_ERROR_UNIT__PLIC_ENABLE__ICACHE_CORRECTABLE_bm 0x4
 #define BUS_ERROR_UNIT__PLIC_ENABLE__ICACHE_CORRECTABLE_bp 2
 #define BUS_ERROR_UNIT__PLIC_ENABLE__ICACHE_CORRECTABLE_bw 1
 #define BUS_ERROR_UNIT__PLIC_ENABLE__ICACHE_CORRECTABLE_reset 0x0
+// Reserved
 #define BUS_ERROR_UNIT__PLIC_ENABLE__RSVD3_bm 0x8
 #define BUS_ERROR_UNIT__PLIC_ENABLE__RSVD3_bp 3
 #define BUS_ERROR_UNIT__PLIC_ENABLE__RSVD3_bw 1
 #define BUS_ERROR_UNIT__PLIC_ENABLE__RSVD3_reset 0x0
+// Reserved
 #define BUS_ERROR_UNIT__PLIC_ENABLE__RSVD4_bm 0x10
 #define BUS_ERROR_UNIT__PLIC_ENABLE__RSVD4_bp 4
 #define BUS_ERROR_UNIT__PLIC_ENABLE__RSVD4_bw 1
 #define BUS_ERROR_UNIT__PLIC_ENABLE__RSVD4_reset 0x0
+// PLIC interrupt enable mask for DCache Tilelink bus error.
 #define BUS_ERROR_UNIT__PLIC_ENABLE__DCACHE_TLBUS_bm 0x20
 #define BUS_ERROR_UNIT__PLIC_ENABLE__DCACHE_TLBUS_bp 5
 #define BUS_ERROR_UNIT__PLIC_ENABLE__DCACHE_TLBUS_bw 1
 #define BUS_ERROR_UNIT__PLIC_ENABLE__DCACHE_TLBUS_reset 0x0
+// PLIC interrupt enable mask for DCache ECC correctable bus error.
 #define BUS_ERROR_UNIT__PLIC_ENABLE__DCACHE_CORRECTABLE_bm 0x40
 #define BUS_ERROR_UNIT__PLIC_ENABLE__DCACHE_CORRECTABLE_bp 6
 #define BUS_ERROR_UNIT__PLIC_ENABLE__DCACHE_CORRECTABLE_bw 1
 #define BUS_ERROR_UNIT__PLIC_ENABLE__DCACHE_CORRECTABLE_reset 0x0
+// PLIC interrupt enable mask for DCache ECC uncorrectable bus error.
 #define BUS_ERROR_UNIT__PLIC_ENABLE__DCACHE_UNCORRECTABLE_bm 0x80
 #define BUS_ERROR_UNIT__PLIC_ENABLE__DCACHE_UNCORRECTABLE_bp 7
 #define BUS_ERROR_UNIT__PLIC_ENABLE__DCACHE_UNCORRECTABLE_bw 1
 #define BUS_ERROR_UNIT__PLIC_ENABLE__DCACHE_UNCORRECTABLE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reserved
         uint64_t rsvd0 :1;
+        // PLIC interrupt enable mask for ICache Tilelink bus error.
         uint64_t icache_tlbus :1;
+        // PLIC interrupt enable mask for ICache ECC correctable bus error.
         uint64_t icache_correctable :1;
+        // Reserved
         uint64_t rsvd3 :1;
+        // Reserved
         uint64_t rsvd4 :1;
+        // PLIC interrupt enable mask for DCache Tilelink bus error.
         uint64_t dcache_tlbus :1;
+        // PLIC interrupt enable mask for DCache ECC correctable bus error.
         uint64_t dcache_correctable :1;
+        // PLIC interrupt enable mask for DCache ECC uncorrectable bus error.
         uint64_t dcache_uncorrectable :1;
         uint64_t :56;
     } f;
@@ -135,47 +171,64 @@ typedef union {
 } bus_error_unit__PLIC_ENABLE_t;
 
 // reg - bus_error_unit::ACCRUED_ENABLE
+// Sticky accrued error status. The legacy name ACCRUED_ENABLE does not denote an enable mask. Error events set these bits independently of ENABLE. Ordinary software writes replace the bits (write zero to clear) and take priority over simultaneous events. PLIC_ENABLE and LOCAL_ENABLE mask this status for interrupt delivery.
+// Reserved
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__RSVD0_bm 0x1
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__RSVD0_bp 0
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__RSVD0_bw 1
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__RSVD0_reset 0x0
+// Sticky accrued status for ICache Tilelink bus error.
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__ICACHE_TLBUS_bm 0x2
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__ICACHE_TLBUS_bp 1
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__ICACHE_TLBUS_bw 1
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__ICACHE_TLBUS_reset 0x0
+// Sticky accrued status for ICache ECC correctable bus error.
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__ICACHE_CORRECTABLE_bm 0x4
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__ICACHE_CORRECTABLE_bp 2
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__ICACHE_CORRECTABLE_bw 1
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__ICACHE_CORRECTABLE_reset 0x0
+// Reserved
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__RSVD3_bm 0x8
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__RSVD3_bp 3
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__RSVD3_bw 1
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__RSVD3_reset 0x0
+// Reserved
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__RSVD4_bm 0x10
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__RSVD4_bp 4
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__RSVD4_bw 1
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__RSVD4_reset 0x0
+// Sticky accrued status for DCache Tilelink bus error.
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__DCACHE_TLBUS_bm 0x20
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__DCACHE_TLBUS_bp 5
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__DCACHE_TLBUS_bw 1
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__DCACHE_TLBUS_reset 0x0
+// Sticky accrued status for DCache ECC correctable bus error.
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__DCACHE_CORRECTABLE_bm 0x40
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__DCACHE_CORRECTABLE_bp 6
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__DCACHE_CORRECTABLE_bw 1
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__DCACHE_CORRECTABLE_reset 0x0
+// Sticky accrued status for DCache ECC uncorrectable bus error.
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__DCACHE_UNCORRECTABLE_bm 0x80
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__DCACHE_UNCORRECTABLE_bp 7
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__DCACHE_UNCORRECTABLE_bw 1
 #define BUS_ERROR_UNIT__ACCRUED_ENABLE__DCACHE_UNCORRECTABLE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reserved
         uint64_t rsvd0 :1;
+        // Sticky accrued status for ICache Tilelink bus error.
         uint64_t icache_tlbus :1;
+        // Sticky accrued status for ICache ECC correctable bus error.
         uint64_t icache_correctable :1;
+        // Reserved
         uint64_t rsvd3 :1;
+        // Reserved
         uint64_t rsvd4 :1;
+        // Sticky accrued status for DCache Tilelink bus error.
         uint64_t dcache_tlbus :1;
+        // Sticky accrued status for DCache ECC correctable bus error.
         uint64_t dcache_correctable :1;
+        // Sticky accrued status for DCache ECC uncorrectable bus error.
         uint64_t dcache_uncorrectable :1;
         uint64_t :56;
     } f;
@@ -183,47 +236,63 @@ typedef union {
 } bus_error_unit__ACCRUED_ENABLE_t;
 
 // reg - bus_error_unit::LOCAL_ENABLE
+// Reserved
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__RSVD0_bm 0x1
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__RSVD0_bp 0
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__RSVD0_bw 1
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__RSVD0_reset 0x0
+// Core local interrupt enable mask for ICache Tilelink bus error.
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__ICACHE_TLBUS_bm 0x2
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__ICACHE_TLBUS_bp 1
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__ICACHE_TLBUS_bw 1
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__ICACHE_TLBUS_reset 0x0
+// Core local interrupt enable mask for ICache ECC correctable bus error.
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__ICACHE_CORRECTABLE_bm 0x4
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__ICACHE_CORRECTABLE_bp 2
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__ICACHE_CORRECTABLE_bw 1
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__ICACHE_CORRECTABLE_reset 0x0
+// Reserved
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__RSVD3_bm 0x8
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__RSVD3_bp 3
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__RSVD3_bw 1
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__RSVD3_reset 0x0
+// Reserved
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__RSVD4_bm 0x10
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__RSVD4_bp 4
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__RSVD4_bw 1
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__RSVD4_reset 0x0
+// Core local interrupt enable mask for DCache Tilelink bus error.
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__DCACHE_TLBUS_bm 0x20
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__DCACHE_TLBUS_bp 5
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__DCACHE_TLBUS_bw 1
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__DCACHE_TLBUS_reset 0x0
+// Core local interrupt enable mask for DCache ECC correctable bus error.
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__DCACHE_CORRECTABLE_bm 0x40
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__DCACHE_CORRECTABLE_bp 6
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__DCACHE_CORRECTABLE_bw 1
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__DCACHE_CORRECTABLE_reset 0x0
+// Core local interrupt enable mask for DCache ECC uncorrectable bus error.
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__DCACHE_UNCORRECTABLE_bm 0x80
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__DCACHE_UNCORRECTABLE_bp 7
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__DCACHE_UNCORRECTABLE_bw 1
 #define BUS_ERROR_UNIT__LOCAL_ENABLE__DCACHE_UNCORRECTABLE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reserved
         uint64_t rsvd0 :1;
+        // Core local interrupt enable mask for ICache Tilelink bus error.
         uint64_t icache_tlbus :1;
+        // Core local interrupt enable mask for ICache ECC correctable bus error.
         uint64_t icache_correctable :1;
+        // Reserved
         uint64_t rsvd3 :1;
+        // Reserved
         uint64_t rsvd4 :1;
+        // Core local interrupt enable mask for DCache Tilelink bus error.
         uint64_t dcache_tlbus :1;
+        // Core local interrupt enable mask for DCache ECC correctable bus error.
         uint64_t dcache_correctable :1;
+        // Core local interrupt enable mask for DCache ECC uncorrectable bus error.
         uint64_t dcache_uncorrectable :1;
         uint64_t :56;
     } f;
@@ -231,6 +300,7 @@ typedef union {
 } bus_error_unit__LOCAL_ENABLE_t;
 
 // addrmap - bus_error_unit
+// Status registers reporting correctable and uncorrectable I-cache, D-cache, and TileLink bus errors.
 typedef struct __attribute__ ((__packed__)) {
     bus_error_unit__CAUSE_t CAUSE;
     bus_error_unit__PHYS_ADDR_t PHYS_ADDR;

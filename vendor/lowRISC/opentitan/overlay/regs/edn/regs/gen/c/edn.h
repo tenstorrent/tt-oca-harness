@@ -14,17 +14,21 @@ extern "C" {
 #include <assert.h>
 
 // reg - edn::INTR_STATE
+// Asserted when a software CSRNG request has completed.
 #define EDN__INTR_STATE__EDN_CMD_REQ_DONE_bm 0x1
 #define EDN__INTR_STATE__EDN_CMD_REQ_DONE_bp 0
 #define EDN__INTR_STATE__EDN_CMD_REQ_DONE_bw 1
 #define EDN__INTR_STATE__EDN_CMD_REQ_DONE_reset 0x0
+// Asserted when a FIFO error occurs.
 #define EDN__INTR_STATE__EDN_FATAL_ERR_bm 0x2
 #define EDN__INTR_STATE__EDN_FATAL_ERR_bp 1
 #define EDN__INTR_STATE__EDN_FATAL_ERR_bw 1
 #define EDN__INTR_STATE__EDN_FATAL_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Asserted when a software CSRNG request has completed.
         uint32_t edn_cmd_req_done :1;
+        // Asserted when a FIFO error occurs.
         uint32_t edn_fatal_err :1;
         uint32_t :30;
     } f;
@@ -32,17 +36,21 @@ typedef union {
 } edn__INTR_STATE_t;
 
 // reg - edn::INTR_ENABLE
+// Enable interrupt when !!INTR_STATE.edn_cmd_req_done is set.
 #define EDN__INTR_ENABLE__EDN_CMD_REQ_DONE_bm 0x1
 #define EDN__INTR_ENABLE__EDN_CMD_REQ_DONE_bp 0
 #define EDN__INTR_ENABLE__EDN_CMD_REQ_DONE_bw 1
 #define EDN__INTR_ENABLE__EDN_CMD_REQ_DONE_reset 0x0
+// Enable interrupt when !!INTR_STATE.edn_fatal_err is set.
 #define EDN__INTR_ENABLE__EDN_FATAL_ERR_bm 0x2
 #define EDN__INTR_ENABLE__EDN_FATAL_ERR_bp 1
 #define EDN__INTR_ENABLE__EDN_FATAL_ERR_bw 1
 #define EDN__INTR_ENABLE__EDN_FATAL_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enable interrupt when !!INTR_STATE.edn_cmd_req_done is set.
         uint32_t edn_cmd_req_done :1;
+        // Enable interrupt when !!INTR_STATE.edn_fatal_err is set.
         uint32_t edn_fatal_err :1;
         uint32_t :30;
     } f;
@@ -50,17 +58,21 @@ typedef union {
 } edn__INTR_ENABLE_t;
 
 // reg - edn::INTR_TEST
+// Write 1 to force !!INTR_STATE.edn_cmd_req_done to 1.
 #define EDN__INTR_TEST__EDN_CMD_REQ_DONE_bm 0x1
 #define EDN__INTR_TEST__EDN_CMD_REQ_DONE_bp 0
 #define EDN__INTR_TEST__EDN_CMD_REQ_DONE_bw 1
 #define EDN__INTR_TEST__EDN_CMD_REQ_DONE_reset 0x0
+// Write 1 to force !!INTR_STATE.edn_fatal_err to 1.
 #define EDN__INTR_TEST__EDN_FATAL_ERR_bm 0x2
 #define EDN__INTR_TEST__EDN_FATAL_ERR_bp 1
 #define EDN__INTR_TEST__EDN_FATAL_ERR_bw 1
 #define EDN__INTR_TEST__EDN_FATAL_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write 1 to force !!INTR_STATE.edn_cmd_req_done to 1.
         uint32_t edn_cmd_req_done :1;
+        // Write 1 to force !!INTR_STATE.edn_fatal_err to 1.
         uint32_t edn_fatal_err :1;
         uint32_t :30;
     } f;
@@ -68,17 +80,21 @@ typedef union {
 } edn__INTR_TEST_t;
 
 // reg - edn::ALERT_TEST
+// Write 1 to trigger one alert event of this kind.
 #define EDN__ALERT_TEST__RECOV_ALERT_bm 0x1
 #define EDN__ALERT_TEST__RECOV_ALERT_bp 0
 #define EDN__ALERT_TEST__RECOV_ALERT_bw 1
 #define EDN__ALERT_TEST__RECOV_ALERT_reset 0x0
+// Write 1 to trigger one alert event of this kind.
 #define EDN__ALERT_TEST__FATAL_ALERT_bm 0x2
 #define EDN__ALERT_TEST__FATAL_ALERT_bp 1
 #define EDN__ALERT_TEST__FATAL_ALERT_bw 1
 #define EDN__ALERT_TEST__FATAL_ALERT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write 1 to trigger one alert event of this kind.
         uint32_t recov_alert :1;
+        // Write 1 to trigger one alert event of this kind.
         uint32_t fatal_alert :1;
         uint32_t :30;
     } f;
@@ -86,12 +102,20 @@ typedef union {
 } edn__ALERT_TEST_t;
 
 // reg - edn::REGWEN
+// When true, the CTRL can be written by software.
+// When false, this field read-only. Defaults true, write zero to clear.
+// Note that this needs to be cleared after initial configuration at boot in order to
+// lock in the listed register settings.
 #define EDN__REGWEN__REGWEN_bm 0x1
 #define EDN__REGWEN__REGWEN_bp 0
 #define EDN__REGWEN__REGWEN_bw 1
 #define EDN__REGWEN__REGWEN_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // When true, the CTRL can be written by software.
+        // When false, this field read-only. Defaults true, write zero to clear.
+        // Note that this needs to be cleared after initial configuration at boot in order to
+        // lock in the listed register settings.
         uint32_t REGWEN :1;
         uint32_t :31;
     } f;
@@ -99,27 +123,65 @@ typedef union {
 } edn__REGWEN_t;
 
 // reg - edn::CTRL
+// Setting this field to kMultiBitBool4True enables the EDN module. The modules of the
+// entropy complex may only be enabled and disabled in a specific order, see
+// Programmers Guide for details.
 #define EDN__CTRL__EDN_ENABLE_bm 0xf
 #define EDN__CTRL__EDN_ENABLE_bp 0
 #define EDN__CTRL__EDN_ENABLE_bw 4
 #define EDN__CTRL__EDN_ENABLE_reset 0x9
+// Setting this field to kMultiBitBool4True enables the boot-time request mode.
+// In this mode, EDN automatically sends a boot-time request to the CSRNG application interface.
+// The purpose of this mode is to request entropy as fast as possible after reset, and during chip boot time.
+// Note that this takes precedence over the AUTO_REQ_MODE field: If both fields are set, EDN enters boot-time request mode.
+// If none of the fields are set, EDN enters Software Port Mode upon enabling.
 #define EDN__CTRL__BOOT_REQ_MODE_bm 0xf0
 #define EDN__CTRL__BOOT_REQ_MODE_bp 4
 #define EDN__CTRL__BOOT_REQ_MODE_bw 4
 #define EDN__CTRL__BOOT_REQ_MODE_reset 0x9
+// Setting this field to kMultiBitBool4True enables auto request mode.
+// In this mode, EDN automatically sends `generate` and `reseed` command requests to the CSRNG application interface.
+// The purpose of this mode is to continuously deliver entropy to endpoints without firmware intervention.
+// For this to work, firmware has to 1) configure the !!GENERATE_CMD, !!RESEED_CMD, and !!MAX_NUM_REQS_BETWEEN_RESEEDS registers, and 2) to issue the first `instantiate` command via the !!SW_CMD_REQ register.
+// Once this command has been acknowledged by CSRNG, the first `generate` command is sent out automatically, and a `reseed` command is sent after every MAX_NUM_REQS_BETWEEN_RESEEDS number of `generate` commands.
+// Note that the BOOT_REQ_MODE field takes precedence over this field: If both fields are set, EDN enters boot-time request mode.
+// If none of the fields are set, EDN enters Software Port Mode upon enabling.
 #define EDN__CTRL__AUTO_REQ_MODE_bm 0xf00
 #define EDN__CTRL__AUTO_REQ_MODE_bp 8
 #define EDN__CTRL__AUTO_REQ_MODE_bw 4
 #define EDN__CTRL__AUTO_REQ_MODE_reset 0x9
+// Setting this field to kMultiBitBool4True clears the two command FIFOs: the
+// RESEED_CMD FIFO and the GENERATE_CMD FIFO. This field must be
+// set to the reset state by software before any further commands can be issued to
+// these FIFOs.
 #define EDN__CTRL__CMD_FIFO_RST_bm 0xf000
 #define EDN__CTRL__CMD_FIFO_RST_bp 12
 #define EDN__CTRL__CMD_FIFO_RST_bw 4
 #define EDN__CTRL__CMD_FIFO_RST_reset 0x9
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Setting this field to kMultiBitBool4True enables the EDN module. The modules of the
+        // entropy complex may only be enabled and disabled in a specific order, see
+        // Programmers Guide for details.
         uint32_t EDN_ENABLE :4;
+        // Setting this field to kMultiBitBool4True enables the boot-time request mode.
+        // In this mode, EDN automatically sends a boot-time request to the CSRNG application interface.
+        // The purpose of this mode is to request entropy as fast as possible after reset, and during chip boot time.
+        // Note that this takes precedence over the AUTO_REQ_MODE field: If both fields are set, EDN enters boot-time request mode.
+        // If none of the fields are set, EDN enters Software Port Mode upon enabling.
         uint32_t BOOT_REQ_MODE :4;
+        // Setting this field to kMultiBitBool4True enables auto request mode.
+        // In this mode, EDN automatically sends `generate` and `reseed` command requests to the CSRNG application interface.
+        // The purpose of this mode is to continuously deliver entropy to endpoints without firmware intervention.
+        // For this to work, firmware has to 1) configure the !!GENERATE_CMD, !!RESEED_CMD, and !!MAX_NUM_REQS_BETWEEN_RESEEDS registers, and 2) to issue the first `instantiate` command via the !!SW_CMD_REQ register.
+        // Once this command has been acknowledged by CSRNG, the first `generate` command is sent out automatically, and a `reseed` command is sent after every MAX_NUM_REQS_BETWEEN_RESEEDS number of `generate` commands.
+        // Note that the BOOT_REQ_MODE field takes precedence over this field: If both fields are set, EDN enters boot-time request mode.
+        // If none of the fields are set, EDN enters Software Port Mode upon enabling.
         uint32_t AUTO_REQ_MODE :4;
+        // Setting this field to kMultiBitBool4True clears the two command FIFOs: the
+        // RESEED_CMD FIFO and the GENERATE_CMD FIFO. This field must be
+        // set to the reset state by software before any further commands can be issued to
+        // these FIFOs.
         uint32_t CMD_FIFO_RST :4;
         uint32_t :16;
     } f;
@@ -127,62 +189,128 @@ typedef union {
 } edn__CTRL_t;
 
 // reg - edn::BOOT_INS_CMD
+// This field is used as the value for the `instantiate` command at boot time.
+// See [Command Header](../../csrng/doc/theory_of_operation.md#command-header) for the meaning of the individual bits.
+// Note that the hardware only supports a value of 0 for the `clen` field.
+// If `clen` has a different value, EDN will hang.
+// Fixing this requires disabling and restarting both EDN and CSRNG.
 #define EDN__BOOT_INS_CMD__BOOT_INS_CMD_bm 0xffffffff
 #define EDN__BOOT_INS_CMD__BOOT_INS_CMD_bp 0
 #define EDN__BOOT_INS_CMD__BOOT_INS_CMD_bw 32
 #define EDN__BOOT_INS_CMD__BOOT_INS_CMD_reset 0x901
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // This field is used as the value for the `instantiate` command at boot time.
+        // See [Command Header](../../csrng/doc/theory_of_operation.md#command-header) for the meaning of the individual bits.
+        // Note that the hardware only supports a value of 0 for the `clen` field.
+        // If `clen` has a different value, EDN will hang.
+        // Fixing this requires disabling and restarting both EDN and CSRNG.
         uint32_t BOOT_INS_CMD :32;
     } f;
     uint32_t w;
 } edn__BOOT_INS_CMD_t;
 
 // reg - edn::BOOT_GEN_CMD
+// This field is used as the value for the `generate` command at boot time.
+// See [Command Header](../../csrng/doc/theory_of_operation.md#command-header) for the meaning of the individual bits.
+// Note that the hardware only supports a value of 0 for the `clen` field.
+// If `clen` has a different value, EDN will hang.
+// Fixing this requires disabling and restarting both EDN and CSRNG.
 #define EDN__BOOT_GEN_CMD__BOOT_GEN_CMD_bm 0xffffffff
 #define EDN__BOOT_GEN_CMD__BOOT_GEN_CMD_bp 0
 #define EDN__BOOT_GEN_CMD__BOOT_GEN_CMD_bw 32
 #define EDN__BOOT_GEN_CMD__BOOT_GEN_CMD_reset 0xfff003
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // This field is used as the value for the `generate` command at boot time.
+        // See [Command Header](../../csrng/doc/theory_of_operation.md#command-header) for the meaning of the individual bits.
+        // Note that the hardware only supports a value of 0 for the `clen` field.
+        // If `clen` has a different value, EDN will hang.
+        // Fixing this requires disabling and restarting both EDN and CSRNG.
         uint32_t BOOT_GEN_CMD :32;
     } f;
     uint32_t w;
 } edn__BOOT_GEN_CMD_t;
 
 // reg - edn::SW_CMD_REQ
+// Any CSRNG action can be initiated by writing a CSRNG command to this register.
+// Before any write operation to this register, firmware must read !!SW_CMD_STS to check whether EDN is ready to receive a new command or the next word of a previously started command.
+// While !!CTRL.AUTO_REQ_MODE is set, only the first instantiate command has any effect.
+// After that command has been processed, writes to this register will have no effect on operation, until !!CTRL.AUTO_REQ_MODE is de-asserted and the state machine of EDN enters the `SwPortMode` state.
+// Refer to the [CSRNG documentation](../../csrng/doc/theory_of_operation.md#general-command-format) for details on the command format.
 #define EDN__SW_CMD_REQ__SW_CMD_REQ_bm 0xffffffff
 #define EDN__SW_CMD_REQ__SW_CMD_REQ_bp 0
 #define EDN__SW_CMD_REQ__SW_CMD_REQ_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Any CSRNG action can be initiated by writing a CSRNG command to this register.
+        // Before any write operation to this register, firmware must read !!SW_CMD_STS to check whether EDN is ready to receive a new command or the next word of a previously started command.
+        // While !!CTRL.AUTO_REQ_MODE is set, only the first instantiate command has any effect.
+        // After that command has been processed, writes to this register will have no effect on operation, until !!CTRL.AUTO_REQ_MODE is de-asserted and the state machine of EDN enters the `SwPortMode` state.
+        // Refer to the [CSRNG documentation](../../csrng/doc/theory_of_operation.md#general-command-format) for details on the command format.
         uint32_t SW_CMD_REQ :32;
     } f;
     uint32_t w;
 } edn__SW_CMD_REQ_t;
 
 // reg - edn::SW_CMD_STS
+// This bit indicates when !!SW_CMD_REQ is ready to accept the next word.
+// This bit has to be polled before each word of a command is written to !!SW_CMD_REQ.
+// 0b0: The EDN is not ready to accept the next word yet.
+// 0b1: The EDN is ready to accept the next word.
 #define EDN__SW_CMD_STS__CMD_REG_RDY_bm 0x1
 #define EDN__SW_CMD_STS__CMD_REG_RDY_bp 0
 #define EDN__SW_CMD_STS__CMD_REG_RDY_bw 1
 #define EDN__SW_CMD_STS__CMD_REG_RDY_reset 0x0
+// This bit indicates when the EDN is ready to accept the next command.
+// Before starting to write a new command to !!SW_CMD_REQ, this field needs to be polled.
+// 0b0: The EDN is not ready to accept commands or the last command hasn't been acked yet.
+// 0b1: The EDN is ready to accept the next command.
 #define EDN__SW_CMD_STS__CMD_RDY_bm 0x2
 #define EDN__SW_CMD_STS__CMD_RDY_bp 1
 #define EDN__SW_CMD_STS__CMD_RDY_bw 1
 #define EDN__SW_CMD_STS__CMD_RDY_reset 0x0
+// This one bit field indicates when a SW command has been acknowledged by the CSRNG.
+// It is set to low each time a new command is written to !!SW_CMD_REQ.
+// The field is set to high once a SW command request has been acknowledged by the CSRNG.
+// 0b0: The last SW command has not been acknowledged yet.
+// 0b1: The last SW command has been acknowledged.
 #define EDN__SW_CMD_STS__CMD_ACK_bm 0x4
 #define EDN__SW_CMD_STS__CMD_ACK_bp 2
 #define EDN__SW_CMD_STS__CMD_ACK_bw 1
 #define EDN__SW_CMD_STS__CMD_ACK_reset 0x0
+// This field represents the status code returned with the CSRNG application command ack.
+// It is updated each time a SW command is acknowledged by CSRNG.
+// To check whether a command was successful, wait for !!INTR_STATE.EDN_CMD_REQ_DONE or
+// !!SW_CMD_STS.CMD_ACK to be high and then check the value of this field.
+// A description of the command status types can be found [here](../../csrng/doc/registers.md#sw_cmd_sts--cmd_sts).
 #define EDN__SW_CMD_STS__CMD_STS_bm 0x38
 #define EDN__SW_CMD_STS__CMD_STS_bp 3
 #define EDN__SW_CMD_STS__CMD_STS_bw 3
 #define EDN__SW_CMD_STS__CMD_STS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // This bit indicates when !!SW_CMD_REQ is ready to accept the next word.
+        // This bit has to be polled before each word of a command is written to !!SW_CMD_REQ.
+        // 0b0: The EDN is not ready to accept the next word yet.
+        // 0b1: The EDN is ready to accept the next word.
         uint32_t CMD_REG_RDY :1;
+        // This bit indicates when the EDN is ready to accept the next command.
+        // Before starting to write a new command to !!SW_CMD_REQ, this field needs to be polled.
+        // 0b0: The EDN is not ready to accept commands or the last command hasn't been acked yet.
+        // 0b1: The EDN is ready to accept the next command.
         uint32_t CMD_RDY :1;
+        // This one bit field indicates when a SW command has been acknowledged by the CSRNG.
+        // It is set to low each time a new command is written to !!SW_CMD_REQ.
+        // The field is set to high once a SW command request has been acknowledged by the CSRNG.
+        // 0b0: The last SW command has not been acknowledged yet.
+        // 0b1: The last SW command has been acknowledged.
         uint32_t CMD_ACK :1;
+        // This field represents the status code returned with the CSRNG application command ack.
+        // It is updated each time a SW command is acknowledged by CSRNG.
+        // To check whether a command was successful, wait for !!INTR_STATE.EDN_CMD_REQ_DONE or
+        // !!SW_CMD_STS.CMD_ACK to be high and then check the value of this field.
+        // A description of the command status types can be found [here](../../csrng/doc/registers.md#sw_cmd_sts--cmd_sts).
         uint32_t CMD_STS :3;
         uint32_t :26;
     } f;
@@ -190,32 +318,68 @@ typedef union {
 } edn__SW_CMD_STS_t;
 
 // reg - edn::HW_CMD_STS
+// This one bit field indicates whether the EDN is in the hardware controlled boot mode.
+// 0b0: The EDN is not in boot mode.
+// 0b1: The EDN is in boot mode.
 #define EDN__HW_CMD_STS__BOOT_MODE_bm 0x1
 #define EDN__HW_CMD_STS__BOOT_MODE_bp 0
 #define EDN__HW_CMD_STS__BOOT_MODE_bw 1
 #define EDN__HW_CMD_STS__BOOT_MODE_reset 0x0
+// This one bit field indicates whether the EDN is in the hardware controlled part of auto mode.
+// The instantiate command is issued via SW interface and is thus not part of the hardware controlled part of auto mode.
+// 0b0: The EDN is not in the hardware controlled part of auto mode.
+// 0b1: The EDN is in the hardware controlled part of auto mode.
 #define EDN__HW_CMD_STS__AUTO_MODE_bm 0x2
 #define EDN__HW_CMD_STS__AUTO_MODE_bp 1
 #define EDN__HW_CMD_STS__AUTO_MODE_bw 1
 #define EDN__HW_CMD_STS__AUTO_MODE_reset 0x0
+// This field contains the application command type of the hardware controlled command issued last.
+// The application command selects one of five operations to perform.
+// A description of the application command types can be found [here](../../csrng/doc/theory_of_operation.md#command-description).
 #define EDN__HW_CMD_STS__CMD_TYPE_bm 0x3c
 #define EDN__HW_CMD_STS__CMD_TYPE_bp 2
 #define EDN__HW_CMD_STS__CMD_TYPE_bw 4
 #define EDN__HW_CMD_STS__CMD_TYPE_reset 0x0
+// This one bit field indicates when a HW command has been acknowledged by the CSRNG.
+// It is set to low each time a new command is sent to the CSRNG.
+// The field is set to high once a HW command request has been acknowledged by the CSRNG.
+// 0b0: The last HW command has not been acknowledged yet.
+// 0b1: The last HW command has been acknowledged.
 #define EDN__HW_CMD_STS__CMD_ACK_bm 0x40
 #define EDN__HW_CMD_STS__CMD_ACK_bp 6
 #define EDN__HW_CMD_STS__CMD_ACK_bw 1
 #define EDN__HW_CMD_STS__CMD_ACK_reset 0x0
+// This field represents the status code returned with the CSRNG application command ack.
+// It is updated each time a HW command is acknowledged by CSRNG.
+// A description of the command status types can be found [here](../../csrng/doc/registers.md#sw_cmd_sts--cmd_sts).
 #define EDN__HW_CMD_STS__CMD_STS_bm 0x380
 #define EDN__HW_CMD_STS__CMD_STS_bp 7
 #define EDN__HW_CMD_STS__CMD_STS_bw 3
 #define EDN__HW_CMD_STS__CMD_STS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // This one bit field indicates whether the EDN is in the hardware controlled boot mode.
+        // 0b0: The EDN is not in boot mode.
+        // 0b1: The EDN is in boot mode.
         uint32_t BOOT_MODE :1;
+        // This one bit field indicates whether the EDN is in the hardware controlled part of auto mode.
+        // The instantiate command is issued via SW interface and is thus not part of the hardware controlled part of auto mode.
+        // 0b0: The EDN is not in the hardware controlled part of auto mode.
+        // 0b1: The EDN is in the hardware controlled part of auto mode.
         uint32_t AUTO_MODE :1;
+        // This field contains the application command type of the hardware controlled command issued last.
+        // The application command selects one of five operations to perform.
+        // A description of the application command types can be found [here](../../csrng/doc/theory_of_operation.md#command-description).
         uint32_t CMD_TYPE :4;
+        // This one bit field indicates when a HW command has been acknowledged by the CSRNG.
+        // It is set to low each time a new command is sent to the CSRNG.
+        // The field is set to high once a HW command request has been acknowledged by the CSRNG.
+        // 0b0: The last HW command has not been acknowledged yet.
+        // 0b1: The last HW command has been acknowledged.
         uint32_t CMD_ACK :1;
+        // This field represents the status code returned with the CSRNG application command ack.
+        // It is updated each time a HW command is acknowledged by CSRNG.
+        // A description of the command status types can be found [here](../../csrng/doc/registers.md#sw_cmd_sts--cmd_sts).
         uint32_t CMD_STS :3;
         uint32_t :22;
     } f;
@@ -223,72 +387,144 @@ typedef union {
 } edn__HW_CMD_STS_t;
 
 // reg - edn::RESEED_CMD
+// Writing this register will fill a FIFO with up to 13 command words (32b words).
+// When running in auto request mode, this FIFO is used to automatically send out a `reseed` command to the CSRNG application interface after every MAX_NUM_REQS_BETWEEN_RESEEDS number of `generate` commands.
+// See [General Command Format](../../csrng/doc/theory_of_operation.md#general-command-format) for details about the command format.
+// Note that the number of additional data words provided must match the value of the `clen` field of the first word.
+// Otherwise, undefined behavior may result.
+// If more than 13 entries are written to the FIFO, they are ignored and EDN signals an `edn_fatal_err` interrupt as well as a fatal alert.
 #define EDN__RESEED_CMD__RESEED_CMD_bm 0xffffffff
 #define EDN__RESEED_CMD__RESEED_CMD_bp 0
 #define EDN__RESEED_CMD__RESEED_CMD_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Writing this register will fill a FIFO with up to 13 command words (32b words).
+        // When running in auto request mode, this FIFO is used to automatically send out a `reseed` command to the CSRNG application interface after every MAX_NUM_REQS_BETWEEN_RESEEDS number of `generate` commands.
+        // See [General Command Format](../../csrng/doc/theory_of_operation.md#general-command-format) for details about the command format.
+        // Note that the number of additional data words provided must match the value of the `clen` field of the first word.
+        // Otherwise, undefined behavior may result.
+        // If more than 13 entries are written to the FIFO, they are ignored and EDN signals an `edn_fatal_err` interrupt as well as a fatal alert.
         uint32_t RESEED_CMD :32;
     } f;
     uint32_t w;
 } edn__RESEED_CMD_t;
 
 // reg - edn::GENERATE_CMD
+// Writing this register will fill a FIFO with up to 13 command words (32b words).
+// When running auto request mode, this FIFO is used to automatically send out `generate` commands to the CSRNG
+// application interface.
+// See [General Command Format](../../csrng/doc/theory_of_operation.md#general-command-format) for details about the command format.
+// Note that the number of additional data words provided must match the value of the `clen` field of the first word.
+// Otherwise, undefined behavior may result.
+// If more than 13 entries are written to the FIFO, they are ignored and EDN signals an `edn_fatal_err` interrupt as well as a fatal alert.
 #define EDN__GENERATE_CMD__GENERATE_CMD_bm 0xffffffff
 #define EDN__GENERATE_CMD__GENERATE_CMD_bp 0
 #define EDN__GENERATE_CMD__GENERATE_CMD_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Writing this register will fill a FIFO with up to 13 command words (32b words).
+        // When running auto request mode, this FIFO is used to automatically send out `generate` commands to the CSRNG
+        // application interface.
+        // See [General Command Format](../../csrng/doc/theory_of_operation.md#general-command-format) for details about the command format.
+        // Note that the number of additional data words provided must match the value of the `clen` field of the first word.
+        // Otherwise, undefined behavior may result.
+        // If more than 13 entries are written to the FIFO, they are ignored and EDN signals an `edn_fatal_err` interrupt as well as a fatal alert.
         uint32_t GENERATE_CMD :32;
     } f;
     uint32_t w;
 } edn__GENERATE_CMD_t;
 
 // reg - edn::MAX_NUM_REQS_BETWEEN_RESEEDS
+// Setting this field will set the number of `generate` command requests that are made
+// to CSRNG before a reseed request is made.
+// This value only has meaning when running in auto request mode.
+// This register supports a maximum of 2^32 `generate` requests between reseeds.
+// This register will be used by a counter that counts down, triggering an automatic `reseed` request when it reaches zero.
+// Note that this value must be chosen smaller than or equal to the value configured in the [`RESEED_INTERVAL` register of CSRNG](../../csrng/doc/registers.md#reseed-interval).
 #define EDN__MAX_NUM_REQS_BETWEEN_RESEEDS__MAX_NUM_REQS_BETWEEN_RESEEDS_bm 0xffffffff
 #define EDN__MAX_NUM_REQS_BETWEEN_RESEEDS__MAX_NUM_REQS_BETWEEN_RESEEDS_bp 0
 #define EDN__MAX_NUM_REQS_BETWEEN_RESEEDS__MAX_NUM_REQS_BETWEEN_RESEEDS_bw 32
 #define EDN__MAX_NUM_REQS_BETWEEN_RESEEDS__MAX_NUM_REQS_BETWEEN_RESEEDS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Setting this field will set the number of `generate` command requests that are made
+        // to CSRNG before a reseed request is made.
+        // This value only has meaning when running in auto request mode.
+        // This register supports a maximum of 2^32 `generate` requests between reseeds.
+        // This register will be used by a counter that counts down, triggering an automatic `reseed` request when it reaches zero.
+        // Note that this value must be chosen smaller than or equal to the value configured in the [`RESEED_INTERVAL` register of CSRNG](../../csrng/doc/registers.md#reseed-interval).
         uint32_t MAX_NUM_REQS_BETWEEN_RESEEDS :32;
     } f;
     uint32_t w;
 } edn__MAX_NUM_REQS_BETWEEN_RESEEDS_t;
 
 // reg - edn::RECOV_ALERT_STS
+// This bit is set when the EDN_ENABLE field is set to an illegal value,
+// something other than kMultiBitBool4True or kMultiBitBool4False.
+// Writing a zero resets this status bit.
 #define EDN__RECOV_ALERT_STS__EDN_ENABLE_FIELD_ALERT_bm 0x1
 #define EDN__RECOV_ALERT_STS__EDN_ENABLE_FIELD_ALERT_bp 0
 #define EDN__RECOV_ALERT_STS__EDN_ENABLE_FIELD_ALERT_bw 1
 #define EDN__RECOV_ALERT_STS__EDN_ENABLE_FIELD_ALERT_reset 0x0
+// This bit is set when the BOOT_REQ_MODE field is set to an illegal value,
+// something other than kMultiBitBool4True or kMultiBitBool4False.
+// Writing a zero resets this status bit.
 #define EDN__RECOV_ALERT_STS__BOOT_REQ_MODE_FIELD_ALERT_bm 0x2
 #define EDN__RECOV_ALERT_STS__BOOT_REQ_MODE_FIELD_ALERT_bp 1
 #define EDN__RECOV_ALERT_STS__BOOT_REQ_MODE_FIELD_ALERT_bw 1
 #define EDN__RECOV_ALERT_STS__BOOT_REQ_MODE_FIELD_ALERT_reset 0x0
+// This bit is set when the !!CTRL.AUTO_REQ_MODE field is set to an illegal value,
+// something other than kMultiBitBool4True or kMultiBitBool4False.
+// Writing a zero resets this status bit.
 #define EDN__RECOV_ALERT_STS__AUTO_REQ_MODE_FIELD_ALERT_bm 0x4
 #define EDN__RECOV_ALERT_STS__AUTO_REQ_MODE_FIELD_ALERT_bp 2
 #define EDN__RECOV_ALERT_STS__AUTO_REQ_MODE_FIELD_ALERT_bw 1
 #define EDN__RECOV_ALERT_STS__AUTO_REQ_MODE_FIELD_ALERT_reset 0x0
+// This bit is set when the CMD_FIFO_RST field is set to an illegal value,
+// something other than kMultiBitBool4True or kMultiBitBool4False.
+// Writing a zero resets this status bit.
 #define EDN__RECOV_ALERT_STS__CMD_FIFO_RST_FIELD_ALERT_bm 0x8
 #define EDN__RECOV_ALERT_STS__CMD_FIFO_RST_FIELD_ALERT_bp 3
 #define EDN__RECOV_ALERT_STS__CMD_FIFO_RST_FIELD_ALERT_bw 1
 #define EDN__RECOV_ALERT_STS__CMD_FIFO_RST_FIELD_ALERT_reset 0x0
+// This bit is set when the interal entropy bus value is equal to the prior
+// valid value on the bus, indicating a possible attack.
+// Writing a zero resets this status bit.
 #define EDN__RECOV_ALERT_STS__EDN_BUS_CMP_ALERT_bm 0x1000
 #define EDN__RECOV_ALERT_STS__EDN_BUS_CMP_ALERT_bp 12
 #define EDN__RECOV_ALERT_STS__EDN_BUS_CMP_ALERT_bw 1
 #define EDN__RECOV_ALERT_STS__EDN_BUS_CMP_ALERT_reset 0x0
+// This bit is set when the CSRNG returns an acknowledgement where the status signal is non-zero.
+// Writing a zero resets this status bit.
 #define EDN__RECOV_ALERT_STS__CSRNG_ACK_ERR_bm 0x2000
 #define EDN__RECOV_ALERT_STS__CSRNG_ACK_ERR_bp 13
 #define EDN__RECOV_ALERT_STS__CSRNG_ACK_ERR_bw 1
 #define EDN__RECOV_ALERT_STS__CSRNG_ACK_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // This bit is set when the EDN_ENABLE field is set to an illegal value,
+        // something other than kMultiBitBool4True or kMultiBitBool4False.
+        // Writing a zero resets this status bit.
         uint32_t EDN_ENABLE_FIELD_ALERT :1;
+        // This bit is set when the BOOT_REQ_MODE field is set to an illegal value,
+        // something other than kMultiBitBool4True or kMultiBitBool4False.
+        // Writing a zero resets this status bit.
         uint32_t BOOT_REQ_MODE_FIELD_ALERT :1;
+        // This bit is set when the !!CTRL.AUTO_REQ_MODE field is set to an illegal value,
+        // something other than kMultiBitBool4True or kMultiBitBool4False.
+        // Writing a zero resets this status bit.
         uint32_t AUTO_REQ_MODE_FIELD_ALERT :1;
+        // This bit is set when the CMD_FIFO_RST field is set to an illegal value,
+        // something other than kMultiBitBool4True or kMultiBitBool4False.
+        // Writing a zero resets this status bit.
         uint32_t CMD_FIFO_RST_FIELD_ALERT :1;
         uint32_t :8;
+        // This bit is set when the interal entropy bus value is equal to the prior
+        // valid value on the bus, indicating a possible attack.
+        // Writing a zero resets this status bit.
         uint32_t EDN_BUS_CMP_ALERT :1;
+        // This bit is set when the CSRNG returns an acknowledgement where the status signal is non-zero.
+        // Writing a zero resets this status bit.
         uint32_t CSRNG_ACK_ERR :1;
         uint32_t :18;
     } f;
@@ -296,49 +532,97 @@ typedef union {
 } edn__RECOV_ALERT_STS_t;
 
 // reg - edn::ERR_CODE
+// This bit will be set to one when an error has been detected for the
+// reseed command FIFO. The type of error is reflected in the type status
+// bits (bits 28 through 30 of this register).
+// When this bit is set, a fatal error condition will result.
 #define EDN__ERR_CODE__SFIFO_RESCMD_ERR_bm 0x1
 #define EDN__ERR_CODE__SFIFO_RESCMD_ERR_bp 0
 #define EDN__ERR_CODE__SFIFO_RESCMD_ERR_bw 1
 #define EDN__ERR_CODE__SFIFO_RESCMD_ERR_reset 0x0
+// This bit will be set to one when an error has been detected for the
+// generate command FIFO. The type of error is reflected in the type status
+// bits (bits 28 through 30 of this register).
+// When this bit is set, a fatal error condition will result.
+// This bit will stay set until the next reset.
 #define EDN__ERR_CODE__SFIFO_GENCMD_ERR_bm 0x2
 #define EDN__ERR_CODE__SFIFO_GENCMD_ERR_bp 1
 #define EDN__ERR_CODE__SFIFO_GENCMD_ERR_bw 1
 #define EDN__ERR_CODE__SFIFO_GENCMD_ERR_reset 0x0
+// This bit will be set to one when an illegal state has been detected for the
+// EDN ack stage state machine. This error will signal a fatal alert.
+// This bit will stay set until the next reset.
 #define EDN__ERR_CODE__EDN_ACK_SM_ERR_bm 0x100000
 #define EDN__ERR_CODE__EDN_ACK_SM_ERR_bp 20
 #define EDN__ERR_CODE__EDN_ACK_SM_ERR_bw 1
 #define EDN__ERR_CODE__EDN_ACK_SM_ERR_reset 0x0
+// This bit will be set to one when an illegal state has been detected for the
+// EDN main stage state machine. This error will signal a fatal alert.
+// This bit will stay set until the next reset.
 #define EDN__ERR_CODE__EDN_MAIN_SM_ERR_bm 0x200000
 #define EDN__ERR_CODE__EDN_MAIN_SM_ERR_bp 21
 #define EDN__ERR_CODE__EDN_MAIN_SM_ERR_bw 1
 #define EDN__ERR_CODE__EDN_MAIN_SM_ERR_reset 0x0
+// This bit will be set to one when a hardened counter has detected an error
+// condition. This error will signal a fatal alert.
+// This bit will stay set until the next reset.
 #define EDN__ERR_CODE__EDN_CNTR_ERR_bm 0x400000
 #define EDN__ERR_CODE__EDN_CNTR_ERR_bp 22
 #define EDN__ERR_CODE__EDN_CNTR_ERR_bw 1
 #define EDN__ERR_CODE__EDN_CNTR_ERR_reset 0x0
+// This bit will be set to one when any of the source bits (bits 0 through 1 of this register) are asserted as a result of an error pulse generated from any full FIFO that has received a write pulse.
+// This bit will stay set until the next reset.
 #define EDN__ERR_CODE__FIFO_WRITE_ERR_bm 0x10000000
 #define EDN__ERR_CODE__FIFO_WRITE_ERR_bp 28
 #define EDN__ERR_CODE__FIFO_WRITE_ERR_bw 1
 #define EDN__ERR_CODE__FIFO_WRITE_ERR_reset 0x0
+// This bit will be set to one when any of the source bits (bits 0 through 1 of this register) are asserted as a result of an error pulse generated from any empty FIFO that has received a read pulse.
+// This bit will stay set until the next reset.
 #define EDN__ERR_CODE__FIFO_READ_ERR_bm 0x20000000
 #define EDN__ERR_CODE__FIFO_READ_ERR_bp 29
 #define EDN__ERR_CODE__FIFO_READ_ERR_bw 1
 #define EDN__ERR_CODE__FIFO_READ_ERR_reset 0x0
+// This bit will be set to one when any of the source bits (bits 0 through 1 of this register) are asserted as a result of an error pulse generated from any FIFO where both the empty and full status bits are set or in case of error conditions inside the hardened counters.
+// This bit will stay set until the next reset.
 #define EDN__ERR_CODE__FIFO_STATE_ERR_bm 0x40000000
 #define EDN__ERR_CODE__FIFO_STATE_ERR_bp 30
 #define EDN__ERR_CODE__FIFO_STATE_ERR_bw 1
 #define EDN__ERR_CODE__FIFO_STATE_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // This bit will be set to one when an error has been detected for the
+        // reseed command FIFO. The type of error is reflected in the type status
+        // bits (bits 28 through 30 of this register).
+        // When this bit is set, a fatal error condition will result.
         uint32_t SFIFO_RESCMD_ERR :1;
+        // This bit will be set to one when an error has been detected for the
+        // generate command FIFO. The type of error is reflected in the type status
+        // bits (bits 28 through 30 of this register).
+        // When this bit is set, a fatal error condition will result.
+        // This bit will stay set until the next reset.
         uint32_t SFIFO_GENCMD_ERR :1;
         uint32_t :18;
+        // This bit will be set to one when an illegal state has been detected for the
+        // EDN ack stage state machine. This error will signal a fatal alert.
+        // This bit will stay set until the next reset.
         uint32_t EDN_ACK_SM_ERR :1;
+        // This bit will be set to one when an illegal state has been detected for the
+        // EDN main stage state machine. This error will signal a fatal alert.
+        // This bit will stay set until the next reset.
         uint32_t EDN_MAIN_SM_ERR :1;
+        // This bit will be set to one when a hardened counter has detected an error
+        // condition. This error will signal a fatal alert.
+        // This bit will stay set until the next reset.
         uint32_t EDN_CNTR_ERR :1;
         uint32_t :5;
+        // This bit will be set to one when any of the source bits (bits 0 through 1 of this register) are asserted as a result of an error pulse generated from any full FIFO that has received a write pulse.
+        // This bit will stay set until the next reset.
         uint32_t FIFO_WRITE_ERR :1;
+        // This bit will be set to one when any of the source bits (bits 0 through 1 of this register) are asserted as a result of an error pulse generated from any empty FIFO that has received a read pulse.
+        // This bit will stay set until the next reset.
         uint32_t FIFO_READ_ERR :1;
+        // This bit will be set to one when any of the source bits (bits 0 through 1 of this register) are asserted as a result of an error pulse generated from any FIFO where both the empty and full status bits are set or in case of error conditions inside the hardened counters.
+        // This bit will stay set until the next reset.
         uint32_t FIFO_STATE_ERR :1;
         uint32_t :1;
     } f;
@@ -346,12 +630,24 @@ typedef union {
 } edn__ERR_CODE_t;
 
 // reg - edn::ERR_CODE_TEST
+// Setting this field will set the bit number for which an error
+// will be forced in the hardware. This bit number is that same one
+// found in the !!ERR_CODE register. The action of writing this
+// register will force an error pulse. The sole purpose of this
+// register is to test that any error properly propagates to either
+// an interrupt or an alert.
 #define EDN__ERR_CODE_TEST__ERR_CODE_TEST_bm 0x1f
 #define EDN__ERR_CODE_TEST__ERR_CODE_TEST_bp 0
 #define EDN__ERR_CODE_TEST__ERR_CODE_TEST_bw 5
 #define EDN__ERR_CODE_TEST__ERR_CODE_TEST_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Setting this field will set the bit number for which an error
+        // will be forced in the hardware. This bit number is that same one
+        // found in the !!ERR_CODE register. The action of writing this
+        // register will force an error pulse. The sole purpose of this
+        // register is to test that any error properly propagates to either
+        // an interrupt or an alert.
         uint32_t ERR_CODE_TEST :5;
         uint32_t :27;
     } f;
@@ -359,12 +655,16 @@ typedef union {
 } edn__ERR_CODE_TEST_t;
 
 // reg - edn::MAIN_SM_STATE
+// This is the state of the EDN main state machine.
+// See the RTL file `edn_main_sm` for the meaning of the values.
 #define EDN__MAIN_SM_STATE__MAIN_SM_STATE_bm 0x1ff
 #define EDN__MAIN_SM_STATE__MAIN_SM_STATE_bp 0
 #define EDN__MAIN_SM_STATE__MAIN_SM_STATE_bw 9
 #define EDN__MAIN_SM_STATE__MAIN_SM_STATE_reset 0xc1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // This is the state of the EDN main state machine.
+        // See the RTL file `edn_main_sm` for the meaning of the values.
         uint32_t MAIN_SM_STATE :9;
         uint32_t :23;
     } f;
@@ -372,6 +672,7 @@ typedef union {
 } edn__MAIN_SM_STATE_t;
 
 // addrmap - edn
+// Distributes random numbers produced by CSRNG to hardware blocks
 typedef struct __attribute__ ((__packed__)) {
     edn__INTR_STATE_t INTR_STATE;
     edn__INTR_ENABLE_t INTR_ENABLE;

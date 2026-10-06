@@ -14,48 +14,56 @@ extern "C" {
 #include <assert.h>
 
 // reg - chip_config::VERSION_LO
+// SMC version, lower 32 bits
 #define CHIP_CONFIG__VERSION_LO__VERSION_LO_bm 0xffffffff
 #define CHIP_CONFIG__VERSION_LO__VERSION_LO_bp 0
 #define CHIP_CONFIG__VERSION_LO__VERSION_LO_bw 32
 #define CHIP_CONFIG__VERSION_LO__VERSION_LO_reset 0x100a0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // SMC version, lower 32 bits
         uint32_t version_lo :32;
     } f;
     uint32_t w;
 } chip_config__VERSION_LO_t;
 
 // reg - chip_config::VERSION_HI
+// SMC version, upper 32 bits
 #define CHIP_CONFIG__VERSION_HI__VERSION_HI_bm 0xffffffff
 #define CHIP_CONFIG__VERSION_HI__VERSION_HI_bp 0
 #define CHIP_CONFIG__VERSION_HI__VERSION_HI_bw 32
 #define CHIP_CONFIG__VERSION_HI__VERSION_HI_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // SMC version, upper 32 bits
         uint32_t version_hi :32;
     } f;
     uint32_t w;
 } chip_config__VERSION_HI_t;
 
 // reg - chip_config::CHIP_ID
+// Chip ID (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet)
 #define CHIP_CONFIG__CHIP_ID__CHIP_ID_bm 0xffffffff
 #define CHIP_CONFIG__CHIP_ID__CHIP_ID_bp 0
 #define CHIP_CONFIG__CHIP_ID__CHIP_ID_bw 32
 #define CHIP_CONFIG__CHIP_ID__CHIP_ID_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Chip ID (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet)
         uint32_t chip_id :32;
     } f;
     uint32_t w;
 } chip_config__CHIP_ID_t;
 
 // reg - chip_config::LC_STATE
+// Lifecycle state value from SEP. Default to invalid state
 #define CHIP_CONFIG__LC_STATE__LC_STATE_bm 0xff
 #define CHIP_CONFIG__LC_STATE__LC_STATE_bp 0
 #define CHIP_CONFIG__LC_STATE__LC_STATE_bw 8
 #define CHIP_CONFIG__LC_STATE__LC_STATE_reset 0xf
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Lifecycle state value from SEP. Default to invalid state
         uint32_t lc_state :8;
         uint32_t :24;
     } f;
@@ -63,6 +71,7 @@ typedef union {
 } chip_config__LC_STATE_t;
 
 // addrmap - chip_config
+// Chip version, identification, and lifecycle-state registers.
 typedef struct __attribute__ ((__packed__)) {
     chip_config__VERSION_LO_t VERSION_LO;
     chip_config__VERSION_HI_t VERSION_HI;

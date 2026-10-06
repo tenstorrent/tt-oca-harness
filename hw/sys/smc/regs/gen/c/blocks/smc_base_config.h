@@ -14,12 +14,14 @@ extern "C" {
 #include <assert.h>
 
 // reg - smc_base_config::GLOBAL_BASE
+// Global base address for the CPU
 #define SMC_BASE_CONFIG__GLOBAL_BASE__BASE_bm 0xffffffffffffff
 #define SMC_BASE_CONFIG__GLOBAL_BASE__BASE_bp 0
 #define SMC_BASE_CONFIG__GLOBAL_BASE__BASE_bw 56
 #define SMC_BASE_CONFIG__GLOBAL_BASE__BASE_reset 0x40000000
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Global base address for the CPU
         uint64_t base :56;
         uint64_t :8;
     } f;
@@ -27,12 +29,14 @@ typedef union {
 } smc_base_config__GLOBAL_BASE_t;
 
 // reg - smc_base_config::LOCAL_BASE
+// Local base address for the CPU
 #define SMC_BASE_CONFIG__LOCAL_BASE__BASE_bm 0xffffffffffffff
 #define SMC_BASE_CONFIG__LOCAL_BASE__BASE_bp 0
 #define SMC_BASE_CONFIG__LOCAL_BASE__BASE_bw 56
 #define SMC_BASE_CONFIG__LOCAL_BASE__BASE_reset 0xc0000000
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Local base address for the CPU
         uint64_t base :56;
         uint64_t :8;
     } f;
@@ -40,12 +44,14 @@ typedef union {
 } smc_base_config__LOCAL_BASE_t;
 
 // reg - smc_base_config::REGION_SIZE
+// Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Inbound accesses to a unit whose window extends past this size answer DECERR. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.
 #define SMC_BASE_CONFIG__REGION_SIZE__SIZE_bm 0xffffffff
 #define SMC_BASE_CONFIG__REGION_SIZE__SIZE_bp 0
 #define SMC_BASE_CONFIG__REGION_SIZE__SIZE_bw 32
 #define SMC_BASE_CONFIG__REGION_SIZE__SIZE_reset 0x1000000
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Inbound accesses to a unit whose window extends past this size answer DECERR. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.
         uint64_t size :32;
         uint64_t :32;
     } f;
@@ -53,83 +59,113 @@ typedef union {
 } smc_base_config__REGION_SIZE_t;
 
 // reg - smc_base_config::CLOCK_GATE_CONTROL
+// Clockgate enable for the DMA
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__DMA_CG_EN_bm 0x1
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__DMA_CG_EN_bp 0
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__DMA_CG_EN_bw 1
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__DMA_CG_EN_reset 0x0
+// Clockgate enable for the mailbox
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__MAILBOX_CG_EN_bm 0x2
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__MAILBOX_CG_EN_bp 1
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__MAILBOX_CG_EN_bw 1
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__MAILBOX_CG_EN_reset 0x0
+// Clockgate enable for the outbound filters
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__FILTER_OB_AXI_CG_EN_bm 0x4
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__FILTER_OB_AXI_CG_EN_bp 2
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__FILTER_OB_AXI_CG_EN_bw 1
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__FILTER_OB_AXI_CG_EN_reset 0x0
+// Clockgate enable for outbound filter registers
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__FILTER_OB_REG_CG_EN_bm 0x8
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__FILTER_OB_REG_CG_EN_bp 3
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__FILTER_OB_REG_CG_EN_bw 1
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__FILTER_OB_REG_CG_EN_reset 0x0
+// Clockgate enable for the inbound filters
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__FILTER_IB_AXI_CG_EN_bm 0x10
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__FILTER_IB_AXI_CG_EN_bp 4
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__FILTER_IB_AXI_CG_EN_bw 1
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__FILTER_IB_AXI_CG_EN_reset 0x0
+// Clockgate enable for inbound filter registers
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__FILTER_IB_REG_CG_EN_bm 0x20
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__FILTER_IB_REG_CG_EN_bp 5
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__FILTER_IB_REG_CG_EN_bw 1
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__FILTER_IB_REG_CG_EN_reset 0x0
+// Clock gate enable for address remapper register logic
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__ADDR_REMAP_CG_EN_bm 0x40
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__ADDR_REMAP_CG_EN_bp 6
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__ADDR_REMAP_CG_EN_bw 1
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__ADDR_REMAP_CG_EN_reset 0x0
+// Clock gate enable for the output fabric remap demux and mux
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__OUTPUT_FABRIC_CG_EN_bm 0x80
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__OUTPUT_FABRIC_CG_EN_bp 7
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__OUTPUT_FABRIC_CG_EN_bw 1
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__OUTPUT_FABRIC_CG_EN_reset 0x0
+// Clock gate enable for axi zeroer
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__ZEROER_CG_EN_bm 0x100
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__ZEROER_CG_EN_bp 8
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__ZEROER_CG_EN_bw 1
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__ZEROER_CG_EN_reset 0x0
+// Clock gate enable for I3C. While set, the I3C peripheral clock is stopped and every access to the OCA_I3C_WRAP window answers SLVERR with read data 0xBADCAB1E.
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__I3C_CG_EN_bm 0x200
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__I3C_CG_EN_bp 9
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__I3C_CG_EN_bw 1
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__I3C_CG_EN_reset 0x0
+// Clock gate enable for AVSBus. While set, the AVSBus controller clocks are stopped and every access to the SMC_AVSBUS_CONTROLLER window answers SLVERR with read data 0xBADCAB1E.
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__AVS_CG_EN_bm 0x400
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__AVS_CG_EN_bp 10
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__AVS_CG_EN_bw 1
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__AVS_CG_EN_reset 0x0
+// Clock gate enable for I2C. While set, the I2C peripheral clock is stopped and every access to the SMC_I2C_WRAP window answers SLVERR with read data 0xBADCAB1E.
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__I2C_CG_EN_bm 0x800
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__I2C_CG_EN_bp 11
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__I2C_CG_EN_bw 1
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__I2C_CG_EN_reset 0x0
+// Clock gate enable for UART. While set, the UART peripheral clock is stopped and every access to the SMC_UART_WRAP window answers SLVERR with read data 0xBADCAB1E.
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__UART_CG_EN_bm 0x1000
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__UART_CG_EN_bp 12
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__UART_CG_EN_bw 1
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__UART_CG_EN_reset 0x0
+// Clock gate enable for telemetry. While set, the telemetry receiver clocks are stopped and every access to the SMC_TELEMETRY_RECEIVER_WRAP window answers SLVERR with read data 0xBADCAB1E.
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__TELEMETRY_CG_EN_bm 0x2000
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__TELEMETRY_CG_EN_bp 13
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__TELEMETRY_CG_EN_bw 1
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__TELEMETRY_CG_EN_reset 0x0
+// Clockgate cg_hysteresis
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__CG_HYSTERESIS_bm 0x3f000000
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__CG_HYSTERESIS_bp 24
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__CG_HYSTERESIS_bw 6
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__CG_HYSTERESIS_reset 0x1f
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Clockgate enable for the DMA
         uint64_t dma_cg_en :1;
+        // Clockgate enable for the mailbox
         uint64_t mailbox_cg_en :1;
+        // Clockgate enable for the outbound filters
         uint64_t filter_ob_axi_cg_en :1;
+        // Clockgate enable for outbound filter registers
         uint64_t filter_ob_reg_cg_en :1;
+        // Clockgate enable for the inbound filters
         uint64_t filter_ib_axi_cg_en :1;
+        // Clockgate enable for inbound filter registers
         uint64_t filter_ib_reg_cg_en :1;
+        // Clock gate enable for address remapper register logic
         uint64_t addr_remap_cg_en :1;
+        // Clock gate enable for the output fabric remap demux and mux
         uint64_t output_fabric_cg_en :1;
+        // Clock gate enable for axi zeroer
         uint64_t zeroer_cg_en :1;
+        // Clock gate enable for I3C. While set, the I3C peripheral clock is stopped and every access to the OCA_I3C_WRAP window answers SLVERR with read data 0xBADCAB1E.
         uint64_t i3c_cg_en :1;
+        // Clock gate enable for AVSBus. While set, the AVSBus controller clocks are stopped and every access to the SMC_AVSBUS_CONTROLLER window answers SLVERR with read data 0xBADCAB1E.
         uint64_t avs_cg_en :1;
+        // Clock gate enable for I2C. While set, the I2C peripheral clock is stopped and every access to the SMC_I2C_WRAP window answers SLVERR with read data 0xBADCAB1E.
         uint64_t i2c_cg_en :1;
+        // Clock gate enable for UART. While set, the UART peripheral clock is stopped and every access to the SMC_UART_WRAP window answers SLVERR with read data 0xBADCAB1E.
         uint64_t uart_cg_en :1;
+        // Clock gate enable for telemetry. While set, the telemetry receiver clocks are stopped and every access to the SMC_TELEMETRY_RECEIVER_WRAP window answers SLVERR with read data 0xBADCAB1E.
         uint64_t telemetry_cg_en :1;
         uint64_t :10;
+        // Clockgate cg_hysteresis
         uint64_t cg_hysteresis :6;
         uint64_t :34;
     } f;
@@ -137,24 +173,31 @@ typedef union {
 } smc_base_config__CLOCK_GATE_CONTROL_t;
 
 // reg - smc_base_config::HANG_DET_CTRL
+// AXI hang detector control.
+// When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.
 #define SMC_BASE_CONFIG__HANG_DET_CTRL__ENABLE_bm 0x1
 #define SMC_BASE_CONFIG__HANG_DET_CTRL__ENABLE_bp 0
 #define SMC_BASE_CONFIG__HANG_DET_CTRL__ENABLE_bw 1
 #define SMC_BASE_CONFIG__HANG_DET_CTRL__ENABLE_reset 0x0
+// Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.
 #define SMC_BASE_CONFIG__HANG_DET_CTRL__IRQ_EN_bm 0x10
 #define SMC_BASE_CONFIG__HANG_DET_CTRL__IRQ_EN_bp 4
 #define SMC_BASE_CONFIG__HANG_DET_CTRL__IRQ_EN_bw 1
 #define SMC_BASE_CONFIG__HANG_DET_CTRL__IRQ_EN_reset 0x0
+// Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.
 #define SMC_BASE_CONFIG__HANG_DET_CTRL__IRQ_TEST_bm 0x100
 #define SMC_BASE_CONFIG__HANG_DET_CTRL__IRQ_TEST_bp 8
 #define SMC_BASE_CONFIG__HANG_DET_CTRL__IRQ_TEST_bw 1
 #define SMC_BASE_CONFIG__HANG_DET_CTRL__IRQ_TEST_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.
         uint32_t enable :1;
         uint32_t :3;
+        // Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.
         uint32_t irq_en :1;
         uint32_t :3;
+        // Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.
         uint32_t irq_test :1;
         uint32_t :23;
     } f;
@@ -162,12 +205,15 @@ typedef union {
 } smc_base_config__HANG_DET_CTRL_t;
 
 // reg - smc_base_config::HANG_DET_TIMEOUT_THRESHOLD
+// Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.
+// Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.
 #define SMC_BASE_CONFIG__HANG_DET_TIMEOUT_THRESHOLD__VALUE_bm 0xfffff
 #define SMC_BASE_CONFIG__HANG_DET_TIMEOUT_THRESHOLD__VALUE_bp 0
 #define SMC_BASE_CONFIG__HANG_DET_TIMEOUT_THRESHOLD__VALUE_bw 20
 #define SMC_BASE_CONFIG__HANG_DET_TIMEOUT_THRESHOLD__VALUE_reset 0x1000
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.
         uint32_t value :20;
         uint32_t :12;
     } f;
@@ -175,6 +221,7 @@ typedef union {
 } smc_base_config__HANG_DET_TIMEOUT_THRESHOLD_t;
 
 // addrmap - smc_base_config
+// Base-address, region-size, per-block clock-gating enable, and interrupt configuration registers.
 typedef struct __attribute__ ((__packed__)) {
     smc_base_config__GLOBAL_BASE_t GLOBAL_BASE;
     smc_base_config__LOCAL_BASE_t LOCAL_BASE;

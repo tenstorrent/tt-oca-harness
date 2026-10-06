@@ -14,17 +14,21 @@ extern "C" {
 #include <assert.h>
 
 // reg - aes::ALERT_TEST
+// Write 1 to trigger one alert event of this kind.
 #define AES__ALERT_TEST__RECOV_CTRL_UPDATE_ERR_bm 0x1
 #define AES__ALERT_TEST__RECOV_CTRL_UPDATE_ERR_bp 0
 #define AES__ALERT_TEST__RECOV_CTRL_UPDATE_ERR_bw 1
 #define AES__ALERT_TEST__RECOV_CTRL_UPDATE_ERR_reset 0x0
+// Write 1 to trigger one alert event of this kind.
 #define AES__ALERT_TEST__FATAL_FAULT_bm 0x2
 #define AES__ALERT_TEST__FATAL_FAULT_bp 1
 #define AES__ALERT_TEST__FATAL_FAULT_bw 1
 #define AES__ALERT_TEST__FATAL_FAULT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write 1 to trigger one alert event of this kind.
         uint32_t RECOV_CTRL_UPDATE_ERR :1;
+        // Write 1 to trigger one alert event of this kind.
         uint32_t FATAL_FAULT :1;
         uint32_t :30;
     } f;
@@ -32,97 +36,137 @@ typedef union {
 } aes__ALERT_TEST_t;
 
 // reg - aes::KEY_SHARE0
+// Initial Key Share 0
 #define AES__KEY_SHARE0__KEY_SHARE0_bm 0xffffffff
 #define AES__KEY_SHARE0__KEY_SHARE0_bp 0
 #define AES__KEY_SHARE0__KEY_SHARE0_bw 32
 #define AES__KEY_SHARE0__KEY_SHARE0_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Initial Key Share 0
         uint32_t KEY_SHARE0 :32;
     } f;
     uint32_t w;
 } aes__KEY_SHARE0_t;
 
 // reg - aes::KEY_SHARE1
+// Initial Key Share 1
 #define AES__KEY_SHARE1__KEY_SHARE1_bm 0xffffffff
 #define AES__KEY_SHARE1__KEY_SHARE1_bp 0
 #define AES__KEY_SHARE1__KEY_SHARE1_bw 32
 #define AES__KEY_SHARE1__KEY_SHARE1_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Initial Key Share 1
         uint32_t KEY_SHARE1 :32;
     } f;
     uint32_t w;
 } aes__KEY_SHARE1_t;
 
 // reg - aes::IV
+// Initialization Vector
 #define AES__IV__IV_bm 0xffffffff
 #define AES__IV__IV_bp 0
 #define AES__IV__IV_bw 32
 #define AES__IV__IV_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Initialization Vector
         uint32_t IV :32;
     } f;
     uint32_t w;
 } aes__IV_t;
 
 // reg - aes::DATA_IN
+// Input Data
 #define AES__DATA_IN__DATA_IN_bm 0xffffffff
 #define AES__DATA_IN__DATA_IN_bp 0
 #define AES__DATA_IN__DATA_IN_bw 32
 #define AES__DATA_IN__DATA_IN_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Input Data
         uint32_t DATA_IN :32;
     } f;
     uint32_t w;
 } aes__DATA_IN_t;
 
 // reg - aes::DATA_OUT
+// Output Data
 #define AES__DATA_OUT__DATA_OUT_bm 0xffffffff
 #define AES__DATA_OUT__DATA_OUT_bp 0
 #define AES__DATA_OUT__DATA_OUT_bw 32
 #define AES__DATA_OUT__DATA_OUT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Output Data
         uint32_t DATA_OUT :32;
     } f;
     uint32_t w;
 } aes__DATA_OUT_t;
 
 // reg - aes::CTRL_SHADOWED
+// 2-bit one-hot field to select the operation of AES unit.
+// Invalid input values, i.e., values with multiple bits set and value 2'b00, are mapped to AES_ENC (2'b01).
 #define AES__CTRL_SHADOWED__OPERATION_bm 0x3
 #define AES__CTRL_SHADOWED__OPERATION_bp 0
 #define AES__CTRL_SHADOWED__OPERATION_bw 2
 #define AES__CTRL_SHADOWED__OPERATION_reset 0x1
+// 6-bit one-hot field to select AES block cipher mode.
+// Invalid input values, i.e., values with multiple bits set and value 6'b00_0000, are mapped to AES_NONE (6'b11_1111).
 #define AES__CTRL_SHADOWED__MODE_bm 0xfc
 #define AES__CTRL_SHADOWED__MODE_bp 2
 #define AES__CTRL_SHADOWED__MODE_bw 6
 #define AES__CTRL_SHADOWED__MODE_reset 0x3f
+// 3-bit one-hot field to select AES key length.
+// Invalid input values, i.e., values with multiple bits set, value 3'b000, and value 3'b010 in case 192-bit keys are not supported (because disabled at compile time) are mapped to AES_256 (3'b100).
 #define AES__CTRL_SHADOWED__KEY_LEN_bm 0x700
 #define AES__CTRL_SHADOWED__KEY_LEN_bp 8
 #define AES__CTRL_SHADOWED__KEY_LEN_bw 3
 #define AES__CTRL_SHADOWED__KEY_LEN_reset 0x1
+// Controls whether the AES unit uses the key provided by the key manager via key sideload interface (1) or the key provided by software via Initial Key Registers KEY_SHARE1_0 - KEY_SHARE1_7 (0).
 #define AES__CTRL_SHADOWED__SIDELOAD_bm 0x800
 #define AES__CTRL_SHADOWED__SIDELOAD_bp 11
 #define AES__CTRL_SHADOWED__SIDELOAD_bw 1
 #define AES__CTRL_SHADOWED__SIDELOAD_reset 0x0
+// 3-bit one-hot field to control the reseeding rate of the internal pseudo-random number generator (PRNG) used for masking.
+// Invalid input values, i.e., values with multiple bits set and value 3'b000 are mapped to the highest reseeding rate PER_1 (3'b001).
 #define AES__CTRL_SHADOWED__PRNG_RESEED_RATE_bm 0x7000
 #define AES__CTRL_SHADOWED__PRNG_RESEED_RATE_bp 12
 #define AES__CTRL_SHADOWED__PRNG_RESEED_RATE_bw 3
 #define AES__CTRL_SHADOWED__PRNG_RESEED_RATE_reset 0x1
+// Controls whether the AES unit is operated in normal/automatic mode (0) or fully manual mode (1).
+// In automatic mode (0), the AES unit automatically i) starts to encrypt/decrypt when it receives new input data, and ii) stalls during the last encryption/decryption cycle if the previous output data has not yet been read.
+// This is the most efficient mode to operate in.
+// Note that the corresponding status tracking is automatically cleared upon a write to the Control Register.
+// In manual mode (1), the AES unit i) only starts to encrypt/decrypt after receiving a start trigger (see Trigger Register), and ii) overwrites previous output data irrespective of whether it has been read out or not.
+// This mode is useful if software needs full control over the AES unit.
 #define AES__CTRL_SHADOWED__MANUAL_OPERATION_bm 0x8000
 #define AES__CTRL_SHADOWED__MANUAL_OPERATION_bp 15
 #define AES__CTRL_SHADOWED__MANUAL_OPERATION_bw 1
 #define AES__CTRL_SHADOWED__MANUAL_OPERATION_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 2-bit one-hot field to select the operation of AES unit.
+        // Invalid input values, i.e., values with multiple bits set and value 2'b00, are mapped to AES_ENC (2'b01).
         uint32_t OPERATION :2;
+        // 6-bit one-hot field to select AES block cipher mode.
+        // Invalid input values, i.e., values with multiple bits set and value 6'b00_0000, are mapped to AES_NONE (6'b11_1111).
         uint32_t MODE :6;
+        // 3-bit one-hot field to select AES key length.
+        // Invalid input values, i.e., values with multiple bits set, value 3'b000, and value 3'b010 in case 192-bit keys are not supported (because disabled at compile time) are mapped to AES_256 (3'b100).
         uint32_t KEY_LEN :3;
+        // Controls whether the AES unit uses the key provided by the key manager via key sideload interface (1) or the key provided by software via Initial Key Registers KEY_SHARE1_0 - KEY_SHARE1_7 (0).
         uint32_t SIDELOAD :1;
+        // 3-bit one-hot field to control the reseeding rate of the internal pseudo-random number generator (PRNG) used for masking.
+        // Invalid input values, i.e., values with multiple bits set and value 3'b000 are mapped to the highest reseeding rate PER_1 (3'b001).
         uint32_t PRNG_RESEED_RATE :3;
+        // Controls whether the AES unit is operated in normal/automatic mode (0) or fully manual mode (1).
+        // In automatic mode (0), the AES unit automatically i) starts to encrypt/decrypt when it receives new input data, and ii) stalls during the last encryption/decryption cycle if the previous output data has not yet been read.
+        // This is the most efficient mode to operate in.
+        // Note that the corresponding status tracking is automatically cleared upon a write to the Control Register.
+        // In manual mode (1), the AES unit i) only starts to encrypt/decrypt after receiving a start trigger (see Trigger Register), and ii) overwrites previous output data irrespective of whether it has been read out or not.
+        // This mode is useful if software needs full control over the AES unit.
         uint32_t MANUAL_OPERATION :1;
         uint32_t :16;
     } f;
@@ -130,17 +174,29 @@ typedef union {
 } aes__CTRL_SHADOWED_t;
 
 // reg - aes::CTRL_AUX_SHADOWED
+// Controls whether providing a new key triggers the reseeding of internal pseudo-random number generators used for clearing and masking (1) or not (0).
 #define AES__CTRL_AUX_SHADOWED__KEY_TOUCH_FORCES_RESEED_bm 0x1
 #define AES__CTRL_AUX_SHADOWED__KEY_TOUCH_FORCES_RESEED_bp 0
 #define AES__CTRL_AUX_SHADOWED__KEY_TOUCH_FORCES_RESEED_bw 1
 #define AES__CTRL_AUX_SHADOWED__KEY_TOUCH_FORCES_RESEED_reset 0x1
+// Allow the internal masking PRNG to advance (0) or force its internal state (1) leading to constant masks.
+// Setting all masks to constant value can be useful when performing SCA.
+// To completely disable the masking, the second key share (KEY_SHARE1_0 - KEY_SHARE1_7) must be zero as well.
+// In addition, a special seed needs to be loaded into the masking PRNG using the EDN interface.
+// Only applicable if both the Masking parameter and the SecAllowForcingMasks parameter are set to one.
 #define AES__CTRL_AUX_SHADOWED__FORCE_MASKS_bm 0x2
 #define AES__CTRL_AUX_SHADOWED__FORCE_MASKS_bp 1
 #define AES__CTRL_AUX_SHADOWED__FORCE_MASKS_bw 1
 #define AES__CTRL_AUX_SHADOWED__FORCE_MASKS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Controls whether providing a new key triggers the reseeding of internal pseudo-random number generators used for clearing and masking (1) or not (0).
         uint32_t KEY_TOUCH_FORCES_RESEED :1;
+        // Allow the internal masking PRNG to advance (0) or force its internal state (1) leading to constant masks.
+        // Setting all masks to constant value can be useful when performing SCA.
+        // To completely disable the masking, the second key share (KEY_SHARE1_0 - KEY_SHARE1_7) must be zero as well.
+        // In addition, a special seed needs to be loaded into the masking PRNG using the EDN interface.
+        // Only applicable if both the Masking parameter and the SecAllowForcingMasks parameter are set to one.
         uint32_t FORCE_MASKS :1;
         uint32_t :30;
     } f;
@@ -148,12 +204,16 @@ typedef union {
 } aes__CTRL_AUX_SHADOWED_t;
 
 // reg - aes::CTRL_AUX_REGWEN
+// Auxiliary Control Register configuration enable bit.
+// If this is cleared to 0, the Auxiliary Control Register cannot be written anymore.
 #define AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_bm 0x1
 #define AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_bp 0
 #define AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_bw 1
 #define AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Auxiliary Control Register configuration enable bit.
+        // If this is cleared to 0, the Auxiliary Control Register cannot be written anymore.
         uint32_t CTRL_AUX_REGWEN :1;
         uint32_t :31;
     } f;
@@ -161,27 +221,39 @@ typedef union {
 } aes__CTRL_AUX_REGWEN_t;
 
 // reg - aes::TRIGGER
+// Keep AES unit paused (0) or trigger the encryption/decryption of one data block (1).
+// This trigger is cleared to `0` if MANUAL_OPERATION=0 or if MODE=AES_NONE (see Control Register).
 #define AES__TRIGGER__START_bm 0x1
 #define AES__TRIGGER__START_bp 0
 #define AES__TRIGGER__START_bw 1
 #define AES__TRIGGER__START_reset 0x0
+// Keep current values in Initial Key, internal Full Key and Decryption Key registers, IV registers and Input Data registers (0) or clear all those registers with pseudo-random data (1).
 #define AES__TRIGGER__KEY_IV_DATA_IN_CLEAR_bm 0x2
 #define AES__TRIGGER__KEY_IV_DATA_IN_CLEAR_bp 1
 #define AES__TRIGGER__KEY_IV_DATA_IN_CLEAR_bw 1
 #define AES__TRIGGER__KEY_IV_DATA_IN_CLEAR_reset 0x1
+// Keep current values in Output Data registers (0) or clear those registers with pseudo-random data (1).
 #define AES__TRIGGER__DATA_OUT_CLEAR_bm 0x4
 #define AES__TRIGGER__DATA_OUT_CLEAR_bp 2
 #define AES__TRIGGER__DATA_OUT_CLEAR_bw 1
 #define AES__TRIGGER__DATA_OUT_CLEAR_reset 0x1
+// Keep continuing with the current states of the internal pseudo-random number generators used for register clearing and masking (0) or perform a reseed of the internal states from the connected entropy source (1).
+// If the KEY_TOUCH_FORCES_RESEED bit in the Auxiliary Control Register is set to one, this trigger will automatically get set after providing a new initial key.
 #define AES__TRIGGER__PRNG_RESEED_bm 0x8
 #define AES__TRIGGER__PRNG_RESEED_bp 3
 #define AES__TRIGGER__PRNG_RESEED_bw 1
 #define AES__TRIGGER__PRNG_RESEED_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Keep AES unit paused (0) or trigger the encryption/decryption of one data block (1).
+        // This trigger is cleared to `0` if MANUAL_OPERATION=0 or if MODE=AES_NONE (see Control Register).
         uint32_t START :1;
+        // Keep current values in Initial Key, internal Full Key and Decryption Key registers, IV registers and Input Data registers (0) or clear all those registers with pseudo-random data (1).
         uint32_t KEY_IV_DATA_IN_CLEAR :1;
+        // Keep current values in Output Data registers (0) or clear those registers with pseudo-random data (1).
         uint32_t DATA_OUT_CLEAR :1;
+        // Keep continuing with the current states of the internal pseudo-random number generators used for register clearing and masking (0) or perform a reseed of the internal states from the connected entropy source (1).
+        // If the KEY_TOUCH_FORCES_RESEED bit in the Auxiliary Control Register is set to one, this trigger will automatically get set after providing a new initial key.
         uint32_t PRNG_RESEED :1;
         uint32_t :28;
     } f;
@@ -189,42 +261,96 @@ typedef union {
 } aes__TRIGGER_t;
 
 // reg - aes::STATUS
+// The AES unit is idle (1) or busy (0).
+// This flag is `0` if one of the following operations is currently running: i) encryption/decryption, ii) register clearing or iii) PRNG reseeding.
+// This flag is also `0` if an encryption/decryption is running but the AES unit is stalled.
 #define AES__STATUS__IDLE_bm 0x1
 #define AES__STATUS__IDLE_bp 0
 #define AES__STATUS__IDLE_bw 1
 #define AES__STATUS__IDLE_reset 0x0
+// The AES unit is not stalled (0) or stalled (1) because there is previous
+// output data that must be read by the processor before the AES unit can
+// overwrite this data.
+// This flag is not meaningful if MANUAL_OPERATION=1 (see Control Register).
 #define AES__STATUS__STALL_bm 0x2
 #define AES__STATUS__STALL_bp 1
 #define AES__STATUS__STALL_bw 1
 #define AES__STATUS__STALL_reset 0x0
+// All previous output data has been fully read by the processor (0) or at least one previous output data block has been lost (1).
+// It has been overwritten by the AES unit before the processor could fully read it.
+// Once set to `1`, this flag remains set until AES operation is restarted by re-writing the Control Register.
+// The primary use of this flag is for design verification.
+// This flag is not meaningful if MANUAL_OPERATION=0 (see Control Register).
 #define AES__STATUS__OUTPUT_LOST_bm 0x4
 #define AES__STATUS__OUTPUT_LOST_bp 2
 #define AES__STATUS__OUTPUT_LOST_bw 1
 #define AES__STATUS__OUTPUT_LOST_reset 0x0
+// The AES unit has no valid output (0) or has valid output data (1).
 #define AES__STATUS__OUTPUT_VALID_bm 0x8
 #define AES__STATUS__OUTPUT_VALID_bp 3
 #define AES__STATUS__OUTPUT_VALID_bw 1
 #define AES__STATUS__OUTPUT_VALID_reset 0x0
+// The AES unit is ready (1) or not ready (0) to receive new data input via the DATA_IN registers.
+// If the present values in the DATA_IN registers have not yet been loaded into the
+// module this flag is `0` (not ready).
 #define AES__STATUS__INPUT_READY_bm 0x10
 #define AES__STATUS__INPUT_READY_bp 4
 #define AES__STATUS__INPUT_READY_bw 1
 #define AES__STATUS__INPUT_READY_reset 0x0
+// An update error has not occurred (0) or has occurred (1) in the shadowed Control Register.
+// AES operation needs to be restarted by re-writing the Control Register.
 #define AES__STATUS__ALERT_RECOV_CTRL_UPDATE_ERR_bm 0x20
 #define AES__STATUS__ALERT_RECOV_CTRL_UPDATE_ERR_bp 5
 #define AES__STATUS__ALERT_RECOV_CTRL_UPDATE_ERR_bw 1
 #define AES__STATUS__ALERT_RECOV_CTRL_UPDATE_ERR_reset 0x0
+// No fatal fault has occurred inside the AES unit (0).
+// A fatal fault has occurred and the AES unit needs to be reset (1).
+// Examples for fatal faults include
+// i) storage errors in the Control Register,
+// ii) if any internal FSM enters an invalid state,
+// iii) if any sparsely encoded signal takes on an invalid value,
+// iv) errors in the internal round counter,
+// v) escalations triggered by the life cycle controller, and
+// vi) fatal integrity failures on the TL-UL bus.
 #define AES__STATUS__ALERT_FATAL_FAULT_bm 0x40
 #define AES__STATUS__ALERT_FATAL_FAULT_bp 6
 #define AES__STATUS__ALERT_FATAL_FAULT_bw 1
 #define AES__STATUS__ALERT_FATAL_FAULT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // The AES unit is idle (1) or busy (0).
+        // This flag is `0` if one of the following operations is currently running: i) encryption/decryption, ii) register clearing or iii) PRNG reseeding.
+        // This flag is also `0` if an encryption/decryption is running but the AES unit is stalled.
         uint32_t IDLE :1;
+        // The AES unit is not stalled (0) or stalled (1) because there is previous
+        // output data that must be read by the processor before the AES unit can
+        // overwrite this data.
+        // This flag is not meaningful if MANUAL_OPERATION=1 (see Control Register).
         uint32_t STALL :1;
+        // All previous output data has been fully read by the processor (0) or at least one previous output data block has been lost (1).
+        // It has been overwritten by the AES unit before the processor could fully read it.
+        // Once set to `1`, this flag remains set until AES operation is restarted by re-writing the Control Register.
+        // The primary use of this flag is for design verification.
+        // This flag is not meaningful if MANUAL_OPERATION=0 (see Control Register).
         uint32_t OUTPUT_LOST :1;
+        // The AES unit has no valid output (0) or has valid output data (1).
         uint32_t OUTPUT_VALID :1;
+        // The AES unit is ready (1) or not ready (0) to receive new data input via the DATA_IN registers.
+        // If the present values in the DATA_IN registers have not yet been loaded into the
+        // module this flag is `0` (not ready).
         uint32_t INPUT_READY :1;
+        // An update error has not occurred (0) or has occurred (1) in the shadowed Control Register.
+        // AES operation needs to be restarted by re-writing the Control Register.
         uint32_t ALERT_RECOV_CTRL_UPDATE_ERR :1;
+        // No fatal fault has occurred inside the AES unit (0).
+        // A fatal fault has occurred and the AES unit needs to be reset (1).
+        // Examples for fatal faults include
+        // i) storage errors in the Control Register,
+        // ii) if any internal FSM enters an invalid state,
+        // iii) if any sparsely encoded signal takes on an invalid value,
+        // iv) errors in the internal round counter,
+        // v) escalations triggered by the life cycle controller, and
+        // vi) fatal integrity failures on the TL-UL bus.
         uint32_t ALERT_FATAL_FAULT :1;
         uint32_t :25;
     } f;
@@ -232,17 +358,31 @@ typedef union {
 } aes__STATUS_t;
 
 // reg - aes::CTRL_GCM_SHADOWED
+// 6-bit one-hot field to select the phase of the Galois/Counter Mode (GCM) of operation.
+// Invalid input values, i.e., values with multiple bits set and value 6'b00_0000, are mapped to GCM_INIT (6'b00_0001).
+// In case support for GCM has been disabled at compile time, this field is not writable and always reads as GCM_INIT (6'b00_0001).
 #define AES__CTRL_GCM_SHADOWED__PHASE_bm 0x3f
 #define AES__CTRL_GCM_SHADOWED__PHASE_bp 0
 #define AES__CTRL_GCM_SHADOWED__PHASE_bw 6
 #define AES__CTRL_GCM_SHADOWED__PHASE_reset 0x1
+// Number of valid bytes of the current input block.
+// Only the last block in the GCM_AAD and GCM_TEXT phases are expected to have not all bytes marked as valid.
+// For all other blocks, the number of valid bytes should be set to 16.
+// Invalid input values, i.e., the value 5'b0_0000, and all other values different from 5'b1_0000 in case GCM is not supported (because disabled at compile time) are mapped to 5'b1_0000.
 #define AES__CTRL_GCM_SHADOWED__NUM_VALID_BYTES_bm 0x7c0
 #define AES__CTRL_GCM_SHADOWED__NUM_VALID_BYTES_bp 6
 #define AES__CTRL_GCM_SHADOWED__NUM_VALID_BYTES_bw 5
 #define AES__CTRL_GCM_SHADOWED__NUM_VALID_BYTES_reset 0x10
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 6-bit one-hot field to select the phase of the Galois/Counter Mode (GCM) of operation.
+        // Invalid input values, i.e., values with multiple bits set and value 6'b00_0000, are mapped to GCM_INIT (6'b00_0001).
+        // In case support for GCM has been disabled at compile time, this field is not writable and always reads as GCM_INIT (6'b00_0001).
         uint32_t PHASE :6;
+        // Number of valid bytes of the current input block.
+        // Only the last block in the GCM_AAD and GCM_TEXT phases are expected to have not all bytes marked as valid.
+        // For all other blocks, the number of valid bytes should be set to 16.
+        // Invalid input values, i.e., the value 5'b0_0000, and all other values different from 5'b1_0000 in case GCM is not supported (because disabled at compile time) are mapped to 5'b1_0000.
         uint32_t NUM_VALID_BYTES :5;
         uint32_t :21;
     } f;
@@ -250,6 +390,7 @@ typedef union {
 } aes__CTRL_GCM_SHADOWED_t;
 
 // addrmap - aes
+// AES encryption and decryption engine with SCA and FI countermeasures
 typedef struct __attribute__ ((__packed__)) {
     aes__ALERT_TEST_t ALERT_TEST;
     aes__KEY_SHARE0_t KEY_SHARE0[8];

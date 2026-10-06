@@ -14,144 +14,182 @@ extern "C" {
 #include <assert.h>
 
 // reg - reset_unit::SS_CONFIG
+// Configuration registers to setup system configuration.
+// Usage is integration-specific; see the adopter chiplet specification.
 #define RESET_UNIT__SS_CONFIG__SS_CONFIG_bm 0xffffffff
 #define RESET_UNIT__SS_CONFIG__SS_CONFIG_bp 0
 #define RESET_UNIT__SS_CONFIG__SS_CONFIG_bw 32
 #define RESET_UNIT__SS_CONFIG__SS_CONFIG_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Configuration registers to setup system configuration.
+        // Usage is integration-specific; see the adopter chiplet specification.
         uint32_t ss_config :32;
     } f;
     uint32_t w;
 } reset_unit__SS_CONFIG_t;
 
 // reg - reset_unit::SS_CONFIG_LOCK
+// Written to lock down SS config. If bit 0 is written, then bit 0 of other SS config
+// cannot be written to again
 #define RESET_UNIT__SS_CONFIG_LOCK__CONFIG_LOCK_bm 0xffffffff
 #define RESET_UNIT__SS_CONFIG_LOCK__CONFIG_LOCK_bp 0
 #define RESET_UNIT__SS_CONFIG_LOCK__CONFIG_LOCK_bw 32
 #define RESET_UNIT__SS_CONFIG_LOCK__CONFIG_LOCK_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Written to lock down SS config. If bit 0 is written, then bit 0 of other SS config
+        // cannot be written to again
         uint32_t config_lock :32;
     } f;
     uint32_t w;
 } reset_unit__SS_CONFIG_LOCK_t;
 
 // reg - reset_unit::SS_COLD_RESET_N
+// Subsystem active low cold resets
 #define RESET_UNIT__SS_COLD_RESET_N__RESET_N_N0_SCAN_bm 0xffffffff
 #define RESET_UNIT__SS_COLD_RESET_N__RESET_N_N0_SCAN_bp 0
 #define RESET_UNIT__SS_COLD_RESET_N__RESET_N_N0_SCAN_bw 32
 #define RESET_UNIT__SS_COLD_RESET_N__RESET_N_N0_SCAN_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Subsystem active low cold resets
         uint32_t reset_n_n0_scan :32;
     } f;
     uint32_t w;
 } reset_unit__SS_COLD_RESET_N_t;
 
 // reg - reset_unit::SS_WARM_RESET_N
+// Subsystem active low warm resets
 #define RESET_UNIT__SS_WARM_RESET_N__RESET_N_N0_SCAN_bm 0xffffffff
 #define RESET_UNIT__SS_WARM_RESET_N__RESET_N_N0_SCAN_bp 0
 #define RESET_UNIT__SS_WARM_RESET_N__RESET_N_N0_SCAN_bw 32
 #define RESET_UNIT__SS_WARM_RESET_N__RESET_N_N0_SCAN_reset 0xffffffff
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Subsystem active low warm resets
         uint32_t reset_n_n0_scan :32;
     } f;
     uint32_t w;
 } reset_unit__SS_WARM_RESET_N_t;
 
 // reg - reset_unit::SS_CONFIG_HOLD
+// Used with warm_reset_n. Asserting ensures all registers configured during boot, including fuse values for
+// export compliance, SRAM repair, other fuse values, etc. are preserved
 #define RESET_UNIT__SS_CONFIG_HOLD__CONFIGURATION_STATE_HOLD_bm 0xffffffff
 #define RESET_UNIT__SS_CONFIG_HOLD__CONFIGURATION_STATE_HOLD_bp 0
 #define RESET_UNIT__SS_CONFIG_HOLD__CONFIGURATION_STATE_HOLD_bw 32
 #define RESET_UNIT__SS_CONFIG_HOLD__CONFIGURATION_STATE_HOLD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Used with warm_reset_n. Asserting ensures all registers configured during boot, including fuse values for
+        // export compliance, SRAM repair, other fuse values, etc. are preserved
         uint32_t configuration_state_hold :32;
     } f;
     uint32_t w;
 } reset_unit__SS_CONFIG_HOLD_t;
 
 // reg - reset_unit::SS_SRAM_HOLD
+// Used with warm_reset_n. Asserting ensures SRAMs, latch arrays and anything else that MBIST is
+// used to test and initialize during cold reset are preserved
 #define RESET_UNIT__SS_SRAM_HOLD__SRAM_HOLD_bm 0xffffffff
 #define RESET_UNIT__SS_SRAM_HOLD__SRAM_HOLD_bp 0
 #define RESET_UNIT__SS_SRAM_HOLD__SRAM_HOLD_bw 32
 #define RESET_UNIT__SS_SRAM_HOLD__SRAM_HOLD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Used with warm_reset_n. Asserting ensures SRAMs, latch arrays and anything else that MBIST is
+        // used to test and initialize during cold reset are preserved
         uint32_t sram_hold :32;
     } f;
     uint32_t w;
 } reset_unit__SS_SRAM_HOLD_t;
 
 // reg - reset_unit::SS_CRITICAL_HOLD
+// Used with warm_reset_n. Asserting ensures security, RAS, NMIs, perf counters, debug/trace and other
+// subsystem specific registers are preserved
 #define RESET_UNIT__SS_CRITICAL_HOLD__CRITICAL_SIGNAL_HOLD_bm 0xffffffff
 #define RESET_UNIT__SS_CRITICAL_HOLD__CRITICAL_SIGNAL_HOLD_bp 0
 #define RESET_UNIT__SS_CRITICAL_HOLD__CRITICAL_SIGNAL_HOLD_bw 32
 #define RESET_UNIT__SS_CRITICAL_HOLD__CRITICAL_SIGNAL_HOLD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Used with warm_reset_n. Asserting ensures security, RAS, NMIs, perf counters, debug/trace and other
+        // subsystem specific registers are preserved
         uint32_t critical_signal_hold :32;
     } f;
     uint32_t w;
 } reset_unit__SS_CRITICAL_HOLD_t;
 
 // reg - reset_unit::SS_DEBUG_HOLD
+// Used with warm_reset_n. Debug hold signal to ensure any debug registers are preserved
 #define RESET_UNIT__SS_DEBUG_HOLD__DEBUG_HOLD_bm 0xffffffff
 #define RESET_UNIT__SS_DEBUG_HOLD__DEBUG_HOLD_bp 0
 #define RESET_UNIT__SS_DEBUG_HOLD__DEBUG_HOLD_bw 32
 #define RESET_UNIT__SS_DEBUG_HOLD__DEBUG_HOLD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Used with warm_reset_n. Debug hold signal to ensure any debug registers are preserved
         uint32_t debug_hold :32;
     } f;
     uint32_t w;
 } reset_unit__SS_DEBUG_HOLD_t;
 
 // reg - reset_unit::SS_RESET_COMPLETE
+// Response signal from subsystem to indicate reset (or some other critical step) has completed.
+// Bitwise write 1 to clear
 #define RESET_UNIT__SS_RESET_COMPLETE__RESET_COMPLETE_bm 0xffffffff
 #define RESET_UNIT__SS_RESET_COMPLETE__RESET_COMPLETE_bp 0
 #define RESET_UNIT__SS_RESET_COMPLETE__RESET_COMPLETE_bw 32
 #define RESET_UNIT__SS_RESET_COMPLETE__RESET_COMPLETE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Response signal from subsystem to indicate reset (or some other critical step) has completed.
+        // Bitwise write 1 to clear
         uint32_t reset_complete :32;
     } f;
     uint32_t w;
 } reset_unit__SS_RESET_COMPLETE_t;
 
 // reg - reset_unit::SS_COLD_RESET_LOCK
+// Written to lock down SS cold reset. If bit 0 is written, then bit 0 of other SS cold reset
+// cannot be written to again
 #define RESET_UNIT__SS_COLD_RESET_LOCK__COLD_RESET_LOCK_bm 0xffffffff
 #define RESET_UNIT__SS_COLD_RESET_LOCK__COLD_RESET_LOCK_bp 0
 #define RESET_UNIT__SS_COLD_RESET_LOCK__COLD_RESET_LOCK_bw 32
 #define RESET_UNIT__SS_COLD_RESET_LOCK__COLD_RESET_LOCK_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Written to lock down SS cold reset. If bit 0 is written, then bit 0 of other SS cold reset
+        // cannot be written to again
         uint32_t cold_reset_lock :32;
     } f;
     uint32_t w;
 } reset_unit__SS_COLD_RESET_LOCK_t;
 
 // reg - reset_unit::SS_FORCE_TO_REF_CLK
+// Forces clock to be ref clk. The ensures reset reaches all FFs within a subsystem in same clock cycle
 #define RESET_UNIT__SS_FORCE_TO_REF_CLK__FORCE_SS_TO_REF_CLK_N_bm 0xffffffff
 #define RESET_UNIT__SS_FORCE_TO_REF_CLK__FORCE_SS_TO_REF_CLK_N_bp 0
 #define RESET_UNIT__SS_FORCE_TO_REF_CLK__FORCE_SS_TO_REF_CLK_N_bw 32
 #define RESET_UNIT__SS_FORCE_TO_REF_CLK__FORCE_SS_TO_REF_CLK_N_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Forces clock to be ref clk. The ensures reset reaches all FFs within a subsystem in same clock cycle
         uint32_t force_ss_to_ref_clk_n :32;
     } f;
     uint32_t w;
 } reset_unit__SS_FORCE_TO_REF_CLK_t;
 
 // reg - reset_unit::SYNC_REG
+// Set to assert global sync bit
 #define RESET_UNIT__SYNC_REG__SYNC_bm 0x1
 #define RESET_UNIT__SYNC_REG__SYNC_bp 0
 #define RESET_UNIT__SYNC_REG__SYNC_bw 1
 #define RESET_UNIT__SYNC_REG__SYNC_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Set to assert global sync bit
         uint32_t sync :1;
         uint32_t :31;
     } f;
@@ -159,36 +197,42 @@ typedef union {
 } reset_unit__SYNC_REG_t;
 
 // reg - reset_unit::ISOLATE_REQ_REG
+// Isolate request. This prevents reset from being propagated to SS, keeping them alive in case of a cold reset
 #define RESET_UNIT__ISOLATE_REQ_REG__ISOLATE_REQ_REG_bm 0xffffffff
 #define RESET_UNIT__ISOLATE_REQ_REG__ISOLATE_REQ_REG_bp 0
 #define RESET_UNIT__ISOLATE_REQ_REG__ISOLATE_REQ_REG_bw 32
 #define RESET_UNIT__ISOLATE_REQ_REG__ISOLATE_REQ_REG_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Isolate request. This prevents reset from being propagated to SS, keeping them alive in case of a cold reset
         uint32_t isolate_req_reg :32;
     } f;
     uint32_t w;
 } reset_unit__ISOLATE_REQ_REG_t;
 
 // reg - reset_unit::ISOLATE_REQ_PINEN_REG
+// Isolate request pin enable. This enables the external isolate request pin to have an effect on ss isolate requests
 #define RESET_UNIT__ISOLATE_REQ_PINEN_REG__ISOLATE_REQ_PINEN_REG_bm 0xffffffff
 #define RESET_UNIT__ISOLATE_REQ_PINEN_REG__ISOLATE_REQ_PINEN_REG_bp 0
 #define RESET_UNIT__ISOLATE_REQ_PINEN_REG__ISOLATE_REQ_PINEN_REG_bw 32
 #define RESET_UNIT__ISOLATE_REQ_PINEN_REG__ISOLATE_REQ_PINEN_REG_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Isolate request pin enable. This enables the external isolate request pin to have an effect on ss isolate requests
         uint32_t isolate_req_pinen_reg :32;
     } f;
     uint32_t w;
 } reset_unit__ISOLATE_REQ_PINEN_REG_t;
 
 // reg - reset_unit::ISOLATE_REQ_SMC_REG
+// Isolate request smc. Asserted once cfg_flr_pf_active is asserted, de-asserted by sw
 #define RESET_UNIT__ISOLATE_REQ_SMC_REG__ISOLATE_REQ_SMC_REG_bm 0x1
 #define RESET_UNIT__ISOLATE_REQ_SMC_REG__ISOLATE_REQ_SMC_REG_bp 0
 #define RESET_UNIT__ISOLATE_REQ_SMC_REG__ISOLATE_REQ_SMC_REG_bw 1
 #define RESET_UNIT__ISOLATE_REQ_SMC_REG__ISOLATE_REQ_SMC_REG_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Isolate request smc. Asserted once cfg_flr_pf_active is asserted, de-asserted by sw
         uint32_t isolate_req_smc_reg :1;
         uint32_t :31;
     } f;
@@ -196,36 +240,44 @@ typedef union {
 } reset_unit__ISOLATE_REQ_SMC_REG_t;
 
 // reg - reset_unit::ISOLATE_REQ_SMCEN_REG
+// Isolate request smc enable. This enables the FLR lock to have an effect on ss isolate requests
 #define RESET_UNIT__ISOLATE_REQ_SMCEN_REG__ISOLATE_REQ_SMCEN_REG_bm 0xffffffff
 #define RESET_UNIT__ISOLATE_REQ_SMCEN_REG__ISOLATE_REQ_SMCEN_REG_bp 0
 #define RESET_UNIT__ISOLATE_REQ_SMCEN_REG__ISOLATE_REQ_SMCEN_REG_bw 32
 #define RESET_UNIT__ISOLATE_REQ_SMCEN_REG__ISOLATE_REQ_SMCEN_REG_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Isolate request smc enable. This enables the FLR lock to have an effect on ss isolate requests
         uint32_t isolate_req_smcen_reg :32;
     } f;
     uint32_t w;
 } reset_unit__ISOLATE_REQ_SMCEN_REG_t;
 
 // reg - reset_unit::ISOLATE_REQ_VIS
+// Visibility bit for isolate request pin
 #define RESET_UNIT__ISOLATE_REQ_VIS__ISOLATE_REQ_PIN_bm 0x1
 #define RESET_UNIT__ISOLATE_REQ_VIS__ISOLATE_REQ_PIN_bp 0
 #define RESET_UNIT__ISOLATE_REQ_VIS__ISOLATE_REQ_PIN_bw 1
 #define RESET_UNIT__ISOLATE_REQ_VIS__ISOLATE_REQ_PIN_reset 0x1
+// Visibility bit for cool reset input
 #define RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_N_I_bm 0x10
 #define RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_N_I_bp 4
 #define RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_N_I_bw 1
 #define RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_N_I_reset 0x1
+// Visibility bit for cool reset output
 #define RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_N_O_bm 0x100
 #define RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_N_O_bp 8
 #define RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_N_O_bw 1
 #define RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_N_O_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Visibility bit for isolate request pin
         uint32_t isolate_req_pin :1;
         uint32_t :3;
+        // Visibility bit for cool reset input
         uint32_t cool_reset_n_i :1;
         uint32_t :3;
+        // Visibility bit for cool reset output
         uint32_t cool_reset_n_o :1;
         uint32_t :23;
     } f;
@@ -233,30 +285,35 @@ typedef union {
 } reset_unit__ISOLATE_REQ_VIS_t;
 
 // reg - reset_unit::ISOLATE_REQ_FLR_COUNTER_VALUE
+// Number of cycles post cfg_flr_pf_active assertion is waited until cool_reset_n is asserted
 #define RESET_UNIT__ISOLATE_REQ_FLR_COUNTER_VALUE__ISOLATE_REQ_FLR_COUNTER_VALUE_bm 0xffffffff
 #define RESET_UNIT__ISOLATE_REQ_FLR_COUNTER_VALUE__ISOLATE_REQ_FLR_COUNTER_VALUE_bp 0
 #define RESET_UNIT__ISOLATE_REQ_FLR_COUNTER_VALUE__ISOLATE_REQ_FLR_COUNTER_VALUE_bw 32
 #define RESET_UNIT__ISOLATE_REQ_FLR_COUNTER_VALUE__ISOLATE_REQ_FLR_COUNTER_VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Number of cycles post cfg_flr_pf_active assertion is waited until cool_reset_n is asserted
         uint32_t isolate_req_flr_counter_value :32;
     } f;
     uint32_t w;
 } reset_unit__ISOLATE_REQ_FLR_COUNTER_VALUE_t;
 
 // reg - reset_unit::ISOLATE_REQ_FLR_RESET_COUNTER_VALUE
+// Number of cycles cool_reset_n is asserted for. NOTE: The cool reset flow requires this value to be greater than 0; a value of 0 will prevent initiation, regardless of ISOLATE_REQ_FLR_COUNTER_VALUE's value
 #define RESET_UNIT__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_bm 0xffffffff
 #define RESET_UNIT__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_bp 0
 #define RESET_UNIT__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_bw 32
 #define RESET_UNIT__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Number of cycles cool_reset_n is asserted for. NOTE: The cool reset flow requires this value to be greater than 0; a value of 0 will prevent initiation, regardless of ISOLATE_REQ_FLR_COUNTER_VALUE's value
         uint32_t isolate_req_flr_reset_counter_value :32;
     } f;
     uint32_t w;
 } reset_unit__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_t;
 
 // addrmap - reset_unit
+// Subsystem reset control, hold and isolation controls, and reset-sequencing status registers.
 typedef struct __attribute__ ((__packed__)) {
     uint8_t RESERVED_0_1f[0x20];
     reset_unit__SS_CONFIG_t SS_CONFIG;

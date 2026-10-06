@@ -14,220 +14,294 @@ extern "C" {
 #include <assert.h>
 
 // reg - km_mailbox_km::write_data_reg
+// Write data to outbound FIFO (KM→SEP messages)
+// 32-bit data word to write to outbound FIFO
 #define KM_MAILBOX_KM__WRITE_DATA_REG__DATA_bm 0xffffffff
 #define KM_MAILBOX_KM__WRITE_DATA_REG__DATA_bp 0
 #define KM_MAILBOX_KM__WRITE_DATA_REG__DATA_bw 32
 #define KM_MAILBOX_KM__WRITE_DATA_REG__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 32-bit data word to write to outbound FIFO
         uint32_t data :32;
     } f;
     uint32_t w;
 } km_mailbox_km__write_data_reg_t;
 
 // reg - km_mailbox_km::write_separator_reg
+// Write 1 to set message separator on next outbound (KM→SEP) write. Cleared by hardware when that write completes.
+// Write 1 to set message separator on next outbound write. Cleared by hardware when that write completes.
 #define KM_MAILBOX_KM__WRITE_SEPARATOR_REG__SET_bm 0x1
 #define KM_MAILBOX_KM__WRITE_SEPARATOR_REG__SET_bp 0
 #define KM_MAILBOX_KM__WRITE_SEPARATOR_REG__SET_bw 1
 #define KM_MAILBOX_KM__WRITE_SEPARATOR_REG__SET_reset 0x0
+// Reserved
 #define KM_MAILBOX_KM__WRITE_SEPARATOR_REG__RSVD_bm 0xfffffffe
 #define KM_MAILBOX_KM__WRITE_SEPARATOR_REG__RSVD_bp 1
 #define KM_MAILBOX_KM__WRITE_SEPARATOR_REG__RSVD_bw 31
 #define KM_MAILBOX_KM__WRITE_SEPARATOR_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write 1 to set message separator on next outbound write. Cleared by hardware when that write completes.
         uint32_t set :1;
+        // Reserved
         uint32_t rsvd :31;
     } f;
     uint32_t w;
 } km_mailbox_km__write_separator_reg_t;
 
 // reg - km_mailbox_km::read_data_reg
+// Read data from inbound FIFO (SEP→KM messages)
+// 32-bit data word read from inbound FIFO
 #define KM_MAILBOX_KM__READ_DATA_REG__DATA_bm 0xffffffff
 #define KM_MAILBOX_KM__READ_DATA_REG__DATA_bp 0
 #define KM_MAILBOX_KM__READ_DATA_REG__DATA_bw 32
 #define KM_MAILBOX_KM__READ_DATA_REG__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 32-bit data word read from inbound FIFO
         uint32_t data :32;
     } f;
     uint32_t w;
 } km_mailbox_km__read_data_reg_t;
 
 // reg - km_mailbox_km::status_reg
+// FIFO status information
+// Inbound FIFO is empty (no data available for KM to read)
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_EMPTY_bm 0x1
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_EMPTY_bp 0
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_EMPTY_bw 1
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_EMPTY_reset 0x1
+// Inbound FIFO is full
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_FULL_bm 0x2
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_FULL_bp 1
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_FULL_bw 1
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_FULL_reset 0x0
+// Outbound FIFO is empty (no data available for SEP to read)
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_EMPTY_bm 0x4
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_EMPTY_bp 2
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_EMPTY_bw 1
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_EMPTY_reset 0x1
+// Outbound FIFO is full (cannot write more data)
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_FULL_bm 0x8
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_FULL_bp 3
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_FULL_bw 1
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_FULL_reset 0x0
+// Inbound FIFO fill level (number of words in FIFO)
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_DEPTH_bm 0xff0
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_DEPTH_bp 4
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_DEPTH_bw 8
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_DEPTH_reset 0x0
+// Outbound FIFO fill level (number of words in FIFO)
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_DEPTH_bm 0xff000
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_DEPTH_bp 12
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_DEPTH_bw 8
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_DEPTH_reset 0x0
+// Inbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_OVERFLOW_bm 0x100000
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_OVERFLOW_bp 20
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_OVERFLOW_bw 1
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_OVERFLOW_reset 0x0
+// Outbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_OVERFLOW_bm 0x200000
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_OVERFLOW_bp 21
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_OVERFLOW_bw 1
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_OVERFLOW_reset 0x0
+// Inbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_UNDERFLOW_bm 0x400000
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_UNDERFLOW_bp 22
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_UNDERFLOW_bw 1
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_UNDERFLOW_reset 0x0
+// Outbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_UNDERFLOW_bm 0x800000
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_UNDERFLOW_bp 23
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_UNDERFLOW_bw 1
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_UNDERFLOW_reset 0x0
+// Message separator: 1 if the last word read from inbound FIFO had the separator bit set (last word of message). Read-only, not sticky.
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_SEPARATOR_bm 0x1000000
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_SEPARATOR_bp 24
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_SEPARATOR_bw 1
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_SEPARATOR_reset 0x0
+// Message separator: 1 if the last word read from outbound FIFO had the separator bit set (last word of message). Read-only, not sticky.
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_SEPARATOR_bm 0x2000000
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_SEPARATOR_bp 25
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_SEPARATOR_bw 1
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_SEPARATOR_reset 0x0
+// Reserved
 #define KM_MAILBOX_KM__STATUS_REG__RSVD_bm 0xfc000000
 #define KM_MAILBOX_KM__STATUS_REG__RSVD_bp 26
 #define KM_MAILBOX_KM__STATUS_REG__RSVD_bw 6
 #define KM_MAILBOX_KM__STATUS_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Inbound FIFO is empty (no data available for KM to read)
         uint32_t inbound_empty :1;
+        // Inbound FIFO is full
         uint32_t inbound_full :1;
+        // Outbound FIFO is empty (no data available for SEP to read)
         uint32_t outbound_empty :1;
+        // Outbound FIFO is full (cannot write more data)
         uint32_t outbound_full :1;
+        // Inbound FIFO fill level (number of words in FIFO)
         uint32_t inbound_depth :8;
+        // Outbound FIFO fill level (number of words in FIFO)
         uint32_t outbound_depth :8;
+        // Inbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.
         uint32_t inbound_overflow :1;
+        // Outbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.
         uint32_t outbound_overflow :1;
+        // Inbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.
         uint32_t inbound_underflow :1;
+        // Outbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.
         uint32_t outbound_underflow :1;
+        // Message separator: 1 if the last word read from inbound FIFO had the separator bit set (last word of message). Read-only, not sticky.
         uint32_t inbound_separator :1;
+        // Message separator: 1 if the last word read from outbound FIFO had the separator bit set (last word of message). Read-only, not sticky.
         uint32_t outbound_separator :1;
+        // Reserved
         uint32_t rsvd :6;
     } f;
     uint32_t w;
 } km_mailbox_km__status_reg_t;
 
 // reg - km_mailbox_km::irq_status_reg
+// Interrupt status register
+// Inbound FIFO has data available for KM to read (level-sensitive). 1 = data available, 0 = empty.
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__INBOUND_READ_DATA_AVAIL_bm 0x1
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__INBOUND_READ_DATA_AVAIL_bp 0
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__INBOUND_READ_DATA_AVAIL_bw 1
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__INBOUND_READ_DATA_AVAIL_reset 0x0
+// Outbound FIFO has space available for KM to write (level-sensitive). 1 = space available, 0 = full.
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__OUTBOUND_WRITE_SPACE_AVAIL_bm 0x2
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__OUTBOUND_WRITE_SPACE_AVAIL_bp 1
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__OUTBOUND_WRITE_SPACE_AVAIL_bw 1
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__OUTBOUND_WRITE_SPACE_AVAIL_reset 0x0
+// Outbound FIFO overflow detected. Sticky, write 1 to clear.
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__OUTBOUND_OVERFLOW_bm 0x4
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__OUTBOUND_OVERFLOW_bp 2
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__OUTBOUND_OVERFLOW_bw 1
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__OUTBOUND_OVERFLOW_reset 0x0
+// Inbound FIFO underflow detected. Sticky, write 1 to clear.
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__INBOUND_UNDERFLOW_bm 0x8
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__INBOUND_UNDERFLOW_bp 3
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__INBOUND_UNDERFLOW_bw 1
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__INBOUND_UNDERFLOW_reset 0x0
+// SEP performed a mailbox flush. Sticky, write 1 to clear.
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__FLUSHED_BY_SEP_bm 0x10
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__FLUSHED_BY_SEP_bp 4
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__FLUSHED_BY_SEP_bw 1
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__FLUSHED_BY_SEP_reset 0x0
+// Reserved
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__RSVD_bm 0xffffffe0
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__RSVD_bp 5
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__RSVD_bw 27
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Inbound FIFO has data available for KM to read (level-sensitive). 1 = data available, 0 = empty.
         uint32_t inbound_read_data_avail :1;
+        // Outbound FIFO has space available for KM to write (level-sensitive). 1 = space available, 0 = full.
         uint32_t outbound_write_space_avail :1;
+        // Outbound FIFO overflow detected. Sticky, write 1 to clear.
         uint32_t outbound_overflow :1;
+        // Inbound FIFO underflow detected. Sticky, write 1 to clear.
         uint32_t inbound_underflow :1;
+        // SEP performed a mailbox flush. Sticky, write 1 to clear.
         uint32_t flushed_by_sep :1;
+        // Reserved
         uint32_t rsvd :27;
     } f;
     uint32_t w;
 } km_mailbox_km__irq_status_reg_t;
 
 // reg - km_mailbox_km::irq_enable_reg
+// Interrupt enable register for KM CPU
+// Enable interrupt to KM when inbound FIFO has data available (SEP->KM messages)
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__INBOUND_READ_DATA_AVAIL_EN_bm 0x1
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__INBOUND_READ_DATA_AVAIL_EN_bp 0
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__INBOUND_READ_DATA_AVAIL_EN_bw 1
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__INBOUND_READ_DATA_AVAIL_EN_reset 0x0
+// Enable interrupt to KM when outbound FIFO has space available (KM->SEP messages)
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__OUTBOUND_WRITE_SPACE_AVAIL_EN_bm 0x2
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__OUTBOUND_WRITE_SPACE_AVAIL_EN_bp 1
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__OUTBOUND_WRITE_SPACE_AVAIL_EN_bw 1
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__OUTBOUND_WRITE_SPACE_AVAIL_EN_reset 0x0
+// Enable interrupt to KM when outbound FIFO overflow is detected
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__OUTBOUND_OVERFLOW_EN_bm 0x4
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__OUTBOUND_OVERFLOW_EN_bp 2
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__OUTBOUND_OVERFLOW_EN_bw 1
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__OUTBOUND_OVERFLOW_EN_reset 0x0
+// Enable interrupt to KM when inbound FIFO underflow is detected
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__INBOUND_UNDERFLOW_EN_bm 0x8
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__INBOUND_UNDERFLOW_EN_bp 3
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__INBOUND_UNDERFLOW_EN_bw 1
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__INBOUND_UNDERFLOW_EN_reset 0x0
+// Enable interrupt to KM when SEP performs a mailbox flush
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__FLUSHED_BY_SEP_EN_bm 0x10
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__FLUSHED_BY_SEP_EN_bp 4
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__FLUSHED_BY_SEP_EN_bw 1
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__FLUSHED_BY_SEP_EN_reset 0x0
+// Reserved
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__RSVD_bm 0xffffffe0
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__RSVD_bp 5
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__RSVD_bw 27
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enable interrupt to KM when inbound FIFO has data available (SEP->KM messages)
         uint32_t inbound_read_data_avail_en :1;
+        // Enable interrupt to KM when outbound FIFO has space available (KM->SEP messages)
         uint32_t outbound_write_space_avail_en :1;
+        // Enable interrupt to KM when outbound FIFO overflow is detected
         uint32_t outbound_overflow_en :1;
+        // Enable interrupt to KM when inbound FIFO underflow is detected
         uint32_t inbound_underflow_en :1;
+        // Enable interrupt to KM when SEP performs a mailbox flush
         uint32_t flushed_by_sep_en :1;
+        // Reserved
         uint32_t rsvd :27;
     } f;
     uint32_t w;
 } km_mailbox_km__irq_enable_reg_t;
 
 // reg - km_mailbox_km::ctrl_reg
+// Control register for mailbox behavior configuration
+// Response type for outbound FIFO overflow: 0=SLVERR (default), 1=OKAY
 #define KM_MAILBOX_KM__CTRL_REG__OUTBOUND_OVERFLOW_RESP_bm 0x1
 #define KM_MAILBOX_KM__CTRL_REG__OUTBOUND_OVERFLOW_RESP_bp 0
 #define KM_MAILBOX_KM__CTRL_REG__OUTBOUND_OVERFLOW_RESP_bw 1
 #define KM_MAILBOX_KM__CTRL_REG__OUTBOUND_OVERFLOW_RESP_reset 0x0
+// Response type for inbound FIFO underflow: 0=SLVERR (default), 1=OKAY
 #define KM_MAILBOX_KM__CTRL_REG__INBOUND_UNDERFLOW_RESP_bm 0x2
 #define KM_MAILBOX_KM__CTRL_REG__INBOUND_UNDERFLOW_RESP_bp 1
 #define KM_MAILBOX_KM__CTRL_REG__INBOUND_UNDERFLOW_RESP_bw 1
 #define KM_MAILBOX_KM__CTRL_REG__INBOUND_UNDERFLOW_RESP_reset 0x0
+// Write 1 to flush all mailbox FIFOs (inbound and outbound). Cleared by hardware when flush completes.
 #define KM_MAILBOX_KM__CTRL_REG__FLUSH_bm 0x4
 #define KM_MAILBOX_KM__CTRL_REG__FLUSH_bp 2
 #define KM_MAILBOX_KM__CTRL_REG__FLUSH_bw 1
 #define KM_MAILBOX_KM__CTRL_REG__FLUSH_reset 0x0
+// Reserved
 #define KM_MAILBOX_KM__CTRL_REG__RSVD_bm 0xfffffff8
 #define KM_MAILBOX_KM__CTRL_REG__RSVD_bp 3
 #define KM_MAILBOX_KM__CTRL_REG__RSVD_bw 29
 #define KM_MAILBOX_KM__CTRL_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Response type for outbound FIFO overflow: 0=SLVERR (default), 1=OKAY
         uint32_t outbound_overflow_resp :1;
+        // Response type for inbound FIFO underflow: 0=SLVERR (default), 1=OKAY
         uint32_t inbound_underflow_resp :1;
+        // Write 1 to flush all mailbox FIFOs (inbound and outbound). Cleared by hardware when flush completes.
         uint32_t flush :1;
+        // Reserved
         uint32_t rsvd :29;
     } f;
     uint32_t w;
 } km_mailbox_km__ctrl_reg_t;
 
 // addrmap - km_mailbox_km
+// Register interface for KM CPU to access mailbox (write to outbound FIFO, read from inbound FIFO)
 typedef struct __attribute__ ((__packed__)) {
     km_mailbox_km__write_data_reg_t KM_WRITE_DATA;
     km_mailbox_km__write_separator_reg_t KM_WRITE_SEPARATOR;
