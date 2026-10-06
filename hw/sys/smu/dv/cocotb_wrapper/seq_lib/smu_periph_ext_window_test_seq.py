@@ -112,7 +112,10 @@ def _require_window_map() -> None:
             EXT_MANDATORY_BASE <= EXT_STRAPS_LO and EXT_STRAPS_HI + 4 <= EXT_SUPPLEMENTARY_BASE,
             "straps pair is outside the mandatory region",
         ),
-        (EXT_UNMAPPED < EXT_SUPPLEMENTARY_BASE, "unallocated probe is outside the mandatory region"),
+        (
+            EXT_UNMAPPED < EXT_SUPPLEMENTARY_BASE,
+            "unallocated probe is outside the mandatory region",
+        ),
         (
             (REGION_SIZE_SHRUNK & (REGION_SIZE_SHRUNK - 1)) == 0
             and LOCAL_BASE_RESET % REGION_SIZE_SHRUNK == 0,

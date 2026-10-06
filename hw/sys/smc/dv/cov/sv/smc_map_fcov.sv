@@ -589,12 +589,15 @@ module smc_map_fcov (
 
   // Per-pad GPIO control: the first, second and last of the array.
   localparam logic [31:0] PadStride = 32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_STRIDE);
-  localparam logic [31:0] Pad0Lo =
-      32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_BASE_ADDR(0) - LocalBase);
-  localparam logic [31:0] Pad1Lo =
-      32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_BASE_ADDR(1) - LocalBase);
+  localparam logic [31:0] Pad0Lo = 32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_BASE_ADDR(
+      0
+  ) - LocalBase);
+  localparam logic [31:0] Pad1Lo = 32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_BASE_ADDR(
+      1
+  ) - LocalBase);
   localparam logic [31:0] PadLastLo = 32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_BASE_ADDR(
-      32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_NUM) - 1) - LocalBase);
+      32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_NUM) - 1
+  ) - LocalBase);
   wire per_pad_inst0_e = `SMC_MAP_EXT(Pad0Lo, Pad0Lo + PadStride - 32'd1);
   wire per_pad_inst1_e = `SMC_MAP_EXT(Pad1Lo, Pad1Lo + PadStride - 32'd1);
   wire per_pad_inst64_e = `SMC_MAP_EXT(PadLastLo, PadLastLo + PadStride - 32'd1);
@@ -618,8 +621,7 @@ module smc_map_fcov (
   wire per_pad_stride_e = pad_inst0_seen_q && pad_inst1_seen_q && !pad_stride_q;
   `OCAH_FCOV_COVER(c_per_pad_stride_0x20, per_pad_stride_e, clk_smc_i, in_reset)
 
-  localparam logic [31:0] MandatoryLo =
-      32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_BASE_ADDR - LocalBase);
+  localparam logic [31:0] MandatoryLo = 32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_BASE_ADDR - LocalBase);
   localparam logic [31:0] PllWrapLo =
       32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_BASE_ADDR - LocalBase);
   localparam logic [31:0] PllWrapHi =
