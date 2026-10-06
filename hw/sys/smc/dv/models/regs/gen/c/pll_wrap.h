@@ -26,7 +26,6 @@ typedef union {
 
 // mem - pll_wrap_placeholder_mem
 // Placeholder footprint (adopter clock-control block; no CSRs modeled)
-// Placeholder footprint (adopter clock-control block; no CSRs modeled)
 typedef struct __attribute__ ((__packed__)) {
     pll_wrap_placeholder_mem__mem_word_t mem_array[954];
 } pll_wrap_placeholder_mem_t;

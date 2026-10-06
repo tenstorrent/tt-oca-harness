@@ -26,7 +26,6 @@ typedef union {
 
 // mem - pvt_wrap_placeholder_mem
 // Placeholder footprint (adopter PVT/monitor block; no CSRs modeled)
-// Placeholder footprint (adopter PVT/monitor block; no CSRs modeled)
 typedef struct __attribute__ ((__packed__)) {
     pvt_wrap_placeholder_mem__mem_word_t mem_array[594];
 } pvt_wrap_placeholder_mem_t;

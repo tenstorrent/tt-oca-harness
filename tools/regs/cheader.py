@@ -11,7 +11,7 @@ register, field, memory, and struct.
 
 peakrdl-cheader has no ``--template`` hook the way peakrdl-rawheader does, so the
 local behaviour is a peakrdl exporter plugin instead of a template. It is
-registered as ``c-header-desc`` from hw/common/regs/peakrdl.toml, which rules.mk
+registered as ``c-header-desc`` from hw/common/regs/peakrdl.toml.in, which rules.mk
 passes with ``--peakrdl-cfg``. Drop both once the descriptions land upstream.
 """
 
@@ -34,57 +34,51 @@ def desc_lines(node: Node) -> list[str]:
 
 
 class DescribedHeaderGenerator(HeaderGenerator):
+    """The stock generator, with each node's description beside the line naming it.
+
+    Before calling the stock method that names a node, the line it will write is
+    recorded with the node's description; ``write`` emits the description when
+    that exact line goes out. A path comment is followed by its description, and
+    a field macro or struct member is preceded by its field's.
+    """
+
     def __init__(self, ds) -> None:
         super().__init__(ds)
-        # The description waiting to follow the next line the stock generator
-        # writes that starts with one of the markers.
-        self._desc_lines: list[str] = []
-        self._desc_markers: tuple[str, ...] = ()
+        self._annotated: dict[str, list[str]] = {}
 
     def write(self, s: str) -> None:
-        super().write(s)
-        if self._desc_lines and s.startswith(self._desc_markers):
-            # Clear first: the comment lines go back through this method.
-            lines = self._desc_lines
-            self._desc_lines = []
-            for line in lines:
-                self.write(f"// {line}\n")
+        lines = [f"// {line}\n" for line in self._annotated.pop(s, [])]
+        after = s.startswith("\n// ")
+        for out in [s, *lines] if after else [*lines, s]:
+            super().write(out)
 
-    def _describe(self, node: Node) -> None:
-        """Emit the node's description right after the path comment it belongs to.
+    def _annotate(self, line: str, node: Node) -> None:
+        if lines := desc_lines(node):
+            self._annotated[line] = lines
 
-        The stock generator writes that comment through ``write``, and the header
-        is opened write-only, so the description is injected as the comment goes
-        out rather than spliced into the file afterwards.
-        """
-        self._desc_lines = desc_lines(node)
-        self._desc_markers = (f"\n// {self.get_friendly_name(node)}\n",)
-
-    def enter_Field(self, node: FieldNode) -> None:
-        # A field has no comment of its own. Its description belongs above the
-        # field's first macro and, where bitfield structs are generated, above
-        # its struct member. Both are the next matching line written.
-        lines = desc_lines(node)
-        if lines:
-            self._desc_lines = lines
-            prefix = self.get_node_prefix(node.parent).upper()
-            self._desc_markers = (
-                f"#define {prefix}__{node.inst_name.upper()}_bm ",
-                f"uint{node.parent.get_property('regwidth')}_t {kwf(node.inst_name)} :",
-            )
+    def _annotate_path(self, node: Node) -> None:
+        self._annotate(f"\n// {self.get_friendly_name(node)}\n", node)
 
     def enter_Reg(self, node: RegNode) -> Optional[WalkerAction]:
-        # enter_Reg runs before the register's fields are walked, so the
-        # register's description is in place before a field sets its own.
-        self._describe(node)
+        self._annotate_path(node)
+        prefix = self.get_node_prefix(node).upper()
+        for field in node.fields():
+            mask = ((1 << field.width) - 1) << field.low
+            self._annotate(f"#define {prefix}__{field.inst_name.upper()}_bm {mask:#x}\n", field)
         return super().enter_Reg(node)
 
-    def enter_AddressableComponent(self, node: AddressableNode) -> None:
-        # Registers describe themselves in enter_Reg; this covers the structs
-        # and memories, whose path comment the stock generator writes on the way
-        # out. One such comment is pending at a time.
-        if not isinstance(node, RegNode):
-            self._describe(node)
+    def write_bitfields(self, grp_name: str, regwidth: int, fields: list[FieldNode]) -> None:
+        for field in fields:
+            self._annotate(f"uint{regwidth}_t {kwf(field.inst_name)} :{field.width:d};\n", field)
+        super().write_bitfields(grp_name, regwidth, fields)
+
+    def write_block(self, node: AddressableNode) -> None:
+        self._annotate_path(node)
+        super().write_block(node)
+
+    def exit_Mem(self, node) -> None:
+        self._annotate_path(node)
+        super().exit_Mem(node)
 
 
 class Exporter(CHeaderExporter):
