@@ -51,6 +51,8 @@
 `uvm_analysis_imp_decl(_smc_mutex_expected)
 `uvm_analysis_imp_decl(_smc_spm_observed)
 `uvm_analysis_imp_decl(_smc_spm_expected)
+`uvm_analysis_imp_decl(_smc_regblock_wide_observed)
+`uvm_analysis_imp_decl(_smc_regblock_wide_expected)
 
 class smc_scoreboard extends ocah_scoreboard;
   `uvm_component_utils(smc_scoreboard)
@@ -69,6 +71,10 @@ class smc_scoreboard extends ocah_scoreboard;
   uvm_analysis_imp_smc_mutex_expected #(ocah_axi_item, smc_scoreboard) mutex_expected_export;
   uvm_analysis_imp_smc_spm_observed #(ocah_axi_item, smc_scoreboard) spm_observed_export;
   uvm_analysis_imp_smc_spm_expected #(ocah_axi_item, smc_scoreboard) spm_expected_export;
+  uvm_analysis_imp_smc_regblock_wide_observed #(ocah_axi_item, smc_scoreboard)
+      regblock_wide_observed_export;
+  uvm_analysis_imp_smc_regblock_wide_expected #(ocah_axi_item, smc_scoreboard)
+      regblock_wide_expected_export;
 
   function new(string name = "smc_scoreboard", uvm_component parent = null);
     super.new(name, parent);
@@ -89,11 +95,14 @@ class smc_scoreboard extends ocah_scoreboard;
     mutex_expected_export = new("mutex_expected_export", this);
     spm_observed_export = new("spm_observed_export", this);
     spm_expected_export = new("spm_expected_export", this);
+    regblock_wide_observed_export = new("regblock_wide_observed_export", this);
+    regblock_wide_expected_export = new("regblock_wide_expected_export", this);
     add_feature(SmcFeatureScratchCsr);
     add_feature(SmcFeatureDefaultReg);
     add_feature(SmcFeatureLockCsr);
     add_feature(SmcFeatureMutexSema);
     add_feature(SmcFeatureSpmMem);
+    add_feature(SmcFeatureRegblockWide);
     foreach (cfg.required_features[i]) require_feature(cfg.required_features[i]);
   endfunction
 
@@ -165,20 +174,41 @@ class smc_scoreboard extends ocah_scoreboard;
     push_expected(SmcFeatureSpmMem, t);
   endfunction
 
-  // One pair: same register, then the CSR lanes of both beats. Both features
-  // are 32-bit CSR reads on the 64-bit bus, so they share the rule and differ
-  // only in how the context names the register.
+  function void write_smc_regblock_wide_observed(ocah_axi_item t);
+    smc_regblock_wide_entry_t entry;
+    int unsigned index;
+    bit enabled = 1'b0;
+    foreach (cfg.required_features[i]) begin
+      if (cfg.required_features[i] == SmcFeatureRegblockWide) enabled = 1'b1;
+    end
+    if (!enabled || t.direction != OCAH_AXI_DIR_READ || !smc_is_regblock_wide_access(
+            t, entry, index
+        ))
+      return;
+    push_observed(SmcFeatureRegblockWide, t);
+  endfunction
+
+  function void write_smc_regblock_wide_expected(ocah_axi_item t);
+    push_expected(SmcFeatureRegblockWide, t);
+  endfunction
+
+  // The CSR features compare 32-bit register lanes within each 64-bit beat.
+  // SPM and wide register-block features compare complete 64-bit beats.
   virtual function void compare_pair(string feature, uvm_object observed, uvm_object expected);
     ocah_axi_item obs, exp;
     bit [63:0] word_addr;
     if (feature != SmcFeatureScratchCsr && feature != SmcFeatureDefaultReg &&
         feature != SmcFeatureLockCsr && feature != SmcFeatureMutexSema &&
-        feature != SmcFeatureSpmMem)
+        feature != SmcFeatureSpmMem && feature != SmcFeatureRegblockWide)
       `uvm_fatal(get_type_name(), $sformatf("no compare for feature `%s`", feature))
     if (!$cast(obs, observed) || !$cast(exp, expected))
       `uvm_fatal(get_type_name(), {feature, " pair is not a pair of ocah_axi_item"})
     if (feature == SmcFeatureSpmMem) begin
       compare_mem_pair(obs, exp);
+      return;
+    end
+    if (feature == SmcFeatureRegblockWide) begin
+      compare_regblock_wide_pair(obs, exp);
       return;
     end
     word_addr = smc_csr_word_addr(obs.address);
@@ -234,6 +264,18 @@ class smc_scoreboard extends ocah_scoreboard;
       return;
     end
     void'(compare_equal(SmcFeatureSpmMem, obs.first_data(), exp.first_data(), context_s));
+  endfunction
+
+  protected function void compare_regblock_wide_pair(ocah_axi_item obs, ocah_axi_item exp);
+    bit passed = obs.address === exp.address && obs.size == exp.size &&
+                 obs.expected_beats == 1 && exp.expected_beats == 1 &&
+                 obs.data_words.size() == 1 && exp.data_words.size() == 1 && obs.is_ok();
+    if (passed && obs.data_words[0] !== exp.data_words[0]) passed = 1'b0;
+    record_compare(
+        SmcFeatureRegblockWide, passed, $sformatf(
+        "addr=0x%0h data=0x%016h resp=OKAY", exp.address, exp.first_data()), $sformatf(
+        "addr=0x%0h data=0x%016h resp=%s", obs.address, obs.first_data(), obs.worst_resp().name()),
+        "wide register-block read");
   endfunction
 
   // Register identity for the evidence line: the scratch domain, or the

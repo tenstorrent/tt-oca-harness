@@ -23,6 +23,7 @@ import smc_seq_lib_pkg::*;
 // CSR scenarios on the SEP_IN AXI4 ingress.
 `include "smc_register_sanity_test.svh"
 `include "smc_default_reg_rd_test.svh"
+`include "smc_regblock_sparse_strobe_test.svh"
 
 // Reset-unit write-once lock scenarios.
 `include "smc_reset_unit_lock_test.svh"
