@@ -43,7 +43,7 @@ safe-outputs:
   upload-asset:
   create-discussion:
     title-prefix: "[weekly-issue-activity] "
-    category: "general"
+    category: "Weekly issue activity"
     fallback-to-issue: false
     close-older-discussions: true
     expires: false
