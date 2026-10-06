@@ -45,5 +45,6 @@ package smc_seq_lib_pkg;
   `include "smc_mutex_semaphore_test_seq.svh"
   `include "smc_spm_mem_boundary_test_seq.svh"
   `include "smc_multi_reset_csr_persistence_test_seq.svh"
+  `include "smc_regblock_sparse_strobe_test_seq.svh"
 
 endpackage : smc_seq_lib_pkg

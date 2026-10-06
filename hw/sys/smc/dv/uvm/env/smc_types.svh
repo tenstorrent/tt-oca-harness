@@ -47,6 +47,113 @@ localparam string SmcFeatureDefaultReg = "default_reg";
 localparam string SmcFeatureLockCsr = "lock_csr";
 localparam string SmcFeatureMutexSema = "mutex_sema";
 localparam string SmcFeatureSpmMem = "spm_mem";
+localparam string SmcFeatureRegblockWide = "regblock_wide";
+
+localparam bit [63:0] SmcZeroerDestAddr =
+    64'(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_DEST_ADDR_BASE_ADDR);
+localparam bit [63:0] SmcZeroerSizeAddr =
+    64'(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE_BASE_ADDR);
+localparam bit [63:0] SmcZeroerCtrlStatusAddr =
+    64'(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_CTRL_STATUS_BASE_ADDR);
+localparam bit [63:0] SmcHangSysCtrlAddr =
+    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SYS_AXI_CTRL_BASE_ADDR);
+localparam bit [63:0] SmcHangSysThresholdAddr =
+    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD_BASE_ADDR);
+localparam bit [63:0] SmcHangSepCtrlAddr =
+    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SEP_AXI_CTRL_BASE_ADDR);
+localparam bit [63:0] SmcHangSepThresholdAddr =
+    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD_BASE_ADDR);
+localparam bit [63:0] SmcHangDataAccelCtrlAddr =
+    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_CTRL_BASE_ADDR);
+localparam bit [63:0] SmcHangDataAccelThresholdAddr = 64'(
+    smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD_BASE_ADDR
+);
+localparam bit [63:0] SmcAliasRegionStartAddr =
+    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR(
+    0
+));
+localparam bit [63:0] SmcAliasRegionEndAddr =
+    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_END_BASE_ADDR(
+    0
+));
+localparam bit [63:0] SmcAliasRegionAttrsAddr =
+    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR(
+    0
+));
+
+typedef struct {
+  string     name;
+  bit [63:0] addr;
+  bit [63:0] reset_value;
+  bit [63:0] rw_mask;
+  bit [7:0]  rw_lane_mask;
+} smc_regblock_wide_entry_t;
+
+function automatic bit [7:0] smc_rw_lane_mask(bit [63:0] rw_mask);
+  bit [7:0] lane_mask;
+  for (int unsigned lane = 0; lane < SmcMemBytes; lane++) begin
+    lane_mask[lane] = |rw_mask[8*lane+:8];
+  end
+  return lane_mask;
+endfunction
+
+function automatic bit [63:0] smc_regblock_merge_write(bit [63:0] original, bit [63:0] data,
+                                                       bit [7:0] strb, bit [63:0] rw_mask);
+  bit [63:0] biten;
+  for (int unsigned lane = 0; lane < SmcMemBytes; lane++) begin
+    biten[8*lane+:8] = {8{strb[lane]}};
+  end
+  return (original & ~(biten & rw_mask)) | (data & biten & rw_mask);
+endfunction
+
+function automatic void smc_regblock_wide_catalog(ref smc_regblock_wide_entry_t entries[$]);
+  bit [63:0] rw_mask;
+  entries.delete();
+  rw_mask = 64'(ZEROER_CTRL_DEST_ADDR_DEST_ADDR_MASK);
+  entries.push_back('{"ZEROER_CTRL.DEST_ADDR", SmcZeroerDestAddr,
+                    64'(ZEROER_CTRL_DEST_ADDR_REG_DEFAULT), rw_mask, smc_rw_lane_mask(rw_mask)});
+  rw_mask = 64'(ZEROER_CTRL_SIZE_SIZE_MASK);
+  entries.push_back('{"ZEROER_CTRL.SIZE", SmcZeroerSizeAddr, 64'(ZEROER_CTRL_SIZE_REG_DEFAULT),
+                    rw_mask, smc_rw_lane_mask(rw_mask)});
+  rw_mask = 64'(SMC_BASE_CONFIG_HANG_DET_TIMEOUT_THRESHOLD_VALUE_MASK);
+  entries.push_back('{"SMC_BASE_CONFIG.HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD", SmcHangSysThresholdAddr,
+                    64'(SMC_BASE_CONFIG_HANG_DET_TIMEOUT_THRESHOLD_REG_DEFAULT), rw_mask,
+                    smc_rw_lane_mask(rw_mask)});
+  entries.push_back('{"SMC_BASE_CONFIG.HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD", SmcHangSepThresholdAddr,
+                    64'(SMC_BASE_CONFIG_HANG_DET_TIMEOUT_THRESHOLD_REG_DEFAULT), rw_mask,
+                    smc_rw_lane_mask(rw_mask)});
+  entries.push_back('{"SMC_BASE_CONFIG.HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD",
+                    SmcHangDataAccelThresholdAddr,
+                    64'(SMC_BASE_CONFIG_HANG_DET_TIMEOUT_THRESHOLD_REG_DEFAULT), rw_mask,
+                    smc_rw_lane_mask(rw_mask)});
+  rw_mask = 64'(REMAP_REGION_REGION_START_START_ADDR_MASK);
+  entries.push_back('{"SMC_ALIAS_REMAP_0.REGION_START", SmcAliasRegionStartAddr,
+                    64'(REMAP_REGION_REGION_START_REG_DEFAULT), rw_mask, smc_rw_lane_mask(rw_mask)
+                    });
+  rw_mask = 64'(REMAP_REGION_REGION_END_END_ADDR_MASK);
+  entries.push_back('{"SMC_ALIAS_REMAP_0.REGION_END", SmcAliasRegionEndAddr,
+                    64'(REMAP_REGION_REGION_END_REG_DEFAULT), rw_mask, smc_rw_lane_mask(rw_mask)});
+endfunction
+
+function automatic bit smc_regblock_wide_lookup(
+    bit [63:0] addr, output smc_regblock_wide_entry_t entry, output int unsigned index);
+  smc_regblock_wide_entry_t entries[$];
+  smc_regblock_wide_catalog(entries);
+  foreach (entries[i]) begin
+    if (addr == entries[i].addr) begin
+      entry = entries[i];
+      index = i;
+      return 1'b1;
+    end
+  end
+  return 1'b0;
+endfunction
+
+function automatic bit smc_is_regblock_wide_access(
+    ocah_axi_item t, output smc_regblock_wide_entry_t entry, output int unsigned index);
+  if (!smc_regblock_wide_lookup(t.address, entry, index)) return 1'b0;
+  return t.is_ok() && t.data_words.size() == 1 && t.beat_count() == 1;
+endfunction
 
 // SMC_MISC_WRAP scratch windows: SCRATCH_COLD lives in the cold reset
 // domain, SCRATCH_COLD_WARM in the warm domain that fuse sense releases.
