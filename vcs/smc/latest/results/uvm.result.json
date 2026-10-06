@@ -4,13 +4,13 @@
     "coverage_policy_application": "artifacts/smc/coverage/report/policy-application.json",
     "coverage_report": "artifacts/smc/coverage/report",
     "coverage_summary": "artifacts/smc/coverage/report/summary.json",
-    "log": "vcs/smc/runs/uvm/smc_default_reg_rd_test/seed_527966203/attempt_0/logs/smc_default_reg_rd_test.log",
+    "log": "vcs/smc/runs/uvm/smc_default_reg_rd_test/seed_1787880020/attempt_0/logs/smc_default_reg_rd_test.log",
     "regression_json": "vcs/smc/runs/uvm/stages/regress/regression.json",
     "result_json": "vcs/smc/runs/uvm/result.json",
     "run_dir": "vcs/smc/runs/uvm"
   },
   "coverage": {
-    "comparison_key": "COVCMP-3b8d002af3abc796",
+    "comparison_key": "COVCMP-85f82bd55da8e77e",
     "details_available": true,
     "effective_metrics": {
       "assertion": 59.89,
@@ -71,7 +71,7 @@
   "failure_buckets": [],
   "flow": "smc",
   "framework": "uvm",
-  "generated_at": "2026-10-06T11:01:15+00:00",
+  "generated_at": "2026-10-06T15:46:10+00:00",
   "git": {
     "branch": "HEAD",
     "sha": "c9a64717c456b7efe3d3bf056165cbd35737920a",
@@ -88,7 +88,7 @@
   },
   "run_metadata": {
     "executor": "lsf",
-    "generated_at": "2026-10-06T09:01:28.395825+00:00",
+    "generated_at": "2026-10-06T13:36:43.263962+00:00",
     "git": {
       "branch": "HEAD",
       "commit": "c9a64717c456b7efe3d3bf056165cbd35737920a",
@@ -118,68 +118,68 @@
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 8.393,
+      "duration_sec": 7.518,
       "name": "smc_default_reg_rd_test",
       "reason": "positive pass evidence matched",
-      "seed": 527966203,
+      "seed": 1787880020,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 12.73,
+      "duration_sec": 13.074,
       "name": "smc_multi_reset_csr_persistence_test",
       "reason": "positive pass evidence matched",
-      "seed": 462362139,
+      "seed": 476325946,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 8.048,
+      "duration_sec": 7.201,
       "name": "smc_mutex_semaphore_test",
       "reason": "positive pass evidence matched",
-      "seed": 1384794720,
+      "seed": 794829105,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 12.804,
+      "duration_sec": 11.154,
       "name": "smc_register_sanity_test",
       "reason": "positive pass evidence matched",
-      "seed": 290963162,
+      "seed": 1939615749,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 9.085,
+      "duration_sec": 8.456,
       "name": "smc_reset_unit_lock_test",
       "reason": "positive pass evidence matched",
-      "seed": 600315771,
+      "seed": 103627928,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 7.858,
+      "duration_sec": 6.77,
       "name": "smc_spm_mem_boundary_test",
       "reason": "positive pass evidence matched",
-      "seed": 1520583130,
+      "seed": 425041934,
       "stage": "sim",
       "status": "PASS"
     }
   ],
   "timing": {
-    "duration_sec": 166.221,
-    "end_time": "2026-10-06T09:01:28.352705+00:00",
-    "start_time": "2026-10-06T08:58:49.327943+00:00"
+    "duration_sec": 175.81,
+    "end_time": "2026-10-06T13:36:43.196414+00:00",
+    "start_time": "2026-10-06T13:33:59.997263+00:00"
   },
   "tool": "vcs"
 }
