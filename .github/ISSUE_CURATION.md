@@ -71,10 +71,16 @@ Catalog source: `githubnext/agentics/weekly-issue-activity`
 
 `.github/workflows/weekly-issue-activity.lock.yml` reads repository
 issues from the Issues API, plots opened/closed volume and
-time-to-close, and opens a discussion in that category. The category
+time-to-close, and opens a discussion in that category. Each Tuesday
+adds a discussion; earlier weeks stay open. The category
 name must match a repository discussion category exactly. A name that
 does not match falls back to Announcements, which is the discussions
 home. It does not read GitHub Insights or Project 291 Insights.
+
+The `upload_assets` checkout in the lockfile is `fetch-depth: 1`.
+`gh aw compile` writes `0`. A full clone of this repository exceeds that
+job's 10 minute limit, the chart files are never pushed, and the
+discussion images 404. Set the depth back to 1 before committing.
 
 ```bash
 gh aw compile weekly-issue-activity --validate
