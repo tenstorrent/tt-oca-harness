@@ -744,15 +744,15 @@ wheels = [
 
 [[package]]
 name = "peakrdl-rawheader"
-version = "0.2.4"
+version = "0.2.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "mako" },
     { name = "systemrdl-compiler" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/26/89/690014be2a5986918522b4619cd3ed0499d8e6086361dd1bbd0b053b44f2/peakrdl_rawheader-0.2.4.tar.gz", hash = "sha256:c5954a474bfc3f6cfc250853b37472a483802d2bc7d5aacdc04be43e72e9acfb", size = 11233, upload-time = "2026-03-10T21:09:25.305Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3d/d9/16f50df2ca74d0e6c7ee5517b72d64a3b4b5c5b3d30a927a015c576f35b4/peakrdl_rawheader-0.2.8.tar.gz", hash = "sha256:4e39d3149f86d73c6a12ca13c0c12e5eeb4eb0f9cbb4e3d76046563892c20fcb", size = 11197, upload-time = "2026-08-12T13:13:01.029Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ba/d7/729e1d724fdccec33ebd80f6240c0182a365377596713f2ed8d05973e271/peakrdl_rawheader-0.2.4-py3-none-any.whl", hash = "sha256:2350f36ba057a1179c6fee23c319f12ba929e79ed28c702c6787c1a4de569fea", size = 14422, upload-time = "2026-03-10T21:09:26.126Z" },
+    { url = "https://files.pythonhosted.org/packages/96/1d/e061dd33b8963c9231f6db689ee244a8cea8d701248d4c3be0990e45b56c/peakrdl_rawheader-0.2.8-py3-none-any.whl", hash = "sha256:4b05ec7efe625ae879665c4d070f04935fae2e0e171fe331b298a509eb7b285b", size = 14133, upload-time = "2026-08-12T13:12:59.819Z" },
 ]
 
 [[package]]
@@ -1347,7 +1347,7 @@ requires-dist = [
     { name = "peakrdl-html", specifier = ">=2.12.2" },
     { name = "peakrdl-ipxact", specifier = ">=3.4.0" },
     { name = "peakrdl-markdown", specifier = ">=1.0.3" },
-    { name = "peakrdl-rawheader", specifier = "==0.2.4" },
+    { name = "peakrdl-rawheader", specifier = "==0.2.8" },
     { name = "peakrdl-regblock", specifier = ">=1.2.0" },
     { name = "peakrdl-systemrdl", specifier = ">=1.0.1" },
     { name = "pre-commit", specifier = "==4.5.1" },
