@@ -4,13 +4,13 @@
     "coverage_policy_application": "artifacts/smc/coverage/report/policy-application.json",
     "coverage_report": "artifacts/smc/coverage/report",
     "coverage_summary": "artifacts/smc/coverage/report/summary.json",
-    "log": "vcs/smc/runs/uvm/smc_default_reg_rd_test/seed_658211213/attempt_0/logs/smc_default_reg_rd_test.log",
+    "log": "vcs/smc/runs/uvm/smc_default_reg_rd_test/seed_527966203/attempt_0/logs/smc_default_reg_rd_test.log",
     "regression_json": "vcs/smc/runs/uvm/stages/regress/regression.json",
     "result_json": "vcs/smc/runs/uvm/result.json",
     "run_dir": "vcs/smc/runs/uvm"
   },
   "coverage": {
-    "comparison_key": "COVCMP-dabd68f809d6a259",
+    "comparison_key": "COVCMP-3b8d002af3abc796",
     "details_available": true,
     "effective_metrics": {
       "assertion": 59.89,
@@ -19,7 +19,7 @@
       "fsm_state": 4.26,
       "functional": 36.12,
       "line": 69.93,
-      "toggle": 3.31,
+      "toggle": 3.3,
       "user": 23.3333
     },
     "holes_summary": {
@@ -53,7 +53,7 @@
       "fsm_state": 2.44,
       "functional": 29.13,
       "line": 66.95,
-      "toggle": 2.12,
+      "toggle": 2.11,
       "user": 23.3333
     },
     "report": "artifacts/smc/coverage/report",
@@ -71,11 +71,11 @@
   "failure_buckets": [],
   "flow": "smc",
   "framework": "uvm",
-  "generated_at": "2026-10-05T15:35:52+00:00",
+  "generated_at": "2026-10-06T11:01:15+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "5fbdc4e8e08d263158cb20c504721b367a0a1140",
-    "short_sha": "5fbdc4e8e"
+    "sha": "c9a64717c456b7efe3d3bf056165cbd35737920a",
+    "short_sha": "c9a64717"
   },
   "junit_xml": {
     "missing": 0,
@@ -88,10 +88,10 @@
   },
   "run_metadata": {
     "executor": "lsf",
-    "generated_at": "2026-10-05T13:28:55.658940+00:00",
+    "generated_at": "2026-10-06T09:01:28.395825+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "5fbdc4e8e08d263158cb20c504721b367a0a1140",
+      "commit": "c9a64717c456b7efe3d3bf056165cbd35737920a",
       "dirty": "false"
     },
     "label": "all",
@@ -118,68 +118,68 @@
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 6.856,
+      "duration_sec": 8.393,
       "name": "smc_default_reg_rd_test",
       "reason": "positive pass evidence matched",
-      "seed": 658211213,
+      "seed": 527966203,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 11.884,
+      "duration_sec": 12.73,
       "name": "smc_multi_reset_csr_persistence_test",
       "reason": "positive pass evidence matched",
-      "seed": 1512089504,
+      "seed": 462362139,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 6.224,
+      "duration_sec": 8.048,
       "name": "smc_mutex_semaphore_test",
       "reason": "positive pass evidence matched",
-      "seed": 82652406,
+      "seed": 1384794720,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 10.746,
+      "duration_sec": 12.804,
       "name": "smc_register_sanity_test",
       "reason": "positive pass evidence matched",
-      "seed": 2017492399,
+      "seed": 290963162,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 7.584,
+      "duration_sec": 9.085,
       "name": "smc_reset_unit_lock_test",
       "reason": "positive pass evidence matched",
-      "seed": 2028327974,
+      "seed": 600315771,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 6.46,
+      "duration_sec": 7.858,
       "name": "smc_spm_mem_boundary_test",
       "reason": "positive pass evidence matched",
-      "seed": 737638664,
+      "seed": 1520583130,
       "stage": "sim",
       "status": "PASS"
     }
   ],
   "timing": {
-    "duration_sec": 167.758,
-    "end_time": "2026-10-05T13:28:55.567335+00:00",
-    "start_time": "2026-10-05T13:26:13.252966+00:00"
+    "duration_sec": 166.221,
+    "end_time": "2026-10-06T09:01:28.352705+00:00",
+    "start_time": "2026-10-06T08:58:49.327943+00:00"
   },
   "tool": "vcs"
 }

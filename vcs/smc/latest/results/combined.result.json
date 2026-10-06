@@ -8,16 +8,16 @@
     "run_dir": "vcs/smc/runs/combined"
   },
   "coverage": {
-    "comparison_key": "COVCMP-753e318a23fcbb10",
+    "comparison_key": "COVCMP-893225b24e435ef1",
     "details_available": true,
     "effective_metrics": {
       "assertion": 93.98,
       "branch": 87.68,
-      "condition": 89.42,
+      "condition": 89.33,
       "fsm_state": 97.24,
       "functional": 98.29,
       "line": 99.74,
-      "toggle": 94.06,
+      "toggle": 94.04,
       "user": 98.0392
     },
     "holes_summary": {
@@ -47,7 +47,7 @@
     "raw_metrics": {
       "assertion": 93.98,
       "branch": 83.96,
-      "condition": 72.37,
+      "condition": 72.29,
       "fsm_state": 55.75,
       "functional": 79.27,
       "line": 95.49,
@@ -64,16 +64,16 @@
     "target": "default",
     "threshold": 0.0,
     "threshold_met": true,
-    "total_percent": 94.34
+    "total_percent": 94.33
   },
   "failure_buckets": [],
   "flow": "smc",
   "framework": "",
-  "generated_at": "2026-10-05T15:35:53+00:00",
+  "generated_at": "2026-10-06T11:01:15+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "5fbdc4e8e08d263158cb20c504721b367a0a1140",
-    "short_sha": "5fbdc4e8e"
+    "sha": "c9a64717c456b7efe3d3bf056165cbd35737920a",
+    "short_sha": "c9a64717"
   },
   "junit_xml": {
     "missing": 0,
@@ -82,10 +82,10 @@
   "kind": "dv",
   "run_metadata": {
     "executor": "local",
-    "generated_at": "2026-10-05T15:35:50.023930+00:00",
+    "generated_at": "2026-10-06T11:01:12.668465+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "5fbdc4e8e08d263158cb20c504721b367a0a1140",
+      "commit": "c9a64717c456b7efe3d3bf056165cbd35737920a",
       "dirty": "false"
     },
     "label": "combine",
@@ -100,19 +100,19 @@
     "label": "combine",
     "native_status": "PASS"
   },
-  "status": "PASS",
+  "status": "FAIL",
   "tests": {
     "completed": true,
-    "failing": 0,
-    "pass_rate": 100.0,
-    "passing": 323,
+    "failing": 1,
+    "pass_rate": 99.69,
+    "passing": 322,
     "total": 323
   },
   "tests_detail": [],
   "timing": {
-    "duration_sec": 42.198,
-    "end_time": "2026-10-05T15:35:48.945891+00:00",
-    "start_time": "2026-10-05T15:35:06.731472+00:00"
+    "duration_sec": 44.113,
+    "end_time": "2026-10-06T11:01:11.622602+00:00",
+    "start_time": "2026-10-06T11:00:27.496367+00:00"
   },
   "tool": "vcs"
 }
