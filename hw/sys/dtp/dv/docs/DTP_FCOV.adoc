@@ -53,7 +53,7 @@ reports as a runtime error.
 [cols="1,1,2,2",options="header",]
 |===
 |Metric |Target |Public evidence path (Verilator) |Commercial evidence path (VCS)
-|Functional coverage |100% of the covergroup model, no waiver; 98% effective for the Verilator `user` family |The `user` family: the `cover property` points of the `cov/sv/` modules, merged over the weekly `all` regression and graded by the policy file |The covergroup bins (URG's `group` metric) in the merged database of the cocotb and SV-UVM `all` runs
+|Functional coverage |100% of the covergroup model, no waiver; 98% effective for the Verilator `user` family |The `user` family: the `cover property` points of the `cov/sv/` modules, merged over the `all` regression and graded by the policy file |The covergroup bins (URG's `group` metric) in the merged database of the cocotb and SV-UVM `all` runs
 |Line and branch coverage |98% effective, scoped to the DUT instance |`--coverage-line`, reported beside the functional figure |`-cm line+branch` in the merged database
 |Condition and expression coverage |98% effective, scoped to the DUT instance |`--coverage-expr` |`-cm cond`
 |FSM coverage |98% effective, scoped to the DUT instance |Not collected under Verilator |`-cm fsm`
@@ -921,14 +921,15 @@ and grading behavior are in `tools/dv/doc/run-dv.adoc`.
 [[dtp-fcov-evidence-paths]]
 ==== Evidence paths
 
-* **Public path.** The weekly `all` regression at three seeds with `--cov`
-  on Verilator. Its run tree carries `cov/report/coverage-details.json`
+* **Public path.** The `all` regression at three seeds with `--cov` on
+  Verilator. Its run tree carries `cov/report/coverage-details.json`
   (every point with its disposition), `cov/report/summary.json` (the raw
   and effective figures per family and the hole counts), and
-  `cov/report/policy-application.json`; the hosted job publishes them as
-  the `dv-run-dtp-verilator-weekly` artifact. A policy change is graded
+  `cov/report/policy-application.json`. A policy change is graded
   against a finished run with `run_dv.py --dut dtp --run-dir <run> --waive`,
-  which rewrites the grade without a simulation.
+  which rewrites the grade without a simulation. No hosted CI tier collects
+  DTP coverage (`.github/workflows/sim.yml`, `.github/workflows/regress.yml`),
+  so the run is made on a developer host.
 * **Commercial path.** The cocotb `all` and SV-UVM `all` regressions on
   VCS with the full `-cm` set and the compile-time scope, each merged by the
   runner, then combined across frameworks into one run with
@@ -1020,10 +1021,11 @@ code-coverage points that a formal unreachability analysis proves no stimulus
 reaches in the bench's environment: the DTP at the bench configuration, the
 DFT ports at their functional values, the boundary-scan chain looped back,
 and every other input free, the extended STAP host scan-in and the resets
-included. The analysis starts from the merged database of the commercial-path
-`all` regression (<<dtp-fcov-evidence-paths>>), so it targets the points that
-regression left uncovered, and it runs in the checkout that produced that
-database, because the formal model and the seed must describe one RTL. The
+included. The analysis that writes the list starts from the merged database
+of the commercial-path `all` regression (<<dtp-fcov-evidence-paths>>), so it
+targets the points that regression left uncovered. Every run of the analysis,
+the check mode below included, takes its seed from the checkout it runs in,
+because the formal model and the seed must describe one RTL. The
 analysis runs as a formal-mode item of the runner, from the formal
 configuration the site layer names for `dtp` (`run-dv.adoc`, Formal
 verification); the open tree carries no such item, so a reader without one
@@ -1040,14 +1042,18 @@ quotes in place. A branch entry's signature spans every condition of its
 decision tree, and a line entry's, which URG writes as `Block`, spans its
 statement and the condition that governs it; an FSM state or transition
 entry's signature names its states. Any change to that text, a renamed
-localparam or state included, drops the entry. The check mode below finds an
-entry an RTL change has made reachable.
+localparam or state included, drops the entry. The runner applies the list at
+report time without re-checking it, so until the analysis has run against a
+changed RTL, the effective figures rest on a list proven against the RTL
+before the change. The check mode below finds an entry an RTL change has made
+reachable or has dropped.
 
 Regeneration rule: the list is regenerated from the merged database of a
 fresh `all` regression after any change to the DTP RTL file set, and the
 analysis's check mode over the accepted list fails when an excluded point has
-become reachable. A regenerated list takes design review before its entry
-changes, and the review accepts no entry that stimulus can reach.
+become reachable or an entry no longer applies to the design. A regenerated
+list takes design review before its entry changes, and the review accepts no
+entry that stimulus can reach.
 
 [[dtp-fcov-waiver-list]]
 ==== Waiver list
@@ -1116,9 +1122,9 @@ review.
 [cols=",",options="header",]
 |===
 |Flow |Strategy
-|Verilator open-source CI |Labeled `cover property` points in the `cov/sv/` modules; `run_dv.py --cov` collects them as `user` coverage in each test's `coverage.dat`, merges across tests and seeds (`cov_merge`), and reports through `cov_report` with `cov/config/verilator/coverage_policy.toml` applied
-|Per-group reporting |The DV dashboard ingests the merged run's `coverage-details.json` (policy dispositions included), keyed by the cover points' native hierarchy names (`u_dtp_<area>_fcov.c_<label>`)
-|Verilator metric set |`[coverage.verilator]` in `dtp_sim_cfg.toml` instruments line, expression, and `user` coverage and leaves toggle out; the weekly regression merges every leaf and seed into one report
+|Verilator open-source simulation |Labeled `cover property` points in the `cov/sv/` modules; `run_dv.py --cov` collects them as `user` coverage in each test's `coverage.dat`, merges across tests and seeds (`cov_merge`), and reports through `cov_report` with `cov/config/verilator/coverage_policy.toml` applied
+|Per-group reporting |The merged run's `coverage-details.json` carries every point with its policy disposition, keyed by the cover points' native hierarchy names (`u_dtp_<area>_fcov.c_<label>`)
+|Verilator metric set |`[coverage.verilator]` in `dtp_sim_cfg.toml` instruments line, expression, and `user` coverage and leaves toggle out
 |Commercial simulation |The same modules' covergroups compile under VCS/Xcelium (the `ifndef VERILATOR` layer) and are the functional family; the cover properties stay compiled and grade with the assertions. Both frameworks collect through the runner, cocotb with `run_dv.py --cov --tool vcs` and SV-UVM with `run_dv.py --framework uvm --cov`, with per-test `simv.vdb` databases merged (`cov_merge`, `urg` with the design database) and reported (`cov_report`); the two frameworks' merged databases are combined with `run_dv.py --dut dtp --cov-combine <cocotb-run> <uvm-run>` into one DUT-scoped report
 |Code coverage |VCS/Xcelium line, branch, condition, FSM, toggle, assertion coverage, scoped to the DUT instance
 |Closure triage |Add directed tests for reachable holes; record blocked or unreachable points as hole entries in the coverage policy file, each stating the structural reason the point cannot fire

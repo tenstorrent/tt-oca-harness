@@ -120,6 +120,18 @@ class CombinePlan:
             "input_runs": [run.payload(root) for run in self.runs],
         }
 
+    def tree_warnings(self, root: Path) -> list[str]:
+        """A line for each run whose recorded commit may not identify the sources it ran."""
+        states = {
+            True: "was recorded on a dirty tree",
+            None: "did not record whether its tree was clean",
+        }
+        return [
+            f"{repo_rel(root, run.run_dir)} {states[run.dirty]}"
+            for run in self.runs
+            if run.dirty is not False
+        ]
+
 
 def _read_json(path: Path) -> dict[str, Any]:
     try:
@@ -187,7 +199,7 @@ def _load_run(root: Path, flow: Flow, run_dir: Path) -> tuple[CombineInput, str]
     git = result.get("git") if isinstance(result.get("git"), dict) else {}
     dirty_value = git.get("dirty")
     if isinstance(dirty_value, str):
-        dirty: bool | None = dirty_value.lower() == "true"
+        dirty: bool | None = {"true": True, "false": False}.get(dirty_value.lower())
     elif isinstance(dirty_value, bool):
         dirty = dirty_value
     else:

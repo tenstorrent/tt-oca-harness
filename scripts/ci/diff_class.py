@@ -456,7 +456,6 @@ def self_test() -> None:
         "vendor/lowRISC/opentitan/patches/0040-systemrdl_exporter_roundtrip.patch",
         "vendor/lowRISC/opentitan/upstream/util/reggen/systemrdl_exporter.py",
         "vendor/lowRISC/opentitan/upstream/hw/ip/kmac/data/kmac.hjson",
-        "hw/common/regs/templates/svpkg.mako",
         "ocah.mk",
         UNCLASSIFIED,
     ):
