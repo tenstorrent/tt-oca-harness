@@ -180,8 +180,6 @@ set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_cloc
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.4]       -clock [get_clock SMCCLK] [get_ports spi_enable_i] -add_delay
 
 # SPI data and pad control signals
-set_input_delay  [expr $clock_periods(SPICLK_PERIOD)*0.4]       -clock [get_clock SPICLK] [get_ports {spi_txd_i*}] -add_delay
-set_input_delay  [expr $clock_periods(SPICLK_PERIOD)*0.4]       -clock [get_clock SPICLK] [get_ports spi_cs_n_i] -add_delay
 set_input_delay  [expr $clock_periods(SPICLK_PERIOD)*0.4]       -clock [get_clock SPICLK] [get_ports spi_cs_oe_n_i] -add_delay
 set_input_delay  [expr $clock_periods(SPICLK_PERIOD)*0.4]       -clock [get_clock SPICLK] [get_ports spi_cs_ie_n_i] -add_delay
 set_input_delay  [expr $clock_periods(SPICLK_PERIOD)*0.4]       -clock [get_clock SPICLK] [get_ports spi_clk_ie_n_i] -add_delay
@@ -191,11 +189,17 @@ set_input_delay  [expr $clock_periods(SPICLK_PERIOD)*0.4]       -clock [get_cloc
 set_input_delay  [expr $clock_periods(SPICLK_PERIOD)*0.4]       -clock [get_clock SPICLK] [get_ports {spi_dq_ie_n_i*}] -add_delay
 set_input_delay  [expr $clock_periods(SPICLK_PERIOD)*0.4]       -clock [get_clock SPICLK] [get_ports {spi_dq_oe_n_i*}] -add_delay
 set_input_delay  [expr $clock_periods(SPICLK_PERIOD)*0.4]       -clock [get_clock SPICLK] [get_ports spi_mem_rebar_oepad_i] -add_delay
-set_input_delay  [expr $clock_periods(SPICLK_PERIOD)*0.4]       -clock [get_clock SPICLK] [get_ports spi_mem_rebar_opad_i] -add_delay
 set_input_delay  [expr $clock_periods(SPICLK_PERIOD)*0.4]       -clock [get_clock SPICLK] [get_ports spi_mem_rebar_iepad_i] -add_delay
-set_output_delay [expr $clock_periods(SPICLK_PERIOD)*0.4]       -clock [get_clock SPICLK] [get_ports {spi_rxd_o*}] -add_delay
-set_output_delay [expr $clock_periods(SPICLK_PERIOD)*0.4]       -clock [get_clock SPICLK] [get_ports spi_rxds_o] -add_delay
-set_output_delay [expr $clock_periods(SPICLK_PERIOD)*0.4]       -clock [get_clock SPICLK] [get_ports spi_mem_rebar_ipad_o] -add_delay
+
+# The data ports are one end of the pad feedthroughs, whose hop the SPI pad
+# window bounds. The commercial synthesis tool charges any I/O delay here
+# against that window, so they carry zero; the zero only keeps them on SPICLK.
+set_input_delay  0 -clock [get_clock SPICLK] [get_ports {spi_txd_i*}] -add_delay
+set_input_delay  0 -clock [get_clock SPICLK] [get_ports spi_cs_n_i] -add_delay
+set_input_delay  0 -clock [get_clock SPICLK] [get_ports spi_mem_rebar_opad_i] -add_delay
+set_output_delay 0 -clock [get_clock SPICLK] [get_ports {spi_rxd_o*}] -add_delay
+set_output_delay 0 -clock [get_clock SPICLK] [get_ports spi_rxds_o] -add_delay
+set_output_delay 0 -clock [get_clock SPICLK] [get_ports spi_mem_rebar_ipad_o] -add_delay
 
 # I3C — data-memory read response bus (struct-flattened port names). Tied or driven
 # from the memory controller in chip context; stamp PERIPHERALCLK for block CDC SETUP.

@@ -48,8 +48,8 @@
 #                    consume -- from the device datasheet plus board flight
 #   *_skew           how far the bits of one interface may separate -- from the
 #                    protocol's own timing requirement
-#   *_bal_min/max    the arrival window each bus is held to on the way in; the
-#                    width is the balance place-and-route is asked to deliver
+#   *_bal_min/max    the window each pad hop must land in; its width is the
+#                    balance place-and-route is asked to deliver
 #   i3c_tsco         target clock-to-data-out limit -- from your I3C revision
 #   i3c_tsco_cycles  cycles the target FSM spends between sampling SCL and
 #                    launching SDA -- read it off the RTL; it is not a timing
@@ -80,20 +80,17 @@ set gpio_spi_timed [expr {[sizeof_collection [get_clocks -quiet SPICLK]] > 0}]
 if {[cdc_is_block_top]} {
 
 # Budget reserved outside the block, per interface.
-set spi_ext_max        [expr $clock_periods(SPICLK_PERIOD)        * 0.4]
 set uart_ext_max       [expr $clock_periods(PERIPHERALCLK_PERIOD) * 0.4]
-set i3c_ext_max        [expr $clock_periods(PERIPHERALCLK_PERIOD) * 0.4]
-set i2c_ext_max        [expr $clock_periods(PERIPHERALCLK_PERIOD) * 0.4]
 set avs_refclk_ext_max [expr $clock_periods(REFCLK_PERIOD)        * 0.4]
 set avs_periph_ext_max [expr $clock_periods(PERIPHERALCLK_PERIOD) * 0.4]
 
-# Arrival spread each group of pads may cover. Every one stands alone; to give
-# a single controller a window of its own, put a literal on its line in place
-# of the variable.
-set spi_out_bal_min     0
-set spi_out_bal_max   200
-set spi_in_bal_min      0
-set spi_in_bal_max    200
+# Delay window each pad hop must land in. Ports it bounds keep a zero I/O
+# delay: a non-zero one is charged against the window, and removing it would
+# leave the port's other paths unclocked.
+set spi_out_bal_min   500
+set spi_out_bal_max   800
+set spi_in_bal_min    500
+set spi_in_bal_max    800
 set i3c_bal_min         0
 set i3c_bal_max      2000
 set i2c_bal_min         0
@@ -213,7 +210,7 @@ set core2pad_generic [remove_from_collection [get_ports {core2pad_o*}] \
 set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5] -clock [get_clock ck_feedthru] $core2pad_generic -add_delay
 
 set core2pad_en_generic [remove_from_collection [get_ports {core2pad_en_o*}] \
-                                                [smc_gpio_ports core2pad_en_o $i2c_bits]]
+                                                [smc_gpio_ports core2pad_en_o [concat $i3c_bits $i2c_bits]]]
 set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5] -clock [get_clock ck_feedthru] $core2pad_en_generic -add_delay
 
 set pad2core_claimed [concat $spi_in_claimed [list $spi_cs_in_bit] $spi_clk_claimed \
@@ -231,17 +228,11 @@ set_input_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5] -clock [get_clock 
 # all launched on SPICLK. core2pad_o[9] carries SPICLK_OUT_GPIO and takes no
 # output delay, so it is absent from spi_out_bits.
 if {$gpio_spi_timed} {
-    foreach bit $spi_out_bits {
-        set_output_delay -max $spi_ext_max -clock [get_clock SPICLK] [get_ports "core2pad_o\[$bit\]"] -add_delay
-        set_output_delay -min 0            -clock [get_clock SPICLK] [get_ports "core2pad_o\[$bit\]"] -add_delay
-    }
+    set_output_delay 0 -clock [get_clock SPICLK] [smc_gpio_ports core2pad_o $spi_out_bits] -add_delay
 
     # DATA[7:0], DQS and the DQS loopback return source-synchronous to the clock
     # SMC emitted on core2pad_o[9]; SMC declares SPICLK_IN_GPIO on pad2core_i[9].
-    foreach bit $spi_in_bits {
-        set_input_delay -max $spi_ext_max -clock [get_clock SPICLK_IN_GPIO] [get_ports "pad2core_i\[$bit\]"] -add_delay
-        set_input_delay -min 0            -clock [get_clock SPICLK_IN_GPIO] [get_ports "pad2core_i\[$bit\]"] -add_delay
-    }
+    set_input_delay 0 -clock [get_clock SPICLK_IN_GPIO] [smc_gpio_ports pad2core_i $spi_in_bits] -add_delay
 
     # The read bus only passes through this block: the pads land on `spi_rxd_o`,
     # `spi_rxds_o` and `spi_mem_rebar_ipad_o`, and the controller that captures
@@ -258,9 +249,8 @@ if {$gpio_spi_timed} {
         set_min_delay $spi_in_bal_min -from [get_ports "pad2core_i\[$bit\]"] -to [get_ports $spi_bal_dst]
     }
 
-    # Hold the write bus together: every bit is held to one launch window, so no
-    # two can separate by more than its width. This overrides the output delay's
-    # check on these pads; the output delay above remains the external budget.
+    # Hold the write bus together: every bit's hop is held to one window, so no
+    # two can separate by more than its width.
     foreach bit $spi_out_bits {
         set_max_delay $spi_out_bal_max -from [get_clocks SPICLK] -to [get_ports "core2pad_o\[$bit\]"]
         set_min_delay $spi_out_bal_min -from [get_clocks SPICLK] -to [get_ports "core2pad_o\[$bit\]"]
@@ -307,18 +297,13 @@ set_input_delay [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.45] -clock [get_clo
 # Bidirectional open-drain/push-pull SCL and SDA. The controller builds SCL
 # from a PERIPHERALCLK counter and never uses the pad SCL as a clock, so both
 # directions stay on PERIPHERALCLK.
-foreach bit $i3c_bits {
-    set_output_delay -max $i3c_ext_max -clock [get_clock PERIPHERALCLK] [get_ports "core2pad_o\[$bit\]"] -add_delay
-    set_output_delay -min 0            -clock [get_clock PERIPHERALCLK] [get_ports "core2pad_o\[$bit\]"] -add_delay
-
-    set_input_delay -max $i3c_ext_max -clock [get_clock PERIPHERALCLK] [get_ports "pad2core_i\[$bit\]"] -add_delay
-    set_input_delay -min 0            -clock [get_clock PERIPHERALCLK] [get_ports "pad2core_i\[$bit\]"] -add_delay
-}
+set_output_delay 0 -clock [get_clock PERIPHERALCLK] [smc_gpio_ports core2pad_o    $i3c_bits] -add_delay
+set_output_delay 0 -clock [get_clock PERIPHERALCLK] [smc_gpio_ports core2pad_en_o $i3c_bits] -add_delay
+set_input_delay  0 -clock [get_clock PERIPHERALCLK] [smc_gpio_ports pad2core_i    $i3c_bits] -add_delay
 
 # Hold SCL and SDA together on the way out. This window also carries the
 # outbound half of tSCO: the budget above tightens $i3c_bal_max when the cycle
-# count leaves less room than the skew figure does. It overrides the output
-# delay's check on these pads; the output delay remains the external budget.
+# count leaves less room than the skew figure does.
 foreach bit $i3c_bits {
     set_max_delay $i3c_bal_max -from [get_clocks PERIPHERALCLK] -to [get_ports "core2pad_o\[$bit\]"]
     set_min_delay $i3c_bal_min -from [get_clocks PERIPHERALCLK] -to [get_ports "core2pad_o\[$bit\]"]
@@ -339,21 +324,12 @@ foreach bit $i3c_bits {
 # the board, so the launched edge leaves on core2pad_en_o. Both buses are
 # stamped: the data bit to keep the constant port out of the ck_feedthru group,
 # the enable because it is the one carrying I2C timing.
-foreach bit $i2c_bits {
-    set_output_delay -max $i2c_ext_max -clock [get_clock PERIPHERALCLK] [get_ports "core2pad_o\[$bit\]"] -add_delay
-    set_output_delay -min 0            -clock [get_clock PERIPHERALCLK] [get_ports "core2pad_o\[$bit\]"] -add_delay
-
-    set_output_delay -max $i2c_ext_max -clock [get_clock PERIPHERALCLK] [get_ports "core2pad_en_o\[$bit\]"] -add_delay
-    set_output_delay -min 0            -clock [get_clock PERIPHERALCLK] [get_ports "core2pad_en_o\[$bit\]"] -add_delay
-
-    set_input_delay -max $i2c_ext_max -clock [get_clock PERIPHERALCLK] [get_ports "pad2core_i\[$bit\]"] -add_delay
-    set_input_delay -min 0            -clock [get_clock PERIPHERALCLK] [get_ports "pad2core_i\[$bit\]"] -add_delay
-}
+set_output_delay 0 -clock [get_clock PERIPHERALCLK] [smc_gpio_ports core2pad_o    $i2c_bits] -add_delay
+set_output_delay 0 -clock [get_clock PERIPHERALCLK] [smc_gpio_ports core2pad_en_o $i2c_bits] -add_delay
+set_input_delay  0 -clock [get_clock PERIPHERALCLK] [smc_gpio_ports pad2core_i    $i2c_bits] -add_delay
 
 # Hold the four bus lines of a controller together on the way out. The launched
-# edge leaves on the enable, so that is the bus bounded here. This overrides
-# the output delay's check on the enables; the output delay stays the external
-# budget, and the data bits keep theirs unshadowed.
+# edge leaves on the enable, so that is the bus bounded here.
 foreach bit $i2c_bits {
     set_max_delay $i2c_bal_max -from [get_clocks PERIPHERALCLK] -to [get_ports "core2pad_en_o\[$bit\]"]
     set_min_delay $i2c_bal_min -from [get_clocks PERIPHERALCLK] -to [get_ports "core2pad_en_o\[$bit\]"]
