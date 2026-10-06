@@ -64,8 +64,9 @@ Checkers (``r`` is the round, 1 or 2):
                 is shown valid. The engine STATUS is logged, not graded: no SEP
                 document states it
   CHK-KMAC-CLR  a keyed operation on the delivered key with KEY_VALID clear
-                raises kmac_err with a non-zero ERR_CODE (hw/sys/sep/doc/kmac.adoc). Both
-                read clear just before CMD_START, so the error belongs to that
+                raises kmac_err (hw/sys/sep/doc/kmac.adoc) with ERR_CODE[31:24] ==
+                KeyNotValid (OpenTitan KMAC "Error Report" table). Both read
+                clear just before CMD_START, so the error belongs to that
                 start. Last KMAC operation: the engine is left in its error
                 state
   CHK-AES-CLR   with sideload selected and the key shredded, AES produces no
@@ -99,7 +100,7 @@ from env.sep_kmac_golden import kmac_family_words
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import kv_error_code, kv_status_field
 from sep_base_test import sep_base_test
-from sep_reg_meta import KMAC, OTBN
+from sep_reg_meta import OTBN
 from seq_lib.sep_abr_keygen_seq import (
     ABR_CTRL,
     ABR_ENTROPY,
@@ -154,7 +155,14 @@ from seq_lib.sep_km_mailbox_seq import (
     KM_RC_SUCCESS,
     SepKmMailbox,
 )
-from seq_lib.sep_kmac_seq import KMAC_ERR_CODE, KMAC_INTR_KMAC_ERR, KMAC_INTR_STATE, SepKmac
+from seq_lib.sep_kmac_seq import (
+    KMAC_ERR_CODE,
+    KMAC_ERR_CODE_SHIFT,
+    KMAC_ERR_KEY_NOT_VALID,
+    KMAC_INTR_KMAC_ERR,
+    KMAC_INTR_STATE,
+    SepKmac,
+)
 from seq_lib.sep_otbn_seq import SepOtbn
 
 ROUNDS = 2
@@ -195,7 +203,6 @@ MLKEM_SEED_DESTS = KM_DEST_ABR_MLKEM_SEED_D | KM_DEST_ABR_MLKEM_SEED_Z
 KV_SUCCESS = kv_error_code("SUCCESS")
 KV_READ_FAIL = kv_error_code("KV_READ_FAIL")
 OTBN_ERR_KEY_INVALID = OTBN.field_mask("ERR_BITS", "key_invalid")
-KMAC_ERR_CODE_MASK = KMAC.field_mask("ERR_CODE", "err_code")
 
 # The consumer outputs CHK-ROUND compares. The other consumers have goldens.
 ABR_OUTPUTS = ("mldsa", "mlkem_seed", "mlkem_msg")
@@ -760,8 +767,10 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         await self._shred(r, MLKEM_SEED_DESTS)
 
     async def _cleared_final(self) -> None:
-        # Baseline: kmac_err and ERR_CODE clear before CMD_START, so an error
-        # read after the start comes from the start on the shredded key.
+        # Baseline: kmac_err and ERR_CODE clear after programming and just
+        # before CMD_START, so an error read after the start comes from the
+        # start on the shredded key.
+        await self.kmac.program_sideload_keyed()
         err0 = await self.kmac._rd(KMAC_ERR_CODE)
         intr0 = await self.kmac._rd(KMAC_INTR_STATE)
         assert err0 == 0 and (intr0 & KMAC_INTR_KMAC_ERR) == 0, (
@@ -769,21 +778,25 @@ class sep_km_sideload_share_walk_test(sep_base_test):
             f"0x{intr0:08x}; kmac_err or ERR_CODE is already set, so an error after the "
             "start would not belong to the shredded key"
         )
-        intr, err = await self.kmac.start_sideload_keyed_err(_KMAC_ERR_POLLS)
+        intr, err = await self.kmac.start_poll_err(_KMAC_ERR_POLLS)
         assert intr & KMAC_INTR_KMAC_ERR, (
             f"CHK-KMAC-CLR FAIL: a keyed KMAC on the shredded delivered key raised no "
             f"kmac_err in {_KMAC_ERR_POLLS} polls (INTR_STATE 0x{intr:08x})"
         )
-        assert err & KMAC_ERR_CODE_MASK, (
-            f"CHK-KMAC-CLR FAIL: kmac_err set but ERR_CODE is 0 (INTR_STATE 0x{intr:08x})"
+        code = (err >> KMAC_ERR_CODE_SHIFT) & 0xFF
+        assert code == KMAC_ERR_KEY_NOT_VALID, (
+            f"CHK-KMAC-CLR FAIL: kmac_err set with error code 0x{code:02x} "
+            f"(ERR_CODE 0x{err:08x}), expected KeyNotValid 0x{KMAC_ERR_KEY_NOT_VALID:02x}"
         )
         self.logger.info(
             "CHK-KMAC-CLR PASS: before CMD_START INTR_STATE 0x%08x ERR_CODE 0x%08x "
-            "(kmac_err clear); after it INTR_STATE 0x%08x (kmac_err), ERR_CODE 0x%08x",
+            "(kmac_err clear); after it INTR_STATE 0x%08x (kmac_err), ERR_CODE 0x%08x "
+            "(code 0x%02x KeyNotValid)",
             intr0,
             err0,
             intr,
             err,
+            code,
         )
 
         await self.aes.configure_ecb_enc_256(sideload=True)
