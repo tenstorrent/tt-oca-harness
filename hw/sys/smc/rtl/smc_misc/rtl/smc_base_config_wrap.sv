@@ -117,23 +117,24 @@ module smc_base_config_wrap (
   input  logic                                hang_det_sys_axi_irq_i,  // System AXI hang detector
                                                                        // interrupt, read back
                                                                        // through
-                                                                       // HANG_DET_SYS_AXI_STATUS.
+                                                                       // HANG_DET_SYS_AXI_CTRL.irq.
   input  logic                                hang_det_sep_axi_irq_i,  // SEP AXI hang detector
                                                                        // interrupt, read back
                                                                        // through
-                                                                       // HANG_DET_SEP_AXI_STATUS.
-  input  logic                                hang_det_data_accel_irq_i  // Data-accelerator AXI hang
-                                                                         // detector interrupt, read
-                                                                         // back through
-                                                                         // HANG_DET_DATA_ACCEL_STATUS.
+                                                                       // HANG_DET_SEP_AXI_CTRL.irq.
+  input  logic                                hang_det_data_accel_irq_i  // Data-accelerator AXI
+                                                                         // hang detector
+                                                                         // interrupt, read back
+                                                                         // through the irq bit of
+                                                                         // HANG_DET_DATA_ACCEL_CTRL.
 );
 
   smc_base_config_reg_pkg::smc_base_config__in_t  hwif_in;
   smc_base_config_reg_pkg::smc_base_config__out_t hwif_out;
 
-  assign hwif_in.HANG_DET_SYS_AXI_STATUS.irq.next    = hang_det_sys_axi_irq_i;
-  assign hwif_in.HANG_DET_SEP_AXI_STATUS.irq.next    = hang_det_sep_axi_irq_i;
-  assign hwif_in.HANG_DET_DATA_ACCEL_STATUS.irq.next = hang_det_data_accel_irq_i;
+  assign hwif_in.HANG_DET_SYS_AXI_CTRL.irq.next    = hang_det_sys_axi_irq_i;
+  assign hwif_in.HANG_DET_SEP_AXI_CTRL.irq.next    = hang_det_sep_axi_irq_i;
+  assign hwif_in.HANG_DET_DATA_ACCEL_CTRL.irq.next = hang_det_data_accel_irq_i;
 
   smc_base_config_reg u_smc_base_config_reg (
     .clk(clk_i),

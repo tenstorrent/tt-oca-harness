@@ -109,8 +109,7 @@ class smc_hang_detector_sanity_test_seq(SmcCsrSeq):
             "irq_en+test each left irq_o low)"
         )
         cocotb.log.info(
-            "CHK-HANG-STATUS-GATED: every HANG_DET_*_STATUS.irq read 0 at idle and on each "
-            "poison leg"
+            "CHK-HANG-STATUS-GATED: every HANG_DET_*_CTRL.irq read 0 at idle and on each poison leg"
         )
 
         # Per-detector: fire one, others off, then clear.
@@ -127,7 +126,7 @@ class smc_hang_detector_sanity_test_seq(SmcCsrSeq):
             await check_hang_status(self.csr_read, f"{label}_CLR", set())
             cocotb.log.info("CHK-HANG-%s-CLR: source=0 OR=0", label)
         cocotb.log.info(
-            "CHK-HANG-STATUS-MAP: firing each detector alone set its own HANG_DET_*_STATUS.irq "
+            "CHK-HANG-STATUS-MAP: firing each detector alone set its own HANG_DET_*_CTRL.irq "
             "and no other, and clearing it returned all three to 0"
         )
 
@@ -167,7 +166,7 @@ class smc_hang_detector_sanity_test_seq(SmcCsrSeq):
         await check_hang_status(self.csr_read, "OR_CLR", set())
         cocotb.log.info("CHK-HANG-OR-CLR: OR=0 after last detector clear")
         cocotb.log.info(
-            "CHK-HANG-STATUS-OR: HANG_DET_*_STATUS.irq read all three set, then DATA alone, "
+            "CHK-HANG-STATUS-OR: HANG_DET_*_CTRL.irq read all three set, then DATA alone, "
             "then none, following the OR legs"
         )
         cocotb.log.info(

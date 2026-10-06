@@ -462,7 +462,7 @@ VIEWS = {
                 "base": 0xC0010000,
                 "end": 0xC0011FFF,
                 "aperture_size": 0x2000,
-                "occupied_size": 0x64,
+                "occupied_size": 0x4C,
                 "count": 1,
                 "stride": 0x0,
                 "hole_responses": (("", {"rresp": "OKAY", "rdata": 0x0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}),),

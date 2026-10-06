@@ -173,7 +173,7 @@ typedef union {
 } smc_base_config__CLOCK_GATE_CONTROL_t;
 
 // reg - smc_base_config::HANG_DET_CTRL
-// AXI hang detector control.
+// AXI hang detector control and interrupt status.
 // When 1, the timeout counter runs. When 0, the counter reloads from the threshold and irq_o is forced low.
 #define SMC_BASE_CONFIG__HANG_DET_CTRL__ENABLE_bm 0x1
 #define SMC_BASE_CONFIG__HANG_DET_CTRL__ENABLE_bp 0
@@ -189,6 +189,11 @@ typedef union {
 #define SMC_BASE_CONFIG__HANG_DET_CTRL__IRQ_TEST_bp 8
 #define SMC_BASE_CONFIG__HANG_DET_CTRL__IRQ_TEST_bw 1
 #define SMC_BASE_CONFIG__HANG_DET_CTRL__IRQ_TEST_reset 0x0
+// Reads 1 while this detector's interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops. Writes are ignored.
+#define SMC_BASE_CONFIG__HANG_DET_CTRL__IRQ_bm 0x1000
+#define SMC_BASE_CONFIG__HANG_DET_CTRL__IRQ_bp 12
+#define SMC_BASE_CONFIG__HANG_DET_CTRL__IRQ_bw 1
+#define SMC_BASE_CONFIG__HANG_DET_CTRL__IRQ_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         // When 1, the timeout counter runs. When 0, the counter reloads from the threshold and irq_o is forced low.
@@ -199,7 +204,10 @@ typedef union {
         uint32_t :3;
         // Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.
         uint32_t irq_test :1;
-        uint32_t :23;
+        uint32_t :3;
+        // Reads 1 while this detector's interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops. Writes are ignored.
+        uint32_t irq :1;
+        uint32_t :19;
     } f;
     uint32_t w;
 } smc_base_config__HANG_DET_CTRL_t;
@@ -220,22 +228,6 @@ typedef union {
     uint32_t w;
 } smc_base_config__HANG_DET_TIMEOUT_THRESHOLD_t;
 
-// reg - smc_base_config::HANG_DET_STATUS
-// AXI hang detector status.
-// Reads 1 while this detector's interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops.
-#define SMC_BASE_CONFIG__HANG_DET_STATUS__IRQ_bm 0x1
-#define SMC_BASE_CONFIG__HANG_DET_STATUS__IRQ_bp 0
-#define SMC_BASE_CONFIG__HANG_DET_STATUS__IRQ_bw 1
-#define SMC_BASE_CONFIG__HANG_DET_STATUS__IRQ_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        // Reads 1 while this detector's interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops.
-        uint32_t irq :1;
-        uint32_t :31;
-    } f;
-    uint32_t w;
-} smc_base_config__HANG_DET_STATUS_t;
-
 // addrmap - smc_base_config
 // Base-address, region-size, per-block clock-gating enable, and interrupt configuration registers.
 typedef struct __attribute__ ((__packed__)) {
@@ -254,16 +246,10 @@ typedef struct __attribute__ ((__packed__)) {
     smc_base_config__HANG_DET_CTRL_t HANG_DET_DATA_ACCEL_CTRL;
     uint8_t RESERVED_44_47[0x4];
     smc_base_config__HANG_DET_TIMEOUT_THRESHOLD_t HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD;
-    uint8_t RESERVED_4c_4f[0x4];
-    smc_base_config__HANG_DET_STATUS_t HANG_DET_SYS_AXI_STATUS;
-    uint8_t RESERVED_54_57[0x4];
-    smc_base_config__HANG_DET_STATUS_t HANG_DET_SEP_AXI_STATUS;
-    uint8_t RESERVED_5c_5f[0x4];
-    smc_base_config__HANG_DET_STATUS_t HANG_DET_DATA_ACCEL_STATUS;
 } smc_base_config_t;
 
 
-static_assert(sizeof(smc_base_config_t) == 0x64, "Packing error");
+static_assert(sizeof(smc_base_config_t) == 0x4c, "Packing error");
 
 #ifdef __cplusplus
 }

@@ -8533,7 +8533,7 @@ Muxselseg0 to Muxselseg3.</ipxact:description>
           <ipxact:displayName>SMC Base Configuration Address Map</ipxact:displayName>
           <ipxact:description>Base-address, region-size, per-block clock-gating enable, and interrupt configuration registers.</ipxact:description>
           <ipxact:addressOffset>'hc0010000</ipxact:addressOffset>
-          <ipxact:range>'h64</ipxact:range>
+          <ipxact:range>'h4c</ipxact:range>
           <ipxact:register>
             <ipxact:name>GLOBAL_BASE</ipxact:name>
             <ipxact:addressOffset>'h0</ipxact:addressOffset>
@@ -8772,7 +8772,7 @@ Muxselseg0 to Muxselseg3.</ipxact:description>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>HANG_DET_SYS_AXI_CTRL</ipxact:name>
-            <ipxact:description>AXI hang detector control.</ipxact:description>
+            <ipxact:description>AXI hang detector control and interrupt status.</ipxact:description>
             <ipxact:addressOffset>'h20</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
@@ -8811,6 +8811,19 @@ Muxselseg0 to Muxselseg3.</ipxact:description>
               <ipxact:bitWidth>1</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>irq</ipxact:name>
+              <ipxact:description>Reads 1 while this detector's interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops. Writes are ignored.</ipxact:description>
+              <ipxact:bitOffset>12</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD</ipxact:name>
@@ -8832,7 +8845,7 @@ Muxselseg0 to Muxselseg3.</ipxact:description>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>HANG_DET_SEP_AXI_CTRL</ipxact:name>
-            <ipxact:description>AXI hang detector control.</ipxact:description>
+            <ipxact:description>AXI hang detector control and interrupt status.</ipxact:description>
             <ipxact:addressOffset>'h30</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
@@ -8871,6 +8884,19 @@ Muxselseg0 to Muxselseg3.</ipxact:description>
               <ipxact:bitWidth>1</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>irq</ipxact:name>
+              <ipxact:description>Reads 1 while this detector's interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops. Writes are ignored.</ipxact:description>
+              <ipxact:bitOffset>12</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD</ipxact:name>
@@ -8892,7 +8918,7 @@ Muxselseg0 to Muxselseg3.</ipxact:description>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>HANG_DET_DATA_ACCEL_CTRL</ipxact:name>
-            <ipxact:description>AXI hang detector control.</ipxact:description>
+            <ipxact:description>AXI hang detector control and interrupt status.</ipxact:description>
             <ipxact:addressOffset>'h40</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
@@ -8931,6 +8957,19 @@ Muxselseg0 to Muxselseg3.</ipxact:description>
               <ipxact:bitWidth>1</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>irq</ipxact:name>
+              <ipxact:description>Reads 1 while this detector's interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops. Writes are ignored.</ipxact:description>
+              <ipxact:bitOffset>12</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD</ipxact:name>
@@ -8948,63 +8987,6 @@ Muxselseg0 to Muxselseg3.</ipxact:description>
               </ipxact:resets>
               <ipxact:bitWidth>20</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>HANG_DET_SYS_AXI_STATUS</ipxact:name>
-            <ipxact:description>AXI hang detector status.</ipxact:description>
-            <ipxact:addressOffset>'h50</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>irq</ipxact:name>
-              <ipxact:description>Reads 1 while this detector's interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops.</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>HANG_DET_SEP_AXI_STATUS</ipxact:name>
-            <ipxact:description>AXI hang detector status.</ipxact:description>
-            <ipxact:addressOffset>'h58</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>irq</ipxact:name>
-              <ipxact:description>Reads 1 while this detector's interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops.</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>HANG_DET_DATA_ACCEL_STATUS</ipxact:name>
-            <ipxact:description>AXI hang detector status.</ipxact:description>
-            <ipxact:addressOffset>'h60</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>irq</ipxact:name>
-              <ipxact:description>Reads 1 while this detector's interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops.</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
             </ipxact:field>
           </ipxact:register>
         </ipxact:registerFile>

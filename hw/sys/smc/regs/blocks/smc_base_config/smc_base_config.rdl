@@ -137,7 +137,7 @@ addrmap smc_base_config {
     };
 
     reg HANG_DET_CTRL {
-        desc = "AXI hang detector control.";
+        desc = "AXI hang detector control and interrupt status.";
         field {
             sw = rw; hw = r;
             desc = "When 1, the timeout counter runs. When 0, the counter reloads from the threshold and irq_o is forced low.";
@@ -150,6 +150,10 @@ addrmap smc_base_config {
             sw = rw; hw = r;
             desc = "Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.";
         } irq_test[8:8] = 0x0;
+        field {
+            sw = r; hw = w;
+            desc = "Reads 1 while this detector's interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops. Writes are ignored.";
+        } irq[12:12] = 0x0;
     };
 
     reg HANG_DET_TIMEOUT_THRESHOLD {
@@ -158,14 +162,6 @@ addrmap smc_base_config {
             sw = rw; hw = r;
             desc = "Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.";
         } value[19:0] = 0x1000;
-    };
-
-    reg HANG_DET_STATUS {
-        desc = "AXI hang detector status.";
-        field {
-            sw = r; hw = w;
-            desc = "Reads 1 while this detector's interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops.";
-        } irq[0:0] = 0x0;
     };
 
     // --------------------------------------------------
@@ -182,9 +178,6 @@ addrmap smc_base_config {
     HANG_DET_TIMEOUT_THRESHOLD HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD    @ 0x38;
     HANG_DET_CTRL              HANG_DET_DATA_ACCEL_CTRL              @ 0x40;
     HANG_DET_TIMEOUT_THRESHOLD HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD @ 0x48;
-    HANG_DET_STATUS            HANG_DET_SYS_AXI_STATUS               @ 0x50;
-    HANG_DET_STATUS            HANG_DET_SEP_AXI_STATUS               @ 0x58;
-    HANG_DET_STATUS            HANG_DET_DATA_ACCEL_STATUS            @ 0x60;
 };
 
 `endif

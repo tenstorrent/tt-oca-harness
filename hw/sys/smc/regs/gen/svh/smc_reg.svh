@@ -2725,7 +2725,7 @@ localparam int unsigned DFX_CTRL_DEBUG_BUS_MUX_REG_ADDR                         
 
 
 localparam int unsigned SMC_BASE_CONFIG_REG_MAP_BASE_ADDR                                                         = 32'hC0010000;
-localparam int unsigned SMC_BASE_CONFIG_REG_MAP_SIZE                                                              = 32'h00000064;
+localparam int unsigned SMC_BASE_CONFIG_REG_MAP_SIZE                                                              = 32'h0000004C;
 
 
 localparam int unsigned SMC_BASE_CONFIG_GLOBAL_BASE_REG_OFFSET                                                    = 32'h00000000;
@@ -2748,12 +2748,6 @@ localparam int unsigned SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_CTRL_REG_OFFSET     
 localparam int unsigned SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_CTRL_REG_ADDR                                         = 32'hC0010040;
 localparam int unsigned SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD_REG_OFFSET                          = 32'h00000048;
 localparam int unsigned SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD_REG_ADDR                            = 32'hC0010048;
-localparam int unsigned SMC_BASE_CONFIG_HANG_DET_SYS_AXI_STATUS_REG_OFFSET                                        = 32'h00000050;
-localparam int unsigned SMC_BASE_CONFIG_HANG_DET_SYS_AXI_STATUS_REG_ADDR                                          = 32'hC0010050;
-localparam int unsigned SMC_BASE_CONFIG_HANG_DET_SEP_AXI_STATUS_REG_OFFSET                                        = 32'h00000058;
-localparam int unsigned SMC_BASE_CONFIG_HANG_DET_SEP_AXI_STATUS_REG_ADDR                                          = 32'hC0010058;
-localparam int unsigned SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_STATUS_REG_OFFSET                                     = 32'h00000060;
-localparam int unsigned SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_STATUS_REG_ADDR                                       = 32'hC0010060;
 
 
 //==============================================================================
@@ -10243,7 +10237,6 @@ localparam longint unsigned SMC_BASE_CONFIG_REGION_SIZE_REG_DEFAULT             
 localparam longint unsigned SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_REG_DEFAULT                                        = 64'h000000001F000000;
 localparam longint unsigned SMC_BASE_CONFIG_HANG_DET_CTRL_REG_DEFAULT                                             = 32'h00000000;
 localparam longint unsigned SMC_BASE_CONFIG_HANG_DET_TIMEOUT_THRESHOLD_REG_DEFAULT                                = 32'h00001000;
-localparam longint unsigned SMC_BASE_CONFIG_HANG_DET_STATUS_REG_DEFAULT                                           = 32'h00000000;
 localparam longint unsigned REMAP_REGION_REGION_START_REG_DEFAULT                                                 = 64'h0000000000000000;
 localparam longint unsigned REMAP_REGION_REGION_END_REG_DEFAULT                                                   = 64'h0000000000000000;
 localparam longint unsigned REMAP_REGION_REGION_ATTRS_REG_DEFAULT                                                 = 64'h0000000000000000;
@@ -12181,11 +12174,11 @@ localparam int unsigned SMC_BASE_CONFIG_HANG_DET_CTRL_IRQ_EN_SHIFT              
 localparam int unsigned SMC_BASE_CONFIG_HANG_DET_CTRL_IRQ_TEST_MASK                                               = 32'h100;
 localparam int unsigned SMC_BASE_CONFIG_HANG_DET_CTRL_IRQ_TEST_SHIFT                                              = 8;
 
+localparam int unsigned SMC_BASE_CONFIG_HANG_DET_CTRL_IRQ_MASK                                                    = 32'h1000;
+localparam int unsigned SMC_BASE_CONFIG_HANG_DET_CTRL_IRQ_SHIFT                                                   = 12;
+
 localparam int unsigned SMC_BASE_CONFIG_HANG_DET_TIMEOUT_THRESHOLD_VALUE_MASK                                     = 32'hFFFFF;
 localparam int unsigned SMC_BASE_CONFIG_HANG_DET_TIMEOUT_THRESHOLD_VALUE_SHIFT                                    = 0;
-
-localparam int unsigned SMC_BASE_CONFIG_HANG_DET_STATUS_IRQ_MASK                                                  = 32'h1;
-localparam int unsigned SMC_BASE_CONFIG_HANG_DET_STATUS_IRQ_SHIFT                                                 = 0;
 
 localparam longint unsigned REMAP_REGION_REGION_START_START_ADDR_MASK                                             = 64'hFFFFFFFFFFF000;
 localparam     int unsigned REMAP_REGION_REGION_START_START_ADDR_SHIFT                                            = 12;
@@ -17702,6 +17695,8 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [0:0]   irq ;
+    logic [2:0]   rsvd_2 ;
     logic [0:0]   irq_test ;
     logic [2:0]   rsvd_1 ;
     logic [0:0]   irq_en ;
@@ -17714,12 +17709,6 @@ typedef struct packed {
 typedef struct packed {
     logic [19:0]   value ;
 } smc_base_config_hang_det_timeout_threshold_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   irq ;
-} smc_base_config_hang_det_status_reg_t;
 
 
 

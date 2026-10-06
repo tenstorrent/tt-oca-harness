@@ -125,7 +125,7 @@ class smc_hang_detector_timeout_test_seq(SmcCsrSeq):
         cocotb.log.info("CHK-HANG-TIMEOUT-DROP: sep=0 OR=0 after R completion")
         await check_hang_status(self.csr_read, "SEP_TIMEOUT_DROP", set())
         cocotb.log.info(
-            "CHK-HANG-TIMEOUT-STATUS-DROP: every HANG_DET_*_STATUS.irq read 0 after R completion"
+            "CHK-HANG-TIMEOUT-STATUS-DROP: every HANG_DET_*_CTRL.irq read 0 after R completion"
         )
 
         await self.csr_write("HANG_SEP_THR0", HANG_DET_SEP_AXI_TIMEOUT, 0)

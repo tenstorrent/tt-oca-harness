@@ -217,7 +217,7 @@ class smc_hang_detector_data_timeout_test_seq(SmcCsrSeq):
             cocotb.log.info("CHK-HANG-DATA-TIMEOUT-FIRE: data=1 OR=1 sep=0 sys=0 after DMA stall")
             await check_hang_status(self.csr_read, "DATA_TIMEOUT_FIRE", {"DATA"})
             cocotb.log.info(
-                "CHK-HANG-DATA-TIMEOUT-STATUS-FIRE: only HANG_DET_DATA_ACCEL_STATUS.irq read 1 "
+                "CHK-HANG-DATA-TIMEOUT-STATUS-FIRE: only HANG_DET_DATA_ACCEL_CTRL.irq read 1 "
                 "during the stall"
             )
 
@@ -228,7 +228,7 @@ class smc_hang_detector_data_timeout_test_seq(SmcCsrSeq):
         cocotb.log.info("CHK-HANG-DATA-TIMEOUT-DROP: data=0 OR=0 after R/B completion")
         await check_hang_status(self.csr_read, "DATA_TIMEOUT_DROP", set())
         cocotb.log.info(
-            "CHK-HANG-DATA-TIMEOUT-STATUS-DROP: every HANG_DET_*_STATUS.irq read 0 after R/B "
+            "CHK-HANG-DATA-TIMEOUT-STATUS-DROP: every HANG_DET_*_CTRL.irq read 0 after R/B "
             "completion"
         )
         await self._wait_dma_done(baseline_done)

@@ -6912,8 +6912,8 @@ Drive `smc_hang_detector_data_timeout_test_seq`. Each checker below is a named c
 |`CHK-HANG-DATA-TIMEOUT-DROP` |Named compare in `smc_hang_detector_data_timeout_test_seq.py`; the run fails if it mismatches
 |`CHK-HANG-DATA-TIMEOUT-FIRE` |Named compare in `smc_hang_detector_data_timeout_test_seq.py`; the run fails if it mismatches
 |`CHK-HANG-DATA-TIMEOUT-SEP-POS` |Named compare in `smc_hang_detector_data_timeout_test_seq.py`; the run fails if it mismatches
-|`CHK-HANG-DATA-TIMEOUT-STATUS-DROP` |After the held responses complete, every `HANG_DET_*_STATUS.irq` reads 0
-|`CHK-HANG-DATA-TIMEOUT-STATUS-FIRE` |During the DMA stall only `HANG_DET_DATA_ACCEL_STATUS.irq` reads 1
+|`CHK-HANG-DATA-TIMEOUT-STATUS-DROP` |After the held responses complete, every `HANG_DET_*_CTRL.irq` reads 0
+|`CHK-HANG-DATA-TIMEOUT-STATUS-FIRE` |During the DMA stall only `HANG_DET_DATA_ACCEL_CTRL.irq` reads 1
 |===
 
 
@@ -6998,9 +6998,9 @@ Drive `smc_hang_detector_sanity_test_seq`. Each checker below is a named compare
 |`CHK-HANG-POISON` |Named compare in `smc_hang_detector_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-HANG-SEP-CLR` |Clearing `HANG_DET_SEP_AXI_CTRL` drops `tb_axi_hang_irq_sep` and the OR to 0 inside the bounded handshake (`smc_hang_detector_sanity_test_seq.py`)
 |`CHK-HANG-SEP-FIRE` |A fire write to `HANG_DET_SEP_AXI_CTRL` raises `tb_axi_hang_irq_sep` and the OR `tb_axi_hang_irq` while the other two detector pins stay 0, inside the bounded `_await_irqs` handshake (`smc_hang_detector_sanity_test_seq.py`)
-|`CHK-HANG-STATUS-GATED` |Every `HANG_DET_*_STATUS.irq` reads 0 at idle and on each `irq_test` poison leg, matching the gated `irq_o`
-|`CHK-HANG-STATUS-MAP` |Firing each detector alone sets its own `HANG_DET_*_STATUS.irq` and no other, and clearing it returns all three to 0; all three are read each time, so a status register wired to the wrong detector fails
-|`CHK-HANG-STATUS-OR` |With all three detectors fired every `HANG_DET_*_STATUS.irq` reads 1; after SYS and SEP clear only DATA reads 1; after DATA clears none does
+|`CHK-HANG-STATUS-GATED` |Every `HANG_DET_*_CTRL.irq` reads 0 at idle and on each `irq_test` poison leg, matching the gated `irq_o`
+|`CHK-HANG-STATUS-MAP` |Firing each detector alone sets its own `HANG_DET_*_CTRL.irq` and no other, and clearing it returns all three to 0; all three are read each time, so a status bit wired to the wrong detector fails
+|`CHK-HANG-STATUS-OR` |With all three detectors fired every `HANG_DET_*_CTRL.irq` reads 1; after SYS and SEP clear only DATA reads 1; after DATA clears none does
 |`CHK-HANG-SYS-CLR` |Clearing `HANG_DET_SYS_AXI_CTRL` drops `tb_axi_hang_irq_sys` and the OR to 0 inside the bounded handshake (`smc_hang_detector_sanity_test_seq.py`)
 |`CHK-HANG-SYS-FIRE` |A fire write to `HANG_DET_SYS_AXI_CTRL` raises `tb_axi_hang_irq_sys` and the OR `tb_axi_hang_irq` while the other two detector pins stay 0, inside the bounded `_await_irqs` handshake (`smc_hang_detector_sanity_test_seq.py`)
 |===
@@ -7039,8 +7039,8 @@ Drive `smc_hang_detector_sys_timeout_test_seq`. Each checker below is a named co
 |`CHK-HANG-SYS-TIMEOUT-DISABLED` |Named compare in `smc_hang_detector_sys_timeout_test_seq.py`; the run fails if it mismatches
 |`CHK-HANG-SYS-TIMEOUT-DROP` |Named compare in `smc_hang_detector_sys_timeout_test_seq.py`; the run fails if it mismatches
 |`CHK-HANG-SYS-TIMEOUT-FIRE` |Named compare in `smc_hang_detector_sys_timeout_test_seq.py`; the run fails if it mismatches
-|`CHK-HANG-SYS-TIMEOUT-STATUS-DROP` |After the held read completes, every `HANG_DET_*_STATUS.irq` reads 0
-|`CHK-HANG-SYS-TIMEOUT-STATUS-FIRE` |During the SYS_IN stall only `HANG_DET_SYS_AXI_STATUS.irq` reads 1
+|`CHK-HANG-SYS-TIMEOUT-STATUS-DROP` |After the held read completes, every `HANG_DET_*_CTRL.irq` reads 0
+|`CHK-HANG-SYS-TIMEOUT-STATUS-FIRE` |During the SYS_IN stall only `HANG_DET_SYS_AXI_CTRL.irq` reads 1
 |===
 
 
@@ -7077,7 +7077,7 @@ Drive `smc_hang_detector_timeout_test_seq`. Each checker below is a named compar
 |`CHK-HANG-TIMEOUT-DISABLED` |Named compare in `smc_hang_detector_timeout_test_seq.py`; the run fails if it mismatches
 |`CHK-HANG-TIMEOUT-DROP` |Named compare in `smc_hang_detector_timeout_test_seq.py`; the run fails if it mismatches
 |`CHK-HANG-TIMEOUT-FIRE` |Named compare in `smc_hang_detector_timeout_test_seq.py`; the run fails if it mismatches
-|`CHK-HANG-TIMEOUT-STATUS-DROP` |After the held read completes, every `HANG_DET_*_STATUS.irq` reads 0
+|`CHK-HANG-TIMEOUT-STATUS-DROP` |After the held read completes, every `HANG_DET_*_CTRL.irq` reads 0
 |===
 
 
@@ -12260,7 +12260,7 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 |===
 |Checker |Description
 |`CHK-HANG-DISABLE-FIRED` |Clearing `enable` on a fired SEP detector, with the read still held, dropped its interrupt and kept it low
-|`CHK-HANG-DISABLE-STATUS` |With `enable` cleared and the read still held, every `HANG_DET_*_STATUS.irq` reads 0
+|`CHK-HANG-DISABLE-STATUS` |With `enable` cleared and the read still held, every `HANG_DET_*_CTRL.irq` reads 0
 |`CHK-HANG-TEST-GATED` |`irq_test` with `enable` clear left the interrupt low, and setting `enable` raised it
 |===
 

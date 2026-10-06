@@ -728,7 +728,7 @@ module smc_base #(
   // the smc_base_config register block (u_internal_regs). The three irqs are
   // OR'd into a single fault line on axi_hang_irq_o, which smc.sv feeds back
   // into smc_peripherals to land on peripheral_interrupts[30] -> PLIC source
-  // 287. Software reads the per-detector HANG_DET_*_STATUS registers to tell
+  // 287. Software reads the irq bit of each HANG_DET_*_CTRL register to tell
   // which master stalled.
 
   axi_hang_detector #(

@@ -112,7 +112,7 @@ class smc_hang_detector_disable_test_seq(smc_hang_detector_timeout_test_seq):
             _QUIET_CYCLES,
         )
         cocotb.log.info(
-            "CHK-HANG-DISABLE-STATUS: HANG_DET_SEP_AXI_STATUS.irq read 0 with enable cleared "
+            "CHK-HANG-DISABLE-STATUS: HANG_DET_SEP_AXI_CTRL.irq read 0 with enable cleared "
             "and the read still held"
         )
 

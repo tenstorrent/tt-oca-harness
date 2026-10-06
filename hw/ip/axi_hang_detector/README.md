@@ -18,17 +18,14 @@ hung, dropping on its own once the bus makes progress (no software clear needed)
   (the counter still runs).
 - `irq_test` — assert `irq_o` without a real stall, subject to `enable` and `irq_en`.
   Software self-test only; the detector does **not** need this to catch a real hang.
+- `irq`      — read-only copy of `irq_o`, so software can tell which detector raised the
+  shared interrupt. A live level, not a latch; writes are ignored.
 
 `HANG_DET_<master>_TIMEOUT_THRESHOLD`
 
 - `value` — number of consecutive stalled cycles before firing. Default `0x1000`.
   20 bits → up to ~1M cycles (~1 ms at 1 GHz). **0 disables timeout detection**: a
   stalled bus never fires, though `irq_test` still asserts `irq_o`.
-
-`HANG_DET_<master>_STATUS`
-
-- `irq` — read-only copy of `irq_o`, so software can tell which detector raised the
-  shared interrupt. A live level, not a latch.
 
 ## Programming
 
