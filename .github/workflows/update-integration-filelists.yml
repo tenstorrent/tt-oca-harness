@@ -51,7 +51,7 @@ jobs:
           version: ${{ steps.bender-version.outputs.version }}
 
       - name: Regenerate filelists
-        run: python3 scripts/update_integration_filelists.py
+        run: make update-integration-filelists
 
       - name: Open update pull request
         shell: bash
@@ -80,10 +80,10 @@ jobs:
               --title "integration: Regenerate subsystem filelists" \
               --body "$(cat <<'EOF'
           ## Summary
-          Regenerate the committed integration simulation and synthesis filelists.
+          Regenerate the committed integration simulation, synthesis, and emulation filelists.
 
           ## Test plan
-          `python3 scripts/update_integration_filelists.py --check`
+          `make update-integration-filelists CHECK=1`
           EOF
           )"
           else

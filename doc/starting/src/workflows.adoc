@@ -19,12 +19,22 @@ This document specifies the development methodology for this project.
 Bender is used for managing IP dependencies and managing builds.
 Makefiles are used for build automation.
 
-To initialise or update the Bender-generated file list, run the following
-command:
+Each subsystem ships repository-relative filelists under
+`integration/filelists/`: `<system>.synth.f` for synthesis, `<system>.emul.f`
+for emulation, and `<system>.<tool>.sim.f` for simulation. Bender selects the
+synthesis view with `-t synth` and the emulation view with
+`-t synth -t emulation`; each subsystem adds its own targets in its `flow.mk`.
+A bare `bender script flist` emits only the default target and omits the
+subsystems.
+
+Regenerate every filelist from the repository root:
 
 ```bash
-make generate_filelist
+make update-integration-filelists
 ```
+
+Add `CHECK=1` to verify the committed filelists instead of rewriting them. The
+weekly `update-integration-filelists` workflow runs the same target.
 
 [[vendor-packages]]
 === Third-party (vendor) package imports with Bender
