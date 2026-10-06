@@ -33,7 +33,6 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 AXI_RESP_OKAY = 0
