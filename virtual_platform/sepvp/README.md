@@ -39,6 +39,7 @@ make fw-run FW_TEST=hello_world
 # The pytest suite:
 make vp-test                                 # builds firmware, runs everything
 make vp-test PYTEST_ARGS="--no-build -k bootcode"
+make vp-test PYTEST_ARGS="-m smoke"          # the boots the sep-vp CI legs run
 make vp-test-host                            # only the suites needing no VP or firmware
 ```
 

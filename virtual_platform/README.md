@@ -151,9 +151,11 @@ pins which one is used.
 
 `.github/workflows/vp.yml` runs two jobs, each both ways — a native build on
 the runner and a `VP_CONTAINER=1` build in this image — one for `sep-vp` and
-one for the `smc-vp`/`smu-vp` pair, on every PR that touches the VP and
-nightly. It is the reference for the exact commands and dependencies each path
-needs.
+one for the `smc-vp`/`smu-vp` pair, on a push to `main` that touches the VP,
+nightly, and on manual dispatch; a pull request runs only the host-only tests.
+The `sep-vp` legs run the tests marked `smoke`, one clean boot per ROM path;
+the full suite is an offline regression. The workflow is the reference for the
+exact commands and dependencies each path needs.
 
 Both paths are supported for all three executables. On a host whose system
 compiler is too old (RHEL 8's g++ 8.5 has no C++20), activate a newer one
