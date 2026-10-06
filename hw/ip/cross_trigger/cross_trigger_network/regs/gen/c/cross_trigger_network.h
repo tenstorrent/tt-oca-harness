@@ -14,12 +14,25 @@ extern "C" {
 #include <assert.h>
 
 // reg - cross_trigger_matrix::CT_SRC::CONFIG_0
+// Cross Trigger Source Configuration - CT_Dst select mask
+// Selects the CT_Dst port(s) to forward on the CT_Src output
+// at this array index. Each bit corresponds to one CT_Dst
+// port, from CT_Dst[0] at bit 0 upwards. Multiple ports may
+// be selected as a trigger source. All selected source ports
+// are then OR'd together to produce the CT_Src output. Set
+// this register to all-zero to disable that output.
 #define CROSS_TRIGGER_MATRIX__CT_SRC__CONFIG_0__CT_DST_SELECT_bm 0x3ffffff
 #define CROSS_TRIGGER_MATRIX__CT_SRC__CONFIG_0__CT_DST_SELECT_bp 0
 #define CROSS_TRIGGER_MATRIX__CT_SRC__CONFIG_0__CT_DST_SELECT_bw 26
 #define CROSS_TRIGGER_MATRIX__CT_SRC__CONFIG_0__CT_DST_SELECT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Selects the CT_Dst port(s) to forward on the CT_Src output
+        // at this array index. Each bit corresponds to one CT_Dst
+        // port, from CT_Dst[0] at bit 0 upwards. Multiple ports may
+        // be selected as a trigger source. All selected source ports
+        // are then OR'd together to produce the CT_Src output. Set
+        // this register to all-zero to disable that output.
         uint32_t CT_DST_SELECT :26;
         uint32_t :6;
     } f;
@@ -27,33 +40,42 @@ typedef union {
 } cross_trigger_matrix__CT_SRC__CONFIG_0_t;
 
 // regfile - cross_trigger_matrix::CT_SRC
+// Cross trigger destination selection for one CT_Src output port
 typedef struct __attribute__ ((__packed__)) {
     cross_trigger_matrix__CT_SRC__CONFIG_0_t CONFIG_0;
     uint8_t RESERVED_4_7[0x4];
 } cross_trigger_matrix__CT_SRC__stride8_t;
 
 // addrmap - cross_trigger_matrix
+// Configuration registers for the cross trigger matrix
 typedef struct __attribute__ ((__packed__)) {
     cross_trigger_matrix__CT_SRC__stride8_t CT_SRC[26];
 } cross_trigger_matrix_t;
 
 // reg - cross_trigger_port::CONFIG
+// Cross Trigger Port Configuration
+// Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package's cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.
 #define CROSS_TRIGGER_PORT__CONFIG__MODE_bm 0x1
 #define CROSS_TRIGGER_PORT__CONFIG__MODE_bp 0
 #define CROSS_TRIGGER_PORT__CONFIG__MODE_bw 1
 #define CROSS_TRIGGER_PORT__CONFIG__MODE_reset 0x0
+// Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.
 #define CROSS_TRIGGER_PORT__CONFIG__INVERT_bm 0x2
 #define CROSS_TRIGGER_PORT__CONFIG__INVERT_bp 1
 #define CROSS_TRIGGER_PORT__CONFIG__INVERT_bw 1
 #define CROSS_TRIGGER_PORT__CONFIG__INVERT_reset 0x0
+// While set, holds the outgoing point-to-point handshake idle with CT_Req_out deasserted and discards core-side cross trigger pulses for transmission. The incoming handshake keeps running. Set and then clear it to recover a handshake deadlock.
 #define CROSS_TRIGGER_PORT__CONFIG__RESET_bm 0x4
 #define CROSS_TRIGGER_PORT__CONFIG__RESET_bp 2
 #define CROSS_TRIGGER_PORT__CONFIG__RESET_bw 1
 #define CROSS_TRIGGER_PORT__CONFIG__RESET_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package's cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.
         uint32_t MODE :1;
+        // Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.
         uint32_t INVERT :1;
+        // While set, holds the outgoing point-to-point handshake idle with CT_Req_out deasserted and discards core-side cross trigger pulses for transmission. The incoming handshake keeps running. Set and then clear it to recover a handshake deadlock.
         uint32_t RESET :1;
         uint32_t :29;
     } f;
@@ -61,33 +83,44 @@ typedef union {
 } cross_trigger_port__CONFIG_t;
 
 // reg - cross_trigger_port::STATUS
+// Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.
+// Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress
 #define CROSS_TRIGGER_PORT__STATUS__BUSY_bm 0x1
 #define CROSS_TRIGGER_PORT__STATUS__BUSY_bp 0
 #define CROSS_TRIGGER_PORT__STATUS__BUSY_bw 1
 #define CROSS_TRIGGER_PORT__STATUS__BUSY_reset 0x0
+// Readout of the current CT_Req_out level with CONFIG.INVERT undone, so 1 means the request is asserted whatever the pad polarity. Reads 0 in wire-OR mode.
 #define CROSS_TRIGGER_PORT__STATUS__REQ_OUT_bm 0x10
 #define CROSS_TRIGGER_PORT__STATUS__REQ_OUT_bp 4
 #define CROSS_TRIGGER_PORT__STATUS__REQ_OUT_bw 1
 #define CROSS_TRIGGER_PORT__STATUS__REQ_OUT_reset 0x0
+// Readout of the current synchronized CT_Ack_in level with CONFIG.INVERT undone, so 1 means the acknowledge is asserted whatever the pad polarity.
 #define CROSS_TRIGGER_PORT__STATUS__ACK_IN_bm 0x20
 #define CROSS_TRIGGER_PORT__STATUS__ACK_IN_bp 5
 #define CROSS_TRIGGER_PORT__STATUS__ACK_IN_bw 1
 #define CROSS_TRIGGER_PORT__STATUS__ACK_IN_reset 0x0
+// Readout of the current synchronized CT_Req_in level with CONFIG.INVERT undone, so 1 means the request is asserted whatever the pad polarity.
 #define CROSS_TRIGGER_PORT__STATUS__REQ_IN_bm 0x40
 #define CROSS_TRIGGER_PORT__STATUS__REQ_IN_bp 6
 #define CROSS_TRIGGER_PORT__STATUS__REQ_IN_bw 1
 #define CROSS_TRIGGER_PORT__STATUS__REQ_IN_reset 0x0
+// Readout of the current CT_Ack_out level with CONFIG.INVERT undone, so 1 means the acknowledge is asserted whatever the pad polarity. Reads 0 in wire-OR mode.
 #define CROSS_TRIGGER_PORT__STATUS__ACK_OUT_bm 0x80
 #define CROSS_TRIGGER_PORT__STATUS__ACK_OUT_bp 7
 #define CROSS_TRIGGER_PORT__STATUS__ACK_OUT_bw 1
 #define CROSS_TRIGGER_PORT__STATUS__ACK_OUT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress
         uint32_t BUSY :1;
         uint32_t :3;
+        // Readout of the current CT_Req_out level with CONFIG.INVERT undone, so 1 means the request is asserted whatever the pad polarity. Reads 0 in wire-OR mode.
         uint32_t REQ_OUT :1;
+        // Readout of the current synchronized CT_Ack_in level with CONFIG.INVERT undone, so 1 means the acknowledge is asserted whatever the pad polarity.
         uint32_t ACK_IN :1;
+        // Readout of the current synchronized CT_Req_in level with CONFIG.INVERT undone, so 1 means the request is asserted whatever the pad polarity.
         uint32_t REQ_IN :1;
+        // Readout of the current CT_Ack_out level with CONFIG.INVERT undone, so 1 means the acknowledge is asserted whatever the pad polarity. Reads 0 in wire-OR mode.
         uint32_t ACK_OUT :1;
         uint32_t :24;
     } f;
@@ -95,12 +128,15 @@ typedef union {
 } cross_trigger_port__STATUS_t;
 
 // reg - cross_trigger_port::STRETCH_MULT
+// Pulse Stretch Multiplier
+// The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.
 #define CROSS_TRIGGER_PORT__STRETCH_MULT__STRETCH_MULT_bm 0xffff
 #define CROSS_TRIGGER_PORT__STRETCH_MULT__STRETCH_MULT_bp 0
 #define CROSS_TRIGGER_PORT__STRETCH_MULT__STRETCH_MULT_bw 16
 #define CROSS_TRIGGER_PORT__STRETCH_MULT__STRETCH_MULT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.
         uint32_t STRETCH_MULT :16;
         uint32_t :16;
     } f;
@@ -108,6 +144,7 @@ typedef union {
 } cross_trigger_port__STRETCH_MULT_t;
 
 // addrmap - cross_trigger_port
+// Configuration and status registers for the cross trigger port
 typedef struct __attribute__ ((__packed__)) {
     cross_trigger_port__CONFIG_t CONFIG;
     cross_trigger_port__STATUS_t STATUS;
@@ -116,6 +153,7 @@ typedef struct __attribute__ ((__packed__)) {
 } cross_trigger_port__stride10_t;
 
 // addrmap - cross_trigger_network
+// Cross trigger matrix and externally visible cross trigger ports
 typedef struct __attribute__ ((__packed__)) {
     cross_trigger_matrix_t ctm;
     uint8_t RESERVED_d0_1ff[0x130];

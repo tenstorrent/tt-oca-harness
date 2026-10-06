@@ -14,18 +14,22 @@ extern "C" {
 #include <assert.h>
 
 // reg - efuse_shim_ctrl::EFUSE_BANK_INIT_TIME
+// eFuse bank initialization time. Number of cycles to wait for the OTP macro to initialize before sensing can begin.
+// Most OTP have a initialization time before sensing can be done
 #define EFUSE_SHIM_CTRL__EFUSE_BANK_INIT_TIME__INIT_TIME_bm 0xffffffff
 #define EFUSE_SHIM_CTRL__EFUSE_BANK_INIT_TIME__INIT_TIME_bp 0
 #define EFUSE_SHIM_CTRL__EFUSE_BANK_INIT_TIME__INIT_TIME_bw 32
 #define EFUSE_SHIM_CTRL__EFUSE_BANK_INIT_TIME__INIT_TIME_reset 0x20
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Most OTP have a initialization time before sensing can be done
         uint32_t init_time :32;
     } f;
     uint32_t w;
 } efuse_shim_ctrl__EFUSE_BANK_INIT_TIME_t;
 
 // addrmap - efuse_shim_ctrl
+// DV model of the eFuse SHIM control interface.
 typedef struct __attribute__ ((__packed__)) {
     efuse_shim_ctrl__EFUSE_BANK_INIT_TIME_t EFUSE_BANK_INIT_TIME;
 } efuse_shim_ctrl_t;
@@ -36,6 +40,7 @@ typedef struct __attribute__ ((__packed__)) {
 } sep_external__xip_region_t;
 
 // addrmap - sep_external
+// SEP external address map (eFuse SHIM control and execute-in-place window).
 typedef struct __attribute__ ((__packed__)) {
     efuse_shim_ctrl_t efuse_shim_ctrl;
     uint8_t RESERVED_4_fffffff[0xffffffc];

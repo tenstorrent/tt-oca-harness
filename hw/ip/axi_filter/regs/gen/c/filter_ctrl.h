@@ -14,69 +14,131 @@ extern "C" {
 #include <assert.h>
 
 // reg - filter_ctrl::FILTER_CONFIG
+// Upon match of transaction to filter fields, whether the transaction has read permissions
 #define FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm 0x1
 #define FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bp 0
 #define FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bw 1
 #define FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_reset 0x0
+// Upon match of transaction to filter fields, whether the transaction has write permissions
 #define FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm 0x2
 #define FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bp 1
 #define FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bw 1
 #define FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_reset 0x0
+// Filter entry enabled. A = 0 means this entry is disabled, A = 1 means this entry is enabled and will be used to filter
 #define FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm 0x10
 #define FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bp 4
 #define FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bw 1
 #define FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_reset 0x0
+// Secure and Non-secure is categorized as AxPROT[1] in the AXI protocol, where AxPROT[1] == 0 means secure and AxPROT[1] == 1 means Non-secure.
+// Filter entry will match if AxPROT[1] matches the value in this field
 #define FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bm 0x100
 #define FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bp 8
 #define FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bw 1
 #define FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_reset 0x0
+// Data bus width in bytes, encoded as 2^value
 #define FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_bm 0x7000
 #define FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_bp 12
 #define FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_bw 3
 #define FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_reset 0x3
+// Source ID field to match. Filter entry will match if the transactions src_id matches the value in this field.
+// A value of 0 in this field is a wildcard: src_id matching is bypassed and the entry matches any src_id.
+// Consequently there is no way to match only transactions whose src_id is 0.
 #define FILTER_CTRL__FILTER_CONFIG__SRC_ID_bm 0xf0000
 #define FILTER_CTRL__FILTER_CONFIG__SRC_ID_bp 16
 #define FILTER_CTRL__FILTER_CONFIG__SRC_ID_bw 4
 #define FILTER_CTRL__FILTER_CONFIG__SRC_ID_reset 0x0
+// Group ID field to match. Filter entry will match if the transactions group_id matches the value in this field.
+// Note the corner case is the opposite of src_id: the bypass keys off the transaction, not this field.
+// A transaction whose group_id is 0 matches regardless of this field, and a value of 0 here is not a wildcard.
+// Unused for SEP/SMC, where group_id filtering is disabled at build time and this field has no effect
 #define FILTER_CTRL__FILTER_CONFIG__GROUP_ID_bm 0xf00000
 #define FILTER_CTRL__FILTER_CONFIG__GROUP_ID_bp 20
 #define FILTER_CTRL__FILTER_CONFIG__GROUP_ID_bw 4
 #define FILTER_CTRL__FILTER_CONFIG__GROUP_ID_reset 0x0
+// Filter entry will match if this field is 1 or if this field is 0 and the burst len AxLEN is 0.
+// This field also selects the granule of the address range: 4KB when it is 1,
+// 2^data_bus_width bytes when it is 0. See start_addr and end_addr for how the range is widened
+// to that granule.
 #define FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bm 0x1000000
 #define FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bp 24
 #define FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bw 1
 #define FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_reset 0x0
+// Lock filter configurations. Write once register.
+// Once set, this bit cannot be cleared, and every subsequent write to this
+// filter entry's FILTER_CONFIG, START_ADDR and END_ADDR registers is steered
+// to the AXI error subordinate and terminates with a DECERR response; reads
+// still return the locked configuration.
 #define FILTER_CTRL__FILTER_CONFIG__LOCKED_bm 0x8000000000000000
 #define FILTER_CTRL__FILTER_CONFIG__LOCKED_bp 63
 #define FILTER_CTRL__FILTER_CONFIG__LOCKED_bw 1
 #define FILTER_CTRL__FILTER_CONFIG__LOCKED_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Upon match of transaction to filter fields, whether the transaction has read permissions
         uint64_t read_allowed :1;
+        // Upon match of transaction to filter fields, whether the transaction has write permissions
         uint64_t write_allowed :1;
         uint64_t :2;
+        // Filter entry enabled. A = 0 means this entry is disabled, A = 1 means this entry is enabled and will be used to filter
         uint64_t entry_enabled :1;
         uint64_t :3;
+        // Secure and Non-secure is categorized as AxPROT[1] in the AXI protocol, where AxPROT[1] == 0 means secure and AxPROT[1] == 1 means Non-secure.
+        // Filter entry will match if AxPROT[1] matches the value in this field
         uint64_t allow_ns :1;
         uint64_t :3;
+        // Data bus width in bytes, encoded as 2^value
         uint64_t data_bus_width :3;
         uint64_t :1;
+        // Source ID field to match. Filter entry will match if the transactions src_id matches the value in this field.
+        // A value of 0 in this field is a wildcard: src_id matching is bypassed and the entry matches any src_id.
+        // Consequently there is no way to match only transactions whose src_id is 0.
         uint64_t src_id :4;
+        // Group ID field to match. Filter entry will match if the transactions group_id matches the value in this field.
+        // Note the corner case is the opposite of src_id: the bypass keys off the transaction, not this field.
+        // A transaction whose group_id is 0 matches regardless of this field, and a value of 0 here is not a wildcard.
+        // Unused for SEP/SMC, where group_id filtering is disabled at build time and this field has no effect
         uint64_t group_id :4;
+        // Filter entry will match if this field is 1 or if this field is 0 and the burst len AxLEN is 0.
+        // This field also selects the granule of the address range: 4KB when it is 1,
+        // 2^data_bus_width bytes when it is 0. See start_addr and end_addr for how the range is widened
+        // to that granule.
         uint64_t allow_burst :1;
         uint64_t :38;
+        // Lock filter configurations. Write once register.
+        // Once set, this bit cannot be cleared, and every subsequent write to this
+        // filter entry's FILTER_CONFIG, START_ADDR and END_ADDR registers is steered
+        // to the AXI error subordinate and terminates with a DECERR response; reads
+        // still return the locked configuration.
         uint64_t locked :1;
     } f;
     uint64_t w;
 } filter_ctrl__FILTER_CONFIG_t;
 
 // reg - filter_ctrl::START_ADDR
+// Start of the allowable address range, rounded down to the base of its granule.
+// The granule is 4KB when allow_burst is 1, and 2^data_bus_width bytes when allow_burst is 0.
+// Address matching ignores the address bits below the granule, so the accepted range always
+// spans whole granules and is never narrower than one: a range shorter than the granule,
+// start_addr == end_addr included, still admits the whole granule, and two granules if it
+// straddles a granule boundary.
+// Hardware writes the rounded start_addr and end_addr back into these fields only when both
+// land in the same granule; otherwise readback returns the programmed values even though
+// matching is still granule-aligned.
 #define FILTER_CTRL__START_ADDR__START_ADDR_bm 0xffffffffffffff
 #define FILTER_CTRL__START_ADDR__START_ADDR_bp 0
 #define FILTER_CTRL__START_ADDR__START_ADDR_bw 56
 #define FILTER_CTRL__START_ADDR__START_ADDR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Start of the allowable address range, rounded down to the base of its granule.
+        // The granule is 4KB when allow_burst is 1, and 2^data_bus_width bytes when allow_burst is 0.
+        // Address matching ignores the address bits below the granule, so the accepted range always
+        // spans whole granules and is never narrower than one: a range shorter than the granule,
+        // start_addr == end_addr included, still admits the whole granule, and two granules if it
+        // straddles a granule boundary.
+        // Hardware writes the rounded start_addr and end_addr back into these fields only when both
+        // land in the same granule; otherwise readback returns the programmed values even though
+        // matching is still granule-aligned.
         uint64_t start_addr :56;
         uint64_t :8;
     } f;
@@ -84,12 +146,18 @@ typedef union {
 } filter_ctrl__START_ADDR_t;
 
 // reg - filter_ctrl::END_ADDR
+// End of the allowable address range, rounded up to the top of its granule.
+// The granule and the write-back behaviour are described under start_addr.
+// Defaults to 7 on reset to match the 8B granule that applies while bursts are disabled.
 #define FILTER_CTRL__END_ADDR__END_ADDR_bm 0xffffffffffffff
 #define FILTER_CTRL__END_ADDR__END_ADDR_bp 0
 #define FILTER_CTRL__END_ADDR__END_ADDR_bw 56
 #define FILTER_CTRL__END_ADDR__END_ADDR_reset 0x7
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // End of the allowable address range, rounded up to the top of its granule.
+        // The granule and the write-back behaviour are described under start_addr.
+        // Defaults to 7 on reset to match the 8B granule that applies while bursts are disabled.
         uint64_t end_addr :56;
         uint64_t :8;
     } f;
@@ -97,6 +165,7 @@ typedef union {
 } filter_ctrl__END_ADDR_t;
 
 // addrmap - filter_ctrl
+// Per-filter access-control registers defining permitted address ranges and transaction attributes.
 typedef struct __attribute__ ((__packed__)) {
     filter_ctrl__FILTER_CONFIG_t FILTER_CONFIG;
     filter_ctrl__START_ADDR_t START_ADDR;

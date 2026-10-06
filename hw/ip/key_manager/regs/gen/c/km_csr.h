@@ -14,807 +14,1071 @@ extern "C" {
 #include <assert.h>
 
 // reg - km_csr::version_reg
+// Hardware version register (semantic versioning: major.minor.patch)
+// Patch version number
 #define KM_CSR__VERSION_REG__PATCH_bm 0xff
 #define KM_CSR__VERSION_REG__PATCH_bp 0
 #define KM_CSR__VERSION_REG__PATCH_bw 8
 #define KM_CSR__VERSION_REG__PATCH_reset 0x0
+// Minor version number
 #define KM_CSR__VERSION_REG__MINOR_bm 0xff00
 #define KM_CSR__VERSION_REG__MINOR_bp 8
 #define KM_CSR__VERSION_REG__MINOR_bw 8
 #define KM_CSR__VERSION_REG__MINOR_reset 0x0
+// Major version number
 #define KM_CSR__VERSION_REG__MAJOR_bm 0xff0000
 #define KM_CSR__VERSION_REG__MAJOR_bp 16
 #define KM_CSR__VERSION_REG__MAJOR_bw 8
 #define KM_CSR__VERSION_REG__MAJOR_reset 0x1
+// Reserved; must read as zero
 #define KM_CSR__VERSION_REG__RSVD_bm 0xff000000
 #define KM_CSR__VERSION_REG__RSVD_bp 24
 #define KM_CSR__VERSION_REG__RSVD_bw 8
 #define KM_CSR__VERSION_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Patch version number
         uint32_t patch :8;
+        // Minor version number
         uint32_t minor :8;
+        // Major version number
         uint32_t major :8;
+        // Reserved; must read as zero
         uint32_t rsvd :8;
     } f;
     uint32_t w;
 } km_csr__version_reg_t;
 
 // reg - km_csr::ctrl_reg
+// Control register (reserved for future use)
+// Reserved
 #define KM_CSR__CTRL_REG__RSVD_bm 0xffffffff
 #define KM_CSR__CTRL_REG__RSVD_bp 0
 #define KM_CSR__CTRL_REG__RSVD_bw 32
 #define KM_CSR__CTRL_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reserved
         uint32_t rsvd :32;
     } f;
     uint32_t w;
 } km_csr__ctrl_reg_t;
 
 // reg - km_csr::soft_rst_code_reg
+// Software reset code register. Write 0x53525354 ('SRST') to trigger soft reset. Any other value has no effect.
+// 32-bit reset code. Write 0x53525354 to trigger soft reset.
 #define KM_CSR__SOFT_RST_CODE_REG__CODE_bm 0xffffffff
 #define KM_CSR__SOFT_RST_CODE_REG__CODE_bp 0
 #define KM_CSR__SOFT_RST_CODE_REG__CODE_bw 32
 #define KM_CSR__SOFT_RST_CODE_REG__CODE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 32-bit reset code. Write 0x53525354 to trigger soft reset.
         uint32_t code :32;
     } f;
     uint32_t w;
 } km_csr__soft_rst_code_reg_t;
 
 // reg - km_csr::irq_status_reg
+// Interrupt status register. Sticky bits cleared by writing 1.
+// ROM parity error detected. Sticky, write 1 to clear.
 #define KM_CSR__IRQ_STATUS_REG__ROM_PARITY_ERR_bm 0x1
 #define KM_CSR__IRQ_STATUS_REG__ROM_PARITY_ERR_bp 0
 #define KM_CSR__IRQ_STATUS_REG__ROM_PARITY_ERR_bw 1
 #define KM_CSR__IRQ_STATUS_REG__ROM_PARITY_ERR_reset 0x0
+// SRAM parity error detected. Sticky, write 1 to clear.
 #define KM_CSR__IRQ_STATUS_REG__SRAM_PARITY_ERR_bm 0x2
 #define KM_CSR__IRQ_STATUS_REG__SRAM_PARITY_ERR_bp 1
 #define KM_CSR__IRQ_STATUS_REG__SRAM_PARITY_ERR_bw 1
 #define KM_CSR__IRQ_STATUS_REG__SRAM_PARITY_ERR_reset 0x0
+// ROM write attempt detected (ROM is read-only). Sticky, write 1 to clear.
 #define KM_CSR__IRQ_STATUS_REG__ROM_WRITE_ERR_bm 0x4
 #define KM_CSR__IRQ_STATUS_REG__ROM_WRITE_ERR_bp 2
 #define KM_CSR__IRQ_STATUS_REG__ROM_WRITE_ERR_bw 1
 #define KM_CSR__IRQ_STATUS_REG__ROM_WRITE_ERR_reset 0x0
+// SRAM write attempt to a write-locked region detected. Sticky, write 1 to clear.
 #define KM_CSR__IRQ_STATUS_REG__SRAM_WRITE_LOCK_ERR_bm 0x8
 #define KM_CSR__IRQ_STATUS_REG__SRAM_WRITE_LOCK_ERR_bp 3
 #define KM_CSR__IRQ_STATUS_REG__SRAM_WRITE_LOCK_ERR_bw 1
 #define KM_CSR__IRQ_STATUS_REG__SRAM_WRITE_LOCK_ERR_reset 0x0
+// AXI SLVERR (slave error) response detected on CPU bus transaction. Sticky, write 1 to clear.
 #define KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_bm 0x10
 #define KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_bp 4
 #define KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_bw 1
 #define KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_reset 0x0
+// AXI DECERR (decode error) response detected on CPU bus transaction. Sticky, write 1 to clear.
 #define KM_CSR__IRQ_STATUS_REG__AXI_DECERR_bm 0x20
 #define KM_CSR__IRQ_STATUS_REG__AXI_DECERR_bp 5
 #define KM_CSR__IRQ_STATUS_REG__AXI_DECERR_bw 1
 #define KM_CSR__IRQ_STATUS_REG__AXI_DECERR_reset 0x0
+// DRBG Sampler error (timeout or AXI-Stream error). Sticky, write 1 to clear.
 #define KM_CSR__IRQ_STATUS_REG__DRBG_ERR_bm 0x40
 #define KM_CSR__IRQ_STATUS_REG__DRBG_ERR_bp 6
 #define KM_CSR__IRQ_STATUS_REG__DRBG_ERR_bw 1
 #define KM_CSR__IRQ_STATUS_REG__DRBG_ERR_reset 0x0
+// Wipe state event (rising edge of wipe_state input). Sticky, write 1 to clear.
 #define KM_CSR__IRQ_STATUS_REG__WIPE_STATE_bm 0x80
 #define KM_CSR__IRQ_STATUS_REG__WIPE_STATE_bp 7
 #define KM_CSR__IRQ_STATUS_REG__WIPE_STATE_bw 1
 #define KM_CSR__IRQ_STATUS_REG__WIPE_STATE_reset 0x0
+// An OTP readout field value changed (decoded value differs from prior cycle). Sticky, write 1 to clear. Check OTP_CHANGE_STATUS for the specific field(s).
 #define KM_CSR__IRQ_STATUS_REG__OTP_CHANGE_bm 0x100
 #define KM_CSR__IRQ_STATUS_REG__OTP_CHANGE_bp 8
 #define KM_CSR__IRQ_STATUS_REG__OTP_CHANGE_bw 1
 #define KM_CSR__IRQ_STATUS_REG__OTP_CHANGE_reset 0x0
+// OTP dual-rail encoding integrity violation: value and complement are not complementary on at least one field. Sticky, write 1 to clear.
 #define KM_CSR__IRQ_STATUS_REG__OTP_SIGINT_bm 0x200
 #define KM_CSR__IRQ_STATUS_REG__OTP_SIGINT_bp 9
 #define KM_CSR__IRQ_STATUS_REG__OTP_SIGINT_bw 1
 #define KM_CSR__IRQ_STATUS_REG__OTP_SIGINT_reset 0x0
+// Instruction fetch from a non-whitelisted (non-executable) memory region detected, excluding the KM ROM. Sticky, write 1 to clear.
 #define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_bm 0x400
 #define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_bp 10
 #define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_bw 1
 #define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_reset 0x0
+// KM ROM instruction fetch or data read attempted after the ROM lockout engaged. The lockout engages on the first committed instruction fetch from write-locked SRAM once SRAM_EXEC_MODE.enable is set, and clears only on warm or cold reset. Sticky, write 1 to clear.
 #define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_bm 0x800
 #define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_bp 11
 #define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_bw 1
 #define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_reset 0x0
+// Reserved
 #define KM_CSR__IRQ_STATUS_REG__RSVD_bm 0xfffff000
 #define KM_CSR__IRQ_STATUS_REG__RSVD_bp 12
 #define KM_CSR__IRQ_STATUS_REG__RSVD_bw 20
 #define KM_CSR__IRQ_STATUS_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // ROM parity error detected. Sticky, write 1 to clear.
         uint32_t rom_parity_err :1;
+        // SRAM parity error detected. Sticky, write 1 to clear.
         uint32_t sram_parity_err :1;
+        // ROM write attempt detected (ROM is read-only). Sticky, write 1 to clear.
         uint32_t rom_write_err :1;
+        // SRAM write attempt to a write-locked region detected. Sticky, write 1 to clear.
         uint32_t sram_write_lock_err :1;
+        // AXI SLVERR (slave error) response detected on CPU bus transaction. Sticky, write 1 to clear.
         uint32_t axi_slverr :1;
+        // AXI DECERR (decode error) response detected on CPU bus transaction. Sticky, write 1 to clear.
         uint32_t axi_decerr :1;
+        // DRBG Sampler error (timeout or AXI-Stream error). Sticky, write 1 to clear.
         uint32_t drbg_err :1;
+        // Wipe state event (rising edge of wipe_state input). Sticky, write 1 to clear.
         uint32_t wipe_state :1;
+        // An OTP readout field value changed (decoded value differs from prior cycle). Sticky, write 1 to clear. Check OTP_CHANGE_STATUS for the specific field(s).
         uint32_t otp_change :1;
+        // OTP dual-rail encoding integrity violation: value and complement are not complementary on at least one field. Sticky, write 1 to clear.
         uint32_t otp_sigint :1;
+        // Instruction fetch from a non-whitelisted (non-executable) memory region detected, excluding the KM ROM. Sticky, write 1 to clear.
         uint32_t exec_violation :1;
+        // KM ROM instruction fetch or data read attempted after the ROM lockout engaged. The lockout engages on the first committed instruction fetch from write-locked SRAM once SRAM_EXEC_MODE.enable is set, and clears only on warm or cold reset. Sticky, write 1 to clear.
         uint32_t rom_access_violation :1;
+        // Reserved
         uint32_t rsvd :20;
     } f;
     uint32_t w;
 } km_csr__irq_status_reg_t;
 
 // reg - km_csr::irq_enable_reg
+// Interrupt enable/mask register
+// Enable ROM parity error interrupt
 #define KM_CSR__IRQ_ENABLE_REG__ROM_PARITY_EN_bm 0x1
 #define KM_CSR__IRQ_ENABLE_REG__ROM_PARITY_EN_bp 0
 #define KM_CSR__IRQ_ENABLE_REG__ROM_PARITY_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__ROM_PARITY_EN_reset 0x0
+// Enable SRAM parity error interrupt
 #define KM_CSR__IRQ_ENABLE_REG__SRAM_PARITY_EN_bm 0x2
 #define KM_CSR__IRQ_ENABLE_REG__SRAM_PARITY_EN_bp 1
 #define KM_CSR__IRQ_ENABLE_REG__SRAM_PARITY_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__SRAM_PARITY_EN_reset 0x0
+// Enable ROM write error interrupt
 #define KM_CSR__IRQ_ENABLE_REG__ROM_WRITE_EN_bm 0x4
 #define KM_CSR__IRQ_ENABLE_REG__ROM_WRITE_EN_bp 2
 #define KM_CSR__IRQ_ENABLE_REG__ROM_WRITE_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__ROM_WRITE_EN_reset 0x0
+// Enable SRAM write-lock violation interrupt
 #define KM_CSR__IRQ_ENABLE_REG__SRAM_WRITE_LOCK_EN_bm 0x8
 #define KM_CSR__IRQ_ENABLE_REG__SRAM_WRITE_LOCK_EN_bp 3
 #define KM_CSR__IRQ_ENABLE_REG__SRAM_WRITE_LOCK_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__SRAM_WRITE_LOCK_EN_reset 0x0
+// Enable AXI SLVERR error interrupt
 #define KM_CSR__IRQ_ENABLE_REG__AXI_SLVERR_EN_bm 0x10
 #define KM_CSR__IRQ_ENABLE_REG__AXI_SLVERR_EN_bp 4
 #define KM_CSR__IRQ_ENABLE_REG__AXI_SLVERR_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__AXI_SLVERR_EN_reset 0x0
+// Enable AXI DECERR error interrupt
 #define KM_CSR__IRQ_ENABLE_REG__AXI_DECERR_EN_bm 0x20
 #define KM_CSR__IRQ_ENABLE_REG__AXI_DECERR_EN_bp 5
 #define KM_CSR__IRQ_ENABLE_REG__AXI_DECERR_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__AXI_DECERR_EN_reset 0x0
+// Enable DRBG Sampler error interrupt
 #define KM_CSR__IRQ_ENABLE_REG__DRBG_ERR_EN_bm 0x40
 #define KM_CSR__IRQ_ENABLE_REG__DRBG_ERR_EN_bp 6
 #define KM_CSR__IRQ_ENABLE_REG__DRBG_ERR_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__DRBG_ERR_EN_reset 0x0
+// Enable wipe state interrupt
 #define KM_CSR__IRQ_ENABLE_REG__WIPE_STATE_EN_bm 0x80
 #define KM_CSR__IRQ_ENABLE_REG__WIPE_STATE_EN_bp 7
 #define KM_CSR__IRQ_ENABLE_REG__WIPE_STATE_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__WIPE_STATE_EN_reset 0x0
+// Enable OTP field change interrupt
 #define KM_CSR__IRQ_ENABLE_REG__OTP_CHANGE_EN_bm 0x100
 #define KM_CSR__IRQ_ENABLE_REG__OTP_CHANGE_EN_bp 8
 #define KM_CSR__IRQ_ENABLE_REG__OTP_CHANGE_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__OTP_CHANGE_EN_reset 0x0
+// Enable OTP dual-rail integrity violation interrupt
 #define KM_CSR__IRQ_ENABLE_REG__OTP_SIGINT_EN_bm 0x200
 #define KM_CSR__IRQ_ENABLE_REG__OTP_SIGINT_EN_bp 9
 #define KM_CSR__IRQ_ENABLE_REG__OTP_SIGINT_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__OTP_SIGINT_EN_reset 0x0
+// Enable execute-permission whitelist violation interrupt
 #define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_bm 0x400
 #define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_bp 10
 #define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_reset 0x0
+// Enable ROM lockout violation interrupt
 #define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_bm 0x800
 #define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_bp 11
 #define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_reset 0x0
+// Reserved
 #define KM_CSR__IRQ_ENABLE_REG__RSVD_bm 0xfffff000
 #define KM_CSR__IRQ_ENABLE_REG__RSVD_bp 12
 #define KM_CSR__IRQ_ENABLE_REG__RSVD_bw 20
 #define KM_CSR__IRQ_ENABLE_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enable ROM parity error interrupt
         uint32_t rom_parity_en :1;
+        // Enable SRAM parity error interrupt
         uint32_t sram_parity_en :1;
+        // Enable ROM write error interrupt
         uint32_t rom_write_en :1;
+        // Enable SRAM write-lock violation interrupt
         uint32_t sram_write_lock_en :1;
+        // Enable AXI SLVERR error interrupt
         uint32_t axi_slverr_en :1;
+        // Enable AXI DECERR error interrupt
         uint32_t axi_decerr_en :1;
+        // Enable DRBG Sampler error interrupt
         uint32_t drbg_err_en :1;
+        // Enable wipe state interrupt
         uint32_t wipe_state_en :1;
+        // Enable OTP field change interrupt
         uint32_t otp_change_en :1;
+        // Enable OTP dual-rail integrity violation interrupt
         uint32_t otp_sigint_en :1;
+        // Enable execute-permission whitelist violation interrupt
         uint32_t exec_violation_en :1;
+        // Enable ROM lockout violation interrupt
         uint32_t rom_access_violation_en :1;
+        // Reserved
         uint32_t rsvd :20;
     } f;
     uint32_t w;
 } km_csr__irq_enable_reg_t;
 
 // reg - km_csr::scrambler_key_reg
+// 32-bit scrambler key for SRAM address/data scrambling. When locked: writes ignored, reads return 0. No reset; powers up random.
+// Scrambler key value. Not readable when SCRAMBLER_CTRL.LOCK=1 (returns 0). No reset for security; power-up value undefined.
 #define KM_CSR__SCRAMBLER_KEY_REG__KEY_bm 0xffffffff
 #define KM_CSR__SCRAMBLER_KEY_REG__KEY_bp 0
 #define KM_CSR__SCRAMBLER_KEY_REG__KEY_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Scrambler key value. Not readable when SCRAMBLER_CTRL.LOCK=1 (returns 0). No reset for security; power-up value undefined.
         uint32_t key :32;
     } f;
     uint32_t w;
 } km_csr__scrambler_key_reg_t;
 
 // reg - km_csr::scrambler_ctrl_reg
+// Scrambler control register
+// Enable SRAM scrambling. When 0, data passes through unmodified. Locked when LOCK=1 (security requirement).
 #define KM_CSR__SCRAMBLER_CTRL_REG__ENABLE_bm 0x1
 #define KM_CSR__SCRAMBLER_CTRL_REG__ENABLE_bp 0
 #define KM_CSR__SCRAMBLER_CTRL_REG__ENABLE_bw 1
 #define KM_CSR__SCRAMBLER_CTRL_REG__ENABLE_reset 0x0
+// Lock scrambler key and enable bit. Once set, key and enable cannot be modified until reset. Write-once (0->1 only). Security requirement: prevents disabling scrambling after key provisioning.
 #define KM_CSR__SCRAMBLER_CTRL_REG__LOCK_bm 0x2
 #define KM_CSR__SCRAMBLER_CTRL_REG__LOCK_bp 1
 #define KM_CSR__SCRAMBLER_CTRL_REG__LOCK_bw 1
 #define KM_CSR__SCRAMBLER_CTRL_REG__LOCK_reset 0x0
+// Reserved
 #define KM_CSR__SCRAMBLER_CTRL_REG__RSVD_bm 0xfffffffc
 #define KM_CSR__SCRAMBLER_CTRL_REG__RSVD_bp 2
 #define KM_CSR__SCRAMBLER_CTRL_REG__RSVD_bw 30
 #define KM_CSR__SCRAMBLER_CTRL_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enable SRAM scrambling. When 0, data passes through unmodified. Locked when LOCK=1 (security requirement).
         uint32_t enable :1;
+        // Lock scrambler key and enable bit. Once set, key and enable cannot be modified until reset. Write-once (0->1 only). Security requirement: prevents disabling scrambling after key provisioning.
         uint32_t lock :1;
+        // Reserved
         uint32_t rsvd :30;
     } f;
     uint32_t w;
 } km_csr__scrambler_ctrl_reg_t;
 
 // reg - km_csr::sram_lock_reg
+// SRAM write-lock bits. Bit[i]=1 locks region i (1 KB each, 32 regions). Write-1-only: writing 1 sets the bit, writing 0 has no effect. Cleared by warm or cold reset (warm reset domain); ROM re-applies the lock policy on every boot before handover to mutable firmware.
+// One bit per 1 KB SRAM region. Region 0 = 0x8000-0x83FF, region 31 = 0xFC00-0xFFFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.
 #define KM_CSR__SRAM_LOCK_REG__LOCK_BITS_bm 0xffffffff
 #define KM_CSR__SRAM_LOCK_REG__LOCK_BITS_bp 0
 #define KM_CSR__SRAM_LOCK_REG__LOCK_BITS_bw 32
 #define KM_CSR__SRAM_LOCK_REG__LOCK_BITS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // One bit per 1 KB SRAM region. Region 0 = 0x8000-0x83FF, region 31 = 0xFC00-0xFFFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.
         uint32_t lock_bits :32;
     } f;
     uint32_t w;
 } km_csr__sram_lock_reg_t;
 
 // reg - km_csr::irq_set_reg
+// Interrupt set register. Write 1 to trigger corresponding interrupt (for ISR testing). Write-only, reads return 0.
+// Write 1 to set IRQ_STATUS.ROM_PARITY_ERR (triggers ROM parity interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__ROM_PARITY_ERR_SET_bm 0x1
 #define KM_CSR__IRQ_SET_REG__ROM_PARITY_ERR_SET_bp 0
 #define KM_CSR__IRQ_SET_REG__ROM_PARITY_ERR_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__ROM_PARITY_ERR_SET_reset 0x0
+// Write 1 to set IRQ_STATUS.SRAM_PARITY_ERR (triggers SRAM parity interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__SRAM_PARITY_ERR_SET_bm 0x2
 #define KM_CSR__IRQ_SET_REG__SRAM_PARITY_ERR_SET_bp 1
 #define KM_CSR__IRQ_SET_REG__SRAM_PARITY_ERR_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__SRAM_PARITY_ERR_SET_reset 0x0
+// Write 1 to set IRQ_STATUS.ROM_WRITE_ERR (triggers ROM write interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__ROM_WRITE_ERR_SET_bm 0x4
 #define KM_CSR__IRQ_SET_REG__ROM_WRITE_ERR_SET_bp 2
 #define KM_CSR__IRQ_SET_REG__ROM_WRITE_ERR_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__ROM_WRITE_ERR_SET_reset 0x0
+// Write 1 to set IRQ_STATUS.SRAM_WRITE_LOCK_ERR (triggers SRAM write-lock interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__SRAM_WRITE_LOCK_ERR_SET_bm 0x8
 #define KM_CSR__IRQ_SET_REG__SRAM_WRITE_LOCK_ERR_SET_bp 3
 #define KM_CSR__IRQ_SET_REG__SRAM_WRITE_LOCK_ERR_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__SRAM_WRITE_LOCK_ERR_SET_reset 0x0
+// Write 1 to set IRQ_STATUS.AXI_SLVERR (triggers AXI SLVERR interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__AXI_SLVERR_SET_bm 0x10
 #define KM_CSR__IRQ_SET_REG__AXI_SLVERR_SET_bp 4
 #define KM_CSR__IRQ_SET_REG__AXI_SLVERR_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__AXI_SLVERR_SET_reset 0x0
+// Write 1 to set IRQ_STATUS.AXI_DECERR (triggers AXI DECERR interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__AXI_DECERR_SET_bm 0x20
 #define KM_CSR__IRQ_SET_REG__AXI_DECERR_SET_bp 5
 #define KM_CSR__IRQ_SET_REG__AXI_DECERR_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__AXI_DECERR_SET_reset 0x0
+// Write 1 to set IRQ_STATUS.DRBG_ERR (triggers DRBG Sampler interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__DRBG_ERR_SET_bm 0x40
 #define KM_CSR__IRQ_SET_REG__DRBG_ERR_SET_bp 6
 #define KM_CSR__IRQ_SET_REG__DRBG_ERR_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__DRBG_ERR_SET_reset 0x0
+// Write 1 to set IRQ_STATUS.WIPE_STATE (triggers wipe state interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__WIPE_STATE_SET_bm 0x80
 #define KM_CSR__IRQ_SET_REG__WIPE_STATE_SET_bp 7
 #define KM_CSR__IRQ_SET_REG__WIPE_STATE_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__WIPE_STATE_SET_reset 0x0
+// Write 1 to set IRQ_STATUS.OTP_CHANGE (triggers OTP change interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__OTP_CHANGE_SET_bm 0x100
 #define KM_CSR__IRQ_SET_REG__OTP_CHANGE_SET_bp 8
 #define KM_CSR__IRQ_SET_REG__OTP_CHANGE_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__OTP_CHANGE_SET_reset 0x0
+// Write 1 to set IRQ_STATUS.OTP_SIGINT (triggers OTP sigint interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__OTP_SIGINT_SET_bm 0x200
 #define KM_CSR__IRQ_SET_REG__OTP_SIGINT_SET_bp 9
 #define KM_CSR__IRQ_SET_REG__OTP_SIGINT_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__OTP_SIGINT_SET_reset 0x0
+// Write 1 to set IRQ_STATUS.EXEC_VIOLATION (triggers exec-permission violation interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_bm 0x400
 #define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_bp 10
 #define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_reset 0x0
+// Write 1 to set IRQ_STATUS.ROM_ACCESS_VIOLATION (triggers ROM lockout violation interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_bm 0x800
 #define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_bp 11
 #define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_reset 0x0
+// Reserved (write-only; reads trigger SLVERR via err_if_bad_rw)
 #define KM_CSR__IRQ_SET_REG__RSVD_bm 0xfffff000
 #define KM_CSR__IRQ_SET_REG__RSVD_bp 12
 #define KM_CSR__IRQ_SET_REG__RSVD_bw 20
 #define KM_CSR__IRQ_SET_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write 1 to set IRQ_STATUS.ROM_PARITY_ERR (triggers ROM parity interrupt for testing)
         uint32_t rom_parity_err_set :1;
+        // Write 1 to set IRQ_STATUS.SRAM_PARITY_ERR (triggers SRAM parity interrupt for testing)
         uint32_t sram_parity_err_set :1;
+        // Write 1 to set IRQ_STATUS.ROM_WRITE_ERR (triggers ROM write interrupt for testing)
         uint32_t rom_write_err_set :1;
+        // Write 1 to set IRQ_STATUS.SRAM_WRITE_LOCK_ERR (triggers SRAM write-lock interrupt for testing)
         uint32_t sram_write_lock_err_set :1;
+        // Write 1 to set IRQ_STATUS.AXI_SLVERR (triggers AXI SLVERR interrupt for testing)
         uint32_t axi_slverr_set :1;
+        // Write 1 to set IRQ_STATUS.AXI_DECERR (triggers AXI DECERR interrupt for testing)
         uint32_t axi_decerr_set :1;
+        // Write 1 to set IRQ_STATUS.DRBG_ERR (triggers DRBG Sampler interrupt for testing)
         uint32_t drbg_err_set :1;
+        // Write 1 to set IRQ_STATUS.WIPE_STATE (triggers wipe state interrupt for testing)
         uint32_t wipe_state_set :1;
+        // Write 1 to set IRQ_STATUS.OTP_CHANGE (triggers OTP change interrupt for testing)
         uint32_t otp_change_set :1;
+        // Write 1 to set IRQ_STATUS.OTP_SIGINT (triggers OTP sigint interrupt for testing)
         uint32_t otp_sigint_set :1;
+        // Write 1 to set IRQ_STATUS.EXEC_VIOLATION (triggers exec-permission violation interrupt for testing)
         uint32_t exec_violation_set :1;
+        // Write 1 to set IRQ_STATUS.ROM_ACCESS_VIOLATION (triggers ROM lockout violation interrupt for testing)
         uint32_t rom_access_violation_set :1;
+        // Reserved (write-only; reads trigger SLVERR via err_if_bad_rw)
         uint32_t rsvd :20;
     } f;
     uint32_t w;
 } km_csr__irq_set_reg_t;
 
 // reg - km_csr::sram_write_lock_violation_reg
+// Which SRAM region(s) had write attempts while locked. Bit[i]=region i. Sticky, write 1 to clear each bit.
+// Bit[i]=1 if region i had attempted write while locked. Sticky, write 1 to clear each bit.
 #define KM_CSR__SRAM_WRITE_LOCK_VIOLATION_REG__VIOLATION_BITS_bm 0xffffffff
 #define KM_CSR__SRAM_WRITE_LOCK_VIOLATION_REG__VIOLATION_BITS_bp 0
 #define KM_CSR__SRAM_WRITE_LOCK_VIOLATION_REG__VIOLATION_BITS_bw 32
 #define KM_CSR__SRAM_WRITE_LOCK_VIOLATION_REG__VIOLATION_BITS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Bit[i]=1 if region i had attempted write while locked. Sticky, write 1 to clear each bit.
         uint32_t violation_bits :32;
     } f;
     uint32_t w;
 } km_csr__sram_write_lock_violation_reg_t;
 
 // reg - km_csr::recoverable_err_reg
+// Recoverable error status. Firmware writes 1 to set (after recovering in ISR), writes 0 to clear (e.g. when SEP requests clear). Drives recoverable error event output.
+// 1 = recoverable fault occurred and was handled by ISR; 0 = clear. Write 1 to set, write 0 to clear.
 #define KM_CSR__RECOVERABLE_ERR_REG__RECOVERABLE_ERR_bm 0x1
 #define KM_CSR__RECOVERABLE_ERR_REG__RECOVERABLE_ERR_bp 0
 #define KM_CSR__RECOVERABLE_ERR_REG__RECOVERABLE_ERR_bw 1
 #define KM_CSR__RECOVERABLE_ERR_REG__RECOVERABLE_ERR_reset 0x0
+// Reserved
 #define KM_CSR__RECOVERABLE_ERR_REG__RSVD_bm 0xfffffffe
 #define KM_CSR__RECOVERABLE_ERR_REG__RSVD_bp 1
 #define KM_CSR__RECOVERABLE_ERR_REG__RSVD_bw 31
 #define KM_CSR__RECOVERABLE_ERR_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 1 = recoverable fault occurred and was handled by ISR; 0 = clear. Write 1 to set, write 0 to clear.
         uint32_t recoverable_err :1;
+        // Reserved
         uint32_t rsvd :31;
     } f;
     uint32_t w;
 } km_csr__recoverable_err_reg_t;
 
 // reg - km_csr::boot_status_reg
+// Boot status. Firmware writes 1 to COLD_BOOT_DONE after cold-boot init completes; bit remains set until next cold reset.
+// Write-1-only: set by ROM firmware at end of cold boot. Reads 0 after cold reset; reads 1 after firmware sets it. Sticky until next cold reset (preserved across warm resets).
 #define KM_CSR__BOOT_STATUS_REG__COLD_BOOT_DONE_bm 0x1
 #define KM_CSR__BOOT_STATUS_REG__COLD_BOOT_DONE_bp 0
 #define KM_CSR__BOOT_STATUS_REG__COLD_BOOT_DONE_bw 1
 #define KM_CSR__BOOT_STATUS_REG__COLD_BOOT_DONE_reset 0x0
+// Reserved
 #define KM_CSR__BOOT_STATUS_REG__RSVD_bm 0xfffffffe
 #define KM_CSR__BOOT_STATUS_REG__RSVD_bp 1
 #define KM_CSR__BOOT_STATUS_REG__RSVD_bw 31
 #define KM_CSR__BOOT_STATUS_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write-1-only: set by ROM firmware at end of cold boot. Reads 0 after cold reset; reads 1 after firmware sets it. Sticky until next cold reset (preserved across warm resets).
         uint32_t cold_boot_done :1;
+        // Reserved
         uint32_t rsvd :31;
     } f;
     uint32_t w;
 } km_csr__boot_status_reg_t;
 
 // reg - km_csr::otp_life_cycle_reg
+// Life cycle state. 8-bit (4-bit value differentially encoded). Read-through from OTP port; no reset.
+// 8-bit life cycle state from OTP. No reset; power-up value undefined.
 #define KM_CSR__OTP_LIFE_CYCLE_REG__VALUE_bm 0xff
 #define KM_CSR__OTP_LIFE_CYCLE_REG__VALUE_bp 0
 #define KM_CSR__OTP_LIFE_CYCLE_REG__VALUE_bw 8
+// Reserved
 #define KM_CSR__OTP_LIFE_CYCLE_REG__RSVD_bm 0xffffff00
 #define KM_CSR__OTP_LIFE_CYCLE_REG__RSVD_bp 8
 #define KM_CSR__OTP_LIFE_CYCLE_REG__RSVD_bw 24
 #define KM_CSR__OTP_LIFE_CYCLE_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 8-bit life cycle state from OTP. No reset; power-up value undefined.
         uint32_t value :8;
+        // Reserved
         uint32_t rsvd :24;
     } f;
     uint32_t w;
 } km_csr__otp_life_cycle_reg_t;
 
 // reg - km_csr::otp_demotion_state_reg
+// Demotion state. 2-bit, differentially encoded. Read-through from OTP port; no reset.
+// 2-bit demotion 1 state from OTP. No reset; power-up value undefined.
 #define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_1_VALUE_bm 0x3
 #define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_1_VALUE_bp 0
 #define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_1_VALUE_bw 2
+// 2-bit demotion 2 state from OTP. No reset; power-up value undefined.
 #define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_2_VALUE_bm 0xc
 #define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_2_VALUE_bp 2
 #define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_2_VALUE_bw 2
+// Reserved
 #define KM_CSR__OTP_DEMOTION_STATE_REG__RSVD_bm 0xfffffff0
 #define KM_CSR__OTP_DEMOTION_STATE_REG__RSVD_bp 4
 #define KM_CSR__OTP_DEMOTION_STATE_REG__RSVD_bw 28
 #define KM_CSR__OTP_DEMOTION_STATE_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 2-bit demotion 1 state from OTP. No reset; power-up value undefined.
         uint32_t demote_1_value :2;
+        // 2-bit demotion 2 state from OTP. No reset; power-up value undefined.
         uint32_t demote_2_value :2;
+        // Reserved
         uint32_t rsvd :28;
     } f;
     uint32_t w;
 } km_csr__otp_demotion_state_reg_t;
 
 // reg - km_csr::sram_exec_mode_reg
+// Execute-permission whitelist mode. Write-1-only (woset); cleared by warm or cold reset. 0=ROM executable; 1=write-locked SRAM regions executable, and the ROM lockout is armed. Set by ROM stack-less handover immediately before jumping to mutable firmware.
+// Execute-permission mode: 0=ROM-only whitelist; 1=write-locked SRAM whitelist, arming the ROM lockout. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.
 #define KM_CSR__SRAM_EXEC_MODE_REG__ENABLE_bm 0x1
 #define KM_CSR__SRAM_EXEC_MODE_REG__ENABLE_bp 0
 #define KM_CSR__SRAM_EXEC_MODE_REG__ENABLE_bw 1
 #define KM_CSR__SRAM_EXEC_MODE_REG__ENABLE_reset 0x0
+// Reserved
 #define KM_CSR__SRAM_EXEC_MODE_REG__RSVD_bm 0xfffffffe
 #define KM_CSR__SRAM_EXEC_MODE_REG__RSVD_bp 1
 #define KM_CSR__SRAM_EXEC_MODE_REG__RSVD_bw 31
 #define KM_CSR__SRAM_EXEC_MODE_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Execute-permission mode: 0=ROM-only whitelist; 1=write-locked SRAM whitelist, arming the ROM lockout. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.
         uint32_t enable :1;
+        // Reserved
         uint32_t rsvd :31;
     } f;
     uint32_t w;
 } km_csr__sram_exec_mode_reg_t;
 
 // reg - km_csr::irq_entry_addr_reg
+// Effective IRQ entry address for subsequent interrupts. Writable while unlocked; any 32-bit value accepted.
+// IRQ handler entry PC. Reset matches ROM vector at 0x10. When locked, SW writes do not update storage.
 #define KM_CSR__IRQ_ENTRY_ADDR_REG__ADDR_bm 0xffffffff
 #define KM_CSR__IRQ_ENTRY_ADDR_REG__ADDR_bp 0
 #define KM_CSR__IRQ_ENTRY_ADDR_REG__ADDR_bw 32
 #define KM_CSR__IRQ_ENTRY_ADDR_REG__ADDR_reset 0x10
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // IRQ handler entry PC. Reset matches ROM vector at 0x10. When locked, SW writes do not update storage.
         uint32_t addr :32;
     } f;
     uint32_t w;
 } km_csr__irq_entry_addr_reg_t;
 
 // reg - km_csr::irq_entry_lock_reg
+// Write-one-only lock for IRQ_ENTRY_ADDR. Separate readable register; cleared only on KM reset.
+// Write 1 to set; write 0 has no effect; sticky until reset.
 #define KM_CSR__IRQ_ENTRY_LOCK_REG__LOCK_bm 0x1
 #define KM_CSR__IRQ_ENTRY_LOCK_REG__LOCK_bp 0
 #define KM_CSR__IRQ_ENTRY_LOCK_REG__LOCK_bw 1
 #define KM_CSR__IRQ_ENTRY_LOCK_REG__LOCK_reset 0x0
+// Reserved; reads as zero.
 #define KM_CSR__IRQ_ENTRY_LOCK_REG__RSVD_bm 0xfffffffe
 #define KM_CSR__IRQ_ENTRY_LOCK_REG__RSVD_bp 1
 #define KM_CSR__IRQ_ENTRY_LOCK_REG__RSVD_bw 31
 #define KM_CSR__IRQ_ENTRY_LOCK_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write 1 to set; write 0 has no effect; sticky until reset.
         uint32_t lock :1;
+        // Reserved; reads as zero.
         uint32_t rsvd :31;
     } f;
     uint32_t w;
 } km_csr__irq_entry_lock_reg_t;
 
 // reg - km_csr::vuart_tx_reg
+// Virtual UART transmit register. Write a byte to send to testbench. DATA_VALID is set on write and self-clears.
+// Byte to transmit (write to send character to testbench)
 #define KM_CSR__VUART_TX_REG__TX_BYTE_bm 0xff
 #define KM_CSR__VUART_TX_REG__TX_BYTE_bp 0
 #define KM_CSR__VUART_TX_REG__TX_BYTE_bw 8
 #define KM_CSR__VUART_TX_REG__TX_BYTE_reset 0x0
+// Reserved
 #define KM_CSR__VUART_TX_REG__RSVD0_bm 0x7fffff00
 #define KM_CSR__VUART_TX_REG__RSVD0_bp 8
 #define KM_CSR__VUART_TX_REG__RSVD0_bw 23
 #define KM_CSR__VUART_TX_REG__RSVD0_reset 0x0
+// Data valid strobe. Set by firmware on write, cleared by hardware after one cycle.
 #define KM_CSR__VUART_TX_REG__DATA_VALID_bm 0x80000000
 #define KM_CSR__VUART_TX_REG__DATA_VALID_bp 31
 #define KM_CSR__VUART_TX_REG__DATA_VALID_bw 1
 #define KM_CSR__VUART_TX_REG__DATA_VALID_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Byte to transmit (write to send character to testbench)
         uint32_t tx_byte :8;
+        // Reserved
         uint32_t rsvd0 :23;
+        // Data valid strobe. Set by firmware on write, cleared by hardware after one cycle.
         uint32_t data_valid :1;
     } f;
     uint32_t w;
 } km_csr__vuart_tx_reg_t;
 
 // reg - km_csr::vuart_rx_reg
+// Virtual UART receive register. Testbench writes bytes here for firmware to read.
+// Received byte from testbench
 #define KM_CSR__VUART_RX_REG__RX_BYTE_bm 0xff
 #define KM_CSR__VUART_RX_REG__RX_BYTE_bp 0
 #define KM_CSR__VUART_RX_REG__RX_BYTE_bw 8
 #define KM_CSR__VUART_RX_REG__RX_BYTE_reset 0x0
+// Reserved
 #define KM_CSR__VUART_RX_REG__RSVD0_bm 0x7fffff00
 #define KM_CSR__VUART_RX_REG__RSVD0_bp 8
 #define KM_CSR__VUART_RX_REG__RSVD0_bw 23
 #define KM_CSR__VUART_RX_REG__RSVD0_reset 0x0
+// RX data valid. Set by testbench, cleared by firmware read.
 #define KM_CSR__VUART_RX_REG__DATA_VALID_bm 0x80000000
 #define KM_CSR__VUART_RX_REG__DATA_VALID_bp 31
 #define KM_CSR__VUART_RX_REG__DATA_VALID_bw 1
 #define KM_CSR__VUART_RX_REG__DATA_VALID_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Received byte from testbench
         uint32_t rx_byte :8;
+        // Reserved
         uint32_t rsvd0 :23;
+        // RX data valid. Set by testbench, cleared by firmware read.
         uint32_t data_valid :1;
     } f;
     uint32_t w;
 } km_csr__vuart_rx_reg_t;
 
 // reg - km_csr::vuart_status_reg
+// Virtual UART status register for flow control
+// TX ready to accept data (always 1 in simulation)
 #define KM_CSR__VUART_STATUS_REG__TX_READY_bm 0x1
 #define KM_CSR__VUART_STATUS_REG__TX_READY_bp 0
 #define KM_CSR__VUART_STATUS_REG__TX_READY_bw 1
 #define KM_CSR__VUART_STATUS_REG__TX_READY_reset 0x1
+// RX has valid data available
 #define KM_CSR__VUART_STATUS_REG__RX_VALID_bm 0x2
 #define KM_CSR__VUART_STATUS_REG__RX_VALID_bp 1
 #define KM_CSR__VUART_STATUS_REG__RX_VALID_bw 1
 #define KM_CSR__VUART_STATUS_REG__RX_VALID_reset 0x0
+// Enable VUART printing. Set by testbench to enable printf output. Disabled by default to save simulation time.
 #define KM_CSR__VUART_STATUS_REG__PRINT_ENABLE_bm 0x4
 #define KM_CSR__VUART_STATUS_REG__PRINT_ENABLE_bp 2
 #define KM_CSR__VUART_STATUS_REG__PRINT_ENABLE_bw 1
 #define KM_CSR__VUART_STATUS_REG__PRINT_ENABLE_reset 0x0
+// Reserved
 #define KM_CSR__VUART_STATUS_REG__RSVD_bm 0xfffffff8
 #define KM_CSR__VUART_STATUS_REG__RSVD_bp 3
 #define KM_CSR__VUART_STATUS_REG__RSVD_bw 29
 #define KM_CSR__VUART_STATUS_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // TX ready to accept data (always 1 in simulation)
         uint32_t tx_ready :1;
+        // RX has valid data available
         uint32_t rx_valid :1;
+        // Enable VUART printing. Set by testbench to enable printf output. Disabled by default to save simulation time.
         uint32_t print_enable :1;
+        // Reserved
         uint32_t rsvd :29;
     } f;
     uint32_t w;
 } km_csr__vuart_status_reg_t;
 
 // reg - km_csr::tb_result_reg
+// Test result register. Firmware writes 0=fail, 1=pass.
+// Test result: 0=fail, 1=pass
 #define KM_CSR__TB_RESULT_REG__RESULT_bm 0xffffffff
 #define KM_CSR__TB_RESULT_REG__RESULT_bp 0
 #define KM_CSR__TB_RESULT_REG__RESULT_bw 32
 #define KM_CSR__TB_RESULT_REG__RESULT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Test result: 0=fail, 1=pass
         uint32_t result :32;
     } f;
     uint32_t w;
 } km_csr__tb_result_reg_t;
 
 // reg - km_csr::tb_signature_reg
+// Test completion signature. Firmware writes 0x600D600D (pass) or 0xBADBADBA (fail).
+// Completion signature value
 #define KM_CSR__TB_SIGNATURE_REG__SIGNATURE_bm 0xffffffff
 #define KM_CSR__TB_SIGNATURE_REG__SIGNATURE_bp 0
 #define KM_CSR__TB_SIGNATURE_REG__SIGNATURE_bw 32
 #define KM_CSR__TB_SIGNATURE_REG__SIGNATURE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Completion signature value
         uint32_t signature :32;
     } f;
     uint32_t w;
 } km_csr__tb_signature_reg_t;
 
 // reg - km_csr::tb_errcode_reg
+// Test error code register. Firmware writes optional error code for debugging.
+// Error code value
 #define KM_CSR__TB_ERRCODE_REG__ERRCODE_bm 0xffffffff
 #define KM_CSR__TB_ERRCODE_REG__ERRCODE_bp 0
 #define KM_CSR__TB_ERRCODE_REG__ERRCODE_bw 32
 #define KM_CSR__TB_ERRCODE_REG__ERRCODE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Error code value
         uint32_t errcode :32;
     } f;
     uint32_t w;
 } km_csr__tb_errcode_reg_t;
 
 // reg - km_csr::tb_subtest_reg
+// Current subtest number register. Firmware increments for each subtest.
+// Current subtest number
 #define KM_CSR__TB_SUBTEST_REG__SUBTEST_bm 0xffffffff
 #define KM_CSR__TB_SUBTEST_REG__SUBTEST_bp 0
 #define KM_CSR__TB_SUBTEST_REG__SUBTEST_bw 32
 #define KM_CSR__TB_SUBTEST_REG__SUBTEST_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Current subtest number
         uint32_t subtest :32;
     } f;
     uint32_t w;
 } km_csr__tb_subtest_reg_t;
 
 // reg - km_csr::tb_cmd_reg
+// Testbench command register. Firmware writes command, testbench reads and clears.
+// Command code (0=NOP, 1=ROM_PARITY_EN, 2=ROM_PARITY_DIS, 3=SRAM_PARITY_EN, 4=SRAM_PARITY_DIS)
 #define KM_CSR__TB_CMD_REG__CMD_bm 0xffffffff
 #define KM_CSR__TB_CMD_REG__CMD_bp 0
 #define KM_CSR__TB_CMD_REG__CMD_bw 32
 #define KM_CSR__TB_CMD_REG__CMD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Command code (0=NOP, 1=ROM_PARITY_EN, 2=ROM_PARITY_DIS, 3=SRAM_PARITY_EN, 4=SRAM_PARITY_DIS)
         uint32_t cmd :32;
     } f;
     uint32_t w;
 } km_csr__tb_cmd_reg_t;
 
 // reg - km_csr::tb_cmd_arg_reg
+// Testbench command argument register. Firmware writes optional argument.
+// Command argument value
 #define KM_CSR__TB_CMD_ARG_REG__ARG_bm 0xffffffff
 #define KM_CSR__TB_CMD_ARG_REG__ARG_bp 0
 #define KM_CSR__TB_CMD_ARG_REG__ARG_bw 32
 #define KM_CSR__TB_CMD_ARG_REG__ARG_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Command argument value
         uint32_t arg :32;
     } f;
     uint32_t w;
 } km_csr__tb_cmd_arg_reg_t;
 
 // reg - km_csr::tb_cmd_status_reg
+// Testbench command status register. Testbench writes status, firmware reads.
+// Command status: 0=IDLE, 1=ACK, 0xFFFFFFFF=ERR
 #define KM_CSR__TB_CMD_STATUS_REG__STATUS_bm 0xffffffff
 #define KM_CSR__TB_CMD_STATUS_REG__STATUS_bp 0
 #define KM_CSR__TB_CMD_STATUS_REG__STATUS_bw 32
 #define KM_CSR__TB_CMD_STATUS_REG__STATUS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Command status: 0=IDLE, 1=ACK, 0xFFFFFFFF=ERR
         uint32_t status :32;
     } f;
     uint32_t w;
 } km_csr__tb_cmd_status_reg_t;
 
 // reg - km_csr::tb_cmd_result_reg
+// Testbench command result register. Testbench writes result value.
+// Command result value
 #define KM_CSR__TB_CMD_RESULT_REG__RESULT_bm 0xffffffff
 #define KM_CSR__TB_CMD_RESULT_REG__RESULT_bp 0
 #define KM_CSR__TB_CMD_RESULT_REG__RESULT_bw 32
 #define KM_CSR__TB_CMD_RESULT_REG__RESULT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Command result value
         uint32_t result :32;
     } f;
     uint32_t w;
 } km_csr__tb_cmd_result_reg_t;
 
 // reg - km_csr::debug_reg
+// Debug register with known constant value for verification
+// Magic constant: 0xCAFEBEEF
 #define KM_CSR__DEBUG_REG__MAGIC_bm 0xffffffff
 #define KM_CSR__DEBUG_REG__MAGIC_bp 0
 #define KM_CSR__DEBUG_REG__MAGIC_bw 32
 #define KM_CSR__DEBUG_REG__MAGIC_reset 0xcafebeef
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Magic constant: 0xCAFEBEEF
         uint32_t magic :32;
     } f;
     uint32_t w;
 } km_csr__debug_reg_t;
 
 // reg - km_csr::otp_dr_word_reg
+// Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+// 32-bit OTP word. No reset; power-up value undefined.
 #define KM_CSR__OTP_DR_WORD_REG__VALUE_bm 0xffffffff
 #define KM_CSR__OTP_DR_WORD_REG__VALUE_bp 0
 #define KM_CSR__OTP_DR_WORD_REG__VALUE_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 32-bit OTP word. No reset; power-up value undefined.
         uint32_t value :32;
     } f;
     uint32_t w;
 } km_csr__otp_dr_word_reg_t;
 
 // reg - km_csr::otp_read_lock_reg
+// OTP field warm-reset-domain read-lock bits. Write 1 to set; writing 0 has no effect. Locked reads of the corresponding OTP field return zero (effective lock = OTP_READ_LOCK | OTP_READ_LOCK_COLD). Warm-reset domain: cleared by warm or cold reset.
+// Lock OTP_LIFE_CYCLE reads (returns zero when locked)
 #define KM_CSR__OTP_READ_LOCK_REG__LIFE_CYCLE_bm 0x1
 #define KM_CSR__OTP_READ_LOCK_REG__LIFE_CYCLE_bp 0
 #define KM_CSR__OTP_READ_LOCK_REG__LIFE_CYCLE_bw 1
 #define KM_CSR__OTP_READ_LOCK_REG__LIFE_CYCLE_reset 0x0
+// Lock OTP_DEMOTION_STATE reads (returns zero when locked)
 #define KM_CSR__OTP_READ_LOCK_REG__DEMOTION_bm 0x2
 #define KM_CSR__OTP_READ_LOCK_REG__DEMOTION_bp 1
 #define KM_CSR__OTP_READ_LOCK_REG__DEMOTION_bw 1
 #define KM_CSR__OTP_READ_LOCK_REG__DEMOTION_reset 0x0
+// Lock OTP_CHIPLET_UID_VAL/CPL reads (returns zero when locked)
 #define KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_bm 0x4
 #define KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_bp 2
 #define KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_bw 1
 #define KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_reset 0x0
+// Lock OTP_SIP_UID_VAL/CPL reads (returns zero when locked)
 #define KM_CSR__OTP_READ_LOCK_REG__SIP_UID_bm 0x8
 #define KM_CSR__OTP_READ_LOCK_REG__SIP_UID_bp 3
 #define KM_CSR__OTP_READ_LOCK_REG__SIP_UID_bw 1
 #define KM_CSR__OTP_READ_LOCK_REG__SIP_UID_reset 0x0
+// Lock OTP_SYS_UID_VAL/CPL reads (returns zero when locked)
 #define KM_CSR__OTP_READ_LOCK_REG__SYS_UID_bm 0x10
 #define KM_CSR__OTP_READ_LOCK_REG__SYS_UID_bp 4
 #define KM_CSR__OTP_READ_LOCK_REG__SYS_UID_bw 1
 #define KM_CSR__OTP_READ_LOCK_REG__SYS_UID_reset 0x0
+// Lock OTP_CLASS_KEY_VAL/CPL reads (returns zero when locked)
 #define KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_bm 0x20
 #define KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_bp 5
 #define KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_bw 1
 #define KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_reset 0x0
+// Lock OTP_SEP_CHIPLET_ID_VAL/CPL reads (returns zero when locked)
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_CHIPLET_ID_bm 0x40
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_CHIPLET_ID_bp 6
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_CHIPLET_ID_bw 1
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_CHIPLET_ID_reset 0x0
+// Lock OTP_SEP_SIP_ID_VAL/CPL reads (returns zero when locked)
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_SIP_ID_bm 0x80
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_SIP_ID_bp 7
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_SIP_ID_bw 1
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_SIP_ID_reset 0x0
+// Lock OTP_SEP_SYS_ID_VAL/CPL reads (returns zero when locked)
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_SYS_ID_bm 0x100
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_SYS_ID_bp 8
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_SYS_ID_bw 1
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_SYS_ID_reset 0x0
+// Reserved
 #define KM_CSR__OTP_READ_LOCK_REG__RSVD_bm 0xfffffe00
 #define KM_CSR__OTP_READ_LOCK_REG__RSVD_bp 9
 #define KM_CSR__OTP_READ_LOCK_REG__RSVD_bw 23
 #define KM_CSR__OTP_READ_LOCK_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Lock OTP_LIFE_CYCLE reads (returns zero when locked)
         uint32_t life_cycle :1;
+        // Lock OTP_DEMOTION_STATE reads (returns zero when locked)
         uint32_t demotion :1;
+        // Lock OTP_CHIPLET_UID_VAL/CPL reads (returns zero when locked)
         uint32_t chiplet_uid :1;
+        // Lock OTP_SIP_UID_VAL/CPL reads (returns zero when locked)
         uint32_t sip_uid :1;
+        // Lock OTP_SYS_UID_VAL/CPL reads (returns zero when locked)
         uint32_t sys_uid :1;
+        // Lock OTP_CLASS_KEY_VAL/CPL reads (returns zero when locked)
         uint32_t class_key :1;
+        // Lock OTP_SEP_CHIPLET_ID_VAL/CPL reads (returns zero when locked)
         uint32_t sep_chiplet_id :1;
+        // Lock OTP_SEP_SIP_ID_VAL/CPL reads (returns zero when locked)
         uint32_t sep_sip_id :1;
+        // Lock OTP_SEP_SYS_ID_VAL/CPL reads (returns zero when locked)
         uint32_t sep_sys_id :1;
+        // Reserved
         uint32_t rsvd :23;
     } f;
     uint32_t w;
 } km_csr__otp_read_lock_reg_t;
 
 // reg - km_csr::otp_change_status_reg
+// OTP field change status. A bit is set when the corresponding field's decoded value changes. Sticky, write 1 to clear. Valid after IRQ_STATUS.OTP_CHANGE fires.
+// OTP_LIFE_CYCLE value changed since last cycle. Sticky, write 1 to clear.
 #define KM_CSR__OTP_CHANGE_STATUS_REG__LIFE_CYCLE_bm 0x1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__LIFE_CYCLE_bp 0
 #define KM_CSR__OTP_CHANGE_STATUS_REG__LIFE_CYCLE_bw 1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__LIFE_CYCLE_reset 0x0
+// OTP_DEMOTION_STATE value changed since last cycle. Sticky, write 1 to clear.
 #define KM_CSR__OTP_CHANGE_STATUS_REG__DEMOTION_bm 0x2
 #define KM_CSR__OTP_CHANGE_STATUS_REG__DEMOTION_bp 1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__DEMOTION_bw 1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__DEMOTION_reset 0x0
+// OTP_CHIPLET_UID value changed since last cycle. Sticky, write 1 to clear.
 #define KM_CSR__OTP_CHANGE_STATUS_REG__CHIPLET_UID_bm 0x4
 #define KM_CSR__OTP_CHANGE_STATUS_REG__CHIPLET_UID_bp 2
 #define KM_CSR__OTP_CHANGE_STATUS_REG__CHIPLET_UID_bw 1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__CHIPLET_UID_reset 0x0
+// OTP_SIP_UID value changed since last cycle. Sticky, write 1 to clear.
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SIP_UID_bm 0x8
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SIP_UID_bp 3
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SIP_UID_bw 1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SIP_UID_reset 0x0
+// OTP_SYS_UID value changed since last cycle. Sticky, write 1 to clear.
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SYS_UID_bm 0x10
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SYS_UID_bp 4
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SYS_UID_bw 1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SYS_UID_reset 0x0
+// OTP_CLASS_KEY value changed since last cycle. Sticky, write 1 to clear.
 #define KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_bm 0x20
 #define KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_bp 5
 #define KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_bw 1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_reset 0x0
+// OTP_SEP_CHIPLET_ID value changed since last cycle. Sticky, write 1 to clear.
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_bm 0x40
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_bp 6
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_bw 1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_reset 0x0
+// OTP_SEP_SIP_ID value changed since last cycle. Sticky, write 1 to clear.
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SIP_ID_bm 0x80
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SIP_ID_bp 7
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SIP_ID_bw 1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SIP_ID_reset 0x0
+// OTP_SEP_SYS_ID value changed since last cycle. Sticky, write 1 to clear.
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SYS_ID_bm 0x100
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SYS_ID_bp 8
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SYS_ID_bw 1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SYS_ID_reset 0x0
+// Reserved
 #define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bm 0xfffffe00
 #define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bp 9
 #define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bw 23
 #define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // OTP_LIFE_CYCLE value changed since last cycle. Sticky, write 1 to clear.
         uint32_t life_cycle :1;
+        // OTP_DEMOTION_STATE value changed since last cycle. Sticky, write 1 to clear.
         uint32_t demotion :1;
+        // OTP_CHIPLET_UID value changed since last cycle. Sticky, write 1 to clear.
         uint32_t chiplet_uid :1;
+        // OTP_SIP_UID value changed since last cycle. Sticky, write 1 to clear.
         uint32_t sip_uid :1;
+        // OTP_SYS_UID value changed since last cycle. Sticky, write 1 to clear.
         uint32_t sys_uid :1;
+        // OTP_CLASS_KEY value changed since last cycle. Sticky, write 1 to clear.
         uint32_t class_key :1;
+        // OTP_SEP_CHIPLET_ID value changed since last cycle. Sticky, write 1 to clear.
         uint32_t sep_chiplet_id :1;
+        // OTP_SEP_SIP_ID value changed since last cycle. Sticky, write 1 to clear.
         uint32_t sep_sip_id :1;
+        // OTP_SEP_SYS_ID value changed since last cycle. Sticky, write 1 to clear.
         uint32_t sep_sys_id :1;
+        // Reserved
         uint32_t rsvd :23;
     } f;
     uint32_t w;
 } km_csr__otp_change_status_reg_t;
 
 // reg - km_csr::otp_read_lock_cold_reg
+// OTP field cold-reset-domain read-lock bits. Write 1 to set; writing 0 has no effect. Locked reads of the corresponding OTP field return zero (effective lock = OTP_READ_LOCK | OTP_READ_LOCK_COLD). Cold-reset domain: survives warm reset.
+// Cold-reset read-lock for OTP_LIFE_CYCLE. Effective lock = OTP_READ_LOCK.life_cycle | OTP_READ_LOCK_COLD.life_cycle.
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_bm 0x1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_bp 0
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_bw 1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_reset 0x0
+// Cold-reset read-lock for OTP_DEMOTION_STATE. Effective lock = OTP_READ_LOCK.demotion | OTP_READ_LOCK_COLD.demotion.
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_bm 0x2
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_bp 1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_bw 1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_reset 0x0
+// Cold-reset read-lock for OTP_CHIPLET_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.chiplet_uid | OTP_READ_LOCK_COLD.chiplet_uid.
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bm 0x4
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bp 2
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bw 1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_reset 0x0
+// Cold-reset read-lock for OTP_SIP_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sip_uid | OTP_READ_LOCK_COLD.sip_uid.
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bm 0x8
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bp 3
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bw 1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_reset 0x0
+// Cold-reset read-lock for OTP_SYS_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sys_uid | OTP_READ_LOCK_COLD.sys_uid.
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_bm 0x10
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_bp 4
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_bw 1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_reset 0x0
+// Cold-reset read-lock for OTP_CLASS_KEY_VAL/CPL. Effective lock = OTP_READ_LOCK.class_key | OTP_READ_LOCK_COLD.class_key.
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_bm 0x20
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_bp 5
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_bw 1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_reset 0x0
+// Cold-reset read-lock for OTP_SEP_CHIPLET_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_chiplet_id | OTP_READ_LOCK_COLD.sep_chiplet_id.
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_CHIPLET_ID_bm 0x40
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_CHIPLET_ID_bp 6
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_CHIPLET_ID_bw 1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_CHIPLET_ID_reset 0x0
+// Cold-reset read-lock for OTP_SEP_SIP_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sip_id | OTP_READ_LOCK_COLD.sep_sip_id.
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SIP_ID_bm 0x80
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SIP_ID_bp 7
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SIP_ID_bw 1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SIP_ID_reset 0x0
+// Cold-reset read-lock for OTP_SEP_SYS_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sys_id | OTP_READ_LOCK_COLD.sep_sys_id.
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SYS_ID_bm 0x100
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SYS_ID_bp 8
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SYS_ID_bw 1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SYS_ID_reset 0x0
+// Reserved
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bm 0xfffffe00
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bp 9
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bw 23
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Cold-reset read-lock for OTP_LIFE_CYCLE. Effective lock = OTP_READ_LOCK.life_cycle | OTP_READ_LOCK_COLD.life_cycle.
         uint32_t life_cycle :1;
+        // Cold-reset read-lock for OTP_DEMOTION_STATE. Effective lock = OTP_READ_LOCK.demotion | OTP_READ_LOCK_COLD.demotion.
         uint32_t demotion :1;
+        // Cold-reset read-lock for OTP_CHIPLET_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.chiplet_uid | OTP_READ_LOCK_COLD.chiplet_uid.
         uint32_t chiplet_uid :1;
+        // Cold-reset read-lock for OTP_SIP_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sip_uid | OTP_READ_LOCK_COLD.sip_uid.
         uint32_t sip_uid :1;
+        // Cold-reset read-lock for OTP_SYS_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sys_uid | OTP_READ_LOCK_COLD.sys_uid.
         uint32_t sys_uid :1;
+        // Cold-reset read-lock for OTP_CLASS_KEY_VAL/CPL. Effective lock = OTP_READ_LOCK.class_key | OTP_READ_LOCK_COLD.class_key.
         uint32_t class_key :1;
+        // Cold-reset read-lock for OTP_SEP_CHIPLET_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_chiplet_id | OTP_READ_LOCK_COLD.sep_chiplet_id.
         uint32_t sep_chiplet_id :1;
+        // Cold-reset read-lock for OTP_SEP_SIP_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sip_id | OTP_READ_LOCK_COLD.sep_sip_id.
         uint32_t sep_sip_id :1;
+        // Cold-reset read-lock for OTP_SEP_SYS_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sys_id | OTP_READ_LOCK_COLD.sep_sys_id.
         uint32_t sep_sys_id :1;
+        // Reserved
         uint32_t rsvd :23;
     } f;
     uint32_t w;
 } km_csr__otp_read_lock_cold_reg_t;
 
 // addrmap - km_csr
+// Control and status registers for the Key Manager subsystem
 typedef struct __attribute__ ((__packed__)) {
     km_csr__version_reg_t VERSION;
     km_csr__ctrl_reg_t CTRL;

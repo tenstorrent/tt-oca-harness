@@ -14,12 +14,19 @@ extern "C" {
 #include <assert.h>
 
 // reg - uart_16550_dl::DLL
+// Divisor Latch Least Significant Byte Register
+// Divisor Latch Least Significant Byte. Baud rate is calculated as
+// `baud_rate = system_clock_frequency / (16 * (divisor + 1))`. When the divisor is set
+// to `0`, the transmitter and receiver logic are disabled.
 #define UART_16550_DL__DLL__DLL_bm 0xff
 #define UART_16550_DL__DLL__DLL_bp 0
 #define UART_16550_DL__DLL__DLL_bw 8
 #define UART_16550_DL__DLL__DLL_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Divisor Latch Least Significant Byte. Baud rate is calculated as
+        // `baud_rate = system_clock_frequency / (16 * (divisor + 1))`. When the divisor is set
+        // to `0`, the transmitter and receiver logic are disabled.
         uint32_t DLL :8;
         uint32_t :24;
     } f;
@@ -27,12 +34,19 @@ typedef union {
 } uart_16550_dl__DLL_t;
 
 // reg - uart_16550_dl::DLM
+// Divisor Latch Most Significant Byte Register
+// Divisor Latch Most Significant Byte. Baud rate is calculated as
+// `baud_rate = system_clock_frequency / (16 * (divisor + 1))`. When the divisor is set
+// to `0`, the transmitter and receiver logic are disabled.
 #define UART_16550_DL__DLM__DLM_bm 0xff
 #define UART_16550_DL__DLM__DLM_bp 0
 #define UART_16550_DL__DLM__DLM_bw 8
 #define UART_16550_DL__DLM__DLM_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Divisor Latch Most Significant Byte. Baud rate is calculated as
+        // `baud_rate = system_clock_frequency / (16 * (divisor + 1))`. When the divisor is set
+        // to `0`, the transmitter and receiver logic are disabled.
         uint32_t DLM :8;
         uint32_t :24;
     } f;
@@ -40,6 +54,7 @@ typedef union {
 } uart_16550_dl__DLM_t;
 
 // addrmap - uart_16550_dl
+// Contains the registers accessible only when `LCR.DLAB = 1`.
 typedef struct __attribute__ ((__packed__)) {
     uart_16550_dl__DLL_t DLL;
     uart_16550_dl__DLM_t DLM;

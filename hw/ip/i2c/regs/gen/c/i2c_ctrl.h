@@ -14,24 +14,31 @@ extern "C" {
 #include <assert.h>
 
 // reg - i2c_ctrl::I2C_CTRL
+// Control Register
+// I2C Pad Function Select. When set, the integration routes this instance's SCL, SDA, SMBus alert and SMBus suspend signals to their pads. Does not enable the I2C core; CTRL.ENABLEHOST and CTRL.ENABLETARGET select the core's operating mode.
 #define I2C_CTRL__I2C_CTRL__I2C_EN_bm 0x1
 #define I2C_CTRL__I2C_CTRL__I2C_EN_bp 0
 #define I2C_CTRL__I2C_CTRL__I2C_EN_bw 1
 #define I2C_CTRL__I2C_CTRL__I2C_EN_reset 0x0
+// SMBus Pad Direction. When set, the SMBus alert pad is an input and the SMBus suspend pad is an output, as for an SMBus host. When clear, the alert pad is an output and the suspend pad is an input, as for an SMBus target. SCL and SDA are unaffected. Program it to agree with the core's CTRL.ENABLEHOST and CTRL.ENABLETARGET setting.
 #define I2C_CTRL__I2C_CTRL__I2C_CONTROLLER_MODE_EN_bm 0x10
 #define I2C_CTRL__I2C_CTRL__I2C_CONTROLLER_MODE_EN_bp 4
 #define I2C_CTRL__I2C_CTRL__I2C_CONTROLLER_MODE_EN_bw 1
 #define I2C_CTRL__I2C_CTRL__I2C_CONTROLLER_MODE_EN_reset 0x0
+// SMBus Enable. Gates the SMBus Alert signal.
 #define I2C_CTRL__I2C_CTRL__SMBUS_EN_bm 0x100
 #define I2C_CTRL__I2C_CTRL__SMBUS_EN_bp 8
 #define I2C_CTRL__I2C_CTRL__SMBUS_EN_bw 1
 #define I2C_CTRL__I2C_CTRL__SMBUS_EN_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // I2C Pad Function Select. When set, the integration routes this instance's SCL, SDA, SMBus alert and SMBus suspend signals to their pads. Does not enable the I2C core; CTRL.ENABLEHOST and CTRL.ENABLETARGET select the core's operating mode.
         uint32_t I2C_EN :1;
         uint32_t :3;
+        // SMBus Pad Direction. When set, the SMBus alert pad is an input and the SMBus suspend pad is an output, as for an SMBus host. When clear, the alert pad is an output and the suspend pad is an input, as for an SMBus target. SCL and SDA are unaffected. Program it to agree with the core's CTRL.ENABLEHOST and CTRL.ENABLETARGET setting.
         uint32_t I2C_CONTROLLER_MODE_EN :1;
         uint32_t :3;
+        // SMBus Enable. Gates the SMBus Alert signal.
         uint32_t SMBUS_EN :1;
         uint32_t :23;
     } f;
@@ -39,6 +46,7 @@ typedef union {
 } i2c_ctrl__I2C_CTRL_t;
 
 // addrmap - i2c_ctrl
+// Per-instance pad-function select, SMBus pad direction, and SMBus alert enable.
 typedef struct __attribute__ ((__packed__)) {
     i2c_ctrl__I2C_CTRL_t I2C_CTRL[3];
 } i2c_ctrl_t;

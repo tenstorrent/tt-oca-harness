@@ -14,12 +14,15 @@ extern "C" {
 #include <assert.h>
 
 // reg - sep_cpu_ctrl::CLOCK_GATE_CTRL
+// TODO: clock-gate control - placeholder fields, not yet implemented.
+// Reserved - PKA clock-gate enable, not yet implemented.
 #define SEP_CPU_CTRL__CLOCK_GATE_CTRL__PKA_CG_ENABLE_bm 0x1
 #define SEP_CPU_CTRL__CLOCK_GATE_CTRL__PKA_CG_ENABLE_bp 0
 #define SEP_CPU_CTRL__CLOCK_GATE_CTRL__PKA_CG_ENABLE_bw 1
 #define SEP_CPU_CTRL__CLOCK_GATE_CTRL__PKA_CG_ENABLE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reserved - PKA clock-gate enable, not yet implemented.
         uint64_t pka_cg_enable :1;
         uint64_t :63;
     } f;
@@ -27,24 +30,35 @@ typedef union {
 } sep_cpu_ctrl__CLOCK_GATE_CTRL_t;
 
 // reg - sep_cpu_ctrl::REFERENCE_COUNTER
+// SEP REFERENCE COUNTER, counting after deassert of cold reset. Write once,
+// then poll this register until the readback reflects the written value before
+// writing again. The counter keeps advancing, so the readback is at or just
+// above the written value rather than equal to it.
 #define SEP_CPU_CTRL__REFERENCE_COUNTER__RC_bm 0xffffffffffffffff
 #define SEP_CPU_CTRL__REFERENCE_COUNTER__RC_bp 0
 #define SEP_CPU_CTRL__REFERENCE_COUNTER__RC_bw 64
 #define SEP_CPU_CTRL__REFERENCE_COUNTER__RC_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // SEP REFERENCE COUNTER, counting after deassert of cold reset. Write once,
+        // then poll this register until the readback reflects the written value before
+        // writing again. The counter keeps advancing, so the readback is at or just
+        // above the written value rather than equal to it.
         uint64_t rc :64;
     } f;
     uint64_t w;
 } sep_cpu_ctrl__REFERENCE_COUNTER_t;
 
 // reg - sep_cpu_ctrl::TIMEOUT_INTERRUPT
+// Reserved - per-block timeout interrupt not yet implemented.
+// Reserved - timeout interrupt status not yet implemented.
 #define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__RESERVED_bm 0x1
 #define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__RESERVED_bp 0
 #define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__RESERVED_bw 1
 #define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__RESERVED_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reserved - timeout interrupt status not yet implemented.
         uint64_t reserved :1;
         uint64_t :63;
     } f;
@@ -52,22 +66,29 @@ typedef union {
 } sep_cpu_ctrl__TIMEOUT_INTERRUPT_t;
 
 // reg - sep_cpu_ctrl::PKA_CTRL
+// TODO: PKA control - placeholder fields, not yet implemented.
+// Reserved - disable DPA countermeasures in PKA, not yet implemented.
 #define SEP_CPU_CTRL__PKA_CTRL__PKA_DPA_DISABLE_bm 0x1
 #define SEP_CPU_CTRL__PKA_CTRL__PKA_DPA_DISABLE_bp 0
 #define SEP_CPU_CTRL__PKA_CTRL__PKA_DPA_DISABLE_bw 1
 #define SEP_CPU_CTRL__PKA_CTRL__PKA_DPA_DISABLE_reset 0x0
+// Reserved - PKA noise source select, not yet implemented.
 #define SEP_CPU_CTRL__PKA_CTRL__PKA_NOISE_SRC_bm 0x2
 #define SEP_CPU_CTRL__PKA_CTRL__PKA_NOISE_SRC_bp 1
 #define SEP_CPU_CTRL__PKA_CTRL__PKA_NOISE_SRC_bw 1
 #define SEP_CPU_CTRL__PKA_CTRL__PKA_NOISE_SRC_reset 0x0
+// Reserved - PKA noise source valid, not yet implemented.
 #define SEP_CPU_CTRL__PKA_CTRL__PKA_NOISE_SRC_VALID_bm 0x4
 #define SEP_CPU_CTRL__PKA_CTRL__PKA_NOISE_SRC_VALID_bp 2
 #define SEP_CPU_CTRL__PKA_CTRL__PKA_NOISE_SRC_VALID_bw 1
 #define SEP_CPU_CTRL__PKA_CTRL__PKA_NOISE_SRC_VALID_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reserved - disable DPA countermeasures in PKA, not yet implemented.
         uint64_t pka_dpa_disable :1;
+        // Reserved - PKA noise source select, not yet implemented.
         uint64_t pka_noise_src :1;
+        // Reserved - PKA noise source valid, not yet implemented.
         uint64_t pka_noise_src_valid :1;
         uint64_t :61;
     } f;
@@ -75,12 +96,15 @@ typedef union {
 } sep_cpu_ctrl__PKA_CTRL_t;
 
 // reg - sep_cpu_ctrl::TIMEOUT_COUNT
+// Reserved - per-block timeout count/threshold not yet implemented.
+// Reserved - timeout count not yet implemented.
 #define SEP_CPU_CTRL__TIMEOUT_COUNT__RESERVED_bm 0x1
 #define SEP_CPU_CTRL__TIMEOUT_COUNT__RESERVED_bp 0
 #define SEP_CPU_CTRL__TIMEOUT_COUNT__RESERVED_bw 1
 #define SEP_CPU_CTRL__TIMEOUT_COUNT__RESERVED_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reserved - timeout count not yet implemented.
         uint64_t reserved :1;
         uint64_t :63;
     } f;
@@ -88,12 +112,15 @@ typedef union {
 } sep_cpu_ctrl__TIMEOUT_COUNT_t;
 
 // reg - sep_cpu_ctrl::TIMEOUT_ENABLE
+// Reserved - per-block timeout enable not yet implemented.
+// Reserved - timeout monitors not yet implemented.
 #define SEP_CPU_CTRL__TIMEOUT_ENABLE__RESERVED_bm 0x1
 #define SEP_CPU_CTRL__TIMEOUT_ENABLE__RESERVED_bp 0
 #define SEP_CPU_CTRL__TIMEOUT_ENABLE__RESERVED_bw 1
 #define SEP_CPU_CTRL__TIMEOUT_ENABLE__RESERVED_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reserved - timeout monitors not yet implemented.
         uint64_t reserved :1;
         uint64_t :63;
     } f;
@@ -101,12 +128,15 @@ typedef union {
 } sep_cpu_ctrl__TIMEOUT_ENABLE_t;
 
 // reg - sep_cpu_ctrl::TIMEOUT_CLEAR
+// Reserved - per-block timeout interrupt-clear not yet implemented.
+// Reserved - timeout monitors not yet implemented.
 #define SEP_CPU_CTRL__TIMEOUT_CLEAR__RESERVED_bm 0x1
 #define SEP_CPU_CTRL__TIMEOUT_CLEAR__RESERVED_bp 0
 #define SEP_CPU_CTRL__TIMEOUT_CLEAR__RESERVED_bw 1
 #define SEP_CPU_CTRL__TIMEOUT_CLEAR__RESERVED_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reserved - timeout monitors not yet implemented.
         uint64_t reserved :1;
         uint64_t :63;
     } f;
@@ -114,12 +144,15 @@ typedef union {
 } sep_cpu_ctrl__TIMEOUT_CLEAR_t;
 
 // reg - sep_cpu_ctrl::TIMEOUT_MODE
+// Reserved - per-block timeout mode not yet implemented.
+// Reserved - timeout monitors not yet implemented.
 #define SEP_CPU_CTRL__TIMEOUT_MODE__RESERVED_bm 0x1
 #define SEP_CPU_CTRL__TIMEOUT_MODE__RESERVED_bp 0
 #define SEP_CPU_CTRL__TIMEOUT_MODE__RESERVED_bw 1
 #define SEP_CPU_CTRL__TIMEOUT_MODE__RESERVED_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reserved - timeout monitors not yet implemented.
         uint64_t reserved :1;
         uint64_t :63;
     } f;
@@ -127,26 +160,32 @@ typedef union {
 } sep_cpu_ctrl__TIMEOUT_MODE_t;
 
 // reg - sep_cpu_ctrl::SEP_TEST_CTRL
+// SEP is standalone (not part of eg SMU)
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__SEP_STANDALONE_bm 0x4000000
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__SEP_STANDALONE_bp 26
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__SEP_STANDALONE_bw 1
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__SEP_STANDALONE_reset 0x0
+// Fast PKA Enable
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_PKA_EN_bm 0x8000000
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_PKA_EN_bp 27
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_PKA_EN_bw 1
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_PKA_EN_reset 0x0
+// Fast SRAM Enable
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_SRAM_EN_bm 0x10000000
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_SRAM_EN_bp 28
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_SRAM_EN_bw 1
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_SRAM_EN_reset 0x0
+// Fast DCCM Enable
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_DCCM_EN_bm 0x20000000
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_DCCM_EN_bp 29
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_DCCM_EN_bw 1
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_DCCM_EN_reset 0x0
+// Fast ICCM Enable
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_ICCM_EN_bm 0x40000000
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_ICCM_EN_bp 30
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_ICCM_EN_bw 1
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_ICCM_EN_reset 0x0
+// Fast SPI Enable
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_SPI_EN_bm 0x80000000
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_SPI_EN_bp 31
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_SPI_EN_bw 1
@@ -154,11 +193,17 @@ typedef union {
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t :26;
+        // SEP is standalone (not part of eg SMU)
         uint32_t sep_standalone :1;
+        // Fast PKA Enable
         uint32_t fast_pka_en :1;
+        // Fast SRAM Enable
         uint32_t fast_sram_en :1;
+        // Fast DCCM Enable
         uint32_t fast_dccm_en :1;
+        // Fast ICCM Enable
         uint32_t fast_iccm_en :1;
+        // Fast SPI Enable
         uint32_t fast_spi_en :1;
     } f;
     uint32_t w;
@@ -230,12 +275,16 @@ typedef union {
 } sep_cpu_ctrl__SMU_REGION_SIZE_t;
 
 // reg - sep_cpu_ctrl::SMC_FUSE_SENSE_STATUS
+// This bit indicates when SMC's fuse sense is completed. While fuse sense if ongoing, SMC fabric will be in reset. Any requests to the SMC will hang.
+// When this is 1, it is safe to send requests to the SMC.
 #define SEP_CPU_CTRL__SMC_FUSE_SENSE_STATUS__SMC_FUSE_SENSE_DONE_bm 0x1
 #define SEP_CPU_CTRL__SMC_FUSE_SENSE_STATUS__SMC_FUSE_SENSE_DONE_bp 0
 #define SEP_CPU_CTRL__SMC_FUSE_SENSE_STATUS__SMC_FUSE_SENSE_DONE_bw 1
 #define SEP_CPU_CTRL__SMC_FUSE_SENSE_STATUS__SMC_FUSE_SENSE_DONE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // This bit indicates when SMC's fuse sense is completed. While fuse sense if ongoing, SMC fabric will be in reset. Any requests to the SMC will hang.
+        // When this is 1, it is safe to send requests to the SMC.
         uint64_t smc_fuse_sense_done :1;
         uint64_t :63;
     } f;
@@ -243,12 +292,14 @@ typedef union {
 } sep_cpu_ctrl__SMC_FUSE_SENSE_STATUS_t;
 
 // reg - sep_cpu_ctrl::SEP_FUSE_SENSE_STATUS
+// This reg is used to indicate the fuse sense status of SEP.
 #define SEP_CPU_CTRL__SEP_FUSE_SENSE_STATUS__SEP_FUSE_SENSE_DONE_bm 0x1
 #define SEP_CPU_CTRL__SEP_FUSE_SENSE_STATUS__SEP_FUSE_SENSE_DONE_bp 0
 #define SEP_CPU_CTRL__SEP_FUSE_SENSE_STATUS__SEP_FUSE_SENSE_DONE_bw 1
 #define SEP_CPU_CTRL__SEP_FUSE_SENSE_STATUS__SEP_FUSE_SENSE_DONE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // This reg is used to indicate the fuse sense status of SEP.
         uint64_t sep_fuse_sense_done :1;
         uint64_t :63;
     } f;
@@ -256,12 +307,14 @@ typedef union {
 } sep_cpu_ctrl__SEP_FUSE_SENSE_STATUS_t;
 
 // reg - sep_cpu_ctrl::SEP_SW_DEBUG
+// software writtable debug information. This reg is routed to CLA
 #define SEP_CPU_CTRL__SEP_SW_DEBUG__SEP_SW_DEBUG_bm 0xffffffff
 #define SEP_CPU_CTRL__SEP_SW_DEBUG__SEP_SW_DEBUG_bp 0
 #define SEP_CPU_CTRL__SEP_SW_DEBUG__SEP_SW_DEBUG_bw 32
 #define SEP_CPU_CTRL__SEP_SW_DEBUG__SEP_SW_DEBUG_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // software writtable debug information. This reg is routed to CLA
         uint64_t sep_sw_debug :32;
         uint64_t :32;
     } f;
@@ -269,17 +322,36 @@ typedef union {
 } sep_cpu_ctrl__SEP_SW_DEBUG_t;
 
 // reg - sep_cpu_ctrl::SEP_NMI_VEC_nmi_vec_a3690e40
+// NMI vector address for VeeR-EL2 CPU. The default value is 0xC000_0100. The NMI
+// interrupt is used for the WDT Bark interrupt.
+// WARNING: the reset value is a placeholder, not a usable handler. Firmware must
+// program this register with the address of its own NMI handler, and then set
+// SEP_NMI_VEC_LOCK, before enabling any NMI source (the WDT bark in particular).
+// If a bark arrives while the reset value is still in place, the CPU jumps to
+// 0xC000_0100 in ICCM and executes whatever is there: arbitrary instructions if
+// the loaded image covers that location, or an uncorrectable ICCM ECC error
+// (which itself re-raises NMI) if it does not.
+// Reserved, bit 0 is always 0 (aligned)
 #define SEP_CPU_CTRL__SEP_NMI_VEC_NMI_VEC_A3690E40__RSVD_bm 0x1
 #define SEP_CPU_CTRL__SEP_NMI_VEC_NMI_VEC_A3690E40__RSVD_bp 0
 #define SEP_CPU_CTRL__SEP_NMI_VEC_NMI_VEC_A3690E40__RSVD_bw 1
 #define SEP_CPU_CTRL__SEP_NMI_VEC_NMI_VEC_A3690E40__RSVD_reset 0x0
+// NMI vector address [31:1] for VeeR-EL2 CPU. Bit 0 is always 0 (aligned).
+// Address where CPU jumps on Non-Maskable Interrupt. This is used for the
+// WDT Bark interrupt. The reset value does not point at a valid handler --
+// see the register description for the required programming order.
 #define SEP_CPU_CTRL__SEP_NMI_VEC_NMI_VEC_A3690E40__NMI_VEC_bm 0xfffffffe
 #define SEP_CPU_CTRL__SEP_NMI_VEC_NMI_VEC_A3690E40__NMI_VEC_bp 1
 #define SEP_CPU_CTRL__SEP_NMI_VEC_NMI_VEC_A3690E40__NMI_VEC_bw 31
 #define SEP_CPU_CTRL__SEP_NMI_VEC_NMI_VEC_A3690E40__NMI_VEC_reset 0x60000080
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reserved, bit 0 is always 0 (aligned)
         uint64_t rsvd :1;
+        // NMI vector address [31:1] for VeeR-EL2 CPU. Bit 0 is always 0 (aligned).
+        // Address where CPU jumps on Non-Maskable Interrupt. This is used for the
+        // WDT Bark interrupt. The reset value does not point at a valid handler --
+        // see the register description for the required programming order.
         uint64_t nmi_vec :31;
         uint64_t :32;
     } f;
@@ -287,12 +359,18 @@ typedef union {
 } sep_cpu_ctrl__SEP_NMI_VEC_nmi_vec_a3690e40_t;
 
 // reg - sep_cpu_ctrl::SEP_NMI_VEC_LOCK
+// Lock the NMI vector address. Once locked, the NMI vector address cannot be changed. The
+// NMI interrupt is used for the WDT Bark interrupt.
+// Lock the NMI vector address. Once locked, the NMI vector address cannot be changed.
+// The NMI interrupt is used for the WDT Bark interrupt.
 #define SEP_CPU_CTRL__SEP_NMI_VEC_LOCK__LOCK_bm 0x1
 #define SEP_CPU_CTRL__SEP_NMI_VEC_LOCK__LOCK_bp 0
 #define SEP_CPU_CTRL__SEP_NMI_VEC_LOCK__LOCK_bw 1
 #define SEP_CPU_CTRL__SEP_NMI_VEC_LOCK__LOCK_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Lock the NMI vector address. Once locked, the NMI vector address cannot be changed.
+        // The NMI interrupt is used for the WDT Bark interrupt.
         uint64_t lock :1;
         uint64_t :63;
     } f;
@@ -300,12 +378,19 @@ typedef union {
 } sep_cpu_ctrl__SEP_NMI_VEC_LOCK_t;
 
 // reg - sep_cpu_ctrl::EXT_TRNG_SRC_SEL_sel_c607e53d
+// Per-stream external TRNG source selection for crypto subsystem entropy muxes.
+// TRNG source select per stream. Bit N selects the source for stream N
+// (bit0 = Key Manager, bit1 = crypto blocks, bit2 = entropy pool).
+// 0 = internal DRBG output, 1 = external TRNG (default).
 #define SEP_CPU_CTRL__EXT_TRNG_SRC_SEL_SEL_C607E53D__SEL_bm 0x7
 #define SEP_CPU_CTRL__EXT_TRNG_SRC_SEL_SEL_C607E53D__SEL_bp 0
 #define SEP_CPU_CTRL__EXT_TRNG_SRC_SEL_SEL_C607E53D__SEL_bw 3
 #define SEP_CPU_CTRL__EXT_TRNG_SRC_SEL_SEL_C607E53D__SEL_reset 0x7
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // TRNG source select per stream. Bit N selects the source for stream N
+        // (bit0 = Key Manager, bit1 = crypto blocks, bit2 = entropy pool).
+        // 0 = internal DRBG output, 1 = external TRNG (default).
         uint64_t sel :3;
         uint64_t :61;
     } f;
@@ -313,12 +398,15 @@ typedef union {
 } sep_cpu_ctrl__EXT_TRNG_SRC_SEL_sel_c607e53d_t;
 
 // reg - sep_cpu_ctrl::EXT_TRNG_SRC_SEL_LOCK
+// Lock the TRNG source selection. Once locked, EXT_TRNG_SRC_SEL cannot be changed until reset.
+// Lock TRNG source selection. Once set, cannot be cleared by software.
 #define SEP_CPU_CTRL__EXT_TRNG_SRC_SEL_LOCK__LOCK_bm 0x1
 #define SEP_CPU_CTRL__EXT_TRNG_SRC_SEL_LOCK__LOCK_bp 0
 #define SEP_CPU_CTRL__EXT_TRNG_SRC_SEL_LOCK__LOCK_bw 1
 #define SEP_CPU_CTRL__EXT_TRNG_SRC_SEL_LOCK__LOCK_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Lock TRNG source selection. Once set, cannot be cleared by software.
         uint64_t lock :1;
         uint64_t :63;
     } f;
@@ -326,12 +414,15 @@ typedef union {
 } sep_cpu_ctrl__EXT_TRNG_SRC_SEL_LOCK_t;
 
 // reg - sep_cpu_ctrl::KM_WIPE_CTRL
+// Key Manager emergency wipe control.
+// Key Manager wipe state. A rising edge zeroes all KPV entries and sets the WIPE_STATE interrupt status.
 #define SEP_CPU_CTRL__KM_WIPE_CTRL__WIPE_STATE_bm 0x1
 #define SEP_CPU_CTRL__KM_WIPE_CTRL__WIPE_STATE_bp 0
 #define SEP_CPU_CTRL__KM_WIPE_CTRL__WIPE_STATE_bw 1
 #define SEP_CPU_CTRL__KM_WIPE_CTRL__WIPE_STATE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Key Manager wipe state. A rising edge zeroes all KPV entries and sets the WIPE_STATE interrupt status.
         uint64_t wipe_state :1;
         uint64_t :63;
     } f;
@@ -339,17 +430,37 @@ typedef union {
 } sep_cpu_ctrl__KM_WIPE_CTRL_t;
 
 // reg - sep_cpu_ctrl::DMA_BUS_ERR_STATUS
+// Secure DMA bridge fault status. Each bit is latched in hardware and held
+// until the corresponding DMA_BUS_ERR_CLEAR write. These bits also drive
+// dedicated PIC sources.
+// Neither bit is cleared by a CPU-only reset (the WDT resets the CPU without
+// resetting the DMA), so a bit read as set immediately after boot may describe
+// a fault from before that reset rather than a new one.
+// Register-path bus error: a CPU access to a Secure DMA register returned
+// a TL-UL error response (unmapped or misaligned offset). The faulting
+// access also received SLVERR synchronously.
 #define SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__REG_PATH_ERR_bm 0x1
 #define SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__REG_PATH_ERR_bp 0
 #define SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__REG_PATH_ERR_bw 1
 #define SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__REG_PATH_ERR_reset 0x0
+// DMA-master-path fault: either the fabric returned a non-OKAY AXI response
+// to a DMA transfer, or a TL-UL command-integrity check failed on a command
+// issued by the DMA. The latter is a fault-detection event with no other
+// reporting path.
 #define SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__HOST_PATH_ERR_bm 0x2
 #define SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__HOST_PATH_ERR_bp 1
 #define SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__HOST_PATH_ERR_bw 1
 #define SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__HOST_PATH_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Register-path bus error: a CPU access to a Secure DMA register returned
+        // a TL-UL error response (unmapped or misaligned offset). The faulting
+        // access also received SLVERR synchronously.
         uint64_t reg_path_err :1;
+        // DMA-master-path fault: either the fabric returned a non-OKAY AXI response
+        // to a DMA transfer, or a TL-UL command-integrity check failed on a command
+        // issued by the DMA. The latter is a fault-detection event with no other
+        // reporting path.
         uint64_t host_path_err :1;
         uint64_t :62;
     } f;
@@ -357,12 +468,17 @@ typedef union {
 } sep_cpu_ctrl__DMA_BUS_ERR_STATUS_t;
 
 // reg - sep_cpu_ctrl::DMA_BUS_ERR_CLEAR
+// Clear the DMA_BUS_ERR_STATUS bits. Writing 1 emits a single-cycle clear pulse
+// to both latches. A fault arriving in the same cycle as the clear still
+// latches, so acknowledging cannot drop a concurrent fault.
+// Write 1 to clear both DMA_BUS_ERR_STATUS bits. Always reads 0.
 #define SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_bm 0x1
 #define SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_bp 0
 #define SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_bw 1
 #define SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write 1 to clear both DMA_BUS_ERR_STATUS bits. Always reads 0.
         uint64_t clr :1;
         uint64_t :63;
     } f;
@@ -370,42 +486,66 @@ typedef union {
 } sep_cpu_ctrl__DMA_BUS_ERR_CLEAR_t;
 
 // reg - sep_cpu_ctrl::PERIPH_BUS_ERR_STATUS
+// Peripheral register-bridge fault status, one bit per block. Each bit latches
+// when a CPU access to that block's registers returned a TL-UL error response
+// (unmapped or misaligned offset), and is held until the matching
+// PERIPH_BUS_ERR_CLEAR bit is written. The faulting access also received
+// SLVERR synchronously.
+// All bits OR together into a single PIC source, so read this register to
+// identify which block faulted.
+// No bit is cleared by a CPU-only reset (the WDT resets the CPU without
+// resetting the peripherals), so a bit read as set immediately after boot may
+// describe a fault from before that reset rather than a new one.
+// AES register bridge error.
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__AES_bm 0x1
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__AES_bp 0
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__AES_bw 1
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__AES_reset 0x0
+// HMAC register bridge error.
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__HMAC_bm 0x2
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__HMAC_bp 1
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__HMAC_bw 1
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__HMAC_reset 0x0
+// KMAC register bridge error.
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__KMAC_bm 0x4
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__KMAC_bp 2
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__KMAC_bw 1
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__KMAC_reset 0x0
+// OTBN register bridge error.
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__OTBN_bm 0x8
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__OTBN_bp 3
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__OTBN_bw 1
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__OTBN_reset 0x0
+// CSRNG register bridge error (DRBG CSRNG path).
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__CSRNG_bm 0x10
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__CSRNG_bp 4
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__CSRNG_bw 1
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__CSRNG_reset 0x0
+// EDN register bridge error (DRBG EDN path).
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__EDN_bm 0x20
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__EDN_bp 5
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__EDN_bw 1
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__EDN_reset 0x0
+// Watchdog timer register bridge error.
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__WDT_bm 0x40
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__WDT_bp 6
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__WDT_bw 1
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__WDT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // AES register bridge error.
         uint64_t aes :1;
+        // HMAC register bridge error.
         uint64_t hmac :1;
+        // KMAC register bridge error.
         uint64_t kmac :1;
+        // OTBN register bridge error.
         uint64_t otbn :1;
+        // CSRNG register bridge error (DRBG CSRNG path).
         uint64_t csrng :1;
+        // EDN register bridge error (DRBG EDN path).
         uint64_t edn :1;
+        // Watchdog timer register bridge error.
         uint64_t wdt :1;
         uint64_t :57;
     } f;
@@ -413,42 +553,62 @@ typedef union {
 } sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS_t;
 
 // reg - sep_cpu_ctrl::PERIPH_BUS_ERR_CLEAR
+// Clear PERIPH_BUS_ERR_STATUS bits. Writing 1 to a bit emits a single-cycle
+// clear pulse to that block's latch; bit order matches
+// PERIPH_BUS_ERR_STATUS. Clears are per-block so acknowledging one block
+// cannot discard a fault another block raised between the status read and
+// this write. A fault arriving in the same cycle as its own clear still
+// latches.
+// Write 1 to clear PERIPH_BUS_ERR_STATUS.aes. Always reads 0.
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__AES_bm 0x1
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__AES_bp 0
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__AES_bw 1
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__AES_reset 0x0
+// Write 1 to clear PERIPH_BUS_ERR_STATUS.hmac. Always reads 0.
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__HMAC_bm 0x2
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__HMAC_bp 1
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__HMAC_bw 1
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__HMAC_reset 0x0
+// Write 1 to clear PERIPH_BUS_ERR_STATUS.kmac. Always reads 0.
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__KMAC_bm 0x4
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__KMAC_bp 2
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__KMAC_bw 1
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__KMAC_reset 0x0
+// Write 1 to clear PERIPH_BUS_ERR_STATUS.otbn. Always reads 0.
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__OTBN_bm 0x8
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__OTBN_bp 3
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__OTBN_bw 1
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__OTBN_reset 0x0
+// Write 1 to clear PERIPH_BUS_ERR_STATUS.csrng. Always reads 0.
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__CSRNG_bm 0x10
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__CSRNG_bp 4
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__CSRNG_bw 1
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__CSRNG_reset 0x0
+// Write 1 to clear PERIPH_BUS_ERR_STATUS.edn. Always reads 0.
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__EDN_bm 0x20
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__EDN_bp 5
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__EDN_bw 1
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__EDN_reset 0x0
+// Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__WDT_bm 0x40
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__WDT_bp 6
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__WDT_bw 1
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__WDT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write 1 to clear PERIPH_BUS_ERR_STATUS.aes. Always reads 0.
         uint64_t aes :1;
+        // Write 1 to clear PERIPH_BUS_ERR_STATUS.hmac. Always reads 0.
         uint64_t hmac :1;
+        // Write 1 to clear PERIPH_BUS_ERR_STATUS.kmac. Always reads 0.
         uint64_t kmac :1;
+        // Write 1 to clear PERIPH_BUS_ERR_STATUS.otbn. Always reads 0.
         uint64_t otbn :1;
+        // Write 1 to clear PERIPH_BUS_ERR_STATUS.csrng. Always reads 0.
         uint64_t csrng :1;
+        // Write 1 to clear PERIPH_BUS_ERR_STATUS.edn. Always reads 0.
         uint64_t edn :1;
+        // Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.
         uint64_t wdt :1;
         uint64_t :57;
     } f;
@@ -456,12 +616,14 @@ typedef union {
 } sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR_t;
 
 // reg - sep_cpu_ctrl::SEP_VERSION_ID
+// Version ID for the CPU
 #define SEP_CPU_CTRL__SEP_VERSION_ID__VERSION_ID_bm 0xffffffff
 #define SEP_CPU_CTRL__SEP_VERSION_ID__VERSION_ID_bp 0
 #define SEP_CPU_CTRL__SEP_VERSION_ID__VERSION_ID_bw 32
 #define SEP_CPU_CTRL__SEP_VERSION_ID__VERSION_ID_reset 0xdeadbeef
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Version ID for the CPU
         uint64_t version_id :32;
         uint64_t :32;
     } f;
@@ -469,6 +631,7 @@ typedef union {
 } sep_cpu_ctrl__SEP_VERSION_ID_t;
 
 // addrmap - sep_cpu_ctrl
+// SEP CPU control and status registers: PKA and crypto configuration, boot and fast-memory enables, fuse-sense status, and interrupt controls.
 typedef struct __attribute__ ((__packed__)) {
     uint8_t RESERVED_0_7[0x8];
     sep_cpu_ctrl__CLOCK_GATE_CTRL_t CLOCK_GATE_CTRL;

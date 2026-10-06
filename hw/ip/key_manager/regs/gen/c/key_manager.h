@@ -14,162 +14,205 @@ extern "C" {
 #include <assert.h>
 
 // mem - km_rom
+// Key Manager boot ROM
 typedef struct __attribute__ ((__packed__)) {
     uint32_t mem[4096];
 } km_rom_t;
 
 // mem - km_sram
+// Key Manager data and executable SRAM
 typedef struct __attribute__ ((__packed__)) {
     uint32_t mem[8192];
 } km_sram_t;
 
 // reg - km_mailbox_km::write_data_reg
+// Write data to outbound FIFO (KM→SEP messages)
+// 32-bit data word to write to outbound FIFO
 #define KM_MAILBOX_KM__WRITE_DATA_REG__DATA_bm 0xffffffff
 #define KM_MAILBOX_KM__WRITE_DATA_REG__DATA_bp 0
 #define KM_MAILBOX_KM__WRITE_DATA_REG__DATA_bw 32
 #define KM_MAILBOX_KM__WRITE_DATA_REG__DATA_reset 0x0
 
 // reg - km_mailbox_km::write_separator_reg
+// Write 1 to set message separator on next outbound (KM→SEP) write. Cleared by hardware when that write completes.
+// Write 1 to set message separator on next outbound write. Cleared by hardware when that write completes.
 #define KM_MAILBOX_KM__WRITE_SEPARATOR_REG__SET_bm 0x1
 #define KM_MAILBOX_KM__WRITE_SEPARATOR_REG__SET_bp 0
 #define KM_MAILBOX_KM__WRITE_SEPARATOR_REG__SET_bw 1
 #define KM_MAILBOX_KM__WRITE_SEPARATOR_REG__SET_reset 0x0
+// Reserved
 #define KM_MAILBOX_KM__WRITE_SEPARATOR_REG__RSVD_bm 0xfffffffe
 #define KM_MAILBOX_KM__WRITE_SEPARATOR_REG__RSVD_bp 1
 #define KM_MAILBOX_KM__WRITE_SEPARATOR_REG__RSVD_bw 31
 #define KM_MAILBOX_KM__WRITE_SEPARATOR_REG__RSVD_reset 0x0
 
 // reg - km_mailbox_km::read_data_reg
+// Read data from inbound FIFO (SEP→KM messages)
+// 32-bit data word read from inbound FIFO
 #define KM_MAILBOX_KM__READ_DATA_REG__DATA_bm 0xffffffff
 #define KM_MAILBOX_KM__READ_DATA_REG__DATA_bp 0
 #define KM_MAILBOX_KM__READ_DATA_REG__DATA_bw 32
 #define KM_MAILBOX_KM__READ_DATA_REG__DATA_reset 0x0
 
 // reg - km_mailbox_km::status_reg
+// FIFO status information
+// Inbound FIFO is empty (no data available for KM to read)
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_EMPTY_bm 0x1
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_EMPTY_bp 0
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_EMPTY_bw 1
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_EMPTY_reset 0x1
+// Inbound FIFO is full
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_FULL_bm 0x2
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_FULL_bp 1
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_FULL_bw 1
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_FULL_reset 0x0
+// Outbound FIFO is empty (no data available for SEP to read)
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_EMPTY_bm 0x4
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_EMPTY_bp 2
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_EMPTY_bw 1
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_EMPTY_reset 0x1
+// Outbound FIFO is full (cannot write more data)
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_FULL_bm 0x8
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_FULL_bp 3
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_FULL_bw 1
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_FULL_reset 0x0
+// Inbound FIFO fill level (number of words in FIFO)
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_DEPTH_bm 0xff0
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_DEPTH_bp 4
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_DEPTH_bw 8
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_DEPTH_reset 0x0
+// Outbound FIFO fill level (number of words in FIFO)
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_DEPTH_bm 0xff000
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_DEPTH_bp 12
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_DEPTH_bw 8
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_DEPTH_reset 0x0
+// Inbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_OVERFLOW_bm 0x100000
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_OVERFLOW_bp 20
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_OVERFLOW_bw 1
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_OVERFLOW_reset 0x0
+// Outbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_OVERFLOW_bm 0x200000
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_OVERFLOW_bp 21
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_OVERFLOW_bw 1
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_OVERFLOW_reset 0x0
+// Inbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_UNDERFLOW_bm 0x400000
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_UNDERFLOW_bp 22
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_UNDERFLOW_bw 1
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_UNDERFLOW_reset 0x0
+// Outbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_UNDERFLOW_bm 0x800000
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_UNDERFLOW_bp 23
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_UNDERFLOW_bw 1
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_UNDERFLOW_reset 0x0
+// Message separator: 1 if the last word read from inbound FIFO had the separator bit set (last word of message). Read-only, not sticky.
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_SEPARATOR_bm 0x1000000
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_SEPARATOR_bp 24
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_SEPARATOR_bw 1
 #define KM_MAILBOX_KM__STATUS_REG__INBOUND_SEPARATOR_reset 0x0
+// Message separator: 1 if the last word read from outbound FIFO had the separator bit set (last word of message). Read-only, not sticky.
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_SEPARATOR_bm 0x2000000
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_SEPARATOR_bp 25
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_SEPARATOR_bw 1
 #define KM_MAILBOX_KM__STATUS_REG__OUTBOUND_SEPARATOR_reset 0x0
+// Reserved
 #define KM_MAILBOX_KM__STATUS_REG__RSVD_bm 0xfc000000
 #define KM_MAILBOX_KM__STATUS_REG__RSVD_bp 26
 #define KM_MAILBOX_KM__STATUS_REG__RSVD_bw 6
 #define KM_MAILBOX_KM__STATUS_REG__RSVD_reset 0x0
 
 // reg - km_mailbox_km::irq_status_reg
+// Interrupt status register
+// Inbound FIFO has data available for KM to read (level-sensitive). 1 = data available, 0 = empty.
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__INBOUND_READ_DATA_AVAIL_bm 0x1
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__INBOUND_READ_DATA_AVAIL_bp 0
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__INBOUND_READ_DATA_AVAIL_bw 1
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__INBOUND_READ_DATA_AVAIL_reset 0x0
+// Outbound FIFO has space available for KM to write (level-sensitive). 1 = space available, 0 = full.
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__OUTBOUND_WRITE_SPACE_AVAIL_bm 0x2
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__OUTBOUND_WRITE_SPACE_AVAIL_bp 1
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__OUTBOUND_WRITE_SPACE_AVAIL_bw 1
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__OUTBOUND_WRITE_SPACE_AVAIL_reset 0x0
+// Outbound FIFO overflow detected. Sticky, write 1 to clear.
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__OUTBOUND_OVERFLOW_bm 0x4
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__OUTBOUND_OVERFLOW_bp 2
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__OUTBOUND_OVERFLOW_bw 1
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__OUTBOUND_OVERFLOW_reset 0x0
+// Inbound FIFO underflow detected. Sticky, write 1 to clear.
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__INBOUND_UNDERFLOW_bm 0x8
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__INBOUND_UNDERFLOW_bp 3
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__INBOUND_UNDERFLOW_bw 1
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__INBOUND_UNDERFLOW_reset 0x0
+// SEP performed a mailbox flush. Sticky, write 1 to clear.
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__FLUSHED_BY_SEP_bm 0x10
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__FLUSHED_BY_SEP_bp 4
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__FLUSHED_BY_SEP_bw 1
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__FLUSHED_BY_SEP_reset 0x0
+// Reserved
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__RSVD_bm 0xffffffe0
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__RSVD_bp 5
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__RSVD_bw 27
 #define KM_MAILBOX_KM__IRQ_STATUS_REG__RSVD_reset 0x0
 
 // reg - km_mailbox_km::irq_enable_reg
+// Interrupt enable register for KM CPU
+// Enable interrupt to KM when inbound FIFO has data available (SEP->KM messages)
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__INBOUND_READ_DATA_AVAIL_EN_bm 0x1
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__INBOUND_READ_DATA_AVAIL_EN_bp 0
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__INBOUND_READ_DATA_AVAIL_EN_bw 1
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__INBOUND_READ_DATA_AVAIL_EN_reset 0x0
+// Enable interrupt to KM when outbound FIFO has space available (KM->SEP messages)
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__OUTBOUND_WRITE_SPACE_AVAIL_EN_bm 0x2
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__OUTBOUND_WRITE_SPACE_AVAIL_EN_bp 1
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__OUTBOUND_WRITE_SPACE_AVAIL_EN_bw 1
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__OUTBOUND_WRITE_SPACE_AVAIL_EN_reset 0x0
+// Enable interrupt to KM when outbound FIFO overflow is detected
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__OUTBOUND_OVERFLOW_EN_bm 0x4
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__OUTBOUND_OVERFLOW_EN_bp 2
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__OUTBOUND_OVERFLOW_EN_bw 1
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__OUTBOUND_OVERFLOW_EN_reset 0x0
+// Enable interrupt to KM when inbound FIFO underflow is detected
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__INBOUND_UNDERFLOW_EN_bm 0x8
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__INBOUND_UNDERFLOW_EN_bp 3
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__INBOUND_UNDERFLOW_EN_bw 1
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__INBOUND_UNDERFLOW_EN_reset 0x0
+// Enable interrupt to KM when SEP performs a mailbox flush
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__FLUSHED_BY_SEP_EN_bm 0x10
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__FLUSHED_BY_SEP_EN_bp 4
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__FLUSHED_BY_SEP_EN_bw 1
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__FLUSHED_BY_SEP_EN_reset 0x0
+// Reserved
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__RSVD_bm 0xffffffe0
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__RSVD_bp 5
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__RSVD_bw 27
 #define KM_MAILBOX_KM__IRQ_ENABLE_REG__RSVD_reset 0x0
 
 // reg - km_mailbox_km::ctrl_reg
+// Control register for mailbox behavior configuration
+// Response type for outbound FIFO overflow: 0=SLVERR (default), 1=OKAY
 #define KM_MAILBOX_KM__CTRL_REG__OUTBOUND_OVERFLOW_RESP_bm 0x1
 #define KM_MAILBOX_KM__CTRL_REG__OUTBOUND_OVERFLOW_RESP_bp 0
 #define KM_MAILBOX_KM__CTRL_REG__OUTBOUND_OVERFLOW_RESP_bw 1
 #define KM_MAILBOX_KM__CTRL_REG__OUTBOUND_OVERFLOW_RESP_reset 0x0
+// Response type for inbound FIFO underflow: 0=SLVERR (default), 1=OKAY
 #define KM_MAILBOX_KM__CTRL_REG__INBOUND_UNDERFLOW_RESP_bm 0x2
 #define KM_MAILBOX_KM__CTRL_REG__INBOUND_UNDERFLOW_RESP_bp 1
 #define KM_MAILBOX_KM__CTRL_REG__INBOUND_UNDERFLOW_RESP_bw 1
 #define KM_MAILBOX_KM__CTRL_REG__INBOUND_UNDERFLOW_RESP_reset 0x0
+// Write 1 to flush all mailbox FIFOs (inbound and outbound). Cleared by hardware when flush completes.
 #define KM_MAILBOX_KM__CTRL_REG__FLUSH_bm 0x4
 #define KM_MAILBOX_KM__CTRL_REG__FLUSH_bp 2
 #define KM_MAILBOX_KM__CTRL_REG__FLUSH_bw 1
 #define KM_MAILBOX_KM__CTRL_REG__FLUSH_reset 0x0
+// Reserved
 #define KM_MAILBOX_KM__CTRL_REG__RSVD_bm 0xfffffff8
 #define KM_MAILBOX_KM__CTRL_REG__RSVD_bp 3
 #define KM_MAILBOX_KM__CTRL_REG__RSVD_bw 29
 #define KM_MAILBOX_KM__CTRL_REG__RSVD_reset 0x0
 
 // addrmap - km_mailbox_km
+// Register interface for KM CPU to access mailbox (write to outbound FIFO, read from inbound FIFO)
 typedef struct __attribute__ ((__packed__)) {
     uint32_t KM_WRITE_DATA;
     uint32_t KM_WRITE_SEPARATOR;
@@ -181,570 +224,699 @@ typedef struct __attribute__ ((__packed__)) {
 } km_mailbox_km_t;
 
 // reg - sep_efuse_map::LOCKS
+// lc_state_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__LC_STATE_WRITE_LOCK_bm 0x1
 #define SEP_EFUSE_MAP__LOCKS__LC_STATE_WRITE_LOCK_bp 0
 #define SEP_EFUSE_MAP__LOCKS__LC_STATE_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__LC_STATE_WRITE_LOCK_reset 0x0
+// lc_state_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__LC_STATE_READ_LOCK_bm 0x2
 #define SEP_EFUSE_MAP__LOCKS__LC_STATE_READ_LOCK_bp 1
 #define SEP_EFUSE_MAP__LOCKS__LC_STATE_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__LC_STATE_READ_LOCK_reset 0x0
+// sboot_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SBOOT_DIS_WRITE_LOCK_bm 0x4
 #define SEP_EFUSE_MAP__LOCKS__SBOOT_DIS_WRITE_LOCK_bp 2
 #define SEP_EFUSE_MAP__LOCKS__SBOOT_DIS_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SBOOT_DIS_WRITE_LOCK_reset 0x0
+// sboot_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SBOOT_DIS_READ_LOCK_bm 0x8
 #define SEP_EFUSE_MAP__LOCKS__SBOOT_DIS_READ_LOCK_bp 3
 #define SEP_EFUSE_MAP__LOCKS__SBOOT_DIS_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SBOOT_DIS_READ_LOCK_reset 0x0
+// TRANSIENT_RMA_EN_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__TRANSIENT_RMA_EN_WRITE_LOCK_bm 0x10
 #define SEP_EFUSE_MAP__LOCKS__TRANSIENT_RMA_EN_WRITE_LOCK_bp 4
 #define SEP_EFUSE_MAP__LOCKS__TRANSIENT_RMA_EN_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__TRANSIENT_RMA_EN_WRITE_LOCK_reset 0x0
+// TRANSIENT_RMA_EN_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__TRANSIENT_RMA_EN_READ_LOCK_bm 0x20
 #define SEP_EFUSE_MAP__LOCKS__TRANSIENT_RMA_EN_READ_LOCK_bp 5
 #define SEP_EFUSE_MAP__LOCKS__TRANSIENT_RMA_EN_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__TRANSIENT_RMA_EN_READ_LOCK_reset 0x0
+// sip_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_DIS_WRITE_LOCK_bm 0x40
 #define SEP_EFUSE_MAP__LOCKS__SIP_DIS_WRITE_LOCK_bp 6
 #define SEP_EFUSE_MAP__LOCKS__SIP_DIS_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_DIS_WRITE_LOCK_reset 0x0
+// sip_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_DIS_READ_LOCK_bm 0x80
 #define SEP_EFUSE_MAP__LOCKS__SIP_DIS_READ_LOCK_bp 7
 #define SEP_EFUSE_MAP__LOCKS__SIP_DIS_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_DIS_READ_LOCK_reset 0x0
+// sys_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SYS_DIS_WRITE_LOCK_bm 0x100
 #define SEP_EFUSE_MAP__LOCKS__SYS_DIS_WRITE_LOCK_bp 8
 #define SEP_EFUSE_MAP__LOCKS__SYS_DIS_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SYS_DIS_WRITE_LOCK_reset 0x0
+// sys_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SYS_DIS_READ_LOCK_bm 0x200
 #define SEP_EFUSE_MAP__LOCKS__SYS_DIS_READ_LOCK_bp 9
 #define SEP_EFUSE_MAP__LOCKS__SYS_DIS_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SYS_DIS_READ_LOCK_reset 0x0
+// rma_sip_token_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__RMA_SIP_TOKEN_DIGEST_WRITE_LOCK_bm 0x400
 #define SEP_EFUSE_MAP__LOCKS__RMA_SIP_TOKEN_DIGEST_WRITE_LOCK_bp 10
 #define SEP_EFUSE_MAP__LOCKS__RMA_SIP_TOKEN_DIGEST_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__RMA_SIP_TOKEN_DIGEST_WRITE_LOCK_reset 0x0
+// rma_sip_token_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__RMA_SIP_TOKEN_DIGEST_READ_LOCK_bm 0x800
 #define SEP_EFUSE_MAP__LOCKS__RMA_SIP_TOKEN_DIGEST_READ_LOCK_bp 11
 #define SEP_EFUSE_MAP__LOCKS__RMA_SIP_TOKEN_DIGEST_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__RMA_SIP_TOKEN_DIGEST_READ_LOCK_reset 0x0
+// rma_chiplet_token_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__RMA_CHIPLET_TOKEN_DIGEST_WRITE_LOCK_bm 0x1000
 #define SEP_EFUSE_MAP__LOCKS__RMA_CHIPLET_TOKEN_DIGEST_WRITE_LOCK_bp 12
 #define SEP_EFUSE_MAP__LOCKS__RMA_CHIPLET_TOKEN_DIGEST_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__RMA_CHIPLET_TOKEN_DIGEST_WRITE_LOCK_reset 0x0
+// rma_chiplet_token_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK_bm 0x2000
 #define SEP_EFUSE_MAP__LOCKS__RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK_bp 13
 #define SEP_EFUSE_MAP__LOCKS__RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK_reset 0x0
+// class_key_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CLASS_KEY_WRITE_LOCK_bm 0x4000
 #define SEP_EFUSE_MAP__LOCKS__CLASS_KEY_WRITE_LOCK_bp 14
 #define SEP_EFUSE_MAP__LOCKS__CLASS_KEY_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CLASS_KEY_WRITE_LOCK_reset 0x0
+// class_key_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CLASS_KEY_READ_LOCK_bm 0x8000
 #define SEP_EFUSE_MAP__LOCKS__CLASS_KEY_READ_LOCK_bp 15
 #define SEP_EFUSE_MAP__LOCKS__CLASS_KEY_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CLASS_KEY_READ_LOCK_reset 0x0
+// chiplet_pubk_revoke_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_REVOKE_WRITE_LOCK_bm 0x10000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_REVOKE_WRITE_LOCK_bp 16
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_REVOKE_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_REVOKE_WRITE_LOCK_reset 0x0
+// chiplet_pubk_revoke_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_REVOKE_READ_LOCK_bm 0x20000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_REVOKE_READ_LOCK_bp 17
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_REVOKE_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_REVOKE_READ_LOCK_reset 0x0
+// bl1_version_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__BL1_VERSION_WRITE_LOCK_bm 0x40000
 #define SEP_EFUSE_MAP__LOCKS__BL1_VERSION_WRITE_LOCK_bp 18
 #define SEP_EFUSE_MAP__LOCKS__BL1_VERSION_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__BL1_VERSION_WRITE_LOCK_reset 0x0
+// bl1_version_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__BL1_VERSION_READ_LOCK_bm 0x80000
 #define SEP_EFUSE_MAP__LOCKS__BL1_VERSION_READ_LOCK_bp 19
 #define SEP_EFUSE_MAP__LOCKS__BL1_VERSION_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__BL1_VERSION_READ_LOCK_reset 0x0
+// bl2_version_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__BL2_VERSION_WRITE_LOCK_bm 0x100000
 #define SEP_EFUSE_MAP__LOCKS__BL2_VERSION_WRITE_LOCK_bp 20
 #define SEP_EFUSE_MAP__LOCKS__BL2_VERSION_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__BL2_VERSION_WRITE_LOCK_reset 0x0
+// bl2_version_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__BL2_VERSION_READ_LOCK_bm 0x200000
 #define SEP_EFUSE_MAP__LOCKS__BL2_VERSION_READ_LOCK_bp 21
 #define SEP_EFUSE_MAP__LOCKS__BL2_VERSION_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__BL2_VERSION_READ_LOCK_reset 0x0
+// chiplet_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_UID_WRITE_LOCK_bm 0x400000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_UID_WRITE_LOCK_bp 22
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_UID_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_UID_WRITE_LOCK_reset 0x0
+// chiplet_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_UID_READ_LOCK_bm 0x800000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_UID_READ_LOCK_bp 23
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_UID_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_UID_READ_LOCK_reset 0x0
+// sip_pubk_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH0_WRITE_LOCK_bm 0x1000000
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH0_WRITE_LOCK_bp 24
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH0_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH0_WRITE_LOCK_reset 0x0
+// sip_pubk_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH0_READ_LOCK_bm 0x2000000
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH0_READ_LOCK_bp 25
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH0_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH0_READ_LOCK_reset 0x0
+// sip_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_UID_WRITE_LOCK_bm 0x4000000
 #define SEP_EFUSE_MAP__LOCKS__SIP_UID_WRITE_LOCK_bp 26
 #define SEP_EFUSE_MAP__LOCKS__SIP_UID_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_UID_WRITE_LOCK_reset 0x0
+// sip_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_UID_READ_LOCK_bm 0x8000000
 #define SEP_EFUSE_MAP__LOCKS__SIP_UID_READ_LOCK_bp 27
 #define SEP_EFUSE_MAP__LOCKS__SIP_UID_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_UID_READ_LOCK_reset 0x0
+// sys_pubk_hash_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_HASH_WRITE_LOCK_bm 0x10000000
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_HASH_WRITE_LOCK_bp 28
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_HASH_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_HASH_WRITE_LOCK_reset 0x0
+// sys_pubk_hash_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_HASH_READ_LOCK_bm 0x20000000
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_HASH_READ_LOCK_bp 29
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_HASH_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_HASH_READ_LOCK_reset 0x0
+// sys_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SYS_UID_WRITE_LOCK_bm 0x40000000
 #define SEP_EFUSE_MAP__LOCKS__SYS_UID_WRITE_LOCK_bp 30
 #define SEP_EFUSE_MAP__LOCKS__SYS_UID_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SYS_UID_WRITE_LOCK_reset 0x0
+// sys_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SYS_UID_READ_LOCK_bm 0x80000000
 #define SEP_EFUSE_MAP__LOCKS__SYS_UID_READ_LOCK_bp 31
 #define SEP_EFUSE_MAP__LOCKS__SYS_UID_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SYS_UID_READ_LOCK_reset 0x0
+// status_rpt_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__STATUS_RPT_WRITE_LOCK_bm 0x100000000
 #define SEP_EFUSE_MAP__LOCKS__STATUS_RPT_WRITE_LOCK_bp 32
 #define SEP_EFUSE_MAP__LOCKS__STATUS_RPT_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__STATUS_RPT_WRITE_LOCK_reset 0x0
+// status_rpt_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__STATUS_RPT_READ_LOCK_bm 0x200000000
 #define SEP_EFUSE_MAP__LOCKS__STATUS_RPT_READ_LOCK_bp 33
 #define SEP_EFUSE_MAP__LOCKS__STATUS_RPT_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__STATUS_RPT_READ_LOCK_reset 0x0
+// rom_ctl_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__ROM_CTL_WRITE_LOCK_bm 0x400000000
 #define SEP_EFUSE_MAP__LOCKS__ROM_CTL_WRITE_LOCK_bp 34
 #define SEP_EFUSE_MAP__LOCKS__ROM_CTL_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__ROM_CTL_WRITE_LOCK_reset 0x0
+// rom_ctl_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__ROM_CTL_READ_LOCK_bm 0x800000000
 #define SEP_EFUSE_MAP__LOCKS__ROM_CTL_READ_LOCK_bp 35
 #define SEP_EFUSE_MAP__LOCKS__ROM_CTL_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__ROM_CTL_READ_LOCK_reset 0x0
+// sysclk_freq_mhz_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_WRITE_LOCK_bm 0x1000000000
 #define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_WRITE_LOCK_bp 36
 #define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_WRITE_LOCK_reset 0x0
+// sysclk_freq_mhz_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_READ_LOCK_bm 0x2000000000
 #define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_READ_LOCK_bp 37
 #define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_READ_LOCK_reset 0x0
+// chiplet_pubk_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH0_WRITE_LOCK_bm 0x4000000000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH0_WRITE_LOCK_bp 38
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH0_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH0_WRITE_LOCK_reset 0x0
+// chiplet_pubk_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH0_READ_LOCK_bm 0x8000000000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH0_READ_LOCK_bp 39
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH0_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH0_READ_LOCK_reset 0x0
+// chiplet_pubk_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH1_WRITE_LOCK_bm 0x10000000000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH1_WRITE_LOCK_bp 40
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH1_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH1_WRITE_LOCK_reset 0x0
+// chiplet_pubk_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH1_READ_LOCK_bm 0x20000000000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH1_READ_LOCK_bp 41
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH1_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH1_READ_LOCK_reset 0x0
+// required_signers_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_SIGNERS_WRITE_LOCK_bm 0x40000000000
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_SIGNERS_WRITE_LOCK_bp 42
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_SIGNERS_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_SIGNERS_WRITE_LOCK_reset 0x0
+// required_signers_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_SIGNERS_READ_LOCK_bm 0x80000000000
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_SIGNERS_READ_LOCK_bp 43
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_SIGNERS_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_SIGNERS_READ_LOCK_reset 0x0
+// required_algs_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_ALGS_WRITE_LOCK_bm 0x100000000000
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_ALGS_WRITE_LOCK_bp 44
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_ALGS_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_ALGS_WRITE_LOCK_reset 0x0
+// required_algs_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_ALGS_READ_LOCK_bm 0x200000000000
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_ALGS_READ_LOCK_bp 45
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_ALGS_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_ALGS_READ_LOCK_reset 0x0
+// chiplet_pubk_pqc_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH0_WRITE_LOCK_bm 0x400000000000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH0_WRITE_LOCK_bp 46
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH0_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH0_WRITE_LOCK_reset 0x0
+// chiplet_pubk_pqc_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH0_READ_LOCK_bm 0x800000000000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH0_READ_LOCK_bp 47
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH0_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH0_READ_LOCK_reset 0x0
+// chiplet_pubk_pqc_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH1_WRITE_LOCK_bm 0x1000000000000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH1_WRITE_LOCK_bp 48
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH1_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH1_WRITE_LOCK_reset 0x0
+// chiplet_pubk_pqc_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH1_READ_LOCK_bm 0x2000000000000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH1_READ_LOCK_bp 49
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH1_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH1_READ_LOCK_reset 0x0
+// sip_pubk_pqc_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH0_WRITE_LOCK_bm 0x4000000000000
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH0_WRITE_LOCK_bp 50
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH0_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH0_WRITE_LOCK_reset 0x0
+// sip_pubk_pqc_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH0_READ_LOCK_bm 0x8000000000000
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH0_READ_LOCK_bp 51
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH0_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH0_READ_LOCK_reset 0x0
+// sys_pubk_pqc_hash_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_PQC_HASH_WRITE_LOCK_bm 0x10000000000000
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_PQC_HASH_WRITE_LOCK_bp 52
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_PQC_HASH_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_PQC_HASH_WRITE_LOCK_reset 0x0
+// sys_pubk_pqc_hash_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_PQC_HASH_READ_LOCK_bm 0x20000000000000
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_PQC_HASH_READ_LOCK_bp 53
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_PQC_HASH_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_PQC_HASH_READ_LOCK_reset 0x0
+// sip_pubk_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH1_WRITE_LOCK_bm 0x40000000000000
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH1_WRITE_LOCK_bp 54
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH1_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH1_WRITE_LOCK_reset 0x0
+// sip_pubk_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH1_READ_LOCK_bm 0x80000000000000
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH1_READ_LOCK_bp 55
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH1_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH1_READ_LOCK_reset 0x0
+// sip_pubk_pqc_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH1_WRITE_LOCK_bm 0x100000000000000
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH1_WRITE_LOCK_bp 56
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH1_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH1_WRITE_LOCK_reset 0x0
+// sip_pubk_pqc_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH1_READ_LOCK_bm 0x200000000000000
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH1_READ_LOCK_bp 57
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH1_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH1_READ_LOCK_reset 0x0
+// sep_chiplet_id_write_lock (slot 29): when set, SEP_CHIPLET_ID is not write-able.
 #define SEP_EFUSE_MAP__LOCKS__SEP_CHIPLET_ID_WRITE_LOCK_bm 0x400000000000000
 #define SEP_EFUSE_MAP__LOCKS__SEP_CHIPLET_ID_WRITE_LOCK_bp 58
 #define SEP_EFUSE_MAP__LOCKS__SEP_CHIPLET_ID_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SEP_CHIPLET_ID_WRITE_LOCK_reset 0x0
+// sep_chiplet_id_read_lock (slot 29): when set, SEP_CHIPLET_ID is not read-able.
 #define SEP_EFUSE_MAP__LOCKS__SEP_CHIPLET_ID_READ_LOCK_bm 0x800000000000000
 #define SEP_EFUSE_MAP__LOCKS__SEP_CHIPLET_ID_READ_LOCK_bp 59
 #define SEP_EFUSE_MAP__LOCKS__SEP_CHIPLET_ID_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SEP_CHIPLET_ID_READ_LOCK_reset 0x0
+// sep_sip_id_write_lock (slot 30): when set, SEP_SIP_ID is not write-able.
 #define SEP_EFUSE_MAP__LOCKS__SEP_SIP_ID_WRITE_LOCK_bm 0x1000000000000000
 #define SEP_EFUSE_MAP__LOCKS__SEP_SIP_ID_WRITE_LOCK_bp 60
 #define SEP_EFUSE_MAP__LOCKS__SEP_SIP_ID_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SEP_SIP_ID_WRITE_LOCK_reset 0x0
+// sep_sip_id_read_lock (slot 30): when set, SEP_SIP_ID is not read-able.
 #define SEP_EFUSE_MAP__LOCKS__SEP_SIP_ID_READ_LOCK_bm 0x2000000000000000
 #define SEP_EFUSE_MAP__LOCKS__SEP_SIP_ID_READ_LOCK_bp 61
 #define SEP_EFUSE_MAP__LOCKS__SEP_SIP_ID_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SEP_SIP_ID_READ_LOCK_reset 0x0
+// sep_sys_id_write_lock (slot 31): when set, SEP_SYS_ID is not write-able.
 #define SEP_EFUSE_MAP__LOCKS__SEP_SYS_ID_WRITE_LOCK_bm 0x4000000000000000
 #define SEP_EFUSE_MAP__LOCKS__SEP_SYS_ID_WRITE_LOCK_bp 62
 #define SEP_EFUSE_MAP__LOCKS__SEP_SYS_ID_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SEP_SYS_ID_WRITE_LOCK_reset 0x0
+// sep_sys_id_read_lock (slot 31): when set, SEP_SYS_ID is not read-able.
 #define SEP_EFUSE_MAP__LOCKS__SEP_SYS_ID_READ_LOCK_bm 0x8000000000000000
 #define SEP_EFUSE_MAP__LOCKS__SEP_SYS_ID_READ_LOCK_bp 63
 #define SEP_EFUSE_MAP__LOCKS__SEP_SYS_ID_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SEP_SYS_ID_READ_LOCK_reset 0x0
 
 // reg - sep_efuse_map::LOCKS_SPARE
+// spare0_write_lock (slot 32): when set, spare0 is not write-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE0_WRITE_LOCK_bm 0x1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE0_WRITE_LOCK_bp 0
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE0_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE0_WRITE_LOCK_reset 0x0
+// spare0_read_lock (slot 32): when set, spare0 is not read-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE0_READ_LOCK_bm 0x2
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE0_READ_LOCK_bp 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE0_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE0_READ_LOCK_reset 0x0
+// spare1_write_lock (slot 33): when set, spare1 is not write-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE1_WRITE_LOCK_bm 0x4
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE1_WRITE_LOCK_bp 2
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE1_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE1_WRITE_LOCK_reset 0x0
+// spare1_read_lock (slot 33): when set, spare1 is not read-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE1_READ_LOCK_bm 0x8
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE1_READ_LOCK_bp 3
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE1_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE1_READ_LOCK_reset 0x0
+// spare2_write_lock (slot 34): when set, spare2 is not write-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE2_WRITE_LOCK_bm 0x10
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE2_WRITE_LOCK_bp 4
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE2_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE2_WRITE_LOCK_reset 0x0
+// spare2_read_lock (slot 34): when set, spare2 is not read-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE2_READ_LOCK_bm 0x20
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE2_READ_LOCK_bp 5
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE2_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE2_READ_LOCK_reset 0x0
+// spare3_write_lock (slot 35): when set, spare3 is not write-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE3_WRITE_LOCK_bm 0x40
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE3_WRITE_LOCK_bp 6
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE3_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE3_WRITE_LOCK_reset 0x0
+// spare3_read_lock (slot 35): when set, spare3 is not read-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE3_READ_LOCK_bm 0x80
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE3_READ_LOCK_bp 7
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE3_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE3_READ_LOCK_reset 0x0
+// spare4_write_lock (slot 36): when set, spare4 is not write-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE4_WRITE_LOCK_bm 0x100
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE4_WRITE_LOCK_bp 8
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE4_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE4_WRITE_LOCK_reset 0x0
+// spare4_read_lock (slot 36): when set, spare4 is not read-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE4_READ_LOCK_bm 0x200
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE4_READ_LOCK_bp 9
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE4_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE4_READ_LOCK_reset 0x0
+// spare5_write_lock (slot 37): when set, spare5 is not write-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE5_WRITE_LOCK_bm 0x400
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE5_WRITE_LOCK_bp 10
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE5_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE5_WRITE_LOCK_reset 0x0
+// spare5_read_lock (slot 37): when set, spare5 is not read-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE5_READ_LOCK_bm 0x800
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE5_READ_LOCK_bp 11
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE5_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE5_READ_LOCK_reset 0x0
+// spare6_write_lock (slot 38): when set, spare6 is not write-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE6_WRITE_LOCK_bm 0x1000
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE6_WRITE_LOCK_bp 12
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE6_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE6_WRITE_LOCK_reset 0x0
+// spare6_read_lock (slot 38): when set, spare6 is not read-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE6_READ_LOCK_bm 0x2000
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE6_READ_LOCK_bp 13
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE6_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE6_READ_LOCK_reset 0x0
+// spare7_write_lock (slot 39): when set, spare7 is not write-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE7_WRITE_LOCK_bm 0x4000
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE7_WRITE_LOCK_bp 14
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE7_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE7_WRITE_LOCK_reset 0x0
+// spare7_read_lock (slot 39): when set, spare7 is not read-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE7_READ_LOCK_bm 0x8000
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE7_READ_LOCK_bp 15
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE7_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE7_READ_LOCK_reset 0x0
+// spare8_write_lock (slot 40): when set, spare8 is not write-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_WRITE_LOCK_bm 0x10000
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_WRITE_LOCK_bp 16
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_WRITE_LOCK_reset 0x0
+// spare8_read_lock (slot 40): when set, spare8 is not read-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_READ_LOCK_bm 0x20000
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_READ_LOCK_bp 17
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_READ_LOCK_reset 0x0
+// Unassigned lock slots 41-47. Reserved for future field lock assignments.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE_LOCK_RSVD_bm 0xfffc0000
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE_LOCK_RSVD_bp 18
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE_LOCK_RSVD_bw 14
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE_LOCK_RSVD_reset 0x0
 
 // reg - sep_efuse_map::LC_STATE
+// Life cycle manufacturing state, differentially encoded: {~raw[3:0], raw[3:0]}
 #define SEP_EFUSE_MAP__LC_STATE__LC_STATE_bm 0xff
 #define SEP_EFUSE_MAP__LC_STATE__LC_STATE_bp 0
 #define SEP_EFUSE_MAP__LC_STATE__LC_STATE_bw 8
 #define SEP_EFUSE_MAP__LC_STATE__LC_STATE_reset 0xf0
+// Unused
 #define SEP_EFUSE_MAP__LC_STATE__RSVD_bm 0xffffff00
 #define SEP_EFUSE_MAP__LC_STATE__RSVD_bp 8
 #define SEP_EFUSE_MAP__LC_STATE__RSVD_bw 24
 #define SEP_EFUSE_MAP__LC_STATE__RSVD_reset 0x0
 
 // reg - sep_efuse_map::SBOOT_DIS
+// Chicken bit to disable secure boot in SEP ROM.
 #define SEP_EFUSE_MAP__SBOOT_DIS__DISABLE_SECURE_BOOT_bm 0x1
 #define SEP_EFUSE_MAP__SBOOT_DIS__DISABLE_SECURE_BOOT_bp 0
 #define SEP_EFUSE_MAP__SBOOT_DIS__DISABLE_SECURE_BOOT_bw 1
 #define SEP_EFUSE_MAP__SBOOT_DIS__DISABLE_SECURE_BOOT_reset 0x0
+// Unused
 #define SEP_EFUSE_MAP__SBOOT_DIS__RSVD_bm 0xfffffffe
 #define SEP_EFUSE_MAP__SBOOT_DIS__RSVD_bp 1
 #define SEP_EFUSE_MAP__SBOOT_DIS__RSVD_bw 31
 #define SEP_EFUSE_MAP__SBOOT_DIS__RSVD_reset 0x0
 
 // reg - sep_efuse_map::TRANSIENT_RMA_EN
+// When Transient RMA EN is 1, matching on corresponding *_Tokens will automatically transfer the chip to the corresponding RMA state by setting the LC_STATE reg
 #define SEP_EFUSE_MAP__TRANSIENT_RMA_EN__TRANSIENT_RMA_EN_bm 0x1
 #define SEP_EFUSE_MAP__TRANSIENT_RMA_EN__TRANSIENT_RMA_EN_bp 0
 #define SEP_EFUSE_MAP__TRANSIENT_RMA_EN__TRANSIENT_RMA_EN_bw 1
 #define SEP_EFUSE_MAP__TRANSIENT_RMA_EN__TRANSIENT_RMA_EN_reset 0x0
+// Unused
 #define SEP_EFUSE_MAP__TRANSIENT_RMA_EN__RSVD_bm 0xfffffffe
 #define SEP_EFUSE_MAP__TRANSIENT_RMA_EN__RSVD_bp 1
 #define SEP_EFUSE_MAP__TRANSIENT_RMA_EN__RSVD_bw 31
 #define SEP_EFUSE_MAP__TRANSIENT_RMA_EN__RSVD_reset 0x0
 
 // reg - sep_efuse_map::LC_DISABLE
+// An owner's feature control vector. When set (1'b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.
+// SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1'b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1'b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.
 #define SEP_EFUSE_MAP__LC_DISABLE__SEP_DEBUG_bm 0x1
 #define SEP_EFUSE_MAP__LC_DISABLE__SEP_DEBUG_bp 0
 #define SEP_EFUSE_MAP__LC_DISABLE__SEP_DEBUG_bw 1
 #define SEP_EFUSE_MAP__LC_DISABLE__SEP_DEBUG_reset 0x0
+// CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1'b1: chiplet-scope debug/scan-dump access disabled. 1'b0: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when SIP_DBG is open as well. Contributes to the reachability of the crypto/KM secure chain but never authorizes a dump from it.
 #define SEP_EFUSE_MAP__LC_DISABLE__CHIPLET_DBG_bm 0x2
 #define SEP_EFUSE_MAP__LC_DISABLE__CHIPLET_DBG_bp 1
 #define SEP_EFUSE_MAP__LC_DISABLE__CHIPLET_DBG_bw 1
 #define SEP_EFUSE_MAP__LC_DISABLE__CHIPLET_DBG_reset 0x0
+// SEP_FUSE_DBG (bit 2): 1'b1: the DFT-inserted access path into the SEP OTP is disabled. 1'b0: enabled. Also covers the OTP IP-vendor test and calibration interface, which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.
 #define SEP_EFUSE_MAP__LC_DISABLE__SEP_FUSE_DBG_bm 0x4
 #define SEP_EFUSE_MAP__LC_DISABLE__SEP_FUSE_DBG_bp 2
 #define SEP_EFUSE_MAP__LC_DISABLE__SEP_FUSE_DBG_bw 1
 #define SEP_EFUSE_MAP__LC_DISABLE__SEP_FUSE_DBG_reset 0x0
+// SMC_FUSE_DBG (bit 3): 1'b1: the DFT-inserted access path into the SMC OTP is disabled. 1'b0: enabled. Produced by SEP-LCC feat_ctrl_o, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.
 #define SEP_EFUSE_MAP__LC_DISABLE__SMC_FUSE_DBG_bm 0x8
 #define SEP_EFUSE_MAP__LC_DISABLE__SMC_FUSE_DBG_bp 3
 #define SEP_EFUSE_MAP__LC_DISABLE__SMC_FUSE_DBG_bw 1
 #define SEP_EFUSE_MAP__LC_DISABLE__SMC_FUSE_DBG_reset 0x0
+// Reserved for adopter-defined local (DBG_1) debug scan chains (bits 23:4).
 #define SEP_EFUSE_MAP__LC_DISABLE__DEBUG_RESERVED_DBG1_bm 0xfffff0
 #define SEP_EFUSE_MAP__LC_DISABLE__DEBUG_RESERVED_DBG1_bp 4
 #define SEP_EFUSE_MAP__LC_DISABLE__DEBUG_RESERVED_DBG1_bw 20
 #define SEP_EFUSE_MAP__LC_DISABLE__DEBUG_RESERVED_DBG1_reset 0x0
+// SIP_DBG (bit 24): Coarse-grained debug enable for the SiP scope: the inter-chiplet debug-bypass gate that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. 1'b1: disabled. 1'b0: enabled.
 #define SEP_EFUSE_MAP__LC_DISABLE__SIP_DEBUG_bm 0x1000000
 #define SEP_EFUSE_MAP__LC_DISABLE__SIP_DEBUG_bp 24
 #define SEP_EFUSE_MAP__LC_DISABLE__SIP_DEBUG_bw 1
 #define SEP_EFUSE_MAP__LC_DISABLE__SIP_DEBUG_reset 0x0
+// Reserved for adopter-defined inter-chiplet-bypass (DBG_2) debug scan chains (bits 47:25).
 #define SEP_EFUSE_MAP__LC_DISABLE__DEBUG_RESERVED_DBG2_bm 0xfffffe000000
 #define SEP_EFUSE_MAP__LC_DISABLE__DEBUG_RESERVED_DBG2_bp 25
 #define SEP_EFUSE_MAP__LC_DISABLE__DEBUG_RESERVED_DBG2_bw 23
 #define SEP_EFUSE_MAP__LC_DISABLE__DEBUG_RESERVED_DBG2_reset 0x0
+// Reserved for adopter-defined functional feature gating (bits 63:48).
 #define SEP_EFUSE_MAP__LC_DISABLE__FUNC_RESERVED_bm 0xffff000000000000
 #define SEP_EFUSE_MAP__LC_DISABLE__FUNC_RESERVED_bp 48
 #define SEP_EFUSE_MAP__LC_DISABLE__FUNC_RESERVED_bw 16
 #define SEP_EFUSE_MAP__LC_DISABLE__FUNC_RESERVED_reset 0x0
 
 // reg - sep_efuse_map::RMA_SIP_TOKEN_DIGEST
+// Hash digest of life cycle secret that allows entering RMA_SIP state / Note this is a 256 bit field
 #define SEP_EFUSE_MAP__RMA_SIP_TOKEN_DIGEST__TOKEN_DIGEST_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__RMA_SIP_TOKEN_DIGEST__TOKEN_DIGEST_bp 0
 #define SEP_EFUSE_MAP__RMA_SIP_TOKEN_DIGEST__TOKEN_DIGEST_bw 256
 #define SEP_EFUSE_MAP__RMA_SIP_TOKEN_DIGEST__TOKEN_DIGEST_reset 0x0
 
 // reg - sep_efuse_map::RMA_CHIPLET_TOKEN_DIGEST
+// Hash digest of life cycle secret that allows entering RMA_CHIPLET state/ Note this is a 256 bit field
 #define SEP_EFUSE_MAP__RMA_CHIPLET_TOKEN_DIGEST__TOKEN_DIGEST_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__RMA_CHIPLET_TOKEN_DIGEST__TOKEN_DIGEST_bp 0
 #define SEP_EFUSE_MAP__RMA_CHIPLET_TOKEN_DIGEST__TOKEN_DIGEST_bw 256
 #define SEP_EFUSE_MAP__RMA_CHIPLET_TOKEN_DIGEST__TOKEN_DIGEST_reset 0x0
 
 // reg - sep_efuse_map::CLASS_KEY
+// Class key that could be used for FW encryption/decryption
 #define SEP_EFUSE_MAP__CLASS_KEY__KEY_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__CLASS_KEY__KEY_bp 0
 #define SEP_EFUSE_MAP__CLASS_KEY__KEY_bw 256
 #define SEP_EFUSE_MAP__CLASS_KEY__KEY_reset 0x0
 
 // reg - sep_efuse_map::CHIPLET_PUBK_REVOKE
+// Global public-key revocation vector covering every boot-verification key of every owner (classical and PQC). SEP ROM embeds a set of public-key hash digests and accesses additional fused key hashes; each key entry maps to one bit here. Once set, SEP ROM rejects the corresponding key. Bit map: [7:0] ROM chiplet-creator classical keys (bits 0,1 are development keys); [15:8] ROM chiplet-creator PQC keys; [16]/[17] CHIPLET_PUBK_HASH0/1; [18]/[19] CHIPLET_PUBK_PQC_HASH0/1; [20]/[21] SIP_PUBK_HASH0 / SIP_PUBK_PQC_HASH0; [22]/[23] SYS_PUBK_HASH / SYS_PUBK_PQC_HASH; [24]/[25] SIP_PUBK_HASH1 / SIP_PUBK_PQC_HASH1; [31:26] reserved. Before the chiplet owner transfers a part to the customer, the development-key bits shall be set (revoked).
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_REVOKE__SELECT_bm 0xffffffff
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_REVOKE__SELECT_bp 0
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_REVOKE__SELECT_bw 32
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_REVOKE__SELECT_reset 0x0
 
 // reg - sep_efuse_map::BL1_VERSION
+// Minimum BL1 version that can be loaded by SEPROM
 #define SEP_EFUSE_MAP__BL1_VERSION__VERSION_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__BL1_VERSION__VERSION_bp 0
 #define SEP_EFUSE_MAP__BL1_VERSION__VERSION_bw 256
 #define SEP_EFUSE_MAP__BL1_VERSION__VERSION_reset 0x0
 
 // reg - sep_efuse_map::BL2_VERSION
+// Minimum BL2 version that can be loaded by BL1. If more boot stages exist, rollback protection can be implemented by BL2.
 #define SEP_EFUSE_MAP__BL2_VERSION__VERSION_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__BL2_VERSION__VERSION_bp 0
 #define SEP_EFUSE_MAP__BL2_VERSION__VERSION_bw 256
 #define SEP_EFUSE_MAP__BL2_VERSION__VERSION_reset 0x0
 
 // reg - sep_efuse_map::CHIPLET_UID
+// Silicon creator's secret device unique ID (also referred to as UDS - Unique Device Secret). The chiplet creator is responsible for CHIPLET_UID provisioning and public identity enrollment. When read-locked, both writability and software visibility are disabled.
 #define SEP_EFUSE_MAP__CHIPLET_UID__UID_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__CHIPLET_UID__UID_bp 0
 #define SEP_EFUSE_MAP__CHIPLET_UID__UID_bw 256
 #define SEP_EFUSE_MAP__CHIPLET_UID__UID_reset 0x0
 
 // reg - sep_efuse_map::SIP_PUBK_HASH
+// Hash digest of SiP owner's root public key for secure boot. The chiplet creator's actual root public key is embedded in the SEPROM; this digest is used to validate that public key.
 #define SEP_EFUSE_MAP__SIP_PUBK_HASH__KEY_HASH_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__SIP_PUBK_HASH__KEY_HASH_bp 0
 #define SEP_EFUSE_MAP__SIP_PUBK_HASH__KEY_HASH_bw 256
 #define SEP_EFUSE_MAP__SIP_PUBK_HASH__KEY_HASH_reset 0x0
 
 // reg - sep_efuse_map::SIP_UID
+// SiP owner's secret device unique ID. The SiP owner is responsible for SIP_UID provisioning and public identity enrollment. When read-locked, both writability and software visibility are disabled.
 #define SEP_EFUSE_MAP__SIP_UID__UID_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__SIP_UID__UID_bp 0
 #define SEP_EFUSE_MAP__SIP_UID__UID_bw 256
 #define SEP_EFUSE_MAP__SIP_UID__UID_reset 0x0
 
 // reg - sep_efuse_map::SYS_PUBK_HASH
+// Hash digest of system owner's root public key for secure boot.
 #define SEP_EFUSE_MAP__SYS_PUBK_HASH__KEY_HASH_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__SYS_PUBK_HASH__KEY_HASH_bp 0
 #define SEP_EFUSE_MAP__SYS_PUBK_HASH__KEY_HASH_bw 256
 #define SEP_EFUSE_MAP__SYS_PUBK_HASH__KEY_HASH_reset 0x0
 
 // reg - sep_efuse_map::SYS_UID
+// System owner's secret device unique ID. The system owner is responsible for SYS_UID provisioning and public identity enrollment. When read-locked, both writability and software visibility are disabled.
 #define SEP_EFUSE_MAP__SYS_UID__UID_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__SYS_UID__UID_bp 0
 #define SEP_EFUSE_MAP__SYS_UID__UID_bw 256
 #define SEP_EFUSE_MAP__SYS_UID__UID_reset 0x0
 
 // reg - sep_efuse_map::STATUS_RPT
+// BOOTROM report status based on the bit. 2'b00-> bootrom report status based on GPIO; 2'b01->bootrom report status;otherwise, bootrom does not report status
 #define SEP_EFUSE_MAP__STATUS_RPT__RPT_bm 0x3
 #define SEP_EFUSE_MAP__STATUS_RPT__RPT_bp 0
 #define SEP_EFUSE_MAP__STATUS_RPT__RPT_bw 2
 #define SEP_EFUSE_MAP__STATUS_RPT__RPT_reset 0x0
+// reserved
 #define SEP_EFUSE_MAP__STATUS_RPT__RESERVED_bm 0xfffffffc
 #define SEP_EFUSE_MAP__STATUS_RPT__RESERVED_bp 2
 #define SEP_EFUSE_MAP__STATUS_RPT__RESERVED_bw 30
 #define SEP_EFUSE_MAP__STATUS_RPT__RESERVED_reset 0x0
 
 // reg - sep_efuse_map::ROM_CTL
+// controls the endianness of the rom data out. 0->little endian; 1->big endian
 #define SEP_EFUSE_MAP__ROM_CTL__ROM_ENDIANNESS_CTRL_bm 0x1
 #define SEP_EFUSE_MAP__ROM_CTL__ROM_ENDIANNESS_CTRL_bp 0
 #define SEP_EFUSE_MAP__ROM_CTL__ROM_ENDIANNESS_CTRL_bw 1
 #define SEP_EFUSE_MAP__ROM_CTL__ROM_ENDIANNESS_CTRL_reset 0x0
+// controls how the rom slices are swapped
 #define SEP_EFUSE_MAP__ROM_CTL__ROM_SWAP_CTRL_bm 0x3e
 #define SEP_EFUSE_MAP__ROM_CTL__ROM_SWAP_CTRL_bp 1
 #define SEP_EFUSE_MAP__ROM_CTL__ROM_SWAP_CTRL_bw 5
 #define SEP_EFUSE_MAP__ROM_CTL__ROM_SWAP_CTRL_reset 0x0
+// reserved
 #define SEP_EFUSE_MAP__ROM_CTL__RESERVED_bm 0xffffffc0
 #define SEP_EFUSE_MAP__ROM_CTL__RESERVED_bp 6
 #define SEP_EFUSE_MAP__ROM_CTL__RESERVED_bw 26
 #define SEP_EFUSE_MAP__ROM_CTL__RESERVED_reset 0x0
 
 // reg - sep_efuse_map::SYSCLK_FREQ_MHZ
+// Configured sysclk PLL frequency in MHz; ignored if 0. Consumed by boot ROM clock math.
 #define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__SYSCLK_FREQ_MHZ_bm 0x7ff
 #define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__SYSCLK_FREQ_MHZ_bp 0
 #define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__SYSCLK_FREQ_MHZ_bw 11
 #define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__SYSCLK_FREQ_MHZ_reset 0x0
+// Reserved
 #define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__RSVD_bm 0xfffff800
 #define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__RSVD_bp 11
 #define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__RSVD_bw 21
 #define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__RSVD_reset 0x0
 
 // reg - sep_efuse_map::CHIPLET_PUBK_HASH
+// Chiplet owner authentication key hash digest, fused. These chiplet owner fused key hashes can be used in addition to the hashes in the ROM itself to authenticate manifests.
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_HASH__KEY_HASH_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_HASH__KEY_HASH_bp 0
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_HASH__KEY_HASH_bw 256
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_HASH__KEY_HASH_reset 0x0
 
 // reg - sep_efuse_map::REQUIRED_SIGNERS
+// Owners whose signature is required to authenticate any image loadable by SEP ROM. Per owner, 1 = required, 0 = not-required; the default all-zero value requires no additional owner. [0] SiP owner, [1] system owner. The chiplet creator is the root of trust and always authenticates BL1, so it has no bit here.
 #define SEP_EFUSE_MAP__REQUIRED_SIGNERS__REQUIRED_SIGNERS_bm 0x3
 #define SEP_EFUSE_MAP__REQUIRED_SIGNERS__REQUIRED_SIGNERS_bp 0
 #define SEP_EFUSE_MAP__REQUIRED_SIGNERS__REQUIRED_SIGNERS_bw 2
 #define SEP_EFUSE_MAP__REQUIRED_SIGNERS__REQUIRED_SIGNERS_reset 0x0
+// Reserved
 #define SEP_EFUSE_MAP__REQUIRED_SIGNERS__RESERVED_bm 0xfffffffc
 #define SEP_EFUSE_MAP__REQUIRED_SIGNERS__RESERVED_bp 2
 #define SEP_EFUSE_MAP__REQUIRED_SIGNERS__RESERVED_bw 30
 #define SEP_EFUSE_MAP__REQUIRED_SIGNERS__RESERVED_reset 0x0
 
 // reg - sep_efuse_map::REQUIRED_ALGS
+// Per-owner required signature algorithms for chiplet. Each nibble: bit 0 = classical (ECDSA P-384 or RSA), bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__CHIPLET_ALGS_bm 0xf
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__CHIPLET_ALGS_bp 0
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__CHIPLET_ALGS_bw 4
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__CHIPLET_ALGS_reset 0x0
+// Per-owner required signature algorithms for SiP owner. bit 0 = classical, bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__SIP_ALGS_bm 0xf0
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__SIP_ALGS_bp 4
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__SIP_ALGS_bw 4
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__SIP_ALGS_reset 0x0
+// Per-owner required signature algorithms for system owner. bit 0 = classical, bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__SYS_ALGS_bm 0xf00
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__SYS_ALGS_bp 8
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__SYS_ALGS_bw 4
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__SYS_ALGS_reset 0x0
+// Reserved
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__RESERVED_bm 0xfffff000
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__RESERVED_bp 12
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__RESERVED_bw 20
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__RESERVED_reset 0x0
 
 // reg - sep_efuse_map::CHIPLET_PUBK_PQC_HASH
+// Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_PQC_HASH__KEY_HASH_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_PQC_HASH__KEY_HASH_bp 0
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_PQC_HASH__KEY_HASH_bw 256
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_PQC_HASH__KEY_HASH_reset 0x0
 
 // reg - sep_efuse_map::SIP_PUBK_PQC_HASH
+// Hash digest of the SiP owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.
 #define SEP_EFUSE_MAP__SIP_PUBK_PQC_HASH__KEY_HASH_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__SIP_PUBK_PQC_HASH__KEY_HASH_bp 0
 #define SEP_EFUSE_MAP__SIP_PUBK_PQC_HASH__KEY_HASH_bw 256
 #define SEP_EFUSE_MAP__SIP_PUBK_PQC_HASH__KEY_HASH_reset 0x0
 
 // reg - sep_efuse_map::SYS_PUBK_PQC_HASH
+// Hash digest of the system owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.
 #define SEP_EFUSE_MAP__SYS_PUBK_PQC_HASH__KEY_HASH_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__SYS_PUBK_PQC_HASH__KEY_HASH_bp 0
 #define SEP_EFUSE_MAP__SYS_PUBK_PQC_HASH__KEY_HASH_bw 256
 #define SEP_EFUSE_MAP__SYS_PUBK_PQC_HASH__KEY_HASH_reset 0x0
 
 // reg - sep_efuse_map::SEP_ID
+// Per-owner public identity fuse. Personalization input for the Key Manager identity root. Being public, no read protection is required. Individually lockable via LOCKS[58:63] (slots 29-31).
 #define SEP_EFUSE_MAP__SEP_ID__ID_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__SEP_ID__ID_bp 0
 #define SEP_EFUSE_MAP__SEP_ID__ID_bw 256
 #define SEP_EFUSE_MAP__SEP_ID__ID_reset 0x0
 
 // reg - sep_efuse_map::SPARE_256_BITS
+// Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).
 #define SEP_EFUSE_MAP__SPARE_256_BITS__RSVD_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__SPARE_256_BITS__RSVD_bp 0
 #define SEP_EFUSE_MAP__SPARE_256_BITS__RSVD_bw 256
 #define SEP_EFUSE_MAP__SPARE_256_BITS__RSVD_reset 0x0
 
 // addrmap - sep_efuse_map
+// Per-field write-lock and read-lock registers for the SEP eFuse map.
 typedef struct __attribute__ ((__packed__)) {
     uint64_t LOCKS;
     uint32_t LOCKS_SPARE;
@@ -792,127 +964,162 @@ typedef struct __attribute__ ((__packed__)) {
 } sep_efuse_map_t;
 
 // reg - efuse_interface_ctrl::EFUSE_INTERFACE_CTRL_STATUS
+// eFuse interface status and error-clear register. Reports the sense-done flag and request/address error conditions, and provides write-1 strobes to clear those errors.
+// Indicates if the eFuse state machine has completed
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_SENSE_DONE_bm 0x1
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_SENSE_DONE_bp 0
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_SENSE_DONE_bw 1
+// Indicates that the eFuse was blocked because of either read or a program lock.  The error must be cleared by writing 1 to efuse_req_error_clear to this register
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_bm 0x10
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_bp 4
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_reset 0x0
+// Indicates that an invalid eFuse program address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_program_addr_error_clear.
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_bm 0x20
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_bp 5
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_reset 0x0
+// Indicates that an invalid eFuse read address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_read_addr_error_clear.
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_bm 0x40
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_bp 6
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_reset 0x0
+// Clears the blocked request error bit in efuse_ctrl_status
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_CLEAR_bm 0x100
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_CLEAR_bp 8
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_CLEAR_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_CLEAR_reset 0x0
+// Clears the program out of bounds error bit (efuse_program_addr_error) in efuse_ctrl_status
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_CLEAR_bm 0x200
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_CLEAR_bp 9
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_CLEAR_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_CLEAR_reset 0x0
+// Clears the read out of bounds error bit (efuse_read_addr_error) in efuse_ctrl_status
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_CLEAR_bm 0x400
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_CLEAR_bp 10
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_CLEAR_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_CLEAR_reset 0x0
 
 // reg - efuse_interface_ctrl::EFUSE_PROGRAM_CTRL
+// eFuse program control and status. Configures the program address and data, triggers a program (optionally with read-back), and reports program progress and completion status.
+// Bit address to program
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_bm 0xffff
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_bp 0
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_bw 16
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_reset 0x0
+// Data to program to eFuse.  If this bit is 0, the program request will be ignored
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bm 0x10000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bp 16
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_reset 0x0
+// When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bm 0x20000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bp 17
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_reset 0x0
+// When set, trigger a read back after a program
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bm 0x40000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bp 18
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_reset 0x0
+// When set, the program is in progress
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_bm 0x1000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_bp 24
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_reset 0x0
+// When set, the program has completed, the status of which is in program_status
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bm 0x2000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bp 25
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_reset 0x0
+// 0: No Error.  1: Error
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bm 0x4000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bp 26
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_reset 0x0
+// When set, enables the program request
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bm 0x8000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bp 27
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_reset 0x0
 
 // reg - efuse_interface_ctrl::EFUSE_READ_CTRL
+// eFuse read control and status. Configures the read address, triggers a read, and reports read progress and completion status.
+// Bit address to read
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_bm 0xffff
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_bp 0
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_bw 16
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_reset 0x0
+// When set, triggers a read to efuse.
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_bm 0x10000
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_bp 16
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_reset 0x0
+// When set, the read is in progress
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_BUSY_bm 0x1000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_BUSY_bp 24
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_BUSY_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_BUSY_reset 0x0
+// When set, the read has completed, the status of which is in read_status
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_DONE_bm 0x2000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_DONE_bp 25
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_DONE_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_DONE_reset 0x0
+// 0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_STATUS_bm 0x4000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_STATUS_bp 26
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_STATUS_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_STATUS_reset 0x0
+// When set, enables the read request
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_ENABLE_bm 0x10000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_ENABLE_bp 28
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_ENABLE_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_ENABLE_reset 0x0
 
 // reg - efuse_interface_ctrl::EFUSE_PROGRAM_INTERFACE_READ_DATA
+// Read data captured through the program interface. Hardware debug only; valid only while the program interface state machine is in its capture-data state.
+// Read Data from eFuse through program interface. This field is only valid when the efuse programming interface is utilized to burn the efuse IP and only when the state machine is during ST_CAPTUER_DATA state. Hardware debug only
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_bm 0xffffffff
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_bp 0
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_bw 32
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_reset 0x0
 
 // reg - efuse_interface_ctrl::EFUSE_READ_INTERFACE_READ_DATA
+// Read data returned through the eFuse read interface.
+// Read Data from eFuse through READ interface.
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_INTERFACE_READ_DATA__DOUT_bm 0xffffffff
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_INTERFACE_READ_DATA__DOUT_bp 0
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_INTERFACE_READ_DATA__DOUT_bw 32
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_INTERFACE_READ_DATA__DOUT_reset 0x0
 
 // reg - efuse_interface_ctrl::EFUSE_READ_REQ_TIMEOUT
+// Read interface timeout configuration. Sets the number of cycles the read interface waits for a SHIM response and enables the read timeout.
+// Number of cycles the read interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMEOUT_CYCLES_bm 0xfffffff
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMEOUT_CYCLES_bp 0
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMEOUT_CYCLES_bw 28
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMEOUT_CYCLES_reset 0x800000
+// Enable timeout on read interface
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMOUT_ENABLE_bm 0x10000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMOUT_ENABLE_bp 28
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMOUT_ENABLE_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMOUT_ENABLE_reset 0x0
 
 // reg - efuse_interface_ctrl::EFUSE_PROGRAM_REQ_TIMEOUT
+// Program interface timeout configuration. Sets the number of cycles the program interface waits for a SHIM response and enables the program timeout.
+// Number of cycles the program interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_CYCLES_bm 0xfffffff
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_CYCLES_bp 0
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_CYCLES_bw 28
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_CYCLES_reset 0x800000
+// Enable timeout on program interface.
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_ENABLE_bm 0x10000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_ENABLE_bp 28
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_ENABLE_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_ENABLE_reset 0x0
 
 // addrmap - efuse_interface_ctrl
+// Program and read command, address, data, status, and timeout registers for the eFuse interface.
 typedef struct __attribute__ ((__packed__)) {
     uint32_t EFUSE_INTERFACE_CTRL_STATUS;
     uint32_t EFUSE_PROGRAM_CTRL;
@@ -924,50 +1131,65 @@ typedef struct __attribute__ ((__packed__)) {
 } efuse_interface_ctrl_t;
 
 // reg - efuse_mmr::RMA_TOKEN_I
+// Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.
+// Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.
 #define EFUSE_MMR__RMA_TOKEN_I__TOKEN_bm 0xffffffff
 #define EFUSE_MMR__RMA_TOKEN_I__TOKEN_bp 0
 #define EFUSE_MMR__RMA_TOKEN_I__TOKEN_bw 32
 
 // reg - efuse_mmr::SEC_DISABLE_TOKEN_I
+// Software-writeable security-disable token word. The assembled token is hashed and compared against the post-silicon injected value to authorize security_disable.
+// Portion of writeable version of SEC_DISABLE_TOKEN, hashed, and compared with the post silicon injected values to allow security_disable.
 #define EFUSE_MMR__SEC_DISABLE_TOKEN_I__TOKEN_bm 0xffffffff
 #define EFUSE_MMR__SEC_DISABLE_TOKEN_I__TOKEN_bp 0
 #define EFUSE_MMR__SEC_DISABLE_TOKEN_I__TOKEN_bw 32
 
 // reg - efuse_mmr::TOKEN_EOP
+// Token end-of-packet control. Writing the per-token go bit signals that all token words have been written and triggers a pulse to begin token hashing.
+// Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
 #define EFUSE_MMR__TOKEN_EOP__RMA_SIP_TOKEN_GO_bm 0x1
 #define EFUSE_MMR__TOKEN_EOP__RMA_SIP_TOKEN_GO_bp 0
 #define EFUSE_MMR__TOKEN_EOP__RMA_SIP_TOKEN_GO_bw 1
 #define EFUSE_MMR__TOKEN_EOP__RMA_SIP_TOKEN_GO_reset 0x0
+// Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
 #define EFUSE_MMR__TOKEN_EOP__RMA_CHIPLET_TOKEN_GO_bm 0x100
 #define EFUSE_MMR__TOKEN_EOP__RMA_CHIPLET_TOKEN_GO_bp 8
 #define EFUSE_MMR__TOKEN_EOP__RMA_CHIPLET_TOKEN_GO_bw 1
 #define EFUSE_MMR__TOKEN_EOP__RMA_CHIPLET_TOKEN_GO_reset 0x0
+// Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
 #define EFUSE_MMR__TOKEN_EOP__SECURE_DISABLE_TOKEN_GO_bm 0x10000
 #define EFUSE_MMR__TOKEN_EOP__SECURE_DISABLE_TOKEN_GO_bp 16
 #define EFUSE_MMR__TOKEN_EOP__SECURE_DISABLE_TOKEN_GO_bw 1
 #define EFUSE_MMR__TOKEN_EOP__SECURE_DISABLE_TOKEN_GO_reset 0x0
 
 // reg - efuse_mmr::TOKEN_MATCH
+// Token match status. Reports the result of the token hash comparison (match, mismatch, or error).
+// Store the status of the token match.  Match = 6'b010101, Mismatch = 6'b101010, Error = 6'b111111
 #define EFUSE_MMR__TOKEN_MATCH__TOKEN_MATCH_STATUS_bm 0x3f
 #define EFUSE_MMR__TOKEN_MATCH__TOKEN_MATCH_STATUS_bp 0
 #define EFUSE_MMR__TOKEN_MATCH__TOKEN_MATCH_STATUS_bw 6
 #define EFUSE_MMR__TOKEN_MATCH__TOKEN_MATCH_STATUS_reset 0x0
 
 // reg - efuse_mmr::TOKEN_MATCH_FAULT
+// Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6'b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.
+// A redundancy fault was detected in the RMA_SIP_TOKEN comparators.
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_bm 0x1
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_bp 0
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_bw 1
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_reset 0x0
+// A redundancy fault was detected in the RMA_CHIPLET_TOKEN comparators.
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_bm 0x100
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_bp 8
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_bw 1
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_reset 0x0
+// A redundancy fault was detected in the SEC_DISABLE_TOKEN comparators.
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_bm 0x10000
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_bp 16
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_bw 1
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_reset 0x0
 
 // addrmap - efuse_mmr
+// Security-token input and match-status registers for RMA and secure-disable eFuse tokens.
 typedef struct __attribute__ ((__packed__)) {
     uint32_t RMA_SIP_TOKEN_I[8];
     uint32_t RMA_CHIPLET_TOKEN_I[8];
@@ -980,57 +1202,91 @@ typedef struct __attribute__ ((__packed__)) {
 } efuse_mmr_t;
 
 // reg - km_kpv::key_word_reg
+// One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+// 32-bit key data word. No reset for security; power-up value undefined.
+// Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
 #define KM_KPV__KEY_WORD_REG__DATA_bm 0xffffffff
 #define KM_KPV__KEY_WORD_REG__DATA_bp 0
 #define KM_KPV__KEY_WORD_REG__DATA_bw 32
 
 // regfile - km_kpv::key_entry_rf
+// One key entry (16 x 32-bit words = 512 bits)
 typedef struct __attribute__ ((__packed__)) {
     uint32_t WORD[16];
 } km_kpv__key_entry_rf_t;
 
 // reg - km_kpv::ctrl_reg
+// Per-slot control: lock bits (W1S) and the erase trigger
+// Prevents KM write to this key entry data until reset; this register stays
+// writable so that a locked slot can still be read-locked and erased.
+// Read-any, write-1-only. Hardware holds this bit set for as long as SEAL is
+// set, so sealing a slot write-locks it without a separate write here.
 #define KM_KPV__CTRL_REG__LOCK_WRITE_bm 0x1
 #define KM_KPV__CTRL_REG__LOCK_WRITE_bp 0
 #define KM_KPV__CTRL_REG__LOCK_WRITE_bw 1
 #define KM_KPV__CTRL_REG__LOCK_WRITE_reset 0x0
+// Prevents KM read of this key entry data until reset. Read-any, write-1-only.
+// Hardware sets this bit when an erase of a sealed slot completes, retiring
+// the slot: its destroyed contents cannot be read back.
 #define KM_KPV__CTRL_REG__LOCK_USE_bm 0x2
 #define KM_KPV__CTRL_REG__LOCK_USE_bp 1
 #define KM_KPV__CTRL_REG__LOCK_USE_bw 1
 #define KM_KPV__CTRL_REG__LOCK_USE_reset 0x0
+// Write-1 to start hardware erase of this slot: an LFSR fills all 16 key
+// words (through the KPV scrambler). Hardware self-clears this bit when the
+// erase completes. Never blocked: neither lock_write, lock_use nor seal
+// prevents an erase. The slot's seal state when the erase completes decides
+// the outcome. Unsealed, the slot CTRL register is cleared and the slot is
+// reusable. Sealed, lock_write stays set and lock_use is set, retiring the
+// slot: its data is destroyed and it can be neither read, rewritten nor
+// reused until warm reset. A seal taken while an erase is already in flight
+// therefore still retires the slot.
 #define KM_KPV__CTRL_REG__ERASE_bm 0x4
 #define KM_KPV__CTRL_REG__ERASE_bp 2
 #define KM_KPV__CTRL_REG__ERASE_bw 1
 #define KM_KPV__CTRL_REG__ERASE_reset 0x0
+// Seals this key entry until warm reset. Read-any, write-1-only. Setting this
+// bit also sets lock_write in hardware, so a single write seals the slot: its
+// data can be read but not overwritten. Erase remains available, and erasing
+// a sealed slot retires it rather than freeing it (see ERASE), so a sealed
+// slot's material can be destroyed but its slot never reused.
 #define KM_KPV__CTRL_REG__SEAL_bm 0x8
 #define KM_KPV__CTRL_REG__SEAL_bp 3
 #define KM_KPV__CTRL_REG__SEAL_bw 1
 #define KM_KPV__CTRL_REG__SEAL_reset 0x0
+// Reserved
 #define KM_KPV__CTRL_REG__RSVD_31_4_bm 0xfffffff0
 #define KM_KPV__CTRL_REG__RSVD_31_4_bp 4
 #define KM_KPV__CTRL_REG__RSVD_31_4_bw 28
 #define KM_KPV__CTRL_REG__RSVD_31_4_reset 0x0
 
 // reg - km_kpv::kpv_scrambler_key_reg
+// 32-bit key for KPV key entry scrambling. No reset; powers up random. Locked when KPV_SCRAMBLER_CTRL.LOCK=1.
+// Scrambler key. No reset for security. HW clears to 0 on wipe via hwclr.
 #define KM_KPV__KPV_SCRAMBLER_KEY_REG__KEY_bm 0xffffffff
 #define KM_KPV__KPV_SCRAMBLER_KEY_REG__KEY_bp 0
 #define KM_KPV__KPV_SCRAMBLER_KEY_REG__KEY_bw 32
 
 // reg - km_kpv::kpv_scrambler_ctrl_reg
+// KPV scrambler enable and lock. Reset to 0 on KM reset. LOCK is write-one-only.
+// 1 = scramble key entry data on write, descramble on read; 0 = passthrough.
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__ENABLE_bm 0x1
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__ENABLE_bp 0
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__ENABLE_bw 1
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__ENABLE_reset 0x0
+// Write-one-only. When 1, key and ENABLE cannot be modified until KM reset.
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__LOCK_bm 0x2
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__LOCK_bp 1
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__LOCK_bw 1
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__LOCK_reset 0x0
+// Reserved
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__RSVD_bm 0xfffffffc
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__RSVD_bp 2
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__RSVD_bw 30
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__RSVD_reset 0x0
 
 // addrmap - km_kpv
+// Key entry storage and KM control registers. Access conditioned by lock_write/lock_use.
 typedef struct __attribute__ ((__packed__)) {
     km_kpv__key_entry_rf_t KEY_ENTRY[64];
     uint32_t CTRL[64];
@@ -1039,527 +1295,676 @@ typedef struct __attribute__ ((__packed__)) {
 } km_kpv_t;
 
 // reg - km_csr::version_reg
+// Hardware version register (semantic versioning: major.minor.patch)
+// Patch version number
 #define KM_CSR__VERSION_REG__PATCH_bm 0xff
 #define KM_CSR__VERSION_REG__PATCH_bp 0
 #define KM_CSR__VERSION_REG__PATCH_bw 8
 #define KM_CSR__VERSION_REG__PATCH_reset 0x0
+// Minor version number
 #define KM_CSR__VERSION_REG__MINOR_bm 0xff00
 #define KM_CSR__VERSION_REG__MINOR_bp 8
 #define KM_CSR__VERSION_REG__MINOR_bw 8
 #define KM_CSR__VERSION_REG__MINOR_reset 0x0
+// Major version number
 #define KM_CSR__VERSION_REG__MAJOR_bm 0xff0000
 #define KM_CSR__VERSION_REG__MAJOR_bp 16
 #define KM_CSR__VERSION_REG__MAJOR_bw 8
 #define KM_CSR__VERSION_REG__MAJOR_reset 0x1
+// Reserved; must read as zero
 #define KM_CSR__VERSION_REG__RSVD_bm 0xff000000
 #define KM_CSR__VERSION_REG__RSVD_bp 24
 #define KM_CSR__VERSION_REG__RSVD_bw 8
 #define KM_CSR__VERSION_REG__RSVD_reset 0x0
 
 // reg - km_csr::ctrl_reg
+// Control register (reserved for future use)
+// Reserved
 #define KM_CSR__CTRL_REG__RSVD_bm 0xffffffff
 #define KM_CSR__CTRL_REG__RSVD_bp 0
 #define KM_CSR__CTRL_REG__RSVD_bw 32
 #define KM_CSR__CTRL_REG__RSVD_reset 0x0
 
 // reg - km_csr::soft_rst_code_reg
+// Software reset code register. Write 0x53525354 ('SRST') to trigger soft reset. Any other value has no effect.
+// 32-bit reset code. Write 0x53525354 to trigger soft reset.
 #define KM_CSR__SOFT_RST_CODE_REG__CODE_bm 0xffffffff
 #define KM_CSR__SOFT_RST_CODE_REG__CODE_bp 0
 #define KM_CSR__SOFT_RST_CODE_REG__CODE_bw 32
 #define KM_CSR__SOFT_RST_CODE_REG__CODE_reset 0x0
 
 // reg - km_csr::irq_status_reg
+// Interrupt status register. Sticky bits cleared by writing 1.
+// ROM parity error detected. Sticky, write 1 to clear.
 #define KM_CSR__IRQ_STATUS_REG__ROM_PARITY_ERR_bm 0x1
 #define KM_CSR__IRQ_STATUS_REG__ROM_PARITY_ERR_bp 0
 #define KM_CSR__IRQ_STATUS_REG__ROM_PARITY_ERR_bw 1
 #define KM_CSR__IRQ_STATUS_REG__ROM_PARITY_ERR_reset 0x0
+// SRAM parity error detected. Sticky, write 1 to clear.
 #define KM_CSR__IRQ_STATUS_REG__SRAM_PARITY_ERR_bm 0x2
 #define KM_CSR__IRQ_STATUS_REG__SRAM_PARITY_ERR_bp 1
 #define KM_CSR__IRQ_STATUS_REG__SRAM_PARITY_ERR_bw 1
 #define KM_CSR__IRQ_STATUS_REG__SRAM_PARITY_ERR_reset 0x0
+// ROM write attempt detected (ROM is read-only). Sticky, write 1 to clear.
 #define KM_CSR__IRQ_STATUS_REG__ROM_WRITE_ERR_bm 0x4
 #define KM_CSR__IRQ_STATUS_REG__ROM_WRITE_ERR_bp 2
 #define KM_CSR__IRQ_STATUS_REG__ROM_WRITE_ERR_bw 1
 #define KM_CSR__IRQ_STATUS_REG__ROM_WRITE_ERR_reset 0x0
+// SRAM write attempt to a write-locked region detected. Sticky, write 1 to clear.
 #define KM_CSR__IRQ_STATUS_REG__SRAM_WRITE_LOCK_ERR_bm 0x8
 #define KM_CSR__IRQ_STATUS_REG__SRAM_WRITE_LOCK_ERR_bp 3
 #define KM_CSR__IRQ_STATUS_REG__SRAM_WRITE_LOCK_ERR_bw 1
 #define KM_CSR__IRQ_STATUS_REG__SRAM_WRITE_LOCK_ERR_reset 0x0
+// AXI SLVERR (slave error) response detected on CPU bus transaction. Sticky, write 1 to clear.
 #define KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_bm 0x10
 #define KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_bp 4
 #define KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_bw 1
 #define KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_reset 0x0
+// AXI DECERR (decode error) response detected on CPU bus transaction. Sticky, write 1 to clear.
 #define KM_CSR__IRQ_STATUS_REG__AXI_DECERR_bm 0x20
 #define KM_CSR__IRQ_STATUS_REG__AXI_DECERR_bp 5
 #define KM_CSR__IRQ_STATUS_REG__AXI_DECERR_bw 1
 #define KM_CSR__IRQ_STATUS_REG__AXI_DECERR_reset 0x0
+// DRBG Sampler error (timeout or AXI-Stream error). Sticky, write 1 to clear.
 #define KM_CSR__IRQ_STATUS_REG__DRBG_ERR_bm 0x40
 #define KM_CSR__IRQ_STATUS_REG__DRBG_ERR_bp 6
 #define KM_CSR__IRQ_STATUS_REG__DRBG_ERR_bw 1
 #define KM_CSR__IRQ_STATUS_REG__DRBG_ERR_reset 0x0
+// Wipe state event (rising edge of wipe_state input). Sticky, write 1 to clear.
 #define KM_CSR__IRQ_STATUS_REG__WIPE_STATE_bm 0x80
 #define KM_CSR__IRQ_STATUS_REG__WIPE_STATE_bp 7
 #define KM_CSR__IRQ_STATUS_REG__WIPE_STATE_bw 1
 #define KM_CSR__IRQ_STATUS_REG__WIPE_STATE_reset 0x0
+// An OTP readout field value changed (decoded value differs from prior cycle). Sticky, write 1 to clear. Check OTP_CHANGE_STATUS for the specific field(s).
 #define KM_CSR__IRQ_STATUS_REG__OTP_CHANGE_bm 0x100
 #define KM_CSR__IRQ_STATUS_REG__OTP_CHANGE_bp 8
 #define KM_CSR__IRQ_STATUS_REG__OTP_CHANGE_bw 1
 #define KM_CSR__IRQ_STATUS_REG__OTP_CHANGE_reset 0x0
+// OTP dual-rail encoding integrity violation: value and complement are not complementary on at least one field. Sticky, write 1 to clear.
 #define KM_CSR__IRQ_STATUS_REG__OTP_SIGINT_bm 0x200
 #define KM_CSR__IRQ_STATUS_REG__OTP_SIGINT_bp 9
 #define KM_CSR__IRQ_STATUS_REG__OTP_SIGINT_bw 1
 #define KM_CSR__IRQ_STATUS_REG__OTP_SIGINT_reset 0x0
+// Instruction fetch from a non-whitelisted (non-executable) memory region detected, excluding the KM ROM. Sticky, write 1 to clear.
 #define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_bm 0x400
 #define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_bp 10
 #define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_bw 1
 #define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_reset 0x0
+// KM ROM instruction fetch or data read attempted after the ROM lockout engaged. The lockout engages on the first committed instruction fetch from write-locked SRAM once SRAM_EXEC_MODE.enable is set, and clears only on warm or cold reset. Sticky, write 1 to clear.
 #define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_bm 0x800
 #define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_bp 11
 #define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_bw 1
 #define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_reset 0x0
+// Reserved
 #define KM_CSR__IRQ_STATUS_REG__RSVD_bm 0xfffff000
 #define KM_CSR__IRQ_STATUS_REG__RSVD_bp 12
 #define KM_CSR__IRQ_STATUS_REG__RSVD_bw 20
 #define KM_CSR__IRQ_STATUS_REG__RSVD_reset 0x0
 
 // reg - km_csr::irq_enable_reg
+// Interrupt enable/mask register
+// Enable ROM parity error interrupt
 #define KM_CSR__IRQ_ENABLE_REG__ROM_PARITY_EN_bm 0x1
 #define KM_CSR__IRQ_ENABLE_REG__ROM_PARITY_EN_bp 0
 #define KM_CSR__IRQ_ENABLE_REG__ROM_PARITY_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__ROM_PARITY_EN_reset 0x0
+// Enable SRAM parity error interrupt
 #define KM_CSR__IRQ_ENABLE_REG__SRAM_PARITY_EN_bm 0x2
 #define KM_CSR__IRQ_ENABLE_REG__SRAM_PARITY_EN_bp 1
 #define KM_CSR__IRQ_ENABLE_REG__SRAM_PARITY_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__SRAM_PARITY_EN_reset 0x0
+// Enable ROM write error interrupt
 #define KM_CSR__IRQ_ENABLE_REG__ROM_WRITE_EN_bm 0x4
 #define KM_CSR__IRQ_ENABLE_REG__ROM_WRITE_EN_bp 2
 #define KM_CSR__IRQ_ENABLE_REG__ROM_WRITE_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__ROM_WRITE_EN_reset 0x0
+// Enable SRAM write-lock violation interrupt
 #define KM_CSR__IRQ_ENABLE_REG__SRAM_WRITE_LOCK_EN_bm 0x8
 #define KM_CSR__IRQ_ENABLE_REG__SRAM_WRITE_LOCK_EN_bp 3
 #define KM_CSR__IRQ_ENABLE_REG__SRAM_WRITE_LOCK_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__SRAM_WRITE_LOCK_EN_reset 0x0
+// Enable AXI SLVERR error interrupt
 #define KM_CSR__IRQ_ENABLE_REG__AXI_SLVERR_EN_bm 0x10
 #define KM_CSR__IRQ_ENABLE_REG__AXI_SLVERR_EN_bp 4
 #define KM_CSR__IRQ_ENABLE_REG__AXI_SLVERR_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__AXI_SLVERR_EN_reset 0x0
+// Enable AXI DECERR error interrupt
 #define KM_CSR__IRQ_ENABLE_REG__AXI_DECERR_EN_bm 0x20
 #define KM_CSR__IRQ_ENABLE_REG__AXI_DECERR_EN_bp 5
 #define KM_CSR__IRQ_ENABLE_REG__AXI_DECERR_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__AXI_DECERR_EN_reset 0x0
+// Enable DRBG Sampler error interrupt
 #define KM_CSR__IRQ_ENABLE_REG__DRBG_ERR_EN_bm 0x40
 #define KM_CSR__IRQ_ENABLE_REG__DRBG_ERR_EN_bp 6
 #define KM_CSR__IRQ_ENABLE_REG__DRBG_ERR_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__DRBG_ERR_EN_reset 0x0
+// Enable wipe state interrupt
 #define KM_CSR__IRQ_ENABLE_REG__WIPE_STATE_EN_bm 0x80
 #define KM_CSR__IRQ_ENABLE_REG__WIPE_STATE_EN_bp 7
 #define KM_CSR__IRQ_ENABLE_REG__WIPE_STATE_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__WIPE_STATE_EN_reset 0x0
+// Enable OTP field change interrupt
 #define KM_CSR__IRQ_ENABLE_REG__OTP_CHANGE_EN_bm 0x100
 #define KM_CSR__IRQ_ENABLE_REG__OTP_CHANGE_EN_bp 8
 #define KM_CSR__IRQ_ENABLE_REG__OTP_CHANGE_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__OTP_CHANGE_EN_reset 0x0
+// Enable OTP dual-rail integrity violation interrupt
 #define KM_CSR__IRQ_ENABLE_REG__OTP_SIGINT_EN_bm 0x200
 #define KM_CSR__IRQ_ENABLE_REG__OTP_SIGINT_EN_bp 9
 #define KM_CSR__IRQ_ENABLE_REG__OTP_SIGINT_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__OTP_SIGINT_EN_reset 0x0
+// Enable execute-permission whitelist violation interrupt
 #define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_bm 0x400
 #define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_bp 10
 #define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_reset 0x0
+// Enable ROM lockout violation interrupt
 #define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_bm 0x800
 #define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_bp 11
 #define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_reset 0x0
+// Reserved
 #define KM_CSR__IRQ_ENABLE_REG__RSVD_bm 0xfffff000
 #define KM_CSR__IRQ_ENABLE_REG__RSVD_bp 12
 #define KM_CSR__IRQ_ENABLE_REG__RSVD_bw 20
 #define KM_CSR__IRQ_ENABLE_REG__RSVD_reset 0x0
 
 // reg - km_csr::scrambler_key_reg
+// 32-bit scrambler key for SRAM address/data scrambling. When locked: writes ignored, reads return 0. No reset; powers up random.
+// Scrambler key value. Not readable when SCRAMBLER_CTRL.LOCK=1 (returns 0). No reset for security; power-up value undefined.
 #define KM_CSR__SCRAMBLER_KEY_REG__KEY_bm 0xffffffff
 #define KM_CSR__SCRAMBLER_KEY_REG__KEY_bp 0
 #define KM_CSR__SCRAMBLER_KEY_REG__KEY_bw 32
 
 // reg - km_csr::scrambler_ctrl_reg
+// Scrambler control register
+// Enable SRAM scrambling. When 0, data passes through unmodified. Locked when LOCK=1 (security requirement).
 #define KM_CSR__SCRAMBLER_CTRL_REG__ENABLE_bm 0x1
 #define KM_CSR__SCRAMBLER_CTRL_REG__ENABLE_bp 0
 #define KM_CSR__SCRAMBLER_CTRL_REG__ENABLE_bw 1
 #define KM_CSR__SCRAMBLER_CTRL_REG__ENABLE_reset 0x0
+// Lock scrambler key and enable bit. Once set, key and enable cannot be modified until reset. Write-once (0->1 only). Security requirement: prevents disabling scrambling after key provisioning.
 #define KM_CSR__SCRAMBLER_CTRL_REG__LOCK_bm 0x2
 #define KM_CSR__SCRAMBLER_CTRL_REG__LOCK_bp 1
 #define KM_CSR__SCRAMBLER_CTRL_REG__LOCK_bw 1
 #define KM_CSR__SCRAMBLER_CTRL_REG__LOCK_reset 0x0
+// Reserved
 #define KM_CSR__SCRAMBLER_CTRL_REG__RSVD_bm 0xfffffffc
 #define KM_CSR__SCRAMBLER_CTRL_REG__RSVD_bp 2
 #define KM_CSR__SCRAMBLER_CTRL_REG__RSVD_bw 30
 #define KM_CSR__SCRAMBLER_CTRL_REG__RSVD_reset 0x0
 
 // reg - km_csr::sram_lock_reg
+// SRAM write-lock bits. Bit[i]=1 locks region i (1 KB each, 32 regions). Write-1-only: writing 1 sets the bit, writing 0 has no effect. Cleared by warm or cold reset (warm reset domain); ROM re-applies the lock policy on every boot before handover to mutable firmware.
+// One bit per 1 KB SRAM region. Region 0 = 0x8000-0x83FF, region 31 = 0xFC00-0xFFFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.
 #define KM_CSR__SRAM_LOCK_REG__LOCK_BITS_bm 0xffffffff
 #define KM_CSR__SRAM_LOCK_REG__LOCK_BITS_bp 0
 #define KM_CSR__SRAM_LOCK_REG__LOCK_BITS_bw 32
 #define KM_CSR__SRAM_LOCK_REG__LOCK_BITS_reset 0x0
 
 // reg - km_csr::irq_set_reg
+// Interrupt set register. Write 1 to trigger corresponding interrupt (for ISR testing). Write-only, reads return 0.
+// Write 1 to set IRQ_STATUS.ROM_PARITY_ERR (triggers ROM parity interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__ROM_PARITY_ERR_SET_bm 0x1
 #define KM_CSR__IRQ_SET_REG__ROM_PARITY_ERR_SET_bp 0
 #define KM_CSR__IRQ_SET_REG__ROM_PARITY_ERR_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__ROM_PARITY_ERR_SET_reset 0x0
+// Write 1 to set IRQ_STATUS.SRAM_PARITY_ERR (triggers SRAM parity interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__SRAM_PARITY_ERR_SET_bm 0x2
 #define KM_CSR__IRQ_SET_REG__SRAM_PARITY_ERR_SET_bp 1
 #define KM_CSR__IRQ_SET_REG__SRAM_PARITY_ERR_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__SRAM_PARITY_ERR_SET_reset 0x0
+// Write 1 to set IRQ_STATUS.ROM_WRITE_ERR (triggers ROM write interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__ROM_WRITE_ERR_SET_bm 0x4
 #define KM_CSR__IRQ_SET_REG__ROM_WRITE_ERR_SET_bp 2
 #define KM_CSR__IRQ_SET_REG__ROM_WRITE_ERR_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__ROM_WRITE_ERR_SET_reset 0x0
+// Write 1 to set IRQ_STATUS.SRAM_WRITE_LOCK_ERR (triggers SRAM write-lock interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__SRAM_WRITE_LOCK_ERR_SET_bm 0x8
 #define KM_CSR__IRQ_SET_REG__SRAM_WRITE_LOCK_ERR_SET_bp 3
 #define KM_CSR__IRQ_SET_REG__SRAM_WRITE_LOCK_ERR_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__SRAM_WRITE_LOCK_ERR_SET_reset 0x0
+// Write 1 to set IRQ_STATUS.AXI_SLVERR (triggers AXI SLVERR interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__AXI_SLVERR_SET_bm 0x10
 #define KM_CSR__IRQ_SET_REG__AXI_SLVERR_SET_bp 4
 #define KM_CSR__IRQ_SET_REG__AXI_SLVERR_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__AXI_SLVERR_SET_reset 0x0
+// Write 1 to set IRQ_STATUS.AXI_DECERR (triggers AXI DECERR interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__AXI_DECERR_SET_bm 0x20
 #define KM_CSR__IRQ_SET_REG__AXI_DECERR_SET_bp 5
 #define KM_CSR__IRQ_SET_REG__AXI_DECERR_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__AXI_DECERR_SET_reset 0x0
+// Write 1 to set IRQ_STATUS.DRBG_ERR (triggers DRBG Sampler interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__DRBG_ERR_SET_bm 0x40
 #define KM_CSR__IRQ_SET_REG__DRBG_ERR_SET_bp 6
 #define KM_CSR__IRQ_SET_REG__DRBG_ERR_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__DRBG_ERR_SET_reset 0x0
+// Write 1 to set IRQ_STATUS.WIPE_STATE (triggers wipe state interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__WIPE_STATE_SET_bm 0x80
 #define KM_CSR__IRQ_SET_REG__WIPE_STATE_SET_bp 7
 #define KM_CSR__IRQ_SET_REG__WIPE_STATE_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__WIPE_STATE_SET_reset 0x0
+// Write 1 to set IRQ_STATUS.OTP_CHANGE (triggers OTP change interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__OTP_CHANGE_SET_bm 0x100
 #define KM_CSR__IRQ_SET_REG__OTP_CHANGE_SET_bp 8
 #define KM_CSR__IRQ_SET_REG__OTP_CHANGE_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__OTP_CHANGE_SET_reset 0x0
+// Write 1 to set IRQ_STATUS.OTP_SIGINT (triggers OTP sigint interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__OTP_SIGINT_SET_bm 0x200
 #define KM_CSR__IRQ_SET_REG__OTP_SIGINT_SET_bp 9
 #define KM_CSR__IRQ_SET_REG__OTP_SIGINT_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__OTP_SIGINT_SET_reset 0x0
+// Write 1 to set IRQ_STATUS.EXEC_VIOLATION (triggers exec-permission violation interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_bm 0x400
 #define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_bp 10
 #define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_reset 0x0
+// Write 1 to set IRQ_STATUS.ROM_ACCESS_VIOLATION (triggers ROM lockout violation interrupt for testing)
 #define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_bm 0x800
 #define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_bp 11
 #define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_reset 0x0
+// Reserved (write-only; reads trigger SLVERR via err_if_bad_rw)
 #define KM_CSR__IRQ_SET_REG__RSVD_bm 0xfffff000
 #define KM_CSR__IRQ_SET_REG__RSVD_bp 12
 #define KM_CSR__IRQ_SET_REG__RSVD_bw 20
 #define KM_CSR__IRQ_SET_REG__RSVD_reset 0x0
 
 // reg - km_csr::sram_write_lock_violation_reg
+// Which SRAM region(s) had write attempts while locked. Bit[i]=region i. Sticky, write 1 to clear each bit.
+// Bit[i]=1 if region i had attempted write while locked. Sticky, write 1 to clear each bit.
 #define KM_CSR__SRAM_WRITE_LOCK_VIOLATION_REG__VIOLATION_BITS_bm 0xffffffff
 #define KM_CSR__SRAM_WRITE_LOCK_VIOLATION_REG__VIOLATION_BITS_bp 0
 #define KM_CSR__SRAM_WRITE_LOCK_VIOLATION_REG__VIOLATION_BITS_bw 32
 #define KM_CSR__SRAM_WRITE_LOCK_VIOLATION_REG__VIOLATION_BITS_reset 0x0
 
 // reg - km_csr::recoverable_err_reg
+// Recoverable error status. Firmware writes 1 to set (after recovering in ISR), writes 0 to clear (e.g. when SEP requests clear). Drives recoverable error event output.
+// 1 = recoverable fault occurred and was handled by ISR; 0 = clear. Write 1 to set, write 0 to clear.
 #define KM_CSR__RECOVERABLE_ERR_REG__RECOVERABLE_ERR_bm 0x1
 #define KM_CSR__RECOVERABLE_ERR_REG__RECOVERABLE_ERR_bp 0
 #define KM_CSR__RECOVERABLE_ERR_REG__RECOVERABLE_ERR_bw 1
 #define KM_CSR__RECOVERABLE_ERR_REG__RECOVERABLE_ERR_reset 0x0
+// Reserved
 #define KM_CSR__RECOVERABLE_ERR_REG__RSVD_bm 0xfffffffe
 #define KM_CSR__RECOVERABLE_ERR_REG__RSVD_bp 1
 #define KM_CSR__RECOVERABLE_ERR_REG__RSVD_bw 31
 #define KM_CSR__RECOVERABLE_ERR_REG__RSVD_reset 0x0
 
 // reg - km_csr::boot_status_reg
+// Boot status. Firmware writes 1 to COLD_BOOT_DONE after cold-boot init completes; bit remains set until next cold reset.
+// Write-1-only: set by ROM firmware at end of cold boot. Reads 0 after cold reset; reads 1 after firmware sets it. Sticky until next cold reset (preserved across warm resets).
 #define KM_CSR__BOOT_STATUS_REG__COLD_BOOT_DONE_bm 0x1
 #define KM_CSR__BOOT_STATUS_REG__COLD_BOOT_DONE_bp 0
 #define KM_CSR__BOOT_STATUS_REG__COLD_BOOT_DONE_bw 1
 #define KM_CSR__BOOT_STATUS_REG__COLD_BOOT_DONE_reset 0x0
+// Reserved
 #define KM_CSR__BOOT_STATUS_REG__RSVD_bm 0xfffffffe
 #define KM_CSR__BOOT_STATUS_REG__RSVD_bp 1
 #define KM_CSR__BOOT_STATUS_REG__RSVD_bw 31
 #define KM_CSR__BOOT_STATUS_REG__RSVD_reset 0x0
 
 // reg - km_csr::otp_life_cycle_reg
+// Life cycle state. 8-bit (4-bit value differentially encoded). Read-through from OTP port; no reset.
+// 8-bit life cycle state from OTP. No reset; power-up value undefined.
 #define KM_CSR__OTP_LIFE_CYCLE_REG__VALUE_bm 0xff
 #define KM_CSR__OTP_LIFE_CYCLE_REG__VALUE_bp 0
 #define KM_CSR__OTP_LIFE_CYCLE_REG__VALUE_bw 8
+// Reserved
 #define KM_CSR__OTP_LIFE_CYCLE_REG__RSVD_bm 0xffffff00
 #define KM_CSR__OTP_LIFE_CYCLE_REG__RSVD_bp 8
 #define KM_CSR__OTP_LIFE_CYCLE_REG__RSVD_bw 24
 #define KM_CSR__OTP_LIFE_CYCLE_REG__RSVD_reset 0x0
 
 // reg - km_csr::otp_demotion_state_reg
+// Demotion state. 2-bit, differentially encoded. Read-through from OTP port; no reset.
+// 2-bit demotion 1 state from OTP. No reset; power-up value undefined.
 #define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_1_VALUE_bm 0x3
 #define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_1_VALUE_bp 0
 #define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_1_VALUE_bw 2
+// 2-bit demotion 2 state from OTP. No reset; power-up value undefined.
 #define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_2_VALUE_bm 0xc
 #define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_2_VALUE_bp 2
 #define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_2_VALUE_bw 2
+// Reserved
 #define KM_CSR__OTP_DEMOTION_STATE_REG__RSVD_bm 0xfffffff0
 #define KM_CSR__OTP_DEMOTION_STATE_REG__RSVD_bp 4
 #define KM_CSR__OTP_DEMOTION_STATE_REG__RSVD_bw 28
 #define KM_CSR__OTP_DEMOTION_STATE_REG__RSVD_reset 0x0
 
 // reg - km_csr::sram_exec_mode_reg
+// Execute-permission whitelist mode. Write-1-only (woset); cleared by warm or cold reset. 0=ROM executable; 1=write-locked SRAM regions executable, and the ROM lockout is armed. Set by ROM stack-less handover immediately before jumping to mutable firmware.
+// Execute-permission mode: 0=ROM-only whitelist; 1=write-locked SRAM whitelist, arming the ROM lockout. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.
 #define KM_CSR__SRAM_EXEC_MODE_REG__ENABLE_bm 0x1
 #define KM_CSR__SRAM_EXEC_MODE_REG__ENABLE_bp 0
 #define KM_CSR__SRAM_EXEC_MODE_REG__ENABLE_bw 1
 #define KM_CSR__SRAM_EXEC_MODE_REG__ENABLE_reset 0x0
+// Reserved
 #define KM_CSR__SRAM_EXEC_MODE_REG__RSVD_bm 0xfffffffe
 #define KM_CSR__SRAM_EXEC_MODE_REG__RSVD_bp 1
 #define KM_CSR__SRAM_EXEC_MODE_REG__RSVD_bw 31
 #define KM_CSR__SRAM_EXEC_MODE_REG__RSVD_reset 0x0
 
 // reg - km_csr::irq_entry_addr_reg
+// Effective IRQ entry address for subsequent interrupts. Writable while unlocked; any 32-bit value accepted.
+// IRQ handler entry PC. Reset matches ROM vector at 0x10. When locked, SW writes do not update storage.
 #define KM_CSR__IRQ_ENTRY_ADDR_REG__ADDR_bm 0xffffffff
 #define KM_CSR__IRQ_ENTRY_ADDR_REG__ADDR_bp 0
 #define KM_CSR__IRQ_ENTRY_ADDR_REG__ADDR_bw 32
 #define KM_CSR__IRQ_ENTRY_ADDR_REG__ADDR_reset 0x10
 
 // reg - km_csr::irq_entry_lock_reg
+// Write-one-only lock for IRQ_ENTRY_ADDR. Separate readable register; cleared only on KM reset.
+// Write 1 to set; write 0 has no effect; sticky until reset.
 #define KM_CSR__IRQ_ENTRY_LOCK_REG__LOCK_bm 0x1
 #define KM_CSR__IRQ_ENTRY_LOCK_REG__LOCK_bp 0
 #define KM_CSR__IRQ_ENTRY_LOCK_REG__LOCK_bw 1
 #define KM_CSR__IRQ_ENTRY_LOCK_REG__LOCK_reset 0x0
+// Reserved; reads as zero.
 #define KM_CSR__IRQ_ENTRY_LOCK_REG__RSVD_bm 0xfffffffe
 #define KM_CSR__IRQ_ENTRY_LOCK_REG__RSVD_bp 1
 #define KM_CSR__IRQ_ENTRY_LOCK_REG__RSVD_bw 31
 #define KM_CSR__IRQ_ENTRY_LOCK_REG__RSVD_reset 0x0
 
 // reg - km_csr::vuart_tx_reg
+// Virtual UART transmit register. Write a byte to send to testbench. DATA_VALID is set on write and self-clears.
+// Byte to transmit (write to send character to testbench)
 #define KM_CSR__VUART_TX_REG__TX_BYTE_bm 0xff
 #define KM_CSR__VUART_TX_REG__TX_BYTE_bp 0
 #define KM_CSR__VUART_TX_REG__TX_BYTE_bw 8
 #define KM_CSR__VUART_TX_REG__TX_BYTE_reset 0x0
+// Reserved
 #define KM_CSR__VUART_TX_REG__RSVD0_bm 0x7fffff00
 #define KM_CSR__VUART_TX_REG__RSVD0_bp 8
 #define KM_CSR__VUART_TX_REG__RSVD0_bw 23
 #define KM_CSR__VUART_TX_REG__RSVD0_reset 0x0
+// Data valid strobe. Set by firmware on write, cleared by hardware after one cycle.
 #define KM_CSR__VUART_TX_REG__DATA_VALID_bm 0x80000000
 #define KM_CSR__VUART_TX_REG__DATA_VALID_bp 31
 #define KM_CSR__VUART_TX_REG__DATA_VALID_bw 1
 #define KM_CSR__VUART_TX_REG__DATA_VALID_reset 0x0
 
 // reg - km_csr::vuart_rx_reg
+// Virtual UART receive register. Testbench writes bytes here for firmware to read.
+// Received byte from testbench
 #define KM_CSR__VUART_RX_REG__RX_BYTE_bm 0xff
 #define KM_CSR__VUART_RX_REG__RX_BYTE_bp 0
 #define KM_CSR__VUART_RX_REG__RX_BYTE_bw 8
 #define KM_CSR__VUART_RX_REG__RX_BYTE_reset 0x0
+// Reserved
 #define KM_CSR__VUART_RX_REG__RSVD0_bm 0x7fffff00
 #define KM_CSR__VUART_RX_REG__RSVD0_bp 8
 #define KM_CSR__VUART_RX_REG__RSVD0_bw 23
 #define KM_CSR__VUART_RX_REG__RSVD0_reset 0x0
+// RX data valid. Set by testbench, cleared by firmware read.
 #define KM_CSR__VUART_RX_REG__DATA_VALID_bm 0x80000000
 #define KM_CSR__VUART_RX_REG__DATA_VALID_bp 31
 #define KM_CSR__VUART_RX_REG__DATA_VALID_bw 1
 #define KM_CSR__VUART_RX_REG__DATA_VALID_reset 0x0
 
 // reg - km_csr::vuart_status_reg
+// Virtual UART status register for flow control
+// TX ready to accept data (always 1 in simulation)
 #define KM_CSR__VUART_STATUS_REG__TX_READY_bm 0x1
 #define KM_CSR__VUART_STATUS_REG__TX_READY_bp 0
 #define KM_CSR__VUART_STATUS_REG__TX_READY_bw 1
 #define KM_CSR__VUART_STATUS_REG__TX_READY_reset 0x1
+// RX has valid data available
 #define KM_CSR__VUART_STATUS_REG__RX_VALID_bm 0x2
 #define KM_CSR__VUART_STATUS_REG__RX_VALID_bp 1
 #define KM_CSR__VUART_STATUS_REG__RX_VALID_bw 1
 #define KM_CSR__VUART_STATUS_REG__RX_VALID_reset 0x0
+// Enable VUART printing. Set by testbench to enable printf output. Disabled by default to save simulation time.
 #define KM_CSR__VUART_STATUS_REG__PRINT_ENABLE_bm 0x4
 #define KM_CSR__VUART_STATUS_REG__PRINT_ENABLE_bp 2
 #define KM_CSR__VUART_STATUS_REG__PRINT_ENABLE_bw 1
 #define KM_CSR__VUART_STATUS_REG__PRINT_ENABLE_reset 0x0
+// Reserved
 #define KM_CSR__VUART_STATUS_REG__RSVD_bm 0xfffffff8
 #define KM_CSR__VUART_STATUS_REG__RSVD_bp 3
 #define KM_CSR__VUART_STATUS_REG__RSVD_bw 29
 #define KM_CSR__VUART_STATUS_REG__RSVD_reset 0x0
 
 // reg - km_csr::tb_result_reg
+// Test result register. Firmware writes 0=fail, 1=pass.
+// Test result: 0=fail, 1=pass
 #define KM_CSR__TB_RESULT_REG__RESULT_bm 0xffffffff
 #define KM_CSR__TB_RESULT_REG__RESULT_bp 0
 #define KM_CSR__TB_RESULT_REG__RESULT_bw 32
 #define KM_CSR__TB_RESULT_REG__RESULT_reset 0x0
 
 // reg - km_csr::tb_signature_reg
+// Test completion signature. Firmware writes 0x600D600D (pass) or 0xBADBADBA (fail).
+// Completion signature value
 #define KM_CSR__TB_SIGNATURE_REG__SIGNATURE_bm 0xffffffff
 #define KM_CSR__TB_SIGNATURE_REG__SIGNATURE_bp 0
 #define KM_CSR__TB_SIGNATURE_REG__SIGNATURE_bw 32
 #define KM_CSR__TB_SIGNATURE_REG__SIGNATURE_reset 0x0
 
 // reg - km_csr::tb_errcode_reg
+// Test error code register. Firmware writes optional error code for debugging.
+// Error code value
 #define KM_CSR__TB_ERRCODE_REG__ERRCODE_bm 0xffffffff
 #define KM_CSR__TB_ERRCODE_REG__ERRCODE_bp 0
 #define KM_CSR__TB_ERRCODE_REG__ERRCODE_bw 32
 #define KM_CSR__TB_ERRCODE_REG__ERRCODE_reset 0x0
 
 // reg - km_csr::tb_subtest_reg
+// Current subtest number register. Firmware increments for each subtest.
+// Current subtest number
 #define KM_CSR__TB_SUBTEST_REG__SUBTEST_bm 0xffffffff
 #define KM_CSR__TB_SUBTEST_REG__SUBTEST_bp 0
 #define KM_CSR__TB_SUBTEST_REG__SUBTEST_bw 32
 #define KM_CSR__TB_SUBTEST_REG__SUBTEST_reset 0x0
 
 // reg - km_csr::tb_cmd_reg
+// Testbench command register. Firmware writes command, testbench reads and clears.
+// Command code (0=NOP, 1=ROM_PARITY_EN, 2=ROM_PARITY_DIS, 3=SRAM_PARITY_EN, 4=SRAM_PARITY_DIS)
 #define KM_CSR__TB_CMD_REG__CMD_bm 0xffffffff
 #define KM_CSR__TB_CMD_REG__CMD_bp 0
 #define KM_CSR__TB_CMD_REG__CMD_bw 32
 #define KM_CSR__TB_CMD_REG__CMD_reset 0x0
 
 // reg - km_csr::tb_cmd_arg_reg
+// Testbench command argument register. Firmware writes optional argument.
+// Command argument value
 #define KM_CSR__TB_CMD_ARG_REG__ARG_bm 0xffffffff
 #define KM_CSR__TB_CMD_ARG_REG__ARG_bp 0
 #define KM_CSR__TB_CMD_ARG_REG__ARG_bw 32
 #define KM_CSR__TB_CMD_ARG_REG__ARG_reset 0x0
 
 // reg - km_csr::tb_cmd_status_reg
+// Testbench command status register. Testbench writes status, firmware reads.
+// Command status: 0=IDLE, 1=ACK, 0xFFFFFFFF=ERR
 #define KM_CSR__TB_CMD_STATUS_REG__STATUS_bm 0xffffffff
 #define KM_CSR__TB_CMD_STATUS_REG__STATUS_bp 0
 #define KM_CSR__TB_CMD_STATUS_REG__STATUS_bw 32
 #define KM_CSR__TB_CMD_STATUS_REG__STATUS_reset 0x0
 
 // reg - km_csr::tb_cmd_result_reg
+// Testbench command result register. Testbench writes result value.
+// Command result value
 #define KM_CSR__TB_CMD_RESULT_REG__RESULT_bm 0xffffffff
 #define KM_CSR__TB_CMD_RESULT_REG__RESULT_bp 0
 #define KM_CSR__TB_CMD_RESULT_REG__RESULT_bw 32
 #define KM_CSR__TB_CMD_RESULT_REG__RESULT_reset 0x0
 
 // reg - km_csr::debug_reg
+// Debug register with known constant value for verification
+// Magic constant: 0xCAFEBEEF
 #define KM_CSR__DEBUG_REG__MAGIC_bm 0xffffffff
 #define KM_CSR__DEBUG_REG__MAGIC_bp 0
 #define KM_CSR__DEBUG_REG__MAGIC_bw 32
 #define KM_CSR__DEBUG_REG__MAGIC_reset 0xcafebeef
 
 // reg - km_csr::otp_dr_word_reg
+// Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+// 32-bit OTP word. No reset; power-up value undefined.
 #define KM_CSR__OTP_DR_WORD_REG__VALUE_bm 0xffffffff
 #define KM_CSR__OTP_DR_WORD_REG__VALUE_bp 0
 #define KM_CSR__OTP_DR_WORD_REG__VALUE_bw 32
 
 // reg - km_csr::otp_read_lock_reg
+// OTP field warm-reset-domain read-lock bits. Write 1 to set; writing 0 has no effect. Locked reads of the corresponding OTP field return zero (effective lock = OTP_READ_LOCK | OTP_READ_LOCK_COLD). Warm-reset domain: cleared by warm or cold reset.
+// Lock OTP_LIFE_CYCLE reads (returns zero when locked)
 #define KM_CSR__OTP_READ_LOCK_REG__LIFE_CYCLE_bm 0x1
 #define KM_CSR__OTP_READ_LOCK_REG__LIFE_CYCLE_bp 0
 #define KM_CSR__OTP_READ_LOCK_REG__LIFE_CYCLE_bw 1
 #define KM_CSR__OTP_READ_LOCK_REG__LIFE_CYCLE_reset 0x0
+// Lock OTP_DEMOTION_STATE reads (returns zero when locked)
 #define KM_CSR__OTP_READ_LOCK_REG__DEMOTION_bm 0x2
 #define KM_CSR__OTP_READ_LOCK_REG__DEMOTION_bp 1
 #define KM_CSR__OTP_READ_LOCK_REG__DEMOTION_bw 1
 #define KM_CSR__OTP_READ_LOCK_REG__DEMOTION_reset 0x0
+// Lock OTP_CHIPLET_UID_VAL/CPL reads (returns zero when locked)
 #define KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_bm 0x4
 #define KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_bp 2
 #define KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_bw 1
 #define KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_reset 0x0
+// Lock OTP_SIP_UID_VAL/CPL reads (returns zero when locked)
 #define KM_CSR__OTP_READ_LOCK_REG__SIP_UID_bm 0x8
 #define KM_CSR__OTP_READ_LOCK_REG__SIP_UID_bp 3
 #define KM_CSR__OTP_READ_LOCK_REG__SIP_UID_bw 1
 #define KM_CSR__OTP_READ_LOCK_REG__SIP_UID_reset 0x0
+// Lock OTP_SYS_UID_VAL/CPL reads (returns zero when locked)
 #define KM_CSR__OTP_READ_LOCK_REG__SYS_UID_bm 0x10
 #define KM_CSR__OTP_READ_LOCK_REG__SYS_UID_bp 4
 #define KM_CSR__OTP_READ_LOCK_REG__SYS_UID_bw 1
 #define KM_CSR__OTP_READ_LOCK_REG__SYS_UID_reset 0x0
+// Lock OTP_CLASS_KEY_VAL/CPL reads (returns zero when locked)
 #define KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_bm 0x20
 #define KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_bp 5
 #define KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_bw 1
 #define KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_reset 0x0
+// Lock OTP_SEP_CHIPLET_ID_VAL/CPL reads (returns zero when locked)
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_CHIPLET_ID_bm 0x40
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_CHIPLET_ID_bp 6
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_CHIPLET_ID_bw 1
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_CHIPLET_ID_reset 0x0
+// Lock OTP_SEP_SIP_ID_VAL/CPL reads (returns zero when locked)
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_SIP_ID_bm 0x80
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_SIP_ID_bp 7
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_SIP_ID_bw 1
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_SIP_ID_reset 0x0
+// Lock OTP_SEP_SYS_ID_VAL/CPL reads (returns zero when locked)
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_SYS_ID_bm 0x100
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_SYS_ID_bp 8
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_SYS_ID_bw 1
 #define KM_CSR__OTP_READ_LOCK_REG__SEP_SYS_ID_reset 0x0
+// Reserved
 #define KM_CSR__OTP_READ_LOCK_REG__RSVD_bm 0xfffffe00
 #define KM_CSR__OTP_READ_LOCK_REG__RSVD_bp 9
 #define KM_CSR__OTP_READ_LOCK_REG__RSVD_bw 23
 #define KM_CSR__OTP_READ_LOCK_REG__RSVD_reset 0x0
 
 // reg - km_csr::otp_change_status_reg
+// OTP field change status. A bit is set when the corresponding field's decoded value changes. Sticky, write 1 to clear. Valid after IRQ_STATUS.OTP_CHANGE fires.
+// OTP_LIFE_CYCLE value changed since last cycle. Sticky, write 1 to clear.
 #define KM_CSR__OTP_CHANGE_STATUS_REG__LIFE_CYCLE_bm 0x1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__LIFE_CYCLE_bp 0
 #define KM_CSR__OTP_CHANGE_STATUS_REG__LIFE_CYCLE_bw 1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__LIFE_CYCLE_reset 0x0
+// OTP_DEMOTION_STATE value changed since last cycle. Sticky, write 1 to clear.
 #define KM_CSR__OTP_CHANGE_STATUS_REG__DEMOTION_bm 0x2
 #define KM_CSR__OTP_CHANGE_STATUS_REG__DEMOTION_bp 1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__DEMOTION_bw 1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__DEMOTION_reset 0x0
+// OTP_CHIPLET_UID value changed since last cycle. Sticky, write 1 to clear.
 #define KM_CSR__OTP_CHANGE_STATUS_REG__CHIPLET_UID_bm 0x4
 #define KM_CSR__OTP_CHANGE_STATUS_REG__CHIPLET_UID_bp 2
 #define KM_CSR__OTP_CHANGE_STATUS_REG__CHIPLET_UID_bw 1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__CHIPLET_UID_reset 0x0
+// OTP_SIP_UID value changed since last cycle. Sticky, write 1 to clear.
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SIP_UID_bm 0x8
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SIP_UID_bp 3
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SIP_UID_bw 1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SIP_UID_reset 0x0
+// OTP_SYS_UID value changed since last cycle. Sticky, write 1 to clear.
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SYS_UID_bm 0x10
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SYS_UID_bp 4
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SYS_UID_bw 1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SYS_UID_reset 0x0
+// OTP_CLASS_KEY value changed since last cycle. Sticky, write 1 to clear.
 #define KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_bm 0x20
 #define KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_bp 5
 #define KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_bw 1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_reset 0x0
+// OTP_SEP_CHIPLET_ID value changed since last cycle. Sticky, write 1 to clear.
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_bm 0x40
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_bp 6
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_bw 1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_reset 0x0
+// OTP_SEP_SIP_ID value changed since last cycle. Sticky, write 1 to clear.
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SIP_ID_bm 0x80
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SIP_ID_bp 7
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SIP_ID_bw 1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SIP_ID_reset 0x0
+// OTP_SEP_SYS_ID value changed since last cycle. Sticky, write 1 to clear.
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SYS_ID_bm 0x100
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SYS_ID_bp 8
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SYS_ID_bw 1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SYS_ID_reset 0x0
+// Reserved
 #define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bm 0xfffffe00
 #define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bp 9
 #define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bw 23
 #define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_reset 0x0
 
 // reg - km_csr::otp_read_lock_cold_reg
+// OTP field cold-reset-domain read-lock bits. Write 1 to set; writing 0 has no effect. Locked reads of the corresponding OTP field return zero (effective lock = OTP_READ_LOCK | OTP_READ_LOCK_COLD). Cold-reset domain: survives warm reset.
+// Cold-reset read-lock for OTP_LIFE_CYCLE. Effective lock = OTP_READ_LOCK.life_cycle | OTP_READ_LOCK_COLD.life_cycle.
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_bm 0x1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_bp 0
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_bw 1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_reset 0x0
+// Cold-reset read-lock for OTP_DEMOTION_STATE. Effective lock = OTP_READ_LOCK.demotion | OTP_READ_LOCK_COLD.demotion.
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_bm 0x2
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_bp 1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_bw 1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_reset 0x0
+// Cold-reset read-lock for OTP_CHIPLET_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.chiplet_uid | OTP_READ_LOCK_COLD.chiplet_uid.
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bm 0x4
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bp 2
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bw 1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_reset 0x0
+// Cold-reset read-lock for OTP_SIP_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sip_uid | OTP_READ_LOCK_COLD.sip_uid.
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bm 0x8
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bp 3
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bw 1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_reset 0x0
+// Cold-reset read-lock for OTP_SYS_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sys_uid | OTP_READ_LOCK_COLD.sys_uid.
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_bm 0x10
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_bp 4
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_bw 1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_reset 0x0
+// Cold-reset read-lock for OTP_CLASS_KEY_VAL/CPL. Effective lock = OTP_READ_LOCK.class_key | OTP_READ_LOCK_COLD.class_key.
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_bm 0x20
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_bp 5
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_bw 1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_reset 0x0
+// Cold-reset read-lock for OTP_SEP_CHIPLET_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_chiplet_id | OTP_READ_LOCK_COLD.sep_chiplet_id.
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_CHIPLET_ID_bm 0x40
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_CHIPLET_ID_bp 6
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_CHIPLET_ID_bw 1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_CHIPLET_ID_reset 0x0
+// Cold-reset read-lock for OTP_SEP_SIP_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sip_id | OTP_READ_LOCK_COLD.sep_sip_id.
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SIP_ID_bm 0x80
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SIP_ID_bp 7
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SIP_ID_bw 1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SIP_ID_reset 0x0
+// Cold-reset read-lock for OTP_SEP_SYS_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sys_id | OTP_READ_LOCK_COLD.sep_sys_id.
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SYS_ID_bm 0x100
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SYS_ID_bp 8
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SYS_ID_bw 1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SYS_ID_reset 0x0
+// Reserved
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bm 0xfffffe00
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bp 9
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bw 23
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_reset 0x0
 
 // addrmap - km_csr
+// Control and status registers for the Key Manager subsystem
 typedef struct __attribute__ ((__packed__)) {
     uint32_t VERSION;
     uint32_t CTRL;
@@ -1713,60 +2118,77 @@ typedef struct __attribute__ ((__packed__)) {
 } km_csr_t;
 
 // reg - km_drbg_sampler::data_reg
+// One word of random data. Read triggers request or returns prefetch. Writes return SLVERR. No reset.
+// 32-bit random data from DRBG. No reset for security; power-up value undefined.
 #define KM_DRBG_SAMPLER__DATA_REG__DATA_bm 0xffffffff
 #define KM_DRBG_SAMPLER__DATA_REG__DATA_bp 0
 #define KM_DRBG_SAMPLER__DATA_REG__DATA_bw 32
 
 // reg - km_drbg_sampler::cfg_reg
+// Configuration: PREFETCH enable, TIMEOUT cycles for active CPU read.
+// Enable prefetch. When 0, prefetch data register is cleared.
 #define KM_DRBG_SAMPLER__CFG_REG__PREFETCH_bm 0x1
 #define KM_DRBG_SAMPLER__CFG_REG__PREFETCH_bp 0
 #define KM_DRBG_SAMPLER__CFG_REG__PREFETCH_bw 1
 #define KM_DRBG_SAMPLER__CFG_REG__PREFETCH_reset 0x0
+// Reserved
 #define KM_DRBG_SAMPLER__CFG_REG__RSVD_bm 0xfffe
 #define KM_DRBG_SAMPLER__CFG_REG__RSVD_bp 1
 #define KM_DRBG_SAMPLER__CFG_REG__RSVD_bw 15
 #define KM_DRBG_SAMPLER__CFG_REG__RSVD_reset 0x0
+// Cycles to wait for DRBG on active CPU read; 0 = disable. Default 256.
 #define KM_DRBG_SAMPLER__CFG_REG__TIMEOUT_bm 0xffff0000
 #define KM_DRBG_SAMPLER__CFG_REG__TIMEOUT_bp 16
 #define KM_DRBG_SAMPLER__CFG_REG__TIMEOUT_bw 16
 #define KM_DRBG_SAMPLER__CFG_REG__TIMEOUT_reset 0x100
 
 // reg - km_drbg_sampler::status_reg
+// Status: DRBG_READY, PREFETCHED, TIMEOUT_ERR (W1C), STREAM_ERR (W1C), COUNT_BAD, COUNT_GOOD.
+// TVALID asserted from DRBG
 #define KM_DRBG_SAMPLER__STATUS_REG__DRBG_READY_bm 0x1
 #define KM_DRBG_SAMPLER__STATUS_REG__DRBG_READY_bp 0
 #define KM_DRBG_SAMPLER__STATUS_REG__DRBG_READY_bw 1
 #define KM_DRBG_SAMPLER__STATUS_REG__DRBG_READY_reset 0x0
+// Prefetched data available
 #define KM_DRBG_SAMPLER__STATUS_REG__PREFETCHED_bm 0x2
 #define KM_DRBG_SAMPLER__STATUS_REG__PREFETCHED_bp 1
 #define KM_DRBG_SAMPLER__STATUS_REG__PREFETCHED_bw 1
 #define KM_DRBG_SAMPLER__STATUS_REG__PREFETCHED_reset 0x0
+// Set when a DRBG read from the KM CPU times out. Write 1 to clear.
 #define KM_DRBG_SAMPLER__STATUS_REG__TIMEOUT_ERR_bm 0x4
 #define KM_DRBG_SAMPLER__STATUS_REG__TIMEOUT_ERR_bp 2
 #define KM_DRBG_SAMPLER__STATUS_REG__TIMEOUT_ERR_bw 1
 #define KM_DRBG_SAMPLER__STATUS_REG__TIMEOUT_ERR_reset 0x0
+// Set when there is an error on the DRBG AXI-Stream interface (e.g. TVALID deasserted before TREADY). Write 1 to clear.
 #define KM_DRBG_SAMPLER__STATUS_REG__STREAM_ERR_bm 0x8
 #define KM_DRBG_SAMPLER__STATUS_REG__STREAM_ERR_bp 3
 #define KM_DRBG_SAMPLER__STATUS_REG__STREAM_ERR_bw 1
 #define KM_DRBG_SAMPLER__STATUS_REG__STREAM_ERR_reset 0x0
+// Reserved
 #define KM_DRBG_SAMPLER__STATUS_REG__RSVD_bm 0xf0
 #define KM_DRBG_SAMPLER__STATUS_REG__RSVD_bp 4
 #define KM_DRBG_SAMPLER__STATUS_REG__RSVD_bw 4
 #define KM_DRBG_SAMPLER__STATUS_REG__RSVD_reset 0x0
+// Failed transactions (timeout or error). Saturates at 0xFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.
 #define KM_DRBG_SAMPLER__STATUS_REG__COUNT_BAD_bm 0xff00
 #define KM_DRBG_SAMPLER__STATUS_REG__COUNT_BAD_bp 8
 #define KM_DRBG_SAMPLER__STATUS_REG__COUNT_BAD_bw 8
 #define KM_DRBG_SAMPLER__STATUS_REG__COUNT_BAD_reset 0x0
+// Counts only reads completed through ST_RESPOND, excluding prefetched words. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.
 #define KM_DRBG_SAMPLER__STATUS_REG__COUNT_GOOD_bm 0xffff0000
 #define KM_DRBG_SAMPLER__STATUS_REG__COUNT_GOOD_bp 16
 #define KM_DRBG_SAMPLER__STATUS_REG__COUNT_GOOD_bw 16
 #define KM_DRBG_SAMPLER__STATUS_REG__COUNT_GOOD_reset 0x0
 
 // reg - km_drbg_sampler::prefetch_data_reg
+// Prefetched word (read-only, for debugging). Cleared when PREFETCH=0. No reset; power-up undefined.
+// Prefetched 32-bit random data. No reset for security; power-up value undefined.
 #define KM_DRBG_SAMPLER__PREFETCH_DATA_REG__DATA_bm 0xffffffff
 #define KM_DRBG_SAMPLER__PREFETCH_DATA_REG__DATA_bp 0
 #define KM_DRBG_SAMPLER__PREFETCH_DATA_REG__DATA_bw 32
 
 // addrmap - km_drbg_sampler
+// DRBG random data interface and configuration/status registers
 typedef struct __attribute__ ((__packed__)) {
     uint32_t DATA;
     uint32_t CFG;
@@ -1775,21 +2197,31 @@ typedef struct __attribute__ ((__packed__)) {
 } km_drbg_sampler_t;
 
 // reg - otbn_wrapper_key::key_word_reg
+// One 32-bit word of key data. Write-only; reads return 0.
+// No reset; powers up with undefined value.
+// 32-bit key data word. Write-only for security.
 #define OTBN_WRAPPER_KEY__KEY_WORD_REG__DATA_bm 0xffffffff
 #define OTBN_WRAPPER_KEY__KEY_WORD_REG__DATA_bp 0
 #define OTBN_WRAPPER_KEY__KEY_WORD_REG__DATA_bw 32
 
 // reg - otbn_wrapper_key::key_ctrl_reg
+// Key control register. Writing KEY_VALID=1 asserts the sideload
+// valid signal to the OTBN core.
+// When 1, asserts keymgr_key_i.valid to indicate key is loaded.
+// Write 0 to invalidate the current key.
 #define OTBN_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_bm 0x1
 #define OTBN_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_bp 0
 #define OTBN_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_bw 1
 #define OTBN_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_reset 0x0
+// Reserved
 #define OTBN_WRAPPER_KEY__KEY_CTRL_REG__RSVD_bm 0xfffffffe
 #define OTBN_WRAPPER_KEY__KEY_CTRL_REG__RSVD_bp 1
 #define OTBN_WRAPPER_KEY__KEY_CTRL_REG__RSVD_bw 31
 #define OTBN_WRAPPER_KEY__KEY_CTRL_REG__RSVD_reset 0x0
 
 // addrmap - otbn_wrapper_key
+// Key storage registers for the OTBN sideload interface.
+// Written by Key Manager CPU, drives keymgr_key_i on the OT OTBN core.
 typedef struct __attribute__ ((__packed__)) {
     uint32_t KEY_SHARE0[12];
     uint32_t KEY_SHARE1[12];
@@ -1797,21 +2229,31 @@ typedef struct __attribute__ ((__packed__)) {
 } otbn_wrapper_key_t;
 
 // reg - aes_wrapper_key::key_word_reg
+// One 32-bit word of key data. Write-only; reads return 0.
+// No reset; powers up with undefined value.
+// 32-bit key data word. Write-only for security.
 #define AES_WRAPPER_KEY__KEY_WORD_REG__DATA_bm 0xffffffff
 #define AES_WRAPPER_KEY__KEY_WORD_REG__DATA_bp 0
 #define AES_WRAPPER_KEY__KEY_WORD_REG__DATA_bw 32
 
 // reg - aes_wrapper_key::key_ctrl_reg
+// Key control register. Writing KEY_VALID=1 asserts the sideload
+// valid signal to the AES core.
+// When 1, asserts keymgr_key_i.valid to indicate key is loaded.
+// Write 0 to invalidate the current key.
 #define AES_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_bm 0x1
 #define AES_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_bp 0
 #define AES_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_bw 1
 #define AES_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_reset 0x0
+// Reserved
 #define AES_WRAPPER_KEY__KEY_CTRL_REG__RSVD_bm 0xfffffffe
 #define AES_WRAPPER_KEY__KEY_CTRL_REG__RSVD_bp 1
 #define AES_WRAPPER_KEY__KEY_CTRL_REG__RSVD_bw 31
 #define AES_WRAPPER_KEY__KEY_CTRL_REG__RSVD_reset 0x0
 
 // addrmap - aes_wrapper_key
+// Key storage registers for the AES sideload interface.
+// Written by Key Manager CPU, drives keymgr_key_i on the OT AES core.
 typedef struct __attribute__ ((__packed__)) {
     uint32_t KEY_SHARE0[8];
     uint32_t KEY_SHARE1[8];
@@ -1819,21 +2261,31 @@ typedef struct __attribute__ ((__packed__)) {
 } aes_wrapper_key_t;
 
 // reg - kmac_wrapper_key::key_word_reg
+// One 32-bit word of key data. Write-only; reads return 0.
+// No reset; powers up with undefined value.
+// 32-bit key data word. Write-only for security.
 #define KMAC_WRAPPER_KEY__KEY_WORD_REG__DATA_bm 0xffffffff
 #define KMAC_WRAPPER_KEY__KEY_WORD_REG__DATA_bp 0
 #define KMAC_WRAPPER_KEY__KEY_WORD_REG__DATA_bw 32
 
 // reg - kmac_wrapper_key::key_ctrl_reg
+// Key control register. Writing KEY_VALID=1 asserts the sideload
+// valid signal to the KMAC core.
+// When 1, asserts keymgr_key_i.valid to indicate key is loaded.
+// Write 0 to invalidate the current key.
 #define KMAC_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_bm 0x1
 #define KMAC_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_bp 0
 #define KMAC_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_bw 1
 #define KMAC_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_reset 0x0
+// Reserved
 #define KMAC_WRAPPER_KEY__KEY_CTRL_REG__RSVD_bm 0xfffffffe
 #define KMAC_WRAPPER_KEY__KEY_CTRL_REG__RSVD_bp 1
 #define KMAC_WRAPPER_KEY__KEY_CTRL_REG__RSVD_bw 31
 #define KMAC_WRAPPER_KEY__KEY_CTRL_REG__RSVD_reset 0x0
 
 // addrmap - kmac_wrapper_key
+// Key storage registers for the KMAC sideload interface.
+// Written by Key Manager CPU, drives keymgr_key_i on the OT KMAC core.
 typedef struct __attribute__ ((__packed__)) {
     uint32_t KEY_SHARE0[8];
     uint32_t KEY_SHARE1[8];
@@ -1841,21 +2293,31 @@ typedef struct __attribute__ ((__packed__)) {
 } kmac_wrapper_key_t;
 
 // reg - hmac_wrapper_key::key_word_reg
+// One 32-bit word of key data. Write-only; reads return 0.
+// No reset; powers up with undefined value.
+// 32-bit key data word. Write-only for security.
 #define HMAC_WRAPPER_KEY__KEY_WORD_REG__DATA_bm 0xffffffff
 #define HMAC_WRAPPER_KEY__KEY_WORD_REG__DATA_bp 0
 #define HMAC_WRAPPER_KEY__KEY_WORD_REG__DATA_bw 32
 
 // reg - hmac_wrapper_key::key_ctrl_reg
+// Key control register. Writing KEY_VALID=1 asserts the sideload
+// valid signal to the HMAC core.
+// When 1, asserts keymgr_key_i.valid to indicate key is loaded.
+// Write 0 to invalidate the current key.
 #define HMAC_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_bm 0x1
 #define HMAC_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_bp 0
 #define HMAC_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_bw 1
 #define HMAC_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_reset 0x0
+// Reserved
 #define HMAC_WRAPPER_KEY__KEY_CTRL_REG__RSVD_bm 0xfffffffe
 #define HMAC_WRAPPER_KEY__KEY_CTRL_REG__RSVD_bp 1
 #define HMAC_WRAPPER_KEY__KEY_CTRL_REG__RSVD_bw 31
 #define HMAC_WRAPPER_KEY__KEY_CTRL_REG__RSVD_reset 0x0
 
 // addrmap - hmac_wrapper_key
+// Key storage registers for the HMAC sideload interface.
+// Written by Key Manager CPU, drives keymgr_key_i on the OT HMAC core.
 typedef struct __attribute__ ((__packed__)) {
     uint32_t KEY_SHARE0[8];
     uint32_t KEY_SHARE1[8];
@@ -1863,21 +2325,32 @@ typedef struct __attribute__ ((__packed__)) {
 } hmac_wrapper_key_t;
 
 // reg - abr_wrapper_key::key_word_reg
+// One 32-bit word of key data. Write-only; reads return 0.
+// No reset; powers up with undefined value.
+// 32-bit key data word. Write-only for security.
 #define ABR_WRAPPER_KEY__KEY_WORD_REG__DATA_bm 0xffffffff
 #define ABR_WRAPPER_KEY__KEY_WORD_REG__DATA_bp 0
 #define ABR_WRAPPER_KEY__KEY_WORD_REG__DATA_bw 32
 
 // reg - abr_wrapper_key::seed_ctrl_reg
+// Seed control register. Writing KEY_VALID=1 marks the seed as loaded.
+// Write 0 to invalidate. The KV shim gates the AB kv_read response
+// on this bit.
+// When 1, the seed is loaded and the KV shim will serve it to Adams Bridge.
+// Write 0 to invalidate and allow a new seed to be written.
 #define ABR_WRAPPER_KEY__SEED_CTRL_REG__KEY_VALID_bm 0x1
 #define ABR_WRAPPER_KEY__SEED_CTRL_REG__KEY_VALID_bp 0
 #define ABR_WRAPPER_KEY__SEED_CTRL_REG__KEY_VALID_bw 1
 #define ABR_WRAPPER_KEY__SEED_CTRL_REG__KEY_VALID_reset 0x0
+// Reserved
 #define ABR_WRAPPER_KEY__SEED_CTRL_REG__RSVD_bm 0xfffffffe
 #define ABR_WRAPPER_KEY__SEED_CTRL_REG__RSVD_bp 1
 #define ABR_WRAPPER_KEY__SEED_CTRL_REG__RSVD_bw 31
 #define ABR_WRAPPER_KEY__SEED_CTRL_REG__RSVD_reset 0x0
 
 // regfile - abr_wrapper_key::abr_seed_rf
+// Dual-share 256-bit secret seed (write-only) + key_valid flag.
+// Layout identical to aes_wrapper_key for firmware reuse.
 typedef struct __attribute__ ((__packed__)) {
     uint32_t KEY_SHARE0[8];
     uint32_t KEY_SHARE1[8];
@@ -1885,42 +2358,67 @@ typedef struct __attribute__ ((__packed__)) {
 } abr_wrapper_key__abr_seed_rf_t;
 
 // reg - abr_wrapper_key::sk_word_reg
+// One 32-bit word of ML-KEM shared key output. Written by hardware
+// when key is ready; read by KM firmware to consume. Hardware clears
+// all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
+// 32-bit shared-key word. Hardware writes on key-ready event;
+// hardware clears to 0 on key-consume event (KEY_VALID cleared).
 #define ABR_WRAPPER_KEY__SK_WORD_REG__DATA_bm 0xffffffff
 #define ABR_WRAPPER_KEY__SK_WORD_REG__DATA_bp 0
 #define ABR_WRAPPER_KEY__SK_WORD_REG__DATA_bw 32
 #define ABR_WRAPPER_KEY__SK_WORD_REG__DATA_reset 0x0
 
 // reg - abr_wrapper_key::sk_ctrl_reg
+// Shared-key control. HW sets KEY_VALID when a new key is ready.
+// Firmware writes 0 to clear (consume and zeroize).
+// 1 = shared key is valid and ready for firmware consumption.
+// Hardware sets this bit on key-ready event. Write 0 to clear;
+// write 1 has no effect (software cannot set this bit).
 #define ABR_WRAPPER_KEY__SK_CTRL_REG__KEY_VALID_bm 0x1
 #define ABR_WRAPPER_KEY__SK_CTRL_REG__KEY_VALID_bp 0
 #define ABR_WRAPPER_KEY__SK_CTRL_REG__KEY_VALID_bw 1
 #define ABR_WRAPPER_KEY__SK_CTRL_REG__KEY_VALID_reset 0x0
+// Reserved
 #define ABR_WRAPPER_KEY__SK_CTRL_REG__RSVD_bm 0xfffffffe
 #define ABR_WRAPPER_KEY__SK_CTRL_REG__RSVD_bp 1
 #define ABR_WRAPPER_KEY__SK_CTRL_REG__RSVD_bw 31
 #define ABR_WRAPPER_KEY__SK_CTRL_REG__RSVD_reset 0x0
 
 // reg - abr_wrapper_key::sk_irq_status_reg
+// Interrupt status for ML-KEM shared key. Sticky bit set by
+// hardware when a new shared key becomes valid; cleared by writing 1.
+// ML-KEM shared key valid. Sticky, write 1 to clear.
 #define ABR_WRAPPER_KEY__SK_IRQ_STATUS_REG__KEY_VALID_bm 0x1
 #define ABR_WRAPPER_KEY__SK_IRQ_STATUS_REG__KEY_VALID_bp 0
 #define ABR_WRAPPER_KEY__SK_IRQ_STATUS_REG__KEY_VALID_bw 1
 #define ABR_WRAPPER_KEY__SK_IRQ_STATUS_REG__KEY_VALID_reset 0x0
+// Reserved
 #define ABR_WRAPPER_KEY__SK_IRQ_STATUS_REG__RSVD_bm 0xfffffffe
 #define ABR_WRAPPER_KEY__SK_IRQ_STATUS_REG__RSVD_bp 1
 #define ABR_WRAPPER_KEY__SK_IRQ_STATUS_REG__RSVD_bw 31
 #define ABR_WRAPPER_KEY__SK_IRQ_STATUS_REG__RSVD_reset 0x0
 
 // reg - abr_wrapper_key::sk_irq_enable_reg
+// Interrupt enable for ML-KEM shared key. Mask for the
+// PicoRV32 IRQ vector bit driven by the shared-key-valid event.
+// 1 = enable PicoRV32 IRQ when ML-KEM shared key is valid.
+// 0 = mask the interrupt (KEY_CTRL.KEY_VALID can still be polled).
 #define ABR_WRAPPER_KEY__SK_IRQ_ENABLE_REG__KEY_VALID_EN_bm 0x1
 #define ABR_WRAPPER_KEY__SK_IRQ_ENABLE_REG__KEY_VALID_EN_bp 0
 #define ABR_WRAPPER_KEY__SK_IRQ_ENABLE_REG__KEY_VALID_EN_bw 1
 #define ABR_WRAPPER_KEY__SK_IRQ_ENABLE_REG__KEY_VALID_EN_reset 0x0
+// Reserved
 #define ABR_WRAPPER_KEY__SK_IRQ_ENABLE_REG__RSVD_bm 0xfffffffe
 #define ABR_WRAPPER_KEY__SK_IRQ_ENABLE_REG__RSVD_bp 1
 #define ABR_WRAPPER_KEY__SK_IRQ_ENABLE_REG__RSVD_bw 31
 #define ABR_WRAPPER_KEY__SK_IRQ_ENABLE_REG__RSVD_reset 0x0
 
 // regfile - abr_wrapper_key::abr_sharedkey_rf
+// 256-bit ML-KEM shared key output from Adams Bridge.
+// Hardware writes KEY[*] and sets KEY_CTRL.KEY_VALID when ready.
+// Firmware reads KEY[*] then writes KEY_CTRL=0 to consume/zeroize.
+// IRQ_STATUS is a sticky W1C bit set by hardware on the key-ready
+// event; the masked CPU interrupt is IRQ_STATUS & IRQ_ENABLE.
 typedef struct __attribute__ ((__packed__)) {
     uint32_t KEY[8];
     uint32_t KEY_CTRL;
@@ -1929,6 +2427,8 @@ typedef struct __attribute__ ((__packed__)) {
 } abr_wrapper_key__abr_sharedkey_rf_t;
 
 // addrmap - abr_wrapper_key
+// Single AXI4-Lite window for all KM sideload interfaces to Adams Bridge.
+// Contains four dual-share secret-seed inputs and one shared-key output.
 typedef struct __attribute__ ((__packed__)) {
     abr_wrapper_key__abr_seed_rf_t MLDSA_SEED;
     uint8_t RESERVED_44_ff[0xbc];
@@ -1942,6 +2442,9 @@ typedef struct __attribute__ ((__packed__)) {
 } abr_wrapper_key_t;
 
 // addrmap - key_manager
+// Complete memory map for the Key Manager subsystem, including ROM, SRAM,
+// control/status registers, mailbox, and external crypto engine ports.
+// This address map is from the perspective of the KM CPU (PicoRV32).
 typedef struct __attribute__ ((__packed__)) {
     km_rom_t rom;
     uint8_t RESERVED_4000_7fff[0x4000];

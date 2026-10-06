@@ -15,6 +15,20 @@
 # drop this and the --template flag once the fixes land upstream.
 OCAH_SVPKG_TEMPLATE ?= $(OCAH_ROOT)/hw/common/regs/templates/svpkg.mako
 
+# Local c-header exporter: upstream peakrdl-cheader 1.1.0 never reads the RDL
+# `desc` property, so a generated header describes none of its registers or
+# fields. It has no --template hook, so the descriptions come from an exporter
+# plugin (tools/regs/cheader.py) registered in this config and selected with the
+# c-header-desc subcommand. Drop both once the descriptions land upstream.
+# The config peakrdl reads is generated from the template: its python search
+# path has to be absolute, and the flow runs peakrdl from the block directory.
+OCAH_CHEADER_CFG_IN ?= $(OCAH_ROOT)/hw/common/regs/peakrdl.toml.in
+OCAH_CHEADER_CFG ?= $(OCAH_ROOT)/hw/common/regs/build/peakrdl.toml
+
+$(OCAH_CHEADER_CFG): $(OCAH_CHEADER_CFG_IN)
+	@mkdir -p "$(dir $@)"
+	@sed 's|@OCAH_ROOT@|$(OCAH_ROOT)|g' "$<" > "$@"
+
 # Prepend SPDX to generated register files after PeakRDL / custom exporters.
 # Always pass the exact file(s) a recipe emitted, never a directory: several
 # blocks share one regs/gen/sv (the key_manager top and its ten sibling RDLs,
@@ -26,7 +40,7 @@ ocah_reg_stamp_after = $(if $(filter 1,$(OCAH_REG_DEFER_STAMP)),, && $(OCAH_REG_
 
 # Canned peakrdl exporter command lines. $(1) = block id (for -I); later args are
 # input, output, name/bitfields, log.
-ocah_reg_run_cheader  = "$(OCAH_REG_PEAKRDL)" c-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)" -o "$(3)" --bitfields $(4) --type-style lexical $(call ocah_reg_rdl_params,$(1)) 2>&1 | tee "$(5)"
+ocah_reg_run_cheader  = "$(OCAH_REG_PEAKRDL)" --peakrdl-cfg "$(OCAH_CHEADER_CFG)" c-header-desc $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)" -o "$(3)" --bitfields $(4) --type-style lexical $(call ocah_reg_rdl_params,$(1)) 2>&1 | tee "$(5)"
 ocah_reg_run_regblock = "$(OCAH_REG_PEAKRDL)" regblock $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)"$(if $(strip $(6)), --rename "$(strip $(6))") -o "$(3)" --cpuif "$(call ocah_reg_cpu_if,$(1))" $(call ocah_reg_regblock_opts,$(1)) --default-reset "$(OCAH_REG_DEFAULT_RESET)" --module-name "$(4)_reg" --package-name "$(4)_reg_pkg" $(call ocah_reg_rdl_params,$(1)) 2>&1 | tee "$(5)"
 # AsciiDoc register docs are emitted directly from RDL by a custom generator that
 # produces a linked summary table and per-register headings with field tables.
@@ -133,7 +147,7 @@ $(call ocah_reg_sv_block_dir,$(1))/%_reg.sv: $(call ocah_reg_root,$(1))/regs/blo
 	@echo "Regenerating register SV for $(1) sub-block $$*"
 	@$(ocah_sh) '$(call ocah_reg_run_regblock,$(1),$$<,$$(@D),$$*,$(1)/regs/build/peakrdl_sv_$$*.log)$(call ocah_reg_stamp_after,"$$(@D)/$$*_reg.sv" "$$(@D)/$$*_reg_pkg.sv")'
 
-$(call ocah_reg_c_block_dir,$(1))/%.h: $(call ocah_reg_root,$(1))/regs/blocks/$$$$*/$$$$*.rdl $(OCAH_REGBLOCK_UDP) | $(OCAH_REG_UV_PREREQ)
+$(call ocah_reg_c_block_dir,$(1))/%.h: $(call ocah_reg_root,$(1))/regs/blocks/$$$$*/$$$$*.rdl $(OCAH_REGBLOCK_UDP) $(OCAH_CHEADER_CFG) | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating firmware C header for $(1) sub-block $$*"
 	@$(ocah_sh) '$(call ocah_reg_run_cheader,$(1),$$<,$$@,$$(if $$(filter $$*,$(OCAH_REG_NO_BITFIELDS)),none,ltoh),$(1)/regs/build/c_header_$$*.log)$(call ocah_reg_stamp_after,"$$@")'
@@ -209,7 +223,7 @@ endef
 
 # Plain-leaf firmware C header: one peakrdl c-header run.
 define ocah_reg_cheader_plain_rule
-$(call ocah_reg_c_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) | $(OCAH_REG_UV_PREREQ)
+$(call ocah_reg_c_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_CHEADER_CFG) | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$(call ocah_reg_gen,$(1))/c" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating firmware C header for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_cheader,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_c_output,$(1)),$(call ocah_reg_c_bitfields,$(1)),$(call ocah_reg_build,$(1))/c_header.log)$(call ocah_reg_stamp_after,"$(call ocah_reg_c_output,$(1))")'

@@ -14,12 +14,14 @@ extern "C" {
 #include <assert.h>
 
 // reg - otbn::INTR_STATE
+// OTBN has completed the operation.
 #define OTBN__INTR_STATE__DONE_bm 0x1
 #define OTBN__INTR_STATE__DONE_bp 0
 #define OTBN__INTR_STATE__DONE_bw 1
 #define OTBN__INTR_STATE__DONE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // OTBN has completed the operation.
         uint32_t done :1;
         uint32_t :31;
     } f;
@@ -27,12 +29,14 @@ typedef union {
 } otbn__INTR_STATE_t;
 
 // reg - otbn::INTR_ENABLE
+// Enable interrupt when !!INTR_STATE.done is set.
 #define OTBN__INTR_ENABLE__DONE_bm 0x1
 #define OTBN__INTR_ENABLE__DONE_bp 0
 #define OTBN__INTR_ENABLE__DONE_bw 1
 #define OTBN__INTR_ENABLE__DONE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enable interrupt when !!INTR_STATE.done is set.
         uint32_t done :1;
         uint32_t :31;
     } f;
@@ -40,12 +44,14 @@ typedef union {
 } otbn__INTR_ENABLE_t;
 
 // reg - otbn::INTR_TEST
+// Write 1 to force !!INTR_STATE.done to 1.
 #define OTBN__INTR_TEST__DONE_bm 0x1
 #define OTBN__INTR_TEST__DONE_bp 0
 #define OTBN__INTR_TEST__DONE_bw 1
 #define OTBN__INTR_TEST__DONE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write 1 to force !!INTR_STATE.done to 1.
         uint32_t done :1;
         uint32_t :31;
     } f;
@@ -53,17 +59,21 @@ typedef union {
 } otbn__INTR_TEST_t;
 
 // reg - otbn::ALERT_TEST
+// Write 1 to trigger one alert event of this kind.
 #define OTBN__ALERT_TEST__FATAL_bm 0x1
 #define OTBN__ALERT_TEST__FATAL_bp 0
 #define OTBN__ALERT_TEST__FATAL_bw 1
 #define OTBN__ALERT_TEST__FATAL_reset 0x0
+// Write 1 to trigger one alert event of this kind.
 #define OTBN__ALERT_TEST__RECOV_bm 0x2
 #define OTBN__ALERT_TEST__RECOV_bp 1
 #define OTBN__ALERT_TEST__RECOV_bw 1
 #define OTBN__ALERT_TEST__RECOV_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write 1 to trigger one alert event of this kind.
         uint32_t fatal :1;
+        // Write 1 to trigger one alert event of this kind.
         uint32_t recov :1;
         uint32_t :30;
     } f;
@@ -71,12 +81,24 @@ typedef union {
 } otbn__ALERT_TEST_t;
 
 // reg - otbn::CMD
+// The operation to perform.
+// | Value | Name          | Description |
+// |:------|:--------------|:------------|
+// | 0xd8  | EXECUTE       | Starts the execution of the program stored in the instruction memory, starting at address zero. |
+// | 0xc3  | SEC_WIPE_DMEM | Securely removes all contents from the data memory. |
+// | 0x1e  | SEC_WIPE_IMEM | Securely removes all contents from the instruction  memory. |
 #define OTBN__CMD__CMD_bm 0xff
 #define OTBN__CMD__CMD_bp 0
 #define OTBN__CMD__CMD_bw 8
 #define OTBN__CMD__CMD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // The operation to perform.
+        // | Value | Name          | Description |
+        // |:------|:--------------|:------------|
+        // | 0xd8  | EXECUTE       | Starts the execution of the program stored in the instruction memory, starting at address zero. |
+        // | 0xc3  | SEC_WIPE_DMEM | Securely removes all contents from the data memory. |
+        // | 0x1e  | SEC_WIPE_IMEM | Securely removes all contents from the instruction  memory. |
         uint32_t cmd :8;
         uint32_t :24;
     } f;
@@ -84,12 +106,20 @@ typedef union {
 } otbn__CMD_t;
 
 // reg - otbn::CTRL
+// Controls the reaction to software errors.
+// When set software errors produce fatal errors, rather than
+// recoverable errors.
+// Writes are ignored if OTBN is not idle.
 #define OTBN__CTRL__SOFTWARE_ERRS_FATAL_bm 0x1
 #define OTBN__CTRL__SOFTWARE_ERRS_FATAL_bp 0
 #define OTBN__CTRL__SOFTWARE_ERRS_FATAL_bw 1
 #define OTBN__CTRL__SOFTWARE_ERRS_FATAL_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Controls the reaction to software errors.
+        // When set software errors produce fatal errors, rather than
+        // recoverable errors.
+        // Writes are ignored if OTBN is not idle.
         uint32_t software_errs_fatal :1;
         uint32_t :31;
     } f;
@@ -97,12 +127,34 @@ typedef union {
 } otbn__CTRL_t;
 
 // reg - otbn::STATUS
+// Indicates the current operational state OTBN is in.
+// All BUSY values represent an operation started by a write to the
+// !!CMD register.
+// | Value | Name               | Description                                           |
+// |:------|:-------------------|:------------------------------------------------------|
+// | 0x00  | IDLE               | OTBN is idle: it is not performing any action.        |
+// | 0x01  | BUSY_EXECUTE       | OTBN is busy executing software.                      |
+// | 0x02  | BUSY_SEC_WIPE_DMEM | OTBN is busy securely wiping the data memory.         |
+// | 0x03  | BUSY_SEC_WIPE_IMEM | OTBN is busy securely wiping the instruction memory.  |
+// | 0x04  | BUSY_SEC_WIPE_INT  | OTBN is busy securely wiping the internal state.      |
+// | 0xFF  | LOCKED             | OTBN is locked as reaction to a fatal error, and must be reset to unlock it again. See also the section "Reaction to Fatal Errors". |
 #define OTBN__STATUS__STATUS_bm 0xff
 #define OTBN__STATUS__STATUS_bp 0
 #define OTBN__STATUS__STATUS_bw 8
 #define OTBN__STATUS__STATUS_reset 0x4
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Indicates the current operational state OTBN is in.
+        // All BUSY values represent an operation started by a write to the
+        // !!CMD register.
+        // | Value | Name               | Description                                           |
+        // |:------|:-------------------|:------------------------------------------------------|
+        // | 0x00  | IDLE               | OTBN is idle: it is not performing any action.        |
+        // | 0x01  | BUSY_EXECUTE       | OTBN is busy executing software.                      |
+        // | 0x02  | BUSY_SEC_WIPE_DMEM | OTBN is busy securely wiping the data memory.         |
+        // | 0x03  | BUSY_SEC_WIPE_IMEM | OTBN is busy securely wiping the instruction memory.  |
+        // | 0x04  | BUSY_SEC_WIPE_INT  | OTBN is busy securely wiping the internal state.      |
+        // | 0xFF  | LOCKED             | OTBN is locked as reaction to a fatal error, and must be reset to unlock it again. See also the section "Reaction to Fatal Errors". |
         uint32_t status :8;
         uint32_t :24;
     } f;
@@ -110,93 +162,127 @@ typedef union {
 } otbn__STATUS_t;
 
 // reg - otbn::ERR_BITS
+// A `BAD_DATA_ADDR` error was observed.
 #define OTBN__ERR_BITS__BAD_DATA_ADDR_bm 0x1
 #define OTBN__ERR_BITS__BAD_DATA_ADDR_bp 0
 #define OTBN__ERR_BITS__BAD_DATA_ADDR_bw 1
 #define OTBN__ERR_BITS__BAD_DATA_ADDR_reset 0x0
+// A `BAD_INSN_ADDR` error was observed.
 #define OTBN__ERR_BITS__BAD_INSN_ADDR_bm 0x2
 #define OTBN__ERR_BITS__BAD_INSN_ADDR_bp 1
 #define OTBN__ERR_BITS__BAD_INSN_ADDR_bw 1
 #define OTBN__ERR_BITS__BAD_INSN_ADDR_reset 0x0
+// A `CALL_STACK` error was observed.
 #define OTBN__ERR_BITS__CALL_STACK_bm 0x4
 #define OTBN__ERR_BITS__CALL_STACK_bp 2
 #define OTBN__ERR_BITS__CALL_STACK_bw 1
 #define OTBN__ERR_BITS__CALL_STACK_reset 0x0
+// An `ILLEGAL_INSN` error was observed.
 #define OTBN__ERR_BITS__ILLEGAL_INSN_bm 0x8
 #define OTBN__ERR_BITS__ILLEGAL_INSN_bp 3
 #define OTBN__ERR_BITS__ILLEGAL_INSN_bw 1
 #define OTBN__ERR_BITS__ILLEGAL_INSN_reset 0x0
+// A `LOOP` error was observed.
 #define OTBN__ERR_BITS__LOOP_bm 0x10
 #define OTBN__ERR_BITS__LOOP_bp 4
 #define OTBN__ERR_BITS__LOOP_bw 1
 #define OTBN__ERR_BITS__LOOP_reset 0x0
+// A `KEY_INVALID` error was observed.
 #define OTBN__ERR_BITS__KEY_INVALID_bm 0x20
 #define OTBN__ERR_BITS__KEY_INVALID_bp 5
 #define OTBN__ERR_BITS__KEY_INVALID_bw 1
 #define OTBN__ERR_BITS__KEY_INVALID_reset 0x0
+// An `RND_REP_CHK_FAIL` error was observed.
 #define OTBN__ERR_BITS__RND_REP_CHK_FAIL_bm 0x40
 #define OTBN__ERR_BITS__RND_REP_CHK_FAIL_bp 6
 #define OTBN__ERR_BITS__RND_REP_CHK_FAIL_bw 1
 #define OTBN__ERR_BITS__RND_REP_CHK_FAIL_reset 0x0
+// An `RND_FIPS_CHK_FAIL` error was observed.
 #define OTBN__ERR_BITS__RND_FIPS_CHK_FAIL_bm 0x80
 #define OTBN__ERR_BITS__RND_FIPS_CHK_FAIL_bp 7
 #define OTBN__ERR_BITS__RND_FIPS_CHK_FAIL_bw 1
 #define OTBN__ERR_BITS__RND_FIPS_CHK_FAIL_reset 0x0
+// An `MAI_SOFTWARE_ERROR` error was observed.
 #define OTBN__ERR_BITS__MAI_SOFTWARE_ERROR_bm 0x100
 #define OTBN__ERR_BITS__MAI_SOFTWARE_ERROR_bp 8
 #define OTBN__ERR_BITS__MAI_SOFTWARE_ERROR_bw 1
 #define OTBN__ERR_BITS__MAI_SOFTWARE_ERROR_reset 0x0
+// A `IMEM_INTG_VIOLATION` error was observed.
 #define OTBN__ERR_BITS__IMEM_INTG_VIOLATION_bm 0x10000
 #define OTBN__ERR_BITS__IMEM_INTG_VIOLATION_bp 16
 #define OTBN__ERR_BITS__IMEM_INTG_VIOLATION_bw 1
 #define OTBN__ERR_BITS__IMEM_INTG_VIOLATION_reset 0x0
+// A `DMEM_INTG_VIOLATION` error was observed.
 #define OTBN__ERR_BITS__DMEM_INTG_VIOLATION_bm 0x20000
 #define OTBN__ERR_BITS__DMEM_INTG_VIOLATION_bp 17
 #define OTBN__ERR_BITS__DMEM_INTG_VIOLATION_bw 1
 #define OTBN__ERR_BITS__DMEM_INTG_VIOLATION_reset 0x0
+// A `REG_INTG_VIOLATION` error was observed.
 #define OTBN__ERR_BITS__REG_INTG_VIOLATION_bm 0x40000
 #define OTBN__ERR_BITS__REG_INTG_VIOLATION_bp 18
 #define OTBN__ERR_BITS__REG_INTG_VIOLATION_bw 1
 #define OTBN__ERR_BITS__REG_INTG_VIOLATION_reset 0x0
+// A `BUS_INTG_VIOLATION` error was observed.
 #define OTBN__ERR_BITS__BUS_INTG_VIOLATION_bm 0x80000
 #define OTBN__ERR_BITS__BUS_INTG_VIOLATION_bp 19
 #define OTBN__ERR_BITS__BUS_INTG_VIOLATION_bw 1
 #define OTBN__ERR_BITS__BUS_INTG_VIOLATION_reset 0x0
+// A `BAD_INTERNAL_STATE` error was observed.
 #define OTBN__ERR_BITS__BAD_INTERNAL_STATE_bm 0x100000
 #define OTBN__ERR_BITS__BAD_INTERNAL_STATE_bp 20
 #define OTBN__ERR_BITS__BAD_INTERNAL_STATE_bw 1
 #define OTBN__ERR_BITS__BAD_INTERNAL_STATE_reset 0x0
+// An `ILLEGAL_BUS_ACCESS` error was observed.
 #define OTBN__ERR_BITS__ILLEGAL_BUS_ACCESS_bm 0x200000
 #define OTBN__ERR_BITS__ILLEGAL_BUS_ACCESS_bp 21
 #define OTBN__ERR_BITS__ILLEGAL_BUS_ACCESS_bw 1
 #define OTBN__ERR_BITS__ILLEGAL_BUS_ACCESS_reset 0x0
+// A `LIFECYCLE_ESCALATION` error was observed.
 #define OTBN__ERR_BITS__LIFECYCLE_ESCALATION_bm 0x400000
 #define OTBN__ERR_BITS__LIFECYCLE_ESCALATION_bp 22
 #define OTBN__ERR_BITS__LIFECYCLE_ESCALATION_bw 1
 #define OTBN__ERR_BITS__LIFECYCLE_ESCALATION_reset 0x0
+// A `FATAL_SOFTWARE` error was observed.
 #define OTBN__ERR_BITS__FATAL_SOFTWARE_bm 0x800000
 #define OTBN__ERR_BITS__FATAL_SOFTWARE_bp 23
 #define OTBN__ERR_BITS__FATAL_SOFTWARE_bw 1
 #define OTBN__ERR_BITS__FATAL_SOFTWARE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // A `BAD_DATA_ADDR` error was observed.
         uint32_t bad_data_addr :1;
+        // A `BAD_INSN_ADDR` error was observed.
         uint32_t bad_insn_addr :1;
+        // A `CALL_STACK` error was observed.
         uint32_t call_stack :1;
+        // An `ILLEGAL_INSN` error was observed.
         uint32_t illegal_insn :1;
+        // A `LOOP` error was observed.
         uint32_t loop :1;
+        // A `KEY_INVALID` error was observed.
         uint32_t key_invalid :1;
+        // An `RND_REP_CHK_FAIL` error was observed.
         uint32_t rnd_rep_chk_fail :1;
+        // An `RND_FIPS_CHK_FAIL` error was observed.
         uint32_t rnd_fips_chk_fail :1;
+        // An `MAI_SOFTWARE_ERROR` error was observed.
         uint32_t mai_software_error :1;
         uint32_t :7;
+        // A `IMEM_INTG_VIOLATION` error was observed.
         uint32_t imem_intg_violation :1;
+        // A `DMEM_INTG_VIOLATION` error was observed.
         uint32_t dmem_intg_violation :1;
+        // A `REG_INTG_VIOLATION` error was observed.
         uint32_t reg_intg_violation :1;
+        // A `BUS_INTG_VIOLATION` error was observed.
         uint32_t bus_intg_violation :1;
+        // A `BAD_INTERNAL_STATE` error was observed.
         uint32_t bad_internal_state :1;
+        // An `ILLEGAL_BUS_ACCESS` error was observed.
         uint32_t illegal_bus_access :1;
+        // A `LIFECYCLE_ESCALATION` error was observed.
         uint32_t lifecycle_escalation :1;
+        // A `FATAL_SOFTWARE` error was observed.
         uint32_t fatal_software :1;
         uint32_t :8;
     } f;
@@ -204,47 +290,63 @@ typedef union {
 } otbn__ERR_BITS_t;
 
 // reg - otbn::FATAL_ALERT_CAUSE
+// A `IMEM_INTG_VIOLATION` error was observed.
 #define OTBN__FATAL_ALERT_CAUSE__IMEM_INTG_VIOLATION_bm 0x1
 #define OTBN__FATAL_ALERT_CAUSE__IMEM_INTG_VIOLATION_bp 0
 #define OTBN__FATAL_ALERT_CAUSE__IMEM_INTG_VIOLATION_bw 1
 #define OTBN__FATAL_ALERT_CAUSE__IMEM_INTG_VIOLATION_reset 0x0
+// A `DMEM_INTG_VIOLATION` error was observed.
 #define OTBN__FATAL_ALERT_CAUSE__DMEM_INTG_VIOLATION_bm 0x2
 #define OTBN__FATAL_ALERT_CAUSE__DMEM_INTG_VIOLATION_bp 1
 #define OTBN__FATAL_ALERT_CAUSE__DMEM_INTG_VIOLATION_bw 1
 #define OTBN__FATAL_ALERT_CAUSE__DMEM_INTG_VIOLATION_reset 0x0
+// A `REG_INTG_VIOLATION` error was observed.
 #define OTBN__FATAL_ALERT_CAUSE__REG_INTG_VIOLATION_bm 0x4
 #define OTBN__FATAL_ALERT_CAUSE__REG_INTG_VIOLATION_bp 2
 #define OTBN__FATAL_ALERT_CAUSE__REG_INTG_VIOLATION_bw 1
 #define OTBN__FATAL_ALERT_CAUSE__REG_INTG_VIOLATION_reset 0x0
+// A `BUS_INTG_VIOLATION` error was observed.
 #define OTBN__FATAL_ALERT_CAUSE__BUS_INTG_VIOLATION_bm 0x8
 #define OTBN__FATAL_ALERT_CAUSE__BUS_INTG_VIOLATION_bp 3
 #define OTBN__FATAL_ALERT_CAUSE__BUS_INTG_VIOLATION_bw 1
 #define OTBN__FATAL_ALERT_CAUSE__BUS_INTG_VIOLATION_reset 0x0
+// A `BAD_INTERNAL_STATE` error was observed.
 #define OTBN__FATAL_ALERT_CAUSE__BAD_INTERNAL_STATE_bm 0x10
 #define OTBN__FATAL_ALERT_CAUSE__BAD_INTERNAL_STATE_bp 4
 #define OTBN__FATAL_ALERT_CAUSE__BAD_INTERNAL_STATE_bw 1
 #define OTBN__FATAL_ALERT_CAUSE__BAD_INTERNAL_STATE_reset 0x0
+// A `ILLEGAL_BUS_ACCESS` error was observed.
 #define OTBN__FATAL_ALERT_CAUSE__ILLEGAL_BUS_ACCESS_bm 0x20
 #define OTBN__FATAL_ALERT_CAUSE__ILLEGAL_BUS_ACCESS_bp 5
 #define OTBN__FATAL_ALERT_CAUSE__ILLEGAL_BUS_ACCESS_bw 1
 #define OTBN__FATAL_ALERT_CAUSE__ILLEGAL_BUS_ACCESS_reset 0x0
+// A `LIFECYCLE_ESCALATION` error was observed.
 #define OTBN__FATAL_ALERT_CAUSE__LIFECYCLE_ESCALATION_bm 0x40
 #define OTBN__FATAL_ALERT_CAUSE__LIFECYCLE_ESCALATION_bp 6
 #define OTBN__FATAL_ALERT_CAUSE__LIFECYCLE_ESCALATION_bw 1
 #define OTBN__FATAL_ALERT_CAUSE__LIFECYCLE_ESCALATION_reset 0x0
+// A `FATAL_SOFTWARE` error was observed.
 #define OTBN__FATAL_ALERT_CAUSE__FATAL_SOFTWARE_bm 0x80
 #define OTBN__FATAL_ALERT_CAUSE__FATAL_SOFTWARE_bp 7
 #define OTBN__FATAL_ALERT_CAUSE__FATAL_SOFTWARE_bw 1
 #define OTBN__FATAL_ALERT_CAUSE__FATAL_SOFTWARE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // A `IMEM_INTG_VIOLATION` error was observed.
         uint32_t imem_intg_violation :1;
+        // A `DMEM_INTG_VIOLATION` error was observed.
         uint32_t dmem_intg_violation :1;
+        // A `REG_INTG_VIOLATION` error was observed.
         uint32_t reg_intg_violation :1;
+        // A `BUS_INTG_VIOLATION` error was observed.
         uint32_t bus_intg_violation :1;
+        // A `BAD_INTERNAL_STATE` error was observed.
         uint32_t bad_internal_state :1;
+        // A `ILLEGAL_BUS_ACCESS` error was observed.
         uint32_t illegal_bus_access :1;
+        // A `LIFECYCLE_ESCALATION` error was observed.
         uint32_t lifecycle_escalation :1;
+        // A `FATAL_SOFTWARE` error was observed.
         uint32_t fatal_software :1;
         uint32_t :24;
     } f;
@@ -252,24 +354,28 @@ typedef union {
 } otbn__FATAL_ALERT_CAUSE_t;
 
 // reg - otbn::INSN_CNT
+// The number of executed instructions.
 #define OTBN__INSN_CNT__INSN_CNT_bm 0xffffffff
 #define OTBN__INSN_CNT__INSN_CNT_bp 0
 #define OTBN__INSN_CNT__INSN_CNT_bw 32
 #define OTBN__INSN_CNT__INSN_CNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // The number of executed instructions.
         uint32_t insn_cnt :32;
     } f;
     uint32_t w;
 } otbn__INSN_CNT_t;
 
 // reg - otbn::LOAD_CHECKSUM
+// Checksum accumulator
 #define OTBN__LOAD_CHECKSUM__CHECKSUM_bm 0xffffffff
 #define OTBN__LOAD_CHECKSUM__CHECKSUM_bp 0
 #define OTBN__LOAD_CHECKSUM__CHECKSUM_bw 32
 #define OTBN__LOAD_CHECKSUM__CHECKSUM_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Checksum accumulator
         uint32_t checksum :32;
     } f;
     uint32_t w;
@@ -286,6 +392,7 @@ typedef struct __attribute__ ((__packed__)) {
 } otbn__DMEM_t;
 
 // addrmap - otbn
+// Programmable coprocessor for asymmetric cryptography with SCA and FI countermeasures
 typedef struct __attribute__ ((__packed__)) {
     otbn__INTR_STATE_t INTR_STATE;
     otbn__INTR_ENABLE_t INTR_ENABLE;
