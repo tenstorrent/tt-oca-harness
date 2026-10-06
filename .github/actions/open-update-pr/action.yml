@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Shared by the scheduled refresh workflows (update-integration-filelists,
+# update-container-deps, update-contributors). Each caller owns its cron and
+# the command that dirties the tree; this action is the one commit and
+# pull-request path, so those jobs cannot drift apart. A local composite
+# action is loaded from the checked-out tree, so the caller checks out first.
+name: 'Open update pull request'
+description: 'Commit a dirty automatic-refresh tree onto its branch and open or refresh the pull request. No-op when the watched paths are clean.'
+inputs:
+  paths:
+    required: true
+    description: 'Whitespace-separated paths to inspect and stage'
+  branch:
+    required: true
+    description: 'automation/<job> branch the pull request tracks'
+  message:
+    required: true
+    description: 'Commit subject and pull request title'
+  body:
+    required: true
+    description: 'Pull request body'
+  current-message:
+    required: true
+    description: 'Printed when the watched paths are clean'
+  reviewer:
+    required: false
+    default: 'aottavianoTT'
+    description: 'Reviewer requested on the pull request'
+runs:
+  using: composite
+  steps:
+    - name: Open update pull request
+      shell: bash
+      env:
+        UPDATE_PATHS: ${{ inputs.paths }}
+        UPDATE_BRANCH: ${{ inputs.branch }}
+        UPDATE_MESSAGE: ${{ inputs.message }}
+        UPDATE_BODY: ${{ inputs.body }}
+        UPDATE_CURRENT: ${{ inputs.current-message }}
+        UPDATE_REVIEWER: ${{ inputs.reviewer }}
+      run: scripts/ci/open_update_pr.sh

@@ -1,6 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+# Automatic refresh of the integration filelists.
+# Weekly, Monday 09:37 UTC. The commit and pull request are
+# .github/actions/open-update-pr; this file owns the schedule and the
+# regenerate step.
+
 name: Update integration filelists
 
 on:
@@ -54,38 +59,15 @@ jobs:
         run: make update-integration-filelists
 
       - name: Open update pull request
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -z "$(git status --porcelain -- integration/filelists)" ]; then
-            echo "Integration filelists are current."
-            exit 0
-          fi
+        uses: ./.github/actions/open-update-pr
+        with:
+          paths: integration/filelists
+          branch: automation/update-integration-filelists
+          message: "integration: Regenerate subsystem filelists"
+          current-message: Integration filelists are current.
+          body: |
+            ## Summary
+            Regenerate the committed integration simulation, synthesis, and emulation filelists.
 
-          branch=automation/update-integration-filelists
-          git fetch origin "$branch:refs/remotes/origin/$branch" || true
-          git switch -C "$branch"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add integration/filelists
-          git commit -m "integration: Regenerate subsystem filelists"
-          git push --force-with-lease origin "HEAD:$branch"
-
-          pr="$(gh pr list --head "$branch" --state open --json number --jq '.[0].number')"
-          if [ -z "$pr" ]; then
-            gh pr create \
-              --base main \
-              --head "$branch" \
-              --reviewer aottavianoTT \
-              --title "integration: Regenerate subsystem filelists" \
-              --body "$(cat <<'EOF'
-          ## Summary
-          Regenerate the committed integration simulation, synthesis, and emulation filelists.
-
-          ## Test plan
-          `make update-integration-filelists CHECK=1`
-          EOF
-          )"
-          else
-            gh pr edit "$pr" --add-reviewer aottavianoTT
-          fi
+            ## Test plan
+            `make update-integration-filelists CHECK=1`
