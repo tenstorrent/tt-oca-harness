@@ -970,18 +970,18 @@ typedef enum logic [3:0] {
     FALSE = 4'd9
 } MultiBitBool4_e;
 
-typedef enum logic [2:0] {
-    REPCNT_HI = 3'd0,
-    APT_HI = 3'd1,
-    APT_LO = 3'd2,
-    MARKOV_HI = 3'd3,
-    MARKOV_LO = 3'd4
+typedef enum logic [3:0] {
+    REPCNT_HI = 4'd0,
+    APT_HI = 4'd1,
+    APT_LO = 4'd2,
+    MARKOV_HI = 4'd3,
+    MARKOV_LO = 4'd4
 } WATERMARK_TEST_e;
 
-typedef enum logic [1:0] {
-    SUCCESS = 2'd0,
-    KV_READ_FAIL = 2'd1,
-    KV_WRITE_FAIL = 2'd2
+typedef enum logic [7:0] {
+    SUCCESS = 8'd0,
+    KV_READ_FAIL = 8'd1,
+    KV_WRITE_FAIL = 8'd2
 } kv_error_e_e;
 
 endpackage

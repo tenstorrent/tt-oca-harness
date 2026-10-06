@@ -1935,6 +1935,14 @@ Stage-control precedence is explicit `--stage`, then `--build-only`, then
 DUT whose clean paths include the complete `<dut-dv-root>/build` tree loses
 its cached models and all prior runs. Inspect the `REMOVE` plan with
 `--stage clean --dry-run` before executing it.
+
+Before it removes anything the stage checks every path, and a path that
+renders empty, lies outside both the checkout and the run directory, or is
+the checkout, its `.git`, the home directory or a directory above any of them
+fails the stage with a configuration error, as does a path whose symbolic
+links resolve to one of those. A path that is itself a symbolic link is
+removed as the link. `--validate-configs` rejects an empty path and one that
+uses `{item}`, since the clean stage runs without an item.
 ====
 
 [[runner-build-reuse]]
@@ -2103,7 +2111,8 @@ python3 tools/dv/run_dv.py \
 
 Non-dry-run coverage-only replay requires an existing `result.json`. The runner
 recovers the original tool, rejects a mismatched `--tool`, preserves
-non-coverage stage history, and replaces the replayed coverage records. A dry
+non-coverage stage history and the run's `git` record and diff archive, and
+replaces the replayed coverage records. A dry
 run can render a placeholder plan without that file, but cannot restore the
 original tool or history. A run that did not finish (`tests.completed` is
 `false`, or the record carries an `interruption`) is refused with exit code
@@ -2159,7 +2168,8 @@ carry a coverage record whose merge and report completed and whose merged
 database exists; its own grade does not matter, since the combined run is
 graded on its own. Every run must use one tool, and all must record one
 commit, since one figure describes one revision of the design. A run
-recorded on a dirty tree is accepted with a warning. The runs may sit in
+recorded on a dirty tree, or one that did not record whether its tree was
+clean, is accepted with a warning. The runs may sit in
 another checkout or in a retained copy: their artifact paths resolve against
 the tree that produced them, and a design database that the copy left out is
 skipped, since the merged database its own merge loaded already holds the
@@ -2819,6 +2829,16 @@ log of a cluster run under `artifacts.executor_log`, and `result_json`, the
 path of the leaf record that holds its artifacts, parser evidence, and build,
 coverage, and provenance metadata.
 
+The `git` object records the checkout's `commit`, `branch` and `dirty` flag,
+which is `true`, `false`, or `unknown` when git cannot answer. On a dirty tree
+the run also archives the `git status` and `git diff HEAD` output as
+`provenance/worktree.status` and `provenance/worktree.diff` in its run
+directory; `diff_archive` names the diff and `dirty_files` counts the modified
+files, so the commit and the diff together identify the sources the run
+compiled. An empty `diff_archive` records a diff git could not produce. A
+dry run writes no archive, and a coverage replay keeps the archive of the run
+it replays, whatever the tree holds at replay time.
+
 The `tests` summary counts the recorded leaves (`total`, `passing`,
 `failing`, `skipped`) and records whether the run finished: `leaves_planned`
 is the number of (test, seed) leaves the selection planned, `leaves_run` the
@@ -2845,7 +2865,9 @@ Every sim leaf ends its per-test log with one `PROVENANCE` line
 naming the commit, branch, dirty flag, build fingerprint and, where the flow
 has one, the filelist and its digest. The same facts are recorded under
 `metadata.provenance` in the leaf's `result.json`, so a log and its result
-record name the same build.
+record name the same build. The dirty flag is `true`, `false`, or `unknown`
+when git is missing, fails, or does not answer `git status` within 60
+seconds.
 
 Every `+key=value` simulator argument whose value is an existing regular file
 (firmware, ROM, eFuse and shadow-register images such as `+rom_hex`,
