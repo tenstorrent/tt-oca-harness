@@ -56,9 +56,9 @@ Checkers (``r`` is the round, 1 or 2):
                 read does not complete"; encoding from
                 vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/kv_def.rdl). D and Z
                 have their own KEY_VALID and the D||Z read fails if either is
-                clear, so in round 1 each is graded alone: after the shred only
-                D is delivered again and the read must fail (Z is clear); after
-                a shred of D and Z only Z is delivered again and the read must
+                clear, so each is graded alone: after the shred only D is
+                delivered again and the read must fail (Z is clear); after a
+                shred of D and Z only Z is delivered again and the read must
                 fail (D is clear). Each single-half leg then delivers the other
                 half too and the read must complete, so the re-delivered half
                 is shown valid. The engine STATUS is logged, not graded: no SEP
@@ -708,10 +708,7 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         # can only fail on the other one's KEY_VALID. Then deliver the other one
         # too and require the read to complete: that is the control that the
         # first delivery made its half valid again, so the failure belongs to
-        # the shredded half and not to a re-transfer that set nothing. Round 1
-        # only: round 2 would repeat the same legs on different words.
-        if r > 0:
-            return
+        # the shredded half and not to a re-transfer that set nothing.
         for again, other, other_dest in (
             (KM_DEST_ABR_MLKEM_SEED_D, "Z", KM_DEST_ABR_MLKEM_SEED_Z),
             (KM_DEST_ABR_MLKEM_SEED_Z, "D", KM_DEST_ABR_MLKEM_SEED_D),
