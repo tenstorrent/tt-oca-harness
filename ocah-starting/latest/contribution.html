@@ -112,7 +112,13 @@
     <a class="nav-link" href="licensing.html">Licensing</a>
   </li>
   <li class="nav-item is-current-page" data-depth="2">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="contribution.html">Contributions</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="#versioning">Versioning</a>
+  </li>
+</ul>
   </li>
   <li class="nav-item" data-depth="2">
     <a class="nav-link" href="defects.html">Defect Reporting</a>
@@ -223,9 +229,6 @@
 <ul>
 <li>
 <p>Contribution documentation may not be required at this point.</p>
-</li>
-<li>
-<p>Semantic Versioning may need considering in a silicon context</p>
 </li>
 <li>
 <p>For public contributions, it is probably better to encourage people to fork and
@@ -367,9 +370,9 @@ through a PR.
 <ul>
 <li>
 <p>When a release is close to ready a release branch is created from
-<code>main</code> and named with the release major.patch version. This branch is
-used to finalize the release, e.g. by updating documentation, fixing any
-last minute bugs, etc.</p>
+<code>main</code> and named for that minor release, for example <code>v1.2.x</code>. This branch is
+used to finalize the release, for example by updating documentation and fixing
+last-minute bugs.</p>
 </li>
 <li>
 <p>All changes to the release branch are based on PRs with GitHub issues
@@ -398,10 +401,9 @@ relevant changes are applied to <code>main</code>, but this is not strictly nece
 release version.</p>
 </li>
 <li>
-<p>Minor (point) releases are made on the same major release branch,
-e.g. <code>v1.0.x</code>, where <code>x</code> is the minor version number. This allows users
-to pull from the 'v1.0.x' branch to get the latest bug fixes and minor
-enhancements without having to switch to a new major release branch.</p>
+<p>Patch releases are cut from that same branch. <code>v1.2.1</code> is a patch on
+<code>v1.2.0</code>. Readers can stay on the branch for later compatible fixes
+without moving to a new minor or major release.</p>
 </li>
 </ul>
 </div>
@@ -561,30 +563,37 @@ binary content if necessary.</p>
 </div>
 <div class="sect2">
 <h3 id="versioning"><a class="anchor" href="#versioning"></a><a class="link" href="#versioning">2.6. Versioning</a></h3>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
 <div class="paragraph">
-<p>The OCAH project will use semantic versioning (semver) version 2 for
-releases. The version format is <code>MAJOR.MINOR.PATCH</code>, where:</p>
+<p>Releases follow <a href="https://semver.org">semantic versioning 2.0.0</a>.
+A release tag is <code>vMAJOR.MINOR.PATCH</code>.</p>
+</div>
+</td>
+</tr>
+</table>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>MAJOR version when you make incompatible API changes</p>
+<p><strong>MAJOR</strong> — the release can break compatibility with the previous major release.</p>
 </li>
 <li>
-<p>MINOR version when you add functionality in a backward compatible
-manner</p>
+<p><strong>MINOR</strong> — the release adds functionality and stays compatible with the same major release.</p>
 </li>
 <li>
-<p>PATCH version when you make backward compatible bug fixes</p>
+<p><strong>PATCH</strong> — the release fixes defects and stays compatible with the same major and minor release.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>Additional labels for pre-release and build metadata are available as
-extensions to the MAJOR.MINOR.PATCH format.</p>
-</div>
-<div class="paragraph">
-<p>See the documentation on <a href="https://semver.org">semver</a> for more details.</p>
+<p><code>v0.5.1</code> is a patch on <code>v0.5.0</code>. It is the same minor release, with compatible fixes.
+A pre-release label or build metadata can follow the version, as semver allows.</p>
 </div>
 </div>
 <div class="sect2">
