@@ -56,12 +56,12 @@ Checkers (``r`` is the round, 1 or 2):
                 read does not complete"; encoding from
                 vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/kv_def.rdl). D and Z
                 have their own KEY_VALID and the D||Z read fails if either is
-                clear, so each is graded alone: after the shred only D is
-                delivered again and the read must fail (Z is clear); after a
-                second shred only Z is delivered again and the read must fail
-                (D is clear). Each single-half leg then delivers the other half
-                too and the read must complete, so the re-delivered half is
-                shown valid. The engine STATUS is logged, not graded: no SEP
+                clear, so in round 1 each is graded alone: after the shred only
+                D is delivered again and the read must fail (Z is clear); after
+                a shred of D and Z only Z is delivered again and the read must
+                fail (D is clear). Each single-half leg then delivers the other
+                half too and the read must complete, so the re-delivered half
+                is shown valid. The engine STATUS is logged, not graded: no SEP
                 document states it
   CHK-KMAC-CLR  a keyed operation on the delivered key with KEY_VALID clear
                 raises kmac_err with a non-zero ERR_CODE (hw/sys/sep/doc/kmac.adoc). Both
@@ -189,6 +189,8 @@ ABR_DESTS = (
 ALL_DESTS = 0
 for _d in DEST_WORDS:
     ALL_DESTS |= _d
+# The only destinations the single-half legs deliver again after a shred.
+MLKEM_SEED_DESTS = KM_DEST_ABR_MLKEM_SEED_D | KM_DEST_ABR_MLKEM_SEED_Z
 
 KV_SUCCESS = kv_error_code("SUCCESS")
 KV_READ_FAIL = kv_error_code("KV_READ_FAIL")
@@ -616,14 +618,14 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         await self._mlkem_zeroize(what=f"CHK-MLKEM-MSG-{tag} post")
         return out
 
-    async def _shred_all(self, r: int) -> None:
-        rc, arg = await self.km.engine_shred(dest=ALL_DESTS)
+    async def _shred(self, r: int, dest: int = ALL_DESTS) -> None:
+        rc, arg = await self.km.engine_shred(dest=dest)
         assert rc == KM_RC_SUCCESS, f"precondition FAIL (round {r + 1}): CMD_ENGINE_SHRED rc={rc}"
-        assert (arg & 0xFF) == ALL_DESTS, (
+        assert (arg & 0xFF) == dest, (
             f"precondition FAIL (round {r + 1}): CMD_ENGINE_SHRED echoed dest "
-            f"0x{arg & 0xFF:02x}, requested 0x{ALL_DESTS:02x}"
+            f"0x{arg & 0xFF:02x}, requested 0x{dest:02x}"
         )
-        self.logger.info("STEP round %d: CMD_ENGINE_SHRED dest=0x%02x rc=0", r + 1, ALL_DESTS)
+        self.logger.info("STEP round %d: CMD_ENGINE_SHRED dest=0x%02x rc=0", r + 1, dest)
 
     async def _cleared(self, r: int) -> None:
         tag = r + 1
@@ -706,13 +708,17 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         # can only fail on the other one's KEY_VALID. Then deliver the other one
         # too and require the read to complete: that is the control that the
         # first delivery made its half valid again, so the failure belongs to
-        # the shredded half and not to a re-transfer that set nothing.
+        # the shredded half and not to a re-transfer that set nothing. Round 1
+        # only: round 2 would repeat the same legs on different words.
+        if r > 0:
+            return
         for again, other, other_dest in (
             (KM_DEST_ABR_MLKEM_SEED_D, "Z", KM_DEST_ABR_MLKEM_SEED_Z),
             (KM_DEST_ABR_MLKEM_SEED_Z, "D", KM_DEST_ABR_MLKEM_SEED_D),
         ):
             if again == KM_DEST_ABR_MLKEM_SEED_Z:
-                await self._shred_all(r)
+                # Only D and Z are valid here; the other six are still shredded.
+                await self._shred(r, MLKEM_SEED_DESTS)
             await self._transfer(r, self.handles[r][again], again)
             await self._mlkem_zeroize(what=f"CHK-ABR-CLR-{tag} only {DEST_NAME[again]} pre")
             st, err = await self._kv_read(
@@ -754,7 +760,7 @@ class sep_km_sideload_share_walk_test(sep_base_test):
                 what=f"CHK-ABR-CLR-{tag} {DEST_NAME[again]} then {DEST_NAME[other_dest]} recover"
             )
         # Leave every destination shredded, as the round expects.
-        await self._shred_all(r)
+        await self._shred(r, MLKEM_SEED_DESTS)
 
     async def _cleared_final(self) -> None:
         # Baseline: kmac_err and ERR_CODE clear before CMD_START, so an error
@@ -842,7 +848,7 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         for r in range(ROUNDS):
             await self._load_all(r)
             outputs.append(await self._consume(r))
-            await self._shred_all(r)
+            await self._shred(r)
             await self._cleared(r)
 
         same = [name for name in ABR_OUTPUTS if outputs[1][name] == outputs[0][name]]

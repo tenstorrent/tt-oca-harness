@@ -58,7 +58,7 @@ name = "sep_spi_ot_dma_tx_test"
 module = "spi.sep_spi_ot_dma_tx_test"
 firmware = "spi_ot_dma_tx_test"
 seed = 1
-reseed = 3
+# No reseed: the word counts are fixed; the seed selects only the flash page and data.
 timeout_sec = 3600
 tags = ["boot", "cpu", "spi", "dma", "subsystem"]
 run_modes = ["cpu"]
