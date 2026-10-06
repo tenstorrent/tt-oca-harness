@@ -1935,6 +1935,14 @@ Stage-control precedence is explicit `--stage`, then `--build-only`, then
 DUT whose clean paths include the complete `<dut-dv-root>/build` tree loses
 its cached models and all prior runs. Inspect the `REMOVE` plan with
 `--stage clean --dry-run` before executing it.
+
+Before it removes anything the stage checks every path, and a path that
+renders empty, lies outside both the checkout and the run directory, or is
+the checkout, its `.git`, the home directory or a directory above any of them
+fails the stage with a configuration error, as does a path whose symbolic
+links resolve to one of those. A path that is itself a symbolic link is
+removed as the link. `--validate-configs` rejects an empty path and one that
+uses `{item}`, since the clean stage runs without an item.
 ====
 
 [[runner-build-reuse]]
