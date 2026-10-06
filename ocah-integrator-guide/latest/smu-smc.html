@@ -422,9 +422,8 @@ in the GPIO table.</p>
 </div>
 <div class="paragraph">
 <p>The SMC padring drives one GPIO pad per <code>u_gpio_interface</code> instance, so the
-adopter must integrate <code>smc_pkg::NumGpioWraps</code> pads:
-<code>smc_pkg::NumBondedGpio</code> bonded pads plus <code>smc_pkg::NumUnbondedGpio</code>
-unbonded pads. If the adopter chooses to capture configuration straps from GPIO
+adopter must integrate <code>smc_pkg::NumGpioWraps</code> pads: 61 bonded pads
+(GPIO 0-60) plus 4 unbonded pads (GPIO 61-64). If the adopter chooses to capture configuration straps from GPIO
 pads, this can only be done from the bonded pads. The pads for the SDA and SCL
 lines of I3C[1] must be unbonded for security when transmitting OCCP traffic.
 The pads for Cool Reset In/Out must also be unbonded as they are meant only to
@@ -1777,7 +1776,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumGpioWraps-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Raw GPIO interrupt vector from the padring, one bit per GPIO wrap (bonded + unbonded). Software reads GPIO status registers to identify the interrupt source. Already OR-reduced into <code>peripheral_interrupts_o[30:29]</code> internally.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Raw GPIO interrupt vector from the padring, one bit per GPIO wrap (bonded + unbonded). Software reads GPIO status registers to identify the interrupt source. Already OR-reduced into <code>peripheral_interrupts_o[29:28]</code> internally.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_padring</code> → external consumers</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A, leave floating if unused</p></td>
 </tr>

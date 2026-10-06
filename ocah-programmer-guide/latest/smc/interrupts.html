@@ -665,16 +665,16 @@ locked_field_access_interrupt</code>, sourced from the eFuse controller path.</p
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>284</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO interrupt OR, lower half</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OR-reduction across the lower half of bonded GPIO interrupt sources</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OR-reduction across GPIO interrupt sources 0-31</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[28] =
-|gpio_interrupt[smc_pkg::NumBondedGpio/2-1:0]</code>.</p></td>
+|gpio_interrupt[smc_pkg::NumGpioWraps/2-1:0]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>285</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO interrupt OR, upper half</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OR-reduction across the upper half of bonded GPIO interrupt sources</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OR-reduction across GPIO interrupt sources 32-64</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[29] =
-|gpio_interrupt[smc_pkg::NumBondedGpio-1:smc_pkg::NumBondedGpio/2]</code>.</p></td>
+|gpio_interrupt[smc_pkg::NumGpioWraps-1:smc_pkg::NumGpioWraps/2]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>286</code></p></td>
