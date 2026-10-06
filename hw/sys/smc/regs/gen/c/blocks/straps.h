@@ -14,9 +14,9 @@ extern "C" {
 #include <assert.h>
 
 // reg - straps::STRAPS_LO
-// Strap value from GPIOs 0 - 31. Bit N holds the value latched on GPIO N.
-// Bits 0 - 10, 16, 17, 24 and 27 - 31 have no strap assigned. Those GPIOs still
-// latch their pad value here, but no strap function consumes it.
+// Configuration straps 0 - 31.
+// Bits 0 - 10, 16, 17, 24 and 27 - 31 have no strap assigned; no strap function
+// consumes them.
 // Strap assignments in this range:
 // * bit 11: CHIP_ID[3] - CHIP_ID is the I2C/I3C static address strap
 // * bit 12: CHIP_ID[2] - CHIP_ID is the I2C/I3C static address strap
@@ -29,7 +29,7 @@ extern "C" {
 // * bit 21: STATUS_RPT_DISABLE - Disable BL0 status reporting. It is on by default
 // * bit 22: SPI_USE_FUSED_CONFIG - Use the SPI configuration values stored in the fuse field
 // * bit 23: CHIP_ID[0] - CHIP_ID is the I2C/I3C static address strap
-// * bit 25: PRIMARY_CHIPLET - The primary chiplet has this strap bonded out to identify it as the boot master
+// * bit 25: PRIMARY_CHIPLET - Identifies the primary chiplet, the boot master
 // * bit 26: SRAM_AUTO_ZERO_DISABLE - Disable auto zero of the SMC SRAM when asserted
 #define STRAPS__STRAPS_LO__STRAPS_bm 0xffffffff
 #define STRAPS__STRAPS_LO__STRAPS_bp 0
@@ -37,9 +37,9 @@ extern "C" {
 #define STRAPS__STRAPS_LO__STRAPS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Strap value from GPIOs 0 - 31. Bit N holds the value latched on GPIO N.
-        // Bits 0 - 10, 16, 17, 24 and 27 - 31 have no strap assigned. Those GPIOs still
-        // latch their pad value here, but no strap function consumes it.
+        // Configuration straps 0 - 31.
+        // Bits 0 - 10, 16, 17, 24 and 27 - 31 have no strap assigned; no strap function
+        // consumes them.
         // Strap assignments in this range:
         // * bit 11: CHIP_ID[3] - CHIP_ID is the I2C/I3C static address strap
         // * bit 12: CHIP_ID[2] - CHIP_ID is the I2C/I3C static address strap
@@ -52,7 +52,7 @@ typedef union {
         // * bit 21: STATUS_RPT_DISABLE - Disable BL0 status reporting. It is on by default
         // * bit 22: SPI_USE_FUSED_CONFIG - Use the SPI configuration values stored in the fuse field
         // * bit 23: CHIP_ID[0] - CHIP_ID is the I2C/I3C static address strap
-        // * bit 25: PRIMARY_CHIPLET - The primary chiplet has this strap bonded out to identify it as the boot master
+        // * bit 25: PRIMARY_CHIPLET - Identifies the primary chiplet, the boot master
         // * bit 26: SRAM_AUTO_ZERO_DISABLE - Disable auto zero of the SMC SRAM when asserted
         uint32_t straps :32;
     } f;
@@ -60,28 +60,24 @@ typedef union {
 } straps__STRAPS_LO_t;
 
 // reg - straps::STRAPS_HI
-// Strap value from GPIOs 32 - 60. Bit N holds the value latched on GPIO N+32.
-// All bits other than those listed below have no strap assigned. Those GPIOs
-// still latch their pad value here, but no strap function consumes it.
-// GPIOs 61 - 64 cannot be strapped: they are unbonded (not packaged out) and lie
-// outside this register, which ends at GPIO 60.
+// Configuration straps 32 - 60.
+// All bits other than those listed below have no strap assigned; no strap
+// function consumes them.
 // Strap assignments in this range:
-// * bit 22 (GPIO 54): MBIST_BYPASS - Ignore results of Power-On MBIST for boot
-// * bit 26 (GPIO 58): ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM
+// * bit 22: MBIST_BYPASS - Ignore results of Power-On MBIST for boot
+// * bit 26: ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM
 #define STRAPS__STRAPS_HI__STRAPS_bm 0x1fffffff
 #define STRAPS__STRAPS_HI__STRAPS_bp 0
 #define STRAPS__STRAPS_HI__STRAPS_bw 29
 #define STRAPS__STRAPS_HI__STRAPS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Strap value from GPIOs 32 - 60. Bit N holds the value latched on GPIO N+32.
-        // All bits other than those listed below have no strap assigned. Those GPIOs
-        // still latch their pad value here, but no strap function consumes it.
-        // GPIOs 61 - 64 cannot be strapped: they are unbonded (not packaged out) and lie
-        // outside this register, which ends at GPIO 60.
+        // Configuration straps 32 - 60.
+        // All bits other than those listed below have no strap assigned; no strap
+        // function consumes them.
         // Strap assignments in this range:
-        // * bit 22 (GPIO 54): MBIST_BYPASS - Ignore results of Power-On MBIST for boot
-        // * bit 26 (GPIO 58): ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM
+        // * bit 22: MBIST_BYPASS - Ignore results of Power-On MBIST for boot
+        // * bit 26: ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM
         uint32_t straps :29;
         uint32_t :3;
     } f;
@@ -89,7 +85,7 @@ typedef union {
 } straps__STRAPS_HI_t;
 
 // addrmap - straps
-// Captured GPIO strap values (adopter padring capture)
+// Configuration strap values. How they are captured is adopter-defined.
 typedef struct __attribute__ ((__packed__)) {
     straps__STRAPS_LO_t STRAPS_LO;
     straps__STRAPS_HI_t STRAPS_HI;
