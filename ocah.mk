@@ -58,6 +58,16 @@ ocah-submodules-init:
 
 OCAH_PHONY += ocah-submodules-init
 
+## @section Integration filelists
+
+## Regenerate the simulation, synthesis, and emulation filelists in integration/filelists/.
+## @param CHECK=1 Report stale filelists and fail instead of rewriting.
+.PHONY: ocah-update-integration-filelists
+ocah-update-integration-filelists:
+	@cd "$(OCAH_ROOT)" && python3 scripts/update_integration_filelists.py $(if $(CHECK),--check)
+
+OCAH_PHONY += ocah-update-integration-filelists
+
 ## Core hardware collateral and DV firmware build targets.
 include $(OCAH_ROOT)/hw/common/regs/regs.mk
 include $(OCAH_ROOT)/hw/common/dv/fw/fw.mk
@@ -86,16 +96,6 @@ include $(OCAH_ROOT)/flows/lint/pre-commit.mk
 include $(OCAH_ROOT)/flows/lint/tclint.mk
 include $(OCAH_ROOT)/flows/lint/nix-fmt.mk
 include $(OCAH_ROOT)/flows/synth/yosys/yosys.mk
-
-## Generate the filelist for the OCAH repository.
-## Optional overrides: EXTRA_TARGETS (bender -t flags), FLIST_OUT (output path).
-.PHONY: generate_filelist
-generate_filelist:
-	@echo "Generating HW filelist for the OCAH repository"
-	bender script flist-plus $(EXTRA_TARGETS) > $(if $(FLIST_OUT),$(FLIST_OUT),$(OCAH_ROOT)/hw_filelist.f)
-	@echo "Generated $(if $(FLIST_OUT),$(FLIST_OUT),$(OCAH_ROOT)/hw_filelist.f)"
-
-OCAH_PHONY += generate_filelist
 
 HELP_TITLE = "OCAH Make Targets"
 HELP_DESCRIPTION = "Regeneration and helper targets for the OCA Harness repository"
