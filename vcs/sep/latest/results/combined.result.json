@@ -8,15 +8,15 @@
     "run_dir": "vcs/sep/runs/combined"
   },
   "coverage": {
-    "comparison_key": "COVCMP-cb6a58d0fe77bbb8",
+    "comparison_key": "COVCMP-7727bb5c5e5fb7a5",
     "details_available": true,
     "effective_metrics": {
-      "branch": 90.07,
-      "condition": 80.0,
+      "branch": 90.02,
+      "condition": 79.82,
       "fsm_state": 88.73,
       "functional": 100.0,
-      "line": 94.88,
-      "toggle": 82.59
+      "line": 94.83,
+      "toggle": 82.6
     },
     "holes_summary": {
       "accepted": 0,
@@ -35,12 +35,12 @@
     "policy_application": "artifacts/sep/coverage/report/policy-application.json",
     "policy_thresholds": [],
     "raw_metrics": {
-      "branch": 87.66,
-      "condition": 77.48,
+      "branch": 87.62,
+      "condition": 77.3,
       "fsm_state": 86.22,
       "functional": 100.0,
-      "line": 94.85,
-      "toggle": 81.38
+      "line": 94.8,
+      "toggle": 81.39
     },
     "report": "artifacts/sep/coverage/report",
     "source_manifest": "vcs/sep/runs/combined/cov/coverage.json",
@@ -52,16 +52,16 @@
     "target": "default",
     "threshold": 0.0,
     "threshold_met": true,
-    "total_percent": 89.38
+    "total_percent": 89.33
   },
   "failure_buckets": [],
   "flow": "sep",
   "framework": "",
-  "generated_at": "2026-10-05T11:13:00+00:00",
+  "generated_at": "2026-10-06T11:31:20+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "9a9e91689a87caa3f9d9028e419238f680fb849c",
-    "short_sha": "9a9e91689"
+    "sha": "c9a64717c456b7efe3d3bf056165cbd35737920a",
+    "short_sha": "c9a64717"
   },
   "junit_xml": {
     "missing": 0,
@@ -70,10 +70,10 @@
   "kind": "dv",
   "run_metadata": {
     "executor": "local",
-    "generated_at": "2026-10-05T11:12:58.592800+00:00",
+    "generated_at": "2026-10-06T11:31:14.899975+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "9a9e91689a87caa3f9d9028e419238f680fb849c",
+      "commit": "c9a64717c456b7efe3d3bf056165cbd35737920a",
       "dirty": "false"
     },
     "label": "combine",
@@ -98,9 +98,9 @@
   },
   "tests_detail": [],
   "timing": {
-    "duration_sec": 23.242,
-    "end_time": "2026-10-05T11:12:57.634205+00:00",
-    "start_time": "2026-10-05T11:12:34.377003+00:00"
+    "duration_sec": 41.455,
+    "end_time": "2026-10-06T11:31:12.321275+00:00",
+    "start_time": "2026-10-06T11:30:30.830103+00:00"
   },
   "tool": "vcs"
 }
