@@ -3874,16 +3874,43 @@ def _report_metric_families(metrics: list[Any], log_path: Path, console: Console
     )
 
 
+def _clean_target(root: Path, run_dir: Path, value: str, ctx: dict[str, str]) -> Path:
+    """The absolute path one `clean.paths` entry removes.
+
+    The path must lie inside the checkout or the run directory, and neither it nor the path
+    its links resolve to may be the checkout, its `.git`, the home directory or a directory
+    above any of them; otherwise a ConfigError names the entry.
+    """
+    rendered = render_text(value, ctx)
+    if not rendered.strip():
+        raise ConfigError(f"clean.paths entry `{value}` renders to an empty path")
+    target = Path(os.path.abspath(repo_path(root, rendered)))
+    forms = (target, target.resolve())
+    for kept in (root, root / ".git", Path(os.path.expanduser("~"))):
+        if any(path.is_relative_to(form) for path in (kept, kept.resolve()) for form in forms):
+            raise ConfigError(f"clean.paths entry `{value}` resolves to {target}, removing {kept}")
+    bases = (root, root.resolve(), Path(os.path.abspath(run_dir)), run_dir.resolve())
+    if not any(form.is_relative_to(base) for form in forms for base in bases):
+        raise ConfigError(
+            f"clean.paths entry `{value}` resolves to {target}, "
+            "outside the checkout and the run directory"
+        )
+    return target
+
+
 def clean_stage(stage: dict[str, Any], root: Path, ctx: dict[str, str], dry_run: bool) -> int:
-    for value in as_str_list(stage.get("paths"), "clean.paths"):
-        path = repo_path(root, render_text(value, ctx))
+    run_dir = Path(ctx["run_dir"])
+    targets = [
+        _clean_target(root, run_dir, value, ctx)
+        for value in as_str_list(stage.get("paths"), "clean.paths")
+    ]
+    for path in targets:
         if dry_run:
             print(f"REMOVE: {path}", flush=True)
-        if not dry_run:
-            if path.is_dir():
-                shutil.rmtree(path)
-            elif path.exists():
-                path.unlink()
+        elif path.is_dir() and not path.is_symlink():
+            shutil.rmtree(path)
+        elif path.is_symlink() or path.exists():
+            path.unlink()
     return 0
 
 
