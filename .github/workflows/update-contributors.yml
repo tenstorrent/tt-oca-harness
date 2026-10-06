@@ -1,12 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# Automatic refresh of CONTRIBUTORS.
-# Weekly, Monday 09:17 UTC. The commit and pull request are
-# .github/actions/open-update-pr; this file owns the schedule and the
-# contributor scan. scripts/update_contributors.py places each new person
-# in the organisation group for their email domain.
-
 name: Update contributors
 
 on:

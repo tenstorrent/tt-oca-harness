@@ -1,11 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# Automatic refresh of the floating container-closure pins.
-# Weekly, Monday 09:43 UTC. The commit and pull request are
-# .github/actions/open-update-pr; this file owns the schedule and the
-# lock update.
-
 name: Update container dependencies
 
 on:
