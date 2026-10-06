@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Serial Peripheral Interface (SPI) :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
-    <meta name="description" content="SEP SPI host features, flash access, interrupts, and integration.">
+    <meta name="description" content="SEP SPI host capabilities, register access, interrupts, and DMA integration.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
@@ -219,11 +219,10 @@
 <div id="preamble">
 <div class="sectionbody">
 <div id="serial-peripheral-interface-spi-serial-peripheral-interface-spi" class="paragraph">
-<p>SEP will have one SPI host to support access to external NOR flash
-devices which are the primary BL1 image source. Modern devices are MT35
-type and have octal x8 DDR interfaces; the OpenTitan SPI Host does not
-drive those, so SEP uses the x4 and x1 channel modes it does support and
-attaches MT25 category devices.</p>
+<p>SEP instantiates one OpenTitan SPI Host for software-controlled access to
+external devices. NOR flash is the primary source of the BL1 boot image.
+The controller uses commands and transmit/receive FIFOs; it does not provide
+a memory-mapped flash window for execute-in-place (XIP) access.</p>
 </div>
 </div>
 </div>
@@ -233,107 +232,181 @@ attaches MT25 category devices.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>BL1 boot image access from external flash device</p>
+<p>Read the BL1 boot image from external NOR flash.</p>
 </li>
 <li>
-<p>Sensor interfaces (automotive primarily)</p>
+<p>Connect to sensors, particularly in automotive applications.</p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p>The intended flash interface uses the x1 and x4 modes of MT25-class devices.
+The host cannot drive the octal x8 DDR interface of MT35-class devices.
+Select a flash device and command protocol compatible with the supported
+modes below.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="features"><a class="anchor" href="#features"></a><a class="link" href="#features">2. Features</a></h2>
 <div class="sectionbody">
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Capability</th>
+<th class="tableblock halign-left valign-top">SEP implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Transfer width</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Standard (x1), dual (x2) and quad (x4), selected per command segment.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Transfer rate</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Single transfer rate only. No octal (x8), DDR or DQS read-data strobe.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chip select</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">One chip-select output. The wrapper parameter <code>NUM_CS</code> supports other counts, but <code>sep_io</code> instantiates it with <code>NUM_CS = 1</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Data buffering</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Separate transmit and receive FIFOs, with independently defined depths in the core configuration.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Register interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32-bit AXI4-Lite converted to the core&#8217;s native TL-UL interface.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External signals</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SCK, active-low chip select and four bidirectional data lines, with output enables.</p></td>
+</tr>
+</tbody>
+</table>
 <div class="paragraph">
-<p>The component will be based on the
-<a href="https://opentitan.org/book/hw/ip/spi_host/index.html">OpenTitan SPI Host</a>
-design and support the following features:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Single channel (x1) mode, clock frequency up to 80 MHz</p>
-</li>
-<li>
-<p>Dual channel (x2) mode</p>
-</li>
-<li>
-<p>QSPI (x4), quad channel mode, clock frequency up to 166 MHz</p>
-</li>
-<li>
-<p>Separate FIFOs for transmit and receive. Each can be parameterized for
-distinct depth.</p>
-</li>
-<li>
-<p>AXI4-lite slave port for system interconnect</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>Quad is the widest mode the IP offers: it drives four data lines, and its
-per-segment speed selector encodes only standard, dual and quad. All transfers
-are single transfer rate, so there is no octal (x8) mode, no DDR mode and no
-DQS read data strobe. An integrator needing those must substitute their own
-controller at the <code>sep_io_spi</code> boundary.</p>
-</div>
-<div class="paragraph">
-<p>The SPI pass-through mode supported by OpenTitan is used on discrete
-secure element designs as a security bridge to filter, modify or
-otherwise modify traffic coming from a separate SPI slave device. We do
-<em>not support</em> this feature and will leave this interface on the
-component unconnected or terminated. Furthermore, there is no SPI Slave
-device present in the SEP peripheral subsystem.</p>
-</div>
-<div class="paragraph">
-<p>The SEP instantiates a SPI host controller for boot. The <code>sep_ot_spi_wrap</code> module wraps the unmodified OpenTitan SPI host on its native TL-UL register interface and bridges the AXI4-Lite bus the peripheral fabric presents, the same arrangement the cryptographic accelerators use. It exposes the standard SPI pad signals (SCK, CS, 4-bit bidirectional I/O), an interrupt output and a DMA trigger (<code>lsio_trigger_o</code>). The <code>NUM_CS</code> parameter controls the number of chip-select outputs. Because this controller is software-driven rather than memory-mapped, an integrator wanting XIP flash access can substitute their own controller at the <code>sep_io_spi</code> boundary. The controller&#8217;s interrupt is consumed internally: it feeds the SEP PIC via <code>sep_internal_interrupts</code> (through the <code>irq</code> field of <code>sep_io_spi_req_t</code>). The two OpenTitan interrupt sources, error and SPI event, are combined onto that single line, so software reads <code>INTR_STATE</code> to tell them apart. There is no busy output: the OpenTitan host reports activity only through <code>STATUS.ACTIVE</code>, which software reads over the register interface. The block&#8217;s access-control (RACL) and SPI pass-through interfaces are not used and are tied off.</p>
-</div>
-<div class="paragraph">
-<p>The interrupt semantics are the OpenTitan ones throughout.
-<code>INTR_STATE.ERROR</code> is a latched event: an error
-condition or a write to <code>INTR_TEST</code> sets it, it stays set once the cause goes
-away and once <code>INTR_TEST</code> is written back to zero, and software clears it by
-writing 1 to it. Clearing <code>ERROR_STATUS</code> does not clear it.
-<code>INTR_STATE.SPI_EVENT</code> is a status bit that instead follows the level of the
-events selected by <code>EVENT_ENABLE</code>. <code>INTR_ENABLE</code> qualifies only the outgoing
-interrupt line; neither state bit is gated by it, so both read their source with
-the enable clear.</p>
-</div>
-<div class="paragraph">
-<p>SEP instantiates the vendored OpenTitan SPI Host without RTL modification.
-Before the core, <code>sep_io</code> narrows the 64-bit peripheral AXI bus to 32 bits and
-the wrapper converts AXI4-Lite to TL-UL. An 8-byte write is therefore emitted
-as two 4-byte writes. If its byte strobes select only one half, the other
-reaches the AXI4-Lite bridge with all strobes clear. The bridge completes that
-no-op locally with OKAY and does not issue a TL-UL request; if forwarded, the
-upstream register block would set <code>ERROR_STATUS.ACCESSINVAL</code> and return an
-error.</p>
-</div>
-<div class="paragraph">
-<p>Consult the
-<a href="https://opentitan.org/book/hw/ip/spi_host/index.html">OpenTitan SPI Host
-documentation</a> for the authoritative core functionality of the IP.
-The Programmer&#8217;s Guide gives the
-<a href="../../../ocah-programmer-guide/latest/index.html#sep-spi-host" class="xref page">programming guidance</a>
-for this block.
-The
-register map follows below.</p>
+<p>The frequency targets are up to 80 MHz in x1 mode and 166 MHz in x4 mode.
+These are design targets, not guaranteed operating limits for an integrated
+platform. Software sets the serial clock through <code>CONFIGOPTS.CLKDIV</code>:
+<code>f_SCK = f_clk_i / (2 * (CLKDIV + 1))</code>. Select the divider and sampling timing
+for the attached device and the platform&#8217;s validated clock and I/O timing.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="memory-map-and-register-reference"><a class="anchor" href="#memory-map-and-register-reference"></a><a class="link" href="#memory-map-and-register-reference">3. Memory Map and Register Reference</a></h2>
+<h2 id="sep-spi-integration"><a class="anchor" href="#sep-spi-integration"></a><a class="link" href="#sep-spi-integration">3. Integration and Register Access</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>sep_io</code> narrows the 64-bit peripheral AXI bus to 32 bits. The
+<code>sep_ot_spi_wrap</code> wrapper then converts AXI4-Lite accesses to TL-UL for the
+vendored OpenTitan SPI Host. Software submits command segments and moves data
+through the FIFOs; controller activity is available in <code>STATUS.ACTIVE</code>,
+not on a separate busy output.</p>
+</div>
+<div class="paragraph">
+<p>An 8-byte write is split into two 4-byte writes. If the byte strobes select
+only one half, the other reaches the AXI4-Lite bridge with all strobes clear.
+The bridge completes that no-op locally with OKAY and sends no TL-UL request.
+Forwarding it to the core would set <code>ERROR_STATUS.ACCESSINVAL</code> and return
+an error.</p>
+</div>
+<div class="paragraph">
+<p>The core&#8217;s access-control (RACL) interface is disabled and its SPI pass-through
+interface is tied inactive. SEP contains no SPI slave device and does not use
+the pass-through arrangement that lets a discrete secure element interpose on
+another SPI device&#8217;s traffic. An integration requiring XIP, octal or DDR
+operation needs a different controller; <code>sep_io_spi</code> is the existing SPI
+integration boundary.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-spi-interrupts"><a class="anchor" href="#sep-spi-interrupts"></a><a class="link" href="#sep-spi-interrupts">4. Interrupts</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The core&#8217;s error and SPI-event interrupt outputs are ORed onto one line.
+The <code>irq</code> field of <code>sep_io_spi_req_t</code> carries that line to
+<code>sep_internal_interrupts</code> and the SEP PIC. Software reads <code>INTR_STATE</code> to
+identify the source.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top"><code>INTR_STATE</code> bit</th>
+<th class="tableblock halign-left valign-top">Behavior and clearing</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ERROR</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Latched event. An enabled error event or an <code>INTR_TEST</code> write sets it.
+It remains set after the cause disappears or <code>INTR_TEST</code> is written back to
+zero. Clear it by writing 1 to the state bit; clearing <code>ERROR_STATUS</code> alone
+does not clear it.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SPI_EVENT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Level-sensitive status of the conditions selected by <code>EVENT_ENABLE</code>.
+Service the condition or change its selection to remove the source; it is
+not a latched error event.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>INTR_ENABLE</code> qualifies only the outgoing interrupt line. It does not gate
+either state bit. <code>ERROR_ENABLE</code> selects the configurable error events;
+invalid register accesses always generate an error event.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-spi-dma"><a class="anchor" href="#sep-spi-dma"></a><a class="link" href="#sep-spi-dma">5. DMA Trigger</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The host&#8217;s <code>lsio_trigger_o</code> connects to Secure DMA handshake input 0. It is
+the registered OR of the transmit and receive watermark conditions:
+<code>TXQD &lt; TX_WATERMARK</code> or <code>RXQD &gt;= RX_WATERMARK</code>. These thresholds are in
+32-bit FIFO words. The trigger does not depend on <code>EVENT_ENABLE</code> or
+<code>INTR_ENABLE</code>; interrupt selection and DMA pacing are separate controls.
+Configure the FIFO watermarks for the intended transfer direction and use
+the DMA chapter&#8217;s handshake setup.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-spi-core-reference"><a class="anchor" href="#sep-spi-core-reference"></a><a class="link" href="#sep-spi-core-reference">6. Core Reference</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The
+<a href="https://opentitan.org/book/hw/ip/spi_host/index.html">OpenTitan SPI Host documentation</a>
+describes core operation and command sequencing. The register map below
+records the integrated core&#8217;s registers and fields. The Programmer&#8217;s Guide gives the
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-spi-host" class="xref page">programming guidance</a>
+for this block.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-map-and-register-reference"><a class="anchor" href="#memory-map-and-register-reference"></a><a class="link" href="#memory-map-and-register-reference">7. Memory Map and Register Reference</a></h2>
 <div class="sectionbody">
 <span id="register-reference"></span>
 <div class="sect2">
-<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">3.1. Memory Map</a></h3>
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">7.1. Memory Map</a></h3>
 <div class="paragraph">
 <p>Register offsets are relative to the block base in the subsystem memory map.
 The detailed map below defines each register and its fields.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">3.2. Detailed Register Map</a></h3>
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">7.2. Detailed Register Map</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">

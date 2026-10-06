@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Threat Model :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
-    <meta name="description" content="Remote software, physical, and supply-chain threats considered by SEP.">
+    <meta name="description" content="SEP threat categories, attacker assumptions, and limits of protection.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
@@ -216,104 +216,119 @@
 </aside>
 <article class="doc">
 <h1 class="page">Threat Model</h1>
+<div id="preamble">
+<div class="sectionbody">
 <div id="threat-model" class="paragraph">
-<p>The threat model covers remote software attacks, physical attacks and
-supply chain attacks. Software attacks are universal and the primary
-vector against data center implementations while physical attacks are
-localized and require close proximity. They are relevant for automotive
-and robotics applications. Supply chain attacks involve modification of
-chips in production and provisioning.</p>
+<p>The SEP threat model considers remote software attacks, physical attacks and
+supply-chain attacks. These categories describe the threats considered;
+the explicit limits of protection are listed below.</p>
 </div>
 <div class="paragraph">
-<p>Software attacks include:</p>
+<p>Software attacks apply across deployments and are the primary attack vector
+for data center implementations. Physical attacks are localized and require
+close proximity; they are relevant to automotive and robotics applications.
+Supply-chain attacks involve changes to the design, production or provisioning
+of chips.</p>
 </div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-threat-model-software"><a class="anchor" href="#sep-threat-model-software"></a><a class="link" href="#sep-threat-model-software">1. Software Attacks</a></h2>
+<div class="sectionbody">
 <div class="ulist">
 <ul>
 <li>
-<p>Malicious firmware modification in boot, overlay or application
-loading or updating</p>
+<p>Malicious firmware modification during boot, overlay or application loading,
+or updates.</p>
 </li>
 <li>
-<p>Modifying or exfiltrating private data e.g. ML model weights,
-cryptographic keys</p>
+<p>Modification or exfiltration of private data, such as ML model weights and
+cryptographic keys.</p>
 </li>
 <li>
-<p>Providing forged attestation to mimic legal device behavior</p>
+<p>Forged attestation that mimics legitimate device behavior.</p>
 </li>
 </ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-threat-model-physical"><a class="anchor" href="#sep-threat-model-physical"></a><a class="link" href="#sep-threat-model-physical">2. Physical Attacks</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The model assumes that an attacker has full visibility of SRAM and OTP data
+state.</p>
 </div>
 <div class="paragraph">
-<p>Physical attacks include:</p>
+<p>Physical threats considered include:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>Fault injection to bypass security checks and differential
-cryptoanalysis for key recovery. This can include clock and voltage
-glitching, laser and EM energy injection, and thermal gradients.
-Logically induced faults such as Row Hammer DRAM attacks are also
-included in this category.</p>
+<p>Fault injection to bypass security checks, including clock and voltage
+glitching, laser and electromagnetic (EM) energy injection, and thermal
+gradients. The model also groups logically induced faults, such as Row
+Hammer DRAM attacks, in this category.</p>
 </li>
 <li>
-<p>Side channel for key and other secret data extraction</p>
+<p>Differential cryptanalysis for key recovery, and side-channel attacks to
+extract keys or other secret data.</p>
+</li>
+<li>
+<p>Hardware probing to observe or control data within a chiplet or in
+communication between chiplets.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-threat-model-supply-chain"><a class="anchor" href="#sep-threat-model-supply-chain"></a><a class="link" href="#sep-threat-model-supply-chain">3. Supply-Chain Attacks</a></h2>
+<div class="sectionbody">
 <div class="ulist">
 <ul>
 <li>
-<p>We assume that the attacker has full view of SRAM and OTP data
-state</p>
-</li>
-</ul>
-</div>
+<p>Insider modification of the design to disable or weaken security features
+or insert backdoors, and theft of hardware secrets such as security tokens.</p>
 </li>
 <li>
-<p>Hardware probing to observe or control data within a chiplet or
-communication between chiplets</p>
+<p>Modification of IC design masks to change behavior or insert trojans.
+For example, modified BL0 boot ROM contents could disable secure boot.</p>
+</li>
+<li>
+<p>Corruption of fuse provisioning to enable or disable features without
+authorization or leak device-unique secrets.</p>
 </li>
 </ul>
 </div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-threat-model-protection-limits"><a class="anchor" href="#sep-threat-model-protection-limits"></a><a class="link" href="#sep-threat-model-protection-limits">4. Limits of Protection</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>Supply chain attacks include:</p>
+<p>SEP does not explicitly protect against the following threats, even though
+some appear in the categories above:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>Insider modification of design to disable or weaken security features
-and insert backdoors. Theft of hardware secrets such as security
-tokens</p>
+<p>Hardware probing of communications between chiplets inside the package.</p>
 </li>
 <li>
-<p>Modification of IC design masks to modify behavior and insert trojans.
-For example the BL0 boot ROM contents may be modified to disable secure
-boot.</p>
+<p>Hardware probing of chiplets inside the package and certain physical
+attacks, such as bias fault injection.</p>
 </li>
 <li>
-<p>Corruption of fuse provisioning to enable or disable features
-illegally and leak device unique secrets</p>
+<p>Thermal gradients used to influence the entropy source or induce timing
+faults.</p>
+</li>
+<li>
+<p>Supply-chain attacks.</p>
 </li>
 </ul>
 </div>
-<div class="paragraph">
-<p>We however limit the scope of physical attacks we defend against and do
-not explicitly protect against the following:</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p>Package internal inter-chiplet communications secure from hardware
-probing</p>
-</li>
-<li>
-<p>Package internal chiplet hardware probing and certain physical attacks
-such as bias fault injection</p>
-</li>
-<li>
-<p>Thermal gradients to influence entropy source and induce timing
-faults</p>
-</li>
-<li>
-<p>Supply chain attacks</p>
-</li>
-</ul>
 </div>
 </article>
   </div>
