@@ -69,7 +69,11 @@ sources:
     - upstream/design/lib/el2_regfile_if.sv
     - upstream/design/lib/el2_lib.sv
     - upstream/design/lib/el2_mem_if.sv
-    - upstream/design/lib/mem_lib.sv
+
+    # Behavioural models of the ram_<depth>x<width> TCM macros
+    - target: not(synth)
+      files:
+        - upstream/design/lib/mem_lib.sv
 
     # Testbench collateral; upstream user_cells.sv dropped - overlay/prim_shim supersedes it.
     - target: el2_simulation
