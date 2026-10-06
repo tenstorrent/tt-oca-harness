@@ -83,17 +83,18 @@ def git_info(root: Path) -> dict[str, str]:
     return _tree_state(root)[0]
 
 
-def git_provenance(root: Path, run_dir: Path) -> dict[str, str]:
+def git_provenance(root: Path, run_dir: Path, *, archive: bool) -> dict[str, str]:
     """``git_info`` plus, on a dirty tree, an archived copy of the uncommitted diff.
 
     A commit hash identifies only the committed sources. When the tree carries
-    uncommitted edits the diff is written under ``<run_dir>/provenance/`` and
-    its path recorded beside the hash, so the sources a run compiled can still
-    be reconstructed after the fact. An empty ``diff_archive`` records a diff
-    git could not produce.
+    uncommitted edits and ``archive`` is set, the diff is written under
+    ``<run_dir>/provenance/`` and its path recorded beside the hash, so the sources
+    a run compiled can still be reconstructed after the fact. An empty
+    ``diff_archive`` records a diff git could not produce. Without ``archive``
+    nothing is written, and an archive already in ``run_dir`` is left as it is.
     """
     info, status = _tree_state(root)
-    if status is None or not status.strip():
+    if not archive or status is None or not status.strip():
         return info
     diff = _git(root, "diff", "HEAD", timeout=2 * GIT_TIMEOUT_SEC)
     if diff is None:
@@ -886,7 +887,7 @@ def regression_payload(
         "run_dir": repo_rel(root, run_dir),
         "artifact_root": repo_rel(root, run_dir),
         "artifacts": artifacts,
-        "git": git_metadata if git_metadata is not None else git_provenance(root, run_dir),
+        "git": git_metadata if git_metadata is not None else git_info(root),
         "tool_versions": versions,
         "overrides": {"cli": cli_overrides(args)},
         "selection": _selection_payload(args, items),
@@ -961,7 +962,7 @@ def result_payload(
         "overrides": {"cli": cli_overrides(args)},
         "tests": _tests_summary(stages, completion),
         "coverage": coverage_summary(stages, run_dir, root, bool(getattr(args, "cov", False))),
-        "git": git_metadata if git_metadata is not None else git_provenance(root, run_dir),
+        "git": git_metadata if git_metadata is not None else git_info(root),
         "tool_versions": versions,
         "stages": [_stage_dict(stage) for stage in stages],
     }

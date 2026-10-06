@@ -2538,7 +2538,7 @@ def combine_flow(
         label="combine",
         args=args,
         versions=tool_versions(root),
-        git_metadata=git_provenance(root, run_dir),
+        git_metadata=git_provenance(root, run_dir, archive=not args.dry_run),
         planned_leaves=0,
     )
     if not args.dry_run:
@@ -3327,7 +3327,8 @@ def run_flow(
     run_versions = tool_versions(root)
     # Archives the uncommitted diff beside result.json when the tree is dirty, so the
     # commit hash plus that diff identify the sources every leaf of this run compiled.
-    run_git = git_provenance(root, run_dir)
+    # A coverage replay keeps the record and archive of the run it replays.
+    run_git = git_provenance(root, run_dir, archive=not (replaying_coverage or args.dry_run))
 
     console = Console(args.ui, quiet=args.quiet, verbose=args.verbose)
     args._ui_console = console

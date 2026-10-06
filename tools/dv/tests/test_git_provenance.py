@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Unit tests for the git state a run records: `git_info`, the diff archive
-`git_provenance` writes, the worker's `repo_identity`, and the checkout check.
+`git_provenance` writes and the runs that write it, the worker's `repo_identity`,
+and the checkout check.
 
-Every git call is answered by a stand-in, so the tests read no real checkout.
+Git itself never runs: every git call is answered by a stand-in or stopped before it is made.
 
 Run from the repository root:
 
@@ -13,20 +14,22 @@ Run from the repository root:
 from __future__ import annotations
 
 import io
+import json
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from typing import Any
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from runlib import results, worker  # noqa: E402
+from runlib import cli, results, worker  # noqa: E402
 from runlib.executors.manifest import repo_identity  # noqa: E402
+from runlib.models import Dut  # noqa: E402
 
 COMMIT = "1" * 40
 STATUS = " M src/top.sv\n"
@@ -107,9 +110,9 @@ class GitProvenanceTest(unittest.TestCase):
         self.run_dir = self.root / "runs" / "r1"
         self.archive = self.run_dir / "provenance"
 
-    def provenance(self, git: FakeGit) -> dict[str, str]:
+    def provenance(self, git: FakeGit, *, archive: bool = True) -> dict[str, str]:
         with git.patch():
-            info: dict[str, str] = results.git_provenance(self.root, self.run_dir)
+            info: dict[str, str] = results.git_provenance(self.root, self.run_dir, archive=archive)
         return info
 
     def test_a_dirty_tree_archives_what_git_reported(self) -> None:
@@ -131,6 +134,48 @@ class GitProvenanceTest(unittest.TestCase):
         self.assertEqual(info["dirty"], "true")
         self.assertEqual(info["diff_archive"], "")
         self.assertFalse((self.archive / "worktree.diff").exists())
+
+    def test_without_archive_an_existing_archive_is_left_alone(self) -> None:
+        self.archive.mkdir(parents=True)
+        for name in ("worktree.status", "worktree.diff"):
+            (self.archive / name).write_text("original\n", encoding="utf-8")
+        info = self.provenance(FakeGit(), archive=False)
+        self.assertEqual(info["dirty"], "true")
+        self.assertNotIn("diff_archive", info)
+        for name in ("worktree.status", "worktree.diff"):
+            self.assertEqual((self.archive / name).read_text(), "original\n")
+
+    def test_without_archive_no_run_directory_is_created(self) -> None:
+        self.provenance(FakeGit(), archive=False)
+        self.assertFalse(self.run_dir.exists())
+
+    def test_a_payload_without_git_metadata_archives_nothing(self) -> None:
+        flow = Dut(
+            name="fixture",
+            kind="sim",
+            description="payload fixture",
+            framework="cocotb",
+            visibility="public",
+            runnability="runnable",
+            license="Apache-2.0",
+            root="dut",
+            default_tool="verilator",
+            tools=["verilator"],
+            path=self.root / "dut" / "fixture_sim_cfg.toml",
+            raw={},
+            frameworks=["cocotb"],
+            default_framework="cocotb",
+        )
+        common = dict(flow=flow, root=self.root, tool="verilator", run_dir=self.run_dir)
+        with FakeGit().patch():
+            payloads = [
+                results.result_payload(**common, stages=[], dry_run=False, versions={}),
+                results.regression_payload(**common, jobs=[], stages=[], versions={}),
+            ]
+        for payload in payloads:
+            self.assertEqual(payload["git"]["dirty"], "true")
+            self.assertNotIn("diff_archive", payload["git"])
+        self.assertFalse(self.run_dir.exists())
 
 
 class RepoIdentityTest(unittest.TestCase):
@@ -170,6 +215,50 @@ class VerifyCheckoutTest(unittest.TestCase):
         with mock.patch.object(worker, "repo_identity", return_value=("2" * 40, False)):
             with self.assertRaisesRegex(worker.WorkerError, "manifest was planned at"):
                 worker.verify_checkout(self.data)
+
+
+class StopAtGitRecord(Exception):
+    """Ends `run_flow` where it records the checkout."""
+
+
+class RunFlowArchiveTest(unittest.TestCase):
+    """Which runs archive the uncommitted diff, read at the one call that writes it."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+
+    def archives(self, *argv: str) -> bool:
+        calls: list[dict[str, Any]] = []
+
+        def record(root: Path, run_dir: Path, **kwargs: Any) -> dict[str, str]:
+            calls.append(kwargs)
+            raise StopAtGitRecord
+
+        with (
+            mock.patch.object(cli, "git_provenance", side_effect=record),
+            mock.patch.object(cli, "validate_selected_tool_available"),
+            redirect_stdout(io.StringIO()),
+            redirect_stderr(io.StringIO()),
+            self.assertRaises(StopAtGitRecord),
+        ):
+            cli.main(["--dut", "dtp", *argv])
+        return bool(calls[0]["archive"])
+
+    def test_a_run_archives_and_a_dry_run_does_not(self) -> None:
+        run_dir = str(self.tmp / "run")
+        self.assertTrue(self.archives("--stage", "flist", "--run-dir", run_dir))
+        self.assertFalse(self.archives("--stage", "flist", "--run-dir", run_dir, "--dry-run"))
+
+    def test_a_coverage_replay_does_not_archive(self) -> None:
+        finished = self.tmp / "finished"
+        finished.mkdir()
+        (finished / "result.json").write_text(
+            json.dumps({"flow": "dtp", "tool": "verilator", "tests": {"completed": True}}),
+            encoding="utf-8",
+        )
+        replay = ("--stage", "cov_merge", "--stage", "cov_report", "--run-dir", str(finished))
+        self.assertFalse(self.archives(*replay))
 
 
 if __name__ == "__main__":

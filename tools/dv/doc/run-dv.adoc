@@ -2111,7 +2111,8 @@ python3 tools/dv/run_dv.py \
 
 Non-dry-run coverage-only replay requires an existing `result.json`. The runner
 recovers the original tool, rejects a mismatched `--tool`, preserves
-non-coverage stage history, and replaces the replayed coverage records. A dry
+non-coverage stage history and the run's `git` record and diff archive, and
+replaces the replayed coverage records. A dry
 run can render a placeholder plan without that file, but cannot restore the
 original tool or history. A run that did not finish (`tests.completed` is
 `false`, or the record carries an `interruption`) is refused with exit code
@@ -2834,7 +2835,9 @@ the run also archives the `git status` and `git diff HEAD` output as
 `provenance/worktree.status` and `provenance/worktree.diff` in its run
 directory; `diff_archive` names the diff and `dirty_files` counts the modified
 files, so the commit and the diff together identify the sources the run
-compiled. An empty `diff_archive` records a diff git could not produce.
+compiled. An empty `diff_archive` records a diff git could not produce. A
+dry run writes no archive, and a coverage replay keeps the archive of the run
+it replays, whatever the tree holds at replay time.
 
 The `tests` summary counts the recorded leaves (`total`, `passing`,
 `failing`, `skipped`) and records whether the run finished: `leaves_planned`
