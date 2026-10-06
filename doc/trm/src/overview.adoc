@@ -73,4 +73,5 @@ endif::backend-pdf[]
 
 Hatched blocks are future: the SMN, the safety bus and the safety monitor. The
 crossbar ports that would connect the safety monitor are proposed and are not
-part of the implemented crossbar.
+part of the implemented crossbar. The SEP and the SMU crossbar have dashed
+outlines without hatching because the SMU's `CFG.SEP` field can leave them out.
