@@ -3,7 +3,7 @@
 
 // Boot strap parsing implementation for OROM.
 //
-// Reads captured GPIO straps from the SMC external supplementary window and
+// Reads captured GPIO straps from the SMC external mandatory window and
 // populates a boot_straps structure.
 
 #include "boot_straps.h"

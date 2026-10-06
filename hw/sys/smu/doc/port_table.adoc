@@ -160,7 +160,7 @@
 
 |`smc_disable_sram_auto_init_i` |`logic` |Input |1 |Disable SRAM automatic initialization. |Control logic |1'b0
 |`smc_init_mem_done_o` |`logic` |Output |1 |Memory initialization completion signal. |Control logic |N/A
-|`chiplet_is_primary_i` |`logic` |Input |1 |Chiplet is primary (for System Timer OCTS). |GPIO padring straps |N/A
+|`chiplet_is_primary_i` |`logic` |Input |1 |Chiplet is primary (for System Timer OCTS). |`PRIMARY_CHIPLET` configuration strap |N/A
 |`timer_count_o` |`logic` |Output |`[63:0]` |64-bit system timer count output (OCTS). |External systems |N/A
 
 |`trace_mem_req_o` |`dfd_trace_mem_pkg::SinkMemPktIn_s` |Output |`[TRC_RAM_INSTANCES-1:0]` |Trace memory interface requests. |Trace memory |N/A

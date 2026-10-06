@@ -170,7 +170,7 @@ Asserted by the synchronized isolation pin or the FLR-set
 `ISOLATE_REQ_SMC_REG` latch. Software writes can clear this latch but cannot
 set it. A request through the separate `ISOLATE_REQ_REG` register does not
 assert this output. External logic determines how it bypasses repair/MBIST.
-`BYPASS_SRAM_REPAIR` (GPIO strap 13)::
+`BYPASS_SRAM_REPAIR` (`STRAPS_LO[13]`)::
 Requests repair bypass. The ROM skips its repair-status check when this
 strap is set; the external integration owns the repair bypass behavior.
 `mem_repair_done` / `mem_repair_success`::
