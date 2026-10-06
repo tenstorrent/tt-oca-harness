@@ -443,16 +443,10 @@ integrity limitations and BL0-to-BL1 boot sequence.</p>
 <h3 id="configuration-straps"><a class="anchor" href="#configuration-straps"></a><a class="link" href="#configuration-straps">3.1. Configuration Straps</a></h3>
 <div class="paragraph">
 <p>The platform boot-interface requirement is at least eight static configuration
-straps, preferably sixteen, associated with GPIO pins in the SMC complex.
-Board pull-up/pull-down resistors or a board controller provide the levels.
-This is a platform requirement, not a count of strap inputs on the CPU core.</p>
-</div>
-<div class="paragraph">
-<p>For a GPIO configured as an input by default, its strap latch follows the pad
-while cold reset is asserted and holds the level when cold reset is released.
-Firmware reads the captured level through the GPIO control registers after
-reset release. <code>strap_valid</code> indicates capture support for that pin, not
-completion of reset. The GPIO chapter defines capture and register behavior.</p>
+straps, preferably sixteen. This is a platform requirement, not a count of strap
+inputs on the CPU core. How the straps are sourced and captured is up to the
+adopter; firmware reads their values from the SMC strap registers
+(<code>STRAPS_LO</code> and <code>STRAPS_HI</code>).</p>
 </div>
 <div class="paragraph">
 <p>BL0 uses platform configuration to select startup options, such as primary or

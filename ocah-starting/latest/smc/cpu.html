@@ -457,7 +457,7 @@ bits themselves are not this handshake.</p>
 set it. A request through the separate <code>ISOLATE_REQ_REG</code> register does not
 assert this output. External logic determines how it bypasses repair/MBIST.</p>
 </dd>
-<dt class="hdlist1"><code>BYPASS_SRAM_REPAIR</code> (GPIO strap 13)</dt>
+<dt class="hdlist1"><code>BYPASS_SRAM_REPAIR</code> (<code>STRAPS_LO[13]</code>)</dt>
 <dd>
 <p>Requests repair bypass. The ROM skips its repair-status check when this
 strap is set; the external integration owns the repair bypass behavior.</p>

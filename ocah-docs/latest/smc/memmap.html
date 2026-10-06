@@ -760,8 +760,8 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Core Logic Analyzer debug and trace.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x400000 – BASE + 0x7FFFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x400000 – BASE + 0x406547</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">25928 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Adopter External</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Adopter-owned technology-specific and supplementary peripherals.</p></td>
 </tr>
@@ -1154,9 +1154,9 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x400000 – BASE + 0x7FFFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4 MiB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x400000 – BASE + 0x406547</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">25928 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">25928 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC External Window Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
@@ -1316,24 +1316,22 @@ the split is purely organizational:</p>
 <p><strong>Mandatory</strong> (<code>BASE + 0x040_0000</code>): blocks every integration must implement.
 Their function is dictated by the OCAH specifications, but their
 implementation is inherently technology- and vendor-specific — the eFuse
-SHIM, PLL and PVT clock observation, the reference-clock pad control, the
-per-pad GPIO controls, the PLL macro, and the PVT sensors.</p>
+SHIM, the per-pad GPIO controls, the PLL wrapper and the strap registers at
+<code>BASE + 0x040_3000</code>.</p>
 </li>
 <li>
 <p><strong>Supplementary</strong> (<code>BASE + 0x040_4000</code>): any additional memory-mapped devices
-the adopter wants to expose, plus the captured strap registers at
-<code>BASE + 0x040_5800</code>.</p>
+the adopter wants to expose, such as peripheral controllers, extra pad
+controls and the PVT wrapper.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
 <p>The generated SMC map reports this as one opaque adopter-owned aperture.
 Concrete placements inside it are integration-specific and are documented by
-the adopter. The mandatory functions are the PLL and PVT wrappers, clock
-observation and pad controls, and the eFuse SHIM. Supplementary functions are
-adopter-defined memory-mapped devices, plus the captured GPIO straps. Captured
-straps are read-only values latched from bonded pads at cold reset and consumed
-by boot firmware.</p>
+the adopter. The strap registers are read-only values consumed by boot firmware;
+how the adopter captures them is implementation-defined. Both boot ROMs read them at
+<code>BASE + 0x040_3000</code>, so an integration places them there.</p>
 </div>
 <div class="paragraph">
 <p>The eFuse SHIM control block is the exception. Its placement is fixed at the
@@ -1525,7 +1523,7 @@ window is integration-specific.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2 id="regmap-straps">Straps Address Map</h2>
-<p>Captured GPIO strap values (adopter padring capture)</p>
+<p>Configuration strap values. How they are captured is adopter-defined.</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-9">
 <caption class="title"><a href="#trm-table-9">Table 9</a>. Straps Address Map register list</caption>
@@ -1538,14 +1536,14 @@ window is integration-specific.</p>
 <table id="trm-table-10">
 <caption class="title"><a href="#trm-table-10">Table 10</a>. straps.STRAPS_LO fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>straps</td><td>R</td><td>0x0</td><td>Strap value from GPIOs 0 - 31. Bit N holds the value latched on GPIO N.<br>Bits 0 - 10, 16, 17, 24 and 27 - 31 have no strap assigned. Those GPIOs still<br>latch their pad value here, but no strap function consumes it.<br>Strap assignments in this range:<br>* bit 11: CHIP_ID[3] - CHIP_ID is the I2C/I3C static address strap<br>* bit 12: CHIP_ID[2] - CHIP_ID is the I2C/I3C static address strap<br>* bit 13: BYPASS_SRAM_REPAIR - Bypass the memory repair process<br>* bit 14: TEST_EN - Enable DFT test mode<br>* bit 15: CHIP_ID[1] - CHIP_ID is the I2C/I3C static address strap<br>* bit 18: BOOT_I2C - Default alternate boot channel is I3C0 and can be reconfigured to use I2C0<br>* bit 19: BOOT_RECOVERY - Use I3C0 for BL1 boot image loading instead of the SPI channel<br>* bit 20: BL0_PLLCLK - Use the PLL generated clock by default in BL0, and override to use the reference clock when this strap is asserted<br>* bit 21: STATUS_RPT_DISABLE - Disable BL0 status reporting. It is on by default<br>* bit 22: SPI_USE_FUSED_CONFIG - Use the SPI configuration values stored in the fuse field<br>* bit 23: CHIP_ID[0] - CHIP_ID is the I2C/I3C static address strap<br>* bit 25: PRIMARY_CHIPLET - The primary chiplet has this strap bonded out to identify it as the boot master<br>* bit 26: SRAM_AUTO_ZERO_DISABLE - Disable auto zero of the SMC SRAM when asserted</td></tr>
+<tr><td>31:0</td><td>straps</td><td>R</td><td>0x0</td><td>Configuration straps 0 - 31.<br>Bits 0 - 10, 16, 17, 24 and 27 - 31 have no strap assigned; no strap function<br>consumes them.<br>Strap assignments in this range:<br>* bit 11: CHIP_ID[3] - CHIP_ID is the I2C/I3C static address strap<br>* bit 12: CHIP_ID[2] - CHIP_ID is the I2C/I3C static address strap<br>* bit 13: BYPASS_SRAM_REPAIR - Bypass the memory repair process<br>* bit 14: TEST_EN - Enable DFT test mode<br>* bit 15: CHIP_ID[1] - CHIP_ID is the I2C/I3C static address strap<br>* bit 18: BOOT_I2C - Default alternate boot channel is I3C0 and can be reconfigured to use I2C0<br>* bit 19: BOOT_RECOVERY - Use I3C0 for BL1 boot image loading instead of the SPI channel<br>* bit 20: BL0_PLLCLK - Use the PLL generated clock by default in BL0, and override to use the reference clock when this strap is asserted<br>* bit 21: STATUS_RPT_DISABLE - Disable BL0 status reporting. It is on by default<br>* bit 22: SPI_USE_FUSED_CONFIG - Use the SPI configuration values stored in the fuse field<br>* bit 23: CHIP_ID[0] - CHIP_ID is the I2C/I3C static address strap<br>* bit 25: PRIMARY_CHIPLET - Identifies the primary chiplet, the boot master<br>* bit 26: SRAM_AUTO_ZERO_DISABLE - Disable auto zero of the SMC SRAM when asserted</td></tr>
 </table>
 <span id="STRAPS_HI"></span><h3 id="straps-STRAPS_HI" data-register-alias="STRAPS_HI">STRAPS_HI</h3>
 <table id="trm-table-11">
 <caption class="title"><a href="#trm-table-11">Table 11</a>. straps.STRAPS_HI fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>28:0</td><td>straps</td><td>R</td><td>0x0</td><td>Strap value from GPIOs 32 - 60. Bit N holds the value latched on GPIO N+32.<br>All bits other than those listed below have no strap assigned. Those GPIOs<br>still latch their pad value here, but no strap function consumes it.<br>GPIOs 61 - 64 cannot be strapped: they are unbonded (not packaged out) and lie<br>outside this register, which ends at GPIO 60 (smc_pkg::NumBondedGpio-1).<br>Strap assignments in this range:<br>* bit 22 (GPIO 54): MBIST_BYPASS - Ignore results of Power-On MBIST for boot<br>* bit 26 (GPIO 58): ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM</td></tr>
+<tr><td>28:0</td><td>straps</td><td>R</td><td>0x0</td><td>Configuration straps 32 - 60.<br>All bits other than those listed below have no strap assigned; no strap<br>function consumes them.<br>Strap assignments in this range:<br>* bit 22: MBIST_BYPASS - Ignore results of Power-On MBIST for boot<br>* bit 26: ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM</td></tr>
 </table>
 </div>
 </div>

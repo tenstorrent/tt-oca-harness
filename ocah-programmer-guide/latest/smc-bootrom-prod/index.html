@@ -975,7 +975,7 @@ described in <a href="#occp-protocol">OCCP protocol</a>.</p>
 <div class="sect2">
 <h3 id="straps-and-efuses"><a class="anchor" href="#straps-and-efuses"></a><a class="link" href="#straps-and-efuses">4.1. Straps and eFuses</a></h3>
 <div class="paragraph">
-<p>Early assembly reads strap registers at <code>0xC0405800</code> and <code>0xC0405804</code>.
+<p>Early assembly reads strap registers at <code>0xC0403000</code> and <code>0xC0403004</code>.
 The C strap driver later caches the fields used for reporting or policy.
 Boot stall is controlled by the dedicated GPIO 57 hardware path before ROM
 execution and is not a captured strap.</p>
