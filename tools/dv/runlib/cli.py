@@ -2516,13 +2516,8 @@ def combine_flow(
         f"commit={commit[:12]} inputs="
         + ",".join(repo_rel(root, run.run_dir) or str(run.run_dir) for run in plan.runs),
     )
-    for run in plan.runs:
-        if run.dirty:
-            console.event(
-                "warning",
-                f"{repo_rel(root, run.run_dir)} was recorded on a dirty tree",
-                force=True,
-            )
+    for warning in plan.tree_warnings(root):
+        console.event("warning", warning, force=True)
     run_started = time.monotonic()
     results: list[StageResult] = []
     for stage in ("cov_merge", "cov_report"):

@@ -41,31 +41,46 @@ EXIT_CODE_BY_STATUS = {
 
 NON_PASS_STATUSES = {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}
 
+# `git status` reads every tracked file's metadata, which takes tens of seconds on a large
+# or networked checkout.
+GIT_TIMEOUT_SEC = 60
 
-def command_text(argv: list[str], root: Path) -> str:
+
+def _git(root: Path, *args: str, timeout: int = GIT_TIMEOUT_SEC) -> str | None:
+    """The output of `git <args>` in `root`, or None when git is missing, fails or times out."""
     try:
         proc = subprocess.run(
-            argv,
+            ["git", *args],
             cwd=root,
             check=False,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             text=True,
-            timeout=5,
+            timeout=timeout,
         )
-    except (FileNotFoundError, subprocess.SubprocessError):
-        return ""
-    return proc.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return proc.stdout if proc.returncode == 0 else None
+
+
+def _tree_state(root: Path) -> tuple[dict[str, str], str | None]:
+    """`git_info`'s record and the `git status` output it was read from, None when unknown."""
+    status = _git(root, "status", "--porcelain", "--untracked-files=no")
+    info = {
+        "commit": (_git(root, "rev-parse", "HEAD") or "").strip(),
+        "branch": (_git(root, "rev-parse", "--abbrev-ref", "HEAD") or "").strip(),
+        "dirty": "unknown" if status is None else ("true" if status.strip() else "false"),
+    }
+    return info, status
 
 
 def git_info(root: Path) -> dict[str, str]:
-    return {
-        "commit": command_text(["git", "rev-parse", "HEAD"], root),
-        "branch": command_text(["git", "rev-parse", "--abbrev-ref", "HEAD"], root),
-        "dirty": "true"
-        if command_text(["git", "status", "--porcelain", "--untracked-files=no"], root)
-        else "false",
-    }
+    """Commit, branch and dirty flag of the checkout.
+
+    `dirty` is `true`, `false`, or `unknown` when git cannot answer `git status`; a commit
+    or branch git cannot read is empty.
+    """
+    return _tree_state(root)[0]
 
 
 def git_provenance(root: Path, run_dir: Path) -> dict[str, str]:
@@ -74,35 +89,18 @@ def git_provenance(root: Path, run_dir: Path) -> dict[str, str]:
     A commit hash identifies only the committed sources. When the tree carries
     uncommitted edits the diff is written under ``<run_dir>/provenance/`` and
     its path recorded beside the hash, so the sources a run compiled can still
-    be reconstructed after the fact.
+    be reconstructed after the fact. An empty ``diff_archive`` records a diff
+    git could not produce.
     """
-    info = git_info(root)
-    if info.get("dirty") != "true":
+    info, status = _tree_state(root)
+    if status is None or not status.strip():
         return info
-    prov_dir = run_dir / "provenance"
-    try:
-        prov_dir.mkdir(parents=True, exist_ok=True)
-        status = subprocess.run(
-            ["git", "status", "--porcelain", "--untracked-files=no"],
-            cwd=root,
-            check=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-            timeout=60,
-        ).stdout
-        diff = subprocess.run(
-            ["git", "diff", "HEAD"],
-            cwd=root,
-            check=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-            timeout=120,
-        ).stdout
-    except (FileNotFoundError, subprocess.SubprocessError):
+    diff = _git(root, "diff", "HEAD", timeout=2 * GIT_TIMEOUT_SEC)
+    if diff is None:
         info["diff_archive"] = ""
         return info
+    prov_dir = run_dir / "provenance"
+    prov_dir.mkdir(parents=True, exist_ok=True)
     (prov_dir / "worktree.status").write_text(status, encoding="utf-8")
     (prov_dir / "worktree.diff").write_text(diff, encoding="utf-8")
     info["diff_archive"] = repo_rel(root, prov_dir / "worktree.diff")
