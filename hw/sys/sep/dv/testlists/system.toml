@@ -310,7 +310,7 @@ args = ["+skip_fuse_sense"]
 name = "sep_reg_bit_bash_rand_test"
 module = "system.sep_reg_bit_bash_rand_test"
 seed = 1
-# No reseed: the register set is fixed; the seed selects only order and data.
+reseed = 3
 timeout_sec = 3600
 tags = ["csr", "register", "system", "subsystem"]
 run_modes = ["no_cpu"]

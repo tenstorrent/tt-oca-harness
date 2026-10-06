@@ -4608,7 +4608,7 @@ reported as such rather than counted as a pass.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Testlist*: `system.toml` (`reseed = 3`), also in `all.toml` / `cpu_stub`
+*Testlist*: `system.toml` (one seed per regression), also in `all.toml` / `cpu_stub`
 
 *Not claimed*: write-side strobe masking (`sep_axi_strobe_window_test`); AxSIZE=3 (that is the slice walk's full-width baseline).
 
@@ -5204,7 +5204,7 @@ cross-product.
 *Randomization*: RANDCFG — the three required sources (mailbox, OTBN done, HMAC done)
 and all eight extras (DMA done/chunk/error, HMAC-err, KMAC, CSRNG, EDN, KMAC-err)
 walk on every seed, so every run grades every catalog source. The seed sets only
-the order in which the extras are raised; `reseed = 3` varies that order.
+the order in which the extras are raised, so the test runs one seed per regression.
 
 *Objective*: Prove the PIC delivers every source in the firmware catalog to the CPU with one-hot claim and RW1C clear: the three required sources and all eight extras on every seed.
 
@@ -7334,10 +7334,10 @@ the golden states them the same way. See <<lcc-golden-from-spec>>.
 
 Randomization: the tokens and the upper-byte pattern come from the run seed
 (`cocotb/env/sep_lc_transition.py`, which reuses `SepRmaTokenCfg` so this walk and
-the token randomized-configuration test cannot drift). On the production-end leaf
-the seed also selects which of the two PROD_END exits `CHK-PROD-END-INVALID` walks,
-so each exit is covered only on the seeds that select it. Every other cell within a
-leaf is fixed and runs every seed.
+the token randomized-configuration test cannot drift). Each production-end leaf
+pins its PROD_END exit with `+lc_prod_end_exit`; without the plusarg the seed
+selects one. Every cell within a leaf is fixed and runs every seed, so each leaf
+runs one seed per regression.
 ====
 
 *Leaves*: `sep_lcc_lc_state_w1s_prod_test`, `sep_lcc_lc_state_w1s_prod_demote_test`, `sep_lcc_lc_state_w1s_rma_sip_test`, `sep_lcc_lc_state_w1s_rma_chiplet_test`, `sep_lcc_lc_state_w1s_prod_end_test`, `sep_lcc_lc_state_w1s_prod_end_rma_test`, `sep_lcc_lc_state_w1s_transient_test` — one module, one sensed starting state per leaf, selected by `+lc_start` and staged at t=0 by `cocotb/dv_sim_prestage.py`.
