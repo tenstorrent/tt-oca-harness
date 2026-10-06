@@ -44,8 +44,6 @@ addrmap straps {
         } straps[31:0] = 0x0;
     };
 
-    // Width is smc_pkg::NumBondedGpio-32 (61-32 = 29). RDL cannot import smc_pkg,
-    // so this must be updated by hand if the bonded GPIO count changes.
     reg STRAPS_HI {
         regwidth = 32;
         accesswidth = 32;

@@ -1562,8 +1562,8 @@ module smc_peripherals #(
     peripheral_interrupts_o[25:23]   = i2c_irqs_smc_clk;
     peripheral_interrupts_o[26]      = rst_ext_wdt_smc_clk; // synchronized active-high WDT reset assertion
     peripheral_interrupts_o[27]      = locked_field_access_interrupt;
-    peripheral_interrupts_o[28]      = |gpio_interrupt[smc_pkg::NumBondedGpio/2-1:0];                     // OR-reduced across lower half of GPIO wraps; SW reads GPIO status regs to identify source
-    peripheral_interrupts_o[29]      = |gpio_interrupt[smc_pkg::NumBondedGpio-1:smc_pkg::NumBondedGpio/2]; // OR-reduced across upper half of GPIO wraps; SW reads GPIO status regs to identify source
+    peripheral_interrupts_o[28]      = |gpio_interrupt[smc_pkg::NumGpioWraps/2-1:0];                    // OR-reduced across lower half of GPIO wraps; SW reads GPIO status regs to identify source
+    peripheral_interrupts_o[29]      = |gpio_interrupt[smc_pkg::NumGpioWraps-1:smc_pkg::NumGpioWraps/2]; // OR-reduced across upper half of GPIO wraps; SW reads GPIO status regs to identify source
     peripheral_interrupts_o[30]      = axi_hang_irq_i; // OR of the three smc_base AXI hang detectors; SW reads HANG_DET_*_CTRL to identify the master
   end
 

@@ -160,9 +160,8 @@ I2C, I3C, and SPI pins to external devices according to the function assignments
 in the GPIO table.
 
 The SMC padring drives one GPIO pad per `u_gpio_interface` instance, so the
-adopter must integrate `smc_pkg::NumGpioWraps` pads:
-`smc_pkg::NumBondedGpio` bonded pads plus `smc_pkg::NumUnbondedGpio`
-unbonded pads. If the adopter chooses to capture configuration straps from GPIO
+adopter must integrate `smc_pkg::NumGpioWraps` pads: 61 bonded pads
+(GPIO 0-60) plus 4 unbonded pads (GPIO 61-64). If the adopter chooses to capture configuration straps from GPIO
 pads, this can only be done from the bonded pads. The pads for the SDA and SCL
 lines of I3C[1] must be unbonded for security when transmitting OCCP traffic.
 The pads for Cool Reset In/Out must also be unbonded as they are meant only to

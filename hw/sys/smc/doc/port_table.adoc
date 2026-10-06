@@ -81,7 +81,7 @@ endif::backend-html5[]
 |`ss_config_o` |`logic` |Output |`[31:0]` |Subsystem configuration output. |Reset Unit → 32 subsystems |N/A
 |`ss_reset_ctrl_o` |`smc_reset_unit_pkg::reset_ctrl_t` |Output |`[31:0]` |Subsystem reset control output array. |Reset Unit → 32 subsystems |N/A
 |`sync_irq_o` |`logic` |Output |1 |Software-controlled global synchronisation bit (`SYNC_REG.sync` in the reset unit). Not an interrupt aggregate output. |Reset unit → External |N/A
-|`gpio_interrupt_o` |`logic` |Output |`[NumGpioWraps-1:0]` |Raw GPIO interrupt vector from the padring, one bit per GPIO wrap (bonded + unbonded). Software reads GPIO status registers to identify the interrupt source. Already OR-reduced into `peripheral_interrupts_o[30:29]` internally. |`smc_padring` → external consumers |N/A, leave floating if unused
+|`gpio_interrupt_o` |`logic` |Output |`[NumGpioWraps-1:0]` |Raw GPIO interrupt vector from the padring, one bit per GPIO wrap (bonded + unbonded). Software reads GPIO status registers to identify the interrupt source. Already OR-reduced into `peripheral_interrupts_o[29:28]` internally. |`smc_padring` → external consumers |N/A, leave floating if unused
 |`uart_interrupt_o` |`logic` |Output |`[NumUart-1:0]` |Raw UART interrupt outputs, one bit per UART instance, in the peripheral clock domain. Already aggregated into `peripheral_interrupts_o[21:18]` internally via CDC. |`uart_wrap` → external consumers |N/A, leave floating if unused
 |`smc_rom_intf_req_o` |`rom_req_t` |Output |- |ROM memory interface request. Width depends on CPU cluster configuration |CPU cluster → Boot ROM |N/A
 |`smc_rom_intf_rsp_i` |`rom_rsp_t` |Input |- |ROM memory interface response. Width depends on CPU cluster configuration |Boot ROM → CPU cluster |N/A
