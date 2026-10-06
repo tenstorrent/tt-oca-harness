@@ -276,14 +276,14 @@ module smc_ip_integration (
     //////////////////////////////
     // These rom_straps are intentionally undriven in RTL. They are to be driven/configured in DV/FW (cocotb)
 
-    logic [smc_pkg::NumBondedGpio-1:0] rom_straps;
+    logic [$bits(straps_reg_pkg::straps__in_t)-1:0] rom_straps;
     assign rom_straps = '0;
 
     straps_reg_pkg::straps__in_t straps_hwif_in;
 
     always_comb begin
         straps_hwif_in.STRAPS_LO.straps.next = rom_straps[31:0];
-        straps_hwif_in.STRAPS_HI.straps.next = rom_straps[smc_pkg::NumBondedGpio-1:32];
+        straps_hwif_in.STRAPS_HI.straps.next = rom_straps[$high(rom_straps):32];
     end
 
     straps_reg u_straps_reg (
