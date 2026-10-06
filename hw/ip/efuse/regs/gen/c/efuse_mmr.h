@@ -14,46 +14,59 @@ extern "C" {
 #include <assert.h>
 
 // reg - efuse_mmr::RMA_TOKEN_I
+// Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.
+// Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.
 #define EFUSE_MMR__RMA_TOKEN_I__TOKEN_bm 0xffffffff
 #define EFUSE_MMR__RMA_TOKEN_I__TOKEN_bp 0
 #define EFUSE_MMR__RMA_TOKEN_I__TOKEN_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.
         uint32_t token :32;
     } f;
     uint32_t w;
 } efuse_mmr__RMA_TOKEN_I_t;
 
 // reg - efuse_mmr::SEC_DISABLE_TOKEN_I
+// Software-writeable security-disable token word. The assembled token is hashed and compared against the post-silicon injected value to authorize security_disable.
+// Portion of writeable version of SEC_DISABLE_TOKEN, hashed, and compared with the post silicon injected values to allow security_disable.
 #define EFUSE_MMR__SEC_DISABLE_TOKEN_I__TOKEN_bm 0xffffffff
 #define EFUSE_MMR__SEC_DISABLE_TOKEN_I__TOKEN_bp 0
 #define EFUSE_MMR__SEC_DISABLE_TOKEN_I__TOKEN_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Portion of writeable version of SEC_DISABLE_TOKEN, hashed, and compared with the post silicon injected values to allow security_disable.
         uint32_t token :32;
     } f;
     uint32_t w;
 } efuse_mmr__SEC_DISABLE_TOKEN_I_t;
 
 // reg - efuse_mmr::TOKEN_EOP
+// Token end-of-packet control. Writing the per-token go bit signals that all token words have been written and triggers a pulse to begin token hashing.
+// Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
 #define EFUSE_MMR__TOKEN_EOP__RMA_SIP_TOKEN_GO_bm 0x1
 #define EFUSE_MMR__TOKEN_EOP__RMA_SIP_TOKEN_GO_bp 0
 #define EFUSE_MMR__TOKEN_EOP__RMA_SIP_TOKEN_GO_bw 1
 #define EFUSE_MMR__TOKEN_EOP__RMA_SIP_TOKEN_GO_reset 0x0
+// Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
 #define EFUSE_MMR__TOKEN_EOP__RMA_CHIPLET_TOKEN_GO_bm 0x100
 #define EFUSE_MMR__TOKEN_EOP__RMA_CHIPLET_TOKEN_GO_bp 8
 #define EFUSE_MMR__TOKEN_EOP__RMA_CHIPLET_TOKEN_GO_bw 1
 #define EFUSE_MMR__TOKEN_EOP__RMA_CHIPLET_TOKEN_GO_reset 0x0
+// Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
 #define EFUSE_MMR__TOKEN_EOP__SECURE_DISABLE_TOKEN_GO_bm 0x10000
 #define EFUSE_MMR__TOKEN_EOP__SECURE_DISABLE_TOKEN_GO_bp 16
 #define EFUSE_MMR__TOKEN_EOP__SECURE_DISABLE_TOKEN_GO_bw 1
 #define EFUSE_MMR__TOKEN_EOP__SECURE_DISABLE_TOKEN_GO_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
         uint32_t rma_sip_token_go :1;
         uint32_t :7;
+        // Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
         uint32_t rma_chiplet_token_go :1;
         uint32_t :7;
+        // Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
         uint32_t secure_disable_token_go :1;
         uint32_t :15;
     } f;
@@ -61,12 +74,15 @@ typedef union {
 } efuse_mmr__TOKEN_EOP_t;
 
 // reg - efuse_mmr::TOKEN_MATCH
+// Token match status. Reports the result of the token hash comparison (match, mismatch, or error).
+// Store the status of the token match.  Match = 6'b010101, Mismatch = 6'b101010, Error = 6'b111111
 #define EFUSE_MMR__TOKEN_MATCH__TOKEN_MATCH_STATUS_bm 0x3f
 #define EFUSE_MMR__TOKEN_MATCH__TOKEN_MATCH_STATUS_bp 0
 #define EFUSE_MMR__TOKEN_MATCH__TOKEN_MATCH_STATUS_bw 6
 #define EFUSE_MMR__TOKEN_MATCH__TOKEN_MATCH_STATUS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Store the status of the token match.  Match = 6'b010101, Mismatch = 6'b101010, Error = 6'b111111
         uint32_t token_match_status :6;
         uint32_t :26;
     } f;
@@ -74,24 +90,31 @@ typedef union {
 } efuse_mmr__TOKEN_MATCH_t;
 
 // reg - efuse_mmr::TOKEN_MATCH_FAULT
+// Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6'b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.
+// A redundancy fault was detected in the RMA_SIP_TOKEN comparators.
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_bm 0x1
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_bp 0
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_bw 1
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_reset 0x0
+// A redundancy fault was detected in the RMA_CHIPLET_TOKEN comparators.
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_bm 0x100
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_bp 8
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_bw 1
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_reset 0x0
+// A redundancy fault was detected in the SEC_DISABLE_TOKEN comparators.
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_bm 0x10000
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_bp 16
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_bw 1
 #define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // A redundancy fault was detected in the RMA_SIP_TOKEN comparators.
         uint32_t rma_sip_token_fault :1;
         uint32_t :7;
+        // A redundancy fault was detected in the RMA_CHIPLET_TOKEN comparators.
         uint32_t rma_chiplet_token_fault :1;
         uint32_t :7;
+        // A redundancy fault was detected in the SEC_DISABLE_TOKEN comparators.
         uint32_t secure_disable_token_fault :1;
         uint32_t :15;
     } f;
@@ -99,6 +122,7 @@ typedef union {
 } efuse_mmr__TOKEN_MATCH_FAULT_t;
 
 // addrmap - efuse_mmr
+// Security-token input and match-status registers for RMA and secure-disable eFuse tokens.
 typedef struct __attribute__ ((__packed__)) {
     efuse_mmr__RMA_TOKEN_I_t RMA_SIP_TOKEN_I[8];
     efuse_mmr__RMA_TOKEN_I_t RMA_CHIPLET_TOKEN_I[8];

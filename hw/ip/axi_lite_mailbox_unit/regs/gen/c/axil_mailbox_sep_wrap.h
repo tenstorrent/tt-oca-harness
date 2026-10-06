@@ -14,50 +14,62 @@ extern "C" {
 #include <assert.h>
 
 // reg - axil_mailbox::WRITE_DATA
+// Write data to mailbox fifo
 #define AXIL_MAILBOX__WRITE_DATA__WRITE_DATA_bm 0xffffffffffffffff
 #define AXIL_MAILBOX__WRITE_DATA__WRITE_DATA_bp 0
 #define AXIL_MAILBOX__WRITE_DATA__WRITE_DATA_bw 64
 #define AXIL_MAILBOX__WRITE_DATA__WRITE_DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write data to mailbox fifo
         uint64_t write_data :64;
     } f;
     uint64_t w;
 } axil_mailbox__WRITE_DATA_t;
 
 // reg - axil_mailbox::READ_DATA
+// Read data from mailbox fifo
 #define AXIL_MAILBOX__READ_DATA__READ_DATA_bm 0xffffffffffffffff
 #define AXIL_MAILBOX__READ_DATA__READ_DATA_bp 0
 #define AXIL_MAILBOX__READ_DATA__READ_DATA_bw 64
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Read data from mailbox fifo
         uint64_t read_data :64;
     } f;
     uint64_t w;
 } axil_mailbox__READ_DATA_t;
 
 // reg - axil_mailbox::STATUS
+// 0: Data is available to read, 1: Data is not available to read
 #define AXIL_MAILBOX__STATUS__EMPTY_bm 0x1
 #define AXIL_MAILBOX__STATUS__EMPTY_bp 0
 #define AXIL_MAILBOX__STATUS__EMPTY_bw 1
 #define AXIL_MAILBOX__STATUS__EMPTY_reset 0x1
+// 0: Space is available to write, 1: Space is not available to write
 #define AXIL_MAILBOX__STATUS__FULL_bm 0x2
 #define AXIL_MAILBOX__STATUS__FULL_bp 1
 #define AXIL_MAILBOX__STATUS__FULL_bw 1
 #define AXIL_MAILBOX__STATUS__FULL_reset 0x0
+// If set, write fifo level is higher than threshold set in WIRQT
 #define AXIL_MAILBOX__STATUS__WRITE_LEVEL_ABOVE_THRESH_bm 0x4
 #define AXIL_MAILBOX__STATUS__WRITE_LEVEL_ABOVE_THRESH_bp 2
 #define AXIL_MAILBOX__STATUS__WRITE_LEVEL_ABOVE_THRESH_bw 1
 #define AXIL_MAILBOX__STATUS__WRITE_LEVEL_ABOVE_THRESH_reset 0x0
+// If set, read fifo level is higher than threshold set in RIRQT
 #define AXIL_MAILBOX__STATUS__READ_LEVEL_ABOVE_THRESH_bm 0x8
 #define AXIL_MAILBOX__STATUS__READ_LEVEL_ABOVE_THRESH_bp 3
 #define AXIL_MAILBOX__STATUS__READ_LEVEL_ABOVE_THRESH_bw 1
 #define AXIL_MAILBOX__STATUS__READ_LEVEL_ABOVE_THRESH_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 0: Data is available to read, 1: Data is not available to read
         uint64_t empty :1;
+        // 0: Space is available to write, 1: Space is not available to write
         uint64_t full :1;
+        // If set, write fifo level is higher than threshold set in WIRQT
         uint64_t write_level_above_thresh :1;
+        // If set, read fifo level is higher than threshold set in RIRQT
         uint64_t read_level_above_thresh :1;
         uint64_t :60;
     } f;
@@ -65,17 +77,21 @@ typedef union {
 } axil_mailbox__STATUS_t;
 
 // reg - axil_mailbox::ERROR
+// Attempted read from an empty mailbox
 #define AXIL_MAILBOX__ERROR__READ_ERROR_bm 0x1
 #define AXIL_MAILBOX__ERROR__READ_ERROR_bp 0
 #define AXIL_MAILBOX__ERROR__READ_ERROR_bw 1
 #define AXIL_MAILBOX__ERROR__READ_ERROR_reset 0x0
+// Attempted write to a full mailbox
 #define AXIL_MAILBOX__ERROR__WRITE_ERROR_bm 0x2
 #define AXIL_MAILBOX__ERROR__WRITE_ERROR_bp 1
 #define AXIL_MAILBOX__ERROR__WRITE_ERROR_bw 1
 #define AXIL_MAILBOX__ERROR__WRITE_ERROR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Attempted read from an empty mailbox
         uint64_t read_error :1;
+        // Attempted write to a full mailbox
         uint64_t write_error :1;
         uint64_t :62;
     } f;
@@ -83,12 +99,14 @@ typedef union {
 } axil_mailbox__ERROR_t;
 
 // reg - axil_mailbox::WIRQT
+// When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 #define AXIL_MAILBOX__WIRQT__WIRQT_bm 0xff
 #define AXIL_MAILBOX__WIRQT__WIRQT_bp 0
 #define AXIL_MAILBOX__WIRQT__WIRQT_bw 8
 #define AXIL_MAILBOX__WIRQT__WIRQT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
         uint64_t wirqt :8;
         uint64_t :56;
     } f;
@@ -96,12 +114,14 @@ typedef union {
 } axil_mailbox__WIRQT_t;
 
 // reg - axil_mailbox::RIRQT
+// When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 #define AXIL_MAILBOX__RIRQT__RIRQT_bm 0xff
 #define AXIL_MAILBOX__RIRQT__RIRQT_bp 0
 #define AXIL_MAILBOX__RIRQT__RIRQT_bw 8
 #define AXIL_MAILBOX__RIRQT__RIRQT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
         uint64_t rirqt :8;
         uint64_t :56;
     } f;
@@ -109,22 +129,59 @@ typedef union {
 } axil_mailbox__RIRQT_t;
 
 // reg - axil_mailbox::IRQS
+// This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
+// On read:
+// [0]: No interrupt request
+// [1]: Usage level threshold in write mailbox exceeded
+// On write:
+// [0]: No acknowledge
+// [1]: Acknowledge and clear interrupt request
 #define AXIL_MAILBOX__IRQS__WTIRQ_bm 0x1
 #define AXIL_MAILBOX__IRQS__WTIRQ_bp 0
 #define AXIL_MAILBOX__IRQS__WTIRQ_bw 1
 #define AXIL_MAILBOX__IRQS__WTIRQ_reset 0x0
+// On read:
+// [0]: No interrupt request
+// [1]: Usage level threshold in read mailbox exceeded
+// On write:
+// [0]: No acknowledge
+// [1]: Acknowledge and clear interrupt request
 #define AXIL_MAILBOX__IRQS__RTIRQ_bm 0x2
 #define AXIL_MAILBOX__IRQS__RTIRQ_bp 1
 #define AXIL_MAILBOX__IRQS__RTIRQ_bw 1
 #define AXIL_MAILBOX__IRQS__RTIRQ_reset 0x0
+// On read:
+// [0]: No interrupt request
+// [1]: Error on mailbox access
+// On write:
+// [0]: No acknowledge
+// [1]: Acknowledge and clear interrupt request
 #define AXIL_MAILBOX__IRQS__EIRQ_bm 0x4
 #define AXIL_MAILBOX__IRQS__EIRQ_bp 2
 #define AXIL_MAILBOX__IRQS__EIRQ_bw 1
 #define AXIL_MAILBOX__IRQS__EIRQ_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // On read:
+        // [0]: No interrupt request
+        // [1]: Usage level threshold in write mailbox exceeded
+        // On write:
+        // [0]: No acknowledge
+        // [1]: Acknowledge and clear interrupt request
         uint64_t wtirq :1;
+        // On read:
+        // [0]: No interrupt request
+        // [1]: Usage level threshold in read mailbox exceeded
+        // On write:
+        // [0]: No acknowledge
+        // [1]: Acknowledge and clear interrupt request
         uint64_t rtirq :1;
+        // On read:
+        // [0]: No interrupt request
+        // [1]: Error on mailbox access
+        // On write:
+        // [0]: No acknowledge
+        // [1]: Acknowledge and clear interrupt request
         uint64_t eirq :1;
         uint64_t :61;
     } f;
@@ -132,22 +189,35 @@ typedef union {
 } axil_mailbox__IRQS_t;
 
 // reg - axil_mailbox::IRQEN
+// This register is used to enable and disable which interrupts are sent to the CPU.
+// [0]: Write threshold IRQ disabled
+// [1]: Write threshold IRQ enabled
 #define AXIL_MAILBOX__IRQEN__WTIRQ_bm 0x1
 #define AXIL_MAILBOX__IRQEN__WTIRQ_bp 0
 #define AXIL_MAILBOX__IRQEN__WTIRQ_bw 1
 #define AXIL_MAILBOX__IRQEN__WTIRQ_reset 0x0
+// [0]: Read threshold IRQ disabled
+// [1]: Read threshold IRQ enabled
 #define AXIL_MAILBOX__IRQEN__RTIRQ_bm 0x2
 #define AXIL_MAILBOX__IRQEN__RTIRQ_bp 1
 #define AXIL_MAILBOX__IRQEN__RTIRQ_bw 1
 #define AXIL_MAILBOX__IRQEN__RTIRQ_reset 0x0
+// [0]: Error IRQ disabled
+// [1]: Error IRQ enabled
 #define AXIL_MAILBOX__IRQEN__EIRQ_bm 0x4
 #define AXIL_MAILBOX__IRQEN__EIRQ_bp 2
 #define AXIL_MAILBOX__IRQEN__EIRQ_bw 1
 #define AXIL_MAILBOX__IRQEN__EIRQ_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // [0]: Write threshold IRQ disabled
+        // [1]: Write threshold IRQ enabled
         uint64_t wtirq :1;
+        // [0]: Read threshold IRQ disabled
+        // [1]: Read threshold IRQ enabled
         uint64_t rtirq :1;
+        // [0]: Error IRQ disabled
+        // [1]: Error IRQ enabled
         uint64_t eirq :1;
         uint64_t :61;
     } f;
@@ -155,22 +225,35 @@ typedef union {
 } axil_mailbox__IRQEN_t;
 
 // reg - axil_mailbox::IRQP
+// This register is used to read the current status of the interrupts sent to the CPU.
+// [0]: No write threshold IRQ pending
+// [1]: Write threshold IRQ pending
 #define AXIL_MAILBOX__IRQP__WTIRQ_bm 0x1
 #define AXIL_MAILBOX__IRQP__WTIRQ_bp 0
 #define AXIL_MAILBOX__IRQP__WTIRQ_bw 1
 #define AXIL_MAILBOX__IRQP__WTIRQ_reset 0x0
+// [0]: No read threshold IRQ pending
+// [1]: Read threshold IRQ pending
 #define AXIL_MAILBOX__IRQP__RTIRQ_bm 0x2
 #define AXIL_MAILBOX__IRQP__RTIRQ_bp 1
 #define AXIL_MAILBOX__IRQP__RTIRQ_bw 1
 #define AXIL_MAILBOX__IRQP__RTIRQ_reset 0x0
+// [0]: No error IRQ pending
+// [1]: Error IRQ pending
 #define AXIL_MAILBOX__IRQP__EIRQ_bm 0x4
 #define AXIL_MAILBOX__IRQP__EIRQ_bp 2
 #define AXIL_MAILBOX__IRQP__EIRQ_bw 1
 #define AXIL_MAILBOX__IRQP__EIRQ_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // [0]: No write threshold IRQ pending
+        // [1]: Write threshold IRQ pending
         uint64_t wtirq :1;
+        // [0]: No read threshold IRQ pending
+        // [1]: Read threshold IRQ pending
         uint64_t rtirq :1;
+        // [0]: No error IRQ pending
+        // [1]: Error IRQ pending
         uint64_t eirq :1;
         uint64_t :61;
     } f;
@@ -178,17 +261,21 @@ typedef union {
 } axil_mailbox__IRQP_t;
 
 // reg - axil_mailbox::CTRL
+// Flush the write FIFO for this port
 #define AXIL_MAILBOX__CTRL__WFLUSH_bm 0x1
 #define AXIL_MAILBOX__CTRL__WFLUSH_bp 0
 #define AXIL_MAILBOX__CTRL__WFLUSH_bw 1
 #define AXIL_MAILBOX__CTRL__WFLUSH_reset 0x0
+// Flush the read FIFO for this port
 #define AXIL_MAILBOX__CTRL__RFLUSH_bm 0x2
 #define AXIL_MAILBOX__CTRL__RFLUSH_bp 1
 #define AXIL_MAILBOX__CTRL__RFLUSH_bw 1
 #define AXIL_MAILBOX__CTRL__RFLUSH_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Flush the write FIFO for this port
         uint64_t wflush :1;
+        // Flush the read FIFO for this port
         uint64_t rflush :1;
         uint64_t :62;
     } f;
@@ -196,6 +283,7 @@ typedef union {
 } axil_mailbox__CTRL_t;
 
 // addrmap - axil_mailbox
+// Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.
 typedef struct __attribute__ ((__packed__)) {
     axil_mailbox__WRITE_DATA_t WRITE_DATA;
     axil_mailbox__READ_DATA_t READ_DATA;
@@ -210,6 +298,11 @@ typedef struct __attribute__ ((__packed__)) {
 } axil_mailbox_t;
 
 // addrmap - axil_mailbox_sep_wrap
+// SEP-side wrapper instantiating the AXI-Lite mailbox pairs.
+// Each outbound_mailbox_N / inbound_mailbox_N pair is the two apertures of one
+// bidirectional mailbox and shares a single pair of FIFOs: data written through
+// WRITE_DATA in one aperture is what READ_DATA in the other aperture returns.
+// The outbound/inbound naming reflects intended use, not an access restriction.
 typedef struct __attribute__ ((__packed__)) {
     axil_mailbox_t outbound_mailbox_0;
     uint8_t RESERVED_50_7ff[0x7b0];

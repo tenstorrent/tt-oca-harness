@@ -8,7 +8,6 @@
 This document is currently under development.
 
 - Contribution documentation may not be required at this point.
-- Semantic Versioning may need considering in a silicon context
 - For public contributions, it is probably better to encourage people to fork and
 PR from forks rather than directly give them push access to upstream as this doc implies?
 ====
@@ -82,9 +81,9 @@ Direct commits to release branches are not allowed. All changes must come
 through a PR.
 
 * When a release is close to ready a release branch is created from
-`main` and named with the release major.patch version. This branch is
-used to finalize the release, e.g. by updating documentation, fixing any
-last minute bugs, etc.
+`main` and named for that minor release, for example `v1.2.x`. This branch is
+used to finalize the release, for example by updating documentation and fixing
+last-minute bugs.
 * All changes to the release branch are based on PRs with GitHub issues
 targeting the release branch. If these changes also apply to `main`,
 then a PR should be created against those branches as well.
@@ -97,10 +96,9 @@ the release is finalized. A trial merge can be done to ensure that all
 relevant changes are applied to `main`, but this is not strictly necessary.
 * When the release is finalized, the release branch is tagged with the
 release version.
-* Minor (point) releases are made on the same major release branch,
-e.g. `v1.0.x`, where `x` is the minor version number. This allows users
-to pull from the 'v1.0.x' branch to get the latest bug fixes and minor
-enhancements without having to switch to a new major release branch.
+* Patch releases are cut from that same branch. `v1.2.1` is a patch on
+`v1.2.0`. Readers can stay on the branch for later compatible fixes
+without moving to a new minor or major release.
 
 === Pull Requests
 
@@ -189,18 +187,18 @@ binary content if necessary.
 
 === Versioning
 
-The OCAH project will use semantic versioning (semver) version 2 for
-releases. The version format is `MAJOR.MINOR.PATCH`, where:
+[NOTE]
+====
+Releases follow https://semver.org[semantic versioning 2.0.0].
+A release tag is `vMAJOR.MINOR.PATCH`.
+====
 
-* MAJOR version when you make incompatible API changes
-* MINOR version when you add functionality in a backward compatible
-manner
-* PATCH version when you make backward compatible bug fixes
+* *MAJOR* — the release can break compatibility with the previous major release.
+* *MINOR* — the release adds functionality and stays compatible with the same major release.
+* *PATCH* — the release fixes defects and stays compatible with the same major and minor release.
 
-Additional labels for pre-release and build metadata are available as
-extensions to the MAJOR.MINOR.PATCH format.
-
-See the documentation on https://semver.org[semver] for more details.
+`v0.5.1` is a patch on `v0.5.0`. It is the same minor release, with compatible fixes.
+A pre-release label or build metadata can follow the version, as semver allows.
 
 === Conventions, Linting and CI
 

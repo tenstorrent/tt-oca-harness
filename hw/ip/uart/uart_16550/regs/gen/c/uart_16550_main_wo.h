@@ -14,12 +14,19 @@ extern "C" {
 #include <assert.h>
 
 // reg - uart_16550_main_wo::THR
+// Transmitter Holding Register
+// Transmit Data. Holds a character to be transmitted. If FIFOs are enabled, this
+// field points to the top of the TX FIFO. Otherwise, this field points to a
+// single-byte Transmitter Holding Register.
 #define UART_16550_MAIN_WO__THR__DATA_bm 0xff
 #define UART_16550_MAIN_WO__THR__DATA_bp 0
 #define UART_16550_MAIN_WO__THR__DATA_bw 8
 #define UART_16550_MAIN_WO__THR__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Transmit Data. Holds a character to be transmitted. If FIFOs are enabled, this
+        // field points to the top of the TX FIFO. Otherwise, this field points to a
+        // single-byte Transmitter Holding Register.
         uint32_t DATA :8;
         uint32_t :24;
     } f;
@@ -27,33 +34,78 @@ typedef union {
 } uart_16550_main_wo__THR_t;
 
 // reg - uart_16550_main_wo::FCR
+// FIFO Control Register
+// FIFO Enable. When set, enables the TX and RX FIFOs (FIFO Mode). When unset,
+// disables the FIFOs (Non-FIFO Mode).
 #define UART_16550_MAIN_WO__FCR__FIFO_ENABLE_bm 0x1
 #define UART_16550_MAIN_WO__FCR__FIFO_ENABLE_bp 0
 #define UART_16550_MAIN_WO__FCR__FIFO_ENABLE_bw 1
 #define UART_16550_MAIN_WO__FCR__FIFO_ENABLE_reset 0x0
+// Receiver FIFO Reset. Writing `1` clears the RX FIFO.
 #define UART_16550_MAIN_WO__FCR__RCVR_FIFO_RESET_bm 0x2
 #define UART_16550_MAIN_WO__FCR__RCVR_FIFO_RESET_bp 1
 #define UART_16550_MAIN_WO__FCR__RCVR_FIFO_RESET_bw 1
 #define UART_16550_MAIN_WO__FCR__RCVR_FIFO_RESET_reset 0x0
+// Transmitter FIFO Reset. Writing `1` clears the TX FIFO.
 #define UART_16550_MAIN_WO__FCR__XMIT_FIFO_RESET_bm 0x4
 #define UART_16550_MAIN_WO__FCR__XMIT_FIFO_RESET_bp 2
 #define UART_16550_MAIN_WO__FCR__XMIT_FIFO_RESET_bw 1
 #define UART_16550_MAIN_WO__FCR__XMIT_FIFO_RESET_reset 0x0
+// DMA mode select:
+// * `0` - DMA Mode 0
+// * `1` - DMA Mode 1
 #define UART_16550_MAIN_WO__FCR__DMA_MODE_SELECT_bm 0x8
 #define UART_16550_MAIN_WO__FCR__DMA_MODE_SELECT_bp 3
 #define UART_16550_MAIN_WO__FCR__DMA_MODE_SELECT_bw 1
 #define UART_16550_MAIN_WO__FCR__DMA_MODE_SELECT_reset 0x0
+// Receiver FIFO Trigger Level (Least Significant 2 Bits). To configure the most
+// significant 2 bits, use the `ECR.RCVR_TRIGGER_MS2B` register field. The
+// configurations for the trigger levels are:
+// * `0x0` -    1 character
+// * `0x1` -    4 characters
+// * `0x2` -    8 characters
+// * `0x3` -   14 characters
+// * `0x4` -   32 characters
+// * `0x5` -   64 characters
+// * `0x6` -  128 characters
+// * `0x7` -  256 characters
+// * `0x8` -  512 characters
+// * `0x9` - 1024 characters
+// * `0xA` - 2048 characters
+// * `0xB` - 4096 characters
 #define UART_16550_MAIN_WO__FCR__RCVR_TRIGGER_bm 0xc0
 #define UART_16550_MAIN_WO__FCR__RCVR_TRIGGER_bp 6
 #define UART_16550_MAIN_WO__FCR__RCVR_TRIGGER_bw 2
 #define UART_16550_MAIN_WO__FCR__RCVR_TRIGGER_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // FIFO Enable. When set, enables the TX and RX FIFOs (FIFO Mode). When unset,
+        // disables the FIFOs (Non-FIFO Mode).
         uint32_t FIFO_ENABLE :1;
+        // Receiver FIFO Reset. Writing `1` clears the RX FIFO.
         uint32_t RCVR_FIFO_RESET :1;
+        // Transmitter FIFO Reset. Writing `1` clears the TX FIFO.
         uint32_t XMIT_FIFO_RESET :1;
+        // DMA mode select:
+        // * `0` - DMA Mode 0
+        // * `1` - DMA Mode 1
         uint32_t DMA_MODE_SELECT :1;
         uint32_t :2;
+        // Receiver FIFO Trigger Level (Least Significant 2 Bits). To configure the most
+        // significant 2 bits, use the `ECR.RCVR_TRIGGER_MS2B` register field. The
+        // configurations for the trigger levels are:
+        // * `0x0` -    1 character
+        // * `0x1` -    4 characters
+        // * `0x2` -    8 characters
+        // * `0x3` -   14 characters
+        // * `0x4` -   32 characters
+        // * `0x5` -   64 characters
+        // * `0x6` -  128 characters
+        // * `0x7` -  256 characters
+        // * `0x8` -  512 characters
+        // * `0x9` - 1024 characters
+        // * `0xA` - 2048 characters
+        // * `0xB` - 4096 characters
         uint32_t RCVR_TRIGGER :2;
         uint32_t :24;
     } f;
@@ -61,6 +113,8 @@ typedef union {
 } uart_16550_main_wo__FCR_t;
 
 // addrmap - uart_16550_main_wo
+// Contains the write-only registers. THR is accessible only when `LCR.DLAB = 0`;
+// FCR is writable for either `LCR.DLAB` value.
 typedef struct __attribute__ ((__packed__)) {
     uart_16550_main_wo__THR_t THR;
     uint8_t RESERVED_4_7[0x4];

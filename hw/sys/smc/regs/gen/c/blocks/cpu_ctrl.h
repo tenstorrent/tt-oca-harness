@@ -27,58 +27,88 @@ typedef union {
 } cpu_ctrl__RESET_VECTOR_t;
 
 // reg - cpu_ctrl::RESET_CTRL
+// Reset control for the CPU, active low.
 #define CPU_CTRL__RESET_CTRL__CORE0_RESET_N_N0_SCAN_bm 0x1
 #define CPU_CTRL__RESET_CTRL__CORE0_RESET_N_N0_SCAN_bp 0
 #define CPU_CTRL__RESET_CTRL__CORE0_RESET_N_N0_SCAN_bw 1
 #define CPU_CTRL__RESET_CTRL__CORE0_RESET_N_N0_SCAN_reset 0x1
+// Reset control for the CPU, active low.
 #define CPU_CTRL__RESET_CTRL__CORE1_RESET_N_N0_SCAN_bm 0x2
 #define CPU_CTRL__RESET_CTRL__CORE1_RESET_N_N0_SCAN_bp 1
 #define CPU_CTRL__RESET_CTRL__CORE1_RESET_N_N0_SCAN_bw 1
 #define CPU_CTRL__RESET_CTRL__CORE1_RESET_N_N0_SCAN_reset 0x1
+// Reset control for the CPU, active low.
 #define CPU_CTRL__RESET_CTRL__CORE2_RESET_N_N0_SCAN_bm 0x4
 #define CPU_CTRL__RESET_CTRL__CORE2_RESET_N_N0_SCAN_bp 2
 #define CPU_CTRL__RESET_CTRL__CORE2_RESET_N_N0_SCAN_bw 1
 #define CPU_CTRL__RESET_CTRL__CORE2_RESET_N_N0_SCAN_reset 0x1
+// Reset control for the CPU, active low.
 #define CPU_CTRL__RESET_CTRL__CORE3_RESET_N_N0_SCAN_bm 0x8
 #define CPU_CTRL__RESET_CTRL__CORE3_RESET_N_N0_SCAN_bp 3
 #define CPU_CTRL__RESET_CTRL__CORE3_RESET_N_N0_SCAN_bw 1
 #define CPU_CTRL__RESET_CTRL__CORE3_RESET_N_N0_SCAN_reset 0x1
+// Writing a 1 to this register triggers a core reset pulse on core 0, timed by CORE_RESET_PULSE_COUNT.
+// A 0 in core0_reset_n_n0_scan holds the core in reset for the whole pulse.
 #define CPU_CTRL__RESET_CTRL__CORE0_RESET_PULSE_START_N0_SCAN_bm 0x10
 #define CPU_CTRL__RESET_CTRL__CORE0_RESET_PULSE_START_N0_SCAN_bp 4
 #define CPU_CTRL__RESET_CTRL__CORE0_RESET_PULSE_START_N0_SCAN_bw 1
 #define CPU_CTRL__RESET_CTRL__CORE0_RESET_PULSE_START_N0_SCAN_reset 0x0
+// Writing a 1 to this register triggers a core reset pulse on core 1, timed by CORE_RESET_PULSE_COUNT.
+// A 0 in core1_reset_n_n0_scan holds the core in reset for the whole pulse.
 #define CPU_CTRL__RESET_CTRL__CORE1_RESET_PULSE_START_N0_SCAN_bm 0x20
 #define CPU_CTRL__RESET_CTRL__CORE1_RESET_PULSE_START_N0_SCAN_bp 5
 #define CPU_CTRL__RESET_CTRL__CORE1_RESET_PULSE_START_N0_SCAN_bw 1
 #define CPU_CTRL__RESET_CTRL__CORE1_RESET_PULSE_START_N0_SCAN_reset 0x0
+// Writing a 1 to this register triggers a core reset pulse on core 2, timed by CORE_RESET_PULSE_COUNT.
+// A 0 in core2_reset_n_n0_scan holds the core in reset for the whole pulse.
 #define CPU_CTRL__RESET_CTRL__CORE2_RESET_PULSE_START_N0_SCAN_bm 0x40
 #define CPU_CTRL__RESET_CTRL__CORE2_RESET_PULSE_START_N0_SCAN_bp 6
 #define CPU_CTRL__RESET_CTRL__CORE2_RESET_PULSE_START_N0_SCAN_bw 1
 #define CPU_CTRL__RESET_CTRL__CORE2_RESET_PULSE_START_N0_SCAN_reset 0x0
+// Writing a 1 to this register triggers a core reset pulse on core 3, timed by CORE_RESET_PULSE_COUNT.
+// A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.
 #define CPU_CTRL__RESET_CTRL__CORE3_RESET_PULSE_START_N0_SCAN_bm 0x80
 #define CPU_CTRL__RESET_CTRL__CORE3_RESET_PULSE_START_N0_SCAN_bp 7
 #define CPU_CTRL__RESET_CTRL__CORE3_RESET_PULSE_START_N0_SCAN_bw 1
 #define CPU_CTRL__RESET_CTRL__CORE3_RESET_PULSE_START_N0_SCAN_reset 0x0
+// Cluster Uncore Reset, active low. Writing this register will only reset the uncore portion in the chipyard cluster.
+// WARNING: using this can cause any outstanding axi requests to and from the cluster to cause timeouts/exceptions.
 #define CPU_CTRL__RESET_CTRL__UNCORE_RESET_N_N0_SCAN_bm 0x100
 #define CPU_CTRL__RESET_CTRL__UNCORE_RESET_N_N0_SCAN_bp 8
 #define CPU_CTRL__RESET_CTRL__UNCORE_RESET_N_N0_SCAN_bw 1
 #define CPU_CTRL__RESET_CTRL__UNCORE_RESET_N_N0_SCAN_reset 0x1
+// Debug Module Reset, active low
 #define CPU_CTRL__RESET_CTRL__DEBUG_RESET_N_N0_SCAN_bm 0x1000000
 #define CPU_CTRL__RESET_CTRL__DEBUG_RESET_N_N0_SCAN_bp 24
 #define CPU_CTRL__RESET_CTRL__DEBUG_RESET_N_N0_SCAN_bw 1
 #define CPU_CTRL__RESET_CTRL__DEBUG_RESET_N_N0_SCAN_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reset control for the CPU, active low.
         uint64_t core0_reset_n_n0_scan :1;
+        // Reset control for the CPU, active low.
         uint64_t core1_reset_n_n0_scan :1;
+        // Reset control for the CPU, active low.
         uint64_t core2_reset_n_n0_scan :1;
+        // Reset control for the CPU, active low.
         uint64_t core3_reset_n_n0_scan :1;
+        // Writing a 1 to this register triggers a core reset pulse on core 0, timed by CORE_RESET_PULSE_COUNT.
+        // A 0 in core0_reset_n_n0_scan holds the core in reset for the whole pulse.
         uint64_t core0_reset_pulse_start_n0_scan :1;
+        // Writing a 1 to this register triggers a core reset pulse on core 1, timed by CORE_RESET_PULSE_COUNT.
+        // A 0 in core1_reset_n_n0_scan holds the core in reset for the whole pulse.
         uint64_t core1_reset_pulse_start_n0_scan :1;
+        // Writing a 1 to this register triggers a core reset pulse on core 2, timed by CORE_RESET_PULSE_COUNT.
+        // A 0 in core2_reset_n_n0_scan holds the core in reset for the whole pulse.
         uint64_t core2_reset_pulse_start_n0_scan :1;
+        // Writing a 1 to this register triggers a core reset pulse on core 3, timed by CORE_RESET_PULSE_COUNT.
+        // A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.
         uint64_t core3_reset_pulse_start_n0_scan :1;
+        // Cluster Uncore Reset, active low. Writing this register will only reset the uncore portion in the chipyard cluster.
+        // WARNING: using this can cause any outstanding axi requests to and from the cluster to cause timeouts/exceptions.
         uint64_t uncore_reset_n_n0_scan :1;
         uint64_t :15;
+        // Debug Module Reset, active low
         uint64_t debug_reset_n_n0_scan :1;
         uint64_t :39;
     } f;
@@ -86,22 +116,28 @@ typedef union {
 } cpu_ctrl__RESET_CTRL_t;
 
 // reg - cpu_ctrl::CORE_RESET_PULSE_COUNT
+// Cycles (clk_smc), minus one, from the start of a core reset pulse to reset assertion.
 #define CPU_CTRL__CORE_RESET_PULSE_COUNT__PRE_RESET_COUNT_bm 0xffff
 #define CPU_CTRL__CORE_RESET_PULSE_COUNT__PRE_RESET_COUNT_bp 0
 #define CPU_CTRL__CORE_RESET_PULSE_COUNT__PRE_RESET_COUNT_bw 16
 #define CPU_CTRL__CORE_RESET_PULSE_COUNT__PRE_RESET_COUNT_reset 0x8
+// Cycles (clk_smc), minus one, that a core reset pulse holds the core in reset.
 #define CPU_CTRL__CORE_RESET_PULSE_COUNT__POST_RESET_COUNT_bm 0xffff0000
 #define CPU_CTRL__CORE_RESET_PULSE_COUNT__POST_RESET_COUNT_bp 16
 #define CPU_CTRL__CORE_RESET_PULSE_COUNT__POST_RESET_COUNT_bw 16
 #define CPU_CTRL__CORE_RESET_PULSE_COUNT__POST_RESET_COUNT_reset 0x10
+// Logic low while performing core reset, logic high otherwise.
 #define CPU_CTRL__CORE_RESET_PULSE_COUNT__CORE_RESETS_DONE_bm 0xf00000000
 #define CPU_CTRL__CORE_RESET_PULSE_COUNT__CORE_RESETS_DONE_bp 32
 #define CPU_CTRL__CORE_RESET_PULSE_COUNT__CORE_RESETS_DONE_bw 4
 #define CPU_CTRL__CORE_RESET_PULSE_COUNT__CORE_RESETS_DONE_reset 0xf
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Cycles (clk_smc), minus one, from the start of a core reset pulse to reset assertion.
         uint64_t pre_reset_count :16;
+        // Cycles (clk_smc), minus one, that a core reset pulse holds the core in reset.
         uint64_t post_reset_count :16;
+        // Logic low while performing core reset, logic high otherwise.
         uint64_t core_resets_done :4;
         uint64_t :28;
     } f;
@@ -109,29 +145,45 @@ typedef union {
 } cpu_ctrl__CORE_RESET_PULSE_COUNT_t;
 
 // reg - cpu_ctrl::RESET_TIMEOUT
+// Cycles (clk_smc) a software reset may stay pending (withheld, waiting
+// for drain) before timeout. 0 = disabled, wait indefinitely.
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_VALUE_bm 0xffff
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_VALUE_bp 0
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_VALUE_bw 16
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_VALUE_reset 0x0
+// Timeout mode: 0 = give up and report error (stay withheld, do not apply);
+// 1 = force the reset on timeout.
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_MODE_bm 0x10000
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_MODE_bp 16
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_MODE_bw 1
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_MODE_reset 0x0
+// Live status: high while a requested software reset is applied at the cluster,
+// either after drain completes or after a force-mode timeout.
 #define CPU_CTRL__RESET_TIMEOUT__RESET_APPLIED_bm 0x100000000
 #define CPU_CTRL__RESET_TIMEOUT__RESET_APPLIED_bp 32
 #define CPU_CTRL__RESET_TIMEOUT__RESET_APPLIED_bw 1
 #define CPU_CTRL__RESET_TIMEOUT__RESET_APPLIED_reset 0x0
+// Status for the active software reset request: high after the request exceeds
+// timeout_value and remains high until the request is deasserted. Set in both modes.
 #define CPU_CTRL__RESET_TIMEOUT__RESET_TIMEOUT_bm 0x1000000000
 #define CPU_CTRL__RESET_TIMEOUT__RESET_TIMEOUT_bp 36
 #define CPU_CTRL__RESET_TIMEOUT__RESET_TIMEOUT_bw 1
 #define CPU_CTRL__RESET_TIMEOUT__RESET_TIMEOUT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Cycles (clk_smc) a software reset may stay pending (withheld, waiting
+        // for drain) before timeout. 0 = disabled, wait indefinitely.
         uint64_t timeout_value :16;
+        // Timeout mode: 0 = give up and report error (stay withheld, do not apply);
+        // 1 = force the reset on timeout.
         uint64_t timeout_mode :1;
         uint64_t :15;
+        // Live status: high while a requested software reset is applied at the cluster,
+        // either after drain completes or after a force-mode timeout.
         uint64_t reset_applied :1;
         uint64_t :3;
+        // Status for the active software reset request: high after the request exceeds
+        // timeout_value and remains high until the request is deasserted. Set in both modes.
         uint64_t reset_timeout :1;
         uint64_t :27;
     } f;
@@ -139,51 +191,69 @@ typedef union {
 } cpu_ctrl__RESET_TIMEOUT_t;
 
 // reg - cpu_ctrl::REFERENCE_COUNTER
+// Reference counter for the CPU. Write once, then poll this register until
+// the readback reflects the written value before writing again. The counter
+// keeps advancing, so the readback is at or just above the written value
+// rather than equal to it.
 #define CPU_CTRL__REFERENCE_COUNTER__RC_bm 0xffffffffffffffff
 #define CPU_CTRL__REFERENCE_COUNTER__RC_bp 0
 #define CPU_CTRL__REFERENCE_COUNTER__RC_bw 64
 #define CPU_CTRL__REFERENCE_COUNTER__RC_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reference counter for the CPU. Write once, then poll this register until
+        // the readback reflects the written value before writing again. The counter
+        // keeps advancing, so the readback is at or just above the written value
+        // rather than equal to it.
         uint64_t rc :64;
     } f;
     uint64_t w;
 } cpu_ctrl__REFERENCE_COUNTER_t;
 
 // reg - cpu_ctrl::WDT_TIMEOUT
+// Cycle count value that 2nd stage watchdog timer timeout should occur at. Defaults to 16384 cycles
 #define CPU_CTRL__WDT_TIMEOUT__DATA_bm 0xffffffff
 #define CPU_CTRL__WDT_TIMEOUT__DATA_bp 0
 #define CPU_CTRL__WDT_TIMEOUT__DATA_bw 32
 #define CPU_CTRL__WDT_TIMEOUT__DATA_reset 0x4000
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Cycle count value that 2nd stage watchdog timer timeout should occur at. Defaults to 16384 cycles
         uint32_t data :32;
     } f;
     uint32_t w;
 } cpu_ctrl__WDT_TIMEOUT_t;
 
 // reg - cpu_ctrl::WDT_TIMEOUT_RESET
+// Reset current cycle count value in 2nd stage watchdog timer
 #define CPU_CTRL__WDT_TIMEOUT_RESET__RESET_CYCLE_COUNT_0_bm 0x1
 #define CPU_CTRL__WDT_TIMEOUT_RESET__RESET_CYCLE_COUNT_0_bp 0
 #define CPU_CTRL__WDT_TIMEOUT_RESET__RESET_CYCLE_COUNT_0_bw 1
 #define CPU_CTRL__WDT_TIMEOUT_RESET__RESET_CYCLE_COUNT_0_reset 0x0
+// Reset current cycle count value in 2nd stage watchdog timer
 #define CPU_CTRL__WDT_TIMEOUT_RESET__RESET_CYCLE_COUNT_1_bm 0x2
 #define CPU_CTRL__WDT_TIMEOUT_RESET__RESET_CYCLE_COUNT_1_bp 1
 #define CPU_CTRL__WDT_TIMEOUT_RESET__RESET_CYCLE_COUNT_1_bw 1
 #define CPU_CTRL__WDT_TIMEOUT_RESET__RESET_CYCLE_COUNT_1_reset 0x0
+// Reset current cycle count value in 2nd stage watchdog timer
 #define CPU_CTRL__WDT_TIMEOUT_RESET__RESET_CYCLE_COUNT_2_bm 0x4
 #define CPU_CTRL__WDT_TIMEOUT_RESET__RESET_CYCLE_COUNT_2_bp 2
 #define CPU_CTRL__WDT_TIMEOUT_RESET__RESET_CYCLE_COUNT_2_bw 1
 #define CPU_CTRL__WDT_TIMEOUT_RESET__RESET_CYCLE_COUNT_2_reset 0x0
+// Reset current cycle count value in 2nd stage watchdog timer
 #define CPU_CTRL__WDT_TIMEOUT_RESET__RESET_CYCLE_COUNT_3_bm 0x8
 #define CPU_CTRL__WDT_TIMEOUT_RESET__RESET_CYCLE_COUNT_3_bp 3
 #define CPU_CTRL__WDT_TIMEOUT_RESET__RESET_CYCLE_COUNT_3_bw 1
 #define CPU_CTRL__WDT_TIMEOUT_RESET__RESET_CYCLE_COUNT_3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reset current cycle count value in 2nd stage watchdog timer
         uint32_t reset_cycle_count_0 :1;
+        // Reset current cycle count value in 2nd stage watchdog timer
         uint32_t reset_cycle_count_1 :1;
+        // Reset current cycle count value in 2nd stage watchdog timer
         uint32_t reset_cycle_count_2 :1;
+        // Reset current cycle count value in 2nd stage watchdog timer
         uint32_t reset_cycle_count_3 :1;
         uint32_t :28;
     } f;
@@ -191,12 +261,14 @@ typedef union {
 } cpu_ctrl__WDT_TIMEOUT_RESET_t;
 
 // reg - cpu_ctrl::TEST_CTRL
+// Test control register for the CPU
 #define CPU_CTRL__TEST_CTRL__DATA_bm 0xffffffff
 #define CPU_CTRL__TEST_CTRL__DATA_bp 0
 #define CPU_CTRL__TEST_CTRL__DATA_bw 32
 #define CPU_CTRL__TEST_CTRL__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Test control register for the CPU
         uint64_t data :32;
         uint64_t :32;
     } f;
@@ -204,12 +276,14 @@ typedef union {
 } cpu_ctrl__TEST_CTRL_t;
 
 // reg - cpu_ctrl::SCRATCH
+// Scratch register for the CPU
 #define CPU_CTRL__SCRATCH__DATA_bm 0xffffffff
 #define CPU_CTRL__SCRATCH__DATA_bp 0
 #define CPU_CTRL__SCRATCH__DATA_bw 32
 #define CPU_CTRL__SCRATCH__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Scratch register for the CPU
         uint64_t data :32;
         uint64_t :32;
     } f;
@@ -217,12 +291,14 @@ typedef union {
 } cpu_ctrl__SCRATCH_t;
 
 // reg - cpu_ctrl::WB_PC
+// Writeback PC value
 #define CPU_CTRL__WB_PC__PC_bm 0x3ffffffffffffff
 #define CPU_CTRL__WB_PC__PC_bp 0
 #define CPU_CTRL__WB_PC__PC_bw 58
 #define CPU_CTRL__WB_PC__PC_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Writeback PC value
         uint64_t pc :58;
         uint64_t :6;
     } f;
@@ -230,6 +306,7 @@ typedef union {
 } cpu_ctrl__WB_PC_t;
 
 // reg - cpu_ctrl::SMC_ATTRIBUTES
+// Indicates if this chiplet is primary (1) or secondary (0). Driven by strap.
 #define CPU_CTRL__SMC_ATTRIBUTES__CHIPLET_IS_PRIMARY_bm 0x1
 #define CPU_CTRL__SMC_ATTRIBUTES__CHIPLET_IS_PRIMARY_bp 0
 #define CPU_CTRL__SMC_ATTRIBUTES__CHIPLET_IS_PRIMARY_bw 1
@@ -239,6 +316,7 @@ typedef union {
 #define CPU_CTRL__SMC_ATTRIBUTES__NUM_CPU_INTERRUPTS_bm 0x3fe0000
 #define CPU_CTRL__SMC_ATTRIBUTES__NUM_CPU_INTERRUPTS_bp 17
 #define CPU_CTRL__SMC_ATTRIBUTES__NUM_CPU_INTERRUPTS_bw 9
+// Total SRAM size is 2 ^ value bytes
 #define CPU_CTRL__SMC_ATTRIBUTES__SRAM_SIZE_bm 0xfc000000
 #define CPU_CTRL__SMC_ATTRIBUTES__SRAM_SIZE_bp 26
 #define CPU_CTRL__SMC_ATTRIBUTES__SRAM_SIZE_bw 6
@@ -256,10 +334,12 @@ typedef union {
 #define CPU_CTRL__SMC_ATTRIBUTES__NUM_MAILBOXES_bw 6
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Indicates if this chiplet is primary (1) or secondary (0). Driven by strap.
         uint64_t chiplet_is_primary :1;
         uint64_t :7;
         uint64_t num_ext_interrupts :9;
         uint64_t num_cpu_interrupts :9;
+        // Total SRAM size is 2 ^ value bytes
         uint64_t sram_size :6;
         uint64_t no_output_remap :1;
         uint64_t num_cores :3;
@@ -271,12 +351,14 @@ typedef union {
 } cpu_ctrl__SMC_ATTRIBUTES_t;
 
 // reg - cpu_ctrl::MUTEX
+// HW mutex. Reads will attempt to acquire mutex, 1 on success. If the mutex is already acquired, the read will return 0. To release the mutex, write any value to the register.
 #define CPU_CTRL__MUTEX__MUTEX_bm 0x1
 #define CPU_CTRL__MUTEX__MUTEX_bp 0
 #define CPU_CTRL__MUTEX__MUTEX_bw 1
 #define CPU_CTRL__MUTEX__MUTEX_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // HW mutex. Reads will attempt to acquire mutex, 1 on success. If the mutex is already acquired, the read will return 0. To release the mutex, write any value to the register.
         uint64_t mutex :1;
         uint64_t :63;
     } f;
@@ -284,12 +366,16 @@ typedef union {
 } cpu_ctrl__MUTEX_t;
 
 // reg - cpu_ctrl::SEMA
+// 16-bit semaphore value to inc/dec. Writing to this register will inc/dec the semaphore value.
+// The written value is treated as a signed number using 2s compliment.
 #define CPU_CTRL__SEMA__SEMA_bm 0xffff
 #define CPU_CTRL__SEMA__SEMA_bp 0
 #define CPU_CTRL__SEMA__SEMA_bw 16
 #define CPU_CTRL__SEMA__SEMA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 16-bit semaphore value to inc/dec. Writing to this register will inc/dec the semaphore value.
+        // The written value is treated as a signed number using 2s compliment.
         uint64_t sema :16;
         uint64_t :48;
     } f;
@@ -297,66 +383,77 @@ typedef union {
 } cpu_ctrl__SEMA_t;
 
 // reg - cpu_ctrl::DUMMY_ROM_0
+// Word 0 of WFI loop
 #define CPU_CTRL__DUMMY_ROM_0__DUMMY_ROM_WORD_0_bm 0xffffffffffffffff
 #define CPU_CTRL__DUMMY_ROM_0__DUMMY_ROM_WORD_0_bp 0
 #define CPU_CTRL__DUMMY_ROM_0__DUMMY_ROM_WORD_0_bw 64
 #define CPU_CTRL__DUMMY_ROM_0__DUMMY_ROM_WORD_0_reset 0x145051300000517
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Word 0 of WFI loop
         uint64_t dummy_rom_word_0 :64;
     } f;
     uint64_t w;
 } cpu_ctrl__DUMMY_ROM_0_t;
 
 // reg - cpu_ctrl::DUMMY_ROM_1
+// Word 1 of WFI loop
 #define CPU_CTRL__DUMMY_ROM_1__DUMMY_ROM_WORD_1_bm 0xffffffffffffffff
 #define CPU_CTRL__DUMMY_ROM_1__DUMMY_ROM_WORD_1_bp 0
 #define CPU_CTRL__DUMMY_ROM_1__DUMMY_ROM_WORD_1_bw 64
 #define CPU_CTRL__DUMMY_ROM_1__DUMMY_ROM_WORD_1_reset 0xfff0069330551073
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Word 1 of WFI loop
         uint64_t dummy_rom_word_1 :64;
     } f;
     uint64_t w;
 } cpu_ctrl__DUMMY_ROM_1_t;
 
 // reg - cpu_ctrl::DUMMY_ROM_2
+// Word 2 of WFI loop
 #define CPU_CTRL__DUMMY_ROM_2__DUMMY_ROM_WORD_2_bm 0xffffffffffffffff
 #define CPU_CTRL__DUMMY_ROM_2__DUMMY_ROM_WORD_2_bp 0
 #define CPU_CTRL__DUMMY_ROM_2__DUMMY_ROM_WORD_2_bw 64
 #define CPU_CTRL__DUMMY_ROM_2__DUMMY_ROM_WORD_2_reset 0x105000733046b073
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Word 2 of WFI loop
         uint64_t dummy_rom_word_2 :64;
     } f;
     uint64_t w;
 } cpu_ctrl__DUMMY_ROM_2_t;
 
 // reg - cpu_ctrl::DUMMY_ROM_3
+// Word 3 of WFI loop
 #define CPU_CTRL__DUMMY_ROM_3__DUMMY_ROM_WORD_3_bm 0xffffffffffffffff
 #define CPU_CTRL__DUMMY_ROM_3__DUMMY_ROM_WORD_3_bp 0
 #define CPU_CTRL__DUMMY_ROM_3__DUMMY_ROM_WORD_3_bw 64
 #define CPU_CTRL__DUMMY_ROM_3__DUMMY_ROM_WORD_3_reset 0xffdff06f
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Word 3 of WFI loop
         uint64_t dummy_rom_word_3 :64;
     } f;
     uint64_t w;
 } cpu_ctrl__DUMMY_ROM_3_t;
 
 // reg - cpu_ctrl::DUMMY_ROM_NULL
+// Cache line size is 64 bytes so want to ensure no random data is read when reading dummy rom
 #define CPU_CTRL__DUMMY_ROM_NULL__DUMMY_ROM_NULL_bm 0xffffffffffffffff
 #define CPU_CTRL__DUMMY_ROM_NULL__DUMMY_ROM_NULL_bp 0
 #define CPU_CTRL__DUMMY_ROM_NULL__DUMMY_ROM_NULL_bw 64
 #define CPU_CTRL__DUMMY_ROM_NULL__DUMMY_ROM_NULL_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Cache line size is 64 bytes so want to ensure no random data is read when reading dummy rom
         uint64_t dummy_rom_null :64;
     } f;
     uint64_t w;
 } cpu_ctrl__DUMMY_ROM_NULL_t;
 
 // addrmap - cpu_ctrl
+// Per-core reset control and status, reset timing, chip configuration, mailbox, and boot-ROM stub registers for the SMC CPU cluster.
 typedef struct __attribute__ ((__packed__)) {
     cpu_ctrl__RESET_VECTOR_t RESET_VECTOR[4];
     cpu_ctrl__RESET_CTRL_t RESET_CTRL;

@@ -14,36 +14,52 @@ extern "C" {
 #include <assert.h>
 
 // reg - ndm_reset::NDMRESET_REQUEST
+// Bit i is the NDM reset request from external CPU cluster i.
+// Bits below ndmreset_cluster_count follow the request input.
+// Bits at and above that count read as 0. The field holds up to 32 clusters.
 #define NDM_RESET__NDMRESET_REQUEST__NDMRESET_REQUEST_bm 0xffffffff
 #define NDM_RESET__NDMRESET_REQUEST__NDMRESET_REQUEST_bp 0
 #define NDM_RESET__NDMRESET_REQUEST__NDMRESET_REQUEST_bw 32
 #define NDM_RESET__NDMRESET_REQUEST__NDMRESET_REQUEST_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Bit i is the NDM reset request from external CPU cluster i.
+        // Bits below ndmreset_cluster_count follow the request input.
+        // Bits at and above that count read as 0. The field holds up to 32 clusters.
         uint32_t ndmreset_request :32;
     } f;
     uint32_t w;
 } ndm_reset__NDMRESET_REQUEST_t;
 
 // reg - ndm_reset::NDMRESET_PROCESS
+// Bit i is the firmware response to the NDM reset request from external CPU cluster i.
+// Bits below ndmreset_cluster_count are driven on the process output.
+// Bits at and above that count are stored and are not driven. The field holds up to 32 clusters.
 #define NDM_RESET__NDMRESET_PROCESS__NDMRESET_PROCESS_bm 0xffffffff
 #define NDM_RESET__NDMRESET_PROCESS__NDMRESET_PROCESS_bp 0
 #define NDM_RESET__NDMRESET_PROCESS__NDMRESET_PROCESS_bw 32
 #define NDM_RESET__NDMRESET_PROCESS__NDMRESET_PROCESS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Bit i is the firmware response to the NDM reset request from external CPU cluster i.
+        // Bits below ndmreset_cluster_count are driven on the process output.
+        // Bits at and above that count are stored and are not driven. The field holds up to 32 clusters.
         uint32_t ndmreset_process :32;
     } f;
     uint32_t w;
 } ndm_reset__NDMRESET_PROCESS_t;
 
 // reg - ndm_reset::NDMRESET_CLUSTER_COUNT
+// Number of external CPU clusters connected on the low bits of NDMRESET_REQUEST and NDMRESET_PROCESS.
+// Software masks those registers with this value. The maximum is 32.
 #define NDM_RESET__NDMRESET_CLUSTER_COUNT__NDMRESET_CLUSTER_COUNT_bm 0xff
 #define NDM_RESET__NDMRESET_CLUSTER_COUNT__NDMRESET_CLUSTER_COUNT_bp 0
 #define NDM_RESET__NDMRESET_CLUSTER_COUNT__NDMRESET_CLUSTER_COUNT_bw 8
 #define NDM_RESET__NDMRESET_CLUSTER_COUNT__NDMRESET_CLUSTER_COUNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Number of external CPU clusters connected on the low bits of NDMRESET_REQUEST and NDMRESET_PROCESS.
+        // Software masks those registers with this value. The maximum is 32.
         uint32_t ndmreset_cluster_count :8;
         uint32_t :24;
     } f;
@@ -51,6 +67,7 @@ typedef union {
 } ndm_reset__NDMRESET_CLUSTER_COUNT_t;
 
 // addrmap - ndm_reset
+// Per-cluster NDM reset handshake with an external CPU cluster debug module
 typedef struct __attribute__ ((__packed__)) {
     ndm_reset__NDMRESET_REQUEST_t NDMRESET_REQUEST;
     ndm_reset__NDMRESET_PROCESS_t NDMRESET_PROCESS;

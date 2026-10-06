@@ -14,64 +14,84 @@ extern "C" {
 #include <assert.h>
 
 // reg - entropy_source::COMPONENT_ID
+// Identifies the entropy-source register interface.
+// Entropy-source component identifier.
 #define ENTROPY_SOURCE__COMPONENT_ID__NAME_bm 0xffff
 #define ENTROPY_SOURCE__COMPONENT_ID__NAME_bp 0
 #define ENTROPY_SOURCE__COMPONENT_ID__NAME_bw 16
 #define ENTROPY_SOURCE__COMPONENT_ID__NAME_reset 0x1
+// Minor interface version.
 #define ENTROPY_SOURCE__COMPONENT_ID__MINOR_VERSION_bm 0xf000000
 #define ENTROPY_SOURCE__COMPONENT_ID__MINOR_VERSION_bp 24
 #define ENTROPY_SOURCE__COMPONENT_ID__MINOR_VERSION_bw 4
 #define ENTROPY_SOURCE__COMPONENT_ID__MINOR_VERSION_reset 0x1
+// Major interface version.
 #define ENTROPY_SOURCE__COMPONENT_ID__MAJOR_VERSION_bm 0xf0000000
 #define ENTROPY_SOURCE__COMPONENT_ID__MAJOR_VERSION_bp 28
 #define ENTROPY_SOURCE__COMPONENT_ID__MAJOR_VERSION_bw 4
 #define ENTROPY_SOURCE__COMPONENT_ID__MAJOR_VERSION_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Entropy-source component identifier.
         uint32_t NAME :16;
         uint32_t :8;
+        // Minor interface version.
         uint32_t MINOR_VERSION :4;
+        // Major interface version.
         uint32_t MAJOR_VERSION :4;
     } f;
     uint32_t w;
 } entropy_source__COMPONENT_ID_t;
 
 // reg - entropy_source::CTRL
+// Controls entropy generation and conditioning.
+// Reserved; reads zero and ignores writes.
 #define ENTROPY_SOURCE__CTRL__RSVD0_bm 0x1
 #define ENTROPY_SOURCE__CTRL__RSVD0_bp 0
 #define ENTROPY_SOURCE__CTRL__RSVD0_bw 1
 #define ENTROPY_SOURCE__CTRL__RSVD0_reset 0x0
+// Enables startup health testing and entropy output. Clearing this field holds the main state machine idle. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__CTRL__MODULE_ENABLE_bm 0x2
 #define ENTROPY_SOURCE__CTRL__MODULE_ENABLE_bp 1
 #define ENTROPY_SOURCE__CTRL__MODULE_ENABLE_bw 1
 #define ENTROPY_SOURCE__CTRL__MODULE_ENABLE_reset 0x1
+// Enables per-generator automatic detuning after a lane health-test failure. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__CTRL__AUTOTUNE_ENABLE_bm 0x10
 #define ENTROPY_SOURCE__CTRL__AUTOTUNE_ENABLE_bp 4
 #define ENTROPY_SOURCE__CTRL__AUTOTUNE_ENABLE_bw 1
 #define ENTROPY_SOURCE__CTRL__AUTOTUNE_ENABLE_reset 0x0
+// Bypasses BIW extraction and writes the twelve generator bytes to the FIFO as three 32-bit words. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__CTRL__BYPASS_ENTROPY_COMPRESSOR_bm 0x100
 #define ENTROPY_SOURCE__CTRL__BYPASS_ENTROPY_COMPRESSOR_bp 8
 #define ENTROPY_SOURCE__CTRL__BYPASS_ENTROPY_COMPRESSOR_bw 1
 #define ENTROPY_SOURCE__CTRL__BYPASS_ENTROPY_COMPRESSOR_reset 0x0
+// Selects every (N+1)th decorrelator output while BIW extraction is bypassed. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__CTRL__DOWNSAMPLE_RATE_bm 0x3ff0000
 #define ENTROPY_SOURCE__CTRL__DOWNSAMPLE_RATE_bp 16
 #define ENTROPY_SOURCE__CTRL__DOWNSAMPLE_RATE_bw 10
 #define ENTROPY_SOURCE__CTRL__DOWNSAMPLE_RATE_reset 0x0
+// Enables SHA-256 conditioning of each 512-bit BIW input block into a 256-bit digest. When clear, BIW words pass directly to the FIFO. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__CTRL__SHA256_WHITENING_ENABLE_bm 0x10000000
 #define ENTROPY_SOURCE__CTRL__SHA256_WHITENING_ENABLE_bp 28
 #define ENTROPY_SOURCE__CTRL__SHA256_WHITENING_ENABLE_bw 1
 #define ENTROPY_SOURCE__CTRL__SHA256_WHITENING_ENABLE_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reserved; reads zero and ignores writes.
         uint32_t RSVD0 :1;
+        // Enables startup health testing and entropy output. Clearing this field holds the main state machine idle. FIPS_LOCK.LOCK prevents software changes.
         uint32_t MODULE_ENABLE :1;
         uint32_t :2;
+        // Enables per-generator automatic detuning after a lane health-test failure. FIPS_LOCK.LOCK prevents software changes.
         uint32_t AUTOTUNE_ENABLE :1;
         uint32_t :3;
+        // Bypasses BIW extraction and writes the twelve generator bytes to the FIFO as three 32-bit words. FIPS_LOCK.LOCK prevents software changes.
         uint32_t BYPASS_ENTROPY_COMPRESSOR :1;
         uint32_t :7;
+        // Selects every (N+1)th decorrelator output while BIW extraction is bypassed. FIPS_LOCK.LOCK prevents software changes.
         uint32_t DOWNSAMPLE_RATE :10;
         uint32_t :2;
+        // Enables SHA-256 conditioning of each 512-bit BIW input block into a 256-bit digest. When clear, BIW words pass directly to the FIFO. FIPS_LOCK.LOCK prevents software changes.
         uint32_t SHA256_WHITENING_ENABLE :1;
         uint32_t :3;
     } f;
@@ -79,17 +99,22 @@ typedef union {
 } entropy_source__CTRL_t;
 
 // reg - entropy_source::DEBUG_CTRL
+// Controls the external debug observation pin. FIPS_LOCK.LOCK prevents software changes to the signal selection and divider.
+// Selects the observed signal: generator noise bits [11:0], sample clocks [27:16], BIW data [63:32], FIFO input [95:64], or generator bytes [223:128]. Other selections drive the divider input low. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__DEBUG_CTRL__SELECT_SIGNAL_bm 0xff
 #define ENTROPY_SOURCE__DEBUG_CTRL__SELECT_SIGNAL_bp 0
 #define ENTROPY_SOURCE__DEBUG_CTRL__SELECT_SIGNAL_bw 8
 #define ENTROPY_SOURCE__DEBUG_CTRL__SELECT_SIGNAL_reset 0x0
+// Selects observation division by 1, 2, 4, 8, 16, 32, 64, or 128. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__DEBUG_CTRL__SELECT_FREQ_DIV_bm 0x700
 #define ENTROPY_SOURCE__DEBUG_CTRL__SELECT_FREQ_DIV_bp 8
 #define ENTROPY_SOURCE__DEBUG_CTRL__SELECT_FREQ_DIV_bw 3
 #define ENTROPY_SOURCE__DEBUG_CTRL__SELECT_FREQ_DIV_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Selects the observed signal: generator noise bits [11:0], sample clocks [27:16], BIW data [63:32], FIFO input [95:64], or generator bytes [223:128]. Other selections drive the divider input low. FIPS_LOCK.LOCK prevents software changes.
         uint32_t SELECT_SIGNAL :8;
+        // Selects observation division by 1, 2, 4, 8, 16, 32, 64, or 128. FIPS_LOCK.LOCK prevents software changes.
         uint32_t SELECT_FREQ_DIV :3;
         uint32_t :21;
     } f;
@@ -97,54 +122,71 @@ typedef union {
 } entropy_source__DEBUG_CTRL_t;
 
 // reg - entropy_source::INTR_STATUS
+// Reports latched interrupt status; write one to clear a bit.
+// Indicates a failure in the 32-bit entropy-stream health tests. Write one to clear.
 #define ENTROPY_SOURCE__INTR_STATUS__HEALTH_TEST_FAILED_bm 0x1
 #define ENTROPY_SOURCE__INTR_STATUS__HEALTH_TEST_FAILED_bp 0
 #define ENTROPY_SOURCE__INTR_STATUS__HEALTH_TEST_FAILED_bw 1
 #define ENTROPY_SOURCE__INTR_STATUS__HEALTH_TEST_FAILED_reset 0x0
+// Indicates a FIFO integrity error. Write one to clear.
 #define ENTROPY_SOURCE__INTR_STATUS__FIFO_ERROR_bm 0x10
 #define ENTROPY_SOURCE__INTR_STATUS__FIFO_ERROR_bp 4
 #define ENTROPY_SOURCE__INTR_STATUS__FIFO_ERROR_bw 1
 #define ENTROPY_SOURCE__INTR_STATUS__FIFO_ERROR_reset 0x0
+// Indicates that a main FIFO write was discarded while full. Write one to clear.
 #define ENTROPY_SOURCE__INTR_STATUS__FIFO_OVERFLOW_bm 0x100
 #define ENTROPY_SOURCE__INTR_STATUS__FIFO_OVERFLOW_bp 8
 #define ENTROPY_SOURCE__INTR_STATUS__FIFO_OVERFLOW_bw 1
 #define ENTROPY_SOURCE__INTR_STATUS__FIFO_OVERFLOW_reset 0x0
+// Indicates that software read the empty main FIFO. Write one to clear.
 #define ENTROPY_SOURCE__INTR_STATUS__FIFO_UNDERFLOW_bm 0x1000
 #define ENTROPY_SOURCE__INTR_STATUS__FIFO_UNDERFLOW_bp 12
 #define ENTROPY_SOURCE__INTR_STATUS__FIFO_UNDERFLOW_bw 1
 #define ENTROPY_SOURCE__INTR_STATUS__FIFO_UNDERFLOW_reset 0x0
+// Indicates a persistent health-test failure or health-test counter error. Write one to clear.
 #define ENTROPY_SOURCE__INTR_STATUS__PERSISTENT_FAILURE_bm 0x10000
 #define ENTROPY_SOURCE__INTR_STATUS__PERSISTENT_FAILURE_bp 16
 #define ENTROPY_SOURCE__INTR_STATUS__PERSISTENT_FAILURE_bw 1
 #define ENTROPY_SOURCE__INTR_STATUS__PERSISTENT_FAILURE_reset 0x0
+// Indicates a per-generator health-test failure while automatic detuning is enabled. Write one to clear.
 #define ENTROPY_SOURCE__INTR_STATUS__AUTOTUNE_FAIL_bm 0x100000
 #define ENTROPY_SOURCE__INTR_STATUS__AUTOTUNE_FAIL_bp 20
 #define ENTROPY_SOURCE__INTR_STATUS__AUTOTUNE_FAIL_bw 1
 #define ENTROPY_SOURCE__INTR_STATUS__AUTOTUNE_FAIL_reset 0x0
+// Indicates that a BIW observe FIFO word was discarded while full. Write one to clear.
 #define ENTROPY_SOURCE__INTR_STATUS__BIW_OBS_OVERFLOW_bm 0x1000000
 #define ENTROPY_SOURCE__INTR_STATUS__BIW_OBS_OVERFLOW_bp 24
 #define ENTROPY_SOURCE__INTR_STATUS__BIW_OBS_OVERFLOW_bw 1
 #define ENTROPY_SOURCE__INTR_STATUS__BIW_OBS_OVERFLOW_reset 0x0
+// Indicates that a raw-noise observe FIFO word was discarded while full. Write one to clear.
 #define ENTROPY_SOURCE__INTR_STATUS__NOISE_OBS_OVERFLOW_bm 0x10000000
 #define ENTROPY_SOURCE__INTR_STATUS__NOISE_OBS_OVERFLOW_bp 28
 #define ENTROPY_SOURCE__INTR_STATUS__NOISE_OBS_OVERFLOW_bw 1
 #define ENTROPY_SOURCE__INTR_STATUS__NOISE_OBS_OVERFLOW_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Indicates a failure in the 32-bit entropy-stream health tests. Write one to clear.
         uint32_t HEALTH_TEST_FAILED :1;
         uint32_t :3;
+        // Indicates a FIFO integrity error. Write one to clear.
         uint32_t FIFO_ERROR :1;
         uint32_t :3;
+        // Indicates that a main FIFO write was discarded while full. Write one to clear.
         uint32_t FIFO_OVERFLOW :1;
         uint32_t :3;
+        // Indicates that software read the empty main FIFO. Write one to clear.
         uint32_t FIFO_UNDERFLOW :1;
         uint32_t :3;
+        // Indicates a persistent health-test failure or health-test counter error. Write one to clear.
         uint32_t PERSISTENT_FAILURE :1;
         uint32_t :3;
+        // Indicates a per-generator health-test failure while automatic detuning is enabled. Write one to clear.
         uint32_t AUTOTUNE_FAIL :1;
         uint32_t :3;
+        // Indicates that a BIW observe FIFO word was discarded while full. Write one to clear.
         uint32_t BIW_OBS_OVERFLOW :1;
         uint32_t :3;
+        // Indicates that a raw-noise observe FIFO word was discarded while full. Write one to clear.
         uint32_t NOISE_OBS_OVERFLOW :1;
         uint32_t :3;
     } f;
@@ -152,54 +194,71 @@ typedef union {
 } entropy_source__INTR_STATUS_t;
 
 // reg - entropy_source::INTR_ENABLE
+// Enables individual interrupt sources.
+// Enables the health-test failure interrupt.
 #define ENTROPY_SOURCE__INTR_ENABLE__HEALTH_TEST_FAILED_bm 0x1
 #define ENTROPY_SOURCE__INTR_ENABLE__HEALTH_TEST_FAILED_bp 0
 #define ENTROPY_SOURCE__INTR_ENABLE__HEALTH_TEST_FAILED_bw 1
 #define ENTROPY_SOURCE__INTR_ENABLE__HEALTH_TEST_FAILED_reset 0x0
+// Enables the FIFO integrity-error interrupt.
 #define ENTROPY_SOURCE__INTR_ENABLE__FIFO_ERROR_bm 0x10
 #define ENTROPY_SOURCE__INTR_ENABLE__FIFO_ERROR_bp 4
 #define ENTROPY_SOURCE__INTR_ENABLE__FIFO_ERROR_bw 1
 #define ENTROPY_SOURCE__INTR_ENABLE__FIFO_ERROR_reset 0x0
+// Enables the main FIFO overflow interrupt.
 #define ENTROPY_SOURCE__INTR_ENABLE__FIFO_OVERFLOW_bm 0x100
 #define ENTROPY_SOURCE__INTR_ENABLE__FIFO_OVERFLOW_bp 8
 #define ENTROPY_SOURCE__INTR_ENABLE__FIFO_OVERFLOW_bw 1
 #define ENTROPY_SOURCE__INTR_ENABLE__FIFO_OVERFLOW_reset 0x0
+// Enables the main FIFO underflow interrupt.
 #define ENTROPY_SOURCE__INTR_ENABLE__FIFO_UNDERFLOW_bm 0x1000
 #define ENTROPY_SOURCE__INTR_ENABLE__FIFO_UNDERFLOW_bp 12
 #define ENTROPY_SOURCE__INTR_ENABLE__FIFO_UNDERFLOW_bw 1
 #define ENTROPY_SOURCE__INTR_ENABLE__FIFO_UNDERFLOW_reset 0x0
+// Enables the persistent-failure interrupt.
 #define ENTROPY_SOURCE__INTR_ENABLE__PERSISTENT_FAILURE_bm 0x10000
 #define ENTROPY_SOURCE__INTR_ENABLE__PERSISTENT_FAILURE_bp 16
 #define ENTROPY_SOURCE__INTR_ENABLE__PERSISTENT_FAILURE_bw 1
 #define ENTROPY_SOURCE__INTR_ENABLE__PERSISTENT_FAILURE_reset 0x0
+// Enables the automatic-detuning failure interrupt.
 #define ENTROPY_SOURCE__INTR_ENABLE__AUTOTUNE_FAIL_bm 0x100000
 #define ENTROPY_SOURCE__INTR_ENABLE__AUTOTUNE_FAIL_bp 20
 #define ENTROPY_SOURCE__INTR_ENABLE__AUTOTUNE_FAIL_bw 1
 #define ENTROPY_SOURCE__INTR_ENABLE__AUTOTUNE_FAIL_reset 0x0
+// Enables the BIW observe FIFO overflow interrupt.
 #define ENTROPY_SOURCE__INTR_ENABLE__BIW_OBS_OVERFLOW_bm 0x1000000
 #define ENTROPY_SOURCE__INTR_ENABLE__BIW_OBS_OVERFLOW_bp 24
 #define ENTROPY_SOURCE__INTR_ENABLE__BIW_OBS_OVERFLOW_bw 1
 #define ENTROPY_SOURCE__INTR_ENABLE__BIW_OBS_OVERFLOW_reset 0x0
+// Enables the raw-noise observe FIFO overflow interrupt.
 #define ENTROPY_SOURCE__INTR_ENABLE__NOISE_OBS_OVERFLOW_bm 0x10000000
 #define ENTROPY_SOURCE__INTR_ENABLE__NOISE_OBS_OVERFLOW_bp 28
 #define ENTROPY_SOURCE__INTR_ENABLE__NOISE_OBS_OVERFLOW_bw 1
 #define ENTROPY_SOURCE__INTR_ENABLE__NOISE_OBS_OVERFLOW_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enables the health-test failure interrupt.
         uint32_t HEALTH_TEST_FAILED :1;
         uint32_t :3;
+        // Enables the FIFO integrity-error interrupt.
         uint32_t FIFO_ERROR :1;
         uint32_t :3;
+        // Enables the main FIFO overflow interrupt.
         uint32_t FIFO_OVERFLOW :1;
         uint32_t :3;
+        // Enables the main FIFO underflow interrupt.
         uint32_t FIFO_UNDERFLOW :1;
         uint32_t :3;
+        // Enables the persistent-failure interrupt.
         uint32_t PERSISTENT_FAILURE :1;
         uint32_t :3;
+        // Enables the automatic-detuning failure interrupt.
         uint32_t AUTOTUNE_FAIL :1;
         uint32_t :3;
+        // Enables the BIW observe FIFO overflow interrupt.
         uint32_t BIW_OBS_OVERFLOW :1;
         uint32_t :3;
+        // Enables the raw-noise observe FIFO overflow interrupt.
         uint32_t NOISE_OBS_OVERFLOW :1;
         uint32_t :3;
     } f;
@@ -207,54 +266,71 @@ typedef union {
 } entropy_source__INTR_ENABLE_t;
 
 // reg - entropy_source::INTR_TEST
+// Triggers individual interrupt sources for testing.
+// Write one to pulse the health-test failure interrupt source.
 #define ENTROPY_SOURCE__INTR_TEST__HEALTH_TEST_FAILED_bm 0x1
 #define ENTROPY_SOURCE__INTR_TEST__HEALTH_TEST_FAILED_bp 0
 #define ENTROPY_SOURCE__INTR_TEST__HEALTH_TEST_FAILED_bw 1
 #define ENTROPY_SOURCE__INTR_TEST__HEALTH_TEST_FAILED_reset 0x0
+// Write one to pulse the FIFO integrity-error interrupt source.
 #define ENTROPY_SOURCE__INTR_TEST__FIFO_ERROR_bm 0x10
 #define ENTROPY_SOURCE__INTR_TEST__FIFO_ERROR_bp 4
 #define ENTROPY_SOURCE__INTR_TEST__FIFO_ERROR_bw 1
 #define ENTROPY_SOURCE__INTR_TEST__FIFO_ERROR_reset 0x0
+// Write one to pulse the main FIFO overflow interrupt source.
 #define ENTROPY_SOURCE__INTR_TEST__FIFO_OVERFLOW_bm 0x100
 #define ENTROPY_SOURCE__INTR_TEST__FIFO_OVERFLOW_bp 8
 #define ENTROPY_SOURCE__INTR_TEST__FIFO_OVERFLOW_bw 1
 #define ENTROPY_SOURCE__INTR_TEST__FIFO_OVERFLOW_reset 0x0
+// Write one to pulse the main FIFO underflow interrupt source.
 #define ENTROPY_SOURCE__INTR_TEST__FIFO_UNDERFLOW_bm 0x1000
 #define ENTROPY_SOURCE__INTR_TEST__FIFO_UNDERFLOW_bp 12
 #define ENTROPY_SOURCE__INTR_TEST__FIFO_UNDERFLOW_bw 1
 #define ENTROPY_SOURCE__INTR_TEST__FIFO_UNDERFLOW_reset 0x0
+// Write one to pulse the persistent-failure interrupt source.
 #define ENTROPY_SOURCE__INTR_TEST__PERSISTENT_FAILURE_bm 0x10000
 #define ENTROPY_SOURCE__INTR_TEST__PERSISTENT_FAILURE_bp 16
 #define ENTROPY_SOURCE__INTR_TEST__PERSISTENT_FAILURE_bw 1
 #define ENTROPY_SOURCE__INTR_TEST__PERSISTENT_FAILURE_reset 0x0
+// Write one to pulse the automatic-detuning failure interrupt source.
 #define ENTROPY_SOURCE__INTR_TEST__AUTOTUNE_FAIL_bm 0x100000
 #define ENTROPY_SOURCE__INTR_TEST__AUTOTUNE_FAIL_bp 20
 #define ENTROPY_SOURCE__INTR_TEST__AUTOTUNE_FAIL_bw 1
 #define ENTROPY_SOURCE__INTR_TEST__AUTOTUNE_FAIL_reset 0x0
+// Write one to pulse the BIW observe FIFO overflow interrupt source.
 #define ENTROPY_SOURCE__INTR_TEST__BIW_OBS_OVERFLOW_bm 0x1000000
 #define ENTROPY_SOURCE__INTR_TEST__BIW_OBS_OVERFLOW_bp 24
 #define ENTROPY_SOURCE__INTR_TEST__BIW_OBS_OVERFLOW_bw 1
 #define ENTROPY_SOURCE__INTR_TEST__BIW_OBS_OVERFLOW_reset 0x0
+// Write one to pulse the raw-noise observe FIFO overflow interrupt source.
 #define ENTROPY_SOURCE__INTR_TEST__NOISE_OBS_OVERFLOW_bm 0x10000000
 #define ENTROPY_SOURCE__INTR_TEST__NOISE_OBS_OVERFLOW_bp 28
 #define ENTROPY_SOURCE__INTR_TEST__NOISE_OBS_OVERFLOW_bw 1
 #define ENTROPY_SOURCE__INTR_TEST__NOISE_OBS_OVERFLOW_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write one to pulse the health-test failure interrupt source.
         uint32_t HEALTH_TEST_FAILED :1;
         uint32_t :3;
+        // Write one to pulse the FIFO integrity-error interrupt source.
         uint32_t FIFO_ERROR :1;
         uint32_t :3;
+        // Write one to pulse the main FIFO overflow interrupt source.
         uint32_t FIFO_OVERFLOW :1;
         uint32_t :3;
+        // Write one to pulse the main FIFO underflow interrupt source.
         uint32_t FIFO_UNDERFLOW :1;
         uint32_t :3;
+        // Write one to pulse the persistent-failure interrupt source.
         uint32_t PERSISTENT_FAILURE :1;
         uint32_t :3;
+        // Write one to pulse the automatic-detuning failure interrupt source.
         uint32_t AUTOTUNE_FAIL :1;
         uint32_t :3;
+        // Write one to pulse the BIW observe FIFO overflow interrupt source.
         uint32_t BIW_OBS_OVERFLOW :1;
         uint32_t :3;
+        // Write one to pulse the raw-noise observe FIFO overflow interrupt source.
         uint32_t NOISE_OBS_OVERFLOW :1;
         uint32_t :3;
     } f;
@@ -262,23 +338,30 @@ typedef union {
 } entropy_source__INTR_TEST_t;
 
 // reg - entropy_source::SHA256_STATUS
+// Reports SHA-256 conditioner progress.
+// Indicates that SHA-256 processing or digest output is active.
 #define ENTROPY_SOURCE__SHA256_STATUS__BUSY_bm 0x1
 #define ENTROPY_SOURCE__SHA256_STATUS__BUSY_bp 0
 #define ENTROPY_SOURCE__SHA256_STATUS__BUSY_bw 1
 #define ENTROPY_SOURCE__SHA256_STATUS__BUSY_reset 0x0
+// Number of 32-bit words currently accumulated in the 512-bit input block.
 #define ENTROPY_SOURCE__SHA256_STATUS__INPUT_COUNT_bm 0xf0
 #define ENTROPY_SOURCE__SHA256_STATUS__INPUT_COUNT_bp 4
 #define ENTROPY_SOURCE__SHA256_STATUS__INPUT_COUNT_bw 4
 #define ENTROPY_SOURCE__SHA256_STATUS__INPUT_COUNT_reset 0x0
+// Number of 32-bit digest words remaining for output. Reports 8 when a digest becomes available, decrements through 0 as words are accepted, and remains 0 while idle or bypassed.
 #define ENTROPY_SOURCE__SHA256_STATUS__OUTPUT_COUNT_bm 0xf00
 #define ENTROPY_SOURCE__SHA256_STATUS__OUTPUT_COUNT_bp 8
 #define ENTROPY_SOURCE__SHA256_STATUS__OUTPUT_COUNT_bw 4
 #define ENTROPY_SOURCE__SHA256_STATUS__OUTPUT_COUNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Indicates that SHA-256 processing or digest output is active.
         uint32_t BUSY :1;
         uint32_t :3;
+        // Number of 32-bit words currently accumulated in the 512-bit input block.
         uint32_t INPUT_COUNT :4;
+        // Number of 32-bit digest words remaining for output. Reports 8 when a digest becomes available, decrements through 0 as words are accepted, and remains 0 while idle or bypassed.
         uint32_t OUTPUT_COUNT :4;
         uint32_t :20;
     } f;
@@ -286,18 +369,23 @@ typedef union {
 } entropy_source__SHA256_STATUS_t;
 
 // reg - entropy_source::FIFO_CTRL
+// Controls the 64-entry main entropy FIFO.
+// Enables FIFO writes. Reads remain available while writes are disabled. Words offered to the FIFO are also the DRBG seed stream, which this field does not gate. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__FIFO_CTRL__ENABLE_bm 0x1
 #define ENTROPY_SOURCE__FIFO_CTRL__ENABLE_bp 0
 #define ENTROPY_SOURCE__FIFO_CTRL__ENABLE_bw 1
 #define ENTROPY_SOURCE__FIFO_CTRL__ENABLE_reset 0x1
+// XORs each incoming word with the FIFO entry 32 positions ahead of the write pointer. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__FIFO_CTRL__ENTROPY_CHURN_ENABLE_bm 0x10
 #define ENTROPY_SOURCE__FIFO_CTRL__ENTROPY_CHURN_ENABLE_bp 4
 #define ENTROPY_SOURCE__FIFO_CTRL__ENTROPY_CHURN_ENABLE_bw 1
 #define ENTROPY_SOURCE__FIFO_CTRL__ENTROPY_CHURN_ENABLE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enables FIFO writes. Reads remain available while writes are disabled. Words offered to the FIFO are also the DRBG seed stream, which this field does not gate. FIPS_LOCK.LOCK prevents software changes.
         uint32_t ENABLE :1;
         uint32_t :3;
+        // XORs each incoming word with the FIFO entry 32 positions ahead of the write pointer. FIPS_LOCK.LOCK prevents software changes.
         uint32_t ENTROPY_CHURN_ENABLE :1;
         uint32_t :27;
     } f;
@@ -305,24 +393,31 @@ typedef union {
 } entropy_source__FIFO_CTRL_t;
 
 // reg - entropy_source::FIFO_STATUS
+// Reports main FIFO occupancy and pointers.
+// Number of valid 32-bit words in the FIFO.
 #define ENTROPY_SOURCE__FIFO_STATUS__LEVEL_bm 0x7f
 #define ENTROPY_SOURCE__FIFO_STATUS__LEVEL_bp 0
 #define ENTROPY_SOURCE__FIFO_STATUS__LEVEL_bw 7
 #define ENTROPY_SOURCE__FIFO_STATUS__LEVEL_reset 0x0
+// Current FIFO write pointer.
 #define ENTROPY_SOURCE__FIFO_STATUS__WPTR_bm 0x3f00
 #define ENTROPY_SOURCE__FIFO_STATUS__WPTR_bp 8
 #define ENTROPY_SOURCE__FIFO_STATUS__WPTR_bw 6
 #define ENTROPY_SOURCE__FIFO_STATUS__WPTR_reset 0x0
+// Current FIFO read pointer.
 #define ENTROPY_SOURCE__FIFO_STATUS__RPTR_bm 0x3f0000
 #define ENTROPY_SOURCE__FIFO_STATUS__RPTR_bp 16
 #define ENTROPY_SOURCE__FIFO_STATUS__RPTR_bw 6
 #define ENTROPY_SOURCE__FIFO_STATUS__RPTR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Number of valid 32-bit words in the FIFO.
         uint32_t LEVEL :7;
         uint32_t :1;
+        // Current FIFO write pointer.
         uint32_t WPTR :6;
         uint32_t :2;
+        // Current FIFO read pointer.
         uint32_t RPTR :6;
         uint32_t :10;
     } f;
@@ -330,30 +425,38 @@ typedef union {
 } entropy_source__FIFO_STATUS_t;
 
 // reg - entropy_source::FIFO_RDATA
+// Provides the next main FIFO word.
+// Returns and removes the next FIFO word. Reading an empty FIFO sets INTR_STATUS.FIFO_UNDERFLOW and returns undefined data.
 #define ENTROPY_SOURCE__FIFO_RDATA__RDATA_bm 0xffffffff
 #define ENTROPY_SOURCE__FIFO_RDATA__RDATA_bp 0
 #define ENTROPY_SOURCE__FIFO_RDATA__RDATA_bw 32
 #define ENTROPY_SOURCE__FIFO_RDATA__RDATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Returns and removes the next FIFO word. Reading an empty FIFO sets INTR_STATUS.FIFO_UNDERFLOW and returns undefined data.
         uint32_t RDATA :32;
     } f;
     uint32_t w;
 } entropy_source__FIFO_RDATA_t;
 
 // reg - entropy_source::HEALTH_TEST_CTRL
+// Controls continuous entropy health tests.
+// Enables the repetition-count, adaptive-proportion, and Markov tests in bits 0, 1, and 2. Disabling a test clears its state.
 #define ENTROPY_SOURCE__HEALTH_TEST_CTRL__ENABLE_bm 0x7
 #define ENTROPY_SOURCE__HEALTH_TEST_CTRL__ENABLE_bp 0
 #define ENTROPY_SOURCE__HEALTH_TEST_CTRL__ENABLE_bw 3
 #define ENTROPY_SOURCE__HEALTH_TEST_CTRL__ENABLE_reset 0x7
+// Maximum allowed per-lane repetition count before the test fails. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__HEALTH_TEST_CTRL__REPETITION_LIMIT_bm 0xff00
 #define ENTROPY_SOURCE__HEALTH_TEST_CTRL__REPETITION_LIMIT_bp 8
 #define ENTROPY_SOURCE__HEALTH_TEST_CTRL__REPETITION_LIMIT_bw 8
 #define ENTROPY_SOURCE__HEALTH_TEST_CTRL__REPETITION_LIMIT_reset 0x19
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enables the repetition-count, adaptive-proportion, and Markov tests in bits 0, 1, and 2. Disabling a test clears its state.
         uint32_t ENABLE :3;
         uint32_t :5;
+        // Maximum allowed per-lane repetition count before the test fails. FIPS_LOCK.LOCK prevents software changes.
         uint32_t REPETITION_LIMIT :8;
         uint32_t :16;
     } f;
@@ -361,12 +464,15 @@ typedef union {
 } entropy_source__HEALTH_TEST_CTRL_t;
 
 // reg - entropy_source::HEALTH_TEST_WINDOW_SIZE
+// Sets the APT and Markov window length.
+// Number of valid entropy words per APT and Markov window. FIPS_LOCK.LOCK requires a value of at least 1024 and prevents software changes.
 #define ENTROPY_SOURCE__HEALTH_TEST_WINDOW_SIZE__SIZE_bm 0xffff
 #define ENTROPY_SOURCE__HEALTH_TEST_WINDOW_SIZE__SIZE_bp 0
 #define ENTROPY_SOURCE__HEALTH_TEST_WINDOW_SIZE__SIZE_bw 16
 #define ENTROPY_SOURCE__HEALTH_TEST_WINDOW_SIZE__SIZE_reset 0x800
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Number of valid entropy words per APT and Markov window. FIPS_LOCK.LOCK requires a value of at least 1024 and prevents software changes.
         uint32_t SIZE :16;
         uint32_t :16;
     } f;
@@ -374,29 +480,37 @@ typedef union {
 } entropy_source__HEALTH_TEST_WINDOW_SIZE_t;
 
 // reg - entropy_source::MARKOV_TEST_PROB_THRESHOLDS
+// Sets high and low Markov alternation-count thresholds.
+// Maximum allowed per-lane alternation count at the window boundary. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__MARKOV_TEST_PROB_THRESHOLDS__PROB_01_THRESHOLD_bm 0xffff
 #define ENTROPY_SOURCE__MARKOV_TEST_PROB_THRESHOLDS__PROB_01_THRESHOLD_bp 0
 #define ENTROPY_SOURCE__MARKOV_TEST_PROB_THRESHOLDS__PROB_01_THRESHOLD_bw 16
 #define ENTROPY_SOURCE__MARKOV_TEST_PROB_THRESHOLDS__PROB_01_THRESHOLD_reset 0x4b0
+// Minimum allowed per-lane alternation count at the window boundary. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__MARKOV_TEST_PROB_THRESHOLDS__PROB_10_THRESHOLD_bm 0xffff0000
 #define ENTROPY_SOURCE__MARKOV_TEST_PROB_THRESHOLDS__PROB_10_THRESHOLD_bp 16
 #define ENTROPY_SOURCE__MARKOV_TEST_PROB_THRESHOLDS__PROB_10_THRESHOLD_bw 16
 #define ENTROPY_SOURCE__MARKOV_TEST_PROB_THRESHOLDS__PROB_10_THRESHOLD_reset 0x64
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Maximum allowed per-lane alternation count at the window boundary. FIPS_LOCK.LOCK prevents software changes.
         uint32_t PROB_01_THRESHOLD :16;
+        // Minimum allowed per-lane alternation count at the window boundary. FIPS_LOCK.LOCK prevents software changes.
         uint32_t PROB_10_THRESHOLD :16;
     } f;
     uint32_t w;
 } entropy_source__MARKOV_TEST_PROB_THRESHOLDS_t;
 
 // reg - entropy_source::HEALTH_TEST_STATUS
+// Latches 32-bit stream health-test failures: repetition [0], APT high or low [3], Markov high [4], and Markov low [5]. Write one to clear.
+// Latched health-test failure bits; write one to clear.
 #define ENTROPY_SOURCE__HEALTH_TEST_STATUS__HEALTH_STATUS_bm 0xff
 #define ENTROPY_SOURCE__HEALTH_TEST_STATUS__HEALTH_STATUS_bp 0
 #define ENTROPY_SOURCE__HEALTH_TEST_STATUS__HEALTH_STATUS_bw 8
 #define ENTROPY_SOURCE__HEALTH_TEST_STATUS__HEALTH_STATUS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Latched health-test failure bits; write one to clear.
         uint32_t HEALTH_STATUS :8;
         uint32_t :24;
     } f;
@@ -404,12 +518,15 @@ typedef union {
 } entropy_source__HEALTH_TEST_STATUS_t;
 
 // reg - entropy_source::REPETITION_TEST_COUNT
+// Reports the highest current repetition count.
+// Highest current repetition count among the 32 entropy lanes.
 #define ENTROPY_SOURCE__REPETITION_TEST_COUNT__REPETITION_COUNT_bm 0xffff
 #define ENTROPY_SOURCE__REPETITION_TEST_COUNT__REPETITION_COUNT_bp 0
 #define ENTROPY_SOURCE__REPETITION_TEST_COUNT__REPETITION_COUNT_bw 16
 #define ENTROPY_SOURCE__REPETITION_TEST_COUNT__REPETITION_COUNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Highest current repetition count among the 32 entropy lanes.
         uint32_t REPETITION_COUNT :16;
         uint32_t :16;
     } f;
@@ -417,12 +534,15 @@ typedef union {
 } entropy_source__REPETITION_TEST_COUNT_t;
 
 // reg - entropy_source::APT_PATTERN_COUNT_1BIT
+// Reports the highest per-lane APT one-count in the current window.
+// Highest current one-count among the 32 entropy lanes.
 #define ENTROPY_SOURCE__APT_PATTERN_COUNT_1BIT__PATTERN_COUNT_bm 0xffff
 #define ENTROPY_SOURCE__APT_PATTERN_COUNT_1BIT__PATTERN_COUNT_bp 0
 #define ENTROPY_SOURCE__APT_PATTERN_COUNT_1BIT__PATTERN_COUNT_bw 16
 #define ENTROPY_SOURCE__APT_PATTERN_COUNT_1BIT__PATTERN_COUNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Highest current one-count among the 32 entropy lanes.
         uint32_t PATTERN_COUNT :16;
         uint32_t :16;
     } f;
@@ -430,12 +550,15 @@ typedef union {
 } entropy_source__APT_PATTERN_COUNT_1BIT_t;
 
 // reg - entropy_source::APT_PATTERN_COUNT_2BIT
+// Reports the lowest per-lane APT one-count in the current window.
+// Lowest current one-count among the 32 entropy lanes.
 #define ENTROPY_SOURCE__APT_PATTERN_COUNT_2BIT__PATTERN_COUNT_bm 0xffff
 #define ENTROPY_SOURCE__APT_PATTERN_COUNT_2BIT__PATTERN_COUNT_bp 0
 #define ENTROPY_SOURCE__APT_PATTERN_COUNT_2BIT__PATTERN_COUNT_bw 16
 #define ENTROPY_SOURCE__APT_PATTERN_COUNT_2BIT__PATTERN_COUNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Lowest current one-count among the 32 entropy lanes.
         uint32_t PATTERN_COUNT :16;
         uint32_t :16;
     } f;
@@ -443,12 +566,15 @@ typedef union {
 } entropy_source__APT_PATTERN_COUNT_2BIT_t;
 
 // reg - entropy_source::APT_PROPORTION_1BIT
+// Sets the APT high one-count threshold.
+// Maximum allowed per-lane one-count at the window boundary. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__APT_PROPORTION_1BIT__LIMIT_bm 0xffff
 #define ENTROPY_SOURCE__APT_PROPORTION_1BIT__LIMIT_bp 0
 #define ENTROPY_SOURCE__APT_PROPORTION_1BIT__LIMIT_bw 16
 #define ENTROPY_SOURCE__APT_PROPORTION_1BIT__LIMIT_reset 0x4b0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Maximum allowed per-lane one-count at the window boundary. FIPS_LOCK.LOCK prevents software changes.
         uint32_t LIMIT :16;
         uint32_t :16;
     } f;
@@ -456,12 +582,15 @@ typedef union {
 } entropy_source__APT_PROPORTION_1BIT_t;
 
 // reg - entropy_source::APT_PROPORTION_LO
+// Sets the APT low one-count threshold.
+// Minimum allowed per-lane one-count at the window boundary. Zero disables the low-side test. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__APT_PROPORTION_LO__LIMIT_bm 0xffff
 #define ENTROPY_SOURCE__APT_PROPORTION_LO__LIMIT_bp 0
 #define ENTROPY_SOURCE__APT_PROPORTION_LO__LIMIT_bw 16
 #define ENTROPY_SOURCE__APT_PROPORTION_LO__LIMIT_reset 0x350
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Minimum allowed per-lane one-count at the window boundary. Zero disables the low-side test. FIPS_LOCK.LOCK prevents software changes.
         uint32_t LIMIT :16;
         uint32_t :16;
     } f;
@@ -469,34 +598,44 @@ typedef union {
 } entropy_source__APT_PROPORTION_LO_t;
 
 // reg - entropy_source::MARKOV_TEST_COUNTS_0
+// Reports the highest and lowest per-lane alternation counts in the current Markov window.
+// Highest current per-lane alternation count.
 #define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_0__COUNT_01_bm 0xffff
 #define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_0__COUNT_01_bp 0
 #define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_0__COUNT_01_bw 16
 #define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_0__COUNT_01_reset 0x0
+// Lowest current per-lane alternation count.
 #define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_0__COUNT_10_bm 0xffff0000
 #define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_0__COUNT_10_bp 16
 #define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_0__COUNT_10_bw 16
 #define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_0__COUNT_10_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Highest current per-lane alternation count.
         uint32_t COUNT_01 :16;
+        // Lowest current per-lane alternation count.
         uint32_t COUNT_10 :16;
     } f;
     uint32_t w;
 } entropy_source__MARKOV_TEST_COUNTS_0_t;
 
 // reg - entropy_source::RING_OSC_ENABLE
+// Controls noise and sample-clock ring oscillators.
+// Enables each generator noise ring oscillator. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__RING_OSC_ENABLE__ENABLE_bm 0xfff
 #define ENTROPY_SOURCE__RING_OSC_ENABLE__ENABLE_bp 0
 #define ENTROPY_SOURCE__RING_OSC_ENABLE__ENABLE_bw 12
 #define ENTROPY_SOURCE__RING_OSC_ENABLE__ENABLE_reset 0xfff
+// Enables the shared sample-clock ring oscillator when any bit is set. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__RING_OSC_ENABLE__SAMPLE_CLK_ENABLE_bm 0xfff000
 #define ENTROPY_SOURCE__RING_OSC_ENABLE__SAMPLE_CLK_ENABLE_bp 12
 #define ENTROPY_SOURCE__RING_OSC_ENABLE__SAMPLE_CLK_ENABLE_bw 12
 #define ENTROPY_SOURCE__RING_OSC_ENABLE__SAMPLE_CLK_ENABLE_reset 0xfff
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enables each generator noise ring oscillator. FIPS_LOCK.LOCK prevents software changes.
         uint32_t ENABLE :12;
+        // Enables the shared sample-clock ring oscillator when any bit is set. FIPS_LOCK.LOCK prevents software changes.
         uint32_t SAMPLE_CLK_ENABLE :12;
         uint32_t :8;
     } f;
@@ -504,17 +643,22 @@ typedef union {
 } entropy_source__RING_OSC_ENABLE_t;
 
 // reg - entropy_source::RING_OSC_TUNE
+// Selects detuned ring-oscillator tap points.
+// Selects the full-length (longer) tap for each noise ring oscillator, lowering its frequency, while automatic tuning is disabled; the reset value (clear) selects the shorter tap. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__RING_OSC_TUNE__DETUNE_bm 0xfff
 #define ENTROPY_SOURCE__RING_OSC_TUNE__DETUNE_bp 0
 #define ENTROPY_SOURCE__RING_OSC_TUNE__DETUNE_bw 12
 #define ENTROPY_SOURCE__RING_OSC_TUNE__DETUNE_reset 0x0
+// Selects the full-length (longer) shared sample-clock oscillator tap, lowering its frequency, when any bit is set. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__RING_OSC_TUNE__SAMPLE_CLK_DETUNE_bm 0xfff000
 #define ENTROPY_SOURCE__RING_OSC_TUNE__SAMPLE_CLK_DETUNE_bp 12
 #define ENTROPY_SOURCE__RING_OSC_TUNE__SAMPLE_CLK_DETUNE_bw 12
 #define ENTROPY_SOURCE__RING_OSC_TUNE__SAMPLE_CLK_DETUNE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Selects the full-length (longer) tap for each noise ring oscillator, lowering its frequency, while automatic tuning is disabled; the reset value (clear) selects the shorter tap. FIPS_LOCK.LOCK prevents software changes.
         uint32_t DETUNE :12;
+        // Selects the full-length (longer) shared sample-clock oscillator tap, lowering its frequency, when any bit is set. FIPS_LOCK.LOCK prevents software changes.
         uint32_t SAMPLE_CLK_DETUNE :12;
         uint32_t :8;
     } f;
@@ -522,12 +666,15 @@ typedef union {
 } entropy_source__RING_OSC_TUNE_t;
 
 // reg - entropy_source::RING_OSC_CTRL
+// Selects each generator sample-clock source.
+// Selects the shared internal sample clock when set and the external sample clock when clear. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__RING_OSC_CTRL__SAMPLE_CLK_SELECT_bm 0xfff
 #define ENTROPY_SOURCE__RING_OSC_CTRL__SAMPLE_CLK_SELECT_bp 0
 #define ENTROPY_SOURCE__RING_OSC_CTRL__SAMPLE_CLK_SELECT_bw 12
 #define ENTROPY_SOURCE__RING_OSC_CTRL__SAMPLE_CLK_SELECT_reset 0xfff
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Selects the shared internal sample clock when set and the external sample clock when clear. FIPS_LOCK.LOCK prevents software changes.
         uint32_t SAMPLE_CLK_SELECT :12;
         uint32_t :20;
     } f;
@@ -535,29 +682,37 @@ typedef union {
 } entropy_source__RING_OSC_CTRL_t;
 
 // reg - entropy_source::DECORRELATOR_CTRL
+// Controls generator decorrelation and byte cadence.
+// Bypasses the LFSR feedback path independently for each generator. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__DECORRELATOR_CTRL__BYPASS_bm 0xfff
 #define ENTROPY_SOURCE__DECORRELATOR_CTRL__BYPASS_bp 0
 #define ENTROPY_SOURCE__DECORRELATOR_CTRL__BYPASS_bw 12
 #define ENTROPY_SOURCE__DECORRELATOR_CTRL__BYPASS_reset 0x0
+// Sets the generator byte-output period to this value plus one sample-clock cycles. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__DECORRELATOR_CTRL__SAMPLE_CLK_DIV_bm 0xfffff000
 #define ENTROPY_SOURCE__DECORRELATOR_CTRL__SAMPLE_CLK_DIV_bp 12
 #define ENTROPY_SOURCE__DECORRELATOR_CTRL__SAMPLE_CLK_DIV_bw 20
 #define ENTROPY_SOURCE__DECORRELATOR_CTRL__SAMPLE_CLK_DIV_reset 0x3f
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Bypasses the LFSR feedback path independently for each generator. FIPS_LOCK.LOCK prevents software changes.
         uint32_t BYPASS :12;
+        // Sets the generator byte-output period to this value plus one sample-clock cycles. FIPS_LOCK.LOCK prevents software changes.
         uint32_t SAMPLE_CLK_DIV :20;
     } f;
     uint32_t w;
 } entropy_source__DECORRELATOR_CTRL_t;
 
 // reg - entropy_source::DECORRELATOR_MASK
+// Masks bits in every generator entropy byte.
+// Enables corresponding entropy-byte bits when set. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__DECORRELATOR_MASK__ENTROPY_BYTE_MASK_bm 0xff
 #define ENTROPY_SOURCE__DECORRELATOR_MASK__ENTROPY_BYTE_MASK_bp 0
 #define ENTROPY_SOURCE__DECORRELATOR_MASK__ENTROPY_BYTE_MASK_bw 8
 #define ENTROPY_SOURCE__DECORRELATOR_MASK__ENTROPY_BYTE_MASK_reset 0xff
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enables corresponding entropy-byte bits when set. FIPS_LOCK.LOCK prevents software changes.
         uint32_t ENTROPY_BYTE_MASK :8;
         uint32_t :24;
     } f;
@@ -565,37 +720,50 @@ typedef union {
 } entropy_source__DECORRELATOR_MASK_t;
 
 // reg - entropy_source::MAIN_SM_STATUS
+// Reports the startup health-test gate state machine.
+// Current sparse-encoded state-machine state.
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__STATE_bm 0x1ff
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__STATE_bp 0
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__STATE_bw 9
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__STATE_reset 0x0
+// Indicates that the state machine is idle.
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__IDLE_bm 0x200
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__IDLE_bp 9
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__IDLE_bw 1
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__IDLE_reset 0x0
+// Latches entry into the persistent-failure alert path, which halts entropy output. Write one or reset the block to clear.
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__ALERT_bm 0x400
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__ALERT_bp 10
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__ALERT_bw 1
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__ALERT_reset 0x0
+// Latches an illegal state or health-test counter integrity error. Write one or reset the block to clear.
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__ERR_bm 0x800
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__ERR_bp 11
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__ERR_bw 1
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__ERR_reset 0x0
+// Indicates successful completion of startup health testing and permits entropy output.
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__BOOT_PHASE_DONE_bm 0x1000
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__BOOT_PHASE_DONE_bp 12
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__BOOT_PHASE_DONE_bw 1
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__BOOT_PHASE_DONE_reset 0x0
+// Indicates that a passing window may clear alert failure counters.
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__ALERT_CNTR_CLR_OK_bm 0x2000
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__ALERT_CNTR_CLR_OK_bp 13
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__ALERT_CNTR_CLR_OK_bw 1
 #define ENTROPY_SOURCE__MAIN_SM_STATUS__ALERT_CNTR_CLR_OK_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Current sparse-encoded state-machine state.
         uint32_t STATE :9;
+        // Indicates that the state machine is idle.
         uint32_t IDLE :1;
+        // Latches entry into the persistent-failure alert path, which halts entropy output. Write one or reset the block to clear.
         uint32_t ALERT :1;
+        // Latches an illegal state or health-test counter integrity error. Write one or reset the block to clear.
         uint32_t ERR :1;
+        // Indicates successful completion of startup health testing and permits entropy output.
         uint32_t BOOT_PHASE_DONE :1;
+        // Indicates that a passing window may clear alert failure counters.
         uint32_t ALERT_CNTR_CLR_OK :1;
         uint32_t :18;
     } f;
@@ -603,12 +771,15 @@ typedef union {
 } entropy_source__MAIN_SM_STATUS_t;
 
 // reg - entropy_source::GENERATOR_0_HEALTH_STATUS
+// Latches generator 0 health-test failures; write one to clear.
+// Generator 0 failure bits use the HEALTH_TEST_STATUS allocation.
 #define ENTROPY_SOURCE__GENERATOR_0_HEALTH_STATUS__STATUS_bm 0xff
 #define ENTROPY_SOURCE__GENERATOR_0_HEALTH_STATUS__STATUS_bp 0
 #define ENTROPY_SOURCE__GENERATOR_0_HEALTH_STATUS__STATUS_bw 8
 #define ENTROPY_SOURCE__GENERATOR_0_HEALTH_STATUS__STATUS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Generator 0 failure bits use the HEALTH_TEST_STATUS allocation.
         uint32_t STATUS :8;
         uint32_t :24;
     } f;
@@ -616,12 +787,15 @@ typedef union {
 } entropy_source__GENERATOR_0_HEALTH_STATUS_t;
 
 // reg - entropy_source::GENERATOR_1_HEALTH_STATUS
+// Latches generator 1 health-test failures; write one to clear.
+// Generator 1 failure bits use the HEALTH_TEST_STATUS allocation.
 #define ENTROPY_SOURCE__GENERATOR_1_HEALTH_STATUS__STATUS_bm 0xff
 #define ENTROPY_SOURCE__GENERATOR_1_HEALTH_STATUS__STATUS_bp 0
 #define ENTROPY_SOURCE__GENERATOR_1_HEALTH_STATUS__STATUS_bw 8
 #define ENTROPY_SOURCE__GENERATOR_1_HEALTH_STATUS__STATUS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Generator 1 failure bits use the HEALTH_TEST_STATUS allocation.
         uint32_t STATUS :8;
         uint32_t :24;
     } f;
@@ -629,12 +803,15 @@ typedef union {
 } entropy_source__GENERATOR_1_HEALTH_STATUS_t;
 
 // reg - entropy_source::GENERATOR_2_HEALTH_STATUS
+// Latches generator 2 health-test failures; write one to clear.
+// Generator 2 failure bits use the HEALTH_TEST_STATUS allocation.
 #define ENTROPY_SOURCE__GENERATOR_2_HEALTH_STATUS__STATUS_bm 0xff
 #define ENTROPY_SOURCE__GENERATOR_2_HEALTH_STATUS__STATUS_bp 0
 #define ENTROPY_SOURCE__GENERATOR_2_HEALTH_STATUS__STATUS_bw 8
 #define ENTROPY_SOURCE__GENERATOR_2_HEALTH_STATUS__STATUS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Generator 2 failure bits use the HEALTH_TEST_STATUS allocation.
         uint32_t STATUS :8;
         uint32_t :24;
     } f;
@@ -642,12 +819,15 @@ typedef union {
 } entropy_source__GENERATOR_2_HEALTH_STATUS_t;
 
 // reg - entropy_source::GENERATOR_3_HEALTH_STATUS
+// Latches generator 3 health-test failures; write one to clear.
+// Generator 3 failure bits use the HEALTH_TEST_STATUS allocation.
 #define ENTROPY_SOURCE__GENERATOR_3_HEALTH_STATUS__STATUS_bm 0xff
 #define ENTROPY_SOURCE__GENERATOR_3_HEALTH_STATUS__STATUS_bp 0
 #define ENTROPY_SOURCE__GENERATOR_3_HEALTH_STATUS__STATUS_bw 8
 #define ENTROPY_SOURCE__GENERATOR_3_HEALTH_STATUS__STATUS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Generator 3 failure bits use the HEALTH_TEST_STATUS allocation.
         uint32_t STATUS :8;
         uint32_t :24;
     } f;
@@ -655,12 +835,15 @@ typedef union {
 } entropy_source__GENERATOR_3_HEALTH_STATUS_t;
 
 // reg - entropy_source::GENERATOR_4_HEALTH_STATUS
+// Latches generator 4 health-test failures; write one to clear.
+// Generator 4 failure bits use the HEALTH_TEST_STATUS allocation.
 #define ENTROPY_SOURCE__GENERATOR_4_HEALTH_STATUS__STATUS_bm 0xff
 #define ENTROPY_SOURCE__GENERATOR_4_HEALTH_STATUS__STATUS_bp 0
 #define ENTROPY_SOURCE__GENERATOR_4_HEALTH_STATUS__STATUS_bw 8
 #define ENTROPY_SOURCE__GENERATOR_4_HEALTH_STATUS__STATUS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Generator 4 failure bits use the HEALTH_TEST_STATUS allocation.
         uint32_t STATUS :8;
         uint32_t :24;
     } f;
@@ -668,12 +851,15 @@ typedef union {
 } entropy_source__GENERATOR_4_HEALTH_STATUS_t;
 
 // reg - entropy_source::GENERATOR_5_HEALTH_STATUS
+// Latches generator 5 health-test failures; write one to clear.
+// Generator 5 failure bits use the HEALTH_TEST_STATUS allocation.
 #define ENTROPY_SOURCE__GENERATOR_5_HEALTH_STATUS__STATUS_bm 0xff
 #define ENTROPY_SOURCE__GENERATOR_5_HEALTH_STATUS__STATUS_bp 0
 #define ENTROPY_SOURCE__GENERATOR_5_HEALTH_STATUS__STATUS_bw 8
 #define ENTROPY_SOURCE__GENERATOR_5_HEALTH_STATUS__STATUS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Generator 5 failure bits use the HEALTH_TEST_STATUS allocation.
         uint32_t STATUS :8;
         uint32_t :24;
     } f;
@@ -681,12 +867,15 @@ typedef union {
 } entropy_source__GENERATOR_5_HEALTH_STATUS_t;
 
 // reg - entropy_source::GENERATOR_6_HEALTH_STATUS
+// Latches generator 6 health-test failures; write one to clear.
+// Generator 6 failure bits use the HEALTH_TEST_STATUS allocation.
 #define ENTROPY_SOURCE__GENERATOR_6_HEALTH_STATUS__STATUS_bm 0xff
 #define ENTROPY_SOURCE__GENERATOR_6_HEALTH_STATUS__STATUS_bp 0
 #define ENTROPY_SOURCE__GENERATOR_6_HEALTH_STATUS__STATUS_bw 8
 #define ENTROPY_SOURCE__GENERATOR_6_HEALTH_STATUS__STATUS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Generator 6 failure bits use the HEALTH_TEST_STATUS allocation.
         uint32_t STATUS :8;
         uint32_t :24;
     } f;
@@ -694,12 +883,15 @@ typedef union {
 } entropy_source__GENERATOR_6_HEALTH_STATUS_t;
 
 // reg - entropy_source::GENERATOR_7_HEALTH_STATUS
+// Latches generator 7 health-test failures; write one to clear.
+// Generator 7 failure bits use the HEALTH_TEST_STATUS allocation.
 #define ENTROPY_SOURCE__GENERATOR_7_HEALTH_STATUS__STATUS_bm 0xff
 #define ENTROPY_SOURCE__GENERATOR_7_HEALTH_STATUS__STATUS_bp 0
 #define ENTROPY_SOURCE__GENERATOR_7_HEALTH_STATUS__STATUS_bw 8
 #define ENTROPY_SOURCE__GENERATOR_7_HEALTH_STATUS__STATUS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Generator 7 failure bits use the HEALTH_TEST_STATUS allocation.
         uint32_t STATUS :8;
         uint32_t :24;
     } f;
@@ -707,12 +899,15 @@ typedef union {
 } entropy_source__GENERATOR_7_HEALTH_STATUS_t;
 
 // reg - entropy_source::GENERATOR_8_HEALTH_STATUS
+// Latches generator 8 health-test failures; write one to clear.
+// Generator 8 failure bits use the HEALTH_TEST_STATUS allocation.
 #define ENTROPY_SOURCE__GENERATOR_8_HEALTH_STATUS__STATUS_bm 0xff
 #define ENTROPY_SOURCE__GENERATOR_8_HEALTH_STATUS__STATUS_bp 0
 #define ENTROPY_SOURCE__GENERATOR_8_HEALTH_STATUS__STATUS_bw 8
 #define ENTROPY_SOURCE__GENERATOR_8_HEALTH_STATUS__STATUS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Generator 8 failure bits use the HEALTH_TEST_STATUS allocation.
         uint32_t STATUS :8;
         uint32_t :24;
     } f;
@@ -720,12 +915,15 @@ typedef union {
 } entropy_source__GENERATOR_8_HEALTH_STATUS_t;
 
 // reg - entropy_source::GENERATOR_9_HEALTH_STATUS
+// Latches generator 9 health-test failures; write one to clear.
+// Generator 9 failure bits use the HEALTH_TEST_STATUS allocation.
 #define ENTROPY_SOURCE__GENERATOR_9_HEALTH_STATUS__STATUS_bm 0xff
 #define ENTROPY_SOURCE__GENERATOR_9_HEALTH_STATUS__STATUS_bp 0
 #define ENTROPY_SOURCE__GENERATOR_9_HEALTH_STATUS__STATUS_bw 8
 #define ENTROPY_SOURCE__GENERATOR_9_HEALTH_STATUS__STATUS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Generator 9 failure bits use the HEALTH_TEST_STATUS allocation.
         uint32_t STATUS :8;
         uint32_t :24;
     } f;
@@ -733,12 +931,15 @@ typedef union {
 } entropy_source__GENERATOR_9_HEALTH_STATUS_t;
 
 // reg - entropy_source::GENERATOR_10_HEALTH_STATUS
+// Latches generator 10 health-test failures; write one to clear.
+// Generator 10 failure bits use the HEALTH_TEST_STATUS allocation.
 #define ENTROPY_SOURCE__GENERATOR_10_HEALTH_STATUS__STATUS_bm 0xff
 #define ENTROPY_SOURCE__GENERATOR_10_HEALTH_STATUS__STATUS_bp 0
 #define ENTROPY_SOURCE__GENERATOR_10_HEALTH_STATUS__STATUS_bw 8
 #define ENTROPY_SOURCE__GENERATOR_10_HEALTH_STATUS__STATUS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Generator 10 failure bits use the HEALTH_TEST_STATUS allocation.
         uint32_t STATUS :8;
         uint32_t :24;
     } f;
@@ -746,12 +947,15 @@ typedef union {
 } entropy_source__GENERATOR_10_HEALTH_STATUS_t;
 
 // reg - entropy_source::GENERATOR_11_HEALTH_STATUS
+// Latches generator 11 health-test failures; write one to clear.
+// Generator 11 failure bits use the HEALTH_TEST_STATUS allocation.
 #define ENTROPY_SOURCE__GENERATOR_11_HEALTH_STATUS__STATUS_bm 0xff
 #define ENTROPY_SOURCE__GENERATOR_11_HEALTH_STATUS__STATUS_bp 0
 #define ENTROPY_SOURCE__GENERATOR_11_HEALTH_STATUS__STATUS_bw 8
 #define ENTROPY_SOURCE__GENERATOR_11_HEALTH_STATUS__STATUS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Generator 11 failure bits use the HEALTH_TEST_STATUS allocation.
         uint32_t STATUS :8;
         uint32_t :24;
     } f;
@@ -759,12 +963,15 @@ typedef union {
 } entropy_source__GENERATOR_11_HEALTH_STATUS_t;
 
 // reg - entropy_source::GENERATOR_0_SAMPLE_CLK_CONFIG
+// Controls generator 0 sample-clock division.
+// Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__GENERATOR_0_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bm 0x1f
 #define ENTROPY_SOURCE__GENERATOR_0_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bp 0
 #define ENTROPY_SOURCE__GENERATOR_0_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bw 5
 #define ENTROPY_SOURCE__GENERATOR_0_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
         uint32_t SAMPLE_CLK_DIVIDE :5;
         uint32_t :27;
     } f;
@@ -772,12 +979,15 @@ typedef union {
 } entropy_source__GENERATOR_0_SAMPLE_CLK_CONFIG_t;
 
 // reg - entropy_source::GENERATOR_1_SAMPLE_CLK_CONFIG
+// Controls generator 1 sample-clock division.
+// Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__GENERATOR_1_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bm 0x1f
 #define ENTROPY_SOURCE__GENERATOR_1_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bp 0
 #define ENTROPY_SOURCE__GENERATOR_1_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bw 5
 #define ENTROPY_SOURCE__GENERATOR_1_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
         uint32_t SAMPLE_CLK_DIVIDE :5;
         uint32_t :27;
     } f;
@@ -785,12 +995,15 @@ typedef union {
 } entropy_source__GENERATOR_1_SAMPLE_CLK_CONFIG_t;
 
 // reg - entropy_source::GENERATOR_2_SAMPLE_CLK_CONFIG
+// Controls generator 2 sample-clock division.
+// Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__GENERATOR_2_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bm 0x1f
 #define ENTROPY_SOURCE__GENERATOR_2_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bp 0
 #define ENTROPY_SOURCE__GENERATOR_2_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bw 5
 #define ENTROPY_SOURCE__GENERATOR_2_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
         uint32_t SAMPLE_CLK_DIVIDE :5;
         uint32_t :27;
     } f;
@@ -798,12 +1011,15 @@ typedef union {
 } entropy_source__GENERATOR_2_SAMPLE_CLK_CONFIG_t;
 
 // reg - entropy_source::GENERATOR_3_SAMPLE_CLK_CONFIG
+// Controls generator 3 sample-clock division.
+// Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__GENERATOR_3_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bm 0x1f
 #define ENTROPY_SOURCE__GENERATOR_3_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bp 0
 #define ENTROPY_SOURCE__GENERATOR_3_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bw 5
 #define ENTROPY_SOURCE__GENERATOR_3_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
         uint32_t SAMPLE_CLK_DIVIDE :5;
         uint32_t :27;
     } f;
@@ -811,12 +1027,15 @@ typedef union {
 } entropy_source__GENERATOR_3_SAMPLE_CLK_CONFIG_t;
 
 // reg - entropy_source::GENERATOR_4_SAMPLE_CLK_CONFIG
+// Controls generator 4 sample-clock division.
+// Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__GENERATOR_4_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bm 0x1f
 #define ENTROPY_SOURCE__GENERATOR_4_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bp 0
 #define ENTROPY_SOURCE__GENERATOR_4_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bw 5
 #define ENTROPY_SOURCE__GENERATOR_4_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_reset 0x2
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
         uint32_t SAMPLE_CLK_DIVIDE :5;
         uint32_t :27;
     } f;
@@ -824,12 +1043,15 @@ typedef union {
 } entropy_source__GENERATOR_4_SAMPLE_CLK_CONFIG_t;
 
 // reg - entropy_source::GENERATOR_5_SAMPLE_CLK_CONFIG
+// Controls generator 5 sample-clock division.
+// Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__GENERATOR_5_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bm 0x1f
 #define ENTROPY_SOURCE__GENERATOR_5_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bp 0
 #define ENTROPY_SOURCE__GENERATOR_5_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bw 5
 #define ENTROPY_SOURCE__GENERATOR_5_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_reset 0x2
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
         uint32_t SAMPLE_CLK_DIVIDE :5;
         uint32_t :27;
     } f;
@@ -837,12 +1059,15 @@ typedef union {
 } entropy_source__GENERATOR_5_SAMPLE_CLK_CONFIG_t;
 
 // reg - entropy_source::GENERATOR_6_SAMPLE_CLK_CONFIG
+// Controls generator 6 sample-clock division.
+// Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__GENERATOR_6_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bm 0x1f
 #define ENTROPY_SOURCE__GENERATOR_6_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bp 0
 #define ENTROPY_SOURCE__GENERATOR_6_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bw 5
 #define ENTROPY_SOURCE__GENERATOR_6_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
         uint32_t SAMPLE_CLK_DIVIDE :5;
         uint32_t :27;
     } f;
@@ -850,12 +1075,15 @@ typedef union {
 } entropy_source__GENERATOR_6_SAMPLE_CLK_CONFIG_t;
 
 // reg - entropy_source::GENERATOR_7_SAMPLE_CLK_CONFIG
+// Controls generator 7 sample-clock division.
+// Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__GENERATOR_7_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bm 0x1f
 #define ENTROPY_SOURCE__GENERATOR_7_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bp 0
 #define ENTROPY_SOURCE__GENERATOR_7_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bw 5
 #define ENTROPY_SOURCE__GENERATOR_7_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
         uint32_t SAMPLE_CLK_DIVIDE :5;
         uint32_t :27;
     } f;
@@ -863,12 +1091,15 @@ typedef union {
 } entropy_source__GENERATOR_7_SAMPLE_CLK_CONFIG_t;
 
 // reg - entropy_source::GENERATOR_8_SAMPLE_CLK_CONFIG
+// Controls generator 8 sample-clock division.
+// Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__GENERATOR_8_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bm 0x1f
 #define ENTROPY_SOURCE__GENERATOR_8_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bp 0
 #define ENTROPY_SOURCE__GENERATOR_8_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bw 5
 #define ENTROPY_SOURCE__GENERATOR_8_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
         uint32_t SAMPLE_CLK_DIVIDE :5;
         uint32_t :27;
     } f;
@@ -876,12 +1107,15 @@ typedef union {
 } entropy_source__GENERATOR_8_SAMPLE_CLK_CONFIG_t;
 
 // reg - entropy_source::GENERATOR_9_SAMPLE_CLK_CONFIG
+// Controls generator 9 sample-clock division.
+// Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__GENERATOR_9_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bm 0x1f
 #define ENTROPY_SOURCE__GENERATOR_9_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bp 0
 #define ENTROPY_SOURCE__GENERATOR_9_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bw 5
 #define ENTROPY_SOURCE__GENERATOR_9_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
         uint32_t SAMPLE_CLK_DIVIDE :5;
         uint32_t :27;
     } f;
@@ -889,12 +1123,15 @@ typedef union {
 } entropy_source__GENERATOR_9_SAMPLE_CLK_CONFIG_t;
 
 // reg - entropy_source::GENERATOR_10_SAMPLE_CLK_CONFIG
+// Controls generator 10 sample-clock division.
+// Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__GENERATOR_10_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bm 0x1f
 #define ENTROPY_SOURCE__GENERATOR_10_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bp 0
 #define ENTROPY_SOURCE__GENERATOR_10_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bw 5
 #define ENTROPY_SOURCE__GENERATOR_10_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_reset 0x2
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
         uint32_t SAMPLE_CLK_DIVIDE :5;
         uint32_t :27;
     } f;
@@ -902,12 +1139,15 @@ typedef union {
 } entropy_source__GENERATOR_10_SAMPLE_CLK_CONFIG_t;
 
 // reg - entropy_source::GENERATOR_11_SAMPLE_CLK_CONFIG
+// Controls generator 11 sample-clock division.
+// Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__GENERATOR_11_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bm 0x1f
 #define ENTROPY_SOURCE__GENERATOR_11_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bp 0
 #define ENTROPY_SOURCE__GENERATOR_11_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_bw 5
 #define ENTROPY_SOURCE__GENERATOR_11_SAMPLE_CLK_CONFIG__SAMPLE_CLK_DIVIDE_reset 0x2
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
         uint32_t SAMPLE_CLK_DIVIDE :5;
         uint32_t :27;
     } f;
@@ -915,12 +1155,15 @@ typedef union {
 } entropy_source__GENERATOR_11_SAMPLE_CLK_CONFIG_t;
 
 // reg - entropy_source::HT_WATERMARK_NUM
+// Selects the counter and direction for the shared health-test watermark. Changing the selection preserves the current watermark.
+// Selects the watermark source. Unsupported values select REPCNT_HI.
 #define ENTROPY_SOURCE__HT_WATERMARK_NUM__WATERMARK_NUM_bm 0xf
 #define ENTROPY_SOURCE__HT_WATERMARK_NUM__WATERMARK_NUM_bp 0
 #define ENTROPY_SOURCE__HT_WATERMARK_NUM__WATERMARK_NUM_bw 4
 #define ENTROPY_SOURCE__HT_WATERMARK_NUM__WATERMARK_NUM_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Selects the watermark source. Unsupported values select REPCNT_HI.
         uint32_t WATERMARK_NUM :4;
         uint32_t :28;
     } f;
@@ -928,12 +1171,15 @@ typedef union {
 } entropy_source__HT_WATERMARK_NUM_t;
 
 // reg - entropy_source::HT_WATERMARK
+// Reports one selector-dependent watermark. A CTRL.MODULE_ENABLE rising edge arms high modes to zero and low modes to 0xFFFF.
+// Current shared watermark value.
 #define ENTROPY_SOURCE__HT_WATERMARK__WATERMARK_VALUE_bm 0xffff
 #define ENTROPY_SOURCE__HT_WATERMARK__WATERMARK_VALUE_bp 0
 #define ENTROPY_SOURCE__HT_WATERMARK__WATERMARK_VALUE_bw 16
 #define ENTROPY_SOURCE__HT_WATERMARK__WATERMARK_VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Current shared watermark value.
         uint32_t WATERMARK_VALUE :16;
         uint32_t :16;
     } f;
@@ -941,72 +1187,90 @@ typedef union {
 } entropy_source__HT_WATERMARK_t;
 
 // reg - entropy_source::REPCNT_TOTAL_FAILS
+// Counts repetition-test failures since the last CTRL.MODULE_ENABLE rising edge.
+// Total repetition-test failure pulses.
 #define ENTROPY_SOURCE__REPCNT_TOTAL_FAILS__FAIL_COUNT_bm 0xffffffff
 #define ENTROPY_SOURCE__REPCNT_TOTAL_FAILS__FAIL_COUNT_bp 0
 #define ENTROPY_SOURCE__REPCNT_TOTAL_FAILS__FAIL_COUNT_bw 32
 #define ENTROPY_SOURCE__REPCNT_TOTAL_FAILS__FAIL_COUNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Total repetition-test failure pulses.
         uint32_t FAIL_COUNT :32;
     } f;
     uint32_t w;
 } entropy_source__REPCNT_TOTAL_FAILS_t;
 
 // reg - entropy_source::APT_HI_TOTAL_FAILS
+// Counts APT high-threshold failures since the last CTRL.MODULE_ENABLE rising edge.
+// Total APT high-threshold failure pulses.
 #define ENTROPY_SOURCE__APT_HI_TOTAL_FAILS__FAIL_COUNT_bm 0xffffffff
 #define ENTROPY_SOURCE__APT_HI_TOTAL_FAILS__FAIL_COUNT_bp 0
 #define ENTROPY_SOURCE__APT_HI_TOTAL_FAILS__FAIL_COUNT_bw 32
 #define ENTROPY_SOURCE__APT_HI_TOTAL_FAILS__FAIL_COUNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Total APT high-threshold failure pulses.
         uint32_t FAIL_COUNT :32;
     } f;
     uint32_t w;
 } entropy_source__APT_HI_TOTAL_FAILS_t;
 
 // reg - entropy_source::APT_LO_TOTAL_FAILS
+// Counts APT low-threshold failures since the last CTRL.MODULE_ENABLE rising edge.
+// Total APT low-threshold failure pulses.
 #define ENTROPY_SOURCE__APT_LO_TOTAL_FAILS__FAIL_COUNT_bm 0xffffffff
 #define ENTROPY_SOURCE__APT_LO_TOTAL_FAILS__FAIL_COUNT_bp 0
 #define ENTROPY_SOURCE__APT_LO_TOTAL_FAILS__FAIL_COUNT_bw 32
 #define ENTROPY_SOURCE__APT_LO_TOTAL_FAILS__FAIL_COUNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Total APT low-threshold failure pulses.
         uint32_t FAIL_COUNT :32;
     } f;
     uint32_t w;
 } entropy_source__APT_LO_TOTAL_FAILS_t;
 
 // reg - entropy_source::MARKOV_HI_TOTAL_FAILS
+// Counts Markov high-threshold failures since the last CTRL.MODULE_ENABLE rising edge.
+// Total Markov high-threshold failure pulses.
 #define ENTROPY_SOURCE__MARKOV_HI_TOTAL_FAILS__FAIL_COUNT_bm 0xffffffff
 #define ENTROPY_SOURCE__MARKOV_HI_TOTAL_FAILS__FAIL_COUNT_bp 0
 #define ENTROPY_SOURCE__MARKOV_HI_TOTAL_FAILS__FAIL_COUNT_bw 32
 #define ENTROPY_SOURCE__MARKOV_HI_TOTAL_FAILS__FAIL_COUNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Total Markov high-threshold failure pulses.
         uint32_t FAIL_COUNT :32;
     } f;
     uint32_t w;
 } entropy_source__MARKOV_HI_TOTAL_FAILS_t;
 
 // reg - entropy_source::MARKOV_LO_TOTAL_FAILS
+// Counts Markov low-threshold failures since the last CTRL.MODULE_ENABLE rising edge.
+// Total Markov low-threshold failure pulses.
 #define ENTROPY_SOURCE__MARKOV_LO_TOTAL_FAILS__FAIL_COUNT_bm 0xffffffff
 #define ENTROPY_SOURCE__MARKOV_LO_TOTAL_FAILS__FAIL_COUNT_bp 0
 #define ENTROPY_SOURCE__MARKOV_LO_TOTAL_FAILS__FAIL_COUNT_bw 32
 #define ENTROPY_SOURCE__MARKOV_LO_TOTAL_FAILS__FAIL_COUNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Total Markov low-threshold failure pulses.
         uint32_t FAIL_COUNT :32;
     } f;
     uint32_t w;
 } entropy_source__MARKOV_LO_TOTAL_FAILS_t;
 
 // reg - entropy_source::ALERT_SUMMARY_FAIL_COUNTS
+// Counts consecutive health-test windows containing any failure and clears after an accepted passing window.
+// Number of consecutive failing health-test windows.
 #define ENTROPY_SOURCE__ALERT_SUMMARY_FAIL_COUNTS__ANY_FAIL_COUNT_bm 0xffff
 #define ENTROPY_SOURCE__ALERT_SUMMARY_FAIL_COUNTS__ANY_FAIL_COUNT_bp 0
 #define ENTROPY_SOURCE__ALERT_SUMMARY_FAIL_COUNTS__ANY_FAIL_COUNT_bw 16
 #define ENTROPY_SOURCE__ALERT_SUMMARY_FAIL_COUNTS__ANY_FAIL_COUNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Number of consecutive failing health-test windows.
         uint32_t ANY_FAIL_COUNT :16;
         uint32_t :16;
     } f;
@@ -1014,32 +1278,43 @@ typedef union {
 } entropy_source__ALERT_SUMMARY_FAIL_COUNTS_t;
 
 // reg - entropy_source::ALERT_FAIL_COUNTS
+// Reports saturating per-test failure counts for the current alert sequence.
+// Saturating APT low-threshold failure count.
 #define ENTROPY_SOURCE__ALERT_FAIL_COUNTS__APT_LO_FAIL_COUNT_bm 0xf
 #define ENTROPY_SOURCE__ALERT_FAIL_COUNTS__APT_LO_FAIL_COUNT_bp 0
 #define ENTROPY_SOURCE__ALERT_FAIL_COUNTS__APT_LO_FAIL_COUNT_bw 4
 #define ENTROPY_SOURCE__ALERT_FAIL_COUNTS__APT_LO_FAIL_COUNT_reset 0x0
+// Saturating APT high-threshold failure count.
 #define ENTROPY_SOURCE__ALERT_FAIL_COUNTS__APT_HI_FAIL_COUNT_bm 0xf0
 #define ENTROPY_SOURCE__ALERT_FAIL_COUNTS__APT_HI_FAIL_COUNT_bp 4
 #define ENTROPY_SOURCE__ALERT_FAIL_COUNTS__APT_HI_FAIL_COUNT_bw 4
 #define ENTROPY_SOURCE__ALERT_FAIL_COUNTS__APT_HI_FAIL_COUNT_reset 0x0
+// Saturating Markov low-threshold failure count.
 #define ENTROPY_SOURCE__ALERT_FAIL_COUNTS__MARKOV_LO_FAIL_COUNT_bm 0xf00
 #define ENTROPY_SOURCE__ALERT_FAIL_COUNTS__MARKOV_LO_FAIL_COUNT_bp 8
 #define ENTROPY_SOURCE__ALERT_FAIL_COUNTS__MARKOV_LO_FAIL_COUNT_bw 4
 #define ENTROPY_SOURCE__ALERT_FAIL_COUNTS__MARKOV_LO_FAIL_COUNT_reset 0x0
+// Saturating Markov high-threshold failure count.
 #define ENTROPY_SOURCE__ALERT_FAIL_COUNTS__MARKOV_HI_FAIL_COUNT_bm 0xf000
 #define ENTROPY_SOURCE__ALERT_FAIL_COUNTS__MARKOV_HI_FAIL_COUNT_bp 12
 #define ENTROPY_SOURCE__ALERT_FAIL_COUNTS__MARKOV_HI_FAIL_COUNT_bw 4
 #define ENTROPY_SOURCE__ALERT_FAIL_COUNTS__MARKOV_HI_FAIL_COUNT_reset 0x0
+// Saturating repetition-test failure count.
 #define ENTROPY_SOURCE__ALERT_FAIL_COUNTS__REPCNT_FAIL_COUNT_bm 0xf0000
 #define ENTROPY_SOURCE__ALERT_FAIL_COUNTS__REPCNT_FAIL_COUNT_bp 16
 #define ENTROPY_SOURCE__ALERT_FAIL_COUNTS__REPCNT_FAIL_COUNT_bw 4
 #define ENTROPY_SOURCE__ALERT_FAIL_COUNTS__REPCNT_FAIL_COUNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Saturating APT low-threshold failure count.
         uint32_t APT_LO_FAIL_COUNT :4;
+        // Saturating APT high-threshold failure count.
         uint32_t APT_HI_FAIL_COUNT :4;
+        // Saturating Markov low-threshold failure count.
         uint32_t MARKOV_LO_FAIL_COUNT :4;
+        // Saturating Markov high-threshold failure count.
         uint32_t MARKOV_HI_FAIL_COUNT :4;
+        // Saturating repetition-test failure count.
         uint32_t REPCNT_FAIL_COUNT :4;
         uint32_t :12;
     } f;
@@ -1047,12 +1322,15 @@ typedef union {
 } entropy_source__ALERT_FAIL_COUNTS_t;
 
 // reg - entropy_source::FIPS_LOCK
+// Locks entropy generation, conditioning, and health-test configuration against software writes until hardware reset.
+// Write one to set the configuration lock. Only hardware reset clears it.
 #define ENTROPY_SOURCE__FIPS_LOCK__LOCK_bm 0x1
 #define ENTROPY_SOURCE__FIPS_LOCK__LOCK_bp 0
 #define ENTROPY_SOURCE__FIPS_LOCK__LOCK_bw 1
 #define ENTROPY_SOURCE__FIPS_LOCK__LOCK_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write one to set the configuration lock. Only hardware reset clears it.
         uint32_t LOCK :1;
         uint32_t :31;
     } f;
@@ -1060,12 +1338,15 @@ typedef union {
 } entropy_source__FIPS_LOCK_t;
 
 // reg - entropy_source::ALERT_THRESHOLD
+// Sets the failing-window count that enters the persistent-failure alert path.
+// Number of consecutive failing windows that triggers the alert; zero disables this trigger. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__ALERT_THRESHOLD__THRESHOLD_bm 0xffff
 #define ENTROPY_SOURCE__ALERT_THRESHOLD__THRESHOLD_bp 0
 #define ENTROPY_SOURCE__ALERT_THRESHOLD__THRESHOLD_bw 16
 #define ENTROPY_SOURCE__ALERT_THRESHOLD__THRESHOLD_reset 0x4
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Number of consecutive failing windows that triggers the alert; zero disables this trigger. FIPS_LOCK.LOCK prevents software changes.
         uint32_t THRESHOLD :16;
         uint32_t :16;
     } f;
@@ -1073,12 +1354,15 @@ typedef union {
 } entropy_source__ALERT_THRESHOLD_t;
 
 // reg - entropy_source::MIN_ENTROPY_H
+// Stores assessed per-sample min-entropy in unsigned Q4.4 format for advisory threshold calculation.
+// Assessed min-entropy in bits per sample. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__MIN_ENTROPY_H__H_bm 0xff
 #define ENTROPY_SOURCE__MIN_ENTROPY_H__H_bp 0
 #define ENTROPY_SOURCE__MIN_ENTROPY_H__H_bw 8
 #define ENTROPY_SOURCE__MIN_ENTROPY_H__H_reset 0xc
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Assessed min-entropy in bits per sample. FIPS_LOCK.LOCK prevents software changes.
         uint32_t H :8;
         uint32_t :24;
     } f;
@@ -1086,29 +1370,37 @@ typedef union {
 } entropy_source__MIN_ENTROPY_H_t;
 
 // reg - entropy_source::RECOMMENDED_THRESHOLDS
+// Reports advisory repetition and APT thresholds derived from MIN_ENTROPY_H.
+// Advisory repetition-count cutoff C = 1 + ceil(20 / H).
 #define ENTROPY_SOURCE__RECOMMENDED_THRESHOLDS__RCT_LIMIT_bm 0xffff
 #define ENTROPY_SOURCE__RECOMMENDED_THRESHOLDS__RCT_LIMIT_bp 0
 #define ENTROPY_SOURCE__RECOMMENDED_THRESHOLDS__RCT_LIMIT_bw 16
 #define ENTROPY_SOURCE__RECOMMENDED_THRESHOLDS__RCT_LIMIT_reset 0x0
+// Advisory APT high cutoff derived for a 1024-sample window.
 #define ENTROPY_SOURCE__RECOMMENDED_THRESHOLDS__APT_LIMIT_bm 0xffff0000
 #define ENTROPY_SOURCE__RECOMMENDED_THRESHOLDS__APT_LIMIT_bp 16
 #define ENTROPY_SOURCE__RECOMMENDED_THRESHOLDS__APT_LIMIT_bw 16
 #define ENTROPY_SOURCE__RECOMMENDED_THRESHOLDS__APT_LIMIT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Advisory repetition-count cutoff C = 1 + ceil(20 / H).
         uint32_t RCT_LIMIT :16;
+        // Advisory APT high cutoff derived for a 1024-sample window.
         uint32_t APT_LIMIT :16;
     } f;
     uint32_t w;
 } entropy_source__RECOMMENDED_THRESHOLDS_t;
 
 // reg - entropy_source::BIW_OBS_CTRL
+// Controls copy-only capture of the post-BIW, pre-SHA stream.
+// Enables capture after startup health testing completes. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__BIW_OBS_CTRL__RAW_ENABLE_bm 0x1
 #define ENTROPY_SOURCE__BIW_OBS_CTRL__RAW_ENABLE_bp 0
 #define ENTROPY_SOURCE__BIW_OBS_CTRL__RAW_ENABLE_bw 1
 #define ENTROPY_SOURCE__BIW_OBS_CTRL__RAW_ENABLE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enables capture after startup health testing completes. FIPS_LOCK.LOCK prevents software changes.
         uint32_t RAW_ENABLE :1;
         uint32_t :31;
     } f;
@@ -1116,24 +1408,31 @@ typedef union {
 } entropy_source__BIW_OBS_CTRL_t;
 
 // reg - entropy_source::BIW_OBS_STATUS
+// Reports BIW observe FIFO occupancy and pointers.
+// Number of valid 32-bit words in the BIW observe FIFO.
 #define ENTROPY_SOURCE__BIW_OBS_STATUS__LEVEL_bm 0x7f
 #define ENTROPY_SOURCE__BIW_OBS_STATUS__LEVEL_bp 0
 #define ENTROPY_SOURCE__BIW_OBS_STATUS__LEVEL_bw 7
 #define ENTROPY_SOURCE__BIW_OBS_STATUS__LEVEL_reset 0x0
+// Current BIW observe FIFO write pointer.
 #define ENTROPY_SOURCE__BIW_OBS_STATUS__WPTR_bm 0x3f00
 #define ENTROPY_SOURCE__BIW_OBS_STATUS__WPTR_bp 8
 #define ENTROPY_SOURCE__BIW_OBS_STATUS__WPTR_bw 6
 #define ENTROPY_SOURCE__BIW_OBS_STATUS__WPTR_reset 0x0
+// Current BIW observe FIFO read pointer.
 #define ENTROPY_SOURCE__BIW_OBS_STATUS__RPTR_bm 0x3f0000
 #define ENTROPY_SOURCE__BIW_OBS_STATUS__RPTR_bp 16
 #define ENTROPY_SOURCE__BIW_OBS_STATUS__RPTR_bw 6
 #define ENTROPY_SOURCE__BIW_OBS_STATUS__RPTR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Number of valid 32-bit words in the BIW observe FIFO.
         uint32_t LEVEL :7;
         uint32_t :1;
+        // Current BIW observe FIFO write pointer.
         uint32_t WPTR :6;
         uint32_t :2;
+        // Current BIW observe FIFO read pointer.
         uint32_t RPTR :6;
         uint32_t :10;
     } f;
@@ -1141,35 +1440,45 @@ typedef union {
 } entropy_source__BIW_OBS_STATUS_t;
 
 // reg - entropy_source::BIW_OBS_RDATA
+// Provides the next post-BIW, pre-SHA observe word.
+// Returns and removes the next BIW observe FIFO word.
 #define ENTROPY_SOURCE__BIW_OBS_RDATA__RDATA_bm 0xffffffff
 #define ENTROPY_SOURCE__BIW_OBS_RDATA__RDATA_bp 0
 #define ENTROPY_SOURCE__BIW_OBS_RDATA__RDATA_bw 32
 #define ENTROPY_SOURCE__BIW_OBS_RDATA__RDATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Returns and removes the next BIW observe FIFO word.
         uint32_t RDATA :32;
     } f;
     uint32_t w;
 } entropy_source__BIW_OBS_RDATA_t;
 
 // reg - entropy_source::NOISE_OBS_CTRL
+// Controls copy-only capture of one pre-decorrelator generator lane.
+// Enables LSB-first packing of selected-lane samples into 32-bit observe words. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__NOISE_OBS_CTRL__RAW_ENABLE_bm 0x1
 #define ENTROPY_SOURCE__NOISE_OBS_CTRL__RAW_ENABLE_bp 0
 #define ENTROPY_SOURCE__NOISE_OBS_CTRL__RAW_ENABLE_bw 1
 #define ENTROPY_SOURCE__NOISE_OBS_CTRL__RAW_ENABLE_reset 0x0
+// Write one to discard buffered raw-noise words. Changing LANE_SEL also flushes the FIFO.
 #define ENTROPY_SOURCE__NOISE_OBS_CTRL__FLUSH_bm 0x2
 #define ENTROPY_SOURCE__NOISE_OBS_CTRL__FLUSH_bp 1
 #define ENTROPY_SOURCE__NOISE_OBS_CTRL__FLUSH_bw 1
 #define ENTROPY_SOURCE__NOISE_OBS_CTRL__FLUSH_reset 0x0
+// Selects generator lane 0 through 11; other values select lane 0. Changing lanes restarts packing and flushes buffered words.
 #define ENTROPY_SOURCE__NOISE_OBS_CTRL__LANE_SEL_bm 0xf0
 #define ENTROPY_SOURCE__NOISE_OBS_CTRL__LANE_SEL_bp 4
 #define ENTROPY_SOURCE__NOISE_OBS_CTRL__LANE_SEL_bw 4
 #define ENTROPY_SOURCE__NOISE_OBS_CTRL__LANE_SEL_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enables LSB-first packing of selected-lane samples into 32-bit observe words. FIPS_LOCK.LOCK prevents software changes.
         uint32_t RAW_ENABLE :1;
+        // Write one to discard buffered raw-noise words. Changing LANE_SEL also flushes the FIFO.
         uint32_t FLUSH :1;
         uint32_t :2;
+        // Selects generator lane 0 through 11; other values select lane 0. Changing lanes restarts packing and flushes buffered words.
         uint32_t LANE_SEL :4;
         uint32_t :24;
     } f;
@@ -1177,24 +1486,31 @@ typedef union {
 } entropy_source__NOISE_OBS_CTRL_t;
 
 // reg - entropy_source::NOISE_OBS_STATUS
+// Reports raw-noise observe FIFO occupancy and pointers.
+// Number of valid 32-bit words in the raw-noise observe FIFO.
 #define ENTROPY_SOURCE__NOISE_OBS_STATUS__LEVEL_bm 0x7f
 #define ENTROPY_SOURCE__NOISE_OBS_STATUS__LEVEL_bp 0
 #define ENTROPY_SOURCE__NOISE_OBS_STATUS__LEVEL_bw 7
 #define ENTROPY_SOURCE__NOISE_OBS_STATUS__LEVEL_reset 0x0
+// Current raw-noise observe FIFO write pointer.
 #define ENTROPY_SOURCE__NOISE_OBS_STATUS__WPTR_bm 0x3f00
 #define ENTROPY_SOURCE__NOISE_OBS_STATUS__WPTR_bp 8
 #define ENTROPY_SOURCE__NOISE_OBS_STATUS__WPTR_bw 6
 #define ENTROPY_SOURCE__NOISE_OBS_STATUS__WPTR_reset 0x0
+// Current raw-noise observe FIFO read pointer.
 #define ENTROPY_SOURCE__NOISE_OBS_STATUS__RPTR_bm 0x3f0000
 #define ENTROPY_SOURCE__NOISE_OBS_STATUS__RPTR_bp 16
 #define ENTROPY_SOURCE__NOISE_OBS_STATUS__RPTR_bw 6
 #define ENTROPY_SOURCE__NOISE_OBS_STATUS__RPTR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Number of valid 32-bit words in the raw-noise observe FIFO.
         uint32_t LEVEL :7;
         uint32_t :1;
+        // Current raw-noise observe FIFO write pointer.
         uint32_t WPTR :6;
         uint32_t :2;
+        // Current raw-noise observe FIFO read pointer.
         uint32_t RPTR :6;
         uint32_t :10;
     } f;
@@ -1202,18 +1518,22 @@ typedef union {
 } entropy_source__NOISE_OBS_STATUS_t;
 
 // reg - entropy_source::NOISE_OBS_RDATA
+// Provides the next packed raw-noise observe word.
+// Returns and removes 32 LSB-first pre-decorrelator samples from the selected lane.
 #define ENTROPY_SOURCE__NOISE_OBS_RDATA__RDATA_bm 0xffffffff
 #define ENTROPY_SOURCE__NOISE_OBS_RDATA__RDATA_bp 0
 #define ENTROPY_SOURCE__NOISE_OBS_RDATA__RDATA_bw 32
 #define ENTROPY_SOURCE__NOISE_OBS_RDATA__RDATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Returns and removes 32 LSB-first pre-decorrelator samples from the selected lane.
         uint32_t RDATA :32;
     } f;
     uint32_t w;
 } entropy_source__NOISE_OBS_RDATA_t;
 
 // addrmap - entropy_source
+// Entropy-source configuration, status, and data registers.
 typedef struct __attribute__ ((__packed__)) {
     entropy_source__COMPONENT_ID_t COMPONENT_ID;
     entropy_source__CTRL_t CTRL;

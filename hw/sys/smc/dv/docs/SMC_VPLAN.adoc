@@ -12950,6 +12950,83 @@ fails the rate comparison it was written to make (`clk_rst.adoc` places the OCTS
 system timer in the reference clock domain; `smc_peripherals.sv` clocks it from
 `clk_smc_i`), and is re-measured on demand.
 
+===== SV-UVM held-out scenarios
+
+UVM-only leaves are enrolled in scope-named groups of `testlists/holdout.toml`
+and run on demand with `--framework uvm --tool vcs`. They have no cocotb
+realization.
+
+[[sec-smc_regblock_sparse_strobe_test]]
+====== `smc_regblock_sparse_strobe_test`
+
+*Source Module*: `smc_regblock_sparse_strobe_test` (UVM-only independent scenario)
+
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN); `smc_regblock_wide_ref_model`
+predicts each read from accepted writes and generated RW masks.
+
+*Objective*: Single-byte, non-contiguous and null write strobes update exactly
+the strobed RW bytes of selected 64-bit register-block words.
+
+*Test Coverage*:
+
+* Seven side-effect-free 64-bit words: Zeroer `DEST_ADDR` and `SIZE`, the three
+  hang-detector timeout thresholds, and alias-remap region 0 `REGION_START`
+  and `REGION_END`.
+* Before any write, the Zeroer must be idle and the hang detectors and alias
+  region disabled, so writes to catalogued words have no other effect.
+* Per word: baseline read, full write, one single-byte write, fixed and seeded
+  non-contiguous strobes, a null-strobe write and a restore, each followed by
+  a predicted read. Passes 0 to 3 use all-ones, all-zeros, `0x55` and `0xAA`
+  data; later passes use seeded data.
+* Every SEP_IN byte lane is strobed at least once across the selected words.
+
+*Test Procedure*:
+
+Drive `smc_regblock_sparse_strobe_test_seq`. The safe-state reads run before
+the first write. The sequence applies the full, single-byte, sparse, null and
+restore operations to each catalogued word, checks Zeroer state and lane
+coverage, waits with a bound for all predicted comparisons, then checks
+scoreboard results and access counts.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-REGBLOCK-WIDE-BASELINE` |Each word reads its reset value before the first write
+|`CHK-REGBLOCK-WIDE-FULL-RW` |A full-strobe write updates exactly the RW bits
+|`CHK-REGBLOCK-WIDE-SINGLE-BYTE` |A single-byte write changes only the RW bits of that lane
+|`CHK-REGBLOCK-WIDE-SPARSE` |A non-contiguous strobe changes only the RW bits of the strobed lanes
+|`CHK-REGBLOCK-WIDE-NULL-STROBE` |A write with no strobed lane changes nothing
+|`CHK-REGBLOCK-WIDE-RESTORE` |Each word reads its reset value after the restore write
+|`CHK-REGBLOCK-WIDE-RESTORE-NONVAC` |At least one restore per pass changes an RW value
+|`CHK-REGBLOCK-WIDE-NO-ZEROER-START` |The Zeroer reads idle (`CTRL_STATUS.STATUS = 0`) after the last catalogued write
+|`CHK-REGBLOCK-WIDE-LANE-COVERAGE` |All eight SEP_IN byte lanes were strobed
+|`CHK-SB-REGBLOCK-WIDE` |Each catalogued read matches the passive model's predicted 64-bit value
+|`CHK-REGBLOCK-WIDE-SCOREBOARD` |Every predicted read was compared with no new mismatch
+|`CHK-NONVAC` |The number of SEP_IN accesses equals the declared scenario
+|`CHK-SB-MIN-ACTIVITY`, `CHK-MEM-RESP`, `CHK-FUSE-SENSE-DONE` |Scenario volume, frontdoor responses and bring-up completed as declared
+|===
+
+*Known Limitations*:
+
+The claim covers the seven selected words under the safe-state preconditions.
+It excludes registers whose writes change decode, gating, reset, lock or other
+operational state. `RESET_VECTOR_0` through `RESET_VECTOR_3` are excluded
+because a later core reset that does not also assert warm reset can consume a
+test pattern as a boot address. `DFX_CTRL.DEBUG_CTRL` is excluded because its
+field behavior is outside this CSR byte-enable claim.
+
+*Pass Criteria*: all checks hold on every pass;
+`+SMC_REGBLOCK_WIDE_SCOREBOARD_NEGATIVE` must fail `regblock_wide`
+comparisons. `+SMC_REGBLOCK_WIDE_SEQUENCE_NEGATIVE` corrupts the sequence's
+full-write expectation and must fail `CHK-REGBLOCK-WIDE-FULL-RW` while the
+scoreboard records no mismatch. Enrolled only in `csr_uvm_extended`, outside
+`all`, `hosted` and `ci`; run on demand. This card records what a run must
+show, not a pass.
+
+'''''
+
 [[smc-deferred-disposition]]
 ==== SMC deferred and OUT disposition
 

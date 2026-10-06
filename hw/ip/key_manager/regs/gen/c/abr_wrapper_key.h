@@ -14,34 +14,49 @@ extern "C" {
 #include <assert.h>
 
 // reg - abr_wrapper_key::key_word_reg
+// One 32-bit word of key data. Write-only; reads return 0.
+// No reset; powers up with undefined value.
+// 32-bit key data word. Write-only for security.
 #define ABR_WRAPPER_KEY__KEY_WORD_REG__DATA_bm 0xffffffff
 #define ABR_WRAPPER_KEY__KEY_WORD_REG__DATA_bp 0
 #define ABR_WRAPPER_KEY__KEY_WORD_REG__DATA_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 32-bit key data word. Write-only for security.
         uint32_t data :32;
     } f;
     uint32_t w;
 } abr_wrapper_key__key_word_reg_t;
 
 // reg - abr_wrapper_key::seed_ctrl_reg
+// Seed control register. Writing KEY_VALID=1 marks the seed as loaded.
+// Write 0 to invalidate. The KV shim gates the AB kv_read response
+// on this bit.
+// When 1, the seed is loaded and the KV shim will serve it to Adams Bridge.
+// Write 0 to invalidate and allow a new seed to be written.
 #define ABR_WRAPPER_KEY__SEED_CTRL_REG__KEY_VALID_bm 0x1
 #define ABR_WRAPPER_KEY__SEED_CTRL_REG__KEY_VALID_bp 0
 #define ABR_WRAPPER_KEY__SEED_CTRL_REG__KEY_VALID_bw 1
 #define ABR_WRAPPER_KEY__SEED_CTRL_REG__KEY_VALID_reset 0x0
+// Reserved
 #define ABR_WRAPPER_KEY__SEED_CTRL_REG__RSVD_bm 0xfffffffe
 #define ABR_WRAPPER_KEY__SEED_CTRL_REG__RSVD_bp 1
 #define ABR_WRAPPER_KEY__SEED_CTRL_REG__RSVD_bw 31
 #define ABR_WRAPPER_KEY__SEED_CTRL_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // When 1, the seed is loaded and the KV shim will serve it to Adams Bridge.
+        // Write 0 to invalidate and allow a new seed to be written.
         uint32_t key_valid :1;
+        // Reserved
         uint32_t rsvd :31;
     } f;
     uint32_t w;
 } abr_wrapper_key__seed_ctrl_reg_t;
 
 // regfile - abr_wrapper_key::abr_seed_rf
+// Dual-share 256-bit secret seed (write-only) + key_valid flag.
+// Layout identical to aes_wrapper_key for firmware reuse.
 typedef struct __attribute__ ((__packed__)) {
     abr_wrapper_key__key_word_reg_t KEY_SHARE0[8];
     abr_wrapper_key__key_word_reg_t KEY_SHARE1[8];
@@ -49,69 +64,105 @@ typedef struct __attribute__ ((__packed__)) {
 } abr_wrapper_key__abr_seed_rf_t;
 
 // reg - abr_wrapper_key::sk_word_reg
+// One 32-bit word of ML-KEM shared key output. Written by hardware
+// when key is ready; read by KM firmware to consume. Hardware clears
+// all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
+// 32-bit shared-key word. Hardware writes on key-ready event;
+// hardware clears to 0 on key-consume event (KEY_VALID cleared).
 #define ABR_WRAPPER_KEY__SK_WORD_REG__DATA_bm 0xffffffff
 #define ABR_WRAPPER_KEY__SK_WORD_REG__DATA_bp 0
 #define ABR_WRAPPER_KEY__SK_WORD_REG__DATA_bw 32
 #define ABR_WRAPPER_KEY__SK_WORD_REG__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 32-bit shared-key word. Hardware writes on key-ready event;
+        // hardware clears to 0 on key-consume event (KEY_VALID cleared).
         uint32_t data :32;
     } f;
     uint32_t w;
 } abr_wrapper_key__sk_word_reg_t;
 
 // reg - abr_wrapper_key::sk_ctrl_reg
+// Shared-key control. HW sets KEY_VALID when a new key is ready.
+// Firmware writes 0 to clear (consume and zeroize).
+// 1 = shared key is valid and ready for firmware consumption.
+// Hardware sets this bit on key-ready event. Write 0 to clear;
+// write 1 has no effect (software cannot set this bit).
 #define ABR_WRAPPER_KEY__SK_CTRL_REG__KEY_VALID_bm 0x1
 #define ABR_WRAPPER_KEY__SK_CTRL_REG__KEY_VALID_bp 0
 #define ABR_WRAPPER_KEY__SK_CTRL_REG__KEY_VALID_bw 1
 #define ABR_WRAPPER_KEY__SK_CTRL_REG__KEY_VALID_reset 0x0
+// Reserved
 #define ABR_WRAPPER_KEY__SK_CTRL_REG__RSVD_bm 0xfffffffe
 #define ABR_WRAPPER_KEY__SK_CTRL_REG__RSVD_bp 1
 #define ABR_WRAPPER_KEY__SK_CTRL_REG__RSVD_bw 31
 #define ABR_WRAPPER_KEY__SK_CTRL_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 1 = shared key is valid and ready for firmware consumption.
+        // Hardware sets this bit on key-ready event. Write 0 to clear;
+        // write 1 has no effect (software cannot set this bit).
         uint32_t key_valid :1;
+        // Reserved
         uint32_t rsvd :31;
     } f;
     uint32_t w;
 } abr_wrapper_key__sk_ctrl_reg_t;
 
 // reg - abr_wrapper_key::sk_irq_status_reg
+// Interrupt status for ML-KEM shared key. Sticky bit set by
+// hardware when a new shared key becomes valid; cleared by writing 1.
+// ML-KEM shared key valid. Sticky, write 1 to clear.
 #define ABR_WRAPPER_KEY__SK_IRQ_STATUS_REG__KEY_VALID_bm 0x1
 #define ABR_WRAPPER_KEY__SK_IRQ_STATUS_REG__KEY_VALID_bp 0
 #define ABR_WRAPPER_KEY__SK_IRQ_STATUS_REG__KEY_VALID_bw 1
 #define ABR_WRAPPER_KEY__SK_IRQ_STATUS_REG__KEY_VALID_reset 0x0
+// Reserved
 #define ABR_WRAPPER_KEY__SK_IRQ_STATUS_REG__RSVD_bm 0xfffffffe
 #define ABR_WRAPPER_KEY__SK_IRQ_STATUS_REG__RSVD_bp 1
 #define ABR_WRAPPER_KEY__SK_IRQ_STATUS_REG__RSVD_bw 31
 #define ABR_WRAPPER_KEY__SK_IRQ_STATUS_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // ML-KEM shared key valid. Sticky, write 1 to clear.
         uint32_t key_valid :1;
+        // Reserved
         uint32_t rsvd :31;
     } f;
     uint32_t w;
 } abr_wrapper_key__sk_irq_status_reg_t;
 
 // reg - abr_wrapper_key::sk_irq_enable_reg
+// Interrupt enable for ML-KEM shared key. Mask for the
+// PicoRV32 IRQ vector bit driven by the shared-key-valid event.
+// 1 = enable PicoRV32 IRQ when ML-KEM shared key is valid.
+// 0 = mask the interrupt (KEY_CTRL.KEY_VALID can still be polled).
 #define ABR_WRAPPER_KEY__SK_IRQ_ENABLE_REG__KEY_VALID_EN_bm 0x1
 #define ABR_WRAPPER_KEY__SK_IRQ_ENABLE_REG__KEY_VALID_EN_bp 0
 #define ABR_WRAPPER_KEY__SK_IRQ_ENABLE_REG__KEY_VALID_EN_bw 1
 #define ABR_WRAPPER_KEY__SK_IRQ_ENABLE_REG__KEY_VALID_EN_reset 0x0
+// Reserved
 #define ABR_WRAPPER_KEY__SK_IRQ_ENABLE_REG__RSVD_bm 0xfffffffe
 #define ABR_WRAPPER_KEY__SK_IRQ_ENABLE_REG__RSVD_bp 1
 #define ABR_WRAPPER_KEY__SK_IRQ_ENABLE_REG__RSVD_bw 31
 #define ABR_WRAPPER_KEY__SK_IRQ_ENABLE_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 1 = enable PicoRV32 IRQ when ML-KEM shared key is valid.
+        // 0 = mask the interrupt (KEY_CTRL.KEY_VALID can still be polled).
         uint32_t key_valid_en :1;
+        // Reserved
         uint32_t rsvd :31;
     } f;
     uint32_t w;
 } abr_wrapper_key__sk_irq_enable_reg_t;
 
 // regfile - abr_wrapper_key::abr_sharedkey_rf
+// 256-bit ML-KEM shared key output from Adams Bridge.
+// Hardware writes KEY[*] and sets KEY_CTRL.KEY_VALID when ready.
+// Firmware reads KEY[*] then writes KEY_CTRL=0 to consume/zeroize.
+// IRQ_STATUS is a sticky W1C bit set by hardware on the key-ready
+// event; the masked CPU interrupt is IRQ_STATUS & IRQ_ENABLE.
 typedef struct __attribute__ ((__packed__)) {
     abr_wrapper_key__sk_word_reg_t KEY[8];
     abr_wrapper_key__sk_ctrl_reg_t KEY_CTRL;
@@ -120,6 +171,8 @@ typedef struct __attribute__ ((__packed__)) {
 } abr_wrapper_key__abr_sharedkey_rf_t;
 
 // addrmap - abr_wrapper_key
+// Single AXI4-Lite window for all KM sideload interfaces to Adams Bridge.
+// Contains four dual-share secret-seed inputs and one shared-key output.
 typedef struct __attribute__ ((__packed__)) {
     abr_wrapper_key__abr_seed_rf_t MLDSA_SEED;
     uint8_t RESERVED_44_ff[0xbc];

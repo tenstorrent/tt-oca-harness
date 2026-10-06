@@ -217,6 +217,7 @@ typedef union {
 } dfd_dst_sink__Trdstramdata_t;
 
 // reg - dfd_dst_sink::ScratchLo
+// Scratch register (low) for DV and potential ECO usage
 #define DFD_DST_SINK__SCRATCHLO__DATA_bm 0xffffffff
 #define DFD_DST_SINK__SCRATCHLO__DATA_bp 0
 #define DFD_DST_SINK__SCRATCHLO__DATA_bw 32
@@ -229,6 +230,7 @@ typedef union {
 } dfd_dst_sink__ScratchLo_t;
 
 // reg - dfd_dst_sink::ScratchHi
+// Scratch register (high) for DV and potential ECO usage
 #define DFD_DST_SINK__SCRATCHHI__DATA_bm 0xffffffff
 #define DFD_DST_SINK__SCRATCHHI__DATA_bp 0
 #define DFD_DST_SINK__SCRATCHHI__DATA_bw 32
@@ -289,6 +291,7 @@ typedef union {
 #define DFD_FUNNEL__TRFUNNELIMPL__TRFUNNELVERMAJOR_bp 0
 #define DFD_FUNNEL__TRFUNNELIMPL__TRFUNNELVERMAJOR_bw 4
 #define DFD_FUNNEL__TRFUNNELIMPL__TRFUNNELVERMAJOR_reset 0x1
+// e
 #define DFD_FUNNEL__TRFUNNELIMPL__TRFUNNELVERMINOR_bm 0xf0
 #define DFD_FUNNEL__TRFUNNELIMPL__TRFUNNELVERMINOR_bp 4
 #define DFD_FUNNEL__TRFUNNELIMPL__TRFUNNELVERMINOR_bw 4
@@ -300,6 +303,7 @@ typedef union {
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t Trfunnelvermajor :4;
+        // e
         uint32_t Trfunnelverminor :4;
         uint32_t Trfunnelcomptype :4;
         uint32_t :20;
@@ -308,12 +312,14 @@ typedef union {
 } dfd_funnel__Trfunnelimpl_t;
 
 // reg - dfd_funnel::Trfunneldisinput
+// Bits 7:0 are reserved for N-trace srcs and 15:8 for Dst sources
 #define DFD_FUNNEL__TRFUNNELDISINPUT__TRFUNNELDISINPUT_bm 0xffff
 #define DFD_FUNNEL__TRFUNNELDISINPUT__TRFUNNELDISINPUT_bp 0
 #define DFD_FUNNEL__TRFUNNELDISINPUT__TRFUNNELDISINPUT_bw 16
 #define DFD_FUNNEL__TRFUNNELDISINPUT__TRFUNNELDISINPUT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Bits 7:0 are reserved for N-trace srcs and 15:8 for Dst sources
         uint32_t Trfunneldisinput :16;
         uint32_t :16;
     } f;
@@ -321,6 +327,7 @@ typedef union {
 } dfd_funnel__Trfunneldisinput_t;
 
 // reg - dfd_funnel::ScratchLo
+// Scratch register (low) for DV and potential ECO usage
 #define DFD_FUNNEL__SCRATCHLO__DATA_bm 0xffffffff
 #define DFD_FUNNEL__SCRATCHLO__DATA_bp 0
 #define DFD_FUNNEL__SCRATCHLO__DATA_bw 32
@@ -333,6 +340,7 @@ typedef union {
 } dfd_funnel__ScratchLo_t;
 
 // reg - dfd_funnel::ScratchHi
+// Scratch register (high) for DV and potential ECO usage
 #define DFD_FUNNEL__SCRATCHHI__DATA_bm 0xffffffff
 #define DFD_FUNNEL__SCRATCHHI__DATA_bp 0
 #define DFD_FUNNEL__SCRATCHHI__DATA_bw 32
@@ -355,6 +363,7 @@ typedef struct __attribute__ ((__packed__)) {
 } dfd_funnel_t;
 
 // reg - dfd_cla::CDbgClaCounter0Cfg
+// Configure CLA counter0. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.
 #define DFD_CLA__CDBGCLACOUNTER0CFG__COUNTER_bm 0xffff
 #define DFD_CLA__CDBGCLACOUNTER0CFG__COUNTER_bp 0
 #define DFD_CLA__CDBGCLACOUNTER0CFG__COUNTER_bw 16
@@ -363,6 +372,7 @@ typedef struct __attribute__ ((__packed__)) {
 #define DFD_CLA__CDBGCLACOUNTER0CFG__TARGET_bp 16
 #define DFD_CLA__CDBGCLACOUNTER0CFG__TARGET_bw 16
 #define DFD_CLA__CDBGCLACOUNTER0CFG__TARGET_reset 0x0
+// When Counter = {upper_target,target} reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.
 #define DFD_CLA__CDBGCLACOUNTER0CFG__RESETONTARGET_bm 0x100000000
 #define DFD_CLA__CDBGCLACOUNTER0CFG__RESETONTARGET_bp 32
 #define DFD_CLA__CDBGCLACOUNTER0CFG__RESETONTARGET_bw 1
@@ -383,6 +393,7 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Counter :16;
         uint64_t Target :16;
+        // When Counter = {upper_target,target} reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.
         uint64_t ResetOnTarget :1;
         uint64_t UpperCounter :15;
         uint64_t UpperTarget :15;
@@ -392,6 +403,7 @@ typedef union {
 } dfd_cla__CDbgClaCounter0Cfg_t;
 
 // reg - dfd_cla::CDbgClaCounter1Cfg
+// Configure CLA counter1. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.
 #define DFD_CLA__CDBGCLACOUNTER1CFG__COUNTER_bm 0xffff
 #define DFD_CLA__CDBGCLACOUNTER1CFG__COUNTER_bp 0
 #define DFD_CLA__CDBGCLACOUNTER1CFG__COUNTER_bw 16
@@ -400,6 +412,7 @@ typedef union {
 #define DFD_CLA__CDBGCLACOUNTER1CFG__TARGET_bp 16
 #define DFD_CLA__CDBGCLACOUNTER1CFG__TARGET_bw 16
 #define DFD_CLA__CDBGCLACOUNTER1CFG__TARGET_reset 0x0
+// When Counter = {upper_target,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.
 #define DFD_CLA__CDBGCLACOUNTER1CFG__RESETONTARGET_bm 0x100000000
 #define DFD_CLA__CDBGCLACOUNTER1CFG__RESETONTARGET_bp 32
 #define DFD_CLA__CDBGCLACOUNTER1CFG__RESETONTARGET_bw 1
@@ -420,6 +433,7 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Counter :16;
         uint64_t Target :16;
+        // When Counter = {upper_target,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.
         uint64_t ResetOnTarget :1;
         uint64_t UpperCounter :15;
         uint64_t UpperTarget :15;
@@ -429,6 +443,7 @@ typedef union {
 } dfd_cla__CDbgClaCounter1Cfg_t;
 
 // reg - dfd_cla::CDbgClaCounter2Cfg
+// Configure CLA counter2. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.
 #define DFD_CLA__CDBGCLACOUNTER2CFG__COUNTER_bm 0xffff
 #define DFD_CLA__CDBGCLACOUNTER2CFG__COUNTER_bp 0
 #define DFD_CLA__CDBGCLACOUNTER2CFG__COUNTER_bw 16
@@ -437,6 +452,7 @@ typedef union {
 #define DFD_CLA__CDBGCLACOUNTER2CFG__TARGET_bp 16
 #define DFD_CLA__CDBGCLACOUNTER2CFG__TARGET_bw 16
 #define DFD_CLA__CDBGCLACOUNTER2CFG__TARGET_reset 0x0
+// When Counter = {upper_target,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.
 #define DFD_CLA__CDBGCLACOUNTER2CFG__RESETONTARGET_bm 0x100000000
 #define DFD_CLA__CDBGCLACOUNTER2CFG__RESETONTARGET_bp 32
 #define DFD_CLA__CDBGCLACOUNTER2CFG__RESETONTARGET_bw 1
@@ -457,6 +473,7 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Counter :16;
         uint64_t Target :16;
+        // When Counter = {upper_target,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.
         uint64_t ResetOnTarget :1;
         uint64_t UpperCounter :15;
         uint64_t UpperTarget :15;
@@ -466,6 +483,7 @@ typedef union {
 } dfd_cla__CDbgClaCounter2Cfg_t;
 
 // reg - dfd_cla::CDbgClaCounter3Cfg
+// Configure CLA counter3. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.
 #define DFD_CLA__CDBGCLACOUNTER3CFG__COUNTER_bm 0xffff
 #define DFD_CLA__CDBGCLACOUNTER3CFG__COUNTER_bp 0
 #define DFD_CLA__CDBGCLACOUNTER3CFG__COUNTER_bw 16
@@ -474,6 +492,7 @@ typedef union {
 #define DFD_CLA__CDBGCLACOUNTER3CFG__TARGET_bp 16
 #define DFD_CLA__CDBGCLACOUNTER3CFG__TARGET_bw 16
 #define DFD_CLA__CDBGCLACOUNTER3CFG__TARGET_reset 0x0
+// When Counter = {upper_target,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.
 #define DFD_CLA__CDBGCLACOUNTER3CFG__RESETONTARGET_bm 0x100000000
 #define DFD_CLA__CDBGCLACOUNTER3CFG__RESETONTARGET_bp 32
 #define DFD_CLA__CDBGCLACOUNTER3CFG__RESETONTARGET_bw 1
@@ -494,6 +513,7 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t Counter :16;
         uint64_t Target :16;
+        // When Counter = {upper_target,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.
         uint64_t ResetOnTarget :1;
         uint64_t UpperCounter :15;
         uint64_t UpperTarget :15;
@@ -503,691 +523,944 @@ typedef union {
 } dfd_cla__CDbgClaCounter3Cfg_t;
 
 // reg - dfd_cla::CDbgNode0Eap0
+// CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+// Select Destination Node
 #define DFD_CLA__CDBGNODE0EAP0__DESTNODE_bm 0x3
 #define DFD_CLA__CDBGNODE0EAP0__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE0EAP0__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE0EAP0__DESTNODE_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE0EAP0__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE0EAP0__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE0EAP0__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE0EAP0__ACTION0_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE0EAP0__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE0EAP0__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE0EAP0__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE0EAP0__ACTION1_reset 0x0
+// Relation to be satisfied among events to activate the actions
 #define DFD_CLA__CDBGNODE0EAP0__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE0EAP0__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE0EAP0__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE0EAP0__LOGICALOP_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE0_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE1_bw 6
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE1_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE0EAP0__CUSTOMACTION0_bm 0xf0000000
 #define DFD_CLA__CDBGNODE0EAP0__CUSTOMACTION0_bp 28
 #define DFD_CLA__CDBGNODE0EAP0__CUSTOMACTION0_bw 4
 #define DFD_CLA__CDBGNODE0EAP0__CUSTOMACTION0_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE0EAP0__CUSTOMACTION1_bm 0xf00000000
 #define DFD_CLA__CDBGNODE0EAP0__CUSTOMACTION1_bp 32
 #define DFD_CLA__CDBGNODE0EAP0__CUSTOMACTION1_bw 4
 #define DFD_CLA__CDBGNODE0EAP0__CUSTOMACTION1_reset 0x0
+// custom_action0 is valid only if custom_action0_enable is set
 #define DFD_CLA__CDBGNODE0EAP0__CUSTOMACTION0ENABLE_bm 0x1000000000
 #define DFD_CLA__CDBGNODE0EAP0__CUSTOMACTION0ENABLE_bp 36
 #define DFD_CLA__CDBGNODE0EAP0__CUSTOMACTION0ENABLE_bw 1
 #define DFD_CLA__CDBGNODE0EAP0__CUSTOMACTION0ENABLE_reset 0x0
+// custom_action1 is valid only if custom_action1_enable is set
 #define DFD_CLA__CDBGNODE0EAP0__CUSTOMACTION1ENABLE_bm 0x2000000000
 #define DFD_CLA__CDBGNODE0EAP0__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE0EAP0__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE0EAP0__CUSTOMACTION1ENABLE_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE0EAP0__EVENTTYPE2_reset 0x0
+// User Defined Function with event type 0, 1, and 2 as arguments
 #define DFD_CLA__CDBGNODE0EAP0__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE0EAP0__UDF_bp 44
 #define DFD_CLA__CDBGNODE0EAP0__UDF_bw 8
 #define DFD_CLA__CDBGNODE0EAP0__UDF_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE0EAP0__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE0EAP0__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE0EAP0__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE0EAP0__ACTION2_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE0EAP0__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE0EAP0__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE0EAP0__ACTION3_bw 6
 #define DFD_CLA__CDBGNODE0EAP0__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Select Destination Node
         uint64_t DestNode :2;
+        // Select an Action
         uint64_t Action0 :6;
+        // Select an Action
         uint64_t Action1 :6;
+        // Relation to be satisfied among events to activate the actions
         uint64_t LogicalOp :2;
+        // Select a trigger event
         uint64_t EventType0 :6;
+        // Select a trigger event
         uint64_t EventType1 :6;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction1 :4;
+        // custom_action0 is valid only if custom_action0_enable is set
         uint64_t CustomAction0Enable :1;
+        // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
+        // Select a trigger event
         uint64_t EventType2 :6;
+        // User Defined Function with event type 0, 1, and 2 as arguments
         uint64_t Udf :8;
+        // Select an Action
         uint64_t Action2 :6;
+        // Select an Action
         uint64_t Action3 :6;
     } f;
     uint64_t w;
 } dfd_cla__CDbgNode0Eap0_t;
 
 // reg - dfd_cla::CDbgNode0Eap1
+// CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+// Select Destination Node
 #define DFD_CLA__CDBGNODE0EAP1__DESTNODE_bm 0x3
 #define DFD_CLA__CDBGNODE0EAP1__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE0EAP1__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE0EAP1__DESTNODE_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE0EAP1__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE0EAP1__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE0EAP1__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE0EAP1__ACTION0_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE0EAP1__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE0EAP1__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE0EAP1__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE0EAP1__ACTION1_reset 0x0
+// Relation to be satisfied among events to activate the actions
 #define DFD_CLA__CDBGNODE0EAP1__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE0EAP1__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE0EAP1__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE0EAP1__LOGICALOP_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE0_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE1_bw 6
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE1_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE0EAP1__CUSTOMACTION0_bm 0xf0000000
 #define DFD_CLA__CDBGNODE0EAP1__CUSTOMACTION0_bp 28
 #define DFD_CLA__CDBGNODE0EAP1__CUSTOMACTION0_bw 4
 #define DFD_CLA__CDBGNODE0EAP1__CUSTOMACTION0_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE0EAP1__CUSTOMACTION1_bm 0xf00000000
 #define DFD_CLA__CDBGNODE0EAP1__CUSTOMACTION1_bp 32
 #define DFD_CLA__CDBGNODE0EAP1__CUSTOMACTION1_bw 4
 #define DFD_CLA__CDBGNODE0EAP1__CUSTOMACTION1_reset 0x0
+// custom_action0 is valid only if custom_action0_enable is set
 #define DFD_CLA__CDBGNODE0EAP1__CUSTOMACTION0ENABLE_bm 0x1000000000
 #define DFD_CLA__CDBGNODE0EAP1__CUSTOMACTION0ENABLE_bp 36
 #define DFD_CLA__CDBGNODE0EAP1__CUSTOMACTION0ENABLE_bw 1
 #define DFD_CLA__CDBGNODE0EAP1__CUSTOMACTION0ENABLE_reset 0x0
+// custom_action1 is valid only if custom_action1_enable is set
 #define DFD_CLA__CDBGNODE0EAP1__CUSTOMACTION1ENABLE_bm 0x2000000000
 #define DFD_CLA__CDBGNODE0EAP1__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE0EAP1__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE0EAP1__CUSTOMACTION1ENABLE_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE0EAP1__EVENTTYPE2_reset 0x0
+// User Defined Function with event type 0, 1, and 2 as arguments
 #define DFD_CLA__CDBGNODE0EAP1__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE0EAP1__UDF_bp 44
 #define DFD_CLA__CDBGNODE0EAP1__UDF_bw 8
 #define DFD_CLA__CDBGNODE0EAP1__UDF_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE0EAP1__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE0EAP1__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE0EAP1__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE0EAP1__ACTION2_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE0EAP1__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE0EAP1__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE0EAP1__ACTION3_bw 6
 #define DFD_CLA__CDBGNODE0EAP1__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Select Destination Node
         uint64_t DestNode :2;
+        // Select an Action
         uint64_t Action0 :6;
+        // Select an Action
         uint64_t Action1 :6;
+        // Relation to be satisfied among events to activate the actions
         uint64_t LogicalOp :2;
+        // Select a trigger event
         uint64_t EventType0 :6;
+        // Select a trigger event
         uint64_t EventType1 :6;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction1 :4;
+        // custom_action0 is valid only if custom_action0_enable is set
         uint64_t CustomAction0Enable :1;
+        // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
+        // Select a trigger event
         uint64_t EventType2 :6;
+        // User Defined Function with event type 0, 1, and 2 as arguments
         uint64_t Udf :8;
+        // Select an Action
         uint64_t Action2 :6;
+        // Select an Action
         uint64_t Action3 :6;
     } f;
     uint64_t w;
 } dfd_cla__CDbgNode0Eap1_t;
 
 // reg - dfd_cla::CDbgNode1Eap0
+// CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+// Select Destination Node
 #define DFD_CLA__CDBGNODE1EAP0__DESTNODE_bm 0x3
 #define DFD_CLA__CDBGNODE1EAP0__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE1EAP0__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE1EAP0__DESTNODE_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE1EAP0__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE1EAP0__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE1EAP0__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE1EAP0__ACTION0_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE1EAP0__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE1EAP0__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE1EAP0__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE1EAP0__ACTION1_reset 0x0
+// Relation to be satisfied among events to activate the actions
 #define DFD_CLA__CDBGNODE1EAP0__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE1EAP0__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE1EAP0__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE1EAP0__LOGICALOP_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE0_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE1_bw 6
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE1_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE1EAP0__CUSTOMACTION0_bm 0xf0000000
 #define DFD_CLA__CDBGNODE1EAP0__CUSTOMACTION0_bp 28
 #define DFD_CLA__CDBGNODE1EAP0__CUSTOMACTION0_bw 4
 #define DFD_CLA__CDBGNODE1EAP0__CUSTOMACTION0_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE1EAP0__CUSTOMACTION1_bm 0xf00000000
 #define DFD_CLA__CDBGNODE1EAP0__CUSTOMACTION1_bp 32
 #define DFD_CLA__CDBGNODE1EAP0__CUSTOMACTION1_bw 4
 #define DFD_CLA__CDBGNODE1EAP0__CUSTOMACTION1_reset 0x0
+// custom_action0 is valid only if custom_action0_enable is set
 #define DFD_CLA__CDBGNODE1EAP0__CUSTOMACTION0ENABLE_bm 0x1000000000
 #define DFD_CLA__CDBGNODE1EAP0__CUSTOMACTION0ENABLE_bp 36
 #define DFD_CLA__CDBGNODE1EAP0__CUSTOMACTION0ENABLE_bw 1
 #define DFD_CLA__CDBGNODE1EAP0__CUSTOMACTION0ENABLE_reset 0x0
+// custom_action1 is valid only if custom_action1_enable is set
 #define DFD_CLA__CDBGNODE1EAP0__CUSTOMACTION1ENABLE_bm 0x2000000000
 #define DFD_CLA__CDBGNODE1EAP0__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE1EAP0__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE1EAP0__CUSTOMACTION1ENABLE_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE1EAP0__EVENTTYPE2_reset 0x0
+// User Defined Function with event type 0, 1, and 2 as arguments
 #define DFD_CLA__CDBGNODE1EAP0__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE1EAP0__UDF_bp 44
 #define DFD_CLA__CDBGNODE1EAP0__UDF_bw 8
 #define DFD_CLA__CDBGNODE1EAP0__UDF_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE1EAP0__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE1EAP0__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE1EAP0__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE1EAP0__ACTION2_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE1EAP0__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE1EAP0__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE1EAP0__ACTION3_bw 6
 #define DFD_CLA__CDBGNODE1EAP0__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Select Destination Node
         uint64_t DestNode :2;
+        // Select an Action
         uint64_t Action0 :6;
+        // Select an Action
         uint64_t Action1 :6;
+        // Relation to be satisfied among events to activate the actions
         uint64_t LogicalOp :2;
+        // Select a trigger event
         uint64_t EventType0 :6;
+        // Select a trigger event
         uint64_t EventType1 :6;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction1 :4;
+        // custom_action0 is valid only if custom_action0_enable is set
         uint64_t CustomAction0Enable :1;
+        // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
+        // Select a trigger event
         uint64_t EventType2 :6;
+        // User Defined Function with event type 0, 1, and 2 as arguments
         uint64_t Udf :8;
+        // Select an Action
         uint64_t Action2 :6;
+        // Select an Action
         uint64_t Action3 :6;
     } f;
     uint64_t w;
 } dfd_cla__CDbgNode1Eap0_t;
 
 // reg - dfd_cla::CDbgNode1Eap1
+// CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+// Select Destination Node
 #define DFD_CLA__CDBGNODE1EAP1__DESTNODE_bm 0x3
 #define DFD_CLA__CDBGNODE1EAP1__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE1EAP1__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE1EAP1__DESTNODE_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE1EAP1__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE1EAP1__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE1EAP1__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE1EAP1__ACTION0_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE1EAP1__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE1EAP1__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE1EAP1__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE1EAP1__ACTION1_reset 0x0
+// Relation to be satisfied among events to activate the actions
 #define DFD_CLA__CDBGNODE1EAP1__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE1EAP1__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE1EAP1__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE1EAP1__LOGICALOP_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE0_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE1_bw 6
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE1_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE1EAP1__CUSTOMACTION0_bm 0xf0000000
 #define DFD_CLA__CDBGNODE1EAP1__CUSTOMACTION0_bp 28
 #define DFD_CLA__CDBGNODE1EAP1__CUSTOMACTION0_bw 4
 #define DFD_CLA__CDBGNODE1EAP1__CUSTOMACTION0_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE1EAP1__CUSTOMACTION1_bm 0xf00000000
 #define DFD_CLA__CDBGNODE1EAP1__CUSTOMACTION1_bp 32
 #define DFD_CLA__CDBGNODE1EAP1__CUSTOMACTION1_bw 4
 #define DFD_CLA__CDBGNODE1EAP1__CUSTOMACTION1_reset 0x0
+// custom_action0 is valid only if custom_action0_enable is set
 #define DFD_CLA__CDBGNODE1EAP1__CUSTOMACTION0ENABLE_bm 0x1000000000
 #define DFD_CLA__CDBGNODE1EAP1__CUSTOMACTION0ENABLE_bp 36
 #define DFD_CLA__CDBGNODE1EAP1__CUSTOMACTION0ENABLE_bw 1
 #define DFD_CLA__CDBGNODE1EAP1__CUSTOMACTION0ENABLE_reset 0x0
+// custom_action1 is valid only if custom_action1_enable is set
 #define DFD_CLA__CDBGNODE1EAP1__CUSTOMACTION1ENABLE_bm 0x2000000000
 #define DFD_CLA__CDBGNODE1EAP1__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE1EAP1__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE1EAP1__CUSTOMACTION1ENABLE_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE1EAP1__EVENTTYPE2_reset 0x0
+// User Defined Function with event type 0, 1, and 2 as arguments
 #define DFD_CLA__CDBGNODE1EAP1__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE1EAP1__UDF_bp 44
 #define DFD_CLA__CDBGNODE1EAP1__UDF_bw 8
 #define DFD_CLA__CDBGNODE1EAP1__UDF_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE1EAP1__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE1EAP1__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE1EAP1__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE1EAP1__ACTION2_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE1EAP1__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE1EAP1__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE1EAP1__ACTION3_bw 6
 #define DFD_CLA__CDBGNODE1EAP1__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Select Destination Node
         uint64_t DestNode :2;
+        // Select an Action
         uint64_t Action0 :6;
+        // Select an Action
         uint64_t Action1 :6;
+        // Relation to be satisfied among events to activate the actions
         uint64_t LogicalOp :2;
+        // Select a trigger event
         uint64_t EventType0 :6;
+        // Select a trigger event
         uint64_t EventType1 :6;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction1 :4;
+        // custom_action0 is valid only if custom_action0_enable is set
         uint64_t CustomAction0Enable :1;
+        // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
+        // Select a trigger event
         uint64_t EventType2 :6;
+        // User Defined Function with event type 0, 1, and 2 as arguments
         uint64_t Udf :8;
+        // Select an Action
         uint64_t Action2 :6;
+        // Select an Action
         uint64_t Action3 :6;
     } f;
     uint64_t w;
 } dfd_cla__CDbgNode1Eap1_t;
 
 // reg - dfd_cla::CDbgNode2Eap0
+// CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+// Select Destination Node
 #define DFD_CLA__CDBGNODE2EAP0__DESTNODE_bm 0x3
 #define DFD_CLA__CDBGNODE2EAP0__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE2EAP0__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE2EAP0__DESTNODE_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE2EAP0__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE2EAP0__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE2EAP0__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE2EAP0__ACTION0_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE2EAP0__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE2EAP0__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE2EAP0__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE2EAP0__ACTION1_reset 0x0
+// Relation to be satisfied among events to activate the actions
 #define DFD_CLA__CDBGNODE2EAP0__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE2EAP0__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE2EAP0__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE2EAP0__LOGICALOP_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE0_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE1_bw 6
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE1_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE2EAP0__CUSTOMACTION0_bm 0xf0000000
 #define DFD_CLA__CDBGNODE2EAP0__CUSTOMACTION0_bp 28
 #define DFD_CLA__CDBGNODE2EAP0__CUSTOMACTION0_bw 4
 #define DFD_CLA__CDBGNODE2EAP0__CUSTOMACTION0_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE2EAP0__CUSTOMACTION1_bm 0xf00000000
 #define DFD_CLA__CDBGNODE2EAP0__CUSTOMACTION1_bp 32
 #define DFD_CLA__CDBGNODE2EAP0__CUSTOMACTION1_bw 4
 #define DFD_CLA__CDBGNODE2EAP0__CUSTOMACTION1_reset 0x0
+// custom_action0 is valid only if custom_action0_enable is set
 #define DFD_CLA__CDBGNODE2EAP0__CUSTOMACTION0ENABLE_bm 0x1000000000
 #define DFD_CLA__CDBGNODE2EAP0__CUSTOMACTION0ENABLE_bp 36
 #define DFD_CLA__CDBGNODE2EAP0__CUSTOMACTION0ENABLE_bw 1
 #define DFD_CLA__CDBGNODE2EAP0__CUSTOMACTION0ENABLE_reset 0x0
+// custom_action1 is valid only if custom_action1_enable is set
 #define DFD_CLA__CDBGNODE2EAP0__CUSTOMACTION1ENABLE_bm 0x2000000000
 #define DFD_CLA__CDBGNODE2EAP0__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE2EAP0__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE2EAP0__CUSTOMACTION1ENABLE_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE2EAP0__EVENTTYPE2_reset 0x0
+// User Defined Function with event type 0, 1, and 2 as arguments
 #define DFD_CLA__CDBGNODE2EAP0__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE2EAP0__UDF_bp 44
 #define DFD_CLA__CDBGNODE2EAP0__UDF_bw 8
 #define DFD_CLA__CDBGNODE2EAP0__UDF_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE2EAP0__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE2EAP0__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE2EAP0__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE2EAP0__ACTION2_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE2EAP0__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE2EAP0__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE2EAP0__ACTION3_bw 6
 #define DFD_CLA__CDBGNODE2EAP0__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Select Destination Node
         uint64_t DestNode :2;
+        // Select an Action
         uint64_t Action0 :6;
+        // Select an Action
         uint64_t Action1 :6;
+        // Relation to be satisfied among events to activate the actions
         uint64_t LogicalOp :2;
+        // Select a trigger event
         uint64_t EventType0 :6;
+        // Select a trigger event
         uint64_t EventType1 :6;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction1 :4;
+        // custom_action0 is valid only if custom_action0_enable is set
         uint64_t CustomAction0Enable :1;
+        // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
+        // Select a trigger event
         uint64_t EventType2 :6;
+        // User Defined Function with event type 0, 1, and 2 as arguments
         uint64_t Udf :8;
+        // Select an Action
         uint64_t Action2 :6;
+        // Select an Action
         uint64_t Action3 :6;
     } f;
     uint64_t w;
 } dfd_cla__CDbgNode2Eap0_t;
 
 // reg - dfd_cla::CDbgNode2Eap1
+// CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+// Select Destination Node
 #define DFD_CLA__CDBGNODE2EAP1__DESTNODE_bm 0x3
 #define DFD_CLA__CDBGNODE2EAP1__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE2EAP1__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE2EAP1__DESTNODE_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE2EAP1__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE2EAP1__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE2EAP1__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE2EAP1__ACTION0_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE2EAP1__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE2EAP1__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE2EAP1__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE2EAP1__ACTION1_reset 0x0
+// Relation to be satisfied among events to activate the actions
 #define DFD_CLA__CDBGNODE2EAP1__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE2EAP1__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE2EAP1__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE2EAP1__LOGICALOP_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE0_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE1_bw 6
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE1_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE2EAP1__CUSTOMACTION0_bm 0xf0000000
 #define DFD_CLA__CDBGNODE2EAP1__CUSTOMACTION0_bp 28
 #define DFD_CLA__CDBGNODE2EAP1__CUSTOMACTION0_bw 4
 #define DFD_CLA__CDBGNODE2EAP1__CUSTOMACTION0_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE2EAP1__CUSTOMACTION1_bm 0xf00000000
 #define DFD_CLA__CDBGNODE2EAP1__CUSTOMACTION1_bp 32
 #define DFD_CLA__CDBGNODE2EAP1__CUSTOMACTION1_bw 4
 #define DFD_CLA__CDBGNODE2EAP1__CUSTOMACTION1_reset 0x0
+// custom_action0 is valid only if custom_action0_enable is set
 #define DFD_CLA__CDBGNODE2EAP1__CUSTOMACTION0ENABLE_bm 0x1000000000
 #define DFD_CLA__CDBGNODE2EAP1__CUSTOMACTION0ENABLE_bp 36
 #define DFD_CLA__CDBGNODE2EAP1__CUSTOMACTION0ENABLE_bw 1
 #define DFD_CLA__CDBGNODE2EAP1__CUSTOMACTION0ENABLE_reset 0x0
+// custom_action1 is valid only if custom_action1_enable is set
 #define DFD_CLA__CDBGNODE2EAP1__CUSTOMACTION1ENABLE_bm 0x2000000000
 #define DFD_CLA__CDBGNODE2EAP1__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE2EAP1__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE2EAP1__CUSTOMACTION1ENABLE_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE2EAP1__EVENTTYPE2_reset 0x0
+// User Defined Function with event type 0, 1, and 2 as arguments
 #define DFD_CLA__CDBGNODE2EAP1__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE2EAP1__UDF_bp 44
 #define DFD_CLA__CDBGNODE2EAP1__UDF_bw 8
 #define DFD_CLA__CDBGNODE2EAP1__UDF_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE2EAP1__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE2EAP1__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE2EAP1__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE2EAP1__ACTION2_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE2EAP1__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE2EAP1__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE2EAP1__ACTION3_bw 6
 #define DFD_CLA__CDBGNODE2EAP1__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Select Destination Node
         uint64_t DestNode :2;
+        // Select an Action
         uint64_t Action0 :6;
+        // Select an Action
         uint64_t Action1 :6;
+        // Relation to be satisfied among events to activate the actions
         uint64_t LogicalOp :2;
+        // Select a trigger event
         uint64_t EventType0 :6;
+        // Select a trigger event
         uint64_t EventType1 :6;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction1 :4;
+        // custom_action0 is valid only if custom_action0_enable is set
         uint64_t CustomAction0Enable :1;
+        // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
+        // Select a trigger event
         uint64_t EventType2 :6;
+        // User Defined Function with event type 0, 1, and 2 as arguments
         uint64_t Udf :8;
+        // Select an Action
         uint64_t Action2 :6;
+        // Select an Action
         uint64_t Action3 :6;
     } f;
     uint64_t w;
 } dfd_cla__CDbgNode2Eap1_t;
 
 // reg - dfd_cla::CDbgNode3Eap0
+// CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+// Select Destination Node
 #define DFD_CLA__CDBGNODE3EAP0__DESTNODE_bm 0x3
 #define DFD_CLA__CDBGNODE3EAP0__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE3EAP0__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE3EAP0__DESTNODE_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE3EAP0__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE3EAP0__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE3EAP0__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE3EAP0__ACTION0_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE3EAP0__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE3EAP0__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE3EAP0__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE3EAP0__ACTION1_reset 0x0
+// Relation to be satisfied among events to activate the actions
 #define DFD_CLA__CDBGNODE3EAP0__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE3EAP0__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE3EAP0__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE3EAP0__LOGICALOP_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE0_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE1_bw 6
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE1_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE3EAP0__CUSTOMACTION0_bm 0xf0000000
 #define DFD_CLA__CDBGNODE3EAP0__CUSTOMACTION0_bp 28
 #define DFD_CLA__CDBGNODE3EAP0__CUSTOMACTION0_bw 4
 #define DFD_CLA__CDBGNODE3EAP0__CUSTOMACTION0_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE3EAP0__CUSTOMACTION1_bm 0xf00000000
 #define DFD_CLA__CDBGNODE3EAP0__CUSTOMACTION1_bp 32
 #define DFD_CLA__CDBGNODE3EAP0__CUSTOMACTION1_bw 4
 #define DFD_CLA__CDBGNODE3EAP0__CUSTOMACTION1_reset 0x0
+// custom_action0 is valid only if custom_action0_enable is set
 #define DFD_CLA__CDBGNODE3EAP0__CUSTOMACTION0ENABLE_bm 0x1000000000
 #define DFD_CLA__CDBGNODE3EAP0__CUSTOMACTION0ENABLE_bp 36
 #define DFD_CLA__CDBGNODE3EAP0__CUSTOMACTION0ENABLE_bw 1
 #define DFD_CLA__CDBGNODE3EAP0__CUSTOMACTION0ENABLE_reset 0x0
+// custom_action1 is valid only if custom_action1_enable is set
 #define DFD_CLA__CDBGNODE3EAP0__CUSTOMACTION1ENABLE_bm 0x2000000000
 #define DFD_CLA__CDBGNODE3EAP0__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE3EAP0__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE3EAP0__CUSTOMACTION1ENABLE_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE3EAP0__EVENTTYPE2_reset 0x0
+// User Defined Function with event type 0, 1, and 2 as arguments
 #define DFD_CLA__CDBGNODE3EAP0__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE3EAP0__UDF_bp 44
 #define DFD_CLA__CDBGNODE3EAP0__UDF_bw 8
 #define DFD_CLA__CDBGNODE3EAP0__UDF_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE3EAP0__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE3EAP0__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE3EAP0__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE3EAP0__ACTION2_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE3EAP0__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE3EAP0__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE3EAP0__ACTION3_bw 6
 #define DFD_CLA__CDBGNODE3EAP0__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Select Destination Node
         uint64_t DestNode :2;
+        // Select an Action
         uint64_t Action0 :6;
+        // Select an Action
         uint64_t Action1 :6;
+        // Relation to be satisfied among events to activate the actions
         uint64_t LogicalOp :2;
+        // Select a trigger event
         uint64_t EventType0 :6;
+        // Select a trigger event
         uint64_t EventType1 :6;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction1 :4;
+        // custom_action0 is valid only if custom_action0_enable is set
         uint64_t CustomAction0Enable :1;
+        // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
+        // Select a trigger event
         uint64_t EventType2 :6;
+        // User Defined Function with event type 0, 1, and 2 as arguments
         uint64_t Udf :8;
+        // Select an Action
         uint64_t Action2 :6;
+        // Select an Action
         uint64_t Action3 :6;
     } f;
     uint64_t w;
 } dfd_cla__CDbgNode3Eap0_t;
 
 // reg - dfd_cla::CDbgNode3Eap1
+// CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+// Select Destination Node
 #define DFD_CLA__CDBGNODE3EAP1__DESTNODE_bm 0x3
 #define DFD_CLA__CDBGNODE3EAP1__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE3EAP1__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE3EAP1__DESTNODE_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE3EAP1__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE3EAP1__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE3EAP1__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE3EAP1__ACTION0_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE3EAP1__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE3EAP1__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE3EAP1__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE3EAP1__ACTION1_reset 0x0
+// Relation to be satisfied among events to activate the actions
 #define DFD_CLA__CDBGNODE3EAP1__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE3EAP1__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE3EAP1__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE3EAP1__LOGICALOP_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE0_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE1_bw 6
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE1_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE3EAP1__CUSTOMACTION0_bm 0xf0000000
 #define DFD_CLA__CDBGNODE3EAP1__CUSTOMACTION0_bp 28
 #define DFD_CLA__CDBGNODE3EAP1__CUSTOMACTION0_bw 4
 #define DFD_CLA__CDBGNODE3EAP1__CUSTOMACTION0_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE3EAP1__CUSTOMACTION1_bm 0xf00000000
 #define DFD_CLA__CDBGNODE3EAP1__CUSTOMACTION1_bp 32
 #define DFD_CLA__CDBGNODE3EAP1__CUSTOMACTION1_bw 4
 #define DFD_CLA__CDBGNODE3EAP1__CUSTOMACTION1_reset 0x0
+// custom_action0 is valid only if custom_action0_enable is set
 #define DFD_CLA__CDBGNODE3EAP1__CUSTOMACTION0ENABLE_bm 0x1000000000
 #define DFD_CLA__CDBGNODE3EAP1__CUSTOMACTION0ENABLE_bp 36
 #define DFD_CLA__CDBGNODE3EAP1__CUSTOMACTION0ENABLE_bw 1
 #define DFD_CLA__CDBGNODE3EAP1__CUSTOMACTION0ENABLE_reset 0x0
+// custom_action1 is valid only if custom_action1_enable is set
 #define DFD_CLA__CDBGNODE3EAP1__CUSTOMACTION1ENABLE_bm 0x2000000000
 #define DFD_CLA__CDBGNODE3EAP1__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE3EAP1__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE3EAP1__CUSTOMACTION1ENABLE_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE3EAP1__EVENTTYPE2_reset 0x0
+// User Defined Function with event type 0, 1, and 2 as arguments
 #define DFD_CLA__CDBGNODE3EAP1__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE3EAP1__UDF_bp 44
 #define DFD_CLA__CDBGNODE3EAP1__UDF_bw 8
 #define DFD_CLA__CDBGNODE3EAP1__UDF_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE3EAP1__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE3EAP1__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE3EAP1__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE3EAP1__ACTION2_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE3EAP1__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE3EAP1__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE3EAP1__ACTION3_bw 6
 #define DFD_CLA__CDBGNODE3EAP1__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Select Destination Node
         uint64_t DestNode :2;
+        // Select an Action
         uint64_t Action0 :6;
+        // Select an Action
         uint64_t Action1 :6;
+        // Relation to be satisfied among events to activate the actions
         uint64_t LogicalOp :2;
+        // Select a trigger event
         uint64_t EventType0 :6;
+        // Select a trigger event
         uint64_t EventType1 :6;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction1 :4;
+        // custom_action0 is valid only if custom_action0_enable is set
         uint64_t CustomAction0Enable :1;
+        // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
+        // Select a trigger event
         uint64_t EventType2 :6;
+        // User Defined Function with event type 0, 1, and 2 as arguments
         uint64_t Udf :8;
+        // Select an Action
         uint64_t Action2 :6;
+        // Select an Action
         uint64_t Action3 :6;
     } f;
     uint64_t w;
 } dfd_cla__CDbgNode3Eap1_t;
 
 // reg - dfd_cla::CDbgSignalMask0Lo
+// Used to define debug bus match events. The positive match event (0x2) fires when debug_bus & mask = match; the negative match event (0x3) fires when debug_bus & mask != match.
+// Mask to be applied to debug bus before match
 #define DFD_CLA__CDBGSIGNALMASK0LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALMASK0LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALMASK0LO__VALUE_bw 64
 #define DFD_CLA__CDBGSIGNALMASK0LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Mask to be applied to debug bus before match
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgSignalMask0Lo_t;
 
 // reg - dfd_cla::CDbgSignalMatch0Lo
+// Used to define debug bus match events. The positive match event (0x2) fires when debug_bus & mask = match; the negative match event (0x3) fires when debug_bus & mask != match.
+// Value used for debug bus match.
 #define DFD_CLA__CDBGSIGNALMATCH0LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALMATCH0LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALMATCH0LO__VALUE_bw 64
 #define DFD_CLA__CDBGSIGNALMATCH0LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value used for debug bus match.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgSignalMatch0Lo_t;
 
 // reg - dfd_cla::CDbgSignalMask1Lo
+// Used to define debug bus match events. The positive match event (0x4) fires when debug_bus & mask = match; the negative match event (0x5) fires when debug_bus & mask != match.
+// Mask to be applied to debug bus before match
 #define DFD_CLA__CDBGSIGNALMASK1LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALMASK1LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALMASK1LO__VALUE_bw 64
 #define DFD_CLA__CDBGSIGNALMASK1LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Mask to be applied to debug bus before match
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgSignalMask1Lo_t;
 
 // reg - dfd_cla::CDbgSignalMatch1Lo
+// Used to define debug bus match events. The positive match event (0x4) fires when debug_bus & mask = match; the negative match event (0x5) fires when debug_bus & mask != match.
+// Value used for debug bus match.
 #define DFD_CLA__CDBGSIGNALMATCH1LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALMATCH1LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALMATCH1LO__VALUE_bw 64
 #define DFD_CLA__CDBGSIGNALMATCH1LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value used for debug bus match.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgSignalMatch1Lo_t;
 
 // reg - dfd_cla::CDbgSignalEdgeDetectCfg
+// Register to configure debug bus for edge triggers.
+// Define which signal to select for edge detection.
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL0SELECT_bm 0x7f
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL0SELECT_bp 0
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL0SELECT_bw 7
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL0SELECT_reset 0x0
+// Defines which edge to detect for singal from signal0_select. 1: Pos edge, 0: Neg Edge
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL0_bm 0x80
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL0_bp 7
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL0_bw 1
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL0_reset 0x0
+// Define which signal to select for edge detection.
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL1SELECT_bm 0x7f00
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL1SELECT_bp 8
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL1SELECT_bw 7
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__SIGNAL1SELECT_reset 0x0
+// Defines which edge to detect for singal from signal1_select. 1: Pos edge, 0: Neg Edge
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL1_bm 0x8000
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL1_bp 15
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL1_bw 1
 #define DFD_CLA__CDBGSIGNALEDGEDETECTCFG__POSEDGESIGNAL1_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Define which signal to select for edge detection.
         uint64_t Signal0Select :7;
+        // Defines which edge to detect for singal from signal0_select. 1: Pos edge, 0: Neg Edge
         uint64_t PosEdgeSignal0 :1;
+        // Define which signal to select for edge detection.
         uint64_t Signal1Select :7;
+        // Defines which edge to detect for singal from signal1_select. 1: Pos edge, 0: Neg Edge
         uint64_t PosEdgeSignal1 :1;
         uint64_t :48;
     } f;
@@ -1195,6 +1468,7 @@ typedef union {
 } dfd_cla__CDbgSignalEdgeDetectCfg_t;
 
 // reg - dfd_cla::CDbgEapStatus
+// Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI)
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP0_bm 0x1
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP0_bp 0
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP0_bw 1
@@ -1368,62 +1642,83 @@ typedef union {
 } dfd_cla__CDbgEapStatus_t;
 
 // reg - dfd_cla::CDbgClaCtrlStatus
+// Ctrl/Status register to Enable EAP after EAP programming is complete, and read the current node.
+// Read the current node.
 #define DFD_CLA__CDBGCLACTRLSTATUS__CURRENTNODE_bm 0x3
 #define DFD_CLA__CDBGCLACTRLSTATUS__CURRENTNODE_bp 0
 #define DFD_CLA__CDBGCLACTRLSTATUS__CURRENTNODE_bw 2
 #define DFD_CLA__CDBGCLACTRLSTATUS__CURRENTNODE_reset 0x0
+// Set Enable EAP to 1 after EAP programming is complete
 #define DFD_CLA__CDBGCLACTRLSTATUS__ENABLEEAP_bm 0x20
 #define DFD_CLA__CDBGCLACTRLSTATUS__ENABLEEAP_bp 5
 #define DFD_CLA__CDBGCLACTRLSTATUS__ENABLEEAP_bw 1
 #define DFD_CLA__CDBGCLACTRLSTATUS__ENABLEEAP_reset 0x0
+// Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated
 #define DFD_CLA__CDBGCLACTRLSTATUS__ENABLECLA_bm 0x40
 #define DFD_CLA__CDBGCLACTRLSTATUS__ENABLECLA_bp 6
 #define DFD_CLA__CDBGCLACTRLSTATUS__ENABLECLA_bw 1
 #define DFD_CLA__CDBGCLACTRLSTATUS__ENABLECLA_reset 0x0
+// Self-filter delay, in CLA clock cycles, for the CLA's own cross-triggers. When an EAP action drives cross-trigger output n, the CLA ignores incoming cross-trigger n for one cycle, ClaChainLoopDelay cycles later, so that its own trigger returning through the cross-trigger network does not retrigger it; with 0 it ignores the input in the same cycle. A further own trigger while the delay counts does not restart it. Incoming clock halt is not filtered.
 #define DFD_CLA__CDBGCLACTRLSTATUS__CLACHAINLOOPDELAY_bm 0x3f80
 #define DFD_CLA__CDBGCLACTRLSTATUS__CLACHAINLOOPDELAY_bp 7
 #define DFD_CLA__CDBGCLACTRLSTATUS__CLACHAINLOOPDELAY_bw 7
 #define DFD_CLA__CDBGCLACTRLSTATUS__CLACHAINLOOPDELAY_reset 0x36
+// If this bit is set, clock halt action is not applied to global clocks
 #define DFD_CLA__CDBGCLACTRLSTATUS__DISABLEGLOBALCLOCKHALT_bm 0x4000
 #define DFD_CLA__CDBGCLACTRLSTATUS__DISABLEGLOBALCLOCKHALT_bp 14
 #define DFD_CLA__CDBGCLACTRLSTATUS__DISABLEGLOBALCLOCKHALT_bw 1
 #define DFD_CLA__CDBGCLACTRLSTATUS__DISABLEGLOBALCLOCKHALT_reset 0x0
+// If this bit is set, clock halt action is not applied to local clocks
 #define DFD_CLA__CDBGCLACTRLSTATUS__DISABLELOCALCLOCKHALT_bm 0x8000
 #define DFD_CLA__CDBGCLACTRLSTATUS__DISABLELOCALCLOCKHALT_bp 15
 #define DFD_CLA__CDBGCLACTRLSTATUS__DISABLELOCALCLOCKHALT_bw 1
 #define DFD_CLA__CDBGCLACTRLSTATUS__DISABLELOCALCLOCKHALT_reset 0x0
+// reserved fields
 #define DFD_CLA__CDBGCLACTRLSTATUS__RSVD6216_bm 0x7fffffffffff0000
 #define DFD_CLA__CDBGCLACTRLSTATUS__RSVD6216_bp 16
 #define DFD_CLA__CDBGCLACTRLSTATUS__RSVD6216_bw 47
 #define DFD_CLA__CDBGCLACTRLSTATUS__RSVD6216_reset 0x0
+// If this bit is set, then CLA is locked and the enable_cla is latched forever
 #define DFD_CLA__CDBGCLACTRLSTATUS__CLALOCK_bm 0x8000000000000000
 #define DFD_CLA__CDBGCLACTRLSTATUS__CLALOCK_bp 63
 #define DFD_CLA__CDBGCLACTRLSTATUS__CLALOCK_bw 1
 #define DFD_CLA__CDBGCLACTRLSTATUS__CLALOCK_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Read the current node.
         uint64_t CurrentNode :2;
         uint64_t :3;
+        // Set Enable EAP to 1 after EAP programming is complete
         uint64_t EnableEap :1;
+        // Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated
         uint64_t EnableCla :1;
+        // Self-filter delay, in CLA clock cycles, for the CLA's own cross-triggers. When an EAP action drives cross-trigger output n, the CLA ignores incoming cross-trigger n for one cycle, ClaChainLoopDelay cycles later, so that its own trigger returning through the cross-trigger network does not retrigger it; with 0 it ignores the input in the same cycle. A further own trigger while the delay counts does not restart it. Incoming clock halt is not filtered.
         uint64_t ClaChainLoopDelay :7;
+        // If this bit is set, clock halt action is not applied to global clocks
         uint64_t DisableGlobalClockHalt :1;
+        // If this bit is set, clock halt action is not applied to local clocks
         uint64_t DisableLocalClockHalt :1;
+        // reserved fields
         uint64_t Rsvd6216 :47;
+        // If this bit is set, then CLA is locked and the enable_cla is latched forever
         uint64_t ClaLock :1;
     } f;
     uint64_t w;
 } dfd_cla__CDbgClaCtrlStatus_t;
 
 // reg - dfd_cla::CDbgMuxSelLo
+// Mode, ID, fine-grain time enable and lane selects for the CLA debug-bus mux, which builds the four 16-bit lanes of the CLA's 64-bit debug bus from 16 input segments. The mux ID is 0: the mode is taken while DbmId is 0, and the lane selects while DbmId is 0 and DbmMode is 1.
+// Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode
 #define DFD_CLA__CDBGMUXSELLO__DBMMODE_bm 0x3
 #define DFD_CLA__CDBGMUXSELLO__DBMMODE_bp 0
 #define DFD_CLA__CDBGMUXSELLO__DBMMODE_bw 2
 #define DFD_CLA__CDBGMUXSELLO__DBMMODE_reset 0x0
+// Unique DBM ID of the DBM instance
 #define DFD_CLA__CDBGMUXSELLO__DBMID_bm 0xfc
 #define DFD_CLA__CDBGMUXSELLO__DBMID_bp 2
 #define DFD_CLA__CDBGMUXSELLO__DBMID_bw 6
 #define DFD_CLA__CDBGMUXSELLO__DBMID_reset 0x0
+// Fine Grain Time Enable. If this bit is set, the fine grain time is enabled.
 #define DFD_CLA__CDBGMUXSELLO__FINEGRAINTIME_bm 0x100
 #define DFD_CLA__CDBGMUXSELLO__FINEGRAINTIME_bp 8
 #define DFD_CLA__CDBGMUXSELLO__FINEGRAINTIME_bw 1
@@ -1432,81 +1727,107 @@ typedef union {
 #define DFD_CLA__CDBGMUXSELLO__RSVD159_bp 9
 #define DFD_CLA__CDBGMUXSELLO__RSVD159_bw 7
 #define DFD_CLA__CDBGMUXSELLO__RSVD159_reset 0x0
+// Binary segment select for lane 0 of the CLA debug bus, bits [15:0]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg0; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects the fine-grain time counter, and k from 1 to 13 selects Seg(k+2).
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG0_bm 0x3f0000
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG0_bp 16
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG0_bw 6
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG0_reset 0x0
+// Binary segment select for lane 1 of the CLA debug bus, bits [31:16]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg1; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg0, and k from 1 to 13 selects Seg(k+2).
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG1_bm 0xfc00000
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG1_bp 22
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG1_bw 6
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG1_reset 0x0
+// Binary segment select for lane 2 of the CLA debug bus, bits [47:32]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg2; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg1, and k from 1 to 13 selects Seg(k+2).
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG2_bm 0x3f0000000
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG2_bp 28
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG2_bw 6
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG2_reset 0x0
+// Binary segment select for lane 3 of the CLA debug bus, bits [63:48]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg3; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg2, and k from 1 to 13 selects Seg(k+2).
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG3_bm 0xfc00000000
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG3_bp 34
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG3_bw 6
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG3_reset 0x0
+// No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG4_bm 0x3f0000000000
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG4_bp 40
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG4_bw 6
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG4_reset 0x0
+// No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG5_bm 0xfc00000000000
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG5_bp 46
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG5_bw 6
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG5_reset 0x0
+// No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG6_bm 0x3f0000000000000
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG6_bp 52
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG6_bw 6
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG6_reset 0x0
+// No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG7_bm 0xfc00000000000000
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG7_bp 58
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG7_bw 6
 #define DFD_CLA__CDBGMUXSELLO__MUXSELSEG7_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode
         uint64_t Dbmmode :2;
+        // Unique DBM ID of the DBM instance
         uint64_t Dbmid :6;
+        // Fine Grain Time Enable. If this bit is set, the fine grain time is enabled.
         uint64_t Finegraintime :1;
         uint64_t Rsvd159 :7;
+        // Binary segment select for lane 0 of the CLA debug bus, bits [15:0]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg0; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects the fine-grain time counter, and k from 1 to 13 selects Seg(k+2).
         uint64_t Muxselseg0 :6;
+        // Binary segment select for lane 1 of the CLA debug bus, bits [31:16]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg1; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg0, and k from 1 to 13 selects Seg(k+2).
         uint64_t Muxselseg1 :6;
+        // Binary segment select for lane 2 of the CLA debug bus, bits [47:32]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg2; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg1, and k from 1 to 13 selects Seg(k+2).
         uint64_t Muxselseg2 :6;
+        // Binary segment select for lane 3 of the CLA debug bus, bits [63:48]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg3; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg2, and k from 1 to 13 selects Seg(k+2).
         uint64_t Muxselseg3 :6;
+        // No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.
         uint64_t Muxselseg4 :6;
+        // No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.
         uint64_t Muxselseg5 :6;
+        // No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.
         uint64_t Muxselseg6 :6;
+        // No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.
         uint64_t Muxselseg7 :6;
     } f;
     uint64_t w;
 } dfd_cla__CDbgMuxSelLo_t;
 
 // reg - dfd_cla::CDbgRsvd1
+// Reserved Register that can be changed.
+// Value of reserved register.
 #define DFD_CLA__CDBGRSVD1__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGRSVD1__VALUE_bp 0
 #define DFD_CLA__CDBGRSVD1__VALUE_bw 64
 #define DFD_CLA__CDBGRSVD1__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value of reserved register.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgRsvd1_t;
 
 // reg - dfd_cla::CDbgRsvd2
+// Reserved Register that can be changed.
+// Value of reserved register.
 #define DFD_CLA__CDBGRSVD2__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGRSVD2__VALUE_bp 0
 #define DFD_CLA__CDBGRSVD2__VALUE_bw 64
 #define DFD_CLA__CDBGRSVD2__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value of reserved register.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgRsvd2_t;
 
 // reg - dfd_cla::CDbgTransitionMaskLo
+// 3 registers to configure "transition event". This register is to select the signals of interest using a mask.
 #define DFD_CLA__CDBGTRANSITIONMASKLO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGTRANSITIONMASKLO__VALUE_bp 0
 #define DFD_CLA__CDBGTRANSITIONMASKLO__VALUE_bw 64
@@ -1519,6 +1840,7 @@ typedef union {
 } dfd_cla__CDbgTransitionMaskLo_t;
 
 // reg - dfd_cla::CDbgTransitionFromValueLo
+// 3 registers to configure "transition event". The event is triggered on transition from Value A to Value B. This register specifies Value A.
 #define DFD_CLA__CDBGTRANSITIONFROMVALUELO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGTRANSITIONFROMVALUELO__VALUE_bp 0
 #define DFD_CLA__CDBGTRANSITIONFROMVALUELO__VALUE_bw 64
@@ -1531,6 +1853,7 @@ typedef union {
 } dfd_cla__CDbgTransitionFromValueLo_t;
 
 // reg - dfd_cla::CDbgTransitionToValueLo
+// 3 registers to configure "transition event". The event is triggered on transition from Value A to Value B. This register specifies Value B.
 #define DFD_CLA__CDBGTRANSITIONTOVALUELO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGTRANSITIONTOVALUELO__VALUE_bp 0
 #define DFD_CLA__CDBGTRANSITIONTOVALUELO__VALUE_bw 64
@@ -1543,6 +1866,7 @@ typedef union {
 } dfd_cla__CDbgTransitionToValueLo_t;
 
 // reg - dfd_cla::CDbgOnesCountMaskLo
+// 2 registers to configure "ones count" event. This register is to select the signals of interest using a mask.
 #define DFD_CLA__CDBGONESCOUNTMASKLO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGONESCOUNTMASKLO__VALUE_bp 0
 #define DFD_CLA__CDBGONESCOUNTMASKLO__VALUE_bw 64
@@ -1555,6 +1879,7 @@ typedef union {
 } dfd_cla__CDbgOnesCountMaskLo_t;
 
 // reg - dfd_cla::CDbgOnesCountValue
+// 2 registers to configure "ones count" event. Event triggered when the sum of the signals match the value specified in this register.
 #define DFD_CLA__CDBGONESCOUNTVALUE__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGONESCOUNTVALUE__VALUE_bp 0
 #define DFD_CLA__CDBGONESCOUNTVALUE__VALUE_bw 64
@@ -1567,6 +1892,7 @@ typedef union {
 } dfd_cla__CDbgOnesCountValue_t;
 
 // reg - dfd_cla::CDbgAnyChangeLo
+// Event triggered when a subset of debug signals change. The mask is used to select the subset of the debug signals.
 #define DFD_CLA__CDBGANYCHANGELO__MASK_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGANYCHANGELO__MASK_bp 0
 #define DFD_CLA__CDBGANYCHANGELO__MASK_bw 64
@@ -1579,6 +1905,7 @@ typedef union {
 } dfd_cla__CDbgAnyChangeLo_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode0Eap0Lo
+// debug Bus Value when Node0 Eap0 Trigger is met.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP0LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP0LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP0LO__VALUE_bw 64
@@ -1591,6 +1918,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode0Eap0Lo_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode0Eap1Lo
+// debug Bus Value when Node0 Eap1 Trigger is met.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP1LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP1LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP1LO__VALUE_bw 64
@@ -1603,6 +1931,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode0Eap1Lo_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode1Eap0Lo
+// debug Bus Value when Node1 Eap0 Trigger is met.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP0LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP0LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP0LO__VALUE_bw 64
@@ -1615,6 +1944,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode1Eap0Lo_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode1Eap1Lo
+// debug Bus Value when Node1 Eap1 Trigger is met.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP1LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP1LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP1LO__VALUE_bw 64
@@ -1627,6 +1957,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode1Eap1Lo_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode2Eap0Lo
+// debug Bus Value when Node2 Eap0 Trigger is met.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP0LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP0LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP0LO__VALUE_bw 64
@@ -1639,6 +1970,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode2Eap0Lo_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode2Eap1Lo
+// debug Bus Value when Node2 Eap1 Trigger is met.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP1LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP1LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP1LO__VALUE_bw 64
@@ -1651,6 +1983,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode2Eap1Lo_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode3Eap0Lo
+// debug Bus Value when Node3 Eap0 Trigger is met.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP0LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP0LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP0LO__VALUE_bw 64
@@ -1663,6 +1996,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode3Eap0Lo_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode3Eap1Lo
+// debug Bus Value when Node3 Eap1 Trigger is met.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP1LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP1LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP1LO__VALUE_bw 64
@@ -1675,6 +2009,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode3Eap1Lo_t;
 
 // reg - dfd_cla::CDbgClaTimeMatch
+// This value is compared (greater than or equal to the programmed value) against the internal time register value of the core, and is used to generate a time match event for CLA. Needs to be non zero for the time match event signal to trigger. The event will only trigger an action if the EAP programming is done. Requires writing 0 to this register to stop the match event.
 #define DFD_CLA__CDBGCLATIMEMATCH__TIMEMATCHVAL_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGCLATIMEMATCH__TIMEMATCHVAL_bp 0
 #define DFD_CLA__CDBGCLATIMEMATCH__TIMEMATCHVAL_bw 64
@@ -1687,670 +2022,915 @@ typedef union {
 } dfd_cla__CDbgClaTimeMatch_t;
 
 // reg - dfd_cla::CDbgSignalMask2Lo
+// Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus & mask = match; the negative match event (0x1D) fires when debug_bus & mask != match.
+// Mask to be applied to debug bus before match
 #define DFD_CLA__CDBGSIGNALMASK2LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALMASK2LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALMASK2LO__VALUE_bw 64
 #define DFD_CLA__CDBGSIGNALMASK2LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Mask to be applied to debug bus before match
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgSignalMask2Lo_t;
 
 // reg - dfd_cla::CDbgSignalMatch2Lo
+// Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus & mask = match; the negative match event (0x1D) fires when debug_bus & mask != match.
+// Value used for debug bus match.
 #define DFD_CLA__CDBGSIGNALMATCH2LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALMATCH2LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALMATCH2LO__VALUE_bw 64
 #define DFD_CLA__CDBGSIGNALMATCH2LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value used for debug bus match.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgSignalMatch2Lo_t;
 
 // reg - dfd_cla::CDbgSignalMask3Lo
+// Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus & mask = match; the negative match event (0x1F) fires when debug_bus & mask != match.
+// Mask to be applied to debug bus before match
 #define DFD_CLA__CDBGSIGNALMASK3LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALMASK3LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALMASK3LO__VALUE_bw 64
 #define DFD_CLA__CDBGSIGNALMASK3LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Mask to be applied to debug bus before match
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgSignalMask3Lo_t;
 
 // reg - dfd_cla::CDbgSignalMatch3Lo
+// Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus & mask = match; the negative match event (0x1F) fires when debug_bus & mask != match.
+// Value used for debug bus match.
 #define DFD_CLA__CDBGSIGNALMATCH3LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALMATCH3LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALMATCH3LO__VALUE_bw 64
 #define DFD_CLA__CDBGSIGNALMATCH3LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value used for debug bus match.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgSignalMatch3Lo_t;
 
 // reg - dfd_cla::CDbgNode0Eap2
+// CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+// Select Destination Node
 #define DFD_CLA__CDBGNODE0EAP2__DESTNODE_bm 0x3
 #define DFD_CLA__CDBGNODE0EAP2__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE0EAP2__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE0EAP2__DESTNODE_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE0EAP2__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE0EAP2__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE0EAP2__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE0EAP2__ACTION0_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE0EAP2__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE0EAP2__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE0EAP2__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE0EAP2__ACTION1_reset 0x0
+// Relation to be satisfied among events to activate the actions
 #define DFD_CLA__CDBGNODE0EAP2__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE0EAP2__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE0EAP2__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE0EAP2__LOGICALOP_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE0_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE1_bw 6
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE1_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE0EAP2__CUSTOMACTION0_bm 0xf0000000
 #define DFD_CLA__CDBGNODE0EAP2__CUSTOMACTION0_bp 28
 #define DFD_CLA__CDBGNODE0EAP2__CUSTOMACTION0_bw 4
 #define DFD_CLA__CDBGNODE0EAP2__CUSTOMACTION0_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE0EAP2__CUSTOMACTION1_bm 0xf00000000
 #define DFD_CLA__CDBGNODE0EAP2__CUSTOMACTION1_bp 32
 #define DFD_CLA__CDBGNODE0EAP2__CUSTOMACTION1_bw 4
 #define DFD_CLA__CDBGNODE0EAP2__CUSTOMACTION1_reset 0x0
+// custom_action0 is valid only if custom_action0_enable is set
 #define DFD_CLA__CDBGNODE0EAP2__CUSTOMACTION0ENABLE_bm 0x1000000000
 #define DFD_CLA__CDBGNODE0EAP2__CUSTOMACTION0ENABLE_bp 36
 #define DFD_CLA__CDBGNODE0EAP2__CUSTOMACTION0ENABLE_bw 1
 #define DFD_CLA__CDBGNODE0EAP2__CUSTOMACTION0ENABLE_reset 0x0
+// custom_action1 is valid only if custom_action1_enable is set
 #define DFD_CLA__CDBGNODE0EAP2__CUSTOMACTION1ENABLE_bm 0x2000000000
 #define DFD_CLA__CDBGNODE0EAP2__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE0EAP2__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE0EAP2__CUSTOMACTION1ENABLE_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE0EAP2__EVENTTYPE2_reset 0x0
+// User Defined Function with event type 0, 1, and 2 as arguments
 #define DFD_CLA__CDBGNODE0EAP2__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE0EAP2__UDF_bp 44
 #define DFD_CLA__CDBGNODE0EAP2__UDF_bw 8
 #define DFD_CLA__CDBGNODE0EAP2__UDF_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE0EAP2__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE0EAP2__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE0EAP2__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE0EAP2__ACTION2_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE0EAP2__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE0EAP2__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE0EAP2__ACTION3_bw 6
 #define DFD_CLA__CDBGNODE0EAP2__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Select Destination Node
         uint64_t DestNode :2;
+        // Select an Action
         uint64_t Action0 :6;
+        // Select an Action
         uint64_t Action1 :6;
+        // Relation to be satisfied among events to activate the actions
         uint64_t LogicalOp :2;
+        // Select a trigger event
         uint64_t EventType0 :6;
+        // Select a trigger event
         uint64_t EventType1 :6;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction1 :4;
+        // custom_action0 is valid only if custom_action0_enable is set
         uint64_t CustomAction0Enable :1;
+        // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
+        // Select a trigger event
         uint64_t EventType2 :6;
+        // User Defined Function with event type 0, 1, and 2 as arguments
         uint64_t Udf :8;
+        // Select an Action
         uint64_t Action2 :6;
+        // Select an Action
         uint64_t Action3 :6;
     } f;
     uint64_t w;
 } dfd_cla__CDbgNode0Eap2_t;
 
 // reg - dfd_cla::CDbgNode0Eap3
+// CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+// Select Destination Node
 #define DFD_CLA__CDBGNODE0EAP3__DESTNODE_bm 0x3
 #define DFD_CLA__CDBGNODE0EAP3__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE0EAP3__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE0EAP3__DESTNODE_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE0EAP3__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE0EAP3__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE0EAP3__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE0EAP3__ACTION0_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE0EAP3__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE0EAP3__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE0EAP3__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE0EAP3__ACTION1_reset 0x0
+// Relation to be satisfied among events to activate the actions
 #define DFD_CLA__CDBGNODE0EAP3__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE0EAP3__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE0EAP3__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE0EAP3__LOGICALOP_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE0_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE1_bw 6
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE1_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE0EAP3__CUSTOMACTION0_bm 0xf0000000
 #define DFD_CLA__CDBGNODE0EAP3__CUSTOMACTION0_bp 28
 #define DFD_CLA__CDBGNODE0EAP3__CUSTOMACTION0_bw 4
 #define DFD_CLA__CDBGNODE0EAP3__CUSTOMACTION0_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE0EAP3__CUSTOMACTION1_bm 0xf00000000
 #define DFD_CLA__CDBGNODE0EAP3__CUSTOMACTION1_bp 32
 #define DFD_CLA__CDBGNODE0EAP3__CUSTOMACTION1_bw 4
 #define DFD_CLA__CDBGNODE0EAP3__CUSTOMACTION1_reset 0x0
+// custom_action0 is valid only if custom_action0_enable is set
 #define DFD_CLA__CDBGNODE0EAP3__CUSTOMACTION0ENABLE_bm 0x1000000000
 #define DFD_CLA__CDBGNODE0EAP3__CUSTOMACTION0ENABLE_bp 36
 #define DFD_CLA__CDBGNODE0EAP3__CUSTOMACTION0ENABLE_bw 1
 #define DFD_CLA__CDBGNODE0EAP3__CUSTOMACTION0ENABLE_reset 0x0
+// custom_action1 is valid only if custom_action1_enable is set
 #define DFD_CLA__CDBGNODE0EAP3__CUSTOMACTION1ENABLE_bm 0x2000000000
 #define DFD_CLA__CDBGNODE0EAP3__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE0EAP3__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE0EAP3__CUSTOMACTION1ENABLE_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE0EAP3__EVENTTYPE2_reset 0x0
+// User Defined Function with event type 0, 1, and 2 as arguments
 #define DFD_CLA__CDBGNODE0EAP3__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE0EAP3__UDF_bp 44
 #define DFD_CLA__CDBGNODE0EAP3__UDF_bw 8
 #define DFD_CLA__CDBGNODE0EAP3__UDF_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE0EAP3__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE0EAP3__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE0EAP3__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE0EAP3__ACTION2_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE0EAP3__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE0EAP3__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE0EAP3__ACTION3_bw 6
 #define DFD_CLA__CDBGNODE0EAP3__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Select Destination Node
         uint64_t DestNode :2;
+        // Select an Action
         uint64_t Action0 :6;
+        // Select an Action
         uint64_t Action1 :6;
+        // Relation to be satisfied among events to activate the actions
         uint64_t LogicalOp :2;
+        // Select a trigger event
         uint64_t EventType0 :6;
+        // Select a trigger event
         uint64_t EventType1 :6;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction1 :4;
+        // custom_action0 is valid only if custom_action0_enable is set
         uint64_t CustomAction0Enable :1;
+        // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
+        // Select a trigger event
         uint64_t EventType2 :6;
+        // User Defined Function with event type 0, 1, and 2 as arguments
         uint64_t Udf :8;
+        // Select an Action
         uint64_t Action2 :6;
+        // Select an Action
         uint64_t Action3 :6;
     } f;
     uint64_t w;
 } dfd_cla__CDbgNode0Eap3_t;
 
 // reg - dfd_cla::CDbgNode1Eap2
+// CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+// Select Destination Node
 #define DFD_CLA__CDBGNODE1EAP2__DESTNODE_bm 0x3
 #define DFD_CLA__CDBGNODE1EAP2__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE1EAP2__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE1EAP2__DESTNODE_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE1EAP2__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE1EAP2__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE1EAP2__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE1EAP2__ACTION0_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE1EAP2__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE1EAP2__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE1EAP2__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE1EAP2__ACTION1_reset 0x0
+// Relation to be satisfied among events to activate the actions
 #define DFD_CLA__CDBGNODE1EAP2__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE1EAP2__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE1EAP2__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE1EAP2__LOGICALOP_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE0_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE1_bw 6
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE1_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE1EAP2__CUSTOMACTION0_bm 0xf0000000
 #define DFD_CLA__CDBGNODE1EAP2__CUSTOMACTION0_bp 28
 #define DFD_CLA__CDBGNODE1EAP2__CUSTOMACTION0_bw 4
 #define DFD_CLA__CDBGNODE1EAP2__CUSTOMACTION0_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE1EAP2__CUSTOMACTION1_bm 0xf00000000
 #define DFD_CLA__CDBGNODE1EAP2__CUSTOMACTION1_bp 32
 #define DFD_CLA__CDBGNODE1EAP2__CUSTOMACTION1_bw 4
 #define DFD_CLA__CDBGNODE1EAP2__CUSTOMACTION1_reset 0x0
+// custom_action0 is valid only if custom_action0_enable is set
 #define DFD_CLA__CDBGNODE1EAP2__CUSTOMACTION0ENABLE_bm 0x1000000000
 #define DFD_CLA__CDBGNODE1EAP2__CUSTOMACTION0ENABLE_bp 36
 #define DFD_CLA__CDBGNODE1EAP2__CUSTOMACTION0ENABLE_bw 1
 #define DFD_CLA__CDBGNODE1EAP2__CUSTOMACTION0ENABLE_reset 0x0
+// custom_action1 is valid only if custom_action1_enable is set
 #define DFD_CLA__CDBGNODE1EAP2__CUSTOMACTION1ENABLE_bm 0x2000000000
 #define DFD_CLA__CDBGNODE1EAP2__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE1EAP2__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE1EAP2__CUSTOMACTION1ENABLE_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE1EAP2__EVENTTYPE2_reset 0x0
+// User Defined Function with event type 0, 1, and 2 as arguments
 #define DFD_CLA__CDBGNODE1EAP2__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE1EAP2__UDF_bp 44
 #define DFD_CLA__CDBGNODE1EAP2__UDF_bw 8
 #define DFD_CLA__CDBGNODE1EAP2__UDF_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE1EAP2__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE1EAP2__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE1EAP2__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE1EAP2__ACTION2_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE1EAP2__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE1EAP2__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE1EAP2__ACTION3_bw 6
 #define DFD_CLA__CDBGNODE1EAP2__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Select Destination Node
         uint64_t DestNode :2;
+        // Select an Action
         uint64_t Action0 :6;
+        // Select an Action
         uint64_t Action1 :6;
+        // Relation to be satisfied among events to activate the actions
         uint64_t LogicalOp :2;
+        // Select a trigger event
         uint64_t EventType0 :6;
+        // Select a trigger event
         uint64_t EventType1 :6;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction1 :4;
+        // custom_action0 is valid only if custom_action0_enable is set
         uint64_t CustomAction0Enable :1;
+        // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
+        // Select a trigger event
         uint64_t EventType2 :6;
+        // User Defined Function with event type 0, 1, and 2 as arguments
         uint64_t Udf :8;
+        // Select an Action
         uint64_t Action2 :6;
+        // Select an Action
         uint64_t Action3 :6;
     } f;
     uint64_t w;
 } dfd_cla__CDbgNode1Eap2_t;
 
 // reg - dfd_cla::CDbgNode1Eap3
+// CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+// Select Destination Node
 #define DFD_CLA__CDBGNODE1EAP3__DESTNODE_bm 0x3
 #define DFD_CLA__CDBGNODE1EAP3__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE1EAP3__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE1EAP3__DESTNODE_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE1EAP3__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE1EAP3__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE1EAP3__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE1EAP3__ACTION0_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE1EAP3__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE1EAP3__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE1EAP3__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE1EAP3__ACTION1_reset 0x0
+// Relation to be satisfied among events to activate the actions
 #define DFD_CLA__CDBGNODE1EAP3__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE1EAP3__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE1EAP3__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE1EAP3__LOGICALOP_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE0_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE1_bw 6
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE1_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE1EAP3__CUSTOMACTION0_bm 0xf0000000
 #define DFD_CLA__CDBGNODE1EAP3__CUSTOMACTION0_bp 28
 #define DFD_CLA__CDBGNODE1EAP3__CUSTOMACTION0_bw 4
 #define DFD_CLA__CDBGNODE1EAP3__CUSTOMACTION0_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE1EAP3__CUSTOMACTION1_bm 0xf00000000
 #define DFD_CLA__CDBGNODE1EAP3__CUSTOMACTION1_bp 32
 #define DFD_CLA__CDBGNODE1EAP3__CUSTOMACTION1_bw 4
 #define DFD_CLA__CDBGNODE1EAP3__CUSTOMACTION1_reset 0x0
+// custom_action0 is valid only if custom_action0_enable is set
 #define DFD_CLA__CDBGNODE1EAP3__CUSTOMACTION0ENABLE_bm 0x1000000000
 #define DFD_CLA__CDBGNODE1EAP3__CUSTOMACTION0ENABLE_bp 36
 #define DFD_CLA__CDBGNODE1EAP3__CUSTOMACTION0ENABLE_bw 1
 #define DFD_CLA__CDBGNODE1EAP3__CUSTOMACTION0ENABLE_reset 0x0
+// custom_action1 is valid only if custom_action1_enable is set
 #define DFD_CLA__CDBGNODE1EAP3__CUSTOMACTION1ENABLE_bm 0x2000000000
 #define DFD_CLA__CDBGNODE1EAP3__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE1EAP3__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE1EAP3__CUSTOMACTION1ENABLE_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE1EAP3__EVENTTYPE2_reset 0x0
+// User Defined Function with event type 0, 1, and 2 as arguments
 #define DFD_CLA__CDBGNODE1EAP3__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE1EAP3__UDF_bp 44
 #define DFD_CLA__CDBGNODE1EAP3__UDF_bw 8
 #define DFD_CLA__CDBGNODE1EAP3__UDF_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE1EAP3__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE1EAP3__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE1EAP3__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE1EAP3__ACTION2_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE1EAP3__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE1EAP3__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE1EAP3__ACTION3_bw 6
 #define DFD_CLA__CDBGNODE1EAP3__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Select Destination Node
         uint64_t DestNode :2;
+        // Select an Action
         uint64_t Action0 :6;
+        // Select an Action
         uint64_t Action1 :6;
+        // Relation to be satisfied among events to activate the actions
         uint64_t LogicalOp :2;
+        // Select a trigger event
         uint64_t EventType0 :6;
+        // Select a trigger event
         uint64_t EventType1 :6;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction1 :4;
+        // custom_action0 is valid only if custom_action0_enable is set
         uint64_t CustomAction0Enable :1;
+        // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
+        // Select a trigger event
         uint64_t EventType2 :6;
+        // User Defined Function with event type 0, 1, and 2 as arguments
         uint64_t Udf :8;
+        // Select an Action
         uint64_t Action2 :6;
+        // Select an Action
         uint64_t Action3 :6;
     } f;
     uint64_t w;
 } dfd_cla__CDbgNode1Eap3_t;
 
 // reg - dfd_cla::CDbgNode2Eap2
+// CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+// Select Destination Node
 #define DFD_CLA__CDBGNODE2EAP2__DESTNODE_bm 0x3
 #define DFD_CLA__CDBGNODE2EAP2__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE2EAP2__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE2EAP2__DESTNODE_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE2EAP2__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE2EAP2__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE2EAP2__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE2EAP2__ACTION0_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE2EAP2__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE2EAP2__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE2EAP2__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE2EAP2__ACTION1_reset 0x0
+// Relation to be satisfied among events to activate the actions
 #define DFD_CLA__CDBGNODE2EAP2__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE2EAP2__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE2EAP2__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE2EAP2__LOGICALOP_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE0_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE1_bw 6
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE1_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE2EAP2__CUSTOMACTION0_bm 0xf0000000
 #define DFD_CLA__CDBGNODE2EAP2__CUSTOMACTION0_bp 28
 #define DFD_CLA__CDBGNODE2EAP2__CUSTOMACTION0_bw 4
 #define DFD_CLA__CDBGNODE2EAP2__CUSTOMACTION0_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE2EAP2__CUSTOMACTION1_bm 0xf00000000
 #define DFD_CLA__CDBGNODE2EAP2__CUSTOMACTION1_bp 32
 #define DFD_CLA__CDBGNODE2EAP2__CUSTOMACTION1_bw 4
 #define DFD_CLA__CDBGNODE2EAP2__CUSTOMACTION1_reset 0x0
+// custom_action0 is valid only if custom_action0_enable is set
 #define DFD_CLA__CDBGNODE2EAP2__CUSTOMACTION0ENABLE_bm 0x1000000000
 #define DFD_CLA__CDBGNODE2EAP2__CUSTOMACTION0ENABLE_bp 36
 #define DFD_CLA__CDBGNODE2EAP2__CUSTOMACTION0ENABLE_bw 1
 #define DFD_CLA__CDBGNODE2EAP2__CUSTOMACTION0ENABLE_reset 0x0
+// custom_action1 is valid only if custom_action1_enable is set
 #define DFD_CLA__CDBGNODE2EAP2__CUSTOMACTION1ENABLE_bm 0x2000000000
 #define DFD_CLA__CDBGNODE2EAP2__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE2EAP2__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE2EAP2__CUSTOMACTION1ENABLE_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE2EAP2__EVENTTYPE2_reset 0x0
+// User Defined Function with event type 0, 1, and 2 as arguments
 #define DFD_CLA__CDBGNODE2EAP2__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE2EAP2__UDF_bp 44
 #define DFD_CLA__CDBGNODE2EAP2__UDF_bw 8
 #define DFD_CLA__CDBGNODE2EAP2__UDF_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE2EAP2__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE2EAP2__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE2EAP2__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE2EAP2__ACTION2_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE2EAP2__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE2EAP2__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE2EAP2__ACTION3_bw 6
 #define DFD_CLA__CDBGNODE2EAP2__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Select Destination Node
         uint64_t DestNode :2;
+        // Select an Action
         uint64_t Action0 :6;
+        // Select an Action
         uint64_t Action1 :6;
+        // Relation to be satisfied among events to activate the actions
         uint64_t LogicalOp :2;
+        // Select a trigger event
         uint64_t EventType0 :6;
+        // Select a trigger event
         uint64_t EventType1 :6;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction1 :4;
+        // custom_action0 is valid only if custom_action0_enable is set
         uint64_t CustomAction0Enable :1;
+        // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
+        // Select a trigger event
         uint64_t EventType2 :6;
+        // User Defined Function with event type 0, 1, and 2 as arguments
         uint64_t Udf :8;
+        // Select an Action
         uint64_t Action2 :6;
+        // Select an Action
         uint64_t Action3 :6;
     } f;
     uint64_t w;
 } dfd_cla__CDbgNode2Eap2_t;
 
 // reg - dfd_cla::CDbgNode2Eap3
+// CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+// Select Destination Node
 #define DFD_CLA__CDBGNODE2EAP3__DESTNODE_bm 0x3
 #define DFD_CLA__CDBGNODE2EAP3__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE2EAP3__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE2EAP3__DESTNODE_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE2EAP3__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE2EAP3__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE2EAP3__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE2EAP3__ACTION0_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE2EAP3__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE2EAP3__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE2EAP3__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE2EAP3__ACTION1_reset 0x0
+// Relation to be satisfied among events to activate the actions
 #define DFD_CLA__CDBGNODE2EAP3__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE2EAP3__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE2EAP3__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE2EAP3__LOGICALOP_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE0_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE1_bw 6
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE1_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE2EAP3__CUSTOMACTION0_bm 0xf0000000
 #define DFD_CLA__CDBGNODE2EAP3__CUSTOMACTION0_bp 28
 #define DFD_CLA__CDBGNODE2EAP3__CUSTOMACTION0_bw 4
 #define DFD_CLA__CDBGNODE2EAP3__CUSTOMACTION0_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE2EAP3__CUSTOMACTION1_bm 0xf00000000
 #define DFD_CLA__CDBGNODE2EAP3__CUSTOMACTION1_bp 32
 #define DFD_CLA__CDBGNODE2EAP3__CUSTOMACTION1_bw 4
 #define DFD_CLA__CDBGNODE2EAP3__CUSTOMACTION1_reset 0x0
+// custom_action0 is valid only if custom_action0_enable is set
 #define DFD_CLA__CDBGNODE2EAP3__CUSTOMACTION0ENABLE_bm 0x1000000000
 #define DFD_CLA__CDBGNODE2EAP3__CUSTOMACTION0ENABLE_bp 36
 #define DFD_CLA__CDBGNODE2EAP3__CUSTOMACTION0ENABLE_bw 1
 #define DFD_CLA__CDBGNODE2EAP3__CUSTOMACTION0ENABLE_reset 0x0
+// custom_action1 is valid only if custom_action1_enable is set
 #define DFD_CLA__CDBGNODE2EAP3__CUSTOMACTION1ENABLE_bm 0x2000000000
 #define DFD_CLA__CDBGNODE2EAP3__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE2EAP3__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE2EAP3__CUSTOMACTION1ENABLE_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE2EAP3__EVENTTYPE2_reset 0x0
+// User Defined Function with event type 0, 1, and 2 as arguments
 #define DFD_CLA__CDBGNODE2EAP3__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE2EAP3__UDF_bp 44
 #define DFD_CLA__CDBGNODE2EAP3__UDF_bw 8
 #define DFD_CLA__CDBGNODE2EAP3__UDF_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE2EAP3__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE2EAP3__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE2EAP3__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE2EAP3__ACTION2_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE2EAP3__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE2EAP3__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE2EAP3__ACTION3_bw 6
 #define DFD_CLA__CDBGNODE2EAP3__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Select Destination Node
         uint64_t DestNode :2;
+        // Select an Action
         uint64_t Action0 :6;
+        // Select an Action
         uint64_t Action1 :6;
+        // Relation to be satisfied among events to activate the actions
         uint64_t LogicalOp :2;
+        // Select a trigger event
         uint64_t EventType0 :6;
+        // Select a trigger event
         uint64_t EventType1 :6;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction1 :4;
+        // custom_action0 is valid only if custom_action0_enable is set
         uint64_t CustomAction0Enable :1;
+        // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
+        // Select a trigger event
         uint64_t EventType2 :6;
+        // User Defined Function with event type 0, 1, and 2 as arguments
         uint64_t Udf :8;
+        // Select an Action
         uint64_t Action2 :6;
+        // Select an Action
         uint64_t Action3 :6;
     } f;
     uint64_t w;
 } dfd_cla__CDbgNode2Eap3_t;
 
 // reg - dfd_cla::CDbgNode3Eap2
+// CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+// Select Destination Node
 #define DFD_CLA__CDBGNODE3EAP2__DESTNODE_bm 0x3
 #define DFD_CLA__CDBGNODE3EAP2__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE3EAP2__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE3EAP2__DESTNODE_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE3EAP2__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE3EAP2__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE3EAP2__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE3EAP2__ACTION0_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE3EAP2__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE3EAP2__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE3EAP2__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE3EAP2__ACTION1_reset 0x0
+// Relation to be satisfied among events to activate the actions
 #define DFD_CLA__CDBGNODE3EAP2__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE3EAP2__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE3EAP2__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE3EAP2__LOGICALOP_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE0_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE1_bw 6
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE1_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE3EAP2__CUSTOMACTION0_bm 0xf0000000
 #define DFD_CLA__CDBGNODE3EAP2__CUSTOMACTION0_bp 28
 #define DFD_CLA__CDBGNODE3EAP2__CUSTOMACTION0_bw 4
 #define DFD_CLA__CDBGNODE3EAP2__CUSTOMACTION0_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE3EAP2__CUSTOMACTION1_bm 0xf00000000
 #define DFD_CLA__CDBGNODE3EAP2__CUSTOMACTION1_bp 32
 #define DFD_CLA__CDBGNODE3EAP2__CUSTOMACTION1_bw 4
 #define DFD_CLA__CDBGNODE3EAP2__CUSTOMACTION1_reset 0x0
+// custom_action0 is valid only if custom_action0_enable is set
 #define DFD_CLA__CDBGNODE3EAP2__CUSTOMACTION0ENABLE_bm 0x1000000000
 #define DFD_CLA__CDBGNODE3EAP2__CUSTOMACTION0ENABLE_bp 36
 #define DFD_CLA__CDBGNODE3EAP2__CUSTOMACTION0ENABLE_bw 1
 #define DFD_CLA__CDBGNODE3EAP2__CUSTOMACTION0ENABLE_reset 0x0
+// custom_action1 is valid only if custom_action1_enable is set
 #define DFD_CLA__CDBGNODE3EAP2__CUSTOMACTION1ENABLE_bm 0x2000000000
 #define DFD_CLA__CDBGNODE3EAP2__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE3EAP2__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE3EAP2__CUSTOMACTION1ENABLE_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE3EAP2__EVENTTYPE2_reset 0x0
+// User Defined Function with event type 0, 1, and 2 as arguments
 #define DFD_CLA__CDBGNODE3EAP2__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE3EAP2__UDF_bp 44
 #define DFD_CLA__CDBGNODE3EAP2__UDF_bw 8
 #define DFD_CLA__CDBGNODE3EAP2__UDF_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE3EAP2__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE3EAP2__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE3EAP2__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE3EAP2__ACTION2_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE3EAP2__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE3EAP2__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE3EAP2__ACTION3_bw 6
 #define DFD_CLA__CDBGNODE3EAP2__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Select Destination Node
         uint64_t DestNode :2;
+        // Select an Action
         uint64_t Action0 :6;
+        // Select an Action
         uint64_t Action1 :6;
+        // Relation to be satisfied among events to activate the actions
         uint64_t LogicalOp :2;
+        // Select a trigger event
         uint64_t EventType0 :6;
+        // Select a trigger event
         uint64_t EventType1 :6;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction1 :4;
+        // custom_action0 is valid only if custom_action0_enable is set
         uint64_t CustomAction0Enable :1;
+        // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
+        // Select a trigger event
         uint64_t EventType2 :6;
+        // User Defined Function with event type 0, 1, and 2 as arguments
         uint64_t Udf :8;
+        // Select an Action
         uint64_t Action2 :6;
+        // Select an Action
         uint64_t Action3 :6;
     } f;
     uint64_t w;
 } dfd_cla__CDbgNode3Eap2_t;
 
 // reg - dfd_cla::CDbgNode3Eap3
+// CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+// Select Destination Node
 #define DFD_CLA__CDBGNODE3EAP3__DESTNODE_bm 0x3
 #define DFD_CLA__CDBGNODE3EAP3__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE3EAP3__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE3EAP3__DESTNODE_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE3EAP3__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE3EAP3__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE3EAP3__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE3EAP3__ACTION0_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE3EAP3__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE3EAP3__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE3EAP3__ACTION1_bw 6
 #define DFD_CLA__CDBGNODE3EAP3__ACTION1_reset 0x0
+// Relation to be satisfied among events to activate the actions
 #define DFD_CLA__CDBGNODE3EAP3__LOGICALOP_bm 0xc000
 #define DFD_CLA__CDBGNODE3EAP3__LOGICALOP_bp 14
 #define DFD_CLA__CDBGNODE3EAP3__LOGICALOP_bw 2
 #define DFD_CLA__CDBGNODE3EAP3__LOGICALOP_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE0_bm 0x3f0000
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE0_bp 16
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE0_bw 6
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE0_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE1_bm 0xfc00000
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE1_bp 22
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE1_bw 6
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE1_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE3EAP3__CUSTOMACTION0_bm 0xf0000000
 #define DFD_CLA__CDBGNODE3EAP3__CUSTOMACTION0_bp 28
 #define DFD_CLA__CDBGNODE3EAP3__CUSTOMACTION0_bw 4
 #define DFD_CLA__CDBGNODE3EAP3__CUSTOMACTION0_reset 0x0
+// Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 #define DFD_CLA__CDBGNODE3EAP3__CUSTOMACTION1_bm 0xf00000000
 #define DFD_CLA__CDBGNODE3EAP3__CUSTOMACTION1_bp 32
 #define DFD_CLA__CDBGNODE3EAP3__CUSTOMACTION1_bw 4
 #define DFD_CLA__CDBGNODE3EAP3__CUSTOMACTION1_reset 0x0
+// custom_action0 is valid only if custom_action0_enable is set
 #define DFD_CLA__CDBGNODE3EAP3__CUSTOMACTION0ENABLE_bm 0x1000000000
 #define DFD_CLA__CDBGNODE3EAP3__CUSTOMACTION0ENABLE_bp 36
 #define DFD_CLA__CDBGNODE3EAP3__CUSTOMACTION0ENABLE_bw 1
 #define DFD_CLA__CDBGNODE3EAP3__CUSTOMACTION0ENABLE_reset 0x0
+// custom_action1 is valid only if custom_action1_enable is set
 #define DFD_CLA__CDBGNODE3EAP3__CUSTOMACTION1ENABLE_bm 0x2000000000
 #define DFD_CLA__CDBGNODE3EAP3__CUSTOMACTION1ENABLE_bp 37
 #define DFD_CLA__CDBGNODE3EAP3__CUSTOMACTION1ENABLE_bw 1
 #define DFD_CLA__CDBGNODE3EAP3__CUSTOMACTION1ENABLE_reset 0x0
+// Select a trigger event
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE2_bm 0xfc000000000
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE2_bp 38
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE2_bw 6
 #define DFD_CLA__CDBGNODE3EAP3__EVENTTYPE2_reset 0x0
+// User Defined Function with event type 0, 1, and 2 as arguments
 #define DFD_CLA__CDBGNODE3EAP3__UDF_bm 0xff00000000000
 #define DFD_CLA__CDBGNODE3EAP3__UDF_bp 44
 #define DFD_CLA__CDBGNODE3EAP3__UDF_bw 8
 #define DFD_CLA__CDBGNODE3EAP3__UDF_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE3EAP3__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE3EAP3__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE3EAP3__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE3EAP3__ACTION2_reset 0x0
+// Select an Action
 #define DFD_CLA__CDBGNODE3EAP3__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE3EAP3__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE3EAP3__ACTION3_bw 6
 #define DFD_CLA__CDBGNODE3EAP3__ACTION3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Select Destination Node
         uint64_t DestNode :2;
+        // Select an Action
         uint64_t Action0 :6;
+        // Select an Action
         uint64_t Action1 :6;
+        // Relation to be satisfied among events to activate the actions
         uint64_t LogicalOp :2;
+        // Select a trigger event
         uint64_t EventType0 :6;
+        // Select a trigger event
         uint64_t EventType1 :6;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction0 :4;
+        // Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
         uint64_t CustomAction1 :4;
+        // custom_action0 is valid only if custom_action0_enable is set
         uint64_t CustomAction0Enable :1;
+        // custom_action1 is valid only if custom_action1_enable is set
         uint64_t CustomAction1Enable :1;
+        // Select a trigger event
         uint64_t EventType2 :6;
+        // User Defined Function with event type 0, 1, and 2 as arguments
         uint64_t Udf :8;
+        // Select an Action
         uint64_t Action2 :6;
+        // Select an Action
         uint64_t Action3 :6;
     } f;
     uint64_t w;
 } dfd_cla__CDbgNode3Eap3_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode0Eap2Lo
+// debug Bus Value when Node0 Eap2 Trigger is met.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP2LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP2LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP2LO__VALUE_bw 64
@@ -2363,6 +2943,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode0Eap2Lo_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode0Eap3Lo
+// debug Bus Value when Node0 Eap3 Trigger is met.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP3LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP3LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP3LO__VALUE_bw 64
@@ -2375,6 +2956,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode0Eap3Lo_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode1Eap2Lo
+// debug Bus Value when Node1 Eap2 Trigger is met.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP2LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP2LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP2LO__VALUE_bw 64
@@ -2387,6 +2969,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode1Eap2Lo_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode1Eap3Lo
+// debug Bus Value when Node1 Eap3 Trigger is met.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP3LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP3LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP3LO__VALUE_bw 64
@@ -2399,6 +2982,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode1Eap3Lo_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode2Eap2Lo
+// debug Bus Value when Node2 Eap2 Trigger is met.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP2LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP2LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP2LO__VALUE_bw 64
@@ -2411,6 +2995,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode2Eap2Lo_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode2Eap3Lo
+// debug Bus Value when Node2 Eap3 Trigger is met.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP3LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP3LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP3LO__VALUE_bw 64
@@ -2423,6 +3008,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode2Eap3Lo_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode3Eap2Lo
+// debug Bus Value when Node3 Eap2 Trigger is met.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP2LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP2LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP2LO__VALUE_bw 64
@@ -2435,6 +3021,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode3Eap2Lo_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode3Eap3Lo
+// debug Bus Value when Node3 Eap3 Trigger is met.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP3LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP3LO__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP3LO__VALUE_bw 64
@@ -2447,66 +3034,82 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode3Eap3Lo_t;
 
 // reg - dfd_cla::CDbgSignalDelayMuxSel
+// Dbg Mux Shifted signals Select Bits for Lane 0
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG0_bm 0x3
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG0_bp 0
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG0_bw 2
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG0_reset 0x0
+// Dbg Mux Shifted signals Select Bits for Lane 1
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG1_bm 0xc
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG1_bp 2
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG1_bw 2
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG1_reset 0x0
+// Dbg Mux Shifted signals Select Bits for Lane 2
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG2_bm 0x30
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG2_bp 4
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG2_bw 2
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG2_reset 0x0
+// Dbg Mux Shifted signals Select Bits for Lane 3
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG3_bm 0xc0
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG3_bp 6
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG3_bw 2
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG3_reset 0x0
+// Dbg Mux Shifted signals Select Bits for Lane 4
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG4_bm 0x300
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG4_bp 8
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG4_bw 2
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG4_reset 0x0
+// Dbg Mux Shifted signals Select Bits for Lane 5
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG5_bm 0xc00
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG5_bp 10
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG5_bw 2
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG5_reset 0x0
+// Dbg Mux Shifted signals Select Bits for Lane 6
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG6_bm 0x3000
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG6_bp 12
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG6_bw 2
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG6_reset 0x0
+// Dbg Mux Shifted signals Select Bits for Lane 7
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG7_bm 0xc000
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG7_bp 14
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG7_bw 2
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG7_reset 0x0
+// Dbg Mux Shifted signals Select Bits for Lane 0
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG8_bm 0x30000
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG8_bp 16
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG8_bw 2
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG8_reset 0x0
+// Dbg Mux Shifted signals Select Bits for Lane 0
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG9_bm 0xc0000
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG9_bp 18
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG9_bw 2
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG9_reset 0x0
+// Dbg Mux Shifted signals Select Bits for Lane 0
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG10_bm 0x300000
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG10_bp 20
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG10_bw 2
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG10_reset 0x0
+// Dbg Mux Shifted signals Select Bits for Lane 0
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG11_bm 0xc00000
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG11_bp 22
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG11_bw 2
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG11_reset 0x0
+// Dbg Mux Shifted signals Select Bits for Lane 0
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG12_bm 0x3000000
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG12_bp 24
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG12_bw 2
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG12_reset 0x0
+// Dbg Mux Shifted signals Select Bits for Lane 0
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG13_bm 0xc000000
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG13_bp 26
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG13_bw 2
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG13_reset 0x0
+// Dbg Mux Shifted signals Select Bits for Lane 0
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG14_bm 0x30000000
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG14_bp 28
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG14_bw 2
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG14_reset 0x0
+// Dbg Mux Shifted signals Select Bits for Lane 0
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG15_bm 0xc0000000
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG15_bp 30
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__MUXSELSEG15_bw 2
@@ -2517,21 +3120,37 @@ typedef union {
 #define DFD_CLA__CDBGSIGNALDELAYMUXSEL__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Dbg Mux Shifted signals Select Bits for Lane 0
         uint64_t Muxselseg0 :2;
+        // Dbg Mux Shifted signals Select Bits for Lane 1
         uint64_t Muxselseg1 :2;
+        // Dbg Mux Shifted signals Select Bits for Lane 2
         uint64_t Muxselseg2 :2;
+        // Dbg Mux Shifted signals Select Bits for Lane 3
         uint64_t Muxselseg3 :2;
+        // Dbg Mux Shifted signals Select Bits for Lane 4
         uint64_t Muxselseg4 :2;
+        // Dbg Mux Shifted signals Select Bits for Lane 5
         uint64_t Muxselseg5 :2;
+        // Dbg Mux Shifted signals Select Bits for Lane 6
         uint64_t Muxselseg6 :2;
+        // Dbg Mux Shifted signals Select Bits for Lane 7
         uint64_t Muxselseg7 :2;
+        // Dbg Mux Shifted signals Select Bits for Lane 0
         uint64_t Muxselseg8 :2;
+        // Dbg Mux Shifted signals Select Bits for Lane 0
         uint64_t Muxselseg9 :2;
+        // Dbg Mux Shifted signals Select Bits for Lane 0
         uint64_t Muxselseg10 :2;
+        // Dbg Mux Shifted signals Select Bits for Lane 0
         uint64_t Muxselseg11 :2;
+        // Dbg Mux Shifted signals Select Bits for Lane 0
         uint64_t Muxselseg12 :2;
+        // Dbg Mux Shifted signals Select Bits for Lane 0
         uint64_t Muxselseg13 :2;
+        // Dbg Mux Shifted signals Select Bits for Lane 0
         uint64_t Muxselseg14 :2;
+        // Dbg Mux Shifted signals Select Bits for Lane 0
         uint64_t Muxselseg15 :2;
         uint64_t Rsvd :32;
     } f;
@@ -2539,6 +3158,7 @@ typedef union {
 } dfd_cla__CDbgSignalDelayMuxSel_t;
 
 // reg - dfd_cla::CDbgClaXtriggerTimestretch
+// This value determines the time stretched pulse duration for the cross trigger. 8 bits for each of the two triggers.
 #define DFD_CLA__CDBGCLAXTRIGGERTIMESTRETCH__XTRIGGER0STRETCH_bm 0xff
 #define DFD_CLA__CDBGCLAXTRIGGERTIMESTRETCH__XTRIGGER0STRETCH_bp 0
 #define DFD_CLA__CDBGCLAXTRIGGERTIMESTRETCH__XTRIGGER0STRETCH_bw 8
@@ -2561,179 +3181,228 @@ typedef union {
 } dfd_cla__CDbgClaXtriggerTimestretch_t;
 
 // reg - dfd_cla::CDbgClaTimestamp
+// 64-bit timestamp counter. Increments on time_tick. Can be written directly or loaded from timestamp_sync on xtrigger when resync is enabled.
+// Current timestamp value (lower 8 bits)
 #define DFD_CLA__CDBGCLATIMESTAMP__TIMESTAMPLOWER_bm 0xff
 #define DFD_CLA__CDBGCLATIMESTAMP__TIMESTAMPLOWER_bp 0
 #define DFD_CLA__CDBGCLATIMESTAMP__TIMESTAMPLOWER_bw 8
 #define DFD_CLA__CDBGCLATIMESTAMP__TIMESTAMPLOWER_reset 0x0
+// Current timestamp value (upper 56 bits)
 #define DFD_CLA__CDBGCLATIMESTAMP__TIMESTAMPUPPER_bm 0xffffffffffffff00
 #define DFD_CLA__CDBGCLATIMESTAMP__TIMESTAMPUPPER_bp 8
 #define DFD_CLA__CDBGCLATIMESTAMP__TIMESTAMPUPPER_bw 56
 #define DFD_CLA__CDBGCLATIMESTAMP__TIMESTAMPUPPER_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Current timestamp value (lower 8 bits)
         uint64_t TimestampLower :8;
+        // Current timestamp value (upper 56 bits)
         uint64_t TimestampUpper :56;
     } f;
     uint64_t w;
 } dfd_cla__CDbgClaTimestamp_t;
 
 // reg - dfd_cla::CDbgClaTimestampSync
+// Timestamp sync value. This value is loaded into the timestamp register on xtrigger posedge when resync bit is enabled.
+// Sync value to load into timestamp
 #define DFD_CLA__CDBGCLATIMESTAMPSYNC__TIMESTAMPSYNC_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGCLATIMESTAMPSYNC__TIMESTAMPSYNC_bp 0
 #define DFD_CLA__CDBGCLATIMESTAMPSYNC__TIMESTAMPSYNC_bw 64
 #define DFD_CLA__CDBGCLATIMESTAMPSYNC__TIMESTAMPSYNC_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Sync value to load into timestamp
         uint64_t TimestampSync :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgClaTimestampSync_t;
 
 // reg - dfd_cla::CDbgClaTimestampConfig
+// Timestamp configuration register. Controls resync behavior and debug marker.
+// When set, timestamp is loaded from timestamp_sync on xtrigger posedge. Auto-clears after load.
 #define DFD_CLA__CDBGCLATIMESTAMPCONFIG__RESYNC_bm 0x1
 #define DFD_CLA__CDBGCLATIMESTAMPCONFIG__RESYNC_bp 0
 #define DFD_CLA__CDBGCLATIMESTAMPCONFIG__RESYNC_bw 1
 #define DFD_CLA__CDBGCLATIMESTAMPCONFIG__RESYNC_reset 0x0
+// Debug marker output value
 #define DFD_CLA__CDBGCLATIMESTAMPCONFIG__DEBUGMARKER_bm 0x1fe
 #define DFD_CLA__CDBGCLATIMESTAMPCONFIG__DEBUGMARKER_bp 1
 #define DFD_CLA__CDBGCLATIMESTAMPCONFIG__DEBUGMARKER_bw 8
 #define DFD_CLA__CDBGCLATIMESTAMPCONFIG__DEBUGMARKER_reset 0x0
+// When this bit is set, a cross trigger 0 event will cause the value from Timestamp register to be written into the TimestampCapture register. No effect in the SMC, where the CLA timestamp counts the local time tick (timestamp scheme 0).
 #define DFD_CLA__CDBGCLATIMESTAMPCONFIG__TSCAPTURE_bm 0x200
 #define DFD_CLA__CDBGCLATIMESTAMPCONFIG__TSCAPTURE_bp 9
 #define DFD_CLA__CDBGCLATIMESTAMPCONFIG__TSCAPTURE_bw 1
 #define DFD_CLA__CDBGCLATIMESTAMPCONFIG__TSCAPTURE_reset 0x0
+// Reserved
 #define DFD_CLA__CDBGCLATIMESTAMPCONFIG__RSVD1_bm 0xfffffffffffffc00
 #define DFD_CLA__CDBGCLATIMESTAMPCONFIG__RSVD1_bp 10
 #define DFD_CLA__CDBGCLATIMESTAMPCONFIG__RSVD1_bw 54
 #define DFD_CLA__CDBGCLATIMESTAMPCONFIG__RSVD1_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // When set, timestamp is loaded from timestamp_sync on xtrigger posedge. Auto-clears after load.
         uint64_t Resync :1;
+        // Debug marker output value
         uint64_t DebugMarker :8;
+        // When this bit is set, a cross trigger 0 event will cause the value from Timestamp register to be written into the TimestampCapture register. No effect in the SMC, where the CLA timestamp counts the local time tick (timestamp scheme 0).
         uint64_t TsCapture :1;
+        // Reserved
         uint64_t Rsvd1 :54;
     } f;
     uint64_t w;
 } dfd_cla__CDbgClaTimestampConfig_t;
 
 // reg - dfd_cla::CDbgClaTimestampOffset
+// Timestamp offset register. The Offset value is subtracted from the timestamp before comparing with incoming timestamp value. No effect in the SMC, where the CLA timestamp counts the local time tick (timestamp scheme 0).
+// Timestamp offset value. No effect in the SMC.
 #define DFD_CLA__CDBGCLATIMESTAMPOFFSET__OFFSET_bm 0xffffffffffffff
 #define DFD_CLA__CDBGCLATIMESTAMPOFFSET__OFFSET_bp 0
 #define DFD_CLA__CDBGCLATIMESTAMPOFFSET__OFFSET_bw 56
 #define DFD_CLA__CDBGCLATIMESTAMPOFFSET__OFFSET_reset 0x0
+// Reserved
 #define DFD_CLA__CDBGCLATIMESTAMPOFFSET__RSVD0_bm 0xff00000000000000
 #define DFD_CLA__CDBGCLATIMESTAMPOFFSET__RSVD0_bp 56
 #define DFD_CLA__CDBGCLATIMESTAMPOFFSET__RSVD0_bw 8
 #define DFD_CLA__CDBGCLATIMESTAMPOFFSET__RSVD0_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Timestamp offset value. No effect in the SMC.
         uint64_t Offset :56;
+        // Reserved
         uint64_t Rsvd0 :8;
     } f;
     uint64_t w;
 } dfd_cla__CDbgClaTimestampOffset_t;
 
 // reg - dfd_cla::CDbgSignalMask0Hi
+// Used to define debug bus match events. The positive match event (0x2) fires when debug_bus & mask = match; the negative match event (0x3) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+// Mask to be applied to debug bus before match
 #define DFD_CLA__CDBGSIGNALMASK0HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALMASK0HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALMASK0HI__VALUE_bw 64
 #define DFD_CLA__CDBGSIGNALMASK0HI__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Mask to be applied to debug bus before match
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgSignalMask0Hi_t;
 
 // reg - dfd_cla::CDbgSignalMatch0Hi
+// Used to define debug bus match events. The positive match event (0x2) fires when debug_bus & mask = match; the negative match event (0x3) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+// Value used for debug bus match.
 #define DFD_CLA__CDBGSIGNALMATCH0HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALMATCH0HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALMATCH0HI__VALUE_bw 64
 #define DFD_CLA__CDBGSIGNALMATCH0HI__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value used for debug bus match.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgSignalMatch0Hi_t;
 
 // reg - dfd_cla::CDbgSignalMask1Hi
+// Used to define debug bus match events. The positive match event (0x4) fires when debug_bus & mask = match; the negative match event (0x5) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+// Mask to be applied to debug bus before match
 #define DFD_CLA__CDBGSIGNALMASK1HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALMASK1HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALMASK1HI__VALUE_bw 64
 #define DFD_CLA__CDBGSIGNALMASK1HI__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Mask to be applied to debug bus before match
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgSignalMask1Hi_t;
 
 // reg - dfd_cla::CDbgSignalMatch1Hi
+// Used to define debug bus match events. The positive match event (0x4) fires when debug_bus & mask = match; the negative match event (0x5) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+// Value used for debug bus match.
 #define DFD_CLA__CDBGSIGNALMATCH1HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALMATCH1HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALMATCH1HI__VALUE_bw 64
 #define DFD_CLA__CDBGSIGNALMATCH1HI__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value used for debug bus match.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgSignalMatch1Hi_t;
 
 // reg - dfd_cla::CDbgSignalMask2Hi
+// Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus & mask = match; the negative match event (0x1D) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+// Mask to be applied to debug bus before match
 #define DFD_CLA__CDBGSIGNALMASK2HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALMASK2HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALMASK2HI__VALUE_bw 64
 #define DFD_CLA__CDBGSIGNALMASK2HI__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Mask to be applied to debug bus before match
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgSignalMask2Hi_t;
 
 // reg - dfd_cla::CDbgSignalMatch2Hi
+// Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus & mask = match; the negative match event (0x1D) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+// Value used for debug bus match.
 #define DFD_CLA__CDBGSIGNALMATCH2HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALMATCH2HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALMATCH2HI__VALUE_bw 64
 #define DFD_CLA__CDBGSIGNALMATCH2HI__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value used for debug bus match.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgSignalMatch2Hi_t;
 
 // reg - dfd_cla::CDbgSignalMask3Hi
+// Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus & mask = match; the negative match event (0x1F) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+// Mask to be applied to debug bus before match
 #define DFD_CLA__CDBGSIGNALMASK3HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALMASK3HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALMASK3HI__VALUE_bw 64
 #define DFD_CLA__CDBGSIGNALMASK3HI__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Mask to be applied to debug bus before match
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgSignalMask3Hi_t;
 
 // reg - dfd_cla::CDbgSignalMatch3Hi
+// Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus & mask = match; the negative match event (0x1F) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+// Value used for debug bus match.
 #define DFD_CLA__CDBGSIGNALMATCH3HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALMATCH3HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALMATCH3HI__VALUE_bw 64
 #define DFD_CLA__CDBGSIGNALMATCH3HI__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value used for debug bus match.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgSignalMatch3Hi_t;
 
 // reg - dfd_cla::CDbgMuxSelHi
+// No effect in the SMC. The CLA debug-bus mux has four output lanes and takes its mode, ID, fine-grain time enable and lane selects from CDbgMuxSelLo.
+// No effect in the SMC.
 #define DFD_CLA__CDBGMUXSELHI__DBMMODE_bm 0x3
 #define DFD_CLA__CDBGMUXSELHI__DBMMODE_bp 0
 #define DFD_CLA__CDBGMUXSELHI__DBMMODE_bw 2
 #define DFD_CLA__CDBGMUXSELHI__DBMMODE_reset 0x0
+// No effect in the SMC.
 #define DFD_CLA__CDBGMUXSELHI__DBMID_bm 0xfc
 #define DFD_CLA__CDBGMUXSELHI__DBMID_bp 2
 #define DFD_CLA__CDBGMUXSELHI__DBMID_bw 6
@@ -2742,56 +3411,75 @@ typedef union {
 #define DFD_CLA__CDBGMUXSELHI__RSVD158_bp 8
 #define DFD_CLA__CDBGMUXSELHI__RSVD158_bw 8
 #define DFD_CLA__CDBGMUXSELHI__RSVD158_reset 0x0
+// No effect in the SMC.
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG8_bm 0x3f0000
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG8_bp 16
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG8_bw 6
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG8_reset 0x0
+// No effect in the SMC.
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG9_bm 0xfc00000
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG9_bp 22
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG9_bw 6
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG9_reset 0x0
+// No effect in the SMC.
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG10_bm 0x3f0000000
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG10_bp 28
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG10_bw 6
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG10_reset 0x0
+// No effect in the SMC.
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG11_bm 0xfc00000000
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG11_bp 34
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG11_bw 6
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG11_reset 0x0
+// No effect in the SMC.
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG12_bm 0x3f0000000000
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG12_bp 40
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG12_bw 6
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG12_reset 0x0
+// No effect in the SMC.
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG13_bm 0xfc00000000000
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG13_bp 46
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG13_bw 6
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG13_reset 0x0
+// No effect in the SMC.
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG14_bm 0x3f0000000000000
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG14_bp 52
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG14_bw 6
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG14_reset 0x0
+// No effect in the SMC.
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG15_bm 0xfc00000000000000
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG15_bp 58
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG15_bw 6
 #define DFD_CLA__CDBGMUXSELHI__MUXSELSEG15_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // No effect in the SMC.
         uint64_t Dbmmode :2;
+        // No effect in the SMC.
         uint64_t Dbmid :6;
         uint64_t Rsvd158 :8;
+        // No effect in the SMC.
         uint64_t Muxselseg8 :6;
+        // No effect in the SMC.
         uint64_t Muxselseg9 :6;
+        // No effect in the SMC.
         uint64_t Muxselseg10 :6;
+        // No effect in the SMC.
         uint64_t Muxselseg11 :6;
+        // No effect in the SMC.
         uint64_t Muxselseg12 :6;
+        // No effect in the SMC.
         uint64_t Muxselseg13 :6;
+        // No effect in the SMC.
         uint64_t Muxselseg14 :6;
+        // No effect in the SMC.
         uint64_t Muxselseg15 :6;
     } f;
     uint64_t w;
 } dfd_cla__CDbgMuxSelHi_t;
 
 // reg - dfd_cla::CDbgTransitionMaskHi
+// 3 registers to configure "transition event". This register is to select the signals of interest using a mask. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
 #define DFD_CLA__CDBGTRANSITIONMASKHI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGTRANSITIONMASKHI__VALUE_bp 0
 #define DFD_CLA__CDBGTRANSITIONMASKHI__VALUE_bw 64
@@ -2804,6 +3492,7 @@ typedef union {
 } dfd_cla__CDbgTransitionMaskHi_t;
 
 // reg - dfd_cla::CDbgTransitionFromValueHi
+// 3 registers to configure "transition event". The event is triggered on transition from Value A to Value B. This register specifies Value A. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
 #define DFD_CLA__CDBGTRANSITIONFROMVALUEHI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGTRANSITIONFROMVALUEHI__VALUE_bp 0
 #define DFD_CLA__CDBGTRANSITIONFROMVALUEHI__VALUE_bw 64
@@ -2816,6 +3505,7 @@ typedef union {
 } dfd_cla__CDbgTransitionFromValueHi_t;
 
 // reg - dfd_cla::CDbgTransitionToValueHi
+// 3 registers to configure "transition event". The event is triggered on transition from Value A to Value B. This register specifies Value B. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
 #define DFD_CLA__CDBGTRANSITIONTOVALUEHI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGTRANSITIONTOVALUEHI__VALUE_bp 0
 #define DFD_CLA__CDBGTRANSITIONTOVALUEHI__VALUE_bw 64
@@ -2828,6 +3518,7 @@ typedef union {
 } dfd_cla__CDbgTransitionToValueHi_t;
 
 // reg - dfd_cla::CDbgOnesCountMaskHi
+// 2 registers to configure "ones count" event. This register is to select the signals of interest using a mask. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
 #define DFD_CLA__CDBGONESCOUNTMASKHI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGONESCOUNTMASKHI__VALUE_bp 0
 #define DFD_CLA__CDBGONESCOUNTMASKHI__VALUE_bw 64
@@ -2840,6 +3531,7 @@ typedef union {
 } dfd_cla__CDbgOnesCountMaskHi_t;
 
 // reg - dfd_cla::CDbgAnyChangeHi
+// Event triggered when a subset of debug signals change. The mask is used to select the subset of the debug signals. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
 #define DFD_CLA__CDBGANYCHANGEHI__MASK_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGANYCHANGEHI__MASK_bp 0
 #define DFD_CLA__CDBGANYCHANGEHI__MASK_bw 64
@@ -2852,6 +3544,7 @@ typedef union {
 } dfd_cla__CDbgAnyChangeHi_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode0Eap0Hi
+// debug Bus Value when Node0 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP0HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP0HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP0HI__VALUE_bw 64
@@ -2864,6 +3557,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode0Eap0Hi_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode0Eap1Hi
+// debug Bus Value when Node0 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP1HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP1HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP1HI__VALUE_bw 64
@@ -2876,6 +3570,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode0Eap1Hi_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode1Eap0Hi
+// debug Bus Value when Node1 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP0HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP0HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP0HI__VALUE_bw 64
@@ -2888,6 +3583,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode1Eap0Hi_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode1Eap1Hi
+// debug Bus Value when Node1 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP1HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP1HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP1HI__VALUE_bw 64
@@ -2900,6 +3596,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode1Eap1Hi_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode2Eap0Hi
+// debug Bus Value when Node2 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP0HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP0HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP0HI__VALUE_bw 64
@@ -2912,6 +3609,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode2Eap0Hi_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode2Eap1Hi
+// debug Bus Value when Node2 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP1HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP1HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP1HI__VALUE_bw 64
@@ -2924,6 +3622,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode2Eap1Hi_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode3Eap0Hi
+// debug Bus Value when Node3 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP0HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP0HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP0HI__VALUE_bw 64
@@ -2936,6 +3635,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode3Eap0Hi_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode3Eap1Hi
+// debug Bus Value when Node3 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP1HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP1HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP1HI__VALUE_bw 64
@@ -2948,6 +3648,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode3Eap1Hi_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode0Eap2Hi
+// debug Bus Value when Node0 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP2HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP2HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP2HI__VALUE_bw 64
@@ -2960,6 +3661,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode0Eap2Hi_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode0Eap3Hi
+// debug Bus Value when Node0 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP3HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP3HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE0EAP3HI__VALUE_bw 64
@@ -2972,6 +3674,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode0Eap3Hi_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode1Eap2Hi
+// debug Bus Value when Node1 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP2HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP2HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP2HI__VALUE_bw 64
@@ -2984,6 +3687,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode1Eap2Hi_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode1Eap3Hi
+// debug Bus Value when Node1 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP3HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP3HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE1EAP3HI__VALUE_bw 64
@@ -2996,6 +3700,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode1Eap3Hi_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode2Eap2Hi
+// debug Bus Value when Node2 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP2HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP2HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP2HI__VALUE_bw 64
@@ -3008,6 +3713,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode2Eap2Hi_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode2Eap3Hi
+// debug Bus Value when Node2 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP3HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP3HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE2EAP3HI__VALUE_bw 64
@@ -3020,6 +3726,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode2Eap3Hi_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode3Eap2Hi
+// debug Bus Value when Node3 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP2HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP2HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP2HI__VALUE_bw 64
@@ -3032,6 +3739,7 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode3Eap2Hi_t;
 
 // reg - dfd_cla::CDbgSignalSnapshotNode3Eap3Hi
+// debug Bus Value when Node3 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP3HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP3HI__VALUE_bp 0
 #define DFD_CLA__CDBGSIGNALSNAPSHOTNODE3EAP3HI__VALUE_bw 64
@@ -3044,244 +3752,306 @@ typedef union {
 } dfd_cla__CDbgSignalSnapshotNode3Eap3Hi_t;
 
 // reg - dfd_cla::CDbgLfsr
+// LFSR value.
+// Enable the LFSR register.
 #define DFD_CLA__CDBGLFSR__LFSRACTIVE_bm 0x1
 #define DFD_CLA__CDBGLFSR__LFSRACTIVE_bp 0
 #define DFD_CLA__CDBGLFSR__LFSRACTIVE_bw 1
 #define DFD_CLA__CDBGLFSR__LFSRACTIVE_reset 0x0
+// Value of the LFSR register.
 #define DFD_CLA__CDBGLFSR__LFSR_bm 0xfffffffffffffffe
 #define DFD_CLA__CDBGLFSR__LFSR_bp 1
 #define DFD_CLA__CDBGLFSR__LFSR_bw 63
 #define DFD_CLA__CDBGLFSR__LFSR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enable the LFSR register.
         uint64_t LfsrActive :1;
+        // Value of the LFSR register.
         uint64_t Lfsr :63;
     } f;
     uint64_t w;
 } dfd_cla__CDbgLfsr_t;
 
 // reg - dfd_cla::CDbgLfsrMask
+// LFSR programming mask.
+// Reserved.
 #define DFD_CLA__CDBGLFSRMASK__RSVD0_bm 0x1
 #define DFD_CLA__CDBGLFSRMASK__RSVD0_bp 0
 #define DFD_CLA__CDBGLFSRMASK__RSVD0_bw 1
 #define DFD_CLA__CDBGLFSRMASK__RSVD0_reset 0x0
+// Value to mask the LFSR register.
 #define DFD_CLA__CDBGLFSRMASK__MASK_bm 0xfffffffffffffffe
 #define DFD_CLA__CDBGLFSRMASK__MASK_bp 1
 #define DFD_CLA__CDBGLFSRMASK__MASK_bw 63
 #define DFD_CLA__CDBGLFSRMASK__MASK_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reserved.
         uint64_t Rsvd0 :1;
+        // Value to mask the LFSR register.
         uint64_t Mask :63;
     } f;
     uint64_t w;
 } dfd_cla__CDbgLfsrMask_t;
 
 // reg - dfd_cla::CDbgTimestampCapture
+// Captured timestamp upper bits. When ts_capture is set in the timestamp config register, a cross trigger 0 event captures the timestamp upper bits into this register. Never captured in the SMC, where the CLA timestamp counts the local time tick (timestamp scheme 0).
+// Timestamp capture value.
 #define DFD_CLA__CDBGTIMESTAMPCAPTURE__TIMESTAMP_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGTIMESTAMPCAPTURE__TIMESTAMP_bp 0
 #define DFD_CLA__CDBGTIMESTAMPCAPTURE__TIMESTAMP_bw 64
 #define DFD_CLA__CDBGTIMESTAMPCAPTURE__TIMESTAMP_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Timestamp capture value.
         uint64_t Timestamp :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgTimestampCapture_t;
 
 // reg - dfd_cla::CDbgCompare0Lo
+// Value for arithmetic comparison.
+// Value for arithmetic comparison.
 #define DFD_CLA__CDBGCOMPARE0LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGCOMPARE0LO__VALUE_bp 0
 #define DFD_CLA__CDBGCOMPARE0LO__VALUE_bw 64
 #define DFD_CLA__CDBGCOMPARE0LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value for arithmetic comparison.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgCompare0Lo_t;
 
 // reg - dfd_cla::CDbgCompare0MaskLo
+// Value to mask the arithmetic comparison.
+// Value to mask the arithmetic comparison.
 #define DFD_CLA__CDBGCOMPARE0MASKLO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGCOMPARE0MASKLO__VALUE_bp 0
 #define DFD_CLA__CDBGCOMPARE0MASKLO__VALUE_bw 64
 #define DFD_CLA__CDBGCOMPARE0MASKLO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value to mask the arithmetic comparison.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgCompare0MaskLo_t;
 
 // reg - dfd_cla::CDbgCompare1Lo
+// Value for arithmetic comparison.
+// Value for arithmetic comparison.
 #define DFD_CLA__CDBGCOMPARE1LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGCOMPARE1LO__VALUE_bp 0
 #define DFD_CLA__CDBGCOMPARE1LO__VALUE_bw 64
 #define DFD_CLA__CDBGCOMPARE1LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value for arithmetic comparison.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgCompare1Lo_t;
 
 // reg - dfd_cla::CDbgCompare1MaskLo
+// Value to mask the arithmetic comparison.
+// Value to mask the arithmetic comparison.
 #define DFD_CLA__CDBGCOMPARE1MASKLO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGCOMPARE1MASKLO__VALUE_bp 0
 #define DFD_CLA__CDBGCOMPARE1MASKLO__VALUE_bw 64
 #define DFD_CLA__CDBGCOMPARE1MASKLO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value to mask the arithmetic comparison.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgCompare1MaskLo_t;
 
 // reg - dfd_cla::CDbgCompare2Lo
+// Value for arithmetic comparison.
+// Value for arithmetic comparison.
 #define DFD_CLA__CDBGCOMPARE2LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGCOMPARE2LO__VALUE_bp 0
 #define DFD_CLA__CDBGCOMPARE2LO__VALUE_bw 64
 #define DFD_CLA__CDBGCOMPARE2LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value for arithmetic comparison.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgCompare2Lo_t;
 
 // reg - dfd_cla::CDbgCompare2MaskLo
+// Value to mask the arithmetic comparison.
+// Value to mask the arithmetic comparison.
 #define DFD_CLA__CDBGCOMPARE2MASKLO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGCOMPARE2MASKLO__VALUE_bp 0
 #define DFD_CLA__CDBGCOMPARE2MASKLO__VALUE_bw 64
 #define DFD_CLA__CDBGCOMPARE2MASKLO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value to mask the arithmetic comparison.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgCompare2MaskLo_t;
 
 // reg - dfd_cla::CDbgCompare3Lo
+// Value for arithmetic comparison.
+// Value for arithmetic comparison.
 #define DFD_CLA__CDBGCOMPARE3LO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGCOMPARE3LO__VALUE_bp 0
 #define DFD_CLA__CDBGCOMPARE3LO__VALUE_bw 64
 #define DFD_CLA__CDBGCOMPARE3LO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value for arithmetic comparison.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgCompare3Lo_t;
 
 // reg - dfd_cla::CDbgCompare3MaskLo
+// Value to mask the arithmetic comparison.
+// Value to mask the arithmetic comparison.
 #define DFD_CLA__CDBGCOMPARE3MASKLO__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGCOMPARE3MASKLO__VALUE_bp 0
 #define DFD_CLA__CDBGCOMPARE3MASKLO__VALUE_bw 64
 #define DFD_CLA__CDBGCOMPARE3MASKLO__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value to mask the arithmetic comparison.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgCompare3MaskLo_t;
 
 // reg - dfd_cla::CDbgCompare0Hi
+// Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+// Value for arithmetic comparison.
 #define DFD_CLA__CDBGCOMPARE0HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGCOMPARE0HI__VALUE_bp 0
 #define DFD_CLA__CDBGCOMPARE0HI__VALUE_bw 64
 #define DFD_CLA__CDBGCOMPARE0HI__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value for arithmetic comparison.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgCompare0Hi_t;
 
 // reg - dfd_cla::CDbgCompare0MaskHi
+// Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+// Value to mask the arithmetic comparison.
 #define DFD_CLA__CDBGCOMPARE0MASKHI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGCOMPARE0MASKHI__VALUE_bp 0
 #define DFD_CLA__CDBGCOMPARE0MASKHI__VALUE_bw 64
 #define DFD_CLA__CDBGCOMPARE0MASKHI__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value to mask the arithmetic comparison.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgCompare0MaskHi_t;
 
 // reg - dfd_cla::CDbgCompare1Hi
+// Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+// Value for arithmetic comparison.
 #define DFD_CLA__CDBGCOMPARE1HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGCOMPARE1HI__VALUE_bp 0
 #define DFD_CLA__CDBGCOMPARE1HI__VALUE_bw 64
 #define DFD_CLA__CDBGCOMPARE1HI__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value for arithmetic comparison.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgCompare1Hi_t;
 
 // reg - dfd_cla::CDbgCompare1MaskHi
+// Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+// Value to mask the arithmetic comparison.
 #define DFD_CLA__CDBGCOMPARE1MASKHI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGCOMPARE1MASKHI__VALUE_bp 0
 #define DFD_CLA__CDBGCOMPARE1MASKHI__VALUE_bw 64
 #define DFD_CLA__CDBGCOMPARE1MASKHI__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value to mask the arithmetic comparison.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgCompare1MaskHi_t;
 
 // reg - dfd_cla::CDbgCompare2Hi
+// Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+// Value for arithmetic comparison.
 #define DFD_CLA__CDBGCOMPARE2HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGCOMPARE2HI__VALUE_bp 0
 #define DFD_CLA__CDBGCOMPARE2HI__VALUE_bw 64
 #define DFD_CLA__CDBGCOMPARE2HI__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value for arithmetic comparison.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgCompare2Hi_t;
 
 // reg - dfd_cla::CDbgCompare2MaskHi
+// Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+// Value to mask the arithmetic comparison.
 #define DFD_CLA__CDBGCOMPARE2MASKHI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGCOMPARE2MASKHI__VALUE_bp 0
 #define DFD_CLA__CDBGCOMPARE2MASKHI__VALUE_bw 64
 #define DFD_CLA__CDBGCOMPARE2MASKHI__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value to mask the arithmetic comparison.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgCompare2MaskHi_t;
 
 // reg - dfd_cla::CDbgCompare3Hi
+// Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+// Value for arithmetic comparison.
 #define DFD_CLA__CDBGCOMPARE3HI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGCOMPARE3HI__VALUE_bp 0
 #define DFD_CLA__CDBGCOMPARE3HI__VALUE_bw 64
 #define DFD_CLA__CDBGCOMPARE3HI__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value for arithmetic comparison.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgCompare3Hi_t;
 
 // reg - dfd_cla::CDbgCompare3MaskHi
+// Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+// Value to mask the arithmetic comparison.
 #define DFD_CLA__CDBGCOMPARE3MASKHI__VALUE_bm 0xffffffffffffffff
 #define DFD_CLA__CDBGCOMPARE3MASKHI__VALUE_bp 0
 #define DFD_CLA__CDBGCOMPARE3MASKHI__VALUE_bw 64
 #define DFD_CLA__CDBGCOMPARE3MASKHI__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Value to mask the arithmetic comparison.
         uint64_t Value :64;
     } f;
     uint64_t w;
 } dfd_cla__CDbgCompare3MaskHi_t;
 
 // reg - dfd_cla::Scratch
+// Additional scratch register for DV and potential ECO usage
 #define DFD_CLA__SCRATCH__DATA_bm 0xffffffffffffffff
 #define DFD_CLA__SCRATCH__DATA_bp 0
 #define DFD_CLA__SCRATCH__DATA_bw 64
@@ -3456,14 +4226,17 @@ typedef struct __attribute__ ((__packed__)) {
 #define DFD_DST__TRDSTCONTROL__TRDSTINHIBITSRC_bp 15
 #define DFD_DST__TRDSTCONTROL__TRDSTINHIBITSRC_bw 1
 #define DFD_DST__TRDSTCONTROL__TRDSTINHIBITSRC_reset 0x0
+// When the field is set tp 2'b10, sent timestamp. All other vlaues not NA.
 #define DFD_DST__TRDSTCONTROL__TRDSTSYNCMODE_bm 0x30000
 #define DFD_DST__TRDSTCONTROL__TRDSTSYNCMODE_bp 16
 #define DFD_DST__TRDSTCONTROL__TRDSTSYNCMODE_bw 2
 #define DFD_DST__TRDSTCONTROL__TRDSTSYNCMODE_reset 0x0
+// When trDstSyncMode is set to 2'b10, timestamp will be sent for every 2^(trDstSyncMax + 4) Cluster clocks.
 #define DFD_DST__TRDSTCONTROL__TRDSTSYNCMAX_bm 0xf00000
 #define DFD_DST__TRDSTCONTROL__TRDSTSYNCMAX_bp 20
 #define DFD_DST__TRDSTCONTROL__TRDSTSYNCMAX_bw 4
 #define DFD_DST__TRDSTCONTROL__TRDSTSYNCMAX_reset 0x0
+// bit[0]: XOR Enable, bit[1]: VLT Enable. Supported values : 2'b3 (XOR+VLT Compression), 2'b1 (XOR Compresion), 2'b0 (No Compression)
 #define DFD_DST__TRDSTCONTROL__TRDSTFORMAT_bm 0x7000000
 #define DFD_DST__TRDSTCONTROL__TRDSTFORMAT_bp 24
 #define DFD_DST__TRDSTCONTROL__TRDSTFORMAT_bw 3
@@ -3483,9 +4256,12 @@ typedef union {
         uint32_t Trdstinststallena :1;
         uint32_t :1;
         uint32_t Trdstinhibitsrc :1;
+        // When the field is set tp 2'b10, sent timestamp. All other vlaues not NA.
         uint32_t Trdstsyncmode :2;
         uint32_t :2;
+        // When trDstSyncMode is set to 2'b10, timestamp will be sent for every 2^(trDstSyncMax + 4) Cluster clocks.
         uint32_t Trdstsyncmax :4;
+        // bit[0]: XOR Enable, bit[1]: VLT Enable. Supported values : 2'b3 (XOR+VLT Compression), 2'b1 (XOR Compresion), 2'b0 (No Compression)
         uint32_t Trdstformat :3;
         uint32_t :5;
     } f;
@@ -3513,14 +4289,17 @@ typedef union {
 #define DFD_DST__TRDSTIMPL__TRDSTPROTOCOLMINOR_bp 20
 #define DFD_DST__TRDSTIMPL__TRDSTPROTOCOLMINOR_bw 4
 #define DFD_DST__TRDSTIMPL__TRDSTPROTOCOLMINOR_reset 0x0
+// Specify frame length. Frame Length = trDstVendorFrameLength* 64 ; Frame Length should be a multiple of Bank Data Width.
 #define DFD_DST__TRDSTIMPL__TRDSTVENDORFRAMELENGTH_bm 0xf000000
 #define DFD_DST__TRDSTIMPL__TRDSTVENDORFRAMELENGTH_bp 24
 #define DFD_DST__TRDSTIMPL__TRDSTVENDORFRAMELENGTH_bw 4
 #define DFD_DST__TRDSTIMPL__TRDSTVENDORFRAMELENGTH_reset 0x1
+// Specify Stream length. A stream starts with "no compressed packet". Stream length specifies number of frames before a non-compressed packet is sent.Stream Length = 32* 2^(trDstVendorStreamLength + 1)
 #define DFD_DST__TRDSTIMPL__TRDSTVENDORSTREAMLENGTH_bm 0x70000000
 #define DFD_DST__TRDSTIMPL__TRDSTVENDORSTREAMLENGTH_bp 28
 #define DFD_DST__TRDSTIMPL__TRDSTVENDORSTREAMLENGTH_bw 3
 #define DFD_DST__TRDSTIMPL__TRDSTVENDORSTREAMLENGTH_reset 0x4
+// DST timestamp configuration. 0: timestamp input form external source (CoreTime). 1: timestamp from CLA timesync.
 #define DFD_DST__TRDSTIMPL__TRDSTTIMESTAMPCONFIG_bm 0x80000000
 #define DFD_DST__TRDSTIMPL__TRDSTTIMESTAMPCONFIG_bp 31
 #define DFD_DST__TRDSTIMPL__TRDSTTIMESTAMPCONFIG_bw 1
@@ -3533,8 +4312,11 @@ typedef union {
         uint32_t :4;
         uint32_t Trdstprotocolmajor :4;
         uint32_t Trdstprotocolminor :4;
+        // Specify frame length. Frame Length = trDstVendorFrameLength* 64 ; Frame Length should be a multiple of Bank Data Width.
         uint32_t Trdstvendorframelength :4;
+        // Specify Stream length. A stream starts with "no compressed packet". Stream length specifies number of frames before a non-compressed packet is sent.Stream Length = 32* 2^(trDstVendorStreamLength + 1)
         uint32_t Trdstvendorstreamlength :3;
+        // DST timestamp configuration. 0: timestamp input form external source (CoreTime). 1: timestamp from CLA timesync.
         uint32_t Trdsttimestampconfig :1;
     } f;
     uint32_t w;
@@ -3575,33 +4357,43 @@ typedef union {
 } dfd_dst__Trdstinstfeatures_t;
 
 // reg - dfd_dst::CDbgDebugTraceCfg
+// Trace Source ID
 #define DFD_DST__CDBGDEBUGTRACECFG__TRACESOURCEID_bm 0xf
 #define DFD_DST__CDBGDEBUGTRACECFG__TRACESOURCEID_bp 0
 #define DFD_DST__CDBGDEBUGTRACECFG__TRACESOURCEID_bw 4
 #define DFD_DST__CDBGDEBUGTRACECFG__TRACESOURCEID_reset 0x0
+// Use "Filler Packet" to align a stream of trace packets within a frame boundary.
 #define DFD_DST__CDBGDEBUGTRACECFG__TRACEFRAMEFILLBYTE_bm 0xff0
 #define DFD_DST__CDBGDEBUGTRACECFG__TRACEFRAMEFILLBYTE_bp 4
 #define DFD_DST__CDBGDEBUGTRACECFG__TRACEFRAMEFILLBYTE_bw 8
 #define DFD_DST__CDBGDEBUGTRACECFG__TRACEFRAMEFILLBYTE_reset 0x81
+// Use trDstImpl[trDstVendorFrameLength] for Frame Length programming. Register field ZBB-ed.
 #define DFD_DST__CDBGDEBUGTRACECFG__FRAMELENGHTINBYTES_bm 0xf000
 #define DFD_DST__CDBGDEBUGTRACECFG__FRAMELENGHTINBYTES_bp 12
 #define DFD_DST__CDBGDEBUGTRACECFG__FRAMELENGHTINBYTES_bw 4
 #define DFD_DST__CDBGDEBUGTRACECFG__FRAMELENGHTINBYTES_reset 0x2
+// Enable Frame Mode (Frame Mode: Always pack "frame length" number of bytes for trace transmission). If flush to memory is stalled (due to silicon bug), we can have incomplete packets in memory. Frame Mode will help SW decoder to avoid reading incomplete trasnmitted packets. In Frame Mode, SW will get a memory pointer that is aligned to Frame Length. HW will ensure  there are no incomplete packets incluced in the region pointed by memory pointer.
 #define DFD_DST__CDBGDEBUGTRACECFG__FRAMEMODEENABLE_bm 0x100000
 #define DFD_DST__CDBGDEBUGTRACECFG__FRAMEMODEENABLE_bp 20
 #define DFD_DST__CDBGDEBUGTRACECFG__FRAMEMODEENABLE_bw 1
 #define DFD_DST__CDBGDEBUGTRACECFG__FRAMEMODEENABLE_reset 0x1
+// Closure Mode: 1: Close frame with a packet no larger than max packet size  before any overflow (due to packets crossing frame boundary). 0: Close frame when packets cross boundary. Push back packet crossing frame boundary to packet generator.
 #define DFD_DST__CDBGDEBUGTRACECFG__FRAMECLOSUREMODE_bm 0x200000
 #define DFD_DST__CDBGDEBUGTRACECFG__FRAMECLOSUREMODE_bp 21
 #define DFD_DST__CDBGDEBUGTRACECFG__FRAMECLOSUREMODE_bw 1
 #define DFD_DST__CDBGDEBUGTRACECFG__FRAMECLOSUREMODE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Trace Source ID
         uint32_t TraceSourceId :4;
+        // Use "Filler Packet" to align a stream of trace packets within a frame boundary.
         uint32_t TraceFrameFillByte :8;
+        // Use trDstImpl[trDstVendorFrameLength] for Frame Length programming. Register field ZBB-ed.
         uint32_t FrameLenghtInBytes :4;
         uint32_t :4;
+        // Enable Frame Mode (Frame Mode: Always pack "frame length" number of bytes for trace transmission). If flush to memory is stalled (due to silicon bug), we can have incomplete packets in memory. Frame Mode will help SW decoder to avoid reading incomplete trasnmitted packets. In Frame Mode, SW will get a memory pointer that is aligned to Frame Length. HW will ensure  there are no incomplete packets incluced in the region pointed by memory pointer.
         uint32_t FrameModeEnable :1;
+        // Closure Mode: 1: Close frame with a packet no larger than max packet size  before any overflow (due to packets crossing frame boundary). 0: Close frame when packets cross boundary. Push back packet crossing frame boundary to packet generator.
         uint32_t FrameClosureMode :1;
         uint32_t :10;
     } f;
@@ -3609,6 +4401,7 @@ typedef union {
 } dfd_dst__CDbgDebugTraceCfg_t;
 
 // reg - dfd_dst::ScratchLo
+// Scratch register (low) for DV and potential ECO usage
 #define DFD_DST__SCRATCHLO__DATA_bm 0xffffffff
 #define DFD_DST__SCRATCHLO__DATA_bp 0
 #define DFD_DST__SCRATCHLO__DATA_bw 32
@@ -3621,6 +4414,7 @@ typedef union {
 } dfd_dst__ScratchLo_t;
 
 // reg - dfd_dst::ScratchHi
+// Scratch register (high) for DV and potential ECO usage
 #define DFD_DST__SCRATCHHI__DATA_bm 0xffffffff
 #define DFD_DST__SCRATCHHI__DATA_bp 0
 #define DFD_DST__SCRATCHHI__DATA_bw 32
@@ -3645,6 +4439,7 @@ typedef struct __attribute__ ((__packed__)) {
 } dfd_dst_t;
 
 // addrmap - smc_cla
+// Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST blocks that smc_dfd_wrap instantiates.
 typedef struct __attribute__ ((__packed__)) {
     dfd_dst_sink_t dst_sink;
     dfd_funnel_t funnel;

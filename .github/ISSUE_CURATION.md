@@ -66,13 +66,15 @@ gh aw compile ocah-project-curator --validate
 
 Catalog source: `githubnext/agentics/weekly-issue-activity`
 (`source:` in the markdown). Overlay: Tuesday 12:00 PDT
-(`0 19 * * 2` UTC), General category, `fallback-to-issue: false`,
-Copilot credit caps.
+(`0 19 * * 2` UTC), discussion category `Weekly issue activity`,
+`fallback-to-issue: false`, Copilot credit caps.
 
 `.github/workflows/weekly-issue-activity.lock.yml` reads repository
 issues from the Issues API, plots opened/closed volume and
-time-to-close, and opens a General discussion. It does not read
-GitHub Insights or Project 291 Insights.
+time-to-close, and opens a discussion in that category. The category
+name must match a repository discussion category exactly. A name that
+does not match falls back to Announcements, which is the discussions
+home. It does not read GitHub Insights or Project 291 Insights.
 
 ```bash
 gh aw compile weekly-issue-activity --validate

@@ -14,40 +14,64 @@ extern "C" {
 #include <assert.h>
 
 // reg - dfx_ctrl_status::STATUS
+// One bit indicator from DFT logic to say when mem repair is completed.
+// This register is sticky 1 and will hold the value until reset
 #define DFX_CTRL_STATUS__STATUS__MEM_REPAIR_DONE_bm 0x1
 #define DFX_CTRL_STATUS__STATUS__MEM_REPAIR_DONE_bp 0
 #define DFX_CTRL_STATUS__STATUS__MEM_REPAIR_DONE_bw 1
 #define DFX_CTRL_STATUS__STATUS__MEM_REPAIR_DONE_reset 0x0
+// One bit indicator from DFT logic to say if mem repair was successful
+// This register is sticky 1 and will hold the value until reset
 #define DFX_CTRL_STATUS__STATUS__MEM_REPAIR_SUCCESS_bm 0x2
 #define DFX_CTRL_STATUS__STATUS__MEM_REPAIR_SUCCESS_bp 1
 #define DFX_CTRL_STATUS__STATUS__MEM_REPAIR_SUCCESS_bw 1
 #define DFX_CTRL_STATUS__STATUS__MEM_REPAIR_SUCCESS_reset 0x0
+// One bit indicator from DFT logic to say that mem repair has hit timeout and aborted
+// This register is sticky 1 and will hold the value until reset
 #define DFX_CTRL_STATUS__STATUS__MEM_REPAIR_ABORT_bm 0x4
 #define DFX_CTRL_STATUS__STATUS__MEM_REPAIR_ABORT_bp 2
 #define DFX_CTRL_STATUS__STATUS__MEM_REPAIR_ABORT_bw 1
 #define DFX_CTRL_STATUS__STATUS__MEM_REPAIR_ABORT_reset 0x0
+// One bit indicator from DFT logic to say when MBIST is completed
+// This register is sticky 1 and will hold the value until reset
 #define DFX_CTRL_STATUS__STATUS__MBIST_DONE_bm 0x10
 #define DFX_CTRL_STATUS__STATUS__MBIST_DONE_bp 4
 #define DFX_CTRL_STATUS__STATUS__MBIST_DONE_bw 1
 #define DFX_CTRL_STATUS__STATUS__MBIST_DONE_reset 0x0
+// One bit indicator from DFT logic to say when MBIST is successful
+// This register is sticky 1 and will hold the value until reset
 #define DFX_CTRL_STATUS__STATUS__MBIST_PASS_bm 0x100
 #define DFX_CTRL_STATUS__STATUS__MBIST_PASS_bp 8
 #define DFX_CTRL_STATUS__STATUS__MBIST_PASS_bw 1
 #define DFX_CTRL_STATUS__STATUS__MBIST_PASS_reset 0x0
+// One bit indicator from DFT logic to say that MBIST has hit timeout and aborted
+// This register is sticky 1 and will hold the value until reset
 #define DFX_CTRL_STATUS__STATUS__MBIST_ABORT_bm 0x1000
 #define DFX_CTRL_STATUS__STATUS__MBIST_ABORT_bp 12
 #define DFX_CTRL_STATUS__STATUS__MBIST_ABORT_bw 1
 #define DFX_CTRL_STATUS__STATUS__MBIST_ABORT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // One bit indicator from DFT logic to say when mem repair is completed.
+        // This register is sticky 1 and will hold the value until reset
         uint64_t mem_repair_done :1;
+        // One bit indicator from DFT logic to say if mem repair was successful
+        // This register is sticky 1 and will hold the value until reset
         uint64_t mem_repair_success :1;
+        // One bit indicator from DFT logic to say that mem repair has hit timeout and aborted
+        // This register is sticky 1 and will hold the value until reset
         uint64_t mem_repair_abort :1;
         uint64_t :1;
+        // One bit indicator from DFT logic to say when MBIST is completed
+        // This register is sticky 1 and will hold the value until reset
         uint64_t mbist_done :1;
         uint64_t :3;
+        // One bit indicator from DFT logic to say when MBIST is successful
+        // This register is sticky 1 and will hold the value until reset
         uint64_t mbist_pass :1;
         uint64_t :3;
+        // One bit indicator from DFT logic to say that MBIST has hit timeout and aborted
+        // This register is sticky 1 and will hold the value until reset
         uint64_t mbist_abort :1;
         uint64_t :51;
     } f;
@@ -55,47 +79,77 @@ typedef union {
 } dfx_ctrl_status__STATUS_t;
 
 // reg - dfx_ctrl_status::DEBUG_CTRL
+// Holds the written value for software to read back. It has no effect in the SMC.
 #define DFX_CTRL_STATUS__DEBUG_CTRL__CHIPLET_ENABLE_bm 0x3
 #define DFX_CTRL_STATUS__DEBUG_CTRL__CHIPLET_ENABLE_bp 0
 #define DFX_CTRL_STATUS__DEBUG_CTRL__CHIPLET_ENABLE_bw 2
 #define DFX_CTRL_STATUS__DEBUG_CTRL__CHIPLET_ENABLE_reset 0x0
+// Holds the written value for software to read back. It has no effect in the SMC.
 #define DFX_CTRL_STATUS__DEBUG_CTRL__GPIO_EN_bm 0x4
 #define DFX_CTRL_STATUS__DEBUG_CTRL__GPIO_EN_bp 2
 #define DFX_CTRL_STATUS__DEBUG_CTRL__GPIO_EN_bw 1
 #define DFX_CTRL_STATUS__DEBUG_CTRL__GPIO_EN_reset 0x0
+// DFD clock stop. 1 stops the clock to the debug-bus muxes and the CLA unless
+// force_clk_en is 1; 0 lets it run. The clock also runs while the SMC is in
+// reset.
 #define DFX_CTRL_STATUS__DEBUG_CTRL__CG_EN_bm 0x8
 #define DFX_CTRL_STATUS__DEBUG_CTRL__CG_EN_bp 3
 #define DFX_CTRL_STATUS__DEBUG_CTRL__CG_EN_bw 1
 #define DFX_CTRL_STATUS__DEBUG_CTRL__CG_EN_reset 0x0
+// Design-for-debug (DFD) clock force. 1 keeps the DFD clock running whatever the
+// value of cg_en.
 #define DFX_CTRL_STATUS__DEBUG_CTRL__FORCE_CLK_EN_bm 0x10
 #define DFX_CTRL_STATUS__DEBUG_CTRL__FORCE_CLK_EN_bp 4
 #define DFX_CTRL_STATUS__DEBUG_CTRL__FORCE_CLK_EN_bw 1
 #define DFX_CTRL_STATUS__DEBUG_CTRL__FORCE_CLK_EN_reset 0x0
+// Holds the written value for software to read back. It has no effect in the SMC.
 #define DFX_CTRL_STATUS__DEBUG_CTRL__DTB_NS_EN_bm 0x20
 #define DFX_CTRL_STATUS__DEBUG_CTRL__DTB_NS_EN_bp 5
 #define DFX_CTRL_STATUS__DEBUG_CTRL__DTB_NS_EN_bw 1
 #define DFX_CTRL_STATUS__DEBUG_CTRL__DTB_NS_EN_reset 0x0
+// Holds the written value for software to read back. It has no effect in the SMC.
 #define DFX_CTRL_STATUS__DEBUG_CTRL__DTB_EW_EN_bm 0x40
 #define DFX_CTRL_STATUS__DEBUG_CTRL__DTB_EW_EN_bp 6
 #define DFX_CTRL_STATUS__DEBUG_CTRL__DTB_EW_EN_bw 1
 #define DFX_CTRL_STATUS__DEBUG_CTRL__DTB_EW_EN_reset 0x0
+// CLA cross-trigger and halt-clock enable. Bit 0 (register bit 7) enables every
+// CLA cross-trigger output lane together with the CLA halt-clock request; 0 holds
+// them all inactive. Bits 15:1 hold the written value for software to read back
+// and have no effect.
 #define DFX_CTRL_STATUS__DEBUG_CTRL__XTRIG_CLK_HALT_MASK_bm 0x7fff80
 #define DFX_CTRL_STATUS__DEBUG_CTRL__XTRIG_CLK_HALT_MASK_bp 7
 #define DFX_CTRL_STATUS__DEBUG_CTRL__XTRIG_CLK_HALT_MASK_bw 16
 #define DFX_CTRL_STATUS__DEBUG_CTRL__XTRIG_CLK_HALT_MASK_reset 0x0
+// Holds the written value for software to read back. It has no effect in the SMC;
+// the debug marker on the SMC debug bus comes from the core logic analyzer (CLA).
 #define DFX_CTRL_STATUS__DEBUG_CTRL__DEBUG_MARKER_bm 0x7f800000
 #define DFX_CTRL_STATUS__DEBUG_CTRL__DEBUG_MARKER_bp 23
 #define DFX_CTRL_STATUS__DEBUG_CTRL__DEBUG_MARKER_bw 8
 #define DFX_CTRL_STATUS__DEBUG_CTRL__DEBUG_MARKER_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Holds the written value for software to read back. It has no effect in the SMC.
         uint32_t chiplet_enable :2;
+        // Holds the written value for software to read back. It has no effect in the SMC.
         uint32_t gpio_en :1;
+        // DFD clock stop. 1 stops the clock to the debug-bus muxes and the CLA unless
+        // force_clk_en is 1; 0 lets it run. The clock also runs while the SMC is in
+        // reset.
         uint32_t cg_en :1;
+        // Design-for-debug (DFD) clock force. 1 keeps the DFD clock running whatever the
+        // value of cg_en.
         uint32_t force_clk_en :1;
+        // Holds the written value for software to read back. It has no effect in the SMC.
         uint32_t dtb_ns_en :1;
+        // Holds the written value for software to read back. It has no effect in the SMC.
         uint32_t dtb_ew_en :1;
+        // CLA cross-trigger and halt-clock enable. Bit 0 (register bit 7) enables every
+        // CLA cross-trigger output lane together with the CLA halt-clock request; 0 holds
+        // them all inactive. Bits 15:1 hold the written value for software to read back
+        // and have no effect.
         uint32_t xtrig_clk_halt_mask :16;
+        // Holds the written value for software to read back. It has no effect in the SMC;
+        // the debug marker on the SMC debug bus comes from the core logic analyzer (CLA).
         uint32_t debug_marker :8;
         uint32_t :1;
     } f;
@@ -103,10 +157,17 @@ typedef union {
 } dfx_ctrl_status__DEBUG_CTRL_t;
 
 // reg - dfx_ctrl_status::DEBUG_BUS_MUX
+// Mode, ID and lane selects for the twelve debug-bus muxes that reduce the SMC debug
+// bus to the 16 CLA input lanes. Each mux takes its mode while Dbmid equals its ID,
+// and its lane selects while Dbmid equals its ID and its mode is 1, so program one mux
+// at a time.
+// Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__DBMMODE_bm 0x3
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__DBMMODE_bp 0
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__DBMMODE_bw 2
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__DBMMODE_reset 0x0
+// ID of the debug-bus mux to program: 3 to 6 address the level-2 muxes and 7 to 14 the
+// level-3 muxes.
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__DBMID_bm 0xfc
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__DBMID_bp 2
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__DBMID_bw 6
@@ -115,56 +176,100 @@ typedef union {
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__RSVD158_bp 8
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__RSVD158_bw 8
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__RSVD158_reset 0x0
+// Binary input-lane select for output lane 0 of the addressed debug-bus mux, which
+// takes eight 16-bit input lanes and drives four. 0 selects input lane 0; a value k
+// from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG0_bm 0x3f0000
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG0_bp 16
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG0_bw 6
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG0_reset 0x0
+// Binary input-lane select for output lane 1 of the addressed debug-bus mux, which
+// takes eight 16-bit input lanes and drives four. 0 selects input lane 1; a value k
+// from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG1_bm 0xfc00000
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG1_bp 22
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG1_bw 6
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG1_reset 0x0
+// Binary input-lane select for output lane 2 of the addressed debug-bus mux, which
+// takes eight 16-bit input lanes and drives four. 0 selects input lane 2; a value k
+// from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG2_bm 0x3f0000000
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG2_bp 28
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG2_bw 6
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG2_reset 0x0
+// Binary input-lane select for output lane 3 of the addressed debug-bus mux, which
+// takes eight 16-bit input lanes and drives four. 0 selects input lane 3; a value k
+// from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG3_bm 0xfc00000000
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG3_bp 34
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG3_bw 6
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG3_reset 0x0
+// No effect in the SMC: each debug-bus mux has four output lanes, selected by
+// Muxselseg0 to Muxselseg3.
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG4_bm 0x3f0000000000
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG4_bp 40
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG4_bw 6
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG4_reset 0x0
+// No effect in the SMC: each debug-bus mux has four output lanes, selected by
+// Muxselseg0 to Muxselseg3.
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG5_bm 0xfc00000000000
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG5_bp 46
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG5_bw 6
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG5_reset 0x0
+// No effect in the SMC: each debug-bus mux has four output lanes, selected by
+// Muxselseg0 to Muxselseg3.
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG6_bm 0x3f0000000000000
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG6_bp 52
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG6_bw 6
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG6_reset 0x0
+// No effect in the SMC: each debug-bus mux has four output lanes, selected by
+// Muxselseg0 to Muxselseg3.
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG7_bm 0xfc00000000000000
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG7_bp 58
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG7_bw 6
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__MUXSELSEG7_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode
         uint64_t Dbmmode :2;
+        // ID of the debug-bus mux to program: 3 to 6 address the level-2 muxes and 7 to 14 the
+        // level-3 muxes.
         uint64_t Dbmid :6;
         uint64_t Rsvd158 :8;
+        // Binary input-lane select for output lane 0 of the addressed debug-bus mux, which
+        // takes eight 16-bit input lanes and drives four. 0 selects input lane 0; a value k
+        // from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.
         uint64_t Muxselseg0 :6;
+        // Binary input-lane select for output lane 1 of the addressed debug-bus mux, which
+        // takes eight 16-bit input lanes and drives four. 0 selects input lane 1; a value k
+        // from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.
         uint64_t Muxselseg1 :6;
+        // Binary input-lane select for output lane 2 of the addressed debug-bus mux, which
+        // takes eight 16-bit input lanes and drives four. 0 selects input lane 2; a value k
+        // from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.
         uint64_t Muxselseg2 :6;
+        // Binary input-lane select for output lane 3 of the addressed debug-bus mux, which
+        // takes eight 16-bit input lanes and drives four. 0 selects input lane 3; a value k
+        // from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.
         uint64_t Muxselseg3 :6;
+        // No effect in the SMC: each debug-bus mux has four output lanes, selected by
+        // Muxselseg0 to Muxselseg3.
         uint64_t Muxselseg4 :6;
+        // No effect in the SMC: each debug-bus mux has four output lanes, selected by
+        // Muxselseg0 to Muxselseg3.
         uint64_t Muxselseg5 :6;
+        // No effect in the SMC: each debug-bus mux has four output lanes, selected by
+        // Muxselseg0 to Muxselseg3.
         uint64_t Muxselseg6 :6;
+        // No effect in the SMC: each debug-bus mux has four output lanes, selected by
+        // Muxselseg0 to Muxselseg3.
         uint64_t Muxselseg7 :6;
     } f;
     uint64_t w;
 } dfx_ctrl_status__DEBUG_BUS_MUX_t;
 
 // addrmap - dfx_ctrl_status
+// Memory-repair and MBIST status, debug clock and cross-trigger controls, and debug-mux selects.
 typedef struct __attribute__ ((__packed__)) {
     dfx_ctrl_status__STATUS_t STATUS_SMU;
     dfx_ctrl_status__DEBUG_CTRL_t DEBUG_CTRL;

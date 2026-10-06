@@ -14,42 +14,56 @@ extern "C" {
 #include <assert.h>
 
 // reg - dma_ctrl::CONFIG
+// Write-address decoupling. 0: the write address of each burst is held until the first read data beat of the matching read burst returns. 1: write addresses are issued without waiting for read data.
 #define DMA_CTRL__CONFIG__DECOUPLE_AW_bm 0x1
 #define DMA_CTRL__CONFIG__DECOUPLE_AW_bp 0
 #define DMA_CTRL__CONFIG__DECOUPLE_AW_bw 1
 #define DMA_CTRL__CONFIG__DECOUPLE_AW_reset 0x0
+// Read/write decoupling. 0: read and write bursts are formed in lockstep, one write burst per read burst. 1: read and write bursts are formed and issued independently; this mode can deadlock.
 #define DMA_CTRL__CONFIG__DECOUPLE_RW_bm 0x2
 #define DMA_CTRL__CONFIG__DECOUPLE_RW_bp 1
 #define DMA_CTRL__CONFIG__DECOUPLE_RW_bw 1
 #define DMA_CTRL__CONFIG__DECOUPLE_RW_reset 0x0
+// Source burst-length reduction. 1: read bursts are limited by SRC_MAX_LLEN. 0: a read burst is at most 256 beats and does not cross a 2 KiB-aligned boundary.
 #define DMA_CTRL__CONFIG__SRC_REDUCE_LEN_bm 0x4
 #define DMA_CTRL__CONFIG__SRC_REDUCE_LEN_bp 2
 #define DMA_CTRL__CONFIG__SRC_REDUCE_LEN_bw 1
 #define DMA_CTRL__CONFIG__SRC_REDUCE_LEN_reset 0x0
+// Destination burst-length reduction. 1: write bursts are limited by DST_MAX_LLEN. 0: a write burst is at most 256 beats and does not cross a 2 KiB-aligned boundary.
 #define DMA_CTRL__CONFIG__DST_REDUCE_LEN_bm 0x8
 #define DMA_CTRL__CONFIG__DST_REDUCE_LEN_bp 3
 #define DMA_CTRL__CONFIG__DST_REDUCE_LEN_bw 1
 #define DMA_CTRL__CONFIG__DST_REDUCE_LEN_reset 0x0
+// Base-2 logarithm of the maximum read burst length in 64-bit beats, applied when SRC_REDUCE_LEN is 1. A read burst does not cross a boundary aligned to 2^(SRC_MAX_LLEN+3) bytes; 0 gives single-beat bursts. Ignored when SRC_REDUCE_LEN is 0.
 #define DMA_CTRL__CONFIG__SRC_MAX_LLEN_bm 0x70
 #define DMA_CTRL__CONFIG__SRC_MAX_LLEN_bp 4
 #define DMA_CTRL__CONFIG__SRC_MAX_LLEN_bw 3
 #define DMA_CTRL__CONFIG__SRC_MAX_LLEN_reset 0x0
+// Base-2 logarithm of the maximum write burst length in 64-bit beats, applied when DST_REDUCE_LEN is 1. A write burst does not cross a boundary aligned to 2^(DST_MAX_LLEN+3) bytes; 0 gives single-beat bursts. Ignored when DST_REDUCE_LEN is 0.
 #define DMA_CTRL__CONFIG__DST_MAX_LLEN_bm 0x380
 #define DMA_CTRL__CONFIG__DST_MAX_LLEN_bp 7
 #define DMA_CTRL__CONFIG__DST_MAX_LLEN_bw 3
 #define DMA_CTRL__CONFIG__DST_MAX_LLEN_reset 0x0
+// Repetition enable. 1: the copy is performed NUM_REPETITIONS times, with SRC_STRIDE and DST_STRIDE added to the addresses between rows; set it for every transfer, including a linear copy with NUM_REPETITIONS = 1. 0: the repetition count is forced to zero, so the command completes with an error response, moves no data, and still retires its transfer ID.
 #define DMA_CTRL__CONFIG__ENABLED_ND_bm 0x400
 #define DMA_CTRL__CONFIG__ENABLED_ND_bp 10
 #define DMA_CTRL__CONFIG__ENABLED_ND_bw 1
 #define DMA_CTRL__CONFIG__ENABLED_ND_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write-address decoupling. 0: the write address of each burst is held until the first read data beat of the matching read burst returns. 1: write addresses are issued without waiting for read data.
         uint32_t DECOUPLE_AW :1;
+        // Read/write decoupling. 0: read and write bursts are formed in lockstep, one write burst per read burst. 1: read and write bursts are formed and issued independently; this mode can deadlock.
         uint32_t DECOUPLE_RW :1;
+        // Source burst-length reduction. 1: read bursts are limited by SRC_MAX_LLEN. 0: a read burst is at most 256 beats and does not cross a 2 KiB-aligned boundary.
         uint32_t SRC_REDUCE_LEN :1;
+        // Destination burst-length reduction. 1: write bursts are limited by DST_MAX_LLEN. 0: a write burst is at most 256 beats and does not cross a 2 KiB-aligned boundary.
         uint32_t DST_REDUCE_LEN :1;
+        // Base-2 logarithm of the maximum read burst length in 64-bit beats, applied when SRC_REDUCE_LEN is 1. A read burst does not cross a boundary aligned to 2^(SRC_MAX_LLEN+3) bytes; 0 gives single-beat bursts. Ignored when SRC_REDUCE_LEN is 0.
         uint32_t SRC_MAX_LLEN :3;
+        // Base-2 logarithm of the maximum write burst length in 64-bit beats, applied when DST_REDUCE_LEN is 1. A write burst does not cross a boundary aligned to 2^(DST_MAX_LLEN+3) bytes; 0 gives single-beat bursts. Ignored when DST_REDUCE_LEN is 0.
         uint32_t DST_MAX_LLEN :3;
+        // Repetition enable. 1: the copy is performed NUM_REPETITIONS times, with SRC_STRIDE and DST_STRIDE added to the addresses between rows; set it for every transfer, including a linear copy with NUM_REPETITIONS = 1. 0: the repetition count is forced to zero, so the command completes with an error response, moves no data, and still retires its transfer ID.
         uint32_t ENABLED_ND :1;
         uint32_t :21;
     } f;
@@ -57,12 +71,14 @@ typedef union {
 } dma_ctrl__CONFIG_t;
 
 // reg - dma_ctrl::STATUS
+// Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 #define DMA_CTRL__STATUS__BUSY_bm 0x3ff
 #define DMA_CTRL__STATUS__BUSY_bp 0
 #define DMA_CTRL__STATUS__BUSY_bw 10
 #define DMA_CTRL__STATUS__BUSY_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
         uint32_t BUSY :10;
         uint32_t :22;
     } f;
@@ -70,174 +86,203 @@ typedef union {
 } dma_ctrl__STATUS_t;
 
 // reg - dma_ctrl::NEXT_ID
+// Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly
 #define DMA_CTRL__NEXT_ID__DATA_bm 0xffffffff
 #define DMA_CTRL__NEXT_ID__DATA_bp 0
 #define DMA_CTRL__NEXT_ID__DATA_bw 32
 #define DMA_CTRL__NEXT_ID__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly
         uint32_t DATA :32;
     } f;
     uint32_t w;
 } dma_ctrl__NEXT_ID_t;
 
 // reg - dma_ctrl::DONE
+// Holds the cumulative number of completed transfers. Only accumulates when response is seen
 #define DMA_CTRL__DONE__DATA_bm 0xffffffff
 #define DMA_CTRL__DONE__DATA_bp 0
 #define DMA_CTRL__DONE__DATA_bw 32
 #define DMA_CTRL__DONE__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Holds the cumulative number of completed transfers. Only accumulates when response is seen
         uint32_t DATA :32;
     } f;
     uint32_t w;
 } dma_ctrl__DONE_t;
 
 // reg - dma_ctrl::DST_ADDRESS_LO
+// Destination address for DMA to write to, lower 32 bits
 #define DMA_CTRL__DST_ADDRESS_LO__DATA_bm 0xffffffff
 #define DMA_CTRL__DST_ADDRESS_LO__DATA_bp 0
 #define DMA_CTRL__DST_ADDRESS_LO__DATA_bw 32
 #define DMA_CTRL__DST_ADDRESS_LO__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Destination address for DMA to write to, lower 32 bits
         uint32_t DATA :32;
     } f;
     uint32_t w;
 } dma_ctrl__DST_ADDRESS_LO_t;
 
 // reg - dma_ctrl::DST_ADDRESS_HI
+// Destination address for DMA to write to, upper 32 bits. Bits [31:24] (combined address bits [63:56]) are discarded, not checked; program them as zero.
 #define DMA_CTRL__DST_ADDRESS_HI__DATA_bm 0xffffffff
 #define DMA_CTRL__DST_ADDRESS_HI__DATA_bp 0
 #define DMA_CTRL__DST_ADDRESS_HI__DATA_bw 32
 #define DMA_CTRL__DST_ADDRESS_HI__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Destination address for DMA to write to, upper 32 bits. Bits [31:24] (combined address bits [63:56]) are discarded, not checked; program them as zero.
         uint32_t DATA :32;
     } f;
     uint32_t w;
 } dma_ctrl__DST_ADDRESS_HI_t;
 
 // reg - dma_ctrl::SRC_ADDRESS_LO
+// Source address for DMA to read from, lower 32 bits.
 #define DMA_CTRL__SRC_ADDRESS_LO__DATA_bm 0xffffffff
 #define DMA_CTRL__SRC_ADDRESS_LO__DATA_bp 0
 #define DMA_CTRL__SRC_ADDRESS_LO__DATA_bw 32
 #define DMA_CTRL__SRC_ADDRESS_LO__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Source address for DMA to read from, lower 32 bits.
         uint32_t DATA :32;
     } f;
     uint32_t w;
 } dma_ctrl__SRC_ADDRESS_LO_t;
 
 // reg - dma_ctrl::SRC_ADDRESS_HI
+// Source address for DMA to read from, upper 32 bits. Bits [31:24] (combined address bits [63:56]) are discarded, not checked; program them as zero.
 #define DMA_CTRL__SRC_ADDRESS_HI__DATA_bm 0xffffffff
 #define DMA_CTRL__SRC_ADDRESS_HI__DATA_bp 0
 #define DMA_CTRL__SRC_ADDRESS_HI__DATA_bw 32
 #define DMA_CTRL__SRC_ADDRESS_HI__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Source address for DMA to read from, upper 32 bits. Bits [31:24] (combined address bits [63:56]) are discarded, not checked; program them as zero.
         uint32_t DATA :32;
     } f;
     uint32_t w;
 } dma_ctrl__SRC_ADDRESS_HI_t;
 
 // reg - dma_ctrl::LENGTH_LO
+// Number of bytes to move, lower 32 bits.
 #define DMA_CTRL__LENGTH_LO__DATA_bm 0xffffffff
 #define DMA_CTRL__LENGTH_LO__DATA_bp 0
 #define DMA_CTRL__LENGTH_LO__DATA_bw 32
 #define DMA_CTRL__LENGTH_LO__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Number of bytes to move, lower 32 bits.
         uint32_t DATA :32;
     } f;
     uint32_t w;
 } dma_ctrl__LENGTH_LO_t;
 
 // reg - dma_ctrl::LENGTH_HI
+// Number of bytes to move, upper 32 bits. Bits [31:24] (combined length bits [63:56]) are discarded, not checked; program them as zero.
 #define DMA_CTRL__LENGTH_HI__DATA_bm 0xffffffff
 #define DMA_CTRL__LENGTH_HI__DATA_bp 0
 #define DMA_CTRL__LENGTH_HI__DATA_bw 32
 #define DMA_CTRL__LENGTH_HI__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Number of bytes to move, upper 32 bits. Bits [31:24] (combined length bits [63:56]) are discarded, not checked; program them as zero.
         uint32_t DATA :32;
     } f;
     uint32_t w;
 } dma_ctrl__LENGTH_HI_t;
 
 // reg - dma_ctrl::DST_STRIDE_LO
+// Stride amount on destination address side, lower 32 bits
 #define DMA_CTRL__DST_STRIDE_LO__DATA_bm 0xffffffff
 #define DMA_CTRL__DST_STRIDE_LO__DATA_bp 0
 #define DMA_CTRL__DST_STRIDE_LO__DATA_bw 32
 #define DMA_CTRL__DST_STRIDE_LO__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Stride amount on destination address side, lower 32 bits
         uint32_t DATA :32;
     } f;
     uint32_t w;
 } dma_ctrl__DST_STRIDE_LO_t;
 
 // reg - dma_ctrl::DST_STRIDE_HI
+// Stride amount on destination address side, upper 32 bits. Bits [31:24] (combined stride bits [63:56]) are discarded, not checked; program them as zero.
 #define DMA_CTRL__DST_STRIDE_HI__DATA_bm 0xffffffff
 #define DMA_CTRL__DST_STRIDE_HI__DATA_bp 0
 #define DMA_CTRL__DST_STRIDE_HI__DATA_bw 32
 #define DMA_CTRL__DST_STRIDE_HI__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Stride amount on destination address side, upper 32 bits. Bits [31:24] (combined stride bits [63:56]) are discarded, not checked; program them as zero.
         uint32_t DATA :32;
     } f;
     uint32_t w;
 } dma_ctrl__DST_STRIDE_HI_t;
 
 // reg - dma_ctrl::SRC_STRIDE_LO
+// Stride amount on source address side, lower 32 bits
 #define DMA_CTRL__SRC_STRIDE_LO__DATA_bm 0xffffffff
 #define DMA_CTRL__SRC_STRIDE_LO__DATA_bp 0
 #define DMA_CTRL__SRC_STRIDE_LO__DATA_bw 32
 #define DMA_CTRL__SRC_STRIDE_LO__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Stride amount on source address side, lower 32 bits
         uint32_t DATA :32;
     } f;
     uint32_t w;
 } dma_ctrl__SRC_STRIDE_LO_t;
 
 // reg - dma_ctrl::SRC_STRIDE_HI
+// Stride amount on source address side, upper 32 bits. Bits [31:24] (combined stride bits [63:56]) are discarded, not checked; program them as zero.
 #define DMA_CTRL__SRC_STRIDE_HI__DATA_bm 0xffffffff
 #define DMA_CTRL__SRC_STRIDE_HI__DATA_bp 0
 #define DMA_CTRL__SRC_STRIDE_HI__DATA_bw 32
 #define DMA_CTRL__SRC_STRIDE_HI__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Stride amount on source address side, upper 32 bits. Bits [31:24] (combined stride bits [63:56]) are discarded, not checked; program them as zero.
         uint32_t DATA :32;
     } f;
     uint32_t w;
 } dma_ctrl__SRC_STRIDE_HI_t;
 
 // reg - dma_ctrl::NUM_REPETITIONS_LO
+// Number of rows to copy, including the first, lower 32 bits. SRC_STRIDE and DST_STRIDE are added to the addresses between rows. Takes effect only when CONFIG.ENABLED_ND is 1.
 #define DMA_CTRL__NUM_REPETITIONS_LO__DATA_bm 0xffffffff
 #define DMA_CTRL__NUM_REPETITIONS_LO__DATA_bp 0
 #define DMA_CTRL__NUM_REPETITIONS_LO__DATA_bw 32
 #define DMA_CTRL__NUM_REPETITIONS_LO__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Number of rows to copy, including the first, lower 32 bits. SRC_STRIDE and DST_STRIDE are added to the addresses between rows. Takes effect only when CONFIG.ENABLED_ND is 1.
         uint32_t DATA :32;
     } f;
     uint32_t w;
 } dma_ctrl__NUM_REPETITIONS_LO_t;
 
 // reg - dma_ctrl::NUM_REPETITIONS_HI
+// Number of rows to copy, upper 32 bits. The DMA uses only the low 32 bits of the row count, so this register is discarded, not checked; program it as zero.
 #define DMA_CTRL__NUM_REPETITIONS_HI__DATA_bm 0xffffffff
 #define DMA_CTRL__NUM_REPETITIONS_HI__DATA_bp 0
 #define DMA_CTRL__NUM_REPETITIONS_HI__DATA_bw 32
 #define DMA_CTRL__NUM_REPETITIONS_HI__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Number of rows to copy, upper 32 bits. The DMA uses only the low 32 bits of the row count, so this register is discarded, not checked; program it as zero.
         uint32_t DATA :32;
     } f;
     uint32_t w;
 } dma_ctrl__NUM_REPETITIONS_HI_t;
 
 // addrmap - dma_ctrl
+// Source, destination, length, and control registers for the iDMA data-mover engine.
 typedef struct __attribute__ ((__packed__)) {
     dma_ctrl__CONFIG_t CONFIG;
     dma_ctrl__STATUS_t STATUS_0;

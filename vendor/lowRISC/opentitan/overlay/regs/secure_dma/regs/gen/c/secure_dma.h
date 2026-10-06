@@ -14,22 +14,28 @@ extern "C" {
 #include <assert.h>
 
 // reg - secure_dma::INTR_STATE
+// DMA operation has been completed.
 #define SECURE_DMA__INTR_STATE__DMA_DONE_bm 0x1
 #define SECURE_DMA__INTR_STATE__DMA_DONE_bp 0
 #define SECURE_DMA__INTR_STATE__DMA_DONE_bw 1
 #define SECURE_DMA__INTR_STATE__DMA_DONE_reset 0x0
+// Indicates the transfer of a single chunk has been completed.
 #define SECURE_DMA__INTR_STATE__DMA_CHUNK_DONE_bm 0x2
 #define SECURE_DMA__INTR_STATE__DMA_CHUNK_DONE_bp 1
 #define SECURE_DMA__INTR_STATE__DMA_CHUNK_DONE_bw 1
 #define SECURE_DMA__INTR_STATE__DMA_CHUNK_DONE_reset 0x0
+// DMA error has occurred. DMA_STATUS.error_code register shows the details.
 #define SECURE_DMA__INTR_STATE__DMA_ERROR_bm 0x4
 #define SECURE_DMA__INTR_STATE__DMA_ERROR_bp 2
 #define SECURE_DMA__INTR_STATE__DMA_ERROR_bw 1
 #define SECURE_DMA__INTR_STATE__DMA_ERROR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // DMA operation has been completed.
         uint32_t DMA_DONE :1;
+        // Indicates the transfer of a single chunk has been completed.
         uint32_t DMA_CHUNK_DONE :1;
+        // DMA error has occurred. DMA_STATUS.error_code register shows the details.
         uint32_t DMA_ERROR :1;
         uint32_t :29;
     } f;
@@ -37,22 +43,28 @@ typedef union {
 } secure_dma__INTR_STATE_t;
 
 // reg - secure_dma::INTR_ENABLE
+// Enable interrupt when !!INTR_STATE.dma_done is set.
 #define SECURE_DMA__INTR_ENABLE__DMA_DONE_bm 0x1
 #define SECURE_DMA__INTR_ENABLE__DMA_DONE_bp 0
 #define SECURE_DMA__INTR_ENABLE__DMA_DONE_bw 1
 #define SECURE_DMA__INTR_ENABLE__DMA_DONE_reset 0x0
+// Enable interrupt when !!INTR_STATE.dma_chunk_done is set.
 #define SECURE_DMA__INTR_ENABLE__DMA_CHUNK_DONE_bm 0x2
 #define SECURE_DMA__INTR_ENABLE__DMA_CHUNK_DONE_bp 1
 #define SECURE_DMA__INTR_ENABLE__DMA_CHUNK_DONE_bw 1
 #define SECURE_DMA__INTR_ENABLE__DMA_CHUNK_DONE_reset 0x0
+// Enable interrupt when !!INTR_STATE.dma_error is set.
 #define SECURE_DMA__INTR_ENABLE__DMA_ERROR_bm 0x4
 #define SECURE_DMA__INTR_ENABLE__DMA_ERROR_bp 2
 #define SECURE_DMA__INTR_ENABLE__DMA_ERROR_bw 1
 #define SECURE_DMA__INTR_ENABLE__DMA_ERROR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enable interrupt when !!INTR_STATE.dma_done is set.
         uint32_t DMA_DONE :1;
+        // Enable interrupt when !!INTR_STATE.dma_chunk_done is set.
         uint32_t DMA_CHUNK_DONE :1;
+        // Enable interrupt when !!INTR_STATE.dma_error is set.
         uint32_t DMA_ERROR :1;
         uint32_t :29;
     } f;
@@ -60,22 +72,28 @@ typedef union {
 } secure_dma__INTR_ENABLE_t;
 
 // reg - secure_dma::INTR_TEST
+// Write 1 to force !!INTR_STATE.dma_done to 1.
 #define SECURE_DMA__INTR_TEST__DMA_DONE_bm 0x1
 #define SECURE_DMA__INTR_TEST__DMA_DONE_bp 0
 #define SECURE_DMA__INTR_TEST__DMA_DONE_bw 1
 #define SECURE_DMA__INTR_TEST__DMA_DONE_reset 0x0
+// Write 1 to force !!INTR_STATE.dma_chunk_done to 1.
 #define SECURE_DMA__INTR_TEST__DMA_CHUNK_DONE_bm 0x2
 #define SECURE_DMA__INTR_TEST__DMA_CHUNK_DONE_bp 1
 #define SECURE_DMA__INTR_TEST__DMA_CHUNK_DONE_bw 1
 #define SECURE_DMA__INTR_TEST__DMA_CHUNK_DONE_reset 0x0
+// Write 1 to force !!INTR_STATE.dma_error to 1.
 #define SECURE_DMA__INTR_TEST__DMA_ERROR_bm 0x4
 #define SECURE_DMA__INTR_TEST__DMA_ERROR_bp 2
 #define SECURE_DMA__INTR_TEST__DMA_ERROR_bw 1
 #define SECURE_DMA__INTR_TEST__DMA_ERROR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write 1 to force !!INTR_STATE.dma_done to 1.
         uint32_t DMA_DONE :1;
+        // Write 1 to force !!INTR_STATE.dma_chunk_done to 1.
         uint32_t DMA_CHUNK_DONE :1;
+        // Write 1 to force !!INTR_STATE.dma_error to 1.
         uint32_t DMA_ERROR :1;
         uint32_t :29;
     } f;
@@ -83,12 +101,14 @@ typedef union {
 } secure_dma__INTR_TEST_t;
 
 // reg - secure_dma::ALERT_TEST
+// Write 1 to trigger one alert event of this kind.
 #define SECURE_DMA__ALERT_TEST__FATAL_FAULT_bm 0x1
 #define SECURE_DMA__ALERT_TEST__FATAL_FAULT_bp 0
 #define SECURE_DMA__ALERT_TEST__FATAL_FAULT_bw 1
 #define SECURE_DMA__ALERT_TEST__FATAL_FAULT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write 1 to trigger one alert event of this kind.
         uint32_t FATAL_FAULT :1;
         uint32_t :31;
     } f;
@@ -96,65 +116,91 @@ typedef union {
 } secure_dma__ALERT_TEST_t;
 
 // reg - secure_dma::SRC_ADDR_LO
+// Lower 32 bits of the source address.
+// Must be aligned to the transfer width.
 #define SECURE_DMA__SRC_ADDR_LO__SRC_ADDR_LO_bm 0xffffffff
 #define SECURE_DMA__SRC_ADDR_LO__SRC_ADDR_LO_bp 0
 #define SECURE_DMA__SRC_ADDR_LO__SRC_ADDR_LO_bw 32
 #define SECURE_DMA__SRC_ADDR_LO__SRC_ADDR_LO_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Lower 32 bits of the source address.
+        // Must be aligned to the transfer width.
         uint32_t SRC_ADDR_LO :32;
     } f;
     uint32_t w;
 } secure_dma__SRC_ADDR_LO_t;
 
 // reg - secure_dma::SRC_ADDR_HI
+// Upper 32 bits of the physical or virtual address of memory location within SoC memory address map or physical address within OT non-secure memory space.
+// Must be aligned to the transfer width.
+// Source and destination address must have the same alignment.
 #define SECURE_DMA__SRC_ADDR_HI__SRC_ADDR_HI_bm 0xffffffff
 #define SECURE_DMA__SRC_ADDR_HI__SRC_ADDR_HI_bp 0
 #define SECURE_DMA__SRC_ADDR_HI__SRC_ADDR_HI_bw 32
 #define SECURE_DMA__SRC_ADDR_HI__SRC_ADDR_HI_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Upper 32 bits of the physical or virtual address of memory location within SoC memory address map or physical address within OT non-secure memory space.
+        // Must be aligned to the transfer width.
+        // Source and destination address must have the same alignment.
         uint32_t SRC_ADDR_HI :32;
     } f;
     uint32_t w;
 } secure_dma__SRC_ADDR_HI_t;
 
 // reg - secure_dma::DST_ADDR_LO
+// Lower 32 bits of the destination address.
+// Must be aligned to the transfer width.
+// Source and destination address must have the same alignment.
 #define SECURE_DMA__DST_ADDR_LO__DST_ADDR_LO_bm 0xffffffff
 #define SECURE_DMA__DST_ADDR_LO__DST_ADDR_LO_bp 0
 #define SECURE_DMA__DST_ADDR_LO__DST_ADDR_LO_bw 32
 #define SECURE_DMA__DST_ADDR_LO__DST_ADDR_LO_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Lower 32 bits of the destination address.
+        // Must be aligned to the transfer width.
+        // Source and destination address must have the same alignment.
         uint32_t DST_ADDR_LO :32;
     } f;
     uint32_t w;
 } secure_dma__DST_ADDR_LO_t;
 
 // reg - secure_dma::DST_ADDR_HI
+// Upper 32 bits of the physical or virtual address of memory location within SoC memory address map or physical address within OT non-secure memory space.
+// Must be aligned to the transfer width.
+// Source and destination address must have the same alignment.
 #define SECURE_DMA__DST_ADDR_HI__DST_ADDR_HI_bm 0xffffffff
 #define SECURE_DMA__DST_ADDR_HI__DST_ADDR_HI_bp 0
 #define SECURE_DMA__DST_ADDR_HI__DST_ADDR_HI_bw 32
 #define SECURE_DMA__DST_ADDR_HI__DST_ADDR_HI_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Upper 32 bits of the physical or virtual address of memory location within SoC memory address map or physical address within OT non-secure memory space.
+        // Must be aligned to the transfer width.
+        // Source and destination address must have the same alignment.
         uint32_t DST_ADDR_HI :32;
     } f;
     uint32_t w;
 } secure_dma__DST_ADDR_HI_t;
 
 // reg - secure_dma::ADDR_SPACE_ID
+// Target address space that the source address pointer refers to.
 #define SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_bm 0xf
 #define SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_bp 0
 #define SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_bw 4
 #define SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset 0x7
+// Target address space that the destination address pointer refers to.
 #define SECURE_DMA__ADDR_SPACE_ID__DST_ASID_bm 0xf0
 #define SECURE_DMA__ADDR_SPACE_ID__DST_ASID_bp 4
 #define SECURE_DMA__ADDR_SPACE_ID__DST_ASID_bw 4
 #define SECURE_DMA__ADDR_SPACE_ID__DST_ASID_reset 0x7
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Target address space that the source address pointer refers to.
         uint32_t SRC_ASID :4;
+        // Target address space that the destination address pointer refers to.
         uint32_t DST_ASID :4;
         uint32_t :24;
     } f;
@@ -162,36 +208,42 @@ typedef union {
 } secure_dma__ADDR_SPACE_ID_t;
 
 // reg - secure_dma::ENABLED_MEMORY_RANGE_BASE
+// Base Address to mark the start of the DMA enabled memory range within the OT internal memory space.
 #define SECURE_DMA__ENABLED_MEMORY_RANGE_BASE__BASE_bm 0xffffffff
 #define SECURE_DMA__ENABLED_MEMORY_RANGE_BASE__BASE_bp 0
 #define SECURE_DMA__ENABLED_MEMORY_RANGE_BASE__BASE_bw 32
 #define SECURE_DMA__ENABLED_MEMORY_RANGE_BASE__BASE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Base Address to mark the start of the DMA enabled memory range within the OT internal memory space.
         uint32_t BASE :32;
     } f;
     uint32_t w;
 } secure_dma__ENABLED_MEMORY_RANGE_BASE_t;
 
 // reg - secure_dma::ENABLED_MEMORY_RANGE_LIMIT
+// Limit Address to mark the end of the DMA enabled memory range within the OT internal memory space; inclusive.
 #define SECURE_DMA__ENABLED_MEMORY_RANGE_LIMIT__LIMIT_bm 0xffffffff
 #define SECURE_DMA__ENABLED_MEMORY_RANGE_LIMIT__LIMIT_bp 0
 #define SECURE_DMA__ENABLED_MEMORY_RANGE_LIMIT__LIMIT_bw 32
 #define SECURE_DMA__ENABLED_MEMORY_RANGE_LIMIT__LIMIT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Limit Address to mark the end of the DMA enabled memory range within the OT internal memory space; inclusive.
         uint32_t LIMIT :32;
     } f;
     uint32_t w;
 } secure_dma__ENABLED_MEMORY_RANGE_LIMIT_t;
 
 // reg - secure_dma::RANGE_VALID
+// Once set the enabled memory base and limit registers are valid.
 #define SECURE_DMA__RANGE_VALID__RANGE_VALID_bm 0x1
 #define SECURE_DMA__RANGE_VALID__RANGE_VALID_bp 0
 #define SECURE_DMA__RANGE_VALID__RANGE_VALID_bw 1
 #define SECURE_DMA__RANGE_VALID__RANGE_VALID_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Once set the enabled memory base and limit registers are valid.
         uint32_t RANGE_VALID :1;
         uint32_t :31;
     } f;
@@ -199,12 +251,18 @@ typedef union {
 } secure_dma__RANGE_VALID_t;
 
 // reg - secure_dma::RANGE_REGWEN
+// Used by firmware to lock the DMA enabled memory range configuration registers from further modification.
+// Once this register is set to kMultiBitBool4False, it can only be set to kMultiBitBool4True through a reset event.
+// Default Value = kMultiBitBool4True -> Unlocked at reset.
 #define SECURE_DMA__RANGE_REGWEN__REGWEN_bm 0xf
 #define SECURE_DMA__RANGE_REGWEN__REGWEN_bp 0
 #define SECURE_DMA__RANGE_REGWEN__REGWEN_bw 4
 #define SECURE_DMA__RANGE_REGWEN__REGWEN_reset 0x6
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Used by firmware to lock the DMA enabled memory range configuration registers from further modification.
+        // Once this register is set to kMultiBitBool4False, it can only be set to kMultiBitBool4True through a reset event.
+        // Default Value = kMultiBitBool4True -> Unlocked at reset.
         uint32_t REGWEN :4;
         uint32_t :28;
     } f;
@@ -212,12 +270,16 @@ typedef union {
 } secure_dma__RANGE_REGWEN_t;
 
 // reg - secure_dma::CFG_REGWEN
+// Used by hardware to lock the DMA configuration registers.
+// This register is purely managed by hardware and only software readable.
 #define SECURE_DMA__CFG_REGWEN__REGWEN_bm 0xf
 #define SECURE_DMA__CFG_REGWEN__REGWEN_bp 0
 #define SECURE_DMA__CFG_REGWEN__REGWEN_bw 4
 #define SECURE_DMA__CFG_REGWEN__REGWEN_reset 0x6
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Used by hardware to lock the DMA configuration registers.
+        // This register is purely managed by hardware and only software readable.
         uint32_t REGWEN :4;
         uint32_t :28;
     } f;
@@ -225,36 +287,68 @@ typedef union {
 } secure_dma__CFG_REGWEN_t;
 
 // reg - secure_dma::TOTAL_DATA_SIZE
+// Total size (in bytes) of the data to be transferred. The complete transfer operation
+// may consist of multiple chunks of data as specified by the CHUNK_DATA_SIZE register.
+// Minimum: 1 byte.
+// Maximum: May be restricted to a maximum pre-defined size based on OT DMA enabled memory space allocation.
+// Works in conjunction with the TRANSFER_WIDTH register.
 #define SECURE_DMA__TOTAL_DATA_SIZE__DATA_SIZE_bm 0xffffffff
 #define SECURE_DMA__TOTAL_DATA_SIZE__DATA_SIZE_bp 0
 #define SECURE_DMA__TOTAL_DATA_SIZE__DATA_SIZE_bw 32
 #define SECURE_DMA__TOTAL_DATA_SIZE__DATA_SIZE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Total size (in bytes) of the data to be transferred. The complete transfer operation
+        // may consist of multiple chunks of data as specified by the CHUNK_DATA_SIZE register.
+        // Minimum: 1 byte.
+        // Maximum: May be restricted to a maximum pre-defined size based on OT DMA enabled memory space allocation.
+        // Works in conjunction with the TRANSFER_WIDTH register.
         uint32_t DATA_SIZE :32;
     } f;
     uint32_t w;
 } secure_dma__TOTAL_DATA_SIZE_t;
 
 // reg - secure_dma::CHUNK_DATA_SIZE
+// Size (in bytes) for a single DMA transfer.
+// In hardware handshake mode, the DMA reads in chunks of CHUNK_DATA_SIZE from the peripheral.
+// For a single memory transfer CHUNK_DATA_SIZE and TOTAL_DATA_SIZE are set to the same value.
+// Minimum: 1 byte.
+// Maximum: May be restricted to a maximum pre-defined size based on OT DMA enabled memory space allocation.
+// Works in conjunction with the TRANSFER_WIDTH register.
 #define SECURE_DMA__CHUNK_DATA_SIZE__DATA_SIZE_bm 0xffffffff
 #define SECURE_DMA__CHUNK_DATA_SIZE__DATA_SIZE_bp 0
 #define SECURE_DMA__CHUNK_DATA_SIZE__DATA_SIZE_bw 32
 #define SECURE_DMA__CHUNK_DATA_SIZE__DATA_SIZE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Size (in bytes) for a single DMA transfer.
+        // In hardware handshake mode, the DMA reads in chunks of CHUNK_DATA_SIZE from the peripheral.
+        // For a single memory transfer CHUNK_DATA_SIZE and TOTAL_DATA_SIZE are set to the same value.
+        // Minimum: 1 byte.
+        // Maximum: May be restricted to a maximum pre-defined size based on OT DMA enabled memory space allocation.
+        // Works in conjunction with the TRANSFER_WIDTH register.
         uint32_t DATA_SIZE :32;
     } f;
     uint32_t w;
 } secure_dma__CHUNK_DATA_SIZE_t;
 
 // reg - secure_dma::TRANSFER_WIDTH
+// Denotes the width of each transaction that the DMA shall issue during the data movement.
+// Multiple transactions of this width will be issued until TOTAL_DATA_SIZE bytes have been transferred.
+// Note that firmware may need to set a different value if a receiving IP supports a read / write transaction width that is less than 1 DWORD.
+// This does not affect the wrap-around mechanism.
+// Note that the value 3 for this register represents an invalid configuration that leads to an error.
 #define SECURE_DMA__TRANSFER_WIDTH__TRANSACTION_WIDTH_bm 0x3
 #define SECURE_DMA__TRANSFER_WIDTH__TRANSACTION_WIDTH_bp 0
 #define SECURE_DMA__TRANSFER_WIDTH__TRANSACTION_WIDTH_bw 2
 #define SECURE_DMA__TRANSFER_WIDTH__TRANSACTION_WIDTH_reset 0x2
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Denotes the width of each transaction that the DMA shall issue during the data movement.
+        // Multiple transactions of this width will be issued until TOTAL_DATA_SIZE bytes have been transferred.
+        // Note that firmware may need to set a different value if a receiving IP supports a read / write transaction width that is less than 1 DWORD.
+        // This does not affect the wrap-around mechanism.
+        // Note that the value 3 for this register represents an invalid configuration that leads to an error.
         uint32_t TRANSACTION_WIDTH :2;
         uint32_t :30;
     } f;
@@ -262,57 +356,113 @@ typedef union {
 } secure_dma__TRANSFER_WIDTH_t;
 
 // reg - secure_dma::CONTROL
+// Defines the type of DMA operations.
 #define SECURE_DMA__CONTROL__OPCODE_bm 0xf
 #define SECURE_DMA__CONTROL__OPCODE_bp 0
 #define SECURE_DMA__CONTROL__OPCODE_bw 4
 #define SECURE_DMA__CONTROL__OPCODE_reset 0x0
+// Enable hardware handshake mode.
+// Used to clear FIFOs from low speed IO peripherals receiving data, e.g., I3C receive buffer.
+// Listen to an input trigger signal.
+// Read data from source address location.
+// Copy to destination address.
+// Number of bytes specified in size register.
+// Note assumption is the peripheral lowers input once FIFO is cleared.
+// No explicit clearing necessary.
 #define SECURE_DMA__CONTROL__HARDWARE_HANDSHAKE_ENABLE_bm 0x10
 #define SECURE_DMA__CONTROL__HARDWARE_HANDSHAKE_ENABLE_bp 4
 #define SECURE_DMA__CONTROL__HARDWARE_HANDSHAKE_ENABLE_bw 1
 #define SECURE_DMA__CONTROL__HARDWARE_HANDSHAKE_ENABLE_reset 0x0
+// Digest register byte swap.
+// If 1 the value in each digest output register is converted to big-endian byte order.
+// This setting does not affect the order of the digest output registers, !!SHA2_DIGEST_0 still contains the first 4 bytes of the digest.
 #define SECURE_DMA__CONTROL__DIGEST_SWAP_bm 0x20
 #define SECURE_DMA__CONTROL__DIGEST_SWAP_bp 5
 #define SECURE_DMA__CONTROL__DIGEST_SWAP_bw 1
 #define SECURE_DMA__CONTROL__DIGEST_SWAP_reset 0x0
+// Marks the initial transfer to initialize the DMA and SHA engine for one transfer that can span over multiple single DMA transfers.
+// Used for hardware handshake and ordinary transfers, in which multiple transfers contribute to a final digest.
+// Note, for non-handshake transfers with inline hashing mode enabled, this bit must be set to also mark the first transfer.
 #define SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm 0x100
 #define SECURE_DMA__CONTROL__INITIAL_TRANSFER_bp 8
 #define SECURE_DMA__CONTROL__INITIAL_TRANSFER_bw 1
 #define SECURE_DMA__CONTROL__INITIAL_TRANSFER_reset 0x0
+// Aborts the DMA operation if this bit is set.
+// Sets the corresponding bit in the status register once abort operation is complete.
+// Any OpenTitan-internal transactions are guaranteed to complete, but there are no guarantees on the SoC interface.
 #define SECURE_DMA__CONTROL__ABORT_bm 0x8000000
 #define SECURE_DMA__CONTROL__ABORT_bp 27
 #define SECURE_DMA__CONTROL__ABORT_bw 1
 #define SECURE_DMA__CONTROL__ABORT_reset 0x0
+// Setting this bit triggers the DMA operation.
+// For normal operation, the DMA engine clears the `go` bit automatically after the configured operation is complete.
+// For Hardware handshake operation, DMA engine does not auto clear the Go bit.
+// Firmware shall clear the Go bit when it intends to stop the hardware handshake operation.
 #define SECURE_DMA__CONTROL__GO_bm 0x80000000
 #define SECURE_DMA__CONTROL__GO_bp 31
 #define SECURE_DMA__CONTROL__GO_bw 1
 #define SECURE_DMA__CONTROL__GO_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Defines the type of DMA operations.
         uint32_t OPCODE :4;
+        // Enable hardware handshake mode.
+        // Used to clear FIFOs from low speed IO peripherals receiving data, e.g., I3C receive buffer.
+        // Listen to an input trigger signal.
+        // Read data from source address location.
+        // Copy to destination address.
+        // Number of bytes specified in size register.
+        // Note assumption is the peripheral lowers input once FIFO is cleared.
+        // No explicit clearing necessary.
         uint32_t HARDWARE_HANDSHAKE_ENABLE :1;
+        // Digest register byte swap.
+        // If 1 the value in each digest output register is converted to big-endian byte order.
+        // This setting does not affect the order of the digest output registers, !!SHA2_DIGEST_0 still contains the first 4 bytes of the digest.
         uint32_t DIGEST_SWAP :1;
         uint32_t :2;
+        // Marks the initial transfer to initialize the DMA and SHA engine for one transfer that can span over multiple single DMA transfers.
+        // Used for hardware handshake and ordinary transfers, in which multiple transfers contribute to a final digest.
+        // Note, for non-handshake transfers with inline hashing mode enabled, this bit must be set to also mark the first transfer.
         uint32_t INITIAL_TRANSFER :1;
         uint32_t :18;
+        // Aborts the DMA operation if this bit is set.
+        // Sets the corresponding bit in the status register once abort operation is complete.
+        // Any OpenTitan-internal transactions are guaranteed to complete, but there are no guarantees on the SoC interface.
         uint32_t ABORT :1;
         uint32_t :3;
+        // Setting this bit triggers the DMA operation.
+        // For normal operation, the DMA engine clears the `go` bit automatically after the configured operation is complete.
+        // For Hardware handshake operation, DMA engine does not auto clear the Go bit.
+        // Firmware shall clear the Go bit when it intends to stop the hardware handshake operation.
         uint32_t GO :1;
     } f;
     uint32_t w;
 } secure_dma__CONTROL_t;
 
 // reg - secure_dma::SRC_CONFIG
+// Defines the increment behavior after every DMA read.
+// When 0: Source address is not changed.
+// All reads are done from the same address.
+// When 1: Source address is incremented by transfer_width after each read.
 #define SECURE_DMA__SRC_CONFIG__INCREMENT_bm 0x1
 #define SECURE_DMA__SRC_CONFIG__INCREMENT_bp 0
 #define SECURE_DMA__SRC_CONFIG__INCREMENT_bw 1
 #define SECURE_DMA__SRC_CONFIG__INCREMENT_reset 0x0
+// When 0: Chunks occupy contiguous ascending addresses.
+// When 1: Source address wraps back to the starting address when finishing a chunk.
 #define SECURE_DMA__SRC_CONFIG__WRAP_bm 0x2
 #define SECURE_DMA__SRC_CONFIG__WRAP_bp 1
 #define SECURE_DMA__SRC_CONFIG__WRAP_bw 1
 #define SECURE_DMA__SRC_CONFIG__WRAP_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Defines the increment behavior after every DMA read.
+        // When 0: Source address is not changed.
+        // All reads are done from the same address.
+        // When 1: Source address is incremented by transfer_width after each read.
         uint32_t INCREMENT :1;
+        // When 0: Chunks occupy contiguous ascending addresses.
+        // When 1: Source address wraps back to the starting address when finishing a chunk.
         uint32_t WRAP :1;
         uint32_t :30;
     } f;
@@ -320,17 +470,29 @@ typedef union {
 } secure_dma__SRC_CONFIG_t;
 
 // reg - secure_dma::DST_CONFIG
+// Defines the increment behavior after every DMA write.
+// When 0: Destination address is not changed.
+// All writes are done to the same address.
+// When 1: Destination address is incremented by transfer_width after each write.
 #define SECURE_DMA__DST_CONFIG__INCREMENT_bm 0x1
 #define SECURE_DMA__DST_CONFIG__INCREMENT_bp 0
 #define SECURE_DMA__DST_CONFIG__INCREMENT_bw 1
 #define SECURE_DMA__DST_CONFIG__INCREMENT_reset 0x0
+// When 0: Chunks occupy contiguous ascending addresses.
+// When 1: Destination address wraps back to the starting address when finishing a chunk.
 #define SECURE_DMA__DST_CONFIG__WRAP_bm 0x2
 #define SECURE_DMA__DST_CONFIG__WRAP_bp 1
 #define SECURE_DMA__DST_CONFIG__WRAP_bw 1
 #define SECURE_DMA__DST_CONFIG__WRAP_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Defines the increment behavior after every DMA write.
+        // When 0: Destination address is not changed.
+        // All writes are done to the same address.
+        // When 1: Destination address is incremented by transfer_width after each write.
         uint32_t INCREMENT :1;
+        // When 0: Chunks occupy contiguous ascending addresses.
+        // When 1: Destination address wraps back to the starting address when finishing a chunk.
         uint32_t WRAP :1;
         uint32_t :30;
     } f;
@@ -338,37 +500,63 @@ typedef union {
 } secure_dma__DST_CONFIG_t;
 
 // reg - secure_dma::STATUS
+// DMA operation is active if this bit is set.
+// DMA engine clears this bit when operation is complete.
+// This bit may be set as long as hardware handshake mode is active and triggered.
 #define SECURE_DMA__STATUS__BUSY_bm 0x1
 #define SECURE_DMA__STATUS__BUSY_bp 0
 #define SECURE_DMA__STATUS__BUSY_bw 1
 #define SECURE_DMA__STATUS__BUSY_reset 0x0
+// Configured DMA operation is complete.
+// Cleared automatically by the hardware when starting a new transfer.
 #define SECURE_DMA__STATUS__DONE_bm 0x2
 #define SECURE_DMA__STATUS__DONE_bp 1
 #define SECURE_DMA__STATUS__DONE_bw 1
 #define SECURE_DMA__STATUS__DONE_reset 0x0
+// Set once aborted operation drains.
 #define SECURE_DMA__STATUS__ABORTED_bm 0x4
 #define SECURE_DMA__STATUS__ABORTED_bp 2
 #define SECURE_DMA__STATUS__ABORTED_bw 1
 #define SECURE_DMA__STATUS__ABORTED_reset 0x0
+// Error occurred during the operation.
+// ERROR_CODE register denotes the source of the error.
 #define SECURE_DMA__STATUS__ERROR_bm 0x8
 #define SECURE_DMA__STATUS__ERROR_bp 3
 #define SECURE_DMA__STATUS__ERROR_bw 1
 #define SECURE_DMA__STATUS__ERROR_reset 0x0
+// Indicates whether the SHA2_DIGEST register contains a valid digest.
+// This value is cleared on the initial transfer and set when the digest is written.
 #define SECURE_DMA__STATUS__SHA2_DIGEST_VALID_bm 0x10
 #define SECURE_DMA__STATUS__SHA2_DIGEST_VALID_bp 4
 #define SECURE_DMA__STATUS__SHA2_DIGEST_VALID_bw 1
 #define SECURE_DMA__STATUS__SHA2_DIGEST_VALID_reset 0x0
+// Transfer of a single chunk is complete.
+// Only raised for multi-chunk memory-to-memory transfers.
+// Cleared automatically by the hardware when starting the transfer of a new chunk.
 #define SECURE_DMA__STATUS__CHUNK_DONE_bm 0x20
 #define SECURE_DMA__STATUS__CHUNK_DONE_bp 5
 #define SECURE_DMA__STATUS__CHUNK_DONE_bw 1
 #define SECURE_DMA__STATUS__CHUNK_DONE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // DMA operation is active if this bit is set.
+        // DMA engine clears this bit when operation is complete.
+        // This bit may be set as long as hardware handshake mode is active and triggered.
         uint32_t BUSY :1;
+        // Configured DMA operation is complete.
+        // Cleared automatically by the hardware when starting a new transfer.
         uint32_t DONE :1;
+        // Set once aborted operation drains.
         uint32_t ABORTED :1;
+        // Error occurred during the operation.
+        // ERROR_CODE register denotes the source of the error.
         uint32_t ERROR :1;
+        // Indicates whether the SHA2_DIGEST register contains a valid digest.
+        // This value is cleared on the initial transfer and set when the digest is written.
         uint32_t SHA2_DIGEST_VALID :1;
+        // Transfer of a single chunk is complete.
+        // Only raised for multi-chunk memory-to-memory transfers.
+        // Cleared automatically by the hardware when starting the transfer of a new chunk.
         uint32_t CHUNK_DONE :1;
         uint32_t :26;
     } f;
@@ -376,47 +564,63 @@ typedef union {
 } secure_dma__STATUS_t;
 
 // reg - secure_dma::ERROR_CODE
+// Source address is invalid.
 #define SECURE_DMA__ERROR_CODE__SRC_ADDR_ERROR_bm 0x1
 #define SECURE_DMA__ERROR_CODE__SRC_ADDR_ERROR_bp 0
 #define SECURE_DMA__ERROR_CODE__SRC_ADDR_ERROR_bw 1
 #define SECURE_DMA__ERROR_CODE__SRC_ADDR_ERROR_reset 0x0
+// Destination address is invalid.
 #define SECURE_DMA__ERROR_CODE__DST_ADDR_ERROR_bm 0x2
 #define SECURE_DMA__ERROR_CODE__DST_ADDR_ERROR_bp 1
 #define SECURE_DMA__ERROR_CODE__DST_ADDR_ERROR_bw 1
 #define SECURE_DMA__ERROR_CODE__DST_ADDR_ERROR_reset 0x0
+// Opcode is invalid.
 #define SECURE_DMA__ERROR_CODE__OPCODE_ERROR_bm 0x4
 #define SECURE_DMA__ERROR_CODE__OPCODE_ERROR_bp 2
 #define SECURE_DMA__ERROR_CODE__OPCODE_ERROR_bw 1
 #define SECURE_DMA__ERROR_CODE__OPCODE_ERROR_reset 0x0
+// TRANSFER_WIDTH encodes an invalid value, TOTAL_DATA_SIZE or CHUNK_SIZE are zero, or inline hashing is not using 32-bit transfer width
 #define SECURE_DMA__ERROR_CODE__SIZE_ERROR_bm 0x8
 #define SECURE_DMA__ERROR_CODE__SIZE_ERROR_bp 3
 #define SECURE_DMA__ERROR_CODE__SIZE_ERROR_bw 1
 #define SECURE_DMA__ERROR_CODE__SIZE_ERROR_reset 0x0
+// The bus transfer returned an error.
 #define SECURE_DMA__ERROR_CODE__BUS_ERROR_bm 0x10
 #define SECURE_DMA__ERROR_CODE__BUS_ERROR_bp 4
 #define SECURE_DMA__ERROR_CODE__BUS_ERROR_bw 1
 #define SECURE_DMA__ERROR_CODE__BUS_ERROR_reset 0x0
+// The base and limit addresses contain an invalid value.
 #define SECURE_DMA__ERROR_CODE__BASE_LIMIT_ERROR_bm 0x20
 #define SECURE_DMA__ERROR_CODE__BASE_LIMIT_ERROR_bp 5
 #define SECURE_DMA__ERROR_CODE__BASE_LIMIT_ERROR_bw 1
 #define SECURE_DMA__ERROR_CODE__BASE_LIMIT_ERROR_reset 0x0
+// The DMA enabled memory range is not configured.
 #define SECURE_DMA__ERROR_CODE__RANGE_VALID_ERROR_bm 0x40
 #define SECURE_DMA__ERROR_CODE__RANGE_VALID_ERROR_bp 6
 #define SECURE_DMA__ERROR_CODE__RANGE_VALID_ERROR_bw 1
 #define SECURE_DMA__ERROR_CODE__RANGE_VALID_ERROR_reset 0x0
+// The source or destination ASID contains an invalid value.
 #define SECURE_DMA__ERROR_CODE__ASID_ERROR_bm 0x80
 #define SECURE_DMA__ERROR_CODE__ASID_ERROR_bp 7
 #define SECURE_DMA__ERROR_CODE__ASID_ERROR_bw 1
 #define SECURE_DMA__ERROR_CODE__ASID_ERROR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Source address is invalid.
         uint32_t SRC_ADDR_ERROR :1;
+        // Destination address is invalid.
         uint32_t DST_ADDR_ERROR :1;
+        // Opcode is invalid.
         uint32_t OPCODE_ERROR :1;
+        // TRANSFER_WIDTH encodes an invalid value, TOTAL_DATA_SIZE or CHUNK_SIZE are zero, or inline hashing is not using 32-bit transfer width
         uint32_t SIZE_ERROR :1;
+        // The bus transfer returned an error.
         uint32_t BUS_ERROR :1;
+        // The base and limit addresses contain an invalid value.
         uint32_t BASE_LIMIT_ERROR :1;
+        // The DMA enabled memory range is not configured.
         uint32_t RANGE_VALID_ERROR :1;
+        // The source or destination ASID contains an invalid value.
         uint32_t ASID_ERROR :1;
         uint32_t :24;
     } f;
@@ -424,24 +628,28 @@ typedef union {
 } secure_dma__ERROR_CODE_t;
 
 // reg - secure_dma::SHA2_DIGEST_0
+// SHA2 digest data
 #define SECURE_DMA__SHA2_DIGEST_0__DATA_0_bm 0xffffffff
 #define SECURE_DMA__SHA2_DIGEST_0__DATA_0_bp 0
 #define SECURE_DMA__SHA2_DIGEST_0__DATA_0_bw 32
 #define SECURE_DMA__SHA2_DIGEST_0__DATA_0_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // SHA2 digest data
         uint32_t DATA_0 :32;
     } f;
     uint32_t w;
 } secure_dma__SHA2_DIGEST_0_t;
 
 // reg - secure_dma::HANDSHAKE_INTR_ENABLE
+// Enable bits for incoming handshake interrupt wires.
 #define SECURE_DMA__HANDSHAKE_INTR_ENABLE__MASK_bm 0x7ff
 #define SECURE_DMA__HANDSHAKE_INTR_ENABLE__MASK_bp 0
 #define SECURE_DMA__HANDSHAKE_INTR_ENABLE__MASK_bw 11
 #define SECURE_DMA__HANDSHAKE_INTR_ENABLE__MASK_reset 0x7ff
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enable bits for incoming handshake interrupt wires.
         uint32_t MASK :11;
         uint32_t :21;
     } f;
@@ -449,12 +657,14 @@ typedef union {
 } secure_dma__HANDSHAKE_INTR_ENABLE_t;
 
 // reg - secure_dma::CLEAR_INTR_SRC
+// Source N needs interrupt cleared
 #define SECURE_DMA__CLEAR_INTR_SRC__SOURCE_bm 0x7ff
 #define SECURE_DMA__CLEAR_INTR_SRC__SOURCE_bp 0
 #define SECURE_DMA__CLEAR_INTR_SRC__SOURCE_bw 11
 #define SECURE_DMA__CLEAR_INTR_SRC__SOURCE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Source N needs interrupt cleared
         uint32_t SOURCE :11;
         uint32_t :21;
     } f;
@@ -462,12 +672,14 @@ typedef union {
 } secure_dma__CLEAR_INTR_SRC_t;
 
 // reg - secure_dma::CLEAR_INTR_BUS
+// Bus selection bit for source N.
 #define SECURE_DMA__CLEAR_INTR_BUS__BUS_bm 0x7ff
 #define SECURE_DMA__CLEAR_INTR_BUS__BUS_bp 0
 #define SECURE_DMA__CLEAR_INTR_BUS__BUS_bw 11
 #define SECURE_DMA__CLEAR_INTR_BUS__BUS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Bus selection bit for source N.
         uint32_t BUS :11;
         uint32_t :21;
     } f;
@@ -475,30 +687,35 @@ typedef union {
 } secure_dma__CLEAR_INTR_BUS_t;
 
 // reg - secure_dma::INTR_SRC_ADDR_0
+// Destination address for interrupt source clearing write.
 #define SECURE_DMA__INTR_SRC_ADDR_0__ADDR_0_bm 0xffffffff
 #define SECURE_DMA__INTR_SRC_ADDR_0__ADDR_0_bp 0
 #define SECURE_DMA__INTR_SRC_ADDR_0__ADDR_0_bw 32
 #define SECURE_DMA__INTR_SRC_ADDR_0__ADDR_0_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Destination address for interrupt source clearing write.
         uint32_t ADDR_0 :32;
     } f;
     uint32_t w;
 } secure_dma__INTR_SRC_ADDR_0_t;
 
 // reg - secure_dma::INTR_SRC_WR_VAL_0
+// Write value for interrupt clearing write.
 #define SECURE_DMA__INTR_SRC_WR_VAL_0__WR_VAL_0_bm 0xffffffff
 #define SECURE_DMA__INTR_SRC_WR_VAL_0__WR_VAL_0_bp 0
 #define SECURE_DMA__INTR_SRC_WR_VAL_0__WR_VAL_0_bw 32
 #define SECURE_DMA__INTR_SRC_WR_VAL_0__WR_VAL_0_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write value for interrupt clearing write.
         uint32_t WR_VAL_0 :32;
     } f;
     uint32_t w;
 } secure_dma__INTR_SRC_WR_VAL_0_t;
 
 // addrmap - secure_dma
+// DMA Controller for the integrated OpenTitan.
 typedef struct __attribute__ ((__packed__)) {
     secure_dma__INTR_STATE_t INTR_STATE;
     secure_dma__INTR_ENABLE_t INTR_ENABLE;

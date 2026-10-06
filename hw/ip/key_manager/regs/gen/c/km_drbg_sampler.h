@@ -14,92 +14,121 @@ extern "C" {
 #include <assert.h>
 
 // reg - km_drbg_sampler::data_reg
+// One word of random data. Read triggers request or returns prefetch. Writes return SLVERR. No reset.
+// 32-bit random data from DRBG. No reset for security; power-up value undefined.
 #define KM_DRBG_SAMPLER__DATA_REG__DATA_bm 0xffffffff
 #define KM_DRBG_SAMPLER__DATA_REG__DATA_bp 0
 #define KM_DRBG_SAMPLER__DATA_REG__DATA_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 32-bit random data from DRBG. No reset for security; power-up value undefined.
         uint32_t data :32;
     } f;
     uint32_t w;
 } km_drbg_sampler__data_reg_t;
 
 // reg - km_drbg_sampler::cfg_reg
+// Configuration: PREFETCH enable, TIMEOUT cycles for active CPU read.
+// Enable prefetch. When 0, prefetch data register is cleared.
 #define KM_DRBG_SAMPLER__CFG_REG__PREFETCH_bm 0x1
 #define KM_DRBG_SAMPLER__CFG_REG__PREFETCH_bp 0
 #define KM_DRBG_SAMPLER__CFG_REG__PREFETCH_bw 1
 #define KM_DRBG_SAMPLER__CFG_REG__PREFETCH_reset 0x0
+// Reserved
 #define KM_DRBG_SAMPLER__CFG_REG__RSVD_bm 0xfffe
 #define KM_DRBG_SAMPLER__CFG_REG__RSVD_bp 1
 #define KM_DRBG_SAMPLER__CFG_REG__RSVD_bw 15
 #define KM_DRBG_SAMPLER__CFG_REG__RSVD_reset 0x0
+// Cycles to wait for DRBG on active CPU read; 0 = disable. Default 256.
 #define KM_DRBG_SAMPLER__CFG_REG__TIMEOUT_bm 0xffff0000
 #define KM_DRBG_SAMPLER__CFG_REG__TIMEOUT_bp 16
 #define KM_DRBG_SAMPLER__CFG_REG__TIMEOUT_bw 16
 #define KM_DRBG_SAMPLER__CFG_REG__TIMEOUT_reset 0x100
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enable prefetch. When 0, prefetch data register is cleared.
         uint32_t prefetch :1;
+        // Reserved
         uint32_t rsvd :15;
+        // Cycles to wait for DRBG on active CPU read; 0 = disable. Default 256.
         uint32_t timeout :16;
     } f;
     uint32_t w;
 } km_drbg_sampler__cfg_reg_t;
 
 // reg - km_drbg_sampler::status_reg
+// Status: DRBG_READY, PREFETCHED, TIMEOUT_ERR (W1C), STREAM_ERR (W1C), COUNT_BAD, COUNT_GOOD.
+// TVALID asserted from DRBG
 #define KM_DRBG_SAMPLER__STATUS_REG__DRBG_READY_bm 0x1
 #define KM_DRBG_SAMPLER__STATUS_REG__DRBG_READY_bp 0
 #define KM_DRBG_SAMPLER__STATUS_REG__DRBG_READY_bw 1
 #define KM_DRBG_SAMPLER__STATUS_REG__DRBG_READY_reset 0x0
+// Prefetched data available
 #define KM_DRBG_SAMPLER__STATUS_REG__PREFETCHED_bm 0x2
 #define KM_DRBG_SAMPLER__STATUS_REG__PREFETCHED_bp 1
 #define KM_DRBG_SAMPLER__STATUS_REG__PREFETCHED_bw 1
 #define KM_DRBG_SAMPLER__STATUS_REG__PREFETCHED_reset 0x0
+// Set when a DRBG read from the KM CPU times out. Write 1 to clear.
 #define KM_DRBG_SAMPLER__STATUS_REG__TIMEOUT_ERR_bm 0x4
 #define KM_DRBG_SAMPLER__STATUS_REG__TIMEOUT_ERR_bp 2
 #define KM_DRBG_SAMPLER__STATUS_REG__TIMEOUT_ERR_bw 1
 #define KM_DRBG_SAMPLER__STATUS_REG__TIMEOUT_ERR_reset 0x0
+// Set when there is an error on the DRBG AXI-Stream interface (e.g. TVALID deasserted before TREADY). Write 1 to clear.
 #define KM_DRBG_SAMPLER__STATUS_REG__STREAM_ERR_bm 0x8
 #define KM_DRBG_SAMPLER__STATUS_REG__STREAM_ERR_bp 3
 #define KM_DRBG_SAMPLER__STATUS_REG__STREAM_ERR_bw 1
 #define KM_DRBG_SAMPLER__STATUS_REG__STREAM_ERR_reset 0x0
+// Reserved
 #define KM_DRBG_SAMPLER__STATUS_REG__RSVD_bm 0xf0
 #define KM_DRBG_SAMPLER__STATUS_REG__RSVD_bp 4
 #define KM_DRBG_SAMPLER__STATUS_REG__RSVD_bw 4
 #define KM_DRBG_SAMPLER__STATUS_REG__RSVD_reset 0x0
+// Failed transactions (timeout or error). Saturates at 0xFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.
 #define KM_DRBG_SAMPLER__STATUS_REG__COUNT_BAD_bm 0xff00
 #define KM_DRBG_SAMPLER__STATUS_REG__COUNT_BAD_bp 8
 #define KM_DRBG_SAMPLER__STATUS_REG__COUNT_BAD_bw 8
 #define KM_DRBG_SAMPLER__STATUS_REG__COUNT_BAD_reset 0x0
+// Counts only reads completed through ST_RESPOND, excluding prefetched words. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.
 #define KM_DRBG_SAMPLER__STATUS_REG__COUNT_GOOD_bm 0xffff0000
 #define KM_DRBG_SAMPLER__STATUS_REG__COUNT_GOOD_bp 16
 #define KM_DRBG_SAMPLER__STATUS_REG__COUNT_GOOD_bw 16
 #define KM_DRBG_SAMPLER__STATUS_REG__COUNT_GOOD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // TVALID asserted from DRBG
         uint32_t drbg_ready :1;
+        // Prefetched data available
         uint32_t prefetched :1;
+        // Set when a DRBG read from the KM CPU times out. Write 1 to clear.
         uint32_t timeout_err :1;
+        // Set when there is an error on the DRBG AXI-Stream interface (e.g. TVALID deasserted before TREADY). Write 1 to clear.
         uint32_t stream_err :1;
+        // Reserved
         uint32_t rsvd :4;
+        // Failed transactions (timeout or error). Saturates at 0xFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.
         uint32_t count_bad :8;
+        // Counts only reads completed through ST_RESPOND, excluding prefetched words. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.
         uint32_t count_good :16;
     } f;
     uint32_t w;
 } km_drbg_sampler__status_reg_t;
 
 // reg - km_drbg_sampler::prefetch_data_reg
+// Prefetched word (read-only, for debugging). Cleared when PREFETCH=0. No reset; power-up undefined.
+// Prefetched 32-bit random data. No reset for security; power-up value undefined.
 #define KM_DRBG_SAMPLER__PREFETCH_DATA_REG__DATA_bm 0xffffffff
 #define KM_DRBG_SAMPLER__PREFETCH_DATA_REG__DATA_bp 0
 #define KM_DRBG_SAMPLER__PREFETCH_DATA_REG__DATA_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Prefetched 32-bit random data. No reset for security; power-up value undefined.
         uint32_t data :32;
     } f;
     uint32_t w;
 } km_drbg_sampler__prefetch_data_reg_t;
 
 // addrmap - km_drbg_sampler
+// DRBG random data interface and configuration/status registers
 typedef struct __attribute__ ((__packed__)) {
     km_drbg_sampler__data_reg_t DATA;
     km_drbg_sampler__cfg_reg_t CFG;

@@ -41,7 +41,7 @@ Regenerate the simulation, synthesis, and emulation filelists after changing a
 Bender manifest or one of the four subsystem flow descriptors:
 
 ```bash
-python3 scripts/update_integration_filelists.py
+make update-integration-filelists
 ```
 
-Use `--check` to verify that the committed filelists are current.
+Add `CHECK=1` to verify that the committed filelists are current.
