@@ -25,7 +25,7 @@ OCAH-local DTP BFMs for DTP-specific protocols.
 === Verification Strategy
 
 The DTP environment is one UVM environment realized in PyUVM on cocotb (Verilator) and in SV-UVM (commercial simulators). Each
-test builds `dtp_uvm_top`, brings up `clk_i` and the `pwr_on_rst_ni` / `rst_n_i` resets,
+test builds `tb_top`, brings up `clk_i` and the `pwr_on_rst_ni` / `rst_n_i` resets,
 resets the primary TAP, and drives stimulus through the OCAH BFMs:
 
 [arabic]
@@ -493,7 +493,7 @@ the same source-input bit.
 === Test Procedures
 
 Unless a test procedure states otherwise, each test starts from the common DTP
-bring-up sequence: build `dtp_uvm_top`, start `clk_i`, assert and release
+bring-up sequence: build `tb_top`, start `clk_i`, assert and release
 `pwr_on_rst_ni`/`rst_n_i`, reset the primary TAP, use the configured OCAH
 BFMs, and keep all `dbg_disable_i` fields cleared (full debug access). Each
 procedure ends by checking scoreboard/reference-model errors are zero.

@@ -182,7 +182,7 @@ tb/tb_top.sv                  one framework-neutral core: interface instances, D
 
 === HDL Top
 
-`tb/tb_top.sv` (`dtp_uvm_top`) is one framework-neutral core with no ports: it
+`tb_top` (`tb/tb_top.sv`) is one framework-neutral core with no ports: it
 instantiates the TB interfaces, the `dtp` DUT elaborated from the bench
 configuration table (`tb/dtp_dv_cfg_pkg.sv`, whose cocotb copy
 `cocotb/env/dtp_dv_cfg.py` is checked against it at bring-up), the adapters
@@ -562,7 +562,7 @@ it on VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm-1.2`). Every
 scenario carries both implementations in its testlist `module` binding map,
 so any group runs unchanged under either framework.
 
-There is exactly ONE testbench top module: `dtp_uvm_top` in `tb/tb_top.sv`,
+There is exactly ONE testbench top module: `tb_top` in `tb/tb_top.sv`,
 a framework-neutral core with no ports (interface instances, DUT, adapters,
 counters, coverage, protocol SVA) shared between both realizations. The bare
 `+define+UVM` (set by the native profile's `[frameworks.uvm]` overlay) adds

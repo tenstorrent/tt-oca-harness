@@ -64,7 +64,7 @@ workflows that run them.
 
 | Path | Contents |
 | --- | --- |
-| `tb/` | `dtp_uvm_top` (`tb_top.sv`), the framework-neutral core both realizations share, with the `dtp_tb_if`, `dtp_scan_if`, and `dtp_xtrig_if` interfaces; the bench configuration table that elaborates the DUT (`dtp_dv_cfg_pkg.sv`); the JTAG2AXI bridge state-flag decoder (`dtp_j2a_state_flags.sv`); and the bench SVA (`dtp_stap_host_sva.sv`, `dtp_axi_data_known_sva.sv`) |
+| `tb/` | `tb_top.sv`, the framework-neutral core both realizations share, with the `dtp_tb_if`, `dtp_scan_if`, and `dtp_xtrig_if` interfaces; the bench configuration table that elaborates the DUT (`dtp_dv_cfg_pkg.sv`); the JTAG2AXI bridge state-flag decoder (`dtp_j2a_state_flags.sv`); and the bench SVA (`dtp_stap_host_sva.sv`, `dtp_axi_data_known_sva.sv`) |
 | `cocotb/` | PyUVM realization: `env/`, `seq_lib/`, `tests/` |
 | `uvm/` | SV-UVM realization: `env/`, `seq_lib/`, `tests/` |
 | `cov/` | Functional coverage modules (`sv/`) and the coverage configuration (`config/`): the Verilator and VCS coverage policies, the VCS compile-time coverage scope, and the URG exclusion lists |

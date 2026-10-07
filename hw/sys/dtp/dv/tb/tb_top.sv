@@ -52,7 +52,7 @@
 
 `timescale 1ps / 1fs
 
-module dtp_uvm_top
+module tb_top
   import prim_jtag_pkg::*;
   import jtag_tap_pkg::*;
   import jtag_inst_reg_pkg::*;
@@ -2495,4 +2495,4 @@ module dtp_uvm_top
   end
 `endif
 
-endmodule : dtp_uvm_top
+endmodule : tb_top

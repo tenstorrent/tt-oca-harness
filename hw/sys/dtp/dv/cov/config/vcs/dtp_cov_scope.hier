@@ -12,8 +12,8 @@
 // protocol checkers and the coverage modules never enter the database, except
 // the bind connections described below. `+tree` on its own restricts nothing,
 // so the bench tree is excluded first and the DUT re-admitted under it.
--tree dtp_uvm_top
-+tree dtp_uvm_top.u_dut
+-tree tb_top
++tree tb_top.u_dut
 
 // prim_cdc_rand_delay is the CDC jitter model that the synchronizer
 // primitives (prim_flop_2sync, prim_sync3r and their siblings) instantiate
@@ -37,26 +37,26 @@
 // unmatched. A metric section replaces the general rules for that metric, so
 // the tree is stated again.
 begin assert
--tree dtp_uvm_top
+-tree tb_top
 -tree uvm_pkg
 -tree axi_pkg
-+tree dtp_uvm_top.u_dut
-+tree dtp_uvm_top.u_dtp_fcov
-+tree dtp_uvm_top.u_dtp_jtag2axi_fcov
-+tree dtp_uvm_top.u_dtp_debug_tdr_fcov
-+tree dtp_uvm_top.u_dtp_scan_fcov
-+tree dtp_uvm_top.u_dtp_xtrig_fcov
-+tree dtp_uvm_top.u_jtag_ptap_sva
-+tree dtp_uvm_top.u_stap_io_host_sva
-+tree dtp_uvm_top.u_stap_smc_host_sva
-+tree dtp_uvm_top.u_stap_sep_host_sva
-+tree dtp_uvm_top.u_stap_extra0_host_sva
-+tree dtp_uvm_top.u_smc_otp_axil_sva
-+tree dtp_uvm_top.u_sep_otp_axil_sva
-+tree dtp_uvm_top.u_m_axi_sva
-+tree dtp_uvm_top.u_xtrig_axil_sva
-+tree dtp_uvm_top.u_smc_otp_axil_data_sva
-+tree dtp_uvm_top.u_sep_otp_axil_data_sva
-+tree dtp_uvm_top.u_m_axi_data_sva
-+tree dtp_uvm_top.u_xtrig_axil_data_sva
++tree tb_top.u_dut
++tree tb_top.u_dtp_fcov
++tree tb_top.u_dtp_jtag2axi_fcov
++tree tb_top.u_dtp_debug_tdr_fcov
++tree tb_top.u_dtp_scan_fcov
++tree tb_top.u_dtp_xtrig_fcov
++tree tb_top.u_jtag_ptap_sva
++tree tb_top.u_stap_io_host_sva
++tree tb_top.u_stap_smc_host_sva
++tree tb_top.u_stap_sep_host_sva
++tree tb_top.u_stap_extra0_host_sva
++tree tb_top.u_smc_otp_axil_sva
++tree tb_top.u_sep_otp_axil_sva
++tree tb_top.u_m_axi_sva
++tree tb_top.u_xtrig_axil_sva
++tree tb_top.u_smc_otp_axil_data_sva
++tree tb_top.u_sep_otp_axil_data_sva
++tree tb_top.u_m_axi_data_sva
++tree tb_top.u_xtrig_axil_data_sva
 end

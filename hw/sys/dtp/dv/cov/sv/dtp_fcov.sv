@@ -3,10 +3,9 @@
 //
 // DTP functional-coverage module (the DTP_FCOV.adoc collection point).
 //
-// One passive, signal-driven module shared by both DTP flows: the cocotb and
-// SV-UVM shapes of dtp_uvm_top instantiate it identically outside the UVM
-// harness region, so the same coverage source serves Verilator and the
-// commercial simulators.
+// One passive, signal-driven module shared by both DTP flows: tb_top
+// instantiates it once, outside the UVM harness block, so the same coverage
+// source serves Verilator and the commercial simulators.
 //
 // Two collection layers per DTP_FCOV.adoc:
 //   * Labeled `OCAH_FCOV_COVER cover-property points — live in every flow;

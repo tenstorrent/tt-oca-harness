@@ -63,7 +63,7 @@ reports as a runtime error.
 
 On VCS the scope is applied at compile time by `cov/config/vcs/dtp_cov_scope.hier`
 (`-cm_hier` with `-cm_common_hier`): the code-coverage families grade the DUT
-instance `dtp_uvm_top.u_dut` with everything it instantiates, the vendored
+instance `tb_top.u_dut` with everything it instantiates, the vendored
 cells included, except two simulation-only modules: `prim_cdc_rand_delay`, the
 CDC jitter model that the synchronizer primitives instantiate only under
 `SIMULATION`, and `dtp_j2a_state_flags`, the observation module `tb_top` binds

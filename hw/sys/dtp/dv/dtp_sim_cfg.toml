@@ -22,7 +22,7 @@ paths = ["{run_dir}", "hw/sys/dtp/dv/build"]
 
 [build]
 # Native build is driven by the Bender/filelist keys below.
-top_module = "dtp_uvm_top"
+top_module = "tb_top"
 top_file = "hw/sys/dtp/dv/tb/tb_top.sv"
 filelist = "hw/sys/dtp/dv/build/dtp_dut_compile.f"
 bender_filelist = "hw/sys/dtp/dv/build/dtp_bender.f"
