@@ -2039,8 +2039,8 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   // judges the last beat. `expected` holds each beat's word when the stream
   // starts; once a read completes, a beat that re-reads its address gets a
   // fresh seeded word written there, so that read's capture cannot repeat
-  // the earlier one. The fault beat returns the port's errored-beat word,
-  // which this stream sets to zero, and is not judged.
+  // the earlier one. The fault beat answers a zero errored-beat word and is
+  // not judged.
   task run_series_status_read(dtp_j2a_target_t t, dtp_j2a_series_status_plan_t p,
                               bit [63:0] expected[], string context_s);
     bit [63:0] rdata, addr_after;
