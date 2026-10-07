@@ -1,0 +1,43 @@
+.gitlab-ci.yml
+  s_c8ce40a7fc1aa0::t_c936df85ba828d 36-49
+scripts/ci/docs-only-child.yml
+  s_c8ce40a7fc1aa0::t_9ede44736f1af8 1-15
+scripts/ci/classify_diff.py
+  s_c8ce40a7fc1aa0::t_085a6e2631e06f 1-225
+CONTRIBUTING.md
+  s_c8ce40a7fc1aa0::t_9e1038790b352d 81-82
+  s_c8ce40a7fc1aa0::t_a047eaf1d8b000 85-90
+AGENTS.md
+  s_c8ce40a7fc1aa0::t_57aff736492460 515-516
+.github/workflows/sim.yml
+  s_c8ce40a7fc1aa0::t_a92725942dca2d 74
+  s_c8ce40a7fc1aa0::t_7c0161eab8a293 265
+  s_c8ce40a7fc1aa0::t_254453dc5326dd 256
+  s_c8ce40a7fc1aa0::t_95a0c229aa1395 214
+  s_c8ce40a7fc1aa0::t_c6e96d6b3e9eac 41-62
+  s_c8ce40a7fc1aa0::t_c7e5d389678780 226
+  s_c8ce40a7fc1aa0::t_f2eb7a0bdf2b7f 193
+  s_c8ce40a7fc1aa0::t_30ceca484d317c 141-142,144-147,149,153,159,163,171
+.github/workflows/lint.yml
+  s_c8ce40a7fc1aa0::t_a79804f1e60714 61-62
+  s_c8ce40a7fc1aa0::t_3684d4b2f411ef 86-87
+  s_c8ce40a7fc1aa0::t_350358256841b1 6-10
+  s_c8ce40a7fc1aa0::t_4f553b450cdc04 126-127
+  s_c8ce40a7fc1aa0::t_b7583cf885db72 13-34,39-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "f1c5c4b1a6513f9a0dedafbc6e3a6bd156030de3",
+  "prompts": {},
+  "sessions": {
+    "s_c8ce40a7fc1aa0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0d5abf2b-6a5c-43f3-8443-62ecff30dc52",
+        "model": "grok-4.6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

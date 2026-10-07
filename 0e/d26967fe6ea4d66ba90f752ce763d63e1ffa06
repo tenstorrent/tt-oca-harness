@@ -1,0 +1,101 @@
+hw/ip/avsbus_controller/regs/gen/py/avsbus_controller_reg.py
+  s_d605cb93395a31::t_69e76b125e3b6a 273,309,345,437
+hw/ip/axi_lite_mailbox_unit/regs/gen/py/axil_mailbox_reg.py
+  s_d605cb93395a31::t_09971510c6f10c 97,126,154,182,212,242,272,301
+hw/ip/axi_lite_mailbox_unit/regs/gen/py/axil_mailbox_sep_wrap_reg.py
+  s_d605cb93395a31::t_74ef30ec3fc218 429,458,486,514,544,574,604,633
+hw/ip/axi_lite_mailbox_unit/regs/gen/py/axil_mailbox_smc_wrap_reg.py
+  s_d605cb93395a31::t_2dab42c28cffeb 1485,1514,1542,1570,1600,1630,1660,1689
+hw/ip/cross_trigger/cross_trigger_port/regs/gen/py/cross_trigger_port_reg.py
+  s_d605cb93395a31::t_a5fc8a3735eb74 26,59,87
+hw/ip/dfd/regs/gen/py/smc_cla_reg.py
+  s_d605cb93395a31::t_824d7b50edb7ae 1091,1169,2519,2549,2577,2611,2965
+hw/ip/efuse/regs/gen/py/efuse_interface_ctrl_reg.py
+  s_d605cb93395a31::t_1da6507a84b4fc 40
+hw/ip/efuse/regs/gen/py/efuse_mmr_reg.py
+  s_d605cb93395a31::t_35f4b818d3b703 162
+hw/ip/entropy_source/regs/gen/py/entropy_source_reg.py
+  s_d605cb93395a31::t_c9b0b72730dd45 240,269,426,456,545,573,630,658,808,836,864,892,920,1095,1152,1185,1213,1241,1269,1297,1325,1353,1381,1409,1437,1465,1493,1521,1549,1577,1605,1633,1661,1689,1717,1745,1773,1801,1829,1857,1885,1913,2081,2141,2169,2197,2254,2345
+hw/ip/gpio/regs/gen/py/gpio_intf_reg.py
+  s_d605cb93395a31::t_ddef43e40e29d2 67
+hw/ip/gpio/regs/gen/py/gpio_wrap_reg.py
+  s_d605cb93395a31::t_eca40921c00267 73
+hw/ip/i2c/regs/gen/py/i2c_ctrl_reg.py
+  s_d605cb93395a31::t_9044967496cf03 28
+hw/ip/i2c/regs/gen/py/i2c_reg.py
+  s_d605cb93395a31::t_25aa286633010d 227,262,300,328,361,393,543,812,840,925,983,1043,1075,1105
+hw/ip/i2c/regs/gen/py/i2c_wrap_reg.py
+  s_d605cb93395a31::t_5a5c7a21f0e85c 373,408,446,474,507,539,689,958,986,1071,1129,1189,1221,1251,1283
+hw/ip/system_timer_octs/regs/gen/py/system_timer_octs_reg.py
+  s_d605cb93395a31::t_8711a3edc50a67 36,96,264
+hw/ip/telemetry_receiver/regs/gen/py/telemetry_receiver_reg.py
+  s_d605cb93395a31::t_59fdfe9994e62b 132,162,192,222,250
+hw/ip/telemetry_receiver/regs/gen/py/telemetry_receiver_wrap_reg.py
+  s_d605cb93395a31::t_aa18b34e66d5dd 294,324,354,384,412
+hw/ip/uart/log_engine/regs/gen/py/log_engine_reg.py
+  s_d605cb93395a31::t_b4bd3b62cb69bf 64,179,209,239,267
+hw/ip/uart/uart_16550/regs/gen/py/uart_16550_dl_reg.py
+  s_d605cb93395a31::t_33888a09cec8a4 22,50
+hw/ip/uart/uart_16550/regs/gen/py/uart_16550_main_reg.py
+  s_d605cb93395a31::t_a66a8c6e026be6 38,70,101,135,168,203,238,266,294,327
+hw/ip/uart/uart_16550/regs/gen/py/uart_16550_main_wo_reg.py
+  s_d605cb93395a31::t_78697b3836c166 22,55
+hw/ip/uart/uart_log_engine_wrap/regs/gen/py/uart_log_engine_ctrl_reg.py
+  s_d605cb93395a31::t_8dbc79b22ef0b6 20
+hw/ip/uart/uart_log_engine_wrap/regs/gen/py/uart_log_engine_wrap_reg.py
+  s_d605cb93395a31::t_0d8052ec30892b 92,120,152,183,217,250,285,320,348,376,409,437,552,582,612,640
+hw/ip/uart/uart_wrap/regs/gen/py/uart_wrap_reg.py
+  s_d605cb93395a31::t_4c22abd5d72bc4 322,350,382,413,447,480,515,550,578,606,639,667,782,812,842,870
+hw/sys/sep/regs/gen/adoc/blocks/aes.adoc
+  s_d605cb93395a31::t_8d9467febec59c 31,45-53
+hw/sys/sep/regs/gen/c/blocks/aes.h
+  s_d605cb93395a31::t_00376fcf22cc5a 13-30,225
+hw/sys/sep/regs/gen/c/sep_addr.h
+  s_d605cb93395a31::t_5cde1cd86a2059 379-380
+hw/sys/sep/regs/gen/html/blocks/aes.html
+  s_d605cb93395a31::t_0d77edee482ce0 19,33-39
+hw/sys/sep/regs/gen/py/sep_reg.py
+  s_d605cb93395a31::t_36cdd0f03eade8 240-241,3855-3883
+hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv
+  s_d605cb93395a31::t_bdf270b2677923 307
+hw/sys/sep/regs/gen/svh/sep_reg.svh
+  s_d605cb93395a31::t_61d38948a1e50c 352-353,3890,4385-4390,6478-6484
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc
+  s_d605cb93395a31::t_e3db72634ebf34 5-7,32,43,54
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/c/csrng.h
+  s_d605cb93395a31::t_a75f0432412e42 13-25,35,37-49,59,61-73,83,524-526
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/c/csrng_addr.h
+  s_d605cb93395a31::t_5949c91438cd77 9,11,13
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/html/csrng.html
+  s_d605cb93395a31::t_697295b811b778 11-13,37,46,55
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/py/csrng_reg.py
+  s_d605cb93395a31::t_ebb561eab140b1 24-29,69,100,131,160,188,219,240-243,324-379,393,422,478,506,534,590,618,655,678-692,695-697,699-700,738,756,759,762,766
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/sv/csrng_addrmap_pkg.sv
+  s_d605cb93395a31::t_6b108e965270b1 16-18
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/svh/csrng_reg.svh
+  s_d605cb93395a31::t_df950058e4a9c6 45-50,92-93,106,171-181,189-194,264-305,312-319,324-325,339,396-399,416-427,505-506,508-510,513-527,541
+vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/c/edn.h
+  s_d605cb93395a31::t_ee4aab6b581f1e 24-25,42-43,60-61,78-79
+vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/py/edn_reg.py
+  s_d605cb93395a31::t_758f50f525a7c2 55,84,113,142,170,201,316,348,466,531,559
+vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/py/secure_dma_reg.py
+  s_d605cb93395a31::t_18a2ac2bd169ab 146,176,206,234,375,459,487,515,599,664,693,726,761,817,845,873
+vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/py/spi_controller_reg.py
+  s_d605cb93395a31::t_eefce3aa088ea8 47,76,105,133,334,367,400
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "0ed26967fe6ea4d66ba90f752ce763d63e1ffa06",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

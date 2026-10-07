@@ -1,0 +1,20 @@
+hw/ip/entropy_source/rtl/entropy_fifo.sv
+  s_42d98e48086972::t_6b9041d116a56a 151
+  s_42d98e48086972::t_07ed336df292e3 159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5ca8036c107bc1dca639a7ceaae2e251ad75d9a7",
+  "prompts": {},
+  "sessions": {
+    "s_42d98e48086972": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b3b78d8-5ce4-41c5-b7f4-8bd5173c9e98",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

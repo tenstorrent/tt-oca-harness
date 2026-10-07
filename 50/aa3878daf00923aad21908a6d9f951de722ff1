@@ -1,0 +1,26 @@
+hw/common/regs/out.mk
+  s_c5151d462a6a92::t_2ec3a173cf11b8 131-133
+  s_c5151d462a6a92::t_45c32998be2cc3 102-119
+hw/common/regs/rules.mk
+  s_c5151d462a6a92::t_2449bf30cf0993 215-221
+  s_c5151d462a6a92::t_b5d70d356996cf 93-97
+tools/regs/dep_scanner.py
+  s_c5151d462a6a92::t_a0e1bbe3578a2a 1-18,23-61,63-65,67-70,73-78
+  s_c5151d462a6a92::t_d7c2557e1094e6 19-22,62,66,71-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "50aa3878daf00923aad21908a6d9f951de722ff1",
+  "prompts": {},
+  "sessions": {
+    "s_c5151d462a6a92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e6b5a7b-8db1-4886-87ca-37b7ffada441",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

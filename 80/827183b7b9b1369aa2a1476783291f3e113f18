@@ -1,0 +1,27 @@
+doc/contributing/src/pull-requests.adoc
+  s_8a9b8e56b5dc3f::t_f3df140e2f47db 16-17
+.github/workflows/ocah-project-curator.md
+  s_8a9b8e56b5dc3f::t_a870aedd6c65a3 98-102,108-109,111,113
+AGENTS.md
+  s_8a9b8e56b5dc3f::t_4d4f2dfb34988d 390-391
+.github/scripts/ingest_github.py
+  s_8a9b8e56b5dc3f::t_5773b2f00025a4 349,353-354,356-362,373-410,421,424,427-429,434-453,456,460-461,464-466,479
+.github/ISSUE_CURATION.md
+  s_8a9b8e56b5dc3f::t_f2bd4390232b83 43-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "80827183b7b9b1369aa2a1476783291f3e113f18",
+  "prompts": {},
+  "sessions": {
+    "s_8a9b8e56b5dc3f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "04203c6f-c215-4b0e-814b-5c8666884008",
+        "model": "grok-4.6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

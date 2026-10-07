@@ -1,0 +1,34 @@
+doc/trm/src/index.adoc
+  s_735d663e4c2165::t_cf9d473e0fb658 26,28,36,38
+doc/trm/doc.mk
+  s_735d663e4c2165::t_551f4084cd0cff 40,53,66
+  s_735d663e4c2165::t_cd44f07a9eee9b 42-45
+doc/trm/modules/ROOT/nav.adoc
+  s_735d663e4c2165::t_e855065ef58534 5,7
+scripts/docker-run.sh
+  s_735d663e4c2165::t_be68de41a377cc 331-337,341-344,349,352,355,360-361,374-375,377,383-386
+README.md
+  s_735d663e4c2165::t_1622c15b2a2ec8 43-50
+doc/doc.mk
+  s_735d663e4c2165::t_5e5a1995ee9da9 23-28
+doc/gh-pages.mk
+  s_735d663e4c2165::t_e073f0b69c6d39 28
+doc/stage-docs.sh
+  s_735d663e4c2165::t_11ea26008c92e0 83-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0d98122ffbad0fe0b2f2f25f6a36870c3ae8ef2f",
+  "prompts": {},
+  "sessions": {
+    "s_735d663e4c2165": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0a51313d-04e6-40c2-b49e-afad05839e75",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

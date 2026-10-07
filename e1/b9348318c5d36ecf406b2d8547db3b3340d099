@@ -1,0 +1,25 @@
+.github/workflows/ocah-project-curator.md
+  s_fb9f7e8713b3b3::t_9b589b6f3b6fa9 50
+  s_fb9f7e8713b3b3::t_51f46111c8684f 51
+  s_fb9f7e8713b3b3::t_394733ce7ecd75 1-49,52-149
+.github/issue-taxonomy.yml
+  s_fb9f7e8713b3b3::t_e156a16e261224 1-178
+.github/ISSUE_CURATION.md
+  s_fb9f7e8713b3b3::t_16254a1cf11269 1-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e1b9348318c5d36ecf406b2d8547db3b3340d099",
+  "prompts": {},
+  "sessions": {
+    "s_fb9f7e8713b3b3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b5ebe3c4-3269-4950-ab25-91fe2144850d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

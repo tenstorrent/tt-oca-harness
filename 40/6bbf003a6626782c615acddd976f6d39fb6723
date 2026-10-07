@@ -1,0 +1,21 @@
+hw/ip/entropy_source/regs/entropy_source.rdl
+  s_42d98e48086972::t_f4eb1bb8da96e9 39
+hw/ip/entropy_source/rtl/entropy_source.sv
+  s_42d98e48086972::t_755e946cc4bc1a 632-634
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "406bbf003a6626782c615acddd976f6d39fb6723",
+  "prompts": {},
+  "sessions": {
+    "s_42d98e48086972": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b3b78d8-5ce4-41c5-b7f4-8bd5173c9e98",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

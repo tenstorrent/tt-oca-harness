@@ -1,0 +1,29 @@
+Bender.yml
+  s_d605cb93395a31::t_620f44a74e0e8b 143-154
+vendor/pulp-platform/unbent/upstream/src/axi_err_unit_wrap.sv
+  s_d605cb93395a31::t_45c79250e98466 1-130
+vendor/pulp-platform/unbent/upstream/src/bus_err_unit.sv
+  s_d605cb93395a31::t_da671fc857cb3c 1-108
+vendor/pulp-platform/unbent/upstream/src/bus_err_unit_bare.sv
+  s_d605cb93395a31::t_754c932013c054 1-177
+vendor/pulp-platform/unbent/upstream/src/bus_err_unit_reg_pkg.sv
+  s_d605cb93395a31::t_c20ea55a414bc1 1-79
+vendor/pulp-platform/unbent/upstream/src/bus_err_unit_reg_top.sv
+  s_d605cb93395a31::t_b9850e15a688fb 1-265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.17",
+  "base_commit_sha": "c331ac8c8a794c2701739fa236619baa3ce58620",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

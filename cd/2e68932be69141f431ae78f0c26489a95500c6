@@ -1,0 +1,21 @@
+README.md
+  s_c8ce40a7fc1aa0::t_5777dd52d0c2ec 3-4,15-25
+  s_c8ce40a7fc1aa0::t_b4616a44a2ecb5 228-246
+  s_c8ce40a7fc1aa0::t_7a23c73035b626 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "cd2e68932be69141f431ae78f0c26489a95500c6",
+  "prompts": {},
+  "sessions": {
+    "s_c8ce40a7fc1aa0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0d5abf2b-6a5c-43f3-8443-62ecff30dc52",
+        "model": "grok-4.6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

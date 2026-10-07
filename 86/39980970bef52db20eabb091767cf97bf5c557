@@ -1,0 +1,27 @@
+hw/common/regs/out.mk
+  s_c5151d462a6a92::t_45c32998be2cc3 102-119
+  s_c5151d462a6a92::t_2ec3a173cf11b8 131-133
+tools/regs/dep_scanner.py
+  s_c5151d462a6a92::t_fe8e1141a28db4 5-17
+  s_c5151d462a6a92::t_d7c2557e1094e6 51,55,60-61
+  s_c5151d462a6a92::t_a0e1bbe3578a2a 1-4,18-50,52-54,56-59,62-67
+hw/common/regs/rules.mk
+  s_c5151d462a6a92::t_b5d70d356996cf 93-97
+  s_c5151d462a6a92::t_2449bf30cf0993 215-221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "8639980970bef52db20eabb091767cf97bf5c557",
+  "prompts": {},
+  "sessions": {
+    "s_c5151d462a6a92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e6b5a7b-8db1-4886-87ca-37b7ffada441",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

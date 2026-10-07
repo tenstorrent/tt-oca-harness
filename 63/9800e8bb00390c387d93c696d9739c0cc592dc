@@ -1,0 +1,33 @@
+.github/PULL_REQUEST_TEMPLATE.md
+  s_c8ce40a7fc1aa0::t_22655a7692e120 2,5
+.github/workflows/issue-pr-ingest.yml
+  s_c8ce40a7fc1aa0::t_37405cd1b3aed2 10
+  s_c8ce40a7fc1aa0::t_31b38e805c3b0d 31,36
+AGENTS.md
+  s_c8ce40a7fc1aa0::t_bdb252dcbe7faa 403
+  s_c8ce40a7fc1aa0::t_ceb15489847828 392-394
+.github/scripts/ingest_github.py
+  s_c8ce40a7fc1aa0::t_dd10351da603eb 517,524-526,533
+  s_c8ce40a7fc1aa0::t_6ad084ab872d77 484-489,493-509
+  s_c8ce40a7fc1aa0::t_f5e35072a6e464 133-137,139-140
+CONTRIBUTING.md
+  s_c8ce40a7fc1aa0::t_852bf1027f471b 27
+doc/contributing/src/pull-requests.adoc
+  s_c8ce40a7fc1aa0::t_e9cd367e451b7f 8-9,14-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "639800e8bb00390c387d93c696d9739c0cc592dc",
+  "prompts": {},
+  "sessions": {
+    "s_c8ce40a7fc1aa0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0d5abf2b-6a5c-43f3-8443-62ecff30dc52",
+        "model": "grok-4.6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

@@ -1,0 +1,47 @@
+tools/regs/common/rdlview.py
+  s_c8ce40a7fc1aa0::t_352501c92c77eb 190-191
+  s_c8ce40a7fc1aa0::t_3cdb0aae940402 162-166
+tools/regs/rdlsvh.py
+  s_c8ce40a7fc1aa0::t_3e0ae7d817605c 62-64
+CONTRIBUTING.md
+  s_c8ce40a7fc1aa0::t_a0a06177e1d604 68-70
+tools/spdx/scan_license_headers.py
+  s_c8ce40a7fc1aa0::t_9af3a2ad6e5728 1-156
+tools/regs/stamp_spdx.py
+  s_c8ce40a7fc1aa0::t_05d5dea069d238 1-68
+tools/regs/rdlpyhdr.py
+  s_c8ce40a7fc1aa0::t_3bb50003c82ec6 198-199
+hw/common/regs/rules.mk
+  s_c8ce40a7fc1aa0::t_17539ac6e423ee 67
+  s_c8ce40a7fc1aa0::t_c0c308054d403c 157
+  s_c8ce40a7fc1aa0::t_468bc7eb239db1 100
+  s_c8ce40a7fc1aa0::t_ec5f1d8b968218 61
+  s_c8ce40a7fc1aa0::t_2c5eef169795fc 148
+  s_c8ce40a7fc1aa0::t_dcac51c8005111 86
+  s_c8ce40a7fc1aa0::t_31cfde9a3da752 118
+  s_c8ce40a7fc1aa0::t_55c19acd64dbdc 112
+  s_c8ce40a7fc1aa0::t_ad3328698ace9b 142
+  s_c8ce40a7fc1aa0::t_f69d04caafc977 124
+  s_c8ce40a7fc1aa0::t_845018a4e0992a 55
+  s_c8ce40a7fc1aa0::t_1f7bd585d44b64 167
+  s_c8ce40a7fc1aa0::t_bfcfc3777a6fb6 73
+  s_c8ce40a7fc1aa0::t_6ca05029048a87 106
+  s_c8ce40a7fc1aa0::t_f048526f3e61a7 11-13
+  s_c8ce40a7fc1aa0::t_bb54b5962f1c24 176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e8403a0b3b0353dac337fc5983ad2fcb4b6325bc",
+  "prompts": {},
+  "sessions": {
+    "s_c8ce40a7fc1aa0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0d5abf2b-6a5c-43f3-8443-62ecff30dc52",
+        "model": "grok-4.6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

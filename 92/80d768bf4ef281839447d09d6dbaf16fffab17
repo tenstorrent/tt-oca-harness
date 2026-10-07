@@ -1,0 +1,21 @@
+hw/sys/smc/dv/fw/tests/uart_engine_api/uart_engine_api.c
+  s_d605cb93395a31::t_4ff9ec1e22fe8f 229-236
+hw/sys/smc/dv/fw/tests/uart_engine_sanity/uart_engine_sanity.c
+  s_d605cb93395a31::t_275bbfea0a8c8f 227-234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9280d768bf4ef281839447d09d6dbaf16fffab17",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "grok-4.5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

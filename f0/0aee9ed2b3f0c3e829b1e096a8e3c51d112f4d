@@ -1,0 +1,22 @@
+doc/stage-docs.sh
+  s_c5151d462a6a92::t_736e0b237a7fdd 139-146
+hw/sys/smc/doc/dma.adoc
+  s_c5151d462a6a92::t_283c8051030cf7 336
+  s_c5151d462a6a92::t_34d92c01f7d824 331
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "f00aee9ed2b3f0c3e829b1e096a8e3c51d112f4d",
+  "prompts": {},
+  "sessions": {
+    "s_c5151d462a6a92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e6b5a7b-8db1-4886-87ca-37b7ffada441",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

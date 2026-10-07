@@ -1,0 +1,56 @@
+hw/ip/i3ccore_wrap/doc/architecture.adoc
+  s_d605cb93395a31::t_0fbe894500fa5b 541-542
+hw/sys/smc/doc/rom.adoc
+  s_d605cb93395a31::t_ef1dd407c2c440 28
+hw/sys/smc/doc/memmap.adoc
+  s_d605cb93395a31::t_5886ac39d204c6 76
+  s_d605cb93395a31::t_b6c14f6b043428 212-213
+  s_d605cb93395a31::t_d87c45de691b77 181
+  s_d605cb93395a31::t_070d9d2876c381 201-205
+  s_d605cb93395a31::t_ee4dd604fedac9 231
+hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv
+  s_d605cb93395a31::t_9dd66b0915e104 839
+hw/sys/sep/doc/memory_map.adoc
+  s_d605cb93395a31::t_3eec247437b6f3 18
+  s_d605cb93395a31::t_85a9882e337995 91
+  s_d605cb93395a31::t_4c4439ac2db6e7 93-174
+hw/ip/dfd/rtl/trace/dfd_trace_sink.sv
+  s_d605cb93395a31::t_5b7d4d928de047 1057
+hw/sys/sep/doc/periphs.adoc
+  s_d605cb93395a31::t_261625dac30026 287-289,291
+  s_d605cb93395a31::t_1c2044d2a50cc8 350
+hw/ip/efuse/doc/architecture.adoc
+  s_d605cb93395a31::t_519e436e72a06c 137-138
+hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv
+  s_d605cb93395a31::t_9b666b79e24bde 384
+hw/sys/smc/doc/interrupts.adoc
+  s_d605cb93395a31::t_92a1681862332c 53-56,58-390
+hw/sys/smc/regs/blocks/reset_unit/reset_unit.rdl
+  s_d605cb93395a31::t_8e444ecfbaafc1 13-14
+hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl
+  s_d605cb93395a31::t_bb2778f53e646d 222,239
+hw/sys/smc/regs/gen/adoc/blocks/reset_unit.adoc
+  s_d605cb93395a31::t_f235e772f662c7 32-33
+hw/sys/smc/regs/gen/adoc/blocks/smc_efuse_map.adoc
+  s_d605cb93395a31::t_82831cba6dcdbd 73,86
+hw/sys/smc/regs/gen/html/blocks/reset_unit.html
+  s_d605cb93395a31::t_486072673c3fdc 37
+hw/sys/smc/regs/gen/html/blocks/smc_efuse_map.html
+  s_d605cb93395a31::t_7131c3d2f223dc 64,69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "a8db3066dc278ec5eea5135a75b09c50fb9b083b",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

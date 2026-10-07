@@ -1,0 +1,22 @@
+.github/scripts/ingest_github.py
+  s_c8ce40a7fc1aa0::t_c7ee6336c5690e 528-530
+  s_c8ce40a7fc1aa0::t_714e3c1aa43da2 458-498
+.github/workflows/issue-pr-ingest.yml
+  s_c8ce40a7fc1aa0::t_ef4b5c0a57e5f9 30-31,36-37,39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "fef1311512c5c01b186d81d8bf01849dba7e81be",
+  "prompts": {},
+  "sessions": {
+    "s_c8ce40a7fc1aa0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0d5abf2b-6a5c-43f3-8443-62ecff30dc52",
+        "model": "grok-4.6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

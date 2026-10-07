@@ -1,0 +1,35 @@
+AGENTS.md
+  s_c8ce40a7fc1aa0::t_1ff607e381763a 516
+CONTRIBUTING.md
+  s_c8ce40a7fc1aa0::t_ead94c4b9e4a57 88
+.github/workflows/sim.yml
+  s_c8ce40a7fc1aa0::t_142bbc599804e2 41,74
+  s_c8ce40a7fc1aa0::t_250590ce757a8e 44,52,56,59
+  s_c8ce40a7fc1aa0::t_e31230136e9b89 143
+  s_c8ce40a7fc1aa0::t_f41f3d642071ae 146,150,154,160,164,172,194,215,227,257,266
+  s_c8ce40a7fc1aa0::t_b34204f76d76dc 141-142
+.gitlab-ci.yml
+  s_c8ce40a7fc1aa0::t_424a23fc9b0a77 38-42,45-46
+scripts/ci/diff_class.py
+  s_c8ce40a7fc1aa0::t_01da7148c0210e 4,8,10-11,13-17,33,36-53,90,97-102,210-214,221,223,228-233,243,245,248-253,255-257
+.github/workflows/lint.yml
+  s_c8ce40a7fc1aa0::t_1c721750c3df7b 16,24,28,31
+  s_c8ce40a7fc1aa0::t_c3d9852f9b0d77 40,62,87,127
+  s_c8ce40a7fc1aa0::t_5e89005e214473 13,39,61,86,126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "363d4b7eb37e6620076405c638878bf240920486",
+  "prompts": {},
+  "sessions": {
+    "s_c8ce40a7fc1aa0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0d5abf2b-6a5c-43f3-8443-62ecff30dc52",
+        "model": "grok-4.6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

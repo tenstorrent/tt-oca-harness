@@ -1,0 +1,23 @@
+.github/workflows/spdx.yml
+  s_c8ce40a7fc1aa0::t_049dfe3f118e92 1-19
+.github/spdx_ignore.yaml
+  s_c8ce40a7fc1aa0::t_0b4ec70ac3ea4d 1-20
+hw/ip/entropy_source/dv/syn/entropy_source_rtl.f
+  s_c8ce40a7fc1aa0::t_fdd1b4d68e9a16 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "00e27485031e6df0459301838f54cbb093aef9ff",
+  "prompts": {},
+  "sessions": {
+    "s_c8ce40a7fc1aa0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0d5abf2b-6a5c-43f3-8443-62ecff30dc52",
+        "model": "grok-4.6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

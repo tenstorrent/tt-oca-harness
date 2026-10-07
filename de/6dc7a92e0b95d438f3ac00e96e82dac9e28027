@@ -1,0 +1,96 @@
+hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv
+  s_d605cb93395a31::t_a7af1cf5e33745 338-339
+  s_d605cb93395a31::t_3527fe9cbe971f 381-436
+Bender.yml
+  s_d605cb93395a31::t_caf18718a71a18 767
+hw/sys/smc/rtl/smc_peripherals/efuse/smc_efuse_pkg.sv
+  s_d605cb93395a31::t_a9945dd86aa5dc 171-179
+hw/ip/efuse/rtl/efuse_interface_controller.sv
+  s_d605cb93395a31::t_19417e546130f7 65-66,424,684-685
+hw/ip/efuse/rtl/efuse_pkg.sv
+  s_d605cb93395a31::t_62177cc32d00d4 70-187
+hw/ip/efuse/rtl/efuse_security_tokens.sv
+  s_d605cb93395a31::t_69f6d3106f6892 26,28,52-54,56-58,67-72,96-125,127-153,156-159,165,175,185,218-239,245,248,257,261,291,315,319,321,325,327,331,357-359
+hw/ip/efuse/rtl/efuse_shadow_regs.sv
+  s_d605cb93395a31::t_ffac98b7bb4f68 6,19-21,88-103,105,107-140,195,460-470,472-473,480-481,489-497,499-501,518-520,522-524,526-535,563-583,593-607,610-628,632-650,668-686,697-699,705,714-727
+hw/ip/efuse/rtl/sha256_token_hash.sv
+  s_d605cb93395a31::t_c740766d2d40ca 20-21,29,65-69,112,133,166-167,173-207,209,216,218-219,228-231
+hw/ip/key_manager/regs/gen/c/km_csr.h
+  s_d605cb93395a31::t_cdcff234f58c23 712-753,855,859
+hw/ip/key_manager/regs/gen/c/km_csr_addr.h
+  s_d605cb93395a31::t_456f3657a31f2a 7,199-200
+hw/ip/key_manager/regs/gen/c/km_kpv.h
+  s_d605cb93395a31::t_530998db691740 38-45,50-53,66-67,69
+hw/ip/key_manager/regs/gen/py/km_csr_reg.py
+  s_d605cb93395a31::t_a3d491eae3d648 7,198-199,1159-1192
+hw/ip/key_manager/regs/gen/py/km_kpv_reg.py
+  s_d605cb93395a31::t_4cc648cb6d4f48 1197-1198,1200
+hw/ip/key_manager/regs/gen/sv/km_csr_addrmap_pkg.sv
+  s_d605cb93395a31::t_d3fe516780bfc1 6,103
+hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv
+  s_d605cb93395a31::t_1ddb56cc5f89c4 323,433,758-783,1032-1051,2726-2863,3220-3228
+hw/ip/key_manager/regs/gen/sv/km_csr_reg_pkg.sv
+  s_d605cb93395a31::t_a9a1e1b6bd4ba1 8,716-748,772
+hw/ip/key_manager/regs/gen/sv/km_kpv_reg.sv
+  s_d605cb93395a31::t_515c14dc33faca 303,305,307,309,342-344,429-454,471-472,497-498,645-646,648
+hw/ip/key_manager/regs/gen/sv/km_kpv_reg_pkg.sv
+  s_d605cb93395a31::t_e2648be4fcf6c0 25-26,29,31,41,95-96,99-100,109
+hw/ip/key_manager/regs/gen/svh/km_csr_reg.svh
+  s_d605cb93395a31::t_5fe91291ea583b 26,219-220,259,555-575,836-847
+hw/ip/key_manager/regs/gen/svh/km_kpv_reg.svh
+  s_d605cb93395a31::t_d17d8859444135 1435-1439,1444-1445,1478,1480-1481
+hw/ip/key_manager/regs/km_csr.rdl
+  s_d605cb93395a31::t_9546e06fe8c230 3,1190-1201,1204,1277-1360
+hw/ip/key_manager/regs/km_kpv.rdl
+  s_d605cb93395a31::t_7788c02f403165 3,26-31,73-74,103-117,121-122,130,135,139-140,148
+hw/ip/key_manager/rtl/key_manager.sv
+  s_d605cb93395a31::t_4cdb45c91bd51b 32,54-56,62,83,87,91,95,99,102,109,116,123,128,134,140,145-146
+hw/ip/key_manager/rtl/km_axi_lite_xbar.sv
+  s_d605cb93395a31::t_9cfbd13eb1f3a0 28,41-43,46,52,55,58,61,65,68,71,74,77,83
+hw/ip/key_manager/rtl/km_crc_engine.sv
+  s_d605cb93395a31::t_1acc8a91c53633 9,11-16,138-139,142,145-146
+hw/ip/key_manager/rtl/km_csr.sv
+  s_d605cb93395a31::t_79628d2cd659a9 16-18,38,45-47,50,54-60,70,75,94-95,106-108,111,372-374,378-389,398-401,405-406,410-423,425-432,436,523-530,564-565
+hw/ip/key_manager/rtl/km_drbg_sampler.sv
+  s_d605cb93395a31::t_6fba1598cae00e 30-32,35,39
+hw/ip/key_manager/rtl/km_intf_pkg.sv
+  s_d605cb93395a31::t_f5c54d5871f1d8 17,196
+hw/ip/key_manager/rtl/km_kpv.sv
+  s_d605cb93395a31::t_0b84491e98d16a 17,29,36-38,41,45,48,117-153,190-194,217,272-275,277,283-285,294,328-335,341-349
+hw/ip/key_manager/rtl/km_kpv_eraser.sv
+  s_d605cb93395a31::t_fed0139550ef74 1-157
+hw/ip/key_manager/rtl/km_kpv_regfile.sv
+  s_d605cb93395a31::t_ceb1c46d4f9ab9 21,27,30,33-35,38
+hw/ip/key_manager/rtl/km_mailbox.sv
+  s_d605cb93395a31::t_2e140c3f604b08 45-48,51,55
+hw/ip/key_manager/rtl/km_reset_conditioner.sv
+  s_d605cb93395a31::t_a5de7c367f11ee 31,37,40-44
+hw/ip/key_manager/rtl/km_rom_interface.sv
+  s_d605cb93395a31::t_b7113807994314 22,27-28,31,33-36,40-42,46
+hw/ip/key_manager/rtl/km_sram_interface.sv
+  s_d605cb93395a31::t_680322c4e738fd 26,32-33,36,38-41,45-47,51,54-55,58
+hw/ip/key_manager/rtl/picorv32_pcpi_crc.sv
+  s_d605cb93395a31::t_86e233a71c2abc 9,11-16,138-140,143,148
+hw/ip/key_manager/rtl/picorv32_wrapper.sv
+  s_d605cb93395a31::t_309d7a1dff124d 40,55-57,61,67,71-72,75,81,87,90-92,95
+hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv
+  s_d605cb93395a31::t_0dd7ca711c1e9a 50-51,87-88,95-96,113,159-160,201,203,205,230-236,275-281,311-326,345-346,375,384,412
+hw/sys/smc/rtl/smc_peripherals/efuse/smc_efuse_wrapper.sv
+  s_d605cb93395a31::t_6532f31ee9a49b 199-200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.17",
+  "base_commit_sha": "de6dc7a92e0b95d438f3ac00e96e82dac9e28027",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

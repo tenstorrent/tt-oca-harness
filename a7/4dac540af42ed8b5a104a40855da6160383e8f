@@ -1,0 +1,22 @@
+.github/scripts/ingest_github.py
+  s_c8ce40a7fc1aa0::t_9908f8099c5246 101,103,112-114
+  s_c8ce40a7fc1aa0::t_d2b79d52eda3ef 536-545
+AGENTS.md
+  s_c8ce40a7fc1aa0::t_6d1d4b019c359b 361
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a74dac540af42ed8b5a104a40855da6160383e8f",
+  "prompts": {},
+  "sessions": {
+    "s_c8ce40a7fc1aa0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0d5abf2b-6a5c-43f3-8443-62ecff30dc52",
+        "model": "grok-4.6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
