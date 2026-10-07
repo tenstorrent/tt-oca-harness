@@ -21,7 +21,7 @@ args = ["+skip_fuse_sense"]
 name = "sep_otbn_compute_rand_test"
 module = "otbn.sep_otbn_compute_rand_test"
 seed = 1
-reseed = 3
+# No reseed: every run walks ADD, XOR and AND; the seed selects only the operands.
 timeout_sec = 1800
 tags = ["otbn", "crypto", "subsystem"]
 run_modes = ["no_cpu"]

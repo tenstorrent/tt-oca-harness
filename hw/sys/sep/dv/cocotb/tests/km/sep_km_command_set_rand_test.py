@@ -24,8 +24,9 @@ Checkers:
   CHK-SAMPLER CMD_KEY_GENERATE raises the observed EDN->KM beat count on
               the DRBG scoreboard CHK5_km stream. KMCSR sampler counters
               are not SEP-reachable.
-  CHK-UNIQ    a second CMD_KEY_GENERATE returns a DIFFERENT handle: handles are
-              allocated, never recycled under the caller
+  CHK-UNIQ    a second CMD_KEY_GENERATE, of the other key size, returns a
+              DIFFERENT handle and echoes its size: handles are allocated,
+              never recycled under the caller
   CHK-XFER    CMD_KEY_TRANSFER of a known loaded key to AES returns rc=0 and
               the AES ciphertext equals the independent AES-256-ECB golden, so
               the transfer moved that exact key
@@ -75,12 +76,13 @@ Checkers:
               between the two starts, so it reached the key rather than merely
               returning success. Run last, because an engine parked waiting
               for a key stays that way until its next valid key
-  CHK-ALIVE   after every rejection CMD_STAT succeeds AND reports no latched
-              recoverable error. The second half is what gives the refusal
-              checkers their meaning: while a recoverable fault is pending the
-              KM answers RC_FAILURE to every key command regardless of its
-              arguments, which is the same code CHK-DEST and CHK-CLOSED
-              expect, so without this a faulted KM would satisfy both
+  CHK-ALIVE   after every rejection, and once after the undefined-ID walk,
+              CMD_STAT succeeds AND reports no latched recoverable error. The
+              second half is what gives the refusal checkers their meaning:
+              while a recoverable fault is pending the KM answers RC_FAILURE
+              to every key command regardless of its arguments, which is the
+              same code CHK-DEST and CHK-CLOSED expect, so without this a
+              faulted KM would satisfy both
 
 The mailbox is a TRANSPORT here, not the subject. Its register surface --
 STATUS depth and full/overflow/underflow, IRQ_STATUS, and SEP_CTRL's response
@@ -195,7 +197,7 @@ KAT_KEY_B = (
 
 AES_ECB_PT = (0x00112233, 0x44556677, 0x8899AABB, 0xCCDDEEFF)
 
-# Sizes CMD_KEY_GENERATE may be asked for, as word counts.
+# Sizes CMD_KEY_GENERATE is asked for, as word counts: CHK-GEN, then CHK-UNIQ.
 GEN_KEY_WORDS = (8, 12)
 
 # Sideload dest bits. AES is always permitted so CHK-XFER / CHK-SHRED /
@@ -223,7 +225,6 @@ class SepKmCommandSetCfg:
     def __init__(self, seed: int) -> None:
         self.seed = seed
         rng = SepSeededRng(seed)
-        self.gen_words = rng.choice(GEN_KEY_WORDS)
         self.xfer_dest = rng.choice(LEGAL_DESTS)
         # AES stays on the mask so the consume / shred / gone path is unchanged.
         self.load_dest = KM_DEST_AES | self.xfer_dest
@@ -251,7 +252,7 @@ class SepKmCommandSetCfg:
 
     def summary(self) -> str:
         return (
-            f"seed={self.seed} gen_words={self.gen_words} "
+            f"seed={self.seed} "
             f"xfer_dest=0x{self.xfer_dest:02x}({DEST_NAME[self.xfer_dest]}) "
             f"load_dest=0x{self.load_dest:02x} "
             f"bad_dest=0x{self.bad_dest:02x} "
@@ -311,7 +312,7 @@ class sep_km_command_set_rand_test(sep_base_test):
         # --- CHK-GEN: the KM produces a key ----------------------------------
         # req_size is the word count minus one, per the command's argument
         # encoding; RETURN_ARG packs handle[7:0], req_size[14:8], dest[23:16].
-        req_size = cfg.gen_words - 1
+        req_size = GEN_KEY_WORDS[0] - 1
         km_beats0 = self.drbg_sb.results["CHK5_km"].dut_items
         gen_seq = await self.km.send_command(KM_CMD_KEY_GENERATE, [req_size, KM_DEST_AES])
         rc, arg = await self.km.recv_resp_cmd(KM_CMD_KEY_GENERATE, gen_seq)
@@ -350,7 +351,8 @@ class sep_km_command_set_rand_test(sep_base_test):
         )
 
         # --- CHK-UNIQ: handles are allocated, not recycled --------------------
-        gen2_seq = await self.km.send_command(KM_CMD_KEY_GENERATE, [req_size, KM_DEST_AES])
+        req_size2 = GEN_KEY_WORDS[1] - 1
+        gen2_seq = await self.km.send_command(KM_CMD_KEY_GENERATE, [req_size2, KM_DEST_AES])
         rc, arg2 = await self.km.recv_resp_cmd(KM_CMD_KEY_GENERATE, gen2_seq)
         assert rc == KM_RC_SUCCESS, f"CHK-UNIQ FAIL: second CMD_KEY_GENERATE rc={rc}"
         gen_handle2 = arg2 & 0xFF
@@ -358,9 +360,18 @@ class sep_km_command_set_rand_test(sep_base_test):
             f"CHK-UNIQ FAIL: second generate returned handle 0x{gen_handle2:02x}, "
             f"first returned 0x{gen_handle:02x}"
         )
+        echo_size2 = (arg2 >> 8) & 0x7F
+        assert echo_size2 == req_size2, (
+            f"CHK-UNIQ FAIL: RETURN_ARG echoed size {echo_size2}, requested {req_size2} "
+            f"(arg=0x{arg2:08x})"
+        )
         await self.km.check_outbound_empty("POST-KEY-GENERATE-2")
         self.logger.info(
-            "CHK-UNIQ PASS: distinct handles 0x%02x and 0x%02x", gen_handle, gen_handle2
+            "CHK-UNIQ PASS: distinct handles 0x%02x and 0x%02x, sizes %d and %d echoed",
+            gen_handle,
+            gen_handle2,
+            echo_size,
+            echo_size2,
         )
 
         # --- CHK-XFER: the KM moves a KNOWN key, and AES consumes it ----------
@@ -542,13 +553,17 @@ class sep_km_command_set_rand_test(sep_base_test):
         await self._check_alive("post-null-revoke")
 
         # --- CHK-ILLEGAL: undefined command IDs -------------------------------
+        # One CHK-ALIVE covers the whole walk: each ID must answer with its own
+        # RC_INVALID_CMD, so the KM is still in its loop after the one before,
+        # and a recoverable fault stays latched until CMD_RECOV_ACK, so a fault
+        # raised by any ID is still set at the probe.
         for cmd_id in cfg.illegal_ids:
             rc, _ = await self.km.send_raw_expect_rc(cmd_id, [])
             assert rc == KM_RC_INVALID_CMD, (
                 f"CHK-ILLEGAL FAIL: undefined command 0x{cmd_id:02x} returned rc={rc}, "
                 f"expected {KM_RC_INVALID_CMD} (RC_INVALID_CMD)"
             )
-            await self._check_alive(f"post-illegal-0x{cmd_id:02x}")
+        await self._check_alive("post-illegal-ids")
         self.logger.info(
             "CHK-ILLEGAL PASS: %d undefined command IDs each returned RC_INVALID_CMD "
             "and left the KM answering CMD_STAT: %s",

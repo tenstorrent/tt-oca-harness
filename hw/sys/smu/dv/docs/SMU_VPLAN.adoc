@@ -943,12 +943,12 @@ row's EXPECT sentence is worth, read the check.
 
 *BFM / Model*: `ocah_jtag_vip` (SMC fabric JTAG2AXI); `ocah_axi_vip` for the out-of-chiplet leg; `elaboration` firmware mode
 
-*Objective*: The SMC adopter external window is reachable over JTAG2AXI at the addresses the SMC memory map and the register map generated from `smc.rdl` give, answers at the two blocks those sources place, returns DECERR on the first page above everything they allocate, and shrinks with the SMC aperture.
+*Objective*: The SMC adopter external window is reachable over JTAG2AXI at the addresses the SMC memory map and the register map generated from `smc.rdl` give, answers at the two blocks those sources place, returns DECERR on the first word past the straps pair, which no block claims, and shrinks with the SMC aperture.
 
 *Test Coverage*:
 
 * EFUSE_SHIM_CTRL.EFUSE_BANK_INIT_TIME, at the EFUSE_SHIM_CTRL block base the generated SMC map gives, is read at its RDL reset value over the eFuse bank-control AXI-Lite port, written, read back and restored, so the shim window is proven both ways.
-* The straps pair in the supplementary region answers, and the first 4 KiB page above every allocation the sources record, still inside the window, returns DECERR.
+* The straps pair in the mandatory region answers, and the first word past it, which no block claims, returns DECERR.
 * REGION_SIZE shrunk so the local aperture ends exactly at the window sends the same shim read out of the chiplet instead, observed on the outbound boundary rather than inferred from the response alone. REGION_SIZE zero is not driven: `fabric.adoc` forbids firmware from programming it, and the crossbar's address decoder assumes every rule spans at least one byte, so a zero-size aperture is outside the design's contract rather than a state to prove.
 * Golden sources: the window base and size from `hw/sys/smc/regs/gen/c/smc_addr.h` (`SMC_TOP_SMC_EXTERNAL_*`) and the mandatory / supplementary split from `hw/sys/smc/doc/memmap.adoc` ("AXI-Lite External Window"); the EFUSE_SHIM_CTRL block base, both region bases and the allocated extent from the register map generated from `smc.rdl` for the boot ROM (`hw/sys/smc/bootrom/prod/registers/smc_top_regs.h`); the EFUSE_BANK_INIT_TIME offset and reset from the PeakRDL headers of `hw/ip/efuse/dv/models/regs/efuse_shim_ctrl.rdl`; the straps addresses transcribed from `hw/sys/smc/bootrom/prod/doc/hardware-initialization.adoc` ("Straps and eFuses"), with `straps.rdl` fixing STRAPS_HI at STRAPS_LO + 4; the REGION_SIZE and LOCAL_BASE resets from `smc_base_config.h`. The sequence refuses to run if these sources disagree about the window.
 * Specification gap: `hw/sys/smc/doc/memmap.adoc` leaves every placement inside the window to the adopter and `hw/ip/efuse/doc/memmap.adoc` says the SHIM sits at no fixed address, so the shim base rests on the generated boot-ROM map (which describes a vendor shim layout; only the block base is taken from it, and the register inside follows `efuse_shim_ctrl.rdl`) and the straps address on the boot-ROM documentation. Neither is an SMC memory-map statement. The map passes the unallocated remainder through to the adopter external port without saying what answers it; `hw/sys/smu/doc/port_table.adoc` ties an unused port to DECERR, and the DV rule is that an address no source allocates must not be answered by a live register. `CHK-PERIPH-EXT-UNMAPPED` is graded against that rule, not against a decode boundary a document states.
@@ -957,7 +957,7 @@ row's EXPECT sentence is worth, read the check.
 
 [arabic]
 . Over JTAG2AXI read, write, read back and restore EFUSE_BANK_INIT_TIME at the EFUSE_SHIM_CTRL base the generated SMC map gives.
-. Read STRAPS_LO and STRAPS_HI at the boot-ROM documented address, then the first page above every recorded allocation, and compare the responses.
+. Read STRAPS_LO and STRAPS_HI at the boot-ROM documented address, then the first word past them, and compare the responses.
 . Shrink REGION_SIZE so LOCAL_BASE + size ends at the window and repeat the shim read; require the transaction on the outbound boundary.
 
 *Checkers*:
@@ -966,8 +966,8 @@ row's EXPECT sentence is worth, read the check.
 |===
 |Checker |Description
 |`CHK-PERIPH-EXT-SHIM` |EFUSE_SHIM_CTRL.EFUSE_BANK_INIT_TIME, at the block base the generated SMC map gives, reads its RDL reset value over the eFuse bank-control AXI-Lite port, takes a written value and is restored
-|`CHK-PERIPH-EXT-STRAPS` |STRAPS_LO and STRAPS_HI at the boot-ROM documented supplementary-region address both answer SUCCESS
-|`CHK-PERIPH-EXT-UNMAPPED` |the first page above every allocation the sources record, still inside the window, DECERRs (DV rule; see the specification gap above)
+|`CHK-PERIPH-EXT-STRAPS` |STRAPS_LO and STRAPS_HI at the boot-ROM documented mandatory-region address both answer SUCCESS
+|`CHK-PERIPH-EXT-UNMAPPED` |the first word past the straps pair, which no block claims, DECERRs (DV rule; see the specification gap above)
 |`CHK-PERIPH-EXT-APERTURE` |REGION_SIZE shrunk so the local aperture ends at the window sends the same shim read out of the chiplet instead
 |===
 
@@ -4863,7 +4863,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 * A JTAG2AXI single op carries its own write strobe (`hw/ip/jtag/jtag_ptap/doc/architecture.adoc`, "JTAG2AXI single-operation fields"), and a zero strobe is a legal AXI write that changes no byte, so every walked write that could land on a live register or fuse carries a zero strobe.
 * Each walk records the address handshakes on the AXI-Lite link at the far end of its path, and every address issued has to arrive there, in order, on the channel it was issued on; the AXI-Lite request packing the taps decode is checked against the link width.
 * S1: the SMC fabric bridge writes a distinct byte at byte offsets 1, 2 and 3 of SCRATCH_COLD, a read-write register; each reads back at its offset, and the word read afterwards holds all three over the byte at offset 0. SCRATCH_COLD is then restored, and a zero-strobe write to 0x1000, outside the SMC map, completes.
-* S2: a write and a read at the base of the adopter window (`smc_addr.h` SMC_EXTERNAL_REGION, 4 MiB at 0xC040_0000) plus 2^k for every k below 22 each arrive at their window offset: the SMC forwards every access in the window to `smc_external_req_o` except the eFuse SHIM range at its base, which it diverts to the eFuse controller, and that reaches the SHIM on `efuse_bank_ctrl_req_o` (`doc/integrator/src/smu.adoc`, "AXI-Lite External Window"). The responses depend on what the integration attaches at each offset and are recorded.
+* S2: a write and a read at the base of the adopter window (`smc_addr.h` `SMC_TOP_SMC_EXTERNAL_BASE_ADDR` and `SMC_TOP_SMC_EXTERNAL_SIZE`, at 0xC040_0000) plus 2^k for every 2^k inside the window each arrive at their window offset: the SMC forwards every access in the window to `smc_external_req_o` except the eFuse SHIM range at its base, which it diverts to the eFuse controller, and that reaches the SHIM on `efuse_bank_ctrl_req_o` (`doc/integrator/src/smu-smc.adoc`, "Adopter Peripheral Window"). The responses depend on what the integration attaches at each offset and are recorded.
 * S3: a read and a zero-strobe write at the DTP CSR window (DTP_CTRL_REG, 2 KiB at 0xC000_B000) plus 2^k for every k below 11 each arrive on the SMC-to-DTP CSR link at their window offset. The responses are recorded: the SMC map gives the block a 2 KiB decoded extent, inside which an offset that owns no register answers OKAY (`memmap.adoc`), and the accesses at offset 0x400 are answered DECERR (read) and SLVERR (write).
 * S4, S5: the SMC and SEP OTP bridges each read and zero-strobe write address 0, 2^k for every k below 32, and 0xFFFF_FFFF; every operation completes and arrives on the DTP-to-OTP link with the address issued.
 * S6: a cold reset on `rst_cold_ni` takes `rst_primary_smc_clk_n_o` low and releases it again.

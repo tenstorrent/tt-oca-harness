@@ -21,10 +21,10 @@
  * Register Address Definitions
  * These are extracted from registers/smc_top_regs.h to avoid complex includes in assembly
  */
-/* SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_LO_REG_ADDR */
-#define SMC_STRAPS_LO_REG_ADDR 0xC0405800
-/* SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_HI_REG_ADDR */
-#define SMC_STRAPS_HI_REG_ADDR 0xC0405804
+/* SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_BASE_ADDR in regs/gen/c/smc_addr.h */
+#define SMC_STRAPS_LO_REG_ADDR 0xC0403000
+/* SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_BASE_ADDR in regs/gen/c/smc_addr.h */
+#define SMC_STRAPS_HI_REG_ADDR 0xC0403004
 
 /*
  * Strap Bit Definitions
@@ -241,8 +241,8 @@
  */
 #ifdef __ASSEMBLER__
 /* Pre-calculated values for expressions that can't be evaluated by assembler */
-#define SMC_STRAPS_LO_REG_ADDR_VAL 0xC0405800
-#define SMC_STRAPS_HI_REG_ADDR_VAL 0xC0405804
+#define SMC_STRAPS_LO_REG_ADDR_VAL 0xC0403000
+#define SMC_STRAPS_HI_REG_ADDR_VAL 0xC0403004
 /* Literal addresses for assembly, which cannot include the generated headers because their C
  * typedefs do not assemble. Nothing cross-checks these against the register map, so keep them in
  * step with regs/gen/c/smc_addr.h by hand:

@@ -379,15 +379,15 @@ locked_field_access_interrupt`, sourced from the eFuse controller path.
 
 |`284`
 |GPIO interrupt OR, lower half
-|OR-reduction across the lower half of bonded GPIO interrupt sources
+|OR-reduction across GPIO interrupt sources 0-31
 |`smc_peripherals.sv` drives `peripheral_interrupts_o[28] =
-\|gpio_interrupt[smc_pkg::NumBondedGpio/2-1:0]`.
+\|gpio_interrupt[smc_pkg::NumGpioWraps/2-1:0]`.
 
 |`285`
 |GPIO interrupt OR, upper half
-|OR-reduction across the upper half of bonded GPIO interrupt sources
+|OR-reduction across GPIO interrupt sources 32-64
 |`smc_peripherals.sv` drives `peripheral_interrupts_o[29] =
-\|gpio_interrupt[smc_pkg::NumBondedGpio-1:smc_pkg::NumBondedGpio/2]`.
+\|gpio_interrupt[smc_pkg::NumGpioWraps-1:smc_pkg::NumGpioWraps/2]`.
 
 |`286`
 |AXI hang detector OR

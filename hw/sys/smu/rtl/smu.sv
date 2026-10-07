@@ -58,8 +58,7 @@ module smu #(
   localparam int unsigned  DtpXtrigNumIntCt = smu_pkg::dtp_xtrig_num_int_ct(CFG),  // Internal CT count including SMC-reserved lanes, forwarded to the DTP XTRIG_NUM_INT_CT.
   localparam int unsigned  DtpXtrigNumClkStopReq = smu_pkg::dtp_xtrig_num_clk_stop_req(CFG),  // Clock-stop count including SMC-reserved lanes, forwarded to the DTP XTRIG_NUM_CLK_STOP_REQ.
   localparam int unsigned  JtagNumExtraStapPorts = smu_pkg::jtag_num_extra_stap_ports(CFG),  // Extra STAP port count; at least one for tie-off.
-  localparam logic [DtpXtrigNumIntCt-1:0]  DtpXtrigIntCtMode =  // Per-lane CTM mode vector with SMC lanes forced to 0, forwarded to the DTP XTRIG_INT_CT_MODE.
-      smu_pkg::dtp_xtrig_int_ct_mode(CFG)[DtpXtrigNumIntCt-1:0]
+  localparam logic [DtpXtrigNumIntCt-1:0]  DtpXtrigIntCtMode = smu_pkg::dtp_xtrig_int_ct_mode(CFG)[DtpXtrigNumIntCt-1:0] // Per-lane CTM mode vector with SMC lanes forced to 0, forwarded to the DTP XTRIG_INT_CT_MODE.
 ) (
   input  logic  clk_smu_i,                      // SMU clock; clocks the SMC core, the SEP, the DTP
                                                 // and the SMU AXI crossbar.
