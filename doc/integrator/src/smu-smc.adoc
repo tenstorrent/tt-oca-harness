@@ -730,4 +730,6 @@ determines whether the chiplet operates as primary or secondary. The primary
 chiplet's System Timer OCTS (Open Chiplet Time Synchronization) generates
 synchronization pulses (`timer_sync_load_o`, `timer_cnt_credit_o`) that
 secondary chiplets receive to maintain coherent timestamps across the system.
+The `chiplet_is_primary_i` input carries this strap and should be held constant
+while the SMC is out of cold reset.
 
