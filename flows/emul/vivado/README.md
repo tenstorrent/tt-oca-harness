@@ -13,9 +13,9 @@ design, and it reads no constraints. Only `smu` includes it today.
 From the repository root, with `vivado` and `bender` on `PATH`:
 
 ```bash
-make fpga-vivado-all BLOCK=smu
-make fpga-vivado-all BLOCK=smu OCAH_VIVADO_INPUT=script
-make fpga-vivado-all BLOCK=smu OCAH_VIVADO_PART=<part>
+make emul-vivado-all BLOCK=smu
+make emul-vivado-all BLOCK=smu OCAH_VIVADO_INPUT=script
+make emul-vivado-all BLOCK=smu OCAH_VIVADO_PART=<part>
 ```
 
 `OCAH_VIVADO_INPUT` selects the source description Vivado reads:
@@ -27,7 +27,7 @@ Both are generated with the Bender targets of `<block>.emul.f`
 (`OCAH_EMUL_BENDER_TARGETS` in `flows/common.mk`). Vivado defines `SYNTHESIS`
 itself during `synth_design`. The log, the generated file list and script, and
 `reports/<top>_compile_order.rpt` are written to the block's
-`build/fpga/vivado/` directory. A successful run prints
+`build/emul/vivado/` directory. A successful run prints
 `VIVADO_ELABORATION_PASS: <top>`.
 
 ## What the scripts adjust

@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # Shared Vivado setup: env-driven inputs, reports dir, and the source loaders.
-# Env vars are set by flows/fpga/vivado/vivado.mk.
+# Env vars are set by flows/emul/vivado/vivado.mk.
 proc ocah_env { name default } {
     if { [info exists ::env($name)] } { return $::env($name) }
     return $default
