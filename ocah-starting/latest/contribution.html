@@ -240,10 +240,6 @@
 <li>
 <p>Contribution documentation may not be required at this point.</p>
 </li>
-<li>
-<p>For public contributions, it is probably better to encourage people to fork and
-PR from forks rather than directly give them push access to upstream as this doc implies?</p>
-</li>
 </ul>
 </div>
 </td>
@@ -263,52 +259,68 @@ typically available on shared Linux build hosts when needed.</p>
 <div class="paragraph">
 <p>Follow these steps to get set up and started with development.</p>
 </div>
+<div class="paragraph">
+<p>Changes are proposed from your own copy of the repository, called a fork, so you
+do not need write access to the main repository.</p>
+</div>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
 <p>Create a GitHub account if you do not already have one.</p>
 </li>
 <li>
-<p>Generate an SSH key pair:</p>
+<p>Fork the repository: open <a href="https://github.com/tenstorrent/tt-oca-harness" class="bare">https://github.com/tenstorrent/tt-oca-harness</a> and
+select <strong>Fork</strong>. GitHub creates <code>tt-oca-harness</code> under your own account.</p>
+</li>
+<li>
+<p>Clone the repository and initialise its submodules, as described in
+<a href="setup.html#quick-start" class="xref page">Environment Setup</a> (Steps 1 and 2). The clone&#8217;s <code>origin</code>
+remote is the main repository.</p>
+</li>
+<li>
+<p>Let Git push to GitHub on your behalf. Install the <a href="https://cli.github.com">GitHub CLI</a>
+and run <code>gh auth login</code>, choosing HTTPS when asked.</p>
+</li>
+<li>
+<p>Add your fork as a second remote, replacing <code>&lt;your-username&gt;</code>:</p>
 <div class="literalblock">
 <div class="content">
-<pre>ssh-keygen -t ed25519</pre>
+<pre>git remote add fork https://github.com/&lt;your-username&gt;/tt-oca-harness.git</pre>
 </div>
 </div>
 </li>
 <li>
-<p><strong>(Optional)</strong> Start the SSH agent and add your key. You may want to add this to your
-shell startup script:</p>
+<p>Create a feature branch from the latest <code>main</code> (see below for branch management):</p>
 <div class="literalblock">
 <div class="content">
-<pre>eval "$(ssh-agent -s)"
-ssh-add &lt;name of your key&gt;</pre>
+<pre>git fetch origin
+git checkout -b &lt;your-branch&gt; origin/main</pre>
 </div>
 </div>
 </li>
 <li>
-<p>Add the public key to your GitHub account under
-<a href="https://github.com/settings/keys" class="bare">https://github.com/settings/keys</a>.</p>
-</li>
-<li>
-<p>Clone the repository</p>
+<p>Commit your work and push the branch to your fork:</p>
 <div class="literalblock">
 <div class="content">
-<pre>git clone git@github.com:tenstorrent/tt-oca-harness.git
-cd tt-oca-harness
-git checkout -b &lt;your-branch&gt;</pre>
+<pre>git push -u fork &lt;your-branch&gt;</pre>
 </div>
 </div>
 </li>
 <li>
-<p>Create a feature branch for your work (see below for branch management).</p>
-<div class="literalblock">
-<div class="content">
-<pre>git checkout -b &lt;your-branch&gt;</pre>
-</div>
-</div>
+<p>Open a pull request from that branch to <code>main</code> of <code>tenstorrent/tt-oca-harness</code>
+(see <a href="#creating-a-pull-request">Creating a Pull Request</a>). GitHub offers a <strong>Compare &amp; pull request</strong> button
+on the repository page after the push.</p>
 </li>
 </ol>
+</div>
+<div class="paragraph">
+<p>Contributors who have write access to the main repository can skip the fork and
+push the branch to <code>origin</code> instead.</p>
+</div>
+<div class="paragraph">
+<p>To clone over SSH instead of HTTPS, add your key to GitHub and use
+<code>git@github.com:tenstorrent/tt-oca-harness.git</code> as the URL, or switch an existing
+clone with <code>git remote set-url origin &lt;ssh-url&gt;</code>.</p>
 </div>
 </div>
 </div>

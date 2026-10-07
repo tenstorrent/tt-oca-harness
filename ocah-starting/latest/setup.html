@@ -239,137 +239,89 @@
 </tr>
 </table>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="repository"><a class="anchor" href="#repository"></a><a class="link" href="#repository">1. Repository</a></h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>To clone the repository, ensure that you have <code>git</code> installed (<code>sudo apt install git</code>),
-and then run the following commands:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">git clone https://github.com/tenstorrent/tt-oca-harness.git
-
-cd tt-oca-harness</code></pre>
-</div>
+<p>OCAH workflows need a RISC-V cross-compiler, EDA tools (Verilator, Slang, Verible,
+Yosys), Python tooling and documentation tools. The recommended way to get all of
+them is the <strong>prebuilt OCAH container</strong>: you install a container engine, and the
+project&#8217;s <code>scripts/docker-run.sh</code> downloads the exact image that CI tests against.
+You do not install or configure any of the tools yourself.</p>
 </div>
 <div class="paragraph">
-<p>The repository contains a Python environment used for scripting workflows. Some of
-these workflows are contained within submodules, meaning the Python environment requires
-the submodules to be initialised. The container image tag needs them too: once you
-modify any file, <code>docker-run.sh</code> fails with <code>Failed to fetch git repository</code> if they
-are missing. To initialise them, run the following command:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">git submodule update --init --recursive</code></pre>
-</div>
+<p>Follow <a href="#quick-start">Quick start: the prebuilt container (recommended)</a> from top to bottom. The other setups, described under
+<a href="#alternative-setups">Alternative setups</a>, are for contributors who need to change the toolchain or
+cannot use a container.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="toolchain-access"><a class="anchor" href="#toolchain-access"></a><a class="link" href="#toolchain-access">2. Toolchain access</a></h2>
+<h2 id="supported-platforms"><a class="anchor" href="#supported-platforms"></a><a class="link" href="#supported-platforms">1. Supported platforms</a></h2>
 <div class="sectionbody">
-<div class="paragraph">
-<p>Most OCAH workflows require a RISC-V cross-compiler, EDA tools (Yosys, Verilator,
-Slang, Verible), and documentation tools (Antora, Asciidoctor). There are three
-ways to get these:</p>
-</div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
-<col style="width: 75%;">
+<col style="width: 37.5%;">
+<col style="width: 37.5%;">
 </colgroup>
 <thead>
 <tr>
-<th class="tableblock halign-left valign-top">Method</th>
-<th class="tableblock halign-left valign-top">Summary</th>
+<th class="tableblock halign-left valign-top">Host</th>
+<th class="tableblock halign-left valign-top">Prebuilt container (recommended)</th>
+<th class="tableblock halign-left valign-top">Native installation</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#container"><strong>Container (recommended)</strong></a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">A Nix-built container image bundles all EDA and firmware tools. No individual
-  tool installs needed beyond a container engine (Podman or Docker). This is the
-  primary supported method for the initial release.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Linux, x86_64 (for example Ubuntu 24.04 LTS or later)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Supported.</strong> This is what CI uses.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Documented for Ubuntu 26.04 LTS. Other distributions should work, but package names differ.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#native"><strong>Native</strong></a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Install each tool individually on the host. Gives the most control but requires
-  the most setup. See <a href="#native"><strong>this section</strong></a> for the (Ubuntu) native path and
-  refer to <a href="dependencies.html" class="xref page">Dependencies</a> for version requirements.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">macOS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Supported</strong> with Podman. On Macs with Apple silicon (M-series) the x86_64 image
+  runs under emulation, which is noticeably slower.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not documented.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#nix-develop"><strong>Nix Development Shell</strong></a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>nix develop</code> provides the same tool set as the container, directly on the host,
-  via the Nix package manager. Available but not first-class supported — useful on
-  NixOS or hosts that already have Nix installed.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Linux, arm64</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not tested. The image is built for x86_64 only.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not documented.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Windows</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not tested.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not documented.</p></td>
 </tr>
 </tbody>
 </table>
+<div class="paragraph">
+<p>The container needs about 10 GB of free disk space for the image, on top of the
+general CPU, memory and storage requirements listed in
+<a href="dependencies.html" class="xref page">Dependencies</a>.</p>
+</div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="container"><a class="anchor" href="#container"></a><a class="link" href="#container">3. Container (recommended)</a></h2>
+<h2 id="quick-start"><a class="anchor" href="#quick-start"></a><a class="link" href="#quick-start">2. Quick start: the prebuilt container (recommended)</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The container is the primary toolchain access method for the initial release. It
-is built from the Nix flake in this repository, and CI publishes that image to the
-GitHub Container Registry. You can pull the exact image CI verified rather than
-build it yourself (see <a href="#pulling">Pulling the prebuilt image</a>); <code>docker-run.sh</code> builds it locally on first use
-when no registry is configured.</p>
-</div>
-<div class="paragraph">
-<p>The container bundles:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>RISC-V cross-compiler (<code>riscv64-unknown-elf-gcc</code> + picolibc) — making a native
-RISC-V toolchain install optional for firmware workflows</p>
-</li>
-<li>
-<p><code>yosys</code> + <code>yosys-slang</code> for synthesis</p>
-</li>
-<li>
-<p><code>slang</code>, <code>verilator</code>, <code>verible</code> for lint</p>
-</li>
-<li>
-<p><code>antora</code> for documentation</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>Tools that must be installed natively even when using the container: Python /
-<code>uv</code> (for register generation and DV Python tooling), <code>bender</code> (IP dependency
-management), and <code>git</code>.</p>
+<p>Do these steps once per machine, in order.</p>
 </div>
 <div class="sect2">
-<h3 id="container-engine-setup"><a class="anchor" href="#container-engine-setup"></a><a class="link" href="#container-engine-setup">3.1. Container engine setup</a></h3>
+<h3 id="container-engine-setup"><a class="anchor" href="#container-engine-setup"></a><a class="link" href="#container-engine-setup">2.1. Step 1: Install Git and a container engine</a></h3>
+<div class="paragraph">
+<p>The container engine runs the OCAH image. Podman is recommended; Docker also
+works. If both are installed, <code>docker-run.sh</code> uses Podman.</p>
+</div>
 <div class="sect3">
-<h4 id="linux"><a class="anchor" href="#linux"></a><a class="link" href="#linux">3.1.1. Linux</a></h4>
+<h4 id="on-linux-ubuntu"><a class="anchor" href="#on-linux-ubuntu"></a><a class="link" href="#on-linux-ubuntu">2.1.1. On Linux (Ubuntu)</a></h4>
 <div class="paragraph">
-<p>Install a container engine (Podman or Docker):</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><a href="https://podman.io/docs/installation#ubuntu"><strong>Podman</strong></a> (recommended)</p>
-</li>
-<li>
-<p><a href="https://docs.docker.com/engine/install/ubuntu/"><strong>Docker</strong></a></p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>If you installed Podman, also install <code>fuse-overlayfs</code> and register the Docker
-Hub registry:</p>
+<p>Install Git, Podman and <code>fuse-overlayfs</code>, then allow short image names to resolve
+to Docker Hub:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">sudo apt install -y fuse-overlayfs
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">sudo apt update
+sudo apt install -y git podman fuse-overlayfs
 
 sudo mkdir -p /etc/containers/registries.conf.d
 cat &lt;&lt;'EOF' | sudo tee /etc/containers/registries.conf.d/docker.conf
@@ -377,12 +329,23 @@ unqualified-search-registries = ["docker.io"]
 EOF</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>On other distributions, follow the
+<a href="https://podman.io/docs/installation">Podman installation guide</a>.</p>
+</div>
+<div class="paragraph">
+<p>To use Docker instead, follow the
+<a href="https://docs.docker.com/engine/install/">Docker Engine installation guide</a> and its
+<a href="https://docs.docker.com/engine/install/linux-postinstall/">post-installation steps</a>,
+which let you run <code>docker</code> without <code>sudo</code>.</p>
+</div>
 </div>
 <div class="sect3">
-<h4 id="macos"><a class="anchor" href="#macos"></a><a class="link" href="#macos">3.1.2. macOS</a></h4>
+<h4 id="on-macos"><a class="anchor" href="#on-macos"></a><a class="link" href="#on-macos">2.1.2. On macOS</a></h4>
 <div class="paragraph">
-<p>Install <a href="https://podman.io/docs/installation#macos"><strong>Podman</strong></a>, then create and
-start the Linux virtual machine it runs containers in:</p>
+<p>Install Git by running <code>xcode-select --install</code>, then install
+<a href="https://podman.io/docs/installation#macos">Podman</a>. Podman runs containers in a
+Linux virtual machine; create and start it:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -391,59 +354,197 @@ podman machine start</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>The image is built for x86_64 only, so on Apple silicon pull it (see <a href="#pulling">Pulling the prebuilt image</a>)
-rather than building it.</p>
+<p>After a reboot, run <code>podman machine start</code> again before using the container.</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="pulling"><a class="anchor" href="#pulling"></a><a class="link" href="#pulling">3.2. Pulling the prebuilt image</a></h3>
+<h3 id="step-2-get-the-repository"><a class="anchor" href="#step-2-get-the-repository"></a><a class="link" href="#step-2-get-the-repository">2.2. Step 2: Get the repository</a></h3>
 <div class="paragraph">
-<p>CI builds the OCAH container and publishes it to the GitHub Container Registry,
-so you normally do not need to build it yourself. Point <code>docker-run.sh</code> at the
-registry and it pulls the exact image CI verified:</p>
+<p>Clone the repository and initialise its submodules:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">git clone https://github.com/tenstorrent/tt-oca-harness.git
+cd tt-oca-harness
+git submodule update --init --recursive</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The submodules are required: the Python environment uses them, and
+<code>docker-run.sh</code> reads them to identify the image.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="step-3-select-the-prebuilt-image"><a class="anchor" href="#step-3-select-the-prebuilt-image"></a><a class="link" href="#step-3-select-the-prebuilt-image">2.3. Step 3: Select the prebuilt image</a></h3>
+<div class="paragraph">
+<p>Tell <code>docker-run.sh</code> to download the image CI publishes instead of building it.
+Add these two lines to your shell startup file, <code>~/.bashrc</code> on Linux or <code>~/.zshrc</code>
+on macOS:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">export OCAH_CONTAINER_REGISTRY_IMAGE=ghcr.io/tenstorrent/ocah-container
-export OCAH_IMAGE_WITH_UV=true            # the variant CI publishes
-./scripts/docker-run.sh verify           # pulls once; run/shell then reuse it</code></pre>
+export OCAH_IMAGE_WITH_UV=true</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>The image is tagged with a hash of the Nix flake, which <code>docker-run.sh</code>
-evaluates before every command. Without Nix on the host it evaluates the hash in
-a throwaway <code>nixos/nix</code> container, which takes several minutes each time even
-when the image is already loaded; installing Nix keeps it fast.</p>
+<p>Then open a new terminal, or run <code>source ~/.bashrc</code> (<code>source ~/.zshrc</code> on macOS),
+so they take effect. <code>OCAH_IMAGE_WITH_UV=true</code> selects the image variant CI
+publishes, which already contains the project&#8217;s Python packages.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="pulling"><a class="anchor" href="#pulling"></a><a class="link" href="#pulling">2.4. Step 4: Download and check the image</a></h3>
+<div class="paragraph">
+<p>From the repository root, run:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">./scripts/docker-run.sh verify</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The first run downloads the image, which takes a while. When it finishes, it
+prints the version of the RISC-V compiler inside the container, beginning
+<code>riscv64-unknown-elf-gcc</code>. Seeing that version means the setup works.</p>
+</div>
+<div class="paragraph">
+<p>Two things are normal and do not mean anything is wrong:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Before every command, <code>docker-run.sh</code> computes which image matches your
+checkout. Without Nix installed on your machine this takes several minutes each
+time, even once the image is downloaded. <a href="#nix-speedup">Optional: make container commands start faster</a> removes the wait.</p>
+</li>
+<li>
+<p>Later commands reuse the downloaded image. It is downloaded again only when you
+update to a commit that changes the toolchain.</p>
+</li>
+</ul>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>If the output contains <code>absent locally and in cache; building</code>, press <code>Ctrl+C</code>.
+There is no published image for your checkout, so <code>docker-run.sh</code> has started
+building one from source, which occupies the machine for a long time. This
+happens when CI has not yet published the image for the commit you are on, or
+when your checkout changes a file that defines the image, such as <code>flake.lock</code>,
+<code>ocah_deps.nix</code>, <code>uv.lock</code> or a file under <code>nix/</code>. Interrupting <code>docker-run.sh</code>
+does not always stop the build, so check <code>podman ps</code> (or <code>docker ps</code>) and stop
+any container still running. Then check out the latest <code>main</code>, or wait for CI to
+publish the image.</p>
+</div>
+</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
 <p>Published images are listed on the
 <a href="https://github.com/orgs/tenstorrent/packages/container/package/ocah-container"><code>ocah-container</code> package page</a>.
-Build the image locally only when you are changing its definition. See
-<code>scripts/docker.md</code> for the full set of container commands and environment
-variables.</p>
+No login is needed to download them.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="using-the-container"><a class="anchor" href="#using-the-container"></a><a class="link" href="#using-the-container">3.3. Using the container</a></h3>
+<h3 id="step-5-use-the-container"><a class="anchor" href="#step-5-use-the-container"></a><a class="link" href="#step-5-use-the-container">2.5. Step 5: Use the container</a></h3>
 <div class="paragraph">
-<p>All container interaction goes through <code>scripts/docker-run.sh</code>. The image is
-pulled (or, with no registry configured, built) automatically on first use:</p>
+<p>All container use goes through <code>scripts/docker-run.sh</code>, run from the repository
+root. To work interactively, open a shell inside the container:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Open an interactive shell (builds the image if needed)
-./scripts/docker-run.sh shell # use shell-here for 1:1 paths
-
-# Run a command inside the container
-./scripts/docker-run.sh run make dv-fw-tests TARGET=smc
-
-# Run with 1:1 host paths (needed for workflows using absolute paths)
-./scripts/docker-run.sh run-here make ocah-synth-yosys-all</code></pre>
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">./scripts/docker-run.sh shell</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>To pre-build the image explicitly (e.g. before going offline):</p>
+<p>The prompt changes to <code>OCAH-Container &gt;</code> and every OCAH tool is available, so you
+can run any <code>make</code> target the rest of this guide describes. Run <code>make help</code> to
+list them, and <code>exit</code> to leave the container.</p>
+</div>
+<div class="paragraph">
+<p>To run a single command without opening a shell:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">./scripts/docker-run.sh run make dv-fw-tests TARGET=smc</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Some workflows, such as synthesis, write absolute paths into their files. Run
+those with <code>run-here</code>, which mounts the repository at the same path it has on
+your machine (<code>shell-here</code> is the interactive equivalent):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">./scripts/docker-run.sh run-here make ocah-synth-yosys-all</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>See <code>scripts/docker.md</code> for every container command and environment variable.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="nix-speedup"><a class="anchor" href="#nix-speedup"></a><a class="link" href="#nix-speedup">2.6. Optional: make container commands start faster</a></h3>
+<div class="paragraph">
+<p>The image&#8217;s tag is a hash of the toolchain definition. Without Nix on the host,
+<code>docker-run.sh</code> computes it in a temporary container that downloads the
+definition again every time, which is why each command waits several minutes.
+Installing <a href="https://nixos.org/download/">Nix</a> on the host keeps that download
+cached, so commands start in seconds. Nothing else changes: you keep using the
+prebuilt image exactly as above.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="troubleshooting"><a class="anchor" href="#troubleshooting"></a><a class="link" href="#troubleshooting">2.7. Troubleshooting</a></h3>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>Failed to fetch git repository</code></dt>
+<dd>
+<p>The submodules are missing. Run <code>git submodule update --init --recursive</code>.</p>
+</dd>
+<dt class="hdlist1"><code>Error: workdir "&#8230;&#8203;" does not exist on container</code></dt>
+<dd>
+<p>You reached the repository through a symbolic link. Change to its real path with
+<code>cd "$(pwd -P)"</code> and run the command again.</p>
+</dd>
+<dt class="hdlist1"><code>no space left on device</code> while downloading the image</dt>
+<dd>
+<p>Rootless Podman stores images under <code>~/.local/share/containers</code>, which may be on
+a small or quota-limited home filesystem. Move the store to a larger filesystem
+by setting <code>graphroot</code> in <code>~/.config/containers/storage.conf</code>, then confirm the
+new location with <code>podman info | grep -i graphroot</code>.</p>
+</dd>
+<dt class="hdlist1"><code>podman: command not found</code> or <code>podman or docker is required</code></dt>
+<dd>
+<p>Step 1 is incomplete, or on macOS the Podman machine is not running. Run
+<code>podman machine start</code>.</p>
+</dd>
+</dl>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="alternative-setups"><a class="anchor" href="#alternative-setups"></a><a class="link" href="#alternative-setups">3. Alternative setups</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The setups below are for contributors who change the toolchain itself or cannot
+use a container. They take considerably more effort than the prebuilt container
+and are less tested.</p>
+</div>
+<div class="sect2">
+<h3 id="building-the-image"><a class="anchor" href="#building-the-image"></a><a class="link" href="#building-the-image">3.1. Building the container image yourself</a></h3>
+<div class="paragraph">
+<p>Build the image locally only when you are changing its definition. The build runs
+on x86_64 Linux, uses many cores and takes a long time:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -451,17 +552,24 @@ pulled (or, with no registry configured, built) automatically on first use:</p>
 </div>
 </div>
 <div class="paragraph">
-<p>To bundle UV dependencies in with the container, for a fully offline system, set
-<code>OCAH_IMAGE_WITH_UV=true</code> before building</p>
+<p>With <code>OCAH_IMAGE_WITH_UV=true</code> it builds the variant that bundles the Python
+packages, for fully offline use; otherwise it builds the default variant, which
+installs them on demand. <code>docker-run.sh</code> also builds the image automatically
+whenever <code>OCAH_CONTAINER_REGISTRY_IMAGE</code> is unset and no matching image is loaded
+or cached.
+See <code>nix/nix-infrastructure.md</code> for how the image is defined.</p>
 </div>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="native"><a class="anchor" href="#native"></a><a class="link" href="#native">4. Native Installation</a></h2>
-<div class="sectionbody">
 <div class="sect2">
-<h3 id="python"><a class="anchor" href="#python"></a><a class="link" href="#python">4.1. Python</a></h3>
+<h3 id="native"><a class="anchor" href="#native"></a><a class="link" href="#native">3.2. Native installation (Ubuntu)</a></h3>
+<div class="paragraph">
+<p>A native installation puts every tool directly on the host. It gives the most
+control but needs the most setup, and you are responsible for matching the
+versions in <a href="dependencies.html" class="xref page">Dependencies</a>. These instructions are written
+for Ubuntu 26.04 LTS.</p>
+</div>
+<div class="sect3">
+<h4 id="python"><a class="anchor" href="#python"></a><a class="link" href="#python">3.2.1. Python</a></h4>
 <div class="paragraph">
 <p>We recommend the use of pyenv to ensure the correct version of python is in use.
 To install pyenv, visit <a href="https://github.com/pyenv/pyenv">their GitHub page</a>,
@@ -511,8 +619,8 @@ pip install uv</code></pre>
 </div>
 </div>
 </div>
-<div class="sect2">
-<h3 id="package-dependencies"><a class="anchor" href="#package-dependencies"></a><a class="link" href="#package-dependencies">4.2. Package Dependencies</a></h3>
+<div class="sect3">
+<h4 id="package-dependencies"><a class="anchor" href="#package-dependencies"></a><a class="link" href="#package-dependencies">3.2.2. Package Dependencies</a></h4>
 <div class="paragraph">
 <p>Once the repository is cloned, install the required open source tools:</p>
 </div>
@@ -580,14 +688,11 @@ packaged for Ubuntu; install it as a gem:</p>
 </div>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="nix-develop"><a class="anchor" href="#nix-develop"></a><a class="link" href="#nix-develop">5. Nix Development Shell (available, not first-class supported)</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="nix-develop"><a class="anchor" href="#nix-develop"></a><a class="link" href="#nix-develop">3.3. Nix development shell</a></h3>
 <div class="paragraph">
 <p>If you have <a href="https://nixos.org/download/">Nix</a> installed, the dev shell provides
-the same tool set as the container directly on the host — no container engine
-needed:</p>
+the same tool set as the container directly on the host, with no container engine:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -617,6 +722,7 @@ MacOS builds have not been attempted. The container is the recommended path.</p>
 </td>
 </tr>
 </table>
+</div>
 </div>
 </div>
 </div>
