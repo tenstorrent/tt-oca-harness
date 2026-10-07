@@ -51,7 +51,7 @@ from env.sep_filter_model import FilterEntry
 from env.sep_lcc_golden import LCC_FEAT_CTRL
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import LOCAL_MASTER_ALIAS_REMAP_CTRL_0
+from sep_reg_meta import LOCAL_MASTER_ALIAS_REMAP_CTRL_0, SEP_CPU_CTRL
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_csr_bank_seq import (
@@ -80,9 +80,11 @@ ADDR_MASK = (1 << 56) - 1
 
 # The SMU window at its reset aperture (sep_cpu_ctrl.adoc, SMU_GLOBAL_BASE_ADDR
 # and SMU_REGION_SIZE). The test never writes the aperture registers.
-SMU_LO = 0x8000_0000
-SMU_HI = 0xBFFF_FFFF
-REGION_FLOOR = 0x8000_1000
+SMU_LO = SEP_CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR")
+SMU_HI = SMU_LO + SEP_CPU_CTRL.reset("SMU_REGION_SIZE") - 1
+# The bench outbound responder decodes stores to the first SMU page, so the
+# regions start one page above the window base.
+REGION_FLOOR = SMU_LO + 0x1000
 
 CACHE_VALUES = (0x0, 0x2, 0x3, 0xF)
 CLASSES = ("below", "start", "mid", "end_m1", "end", "above")

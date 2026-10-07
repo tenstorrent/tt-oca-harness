@@ -48,7 +48,23 @@ from env.sep_fabric_tap import start_taps, stop_taps
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import RegBlock, register_fields, sym
+from sep_reg_meta import (
+    AP_OUTPUT_REMAP_CTRL_0,
+    INBOUND_FILTER_CTRL_0,
+    RegBlock,
+    register_fields,
+    sym,
+)
+from seq_lib.sep_fabric_csr_bank_seq import (
+    DBW_LSB,
+    DBW_RO_VAL,
+    F_ALLOW_NS,
+    F_ENTRY_ENABLED,
+    F_GROUP_ID_LSB,
+    F_READ_ALLOWED,
+    F_SRC_ID_LSB,
+    F_WRITE_ALLOWED,
+)
 from seq_lib.sep_irq_aggregator_seq import PIC_DMA_DONE, PIC_DMA_ERROR, agg_from_pic
 
 _TEST = "sep_fabric_dma_endpoint_matrix_test"
@@ -77,6 +93,10 @@ ST3 = ST_DONE | ST_ERROR | ST_CHUNK
 EC_BUS = SECURE_DMA.field_mask("ERROR_CODE", "bus_error")
 LOCAL_ALIAS = SEP_CPU_CTRL.reset("SEP_LOCAL_BASE_ADDR")
 EXT_WORD = sym("SEP_EXTERNAL_REG_MAP_BASE_ADDR") + 0x100
+# FILTER_CONFIG field bits (low word, RW fields plus the RO data_bus_width).
+CFG_FIELDS = INBOUND_FILTER_CTRL_0.mask32("FILTER_CONFIG")
+REMAP_OFFSET_FIELD = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "offset")
+REMAP_VALID_FIELD = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "valid")
 EXT_TOP_ALIAS = 0xFFFF_FFF8
 EXT_TOP_WORD = 0x3FFF_FFF8
 STDOUT = 0x8000_0000
@@ -524,19 +544,20 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         START and END are not in the sum: the specification states no
         write-back timing for them, so the firmware logs their read-back only.
         """
-        dbw = 3 << 12
-        return fnv([(cfg | dbw) & 0x01FF_7113 for cfg, _start, _end in entries])
+        dbw = DBW_RO_VAL << DBW_LSB
+        return fnv([(cfg | dbw) & CFG_FIELDS for cfg, _start, _end in entries])
 
     def _chk_user(self) -> None:
         p = self.ep.p
-        rw_en, ns = 0x13, 0x100
+        rw_en = F_READ_ALLOWED | F_WRITE_ALLOWED | F_ENTRY_ENABLED
+        ns = F_ALLOW_NS
         _, r, text = self._one("OUTSET")
         ap, smu = self.ep.ap_out, p["smu"]
         exp_set = self._filter_sum(
             [(rw_en, ap, ap + 7), (rw_en | ns, ap, ap + 7), (rw_en, smu, smu + 7), (rw_en | ns, smu, smu + 7)]
         )
         attrs = (r["attrs_hi"] << 32) | r["attrs_lo"]
-        want_attrs = (self.ep.ap_offset & ((1 << 56) - 1)) | (1 << 63)
+        want_attrs = (self.ep.ap_offset & REMAP_OFFSET_FIELD) | REMAP_VALID_FIELD
         self.logger.info("OBS-FILTER-RANGE: out_setup START/END read-back differences=%d (logged)", r["rng_diff"])
         assert r["rb_bad"] == 0 and r["rb_sum"] == exp_set and attrs == want_attrs, (
             f"CHK-DMA-USER FAIL: outbound set-up read-back {text}; expected rb_sum=0x{exp_set:08x} "
@@ -544,9 +565,10 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         )
 
         _, r, text = self._one("STACK")
-        stack = [(rw_en | (i + 1) << 16, smu, smu + 7) for i in range(15)]
-        stack += [(rw_en | ns | (i + 1) << 16, smu, smu + 7) for i in range(15)]
-        stack += [(0x11, smu, smu + 7), (0x11 | ns, smu, smu + 7)]
+        stack = [(rw_en | (i + 1) << F_SRC_ID_LSB, smu, smu + 7) for i in range(15)]
+        stack += [(rw_en | ns | (i + 1) << F_SRC_ID_LSB, smu, smu + 7) for i in range(15)]
+        ro_en = F_READ_ALLOWED | F_ENTRY_ENABLED
+        stack += [(ro_en, smu, smu + 7), (ro_en | ns, smu, smu + 7)]
         exp1 = self._filter_sum(stack)
         exp2 = self._filter_sum([(rw_en, smu, smu + 7), (rw_en | ns, smu, smu + 7)])
         self.logger.info(
@@ -678,8 +700,12 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         for f in fields:
             mask |= f.mask
         mask &= 0xFFFF_FFFF
-        assert mask == 0x01FF_7113, f"FILTER_CONFIG field bits 0x{mask:x} differ from the contract mask"
-        expect = (3 << 12) | (p["filt_src"] << 16) | (p["filt_grp"] << 20)
+        assert mask == CFG_FIELDS, f"FILTER_CONFIG field bits 0x{mask:x} differ from the RDL mask"
+        expect = (
+            (DBW_RO_VAL << DBW_LSB)
+            | (p["filt_src"] << F_SRC_ID_LSB)
+            | (p["filt_grp"] << F_GROUP_ID_LSB)
+        )
         nw, xz = self._xz_free(self._sram_in(leg_i))
         ok = (
             self._done_ok(r)
