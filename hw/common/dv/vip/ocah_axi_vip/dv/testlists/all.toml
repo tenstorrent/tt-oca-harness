@@ -121,6 +121,16 @@ timeout_sec = 600
 tags = ["smoke", "ci", "axi_bridge"]
 run_modes = ["smoke"]
 
+[[tests]]
+name = "ocah_axi_responder_ops_test"
+# The SV-UVM master holds aresetn high across an item, so only the cocotb
+# realization drops the reset under a pending RVALID.
+module = { cocotb = "ocah_axi_responder_ops_test", uvm = "ocah_axi_responder_ops_test" }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "axi_responder"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "smoke"
 tests = [
@@ -138,6 +148,7 @@ tests = [
     "ocah_axi_timeout_test",
     "ocah_axi_slave_outstanding_test",
     "ocah_axi_struct_bridge_test",
+    "ocah_axi_responder_ops_test",
 ]
 
 [[groups]]
@@ -157,6 +168,7 @@ tests = [
     "ocah_axi_timeout_test",
     "ocah_axi_slave_outstanding_test",
     "ocah_axi_struct_bridge_test",
+    "ocah_axi_responder_ops_test",
 ]
 
 [[groups]]
@@ -188,4 +200,10 @@ tests = [
     "ocah_axi_lite_read_pair_hold_test",
     "ocah_axi_lite_write_pair_skew_test",
     "ocah_axi_pipeline_test",
+]
+
+[[groups]]
+name = "axi_responder"
+tests = [
+    "ocah_axi_responder_ops_test",
 ]

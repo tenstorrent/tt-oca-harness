@@ -15,9 +15,11 @@ from env.dtp_dbg_disable import (
     STAP_DISABLE,
     full_dbg_disable,
 )
-from env.dtp_fcov import ALLOWED, BLOCKED, DtpDbgDisableFcov
-from env.dtp_scan_ref_model import IJTAG_SIB_ORDER, STAP_ORDER
+from env.dtp_fcov import DtpDbgDisableFcov
+from env.dtp_ijtag_sib_model import IJTAG_SIB_ORDER
+from env.dtp_stap_3dcr_model import STAP_ORDER
 
+from .dtp_jtag_base_test_seq import SCAN_LENGTH_CHECK_IDS
 from .dtp_scan_base_test_seq import dtp_scan_base_test_seq
 
 SCAN_FIELDS: tuple[str, ...] = (
@@ -35,21 +37,22 @@ SELECTED_PAYLOAD = {"config_hold": 1, "stap_sel": 1, "tms_hold": 1}
 CLEAR_PAYLOAD = {"config_hold": 0, "stap_sel": 0, "tms_hold": 0}
 
 
-class dtp_dbg_disable_scan_matrix_test_seq(dtp_scan_base_test_seq):
+class dtp_scan_dbg_disable_matrix_test_seq(dtp_scan_base_test_seq):
     """Run the scan-side debug-disable matrix and emit the FCOV artifact."""
 
     def __init__(
         self,
-        name: str = "dtp_dbg_disable_scan_matrix_test_seq",
+        name: str = "dtp_scan_dbg_disable_matrix_test_seq",
         *,
-        multi_hot_rows: int = 4,
+        multi_hot_rows: int = 6,
         **kwargs,
     ) -> None:
         super().__init__(name, **kwargs)
         self.multi_hot_rows = multi_hot_rows
-        self.fcov = DtpDbgDisableFcov("scan_matrix")
+        self.fcov = DtpDbgDisableFcov("scan_matrix", SCAN_FIELDS)
 
     def build_rows(self) -> list[tuple[str, dict[str, int]]]:
+        """Matrix rows: all clear, each field alone, seeded multi-hot masks, all disabled."""
         rows: list[tuple[str, dict[str, int]]] = [("all_clear", {})]
         rows += [(f"one_hot_{field}", {field: 1}) for field in SCAN_FIELDS]
         rng = self.rng("dbg_disable_scan_matrix")
@@ -80,7 +83,6 @@ class dtp_dbg_disable_scan_matrix_test_seq(dtp_scan_base_test_seq):
             self.fcov.sample_cell(
                 field,
                 value,
-                BLOCKED if value else ALLOWED,
                 mask=full,
                 operation=f"ijtag_sib_{sib}_open_attempt",
                 result=f"select={state.effective[sib]} gated={state.gated[sib]}",
@@ -150,7 +152,6 @@ class dtp_dbg_disable_scan_matrix_test_seq(dtp_scan_base_test_seq):
                 self.fcov.sample_cell(
                     field,
                     value,
-                    BLOCKED if value else ALLOWED,
                     mask=full,
                     operation=f"stap_{name}_select_attempt",
                     result="no_forwarding+update_ignored" if value else "forwarding",
@@ -158,7 +159,6 @@ class dtp_dbg_disable_scan_matrix_test_seq(dtp_scan_base_test_seq):
             self.fcov.sample_cell(
                 "stap_host",
                 host_gated,
-                BLOCKED if host_gated else ALLOWED,
                 mask=full,
                 operation="ext_stap_scan_attempt",
                 result="scan_controls_quiet" if host_gated else "scan_controls_active",
@@ -170,10 +170,9 @@ class dtp_dbg_disable_scan_matrix_test_seq(dtp_scan_base_test_seq):
 
     async def body(self) -> None:
         self.log_banner("Debug-disable scan matrix (8 fields)")
-        # Scenario-owned Shift-x exits: skip the scan-count cross-check.
         await self.attach_family_checker(
-            {"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN", "CHK-SCAN-LEN", "CHK-SCAN-CHAIN"},
-            use_monitor=False,
+            {"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN", "CHK-SCAN-LEN", "CHK-SCAN-CHAIN"}
+            | SCAN_LENGTH_CHECK_IDS
         )
         await self.enable_all_debug()
         await self.reset_to_tlr()
@@ -216,7 +215,7 @@ class dtp_dbg_disable_scan_matrix_test_seq(dtp_scan_base_test_seq):
             self.fcov.sample_aux("recovery", context="all_clear_after_all_disabled")
 
         await self.finalize_family_checker()
-        self.fcov.require_cells(SCAN_FIELDS)
+        self.fcov.require_cells()
         self.fcov.write_artifact(seed=self.scenario_seed)
         self.log_summary(
             "Debug-disable scan matrix",

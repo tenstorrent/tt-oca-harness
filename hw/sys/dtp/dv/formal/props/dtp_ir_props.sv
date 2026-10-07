@@ -16,9 +16,11 @@
 //
 // The open-path frontend sizes the operand of the decode's type cast on its own, so the power
 // of an unsized literal it casts is 32 bits wide and the model decodes an opcode above 0x1E to
-// zero or to a sign-extended pattern. The module assumes an opcode at or below 0x1E at every
-// Update-IR: the properties and covers describe that half of the instruction space on the open
-// path, and the zero-length bypass and the two upper capability registers have no cover here.
+// zero or to a sign-extended pattern. The ir tasks bound the opcode an Update-IR loads to 0x1E
+// (dtp_ir_sby_env.sv) and the opcode covers span that range, so on the open path no instruction
+// from 0x1F up is loaded and no clause over one is checked: the SMC OTP series data instructions
+// 0x1F and 0x20, the SEP OTP and SMC capability and bridge instructions, the undefined opcodes from
+// 0x2D, ZERO_LENGTH_BYPASS, INV_BYPASS and BYPASS.
 
 `include "ocah_fv_macros.svh"
 
@@ -206,12 +208,6 @@ module dtp_ir_props
   // verilog_format: off
   `OCAH_FV_INITIAL_RESET(tck_i, jtag_trst_ni)
 
-  // The frontend sizes a type cast's operand on its own, so the RTL's `T'(2 ** shift)` decode is
-  // 32 bits wide in the model; an Update-IR loads an opcode the model decodes correctly.
-  `OCAH_FV_ASSUME(asm_ir_open_path_decode_range,
-                  `OCAH_FV_IMPLIES(ir_update_en_i, ir_shift_i <= OpenPathMaxOpcode),
-                  tck_i, jtag_trst_ni)
-
   // ---- Instruction register -----------------------------------------------------------------
   `OCAH_FV_ASSERT(ast_ir_decoded_one_hot, $countones(inst_bits) == 1, tck_i, jtag_trst_ni)
   `OCAH_FV_ASSERT(ast_ir_capture_loads_01,
@@ -254,7 +250,7 @@ module dtp_ir_props
                                    caps_scan_i == caps_value_i),
                   tck_i, jtag_trst_ni)
 
-  // ---- Covers: one per opcode the open path decodes, and the reads the assumption leaves ------
+  // ---- Covers: one per opcode the open path decodes, and the reads the decode bound leaves ----
   for (genvar o = 0; o <= int'(OpenPathMaxOpcode); o++) begin : gen_opcode
     `OCAH_FV_COVER(cov_ir_opcode, inst_bits == (DecodedIrWidth'(1) << o), tck_i, jtag_trst_ni)
   end

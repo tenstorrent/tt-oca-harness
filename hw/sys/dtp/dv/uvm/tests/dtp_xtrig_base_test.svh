@@ -4,7 +4,7 @@
 // Base test for the xtrig group. The xtrig scenarios drive the CSR AXI-Lite
 // port through the shared VIP master agent (reusable CSR sequences on the
 // virtual sequencer's m_xtrig_seqr handle) and the cross-trigger pins
-// through dtp_tb_if; no JTAG traffic at all. The scoreboard feature the
+// through dtp_xtrig_if; no JTAG traffic at all. The scoreboard feature the
 // group must exercise is therefore xtrig_csr (the CSR shadow predictor on
 // the passive XTRIG monitor stream), and the TAP FSM checker's zero-cycle
 // activity demand is lifted (any TCK activity that does occur is still

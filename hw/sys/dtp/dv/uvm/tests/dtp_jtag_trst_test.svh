@@ -2,12 +2,11 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // dtp_jtag_trst_test — asynchronous TRST reset and recovery: runs
-// dtp_jtag_trst_test_seq at the looped
-// floor, each pass proving TRST forces Test-Logic-Reset from distinct start
-// states and that IDCODE reads back after every recovery. The aggregate
-// per-cycle TAP-state legality (CHK-TAP-STATE, the cocotb checker's
-// per-step evidence) lives in the env's dtp_tap_fsm_checker and is armed as
-// required here.
+// dtp_jtag_trst_test_seq at the looped floor, each pass proving TRST forces
+// Test-Logic-Reset from distinct start states and that IDCODE reads back after
+// every recovery. The aggregate per-cycle TAP-state legality (CHK-TAP-STATE,
+// the cocotb checker's per-step evidence) lives in the env's
+// dtp_tap_fsm_checker and is armed as required here.
 
 class dtp_jtag_trst_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag_trst_test)

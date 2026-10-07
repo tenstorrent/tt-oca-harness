@@ -79,6 +79,8 @@ management), and `git`.
 
 === Container engine setup
 
+==== Linux
+
 Install a container engine (Podman or Docker):
 
 * https://podman.io/docs/installation#ubuntu[*Podman*] (recommended)
@@ -95,6 +97,19 @@ cat <<'EOF' | sudo tee /etc/containers/registries.conf.d/docker.conf
 unqualified-search-registries = ["docker.io"]
 EOF
 ```
+
+==== macOS
+
+Install https://podman.io/docs/installation#macos[*Podman*], then create and
+start the Linux virtual machine it runs containers in:
+
+```bash
+podman machine init
+podman machine start
+```
+
+The image is built for x86_64 only, so on Apple silicon pull it (see <<pulling>>)
+rather than building it.
 
 [[pulling]]
 === Pulling the prebuilt image

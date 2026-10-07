@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // dtp_xtrig_rand_test — seeded CTP configuration mix proving enable and pad-polarity behavior
-// (looped runner with per-pass CHK-XTRIG-* evidence, 16-pass floor).
+// (looped runner with per-pass CHK-XTRIG-* evidence).
 
 class dtp_xtrig_rand_test extends dtp_xtrig_base_test;
   `uvm_component_utils(dtp_xtrig_rand_test)

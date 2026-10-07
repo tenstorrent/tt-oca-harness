@@ -7,7 +7,8 @@
 // byte memory answering FIXED/INCR/WRAP single- and multi-beat bursts with
 // ID echo, per-beat one-shot error matching and a one-shot missing RLAST
 // per read address (via ocah_axi_slave_config), per-channel bounded READY
-// backpressure, and single-outstanding registered handshakes per
+// backpressure, a one-shot W-before-AW write order, the response USER
+// policy, and single-outstanding registered handshakes per
 // direction. cfg.protocol
 // selects AXI4-Lite (single-beat, no IDs/bursts; the AXI4-only vif fields
 // are never sampled).
@@ -31,6 +32,9 @@ class ocah_axi_slave_driver extends uvm_component;
   // Statistics (completed bursts).
   int unsigned write_bursts;
   int unsigned read_bursts;
+
+  // Reset assertions seen by watch_reset().
+  protected int unsigned m_resets;
 
   function new(string name = "ocah_axi_slave_driver", uvm_component parent = null);
     super.new(name, parent);
@@ -68,10 +72,48 @@ class ocah_axi_slave_driver extends uvm_component;
     if (cfg.is_active != UVM_ACTIVE) return;
     drive_idle();
     fork
+      watch_reset();
       write_pump();
       read_pump();
     join_none
   endtask
+
+  // BVALID and RVALID go low as ARESETn asserts, not at the next sampled
+  // edge (IHI 0022 A3.1.2), and the READYs with them, so no handshake lands
+  // on the edge after a reset. A pump compares m_resets with its count at the
+  // start of the transfer, so a reset that ends before the next sampled edge
+  // abandons the transfer too.
+  protected task watch_reset();
+    forever begin
+      @(negedge cfg.vif.aresetn);
+      m_resets++;
+      cfg.vif.awready <= 1'b0;
+      cfg.vif.wready  <= 1'b0;
+      cfg.vif.arready <= 1'b0;
+      cfg.vif.bvalid  <= 1'b0;
+      cfg.vif.rvalid  <= 1'b0;
+    end
+  endtask
+
+  // A reset is asserted, or has been since the pump read `resets`.
+  protected function bit reset_since(int unsigned resets);
+    return !cfg.vif.aresetn || (m_resets != resets);
+  endfunction
+
+  // BUSER (stream 0) or RUSER (stream 1) of the next beat, drawn from the
+  // calling pump's process RNG. `epoch` is the randomize_resp_user() call
+  // that pump last reseeded from; a later call reseeds it from the seed plus
+  // the stream.
+  protected function bit [15:0] next_resp_user(int unsigned stream, ref int unsigned epoch);
+    process p;
+    if (!cfg.resp_user_random()) return '0;
+    if (epoch != cfg.resp_user_epoch()) begin
+      p = process::self();
+      p.srandom(cfg.resp_user_seed() + stream);
+      epoch = cfg.resp_user_epoch();
+    end
+    return 16'($urandom);
+  endfunction
 
   protected function void drive_idle();
     cfg.vif.awready <= 1'b0;
@@ -113,14 +155,15 @@ class ocah_axi_slave_driver extends uvm_component;
   // and a stall disabled mid-pattern releases READY on the next edge (the
   // cocotb pause generators likewise apply immediately).
   // All three return at the handshake edge (mon_cb holds that beat's
-  // sampled values) or on reset deassertion — callers re-check aresetn.
+  // sampled values) or at the first sampled edge after a reset asserted
+  // since the pump read `resets`; callers re-check reset_since(resets).
 
-  protected task accept_aw();
+  protected task accept_aw(int unsigned resets);
     forever begin
       if (cfg.aw_stall_cycles == 0) begin
         cfg.vif.awready <= 1'b1;
         @(cfg.vif.mon_cb);
-        if (!cfg.vif.aresetn) begin
+        if (reset_since(resets)) begin
           cfg.vif.awready <= 1'b0;
           return;
         end
@@ -132,23 +175,23 @@ class ocah_axi_slave_driver extends uvm_component;
         cfg.vif.awready <= 1'b0;
         for (int unsigned n = 0; n < cfg.aw_stall_cycles; n++) begin
           @(cfg.vif.mon_cb);
-          if (!cfg.vif.aresetn) return;
+          if (reset_since(resets)) return;
         end
         cfg.vif.awready <= 1'b1;
         @(cfg.vif.mon_cb);
         cfg.vif.awready <= 1'b0;
-        if (!cfg.vif.aresetn) return;
+        if (reset_since(resets)) return;
         if (cfg.vif.mon_cb.awvalid && cfg.vif.mon_cb.awready) return;
       end
     end
   endtask
 
-  protected task accept_ar();
+  protected task accept_ar(int unsigned resets);
     forever begin
       if (cfg.ar_stall_cycles == 0) begin
         cfg.vif.arready <= 1'b1;
         @(cfg.vif.mon_cb);
-        if (!cfg.vif.aresetn) begin
+        if (reset_since(resets)) begin
           cfg.vif.arready <= 1'b0;
           return;
         end
@@ -160,12 +203,12 @@ class ocah_axi_slave_driver extends uvm_component;
         cfg.vif.arready <= 1'b0;
         for (int unsigned n = 0; n < cfg.ar_stall_cycles; n++) begin
           @(cfg.vif.mon_cb);
-          if (!cfg.vif.aresetn) return;
+          if (reset_since(resets)) return;
         end
         cfg.vif.arready <= 1'b1;
         @(cfg.vif.mon_cb);
         cfg.vif.arready <= 1'b0;
-        if (!cfg.vif.aresetn) return;
+        if (reset_since(resets)) return;
         if (cfg.vif.mon_cb.arvalid && cfg.vif.mon_cb.arready) return;
       end
     end
@@ -174,36 +217,36 @@ class ocah_axi_slave_driver extends uvm_component;
   // One W beat. With stall 0, WREADY stays asserted across beats (the
   // caller lowers it after the last beat); with a stall pattern, each
   // beat gets its own low-for-N / high-for-one window.
-  protected task accept_w();
+  protected task accept_w(int unsigned resets);
     forever begin
       if (cfg.w_stall_cycles == 0) begin
         cfg.vif.wready <= 1'b1;
         @(cfg.vif.mon_cb);
-        if (!cfg.vif.aresetn) return;
+        if (reset_since(resets)) return;
         if (cfg.vif.mon_cb.wvalid && cfg.vif.mon_cb.wready) return;
       end else begin
         cfg.vif.wready <= 1'b0;
         for (int unsigned n = 0; n < cfg.w_stall_cycles; n++) begin
           @(cfg.vif.mon_cb);
-          if (!cfg.vif.aresetn) return;
+          if (reset_since(resets)) return;
         end
         cfg.vif.wready <= 1'b1;
         @(cfg.vif.mon_cb);
-        if (!cfg.vif.aresetn) return;
+        if (reset_since(resets)) return;
         if (cfg.vif.mon_cb.wvalid && cfg.vif.mon_cb.wready) return;
       end
     end
   endtask
 
   protected task write_pump();
-    bit [63:0] addr, start_addr;
+    bit [63:0] addr, start_addr, wdata, unused_rdata;
     bit [15:0] id, bid_out, corrupt_mask;
-    bit [7:0]       len;
-    bit [2:0]       size;
-    bit [1:0]       burst;
+    bit [7:0] len, wstrb;
+    bit [2:0] size;
+    bit [1:0] burst;
     ocah_axi_resp_e resp, beat_resp;
-    bit armed;
-    int unsigned beats, lanes;
+    bit armed, w_early, aw_taken, wlast;
+    int unsigned beats, lanes, resets, user_epoch;
     forever begin
       @(cfg.vif.mon_cb);
       if (!cfg.vif.aresetn) begin
@@ -212,43 +255,66 @@ class ocah_axi_slave_driver extends uvm_component;
         cfg.vif.bvalid  <= 1'b0;
         continue;
       end
-      // Address phase.
-      accept_aw();
-      if (!cfg.vif.aresetn) continue;
-      id    = cfg.vif.mon_cb.awid;
-      size  = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE)
-                    ? 3'($clog2(cfg.beat_bytes())) : cfg.vif.mon_cb.awsize;
-      len   = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE)
-                    ? 8'h0 : cfg.vif.mon_cb.awlen;
-      burst = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE)
-                    ? 2'(OCAH_AXI_BURST_INCR) : cfg.vif.mon_cb.awburst;
-      start_addr = cfg.vif.mon_cb.awaddr;
+      resets = m_resets;
+      // Address phase. With cfg.w_before_aw armed before or during the AW
+      // wait, the first data beat is taken alongside it, its fields held
+      // from its own handshake edge.
+      w_early = cfg.w_before_aw;
+      if (!w_early) begin
+        aw_taken = 1'b0;
+        fork
+          begin
+            accept_aw(resets);
+            take_aw(id, size, len, burst, start_addr);
+            aw_taken = 1'b1;
+          end
+          wait (cfg.w_before_aw);
+        join_any
+        disable fork;
+        w_early = !aw_taken;
+        if (w_early) cfg.vif.awready <= 1'b0;
+      end
+      if (w_early) begin
+        cfg.w_before_aw = 1'b0;
+        fork
+          begin
+            accept_aw(resets);
+            take_aw(id, size, len, burst, start_addr);
+          end
+          begin
+            accept_w(resets);
+            cfg.vif.wready <= 1'b0;
+            take_w(wdata, wstrb, wlast);
+          end
+        join
+      end
+      if (reset_since(resets)) continue;
       addr  = (start_addr >> size) << size;
       beats = int'(len) + 1;
       resp  = OCAH_AXI_RESP_OKAY;
       // Data phase.
       for (int unsigned beat = 0; beat < beats; beat++) begin
-        accept_w();
-        if (!cfg.vif.aresetn) break;
-        beat_resp = cfg.consume_injected(addr, OCAH_AXI_DIR_WRITE, armed);
+        if (!(w_early && beat == 0)) begin
+          accept_w(resets);
+          if (reset_since(resets)) break;
+          take_w(wdata, wstrb, wlast);
+        end
+        beat_resp = cfg.consume_injected(addr, OCAH_AXI_DIR_WRITE, armed, unused_rdata);
         if (armed) begin
           if (beat_resp > resp) resp = beat_resp;
         end else begin
           lanes = cfg.beat_bytes();
           for (int unsigned lane = 0; lane < lanes; lane++) begin
-            if (cfg.vif.mon_cb.wstrb[lane])
-              mem_write_byte(cfg.beat_align(addr) + 64'(lane), cfg.vif.mon_cb.wdata[8*lane+:8]);
+            if (wstrb[lane]) mem_write_byte(cfg.beat_align(addr) + 64'(lane), wdata[8*lane+:8]);
           end
         end
-        if (cfg.protocol == OCAH_AXI_PROTO_AXI4 &&
-                    bit'(cfg.vif.mon_cb.wlast) != (beat == beats - 1))
-          `uvm_error(
-              get_type_name(), $sformatf(
-              "%s: WLAST=%0d at beat %0d/%0d", cfg.name_tag, cfg.vif.mon_cb.wlast, beat + 1, beats))
+        if (cfg.protocol == OCAH_AXI_PROTO_AXI4 && wlast != (beat == beats - 1))
+          `uvm_error(get_type_name(), $sformatf(
+                     "%s: WLAST=%0d at beat %0d/%0d", cfg.name_tag, wlast, beat + 1, beats))
         addr = next_beat_addr(addr, start_addr, size, len, burst);
       end
       cfg.vif.wready <= 1'b0;
-      if (!cfg.vif.aresetn) continue;
+      if (reset_since(resets)) continue;
       // Response phase. One-shot armed BID corruption answers a wrong
       // response ID (data path and BRESP stay untouched).
       bid_out = id;
@@ -260,24 +326,46 @@ class ocah_axi_slave_driver extends uvm_component;
       end
       cfg.vif.bid    <= bid_out;
       cfg.vif.bresp  <= resp;
+      cfg.vif.buser  <= next_resp_user(0, user_epoch);
       cfg.vif.bvalid <= 1'b1;
       do
       @(cfg.vif.mon_cb);
-      while (cfg.vif.aresetn && !(cfg.vif.mon_cb.bvalid && cfg.vif.mon_cb.bready));
+      while (cfg.vif.aresetn && m_resets == resets &&
+             !(cfg.vif.mon_cb.bvalid && cfg.vif.mon_cb.bready));
       cfg.vif.bvalid <= 1'b0;
-      if (!cfg.vif.aresetn) continue;
+      if (reset_since(resets)) continue;
       write_bursts++;
     end
   endtask
 
+  // The AW fields of the handshake on this edge.
+  protected function void take_aw(output bit [15:0] id, output bit [2:0] size, output bit [7:0] len,
+                                  output bit [1:0] burst, output bit [63:0] start_addr);
+    id    = cfg.vif.mon_cb.awid;
+    size  = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE)
+                  ? 3'($clog2(cfg.beat_bytes())) : cfg.vif.mon_cb.awsize;
+    len   = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE)
+                  ? 8'h0 : cfg.vif.mon_cb.awlen;
+    burst = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE)
+                  ? 2'(OCAH_AXI_BURST_INCR) : cfg.vif.mon_cb.awburst;
+    start_addr = cfg.vif.mon_cb.awaddr;
+  endfunction
+
+  // The W fields of the handshake on this edge.
+  protected function void take_w(output bit [63:0] wdata, output bit [7:0] wstrb, output bit wlast);
+    wdata = cfg.vif.mon_cb.wdata;
+    wstrb = cfg.vif.mon_cb.wstrb;
+    wlast = cfg.vif.mon_cb.wlast;
+  endfunction
+
   protected task read_pump();
     bit [63:0] addr, start_addr;
-    bit [15:0] id, rid_out, corrupt_mask;
+    bit [15:0] id, rid_out, corrupt_mask, ruser;
     bit [7:0]       len;
     bit [2:0]       size;
     bit [1:0]       burst;
-    int unsigned    beats;
-    bit             drop_last;
+    int unsigned beats, resets, user_epoch;
+    bit drop_last;
     forever begin
       @(cfg.vif.mon_cb);
       if (!cfg.vif.aresetn) begin
@@ -285,9 +373,10 @@ class ocah_axi_slave_driver extends uvm_component;
         cfg.vif.rvalid  <= 1'b0;
         continue;
       end
+      resets = m_resets;
       // Address phase.
-      accept_ar();
-      if (!cfg.vif.aresetn) continue;
+      accept_ar(resets);
+      if (reset_since(resets)) continue;
       id    = cfg.vif.mon_cb.arid;
       size  = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE)
                     ? 3'($clog2(cfg.beat_bytes())) : cfg.vif.mon_cb.arsize;
@@ -312,26 +401,27 @@ class ocah_axi_slave_driver extends uvm_component;
       drop_last = cfg.consume_missing_rlast(start_addr);
       // Data phase: one beat per accepted cycle.
       for (int unsigned beat = 0; beat < beats; beat++) begin
-        load_read_beat(addr, rid_out, (beat == beats - 1) && !drop_last);
+        ruser = next_resp_user(1, user_epoch);
+        load_read_beat(addr, rid_out, (beat == beats - 1) && !drop_last, ruser);
         cfg.vif.rvalid <= 1'b1;
         do
         @(cfg.vif.mon_cb);
-        while (cfg.vif.aresetn && !(cfg.vif.mon_cb.rvalid && cfg.vif.mon_cb.rready));
-        if (!cfg.vif.aresetn) break;
+        while (cfg.vif.aresetn && m_resets == resets &&
+               !(cfg.vif.mon_cb.rvalid && cfg.vif.mon_cb.rready));
+        if (reset_since(resets)) break;
         addr = next_beat_addr(addr, start_addr, size, len, burst);
       end
       cfg.vif.rvalid <= 1'b0;
-      if (!cfg.vif.aresetn) continue;
+      if (reset_since(resets)) continue;
       read_bursts++;
     end
   endtask
 
-  protected function void load_read_beat(bit [63:0] addr, bit [15:0] id, bit last);
+  protected function void load_read_beat(bit [63:0] addr, bit [15:0] id, bit last, bit [15:0] user);
     ocah_axi_resp_e resp;
     bit             armed;
     bit [63:0]      data;
-    resp = cfg.consume_injected(addr, OCAH_AXI_DIR_READ, armed);
-    data = '0;
+    resp = cfg.consume_injected(addr, OCAH_AXI_DIR_READ, armed, data);
     if (!armed) begin
       for (int unsigned lane = 0; lane < cfg.beat_bytes(); lane++)
       data[8*lane+:8] = mem_read_byte(cfg.beat_align(addr) + 64'(lane));
@@ -340,6 +430,7 @@ class ocah_axi_slave_driver extends uvm_component;
     cfg.vif.rdata <= data;
     cfg.vif.rresp <= armed ? resp : OCAH_AXI_RESP_OKAY;
     cfg.vif.rlast <= last;
+    cfg.vif.ruser <= user;
   endfunction
 
 endclass : ocah_axi_slave_driver

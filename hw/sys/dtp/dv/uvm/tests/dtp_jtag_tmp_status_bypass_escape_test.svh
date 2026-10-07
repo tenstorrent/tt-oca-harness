@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_jtag_tmp_status_bypass_escape_test — armed TMP BYPASS_ESCAPE exits persistence on the second BYPASS
-// Update-IR and the recovered BYPASS path honors the 1-TCK latency
-// (looped runner with per-pass family evidence, 16-pass floor).
+// dtp_jtag_tmp_status_bypass_escape_test — armed TMP BYPASS_ESCAPE exits
+// persistence on the second BYPASS Update-IR and the recovered BYPASS path
+// honors the 1-TCK latency (looped runner with per-pass family evidence).
 
 class dtp_jtag_tmp_status_bypass_escape_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag_tmp_status_bypass_escape_test)

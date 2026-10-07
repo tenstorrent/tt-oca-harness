@@ -70,10 +70,10 @@ class dtp_jtag_runbist_test_seq extends dtp_jtag_base_test_seq;
 
   // One RUNBIST DR scan judged against the SIB-chain prediction.
   protected task runbist_scan(input bit [63:0] pattern, input string context_s,
-                              output bit [7:0] observed);
+                              output bit [RunbistScanWidth-1:0] observed);
     bit [63:0] raw;
     shift_dr(pattern, RunbistScanWidth, raw);
-    observed = raw[7:0];
+    observed = raw[RunbistScanWidth-1:0];
     judge_runbist_tdo(pattern, 64'(observed), context_s);
   endtask
 
@@ -137,17 +137,17 @@ class dtp_jtag_runbist_test_seq extends dtp_jtag_base_test_seq;
   // Directed and seeded RUNBIST scans: chain response, distinct and nonzero.
   protected task check_runbist_response();
     bit [63:0] patterns[$];
-    bit seen_results[bit [7:0]];
+    bit seen_results[bit [RunbistScanWidth-1:0]];
     bit any_nonzero = 1'b0;
     string results_s = "";
-    bit [7:0] observed;
+    bit [RunbistScanWidth-1:0] observed;
     patterns = {64'h00, 64'hFF, 64'h5A, 64'hA5};
     for (int unsigned r = 0; r < random_count; r++)
       patterns.push_back(random_pattern(RunbistScanWidth));
     foreach (patterns[p]) begin
       runbist_scan(patterns[p], $sformatf("sweep#%0d", p + 1), observed);
       seen_results[observed] = 1'b1;
-      if (observed != 8'h0) any_nonzero = 1'b1;
+      if (observed != '0) any_nonzero = 1'b1;
       results_s = {results_s, $sformatf("%s0x%02h", p ? "," : "", observed)};
     end
     family_check("CHK-RUNBIST-RESPONSE", "distinct RUNBIST scan responses",
@@ -173,8 +173,7 @@ class dtp_jtag_runbist_test_seq extends dtp_jtag_base_test_seq;
     };
     seed_scenario_rng();
     attach_family_checker(required);
-    `uvm_info(get_type_name(),
-              "Step 1: Reset TAP; RUNBIST raises the DFT runbist strobe, BYPASS drops it", UVM_LOW)
+    log_step("1", "Reset TAP; RUNBIST raises the DFT runbist strobe, BYPASS drops it");
     reset_to_tlr();
     m_sib_model.reset();
     m_dbg_disable = '0;
@@ -183,28 +182,21 @@ class dtp_jtag_runbist_test_seq extends dtp_jtag_base_test_seq;
     check_scan_observable(RunbistStrobeCheckId, "jtag_dft_runbist", 1'b0, "BYPASS loaded");
     load_runbist("RUNBIST reloaded");
 
-    `uvm_info(get_type_name(),
-              "Step 2: RUNBIST DR scans return the chain capture, then the pattern behind it",
-              UVM_LOW)
+    log_step("2", "RUNBIST DR scans return the chain capture, then the pattern behind it");
     check_runbist_response();
 
-    `uvm_info(get_type_name(),
-              "Step 3: Open the DFT SIB: the RUNBIST scan drives the DFT host scan controls",
-              UVM_LOW)
+    log_step("3", "Open the DFT SIB: the RUNBIST scan drives the DFT host scan controls");
     open_dft_sib();
     load_runbist("RUNBIST with the DFT SIB open");
     runbist_scan_windowed(dft_open_pattern(), DTP_SCAN_CTRL_SELECTED, "dft enabled");
 
-    `uvm_info(get_type_name(),
-              "Step 4: dft_nonsecure disable gates the DFT SIB, not the RUNBIST instruction",
-              UVM_LOW)
+    log_step("4", "dft_nonsecure disable gates the DFT SIB, not the RUNBIST instruction");
     m_dbg_disable = dtp_dbg_disable_only(DTP_DBG_PATH_DFT_NONSECURE);
     set_dbg_disable(m_dbg_disable);
     load_runbist("RUNBIST under the dft_nonsecure disable");
     runbist_scan_windowed(dft_gated_pattern(), DTP_SCAN_CTRL_GATED, "dft disabled");
 
-    `uvm_info(get_type_name(),
-              "Step 5: Clearing the disable restores the stored DFT SIB open state", UVM_LOW)
+    log_step("5", "Clearing the disable restores the stored DFT SIB open state");
     m_dbg_disable = '0;
     set_dbg_disable(m_dbg_disable);
     runbist_scan_windowed(dft_open_pattern(), DTP_SCAN_CTRL_SELECTED, "dft restored");

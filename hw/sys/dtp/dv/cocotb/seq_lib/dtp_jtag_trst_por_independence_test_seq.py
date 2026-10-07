@@ -12,7 +12,8 @@ scan with no instruction load and no TRST activity reads IDCODE.
 from __future__ import annotations
 
 from env.dtp_tap_device import DTP_DEFAULT_IDCODE
-from env.dtp_types import RESET_COUNT_CHECK_ID, DtpTapState
+from env.dtp_types import RESET_COUNT_CHECK_ID
+from ocah_jtag_vip import OcahJtagState
 
 from .dtp_jtag_base_test_seq import NON_IDCODE_PRELOADS, dtp_jtag_base_test_seq
 
@@ -24,7 +25,7 @@ class dtp_jtag_trst_por_independence_test_seq(dtp_jtag_base_test_seq):
     """Run POR-only TAP reset checks while TRST_N stays deasserted."""
 
     async def body(self) -> None:
-        checker = await self.attach_family_checker(
+        await self.attach_family_checker(
             {
                 "CHK-TAP-RESET-TLR",
                 "CHK-TAP-STATE",
@@ -32,19 +33,15 @@ class dtp_jtag_trst_por_independence_test_seq(dtp_jtag_base_test_seq):
                 "CHK-IDCODE-RECOVERY",
                 RESET_COUNT_CHECK_ID,
             },
-            # Navigating into the Pause states crosses Shift -> Exit1 and
-            # publishes partial scans the sequence cannot count, so the
-            # pin-level scan monitor stays off.
-            use_monitor=False,
         )
         rng = self.rng("trst_por_independence")
         state = rng.choice(
             [
-                DtpTapState.RUN_TEST_IDLE,
-                DtpTapState.SHIFT_IR,
-                DtpTapState.SHIFT_DR,
-                DtpTapState.PAUSE_IR,
-                DtpTapState.PAUSE_DR,
+                OcahJtagState.RUN_TEST_IDLE,
+                OcahJtagState.SHIFT_IR,
+                OcahJtagState.SHIFT_DR,
+                OcahJtagState.PAUSE_IR,
+                OcahJtagState.PAUSE_DR,
             ]
         )
         cycles = rng.randint(2, 8)
@@ -58,12 +55,11 @@ class dtp_jtag_trst_por_independence_test_seq(dtp_jtag_base_test_seq):
 
         self.log_step(2, "Hold power-on reset for %d TCK periods with TCK idle", cycles)
         item = await self.pulse_por(cycles=cycles)
-        self.family_check(
+        self.check_tap_state(
             POR_CHECK_ID,
-            "TAP state during POR",
             item.result,
-            int(DtpTapState.TEST_LOGIC_RESET),
-            context=context,
+            OcahJtagState.TEST_LOGIC_RESET,
+            context=f"during POR {context}",
         )
         self.family_check(
             POR_CHECK_ID,
@@ -72,11 +68,9 @@ class dtp_jtag_trst_por_independence_test_seq(dtp_jtag_base_test_seq):
             1,
             context=context,
         )
-        self.record_tap_state(item.result, DtpTapState.TEST_LOGIC_RESET)
-        checker.sync_state(DtpTapState.TEST_LOGIC_RESET)
 
         self.log_step(3, "TLR -> RTI by TMS, then a DR scan with no IR load reads IDCODE")
-        await self.tms_expect(0, DtpTapState.RUN_TEST_IDLE)
+        await self.tms_expect(0, OcahJtagState.RUN_TEST_IDLE)
         idcode = await self.shift_dr(0, 32)
         self.family_check(
             "CHK-IDCODE-RECOVERY",

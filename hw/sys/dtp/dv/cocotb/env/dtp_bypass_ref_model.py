@@ -53,6 +53,7 @@ class DtpBypassRefModel(OcahRefModel):
         self._model = DtpJtagIrModel()
 
     def write(self, item: OcahJtagScanItem) -> None:
+        """Track IR scans; predict the TDO of a DR scan under a known bypass-family instruction."""
         self._model.sync_power_on_reset(self.tb_if.sample("por_assert_count"))
         expected = DtpExpectedItem(compare=False, time_ns=item.end_time_ns)
         if item.is_ir:

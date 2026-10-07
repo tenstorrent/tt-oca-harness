@@ -4,9 +4,9 @@
 
 `OcahAxiLiteSlaveDriver` is the cocotbext-backed AXI4-Lite RAM responder,
 extended with the OCAH fault controls (one-shot non-OKAY response injection
-and bounded READY backpressure) via `OcahFaultMixin` shared with the AXI4
-slave driver. The test-facing backdoor/fault API lives in
-`OcahAxiLiteSlaveSequence`.
+with an errored-beat read word, and bounded READY backpressure) via
+`OcahFaultMixin` shared with the AXI4 slave driver. The test-facing
+backdoor/fault API lives in `OcahAxiLiteSlaveSequence`.
 """
 
 from __future__ import annotations
@@ -71,13 +71,10 @@ class _FaultAxiLiteRamRead(AxiLiteRamRead):
             addr = (int(ar.araddr) // self.byte_lanes) * self.byte_lanes
             prot = AxiProt(int(getattr(ar, "arprot", AxiProt.NONSECURE)))
             r = self.r_channel._transaction_obj()
-            r.rresp = self.fault_owner.read_errors.pop(addr, AxiResp.OKAY)
-            data = (
-                bytes(self.byte_lanes)
-                if r.rresp != AxiResp.OKAY
-                else await self._read(addr, self.byte_lanes)
-            )
-            r.rdata = int.from_bytes(data, "little")
+            r.rresp, r.rdata = self.fault_owner.take_read_error(addr, 8 * self.byte_lanes)
+            if r.rresp == AxiResp.OKAY:
+                data = await self._read(addr, self.byte_lanes)
+                r.rdata = int.from_bytes(data, "little")
             await self.r_channel.send(r)
             self.log.info(
                 "AXI-Lite read addr=0x%08x arprot=%s resp=%s",

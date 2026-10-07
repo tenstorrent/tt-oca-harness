@@ -3,7 +3,7 @@
 //
 // dtp_dbg_ctrl_boot_stall_test — DEBUG_CONTROL boot-stall matrix, independence from the override,
 // and independence from the clock-stop bits
-// (looped runner with per-pass family evidence, 16-pass floor).
+// (looped runner with per-pass family evidence).
 
 class dtp_dbg_ctrl_boot_stall_test extends dtp_base_test;
   `uvm_component_utils(dtp_dbg_ctrl_boot_stall_test)
