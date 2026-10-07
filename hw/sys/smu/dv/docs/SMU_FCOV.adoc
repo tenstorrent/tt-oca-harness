@@ -32,7 +32,7 @@ compares a golden.
 |Reference architecture |`SMU_TB_ARCH.adoc`
 |Framework |PyUVM on cocotb
 |Simulators |Verilator (`user`, line, expression) and VCS (the cover properties, the covergroups, and line, condition, branch and toggle over the SMU's own logic)
-|Coverage set |`--items all`, the 120-leaf package regression. The SEP firmware and lifecycle leaves need the RISC-V toolchain, so the run of record is a developer or self-hosted run: `python3 tools/dv/run_dv.py --dut smu --tool verilator --items all --cov` for the cover properties, then `tools/dv/fcov_owners.py` over its run directory (<<smu-fcov-owners>>); `python3 tools/dv/run_dv.py --dut smu --tool vcs --items all --cov` for the covergroups and the code and toggle families (`cov/config/vcs/README.md`). No `regress.yml` tier collects coverage: both `smu` rows carry `coverage: false`
+|Coverage set |`--items all`, the package regression. The SEP firmware and lifecycle leaves need the RISC-V toolchain, so the run of record is a developer or self-hosted run: `python3 tools/dv/run_dv.py --dut smu --tool verilator --items all --cov` for the cover properties, then `tools/dv/fcov_owners.py` over its run directory (<<smu-fcov-owners>>); `python3 tools/dv/run_dv.py --dut smu --tool vcs --items all --cov` for the covergroups and the code and toggle families (`cov/config/vcs/README.md`). No `regress.yml` tier collects coverage: both `smu` rows carry `coverage: false`
 |Policy files |`cov/config/verilator/smu_wrapper_coverage_policy.toml`, `cov/config/vcs/smu_wrapper_coverage_policy.toml`
 |===
 
@@ -362,7 +362,7 @@ policy entry names them.
 |`c_axi_in_bresp_exokay`, `c_axi_in_rresp_exokay` |EXOKAY answers an exclusive access, and no subordinate behind the crossbar has an exclusive monitor: every AXI interconnect in the SEP and SMC is built without atomics and the memory adapters tie exokay off. `smu_axi_in_attribute_sweep_test` checks that an AxLOCK=1 access is answered OKAY |A subordinate behind the SMU crossbar with an exclusive monitor
 |`g_sep.c_lc_sigint_err` |`lc_sigint_err` rises only when the exported LC_STATE differential pair disagrees with itself. The eFuse shadow re-encodes the raw state, so the pair is valid unless corrupted in flight, which takes a fault injected inside the SEP; the SEP bench grades that path |A fault-injection hook on the exported LC_STATE pair in `tb/tb_wrapper_top.sv`
 |`c_map_smc_size_zero` |A zero SMC REGION_SIZE is illegal: `smc_base_config` requires a non-zero power of two, and zero leaves no reachable local aperture. The crossbar rule it forms has `start == end`, which the decoder's map check rejects |A specification change that makes a zero SMC window a legal state
-|`g_sep.c_map_sep_size_zero` |A zero SEP_REGION_SIZE forms a crossbar rule with `start == end` (`hw/sys/smu/rtl/smu_axi_xbar.sv` 72-74), and the decoder's map check accepts only `start < end` or `end == 0` (`vendor/pulp-platform/common_cells/upstream/src/addr_decode_dync.sv` 150), so a zero-size SEP aperture cannot be programmed on this bench: the check fails the run (#2605, closed on the design owner's contract that the size is not programmed to zero) |An aperture encoding the decoder accepts for zero size
+|`g_sep.c_map_sep_size_zero` |A zero SEP_REGION_SIZE forms a crossbar rule with `start == end` (`hw/sys/smu/rtl/smu_axi_xbar.sv` 72-74), and the decoder's map check accepts only `start < end` or `end == 0` (`vendor/pulp-platform/common_cells/upstream/src/addr_decode_dync.sv` 150), so a zero-size SEP aperture cannot be programmed on this bench: the check fails the run, and the design owner's contract is that the size is never programmed to zero |An aperture encoding the decoder accepts for zero size
 |===
 
 The covergroups carry the same facts as ignored bins: `cg_axi_in_resp`
@@ -458,9 +458,9 @@ evidence:
   configuration reaches becomes an ignored bin with the fact beside it.
 
 The covergroups declared inside vendored RTL are the only ones the group
-exclusion file drops; the companion's `gen_smu_wrapper_group_exclusions.py` names each class
-with its reason, and a covergroup under `u_dut` that no class names stops the
-generator.
+exclusion file drops; `cov/config/vcs/README.md` ("Covergroups from vendored
+RTL") names each class with its reason, and generation fails on a covergroup
+under `u_dut` that no class names.
 
 ==== What the plan may claim
 

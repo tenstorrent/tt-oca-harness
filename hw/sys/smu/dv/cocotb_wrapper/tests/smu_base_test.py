@@ -375,6 +375,7 @@ class smu_base_test(uvm_test):
             reset_active_level=False,
             size=self.cfg.axi_out_mem_size,
             name="smu_axi_out",
+            max_outstanding=self.cfg.axi_out_max_outstanding,
         ).sequence
         # Verilator two-state simulation initializes every signal to 0, so a
         # reset input that starts low never produces the falling edge that

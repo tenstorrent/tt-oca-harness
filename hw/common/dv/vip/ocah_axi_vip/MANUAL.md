@@ -309,6 +309,40 @@ Responder methods:
 | `clear_errors()` | Clear all programmed errors and armed ID corruption |
 | `enable_backpressure(channels, stall_cycles)` | Repeating bounded READY stalls |
 | `disable_backpressure()` | Clear READY stalls |
+| `set_response_delay(delays, read=True, write=True)` | Delay each B or R response by `delays` cycles (an integer), or by the next value of an iterable drawn once per response in request order (AXI4 responder only) |
+| `clear_response_delay()` | Send every response as soon as it is ready |
+| `max_outstanding` | The configured outstanding depth, or `None` |
+| `outstanding_peak()` | Most writes and reads outstanding at once since construction; needs `max_outstanding` |
+
+### Outstanding depth
+
+By default the AXI4 responder serves one request at a time, in request
+order: its request queues hold two more, and a request whose response
+cannot be sent holds up every request behind it. Constructed with
+`max_outstanding=N` (an agent keyword argument or the
+`OcahAxiSlaveConfig.max_outstanding` field), it accepts up to N writes and N
+reads, each counted from its address handshake to its B or RLAST handshake,
+and holds AWREADY or ARREADY low while N are outstanding. Each response
+then runs on its own: it waits its response delay, then for the previous
+response of the same ID, so same-ID responses leave in request order while
+responses of different IDs overtake one another. W beats are taken in AW
+order, and the beats of one read burst are never interleaved with another's.
+Error injection, ID corruption and backpressure apply in either mode.
+
+In both modes a read claims the one-shot errors of all its beats when the
+responder takes it into service, before its first R beat, so an
+`inject_error(..., read=True)` armed while a burst is in progress applies to
+a later read of the address, not to the remaining beats of that burst. A
+write claims its one-shot errors as each W beat arrives.
+
+```python
+ram = OcahAxiSlaveAgent(bus, dut.clk_i, dut.rst_ni, reset_active_level=False,
+                        max_outstanding=8).sequence
+rng = random.Random(seed)
+ram.set_response_delay(iter(lambda: rng.randint(8, 32), None))
+...
+assert ram.outstanding_peak()["read"] > 3
+```
 
 `OcahAxiLiteSlaveAgent` provides the same fault-control API for AXI4-Lite
 responder ports.

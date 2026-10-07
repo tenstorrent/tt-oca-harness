@@ -103,11 +103,11 @@ every name that was catalogued against them.
 |The SMC's internal behaviour (CSRs, peripherals, firmware boot beyond the smoke images) |The SMC plan, `hw/sys/smc/dv/docs/SMC_VPLAN.adoc`; this plan proves what crosses the SMU boundary and the SMC-under-SMU paths
 |The SEP's internal behaviour, its crypto blocks and its lifecycle-controller policy |The SEP plan, `hw/sys/sep/dv/docs/SEP_VPLAN.adoc`; this plan observes the SEP through the wrapper's boot, lifecycle and JTAG-gating outputs
 |The DTP's block-level behaviour (TAP controller, JTAG2AXI bridge internals, iJTAG instruments) |The DTP plan, `hw/sys/dtp/dv/docs/DTP_VPLAN.adoc`; this plan proves the DTP-under-SMU paths the wrapper exposes
-|Boundary-scan cells, adopter DFD and DFT scan chains |No cells in the wrapper; the bench loops every host scan chain back on itself (an approved stand-in)
-|The eFuse macros |`efuse_bank_model` answers every sense behind the shim (an approved stand-in)
+|Boundary-scan cells, adopter DFD and DFT scan chains |No cells in the wrapper; the bench loops every host scan chain back on itself (a declared stand-in; `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`, "Bench stand-ins and exceptions")
+|The eFuse macros |`efuse_bank_model` answers every sense behind the shim (a declared stand-in; `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`, "Bench stand-ins and exceptions")
 |The asynchronous cold-reset assertion path |The RTL de-glitches the assertion; the scenario is catalogued in the disposition record with the RTL ruling it waits on
 |Live SMC↔SEP mailbox challenge-response and SEP=1 fetch/retire as feature credit |Firmware-driven SEP scenarios need the toolchain container; they run in `all`, not in the scheduled `hosted` set, and count as observe-only
-|The SEP=0 composition, `smu #(.CFG(smu_pkg::NoSepCfg))`: the direct ID-width converters in place of `smu_axi_xbar`, the `lc_state` and demote tie-offs, the SEP=0 OTP error slave |Not verified in this tree: no target of this package elaborates SEP=0. The names that prove that shape are catalogued `not-runnable` in `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`, bodies in git history, and that record owns them until a plan builds the elaboration they need
+|The SEP=0 composition, `smu #(.CFG(smu_pkg::NoSepCfg))`: the direct ID-width converters in place of `smu_axi_xbar`, the `lc_state` and demote tie-offs, the SEP=0 OTP error slave |Not verified in this tree: no target of this package elaborates SEP=0. The names that prove that shape are catalogued `not-runnable` in `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`, which owns them while no target of this package elaborates SEP=0
 |===
 
 [[smu-scope-traceability]]
@@ -218,6 +218,7 @@ one-line intent.
 |`smu_axi_in_sep_aperture_test` |fabric |Inbound SMN traffic into the SEP aperture: SEP SRAM round trips under every id, qualifier, size, offset and burst swept, the SEP error responses, and every aperture address bit
 |`smu_smc_inbound_window_sweep_test` |fabric |Inbound SMN traffic into the SMC eFuse shim, external target and DTP control window under every AxPROT, the external target at every size and low address bit, and SMC SPM writes under distinct IDs held in flight.
 |`smu_axi_out_addr_len_size_test` |fabric |What the SMC masters a bench can drive send out of the chiplet crosses smu_axi_out with the address, AxSIZE and AxLEN they were given.
+|`smu_axi_out_outstanding_test` |fabric |An SMC iDMA copy holds more than three writes and more than three reads in flight on `smu_axi_out` against a responder of depth 8, and every response pairs with the oldest outstanding request of its ID.
 |`smu_aperture_map_walk_test` |fabric |The SMU crossbar decodes the SMC aperture at every base and size BASE_CONFIG admits and JTAG2AXI can follow.
 |`smu_xbar_connectivity_matrix_test` |fabric |An `ext_in` access that matches neither programmed aperture is answered DECERR by the crossbar and never reaches `ext_out`.
 |`smu_periph_ext_window_test` |fabric |The SMC peripheral crossbar's macro AXI-Lite window is reachable over JTAG2AXI, decodes its sub-windows, and shrinks with the SMC aperture.
@@ -348,11 +349,11 @@ row's EXPECT sentence is worth, read the check.
 *Test Coverage*:
 
 * OSS SMU Tier A: alias-remap manager scope (FAB_SMC_018 subset).
-* SEP=1 honest scope (no sep_in / no Force): S3 J2A programs alias region[0], writes via alias window, proves remapped SPM consumer readback (jtag manager path through smc_alias_remap_wrap).
-* S1 DEFERRED-NOTE — DMA data_accel observe needs DMA bring-up.
-* S2 DEFERRED-NOTE — Log Engine observe needs log_engine stimulus.
-* S4/S5 DEFERRED-NOTE — commercial SF-245 / SF-252 (unchanged).
-* Commercial hierarchical AW watch on axi_to_input_mux_req.* replaced by SPM consumer proof at the remapped target (same address math).
+* Scope on the SEP=1 wrapper (no sep_in, no Force): S3 J2A programs alias region[0], writes via alias window, proves remapped SPM consumer readback (jtag manager path through smc_alias_remap_wrap).
+* S1 (DMA data_accel observe) is not claimed: the bench has no DMA stimulus.
+* S2 (Log Engine observe) is not claimed: the bench has no log-engine stimulus.
+* S4 (cpu_ext alias remap) and S5 (alias-then-filter ordering at the outbound filter) are not claimed: `smc_alias_remap_wrap` has no cpu_ext manager port on this bench, and the ordering is not provable here.
+* The remap is proven by the SPM consumer's readback at the remapped target.
 
 *Test Procedure*:
 
@@ -421,10 +422,8 @@ row's EXPECT sentence is worth, read the check.
 
 *Test Coverage*:
 
-* Sequence for smu_axi_crossbar_error_handling_test (SMU_ALL_008).
 * SMU_ALL_008 owns only SMC-PWRGOOD-DTP-POR.S2 (Option B).
-* FAB-IN / DECODE removed from the runnable path (OOM / dishonest DECERR poison).
-* Reuses SMU_ALL_005 PTAP leave-TLR helper pattern.
+* FAB-IN / DECODE are not claimed here: the DECERR poison path cannot be driven honestly on this bench.
 
 *Test Procedure*:
 
@@ -458,7 +457,7 @@ row's EXPECT sentence is worth, read the check.
 *Test Coverage*:
 
 * OSS SMU Tier A: inbound allow_ns admit/block via JTAG2AXI + s_axi.
-* Honest SEP=1 scope (no sep_in_master, no Force): S1 allow_ns=0 — secure prot OKAY, nonsecure DECERR on VERSION_LO window S2 dual-slot — inst0 secure + inst1 NS overlap admits both prot[1] S3 clear — BLOCK_BY_DEFAULT DECERR for both Commercial FAB_SMC_026 outbound/S4/S5 matrix remains deferred (needs peer master).
+* Scope on the SEP=1 wrapper (no sep_in_master, no Force): S1 allow_ns=0 — secure prot OKAY, nonsecure DECERR on VERSION_LO window S2 dual-slot — inst0 secure + inst1 NS overlap admits both prot[1] S3 clear — BLOCK_BY_DEFAULT DECERR for both. The outbound S4/S5 matrix is not claimed here: the bench has no peer master.
 
 *Test Procedure*:
 
@@ -496,7 +495,7 @@ row's EXPECT sentence is worth, read the check.
 *Test Coverage*:
 
 * OSS SMU Tier A: inbound filter instance independence (FAB_SMC_023 subset).
-* SEP=1 honest scope (no sep_in / no Force): S4 post-reset BLOCK_BY_DEFAULT DECERR on VERSION_LO (captured before CSR writes) S1 J2A program+readback on instances 0/1/7/14/15 (DECODE independence) S2 pairwise isolation: inst0 WDT page vs inst1 VERSION page + src_id S3 address AND src_id AND prot on inst3 CPU_SCRATCH page S5 clear then configure admission on VERSION_LO Commercial SPM/global-aperture windows replaced by local-alias CSR pages.
+* Scope on the SEP=1 wrapper (no sep_in, no Force): S4 post-reset BLOCK_BY_DEFAULT DECERR on VERSION_LO (captured before CSR writes) S1 J2A program+readback on instances 0/1/7/14/15 (DECODE independence) S2 pairwise isolation: inst0 WDT page vs inst1 VERSION page + src_id S3 address AND src_id AND prot on inst3 CPU_SCRATCH page S5 clear then configure admission on VERSION_LO. The filter windows are local-alias CSR pages.
 
 *Test Procedure*:
 
@@ -536,7 +535,7 @@ row's EXPECT sentence is worth, read the check.
 *Test Coverage*:
 
 * OSS SMU Tier A: outbound filter instance CSR DECODE (FAB_SMC_025 S1).
-* SEP=1 honest scope (no sep_in / no Force / no ext_out peer): S1 J2A program then readback on instances 0/1/8/15 (DECODE independence) S2 DEFERRED-NOTE only — identical_struct_in_vs_out needs ext_out (SF-239) S3 DEFERRED-NOTE only — outbound pairwise isolation needs ext_out (SF-239) Commercial SPM/global egress windows replaced by distinct signature ranges; S1 proves CSR addressing/aliasing only, not egress traffic.
+* Scope on the SEP=1 wrapper (no sep_in, no Force, no ext_out peer): S1 J2A program then readback on instances 0/1/8/15 (DECODE independence); S1 proves CSR addressing and aliasing only, not egress traffic. S2 (identical_struct_in_vs_out) and S3 (outbound pairwise isolation) are not claimed: both need an ext_out peer. The windows are distinct signature ranges.
 
 *Test Procedure*:
 
@@ -607,8 +606,8 @@ row's EXPECT sentence is worth, read the check.
 *Test Coverage*:
 
 * OSS SMU Tier A: inbound AxPROT[1] decode via allow_ns=0 (FAB_SMC_029 S9 subset).
-* SEP=1 honest scope: JTAG2AXI filter program + s_axi stimulus only.
-* Commercial S1–S8 (GPIO AXI-Lite exact-match) needs sep_in_master — deferred.
+* Scope on the SEP=1 wrapper: JTAG2AXI filter programming and s_axi stimulus only.
+* S1–S8 (GPIO AXI-Lite exact-match) are not claimed here: the bench has no sep_in_master.
 
 *Test Procedure*:
 
@@ -645,8 +644,8 @@ row's EXPECT sentence is worth, read the check.
 *Test Coverage*:
 
 * OSS SMU Tier A: local fabric config-register delivery (FAB_SMC_032).
-* SEP=1 honest scope (no sep_in / no Force): S1 J2A ones/zeros RW-mask discovery + pattern write/readback at each fabric configuration-register destination (delivery-only; no field semantics).
-* Commercial used sep_in_master AXIL; OSS uses JTAG2AXI frontdoor to the same authoritative PeakRDL destinations.
+* Scope on the SEP=1 wrapper (no sep_in, no Force): S1 J2A ones/zeros RW-mask discovery + pattern write/readback at each fabric configuration-register destination (delivery-only; no field semantics).
+* Delivery is driven over the JTAG2AXI frontdoor to the PeakRDL-generated destinations.
 
 *Test Procedure*:
 
@@ -676,7 +675,7 @@ row's EXPECT sentence is worth, read the check.
 
 *BFM / Model*: `ocah_jtag_vip`
 
-*Objective*: OTP then fabric JTAG2AXI writes to the same MAP SPARE[0] word back to back: the later writer wins on both read paths and in the shadow register, with no torn value. The `_race_` in the test name is historical and overstates this; the concurrency case it suggests is carried as a waived row in `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`, with the reason no stimulus on this bench can produce it.
+*Objective*: OTP then fabric JTAG2AXI writes to the same MAP SPARE[0] word back to back: the later writer wins on both read paths and in the shadow register, with no torn value. The `_race_` in the test name overstates this: the concurrency case it suggests is carried as a waived row in `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`, with the reason no stimulus on this bench can produce it.
 
 *Test Coverage*:
 
@@ -1197,7 +1196,6 @@ complete at every fuse-reset release `smu_reset_pin_monitor` observes.
 
 *Test Coverage*:
 
-* Sequence for smu_ext_boot_seq_gate_test (SMU_006).
 * Observes smc_fuse_reset_n_delayed_o — the RTL consumer gated by ext_boot_seq_done_i (port_table: gates reset release).
 * rst_primary_smc_clk_no is NOT gated by this pin (negative control CHK-PRIMARY-NOT-GATED).
 * With the pin lowered again across a cold reset, the gate holds the fuse reset asserted after the new release, and raising the pin releases it.
@@ -1367,7 +1365,7 @@ gated window fails the scoreboard as well as the sequence.
 * SMC cold_reset port override updates the hierarchical SMC slice while the EXT override is released: the SMC slice's override half reads exactly the cold-reset bit, the SEP slice's override half reads 0 and the EXT override reads 0.
 * Clearing the TDR restores both overrides to 0.
 * Every managed-subsystem cold and warm port and every SEP slice port but the Key Manager's is then walked in the same two-update order: control staged under enable=1, enable cleared to apply the override, control released under the override, then the TDR cleared. After each update, the clearing one included, the TDR reads back as written, `ic_reset_smc_ovrd_o` carries exactly the ovrd bits of the SS ports, and the SMC and SEP slices are read whole: each is a packed struct whose `.ovrd` half sits above its `.val` half, the first field of each half nearest TDI, carrying the inverse of reset_enable and reset_control (`doc/integrator/src/smu.adoc`, "IC_RESET TDR Structure"; fuse is the SMC port nearest TDO, the Key Manager the SEP port nearest TDO). Every port's override and value are compared: override on the applied ports only, value equal to the control written, and every other port at its default.
-* The Key Manager port (`km_jtag_rst_n`, the SEP port nearest the external slice) has its control staged and released without the override being applied. With the override applied and lifted, the Key Manager's ROM request (`hw/top/sep_ip_integration.sv` `u_km_rom.req_i`) reads X on a four-state simulator and `prim_rom`'s `noXOnCsI` assertion fires; that is reported as an open design question rather than walked here.
+* The Key Manager port (`km_jtag_rst_n`, the SEP port nearest the external slice) has its control staged and released without the override being applied. With the override applied and lifted, the Key Manager's ROM request (`hw/top/sep_ip_integration.sv` `u_km_rom.req_i`) reads X on a four-state simulator and `prim_rom`'s `noXOnCsI` assertion fires, so the leaf does not apply the override on that port.
 
 *Test Procedure*:
 
@@ -1599,9 +1597,8 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 
 *Test Coverage*:
 
-* Sequence for smu_clock_stop_coordination_test (SMU_ALL_006).
-* DV-CARD: SMU_ALL_006 ANCHOR: smu_clock_stop_coordination_test Allocated (narrowed Option B): DTP-BOOT-STALL.S1 / S2 DTP-IC-RESET.S1 / S3 DTP-CLKSTOP-AGG.S1 / S2 / S3 No Force/deposit.
-* No DTP-FEAT-GATE.* / INT-FEAT-CTRL-DTP-GATE (re-homed to 008).
+* Scenarios: DTP-BOOT-STALL.S1/S2, DTP-IC-RESET.S1/S3, DTP-CLKSTOP-AGG.S1/S2/S3; no Force or deposit.
+* DTP-FEAT-GATE.* and INT-FEAT-CTRL-DTP-GATE are owned by SMU_ALL_008 — out of scope.
 * DTP-CLKSTOP-AGG.S3 attests only the reserved-port property: with `cla_clock_stop_en` set, the TB clock-stop request pins land on DTP[8:1] and leave DTP[0] unchanged. DTP[0] is the SMC's `clocks_stopped_by_cla`, which this bench cannot provoke (default SMC ROM, no CSR path to the CLA event), so its level is logged and no SMC-to-DTP connectivity is claimed for it.
 
 *Test Procedure*:
@@ -1653,8 +1650,8 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 *Test Coverage*:
 
 * FAB_SMC_031 — AXI4-Lite local peripheral delivery (UART/I2C/GPIO/I3C/AVSBus).
-* SEP=1 honest scope (no sep_in / no Force): S1 J2A read at each peripheral destination; status must not be DECERR.
-* Commercial used sep_in_master; OSS uses JTAG2AXI frontdoor to the same PeakRDL destinations (delivery-only; no field semantics).
+* Scope on the SEP=1 wrapper (no sep_in, no Force): S1 J2A read at each peripheral destination; status must not be DECERR.
+* Delivery is driven over the JTAG2AXI frontdoor to the PeakRDL-generated destinations (delivery only; no field semantics).
 
 *Test Procedure*:
 
@@ -2022,7 +2019,7 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 * EXTEST BSR scan loopback.
 * Loads IR=EXTEST, shifts compact 8-bit patterns through the TB scan_in<-scan_out loopback, and checks TDO returns the pattern retimed by one TCK (`(pattern << 1) & mask`): the zero-length chain feeds TDI through the DUT's IEEE 1149.1 falling-edge TDO retimer, so observed bit i is pattern bit i-1 and observed bit 0 is the retimer's scan-entry content (0, TDI held low during TAP navigation).
 * Also checks one-hot EXTEST decode.
-* STUB:DECLARED name: BSR_TB_SCAN_LOOPBACK site: tb_top jtag_bsr_host_scan_in_i <- jtag_bsr_host_scan_out_o length: DTP_BSR_MODEL_LEN (compact 8-bit model) scope: TB EXTEST DR path only — NOT LIVE pad BSR / SEP STAP proof real-path: deferred until a pad-BSR / STAP model is enrolled Patterns whose retimed expectation is all-zero are forbidden: the JTAG driver's _logic_int maps X/Z TDO to 0, which would make an all-zero expect can't-fail.
+* STUB:DECLARED `BSR_TB_SCAN_LOOPBACK`: tb_top ties `jtag_bsr_host_scan_in_i` <- `jtag_bsr_host_scan_out_o` over `DTP_BSR_MODEL_LEN` cells (compact 8-bit model); the stand-in proves the TB EXTEST DR path only, not a pad BSR or a SEP STAP (record: *Scan-chain loopbacks* in `SMU_DEFERRED_DISPOSITION.adoc`). Patterns whose retimed expectation is all-zero are forbidden: the JTAG driver maps an X/Z TDO to 0, which would make an all-zero expectation unable to fail.
 * Nonzero expectations remain sensitive to stuck-0 / unresolved TDO.
 * All TAP driving goes through the VIP sequence API (OcahJtagMasterSequence); the raw driver built by make_smu_jtag_tap is wrapped, never called directly here.
 
@@ -2334,8 +2331,7 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 
 *Test Coverage*:
 
-* Sequence for smu_dtp_jtag_smoke_test (SMU_ALL_005).
-* DV-CARD: SMU_ALL_005 ANCHOR: smu_dtp_jtag_smoke_test Allocated (PTAP only): DTP-JTAG-PTAP.S1 — IDCODE instruction returns configured IDCODE fields DTP-JTAG-PTAP.S2 — BYPASS places a single-bit register between TDI and TDO DTP-JTAG-PTAP.S3 — TRST or power-on returns TAP to Test-Logic-Reset (required_cells: rst=TRST, rst=POR, state=Test-Logic-Reset) No Force/deposit.
+* Scenarios (PTAP only): DTP-JTAG-PTAP.S1 — IDCODE returns the configured identification fields; S2 — BYPASS places a single-bit register between TDI and TDO; S3 — TRST or power-on returns the TAP to Test-Logic-Reset, and the leaf logs the cells rst=TRST, rst=POR and state=Test-Logic-Reset. No Force or deposit.
 * The TRST leg starts in Shift-DR and holds TMS low through the TCK cycles of the assert, so the TMS path is the Shift-DR self-loop and the exported TAP state can read Test-Logic-Reset only through the reset; the state is sampled while TRST is still asserted. The POR leg clocks no TCK. In both shapes a TRST that does not reach the TAP expires the `s4_trst_tlr` wait with the last state logged.
 
 *Test Procedure*:
@@ -2430,7 +2426,7 @@ them with the reconstructed scans.
 * S3: Write PATTERN_A to MAP SPARE[0], readback OKAY + data match.
 * S4: Write PATTERN_C (distinct) and readback — proves the write path is live.
 * Address from `smc_addr.h` `SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0)`.
-* Do not use relative +0x80 (OTP shim) or the stale 0xC000_B000 window.
+* The target is `SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0)`; the OTP shim register at +0x80 is a different register and is not the target.
 
 *Test Procedure*:
 
@@ -2959,7 +2955,6 @@ with the completion the bus returned.
 
 *Test Coverage*:
 
-* Sequence for smu_smc_mailbox_int_test (SMU_ALL_004).
 * SMU_ALL_004 owns SMC-MBX-IRQ-EXT.S2 — Width equals NumMailboxes (32) at the SMU boundary, measured on the DUT's own `smc_ext_mailbox_interrupts_o` output port rather than on the testbench net it drives.
 * Mailbox 0 and mailbox 31 raise their outbound write-threshold IRQ over the JTAG2AXI frontdoor, and the boundary vector must equal `baseline | 1<<idx` and return to baseline when the enable is cleared.
 * CHANNELS.S2/S3 and EXT.S1 are owned by SMU_ALL_008 — out of scope.
@@ -3251,10 +3246,8 @@ with the completion the bus returned.
 SMU regression on it. The entries in this section are the wrapper-native
 names: the elaboration leaf, the probe leaf and the SEP firmware set.
 
-Every entry in this section was derived from the test body and its sequence
-under `cocotb_wrapper/seq_lib/`, not from the testlist name. Where a sequence's
-own docstring records what a leaf does *not* prove, that wording is carried
-into Test Coverage rather than dropped.
+Each entry describes the test body and its sequence under
+`cocotb_wrapper/seq_lib/`, including what the leaf does not prove.
 
 Two things are worth reading before the entries:
 
@@ -3266,7 +3259,8 @@ Two things are worth reading before the entries:
   loop the linker garbage-collected as a path *not covered* rather than as
   passed. Its tokens are `+++CHK-<NAME>-FRONTDOOR+++` and
   `+++CHK-<NAME>-VERDICT+++`, where `<NAME>` is the sequence's own `NAME`
-  upper-cased, so the underscores in e.g. `CHK-SEP_AES-VERDICT` are deliberate.
+  upper-cased, so a token such as `CHK-SEP_AES-VERDICT` keeps the underscore of
+  the sequence name.
 * *`smu_sep_smoke_test` and `smu_smc_smoke_test` are not listed again here.*
   <<sec-066-smu_sep_smoke_test>> and <<sec-072-smu_smc_smoke_test>> describe the
   `cocotb_wrapper/tests/` bodies those names enrol, which are the only bodies of
@@ -3370,7 +3364,7 @@ Two things are worth reading before the entries:
 
 *Test Coverage*:
 
-* Runs the same image the internal SMU suite boots, not a minimal freestanding smoke.
+* Runs the SEP DV boot-health image `hw/sys/sep/dv/fw/tests/sep_smu_boot_health`, not a minimal freestanding smoke.
 * The verdict is the firmware's: it parks in one of two named terminal loops and the run is classified by which loop PC the SEP settles on.
 * Loop addresses come from the staged `.sym`, so the contract survives a firmware relink.
 * `boot_rom < iccm < pass_loop` first-seen ordering is asserted, so a pass loop reached without a real boot fails.
@@ -3596,7 +3590,7 @@ Two things are worth reading before the entries:
 * Programming the stack is *not* the claim: a firmware that wrote the registers into a dead block would reach its pass loop just the same.
 * The claim is checked at four points down the chain -- `esrc_noise_active` (lane-0's `dcor.noise_i` tracks the driven bit, so the force took), `drbg_seed_valid` (ESRC produced a seed the health tests accepted), `drbg_es_ack` (CSRNG consumed it) and `drbg_genbits_vld` (the CTR_DRBG produced genbits).
 * Bit-exact prediction of the genbits is not attempted; that needs the golden chain in `hw/sys/sep/dv` and belongs there.
-* This is the anchor the AES and OTBN entropy consumers were waiting on.
+* `smu_sep_aes_test` depends on this entropy stack coming up; this leaf is where the stack itself is proven.
 
 *Test Procedure*:
 
@@ -3752,14 +3746,14 @@ Two things are worth reading before the entries:
 |===
 +
 In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data (OTDOC), so the transmit pin is GPIO 0, the receive pin is GPIO 1, and lanes 2-3 are unused.
-* Spec gaps, for an owner decision. Graded with no spec text: the SMC GPIO `SPI.*` functions are driven by the SEP SPI host (the GPIO table names the function `SPI` and no document names its source); host lane _n_ is `SPI.DATA[n]` (by name only); a pin with no SEP source is not output-enabled (DV rule); the standard-mode lane roles come from OTDOC, which is not in the repository. Not graded, because no spec states them: the SPI function select (`lsio_interface_select_o`), the pad input enable (`pad2core_en_o`) of every SPI pin, the pad data level on pins with no SEP source, and whether a data lane may be driven while CS# is high. The leaf logs the table and these gaps on every run.
+* Spec gaps. Graded with no spec text: the SMC GPIO `SPI.*` functions are driven by the SEP SPI host (the GPIO table names the function `SPI` and no document names its source); host lane _n_ is `SPI.DATA[n]` (by name only); a pin with no SEP source is not output-enabled (DV rule); the standard-mode lane roles come from OTDOC, which is not in the repository. Not graded, because no spec states them: the SPI function select (`lsio_interface_select_o`), the pad input enable (`pad2core_en_o`) of every SPI pin, the pad data level on pins with no SEP source, and whether a data lane may be driven while CS# is high. The leaf logs the table and these gaps on every run.
 * Stimulus. The firmware runs three standard-speed segments with CONFIGOPTS.CPOL=0: a 1-byte TX (0x9F, pushed as one byte with a byte store; TXDATA takes byte enables, OT :518), a 4-byte TX (one word, 0x03 and the address 0x001000, CSAAT=1) and a 4-byte RX (CSAAT=0). A segment moves LEN+1 bytes (OT :443-453), CSAAT=0 raises CS# at its end (OT :470-476), and with CPOL=0 SCK idles low and emits one high pulse per bit (OT :352-356): 8 x (1 + 4 + 4) = 72 SCK rises in two CS# windows of 8 and 64 rises. The sequence holds the byte counts as `FW_SEGMENTS` and the pushed bytes as `FW_TXDATA_BYTES`; the firmware header points back to them.
 * Response stimulus. The bench device drives a 32-bit word drawn from the seed (`RANDOM_SEED`, salted) on the receive pin, one bit per receive SCK period. With CPHA=0 the data changes on the trailing edge and is sampled on the leading edge (OT :360-364), so the device changes the bit on the SCK falling edge; it releases the pin after the last receive bit and when CS# rises. The draw is rejected until the four bytes are distinct and none is 0x00 or 0xFF, so a stuck lane, a lane swap or a byte-order fault gives a different word. The word is a function of the seed only; it is not evidence on its own.
 * Firmware verdict. The image checks on-chip that each stage reaches READY / idle, that ERROR_STATUS has no CMDINVAL / CSIDINVAL, that exactly one word lands in the RX FIFO and that the FIFO then drains. It parks in one of eight per-stage fail loops, or in a catch-all loop the compiler can drop (then reported as a path not covered). The image does not judge the received word: the bench grades it.
 * Graded window. Every `clk_smu` cycle from the first cycle the monitor samples with the SEP's ICCM-fetch latch (`sep_iccm_fetch_seen_o`) set to 2000 cycles after the firmware verdict. The window starts before the firmware enables the host outputs, which the OE checker proves with at least one cycle of released SCK and CS# pins.
 * Controls. The host SCK output is counted on the same window as the pad SCK, and both must equal 72. Each host field that a pin follows (`sck`, `sck_en`, `csb`, `csb_en`, data lane 0, its enable) must take both values in the window, so the map checker grades both polarities. The idle checker needs a pre-transfer window of at least 200 cycles and a post-transfer window of at least 2000 cycles with no pad change, and it needs SCK, CS# and the transmit pin to move as data and as output enable inside the transfer.
 * X/Z. Graded on VCS, not run on Verilator. On a four-state simulator (`run_dv.py --dut smu --tool vcs`) `CHK-SEP-SPI-PAD-XZ` requires every probed pad bit, host net and RX FIFO handshake bit to read 0 or 1 on every cycle of the graded window. Verilator is two-state, so there the check cannot fail and is not run: the leaf logs that the four-state X/Z check is not run and emits no X/Z evidence. On either simulator a sample the monitor cannot read as 0/1 fails the run, because the checkers cannot grade that cycle.
-* Out of scope. Excluded for OSS hygiene: proprietary IPs in nonfree. Dual and quad speed and lanes 1-3 as outputs are not run, so the map checker grades the data and enable of GPIO 1-3 at the single value the host gives in standard mode.
+* Out of scope. Dual and quad speed and lanes 1-3 as outputs are not run, so the map checker grades the data and enable of GPIO 1-3 at the single value the host gives in standard mode.
 
 *Test Procedure*:
 
@@ -4480,7 +4474,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 * S1: PTAP IDCODE is the configured IEEE packing.
 * S2: TAP_3DCR selects the SEP STAP on the SEP=1 chain (`io`, `smc`, `sep`, `extra0`); host TMS then follows the PTAP, observed on the bench taps `tb_stap_sep_tck` / `tb_stap_sep_tms`. An unselected SEP STAP parks TMS. With the STAP spliced, the PTAP IDCODE reads back at the depth the network layout gives it.
 * S3: while the PTAP 3DCR select is set, the STAP chain replaces the TDR mux output on every IR and DR scan (`jtag_ptap` architecture, "STAP selection"), and a selected STAP splices its host TAP's register TDI-side of its own SIB, so a scan is the PTAP register, the SIBs of the STAPs ahead of the SEP, the SEP TAP's register, the SEP's SIB, then the SIBs behind it (DTP scan reference model `chain_layout`). The IR scan loads `TAP_3DCR` in the PTAP and `dmi` (`5'h11`) in the SEP TAP. A `dmcontrol` write sets `dmactive` first, since the RISC-V Debug Specification holds the module in its reset state until it is 1; a `dmi` read of `dmstatus` (op=1) followed by a nop scan then returns status 0 and `version=2`, the RISC-V Debug Specification 0.13 encoding the VeeR EL2 core implements. That read is the `dmi_mux` core aperture and is gated by `dmi_core_enable`.
-* Existing SEP STAP IDCODE / TRST / RSTVEC leaves do not enter `dmi_mux` and are not this card.
+* SEP STAP IDCODE, TRST and reset-vector behaviour does not pass through `dmi_mux` and is outside this test's claim.
 * Not claimed: abstract commands, SBA, DTMCS (`IR=5'h10` stays in the DTM).
 
 *Test Procedure*:
@@ -4816,7 +4810,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 * S7: a write to the entropy pool drain aperture is SLVERR (`fabric.adoc`: "Writes to it terminate with BRESP=SLVERR"); a read and a write of SEP-local 0x0, which no component owns, are not OKAY.
 * S8: with the aperture at [4 GiB, 8 GiB), a byte is read and written back unchanged at 4 GiB and at 4 GiB + 2^k for each k below 32, and with the aperture at the single byte 2^56 - 1 the same there; each completes, and the aperture then returns to its RDL reset values, where a byte at the reset base completes too. Every aperture change is followed by `sep_global_base_o` and `sep_region_size_o` settling at the programmed values. A passive tap on the SEP inbound port (`smu` net `sep_smn_inbound_axi_req`/`resp`) records every AR and AW address handshaken there during the walk: each walked address arrives on both channels, and no other address does. Two walked offsets decode to units the map names, and their answer is compared: SEP-local 0x1000_0000 is SEP SRAM, whose first byte is still the first byte of the S6 backpressure pattern, and SEP-local 0x2000_0000 is the eFuse SHIM control word, both read and written back OKAY. The responses at the other offsets are recorded. Together with S5 each address bit of the SEP port rises and falls on both channels.
 
-* S9: with the aperture grown to 0x2100_0000 so that it covers SEP-local 0x2000_0000, inbound traffic reaches the SEP external aperture and the external TRNG window. Offset 0x100 of the external aperture lies between the eFuse SHIM control block and the execute-in-place window of `hw/sys/sep/dv/models/regs/sep_external.rdl`, and the fabric refuses an address between unit windows (`hw/sys/sep/doc/memory_map.adoc`), which names no response code for it, so at that offset the check is that the response is not OKAY. A passive tap on the `ext_in` pins records every AR handshake (ARID, ARADDR, ARLEN) and every R beat (RID, RRESP, RLAST) and pairs each beat with its AR in per-ID order, so a read is graded beat by beat rather than by the one response code the VIP keeps per read: each AR draws ARLEN + 1 beats with RLAST on the last only, and the reads tapped at the external aperture and at the TRNG window are exactly the (address, beat count) pairs offered there. Every AxID, AxCACHE/AxQOS/AxREGION/AxLOCK corner, AxPROT encoding, AxSIZE with a byte offset, and INCR, WRAP and FIXED burst up to 256 beats offered at the external aperture, write and read, ends in an error response, on every R beat of a read, and so does each read of an eight-read train under distinct IDs held in flight by RREADY, every access of sixty-four reads, alternately single and eight-beat bursts, and sixty-four writes over four IDs launched together there with RREADY and BREADY held low for 20000 cycles, and each of four writes launched together whose W trails the first AW by 64 cycles. No external TRNG is connected, and `doc/integrator/src/smu.adoc:1123` ("External TRNG") says to terminate `ext_trng_axil` with a DECERR slave then; the crypto demux answers a burst in the crypto region with DECERR on every beat (`hw/sys/sep/doc/crypto.adoc`, "Single-Beat Access Only"). Every beat of every TRNG-window read is DECERR: each AxPROT encoding and each AxSIZE with a byte offset, and each of sixty-four reads, alternately single and eight-beat bursts, launched with sixty-four writes over four IDs and held in flight. The TRNG-window writes (each AxPROT encoding and AxSIZE, the sixty-four held with those reads, sixty-four held writes alone and four W-lagged writes) are a recorded observation: the log line `OBSERVE-AXIIN-SEP-TRNG-WRITE` counts their response codes and nothing is graded on them. That they are refused with DECERR is Phase 2 (<<smu-fcov-phase2>>): the integrator guide names a DECERR slave, the writes are observed to return SLVERR, and the disagreement is unresolved. The eFuse shim word at the base of the external aperture is the one target there that answers: under each AxPROT, under sixty-four reads and sixty-four writes over four IDs launched together with RREADY and BREADY held low for 20000 cycles, and in a sweep of a write whose W trails its AW by 64 cycles against a read whose AR is delayed by 40 to 86 cycles, so that for some delay the read and the write data reach the shim together, it reads and writes back OKAY. With the S4 aperture restored, a system-bus read and a write of the external aperture each report a bus error.
+* S9: with the aperture grown to 0x2100_0000 so that it covers SEP-local 0x2000_0000, inbound traffic reaches the SEP external aperture and the external TRNG window. Offset 0x100 of the external aperture lies between the eFuse SHIM control block and the execute-in-place window of `hw/sys/sep/dv/models/regs/sep_external.rdl`, and the fabric refuses an address between unit windows (`hw/sys/sep/doc/memory_map.adoc`), which names no response code for it, so at that offset the check is that the response is not OKAY. A passive tap on the `ext_in` pins records every AR handshake (ARID, ARADDR, ARLEN) and every R beat (RID, RRESP, RLAST) and pairs each beat with its AR in per-ID order, so a read is graded beat by beat rather than by the one response code the VIP keeps per read: each AR draws ARLEN + 1 beats with RLAST on the last only, and the reads tapped at the external aperture and at the TRNG window are exactly the (address, beat count) pairs offered there. Every AxID, AxCACHE/AxQOS/AxREGION/AxLOCK corner, AxPROT encoding, AxSIZE with a byte offset, and INCR, WRAP and FIXED burst up to 256 beats offered at the external aperture, write and read, ends in an error response, on every R beat of a read, and so does each read of an eight-read train under distinct IDs held in flight by RREADY, every access of sixty-four reads, alternately single and eight-beat bursts, and sixty-four writes over four IDs launched together there with RREADY and BREADY held low for 20000 cycles, and each of four writes launched together whose W trails the first AW by 64 cycles. No external TRNG is connected, and `doc/integrator/src/smu.adoc` ("External TRNG") says to terminate `ext_trng_axil` with a DECERR slave then; the crypto demux answers a burst in the crypto region with DECERR on every beat (`hw/sys/sep/doc/crypto.adoc`, "Single-Beat Access Only"). Every beat of every TRNG-window read is DECERR: each AxPROT encoding and each AxSIZE with a byte offset, and each of sixty-four reads, alternately single and eight-beat bursts, launched with sixty-four writes over four IDs and held in flight. The TRNG-window writes (each AxPROT encoding and AxSIZE, the sixty-four held with those reads, sixty-four held writes alone and four W-lagged writes) are a recorded observation: the log line `OBSERVE-AXIIN-SEP-TRNG-WRITE` counts their response codes and nothing is graded on them. That they are refused with DECERR is Phase 2 (<<smu-fcov-phase2>>): the integrator guide names a DECERR slave while the writes return SLVERR, so this plan grades nothing on them. The eFuse shim word at the base of the external aperture is the one target there that answers: under each AxPROT, under sixty-four reads and sixty-four writes over four IDs launched together with RREADY and BREADY held low for 20000 cycles, and in a sweep of a write whose W trails its AW by 64 cycles against a read whose AR is delayed by 40 to 86 cycles, so that for some delay the read and the write data reach the shim together, it reads and writes back OKAY. With the S4 aperture restored, a system-bus read and a write of the external aperture each report a bus error.
 * S10: sixteen writes and then sixteen reads into SEP SRAM, each under its own ID, are launched before the first response is taken while the master holds RREADY and BREADY low for 600 cycles; every write is OKAY and every read returns its word.
 * S11: the SEP debug module's system bus opens SMC inbound filter entry 0 over the whole address space, and ext_in reads the SMC's VERSION_LO at its global address, which returns the RDL reset value. The system bus then sets SMC outbound filter entry 0 to pass all and programs the SMC iDMA through the SEP view of the SMC window to copy a block from SEP SRAM, over the crossbar's `smc_out` to `sep_in` route, to an address outside both apertures, which the crossbar sends to `ext_out`. The bench responder holds the block ext_in wrote; a second copy brings it back from `ext_out` into SEP SRAM over the same route, where ext_in reads it; a system-bus write and read then leave on `ext_out` from the SEP, where the responder holds the word written, and a further ext_in read of the source is OKAY.
 
@@ -5129,7 +5123,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 * S4: each outbound mailbox raises its interrupt while its write FIFO holds more words than WIRQT with the write-threshold interrupt enabled (`axil_mailbox` register description). For each of the eight mailboxes, with WIRQT 0 and IRQEN.wtirq set and the write FIFO empty, `sep_mailbox_interrupts` reads 0; a word written then raises that lane alone, and flushing the FIFO, acknowledging IRQS and clearing IRQEN drop it.
 * S5: with the SPI host enabled and its outputs driven (`spi_host.hjson`), the data lanes are sampled once before any command as the idle baseline; two quad-speed transmits of four bytes then drive all four data lanes high, move every lane off its idle level, and raise every output enable, and a quad-speed receive of four bytes (COMMAND.LEN 3), which completes with STATUS.ACTIVE low, takes STATUS.RXQD from 0 to one 32-bit word and leaves every enable low. With EVENT_ENABLE.IDLE and INTR_ENABLE.SPI_EVENT set and the host idle, INTR_STATE.SPI_EVENT and the interrupt line are high; a write of 1 to INTR_STATE.SPI_EVENT, which the RDL makes read-only (`spi_controller.rdl`), leaves both high, and clearing EVENT_ENABLE.IDLE drops both, since SPI_EVENT "follows the level of the events selected by EVENT_ENABLE" (`hw/sys/sep/doc/spi.adoc`). The LSIO trigger with the TX FIFO empty, and the values 0xF, 0x0, 0x5, 0xA and 0x0 the bench drives on GPIO pads 0..3 as seen on `sep_spi_rxd[3:0]`, are recorded as observations.
 * S6: the bench-bound digest is the hash of the all-zero token, so writing that token and the GO strobe reports the match code in SEC_DISABLE_TOKEN_MATCH and raises `sep_security_disable` (`hw/sys/sep/doc/security_disable.adoc`, "Token Activation"), read at the SEP eFuse controller's `security_disable_o`, the `smu` wire and the SMC input `u_smc.sep_security_disable_i`, all 0 before the token and all 1 after the match; a token one bit off then reports the mismatch code (`efuse_mmr.rdl`: "Match = 6'b010101, Mismatch = 6'b101010"). The disable level after the mismatch is recorded.
-* S6 stand-in: on a four-state simulator S6 runs with `ValidDigestModeFlag_A` on the eFuse token processing's SHA-256 `prim_sha2_32` instances ignored by `smu_sim_cfg.toml` `[pass_fail] extra_ignore_patterns` (the "SEP assertion-ignore patterns" record in `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`); on Verilator `+define+ASSERTS_OFF` compiles it out. The verdict is the match and mismatch codes read over the system bus and the security-disable levels, not the assertion. The record's approval fields are `pending`, so until a person fills them `CHK-SEP-SECURITY-DISABLE` is graded as if the stand-in were undeclared. Approver: pending. Date, revision: pending. Review or expiry: pending.
+* S6 stand-in: on a four-state simulator S6 runs with `ValidDigestModeFlag_A` on the eFuse token processing's SHA-256 `prim_sha2_32` instances ignored by `smu_sim_cfg.toml` `[pass_fail] extra_ignore_patterns` (the "SEP assertion-ignore patterns" record in `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`); on Verilator `+define+ASSERTS_OFF` compiles it out. The verdict is the match and mismatch codes read over the system bus and the security-disable levels, not the assertion. `CHK-SEP-SECURITY-DISABLE` is graded as if the stand-in were undeclared unless the record's "SEP assertion-ignore patterns" entry has an approval recorded where its *Bench stand-ins and exceptions* section says approvals are kept.
 * S7: `sep_wdt_timer_rst_req` is low; with WDOG_CTRL.enable set and bark and bite thresholds of 0x20 (OpenTitan `aon_timer`), the watchdog bites and the request rises (`aon_timer.hjson`: "A bite triggers a reset"). The request level after the cool reset pin is held and released is recorded.
 * S8: the bench drives GPIO pads 4..7, 10 and 54 high and records SPI lanes 4..7, DQS and the rebar loopback while the chip runs, in cold reset and after the release.
 * Spec gaps: no specification states when the SPI host's LSIO trigger rises; the GPIO pin table (`doc/integrator/meta/ocah_gpio_table.adoc`) assigns pads 0..7, 10 and 54 to the SMC SPI and gives the SEP SPI no pad, so nothing states what the SEP SPI receive lanes read; no specification states whether a security-disable token mismatch withdraws an earlier match, or what clears the SEP watchdog reset request. Those values are observations until the specification states them.
@@ -5284,6 +5278,45 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 
 '''''
 
+[[sec-127-smu_axi_out_outstanding_test]]
+===== 127 `smu_axi_out_outstanding_test`
+
+*Source Module*: `smu_axi_out_outstanding_test` (`cocotb_wrapper/tests/`; the sequence extends `smu_axi_out_addr_len_size_test_seq` for its TAP bring-up and iDMA copy)
+
+*BFM / Model*: `ocah_jtag_vip` for the SMC JTAG2AXI bridge, the outbound filter and the iDMA registers; the shared responder on `u_axi_out_if`, built with `max_outstanding` 8 and a seeded response delay, whose handshakes the sequence records; `elaboration` firmware mode
+
+*Objective*: The outbound SMN port carries several transactions in flight at once, and the bench responder accepts and answers them without losing, duplicating or reordering a response within an ID.
+
+*Test Coverage*:
+
+* The responder accepts up to 8 writes and 8 reads, each counted from its address handshake to its B or RLAST handshake, and delays every response by a seeded 16 to 48 `clk_smu` cycles; a delayed response holds back only later responses of its own ID (`hw/common/dv/vip/ocah_axi_vip/MANUAL.md`, "Outstanding depth").
+* The SMC iDMA is the bench-drivable master that issues transactions back to back. With CONFIG `src_reduce_len` and `dst_reduce_len` set and `max_llen` 0, as in S3 of `smu_axi_out_addr_len_size_test`, a 2 KiB copy between two addresses outside the SMC and SEP apertures crosses the boundary as one address phase per beat.
+* Spec gap: no document states the outbound port's outstanding depth (`doc/integrator/src/smu.adoc` sizes no such queue), so the floor of more than three in flight is the DV-owned rule this leaf checks, and the peak each direction reaches is recorded as an observation.
+* Over the copy, the writes and the reads in flight at once are counted at the boundary wires and by the responder; each count exceeds 3 and none exceeds 8. The destination holds the source bytes and DONE reports the id the launch read from NEXT_ID.
+* Every R beat carries the bytes the responder holds at the address of the oldest outstanding read of its RID, every B answers an outstanding write of its BID, and none is left outstanding after the copy.
+* Not claimed: responses of different IDs overtaking one another at this boundary. The iDMA issues every read under one ID and every write under one ID, so the response order is judged within an ID only; `ocah_axi_slave_outstanding_test` proves the cross-ID behaviour of the responder.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up the primary TAP, program outbound filter entry 0 to pass all, set the responder's response delay and start recording the boundary handshakes.
+. Fill the source block in the responder, zero the destination, program the iDMA descriptor with the single-beat CONFIG, launch it by reading NEXT_ID once, and poll DONE.
+. Clear the response delay, wait for the outstanding transactions to retire, and compare the destination, the peak counts and the per-ID pairing.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-AXIOUT-OUTSTANDING` |the copy completes with the launched id and the destination holds the source block; the writes and the reads in flight at once, counted at the wires and by the responder, each peak above 3 and at most 8
+|`CHK-AXIOUT-OUTSTANDING-ORDER` |every R beat carries the data of the oldest outstanding read of its RID, every B answers an outstanding write of its BID, and the AW and B, and AR and RLAST, handshake counts are equal with none outstanding
+|assertion |outbound outstanding scenario incomplete s1..s2=<values>
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `hosted`.
+
+'''''
+
 === Formal Verification Plan
 
 No formal target exists for SMU. There is no `smu_formal_cfg.toml`, no
@@ -5303,12 +5336,12 @@ not SMU integration evidence. Every row of this plan is simulation credit.
 |Group |Leaves |Notes
 |`fw_boot` |4 |The firmware boot smokes, the SMC firmware fabric leaf and the elaboration leaf; needs the RISC-V toolchain, so no workflow schedules it
 |`elaboration` |1 |The elaboration leaf alone
-|`fabric` |18 |The fabric and filter leaves; every member is in `hosted`
+|`fabric` |19 |The fabric and filter leaves; every member is in `hosted`
 |`smc_under_smu` |23 |The SMC-facing leaves reached through the SMU; every member is in `hosted`
 |`dtp_under_smu` |38 |The DTP-facing leaves reached through the SMU; every member is in `hosted`
 |`smoke` |2 |The PR gate: `sim.yml` runs `--items smoke` on every hardware diff. Toolchain-free by construction
-|`hosted` |84 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
-|`all` |120 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
+|`hosted` |85 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
+|`all` |121 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
 |`sep_real_fw` |14 |Wrapper leaves that boot real SEP DV firmware images
 |`sep_entropy` |1 |The firmware-driven entropy stack
 |`sep_probe` |1 |The probe leaf that keeps SEP instruction retirement live while the TAP answers
@@ -5455,7 +5488,7 @@ emits; the map must not invent a checkbox the body cannot prove.
 |===
 
 [[smu-out-and-wrapper]]
-===== OUT, wrapper, and missing commercial names
+===== OUT names and the wrapper
 
 * Every name in `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc` is OUT for this subset,
   and none of them has a `TEST_EVIDENCE` row: the map holds rows only for
@@ -5641,9 +5674,10 @@ The `prim_sync3` file listed in `smu_sim_cfg.toml`
 elaborates ahead of the Bender filelist so Verilator's `-Wno-MODDUP`
 first-definition-wins selects it; when `tool == "vcs"` the
 runner drops any stub whose basename the Bender graph supplies, and the
-product cell elaborates. Xcelium receives both files like Verilator does;
-no Xcelium build of this bench is recorded, so which of the pair Xcelium
-elaborates is not established by this record. The behaviour the stand-in
+product cell elaborates. Xcelium receives both files like Verilator does, and
+this bench does not pin which of the pair it elaborates; a comparison against
+the product cell belongs to a VCS run, where the runner drops the stub. The
+behaviour the stand-in
 adds (`initial '0` on
 each stage), the leaves that observe a crossing
 (`obs_powergood_stable_o`, `obs_powergood_stable_low_seen_o`, the
@@ -5652,5 +5686,5 @@ reset-release observes of `smu_smc_reset_ctrl_test` and
 boot-stall leaves), and the condition that closes the entry are the
 `prim_sync3` stand-in row of
 `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc` (*Bench stand-ins and
-exceptions*). No VCS control run with the product cells is recorded on
+exceptions*). No VCS control run with the product cells has been made on
 this composition.
