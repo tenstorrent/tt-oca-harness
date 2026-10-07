@@ -242,7 +242,7 @@ scoreboard features a test requires, and the required evidence IDs of each
 shared-VIP recorder. The base test fills and randomizes it once; a thin test
 adds its requirements in `configure_test_cfg()`. `dtp_env_cfg` is derived
 from it (clock and TCK timing, responder memory size and response USER seed,
-attach mask, evidence policy) and is what the environment reads. The cocotb
+evidence policy) and is what the environment reads. The cocotb
 `DtpEnvCfg` carries the same timing randomization.
 
 ==== `dtp_virtual_sequencer`
@@ -350,11 +350,13 @@ requires its scenario IDs on each bridge.
 
 `dtp_tap_fsm_checker` is the always-on invariant subscriber on the JTAG
 event stream: on every completed TCK cycle the DUT one-hot TAP state must
-match the VIP IEEE 1149.1 next-state model, and the run ends as one
-aggregate `CHK-TAP-STATE` record; the sanity scenario additionally records
-per-pass state and transition closure (`CHK-TAP-VISIT-ALL`). It also holds
-the TRST_N level of the last TRST edge, which the SV-UVM `pulse_por` samples
-under the power-on reset; the cocotb `pulse_por` reads the TRST pin.
+match the VIP IEEE 1149.1 next-state model. Each mismatching cycle records
+a `CHK-TAP-STATE` FAIL with the expected and observed states, and the run
+ends with one aggregate `CHK-TAP-STATE` record; the sanity scenario
+additionally records per-pass state and transition closure
+(`CHK-TAP-VISIT-ALL`). It also holds the TRST_N level of the last TRST
+edge, which the SV-UVM `pulse_por` samples under the power-on reset; the
+cocotb `pulse_por` reads the TRST pin.
 `dtp_scan_window_monitor` counts high samples of named scan-control
 observables once per TCK cycle while a scenario holds a window open, and
 each observable's high count among the cycles the DUT's exported TAP state
