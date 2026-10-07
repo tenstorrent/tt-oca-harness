@@ -75,5 +75,11 @@ def patch_param_block(src_hex: str, dst_hex: str, magic: int, words: list) -> No
     for k, word in enumerate(words):
         for b in range(4):
             patches[base + 4 * k + b] = (word >> (8 * b)) & 0xFF
+    missing = sorted(a for a in patches if a not in cells)
+    if missing:
+        raise RuntimeError(
+            f"param block of {len(words)} words at 0x{base:x} runs past the DTCM image: "
+            f"first unbacked byte 0x{missing[0]:x}"
+        )
     os.makedirs(os.path.dirname(dst_hex) or ".", exist_ok=True)
     _rewrite(src_hex, dst_hex, patches)
