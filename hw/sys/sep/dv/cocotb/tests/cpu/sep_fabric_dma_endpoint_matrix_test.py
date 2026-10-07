@@ -128,7 +128,12 @@ P_FIELDS = (
     "smu reg_order reg_len0 reg_len1 reg_len2 reg_last0 reg_last1 reg_last2 filt_src "
     "filt_grp smc_off smc_len"
 ).split()
-PAIR_NAMES = (("sram", "scratch"), ("scratch", "sram"), ("wdt_regwen", "sram"), ("aes_ctrl_aux_regwen", "sram"))
+PAIR_NAMES = (
+    ("sram", "scratch"),
+    ("scratch", "sram"),
+    ("wdt_regwen", "sram"),
+    ("aes_ctrl_aux_regwen", "sram"),
+)
 PAIR_LEG = ("pair_sram_scratch", "pair_scratch_sram", "pair_wdt_sram", "pair_aes_sram")
 
 
@@ -346,7 +351,9 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
     def _leg_index(self, name: str, nth: int = 0) -> int:
         hits = [i for i, leg in enumerate(self.legs) if leg.name == name]
         if len(hits) <= nth:
-            raise AssertionError(f"leg {name} (#{nth}) never started; legs seen: {[x.name for x in self.legs]}")
+            raise AssertionError(
+                f"leg {name} (#{nth}) never started; legs seen: {[x.name for x in self.legs]}"
+            )
         return hits[nth]
 
     def _beats(self, tap: str, leg_i: int, ch: str):
@@ -368,7 +375,11 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         return out
 
     def _one(self, kind: str, **match) -> tuple[int, dict, str]:
-        hits = [r for r in self._recs(kind) if all(r[2].find(f" {k}={v}") >= 0 for k, v in match.items())]
+        hits = [
+            r
+            for r in self._recs(kind)
+            if all(r[2].find(f" {k}={v}") >= 0 for k, v in match.items())
+        ]
         if len(hits) != 1:
             raise AssertionError(f"expected one R {kind} {match}, got {len(hits)}")
         return hits[0]
@@ -383,7 +394,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             width = len(bits)
             for b in range(width // 8):
                 if (strb >> b) & 1:
-                    byte = bits[width - 8 * (b + 1): width - 8 * b]
+                    byte = bits[width - 8 * (b + 1) : width - 8 * b]
                     if re.search(r"[xXzZuUwW-]", byte):
                         bad += 1
                         break
@@ -395,13 +406,21 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         _, r, text = hits[0]
         n = 32 // 4
         exp = fnv(model_words(self.ep.p["seed"], r["tag"], n))
-        ok = (r["pre"] & ST3) == 0 and (r["st"] & ST_DONE) and not (r["st"] & ST_ERROR) and r["nbad"] == 0 and r["dsum"] == exp
+        ok = (
+            (r["pre"] & ST3) == 0
+            and (r["st"] & ST_DONE)
+            and not (r["st"] & ST_ERROR)
+            and r["nbad"] == 0
+            and r["dsum"] == exp
+        )
         assert ok, f"recovery copy after {after} failed: {text} (dsum expected 0x{exp:08x})"
         return r
 
     @staticmethod
     def _done_ok(r: dict, pre: str = "pre", st: str = "st", ec: str = "ec") -> bool:
-        return (r[pre] & ST3) == 0 and bool(r[st] & ST_DONE) and not (r[st] & ST_ERROR) and r[ec] == 0
+        return (
+            (r[pre] & ST3) == 0 and bool(r[st] & ST_DONE) and not (r[st] & ST_ERROR) and r[ec] == 0
+        )
 
     # ---- checks ----
     def _chk_pairs(self) -> None:
@@ -412,7 +431,9 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             ln = p[f"p{pid}_len"]
             n = ln // 4
             assert r["len"] == ln, f"pair {pid}: firmware ran len 0x{r['len']:x}, patched 0x{ln:x}"
-            assert self._done_ok(r), f"CHK-DMA-PAIR FAIL: pair {pid} did not complete cleanly: {text}"
+            assert self._done_ok(r), (
+                f"CHK-DMA-PAIR FAIL: pair {pid} did not complete cleanly: {text}"
+            )
             if pid in (0, 1):
                 m = model_words(seed, 0x10 + pid, n)
                 scr = SCRATCH + (p["p0_scr"] if pid == 0 else p["p1_scr"])
@@ -427,8 +448,13 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                 self.logger.info(
                     "CHK-DMA-PAIR PASS: src=%s dst=%s len=%d data_ok=1 done=1 form=%s graded_words=%d "
                     "dsum=0x%08x expect=0x%08x rsvd_half_sum=0x%08x(logged)",
-                    *PAIR_NAMES[pid], ln, "alias" if (p["form"] >> pid) & 1 else "direct",
-                    len(graded), r["dsum"], exp, r["rsum"],
+                    *PAIR_NAMES[pid],
+                    ln,
+                    "alias" if (p["form"] >> pid) & 1 else "direct",
+                    len(graded),
+                    r["dsum"],
+                    exp,
+                    r["rsum"],
                 )
             else:
                 nw, xz = self._xz_free(self._sram_in(leg_i))
@@ -449,14 +475,21 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                 self.logger.info(
                     "CHK-DMA-PAIR PASS: src=%s dst=sram len=%d data_ok=1 done=1 bit0_pre=1 bit0_post=1 "
                     "dst_bit0_all=1 sram_writes=%d xz=0 xz_graded=%d rsvd_or=0x%08x rsvd_and=0x%08x(logged)",
-                    PAIR_NAMES[pid][0], ln, nw, int(bool(xz_graded)), r["dor"] & ~1, r["dand"] & ~1,
+                    PAIR_NAMES[pid][0],
+                    ln,
+                    nw,
+                    int(bool(xz_graded)),
+                    r["dor"] & ~1,
+                    r["dand"] & ~1,
                 )
 
         # Outbound legs: completion and the PR-OUT beats of each leg.
         for tgt, leg, exp0 in (("ap", "out_ap", self.ep.ap_out), ("smu", "out_smu", p["smu"])):
             leg_i = self._leg_index(leg)
             _, r, text = self._one("OUT", tgt=tgt)
-            assert self._done_ok(r), f"CHK-DMA-PAIR FAIL: outbound {tgt} leg did not complete: {text}"
+            assert self._done_ok(r), (
+                f"CHK-DMA-PAIR FAIL: outbound {tgt} leg did not complete: {text}"
+            )
             aws = [b for b in self._beats("PR-OUT", leg_i, "aw") if b.addr != STDOUT]
             addrs = [b.addr for b in aws]
             assert addrs == [exp0, exp0 + 4], (
@@ -465,7 +498,9 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             )
             self.logger.info(
                 "CHK-DMA-PAIR PASS: src=sram dst=%s len=8 data_ok=na done=1 seen=PR-OUT beats=%d first=0x%x",
-                tgt, len(aws), exp0,
+                tgt,
+                len(aws),
+                exp0,
             )
 
         # Extension port: one beat each way; the response is logged only.
@@ -480,11 +515,18 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             self._recovery_after(leg)
             self.logger.info(
                 "OBS-BLOCKED: ext_%s dma_status=0x%08x error_code=0x%08x beats=%d (response not stated)",
-                d.lower(), r["st"], r["ec"], len(beats),
+                d.lower(),
+                r["st"],
+                r["ec"],
+                len(beats),
             )
             self.logger.info(
                 "CHK-DMA-PAIR PASS: src=%s dst=%s len=4 data_ok=na done=na seen=PR-EXT %s=0x%x beats=%d(logged) recovery_ok=1",
-                "ext" if d == "R" else "sram", "sram" if d == "R" else "ext", ch, EXT_WORD, len(beats),
+                "ext" if d == "R" else "sram",
+                "sram" if d == "R" else "ext",
+                ch,
+                EXT_WORD,
+                len(beats),
             )
 
     def _chk_alias(self) -> None:
@@ -496,7 +538,10 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         assert ok, f"CHK-DMA-ALIAS FAIL: direct copy {text} expect dsum=0x{exp:08x}"
         self.logger.info(
             "CHK-DMA-ALIAS PASS: form=direct alias=na direct=0x%08x data_ok=1 len=%d dsum=0x%08x expect=0x%08x",
-            SRAM + p["pd_dst"], p["pd_len"], r["dsum"], exp,
+            SRAM + p["pd_dst"],
+            p["pd_len"],
+            r["dsum"],
+            exp,
         )
 
         _, r, text = self._one("ALIAS", form="alias")
@@ -514,11 +559,15 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         assert ok, f"CHK-DMA-ALIAS FAIL: alias copy {text} expect sum=0x{exp:08x}"
         self.logger.info(
             "CTL-DMA-ALIAS LOG: direct source 0x%08x read by the LSU sum=0x%08x expect=0x%08x",
-            SRAM + p["pa_os"], r["ctl_sum"], exp,
+            SRAM + p["pa_os"],
+            r["ctl_sum"],
+            exp,
         )
         self.logger.info(
             "CHK-DMA-ALIAS PASS: form=alias alias=0x%08x direct=0x%08x data_ok=1 side=src,dst len=%d",
-            LOCAL_ALIAS + p["pa_os"], SRAM + p["pa_os"], p["pa_len"],
+            LOCAL_ALIAS + p["pa_os"],
+            SRAM + p["pa_os"],
+            p["pa_len"],
         )
 
         leg_i = self._leg_index("alias_ext_top")
@@ -531,11 +580,14 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         self._recovery_after("alias_ext_top")
         self.logger.info(
             "OBS-BLOCKED: alias_ext_top later_beats=%s dma_status=0x%08x error_code=0x%08x (response not stated)",
-            [hex(b.addr) if b.addr is not None else "X" for b in aws[1:]], r["st"], r["ec"],
+            [hex(b.addr) if b.addr is not None else "X" for b in aws[1:]],
+            r["st"],
+            r["ec"],
         )
         self.logger.info(
             "CHK-DMA-ALIAS PASS: form=alias alias=0x%08x direct=0x%08x data_ok=1 seen=PR-EXT recovery_ok=1",
-            EXT_TOP_ALIAS, EXT_TOP_WORD,
+            EXT_TOP_ALIAS,
+            EXT_TOP_WORD,
         )
 
     def _filter_sum(self, entries) -> int:
@@ -554,11 +606,18 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         _, r, text = self._one("OUTSET")
         ap, smu = self.ep.ap_out, p["smu"]
         exp_set = self._filter_sum(
-            [(rw_en, ap, ap + 7), (rw_en | ns, ap, ap + 7), (rw_en, smu, smu + 7), (rw_en | ns, smu, smu + 7)]
+            [
+                (rw_en, ap, ap + 7),
+                (rw_en | ns, ap, ap + 7),
+                (rw_en, smu, smu + 7),
+                (rw_en | ns, smu, smu + 7),
+            ]
         )
         attrs = (r["attrs_hi"] << 32) | r["attrs_lo"]
         want_attrs = (self.ep.ap_offset & REMAP_OFFSET_FIELD) | REMAP_VALID_FIELD
-        self.logger.info("OBS-FILTER-RANGE: out_setup START/END read-back differences=%d (logged)", r["rng_diff"])
+        self.logger.info(
+            "OBS-FILTER-RANGE: out_setup START/END read-back differences=%d (logged)", r["rng_diff"]
+        )
         assert r["rb_bad"] == 0 and r["rb_sum"] == exp_set and attrs == want_attrs, (
             f"CHK-DMA-USER FAIL: outbound set-up read-back {text}; expected rb_sum=0x{exp_set:08x} "
             f"attrs=0x{want_attrs:016x}"
@@ -573,13 +632,18 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         exp2 = self._filter_sum([(rw_en, smu, smu + 7), (rw_en | ns, smu, smu + 7)])
         self.logger.info(
             "OBS-FILTER-RANGE: stack START/END read-back differences=%d, after the flip=%d (logged)",
-            r["rng1_diff"], r["rng2_diff"],
+            r["rng1_diff"],
+            r["rng2_diff"],
         )
         refused = (r["pre"] & ST3) == 0 and bool(r["st"] & ST_ERROR) and bool(r["ec"] & EC_BUS)
         control = self._done_ok(r, "ctl_pre", "ctl_st", "ctl_ec")
         ok = (
-            r["rb1_bad"] == 0 and r["rb1_sum"] == exp1 and r["rb2_bad"] == 0 and r["rb2_sum"] == exp2
-            and refused and control
+            r["rb1_bad"] == 0
+            and r["rb1_sum"] == exp1
+            and r["rb2_bad"] == 0
+            and r["rb2_sum"] == exp2
+            and refused
+            and control
         )
         assert ok, (
             f"CHK-DMA-USER FAIL: stack {text}; expected rb1_sum=0x{exp1:08x} rb2_sum=0x{exp2:08x}, "
@@ -604,11 +668,14 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             )
             self.logger.info(
                 "OBS-BLOCKED: %s dma_prot=%s (the DMA prot[1] value is not stated; both allow_ns entries run)",
-                leg, [b.prot for b in aws],
+                leg,
+                [b.prot for b in aws],
             )
             self.logger.info(
                 "CHK-DMA-USER PASS: probe=PR-OUT leg=%s beats=%d user_nonzero=0 addr=%s",
-                leg, len(aws), ",".join(f"0x{a:x}" for a in addrs),
+                leg,
+                len(aws),
+                ",".join(f"0x{a:x}" for a in addrs),
             )
         leg_i = self._leg_index("out_cpu")
         cpu = [b for b in self._beats("PR-OUT", leg_i, "aw") if b.addr == smu]
@@ -620,7 +687,9 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         self.logger.info(
             "CHK-DMA-USER PASS: dst=smu stack_resp=DECERR dma_status=0x%08x error_code=0x%08x "
             "control_complete=1 control_status=0x%08x",
-            r["st"], r["ec"], r["ctl_st"],
+            r["st"],
+            r["ec"],
+            r["ctl_st"],
         )
 
     def _chk_ep_reg(self) -> None:
@@ -634,7 +703,9 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             for f in fields:
                 mask |= f.mask
             mask &= 0xFFFF_FFFF
-            assert mask == 0xFFFF_FFFF, f"{REG_NAME[rid]} field bits changed (0x{mask:x}); revisit the destination compare"
+            assert mask == 0xFFFF_FFFF, (
+                f"{REG_NAME[rid]} field bits changed (0x{mask:x}); revisit the destination compare"
+            )
             pre = pre_r[REG_NAME[rid]]
             last = p[f"reg_last{rid}"]
             if last == pre:
@@ -643,7 +714,10 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             nw, xz = self._xz_free(self._sram_in(leg_r))
             self.logger.info(
                 "CTL-DMA-EP-REG LOG: reg=%s lsu_before=0x%08x lsu_after=0x%08x expect=0x%08x",
-                REG_NAME[rid], r["ctl_a"], r["ctl_b"], last,
+                REG_NAME[rid],
+                r["ctl_a"],
+                r["ctl_b"],
+                last,
             )
             ok = (
                 r["regpre"] == pre
@@ -667,12 +741,20 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             _ = model_words(seed, 0x60 + rid, n)
             self.logger.info(
                 "CHK-DMA-EP-REG PASS: reg=%s dir=W words=%d conserve=1 readback=0x%08x expect=0x%08x",
-                REG_NAME[rid], n, r["rb"], last,
+                REG_NAME[rid],
+                n,
+                r["rb"],
+                last,
             )
             self.logger.info(
                 "CHK-DMA-EP-REG PASS: reg=%s dir=R words=%d conserve=1 readback=0x%08x expect=0x%08x "
                 "sram_writes=%d xz=0 restored=0x%08x",
-                REG_NAME[rid], n, r["dand"], last, nw, r["restored"],
+                REG_NAME[rid],
+                n,
+                r["dand"],
+                last,
+                nw,
+                r["restored"],
             )
 
         leg_i = self._leg_index("rst_r")
@@ -684,11 +766,16 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             mask |= f.mask
         mask &= 0xFFFF_FFFF
         ok = self._done_ok(r) and (r["dma"] & mask) == (r["lsu"] & mask) and xz == 0 and nw >= 1
-        assert ok, f"CHK-DMA-EP-REG FAIL: SW_RESET_N {text} mask=0x{mask:x} sram_writes={nw} xz={xz}"
+        assert ok, (
+            f"CHK-DMA-EP-REG FAIL: SW_RESET_N {text} mask=0x{mask:x} sram_writes={nw} xz={xz}"
+        )
         self.logger.info(
             "CHK-DMA-EP-REG PASS: reg=sw_reset_n dir=R words=1 conserve=1 readback=0x%08x expect=0x%08x "
             "field_mask=0x%x rsvd=0x%08x(logged) xz=0",
-            r["dma"] & mask, r["lsu"] & mask, mask, r["dma"] & ~mask & 0xFFFF_FFFF,
+            r["dma"] & mask,
+            r["lsu"] & mask,
+            mask,
+            r["dma"] & ~mask & 0xFFFF_FFFF,
         )
 
     def _chk_ep_filt(self) -> None:
@@ -714,11 +801,18 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             and xz == 0
             and nw >= 1
         )
-        assert ok, f"CHK-DMA-EP-FILT FAIL: {text}; expected field bits 0x{expect:08x} sram_writes={nw} xz={xz}"
+        assert ok, (
+            f"CHK-DMA-EP-FILT FAIL: {text}; expected field bits 0x{expect:08x} sram_writes={nw} xz={xz}"
+        )
         self.logger.info(
             "CHK-DMA-EP-FILT PASS: data_bus_width=3 word=0x%08x mask=0x%08x expect=0x%08x lsu=0x%08x "
             "rsvd=0x%08x restored=0x%08x",
-            r["dma"], mask, expect, r["lsu"], r["dma"] & ~mask & 0xFFFF_FFFF, r["restored"],
+            r["dma"],
+            mask,
+            expect,
+            r["lsu"],
+            r["dma"] & ~mask & 0xFFFF_FFFF,
+            r["restored"],
         )
 
     def _chk_smc(self) -> None:
@@ -727,10 +821,12 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         ln, n = p["smc_len"], p["smc_len"] // 4
         addr = SMC_BASE + p["smc_off"]
         m = model_words(seed, 0x70, n)
-        assert r["fuse"] & 1, f"CHK-DMA-SMC FAIL: smc_fuse_sense_done reads 0 after {r['polls']} polls"
-        assert self._done_ok(r, "w_pre", "w_st", "w_ec") and self._done_ok(r, "r_pre", "r_st", "r_ec"), (
-            f"CHK-DMA-SMC FAIL: SMC legs did not complete: {text}"
+        assert r["fuse"] & 1, (
+            f"CHK-DMA-SMC FAIL: smc_fuse_sense_done reads 0 after {r['polls']} polls"
         )
+        assert self._done_ok(r, "w_pre", "w_st", "w_ec") and self._done_ok(
+            r, "r_pre", "r_st", "r_ec"
+        ), f"CHK-DMA-SMC FAIL: SMC legs did not complete: {text}"
         exp = fnv(m)
         assert r["nbad"] == 0 and r["dsum"] == exp, (
             f"CHK-DMA-SMC FAIL: SRAM after the read leg {text}; expected dsum=0x{exp:08x}"
@@ -742,7 +838,10 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         ctl_i = self._leg_index("smc_cpu")
         ctl = [b for b in self._beats("PR-SMC", ctl_i, "ar") if b.addr == addr]
         assert ctl, "CHK-DMA-SMC FAIL: the CPU control read shows no beat on PR-SMC"
-        self.logger.info("OBS-BLOCKED: smc cpu_beat user=%s (the CPU source ID value is not stated)", [b.user for b in ctl])
+        self.logger.info(
+            "OBS-BLOCKED: smc cpu_beat user=%s (the CPU source ID value is not stated)",
+            [b.user for b in ctl],
+        )
         for d, leg, ch in (("w", "smc_w", "aw"), ("r", "smc_r", "ar")):
             leg_i = self._leg_index(leg)
             beats = self._beats("PR-SMC", leg_i, ch)
@@ -758,7 +857,9 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                     if b.data is None:
                         lanes.append(None)
                     else:
-                        lanes.append((b.data >> 32) & 0xFFFF_FFFF if want[k] & 4 else b.data & 0xFFFF_FFFF)
+                        lanes.append(
+                            (b.data >> 32) & 0xFFFF_FFFF if want[k] & 4 else b.data & 0xFFFF_FFFF
+                        )
                 data_ok = lanes == m
             ok = len(beats) == n and user_nz == 0 and len_nz == 0 and addrs == want and data_ok
             assert ok, (
@@ -768,28 +869,48 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             self.logger.info(
                 "CHK-DMA-SMC PASS: fuse_done=1 dir=%s beats=%d user_nonzero=0 len_nonzero=0 data_ok=1 "
                 "control_beats=%d addr=0x%x len=%d",
-                d, len(beats), len(ctl), addr, ln,
+                d,
+                len(beats),
+                len(ctl),
+                addr,
+                ln,
             )
 
     def _go_and_irq(self, leg_i: int) -> tuple[int, int | None]:
         """Time of the CONTROL (GO) write handshake of the leg and of the next DMA interrupt edge."""
-        gos = [b for b in self._beats("PR-DMACSR", leg_i, "aw") if b.addr is not None and (b.addr & 0xFFF) == (DMA_CONTROL & 0xFFF)]
+        gos = [
+            b
+            for b in self._beats("PR-DMACSR", leg_i, "aw")
+            if b.addr is not None and (b.addr & 0xFFF) == (DMA_CONTROL & 0xFFF)
+        ]
         assert gos, f"leg {self.legs[leg_i].name}: no CONTROL write on PR-DMACSR"
         t_go = gos[-1].t_ps
-        edges = [t for t, _r in self.irq_edges[self.legs[leg_i].irq_mark:] if t > t_go]
+        edges = [t for t, _r in self.irq_edges[self.legs[leg_i].irq_mark :] if t > t_go]
         return t_go, (edges[0] if edges else None)
 
     def _chk_notconn(self) -> None:
         ctl_i = self._leg_index("nc_ctl")
         _, c0, _ = self._one("NCCTL")
-        rom_ctl = [b for b in self._beats("PR-ROM", ctl_i, "req") if b.addr is not None and (b.addr & 0xFFFF) == 0]
-        assert len(rom_ctl) >= 1, "CHK-DMA-NOTCONN FAIL: the LSU read of the boot ROM base shows no PR-ROM handshake"
+        rom_ctl = [
+            b
+            for b in self._beats("PR-ROM", ctl_i, "req")
+            if b.addr is not None and (b.addr & 0xFFFF) == 0
+        ]
+        assert len(rom_ctl) >= 1, (
+            "CHK-DMA-NOTCONN FAIL: the LSU read of the boot ROM base shows no PR-ROM handshake"
+        )
         _, c2, _ = self._one("NCCTL2")
         self.logger.info(
             "CTL-DMA-NOTCONN LOG: rom=0x%08x csr=0x%08x rom_after=0x%08x csr_after=0x%08x rom_ctrl_seen=%d",
-            c0["rom"], c0["csr"], c2["rom"], c2["csr"], len(rom_ctl),
+            c0["rom"],
+            c0["csr"],
+            c2["rom"],
+            c2["csr"],
+            len(rom_ctl),
         )
-        assert c0["csr"] != 0, "the DMA CSR control word reads 0; the not-connected compare needs a non-zero word"
+        assert c0["csr"] != 0, (
+            "the DMA CSR control word reads 0; the not-connected compare needs a non-zero word"
+        )
         names = {"rom_src": "nc_rom_src", "rom_dst": "nc_rom_dst", "dma_csr_src": "nc_csr_src"}
         graded = 0
         for _leg_rec, r, text in self._recs("NC"):
@@ -799,12 +920,19 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             if end == "timeout":
                 self.logger.info("OBS-DMA-NOTCONN: target=%s end=timeout", tgt)
                 continue
-            assert (r["pre"] & ST3) == 0, f"CHK-DMA-NOTCONN FAIL: {tgt} STATUS bits not clear before GO: {text}"
+            assert (r["pre"] & ST3) == 0, (
+                f"CHK-DMA-NOTCONN FAIL: {tgt} STATUS bits not clear before GO: {text}"
+            )
             t_go, t_irq = self._go_and_irq(leg_i)
-            assert t_irq is not None, f"CHK-DMA-NOTCONN FAIL: {tgt} ended {end} with no DMA interrupt edge"
+            assert t_irq is not None, (
+                f"CHK-DMA-NOTCONN FAIL: {tgt} ended {end} with no DMA interrupt edge"
+            )
             self.logger.info(
                 "OBS-BLOCKED: %s end=%s dma_status=0x%08x error_code=0x%08x (no response stated)",
-                tgt, end, r["st"], r["ec"],
+                tgt,
+                end,
+                r["st"],
+                r["ec"],
             )
             rom_win = [b for b in self._beats("PR-ROM", leg_i, "req") if t_go < b.t_ps <= t_irq]
             self._recovery_after(names[tgt])
@@ -814,13 +942,22 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                 self.logger.info(
                     "CHK-DMA-NOTCONN PASS: target=rom_src src_value=0x%08x dst_value=0x%08x end=%s "
                     "dma_status=0x%08x control_value=0x%08x recovery_ok=1 rom_seen=%d",
-                    r["src_v"], r["dst"], end, r["st"], c0["rom"], len(rom_win),
+                    r["src_v"],
+                    r["dst"],
+                    end,
+                    r["st"],
+                    c0["rom"],
+                    len(rom_win),
                 )
             elif tgt == "rom_dst":
-                assert not rom_win, f"CHK-DMA-NOTCONN FAIL: PR-ROM shows {len(rom_win)} handshakes between GO and the interrupt"
+                assert not rom_win, (
+                    f"CHK-DMA-NOTCONN FAIL: PR-ROM shows {len(rom_win)} handshakes between GO and the interrupt"
+                )
                 self.logger.info(
                     "CHK-DMA-NOTCONN PASS: target=rom_dst rom_seen=0 rom_ctrl_seen=%d end=%s dma_status=0x%08x recovery_ok=1",
-                    len(rom_ctl), end, r["st"],
+                    len(rom_ctl),
+                    end,
+                    r["st"],
                 )
             else:
                 csr = self._beats("PR-DMACSR", leg_i, "aw") + self._beats("PR-DMACSR", leg_i, "ar")
@@ -834,7 +971,12 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                 self.logger.info(
                     "CHK-DMA-NOTCONN PASS: target=dma_csr_src src_value=0x%08x dst_value=0x%08x end=%s "
                     "dma_status=0x%08x control_value=0x%08x recovery_ok=1 csr_seen=0 csr_ctrl_seen=%d",
-                    r["src_v"], r["dst"], end, r["st"], c0["csr"], len(ctrl),
+                    r["src_v"],
+                    r["dst"],
+                    end,
+                    r["st"],
+                    c0["csr"],
+                    len(ctrl),
                 )
             graded += 1
         self.logger.info("STEP not-connected: %d graded runs", graded)
@@ -881,7 +1023,9 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
 
         _, prm, _ = self._one("PARAMS")
         for k in ("seed", "order", "form", "smu", "smc_off"):
-            assert prm[k] == self.ep.p[k], f"firmware ran {k}=0x{prm[k]:x}, patched 0x{self.ep.p[k]:x}"
+            assert prm[k] == self.ep.p[k], (
+                f"firmware ran {k}=0x{prm[k]:x}, patched 0x{self.ep.p[k]:x}"
+            )
         self._chk_pairs()
         self._chk_alias()
         self._chk_user()

@@ -10,6 +10,7 @@ entropy source and ABR windows of ``hw/sys/sep/regs/gen/svh/sep_reg.svh`` by
 name, so a moved register keeps its class. Run it after a register change;
 ``--check`` exits 1 when the committed include differs from the header.
 """
+
 from __future__ import annotations
 
 import argparse

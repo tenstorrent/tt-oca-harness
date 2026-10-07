@@ -33,30 +33,30 @@
 #define P_MAGIC_WORD 0xDAE9D0A3u
 enum {
     P_MAGIC,
-    P_ORDER,      // pair order: nibble k = pair id run k-th
-    P_FORM,       // bit i: SRAM side of pair i uses the local alias form
-    P_SEED,       // fill seed
-    P0_LEN,       // SRAM to scratch
+    P_ORDER, // pair order: nibble k = pair id run k-th
+    P_FORM,  // bit i: SRAM side of pair i uses the local alias form
+    P_SEED,  // fill seed
+    P0_LEN,  // SRAM to scratch
     P0_SRAM,
     P0_SCR,
-    P1_LEN,       // scratch to SRAM
+    P1_LEN, // scratch to SRAM
     P1_SCR,
     P1_SRAM,
-    P2_LEN,       // WDT word to SRAM
+    P2_LEN, // WDT word to SRAM
     P2_SRAM,
-    P3_LEN,       // AES word to SRAM
+    P3_LEN, // AES word to SRAM
     P3_SRAM,
-    PD_LEN,       // directed SRAM to SRAM copy, direct form
+    PD_LEN, // directed SRAM to SRAM copy, direct form
     PD_SRC,
     PD_DST,
-    PA_LEN,       // alias leg
+    PA_LEN, // alias leg
     PA_OS,
     PA_OD,
-    PAP_OFF_LO,   // AP region 0 offset
+    PAP_OFF_LO, // AP region 0 offset
     PAP_OFF_HI,
-    PAP_INTRA,    // AP word offset inside region 0
-    PSMU,         // SMU window word (low 32 bits)
-    PREG_ORDER,   // register order: nibble k = register id
+    PAP_INTRA,  // AP word offset inside region 0
+    PSMU,       // SMU window word (low 32 bits)
+    PREG_ORDER, // register order: nibble k = register id
     PREG_LEN0,
     PREG_LEN1,
     PREG_LEN2,
@@ -72,18 +72,10 @@ enum {
 
 // Committed defaults: a directed image that runs stand-alone.
 volatile uint32_t g_p[P_COUNT] = {
-    P_MAGIC_WORD, 0x3210u, 0x0u, 0x1234567u,
-    32u, 0x0000u, 0x0u,
-    32u, 0x0u, 0x1000u,
-    16u, 0x2000u,
-    16u, 0x3000u,
-    32u, 0x4000u, 0x5000u,
-    32u, 0x6000u, 0x7000u,
-    0x0u, 0xC0u, 0x100u,
-    0x80004000u,
-    0x210u, 8u, 8u, 8u, 0x11111111u, 0x2u, 0x33333333u,
-    0x5u, 0xAu,
-    0x1000u, 64u,
+    P_MAGIC_WORD, 0x3210u,     0x0u,    0x1234567u,  32u,     0x0000u,     0x0u,    32u,     0x0u,
+    0x1000u,      16u,         0x2000u, 16u,         0x3000u, 32u,         0x4000u, 0x5000u, 32u,
+    0x6000u,      0x7000u,     0x0u,    0xC0u,       0x100u,  0x80004000u, 0x210u,  8u,      8u,
+    8u,           0x11111111u, 0x2u,    0x33333333u, 0x5u,    0xAu,        0x1000u, 64u,
 };
 
 // ---- Address map ----
@@ -113,7 +105,8 @@ volatile uint32_t g_p[P_COUNT] = {
 #define B_REC_DST 0xE000u
 #define REC_LEN 32u
 
-#define ST3 (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm | SECURE_DMA__STATUS__CHUNK_DONE_bm)
+#define ST3 \
+    (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm | SECURE_DMA__STATUS__CHUNK_DONE_bm)
 #define DONE_OR_ERR (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm)
 #define POLL_ITERS 20000
 #define WFI_ITERS 20000
@@ -123,8 +116,12 @@ volatile uint32_t g_p[P_COUNT] = {
 #define EXT_INT_DMA_DONE 9
 #define EXT_INT_DMA_ERROR 11
 
-static inline uint32_t rd(uint32_t a) { return *(volatile uint32_t *)a; }
-static inline void wr(uint32_t a, uint32_t v) { *(volatile uint32_t *)a = v; }
+static inline uint32_t rd(uint32_t a) {
+    return *(volatile uint32_t *)a;
+}
+static inline void wr(uint32_t a, uint32_t v) {
+    *(volatile uint32_t *)a = v;
+}
 
 static int g_err;
 
@@ -151,15 +148,21 @@ static void kv(const char *k, uint32_t v) {
     sep_mbx_putc('=');
     sep_mbx_puthex(v);
 }
-static void end(void) { sep_mbx_putc('\n'); }
+static void end(void) {
+    sep_mbx_putc('\n');
+}
 
 // ---- Data model shared with the host (env side of the test) ----
-static uint32_t seed_of(uint32_t tag) { return g_p[P_SEED] ^ (tag * 0x9E3779B9u); }
+static uint32_t seed_of(uint32_t tag) {
+    return g_p[P_SEED] ^ (tag * 0x9E3779B9u);
+}
 static uint32_t lcg(uint32_t *x) {
     *x = *x * 1664525u + 1013904223u;
     return *x;
 }
-static uint32_t fnv(uint32_t h, uint32_t w) { return (h ^ w) * 0x01000193u; }
+static uint32_t fnv(uint32_t h, uint32_t w) {
+    return (h ^ w) * 0x01000193u;
+}
 #define FNV0 0x811C9DC5u
 
 // Stage n source words from seed `tag`; returns nothing, the host knows them.
@@ -198,15 +201,16 @@ static void dma_prep(uint32_t src, uint32_t dst, uint32_t len, int src_inc, int 
     wr(SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0x0u);
     wr(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, len);
     wr(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, len);
-    wr(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, src_inc ? SECURE_DMA__SRC_CONFIG__INCREMENT_bm : 0u);
-    wr(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, dst_inc ? SECURE_DMA__DST_CONFIG__INCREMENT_bm : 0u);
+    wr(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR,
+       src_inc ? SECURE_DMA__SRC_CONFIG__INCREMENT_bm : 0u);
+    wr(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR,
+       dst_inc ? SECURE_DMA__DST_CONFIG__INCREMENT_bm : 0u);
     dma_clear();
     g_pre = rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR) & ST3;
 }
 static inline void dma_go(void) {
-    wr(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, SECURE_DMA__CONTROL__GO_bm |
-                                                 SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm |
-                                                 SEP_DMA_OPCODE_COPY);
+    wr(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
+       SECURE_DMA__CONTROL__GO_bm | SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm | SEP_DMA_OPCODE_COPY);
 }
 // Polled run. Returns STATUS; a bounded wait that ends in neither DONE nor
 // ERROR returns the last STATUS, which the host fails.
@@ -472,30 +476,33 @@ static uint32_t g_frb_bad, g_frb_rng, g_frb_sum, g_frb_idx, g_frb_c;
 // CONFIG goes first with the entry disabled, so START and END are written
 // under the final allow_burst granule, then CONFIG enables the entry.
 static void out_entry(uint32_t i, uint64_t start, uint64_t endv, uint32_t cfg) {
-    wr(SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(i), cfg & ~FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm);
+    wr(SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(i),
+       cfg & ~FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm);
     WRITE_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(i), start);
     WRITE_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(i), endv);
     wr(SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(i), cfg);
 }
 // FILTER_CONFIG field bits of the low word (the locked bit is in the high word).
-#define CFG_FIELDS_LO                                                                \
-    ((uint32_t)(FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm |                        \
-                FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm |                       \
-                FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm |                       \
-                FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bm |                            \
-                FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_bm |                      \
-                FILTER_CTRL__FILTER_CONFIG__SRC_ID_bm |                              \
-                FILTER_CTRL__FILTER_CONFIG__GROUP_ID_bm |                            \
+#define CFG_FIELDS_LO \
+    ((uint32_t)(FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | \
+                FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm | \
+                FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm | \
+                FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bm | \
+                FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_bm | \
+                FILTER_CTRL__FILTER_CONFIG__SRC_ID_bm | FILTER_CTRL__FILTER_CONFIG__GROUP_ID_bm | \
                 FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bm))
 // Read an entry back. The field bits of FILTER_CONFIG are graded (the sum lets
 // the host check them). The specification states no write-back timing for
 // START and END, so their read-back is counted and logged only.
 static void out_entry_check(uint32_t i, uint64_t start, uint64_t endv, uint32_t cfg) {
     uint32_t c = rd(SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(i)) & CFG_FIELDS_LO;
-    uint64_t s = READ_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(i)) & FILTER_CTRL__START_ADDR__START_ADDR_bm;
-    uint64_t e = READ_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(i)) & FILTER_CTRL__END_ADDR__END_ADDR_bm;
+    uint64_t s = READ_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(i)) &
+                 FILTER_CTRL__START_ADDR__START_ADDR_bm;
+    uint64_t e = READ_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(i)) &
+                 FILTER_CTRL__END_ADDR__END_ADDR_bm;
     uint32_t want_c = (cfg | ((uint32_t)FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_reset
-                              << FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_bp)) & CFG_FIELDS_LO;
+                              << FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_bp)) &
+                      CFG_FIELDS_LO;
     if (s != start || e != endv) g_frb_rng++;
     if (c != want_c) {
         if (g_frb_bad == 0u) {
@@ -506,8 +513,9 @@ static void out_entry_check(uint32_t i, uint64_t start, uint64_t endv, uint32_t 
     }
     g_frb_sum = fnv(g_frb_sum, c);
 }
-#define CFG_RW_EN (FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm | \
-                   FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm)
+#define CFG_RW_EN \
+    (FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm | \
+     FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm)
 #define CFG_NS FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bm
 #define CFG_SRC(s) ((uint32_t)(s) << FILTER_CTRL__FILTER_CONFIG__SRC_ID_bp)
 
@@ -583,12 +591,16 @@ static void stack_leg(void) {
     g_frb_rng = 0;
     g_frb_sum = FNV0;
     for (uint32_t i = 0; i < 15u; i++) out_entry(i, smu, smu + 7u, CFG_RW_EN | CFG_SRC(i + 1u));
-    for (uint32_t i = 0; i < 15u; i++) out_entry(15u + i, smu, smu + 7u, CFG_RW_EN | CFG_NS | CFG_SRC(i + 1u));
-    uint32_t ro = FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm;
+    for (uint32_t i = 0; i < 15u; i++)
+        out_entry(15u + i, smu, smu + 7u, CFG_RW_EN | CFG_NS | CFG_SRC(i + 1u));
+    uint32_t ro =
+        FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm;
     out_entry(30, smu, smu + 7u, ro);
     out_entry(31, smu, smu + 7u, ro | CFG_NS);
-    for (uint32_t i = 0; i < 15u; i++) out_entry_check(i, smu, smu + 7u, CFG_RW_EN | CFG_SRC(i + 1u));
-    for (uint32_t i = 0; i < 15u; i++) out_entry_check(15u + i, smu, smu + 7u, CFG_RW_EN | CFG_NS | CFG_SRC(i + 1u));
+    for (uint32_t i = 0; i < 15u; i++)
+        out_entry_check(i, smu, smu + 7u, CFG_RW_EN | CFG_SRC(i + 1u));
+    for (uint32_t i = 0; i < 15u; i++)
+        out_entry_check(15u + i, smu, smu + 7u, CFG_RW_EN | CFG_NS | CFG_SRC(i + 1u));
     out_entry_check(30, smu, smu + 7u, ro);
     out_entry_check(31, smu, smu + 7u, ro | CFG_NS);
     uint32_t rb1_bad = g_frb_bad, rb1_sum = g_frb_sum, rng1 = g_frb_rng;
@@ -629,7 +641,8 @@ static void stack_leg(void) {
 
     // Restore: entry 0 is the mailbox window, every other entry at reset.
     for (uint32_t i = 1; i < N_OUT_ENTRIES; i++)
-        out_entry(i, FILTER_CTRL__START_ADDR__START_ADDR_reset, FILTER_CTRL__END_ADDR__END_ADDR_reset, 0u);
+        out_entry(i, FILTER_CTRL__START_ADDR__START_ADDR_reset,
+                  FILTER_CTRL__END_ADDR__END_ADDR_reset, 0u);
     sep_outbound_filter_init();
 
     rec("STACK");
@@ -638,7 +651,6 @@ static void stack_leg(void) {
     if (rb1_bad) {
         kv("bad_idx", bad_idx);
         kv("bad_cfg", bad_c);
-
     }
     kv("pre", pre1);
     kv("st", st1);
@@ -854,7 +866,8 @@ static uint32_t nc_run(uint32_t src, uint32_t dst) {
     return (g_isr_st & SECURE_DMA__STATUS__ERROR_bm) ? 1u : 0u;
 }
 
-static void nc_rec(const char *tgt, uint32_t endc, uint32_t extra_k, uint32_t extra_v, uint32_t dst_v) {
+static void nc_rec(const char *tgt, uint32_t endc, uint32_t extra_k, uint32_t extra_v,
+                   uint32_t dst_v) {
     rec("NC");
     sep_mbx_puts(" tgt=");
     sep_mbx_puts(tgt);
@@ -895,8 +908,10 @@ static void nc_legs(void) {
     mark('G', "nc_rom_src");
     uint32_t e = nc_run(ROM_BASE, d);
     nc_rec("rom_src", e, 1, rom0, rd(d));
-    if (e == 2u) timed_out = 1;
-    else recovery("nc_rom_src");
+    if (e == 2u)
+        timed_out = 1;
+    else
+        recovery("nc_rom_src");
 
     // Boot ROM base as the destination.
     if (!timed_out) {
@@ -904,8 +919,10 @@ static void nc_legs(void) {
         mark('G', "nc_rom_dst");
         e = nc_run(SRAM + B_NC + 0x10u, ROM_BASE);
         nc_rec("rom_dst", e, 0, 0, 0);
-        if (e == 2u) timed_out = 1;
-        else recovery("nc_rom_dst");
+        if (e == 2u)
+            timed_out = 1;
+        else
+            recovery("nc_rom_dst");
     }
 
     // A DMA CSR word as the source.
@@ -914,8 +931,10 @@ static void nc_legs(void) {
         mark('G', "nc_csr_src");
         e = nc_run(DMA_CSR_WORD, d);
         nc_rec("dma_csr_src", e, 1, csr0, rd(d));
-        if (e == 2u) timed_out = 1;
-        else recovery("nc_csr_src");
+        if (e == 2u)
+            timed_out = 1;
+        else
+            recovery("nc_csr_src");
     }
 
     pic_disable_interrupts();
@@ -949,10 +968,18 @@ int main(void) {
 
     for (uint32_t k = 0; k < 4u; k++) {
         switch ((g_p[P_ORDER] >> (4u * k)) & 0xFu) {
-        case 0: pair_sram_to_scratch(); break;
-        case 1: pair_scratch_to_sram(); break;
-        case 2: pair_reg_to_sram(2, WDT_REGWEN, g_p[P2_LEN], g_p[P2_SRAM], "pair_wdt_sram"); break;
-        case 3: pair_reg_to_sram(3, AES_AUX_REGWEN, g_p[P3_LEN], g_p[P3_SRAM], "pair_aes_sram"); break;
+        case 0:
+            pair_sram_to_scratch();
+            break;
+        case 1:
+            pair_scratch_to_sram();
+            break;
+        case 2:
+            pair_reg_to_sram(2, WDT_REGWEN, g_p[P2_LEN], g_p[P2_SRAM], "pair_wdt_sram");
+            break;
+        case 3:
+            pair_reg_to_sram(3, AES_AUX_REGWEN, g_p[P3_LEN], g_p[P3_SRAM], "pair_aes_sram");
+            break;
         default:
             sep_mbx_puts("FAIL: bad pair order\n");
             g_err++;

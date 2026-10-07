@@ -103,7 +103,9 @@ class SepFilterBank(SepAxiRegDriver):
         """(FILTER_CONFIG lo, START_ADDR, END_ADDR) as read."""
         b = self.entry_base(idx)
         cfg = await self._rd(b + FILTER_CONFIG)
-        s = await self._rd(b + FILTER_START_ADDR) | (await self._rd(b + FILTER_START_ADDR + 4) << 32)
+        s = await self._rd(b + FILTER_START_ADDR) | (
+            await self._rd(b + FILTER_START_ADDR + 4) << 32
+        )
         e = await self._rd(b + FILTER_END_ADDR) | (await self._rd(b + FILTER_END_ADDR + 4) << 32)
         return cfg, s, e
 
