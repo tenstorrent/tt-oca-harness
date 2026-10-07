@@ -775,7 +775,7 @@ I3C_Driver *I3C_GetDriverInstance(uint8_t controller_id) {
     return drv;
 }
 
-/* Keeps hci_setdasa linked for -Wunused-function; nothing calls it through this pointer yet. */
+/* Reference that keeps hci_setdasa past -Wunused-function. */
 I3C_Status (*const i3c_hci_setdasa_ref)(I3C_Driver *, uint8_t, uint8_t, uint8_t) = hci_setdasa;
 
 #pragma GCC diagnostic pop

@@ -19,20 +19,16 @@ schema_version = 1
 #     regress.yml), green while the defects stand and red the week one is
 #     fixed; the leaf then moves back to its feature testlist without the
 #     `expect_fail` pair. No `ci` tag: a graded expected failure must never
-#     count in the hosted set. One test per defect. The group currently holds
-#     `smc_isolate_req_smc_lane_test`.
-#     `smc_deadspace_decode_test` and `smc_filter_lock_window_test` left it
-#     and run from `fabric.toml`.
+#     count in the hosted set. One test per defect.
 #   * `occp_boot` -- held out on runtime. The production ROM's whole
 #     reset-to-OCCP path (`run_modes = ["prod_rom"]`, 3600 s) runs on
 #     demand. The hours-long dual-SMC boot case belongs to `occp_rom`.
-#   * `held_out` -- leaves whose current failure is a comparison the leaf
-#     cannot make on this RTL until a ruling. smc_ref_clock_timer_rate_test
-#     fails the rate comparison it was written to make: clk_rst.adoc places
-#     the OCTS system timer in the reference clock domain and the RTL clocks
-#     it from clk_smc_i. A leaf whose blocker is a filed RTL defect goes here
-#     too, with the issue in its comment, and returns to its feature testlist,
-#     `all` and `hosted` when the fix merges.
+#   * `held_out` -- leaves whose comparison the RTL and the specification
+#     disagree on, and leaves blocked by a filed RTL defect; each entry's
+#     comment states the disagreement or the defect in words.
+#     smc_ref_clock_timer_rate_test compares the OCTS system timer rate against
+#     clk_rst.adoc, which places the timer in the reference clock domain, while
+#     the RTL clocks it from clk_smc_i.
 #   * scope-named UVM groups -- UVM-only leaves excluded from `all` and
 #     `hosted` because those groups do not run the UVM framework. Each group is
 #     named for the verification scope it exercises (`csr_uvm_extended`) and
@@ -43,8 +39,8 @@ schema_version = 1
 
 [[tests]]
 # ISOLATE_REQ_SMC_REG clears its FLR-latched request on any write with a byte
-# enable anywhere in the register, whatever the data (smc_cool_reset_wrap.sv:272-276);
-# reset_unit.rdl:130-135 makes the request a sw=rw field at bit 0.
+# enable anywhere in the register, whatever the data (smc_cool_reset_wrap.sv);
+# reset_unit.rdl makes the request a sw=rw field at bit 0.
 name = "smc_isolate_req_smc_lane_test"
 module = "smc_isolate_req_smc_lane_test"
 seed = 1
@@ -112,7 +108,7 @@ tests = [
 ]
 
 [[groups]]
-# Leaves waiting on an RTL/spec ruling; run on demand to re-measure. Guarded so a
+# Leaves whose comparison the RTL and the specification disagree on; run on demand.
 name = "held_out"
 expected_count = 1
 tests = [

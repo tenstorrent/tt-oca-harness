@@ -27,9 +27,8 @@ schema_version = 1
 [review]
 origin = "design-engineering review of the predecessor SMC bench's exclusion lists"
 reviewer = "DE + DV peer"
-# The predecessor bench kept its reviewed exclusions in this many lists; an
-# entry's `list` numbers the one it comes from, which orders the blocks of
-# one class and scope.
+# `lists` counts the reviewed source lists; an entry's `list` numbers the one
+# it comes from, which orders the blocks of one class and scope.
 lists = 11
 
 # Inside a [[unit]], a PeakRDL register block's points and every FSM point take

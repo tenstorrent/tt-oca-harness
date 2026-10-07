@@ -458,8 +458,7 @@ place. A dispatch of `dashboard.yml` with the weekly's regress run id does
 the same for the published weekly. Both are described on the runner and
 dashboard pages under `tools/dv/doc/`.
 
-There is no checked-in 98%-after-waiver figure. SMC does not inherit
-an unwritten default. Do not invent one.
+The policy sets no after-waiver figure.
 
 [[smc-cov-reviewers]]
 ==== Reviewers

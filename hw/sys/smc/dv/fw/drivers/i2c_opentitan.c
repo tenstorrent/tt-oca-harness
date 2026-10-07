@@ -5,8 +5,8 @@
  * @file i2c_opentitan.c
  * @brief OpenTitan I2C Driver Implementation
  *
- * Complete I2C driver implementation for OpenTitan I2C IP
- * Based on existing test implementations and OpenTitan specification
+ * OpenTitan I2C driver: controller and target mode, FIFO handling, SMBus and
+ * PMBus helpers, written to the OpenTitan I2C specification.
  */
 
 #include "i2c_opentitan.h"
@@ -54,8 +54,7 @@ uint32_t i2c_get_base(uint32_t idx) {
 void i2c_get_default_timing(uint8_t speed, uint32_t sys_clk_mhz, i2c_timing_config_t *config) {
     if (!config) return;
 
-    // Default values based on i2c_sanity test and specification
-    // These values work for most cases
+    // Timing fields are in system clock cycles (OpenTitan I2C TIMING0..TIMING4).
     config->thigh = 0x1A; // SCL high period
     config->tlow = 0x32;  // SCL low period
     config->t_r = 2;      // Rise time
@@ -278,10 +277,9 @@ void i2c_config_timing(uint32_t idx, const i2c_timing_config_t *config) {
  * verdict with a debug value, and the failure looks like the testcase hanging
  * or reporting the wrong state with nothing pointing at the driver.
  *
- * Nothing depends on these values -- all 42 are markers -- so they are
- * compiled out unless a debugger asks for them. Define I2C_DRIVER_SCRATCH_TRACE
- * to get them back, and only in a build whose testcase does not use the
- * scratch handshake. */
+ * Nothing depends on these values; they are debug markers, compiled out unless
+ * I2C_DRIVER_SCRATCH_TRACE is defined. Define it only in a build whose testcase
+ * does not use the scratch handshake. */
 #ifdef I2C_DRIVER_SCRATCH_TRACE
 #define i2c_trace_scratch(idx, val) write_scratch((idx), (val))
 #else
@@ -367,12 +365,9 @@ void i2c_reset_fifos(uint32_t idx, bool reset_rx, bool reset_fmt, bool reset_tx,
             .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) -
                                       SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
-        /* RX: bounded drain, and the repair is recorded.
-         *
-         * Same defect the ACQ branch had -- an unbounded `while` that could only
-         * end in a simulator timeout, and a post-condition (level 0) produced by
-         * the helper rather than by RXRST, so a caller checking "empty after
-         * reset" was checking this loop. */
+        /* RX: bounded drain, with the repair recorded in g_i2c_rx_reset_needed_drain
+         * so a caller checking "empty after reset" can tell RXRST's result from
+         * this loop's. */
         if (reset_rx && host_status.f.RXLVL != 0) {
             uint32_t drained = 0;
             g_i2c_rx_reset_needed_drain = 1;
@@ -432,16 +427,9 @@ void i2c_reset_fifos(uint32_t idx, bool reset_rx, bool reset_fmt, bool reset_tx,
             g_i2c_tx_reset_residual = target_status.f.TXLVL;
         }
 
-        /* Verify ACQ FIFO Level = 0 -- and report, rather than repair.
-         *
-         * A drain by hand would make ACQLVL == 0 the helper's doing regardless
-         * of whether the hardware reset worked, and any caller checking "the
-         * FIFO is empty after a reset" would be checking this loop, not the DUT.
-         *
-         * The drain stays, because callers depend on the FIFO being empty when
-         * this returns, but it is bounded and the fact that repair was needed is
-         * recorded in g_i2c_acq_reset_needed_drain so a test can assert on it.
-         */
+        /* Verify ACQ FIFO level = 0. Callers depend on the FIFO being empty on
+         * return, so the drain is bounded and a needed repair is recorded in
+         * g_i2c_acq_reset_needed_drain for a test to assert on. */
         if (reset_acq && target_status.f.ACQLVL != 0) {
             uint32_t drained = 0;
             g_i2c_acq_reset_needed_drain = 1;
@@ -460,11 +448,9 @@ void i2c_reset_fifos(uint32_t idx, bool reset_rx, bool reset_fmt, bool reset_tx,
         }
     }
 
-    /* Fail closed on any repair the caller did not ask for.
-     *
-     * Reaching here with a flag set means a FIFO reset did not take and the
-     * post-condition every caller relies on was manufactured in software. That
-     * is a real DUT observation, and continuing would launder it into a PASS. */
+    /* Fail closed on any repair the caller did not ask for: a set flag means a
+     * FIFO reset did not take and the caller's "level is 0" post-condition came
+     * from this helper, not the hardware. */
     if (!g_i2c_reset_repair_allowed &&
         (g_i2c_acq_reset_needed_drain || g_i2c_rx_reset_needed_drain ||
          g_i2c_fmt_reset_needed_retry || g_i2c_tx_reset_needed_retry)) {
@@ -498,7 +484,6 @@ void i2c_reset_fifos(uint32_t idx, bool reset_rx, bool reset_fmt, bool reset_tx,
 int i2c_controller_init(uint32_t idx, const i2c_controller_config_t *config) {
     uint32_t base = i2c_get_base(idx);
 
-    // Disable controller first
     i2c__CTRL_t ctrl = {.w = 0};
     ctrl.f.ENABLEHOST = 0;
     ctrl.f.ENABLETARGET = 0;
@@ -536,7 +521,7 @@ int i2c_controller_init(uint32_t idx, const i2c_controller_config_t *config) {
                           SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
                   0xFFFFFFFF);
 
-    // Configure controller timeout (per i2c_controller_driver.c)
+    // Controller timeout; 0xFFFFFF when the config carries none.
     uint32_t timeout_val = (config && config->timeout_cycles > 0)
                                ? config->timeout_cycles
                                : 0xFFFFFF; // Default large timeout
@@ -635,10 +620,10 @@ int i2c_controller_wait_idle(uint32_t idx, uint32_t timeout_cycles) {
 
 /* Push one FDATA entry, waiting for FMT space first.
  *
- * The RTL exposes STATUS.FMTFULL (= !fmt_fifo_wready, i2c_core.sv:258) and the
- * FDATA write is not gated on wready, so a push into a full FMT FIFO is simply
- * dropped: with CONTROLLER_TX_FIFO_DEPTH = 64 (smc_config_pkg.sv:23) an
- * unconditional 64-byte write is 65 entries and loses at least one.
+ * The RTL exposes STATUS.FMTFULL as !fmt_fifo_wready (i2c_core.sv) and does not
+ * gate the FDATA write on wready, so a push into a full FMT FIFO is dropped: with
+ * CONTROLLER_TX_FIFO_DEPTH = 64 (smc_config_pkg.sv) an unconditional 64-byte
+ * write is 65 entries and loses at least one.
  *
  * Returns I2C_ERROR_TIMEOUT if space never appears, so callers can tell a
  * dropped byte from a delivered one.
@@ -715,11 +700,6 @@ int i2c_controller_write(uint32_t idx, uint8_t target_addr, const uint8_t *data,
         }
 
         if (wait_count >= MAX_WAIT) {
-            // Report the expiry: without it control falls through to the
-            // `return I2C_OK` below and a caller cannot tell "every FMT entry
-            // was transmitted" from "the FIFO never drained in 10000 polls",
-            // which makes every caller's `if (ret != I2C_OK)` branch dead for
-            // this failure mode.
             return I2C_ERROR_TIMEOUT;
         }
     } else {
@@ -996,7 +976,6 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32
 
         if (drained_count > 0) {
             i2c_trace_scratch(1, 0x000000A4); // Debug: ACQ FIFO drained successfully
-            // Optionally log drained count to scratch[0] for debugging
         }
 
         // TX_PENDING is sticky and re-arms while event_read_cmd_received is high; while it is
@@ -1134,17 +1113,10 @@ int i2c_controller_write_with_header(uint32_t idx, uint8_t target_addr, const ui
 //         fmt_fifo_wvalid_i && !fmt_fifo_wready_o
 //         |=> $stable(fmt_fifo_wvalid_i) && $stable(fmt_fifo_wdata_i))
 //
-// Translation: If FIFO write request (wvalid=1) is not immediately accepted
-// (wready=0), then wvalid and wdata MUST remain stable in the next cycle.
-//
-// Critical Understanding:
-// - "FIFO has space" (fmtlvl check) ≠ "FIFO ready for next write" (wready)
-// - Each write needs individual handshake completion
-// - STATUS.FMTFULL directly reflects wready state
-//
-// Solution: Check STATUS.FMTFULL before EACH FDATA write
-// - FMTFULL=0 means wready=1, safe to write
-// - This ensures proper handshake timing for every transaction
+// A write not accepted in the cycle it is presented holds wvalid and wdata
+// stable in the next cycle. A free level (fmtlvl) is not readiness (wready);
+// STATUS.FMTFULL is !wready, so every FDATA write is preceded by a FMTFULL
+// check.
 // =========================================================================
 
 // Helper macro: Wait for FIFO to be NOT FULL before writing
@@ -1623,20 +1595,9 @@ int i2c_target_receive_entry(uint32_t idx, i2c_acq_entry_t *entry) {
     return I2C_OK;
 }
 
-/* Framing is now explicit.
- *
- * This helper unconditionally treated the first ACQ data byte as a length
- * header, which is right for the callers that send one and silently wrong for
- * the callers that do not. i2c_p1_dma sends the standard no-header format, so
- * its first payload byte (0x00) became length_header = 0; the next byte then
- * satisfied `len >= length_header` and the function returned I2C_OK with
- * received_len = 1 after a 64-byte write -- structurally incapable of reporting
- * more than one byte no matter what the RTL did. The kept log recorded exactly
- * that: "Received 0x00000001".
- *
- * i2c_target_receive_transaction keeps its old name, signature and
- * header-framing behaviour so its 27 other call sites are unaffected; callers
- * that send raw bytes now have a variant that says so.
+/* expect_length_header selects the framing: true treats the first ACQ data
+ * byte as a length header and returns once that many bytes have arrived,
+ * without waiting for STOP; false receives raw bytes until STOP.
  */
 int i2c_target_receive_transaction_framed(uint32_t idx, uint8_t *buffer, uint32_t buffer_size,
                                           uint32_t *received_len, uint32_t timeout_cycles,
@@ -1720,9 +1681,8 @@ int i2c_target_receive_transaction_framed(uint32_t idx, uint8_t *buffer, uint32_
                 count++;
             }
 
-            /* Inter-byte expiry is a timeout, not a completion: a truncated or
-             * stalled transfer must reach the caller as an error, or every
-             * caller's `if (ret != I2C_OK)` is a dead branch for it. */
+            /* Inter-byte expiry is a timeout: a truncated or stalled transfer
+             * reaches the caller as an error. */
             if (status.f.ACQEMPTY) {
                 *received_len = len;
                 return I2C_ERROR_TIMEOUT;
@@ -1783,11 +1743,10 @@ int i2c_target_receive_transaction_framed(uint32_t idx, uint8_t *buffer, uint32_
     }
 
     *received_len = len;
-    /* Reached here without a STOP means the loop left via the
-     * "FIFO empty and never in a transaction" exit at the top -- nothing ever
-     * arrived. Reporting that as success is what let a caller print a pass line
-     * over an empty buffer. A framed read that ended on its length header is
-     * not affected: it returns I2C_OK explicitly from inside the loop. */
+    /* No STOP means the loop left via the "FIFO empty and never in a
+     * transaction" exit at the top: nothing arrived, which is a timeout. A
+     * framed read that ends on its length header returns I2C_OK from inside the
+     * loop. */
     if (!saw_stop) {
         return I2C_ERROR_TIMEOUT;
     }
@@ -1796,9 +1755,8 @@ int i2c_target_receive_transaction_framed(uint32_t idx, uint8_t *buffer, uint32_
 
 int i2c_target_receive_transaction(uint32_t idx, uint8_t *buffer, uint32_t buffer_size,
                                    uint32_t *received_len, uint32_t timeout_cycles) {
-    /* Unchanged behaviour for existing callers: first data byte is a length
-     * header. New callers that send raw bytes should call
-     * i2c_target_receive_transaction_framed(..., false) instead. */
+    /* The first data byte is a length header; callers that send raw bytes use
+     * i2c_target_receive_transaction_framed(..., false). */
     return i2c_target_receive_transaction_framed(idx, buffer, buffer_size, received_len,
                                                  timeout_cycles, true);
 }
@@ -2753,10 +2711,8 @@ void i2c_dump_registers(uint32_t idx) {
 }
 
 // ============================================================================
-// Easy FIFO Management Functions (from i2c_controller_driver.c)
+// Easy FIFO management: simple, conservative helpers with built-in debug output.
 // ============================================================================
-// These functions provide simpler, more conservative FIFO management
-// with built-in debug output, similar to i2c_controller_driver.c
 
 #define I2C_PARAM_FIFO_DEPTH 64u
 #define I2C_DEFAULT_TIMEOUT_EASY 10000u
@@ -2765,7 +2721,6 @@ void i2c_dump_registers(uint32_t idx) {
  * @brief Reset Controller FIFOs (Easy version)
  *
  * Simple FIFO reset that resets all FIFOs at once.
- * Based on i2c_controller_driver.c implementation.
  *
  * @param idx I2C instance index
  */
@@ -2785,7 +2740,6 @@ void i2c_reset_fifos_easy(uint32_t idx) {
  * @brief Configure FIFO thresholds (Easy version)
  *
  * Simple threshold configuration for FMT and RX FIFOs.
- * Based on i2c_controller_driver.c implementation.
  *
  * @param idx I2C instance index
  * @param fmt_thresh FMT FIFO threshold
@@ -2806,7 +2760,6 @@ void i2c_configure_threshold_easy(uint32_t idx, uint16_t fmt_thresh, uint16_t rx
  * @brief Wait for controller to become idle (Easy version)
  *
  * Simple polling loop waiting for hostidle status.
- * Based on i2c_controller_driver.c implementation.
  *
  * @param idx I2C instance index
  * @param timeout Timeout value (0 = use default)
@@ -2837,7 +2790,6 @@ int i2c_controller_wait_idle_easy(uint32_t idx, uint32_t timeout) {
  * 2. Verify fmtlvl < FIFO_DEPTH
  *
  * Includes periodic debug output every 4096 iterations.
- * Based on i2c_controller_driver.c implementation.
  *
  * @param idx I2C instance index
  * @param timeout Timeout value (0 = use default)
@@ -2888,7 +2840,6 @@ int i2c_controller_wait_fmt_fifo_space_easy(uint32_t idx, uint32_t timeout) {
  *
  * Simple polling loop waiting for RX FIFO to reach desired level.
  * Includes periodic debug output every 4096 iterations.
- * Based on i2c_controller_driver.c implementation.
  *
  * @param idx I2C instance index
  * @param level Required RX FIFO level

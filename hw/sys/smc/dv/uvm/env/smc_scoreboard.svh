@@ -123,10 +123,8 @@ class smc_scoreboard extends ocah_scoreboard;
 
   // default_reg: only the catalogued registers that carry a default
   // contract; a decode-only entry is skipped on both sides. The scratch
-  // registers appear in this catalogue as well as in the scratch windows, so
-  // a read of one is judged independently by both features -- two models
-  // reaching the same expectation from different state, not one claim
-  // counted twice.
+  // registers are in this catalogue as well as in the scratch windows, so a
+  // read of one is judged by both features.
   function void write_smc_default_reg_observed(ocah_axi_item t);
     smc_default_reg_entry_t entry;
     if (t.direction != OCAH_AXI_DIR_READ || !smc_is_default_reg_access(t, entry)) return;

@@ -116,7 +116,7 @@ fresh seed per leaf:
 python3 tools/dv/run_dv.py --dut smc --items all --tool verilator --regress --sim-jobs 6
 ```
 
-`all` includes the fifteen `fw` leaves, the three dual-target leaves and the two
+`all` includes the `fw` leaves, the `sanity` dual-target leaves and the
 MMIO isolate-flush leaves, so a picolibc-enabled RISC-V GCC (or
 `scripts/docker-run.sh`) must be available: the
 `c_compile` stage builds the images with it (see
@@ -137,8 +137,8 @@ container or rootfs is needed.
 
 Hosted GitHub nightly and weekly (`.github/workflows/regress.yml`) run
 `--items hosted` with one seed per leaf (`reseed: 1`) instead, because those
-runners have no RISC-V toolchain. `hosted` is `all` without twenty leaves: the
-fifteen `fw` leaves, the three dual-target leaves, and
+runners have no RISC-V toolchain. `hosted` is `all` without the leaves that
+need the firmware toolchain: the `fw` leaves, the dual-target leaves, and
 `smc_cpu_mmio_read_wedge_test` and `smc_cpu_mmio_write_wedge_test`.
 `testlists/holdout.toml` defines the non-ROM leaves outside `all`;
 `testlists/smc_rom.toml` defines the ROM/OCCP cases selected through
@@ -260,16 +260,16 @@ leaf set. Use `--dut smc --items all --list` for the catalog.
 | `smoke` | CI gate (`sim.yml`): `smc_canonical_smoke_test`, `smc_cold_reset_test`, `smc_register_sanity_test` |
 | `all` | every test the VPLAN grades: `hosted` ∪ `fw` ∪ `sanity`; `expected_count` is the membership gate. The coverage set is `hosted fw`: `sanity` elaborates a second build target the coverage merge cannot combine with `default` |
 | `hosted` | toolchain-free class, single-instance model; the nightly and weekly tiers (one seed) |
-| `fw` | firmware class: the fifteen CPU-boot leaves whose image `c_compile` builds |
+| `fw` | firmware class: the CPU-boot leaves whose image `c_compile` builds |
 | `sanity` | SMC_DUAL class: the three `target = "dual"` leaves enrolled in `all`, each loading a ROM or firmware image |
 | `axil`, `clock`, `combined`, `gpio`, `i2c`, `irq`, `reset`, `uart` | feature subsets of `all` for a local run of one area |
-| `occp_rom` | 33 of the 34 BL0/SMC ROM cases (`smc_occp_ring_buffer_stress_test` is left out for runtime); includes the hours-long `smc_occp_dual_unsecure_boot_test` and is run on demand |
+| `occp_rom` | every BL0/SMC ROM case except `smc_occp_ring_buffer_stress_test`, left out for runtime; includes the hours-long `smc_occp_dual_unsecure_boot_test` and is run on demand |
 | `occp_boot`, `held_out` | on-demand hold-outs (runtime, or waiting on an RTL fix); not in `all` |
 
 Non-ROM leaves outside `all` are defined in `testlists/holdout.toml`, which
 states why. ROM/OCCP leaves outside `all` are defined in
 `testlists/smc_rom.toml` and selected together with `--items occp_rom`.
-That group runs 33 of the 34 ROM cases, including the hours-long unsecure-boot leaf.
+That group runs every ROM case but one, including the hours-long unsecure-boot leaf.
 `smc_occp_ring_buffer_stress_test` is left out for its runtime; run it by name with
 `--items smc_occp_ring_buffer_stress_test`. The group run is:
 
@@ -344,7 +344,7 @@ SV-UVM support. The bench architecture is in `docs/SMC_TB_ARCH.adoc`
 ("SystemVerilog UVM Realization"); the framework conventions it follows are
 in `hw/common/dv/docs/uvm-framework.adoc`.
 
-The first bound scenario is `smc_register_sanity_test`:
+One bound scenario is `smc_register_sanity_test`:
 SEP_IN AXI4 idle-read / write / readback / restore of the `SCRATCH_COLD` and
 `SCRATCH_COLD_WARM` registers over 16 seeded passes. In the SV-UVM shape every
 scratch read is predicted by `smc_scratch_csr_ref_model`, paired by the

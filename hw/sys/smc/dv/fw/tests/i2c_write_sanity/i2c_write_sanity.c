@@ -229,7 +229,6 @@ int main(void) {
     // Prepare test data with unique patterns for each transaction
     for (uint32_t txn = 0; txn < NUM_TRANSACTIONS; txn++) {
         for (uint32_t i = 0; i < data_size; i++) {
-            // Add transaction number to make each pattern unique
             test_data[txn][i] = test_data_base[i] ^ (txn & 0xFF);
         }
     }
@@ -282,7 +281,6 @@ int main(void) {
             test_fail(0);
         }
 
-        // Wait for controller to become idle after target receive completes
         ret = i2c_controller_wait_idle(CONTROLLER_IDX, I2C_TIMEOUT_DEFAULT);
         if (ret != I2C_OK) {
             simputs("  ERROR: Wait for controller idle failed with error code ");

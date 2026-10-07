@@ -19,8 +19,8 @@ char debug_msg[100][4];
 
 void mailbox_interrupt_handler(int id, void *priv) {
     int hartid = metal_cpu_get_current_hartid();
-    // Determine which mailbox triggered the interrupt based on 'id'
-    int mailbox_id = id - (MAILBOX_INTERUPT_ID_BASE + 1); // Reverse mapping
+    // PLIC source MAILBOX_INTERUPT_ID_BASE + 1 + n is mailbox n.
+    int mailbox_id = id - (MAILBOX_INTERUPT_ID_BASE + 1);
 
     // Inbound WRITE_DATA is consumed on the outbound READ_DATA port.
     uint64_t mailbox_data =
@@ -104,7 +104,6 @@ void write_mailbox_int(int mailbox_id) {
 
 int main(void) {
 
-    // Mask AVSBUS interrupts
     avsbus_controller__AVS_INTERRUPT_MASK_t avsbus_mask_interrupts;
     avsbus_mask_interrupts.w = 0xffffffff;
     write_reg(SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_INTERRUPT_MASK_BASE_ADDR, avsbus_mask_interrupts.w);
@@ -117,27 +116,23 @@ int main(void) {
     struct metal_cpu *cpu;
     struct metal_interrupt *cpu_controller;
 
-    // get PLIC interrupt controller
     plic_controller = metal_interrupt_get_controller(METAL_PLIC_CONTROLLER, hartid);
 
     cpu = metal_cpu_get(hartid);
     cpu_controller = metal_cpu_interrupt_controller(cpu);
 
-    // enable external interrupts in the cpu
     metal_interrupt_init(cpu_controller);
     metal_interrupt_enable(cpu_controller, METAL_INTERRUPT_ID_BASE);
     metal_interrupt_enable(cpu_controller, METAL_INTERRUPT_ID_EXT);
 
     // If we are Core 0, set up PLIC, then send an interrupt to mailbox 0
     if (hartid == 0) {
-        // init the plic and register interrupt handler
         metal_interrupt_init(plic_controller);
 
-        // Reset PLIC registers
         reset_plic_enable_registers();
 
         int interrupt_id = MAILBOX_INTERUPT_ID_BASE + 3 + 1; // Mailbox 3 interrupts core 0
-        metal_interrupt_set_priority(plic_controller, interrupt_id, 1); // Set priority
+        metal_interrupt_set_priority(plic_controller, interrupt_id, 1);
         if (metal_interrupt_register_handler(plic_controller, interrupt_id,
                                              mailbox_interrupt_handler, NULL) != 0) {
             simputs("Failed to register interrupt handler");
@@ -159,7 +154,6 @@ int main(void) {
             __asm__ volatile("" ::: "memory");
         }
 
-        // Send mailbox interrupt
         write_mailbox_int(0);
         simputs("Sent interrupt to mailbox 0\n");
 
@@ -177,7 +171,7 @@ int main(void) {
         // Expects an interrupt from mailbox hartid - 1, ie Core 1 expects from mailbox 0 (Core 0)
         int interrupt_id = MAILBOX_INTERUPT_ID_BASE + hartid;
 
-        metal_interrupt_set_priority(plic_controller, interrupt_id, 1); // Set priority
+        metal_interrupt_set_priority(plic_controller, interrupt_id, 1);
         if (metal_interrupt_register_handler(plic_controller, interrupt_id,
                                              mailbox_interrupt_handler, NULL) != 0) {
             snprintf(debug_msg[hartid], sizeof(debug_msg[hartid]),
@@ -194,7 +188,6 @@ int main(void) {
                  "Core %d: Setup done, waiting for interrupt...\n", hartid);
         simputs(debug_msg[hartid]);
 
-        // Say that this core is set up
         metal_atomic_swap(&core_setup_done[hartid], 1);
 
         // Wait for this core's inbound mailbox interrupt + data validation.
@@ -202,7 +195,6 @@ int main(void) {
             __asm__ volatile("wfi");
         }
 
-        // Send mailbox interrupt
         write_mailbox_int(hartid);
         snprintf(debug_msg[hartid], sizeof(debug_msg[hartid]), "Sent interrupt to mailbox %d\n",
                  hartid);
