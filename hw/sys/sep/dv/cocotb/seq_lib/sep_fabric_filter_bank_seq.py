@@ -127,7 +127,16 @@ class SepFilterBank(SepAxiRegDriver):
         return cfg, s, e
 
     async def program(self, idx: int, e: FilterEntry, *, check: bool = True) -> None:
-        """Write the range, then FILTER_CONFIG, then read the entry back."""
+        """Clear FILTER_CONFIG, write the range, write FILTER_CONFIG, read the entry back.
+
+        The first write clears ``entry_enabled`` and ``allow_burst`` of the
+        old configuration. The granule rule widens START_ADDR and END_ADDR by
+        the ``allow_burst`` value in force, so a range written under an old
+        ``allow_burst`` 1 would take the 4 KiB widening that the new entry
+        does not ask for, and an old enabled entry would admit traffic over a
+        half-written range.
+        """
+        await self._wr(self.cfg_addr(idx), 0)
         await self._write_range(idx, e.start, e.end)
         await self._wr(self.cfg_addr(idx), config_word(e))
         self.model.set(idx, FilterEntry(**vars(e)))
