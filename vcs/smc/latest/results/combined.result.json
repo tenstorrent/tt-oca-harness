@@ -8,7 +8,7 @@
     "run_dir": "vcs/smc/runs/combined"
   },
   "coverage": {
-    "comparison_key": "COVCMP-695ca77617ce7083",
+    "comparison_key": "COVCMP-46f5b3607f4f7c49",
     "details_available": true,
     "effective_metrics": {
       "assertion": 93.97,
@@ -69,11 +69,11 @@
   "failure_buckets": [],
   "flow": "smc",
   "framework": "",
-  "generated_at": "2026-10-07T05:06:30+00:00",
+  "generated_at": "2026-10-07T15:38:28+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "0f08c6bdc93fff9dc3da2fb95edbe0872d904c33",
-    "short_sha": "0f08c6bd"
+    "sha": "d554700526e230a572c2ebf7b6826b6421d46ca3",
+    "short_sha": "d5547005"
   },
   "junit_xml": {
     "missing": 0,
@@ -82,10 +82,10 @@
   "kind": "dv",
   "run_metadata": {
     "executor": "local",
-    "generated_at": "2026-10-07T05:06:29.626276+00:00",
+    "generated_at": "2026-10-07T15:38:26.089840+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "0f08c6bdc93fff9dc3da2fb95edbe0872d904c33",
+      "commit": "d554700526e230a572c2ebf7b6826b6421d46ca3",
       "dirty": "false"
     },
     "label": "combine",
@@ -110,9 +110,9 @@
   },
   "tests_detail": [],
   "timing": {
-    "duration_sec": 41.753,
-    "end_time": "2026-10-07T05:06:29.050499+00:00",
-    "start_time": "2026-10-07T05:05:47.291440+00:00"
+    "duration_sec": 44.77,
+    "end_time": "2026-10-07T15:38:25.087011+00:00",
+    "start_time": "2026-10-07T15:37:40.304653+00:00"
   },
   "tool": "vcs"
 }
