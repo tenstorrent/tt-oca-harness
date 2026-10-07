@@ -1017,7 +1017,35 @@ in <a href="https://github.com/tenstorrent/tt-oca-harness/blob/main/flows/synth/
 </div>
 </div>
 <div class="sect1">
-<h2 id="linting"><a class="anchor" href="#linting"></a><a class="link" href="#linting">7. Linting</a></h2>
+<h2 id="emulation-elaboration"><a class="anchor" href="#emulation-elaboration"></a><a class="link" href="#emulation-elaboration">7. Emulation elaboration</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>OCAH also provides a Vivado flow that elaborates a block&#8217;s emulation view, the
+same Bender targets integrators receive as <code>integration/filelists/&lt;block&gt;.emul.f</code>.
+It is only a readiness check: it runs <code>synth_design -rtl</code> to confirm that Vivado
+reads and elaborates the sources, and does not synthesize, implement or time the
+design.</p>
+</div>
+<div class="paragraph">
+<p><code>make ocah-emul-vivado-all</code> requires a licensed <code>vivado</code> on <code>PATH</code>; the container
+does not provide it.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">make ocah-emul-vivado-all BLOCK=smu
+make ocah-emul-vivado-all BLOCK=smu OCAH_VIVADO_INPUT=script</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>By default Vivado reads the Bender file list; <code>OCAH_VIVADO_INPUT=script</code> reads
+Bender&#8217;s Vivado script instead. <code>BLOCK</code> is a <code>flow.mk</code> top that includes the flow
+(only <code>smu</code> today). Details are in
+<a href="https://github.com/tenstorrent/tt-oca-harness/blob/main/flows/emul/vivado/README.md"><code>flows/emul/vivado/README.md</code></a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="linting"><a class="anchor" href="#linting"></a><a class="link" href="#linting">8. Linting</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>We use linters within the development of OCAH to perform static analysis
@@ -1050,9 +1078,9 @@ make lint-verilator-all BLOCK=smu VERILATOR_LINT_PATH=hw/ip/gpio</code></pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="verilog"><a class="anchor" href="#verilog"></a><a class="link" href="#verilog">7.1. Verilog</a></h3>
+<h3 id="verilog"><a class="anchor" href="#verilog"></a><a class="link" href="#verilog">8.1. Verilog</a></h3>
 <div class="sect3">
-<h4 id="style-and-lint-checking-with-verible"><a class="anchor" href="#style-and-lint-checking-with-verible"></a><a class="link" href="#style-and-lint-checking-with-verible">7.1.1. Style and Lint checking with Verible</a></h4>
+<h4 id="style-and-lint-checking-with-verible"><a class="anchor" href="#style-and-lint-checking-with-verible"></a><a class="link" href="#style-and-lint-checking-with-verible">8.1.1. Style and Lint checking with Verible</a></h4>
 <div class="paragraph">
 <p>To run the verible linter on all SystemVerilog files, use the following command:</p>
 </div>
@@ -1079,7 +1107,7 @@ respectively, for each rule.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="linting-with-verilator"><a class="anchor" href="#linting-with-verilator"></a><a class="link" href="#linting-with-verilator">7.1.2. Linting with Verilator</a></h4>
+<h4 id="linting-with-verilator"><a class="anchor" href="#linting-with-verilator"></a><a class="link" href="#linting-with-verilator">8.1.2. Linting with Verilator</a></h4>
 <div class="paragraph">
 <p>Verilator structurally lints each discovered hardware block as its own top:</p>
 </div>
@@ -1123,7 +1151,7 @@ the flag; CI runs it for <code>smu</code>, whose filelist includes SEP and SMC.<
 </div>
 </div>
 <div class="sect3">
-<h4 id="style-and-lint-checking-with-slang"><a class="anchor" href="#style-and-lint-checking-with-slang"></a><a class="link" href="#style-and-lint-checking-with-slang">7.1.3. Style and Lint checking with Slang</a></h4>
+<h4 id="style-and-lint-checking-with-slang"><a class="anchor" href="#style-and-lint-checking-with-slang"></a><a class="link" href="#style-and-lint-checking-with-slang">8.1.3. Style and Lint checking with Slang</a></h4>
 <div class="paragraph">
 <p>To run the slang linter on each <code>flow.mk</code> top, use the following command:</p>
 </div>
@@ -1139,9 +1167,9 @@ further constrain the printed warnings, also use <code>SLANG_LINT_PATH</code>.</
 </div>
 </div>
 <div class="sect2">
-<h3 id="cc"><a class="anchor" href="#cc"></a><a class="link" href="#cc">7.2. C/C++</a></h3>
+<h3 id="cc"><a class="anchor" href="#cc"></a><a class="link" href="#cc">8.2. C/C++</a></h3>
 <div class="sect3">
-<h4 id="style-and-format-with-clang-format"><a class="anchor" href="#style-and-format-with-clang-format"></a><a class="link" href="#style-and-format-with-clang-format">7.2.1. Style and Format with Clang-Format</a></h4>
+<h4 id="style-and-format-with-clang-format"><a class="anchor" href="#style-and-format-with-clang-format"></a><a class="link" href="#style-and-format-with-clang-format">8.2.1. Style and Format with Clang-Format</a></h4>
 <div class="paragraph">
 <p>The C/C++ Firmware files included in each component are checked and formatted with
 <code>clang-format</code>. This may be managed by <code>uv</code>, or <code>OCAH_CLANG_FORMAT_SKIP_UV=1</code>
@@ -1162,9 +1190,9 @@ path for files to check and format may be alternatively constrained with <code>F
 </div>
 </div>
 <div class="sect2">
-<h3 id="python"><a class="anchor" href="#python"></a><a class="link" href="#python">7.3. Python</a></h3>
+<h3 id="python"><a class="anchor" href="#python"></a><a class="link" href="#python">8.3. Python</a></h3>
 <div class="sect3">
-<h4 id="lint-and-format-with-ruff"><a class="anchor" href="#lint-and-format-with-ruff"></a><a class="link" href="#lint-and-format-with-ruff">7.3.1. Lint and Format with <code>ruff</code></a></h4>
+<h4 id="lint-and-format-with-ruff"><a class="anchor" href="#lint-and-format-with-ruff"></a><a class="link" href="#lint-and-format-with-ruff">8.3.1. Lint and Format with <code>ruff</code></a></h4>
 <div class="paragraph">
 <p>Ruff checks first-party Python under tools/, scripts/, hw/, and .github/. Generated register models, vendored sources, submodules, nonfree/, and build output are excluded.</p>
 </div>
@@ -1191,7 +1219,7 @@ make format-python</code></pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="lint-with-mypy"><a class="anchor" href="#lint-with-mypy"></a><a class="link" href="#lint-with-mypy">7.3.2. Lint with <code>mypy</code></a></h4>
+<h4 id="lint-with-mypy"><a class="anchor" href="#lint-with-mypy"></a><a class="link" href="#lint-with-mypy">8.3.2. Lint with <code>mypy</code></a></h4>
 <div class="paragraph">
 <p>MyPy also lints first-party Python while excluding generated register
 models, vendored sources, submodules, <code>nonfree/</code>, and build output. It starts
@@ -1209,9 +1237,9 @@ across the tree.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="build-system-and-helper-scripts"><a class="anchor" href="#build-system-and-helper-scripts"></a><a class="link" href="#build-system-and-helper-scripts">7.4. Build System and Helper Scripts</a></h3>
+<h3 id="build-system-and-helper-scripts"><a class="anchor" href="#build-system-and-helper-scripts"></a><a class="link" href="#build-system-and-helper-scripts">8.4. Build System and Helper Scripts</a></h3>
 <div class="sect3">
-<h4 id="makefile-lint-with-checkmake"><a class="anchor" href="#makefile-lint-with-checkmake"></a><a class="link" href="#makefile-lint-with-checkmake">7.4.1. Makefile Lint with <code>checkmake</code></a></h4>
+<h4 id="makefile-lint-with-checkmake"><a class="anchor" href="#makefile-lint-with-checkmake"></a><a class="link" href="#makefile-lint-with-checkmake">8.4.1. Makefile Lint with <code>checkmake</code></a></h4>
 <div class="paragraph">
 <p>To lint all <code>Makefile</code> and <code>.mk</code> files used within OCAH, run</p>
 </div>
@@ -1243,7 +1271,7 @@ legitimate pattern-rule/<code>ifeq</code> target overloads)&#8201;&#8212;&#8201;
 </div>
 </div>
 <div class="sect3">
-<h4 id="shell-script-lint-and-format-with-shellcheck"><a class="anchor" href="#shell-script-lint-and-format-with-shellcheck"></a><a class="link" href="#shell-script-lint-and-format-with-shellcheck">7.4.2. Shell Script Lint and Format with <code>shellcheck</code></a></h4>
+<h4 id="shell-script-lint-and-format-with-shellcheck"><a class="anchor" href="#shell-script-lint-and-format-with-shellcheck"></a><a class="link" href="#shell-script-lint-and-format-with-shellcheck">8.4.2. Shell Script Lint and Format with <code>shellcheck</code></a></h4>
 <div class="paragraph">
 <p>To lint all shell scripts used within OCAH, run</p>
 </div>
@@ -1268,7 +1296,7 @@ make format-shell-check</code></pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="format-nix-with-nix-fmt"><a class="anchor" href="#format-nix-with-nix-fmt"></a><a class="link" href="#format-nix-with-nix-fmt">7.4.3. Format Nix with <code>nix fmt</code></a></h4>
+<h4 id="format-nix-with-nix-fmt"><a class="anchor" href="#format-nix-with-nix-fmt"></a><a class="link" href="#format-nix-with-nix-fmt">8.4.3. Format Nix with <code>nix fmt</code></a></h4>
 <div class="paragraph">
 <p>Nix files (<code>*.nix</code>) are formatted with <a href="https://github.com/kamadorueda/alejandra">alejandra</a>.
 To check formatting without modifying files:</p>
@@ -1298,9 +1326,9 @@ inline diff annotations through reviewdog.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuration-files"><a class="anchor" href="#configuration-files"></a><a class="link" href="#configuration-files">7.5. Configuration Files</a></h3>
+<h3 id="configuration-files"><a class="anchor" href="#configuration-files"></a><a class="link" href="#configuration-files">8.5. Configuration Files</a></h3>
 <div class="sect3">
-<h4 id="toml-file-lint-with-tomllint"><a class="anchor" href="#toml-file-lint-with-tomllint"></a><a class="link" href="#toml-file-lint-with-tomllint">7.5.1. TOML file Lint with <code>tomllint</code></a></h4>
+<h4 id="toml-file-lint-with-tomllint"><a class="anchor" href="#toml-file-lint-with-tomllint"></a><a class="link" href="#toml-file-lint-with-tomllint">8.5.1. TOML file Lint with <code>tomllint</code></a></h4>
 <div class="paragraph">
 <p>TOML File syntax may be checked by running</p>
 </div>
@@ -1331,7 +1359,7 @@ file before the runner that reads it fails with a less legible error.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="yaml-file-lint-with-yamllint"><a class="anchor" href="#yaml-file-lint-with-yamllint"></a><a class="link" href="#yaml-file-lint-with-yamllint">7.5.2. YAML file Lint with <code>yamllint</code></a></h4>
+<h4 id="yaml-file-lint-with-yamllint"><a class="anchor" href="#yaml-file-lint-with-yamllint"></a><a class="link" href="#yaml-file-lint-with-yamllint">8.5.2. YAML file Lint with <code>yamllint</code></a></h4>
 <div class="paragraph">
 <p>YAML File syntax may be checked by running</p>
 </div>
@@ -1346,7 +1374,7 @@ file before the runner that reads it fails with a less legible error.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="documentation-files"><a class="anchor" href="#documentation-files"></a><a class="link" href="#documentation-files">7.6. Documentation Files</a></h3>
+<h3 id="documentation-files"><a class="anchor" href="#documentation-files"></a><a class="link" href="#documentation-files">8.6. Documentation Files</a></h3>
 <div class="admonitionblock note">
 <table>
 <tr>
@@ -1366,7 +1394,7 @@ math notation or bit-range syntax that only looks like Markdown.</p>
 </table>
 </div>
 <div class="sect3">
-<h4 id="markdown-lint-with-markdownlint"><a class="anchor" href="#markdown-lint-with-markdownlint"></a><a class="link" href="#markdown-lint-with-markdownlint">7.6.1. Markdown Lint with <code>markdownlint</code></a></h4>
+<h4 id="markdown-lint-with-markdownlint"><a class="anchor" href="#markdown-lint-with-markdownlint"></a><a class="link" href="#markdown-lint-with-markdownlint">8.6.1. Markdown Lint with <code>markdownlint</code></a></h4>
 <div class="paragraph">
 <p>To check the markdown files within the OCAH Directories, run</p>
 </div>
@@ -1388,7 +1416,7 @@ math notation or bit-range syntax that only looks like Markdown.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="spell-checking-with-codespell"><a class="anchor" href="#spell-checking-with-codespell"></a><a class="link" href="#spell-checking-with-codespell">7.6.2. Spell-Checking with Codespell</a></h4>
+<h4 id="spell-checking-with-codespell"><a class="anchor" href="#spell-checking-with-codespell"></a><a class="link" href="#spell-checking-with-codespell">8.6.2. Spell-Checking with Codespell</a></h4>
 <div class="paragraph">
 <p>To check the spelling of all documentation files, run the following</p>
 </div>
@@ -1411,9 +1439,9 @@ math notation or bit-range syntax that only looks like Markdown.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="synthesis-scripts"><a class="anchor" href="#synthesis-scripts"></a><a class="link" href="#synthesis-scripts">7.7. Synthesis Scripts</a></h3>
+<h3 id="synthesis-scripts"><a class="anchor" href="#synthesis-scripts"></a><a class="link" href="#synthesis-scripts">8.7. Synthesis Scripts</a></h3>
 <div class="sect3">
-<h4 id="tcl-script-style-lint-and-format-with-tclint"><a class="anchor" href="#tcl-script-style-lint-and-format-with-tclint"></a><a class="link" href="#tcl-script-style-lint-and-format-with-tclint">7.7.1. TCL Script Style, Lint and Format with Tclint</a></h4>
+<h4 id="tcl-script-style-lint-and-format-with-tclint"><a class="anchor" href="#tcl-script-style-lint-and-format-with-tclint"></a><a class="link" href="#tcl-script-style-lint-and-format-with-tclint">8.7.1. TCL Script Style, Lint and Format with Tclint</a></h4>
 <div class="paragraph">
 <p>To lint the TCL scripts (used to automate the synthesis workflow) in the repository,
 we use the package <code>tclint</code>. This may be managed by <code>uv</code> - run <code>uv sync</code> to install,
@@ -1443,7 +1471,7 @@ be checked with <code>make format-tcl-check</code>:</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="optional-pre-commit-checks"><a class="anchor" href="#optional-pre-commit-checks"></a><a class="link" href="#optional-pre-commit-checks">7.8. Optional Pre-Commit Checks</a></h3>
+<h3 id="optional-pre-commit-checks"><a class="anchor" href="#optional-pre-commit-checks"></a><a class="link" href="#optional-pre-commit-checks">8.8. Optional Pre-Commit Checks</a></h3>
 <div class="paragraph">
 <p>The repository provides optional, check-only hooks for staged Python, C/C++,
 Tcl, YAML, TOML, and shell files, plus a repo-wide spelling check. They run
@@ -1471,7 +1499,7 @@ contributor enables the hook.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="linting-and-ci"><a class="anchor" href="#linting-and-ci"></a><a class="link" href="#linting-and-ci">7.9. Linting and CI</a></h3>
+<h3 id="linting-and-ci"><a class="anchor" href="#linting-and-ci"></a><a class="link" href="#linting-and-ci">8.9. Linting and CI</a></h3>
 <div class="paragraph">
 <p><code>.github/workflows/lint.yml</code> runs <code>lint-sv-slang</code>, <code>lint-sv-verilator</code>,
 <code>lint-python</code>, <code>lint-python-mypy</code>, <code>format-c</code>, <code>lint-tcl</code>, <code>lint-spelling</code>,
@@ -1624,7 +1652,7 @@ git status --porcelain   # expect only intended vendor/ changes</code></pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="references-2"><a class="anchor" href="#references-2"></a><a class="link" href="#references-2">7.9.1. References</a></h4>
+<h4 id="references-2"><a class="anchor" href="#references-2"></a><a class="link" href="#references-2">8.9.1. References</a></h4>
 <div class="ulist">
 <ul>
 <li>

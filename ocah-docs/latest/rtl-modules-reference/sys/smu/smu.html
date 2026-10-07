@@ -684,7 +684,7 @@
 <tr><td><code>DtpXtrigNumIntCt</code></td><td><code>int unsigned</code></td><td><code>smu_pkg::dtp_xtrig_num_int_ct(CFG)</code></td><td>Internal CT count including SMC-reserved lanes, forwarded to the DTP XTRIG_NUM_INT_CT.</td></tr>
 <tr><td><code>DtpXtrigNumClkStopReq</code></td><td><code>int unsigned</code></td><td><code>smu_pkg::dtp_xtrig_num_clk_stop_req(CFG)</code></td><td>Clock-stop count including SMC-reserved lanes, forwarded to the DTP XTRIG_NUM_CLK_STOP_REQ.</td></tr>
 <tr><td><code>JtagNumExtraStapPorts</code></td><td><code>int unsigned</code></td><td><code>smu_pkg::jtag_num_extra_stap_ports(CFG)</code></td><td>Extra STAP port count; at least one for tie-off.</td></tr>
-<tr><td><code>DtpXtrigIntCtMode</code></td><td><code>logic [DtpXtrigNumIntCt-1:0]</code></td><td><code>smu_pkg::dtp_xtrig_int_ct_mode(CFG)[DtpXtrigNumIntCt-1:0]</code></td><td>Per-lane CTM mode vector with SMC lanes forced to 0, forwarded to the DTP XTRIG_INT_CT_MODE.</td></tr>
+<tr><td><code>DtpXtrigIntCtMode</code></td><td><code>smu_pkg::dtp_ct_mode_t</code></td><td><code>smu_pkg::dtp_xtrig_int_ct_mode(CFG)</code></td><td>Per-lane CTM mode vector with SMC lanes forced to 0; its low DtpXtrigNumIntCt bits are forwarded to the DTP XTRIG_INT_CT_MODE.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
