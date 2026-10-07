@@ -25,16 +25,17 @@ from pathlib import Path
 import cocotb
 
 _CODES_SVH = Path(__file__).resolve().parents[2] / "tb" / "sep_fcov_owner_codes.svh"
-_LINE = re.compile(r"^\s*localparam\s+int\s+unsigned\s+FCOV_OWN_(\w+)\s*=\s*(\d+)\s*;", re.M)
+_LINE = re.compile(r"^\s*localparam\s+int\s+unsigned\s+FcovOwn(\w+)\s*=\s*(\d+)\s*;", re.M)
+_CAMEL_BREAK = re.compile(r"(?<!^)(?=[A-Z])")
 
 
 @lru_cache(maxsize=1)
 def owner_codes() -> dict[str, int]:
     """Map test name (lower case) to its owner code; ``none`` maps to 0."""
     text = _CODES_SVH.read_text()
-    codes = {name.lower(): int(code) for name, code in _LINE.findall(text)}
+    codes = {_CAMEL_BREAK.sub("_", name).lower(): int(code) for name, code in _LINE.findall(text)}
     if codes.get("none") != 0:
-        raise RuntimeError(f"{_CODES_SVH}: FCOV_OWN_NONE must be 0")
+        raise RuntimeError(f"{_CODES_SVH}: FcovOwnNone must be 0")
     if len(set(codes.values())) != len(codes):
         raise RuntimeError(f"{_CODES_SVH}: an owner code is used twice")
     return codes
@@ -46,7 +47,7 @@ def owner_code(test_name: str) -> int:
         return owner_codes()[test_name.lower()]
     except KeyError as exc:
         raise KeyError(
-            f"{test_name} has no FCOV_OWN_ line in {_CODES_SVH.name}; add one before it opens a window"
+            f"{test_name} has no FcovOwn line in {_CODES_SVH.name}; add one before it opens a window"
         ) from exc
 
 

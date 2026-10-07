@@ -32,7 +32,7 @@ module sep_smc_route_mem #(
   output axi_resp_t resp_o
 );
 
-  logic [63:0] mem [logic [52:0]];
+  logic [63:0] mem[logic [52:0]];
 
   function automatic logic [63:0] rd_word(input logic [55:0] addr);
     logic [52:0] key;
@@ -40,7 +40,7 @@ module sep_smc_route_mem #(
     key = addr[55:3];
     a   = {addr[31:3], 3'b000};
     if (mem.exists(key)) rd_word = mem[key];
-    else                 rd_word = {~a, a};
+    else rd_word = {~a, a};
   endfunction
 
   function automatic logic [55:0] next_addr(input logic [55:0] addr, input logic [2:0] size,
@@ -49,7 +49,11 @@ module sep_smc_route_mem #(
   endfunction
 
   // Write channel.
-  typedef enum logic [1:0] {W_IDLE, W_DATA, W_RESP} w_state_e;
+  typedef enum logic [1:0] {
+    W_IDLE,
+    W_DATA,
+    W_RESP
+  } w_state_e;
   w_state_e    w_state_q;
   logic [55:0] w_addr_q;
   logic [2:0]  w_size_q;
@@ -57,7 +61,10 @@ module sep_smc_route_mem #(
   logic [$bits(req_i.aw.id)-1:0] w_id_q;
 
   // Read channel.
-  typedef enum logic [0:0] {R_IDLE, R_DATA} r_state_e;
+  typedef enum logic [0:0] {
+    R_IDLE,
+    R_DATA
+  } r_state_e;
   r_state_e    r_state_q;
   logic [55:0] r_addr_q;
   logic [2:0]  r_size_q;
@@ -81,7 +88,9 @@ module sep_smc_route_mem #(
     resp_o.r.last   = (r_left_q == 8'd0);
   end
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
+  // A behavioural model: the store write is blocking, so a read of the same
+  // word on the same edge returns the merged data.
+  always @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       w_state_q <= W_IDLE;
       w_addr_q  <= '0;
@@ -97,18 +106,20 @@ module sep_smc_route_mem #(
       r_id_q    <= '0;
     end else if (en_i) begin
       unique case (w_state_q)
-        W_IDLE: if (req_i.aw_valid) begin
+        W_IDLE:
+        if (req_i.aw_valid) begin
           w_addr_q  <= req_i.aw.addr;
           w_size_q  <= req_i.aw.size;
           w_burst_q <= req_i.aw.burst;
           w_id_q    <= req_i.aw.id;
           w_state_q <= W_DATA;
         end
-        W_DATA: if (req_i.w_valid) begin
+        W_DATA:
+        if (req_i.w_valid) begin
           logic [63:0] word;
           word = rd_word(w_addr_q);
           for (int b = 0; b < 8; b++) begin
-            if (req_i.w.strb[b]) word[8*b +: 8] = req_i.w.data[8*b +: 8];
+            if (req_i.w.strb[b]) word[8*b+:8] = req_i.w.data[8*b+:8];
           end
           mem[w_addr_q[55:3]] = word;
           w_addr_q <= next_addr(w_addr_q, w_size_q, w_burst_q);
@@ -118,7 +129,8 @@ module sep_smc_route_mem #(
         default: w_state_q <= W_IDLE;
       endcase
       unique case (r_state_q)
-        R_IDLE: if (req_i.ar_valid) begin
+        R_IDLE:
+        if (req_i.ar_valid) begin
           r_addr_q  <= req_i.ar.addr;
           r_size_q  <= req_i.ar.size;
           r_burst_q <= req_i.ar.burst;
@@ -127,7 +139,8 @@ module sep_smc_route_mem #(
           r_id_q    <= req_i.ar.id;
           r_state_q <= R_DATA;
         end
-        R_DATA: if (req_i.r_ready) begin
+        R_DATA:
+        if (req_i.r_ready) begin
           if (r_left_q == 8'd0) begin
             r_state_q <= R_IDLE;
           end else begin
