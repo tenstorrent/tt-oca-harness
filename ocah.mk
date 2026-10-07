@@ -82,6 +82,7 @@ include $(OCAH_ROOT)/flows/lint/verilator.mk
 include $(OCAH_ROOT)/flows/lint/verible.mk
 include $(OCAH_ROOT)/flows/lint/sv-comments.mk
 include $(OCAH_ROOT)/flows/lint/sv-enums.mk
+include $(OCAH_ROOT)/flows/lint/bender-sources.mk
 include $(OCAH_ROOT)/flows/lint/clang-format.mk
 include $(OCAH_ROOT)/flows/lint/ruff.mk
 include $(OCAH_ROOT)/flows/lint/mypy.mk

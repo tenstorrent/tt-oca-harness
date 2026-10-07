@@ -14,11 +14,15 @@ sources:
   - target: any(simulation, verilator)
     files:
     - upstream/src/clk_rst_gen.sv
+
+  - target: any(simulation, verilator, common_verification_simulation)
+    files:
     - upstream/src/sim_timeout.sv
     - upstream/src/stream_watchdog.sv
     - upstream/src/signal_highlighter.sv
 
-  - target: simulation
+  # Verilator does not support the randomisation this package uses.
+  - target: any(simulation, common_verification_simulation)
     files:
       - upstream/src/rand_verif_pkg.sv
   - target: common_verification_simulation
@@ -30,10 +34,6 @@ sources:
     - upstream/src/rand_id_queue.sv
     - upstream/src/rand_stream_mst.sv
     - upstream/src/rand_synch_holdable_driver.sv
-    - upstream/src/rand_verif_pkg.sv
-    - upstream/src/signal_highlighter.sv
-    - upstream/src/sim_timeout.sv
-    - upstream/src/stream_watchdog.sv
     # Level 1
     - upstream/src/rand_synch_driver.sv
     # Level 2

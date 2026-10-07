@@ -208,6 +208,8 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_count.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_edge_detector.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync_cnt.sv
+// Package(opentitan) Target(any(cross_trigger, drbg, dtp, opentitan_smu, sep, smu, system_timer_octs, uart))
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv
 // Package(tt-oca-harness) Target(all(dtp, not(sep)))
 hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv
 // Package(tt-oca-harness) Target(any(dtp, key_manager, sep, smc, system_timer_octs, uart))
