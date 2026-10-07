@@ -11,8 +11,9 @@
 // The scan reset and the register reset gates change only at tck negedges and hold until the next
 // one, so a gate sampled high at two consecutive posedges was high throughout the cycle between
 // them; the hold properties use that pair of samples. The asynchronous resets are asserted only
-// before the first sampling edge (dtp_sby_env.sv), so the properties on them are never disabled
-// and describe the reset state itself.
+// before the first sampling edge, TRST and the power-on reset each alone or both together
+// (dtp_sby_env.sv), so the properties on them are never disabled and describe the reset state
+// itself.
 
 `include "ocah_fv_macros.svh"
 
@@ -122,6 +123,8 @@ module dtp_reset_props
                   tck_i, 1'b1)
 
   // ---- Covers -------------------------------------------------------------------------------
+  `OCAH_FV_COVER(cov_trst_alone_asserted, !client_trst_ni && pwr_on_rst_ni, tck_i, 1'b1)
+  `OCAH_FV_COVER(cov_por_alone_asserted, client_trst_ni && !pwr_on_rst_ni, tck_i, 1'b1)
   `OCAH_FV_COVER(cov_tmp_on, `OCAH_FV_ROSE(persistence_i), tck_i, jtag_trst_ni)
   `OCAH_FV_COVER(cov_tmp_off_by_release,
                  `OCAH_FV_FELL(persistence_i) && $past(inst_i[CLAMP_RELEASE_INSTR]),

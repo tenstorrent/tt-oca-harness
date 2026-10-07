@@ -199,7 +199,10 @@ module dtp_ctn_xtrig_props #(
                                        (invert_i ? !ack_out_dout_i : ack_out_dout_i)) &&
                   `OCAH_FV_IMPLIES($past(rst_ni) && $past(mode_wire_or_i) &&
                                    invert_i == $past(invert_i),
-                                   !status_req_out_i),
+                                   !status_req_out_i) &&
+                  `OCAH_FV_IMPLIES($past(rst_ni),
+                                   status_busy_i == ($past(mode_wire_or_i) ? $past(stretch_active_i)
+                                                                           : $past(hs_busy_i))),
                   clk_i, rst_ni)
 
   // ---- Covers -------------------------------------------------------------------------------

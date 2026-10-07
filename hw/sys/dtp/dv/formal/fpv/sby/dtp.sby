@@ -11,8 +11,8 @@
 # <block>_prove read that block's property and bind files beside the shared filelist and
 # environment, so one sby invocation checks one block. The tap triple also binds the shared JTAG
 # checker on the primary TAP (dtp_jtag_fv_bind.sv), the host's phase rule assumed and the TAP's
-# rules asserted, and reads dtp_tap_sby_env.sv, which bounds the opcode an Update-IR loads for that
-# task. The cover depth of a block must exceed the
+# rules asserted. The tap and ir triples read dtp_tap_sby_env.sv and dtp_ir_sby_env.sv, which bound
+# the opcode an Update-IR loads for those tasks. The cover depth of a block must exceed the
 # step at which its deepest cov_ label is reached; the bmc depth matches it so that every property
 # of the block is checked over the same horizon.
 
@@ -62,7 +62,7 @@ prove: abc pdr
 [script]
 plugin -i slang
 tap:    read_slang -D FORMAL --top dtp --single-unit --allow-use-before-declare --timescale=1ns/1ps -f dtp.f dtp_tap_props.sv dtp_tap_bind.sv dtp_jtag_fv_bind.sv dtp_sby_env.sv dtp_tap_sby_env.sv
-ir:     read_slang -D FORMAL --top dtp --single-unit --allow-use-before-declare --timescale=1ns/1ps -f dtp.f dtp_ir_props.sv dtp_ir_bind.sv dtp_sby_env.sv
+ir:     read_slang -D FORMAL --top dtp --single-unit --allow-use-before-declare --timescale=1ns/1ps -f dtp.f dtp_ir_props.sv dtp_ir_bind.sv dtp_sby_env.sv dtp_ir_sby_env.sv
 reset:  read_slang -D FORMAL --top dtp --single-unit --allow-use-before-declare --timescale=1ns/1ps -f dtp.f dtp_reset_props.sv dtp_reset_bind.sv dtp_sby_env.sv
 stap:   read_slang -D FORMAL --top dtp --single-unit --allow-use-before-declare --timescale=1ns/1ps -f dtp.f dtp_stap_props.sv dtp_stap_bind.sv dtp_sby_env.sv
 sib:    read_slang -D FORMAL --top dtp --single-unit --allow-use-before-declare --timescale=1ns/1ps -f dtp.f dtp_sib_props.sv dtp_sib_bind.sv dtp_sby_env.sv
@@ -78,6 +78,7 @@ tap:    ../../props/dtp_jtag_fv_bind.sv
 tap:    dtp_tap_sby_env.sv
 ir:     ../../props/dtp_ir_props.sv
 ir:     ../../props/dtp_ir_bind.sv
+ir:     dtp_ir_sby_env.sv
 reset:  ../../props/dtp_reset_props.sv
 reset:  ../../props/dtp_reset_bind.sv
 stap:   ../../props/dtp_stap_props.sv

@@ -277,10 +277,13 @@ licensed backend's script issues, and it holds `asm_env_` assumptions on the
 top's input ports, and on internal state where the environment stands for a
 peer or a configuration bound. An assumption that one block's tasks alone
 need lives in a second module beside it, `<dut>_<block>_sby_env.sv`, read by
-those tasks only (`dtp_tap_sby_env.sv`). The DTP environments assert every reset up to
+those tasks only (`dtp_tap_sby_env.sv`). The DTP environments assert the resets up to
 the first sampling edge, so each clock domain starts from its reset state,
-and release all of them there for the rest of the trace; each property module
-pins its own reset low in the first cycle through `OCAH_FV_INITIAL_RESET`.
+and release all of them there for the rest of the trace. Where two sources
+reset one block, as TRST and the power-on reset do the TAP, each may be
+asserted alone, and a flop that the other source alone clears starts from any
+value; each property module pins its own reset low in the first cycle through
+`OCAH_FV_INITIAL_RESET`.
 With the clocks modelled, a negedge-clocked flag sampled at a `tck` posedge
 has already taken the value derived from the state sampled at that same edge,
 and a property can state that equality directly. A free input that a negedge

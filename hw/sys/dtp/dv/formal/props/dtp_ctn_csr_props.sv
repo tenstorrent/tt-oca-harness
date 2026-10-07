@@ -10,7 +10,8 @@
 //
 // The manager issues one write and one read at a time (dtp_cross_trigger_network_sby_env.sv), so
 // the address of the request a response answers, and of the request a crossbar master port
-// carries, is the one the helper flops recorded at the last address handshake.
+// carries, is the one the helper flops recorded at the last address handshake, and the data and
+// strobes a register block writes are the ones recorded at the last W handshake.
 
 `include "ocah_fv_macros.svh"
 
@@ -68,27 +69,40 @@ module dtp_ctn_csr_props
     return 32'h0;
   endfunction
 
-  logic aw_hs, ar_hs, b_hs, r_hs;
+  logic aw_hs, w_hs, ar_hs, b_hs, r_hs;
   assign aw_hs = req_i.aw_valid && resp_i.aw_ready;
+  assign w_hs  = req_i.w_valid && resp_i.w_ready;
   assign ar_hs = req_i.ar_valid && resp_i.ar_ready;
   assign b_hs  = resp_i.b_valid && req_i.b_ready;
   assign r_hs  = resp_i.r_valid && req_i.r_ready;
 
-  // Address of the write and of the read in flight, recorded at the address handshake.
-  logic [31:0] wr_addr_q, rd_addr_q;
-  logic wr_pending_q, rd_pending_q;
+  // Address of the write and of the read in flight, recorded at the address handshake, and data
+  // and strobes of the write, recorded at the W handshake.
+  logic [31:0] wr_addr_q, rd_addr_q, wr_data_q;
+  logic [3:0] wr_strb_q;
+  logic wr_pending_q, wr_data_pending_q, rd_pending_q;
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      wr_addr_q    <= '0;
-      rd_addr_q    <= '0;
-      wr_pending_q <= 1'b0;
-      rd_pending_q <= 1'b0;
+      wr_addr_q         <= '0;
+      rd_addr_q         <= '0;
+      wr_data_q         <= '0;
+      wr_strb_q         <= '0;
+      wr_pending_q      <= 1'b0;
+      wr_data_pending_q <= 1'b0;
+      rd_pending_q      <= 1'b0;
     end else begin
       if (aw_hs) begin
         wr_addr_q    <= req_i.aw.addr;
         wr_pending_q <= 1'b1;
       end else if (b_hs) begin
         wr_pending_q <= 1'b0;
+      end
+      if (w_hs) begin
+        wr_data_q         <= req_i.w.data;
+        wr_strb_q         <= req_i.w.strb;
+        wr_data_pending_q <= 1'b1;
+      end else if (b_hs) begin
+        wr_data_pending_q <= 1'b0;
       end
       if (ar_hs) begin
         rd_addr_q    <= req_i.ar.addr;
@@ -115,6 +129,12 @@ module dtp_ctn_csr_props
   assign ctp0_config_write  = ctp0_req_i && ctp0_req_is_wr_i && ctp0_addr_i == 4'h0;
   assign ctp0_stretch_write = ctp0_req_i && ctp0_req_is_wr_i && ctp0_addr_i == 4'h8;
   assign ctp0_status_write  = ctp0_req_i && ctp0_req_is_wr_i && ctp0_addr_i == 4'h4;
+
+  // The bit-enable of each byte lane is that lane's strobe.
+  logic [31:0] wr_biten;
+  always_comb begin
+    for (int unsigned b = 0; b < 4; b++) wr_biten[8*b+:8] = {8{wr_strb_q[b]}};
+  end
 
   logic [2:0]  ctp0_config;
   logic [15:0] ctp0_stretch;
@@ -204,6 +224,12 @@ module dtp_ctn_csr_props
                   clk_i, rst_ni)
 
   // ---- Field access -------------------------------------------------------------------------
+  `OCAH_FV_ASSERT(ast_csr_write_reaches_regblock,
+                  `OCAH_FV_IMPLIES(ctp0_req_i && ctp0_req_is_wr_i,
+                                   wr_pending_q && wr_data_pending_q &&
+                                   ctp0_addr_i == {wr_addr_q[3:2], 2'b00} &&
+                                   ctp0_wr_data_i == wr_data_q && ctp0_wr_biten_i == wr_biten),
+                  clk_i, rst_ni)
   `OCAH_FV_ASSERT(ast_csr_reset_values,
                   `OCAH_FV_IMPLIES(!rst_ni, ctp0_config == '0 && ctp0_stretch == '0 && ctm_all_zero),
                   clk_i, 1'b1)
