@@ -65,7 +65,7 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 36.9,
+      "coverage_total_percent": 36.92,
       "flow": "smc",
       "framework": "uvm",
       "pass_rate": 100.0,
@@ -105,7 +105,7 @@
       "tool": "vcs"
     }
   ],
-  "generated_at": "2026-10-06T17:06:49+00:00",
+  "generated_at": "2026-10-07T05:06:31+00:00",
   "results": [
     {
       "coverage": {
@@ -221,14 +221,14 @@
     {
       "coverage": {
         "effective_metrics": {
-          "assertion": 96.36,
+          "assertion": 96.35,
           "branch": 87.68,
           "condition": 89.28,
           "fsm_state": 97.24,
           "functional": 98.29,
           "line": 99.74,
           "toggle": 94.02,
-          "user": 99.5968
+          "user": 99.5951
         }
       },
       "flow": "smc",
@@ -238,14 +238,14 @@
     {
       "coverage": {
         "effective_metrics": {
-          "assertion": 59.89,
+          "assertion": 59.98,
           "branch": 53.17,
           "condition": 31.65,
           "fsm_state": 4.26,
           "functional": 36.12,
           "line": 69.93,
           "toggle": 3.3,
-          "user": 23.3333
+          "user": 23.4252
         }
       },
       "flow": "smc",
@@ -255,14 +255,14 @@
     {
       "coverage": {
         "effective_metrics": {
-          "assertion": 93.98,
+          "assertion": 93.97,
           "branch": 87.68,
           "condition": 89.33,
           "fsm_state": 97.24,
           "functional": 98.29,
           "line": 99.74,
           "toggle": 94.04,
-          "user": 98.0392
+          "user": 98.0315
         }
       },
       "flow": "smc",
