@@ -425,7 +425,8 @@ run_modes = ["jtag2axi"]
 name = "dtp_jtag2axi_series_corner_all_bridges_test"
 module = { cocotb = "dtp_jtag2axi_series_corner_all_bridges_test", uvm = "dtp_jtag2axi_series_corner_all_bridges_test" }
 seed = 1
-timeout_sec = 3000
+# Wall time grows with the drawn TCK-to-system-clock period ratio, up to 100:1.
+timeout_sec = 6000
 tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
