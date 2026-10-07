@@ -329,9 +329,9 @@ module smc_uvm_top
     // Evidence only. The OCCP boot flow has two failure modes that look
     // identical from the outside -- "the bytes never arrived" and "the bytes
     // arrived but did not execute" -- and nothing else on this top can tell
-    // them apart. The decode below is only known-correct at offset 0, so this is
-    // evidence for triage and never a gate -- see smc_dual_axi_sram_probe_test,
-    // which measures both the striped decode and the AXI path into this window.
+    // them apart. The decode is smc_scratch_map_pkg's, which
+    // smc_dual_axi_sram_probe_test cross-checks against the AXI path into this
+    // window; this port is evidence for triage and never a gate.
     //
     // Strictly a read. It must never be used to deposit the payload, flush a
     // cache, or otherwise help the DUT reach a pass -- that would hide the very
@@ -360,7 +360,8 @@ module smc_uvm_top
     // the TX_PORT offset (0x088). Captures the first words of each transfer;
     // for a 100-byte OCCP WRITE frame the first 8 DWORDs cover the 8-byte
     // request header, the 12 metadata bytes, and the first 12 payload bytes --
-    // exactly the boundary where the data goes missing.
+    // the header/payload boundary, so a payload lost between the controller's
+    // SRAM read and the bus shows up here.
     output logic [31:0] tb_bfm_i3c_tx_count /*verilator public_flat_rw*/,
     output logic [31:0] tb_bfm_i3c_tx_word_0 /*verilator public_flat_rw*/,
     output logic [31:0] tb_bfm_i3c_tx_word_1 /*verilator public_flat_rw*/,
@@ -544,8 +545,8 @@ module smc_uvm_top
     end else begin : gen_tel2_absent
         assign tb_telemetry2_atready = 1'b0;
     end
-    // Receivers past index 2 keep the AT tie-off; the AF channel of every
-    // receiver except 0 keeps its ready high, exactly as before the lift.
+    // Receivers past index 2 are tied idle (atdata/atid 0, atvalid 0); the AF
+    // channel of every receiver except 0 holds afready high.
     for (genvar tel_i = 3; tel_i < smc_config_pkg::NumTelemetryReceivers; tel_i++) begin : gen_tel_at_tie
         assign tb_telemetry_atdata[tel_i] = '0;
         assign tb_telemetry_atid[tel_i] = '0;
@@ -3545,8 +3546,7 @@ module smc_dual_inst
     logic clk_ref;
     logic clk_periph;
 
-    // Idle inbound buses. Declared rather than inlined as '0 so the struct
-    // types are explicit at the tie-off site.
+    // Idle inbound buses.
     smc_sys_in_56_64_6_12_axi_req_t sys_axi_idle_req;
     smc_jtag_56_64_2_12_axi_req_t   jtag_axi_idle_req;
     smc_axil_32_32_req_t            axil_idle_req;

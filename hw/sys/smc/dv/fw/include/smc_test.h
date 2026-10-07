@@ -37,12 +37,9 @@
  * smc_api.py programs SCRATCH[3] with the ROM seed and reads it back, and
  * smc_ecc_api.py and st_octs_p2_sync_recovery.py both sample it.
  *
- * Not repaired here on purpose: every index 0..15 is already written by some
- * firmware test, so moving ERROR_COUNT_REG only relocates the collision, and
- * the seed's index is fixed by the TB contract rather than by this header.
- * Resolving it means either reallocating the whole map or widening it, which
- * is an owner decision across all of dv/fw/tests. Until then, a test that
- * both raises errors and reads the seed cannot trust either value.
+ * A test that both raises errors and reads the seed cannot trust either
+ * value: every index 0..15 is written by some firmware test, and the seed's
+ * index is fixed by the TB contract.
  */
 #define ERROR_STATUS_REG 2
 #define ERROR_COUNT_REG 3

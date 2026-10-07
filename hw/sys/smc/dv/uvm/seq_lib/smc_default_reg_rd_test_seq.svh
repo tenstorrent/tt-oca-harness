@@ -14,20 +14,15 @@
 // depend on that -- it follows any write it observes -- but the scenario's
 // own claim does.)
 //
-// Two properties stop this passing for the wrong reason:
+// Two properties of the catalogue:
 //
-//   * TWO OF THE EXPECTATIONS ARE NON-ZERO -- CHIP_CONFIG.VERSION_LO is
-//     0x000100A0 and RESET_UNIT.SS_WARM_RESET_N is 0xFFFFFFFF. A read path
-//     stuck at zero, an unmapped decode that returns zero, or a predictor
-//     that lost its expected value cannot satisfy the catalogue.
-//   * DECODE-ONLY ENTRIES CARRY NO CHECKER OF THEIR OWN. A catalogue entry
-//     whose read value this bench cannot establish (CHIP_CONFIG.LC_STATE is
-//     driven by the harness; NDM_RESET.NDMRESET_CLUSTER_COUNT by a
-//     design-side count) has its OKAY response covered by CHK-CSR-RESP, and
-//     its observed word logged as an OBSERVED-ONLY line. Comparing them
-//     against the RDL default would be an invented claim; giving them a
-//     CHK- token whose condition is a literal true would add a check that
-//     cannot fail to the CHECKER_SUMMARY census.
+//   * CHIP_CONFIG.VERSION_LO and RESET_UNIT.SS_WARM_RESET_N have non-zero
+//     defaults, so a read path stuck at zero, an unmapped decode that returns
+//     zero, or a predictor that lost its expected value cannot satisfy it.
+//   * Decode-only entries (CHIP_CONFIG.LC_STATE, driven by the harness;
+//     NDM_RESET.NDMRESET_CLUSTER_COUNT, a design-side count) have their OKAY
+//     response covered by CHK-CSR-RESP and their observed word logged as an
+//     OBSERVED-ONLY line.
 //
 // Every value compare is also made independently by the always-on
 // smc_scoreboard's default_reg feature, whose reference model reaches the
@@ -76,13 +71,8 @@ class smc_default_reg_rd_test_seq extends smc_base_test_seq;
         csr_read_check(ChkRegDefault, entries[i].addr, entries[i].default_value, entries[i].name);
         compared++;
       end else begin
-        // Decode-only. The OKAY claim on this access is carried by
-        // CHK-CSR-RESP, which csr_read records and which can fail; the
-        // observed word is REPORTED and never compared, because no authority
-        // in this bench fixes its value. It is logged as an observation
-        // rather than under a CHK- id: a token whose condition is a literal
-        // true cannot fail, and putting one in the CHECKER_SUMMARY census
-        // would inflate the count of checks that carry a claim.
+        // Decode-only: no authority in this bench fixes the value, so the
+        // word is logged and not compared; CHK-CSR-RESP carries the OKAY claim.
         csr_read(entries[i].addr, observed, entries[i].name);
         `uvm_info(get_type_name(), $sformatf(
                   "OBSERVED-ONLY %s addr=0x%0h read 0x%08h (%s)",

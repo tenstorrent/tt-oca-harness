@@ -24,19 +24,19 @@
 //      functional fabric, peripheral control and configuration paths", and
 //      gives rst_warm_n = rst_primary_n AND rst_wdt_n AND fuse_reset_ni. Both
 //      scratch windows are configuration registers of the SMC misc wrapper
-//      (misc_wrap.rdl:20-21), so a cool reset clears BOTH -- the "COLD" in
-//      SCRATCH_COLD names a reset it is reset BY, not a reset it survives.
+//      (the scratch_cold and scratch_cold_warm instances in misc_wrap.rdl), so
+//      a cool reset clears BOTH -- the "COLD" in SCRATCH_COLD names a reset it
+//      is reset BY, not a reset it survives.
 //   3. The CSR path recovers with real content, not merely with OKAY
 //      responses: a static register whose generated default is NON-ZERO
-//      (CHIP_CONFIG.VERSION_LO = 0x000100A0) reads that default again, and a
+//      (CHIP_CONFIG.VERSION_LO) reads that default again, and a
 //      fresh write/readback lands.
 //
-// WHAT THIS DOES NOT PROVE, AND WHY. It does not show either scratch window
-// surviving a reset the other one takes, because no stimulus here drops
-// rst_warm_ni WITHOUT dropping rst_primary_ni -- the cool-reset pin drops
-// both. Separating the two domains needs a warm-only source (the
-// SS_WARM_RESET_N control or the SEP WDT pin) and is deliberately left out
-// rather than asserted from the register naming.
+// WHAT THIS DOES NOT PROVE. It does not show either scratch window surviving
+// a reset the other one takes: no stimulus here drops rst_warm_ni WITHOUT
+// dropping rst_primary_ni -- the cool-reset pin drops both, and separating the
+// two domains needs a warm-only source (the SS_WARM_RESET_N control or the SEP
+// WDT pin).
 //
 // The patterns written before the reset are drawn per pass and REQUIRED TO BE
 // NON-ZERO: "the register reads 0 after the reset" says nothing if it held 0
@@ -59,10 +59,9 @@ class smc_multi_reset_csr_persistence_test_seq extends smc_base_test_seq;
   localparam string ChkRwRecovered = "CHK-CSR-RW-RECOVERED";
   localparam string ChkNonvac = "CHK-NONVAC";
 
-  // Bound on each cool-reset transition poll, in smc clocks. The de-glitch is
-  // ResetDeglitchWidth samples of clk_ref_i (~32), which at the randomized
-  // ref/smc periods is under a hundred smc clocks; this leaves ample margin
-  // and still fails loudly instead of hanging.
+  // Bound on each cool-reset transition poll, in smc clocks: it must exceed
+  // the ResetDeglitchWidth de-glitch (clk_ref_i samples) at the slowest
+  // ref/smc period ratio.
   localparam int unsigned CoolResetPollCycles = 5_000;
   // Accesses this body issues per pass: four writes and seven reads.
   localparam int unsigned ExpectedAccesses = 11;

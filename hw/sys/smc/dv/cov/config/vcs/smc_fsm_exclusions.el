@@ -209,21 +209,21 @@ Transition ST_ISSUE_ADDR->ST_IDLE "2->1"
 
 CHECKSUM: "3775597833 2717742095"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper.dst_inst[0].debug_sig_trace_packetizer.accumulator_instance.gen_accumulator_bank_instance[0].accumulator_bank_instance
-ANNOTATION: "SMC-F11-FSM-IN-PORTS-ONLY-UNIT: this FSM sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its states and transitions are excluded while uncovered. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-F11-FSM-IN-PORTS-ONLY-UNIT: this FSM sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its states and transitions are excluded while uncovered. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Fsm bank_status "2717742095"
 Transition BANK_EMPTY->BANK_FULL "0->2"
 Transition BANK_FULL->BANK_PARTIAL "2->1"
 
 CHECKSUM: "3775597833 2717742095"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper.dst_inst[0].debug_sig_trace_packetizer.accumulator_instance.gen_accumulator_bank_instance[1].accumulator_bank_instance
-ANNOTATION: "SMC-F11-FSM-IN-PORTS-ONLY-UNIT: this FSM sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its states and transitions are excluded while uncovered. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-F11-FSM-IN-PORTS-ONLY-UNIT: this FSM sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its states and transitions are excluded while uncovered. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Fsm bank_status "2717742095"
 Transition BANK_EMPTY->BANK_FULL "0->2"
 Transition BANK_FULL->BANK_PARTIAL "2->1"
 
 CHECKSUM: "404099673 995141053"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_smem_axi_master
-ANNOTATION: "SMC-F11-FSM-IN-PORTS-ONLY-UNIT: this FSM sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its states and transitions are excluded while uncovered. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-F11-FSM-IN-PORTS-ONLY-UNIT: this FSM sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its states and transitions are excluded while uncovered. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Fsm state "995141053"
 State AW_HANDSHAKE "2"
 State RESP_HANDSHAKE "4"
@@ -239,13 +239,13 @@ Transition W_HANDSHAKE->RESP_HANDSHAKE "3->4"
 
 CHECKSUM: "134859043 4062283189"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_zeroer
-ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm cur_state "4062283189"
 Transition ST_ISSUE_ADDR->ST_IDLE "2->1"
 
 CHECKSUM: "1036002057 2698801009"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
-ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm state "2698801009"
 State MEM_ZERO_BUSY "2"
 Transition MEM_ZERO_BUSY->MEM_ZERO_DONE "2->4"
@@ -254,7 +254,7 @@ Transition MEM_ZERO_IDLE->MEM_ZERO_BUSY "1->2"
 
 CHECKSUM: "2347466248 2272768170"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller
-ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm cur_state "2272768170"
 Transition AVS_END_1ST_SUBFRAME->AVS_IDLE "32->8"
 Transition AVS_END_1ST_SUBFRAME->AVS_RESET "32->1"
@@ -287,13 +287,13 @@ Transition AVS_SHIFT_MID_SUBFRAME->AVS_RESET "64->1"
 
 CHECKSUM: "1495589902 2401410025"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_bus_monitor
-ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm state_q "2401410025"
 Transition ST_BUS_BUSY_STOP->ST_BUS_BUSY_HIGH "3->2"
 
 CHECKSUM: "4121512156 3696659517"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_controller_fsm
-ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm state_q "3696659517"
 Transition ACTIVE->IDLE "1->0"
 Transition CLOCK_LOW->IDLE "9->0"
@@ -310,7 +310,7 @@ Transition READ_HOLD_BIT->IDLE "17->0"
 
 CHECKSUM: "2664491312 4008718806"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_target_fsm
-ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm state_q "4008718806"
 Transition ACQUIRE_ACK_HOLD->ACQUIRE_START "18->1"
 Transition ACQUIRE_ACK_HOLD->IDLE "18->0"
@@ -371,13 +371,13 @@ Transition TRANSMIT_WAIT->WAIT_FOR_STOP "7->13"
 
 CHECKSUM: "1495589902 2401410025"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_bus_monitor
-ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm state_q "2401410025"
 Transition ST_BUS_BUSY_STOP->ST_BUS_BUSY_HIGH "3->2"
 
 CHECKSUM: "4121512156 3696659517"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_controller_fsm
-ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm state_q "3696659517"
 Transition ACTIVE->IDLE "1->0"
 Transition CLOCK_LOW->IDLE "9->0"
@@ -405,7 +405,7 @@ Transition SETUP_STOP->IDLE "6->0"
 
 CHECKSUM: "2664491312 4008718806"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_target_fsm
-ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm state_q "4008718806"
 Transition ACQUIRE_ACK_HOLD->ACQUIRE_START "18->1"
 Transition ACQUIRE_ACK_HOLD->IDLE "18->0"
@@ -470,13 +470,13 @@ Transition WAIT_FOR_STOP->ACQUIRE_START "13->1"
 
 CHECKSUM: "1495589902 2401410025"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_bus_monitor
-ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm state_q "2401410025"
 Transition ST_BUS_BUSY_STOP->ST_BUS_BUSY_HIGH "3->2"
 
 CHECKSUM: "4121512156 3696659517"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_controller_fsm
-ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm state_q "3696659517"
 Transition ACTIVE->IDLE "1->0"
 Transition CLOCK_LOW->IDLE "9->0"
@@ -503,7 +503,7 @@ Transition SETUP_STOP->IDLE "6->0"
 
 CHECKSUM: "2664491312 4008718806"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_target_fsm
-ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm state_q "4008718806"
 Transition ACQUIRE_ACK_HOLD->ACQUIRE_START "18->1"
 Transition ACQUIRE_ACK_HOLD->IDLE "18->0"
@@ -571,7 +571,7 @@ Transition WAIT_FOR_STOP->ACQUIRE_START "13->1"
 
 CHECKSUM: "2879032915 249869120"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_efuse_wrapper.u_efuse_interface_controller
-ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm efuse_reg_select "249869120"
 State EFUSE_MMR_REG_MAP "2"
 Transition EFUSE_CSR_REG_MAP->EFUSE_MMR_REG_MAP "1->2"
@@ -581,19 +581,19 @@ Transition SHADOW_REG_MAP->EFUSE_MMR_REG_MAP "0->2"
 
 CHECKSUM: "1655169995 1106336131"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs
-ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm efuse_sense_state_q "1106336131"
 Transition ST_READ->ST_IDLE "1->0"
 
 CHECKSUM: "2121805547 1063748259"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit.u_smc_cool_reset_wrap
-ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm flr_counter_state "909361475"
 Transition COUNT_DOWN->IDLE "1->0"
 
 CHECKSUM: "1319975045 330493458"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[0].u_telemetry_receiver
-ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm block_index "330493458"
 State 'h0 "0"
 State 'h1 "1"
@@ -601,7 +601,7 @@ Transition 'h0->'h1 "0->1"
 
 CHECKSUM: "1319975045 330493458"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[1].u_telemetry_receiver
-ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm block_index "330493458"
 State 'h0 "0"
 State 'h1 "1"
@@ -609,7 +609,7 @@ Transition 'h0->'h1 "0->1"
 
 CHECKSUM: "1319975045 330493458"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[2].u_telemetry_receiver
-ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-F10-FSM-REVIEWED: design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Fsm block_index "330493458"
 State 'h0 "0"
 State 'h1 "1"
@@ -617,7 +617,7 @@ Transition 'h0->'h1 "0->1"
 
 CHECKSUM: "1114926396 2231107179"
 INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.u_efuse_interface_shim
-ANNOTATION: "SMC-F11-FSM-IN-PORTS-ONLY-UNIT: this FSM sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its states and transitions are excluded while uncovered. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-F11-FSM-IN-PORTS-ONLY-UNIT: this FSM sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its states and transitions are excluded while uncovered. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Fsm efuse_read_state_q "4179072252"
 Transition ST_READ_INIT->ST_READ_IDLE "1->0"
 Fsm efuse_write_state_q "2089111316"

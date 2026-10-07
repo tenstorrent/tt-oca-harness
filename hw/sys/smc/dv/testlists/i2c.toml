@@ -59,7 +59,7 @@ tags = ["ci", "i2c"]
 run_modes = ["smoke"]
 args = ["+smc_i2c_shared_bus"]
 
-# Stretch-timeout observation (commercial timeout body).
+# Stretch-timeout observation.
 [[tests]]
 name = "smc_i2c_p0_timeout_test"
 module = "smc_i2c_p0_timeout_test"
@@ -98,7 +98,6 @@ tags = ["ci", "i2c"]
 run_modes = ["smoke"]
 args = ["+smc_i2c_shared_bus"]
 
-# CSR-only FMT/TX full+empty and RX/ACQ empty (commercial i2c_fifo_full).
 [[tests]]
 name = "smc_i2c_event_retain_test"
 module = "smc_i2c_event_retain_test"
@@ -123,6 +122,8 @@ timeout_sec = 1800
 tags = ["ci", "i2c"]
 run_modes = ["smoke"]
 
+# CSR-only FMT/TX full+empty and RX/ACQ empty STATUS flags; smc_fw_i2c_fifo_full_test
+# fills the same FIFOs by real transfers.
 [[tests]]
 name = "smc_i2c_fifo_full_test"
 module = "smc_i2c_fifo_full_test"
@@ -131,7 +132,7 @@ timeout_sec = 1800
 tags = ["ci", "i2c"]
 run_modes = ["smoke"]
 
-# DUT-internal SMBALERT + ARA + SMBSUS (commercial smbus_alert_suspend).
+# DUT-internal SMBALERT + ARA + SMBSUS.
 [[tests]]
 name = "smc_smbus_alert_suspend_test"
 module = "smc_smbus_alert_suspend_test"
@@ -141,7 +142,7 @@ tags = ["ci", "i2c", "smbus"]
 run_modes = ["smoke"]
 args = ["+smc_i2c_shared_bus"]
 
-# VIP ARA + external SMBSUS# into I2C0 target (commercial target_smbus).
+# VIP ARA + external SMBSUS# into the I2C0 target.
 [[tests]]
 name = "smc_i2c_target_smbus_test"
 module = "smc_i2c_target_smbus_test"

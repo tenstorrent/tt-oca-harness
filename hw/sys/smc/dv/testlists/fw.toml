@@ -8,7 +8,7 @@ schema_version = 1
 #
 # A `firmware = "<name>"` key is the whole opt-in. The runner inserts the
 # c_compile stage for any run whose selection contains such a test
-# (tools/dv/runlib/cli.py:2663-2673), builds `<name>` through [c_build.default] in
+# (tools/dv/runlib/cli.py:run_flow), builds `<name>` through [c_build.default] in
 # smc_sim_cfg.toml, and copies the declared outputs into the per-test simulator
 # directory by basename (tools/dv/runlib/stages.py:_stage_firmware_outputs),
 # hard-failing when one is missing.
@@ -23,9 +23,9 @@ schema_version = 1
 # `hosted` (`all` minus the leaves in this file and the three SMC_DUAL leaves).
 #
 # In the `all` group. The pass magic 0xACAFACA1 lands in CPU_CTRL SCRATCH_0 and
-# the image occupies scratch banks 0-3 only -- what the decode in
-# smc_scratch_map_pkg predicts for a link map that ends at offset 0x8730, since
-# the other 28 banks serve addresses at least 128 KB up. Check that bank distribution in the log when
+# the image occupies scratch banks 0-3 only, as smc_scratch_map_pkg's decode
+# predicts for an image this small; the other 28 banks serve addresses at least
+# 128 KB up. Check that bank distribution in the log when
 # this test fails: an image spread across all 32 banks means the loader's
 # decode disagrees with the cluster's, and the CPU is fetching from somewhere
 # the image was never written.

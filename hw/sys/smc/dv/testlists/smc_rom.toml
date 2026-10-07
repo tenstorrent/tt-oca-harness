@@ -470,8 +470,8 @@ timeout_sec = 172800
 tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "occp_ring_buffer_stress_test", mode = "occp_rom_only" }
-# The controller drives the ROM's own status ring buffer here. This is not the SEP ring
-# buffer family, which needs an AXI driver this bench does not have yet.
+# The controller drives the ROM's own status ring buffer, not the SEP ring
+# buffer that smc_sep_ring_buffer_test covers.
 args = [
     "+BOOT_I3C",
     "+rom_bin64=prod_rom.bin64",

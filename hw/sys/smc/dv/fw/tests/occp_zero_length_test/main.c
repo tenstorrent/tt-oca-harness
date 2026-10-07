@@ -38,7 +38,6 @@ static void validate_smc_status_buffer(test_context_t *ctx, int exp_write_errors
 
         increment_cmd_count(ctx);
 
-        // Split the entry into firmware ID, message type and message value
         uint32_t fw_id = (smc_status >> 28) & 0xF;
         uint32_t msg_type = (smc_status >> 24) & 0xF;
         uint32_t msg_value = smc_status & 0xFFFFFF;
