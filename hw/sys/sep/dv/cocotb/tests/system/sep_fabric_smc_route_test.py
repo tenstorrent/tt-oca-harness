@@ -98,7 +98,12 @@ class sep_fabric_smc_route_test(sep_base_test):
     """The supplied SMC aperture goes to the SMC port, first and unfiltered."""
 
     async def _lsu(
-        self, op: SepAxiOp, addr: int, *, data: int = 0, expect_error: bool = False,
+        self,
+        op: SepAxiOp,
+        addr: int,
+        *,
+        data: int = 0,
+        expect_error: bool = False,
         ungraded: bool = False,
     ) -> SepAxiAccessSeq:
         """One 4-byte LSU access. ``ungraded`` lets the caller log a response that
@@ -161,7 +166,14 @@ class sep_fabric_smc_route_test(sep_base_test):
         self.logger.info(
             "%s LOG: addr=0x%08x smc_aw=%d smc_ar=%d out_aw=%d out_ar=%d rdata=0x%08x wr=0x%08x "
             "smc_addrs=%s",
-            chk, addr, c["smc_aw"], c["smc_ar"], c["out_aw"], c["out_ar"], rdata, marker,
+            chk,
+            addr,
+            c["smc_aw"],
+            c["smc_ar"],
+            c["out_aw"],
+            c["out_ar"],
+            rdata,
+            marker,
             [hex(a) for a in self.taps["PR-SMC"].addrs(m["PR-SMC"]) if a is not None],
         )
         return {"addr": addr, "rdata": rdata, "wr": marker, **c}
@@ -177,9 +189,7 @@ class sep_fabric_smc_route_test(sep_base_test):
         for n in range(1, _FUSE_POLL_MAX + 1):
             v = await self.csr._rd(SMC_FUSE_STATUS)
             if v & SMC_FUSE_DONE:
-                self.logger.info(
-                    "SMC-FUSE-DONE LOG: status=0x%08x reads=%d", v, n
-                )
+                self.logger.info("SMC-FUSE-DONE LOG: status=0x%08x reads=%d", v, n)
                 return n
             await ClockCycles(cocotb.top.clk_i, _FUSE_POLL_GAP)
         raise AssertionError(
@@ -191,8 +201,13 @@ class sep_fabric_smc_route_test(sep_base_test):
             await self.outf.program(
                 idx,
                 FilterEntry(
-                    start=start, end=end, enabled=True, read_allowed=True,
-                    write_allowed=True, allow_ns=ns, src_id=0,
+                    start=start,
+                    end=end,
+                    enabled=True,
+                    read_allowed=True,
+                    write_allowed=True,
+                    allow_ns=ns,
+                    src_id=0,
                 ),
             )
 
@@ -270,9 +285,18 @@ class sep_fabric_smc_route_test(sep_base_test):
                 "CHK-SMC-ROUTE PASS: addr=0x%08X smc_aw=%d smc_ar=%d out_seen=%d control_out=%d "
                 "control_smc=%d rdata=0x%08X wr=0x%08X unfilt_smc=%d unfilt_rdata=0x%08X "
                 "deny_resp=%s deny_out=%d fuse_done=1",
-                c["addr"], c["smc_aw"], c["smc_ar"], c["out_aw"] + c["out_ar"], control_out,
-                control_smc, c["rdata"], c["wr"], u["smc_aw"] + u["smc_ar"], u["rdata"],
-                RESP_NAME[deny["resp"]], deny["out_ar"],
+                c["addr"],
+                c["smc_aw"],
+                c["smc_ar"],
+                c["out_aw"] + c["out_ar"],
+                control_out,
+                control_smc,
+                c["rdata"],
+                c["wr"],
+                u["smc_aw"] + u["smc_ar"],
+                u["rdata"],
+                RESP_NAME[deny["resp"]],
+                deny["out_ar"],
             )
 
         control_smc_seen = sum(c["smc_aw"] + c["smc_ar"] for c in route + unfilt)
@@ -281,11 +305,17 @@ class sep_fabric_smc_route_test(sep_base_test):
                 f"CHK-SMC-STATIC-ROW FAIL: above=0x{above:08x} dir={d} smc_seen={cell['smc']}; "
                 "only the supplied aperture may reach the SMC port"
             )
-            assert control_smc_seen > 0, "CHK-SMC-STATIC-ROW FAIL: the aperture control drove no PR-SMC"
+            assert control_smc_seen > 0, (
+                "CHK-SMC-STATIC-ROW FAIL: the aperture control drove no PR-SMC"
+            )
             self.logger.info(
                 "CHK-SMC-STATIC-ROW PASS: above=0x%08X dir=%s smc_seen=0 out_seen=%d resp=%s "
                 "control_smc=%d",
-                above, d, cell["out"], RESP_NAME[cell["resp"]], control_smc_seen,
+                above,
+                d,
+                cell["out"],
+                RESP_NAME[cell["resp"]],
+                control_smc_seen,
             )
 
     async def _config_b(self, base: int) -> None:
@@ -317,7 +347,10 @@ class sep_fabric_smc_route_test(sep_base_test):
         self.logger.info(
             "CHK-SMC-FIRST-MATCH PASS: smc_base=0x%08X smu_base=0x%08X smc_seen=%d out_seen=0 "
             "control_out=%d control_smc=0 rdata=%s fuse_done=1",
-            base, self.smu_base, sum(c["smc_aw"] + c["smc_ar"] for c in cells), ctl["out_ar"],
+            base,
+            self.smu_base,
+            sum(c["smc_aw"] + c["smc_ar"] for c in cells),
+            ctl["out_ar"],
             ",".join(f"0x{c['rdata']:08X}" for c in cells),
         )
         for idx in (0, 1):
@@ -344,7 +377,10 @@ class sep_fabric_smc_route_test(sep_base_test):
         smu_size = await self.csr._rd(SEP_CPU_CTRL.addr("SMU_REGION_SIZE"))
         self.logger.info(
             "BRINGUP LOG: feat_ctrl=0x%016x smu_base=0x%08x smu_size=0x%08x fcov=%d",
-            feat, self.smu_base, smu_size, int(fcov_present()),
+            feat,
+            self.smu_base,
+            smu_size,
+            int(fcov_present()),
         )
         # Configuration B places the SMC aperture inside the SMU window, so the
         # window must sit at its RDL reset aperture.

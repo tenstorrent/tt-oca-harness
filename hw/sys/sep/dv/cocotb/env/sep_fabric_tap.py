@@ -58,8 +58,16 @@ TAPS: dict[str, tuple[str, dict[str, tuple[str, ...]], str]] = {
     "PR-SMC": ("pr_smc", {"aw": _AXI_FULL, "ar": _AXI_FULL, "w": _W_FIELDS}, "axi"),
     "PR-EXT": ("pr_ext", {"aw": _AXI_FULL, "ar": _AXI_FULL, "w": _W_FIELDS}, "axi"),
     "PR-DMACSR": ("pr_dmacsr", {"aw": ("addr",), "ar": ("addr",)}, "axi"),
-    "PR-ALIAS-IN": ("pr_alias_in", {"aw": ("addr", "cache", "prot"), "ar": ("addr", "cache", "prot")}, "axi"),
-    "PR-ALIAS-OUT": ("pr_alias_out", {"aw": ("addr", "cache", "prot"), "ar": ("addr", "cache", "prot")}, "axi"),
+    "PR-ALIAS-IN": (
+        "pr_alias_in",
+        {"aw": ("addr", "cache", "prot"), "ar": ("addr", "cache", "prot")},
+        "axi",
+    ),
+    "PR-ALIAS-OUT": (
+        "pr_alias_out",
+        {"aw": ("addr", "cache", "prot"), "ar": ("addr", "cache", "prot")},
+        "axi",
+    ),
     "PR-XEXT": ("xbar_ext_in", {"aw": ("addr",), "ar": ("addr",)}, "axi"),
     "PR-CSR": ("sys_csr_axil", {"aw": ("addr",), "ar": ("addr",)}, "axi"),
     "PR-SRAM": ("pr_sram", {"req": ("addr", "we", "wdata", "strb"), "rsp": ("rdata",)}, "mem"),

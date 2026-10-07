@@ -228,12 +228,12 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
     def _check_twin(self, console: str, sram: SepFabricTap) -> None:
         cfg = self._cfg
         seeded = {"scratch": cfg.scratch, "spi_word": cfg.csid}
-        statics = {m.group(1): m.groups()[1:] for m in _RE_STATIC.finditer(console)}
+        static_lines = {m.group(1): m.groups()[1:] for m in _RE_STATIC.finditer(console)}
         srams = {m.group(1): m.groups()[1:] for m in _RE_SRAM.finditer(console)}
 
         for unit, (direct, writable) in _UNITS.items():
-            assert unit in statics, f"CHK-TWIN FAIL: unit={unit} has no TWIN console line"
-            d1, a, d2 = (int(x, 16) for x in statics[unit])
+            assert unit in static_lines, f"CHK-TWIN FAIL: unit={unit} has no TWIN console line"
+            d1, a, d2 = (int(x, 16) for x in static_lines[unit])
             mask, rdl_reset = _word_fields(direct)
             alias = _alias(direct)
             if writable:

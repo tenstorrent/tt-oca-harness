@@ -38,7 +38,6 @@ address classes are fixed loops.
 
 from __future__ import annotations
 
-import cocotb
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
 from env.sep_fabric_tap import start_taps, stop_taps
@@ -102,8 +101,16 @@ class sep_fabric_extension_port_window_test(sep_base_test):
     required_evidence = ("CHK-EXT-REACH", "CHK-EXT-PORT", "CHK-EXT-SHIM", "CHK-EXT-BURST")
 
     async def _access(
-        self, init: str, op: SepAxiOp, addr: int, size: int, *, data: int = 0,
-        nbeats: int = 1, expect_decerr: bool = True, ungraded: bool = False,
+        self,
+        init: str,
+        op: SepAxiOp,
+        addr: int,
+        size: int,
+        *,
+        data: int = 0,
+        nbeats: int = 1,
+        expect_decerr: bool = True,
+        ungraded: bool = False,
     ) -> SepAxiAccessSeq:
         kw: dict = {}
         if op is SepAxiOp.READ:
@@ -140,13 +147,21 @@ class sep_fabric_extension_port_window_test(sep_base_test):
     def _since(self, m: dict[str, int], tap: str, ch: str | None = None):
         return self.taps[tap].since(m[tap], ch)
 
-    async def _single(self, init: str, op: SepAxiOp, cls: str, addr: int, size: int, data: int) -> dict:
+    async def _single(
+        self, init: str, op: SepAxiOp, cls: str, addr: int, size: int, data: int
+    ) -> dict:
         m = self._mark()
         seq = await self._access(init, op, addr, size, data=data)
         ch = "aw" if op is SepAxiOp.WRITE else "ar"
         return {
-            "init": init, "op": op, "cls": cls, "addr": addr, "size": size, "data": data,
-            "resp": seq.resp_code, "resp_list": seq.resp_list,
+            "init": init,
+            "op": op,
+            "cls": cls,
+            "addr": addr,
+            "size": size,
+            "data": data,
+            "resp": seq.resp_code,
+            "resp_list": seq.resp_list,
             "xext": [b.addr for b in self._since(m, "PR-XEXT", ch)],
             "ext": self._since(m, "PR-EXT", ch),
             "ext_w": self._since(m, "PR-EXT", "w"),
@@ -194,7 +209,13 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         self.logger.info(
             "CHK-EXT-PORT PASS: init=%s dir=%s issued=0x%08X seen=0x%08X size=%d len=0 strb=%s "
             "data_ok=%s init_resp=DECERR",
-            c["init"], d, c["addr"], b.addr, b.size, seen_strb, data_ok,
+            c["init"],
+            d,
+            c["addr"],
+            b.addr,
+            b.size,
+            seen_strb,
+            data_ok,
         )
 
     def _check_reach(self, c: dict) -> None:
@@ -210,18 +231,26 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         )
         self.logger.info(
             "CHK-EXT-REACH PASS: dir=%s class=%s issued=0x%08X xbar_seen=0x%08X init_resp=DECERR",
-            d, c["cls"], c["addr"], c["xext"][0],
+            d,
+            c["cls"],
+            c["addr"],
+            c["xext"][0],
         )
 
     async def _bring_up(self) -> None:
-        image = self.select_efuse_image(lc_raw=LC_PROD, fixed={"SIP_DIS": _SIP_DIS, "SYS_DIS": _SYS_DIS})
+        image = self.select_efuse_image(
+            lc_raw=LC_PROD, fixed={"SIP_DIS": _SIP_DIS, "SYS_DIS": _SYS_DIS}
+        )
         self.write_efuse_image(image)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
         golden = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=0)
         feat = await self.csr._rd(LCC_FEAT_CTRL) | (await self.csr._rd(LCC_FEAT_CTRL + 4) << 32)
         self.logger.info(
             "CTL-EXT-FILTER-ACTIVE LOG: feat_ctrl=0x%016x golden=0x%016x sep_dbg=%d fcov=%d",
-            feat, golden, feat & 1, int(fcov_present()),
+            feat,
+            golden,
+            feat & 1,
+            int(fcov_present()),
         )
         assert feat == golden and (golden & 1) == 0, (
             f"CTL-EXT-FILTER-ACTIVE FAIL: feat_ctrl=0x{feat:016x} golden=0x{golden:016x}; "
@@ -240,8 +269,14 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         await self.inf.program(
             0,
             FilterEntry(
-                start=EXT_BASE, end=EXT_END, enabled=True, read_allowed=True, write_allowed=True,
-                allow_ns=bool((SI_PROT >> 1) & 1), allow_burst=True, src_id=0,
+                start=EXT_BASE,
+                end=EXT_END,
+                enabled=True,
+                read_allowed=True,
+                write_allowed=True,
+                allow_ns=bool((SI_PROT >> 1) & 1),
+                allow_burst=True,
+                src_id=0,
             ),
         )
 
@@ -269,7 +304,8 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             "DRAW LOG: mid_raw=0x%08x probes=%s wr_burst=0x%08x rd_burst=0x%08x",
             mid_raw,
             [f"{c}/{o.value}/0x{a:08x}/size{s}" for c, o, a, s, _ in probes],
-            wr_burst_addr, rd_burst_addr,
+            wr_burst_addr,
+            rd_burst_addr,
         )
 
         open_graded_window(TEST, self.logger)
@@ -296,15 +332,20 @@ class sep_fabric_extension_port_window_test(sep_base_test):
                     ext = self._since(m, "PR-EXT")
                     self.logger.info(
                         "SHIM LOG: init=%s dir=%s addr=0x%08x resp=%s rdata=0x%x ext_seen=%d",
-                        init, "W" if op is SepAxiOp.WRITE else "R", addr,
+                        init,
+                        "W" if op is SepAxiOp.WRITE else "R",
+                        addr,
                         RESP_NAME.get(seq.resp_code, seq.resp_code),
-                        seq.rdata if op is SepAxiOp.READ else 0, len(ext),
+                        seq.rdata if op is SepAxiOp.READ else 0,
+                        len(ext),
                     )
                     shim.append((init, op, addr, len(ext)))
 
         # Steps 7 and 8: admitted SI bursts.
         m = self._mark()
-        wb = await self._access("SI", SepAxiOp.WRITE, wr_burst_addr, 3, data=wr_burst_data, nbeats=4)
+        wb = await self._access(
+            "SI", SepAxiOp.WRITE, wr_burst_addr, 3, data=wr_burst_data, nbeats=4
+        )
         wb_x = [b.addr for b in self._since(m, "PR-XEXT", "aw")]
         wb_aw = self._since(m, "PR-EXT", "aw")
         wb_w = self._since(m, "PR-EXT", "w")
@@ -322,14 +363,16 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         # Steps 10 and 11: the same bursts, refused by the filter.
         open_graded_window(TEST, self.logger)
         m = self._mark()
-        wd = await self._access("SI", SepAxiOp.WRITE, wr_burst_addr, 3, data=wr_burst_data, nbeats=4)
+        wd = await self._access(
+            "SI", SepAxiOp.WRITE, wr_burst_addr, 3, data=wr_burst_data, nbeats=4
+        )
         wd_x = self._since(m, "PR-XEXT")
         wd_ext = self._since(m, "PR-EXT")
         m = self._mark()
         # The AXI master collapses a burst to one response; the ordered RRESP
         # of every beat comes from the m_axi bus monitor.
         self.env.ext_axi_monitor.start_beat_capture()
-        rd = await self._access("SI", SepAxiOp.READ, rd_burst_addr, 3, nbeats=8)
+        await self._access("SI", SepAxiOp.READ, rd_burst_addr, 3, nbeats=8)
         rd_beats = self.env.ext_axi_monitor.take_beat_capture()
         rd_x = self._since(m, "PR-XEXT")
         rd_ext = self._since(m, "PR-EXT")
@@ -343,9 +386,7 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             self._check_port(c)
 
         # CHK-EXT-SHIM.
-        next_word_seen = sum(
-            len(c["ext"]) for c in si_cells + lsu_cells if c["cls"] == "first"
-        )
+        next_word_seen = sum(len(c["ext"]) for c in si_cells + lsu_cells if c["cls"] == "first")
         leaks = [(i, o.value, hex(a), n) for i, o, a, n in shim if n != 0]
         assert not leaks, f"CHK-EXT-SHIM FAIL: shim window requests left on PR-EXT: {leaks}"
         assert next_word_seen > 0, (
@@ -354,7 +395,10 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         )
         self.logger.info(
             "CHK-EXT-SHIM PASS: first=0x%08X last=0x%08X seen=0 next_word_seen=%d requests=%d",
-            EXT_BASE, SHIM_LAST, min(next_word_seen, 1), len(shim),
+            EXT_BASE,
+            SHIM_LAST,
+            min(next_word_seen, 1),
+            len(shim),
         )
 
         # CHK-EXT-BURST, write.
@@ -371,9 +415,15 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             f"xbar={[hex(a) for a in wb_x if a is not None]}, expected DECERR and one PR-XEXT AW "
             f"at 0x{wr_burst_addr:08x}"
         )
-        assert len(wb_aw) == 1 and wb_aw[0].addr == wr_burst_addr and wb_aw[0].len == 3 \
-            and wb_aw[0].size == 3 and w_ok, (
-            "CHK-EXT-BURST FAIL: dir=W PR-EXT " + "; ".join(b.fmt() for b in wb_aw + wb_w)
+        assert (
+            len(wb_aw) == 1
+            and wb_aw[0].addr == wr_burst_addr
+            and wb_aw[0].len == 3
+            and wb_aw[0].size == 3
+            and w_ok
+        ), (
+            "CHK-EXT-BURST FAIL: dir=W PR-EXT "
+            + "; ".join(b.fmt() for b in wb_aw + wb_w)
             + f"; expected AW addr=0x{wr_burst_addr:x} len=3 size=3 and beats "
             + ",".join(f"0x{v:016x}" for v in want_beats)
         )
@@ -384,7 +434,9 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         self.logger.info(
             "CHK-EXT-BURST PASS: dir=W len=3 xbar_seen=%d init_resp=DECERR denied_resp=DECERR "
             "denied_xbar_seen=0 beats_seen=%d data_ok=1 denied_ext_seen=%d",
-            len(wb_x), len(wb_w), len(wd_ext),
+            len(wb_x),
+            len(wb_w),
+            len(wd_ext),
         )
 
         # CHK-EXT-BURST, read.
@@ -396,9 +448,14 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             f"xbar={[hex(a) for a in rb_x if a is not None]}, expected DECERR and one PR-XEXT AR "
             f"at 0x{rd_burst_addr:08x}"
         )
-        assert len(rb_ar) == 1 and rb_ar[0].addr == rd_burst_addr and rb_ar[0].len == 7 \
-            and rb_ar[0].size == 3, (
-            "CHK-EXT-BURST FAIL: dir=R PR-EXT " + "; ".join(b.fmt() for b in rb_ar)
+        assert (
+            len(rb_ar) == 1
+            and rb_ar[0].addr == rd_burst_addr
+            and rb_ar[0].len == 7
+            and rb_ar[0].size == 3
+        ), (
+            "CHK-EXT-BURST FAIL: dir=R PR-EXT "
+            + "; ".join(b.fmt() for b in rb_ar)
             + f"; expected AR addr=0x{rd_burst_addr:x} len=7 size=3"
         )
         denied_r = rd_beats
@@ -410,5 +467,8 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             "CHK-EXT-BURST PASS: dir=R len=7 xbar_seen=%d init_resp=DECERR denied_resp=DECERR "
             "denied_xbar_seen=0 beats_seen=na data_ok=na admitted_beats=%d denied_beats=%d "
             "denied_ext_seen=%d",
-            len(rb_x), len(rb_beats), len(denied_r), len(rd_ext),
+            len(rb_x),
+            len(rb_beats),
+            len(denied_r),
+            len(rd_ext),
         )

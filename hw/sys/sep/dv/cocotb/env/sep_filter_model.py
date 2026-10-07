@@ -160,7 +160,9 @@ class FilterModel:
         hides = False
         if not allowed:
             for e in self.entries[winner + 1 :]:
-                if not e.failed_terms(addr, prot1=prot1, user=user, axlen=axlen) and e.permits(write):
+                if not e.failed_terms(addr, prot1=prot1, user=user, axlen=axlen) and e.permits(
+                    write
+                ):
                     hides = True
                     break
         return FilterVerdict(
@@ -181,22 +183,44 @@ class FilterModel:
 def _selftest() -> None:
     m = FilterModel(4, "in")
     # Entry 1 covers one 8-byte granule, read only, allow_ns 1.
-    m.set(1, FilterEntry(start=0x1000_0004, end=0x1000_0004, enabled=True, read_allowed=True,
-                         allow_ns=True))
+    m.set(
+        1,
+        FilterEntry(
+            start=0x1000_0004, end=0x1000_0004, enabled=True, read_allowed=True, allow_ns=True
+        ),
+    )
     assert m.verdict(0x1000_0000, write=False, prot1=1).allowed
     assert m.verdict(0x1000_0007, write=False, prot1=1).allowed
     assert not m.verdict(0x1000_0008, write=False, prot1=1).allowed
     assert m.verdict(0x1000_0000, write=True, prot1=1).reason == "perm_block"
     assert m.verdict(0x1000_0000, write=False, prot1=0).reason == "no_match"
     # Entry 0 disabled over the same range: fall-through to entry 1.
-    m.set(0, FilterEntry(start=0x1000_0000, end=0x1000_0FFF, enabled=False, read_allowed=True,
-                         write_allowed=True, allow_ns=True))
+    m.set(
+        0,
+        FilterEntry(
+            start=0x1000_0000,
+            end=0x1000_0FFF,
+            enabled=False,
+            read_allowed=True,
+            write_allowed=True,
+            allow_ns=True,
+        ),
+    )
     v = m.verdict(0x1000_0000, write=False, prot1=1)
     assert v.allowed and v.winner == 1 and v.fallthrough and v.lowest_cover_fails == [TERM_ENABLED]
     # 4 KiB granule straddle admits both pages.
     m.reset()
-    m.set(2, FilterEntry(start=0x8000_2FF0, end=0x8000_3010, enabled=True, read_allowed=True,
-                         allow_ns=False, allow_burst=True))
+    m.set(
+        2,
+        FilterEntry(
+            start=0x8000_2FF0,
+            end=0x8000_3010,
+            enabled=True,
+            read_allowed=True,
+            allow_ns=False,
+            allow_burst=True,
+        ),
+    )
     assert m.admitted_range(2) == (0x8000_2000, 0x8000_3FFF)
     assert not m.verdict(0x8000_1FFC, write=False).allowed
     assert m.verdict(0x8000_3FFC, write=False).allowed
