@@ -293,11 +293,13 @@ class sep_fabric_smc_route_test(sep_base_test):
         await self._program_pair(SMU_BASE, SMU_LAST)
 
         open_graded_window(TEST, self.logger)
+        # The control read comes first, so PR-OUT is shown alive before the
+        # aperture words that must leave it silent.
+        ctl = await self._smu_read(expect_error=False)
         cells = [
             await self._edge_word("CHK-SMC-FIRST-MATCH", base, MARK_FIRST[0]),
             await self._edge_word("CHK-SMC-FIRST-MATCH", last, MARK_FIRST[1]),
         ]
-        ctl = await self._smu_read(expect_error=False)
         close_graded_window(self.logger)
 
         for c in cells:
