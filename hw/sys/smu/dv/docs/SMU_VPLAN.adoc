@@ -85,7 +85,10 @@ scenario under `uvm/tests/`, its scenario sequence under `uvm/seq_lib/`
 The BFM table lives in `SMU_TB_ARCH.adoc` so the testbench chapter and the plan
 cannot drift apart. The policy itself: standard protocols use the shared OCAH
 VIP packages, SMU-specific behaviour uses OCAH-local models under `env/`, and
-no enrolled test may reach into the DUT with Force or deposit.
+no enrolled test may reach into the DUT with Force or deposit. The testbench
+top forces two nodes, each under its own plusarg and each declared in the
+stand-ins section of `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`: the
+ESRC raw-noise lanes and the LC_STATE pair fault inject.
 
 === Verification Scope
 
@@ -177,7 +180,7 @@ Signoff Package; this table is the credit decision.
 |F1 boot-sequence gate |`smu_ext_boot_seq_gate_test` |`hosted`, `smoke` |`smu_boot_fcov` `c_ext_boot_seq_done`, `smu_rst_fcov` `c_reset_release_after_boot_seq_done` |`CHK-BOOT-SEQ-GATE` |YES
 |F1 mailbox IRQ export |`smu_smc_mailbox_int_test` |`hosted`, `smc_under_smu` |`smu_ext_fcov` `c_mailbox_irq_out_width_32` |`CHK-SMC-MBX-IRQ-EXT-S2` |YES
 |F2 Real SEP under SMU |`smu_sep_smoke_test` |`fw_boot`, `all` |none |`SEP_BOOT_ROM_OK` (F1 observe / F6 export on the wrapper) |NO. OUT of `hosted` credit: the leaf boots SEP firmware, so its `c_build` stage needs the RISC-V toolchain and it sits in `fw_boot` / `all`, which no workflow schedules; `regress.yml` schedules `hosted` alone
-|F3 DTP debug and test access |PTAP / STAP / BSR / JTAG2AXI / OTP / boot-stall / IC_RESET cluster |`hosted` |`smu_dbg_fcov` (`c_jtag2axi_write_reaches_smc_csr`, `c_jtag2axi_read_returns_csr_value`, `c_smc_otp_read_response_returned`, `g_sep.c_sep_otp_read_response_returned`), `smu_dtp_fcov` override slice (`c_ovrd_field_present`, `c_val_field_active_low`), `smu_boot_fcov` (`c_boot_stall_jtag_applied`, `c_boot_stall_jtag_released`) |`CHK-DTP-JTAG-PTAP-S1`, `STALL_COLD_STICKY`, `CHK-OTP-SMC-MAP-RW`, `J2A_*` |YES
+|F3 DTP debug and test access |PTAP / STAP / BSR / JTAG2AXI / OTP / boot-stall / IC_RESET cluster |`hosted` |`smu_dbg_fcov` (`c_jtag2axi_write_reaches_smc_csr`, `c_jtag2axi_read_returns_csr_value`, `c_smc_otp_read_response_returned`, `g_sep.c_sep_otp_read_response_returned`), `smu_dtp_fcov` override slice (`c_ovrd_field_present`, `c_val_field_active_low`), `smu_boot_fcov` (`c_boot_stall_jtag_applied`, `c_boot_stall_jtag_released`, `g_sep.c_lc_sigint_err`) |`CHK-DTP-JTAG-PTAP-S1`, `STALL_COLD_STICKY`, `CHK-OTP-SMC-MAP-RW`, `CHK-LC-SIGINT-SMC-OTP-CLOSED`, `J2A_*` |YES
 |F4 AXI fabric |ID convert, filters, alias remap, fabric BAR |`hosted` |`smu_xbar_fcov` (`c_map_smc_base_programmed`, `c_axi_in_aw_accept`, `c_axi_in_rresp_okay`, `c_axi_in_bresp_decerr`, `c_no_route_ext_in_to_ext_out`), `smu_alias_fcov` (`g_sep.c_alias_path_bypasses_xbar`, `g_sep.c_sep_access_outside_window_observed_at_xbar`), `smu_ext_fcov` `c_inbound_id_width_8` |`AXI_ID_WIDTH_OK`, `AXI_NON_ATOP_OK` (non-ATOP path completes), `AXI_FILTER_OKAY` |YES for the SEP=1 fabric. The SEP=0 shape (`smu_axi_xbar` absent, direct ID converters) is OUT: no target elaborates it
 |F4 ATOP reject — no stimulus path |`smu_axi_atomic_operation_test` covers the non-ATOP path only |`hosted` |none |none — `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0` and the package has no ATOP driver |NO
 |F5 SMC↔SEP interop |`smu_sep_bidirect_test`, `smu_sep_smc_notify_test` |`sep_real_fw`, `all` |none |none in `TEST_EVIDENCE`; the verdict is the firmware's terminal loop |NO. OUT of `hosted` credit: both leaves run SEP DV firmware, so they need the RISC-V toolchain and sit in `sep_real_fw` / `all`, which no workflow schedules
@@ -278,6 +281,7 @@ one-line intent.
 |`smu_dtp_scan_chain_boundary_test` |dtp |The iJTAG SIB hosts and the secondary TAPs leave and re-enter `smu_wrapper` at the pads, and the shift path runs through those boundary pins.
 |`smu_otp_bridges_under_dbg_disable_test` |dtp |The SMC and SEP OTP JTAG2AXI bridges complete while the lifecycle posture has closed the SMC fabric bridge.
 |`smu_otp_prod_error_resp_test` |dtp |Under PROD the SMC and SEP eFuse JTAG policies refuse OTP bridge accesses with DECERR, and the accesses PROD keeps complete.
+|`smu_lc_sigint_fail_closed_test` |dtp |A broken LC_STATE pair at the SMU raises `lc_sigint_err_o` and closes the SMC OTP bridge to every access while the SEP OTP bridge answers; the legal pair reopens it.
 |`smu_xtrig_ctp_pad_test` |dtp |The four CTP pad groups of `smu_wrapper` follow the cross-trigger network's mode, handshake and matrix routing at the pads, and a wire-OR port receives cycle-exactly on its shared wire's assertion edge.
 |`smu_xtrig_mode_composition_test` |dtp |The per-internal-CT mode vector reaches the DTP, and a handshake lane acknowledges where a pulse-sync lane does not.
 |`smu_sep_smoke_test` |sep |wrapper SEP RTL boot: ROM fetch, ICCM, 256 retires / 16 PCs, DCCM write
@@ -5317,6 +5321,49 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 
 '''''
 
+[[sec-128-smu_lc_sigint_fail_closed_test]]
+===== 128 `smu_lc_sigint_fail_closed_test`
+
+*Source Module*: `smu_lc_sigint_fail_closed_test` (`cocotb_wrapper/tests/`; the sequence extends the `smu_otp_prod_error_resp_test` sequence)
+
+*BFM / Model*: `ocah_jtag_vip` for the SMC and SEP OTP JTAG2AXI bridges; the bench's LC_STATE pair fault inject in `tb/tb_wrapper_top.sv`, armed by `+lc_sigint_inject` and driven by `lc_sigint_inject_i`; `elaboration` firmware mode; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload`
+
+*Objective*: when the LC_STATE pair the SEP exports fails its differential check, the SMU reports the integrity error on `lc_sigint_err_o` and the SMC OTP JTAG2AXI path admits nothing, and both recover when the pair is legal again.
+
+*Test Coverage*:
+
+* `lc_sigint_err_o` is "the decode integrity error (fail-closed)" (`doc/integrator/src/smu-sep.adoc`), the OR of the SEP and SMC eFuse differential-encoding errors (`doc/integrator/src/smu-composition.adoc`). The SMC holds no LC_STATE field of its own and decodes the state forwarded from the SEP; on an integrity error its OTP JTAG2AXIL path "admits nothing", where PROD still admits the JTAG_PUBLIC_IDENTITY reads (`hw/sys/sep/doc/lifecycle_controller.adoc`, debug-path table). A refused request answers with the data word `0xbadcab1e` (`hw/ip/efuse/doc/architecture.adoc`). The SEP OTP path applies the SEP wrapper's policy, which decodes the SEP's own shadow registers. Addresses come from the generated `smc_addr.h` and `sep_addr.h`.
+* No eFuse image presents a broken pair: the SEP eFuse shadow regenerates `{~raw, raw}` from the raw state. The bench fault inject holds smu's `sep_lc_state`, the pair the SEP exports to the SMC eFuse wrapper and to `lc_state_o`, at its pre-inject value with the n rail of bit 0 inverted. The p rails keep the TEST_DEV state, which admits every access the leaf makes, so a refusal comes from the integrity error and not from a state change. The inject is a bench force, declared in the stand-ins section of `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
+* Spec gap: no chapter names the AXI response code of a refusal, so the checkers accept SLVERR or DECERR (JTAG2AXI status 1 or 2), as `smu_otp_prod_error_resp_test` does.
+* S1: with the legal pair, `lc_sigint_err_o` is 0, `lc_state_o` and the SMC's LC_STATE input carry the TEST_DEV word, an SMC OTP write of MAP SPARE[0], its readback and a read of JTAG_PUBLIC_IDENTITY word 0 return SUCCESS, and a SEP OTP write of the non-zero pattern `0x3C5AA5C3` to MAP SPARE0 reads back that pattern.
+* S2: once `lc_state_o` and the SMC's LC_STATE input carry the broken pair (a precondition, since both read the forced net), `lc_sigint_err_o` is 1; an SMC OTP read of SPARE[0] is refused with `0xBADCAB1E`, a write of a second pattern is refused, and the JTAG_PUBLIC_IDENTITY read is refused; a SEP OTP read of SPARE0 returns SUCCESS with the S1 pattern while `lc_sigint_err_o` is still 1, so the SEP bridge is live rather than answering zeros.
+* S3: with the pair released, `lc_sigint_err_o` is 0, both LC_STATE observations carry the TEST_DEV word, SPARE[0] reads back the S1 pattern, so the refused write did not land, the JTAG_PUBLIC_IDENTITY read returns SUCCESS, and SEP SPARE0 still reads the S1 pattern.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for the lifecycle posture to leave its pre-sense value and bring up the primary TAP.
+. Sample the LC_STATE observations and `lc_sigint_err_o`, and issue the S1 SMC and SEP OTP single operations.
+. Raise `lc_sigint_inject_i` and wait, at most 16 `clk_smu_i` cycles, for `lc_state_o` to carry the broken pair; sample the observations and issue the S2 SMC and SEP OTP single operations.
+. Lower `lc_sigint_inject_i` and wait, under the same bound, for `lc_state_o` to carry the TEST_DEV word; sample the observations and issue the S3 SMC and SEP OTP single operations.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LC-SIGINT-LEGAL-PAIR` |`lc_sigint_err_o` is 0, `lc_state_o` and the SMC's LC_STATE input are `0xF0`, and the SPARE[0] write, its readback of the written pattern and the JTAG_PUBLIC_IDENTITY read return SUCCESS, and the SEP SPARE0 write and its readback of `0x3C5AA5C3` return SUCCESS
+|`CHK-LC-SIGINT-RAISED` |`lc_sigint_err_o` is 1. `lc_state_o` and the SMC's LC_STATE input reading `0xE0` is a precondition, not part of the check: both are the forced net, so they show only that the inject took
+|`CHK-LC-SIGINT-SMC-OTP-CLOSED` |the SMC SPARE[0] read returns SLVERR or DECERR with `0xBADCAB1E`, and the SPARE[0] write and the JTAG_PUBLIC_IDENTITY read return SLVERR or DECERR
+|`CHK-LC-SIGINT-SEP-OTP-OPEN` |the SEP SPARE0 read returns SUCCESS with `0x3C5AA5C3` and `lc_sigint_err_o` is still 1 after it
+|`CHK-LC-SIGINT-RELEASED` |`lc_sigint_err_o` is 0, both LC_STATE observations are `0xF0`, the SPARE[0] read returns SUCCESS with the S1 pattern, the JTAG_PUBLIC_IDENTITY read returns SUCCESS, and the SEP SPARE0 read returns SUCCESS with `0x3C5AA5C3`
+|assertion |LC sigint fail-closed sweep incomplete <steps>
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`.
+
+'''''
+
 === Formal Verification Plan
 
 No formal target exists for SMU. There is no `smu_formal_cfg.toml`, no
@@ -5338,10 +5385,10 @@ not SMU integration evidence. Every row of this plan is simulation credit.
 |`elaboration` |1 |The elaboration leaf alone
 |`fabric` |19 |The fabric and filter leaves; every member is in `hosted`
 |`smc_under_smu` |23 |The SMC-facing leaves reached through the SMU; every member is in `hosted`
-|`dtp_under_smu` |38 |The DTP-facing leaves reached through the SMU; every member is in `hosted`
+|`dtp_under_smu` |39 |The DTP-facing leaves reached through the SMU; every member is in `hosted`
 |`smoke` |2 |The PR gate: `sim.yml` runs `--items smoke` on every hardware diff. Toolchain-free by construction
-|`hosted` |85 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
-|`all` |121 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
+|`hosted` |86 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
+|`all` |122 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
 |`sep_real_fw` |14 |Wrapper leaves that boot real SEP DV firmware images
 |`sep_entropy` |1 |The firmware-driven entropy stack
 |`sep_probe` |1 |The probe leaf that keeps SEP instruction retirement live while the TAP answers
@@ -5461,6 +5508,7 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_efuse_command_test` |F3 |dtp_under_smu, hosted |`CHK-EFUSE-CMD-READ`
 |`smu_sep_sba_peripheral_test` |F3/F4 |dtp_under_smu, hosted |`CHK-SEP-MBOX-IRQ`
 |`smu_otp_prod_error_resp_test` |F3 |dtp_under_smu, hosted |`CHK-OTP-PROD-SMC-REFUSED`
+|`smu_lc_sigint_fail_closed_test` |F3 |dtp_under_smu, hosted |`CHK-LC-SIGINT-SMC-OTP-CLOSED`
 |`smu_smc_inbound_window_sweep_test` |F4 |fabric, hosted |`CHK-SMC-WINDOW-PROT`
 |`smu_cla_action_test` |F6 |smc_under_smu, hosted |`CHK-CLA-CUSTOM-ACTION`
 |`smu_dtp_bsr_ijtag_scan_test` |F3 |dtp_under_smu, hosted |`CHK-DTP-BSR-EXTEST-SELECT`
@@ -5555,7 +5603,8 @@ The JTAG2AXI, OTP and filter depth tests are enrolled in `hosted`:
 * OTP: `smu_dtp_otp_smc_map_rw_test`,
   `smu_dtp_otp_smc_series_error_test`,
   `smu_dtp_otp_smc_complete_rw_test`,
-  `smu_otp_vs_fabric_map_race_test`
+  `smu_otp_vs_fabric_map_race_test`,
+  `smu_lc_sigint_fail_closed_test`
 * Filter: `smu_sys_in_filter_program_jtag_test`,
   `smu_sys_in_filter_window_edge_test`,
   `smu_sys_in_filter_reprogram_shrink_test`,

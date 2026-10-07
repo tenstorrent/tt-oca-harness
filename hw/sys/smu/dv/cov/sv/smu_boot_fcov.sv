@@ -183,18 +183,16 @@ module smu_boot_fcov #(
   // with SEP present: the lanes are lifecycle-controller outputs and are tied
   // to constants without it.
   //
-  // lc_sigint_err rises only when the exported LC_STATE pair disagrees with
-  // itself, which takes a fault injected inside the SEP; that point is Phase 2
-  // (SMU_FCOV.adoc).
+  // lc_sigint_err rises only when the LC_STATE pair the SEP exports disagrees
+  // with itself. No eFuse image produces that; the bench's LC_STATE pair fault
+  // inject (+lc_sigint_inject) does. Without the SEP the pair is a constant.
   if (SEP_PRESENT) begin : g_sep
     localparam logic [1:0] DemoteOn = 2'b01;
     wire lcc_demote_1_e = (lcc_demote_state_1_i === DemoteOn);
     wire lcc_demote_2_e = (lcc_demote_state_2_i === DemoteOn);
     wire lcc_demote_both_e = lcc_demote_1_e && lcc_demote_2_e;
-`ifdef SMU_FCOV_PHASE2
     wire lc_sigint_err_e = (lc_sigint_err_i === 1'b1);
     `OCAH_FCOV_COVER(c_lc_sigint_err, lc_sigint_err_e, clk_smu_i, not_powered)
-`endif
     `OCAH_FCOV_COVER(c_lcc_demote_state_1, lcc_demote_1_e, clk_smu_i, not_powered)
     `OCAH_FCOV_COVER(c_lcc_demote_state_2, lcc_demote_2_e, clk_smu_i, not_powered)
     `OCAH_FCOV_COVER(c_lcc_demote_both, lcc_demote_both_e, clk_smu_i, not_powered)

@@ -255,6 +255,40 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "with SUCCESS",
         ),
     ],
+    "smu_lc_sigint_fail_closed_test": [
+        (
+            "CHK-LC-SIGINT-LEGAL-PAIR",
+            "CHK-LC-SIGINT-LEGAL-PAIR",
+            "with the legal TEST_DEV pair lc_sigint_err_o is 0, an SMC OTP write and "
+            "readback of MAP SPARE[0] and a JTAG_PUBLIC_IDENTITY read return SUCCESS, and a "
+            "SEP OTP write of a non-zero pattern to SPARE0 reads back that pattern",
+        ),
+        (
+            "CHK-LC-SIGINT-RAISED",
+            "CHK-LC-SIGINT-RAISED",
+            "with the n rail of LC_STATE bit 0 inverted at the SMC's LC_STATE input, "
+            "lc_sigint_err_o is 1",
+        ),
+        (
+            "CHK-LC-SIGINT-SMC-OTP-CLOSED",
+            "CHK-LC-SIGINT-SMC-OTP-CLOSED",
+            "under the broken pair the SMC OTP read of SPARE[0] is refused with 0xBADCAB1E, "
+            "the write is refused, and the JTAG_PUBLIC_IDENTITY read is refused",
+        ),
+        (
+            "CHK-LC-SIGINT-SEP-OTP-OPEN",
+            "CHK-LC-SIGINT-SEP-OTP-OPEN",
+            "under the broken pair a SEP OTP read of SPARE0 returns SUCCESS with the "
+            "pattern written in S1 while lc_sigint_err_o is still 1",
+        ),
+        (
+            "CHK-LC-SIGINT-RELEASED",
+            "CHK-LC-SIGINT-RELEASED",
+            "with the legal pair restored lc_sigint_err_o is 0, SPARE[0] reads back the "
+            "pattern written before the fault, JTAG_PUBLIC_IDENTITY returns SUCCESS, and "
+            "SEP SPARE0 still reads the S1 pattern",
+        ),
+    ],
     "smu_smc_fabric_test": [
         (
             "CHK-SEP-DMI-DMSTATUS",

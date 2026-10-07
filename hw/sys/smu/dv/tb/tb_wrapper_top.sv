@@ -141,9 +141,11 @@ module smu_wrapper_uvm_top
   // ------------------------------------------------------------------
   // ESRC raw-noise force.
   // ------------------------------------------------------------------
-  // POLICY EXCEPTION. This DV root's rule is "no DUT Force" (see README); this
-  // is the single named exception, the same one hw/sys/sep/dv/tb/tb_top.sv
-  // calls "the one permitted force (raw noise at the source)".
+  // POLICY EXCEPTION. docs/SMU_VPLAN.adoc ("BFM Policy") and
+  // docs/SMU_TB_ARCH.adoc ("Stimulus Strategy") allow no force or deposit into
+  // the DUT outside the "Bench stand-ins and exceptions" section of
+  // docs/SMU_DEFERRED_DISPOSITION.adoc. This force and the LC_STATE pair fault
+  // inject below are the two declared there.
   //
   // The ESRC ring oscillators rely on `#delay` feedback, which Verilator
   // ignores, so the 12 noise lanes never toggle and no entropy is produced.
@@ -192,6 +194,37 @@ module smu_wrapper_uvm_top
     end
   end
   `undef SMU_ESRC_NOISE_FORCE
+
+  // ------------------------------------------------------------------
+  // LC_STATE pair fault inject.
+  // ------------------------------------------------------------------
+  // POLICY EXCEPTION, the second of the two the ESRC block above names.
+  //
+  // The SEP eFuse shadow regenerates {~raw, raw} from the raw nibble, so no
+  // eFuse image presents a broken pair to the SMC eFuse wrapper's decoder and
+  // lc_sigint_err_o has no frontdoor stimulus. Under +lc_sigint_inject, while
+  // lc_sigint_inject_i is high, smu's sep_lc_state -- the pair the SEP exports
+  // to the SMC eFuse wrapper and to lc_state_o -- holds the value it carried
+  // the clock before the inject with the n rail of bit 0 inverted. The two
+  // rails of bit 0 then match, which is an integrity error, and the p rails,
+  // which are the decoded state, do not move, so a response the leaf observes
+  // comes from the integrity error and not from a state change. The SEP's own
+  // decoder reads its shadow registers, not this net.
+  //
+  // Re-issued every clock because Verilator snapshots a force RHS; released
+  // when the input drops, so the legal pair returns.
+  localparam logic [7:0] LcSigintInjectFlip = 8'h10;
+  logic lc_sigint_inject_armed;
+  logic [7:0] lc_state_pre_inject;
+  initial lc_sigint_inject_armed = $test$plusargs("lc_sigint_inject") != 0;
+  always @(posedge clk_smu) begin
+    if (lc_sigint_inject_armed && lc_sigint_inject_i === 1'b1) begin
+      force u_dut.u_smu.sep_lc_state = lc_state_pre_inject ^ LcSigintInjectFlip;
+    end else begin
+      lc_state_pre_inject <= u_dut.u_smu.sep_lc_state;
+      release u_dut.u_smu.sep_lc_state;
+    end
+  end
 
   assign drbg_seed_valid_o = u_dut.u_smu.gen_sep.u_sep.u_sep_crypto.u_sep_trng
         .u_drbg_s3c_scan.u_csrng_seed_adapter.seed_queue_valid_o;
@@ -1870,6 +1903,8 @@ module smu_wrapper_uvm_top
 
   // ESRC raw noise quiet (no entropy scenario in this shape).
   assign esrc_noise_ext_i = '0;
+  // No LC_STATE pair fault.
+  assign lc_sigint_inject_i = 1'b0;
 
   // External SMN AXI4 ingress: no initiator attached, request side idle
   // (single-beat INCR shape, no valids, no readies).
