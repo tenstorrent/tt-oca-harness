@@ -4033,7 +4033,10 @@ module sep_fcov (
                        ({24'd0, lq_a} == smc_base_i + smc_size_i);
   wire sil_smc_smu   = lq_done && own_smc && alive_smc_q && !lq_c.smc && in_smu_ap({24'd0, lq_a}) &&
                        !in_smc_ap({24'd0, lq_a});
-  wire smc_in_smu    = in_smu_ap(smc_base_i) && in_smu_ap(smc_base_i + smc_size_i - 56'd1);
+  // Written out, not through in_smu_ap(): a continuous assignment re-evaluates
+  // only on its own operands, and the function reads the SMU inputs in its body.
+  wire smc_in_smu    = (smc_size_i != '0) && (smc_base_i >= smu_base_i) &&
+                       (smc_base_i + smc_size_i <= smu_base_i + smu_size_i);
   wire sil_on_smc    = lq_done && own_smc && alive_out_q && lq_c.smc && !lq_c.out;
   wire sil_on_smc_only = sil_on_smc && !smc_in_smu;
   wire sil_on_smc_ovl  = sil_on_smc && smc_in_smu;
