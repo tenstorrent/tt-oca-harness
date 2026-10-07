@@ -20,9 +20,9 @@ class SmuSmcSmokeSeq:
         self.log = test.logger
 
     async def run(self) -> None:
-        # Firmware boot is inherently a single reset-to-completion transaction.
-        # Reset timing is randomized by smu_base_test; all evidence comes from
-        # independent DUT activity and architectural pass/fail signals.
+        # One reset-to-completion transaction: reset timing is randomized by
+        # smu_base_test, and the pass and fail verdicts are the SMC's own
+        # scratch-register magics.
         max_cycles = int(os.environ.get("SMU_SMC_BOOT_MAX_CYCLES", "2000000"), 0)
         heartbeat = max(1, max_cycles // 20)
         self.log.info("=" * 70)

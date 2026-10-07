@@ -4,11 +4,10 @@
 
 Under Verilator the ESRC ring oscillators do not self-oscillate, so the 12
 decorrelator lanes are driven from here and forced into the DUT (see the policy
-note in tb_wrapper_top.sv). This module only has to keep the lanes moving with
-enough variety for the health tests to pass and a seed to accumulate -- it is
-not trying to be a golden model. Bit-exact prediction of the decorrelator and
-CSRNG output belongs to the SEP DV environment, which has the golden chain for
-it; here the claim is only that entropy flows end to end.
+note in tb_wrapper_top.sv). The lanes need enough variety for the health tests
+to pass and a seed to accumulate. Bit-exact prediction of the decorrelator and
+CSRNG output is the SEP DV environment's; the claim here is that entropy flows
+end to end.
 
 Each lane gets its own LFSR seed so the lanes are not identical, which the
 repetition-count health test would otherwise flag.

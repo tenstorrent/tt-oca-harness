@@ -1362,9 +1362,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     # --- P0 composition and bring-up leaves on the production wrapper ---
     # These set use_shared_env = True, so prove_mapped_features runs for them
     # and every row below has to be logged by a passing compare.
-    # CHK-NONVAC is deliberately not a row here: SmuScoreboard.check_phase logs
-    # it after run_phase has already run the prover, and its own zero-check
-    # refusal covers the same ground.
+    # CHK-NONVAC has no row here: SmuScoreboard.check_phase logs it after
+    # run_phase has run the prover, so a row for it could never be proved, and
+    # its own zero-check refusal covers the same ground.
     "smu_boundary_port_composition_test": [
         (
             "CHK-SMU-EXT-SMN-S4",

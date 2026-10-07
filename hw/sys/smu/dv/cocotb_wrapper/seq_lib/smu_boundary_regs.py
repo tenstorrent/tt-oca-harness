@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Register-map and JTAG-chain constants for the wrapper boundary leaves.
 
-Kept out of ``smu_addr_map`` and ``smu_jtag_helpers`` so the boundary leaves
-own their own lookups: the generated headers they need are per-IP, and the
-STAP chain order below differs from the SEP=0 one those modules carry.
+The generated headers these leaves read are per-IP, and the STAP chain order
+below is the SEP=1 wrapper's.
 """
 
 from __future__ import annotations

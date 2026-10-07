@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_xtrig_mode_composition_test (SMU_104).
+"""Sequence for smu_xtrig_mode_composition_test.
 
 The per-internal-CT mode vector the SMU presents to the DTP is
 CFG.XTRIG_INT_CT_MODE in the SMU-exposed lanes above the SMC-reserved
