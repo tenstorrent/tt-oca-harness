@@ -8,6 +8,11 @@ reads it back, writes the entry word back and reads that, and publishes the
 four values in CPU_CTRL SCRATCH_4..7. It posts PASS only if each matches the
 reset words it was built with.
 
+Before release the bench reads HCI_VERSION over SEP_IN once on every instance
+and requires each instance's read counter to advance by exactly one and no
+write counter to move. That shows all six counters count, so the zeros the
+access-count check requires on instances 0-4 are measurements.
+
 The bench grades three things the PASS word does not carry:
 
 * The four published values against the vendor RDL (`base_registers.rdl`),
@@ -99,10 +104,36 @@ class smc_fw_i3c5_csr_access_test_seq(smc_fw_image_boot_seq):
                     [now - then for now, then in zip(writes, self.base_counts[1], strict=True)],
                 )
 
+    async def _probe_counters(self) -> None:
+        """One SEP_IN read of HCI_VERSION per instance must advance only that read counter."""
+        reads, writes = i3c_csr_counts()
+        for i in range(I3C_CSR_NUM):
+            await self.csr_read(
+                f"I3C{i}_HCI_VERSION_PROBE",
+                smc_indexed_addr("SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_HCI_VERSION_BASE_ADDR", i),
+                expected=I3C_HCI_VERSION_RESET,
+            )
+        after_reads, after_writes = i3c_csr_counts()
+        d_reads = [now - then for now, then in zip(after_reads, reads, strict=True)]
+        d_writes = [now - then for now, then in zip(after_writes, writes, strict=True)]
+        assert (d_reads, d_writes) == ([1] * I3C_CSR_NUM, [0] * I3C_CSR_NUM), (
+            f"one SEP_IN read of HCI_VERSION per instance moved the counters by reads {d_reads}, "
+            f"writes {d_writes}; expected one read on each instance and no write"
+        )
+        cocotb.log.info(
+            "CHK-FW-I3C5-CSR-COUNTER-PROBE: before release, one SEP_IN read of HCI_VERSION on "
+            "each I3C instance 0..%d advanced the per-instance counters by reads %s and writes "
+            "%s, so every instance's read counter counts and no write counter moves on a read",
+            I3C_CSR_NUM - 1,
+            d_reads,
+            d_writes,
+        )
+
     async def before_boot(self) -> None:
         for index in PUBLISHED:
             await self.csr_write(f"I3C5_SCRATCH{index}_CLEAR", scratch_addr(index), 0)
             await self.csr_read(f"I3C5_SCRATCH{index}_CLEAR_RB", scratch_addr(index), expected=0)
+        await self._probe_counters()
         self.base_counts = i3c_csr_counts()
 
     async def after_pass(self) -> None:

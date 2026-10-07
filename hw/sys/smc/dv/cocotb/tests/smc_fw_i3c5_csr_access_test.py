@@ -8,12 +8,14 @@ HC_CONTROL.BUS_ENABLE, and publishes every value it read in CPU_CTRL
 SCRATCH_4..7. `smc_i3c_to_fabric_test` covers the same registers on instance 0
 from SEP_IN; this leaf covers the CPU's path to the sixth instance.
 
-Bench observation: the published values against the vendor RDL, the accesses
+Bench observation: before release, one SEP_IN read of HCI_VERSION per instance
+must advance exactly that instance's read counter; then the published values
+against the vendor RDL, the accesses
 completed at each I3C core's CSR port between release and PASS (four reads
 and two writes on instance 5, none elsewhere), and HC_CONTROL read over SEP_IN
 after PASS.
 
-Tokens: CHK-FW-I3C5-CSR-BOOT, CHK-FW-I3C5-CSR-ACCESS-COUNT,
+Tokens: CHK-FW-I3C5-CSR-COUNTER-PROBE, CHK-FW-I3C5-CSR-BOOT, CHK-FW-I3C5-CSR-ACCESS-COUNT,
 CHK-FW-I3C5-HCI-VERSION, CHK-FW-I3C5-HC-CONTROL-BUS-ENABLE.
 
 Requires the staged image and a held boot:
@@ -37,10 +39,11 @@ class smc_fw_i3c5_csr_access_test(smc_base_test):
     required_evidence = (
         "CHK-FW-I3C5-CSR-ACCESS-COUNT",
         "CHK-FW-I3C5-CSR-BOOT",
+        "CHK-FW-I3C5-CSR-COUNTER-PROBE",
         "CHK-FW-I3C5-HC-CONTROL-BUS-ENABLE",
         "CHK-FW-I3C5-HCI-VERSION",
     )
-    min_evidence = 4
+    min_evidence = 5
 
     async def run_scenario(self) -> None:
         seq = smc_fw_i3c5_csr_access_test_seq("fw_i3c5_csr_access_seq")
