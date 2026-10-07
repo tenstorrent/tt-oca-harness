@@ -170,7 +170,7 @@ if [[ "$ENGINE" == podman ]]; then
     # /etc/subuid or no entry yields 0, which correctly disables the flag.
     _subuids="$(awk -F: -v u="$(id -un)" -v n="$_uid" \
       '$1 == u || $1 == n { c += $3 } END { print c + 0 }' \
-      /etc/subuid 2>/dev/null)"
+      /etc/subuid 2>/dev/null || true)"
     if [[ "${_subuids:-0}" -gt "$_uid" ]]; then
       PODMAN_RUN_FLAGS="--userns=keep-id"
     fi
@@ -207,7 +207,8 @@ ensure_network() {
 # reading stdin from /dev/null so an unexpected password prompt fails fast
 # instead of hanging CI, and only re-exec on success. A one-shot guard var
 # prevents looping. Opt out with OCAH_SKIP_GID_FIXUP=1.
-if [[ "$ENGINE" == podman && "$NEEDS_ENGINE" == 1 && "${OCAH_SKIP_GID_FIXUP:-0}" != 1 && -z "${_OCAH_GID_FIXED:-}" ]]; then
+if [[ "$ENGINE" == podman && "$NEEDS_ENGINE" == 1 && "${OCAH_SKIP_GID_FIXUP:-0}" != 1 && -z "${_OCAH_GID_FIXED:-}" ]] &&
+  command -v getent >/dev/null 2>&1; then
   _pw_gid="$(getent passwd "$(id -u)" | cut -d: -f4)"
   if [[ -n "$_pw_gid" && "$_pw_gid" != "$(id -g)" ]]; then
     _pw_grp="$(getent group "$_pw_gid" | cut -d: -f1)"
