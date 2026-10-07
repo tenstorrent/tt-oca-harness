@@ -7,12 +7,13 @@
 // write; zero skew is the plain write. With `pair` set, a second write to
 // pair_addr launches behind the first before either response is accepted
 // (the VIP's two-outstanding write), and pair_result carries its item.
-// Response checking stays with the caller (check_response = 0), so
-// error-path scenarios judge the response themselves. Started by
-// dtp_xtrig_base_test_seq::csr_write(), csr_write_skewed(), and
-// write_pair_skewed(). In the cocotb realization, dtp_xtrig_base_test_seq
-// calls the VIP master sequence's write, write_skewed_result and
-// write_pair_skewed_result itself.
+// With the default check_response = 1 the VIP reports a non-OKAY response
+// as an error; the error-path scenarios clear it and judge the response
+// themselves. Started by dtp_xtrig_base_test_seq::csr_write(),
+// write_skewed_result(), and write_pair_skewed(). In the cocotb
+// realization, seq_lib/dtp_xtrig_base_test_seq.py calls the VIP master
+// sequence's write and seq_lib/dtp_xtrig_csr_test_seq.py its
+// write_skewed_result and write_pair_skewed_result.
 
 class dtp_axi_csr_write_seq extends ocah_axi_master_sequence;
   `uvm_object_utils(dtp_axi_csr_write_seq)

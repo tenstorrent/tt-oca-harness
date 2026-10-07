@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // dtp_jtag_extest_test — EXTEST scan-loopback checks with per-pass family
-// evidence (looped runner, 16-pass floor).
+// evidence (looped runner).
 
 class dtp_jtag_extest_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag_extest_test)

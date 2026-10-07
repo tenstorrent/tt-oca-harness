@@ -28,11 +28,15 @@ class dtp_jtag_inv_bypass_test_seq extends dtp_jtag_base_test_seq;
                           "CHK-SCAN-DR-LEN",
                           "CHK-NONVAC"
                           });
+    log_step("1", "Reset TAP");
     reset_to_tlr();
+    log_step("2", "INV_BYPASS: capture 1, then the inverted pattern one TCK late");
     check_inverted_bypass_patterns(64);
+    log_step("3", "IDCODE reads its identification after the inverted-bypass scans");
     read_idcode(idcode);
     family_check("CHK-IDCODE-RAW", "IDCODE after the inverted-bypass scans", idcode & 64'hFFFF_FFFF,
                  64'(DtpDefaultIdcode), "no TDR side effect");
+    log_step("4", "BYPASS reference point: the plain bypass delays without inverting");
     check_bypass_delay(BYPASS_INSTR, 64'h0123_4567_89AB_CDEF);
     finalize_family_checker();
   endtask

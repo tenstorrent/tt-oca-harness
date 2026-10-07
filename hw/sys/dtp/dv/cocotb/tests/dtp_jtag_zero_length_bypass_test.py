@@ -2,16 +2,18 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP ZERO_LENGTH_BYPASS instruction test."""
 
+from __future__ import annotations
+
 import pyuvm
 from dtp_base_test import dtp_base_test
-from env.dtp_scan_ref_model import STAP_ORDER
+from env.dtp_stap_3dcr_model import STAP_ORDER
 from env.dtp_types import DTP_FEATURE_BYPASS, DTP_FEATURE_IR_DECODE
 from seq_lib.dtp_jtag_zero_length_bypass_test_seq import dtp_jtag_zero_length_bypass_test_seq
 
 
 @pyuvm.test()
 class dtp_jtag_zero_length_bypass_test(dtp_base_test):
-    """Run the DTP VPLAN zero-length bypass scenario."""
+    """ZERO_LENGTH_BYPASS passes TDI straight through, and is BYPASS in a STAP chain."""
 
     required_features = (DTP_FEATURE_IR_DECODE, DTP_FEATURE_BYPASS)
 

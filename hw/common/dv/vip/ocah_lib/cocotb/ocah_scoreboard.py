@@ -11,8 +11,9 @@ streams (one per monitored port). The base pairs the two queues of a lane in
 observation order and hands each pair to ``compare_pair()``, which the bench
 implements with ``compare_equal()`` or ``record_compare()``: a mismatch is
 logged at once with feature, expected, observed, and context. Analysis
-delivery order is unordered, so either stream may arrive first. A reset that
-cancels predicted transactions withdraws them with ``flush_expected()``.
+delivery order is unordered, so either stream may arrive first. An event that
+cancels predicted transactions, a reset or a drop the bench models, withdraws
+them with ``flush_expected()``.
 ``check_phase`` reports items left unpaired, turns each feature into one
 ``CHK-SB-<FEATURE>`` record through the shared evidence recorder, and
 finalizes it once; a required feature (``require_feature``, from the env cfg)
@@ -20,11 +21,12 @@ that ends with zero comparisons fails the run, so a scenario cannot pass
 without exercising what it claims to check. The scoreboard holds no
 expected-value state: prediction is the reference model's job.
 
-The SV-UVM twin is ``ocah_scoreboard``. There a mismatch or an unpaired item is
-a ``uvm_error`` that fails the run by itself; here both fold into the feature's
-record, because a logged error does not fail a cocotb run. Pure Python apart
-from the PyUVM component bases, so the pairing contract is validated
-simulator-free (``examples/example_ocah_lib_selftest.py``).
+The SV-UVM twin is ``ocah_scoreboard``, whose record counts mismatches and
+unpaired items the same way; there each mismatch, and each lane left holding
+unpaired items, is also a ``uvm_error`` that fails the run by itself, while a
+logged error does not fail a cocotb run. Pure Python apart from the PyUVM
+component bases, so the pairing contract is validated simulator-free
+(``examples/example_ocah_lib_selftest.py``).
 """
 
 from __future__ import annotations
@@ -212,8 +214,8 @@ class OcahScoreboard(uvm_scoreboard):
     def flush_expected(self, feature: str, lane: str | None = None) -> int:
         """Drop every pending expected item of a feature, on every lane or on one.
 
-        A reset cancels the transactions they predicted. Returns how many
-        were dropped.
+        Called once an event cancels the transactions they predicted: a
+        reset, or a drop the bench models. Returns how many were dropped.
         """
         only = None if lane is None else self._pair_key(feature, lane)
         dropped = 0

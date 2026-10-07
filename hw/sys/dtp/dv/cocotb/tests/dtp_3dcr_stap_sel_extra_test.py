@@ -10,14 +10,18 @@ in Test-Logic-Reset while the port is gated, and recovery against real
 downstream state. The host-port temporal windows corroborate that evidence.
 """
 
+from __future__ import annotations
+
 import pyuvm
 from dtp_base_test import dtp_base_test
-from env.dtp_scan_ref_model import STAP_ORDER
+from env.dtp_stap_3dcr_model import STAP_ORDER
 from seq_lib.dtp_stap_scan_test_seq import dtp_stap_scan_test_seq
 
 
 @pyuvm.test()
 class dtp_3dcr_stap_sel_extra_test(dtp_base_test):
+    """Extra STAP selection, gating, isolation, and recovery, end to end through a downstream TAP."""
+
     # Every port carries a downstream TAP so the isolation neighbor has one too.
     stap_ds_attach = STAP_ORDER
 

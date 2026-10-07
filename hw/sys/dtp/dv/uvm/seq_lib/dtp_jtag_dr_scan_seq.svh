@@ -6,7 +6,7 @@
 // `pattern`/`width`/`observed` (VIP dr_scan); wider scans ride the bit
 // arrays `pattern_bits`/`observed_bits` (VIP dr_scan_wide) whenever
 // `pattern_bits` is non-empty. Started by dtp_base_test_seq::dr_scan() and
-// dr_scan_wide(). The cocotb twin is seq_lib/dtp_jtag_dr_scan_seq.py.
+// dr_scan_wide(). The cocotb realization is dtp_base_test_seq.shift_dr.
 
 class dtp_jtag_dr_scan_seq extends dtp_jtag_op_seq;
   `uvm_object_utils(dtp_jtag_dr_scan_seq)

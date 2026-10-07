@@ -55,23 +55,18 @@ class dtp_jtag_ac_extest_train_test_seq extends dtp_jtag_base_test_seq;
     seed_scenario_rng();
     attach_family_checker(required);
     reset_to_tlr();
-    `uvm_info(get_type_name(), "Step 1: SAMPLE/PRELOAD zero preload through the looped-back chain",
-              UVM_LOW)
+    log_step("1", "SAMPLE/PRELOAD zero preload through the looped-back chain");
     check_loopback_scan(6'(SAMPLE_PRELOAD_INSTR), 64'h00);
-    `uvm_info(get_type_name(),
-              "Step 2: EXTEST_TRAIN loopback across directed, train, and seeded patterns", UVM_LOW)
+    log_step("2", "EXTEST_TRAIN loopback across directed, train, and seeded patterns");
     check_loopback_patterns(6'(EXTEST_TRAIN_INSTR));
     foreach (train_patterns[p]) check_loopback_scan(6'(EXTEST_TRAIN_INSTR), train_patterns[p]);
-    `uvm_info(get_type_name(), "Step 3: run_test_idle strobe follows the TAP parking state",
-              UVM_LOW)
+    log_step("3", "run_test_idle strobe follows the TAP parking state");
     check_run_test_idle_strobe();
-    `uvm_info(get_type_name(),
-              "Step 4: EXTEST_TRAIN scan controls; run_test_idle high only on the return", UVM_LOW)
+    log_step("4", "EXTEST_TRAIN scan controls; run_test_idle high only on the return");
     check_bsr_scan_ctrl_counts(6'(EXTEST_TRAIN_INSTR), random_pattern(DtpBsrModelLen),
                                DtpBsrModelLen, DTP_SCAN_CTRL_SELECTED, extra, counts);
     check_run_test_idle_window(RtiCheckId, RtiSignal, counts, "EXTEST_TRAIN DR scan");
-    `uvm_info(get_type_name(), "Step 5: BYPASS scan: select stays low while the TAP strobes pulse",
-              UVM_LOW)
+    log_step("5", "BYPASS scan: select stays low while the TAP strobes pulse");
     check_bsr_scan_ctrl(6'(BYPASS_INSTR), 64'h3C3C, 16, DTP_SCAN_CTRL_UNSELECTED);
     check_loopback_scan(6'(EXTEST_INSTR), 64'hA5);
     finalize_family_checker();

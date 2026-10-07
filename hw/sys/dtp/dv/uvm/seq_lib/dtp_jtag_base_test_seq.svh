@@ -18,8 +18,7 @@
 // sequence's own scan intent (CHK-SCAN-COUNT / CHK-SCAN-IR-LEN /
 // CHK-SCAN-DR-LEN / CHK-NONVAC).
 // The basic-JTAG, debug-TDR, and scan-network scenarios extend it; the
-// cocotb twins are seq_lib/dtp_jtag_base_test_seq.py and
-// seq_lib/dtp_jtag_cmd_lib_seq.py.
+// cocotb twin is seq_lib/dtp_jtag_base_test_seq.py.
 //
 // test_cfg.family_checker_negative (+DTP_JTAG_FAMILY_CHECKER_NEGATIVE) is
 // the negative-validation hook: every integer family expectation is
@@ -29,9 +28,10 @@
 class dtp_jtag_base_test_seq extends dtp_base_test_seq;
   `uvm_object_utils(dtp_jtag_base_test_seq)
 
-  // Compact OSS boundary-scan loopback model length (dtp_tap_device.py):
-  // the DUT loops bsr scan_out -> scan_in, so a BSR-instruction DR scan
-  // returns the shifted pattern retimed by one TCK.
+  // Length of the bench's looped-back boundary-scan chain
+  // (dtp_tap_device.py): tb_top loops the BSR host scan_out back to scan_in,
+  // so a BSR-instruction DR scan returns the shifted pattern retimed by one
+  // TCK.
   localparam int unsigned DtpBsrModelLen = 8;
   // TMP_STATUS TDR: bit 1 = persistence, bit 0 = BYPASS_ESCAPE arm.
   localparam int unsigned TmpStatusLen = 2;
@@ -66,7 +66,7 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
   function void attach_family_checker(string required_ids[$], bit use_scan_crosscheck = 1'b1);
     if (test_cfg == null) `uvm_fatal(get_type_name(), "test_cfg not plumbed by the test")
     m_family = ocah_jtag_checker::type_id::create({get_name(), ".family"});
-    m_family.name_tag     = "dtp_jtag_family";
+    m_family.name_tag     = $sformatf("dtp_jtag_family.pass%0d", loop_index);
     m_family.required_ids = required_ids;
     m_family_negative = test_cfg.family_checker_negative;
     if (m_family_negative)
@@ -78,7 +78,7 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
     if (scan_builder != null) begin
       // Fresh reconstruction window per pass (the cocotb flow starts a
       // fresh monitor per pass); also keeps the builder's bounded
-      // history from saturating across the 16-pass floor.
+      // history from saturating across passes.
       scan_builder.clear_scan_history();
       m_ir_scan_base = 0;
       m_dr_scan_base = 0;
@@ -103,6 +103,21 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
         check_id, observed, armed, {name, context_s.len() ? " " : "", context_s}
     ));
   endfunction
+
+  // `check_id` on the family checker: the TAP state `observed` is
+  // `expected`.
+  function void check_tap_state(string check_id, bit [15:0] observed, dtp_tap_state_e expected,
+                                string context_s);
+    family_check(check_id, "TAP state", 64'(observed), 64'(expected), {
+                 "expected=", expected.name(), " ", context_s});
+  endfunction
+
+  // One raw TMS step judged against the state it must land in
+  // (CHK-TAP-STATE on the family checker).
+  task tms_expect(bit tms, dtp_tap_state_e expected);
+    step(tms);
+    check_tap_state("CHK-TAP-STATE", tb_vif.tap_state, expected, $sformatf("tms=%0b", tms));
+  endtask
 
   // Cross-check the Shift-IR / Shift-DR episodes of the DUT's exported TAP
   // state against the sequence's own scan intent (as many episodes as scans
@@ -152,12 +167,6 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
     else m_expected_dr_widths.push_back(width);
   endfunction
 
-  // Route a downstream device's slave-sequence evidence into this pass's
-  // family checker (scan scenarios).
-  function ocah_jtag_checker family_checker();
-    return m_family;
-  endfunction
-
   // ------------------------------------------------------------------
   // TAP entry points.
   // ------------------------------------------------------------------
@@ -172,11 +181,6 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
     check_state(TEST_LOGIC_RESET, "sanity_fsm_visit_chk", "after TRST release");
     step(1'b0);  // TLR -> RTI
     check_state(RUN_TEST_IDLE, "sanity_scan_path_chk", "after TLR->RTI step");
-  endtask
-
-  // cocotb dtp_jtag_cmd_lib_seq.reset_to_known_idle parity.
-  task reset_to_known_idle();
-    reset_to_tlr();
   endtask
 
   // ------------------------------------------------------------------
@@ -486,7 +490,7 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
   endtask
 
   // ------------------------------------------------------------------
-  // Random single-operation helpers (cocotb cmd-lib parity).
+  // Seeded instruction choice.
   // ------------------------------------------------------------------
 
   // A seeded instruction other than IDCODE (BYPASS 0x00, BYPASS 0x3F, or
@@ -496,23 +500,6 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
     bit [IrWidth-1:0] preloads[3] = '{BYPASS_ALT_INSTR, BYPASS_INSTR, SAMPLE_PRELOAD_INSTR};
     return preloads[$urandom_range(2)];
   endfunction
-
-  task random_bypass_scan(output bit [63:0] pattern, input bit [IrWidth-1:0] instr = BYPASS_INSTR,
-                          input int unsigned width = 64);
-    pattern = random_pattern(width);
-    `uvm_info(get_type_name(), $sformatf("Random BYPASS op instr=0x%02h width=%0d pattern=0x%0h",
-                                         instr, width, pattern), UVM_LOW)
-    check_bypass_delay(instr, pattern, width);
-  endtask
-
-  task random_loopback_scan(output bit [63:0] pattern,
-                            input bit [IrWidth-1:0] instr = SAMPLE_PRELOAD_INSTR,
-                            input int unsigned width = DtpBsrModelLen);
-    pattern = random_pattern(width);
-    `uvm_info(get_type_name(), $sformatf("Random loopback op instr=0x%02h width=%0d pattern=0x%0h",
-                                         instr, width, pattern), UVM_LOW)
-    check_loopback_scan(instr, pattern, width);
-  endtask
 
   // ------------------------------------------------------------------
   // TMP status TDR (CLAMP_HOLD / CLAMP_RELEASE persistence checks).

@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // Debug-disable matrix over the three JTAG2AXI bridge gate fields — the SV
-// analogue of the cocotb dtp_dbg_disable_jtag2axi_matrix_test_seq.
+// analogue of the cocotb dtp_jtag2axi_dbg_disable_matrix_test_seq.
 // Deterministic one-hot rows, the all-clear and all-disabled boundary
 // masks, and seeded multi-hot masks. Every row proves, per bridge: an
 // allowed bridge completes a write+readback with exactly that traffic; a
@@ -12,15 +12,14 @@
 // (no delayed replay), and then recovers with exactly one sanctioned write
 // and read.
 //
-// The default 11 seeded multi-hot rows make 16 rows per pass (1 all_clear
-// + 3 one-hot + 11 multi-hot + 1 all_disabled), and
-// +DTP_DBG_DISABLE_MULTI_HOT_ROWS overrides the multi-hot count. Reuses the
-// robustness sequence's per-target handle bundles and select_target()
-// swapping. The cocotb flow's Python DtpDbgDisableFcov ledger is
+// Rows: all_clear, one per bridge gate field, multi_hot_rows seeded
+// multi-hot masks (+DTP_DBG_DISABLE_MULTI_HOT_ROWS), all_disabled. The
+// family layer's select_target() points the evidence handles at one bridge
+// at a time. The cocotb flow's Python DtpDbgDisableFcov ledger is
 // cocotb-only.
 
-class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_test_seq;
-  `uvm_object_utils(dtp_dbg_disable_jtag2axi_matrix_test_seq)
+class dtp_jtag2axi_dbg_disable_matrix_test_seq extends dtp_jtag2axi_base_test_seq;
+  `uvm_object_utils(dtp_jtag2axi_dbg_disable_matrix_test_seq)
 
   localparam bit [63:0] MatrixBaseAddr = 64'h4800;
 
@@ -38,7 +37,7 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
     int unsigned read_bursts;
   } gated_attempt_t;
 
-  function new(string name = "dtp_dbg_disable_jtag2axi_matrix_test_seq");
+  function new(string name = "dtp_jtag2axi_dbg_disable_matrix_test_seq");
     super.new(name);
   endfunction
 
@@ -58,7 +57,6 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
   // expected write and read bursts.
   protected function void expect_exact_bursts(dtp_j2a_target_t t, int unsigned writes,
                                               int unsigned reads, string context_s);
-    if (axi_evidence == null) return;
     void'(axi_evidence.expect_equal(
         "CHK-AXI-GATE-EXACT",
         write_bursts_now(
@@ -91,12 +89,12 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
     sample_activity(t, aw0, w0, ar0);
     write_target_single_and_check(t, addr, data & data_mask(size), op_status, size, full_wstrb(size
                                   ), {context_s, ".write"});
-    expect_activity(t, aw0, ar0, 1'b0, {context_s, ".write"});
+    expect_request_activity(t, 1'b0, aw0, {context_s, ".write"});
     expect_exact_bursts(t, wb0 + 1, rb0, {context_s, ".write"});
     sample_activity(t, aw0, w0, ar0);
     read_target_single_and_check(t, addr, data & data_mask(size), op_status, size, {
                                  context_s, ".read"});
-    expect_activity(t, aw0, ar0, 1'b1, {context_s, ".read"});
+    expect_request_activity(t, 1'b1, ar0, {context_s, ".read"});
     expect_exact_bursts(t, wb0 + 1, rb0 + 1, {context_s, ".read"});
     operation_count++;
   endtask
@@ -108,7 +106,6 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
                                bit reference[], string context_s, output gated_attempt_t attempt);
     int unsigned aw1, w1, ar1;
     int unsigned size = t.default_size;
-    bit [63:0] observed;
     bit gated[], post[];
     attempt.addr     = addr;
     attempt.sentinel = (64'h5EA1_0000 | (addr & 64'hFFFF)) & data_mask(size);
@@ -119,17 +116,14 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
     // Gated attempt: issue_single suppresses the scoreboard intents
     // while the target's disable is asserted (the write must never
     // reach the bus, so no credit may be armed for it).
-    issue_single(t, DTP_J2A_OP_WRITE, addr, data & data_mask(size), full_wstrb(size), size, 1'b0);
+    issue_single(t, DTP_J2A_OP_WRITE, addr, data & data_mask(size), full_wstrb(size), size,
+                 .use_default_size(1'b0));
     last_single_capture(gated);
     wait_sys_cycles(8);
     sample_activity(t, aw1, w1, ar1);
     expect_no_activity_evidence(t, attempt.aw, attempt.w, attempt.ar, aw1, w1, ar1, {
                                 context_s, ".no_activity"});
-    observed = read_target_mem_int(t, addr, size);
-    if (observed !== attempt.sentinel)
-      `uvm_error(
-          "jtag2axi_data_chk", $sformatf(
-          "%s.sentinel: memory 0x%0h != sentinel 0x%0h", context_s, observed, attempt.sentinel))
+    check_target_memory(t, addr, attempt.sentinel, size, {context_s, ".sentinel"});
     capture_single(t, post);
     check_gated_tdr(t, reference, addr, full_wstrb(size), size, gated, post, context_s);
     operation_count++;
@@ -140,14 +134,7 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
     string row_labels[$];
     sep_lifecycle_ctrl_pkg::dbg_disable_t d;
     seed_scenario_rng();
-    foreach (target_cfgs[i]) begin
-      if (target_cfgs[i] == null || target_evidence[i] == null || target_ref_models[i] == null)
-        `uvm_fatal(get_type_name(), $sformatf(
-                   "matrix sequence needs all target bundles plumbed (index %0d)", i))
-    end
-    void'(select_target(0));
-    enable_all_debug();
-    reset_to_rti();
+    begin_all_bridges_pass();
 
     row_bits.push_back('0);
     row_labels.push_back("all_clear");
@@ -167,13 +154,8 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
     foreach (row_bits[r]) begin
       gated_attempt_t gated[int];
       bit references[NumTargets][];
-      `uvm_info(get_type_name(), $sformatf(
-                "Iteration %0d/%0d: row=%s mask=0b%03b",
-                r + 1,
-                row_bits.size(),
-                row_labels[r],
-                row_bits[r]
-                ), UVM_LOW)
+      log_iteration(r + 1, row_bits.size(), $sformatf(
+                    "row=%s mask=0b%03b", row_labels[r], row_bits[r]));
       d = bridge_mask_from_bits(row_bits[r]);
       // Each gated bridge's SINGLE_OP image, captured before the row's
       // disables.
@@ -205,41 +187,28 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
           dtp_j2a_target_t t = select_target(i);
           string ctx = $sformatf("%s.%s", row_labels[r], t.name);
           int unsigned now_aw, now_w, now_ar;
-          bit [63:0] observed = read_target_mem_int(t, gated[i].addr, t.default_size);
           sample_activity(t, now_aw, now_w, now_ar);
           expect_no_activity_evidence(t, gated[i].aw, gated[i].w, gated[i].ar, now_aw, now_w,
                                       now_ar, {ctx, ".post_release"});
-          if (observed !== gated[i].sentinel)
-            `uvm_error("jtag2axi_data_chk", $sformatf(
-                       "%s.sentinel_post_release: memory 0x%0h != sentinel 0x%0h",
-                       ctx,
-                       observed,
-                       gated[i].sentinel
-                       ))
+          check_target_memory(t, gated[i].addr, gated[i].sentinel, t.default_size, {
+                              ctx, ".sentinel_post_release"});
         end
         foreach (gated[i]) begin
           dtp_j2a_target_t t = select_target(i);
           string ctx = $sformatf("%s.%s", row_labels[r], t.name);
-          bit [63:0] observed;
           check_allowed(t, gated[i].addr + 4 * t.beat_bytes,
                         64'h0000_0000_FEED_0000 | (64'(r) << 4), {ctx, ".recovery"});
           // From the gated attempt through the recovery the bridge carries
           // exactly the recovery write and read.
           expect_exact_bursts(t, gated[i].write_bursts + 1, gated[i].read_bursts + 1, {
                               ctx, ".recovery.from_gated_attempt"});
-          observed = read_target_mem_int(t, gated[i].addr, t.default_size);
-          if (observed !== gated[i].sentinel)
-            `uvm_error("jtag2axi_data_chk", $sformatf(
-                       "%s.sentinel_post_recovery: memory 0x%0h != sentinel 0x%0h",
-                       ctx,
-                       observed,
-                       gated[i].sentinel
-                       ))
+          check_target_memory(t, gated[i].addr, gated[i].sentinel, t.default_size, {
+                              ctx, ".sentinel_post_recovery"});
         end
       end
     end
 
-    emit_robustness_nonvacuity("dbg_disable_jtag2axi_matrix");
+    emit_all_bridges_nonvacuity("jtag2axi_dbg_disable_matrix");
     for (int unsigned i = 0; i < NumTargets; i++) begin
       dtp_j2a_target_t t = select_target(i);
       clear_target_error(t);
@@ -250,4 +219,4 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
                         row_bits.size(), operation_count), UVM_LOW)
   endtask
 
-endclass : dtp_dbg_disable_jtag2axi_matrix_test_seq
+endclass : dtp_jtag2axi_dbg_disable_matrix_test_seq

@@ -23,16 +23,14 @@ class dtp_jtag2axi_dbg_disable_matrix_test extends dtp_jtag2axi_robustness_base_
     ids.push_back("CHK-AXI-STRB");
     ids.push_back("CHK-AXI-RADDR");
     ids.push_back("CHK-AXI-RDATA");
-    ids.push_back("CHK-AXI-GATE-AW");
-    ids.push_back("CHK-AXI-GATE-W");
-    ids.push_back("CHK-AXI-GATE-AR");
+    ids.push_back("CHK-AXI-NOACT");
     ids.push_back("CHK-AXI-GATE-EXACT");
     ids.push_back(DtpJ2aGateTdrCheckId);
   endfunction
 
   virtual function ocah_sequence create_scenario_seq();
-    dtp_dbg_disable_jtag2axi_matrix_test_seq seq =
-            dtp_dbg_disable_jtag2axi_matrix_test_seq::type_id::create(
+    dtp_jtag2axi_dbg_disable_matrix_test_seq seq =
+            dtp_jtag2axi_dbg_disable_matrix_test_seq::type_id::create(
         "seq"
     );
     seq.multi_hot_rows = test_cfg.jtag2axi_matrix_multi_hot_rows;
@@ -41,7 +39,7 @@ class dtp_jtag2axi_dbg_disable_matrix_test extends dtp_jtag2axi_robustness_base_
 
   task run_phase(uvm_phase phase);
     phase.raise_objection(this, {get_type_name(), " running"});
-    run_single_pass();
+    run_single_scenario();
     phase.drop_objection(this, {get_type_name(), " done"});
   endtask
 

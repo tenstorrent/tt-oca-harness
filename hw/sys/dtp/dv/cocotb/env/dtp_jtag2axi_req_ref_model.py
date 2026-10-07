@@ -109,7 +109,7 @@ class DtpJtag2AxiReqRefModel(OcahRefModel):
         if target is None:
             raise RuntimeError(f"AXI item from unbound port `{item.source}`")
         disabled = bool(self.tb_if.dbg_field(JTAG2AXI_TARGETS[target].dbg_disable_bit))
-        self._bridge.complete(target, item, disabled)
+        self._bridge.complete(target, item, disabled=disabled)
 
     def _sync_reset(self) -> None:
         """Power-on reset resets the TAP and every bridge; a system reset aborts the AXI side."""

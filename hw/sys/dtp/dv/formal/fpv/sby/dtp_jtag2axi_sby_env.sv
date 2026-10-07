@@ -68,26 +68,27 @@ module dtp_jtag2axi_sby_env (
 
   // verilog_format: off
   // The TAP raises at most one of capture, shift and update per tck cycle.
-  `OCAH_FV_ASSUME(asm_j2a_scan_ctrl_exclusive,
+  `OCAH_FV_ASSUME(asm_env_scan_ctrl_exclusive,
                   $countones({capture_en_i, shift_en_i, update_en_i}) <= 1, tck_i, trst_ni)
   // Update-DR lasts one cycle and closes a scan that Capture-DR opened.
-  `OCAH_FV_ASSUME(asm_j2a_update_follows_shift_or_capture,
-                  `OCAH_FV_IMPLIES(update_en_i, scan_open_q && !$past(update_en_i)) &&
+  `OCAH_FV_ASSUME(asm_env_update_follows_shift_or_capture,
+                  `OCAH_FV_IMPLIES(update_en_i,
+                                   scan_open_q && !($past(trst_ni) && $past(update_en_i))) &&
                   `OCAH_FV_IMPLIES(shift_en_i, scan_open_q),
                   tck_i, trst_ni)
   // The instruction decode raises at most one bridge select.
-  `OCAH_FV_ASSUME(asm_j2a_select_one_hot,
+  `OCAH_FV_ASSUME(asm_env_select_one_hot,
                   $countones({select_AXISingleOp_i, select_AXISeriesCtrl_i,
                               select_AXISeriesDataIncr_i, select_AXISeriesDataNoIncr_i,
                               select_AXISeriesDataWithErrorStatus_i}) <= 1,
                   tck_i, trst_ni)
-  `OCAH_FV_ASSUME(asm_j2a_controls_tck_synchronous,
+  `OCAH_FV_ASSUME(asm_env_controls_tck_synchronous,
                   security_disable_i == disable_at_negedge_q && update_en_i == update_at_negedge_q,
                   tck_i, trst_ni)
   // Every request is a single beat, so every read returns one, on the AXI ports and on the CDC's
   // response side.
-  `OCAH_FV_ASSUME(asm_j2a_r_single_beat, `OCAH_FV_IMPLIES(rvalid_i, rlast_i), aclk_i, arst_ni)
-  `OCAH_FV_ASSUME(asm_j2a_src_r_single_beat, `OCAH_FV_IMPLIES(src_r_valid_i, src_r_last_i),
+  `OCAH_FV_ASSUME(asm_env_r_single_beat, `OCAH_FV_IMPLIES(rvalid_i, rlast_i), aclk_i, arst_ni)
+  `OCAH_FV_ASSUME(asm_env_src_r_single_beat, `OCAH_FV_IMPLIES(src_r_valid_i, src_r_last_i),
                   tck_i, trst_ni)
   // verilog_format: on
 `endif

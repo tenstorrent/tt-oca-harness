@@ -18,7 +18,6 @@ from collections.abc import Mapping
 __all__ = [
     "DBG_DISABLE_FIELDS",
     "IJTAG_SIB_DISABLE",
-    "JTAG2AXI_DISABLE",
     "STAP_DISABLE",
     "format_dbg_disable",
     "full_dbg_disable",
@@ -41,14 +40,14 @@ DBG_DISABLE_FIELDS: tuple[str, ...] = (
     "sep_otp_jtag2axi",
 )
 
-# iJTAG SIB name (dtp_scan_ref_model.IJTAG_SIB_ORDER) -> disable field.
+# iJTAG SIB name (dtp_ijtag_sib_model.IJTAG_SIB_ORDER) -> disable field.
 IJTAG_SIB_DISABLE: dict[str, str] = {
     "dft_secure": "dft_secure",
     "dft": "dft_nonsecure",
     "dfd": "dfd",
 }
 
-# STAP name (dtp_scan_ref_model.STAP_ORDER plus the extended host scan
+# STAP name (dtp_stap_3dcr_model.STAP_ORDER plus the extended host scan
 # interface) -> disable field.
 STAP_DISABLE: dict[str, str] = {
     "io": "stap_io",
@@ -56,13 +55,6 @@ STAP_DISABLE: dict[str, str] = {
     "sep": "stap_sep",
     "extra0": "stap_extra",
     "stap_host": "stap_host",
-}
-
-# JTAG2AXI target name (dtp_types.JTAG2AXI_TARGETS) -> disable field.
-JTAG2AXI_DISABLE: dict[str, str] = {
-    "smc_axi": "smc_jtag2axi",
-    "smc_otp": "smc_otp_jtag2axi",
-    "sep_otp": "sep_otp_jtag2axi",
 }
 
 

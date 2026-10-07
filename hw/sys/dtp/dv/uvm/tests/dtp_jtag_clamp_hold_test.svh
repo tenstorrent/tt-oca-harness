@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // dtp_jtag_clamp_hold_test — CLAMP_HOLD TMP persistence checks with
-// per-pass family evidence (looped runner, 16-pass floor).
+// per-pass family evidence (looped runner).
 
 class dtp_jtag_clamp_hold_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag_clamp_hold_test)

@@ -59,8 +59,10 @@ class dtp_jtag_bypass_test_seq extends dtp_jtag_base_test_seq;
     `uvm_info(get_type_name(),
               $sformatf("DTP BYPASS suite: scenario_seed=%0d random_count=%0d opcodes=0x00,0x3f",
                         scenario_seed, random_count), UVM_LOW)
+    log_step("1", "Reset TAP");
     reset_to_tlr();
 
+    log_step("2", "Both BYPASS encodings: TDO is TDI one TCK late for every pattern");
     foreach (opcodes[o]) begin
       bit [63:0] patterns[$];
       directed_patterns(64, patterns);

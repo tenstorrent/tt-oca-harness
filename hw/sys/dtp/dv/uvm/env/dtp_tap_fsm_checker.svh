@@ -5,12 +5,15 @@
 // subscriber on the shared JTAG agent's monitor event stream. On every
 // completed TCK cycle it checks the DUT-produced one-hot TAP state
 // (dtp_tb_if.tap_state, a DUT top-level output) against the VIP's IEEE
-// 1149.1 next-state reference model, and accumulates the closure of the
-// states and legal edges the DUT took;
-// scenario tests that require closure (VPLAN 0.1) call check_fsm_closure(),
-// which records CHK-TAP-VISIT-ALL, at the end of each pass and
-// clear_closure() before the next. report_evidence() turns the run into one
-// aggregate CHK-TAP-STATE record through the env's evidence recorder.
+// 1149.1 next-state reference model, records every mismatch as a
+// CHK-TAP-STATE FAIL with the expected and observed states, and accumulates
+// the closure of the states and legal edges the DUT took. Scenario tests
+// that require closure (VPLAN 0.1) call check_fsm_closure(), which records
+// CHK-TAP-VISIT-ALL, at the end of each pass and clear_closure() before the
+// next. report_evidence() adds one aggregate CHK-TAP-STATE record for the
+// run, which fails a JTAG scenario that clocked no TCK cycle. trst_n()
+// reports the TRST_N level of the last TRST edge on the pin, which the
+// scenario layer samples under a power-on reset.
 //
 // Events arrive on the TCK falling edge (monitor contract), when the
 // rising-edge state transition has settled, so sampling tb_vif.tap_state
@@ -40,6 +43,8 @@ class dtp_tap_fsm_checker extends ocah_subscriber #(ocah_jtag_event);
   // event; the tb_top assertion counter marks it, and the model
   // re-baselines before the next step is judged.
   protected logic [31:0] m_por_count = '0;
+  // TRST_N after the last TRST edge; the JTAG driver idles it high.
+  protected bit m_trst_n = 1'b1;
 
   function new(string name = "dtp_tap_fsm_checker", uvm_component parent = null);
     super.new(name, parent);
@@ -56,6 +61,7 @@ class dtp_tap_fsm_checker extends ocah_subscriber #(ocah_jtag_event);
 
     if (t.kind == OCAH_JTAG_EV_TRST) begin
       // Asynchronous TAP reset: re-baseline the model (reset-aware flush).
+      m_trst_n = t.trst_n;
       if (t.trst_asserted) m_model = OCAH_JTAG_TEST_LOGIC_RESET;
       return;
     end
@@ -70,20 +76,9 @@ class dtp_tap_fsm_checker extends ocah_subscriber #(ocah_jtag_event);
     expected_onehot = 16'h1 << int'(expected);
     m_cycles++;
 
-    if (!dtp_tap_state_is_valid(tb_vif.tap_state)) begin
+    if (tb_vif.tap_state !== expected_onehot) begin
       m_mismatches++;
-      `uvm_error(
-          "sanity_fsm_visit_chk",
-          $sformatf(
-              "step %0d: TAP state not a valid one-hot IEEE 1149.1 state: got 0x%04h (from %s, tms=%0b)",
-              t.index, tb_vif.tap_state, m_model.name(), t.tms))
-    end else if (tb_vif.tap_state !== expected_onehot) begin
-      m_mismatches++;
-      `uvm_error(
-          "sanity_fsm_visit_chk",
-          $sformatf(
-              "step %0d: illegal TAP transition: from %s with tms=%0b expected %s (0x%04h), got 0x%04h",
-              t.index, m_model.name(), t.tms, expected.name(), expected_onehot, tb_vif.tap_state))
+      record_mismatch(t, expected, expected_onehot);
     end else begin
       // Closure counts a state or a legal edge only once the DUT took it.
       m_state_seen[int'(expected)] = 1'b1;
@@ -93,9 +88,37 @@ class dtp_tap_fsm_checker extends ocah_subscriber #(ocah_jtag_event);
     m_model = expected;
   endfunction
 
+  // The TRST_N level of the last TRST edge the monitor published.
+  function bit trst_n();
+    return m_trst_n;
+  endfunction
+
+  // CHK-TAP-STATE FAIL for one TCK cycle: the observed one-hot against the
+  // model's next state, with the step, the state it left and TMS.
+  protected function void record_mismatch(ocah_jtag_event t, ocah_jtag_tap_state_e expected,
+                                          logic [15:0] expected_onehot);
+    string context_s = $sformatf(
+        "step=%0d from=%s tms=%0b expected_state=%s observed_onehot=%04h",
+        t.index,
+        m_model.name(),
+        t.tms,
+        expected.name(),
+        tb_vif.tap_state
+    );
+    if (evidence != null)
+      void'(evidence.expect_true("CHK-TAP-STATE", tb_vif.tap_state === expected_onehot, context_s));
+    else
+      `uvm_error("CHK-TAP-STATE", $sformatf(
+                 "FAIL expected=0x%0h observed=0x%0h context=%s",
+                 expected_onehot,
+                 tb_vif.tap_state,
+                 context_s
+                 ))
+  endfunction
+
   // One aggregate named-evidence record for the always-on per-cycle
-  // reference-model comparison (each mismatch already errored inline with
-  // the exact broken transition).
+  // reference-model comparison; each mismatch already recorded its own
+  // CHK-TAP-STATE FAIL.
   function void report_evidence();
     if (evidence == null) return;
     if (!require_activity && m_cycles == 0) return;

@@ -2,19 +2,19 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[dtp-dv-functional-coverage]]
-== DTP OCAH Open-Source Functional Coverage Plan
+== DTP Functional Coverage Plan
 
 === Overview
 
-This document defines functional coverage intent for the OCAH open-source DTP
-testbench and its cocotb and SV-UVM realizations.
+This document defines functional coverage intent for the DTP testbench and
+its cocotb and SV-UVM realizations.
 
 Functional coverage is collected by the SystemVerilog coverage modules under
 `hw/sys/dtp/dv/cov/sv/`, instantiated once in the shared `tb_top` so the same
 source serves the cocotb and SV-UVM flows. Each module carries two layers. Its
-SV covergroups sit under an `ifndef VERILATOR` guard, because Verilator does
-not compile `covergroup`, `coverpoint`, or `cross`, and they are the functional
-model on VCS: the runner maps URG's `group` metric to the functional family.
+SV covergroups sit under an `ifndef VERILATOR` guard, so only the commercial
+simulators compile them, and they are the functional model on VCS: the runner
+maps URG's `group` metric to the functional family.
 Its labeled `cover property` points are compiled in every flow: under
 Verilator they land in the coverage database as the functional `user` points,
 and on VCS they are graded with the assertion family as cover directives.
@@ -27,7 +27,7 @@ additionally keeps its checker-gated Python ledger (`env/dtp_fcov.py`).
 |Field |Value
 |Design specification |`hw/sys/dtp/doc/index.adoc` (designer-owned)
 |Reference VPLAN |`DTP_VPLAN.adoc`
-|Coverage policy |`cov/config/verilator/coverage_policy.toml` (hole dispositions and waivers); `cov/config/vcs/coverage_policy.toml` (the URG exclusion lists) and `cov/config/vcs/dtp_cov_scope.hier` (the VCS compile-time scope)
+|Coverage policy |`cov/config/verilator/coverage_policy.toml` (the Verilator grading policy) and `cov/config/verilator/dtp_cov_scope.vlt` (the Verilator compile-time scope); `cov/config/vcs/coverage_policy.toml` (the URG exclusion lists) and `cov/config/vcs/dtp_cov_scope.hier` (the VCS compile-time scope)
 |Open-source framework |PyUVM on cocotb
 |Open-source simulator |Verilator
 |Commercial simulator |VCS, the cocotb and SV-UVM realizations
@@ -39,7 +39,8 @@ The target of the code-coverage families and of the Verilator `user` family
 is one figure: at least 98 percent of the points that remain after the
 accepted waivers and scope exclusions of the coverage policy file (the
 runner's `effective` population), per metric family, over the `all`
-regression, with the DUT instance as the scope for the code-coverage families.
+regression. The code-coverage families count the points each simulator's
+compile-time scope keeps, which the paragraphs after the table describe.
 A hole below that line closes through a test, a design or model fix, or a
 reviewed waiver (<<dtp-fcov-closure>>); the raw figure, which no waiver moves,
 is reported beside the effective one.
@@ -54,27 +55,44 @@ reports as a runtime error.
 |===
 |Metric |Target |Public evidence path (Verilator) |Commercial evidence path (VCS)
 |Functional coverage |100% of the covergroup model, no waiver; 98% effective for the Verilator `user` family |The `user` family: the `cover property` points of the `cov/sv/` modules, merged over the `all` regression and graded by the policy file |The covergroup bins (URG's `group` metric) in the merged database of the cocotb and SV-UVM `all` runs
-|Line and branch coverage |98% effective, scoped to the DUT instance |`--coverage-line`, reported beside the functional figure |`-cm line+branch` in the merged database
-|Condition and expression coverage |98% effective, scoped to the DUT instance |`--coverage-expr` |`-cm cond`
-|FSM coverage |98% effective, scoped to the DUT instance |Not collected under Verilator |`-cm fsm`
-|Toggle coverage |98% effective, scoped to the DUT instance |Not collected under Verilator, where toggle instrumentation multiplies the per-test database size |`-cm tgl`
+|Line and branch coverage |98% effective, over the compile-time scope |`--coverage-line`, reported beside the functional figure |`-cm line+branch` in the merged database
+|Condition and expression coverage |98% effective, over the compile-time scope |`--coverage-expr` |`-cm cond`
+|FSM coverage |98% effective, over the compile-time scope |Not collected under Verilator |`-cm fsm`
+|Toggle coverage |98% effective, over the compile-time scope |Not collected under Verilator, where toggle instrumentation multiplies the per-test database size |`-cm tgl`
 |Assertion coverage |Every enabled assertion attempted; every `cover` directive of the SVA and coverage modules hit |The two-state assertion set stops the simulation on a failure and records no coverage |`-cm assert` in the merged database, with the `cover property` points of the coverage modules as cover directives; the runner also reports those points as the `user` family
 |===
 
 On VCS the scope is applied at compile time by `cov/config/vcs/dtp_cov_scope.hier`
 (`-cm_hier` with `-cm_common_hier`): the code-coverage families grade the DUT
-instance `dtp_uvm_top.u_dut` with everything it instantiates, the vendored
+instance `tb_top.u_dut` with everything it instantiates, the vendored
 cells included, except two simulation-only modules: `prim_cdc_rand_delay`, the
 CDC jitter model that the synchronizer primitives instantiate only under
 `SIMULATION`, and `dtp_j2a_state_flags`, the observation module `tb_top` binds
 into each JTAG2AXI bridge. The expressions that bind connects to the module's
 ports are evaluated in the bridge's scope, so condition coverage grades them
 with the bridge, under `tb_top.sv` line numbers. Assertion coverage grades the
-DUT, the `cov/sv/` modules and the protocol checker instances under the bench
-top. Nets a constant drives leave the toggle denominator
-(`-cm_noconst`, `-cm_seqnoconst`) and continuous assignments count as lines
-(`-cm_line contassign`); condition coverage is URG's `basic` mode. The
-covergroups are unaffected by the scope file.
+DUT, the `cov/sv/` modules, the protocol checker instances under the bench
+top and its SMC fabric AWATOP rule. Nets a constant drives leave the toggle
+denominator (`-cm_noconst`, `-cm_seqnoconst`) and continuous assignments
+count as lines (`-cm_line contassign`); condition coverage is URG's `basic`
+mode. The covergroups are unaffected by the scope file.
+
+On Verilator the scope is applied at compile time by
+`cov/config/verilator/dtp_cov_scope.vlt`, which `[coverage.verilator]` passes
+to the build. Its `coverage_off` rules select source files: the bench under
+`tb/`, the VIP interfaces, protocol checkers and shims under `hw/common/dv/`,
+the `cov/sv/` modules and `prim_cdc_rand_delay` leave the line, branch and
+expression families, and the DUT's sources stay, the vendored cells included.
+A rule that selects a file cannot select an instance, so the bench's own
+instances of a DUT source stay in the scope: the `prim_jtag_scan_reg`
+instances of the iJTAG instrument stubs and the STAP host segment.
+Verilator can keep one set of points for every instance of a module
+elaborated with the same parameter values, so a bench instance whose
+parameters match a DUT instance's can share that instance's points, and
+bench stimulus can cover them.
+`coverage_off` leaves a `cover property` point in place, so the `user` family
+keeps every point of the `cov/sv/` modules. Toggle and FSM coverage are not
+collected.
 
 === Coverage Summary
 
@@ -572,8 +590,10 @@ every STAP 3DCR.
 Sampled once per 3DCR holding a non-zero image at each reset, against the image
 held just before it: a Test-Logic-Reset entered through TMS, compared on the
 edge that leaves its first cycle, and a TRST, compared on the first edge after
-its release. Test-Logic-Reset keeps the image while CONFIG_HOLD is set and
-clears it otherwise; TRST clears it at either value.
+its release. The PTAP ANDs power-on reset into the TRST it applies and
+forwards to the STAPs, so a power-on reset samples the `trst` bins too.
+Test-Logic-Reset keeps the image while CONFIG_HOLD is set and clears it
+otherwise; TRST clears it at either value.
 
 ==== `cg_ijtag_sib`
 
@@ -838,15 +858,19 @@ Sampling rules:
   input.
 * Every coverage log line records the field, the full named disable mask,
   the attempted operation, and the observed result.
-* Each matrix test enforces its own cells before completing: the scan
-  matrix requires all 16 cells of its eight fields and the JTAG2AXI matrix
-  the 6 cells of its three bridge fields, so a passing `dbg_disable` group
-  run covers all 22 required cells. Each matrix also emits a JSON artifact
-  under its `coverage/` directory recording the cells it hit.
+* In the cocotb realization each matrix test enforces its own cells before
+  completing: the scan matrix requires all 16 cells of its eight fields and
+  the JTAG2AXI matrix the 6 cells of its three bridge fields, so a passing
+  `dbg_disable` group run covers all 22 required cells. Each matrix also
+  emits a JSON artifact under its `coverage/` directory recording the cells
+  it hit.
+* The SV-UVM realization keeps no ledger: every matrix pass runs each field's
+  one-hot row and both boundary rows.
 * `cg_dbg_disable_scan` in `dtp_scan_fcov` and `cg_dbg_disable_jtag2axi` in
   `dtp_jtag2axi_fcov` record the sixteen scan-side and the six bridge cells at
   the signal level in both realizations, with the contradictory tuples as
-  illegal bins; the checker-gated ledger cells above are the contract.
+  illegal bins; in the cocotb realization the checker-gated ledger cells
+  above are the contract.
 
 ==== `cg_dbg_disable_scan`
 
@@ -927,9 +951,7 @@ and grading behavior are in `tools/dv/doc/run-dv.adoc`.
   and effective figures per family and the hole counts), and
   `cov/report/policy-application.json`. A policy change is graded
   against a finished run with `run_dv.py --dut dtp --run-dir <run> --waive`,
-  which rewrites the grade without a simulation. No hosted CI tier collects
-  DTP coverage (`.github/workflows/sim.yml`, `.github/workflows/regress.yml`),
-  so the run is made on a developer host.
+  which rewrites the grade without a simulation.
 * **Commercial path.** The cocotb `all` and SV-UVM `all` regressions on
   VCS with the full `-cm` set and the compile-time scope, each merged by the
   runner, then combined across frameworks into one run with
@@ -1021,16 +1043,12 @@ code-coverage points that a formal unreachability analysis proves no stimulus
 reaches in the bench's environment: the DTP at the bench configuration, the
 DFT ports at their functional values, the boundary-scan chain looped back,
 and every other input free, the extended STAP host scan-in and the resets
-included. The analysis that writes the list starts from the merged database
-of the commercial-path `all` regression (<<dtp-fcov-evidence-paths>>), so it
-targets the points that regression left uncovered. Every run of the analysis,
-the check mode below included, takes its seed from the checkout it runs in,
-because the formal model and the seed must describe one RTL. The
-analysis runs as a formal-mode item of the runner, from the formal
-configuration the site layer names for `dtp` (`run-dv.adoc`, Formal
-verification); the open tree carries no such item, so a reader without one
-runs their own unreachability tool over the same database with the same
-environment and writes the same URG exclusion format.
+included. The analysis starts from the merged database of the
+commercial-path `all` regression (<<dtp-fcov-evidence-paths>>), so it targets
+the points that regression left uncovered, and the list holds for the RTL
+that produced that database. No analysis in this repository writes the list:
+it is regenerated by an unreachability tool run over that database in the
+same environment, written in the URG exclusion format.
 
 The `pass:[[[native_files]]]` entry of `cov/config/vcs/coverage_policy.toml`
 that names the list pins the file's SHA-256. The runner refuses the policy
@@ -1043,17 +1061,15 @@ decision tree, and a line entry's, which URG writes as `Block`, spans its
 statement and the condition that governs it; an FSM state or transition
 entry's signature names its states. Any change to that text, a renamed
 localparam or state included, drops the entry. The runner applies the list at
-report time without re-checking it, so until the analysis has run against a
+report time without re-checking it, so until the list is regenerated for a
 changed RTL, the effective figures rest on a list proven against the RTL
-before the change. The check mode below finds an entry an RTL change has made
-reachable or has dropped.
+before the change.
 
-Regeneration rule: the list is regenerated from the merged database of a
-fresh `all` regression after any change to the DTP RTL file set, and the
-analysis's check mode over the accepted list fails when an excluded point has
-become reachable or an entry no longer applies to the design. A regenerated
-list takes design review before its entry changes, and the review accepts no
-entry that stimulus can reach.
+Regeneration rule: after any change to the DTP RTL file set, the list is
+regenerated from the merged database of a fresh `all` regression, and an
+accepted entry that stimulus reaches or that does not map onto the changed
+design is removed. A regenerated list takes design review before its entry
+changes, and the review accepts no entry that stimulus can reach.
 
 [[dtp-fcov-waiver-list]]
 ==== Waiver list
@@ -1099,8 +1115,8 @@ review.
 [cols=",",options="header",]
 |===
 |VPLAN Test / Group |Coverage
-|`dtp_sanity_test` |`cg_tap_state`, `cg_tap_arc`, `cg_tap_smoke` TMS reset and IDCODE bins, `cg_jtag_instruction` Capture-IR pattern bin
-|`basic_jtag` group |`cg_tap_smoke`, `cg_tap_state`, `cg_tap_arc`, `cg_jtag_instruction`, `cg_dr_scan`, `cg_instruction_gate` RUNBIST bins
+|`dtp_sanity_test` |`cg_tap_state`, `cg_tap_arc`, `cg_tap_smoke` TMS reset and IDCODE bins, `cg_scan_boundary`, `cg_jtag_instruction` Capture-IR pattern bin
+|`basic_jtag` group |`cg_tap_smoke`, `cg_tap_state`, `cg_tap_arc`, `cg_scan_boundary`, `cg_jtag_instruction`, `cg_dr_scan`, `cg_instruction_gate` RUNBIST bins
 |`dtp_jtag2axi_smc_axi_single_write_test` |`cg_jtag2axi_single_op` fabric write shapes, `cg_jtag2axi_response` `success`
 |`dtp_jtag2axi_smc_axi_single_write_read_test` |`cg_jtag2axi_single_op` fabric read, `cg_jtag2axi_response` `success`
 |JTAG instruction scenarios |`cg_jtag_instruction`, `cg_dr_scan`
@@ -1122,12 +1138,12 @@ review.
 [cols=",",options="header",]
 |===
 |Flow |Strategy
-|Verilator open-source simulation |Labeled `cover property` points in the `cov/sv/` modules; `run_dv.py --cov` collects them as `user` coverage in each test's `coverage.dat`, merges across tests and seeds (`cov_merge`), and reports through `cov_report` with `cov/config/verilator/coverage_policy.toml` applied
+|Verilator simulation |Labeled `cover property` points in the `cov/sv/` modules; `run_dv.py --cov` collects them as `user` coverage in each test's `coverage.dat`, merges across tests and seeds (`cov_merge`), and reports through `cov_report` with `cov/config/verilator/coverage_policy.toml` applied
 |Per-group reporting |The merged run's `coverage-details.json` carries every point with its policy disposition, keyed by the cover points' native hierarchy names (`u_dtp_<area>_fcov.c_<label>`)
-|Verilator metric set |`[coverage.verilator]` in `dtp_sim_cfg.toml` instruments line, expression, and `user` coverage and leaves toggle out
+|Verilator metric set |`[coverage.verilator]` in `dtp_sim_cfg.toml` instruments line, expression, and `user` coverage, leaves toggle out, and passes the compile-time scope `cov/config/verilator/dtp_cov_scope.vlt`
 |Commercial simulation |The same modules' covergroups compile under VCS/Xcelium (the `ifndef VERILATOR` layer) and are the functional family; the cover properties stay compiled and grade with the assertions. Both frameworks collect through the runner, cocotb with `run_dv.py --cov --tool vcs` and SV-UVM with `run_dv.py --framework uvm --cov`, with per-test `simv.vdb` databases merged (`cov_merge`, `urg` with the design database) and reported (`cov_report`); the two frameworks' merged databases are combined with `run_dv.py --dut dtp --cov-combine <cocotb-run> <uvm-run>` into one DUT-scoped report
-|Code coverage |VCS/Xcelium line, branch, condition, FSM, toggle, assertion coverage, scoped to the DUT instance
-|Closure triage |Add directed tests for reachable holes; record blocked or unreachable points as hole entries in the coverage policy file, each stating the structural reason the point cannot fire
+|Code coverage |VCS line, branch, condition, FSM and toggle coverage scoped to the DUT instance, and assertion coverage over the DUT, the `cov/sv/` modules and the protocol checkers; Verilator line, branch and expression coverage over its compile-time scope
+|Closure triage |Add directed tests for reachable holes; record a blocked or unreachable point as a hole entry in the Verilator policy file, and an unreachable VCS point as an entry of `dtp_unreachable.el` or `dtp_waivers.el`, each stating the structural reason the point cannot fire
 |===
 
 Sampling happens at the documented transaction boundaries: TCK rising edge
@@ -1144,7 +1160,7 @@ access, and debug-disable configuration change.
 [cols=",",options="header",]
 |===
 |Item |Reason
-|SV covergroups in Verilator |Unsupported by the tool; the cover-property layer carries the public flow
+|SV covergroups in Verilator |The bench's `ifndef VERILATOR` guard leaves them out of the Verilator build; the cover-property layer carries the Verilator flow
 |Capability TDR field values (JTAG_CAPS fields, JTAG2AXI bus type, address and data size, pipeline depths) |Elaboration-time constants with one reachable value each; `CHK-CAPS` compares every field on every read, and `cg_caps_tdr` covers their stability and read-only behavior
 |Illegal bins: a TAP state or instruction decode that is not one-hot, a TAP transition off the IEEE 1149.1 state graph, a Capture-IR update that is not IDCODE, an invalid IDCODE marker, a contradictory debug-disable outcome, an open SIB under its disable, a 3DCR reset result CONFIG_HOLD does not call for, an XTRIG CSR response the memory map does not give, and the other illegal bins each definition names |Only a design or checker failure reaches them; VCS reports a hit as a runtime error, and the ledger records a contradictory outcome as a checker failure, never a cell
 |Unaligned and unmapped JTAG2AXI addresses |Outside the bridge TDR and testbench address-map contract

@@ -31,10 +31,14 @@
 // Scenario checks land named family evidence (CHK-SCAN-WIN for the
 // temporal windows, CHK-SCAN-LEN for the measured iJTAG chain latency,
 // CHK-SCAN-CHAIN for chain readbacks, CHK-SCAN-OBS for register readbacks
-// over the PTAP TDR return path, CHK-DS-* for downstream readbacks),
-// honoring test_cfg.family_checker_negative. The scan scenarios navigate
-// Shift-x with sequence-owned exits, so tests attach the family checker
-// with use_scan_crosscheck=0.
+// over the PTAP TDR return path, CHK-DS-* for downstream readbacks).
+// test_cfg.family_checker_negative corrupts the expectations recorded
+// through family_check(). The downstream slave sequences record
+// CHK-DS-TDR-HOLD, CHK-DS-PARKED-TLR and CHK-SLAVE-DR-UPDATE* into the
+// family checker directly, which the knob does not reach. Every scan of
+// these scenarios enters and leaves Shift-x through a scan operation, so
+// the family's scan-count cross-check (CHK-SCAN-COUNT, CHK-SCAN-IR-LEN,
+// CHK-SCAN-DR-LEN) runs in every pass.
 
 class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
   `uvm_object_utils(dtp_scan_base_test_seq)
@@ -66,36 +70,22 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
     stap_model  = new();
   endfunction
 
+  // Attach the pass's family checker with the scan-count cross-check IDs
+  // required beside the scenario's own.
+  function void attach_scan_family_checker(string required[$]);
+    attach_family_checker({required, "CHK-SCAN-COUNT", "CHK-SCAN-IR-LEN", "CHK-SCAN-DR-LEN"});
+  endfunction
+
   // Test-Logic-Reset clears the SIB chain state.
   virtual task reset_to_tlr();
     super.reset_to_tlr();
     ijtag_model.reset();
   endtask
 
-  // Fisher-Yates over a seeded body.
-  protected function void shuffle(ref int unsigned items[$]);
-    for (int unsigned i = items.size() - 1; i > 0; i--) begin
-      int unsigned j = $urandom_range(i);
-      int unsigned tmp = items[i];
-      items[i] = items[j];
-      items[j] = tmp;
-    end
-  endfunction
-
   // Drive the full lifecycle disable vector, then settle through the
   // DUT's 2-stage TCK-domain synchronizers.
   task set_dbg_disable_full(sep_lifecycle_ctrl_pkg::dbg_disable_t d);
     set_dbg_disable(d);
-  endtask
-
-  // --- generic TDR access (one reusable operation each) ----------------------
-  task read_tdr64(input bit [IrWidth-1:0] instr, input int unsigned width,
-                  output bit [63:0] observed, input bit [63:0] shift_value = '0);
-    read_tdr(instr, width, observed, shift_value);
-  endtask
-
-  task write_tdr64(input bit [IrWidth-1:0] instr, input int unsigned width, input bit [63:0] value);
-    write_tdr(instr, width, value);
   endtask
 
   // --- temporal windows (env dtp_scan_window_monitor) -------------------------
@@ -222,18 +212,17 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
   // requested-but-gated SIB's controls never pulse, an effective SIB's
   // select is seen high and its capture, shift, and update strobes pulse, a
   // closed SIB's select stays quiet.
-  function void ijtag_window_signals(bit requested[DtpIjtagSibCount], bit gated[DtpIjtagSibCount],
-                                     bit effective[DtpIjtagSibCount], ref string quiet[$],
+  function void ijtag_window_signals(dtp_ijtag_sib_model::sib_state_t s, ref string quiet[$],
                                      ref string active[$]);
     quiet.delete();
     active.delete();
     for (int unsigned sib = 0; sib < DtpIjtagSibCount; sib++) begin
-      if (effective[sib]) begin
+      if (s.effective[sib]) begin
         active.push_back({ijtag_prefix(sib), "_select"});
         active.push_back({ijtag_prefix(sib), "_shift_en"});
         active.push_back({ijtag_prefix(sib), "_capture_en"});
         active.push_back({ijtag_prefix(sib), "_update_en"});
-      end else if (requested[sib] && gated[sib]) begin
+      end else if (s.requested[sib] && s.gated[sib]) begin
         quiet.push_back({ijtag_prefix(sib), "_select"});
         quiet.push_back({ijtag_prefix(sib), "_shift_en"});
         quiet.push_back({ijtag_prefix(sib), "_capture_en"});
@@ -250,33 +239,30 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
   // registers must all match the model.
   task check_ijtag_pattern(bit [DtpIjtagSibCount-1:0] pattern,
                            sep_lifecycle_ctrl_pkg::dbg_disable_t d, string context_s);
-    bit requested[DtpIjtagSibCount];
-    bit gated[DtpIjtagSibCount];
-    bit effective[DtpIjtagSibCount];
-    int unsigned chain_len;
+    dtp_ijtag_sib_model::sib_state_t s = dtp_ijtag_sib_model::state(pattern, d);
     string quiet[$], active[$], gated_controls[$], none[$];
     bit [63:0] new_inst[int];
     bit [63:0] no_inst[int];
     bit [63:0] marker, observed, unused;
-    dtp_ijtag_sib_model::state(pattern, d, requested, gated, effective, chain_len);
     for (int unsigned sib = 0; sib < DtpIjtagSibCount; sib++)
       new_inst[int'(sib)] = random_pattern(DtpIjtagInstrumentWidths[sib]);
     marker = random_pattern(DtpScanMarkerWidth) | (64'h1 << (DtpScanMarkerWidth - 1));
     `uvm_info(get_type_name(),
               $sformatf(
                   "%s SIB pattern=0b%03b requested=%p gated=%p effective=%p chain_len=%0d inst=%p",
-                  context_s, pattern, requested, gated, effective, chain_len, new_inst), UVM_LOW)
+                  context_s, pattern, s.requested, s.gated, s.effective, s.chain_len, new_inst),
+              UVM_LOW)
     set_dbg_disable_full(d);
     ijtag_gated_controls(d, gated_controls);
     if (gated_controls.size() > 0) start_scan_window(gated_controls);
     ijtag_scan(d, int'(pattern), new_inst, 0, '0, {context_s, ".program"}, unused);
     if (gated_controls.size() > 0)
       check_scan_window(gated_controls, none, {context_s, ".program.program_window"});
-    ijtag_window_signals(requested, gated, effective, quiet, active);
+    ijtag_window_signals(s, quiet, active);
     start_scan_window({quiet, active});
     ijtag_scan(d, -1, no_inst, DtpIjtagObserveScanWidth, marker, {context_s, ".observe"}, observed);
     check_scan_window(quiet, active, {context_s, ".window"});
-    check_ijtag_chain_latency(observed, marker, chain_len, {context_s, ".latency"});
+    check_ijtag_chain_latency(observed, marker, s.chain_len, {context_s, ".latency"});
   endtask
 
   // A close-everything scan under a window with every SIB already closed
@@ -354,13 +340,9 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
     `uvm_info(get_type_name(), $sformatf("%s PTAP_3DCR config_hold=%0d select=%0d raw=0x%0h",
                                          context_s, config_hold, stap_sel, value), UVM_MEDIUM)
     stap_model.update_ptap(value);
-    write_tdr64(6'(TAP_3DCR_INSTR), Ptap3dcrWidth, value);
+    write_tdr(6'(TAP_3DCR_INSTR), Ptap3dcrWidth, value);
     step(1'b0);
     step(1'b0);
-  endtask
-
-  task read_ptap_3dcr(output bit [63:0] observed, input bit [63:0] shift_value = '0);
-    read_tdr64(6'(TAP_3DCR_INSTR), Ptap3dcrWidth, observed, shift_value);
   endtask
 
   // --- downstream STAP TAPs --------------------------------------------------
@@ -444,6 +426,7 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
       input string context_s, output bit [63:0] captured, input bit [63:0] marker = '0,
       input int new_host_segment = -1, input dtp_scan_kind_e kind = DTP_SCAN_DR);
     dtp_stap_3dcr_model::layout_entry_t layout[$];
+    dtp_stap_scan_update_t u;
     bit [63:0] value;
     if (kind != DTP_SCAN_DR && (new_ptap_select >= 0 || new_ptap_config_hold >= 0))
       `uvm_fatal(get_type_name(), $sformatf("a %s scan does not reach the PTAP 3DCR", kind.name()))
@@ -459,17 +442,13 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
       new_ptap_select      = -1;
       new_ptap_config_hold = -1;
     end
-    value = stap_model.compose_scan_ds(
-        StapChainScanWidth,
-        d,
-        new_ptap_select,
-        new_ptap_config_hold,
-        new_sib_en,
-        new_payloads,
-        new_ds_values,
-        new_host_segment,
-        kind
-    );
+    u.ptap_select      = new_ptap_select;
+    u.ptap_config_hold = new_ptap_config_hold;
+    u.sib_en           = new_sib_en;
+    u.payloads         = new_payloads;
+    u.ds_values        = new_ds_values;
+    u.host_segment     = new_host_segment;
+    value              = stap_model.compose_scan_ds(StapChainScanWidth, d, u, kind);
     stap_model.chain_layout(d, layout, kind);
     if (marker >= (64'h1 << (StapChainScanWidth - layout.size())))
       `uvm_fatal(get_type_name(), $sformatf("marker 0x%0h overlaps the chain", marker))
@@ -478,8 +457,7 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
               $sformatf("%s %s chain scan value=0x%016h chain_len=%0d host_segment=%0d", context_s,
                         chain_scan_name(kind), value, layout.size(), new_host_segment), UVM_MEDIUM)
     shift_dr(value, StapChainScanWidth, captured);
-    stap_model.apply_scan_ds(d, new_ptap_select, new_ptap_config_hold, new_sib_en, new_payloads,
-                             new_ds_values, new_host_segment);
+    stap_model.apply_scan_ds(d, u);
   endtask
 
   task stap_chain_write(input sep_lifecycle_ctrl_pkg::dbg_disable_t d, input int new_ptap_select,
@@ -502,13 +480,17 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
                            input bit [63:0] ptap_instr, input bit [63:0] new_ds_ir[int],
                            input int new_sib_en[int], input dtp_stap_3dcr_state_t new_payloads[int],
                            input string context_s, output bit [63:0] captured);
-    bit [63:0] value = stap_model.compose_ir_scan(
-        StapChainScanWidth, d, ptap_instr, new_ds_ir, new_sib_en, new_payloads
-    );
+    dtp_stap_scan_update_t u;
+    bit [63:0] value;
+    u.ptap_instr = ptap_instr;
+    u.ds_values  = new_ds_ir;
+    u.sib_en     = new_sib_en;
+    u.payloads   = new_payloads;
+    value        = stap_model.compose_ir_scan(StapChainScanWidth, d, u);
     `uvm_info(get_type_name(), $sformatf("%s composed IR scan value=0x%016h ptap_instr=0x%02h",
                                          context_s, value, ptap_instr), UVM_MEDIUM)
     ir_scan_raw(value, StapChainScanWidth, captured);
-    stap_model.apply_ir_scan(d, new_ds_ir, new_sib_en, new_payloads);
+    stap_model.apply_ir_scan(d, u);
   endtask
 
   // State-preserving chain scan; the capture reads back stored state.
@@ -685,11 +667,16 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
   endfunction
 
   // --- reset helpers with model synchronization --------------------------------
-  // Five TMS=1 cycles into Test-Logic-Reset, then Run-Test/Idle.
+  // Five TMS=1 cycles into Test-Logic-Reset (CHK-TAP-TLR-TMS5), then
+  // Run-Test/Idle (CHK-TAP-STATE), both on the pass's family checker.
   task apply_tlr();
-    goto_tlr_via_tms();
+    bit tms[] = '{1'b1, 1'b1, 1'b1, 1'b1, 1'b1};
+    bit tdi[] = '{1'b0, 1'b0, 1'b0, 1'b0, 1'b0};
+    if (m_family == null) `uvm_fatal(get_type_name(), "apply_tlr() needs the family checker")
+    raw_walk(tms, tdi);
+    void'(m_family.check_tms_ones_to_tlr(5, tb_vif.tap_state, "apply_tlr"));
     step(1'b0);
-    check_state(RUN_TEST_IDLE, "scan_seq_chk", "after TMS TLR->RTI");
+    check_tap_state("CHK-TAP-STATE", tb_vif.tap_state, RUN_TEST_IDLE, "after TMS TLR->RTI");
     stap_model.tlr();
     ijtag_model.reset();
   endtask
@@ -699,7 +686,7 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
     set_trst(1'b0, 5);
     set_trst(1'b1, 2);
     step(1'b0);
-    check_state(RUN_TEST_IDLE, "scan_seq_chk", "after TRST release");
+    check_tap_state("CHK-TAP-STATE", tb_vif.tap_state, RUN_TEST_IDLE, "after TRST");
     stap_model.trst();
     ijtag_model.reset();
   endtask

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_xtrig_reset_test — CTP config-reset recovery from a deadlocked handshake plus system-reset defaults
-// (looped runner with per-pass CHK-XTRIG-* evidence, 16-pass floor).
+// dtp_xtrig_reset_test — CTP config-reset recovery from a deadlocked handshake
+// plus system-reset defaults (looped runner with per-pass CHK-XTRIG-*
+// evidence).
 
 class dtp_xtrig_reset_test extends dtp_xtrig_base_test;
   `uvm_component_utils(dtp_xtrig_reset_test)

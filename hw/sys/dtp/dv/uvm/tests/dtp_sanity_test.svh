@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_sanity_test — runs dtp_sanity_test_seq on the shared ocah_jtag_vip
-// agent's sequencer and asserts full FSM state/edge closure within every
-// pass via the env checker (CHK-TAP-VISIT-ALL, this scenario's closure
-// obligation — the per-cycle legality check is always on). Also arms the
-// JTAG TAP-contract named evidence: the required CHK-* IDs below finalize
+// dtp_sanity_test — runs dtp_sanity_test_seq on the environment's virtual
+// sequencer and asserts full FSM state/edge closure within every pass via
+// the env checker (CHK-TAP-VISIT-ALL, this scenario's closure obligation —
+// the per-cycle legality check is always on). Also arms the JTAG
+// TAP-contract named evidence: the required CHK-* IDs below finalize
 // through env.m_jtag_checker in check_phase, and the sequence's family
-// checker requires CHK-TAP-GOTO and CHK-IR-DECODE in every pass.
+// checker requires CHK-TAP-GOTO, CHK-TAP-STATE and CHK-IR-DECODE in every
+// pass.
 
 class dtp_sanity_test extends dtp_base_test;
   `uvm_component_utils(dtp_sanity_test)

@@ -131,6 +131,7 @@ module ocah_axi_vip_tb_top;
 
   logic [7:0]  t_axi_bid;
   logic [1:0]  t_axi_bresp;
+  logic [7:0]  t_axi_buser;
   logic        t_axi_bvalid;
   logic        t_axi_bready;
 
@@ -151,6 +152,7 @@ module ocah_axi_vip_tb_top;
   logic [31:0] t_axi_rdata;
   logic [1:0]  t_axi_rresp;
   logic        t_axi_rlast;
+  logic [7:0]  t_axi_ruser;
   logic        t_axi_rvalid;
   logic        t_axi_rready;
 
@@ -318,6 +320,7 @@ module ocah_axi_vip_tb_top;
     t_axi_wready = '0;
     t_axi_bid = '0;
     t_axi_bresp = '0;
+    t_axi_buser = '0;
     t_axi_bvalid = '0;
     t_axi_bready = '0;
     t_axi_arid = '0;
@@ -336,6 +339,7 @@ module ocah_axi_vip_tb_top;
     t_axi_rdata = '0;
     t_axi_rresp = '0;
     t_axi_rlast = '0;
+    t_axi_ruser = '0;
     t_axi_rvalid = '0;
     t_axi_rready = '0;
     l_axi_awaddr = '0;
