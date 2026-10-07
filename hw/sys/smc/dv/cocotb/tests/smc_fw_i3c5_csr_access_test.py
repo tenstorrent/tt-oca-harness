@@ -21,7 +21,8 @@ CHK-FW-I3C5-HCI-VERSION, CHK-FW-I3C5-HC-CONTROL-BUS-ENABLE.
 Requires the staged image and a held boot:
   +smc_scratch_ram_hex=i3c5_csr_access.ecc.hex   (bare basename; staged by c_compile)
   +smc_hold_cpu_boot
-Must NOT use +skip_fuse_sense -- see dv_policy 1.6.
+Must NOT use +skip_fuse_sense, which would have the testbench supply fuse-sense
+state the DUT must produce itself.
 """
 
 from __future__ import annotations
