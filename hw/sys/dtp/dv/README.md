@@ -86,7 +86,9 @@ To add one:
    family's base sequence.
 2. Add a `[[tests]]` entry for it to the area's list under `testlists/`, list
    the name in every group it belongs to, and raise each of those groups'
-   `expected_count`.
+   `expected_count`. Tag it with the name of each feature-area group it
+   joins, such as `jtag2axi` or `dbg_disable`, so that `--tag` selects the
+   same tests as `--items`.
 3. Add the SV-UVM twin; "Adding a Scenario to the SV-UVM Realization" in
    [`docs/DTP_TB_ARCH.adoc`](docs/DTP_TB_ARCH.adoc) is its checklist, and its
    Testlist step binds the twin in the entry from step 2.
