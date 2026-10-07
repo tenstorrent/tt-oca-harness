@@ -22,12 +22,13 @@
 //
 // The SMC fabric JTAG2AXI bridge drives SMC jtag_axi_in_req_i, whose row in
 // the SMC port table states a 56-bit address, 64-bit data, a 2-bit ID, and a
-// 12-bit user field. The OTP bridges' AXI-Lite widths and every bridge's read
-// and write pipeline depth are the bench's choice; each bridge publishes its
-// bus type, widths, and depths through its *_JTAG2AXI_CAPS TDR ("PTAP
-// JTAG2AXI capability fields" table, PTAP document). The depths differ per
-// bridge and per direction, so a CAPS field wired to the wrong parameter
-// reads back a value the bench does not expect.
+// 12-bit user field. tb_top drives the response IDs from 2-bit slices and
+// stops elaboration on any other ID width. The OTP bridges' AXI-Lite widths
+// and every bridge's read and write pipeline depth are the bench's choice;
+// each bridge publishes its bus type, widths, and depths through its
+// *_JTAG2AXI_CAPS TDR ("PTAP JTAG2AXI capability fields" table, PTAP
+// document). The depths differ per bridge and per direction, so a CAPS field
+// wired to the wrong parameter reads back a value the bench does not expect.
 
 package dtp_dv_cfg_pkg;
 

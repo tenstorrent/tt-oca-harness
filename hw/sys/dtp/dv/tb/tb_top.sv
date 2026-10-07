@@ -525,11 +525,13 @@ module tb_top
   dtp_dv_cfg_pkg::ic_reset_ext_t jtag_ic_reset_ext;
   sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable;
 
-  // The extra0 STAP nets and the one-bit IC_RESET nets fix these counts.
+  // The extra0 STAP nets, the one-bit IC_RESET nets and the 2-bit slices that
+  // drive m_axi_bid and m_axi_rid fix these values.
   if (dtp_dv_cfg_pkg::NumExtraStaps != 1 || dtp_dv_cfg_pkg::NumSmcIcReset != 1
-      || dtp_dv_cfg_pkg::NumSepIcReset != 1 || dtp_dv_cfg_pkg::NumExtIcReset != 1)
+      || dtp_dv_cfg_pkg::NumSepIcReset != 1 || dtp_dv_cfg_pkg::NumExtIcReset != 1
+      || dtp_dv_cfg_pkg::SmcAxiIdWidth != 2)
   begin : gen_fixed_cfg_check
-    $fatal(1, "tb_top wires one extra STAP and one-bit IC_RESET slices");
+    $fatal(1, "tb_top wires one extra STAP, one-bit IC_RESET slices and a 2-bit SMC fabric ID");
   end
 
   assign jtag_bsr_select     = jtag_bsr_host_scan_ctrl.select;
@@ -2343,10 +2345,13 @@ module tb_top
   );
 
   // The flattened SMC fabric port has no AWATOP, so the rule reads the
-  // request struct: the bridge issues no atomic transaction.
-  `OCAH_SVA_ASSERT(DTP_SMC_AXI_AWATOP_ZERO,
-                   (u_tb_if.axi_sva_en && axi_smc_dbg_req.aw_valid)
-                   |-> (axi_smc_dbg_req.aw.atop == '0), clk_i, !rst_n_i)
+  // request struct: the bridge issues no atomic transaction. The named block
+  // is the scope dtp_cov_scope.hier admits to VCS assertion coverage.
+  if (1) begin : gen_smc_axi_atop_sva
+    `OCAH_SVA_ASSERT(DTP_SMC_AXI_AWATOP_ZERO,
+                     (u_tb_if.axi_sva_en && axi_smc_dbg_req.aw_valid)
+                     |-> (axi_smc_dbg_req.aw.atop == '0), clk_i, !rst_n_i)
+  end
 
   ocah_axi_sva #(
     .IS_LITE    (1'b1),

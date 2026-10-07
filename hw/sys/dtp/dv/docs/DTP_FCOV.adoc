@@ -71,11 +71,11 @@ CDC jitter model that the synchronizer primitives instantiate only under
 into each JTAG2AXI bridge. The expressions that bind connects to the module's
 ports are evaluated in the bridge's scope, so condition coverage grades them
 with the bridge, under `tb_top.sv` line numbers. Assertion coverage grades the
-DUT, the `cov/sv/` modules and the protocol checker instances under the bench
-top. Nets a constant drives leave the toggle denominator
-(`-cm_noconst`, `-cm_seqnoconst`) and continuous assignments count as lines
-(`-cm_line contassign`); condition coverage is URG's `basic` mode. The
-covergroups are unaffected by the scope file.
+DUT, the `cov/sv/` modules, the protocol checker instances under the bench
+top and its SMC fabric AWATOP rule. Nets a constant drives leave the toggle
+denominator (`-cm_noconst`, `-cm_seqnoconst`) and continuous assignments
+count as lines (`-cm_line contassign`); condition coverage is URG's `basic`
+mode. The covergroups are unaffected by the scope file.
 
 On Verilator the scope is applied at compile time by
 `cov/config/verilator/dtp_cov_scope.vlt`, which `[coverage.verilator]` passes
@@ -86,6 +86,10 @@ expression families, and the DUT's sources stay, the vendored cells included.
 A rule that selects a file cannot select an instance, so the bench's own
 instances of a DUT source stay in the scope: the `prim_jtag_scan_reg`
 instances of the iJTAG instrument stubs and the STAP host segment.
+Verilator can keep one set of points for every instance of a module
+elaborated with the same parameter values, so a bench instance whose
+parameters match a DUT instance's can share that instance's points, and
+bench stimulus can cover them.
 `coverage_off` leaves a `cover property` point in place, so the `user` family
 keeps every point of the `cov/sv/` modules. Toggle and FSM coverage are not
 collected.
@@ -1134,12 +1138,12 @@ review.
 [cols=",",options="header",]
 |===
 |Flow |Strategy
-|Verilator open-source simulation |Labeled `cover property` points in the `cov/sv/` modules; `run_dv.py --cov` collects them as `user` coverage in each test's `coverage.dat`, merges across tests and seeds (`cov_merge`), and reports through `cov_report` with `cov/config/verilator/coverage_policy.toml` applied
+|Verilator simulation |Labeled `cover property` points in the `cov/sv/` modules; `run_dv.py --cov` collects them as `user` coverage in each test's `coverage.dat`, merges across tests and seeds (`cov_merge`), and reports through `cov_report` with `cov/config/verilator/coverage_policy.toml` applied
 |Per-group reporting |The merged run's `coverage-details.json` carries every point with its policy disposition, keyed by the cover points' native hierarchy names (`u_dtp_<area>_fcov.c_<label>`)
 |Verilator metric set |`[coverage.verilator]` in `dtp_sim_cfg.toml` instruments line, expression, and `user` coverage, leaves toggle out, and passes the compile-time scope `cov/config/verilator/dtp_cov_scope.vlt`
 |Commercial simulation |The same modules' covergroups compile under VCS/Xcelium (the `ifndef VERILATOR` layer) and are the functional family; the cover properties stay compiled and grade with the assertions. Both frameworks collect through the runner, cocotb with `run_dv.py --cov --tool vcs` and SV-UVM with `run_dv.py --framework uvm --cov`, with per-test `simv.vdb` databases merged (`cov_merge`, `urg` with the design database) and reported (`cov_report`); the two frameworks' merged databases are combined with `run_dv.py --dut dtp --cov-combine <cocotb-run> <uvm-run>` into one DUT-scoped report
-|Code coverage |VCS line, branch, condition, FSM, toggle, assertion coverage, scoped to the DUT instance; Verilator line, branch and expression coverage over its compile-time scope
-|Closure triage |Add directed tests for reachable holes; record blocked or unreachable points as hole entries in the coverage policy file, each stating the structural reason the point cannot fire
+|Code coverage |VCS line, branch, condition, FSM and toggle coverage scoped to the DUT instance, and assertion coverage over the DUT, the `cov/sv/` modules and the protocol checkers; Verilator line, branch and expression coverage over its compile-time scope
+|Closure triage |Add directed tests for reachable holes; record a blocked or unreachable point as a hole entry in the Verilator policy file, and an unreachable VCS point as an entry of `dtp_unreachable.el` or `dtp_waivers.el`, each stating the structural reason the point cannot fire
 |===
 
 Sampling happens at the documented transaction boundaries: TCK rising edge

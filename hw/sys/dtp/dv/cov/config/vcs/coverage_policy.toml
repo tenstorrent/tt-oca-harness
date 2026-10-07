@@ -14,7 +14,7 @@
 
 schema_version = 1
 dut = "dtp"
-scope_epoch = "dtp-vcs-cov-v3"
+scope_epoch = "dtp-vcs-cov-v4"
 
 # The code-coverage points a formal unreachability analysis over the `all`
 # regression's merged coverage database proves no stimulus reaches in the

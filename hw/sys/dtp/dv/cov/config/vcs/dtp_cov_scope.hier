@@ -3,8 +3,9 @@
 
 // Compile-time coverage scope of the DTP bench on VCS (`-cm_hier` with
 // `-lca -cm_common_hier`, from `[coverage.vcs]` in dtp_sim_cfg.toml). Every
-// name here matches an elaborated instance of the default configuration; VCS
-// reports a name that matches nothing as `VCM-HFUFR` in the compile log.
+// name here matches an elaborated instance or generate block of the default
+// configuration; VCS reports a name that matches nothing as `VCM-HFUFR` in the
+// compile log.
 //
 // Code coverage (line, cond, fsm, tgl, branch) grades the DUT instance with
 // everything it instantiates, the vendored cells included, apart from the two
@@ -30,9 +31,9 @@
 -module dtp_j2a_state_flags
 
 // Assertion coverage carries the DUT's own assertions, the `cover property`
-// points of the functional-coverage modules, and the protocol checkers
-// under the bench top; the assertions of the UVM and AXI packages, which URG
-// lists as top-level scopes of their own, stay out. uvm_pkg exists in the
+// points of the functional-coverage modules, and the protocol checkers and
+// rules under the bench top; the assertions of the UVM and AXI packages, which
+// URG lists as top-level scopes of their own, stay out. uvm_pkg exists in the
 // SV-UVM elaboration only, so the cocotb compile reports that line as
 // unmatched. A metric section replaces the general rules for that metric, so
 // the tree is stated again.
@@ -54,6 +55,7 @@ begin assert
 +tree tb_top.u_smc_otp_axil_sva
 +tree tb_top.u_sep_otp_axil_sva
 +tree tb_top.u_m_axi_sva
++tree tb_top.gen_smc_axi_atop_sva
 +tree tb_top.u_xtrig_axil_sva
 +tree tb_top.u_smc_otp_axil_data_sva
 +tree tb_top.u_sep_otp_axil_data_sva
