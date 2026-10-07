@@ -277,6 +277,24 @@ args = [
     "+smc_scratch_ram_hex=narrow_store_lane.ecc.hex",
 ]
 
+[[tests]]
+# CPU loads and stores in I3C instance 5's CSR window; the SEP_IN leaves reach
+# the I3C windows from outside the cluster only. In `held_out`, not `fw` or
+# `all`: the cluster's MMIO port address set ends at 0xC003EFFF, so the first
+# load from 0xC003F000 takes a load access fault. The leaf joins `fw` and
+# `all` when the regenerated cluster covers the window.
+name = "smc_fw_i3c5_csr_access_test"
+module = "smc_fw_i3c5_csr_access_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "i3c"]
+run_modes = ["smoke"]
+firmware = "i3c5_csr_access"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=i3c5_csr_access.ecc.hex",
+]
+
 [[groups]]
 name = "fw"
 tests = [
