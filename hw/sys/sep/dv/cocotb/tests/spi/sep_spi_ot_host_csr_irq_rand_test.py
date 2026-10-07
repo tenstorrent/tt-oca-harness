@@ -2,6 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The OT SPI host CSRs, interrupts, error bits, watermark and enable follow the spi_host spec.
 
+OCAH provenance: ``spi_ot_reg``, ``tx_fifo``, ``cmd_queue``, ``interrupt``,
+``error_handling``, ``watermark`` and ``enable_disable`` check the SPI-host
+control plane.
+
 A combined-per-group `[RAND-REP]` for the OT SPI host control plane: register R/W,
 TX FIFO, command queue, interrupts, error handling, watermark and enable/disable.
 Not covered, because nothing here checks them: the clock configuration (CFG.CLKDIV

@@ -2,6 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """CPU LSU and IFU accesses at 0xD000_xxxx reach SEP SRAM at 0x1000_xxxx; others pass through.
 
+OCAH provenance: ``sep_cpu_ifu_lsu_alias_remap_matrix_test`` checks IFU and
+LSU local-alias remapping.
+
 The test boots VeeR EL2 with the cpu_alias_remap firmware. The firmware programs the CPU-side
 alias window base (SEP_LOCAL_BASE_ADDR = 0xD000_0000, its reset value) and checks the LSU and
 IFU remap in hw/sys/sep/rtl/sep_cpu.sv (axi_window_remap): 0xD000_xxxx maps to SEP SRAM at

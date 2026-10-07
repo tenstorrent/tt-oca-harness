@@ -2,6 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """sep_debug gates the inbound filter: external AXI gets DECERR in PROD and OKAY in PROD_DBG_1.
 
+OCAH provenance: ``sep_lcc_uvm_inbound_filter_gating_test`` checks
+lifecycle-controlled inbound-filter gating.
+
 Proves that ``feat_ctrl.sep_debug`` gates the SEP inbound filter:
 external AXI is BLOCKED in PROD (sep_debug=0, filter active) and ALLOWED in
 PROD_DBG_1 (sep_debug=1, filter bypassed). The allow/refuse rule and the DECERR

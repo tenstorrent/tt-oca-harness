@@ -2,6 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """JTAG AXI-Lite and EL2 CPU traffic share the eFuse mux, and PROD gates JTAG per window.
 
+OCAH provenance: ``sep_efuse_jtag_axil_el2_cpu_mux_test`` checks concurrent
+JTAG and EL2 access through the eFuse AXI-Lite mux.
+
 The test boots VeeR EL2 with the efuse_jtag_el2_mux firmware (a continuous eFuse-MMR read
 loop) while ``ocah_axi_vip.OcahAxiLiteMasterSequence`` drives the real SEP-OTP JTAG AXI-Lite
 port (``axil_sep_otp_jtag``, ``j_axi_*`` in tb_top). Both masters arbitrate at the eFuse

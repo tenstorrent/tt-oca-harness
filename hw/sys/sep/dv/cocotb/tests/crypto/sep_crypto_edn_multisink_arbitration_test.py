@@ -2,6 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """AES and KMAC contend at the crypto-EDN arbiter, and both compute correctly on routed DRBG words.
 
+OCAH provenance: ``sep_drbg_real_sink_multi_rand_test`` checks simultaneous
+delivery to multiple real entropy sinks.
+
 AES (crypto_edn[0]) and KMAC (crypto_edn[1]) both pull
 the shared crypto-EDN leg (drbg_axis_edn_adapter -> u_axis_edn_crypto_s3c_scan round-robin
 arbiter, sep_crypto.sv) concurrently off ONE verified DRBG stream: TWO real
