@@ -3,6 +3,7 @@
 
 [[verification-dashboard-block]]
 = Block Verification Detail
+:page-aliases: ocah-docs::dashboard-block.adoc
 :doctype: book
 
 // One template serving every block. The block is selected by the `flow` query

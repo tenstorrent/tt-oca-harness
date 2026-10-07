@@ -28,6 +28,7 @@ ocah-doc-home-html: ocah-doc-home-setup
 	@cd "$(OCAH_ROOT)" && $(OCAH_ANTORA) \
 		$(if $(OCAH_DOC_SITE_URL),--url "$(OCAH_DOC_SITE_URL)") \
 		--attribute basedir="$(OCAH_HOME_DIR)" "$(OCAH_HOME_PLAYBOOK)"
+	$(call ocah_stage_dashboard_data,$(OCAH_HOME_BUILD)/html_antora)
 	@echo "Done: $(OCAH_HOME_BUILD)/html_antora/ocah-home/latest/index.html"
 
 .PHONY: ocah-doc-home-serve
