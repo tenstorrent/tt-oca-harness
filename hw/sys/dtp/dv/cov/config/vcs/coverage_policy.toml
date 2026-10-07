@@ -32,7 +32,7 @@ role = "unreachable"
 path = "dtp_unreachable.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
-sha256 = "e5b31aa61ed0e5b93d8c2bec84c3c62efbc61de379280d1b88b5981b8ebc711c"
+sha256 = "cbe52d31b0794ee065c1bc62b5d3612c48c11c83e2a9eadb440cba604c184bd0"
 
 # The points the bench reaches by no stimulus the DTP's interface contract
 # allows, each with the fact that rules it out: the SMC fabric response ID
