@@ -34,9 +34,13 @@ resets the primary TAP, and drives stimulus through the OCAH BFMs:
 `OcahAxiLiteMasterAgent`) for the SMC fabric / OTP debug and XTRIG CSR buses. DTP-specific
 protocols (boundary-scan / STAP loopbacks, IEEE 1687 iJTAG SIB networks, OCAH CTP/CTM)
 use OCAH-local models in `env/` (see BFM Policy).
-. *Checking*: a scoreboard / reference model compares observed TAP scan data, AXI
-transactions, and cross-trigger routing against expected behavior. Unless a procedure
-states otherwise, each test ends by requiring zero scoreboard/reference-model errors.
+. *Checking*: the always-on `dtp_scoreboard` compares instruction decode, IDCODE,
+BYPASS, the JTAG2AXI requests and status captures, and the cross-trigger CSR readback
+and decode against reference models, and the shared AXI scoreboard compares every
+bridge transaction. The debug TDRs, the scan network, and cross-trigger routing have
+no scoreboard feature: the scenario's own checker judges them against bench models
+(DTP_TB_ARCH, Checking Strategy). Unless a procedure states otherwise, each test ends
+by requiring zero scoreboard/reference-model errors.
 Every expected value has a source other than the RTL: the instruction encodings and
 the TAP-state encoding are transcribed from the JTAG interface-unit and PTAP documents,
 the cross-trigger register map from the generated SystemRDL collateral and the
@@ -197,7 +201,10 @@ Executable membership is resolved from the testlists; each group's
   it declares (`CHK-*` records finalized once per pass, or a required
   `dtp_scoreboard` feature ending as `CHK-SB-<FEATURE>`), and a
   non-vacuous count; the runner accepts a PASS only with positive
-  `results.xml` (cocotb) or `UVM TEST PASSED` (SV-UVM) evidence.
+  `results.xml` (cocotb) or `UVM TEST PASSED` (SV-UVM) evidence. A row
+  whose intents no `dtp_scoreboard` feature judges (the debug TDRs, the
+  scan network, cross-trigger routing) is credited on the per-scenario
+  checker's records.
 * The cocotb and SV-UVM realizations of one name are one scenario. A row is
   credited once; a realization whose evidence differs is named in the
   row's Checker-evidence cell.

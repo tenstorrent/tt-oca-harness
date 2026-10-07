@@ -253,7 +253,10 @@ The handle set every scenario coordinates through: `m_jtag_seqr`
 JTAG2AXI responder sequences (`m_smc_otp_slave_seq`, `m_sep_otp_slave_seq`,
 `m_smc_axi_slave_seq`, `ocah_axi_slave_sequence`), and the four downstream
 STAP device sequences (`m_stap_ds_seq[i]`, `ocah_jtag_slave_sequence`, in
-io, smc, sep, extra0 order). It holds nothing else.
+io, smc, sep, extra0 order), and the XTRIG CTP shadow
+(`m_xtrig_ctp_shadow`: the programmed CTP mode and polarity) that the
+cross-trigger sequences share across passes. The cocotb realization keeps
+that shadow on `DtpEnvCfg`.
 
 ==== Shared VIP environments and agents
 
@@ -477,6 +480,17 @@ report through their assertion action blocks.
 |Protocol SVA in the `tb_top.sv` core (`ocah_jtag_sva` on the primary TAP, `dtp_stap_host_sva` on the four STAP host ports, `ocah_axi_sva` and the bench's `dtp_axi_data_known_sva` per bus) |Pin-level IEEE 1149.1 and IHI 0022 rules: the two-state set on every simulator (Verilator under `--assert`), the X-hygiene set on four-state simulators, which `dtp_axi_data_known_sva` extends to the data the DUT drives by holding the strobed WDATA lanes of the three bridge ports (`DTP_AXI_W_STROBED_DATA_KNOWN`) and the RDATA of the XTRIG CSR port (`DTP_AXI_R_DATA_KNOWN`) resolved while their VALID is high; on the STAP host ports the forwarded TMS is resolved at every rising host TCK edge, and while the host TDO shifts it is resolved at every rising edge and changes only while TCK is low |The flat TB nets, gated by `dtp_tb_if.jtag_sva_en` / `axi_sva_en` |Any rule violation: `%Error` and a simulation stop under Verilator, `uvm_error` under SV-UVM
 |===
 
+The scoreboard features cover instruction decode, IDCODE, BYPASS, the
+JTAG2AXI request and status pairings, and the cross-trigger CSR readback and
+decode. No feature in either realization judges the debug TDRs (TMP_STATUS,
+DEBUG_CONTROL, IC_RESET, the CAPS registers), the boundary-scan controls and
+the RUNBIST and DFT chains, the iJTAG and STAP scan network, or cross-trigger
+routing, stretch, handshake, and reset quiescence. The per-scenario checker
+is the only judge of those intents: it compares the DUT with bench models the
+scenario builds from its own stimulus and the design collateral
+(`CHK-TMP-*`, `CHK-DBG-*`, `CHK-CAPS*`, `CHK-BSR-*`, `CHK-DFT-*`,
+`CHK-RUNBIST-*`, `CHK-SCAN-*`, `CHK-DS-*`, `CHK-XTRIG-*`).
+
 The JTAG2AXI write and read scenarios of VPLAN sections 2 and 3, security
 gating excepted, and the error single-operation and series scenarios of
 section 4 judge every bridge operation from the scenario sequence as
@@ -638,7 +652,7 @@ below; each row states what each realization does.
 |Scoreboard |`DtpScoreboard` pairing seven `Dtp<Feature>RefModel` streams, always on; a required feature with zero comparisons fails, and a test that sets `use_axi_scoreboard` requires `jtag2axi_req` and `jtag2axi_status`. `DtpAxiScoreboard` builds the shared `ocah_axi_vip` reference models and scoreboard when a test opts in (`use_axi_scoreboard`, required IDs, stream minimums); every JTAG2AXI test does. A record from any bridge stream meets a required ID of the shared scoreboard, and the stream minimums hold each bridge to compared transactions; a test that drives the three bridges in one pass names its scenario IDs per bridge (`axi_checker_target_required_ids`), and `DtpAxiScoreboard` gives each bridge a checker that must record every one of them |`dtp_scoreboard` pairing seven `dtp_<feature>_ref_model` streams, always on; a required feature with zero comparisons fails. Each bridge's passive recorder requires the IDs the test names for that bridge
 |Debug-disable ledger |The two matrix tests fill the 22-cell `DtpDbgDisableFcov` ledger (`env/dtp_fcov.py`), and `require_cells` fails a run with a missing cell |No ledger: every matrix pass runs each field's one-hot row and both boundary rows; `cg_dbg_disable_scan` and `cg_dbg_disable_jtag2axi` record the cells in both realizations
 |JTAG2AXI responder write order |The responder accepts a write's W beat independently of its AW, so `arm_w_before_aw()` changes nothing on the wires |The responder accepts AW first; `arm_w_before_aw()` makes it accept the next write's W beat while that write's AW waits (the AW-only leg of `dtp_jtag2axi_backpressure_long_stall_test`)
-|TAP reference model |The VIP next-state and TMS-path helpers (`next_jtag_state`, `jtag_tms_path`) in the scenario layer; the `OcahJtagChecker` is attached per scenario |`dtp_tap_fsm_checker`, an env subscriber on the VIP next-state model, records each illegal transition as a `CHK-TAP-STATE` failure with the expected and observed states
+|TAP reference model |The VIP next-state and TMS-path helpers (`next_jtag_state`, `jtag_tms_path`) in the scenario layer; the `OcahJtagChecker` is attached per scenario. `CHK-TAP-STATE` covers only the TMS steps and parked states a scenario judges (`tms_expect`, the reset scenarios' state samples, a SINGLE_OP held in Update-DR): the TCK cycles inside driver-executed scans are not checked, and the cross-trigger scenarios and the JTAG2AXI scenarios outside those held operations have no TAP-state check |`dtp_tap_fsm_checker`, an env subscriber on the VIP next-state model, records each illegal transition as a `CHK-TAP-STATE` failure with the expected and observed states
 |Reset-count evidence |`CHK-RESET-COUNT` on the scenario's evidence checker: the attached `OcahJtagChecker` in the basic JTAG, debug-TDR, and scan scenarios, the cross-trigger checker in the cross-trigger scenarios, and the shared AXI scoreboard in the JTAG2AXI scenarios; an inline assertion where the scenario attaches none |`CHK-RESET-COUNT` on the cross-trigger checker in the cross-trigger scenarios, and elsewhere on the env `ocah_jtag_checker`, which judges its required IDs once per run
 |Per-scan length evidence |`CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, and `CHK-SCAN-DR-LEN` on the family checker, from the DUT's Shift-x episodes against the scans the sequence issued, in the basic JTAG, debug-TDR, and scan scenarios; `dtp_sanity_test` judges each issued scan's length as it returns; `dtp_jtag_idcode_test` and `dtp_jtag_tlr_reset_test` record none, since their random TMS walks visit Shift-x outside an issued scan |`CHK-SCAN-IR-LEN` and `CHK-SCAN-DR-LEN` for each issued scan on the env `ocah_jtag_checker` in every scenario that keeps the env scan builder; the scan scenarios' family checker also requires `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, and `CHK-SCAN-DR-LEN`
 |One-sided env modules |`env/dtp_axi_agent.py` and `env/dtp_xtrig_agent.py` (the bridge responders and port monitors, the XTRIG CSR master and pin BFM), `env/dtp_xtrig_types.py` (cross-trigger register constants), `env/dtp_dbg_disable.py` (debug-disable names), `env/dtp_tap_device.py` (the primary-TAP TDR map the JTAG driver and the sequences share), `env/dtp_jtag_bypass_model.py` and `env/dtp_scan_model.py` (BYPASS and BSR loopback prediction), `env/dtp_stap_ds_agent.py` (the downstream STAP devices), and `env/dtp_tb_if.py` and `env/dtp_dv_cfg.py` (the Python views of `tb/dtp_tb_if.sv` and `tb/dtp_dv_cfg_pkg.sv`) |`dtp_env` composes the shared VIP agents and builds the downstream STAP devices itself; `dtp_types.svh` holds the instruction encodings, the cross-trigger constants, and the debug-disable paths; `dtp_jtag_base_test_seq` predicts the BYPASS delay and the BSR loopback; the TB interfaces and `dtp_dv_cfg_pkg` are used directly
