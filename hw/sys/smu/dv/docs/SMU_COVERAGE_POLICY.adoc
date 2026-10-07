@@ -12,15 +12,15 @@ needs a measured database first.
 |===
 |Field |Value
 |Release group |`--dut smu --items all` on VCS, the coverage set
-(`cov/config/vcs/README.md`); `hosted` is its toolchain-free subset, 84 of
-the 120 leaves (`testlists/all.toml`; the Regression Groups section of
-`hw/sys/smu/dv/docs/SMU_VPLAN.adoc` lists every group)
+(`cov/config/vcs/README.md`); `hosted` is its toolchain-free subset
+(`testlists/all.toml`; the Regression Groups section of
+`hw/sys/smu/dv/docs/SMU_VPLAN.adoc` lists every group with its size)
 |Metrics |the runner's native families: `user` (the `cov/sv` cover
 properties) on Verilator and VCS; on VCS also line, condition, branch and
 `toggle` over the SMU's own logic, where `toggle` is every bit of every net of
 `smu_wrapper`, `smu`, `smu_axi_xbar`, `axi_window_remap` and every other
 SMU-owned unit under `u_smu` outside the SMC, DTP and SEP trees
-(the companion's `gen_smu_cov_scope.py`), in both directions after the
+(`cov/config/vcs/smu_wrapper_cov_scope.hier`), in both directions after the
 exclusion files have left the population, and
 `assertion`, where urg reads the cover properties and the one
 `smu_axi_xbar` assertion
@@ -32,17 +32,14 @@ run's status comes from its tests, and the figures are read against the
 targets this chapter states.
 `cov/config/verilator/smu_wrapper_coverage_policy.toml` carries no
 `\[[thresholds]]` row at all
-|Measured (Verilator, the `cov/sv` cover properties) |`all`, 120 leaves,
-Verilator 5.052: `user` 100 of 100 collected points hit
-(`hw/sys/smu/dv/docs/SMU_FCOV_OWNERS.adoc`, which names the commit). No
-`hosted`-only figure is recorded
-|Measured (VCS) |The run of record of epoch `smu-vcs-cov-v3`
-(`cov/config/vcs/smu_wrapper_coverage_policy.toml`) is the
-`--dut smu --tool vcs --items all --cov` run of 2026-10-02: 120 of 120 leaves
-PASS, coverage stage PASS, and every family at 100.00 percent effective with
-the policy files applied -- line 100.00, condition 100.00, branch 100.00,
-toggle 100.00, assertion 100.00, group 100.00, `user` 100.00. A later claim
-names its own run and quotes that run's launcher `result status=` line
+|Measured (Verilator, the `cov/sv` cover properties)
+|`hw/sys/smu/dv/docs/SMU_FCOV_OWNERS.adoc`, the generated owners table, names
+the run's commit, simulator and figures. No `hosted`-only figure is recorded
+|Measured (VCS) |A claim names its own
+`--dut smu --tool vcs --items all --cov` run and quotes that run's launcher
+`result status=` line; the run of record for the current `scope_epoch`
+(`cov/config/vcs/smu_wrapper_coverage_policy.toml`) is recorded in the
+tracker
 |===
 
 `cov/sv/` carries ten cover-property modules, 109 points in all; the counts
@@ -91,8 +88,7 @@ followed by `tools/dv/fcov_owners.py` over its run directory, which writes
 `hw/sys/smu/dv/docs/SMU_FCOV_OWNERS.adoc`. No `regress.yml` tier collects
 coverage: both `smu` rows carry `coverage: false`
 |Commercial |line / condition / branch / toggle / assertion databases under
-the licensed flow. `smu_wrapper_cov_scope.hier`, written by
-`gen_smu_cov_scope.py`, follows the rule the SEP and SMC scopes state: SMC,
+the licensed flow. `smu_wrapper_cov_scope.hier` follows the rule the SEP and SMC scopes state: SMC,
 DTP and SEP leave as instance trees because each is graded on its own bench,
 as do the integration shells and the bench's AXI egress glue; bench units,
 library cells and the vendored interconnect cells leave by design unit; the
@@ -199,9 +195,7 @@ next regeneration or by a `pass:[[[holes]]]` entry's status returning to
 [[smu-cov-no-formal]]
 == No formal unreachability behind the denominator
 
-SMU has no formal coverage-unreachability analysis. The companion's SMU
-formal configuration holds a connectivity app and no coverage app, so no
-list of the kind `hw/sys/smc/dv/cov/config/vcs/smc_unreachable.el` or
+SMU has no formal coverage-unreachability analysis, so no list of the kind `hw/sys/smc/dv/cov/config/vcs/smc_unreachable.el` or
 `hw/sys/dtp/dv/cov/config/vcs/dtp_unreachable.el` exists for this DUT, and
 nothing proves that a point left in the `toggle` denominator is reachable at
 all. The exclusion files do that work by hand instead: each class states a

@@ -148,7 +148,7 @@ Enrolled names outside this catalog:
 |No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_spi_mux_ctrl_wire_test
 |waived
-|Leftover catalog name. The EXT_SPI_CTRL register it names is in a companion wrapper outside the OCAH hierarchy, so this bench has no register for it to wire. No SPI select exists: the OT SPI host reaches the pads only on the SMC LSIO primary plane.
+|Leftover catalog name. The EXT_SPI_CTRL register it names is outside the OCAH hierarchy, so this bench has no register for it to wire. No SPI select exists: the OT SPI host reaches the pads only on the SMC LSIO primary plane.
 |smu_sep_wdt_cdc_path_test
 |OUT-until-SEP1
 |No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
@@ -415,7 +415,7 @@ Enrolled names outside this catalog:
 |No product pin or frontdoor stimulus exists for CLA feedback injection.
 |OTP-vs-fabric concurrency on the MAP shadow word
 |waived
-|`smu_otp_vs_fabric_map_race_test` carries a `_race_` name it does not earn, and this row is the reason it keeps it. Both writers are JTAG2AXI bridges behind the one TAP, so their DR shifts are serialised by construction and the OTP op has completed before the fabric write can be issued; the enrolled test therefore claims back-to-back coherence, not overlap, and says so in its header and plan entry. Genuine overlap needs a second, independent master on the shadow-map word, which the wrapper's product interfaces do not provide. Not renamed here because the name is carried by the testlist, the evidence map, the feature list and the plan anchor, and the rename would ride inside a branch already this large; it belongs in a standalone change.
+|`smu_otp_vs_fabric_map_race_test` exercises back-to-back coherence, not the overlap its name suggests, and its header and plan entry say so: both writers are JTAG2AXI bridges behind the one TAP, so their DR shifts are serialised by construction and the OTP op completes before the fabric write can be issued. Genuine overlap needs a second, independent master on the shadow-map word, which the wrapper's product interfaces do not provide.
 |smu_sep_smc_xbar_test
 |SEP1-blocked
 |Enrolled in no testlist; the body is in git history. The SEP brings the SMC up from an SMC SRAM image no sys-inbound master can load; `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` ("SMC firmware image disposition") holds the SMC half.
@@ -424,7 +424,7 @@ Enrolled names outside this catalog:
 |Enrolled in no testlist; the body is in git history. Same SRAM-private blockage as `smu_sep_smc_xbar_test`; the three-party protocol header stays with the firmwares.
 |smu_cold_reset_async_assert_test
 |not-runnable
-|Enrolled in no testlist; the body is in git history. Holds every wrapper clock static and asserts `rst_cold_ni`, expecting the cold-stable and primary-reset outputs to fall without a clock edge (`port_table.adoc`: "Asynchronous assertion"); the SMC reset controller samples `rst_cold_ni` through a `clk_ref_i` deglitch shift register, so with the clocks stopped no output moves. Enrols when the specification or the RTL settles which is right; that decision needs a tracker issue naming `port_table.adoc` and `smc_reset_ctrl`.
+|Enrolled in no testlist; the body is in git history. Holds every wrapper clock static and asserts `rst_cold_ni`, expecting the cold-stable and primary-reset outputs to fall without a clock edge (`port_table.adoc`: "Asynchronous assertion"); the SMC reset controller samples `rst_cold_ni` through a `clk_ref_i` deglitch shift register, so with the clocks stopped no output moves. Enrols when the specification and the RTL agree on whether the outputs fall without a clock edge.
 |smu_dtp_jtag2axi_abort_mid_op_test
 |not-runnable
 |Enrolled in no testlist; the body is in git history. Needs an OTP interface that holds SINGLE_OP in BUSY, which only the `smu #(.CFG(smu_pkg::NoSepCfg))` elaboration with its eFuse shim responses tied off provides, and this package does not build it. On the wrapper the real SMC eFuse model answers a SINGLE_OP in tens of `clk_smu` against a 39-bit DR shift, so the BUSY window the abort needs never exists; a wrapper enrolment needs a stallable eFuse hook in `tb/tb_wrapper_top.sv`.
@@ -451,7 +451,7 @@ Enrolled names outside this catalog:
 |Enrolled in no testlist; the body is in git history. The OSS `s_axi` is a LOCAL aperture, so `GLOBAL_BASE + offset` DECERRs.
 |smu_smc_gpio_strap_sanity_test
 |waived
-|No body. It read the retired `SMC_TOP_SMC_RESET_UNIT_STRAPS_LO` symbol, which the captured-straps move took out of the generated SMC header, and `smc_wrapper` declares no `captured_straps_i`, so the strap feature has no testcase in this package (the SMC package records the same in its `depth.toml`). Do not re-enroll this name.
+|No body. The generated SMC header carries no reset-unit straps symbol and `smc_wrapper` declares no `captured_straps_i`, so the strap feature has no testcase in this package (`hw/sys/smc/dv/testlists/efuse.toml` records the same for the SMC package). Do not re-enroll this name.
 |===
 
 [[smu-bench-standins]]
@@ -461,20 +461,20 @@ A stand-in is anything that answers in place of the mechanism a claim is
 about: a testbench force, a simulation-only path selected by a plusarg, a
 configuration waiver, a loopback where a chain would be, a compiled-in
 substitute for a product cell, or a model inside the product composition.
-Nine sit on proof paths of enrolled SMU tests. Each has one entry of six
-fields. The first three -- the claim that is accepted with the stand-in in
-place, why the real path cannot be used, and the exact scope -- are filled
-from the tree. The last three -- approver, approval date against a revision,
-and review or expiry date -- are filled by a person; until they are, the entry
-is a declaration and clears nothing, and every test on its scope is graded as
-if the stand-in were undeclared. `pending` in those fields means exactly that.
-Each entry describes the tree at this branch's head, not an older revision:
-the stand-ins and the entries that declare them move in the same commits, so a
-hash written into this file is stale the moment the file is edited. What makes
-an entry checkable instead is the command in <<smu-standin-recheck>> -- one per
-entry, each naming a string a reader can see for themselves. An approver fills
-the `Date, revision` field with the revision they checked and the command they
-ran.
+Nine sit on proof paths of enrolled SMU tests. Each has one entry of three
+fields, filled from the tree: the claim that is accepted with the stand-in in
+place, why the real path cannot be used, and the exact scope. Who approved an
+entry, against which revision, and when it is next reviewed are recorded in
+the pull request that adds or changes it and in the tracker, not here; an
+entry whose approval is not recorded there is a declaration and clears
+nothing, and every test on its scope is graded as if the stand-in were
+undeclared. Each entry describes the tree that carries it, not an older
+revision: the stand-ins and the entries that declare them move in the same
+commits, so a hash written into this file is stale the moment the file is
+edited. What makes an entry checkable is the command in
+<<smu-standin-recheck>> -- one per entry, each naming a string a reader can
+see for themselves; the approval records the revision checked and the command
+run.
 
 [cols="2,3,3",options="header"]
 |===
@@ -550,12 +550,6 @@ stale, and the entry -- not the run -- is what needs the edit.
 |The ESRC ring oscillators rely on `#delay` feedback, which Verilator ignores, so the twelve noise lanes never toggle and no entropy is produced. The SEP DV bench takes the same exception at the same node.
 |Scope
 |Only under `+esrc_noise_force`; only the twelve `dcor.noise_i` lanes (`gen_ecmplx[0..11].u_generator.u_decorrelator.noise_i`), re-forced every `clk_smu_i` edge from `esrc_noise_ext_i`, which `SmuEsrcNoiseDriver` drives with twelve 16-bit LFSRs from the fixed seed `0xACE1`; every downstream tap is observe-only. The plusarg is carried by three `testlists/all.toml` entries: `smu_sep_entropy_test` (its verdict requires `esrc_noise_took_o`), `smu_sep_modules_test` (its `entropy` stage), and `smu_sep_aes_test` (a prerequisite outside its AES-128 known-answer claim). Neither the SEP nor SMU bench forces downstream EDN responses.
-|Approver
-|MinShao Ho (DV owner)
-|Date, revision
-|2026-09-22, on the tree that carries this record (`main` at `9282d8c14` with the sign-off changes applied). Re-confirmed: `grep -c '\"+esrc_noise_force\",' hw/sys/smu/dv/testlists/all.toml` printed `3`, matching the *Scope* field.
-|Review or expiry
-|2026-12-17, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.
 |===
 
 === `+skip_fuse_sense` with the shadow preload
@@ -568,12 +562,6 @@ stale, and the entry -- not the run -- is what needs the edit.
 |The real path is available -- `hw/top/smc_ip_integration.sv` instantiates `efuse_interface_shim` and `efuse_bank_model`, and the boot-stall leaves use it -- so for the remaining leaves the skip is a run-time and stimulus convenience: the SMC sense of the 768-word image takes 2280-2330 `clk_smu` after primary reset release on Verilator, and the preloaded shadow image, not a sensed one, is the value the OTP and lifecycle leaves declare as their input.
 |Scope
 |`testlists/all.toml`: 104 of 120 entries carry `+skip_fuse_sense` and `+smc_shadow_reg_preload=\{repo_root\}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload` in their own `args`, each above a one-line reason; the `sep_rtl` entries that carry the skip, other than `smu_sep_lcc_flow_test`, add `+sep_shadow_reg_preload=\{repo_root\}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload`, and the lifecycle leaves name their own image. The `[run_modes.*]` tables of `smu_sim_cfg.toml` carry no eFuse plusarg. The SMC shadow registers read the preload plusarg only under the skip and print `Loading SMC shadow reg preload data from` the image path at time zero; a log that prints `was NOT found` instead ran with the all-zero default array and is outside this scope. The plusarg is live only when the `SIMULATION` define is set (`hw/common/dv/configs/profiles/native.toml` sets it on every target); a build without it senses. `tb/tb_wrapper_top.sv` exports the SEP shadow registers' `sim_skip_fuse_sense` flag as `sep_fuse_sense_skipped_o`, and the SMC shadow registers print `Skipping fuse sense` or `Not skipping fuse sense` at time zero, so a log tells which path ran.
-|Approver
-|MinShao Ho (DV owner)
-|Date, revision
-|2026-09-22, on the tree that carries this record. `grep -c '\"+skip_fuse_sense\",' hw/sys/smu/dv/testlists/all.toml` prints `104` against `120` `[[tests]]` entries, and `grep -c '\"+skip_fuse_sense\"' hw/sys/smu/dv/smu_sim_cfg.toml` prints `0`, matching the *Scope* field.
-|Review or expiry
-|2026-12-21, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.
 |===
 
 === `abr_reg.sv` external-ack waiver
@@ -586,12 +574,6 @@ stale, and the entry -- not the run -- is what needs the edit.
 |No enrolled test exercises the ABR datapath; the assertion fires at time zero and again after reset release, before and independent of any stimulus, on the `sep_rtl` profile. Fixing the acknowledge timing is an RTL matter outside this package.
 |Scope
 |`smu_sim_cfg.toml` `[pass_fail] extra_ignore_patterns` entry `'abr_reg\.sv.*assert_bad_ext_(wr\|rd)_ack'`: every `--dut smu` run, at any simulation time, but only a line that names both the file and the external write/read acknowledge assertion; any other `$error` naming `abr_reg.sv` still fails the run. The immediate `$error` this pattern silences is the one assertion class that survives `+define+ASSERTS_OFF` (its own entry below). In the logs of the CI nightly `hosted` run the pattern matches nothing, so there the waiver is inert; it is measured on an `all` run, where the `sep_rtl` leaves it was written for execute.
-|Approver
-|MinShao Ho (DV owner)
-|Date, revision
-|2026-09-21, on the tree that carries this record (`main` at `bc4a6834a` with the sign-off changes applied). Re-confirmed: `grep -n 'abr_reg' hw/sys/smu/dv/smu_sim_cfg.toml` printed the single `extra_ignore_patterns` entry and the two comment lines that describe it, matching the *Scope* field.
-|Review or expiry
-|2026-12-21, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.
 |===
 
 === SEP assertion-ignore patterns
@@ -604,12 +586,6 @@ stale, and the entry -- not the run -- is what needs the edit.
 |The SEP bench turns the same classes off as outside its contract (`hw/sys/sep/dv/tb/tb_top.sv` 205-210, 245-280, 301). Under the wrapper the SEP core is elaborated but most leaves never bring it up, so the key manager, the secure DMA and their alert paths stay at X, and the alert checks have no OpenTitan alert to see; making them hold is SEP work outside this package.
 |Scope
 |`smu_sim_cfg.toml` `[pass_fail] extra_ignore_patterns`, the seven entries that begin `u_dut\.u_smu\.gen_sep\.u_sep\.`: every `--dut smu` leaf on a four-state simulator; on Verilator `+define+ASSERTS_OFF` (its own entry) already compiles the assertions out. Each pattern names a scope, and the SPI host's pattern also a time below one microsecond; no pattern takes the whole SEP. The Key Manager ROM's `noXOnCsI` sits in `hw/top/sep_ip_integration.sv`, outside `u_dut.u_smu`, and no pattern takes it.
-|Approver
-|pending
-|Date, revision
-|pending
-|Review or expiry
-|pending
 |===
 
 === `+define+ASSERTS_OFF`
@@ -619,15 +595,9 @@ stale, and the entry -- not the run -- is what needs the edit.
 |Claim accepted
 |No SystemVerilog assertion inside the DUT, the vendored common cells or the testbench is a checker on any run this package records. Every enrolled verdict is a Python compare in a sequence or scoreboard, or the firmware's own terminal loop, and every card in `SMU_VPLAN.adoc` offers such a compare as its evidence; no card offers an SVA. What is not proven is whatever the compiled-out assertions would have caught: a protocol or ordering violation inside a block that no enrolled compare reads.
 |Why the real path cannot be used
-|The vendored `pulp-platform/common_cells` assertions are guarded by `COMMON_CELLS_ASSERTS_OFF`, which `hw/common/dv/configs/profiles/native.toml` sets for every DUT, and the OCAH `ASSERTS_OFF` guard is set on every Verilator target of `smu_sim_cfg.toml` so that the immediate assertions in the PeakRDL register blocks and the SEP blocks do not fire on the two-state, X-free elaboration for reasons unrelated to any enrolled claim. Turning them on needs a per-assertion review of which fire legitimately on Verilator, which is the shared shim and assertion-gating work of issue #1164.
+|The vendored `pulp-platform/common_cells` assertions are guarded by `COMMON_CELLS_ASSERTS_OFF`, which `hw/common/dv/configs/profiles/native.toml` sets for every DUT, and the OCAH `ASSERTS_OFF` guard is set on every Verilator target of `smu_sim_cfg.toml` so that the immediate assertions in the PeakRDL register blocks and the SEP blocks do not fire on the two-state, X-free elaboration for reasons unrelated to any enrolled claim. Turning them on needs a per-assertion review of which fire for a real reason on the two-state, X-free elaboration.
 |Scope
 |`smu_sim_cfg.toml`: `+define+ASSERTS_OFF` on every Verilator target; `hw/common/dv/configs/profiles/native.toml`: `COMMON_CELLS_ASSERTS_OFF`. One compile serves every leaf, so the scope is every leaf on Verilator; the recorded `build_args` of any run carry both defines.
-|Approver
-|MinShao Ho (DV owner)
-|Date, revision
-|2026-09-21, on the tree that carries this record (`main` at `bc4a6834a` with the sign-off changes applied). Re-confirmed: `grep -n 'ASSERTS_OFF' hw/sys/smu/dv/smu_sim_cfg.toml hw/common/dv/configs/profiles/native.toml` printed `+define+ASSERTS_OFF` on both Verilator targets of `smu_sim_cfg.toml` and `COMMON_CELLS_ASSERTS_OFF` in `native.toml`, matching the *Scope* field.
-|Review or expiry
-|2026-12-21, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.
 |===
 
 === Scan-chain loopbacks
@@ -640,12 +610,6 @@ stale, and the entry -- not the run -- is what needs the edit.
 |The wrapper has no boundary-scan cells and no adopter DFD or DFT scan chains; those host ports terminate at pads the open-source tree does not model.
 |Scope
 |`tb/tb_wrapper_top.sv` loops the BSR and STAP chain hosts on their own nets, each `*_host_scan_out_o` driving its `*_host_scan_in_i` (`bsr_scan_loop`, `stap_scan_loop`); returns each iJTAG host's `*_host_scan_out_o` (`dfd_scan_loop`, `dft_sec_scan_loop`, `dft_scan_loop`) through a one-bit `prim_jtag_scan_reg` on that host's scan control, which captures 0 at Capture-DR and shifts while the host select is set, to its `*_host_scan_in_i` (`dfd_scan_ret`, `dft_sec_scan_ret`, `dft_scan_ret`), and exports the three scan-out nets as `tb_dfd_scan_out`, `tb_dft_scan_out` and `tb_dft_secure_scan_out`; and returns the I/O and extra STAP host TDO to the host TDI (`stap_io_tdo_w`; `stap_extra_tdi_w[0] = stap_extra_tdo_w[0]`), which is the tie the DTP port table prescribes for an unused chain. Two enrolled tests read the loops: `smu_dtp_bsr_extest_loopback_test` (`BSR_EXTEST_TDO_MATCH`, the BSR loop; its plan entry declares `STUB:DECLARED BSR_TB_SCAN_LOOPBACK` with the same limits) and `smu_dtp_scan_chain_boundary_test` (the three iJTAG host loops and their cells behind its chain-length passes, scan-out samples and SIB-readback compares, and the I/O and extra STAP TDO-to-TDI returns behind its network IDCODE scans and pad TDO samples); `smu_dtp_bsr_ijtag_scan_test` reads the `.select` gate only and compares no TDO bit.
-|Approver
-|pending: the 2026-09-21 approval by MinShao Ho (DV owner) lapsed when `tb/tb_wrapper_top.sv` changed, and the iJTAG loops now carry one bench cell each; the entry waits for the DV owner's re-signature
-|Date, revision
-|Re-confirmed by DV on 2026-10-02, on `main` at `dd9d70852` with this record's branch applied: `grep -n 'host_scan_in_i\|host_tdi_i\|loop_cell' hw/sys/smu/dv/tb/tb_wrapper_top.sv` printed the three cells `u_dfd_loop_cell`, `u_dft_loop_cell` and `u_dft_sec_loop_cell` and seven bindings -- `jtag_bsr_host_scan_in_i (bsr_scan_loop)`, `jtag_stap_io_host_tdi_i (stap_io_tdo_w)`, `jtag_stap_extra_host_tdi_i (stap_extra_tdi_w)`, `jtag_stap_host_scan_in_i (stap_scan_loop)`, `jtag_dfd_host_scan_in_i (dfd_scan_ret)`, `jtag_dft_secure_host_scan_in_i (dft_sec_scan_ret)` and `jtag_dft_host_scan_in_i (dft_scan_ret)` -- none a `1'b0` tie, and `stap_extra_tdi_w[0] = stap_extra_tdo_w[0]`, matching the *Scope* field. Previously approved 2026-09-21 on `main` at `bc4a6834a`, with bare iJTAG loops.
-|Review or expiry
-|2026-12-21, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.
 |===
 
 === CTP data-input tie-offs
@@ -658,12 +622,6 @@ stale, and the entry -- not the run -- is what needs the edit.
 |The tie belongs to the integrator's pad ring, which the open-source tree does not model; the bench stands where the integrator would.
 |Scope
 |`tb/tb_wrapper_top.sv` binds `xtrig_ctp_ack_out_din_i` to `'0` and `xtrig_ctp_req_in_din_i` / `xtrig_ctp_ack_in_din_i` to `tb_xtrig_ctp_req_in_din` / `tb_xtrig_ctp_ack_in_din`, which `smu_base_test.drive_idle_inputs` sets to 0 (`IDLE_INPUTS`). Load-bearing for `smu_boundary_port_composition_test` only; `smu_xtrig_ctp_pad_test` drives the two bench nets itself and does not rest on the tie.
-|Approver
-|pending
-|Date, revision
-|pending
-|Review or expiry
-|pending
 |===
 
 === `prim_sync2` / `prim_sync3` stand-ins
@@ -675,13 +633,7 @@ stale, and the entry -- not the run -- is what needs the edit.
 |Why the real path cannot be used
 |The product `prim_sync2` / `prim_sync3` start with X on the first stage and the wrapper port exposes no `rst_ni` to clear it, so on a four-state view the X persists into every consumer; the stand-ins add `initial '0` on each stage and change nothing else about the pipe.
 |Scope
-|`smu_sim_cfg.toml` `[build].stubs` lists `hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv` and `prim_sync3.sv`; the runner emits them ahead of the Bender filelist so Verilator's first-definition-wins picks them, and drops them on VCS. Every leaf compiles them in. Downstream observes on this bench: `obs_powergood_stable_o`, `obs_powergood_stable_low_seen_o`, the reset-release observes of `smu_smc_reset_ctrl_test` and `smu_ext_boot_seq_gate_test`, and the boot-stall gate of the five boot-stall leaves. No control run with the product cells has been made on this composition; issues #1164 and #1165 hold the shared shim inventory and the removal plan the closing of this entry depends on.
-|Approver
-|MinShao Ho (DV owner)
-|Date, revision
-|2026-09-21, on the tree that carries this record (`main` at `bc4a6834a` with the sign-off changes applied). Re-confirmed: `grep -n 'verilator_stubs' hw/sys/smu/dv/smu_sim_cfg.toml` printed both stubs, matching the *Scope* field.
-|Review or expiry
-|2026-12-21, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.
+|`smu_sim_cfg.toml` `[build].stubs` lists `hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv` and `prim_sync3.sv`; the runner emits them ahead of the Bender filelist so Verilator's first-definition-wins picks them, and drops them on VCS. Every leaf compiles them in. Downstream observes on this bench: `obs_powergood_stable_o`, `obs_powergood_stable_low_seen_o`, the reset-release observes of `smu_smc_reset_ctrl_test` and `smu_ext_boot_seq_gate_test`, and the boot-stall gate of the five boot-stall leaves.
 |===
 
 === eFuse models in the product composition
@@ -694,10 +646,4 @@ stale, and the entry -- not the run -- is what needs the edit.
 |The eFuse macro is a technology cell outside the open-source tree; the composition instantiates the model in its place for every simulator.
 |Scope
 |`hw/top/smc_ip_integration.sv` instantiates `u_efuse_interface_shim` (`efuse_interface_shim`) and `u_efuse_bank_model` (`efuse_bank_model`); `hw/top/sep_ip_integration.sv` instantiates the same pair for the SEP. Both are part of the DUT compile on every profile, so every wrapper leaf elaborates them; they are load-bearing for `smu_dtp_otp_smc_map_rw_test`, `smu_dtp_otp_smc_complete_rw_test`, `smu_dtp_otp_smc_series_error_test`, `smu_otp_vs_fabric_map_race_test`, `smu_sep_efuse_test`, and the `sep_lifecycle` and `sep_chain` leaves, and they answer the real sense on the nine wrapper leaves whose entry declares one: the five boot-stall leaves (`smu_boot_stall_jtag_cold_reset_matrix_test`, `smu_boot_stall_vs_ic_reset_priority_test`, `smu_clock_stop_coordination_test`, `smu_dft_dtp_boot_stall_test`, `smu_dft_gpio_boot_stall_test`) and `smu_sep_lcc_flow_test` on `sep_rtl`, each above a `Real fuse sense (no +skip_fuse_sense)` reason line, and `smu_sep_fuse_sense_done_test`, `smu_smc_fuse_sense_sequence_test` and `smu_smc_efuse_shadow_sense_reset_test` on `sep_rtl_fuse_sense`. On those nine the `smc_fuse_reset_n_delayed_o` release, the SEP `lc_state` and `dbg_disable` posture and the sense-completion ordering they observe are the controllers' own sense of the model-held image. The BFM table in `hw/sys/smu/dv/docs/SMU_TB_ARCH.adoc` names both models.
-|Approver
-|MinShao Ho (DV owner)
-|Date, revision
-|2026-09-18, on the tree that carries this record (`main` at `be6230cf` with the sign-off changes applied). Re-confirmed: `grep -n 'u_efuse_bank_model' hw/top/smc_ip_integration.sv hw/top/sep_ip_integration.sv` printed one instantiation in each file, the two `all.toml` counts print `6` and `3`, and the kept `smu_smc_fuse_sense_sequence_test` log of the `all` run at `f6d1f093e` prints `Not skipping fuse sense` at time zero, matching the *Scope* field.
-|Review or expiry
-|2026-12-18, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.
 |===
