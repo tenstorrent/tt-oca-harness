@@ -3343,7 +3343,13 @@ module sep_fcov (
       bins in_extent_reg_r = {2'b00}; bins in_extent_reg_w = {2'b01};
       bins hole_r = {2'b10}; bins hole_w = {2'b11};
     }
-    cp_burst_region_bad: coverpoint burst_bad iff (own_bu) {illegal_bins not_decerr = {1'b1};}
+    // Check only: a crypto-region burst that is not refused is illegal. The
+    // point carries no bin of its own, so it adds nothing to the group score.
+    cp_burst_region_bad: coverpoint burst_bad iff (own_bu) {
+      option.weight = 0;
+      type_option.weight = 0;
+      illegal_bins not_decerr = {1'b1};
+    }
   endgroup
 
   // ---------------------------------------------------------------------
@@ -4041,20 +4047,41 @@ module sep_fcov (
   wire sil_dma_rom    = dma_run_end && own_dma && alive_rom_q && nc_rom_q && !nc_rom_seen_q;
   wire sil_dma_csr    = dma_run_end && own_dma && alive_dcsr_q && nc_csr_q && !nc_csr_seen_q;
 
-  // sep_fabric_port_silence_cp: one cover property per bin.
-  sil_out_local_target_scratch_or_csr: cover property (@(posedge clk_i) sil_out_local);
-  sil_out_filter_deny_disabled: cover property (@(posedge clk_i) sil_out_deny);
-  sil_smc_outside_aperture_above_top: cover property (@(posedge clk_i) sil_smc_above);
-  sil_smc_outside_aperture_smu_window: cover property (@(posedge clk_i) sil_smc_smu);
-  sil_out_on_smc_route_smc_only: cover property (@(posedge clk_i) sil_on_smc_only);
-  sil_out_on_smc_route_smu_overlap: cover property (@(posedge clk_i) sil_on_smc_ovl);
-  sil_ext_shim_window_first: cover property (@(posedge clk_i) sil_shim_first);
-  sil_ext_shim_window_last: cover property (@(posedge clk_i) sil_shim_last);
-  sil_ext_filter_deny_burst: cover property (@(posedge clk_i) sil_ext_deny);
-  sil_inbound_refused_filter_deny: cover property (@(posedge clk_i) sil_in_filter);
-  sil_inbound_refused_rebase_ge_0x4000_0000: cover property (@(posedge clk_i) sil_in_rebase);
-  sil_dma_not_connected_boot_rom: cover property (@(posedge clk_i) sil_dma_rom);
-  sil_dma_not_connected_dma_csr: cover property (@(posedge clk_i) sil_dma_csr);
+  // sep_fabric_port_silence_cp: one coverpoint per silence property and one
+  // bin per cause. A covergroup, not a cover property, so the points land in
+  // the functional report with the other fabric groups.
+  covergroup sep_fabric_port_silence_cp with function sample (logic [12:0] sil);
+    option.per_instance = 1;
+    option.name = "sep_fabric_port_silence_cp";
+    sil_out_local_target: coverpoint sil[0] {bins target_scratch_or_csr = {1'b1};}
+    sil_out_filter_deny: coverpoint sil[1] {bins disabled = {1'b1};}
+    sil_smc_outside_aperture: coverpoint sil[3:2] {
+      wildcard bins above_top = {2'b?1}; wildcard bins smu_window = {2'b1?};
+    }
+    sil_out_on_smc_route: coverpoint sil[5:4] {
+      wildcard bins smc_only = {2'b?1}; wildcard bins smu_overlap = {2'b1?};
+    }
+    sil_ext_shim_window: coverpoint sil[7:6] {
+      wildcard bins first = {2'b?1}; wildcard bins last = {2'b1?};
+    }
+    sil_ext_filter_deny: coverpoint sil[8] {bins burst = {1'b1};}
+    sil_inbound_refused: coverpoint sil[10:9] {
+      wildcard bins filter_deny = {2'b?1}; wildcard bins rebase_ge_0x4000_0000 = {2'b1?};
+    }
+    sil_dma_not_connected: coverpoint sil[12:11] {
+      wildcard bins boot_rom = {2'b?1}; wildcard bins dma_csr = {2'b1?};
+    }
+  endgroup
+
+  sep_fabric_port_silence_cp u_sep_fabric_port_silence_cp = new();
+
+  wire [12:0] sil_vec = {sil_dma_csr, sil_dma_rom, sil_in_rebase, sil_in_filter, sil_ext_deny,
+                         sil_shim_last, sil_shim_first, sil_on_smc_ovl, sil_on_smc_only,
+                         sil_smc_smu, sil_smc_above, sil_out_deny, sil_out_local};
+
+  always_ff @(posedge clk_i) begin
+    if (|sil_vec) u_sep_fabric_port_silence_cp.sample(sil_vec);
+  end
 
   // Sampling of the fabric and remap covergroups.
   always_ff @(posedge clk_i) begin
