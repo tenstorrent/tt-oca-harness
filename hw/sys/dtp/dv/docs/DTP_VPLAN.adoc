@@ -75,7 +75,7 @@ testlists.
 |Multi-scenario module |Use `+dtp_<feature>_<scenario>_test+`, for example `dtp_ctm_p2p_cla_to_ctp_test`
 |Scenario names |Use descriptive lower-snake-case names that encode operation, mode, direction, or coverage target
 |Scenario prefix |Every scenario name starts with `dtp_`, for example `dtp_jtag2axi_smc_axi_error_single_write_test`
-|Files |Add one test class in `tests/` and one sequence in `seq_lib/` per scenario-expanded test case, in each realization
+|Files |Add one test in `tests/` per scenario-expanded test case, in each realization. The test starts its own scenario sequence, `seq_lib/<test>_seq`, or the family sequence of its scenario family, which selects the scenario from the `scenario` string the test sets (for example `dtp_jtag2axi_error_test_seq` or `dtp_ctm_route_test_seq`); the two realizations have the same test and scenario-sequence basenames
 |===
 
 === BFM Policy
@@ -235,7 +235,7 @@ expand over `smc_axi`, `smc_otp_axi`, and `sep_otp_axi`.
 [cols="2,3,1,2,3,1",options="header",]
 |===
 |Requirement |Canonical tests |Groups |Coverage intent |Checker evidence |Credit
-|F1.1 TAP state machine: all sixteen states and legal TMS arcs, one-hot state |`dtp_sanity_test` |smoke, functional, basic_jtag |`cg_tap_state`, `cg_tap_arc`, `cg_tap_smoke` `cp_reset_source` `tms5` |`CHK-TAP-STATE` (SV-UVM aggregate from `dtp_tap_fsm_checker`; cocotb per raw TMS step), `CHK-TAP-RESET-TLR`, `CHK-TAP-GOTO`, `CHK-TAP-VISIT-ALL`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-TLR-IDCODE`, `CHK-IDCODE-RAW`, `CHK-IDCODE-STABLE`, `CHK-IDCODE-MARKER`, `CHK-IR-DECODE`, `CHK-BYPASS-LATENCY`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`; `ast_tap_*` formal corroboration |YES
+|F1.1 TAP state machine: all sixteen states and legal TMS arcs, one-hot state |`dtp_sanity_test` |smoke, functional, basic_jtag |`cg_tap_state`, `cg_tap_arc`, `cg_tap_smoke` `cp_reset_source` `tms5` |`CHK-TAP-STATE` (SV-UVM from `dtp_tap_fsm_checker`, one record per illegal transition and the aggregate; cocotb per raw TMS step), `CHK-TAP-RESET-TLR`, `CHK-TAP-GOTO`, `CHK-TAP-VISIT-ALL`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-TLR-IDCODE`, `CHK-IDCODE-RAW`, `CHK-IDCODE-STABLE`, `CHK-IDCODE-MARKER`, `CHK-IR-DECODE`, `CHK-BYPASS-LATENCY`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`; `ast_tap_*` formal corroboration |YES
 |F1.2 TAP reset: TRST, power-on reset, five TMS-high clocks; power-on reset and TRST each force Test-Logic-Reset alone |`dtp_jtag_trst_test`, `dtp_jtag_trst_por_independence_test`, `dtp_jtag_tlr_reset_test` |basic_jtag |`cg_tap_smoke` `cp_reset_source`, `cp_trst_from_state` and the `cp_idcode_read` read after each reset |`CHK-TAP-TRST-ASYNC`, `CHK-TAP-TRST-TLR`, `CHK-TAP-POR-TLR`, `CHK-RESET-COUNT`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-TLR-IDCODE`, `CHK-TLR-TDR-DEFAULT`, `CHK-TLR-RESUME`, `CHK-IDCODE-RAW`, `CHK-IDCODE-RECOVERY`; `idcode` scoreboard feature |YES
 |F1.3 IDCODE: default after reset, explicit load, field values, marker bit |`dtp_jtag_idcode_test` |smoke, functional, basic_jtag |`cg_tap_smoke` `cp_idcode_read` and `cp_idcode_marker`; `cg_dr_scan` `cp_dr_instruction` `idcode` |`CHK-IDCODE-MARKER`, `CHK-IDCODE-MANUFACTURER`, `CHK-IDCODE-PART-NUMBER`, `CHK-IDCODE-VERSION`, `CHK-IDCODE-RAW`, `CHK-IDCODE-STABLE`, `CHK-IDCODE-RECOVERY`, `CHK-RESET-COUNT`; `idcode` scoreboard feature |YES
 |F1.4 Instruction decode; BYPASS, INV_BYPASS, ZERO_LENGTH_BYPASS; undefined opcodes select BYPASS |`dtp_jtag_bypass_test`, `dtp_jtag_inv_bypass_test`, `dtp_jtag_zero_length_bypass_test`, `dtp_jtag_undef_instr_test` |basic_jtag |`cg_jtag_instruction` `cp_opcode`, `cp_category`, and `cp_ir_update`; `cg_dr_scan` `cp_dr_instruction` BYPASS, INV_BYPASS, ZERO_LENGTH_BYPASS, reserved, and undefined bins and `cp_zero_length_path`; `cg_instruction_gate` `cx_gate_disabled` |`CHK-IR-DECODE`, `+CHK-BYPASS-<opcode>+`, `CHK-BYPASS-DELAY`, `CHK-BYPASS-LATENCY`, `CHK-INV-BYPASS`, `CHK-ZLB-PASSTHROUGH`, `CHK-ZLB-CHAIN-ALIGN`, `CHK-SCAN-CHAIN`, `CHK-UNDEF-NO-SELECT`; `ir_decode` and `bypass` scoreboard features |YES
@@ -256,7 +256,7 @@ expand over `smc_axi`, `smc_otp_axi`, and `sep_otp_axi`.
 |F4.2 Series operations: INCR, NO_INCR, WITH_ERROR_STATUS, narrow beat offset, size field wider than the bus, randomized sequences, per-bridge independence, the SERIES_CTRL status held until `SERIES_CTRL.reset` |`+dtp_jtag2axi_<target>_series_write_{incr,no_incr,incr_with_error}_test+`, `+dtp_jtag2axi_<target>_series_write_read_{incr,no_incr,incr_with_error}_test+`, `+dtp_jtag2axi_<target>_random_ops_test+`, `+dtp_jtag2axi_<target>_read_random_ops_test+`, `dtp_jtag2axi_smc_axi_series_write_incr_narrow_test`, `dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test`, `dtp_jtag2axi_smc_otp_axi_series_write_read_incr_oversize_test`, `dtp_jtag2axi_series_corner_all_bridges_test` |jtag2axi |`cg_jtag2axi_series` `x_mode_dir`, `x_target_status_step`, `cp_shape`, and `x_mode_beat` `after_fault` |`CHK-J2A-BUS-REQ` (every scenario but the series corner), `CHK-AXI-RDATA` (write-read and read random operations), `CHK-AXI-WMEM` (every series write beat and with-error recovery write, against the stimulus), `CHK-J2A-MEM-IMAGE` (random write operations), `CHK-J2A-SERIES-ADDR` (incrementing and narrow write-read, narrow write, series corner), `CHK-AXI-STRB` (narrow write, random write operations, with-error recovery writes), `CHK-AXI-COMPLETION`, `CHK-J2A-STATUS-BIT` (the WITH_ERROR_STATUS bit on every shift of the with-error series), `CHK-J2A-FAULT-STATUS` (the SERIES_CTRL captures of the series corner), the `jtag2axi_req` and `jtag2axi_status` scoreboard features; `CHK-AXI-STREAM-MIN` and `CHK-AXI-CREDITS` (cocotb; credits where strobe or response credits are armed); `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-RADDR` (SV-UVM single operations and the narrow write); `CHK-AXI-NONVAC` (SV-UVM, and cocotb on the with-error series) |YES
 |F4.3 Response status: SLVERR and DECERR on single and series operations, the error-status TDR, recovery after an error |`+dtp_jtag2axi_<target>_error_{single_write,single_read,series_incr_write,series_incr_read,series_no_incr_write,series_no_incr_read,series_incr_write_with_status,series_incr_read_with_status}_test+`, `+dtp_jtag2axi_<target>_series_write{,_read}_incr_with_error_test+`, `dtp_jtag2axi_decode_error_decerr_write_test`, `dtp_jtag2axi_decode_error_decerr_read_test`, `dtp_jtag2axi_decode_error_mixed_test` |jtag2axi |`cg_jtag2axi_response` `x_target_outcome` `slverr` and `decerr`; `cg_jtag2axi_recovery` `x_target_prior_path`; `cg_jtag2axi_series` `x_mode_beat` `fault` |Armed non-OKAY response (`CHK-AXI-RESP-EXPECTED` cocotb, `CHK-AXI-ERR-INJ` SV-UVM), `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-COMPLETION`, `CHK-AXI-STRB` (scenarios with a single-operation write), `CHK-AXI-RDATA` (scenarios with reads), `CHK-AXI-WMEM` (recovery writes and the with-error series write beats, against the stimulus), `CHK-J2A-BUS-REQ` (every scenario but the decode-error ones, fault beats included), `CHK-J2A-FAULT-STATUS` (the sequence's judgement of the SINGLE_OP or SERIES_CTRL status: the injected code right after the fault beat, OKAY after a plain series beat before it), `CHK-J2A-STATUS-BIT` (the per-shift status bit of the with-error series and of the with-status error series), `CHK-J2A-ERR-RDATA` (the seeded word of the errored read beat on the single-read, plain series read, and decode-error read scenarios), `CHK-J2A-SERIES-ADDR` (the SERIES_CTRL address after the plain series error beats and after the fault beat of the with-status write error), the `jtag2axi_req` and `jtag2axi_status` scoreboard features; `CHK-AXI-STREAM-MIN` and `CHK-AXI-CREDITS` (cocotb); `CHK-AXI-WADDR` and `CHK-AXI-WDATA` on the single-operation writes and `CHK-AXI-RADDR` on the reads (SV-UVM) |YES
 |F4.4 Backpressure and reset recovery: AW-before-W skew, long READY stalls, reset around the data phase, narrow and back-to-back resets, resets inside a running CDC clear sequence, a TAP reset with a request held on the fabric, TAP and system resets with every CDC FIFO entry holding a payload |`dtp_jtag2axi_backpressure_aw_before_w_test`, `dtp_jtag2axi_backpressure_long_stall_test`, `dtp_jtag2axi_backpressure_abort_at_data_w_test`, `dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test`, `dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test`, `dtp_jtag2axi_series_corner_all_bridges_test` |jtag2axi |`cg_jtag2axi_backpressure` `x_target_handshake`; `cg_jtag2axi_reset` `x_target_phase` and `cp_spacing`; `cg_jtag2axi_cdc` `x_target_clear`; `cg_jtag2axi_poll` `x_target_wait` `long_wait`; `cg_jtag2axi_response` and `cg_jtag2axi_recovery` `reset_discard` bins |`CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-WMEM` (the backpressured and recovery writes against the stimulus, and the entry sweep's errored writes against the slot's prior word), `CHK-AXI-RDATA` on the long-stall, back-to-back, narrow-reset and series-corner leaves; `CHK-J2A-STALL-FSM`, `CHK-J2A-STALL-BUSY`, `CHK-J2A-STALL-HOLD` on the two backpressure leaves; `CHK-J2A-ABORT-MIDFLIGHT` on the two reset-abort leaves; `CHK-J2A-ABORT-FSM` on the two reset-abort leaves, the back-to-back leaf and the series-corner leaf's entry sweep; `CHK-J2A-ABORT-ESCAPE` on the two reset-abort leaves; `CHK-J2A-SERIES-ADDR` and `CHK-J2A-FAULT-STATUS` on the abort-at-data-W leaf's series leg; `CHK-J2A-ABORT-RECOVERY`, `CHK-RESET-COUNT` on the three system-reset leaves and the entry sweep; `CHK-J2A-CDC-CLEAR` on the three system-reset leaves, the narrow-reset leaf's TAP-reset legs and the entry sweep; `CHK-J2A-CDC-PHASE` on the back-to-back leaf; `CHK-J2A-ORPHAN-DRAIN`, `CHK-J2A-ORPHAN-DISCARD`, `CHK-J2A-ORPHAN-ORDER` on the narrow-reset leaf's TAP-reset legs; `CHK-J2A-ERR-RDATA` on the entry sweep's errored reads; on the back-to-back leaf's armed SLVERR, the TAP-reset legs' armed SLVERR and DECERR, and the entry sweep's armed codes, `CHK-AXI-RESP-EXPECTED` (cocotb) and `CHK-AXI-ERR-INJ` (SV-UVM); `CHK-AXI-STREAM-MIN` and `CHK-AXI-CREDITS` (cocotb); `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-RADDR` on the reads (SV-UVM); `CHK-AXI-NONVAC` (SV-UVM, and cocotb on the entry sweep); the `jtag2axi_req` and `jtag2axi_status` scoreboard features |YES
-|F4.5 Each bridge's disable field: a gated bridge latches no TDR update, drops buffered requests, and generates no AXI traffic; release without replay; recovery |`+dtp_jtag2axi_<target>_{write,read,error}_security_gating_test+`, `dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test`, `dtp_jtag2axi_dbg_disable_matrix_test` |jtag2axi, dbg_disable |`DtpDbgDisableFcov`: the six bridge cells; `cg_dbg_disable_jtag2axi` `x_cell`, `cp_mask`, and `x_field_isolation`; `cg_jtag2axi_gating` `x_target_event` |`CHK-J2A-GATE-TDR` (every gated SINGLE_OP capture repeats the image captured before the disable), `CHK-AXI-RESP`, `CHK-AXI-COMPLETION`, `CHK-AXI-NONVAC` (the directed gating scenarios, and the matrix in SV-UVM), `CHK-AXI-STRB` (write and error gating, the matrix), `CHK-AXI-RDATA` (read gating, the matrix), and on the error gating scenarios the armed non-OKAY response (`CHK-AXI-RESP-EXPECTED` and `CHK-AXI-CREDITS` cocotb, `CHK-AXI-ERR-INJ` SV-UVM), `CHK-AXI-WMEM` (the recovery writes, against the stimulus), and `CHK-J2A-FAULT-STATUS`; `CHK-AXI-NOACT`, `CHK-AXI-STREAM-MIN`, and `CHK-AXI-BLOCKED` on the matrix (cocotb); `CHK-AXI-GATE-AW`, `CHK-AXI-GATE-W`, `CHK-AXI-GATE-AR`, `CHK-AXI-GATE-EXACT`, `CHK-AXI-WADDR` and `CHK-AXI-WDATA` with `CHK-AXI-STRB`, and `CHK-AXI-RADDR` with `CHK-AXI-RDATA` (SV-UVM); the write gating scenarios' queued series beats for the dropped buffered requests, with `CHK-AXI-WMEM` on their recovery write; the `jtag2axi_req` and `jtag2axi_status` scoreboard features, `jtag2axi_req` proving no transaction while disabled; ledger `require_cells` (cocotb) |YES
+|F4.5 Each bridge's disable field: a gated bridge latches no TDR update, drops buffered requests, and generates no AXI traffic; release without replay; recovery |`+dtp_jtag2axi_<target>_{write,read,error}_security_gating_test+`, `dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test`, `dtp_jtag2axi_dbg_disable_matrix_test` |jtag2axi, dbg_disable |`DtpDbgDisableFcov`: the six bridge cells; `cg_dbg_disable_jtag2axi` `x_cell`, `cp_mask`, and `x_field_isolation`; `cg_jtag2axi_gating` `x_target_event` |`CHK-J2A-GATE-TDR` (every gated SINGLE_OP capture repeats the image captured before the disable), `CHK-AXI-RESP`, `CHK-AXI-COMPLETION`, `CHK-AXI-NONVAC` (the directed gating scenarios, and the matrix in SV-UVM), `CHK-AXI-STRB` (write and error gating, the matrix), `CHK-AXI-RDATA` (read gating, the matrix), and on the error gating scenarios the armed non-OKAY response (`CHK-AXI-RESP-EXPECTED` and `CHK-AXI-CREDITS` cocotb, `CHK-AXI-ERR-INJ` SV-UVM), `CHK-AXI-WMEM` (the recovery writes, against the stimulus), and `CHK-J2A-FAULT-STATUS`; `CHK-AXI-NOACT` on the gating scenarios and the matrix; `CHK-AXI-STREAM-MIN` and `CHK-AXI-BLOCKED` on the matrix (cocotb); `CHK-AXI-GATE-EXACT`, `CHK-AXI-WADDR` and `CHK-AXI-WDATA` with `CHK-AXI-STRB`, and `CHK-AXI-RADDR` with `CHK-AXI-RDATA` (SV-UVM); the write gating scenarios' queued series beats for the dropped buffered requests, with `CHK-AXI-WMEM` on their recovery write; the `jtag2axi_req` and `jtag2axi_status` scoreboard features, `jtag2axi_req` proving no transaction while disabled; ledger `require_cells` (cocotb) |YES
 |F5.1 CTP wire-OR mode: pulse routing, configurable stretcher, inversion, the shared open-drain wire |`dtp_xtrig_wire_or_test`, `dtp_xtrig_wire_or_bus_test`, `dtp_ctm_wire_or_cla_to_ctp_test`, `dtp_ctm_wire_or_ctp_to_cla_test`, `dtp_ctm_wire_or_cla_to_cla_test`, `dtp_ctm_wire_or_ctp_to_ctp_test`, `dtp_ctm_rand_wire_or_only_test` |xtrig; smoke also carries `dtp_xtrig_wire_or_test` |`cg_ctp` `x_direction_mode_inversion` wire-OR bins and `x_mode_inversion_stretch`; `cg_ctp_wire_or_rx` `x_sense_listeners` and `x_sense_origin` |`CHK-XTRIG-SIGNAL`, `CHK-XTRIG-STRETCH` (width and pulse count), `CHK-XTRIG-ROUTE-MODEL` (the fired outputs and one assertion per routed output), `CHK-XTRIG-WIRE`; `xtrig_csr` scoreboard feature |YES
 |F5.2 CTP point-to-point four-phase handshake: a request held until its acknowledge and released by it, an acknowledge raised by a request and dropped after it, STATUS through each phase |`dtp_xtrig_p2p_test`, `dtp_ctm_p2p_cla_to_ctp_test`, `dtp_ctm_p2p_ctp_to_cla_test`, `dtp_ctm_p2p_ctp_to_ctp_test`, `dtp_ctm_rand_p2p_only_test` |xtrig |`cg_ctp_p2p` `x_phase_inversion`; `cg_ctp` `x_direction_mode_inversion` point-to-point bins; `cg_xtrig_csr_read` `cp_status` |`CHK-XTRIG-SIGNAL` (each handshake phase at the CTP endpoints), `CHK-XTRIG-CSR` (STATUS, `dtp_xtrig_p2p_test`), `CHK-XTRIG-ROUTE-MODEL` |YES
 |F5.3 CTM routing: every source and destination index, fanout, isolation of unrouted ports |`dtp_xtrig_rand_test`, `dtp_xtrig_rand_deterministic_dst_port_sweep_test`, `dtp_ctm_p2p_cla_to_cla_test`, `dtp_ctm_rand_all_scenarios_test`, `dtp_ctm_rand_cla_to_ctp_test`, `dtp_ctm_rand_ctp_to_cla_test`, `dtp_ctm_rand_all_source_select_coverage_test` |xtrig |`cg_ctm` `cp_source_index`, `cp_dest_index`, and `cp_dest_fanin`; `cg_ctm_route` `x_cla_to_ctp` and `x_ctp_to_cla`; `cg_ctm_fanout` `cp_fanout` and `x_source_dest_fanout` |`CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION`, `CHK-XTRIG-CSR` |YES
@@ -1769,7 +1769,7 @@ judges them, but not the responder memory.
 * JTAG2AXI single-op AXI4 write through the SMC fabric debug bridge (SMC_AXI_SINGLE_OP, IR=0x28)
 * 56-bit address / 64-bit data field formatting consistent with the SMC fabric CAPS TDR (IR=0x27, ADDR_SIZE=56, DATA_SIZE=64)
 * Address/data/wstrb delivery to the `OcahAxiSlaveAgent` subordinate on `axi_smc_dbg_req_o` / `axi_smc_dbg_resp_i`
-* Op-status settles at OKAY (0b00) after the write completes; a poll that lands before completion reads Busy (0b11). OKAY is the all-zero encoding, so the responder burst count (`CHK-AXI-NONVAC`) and the memory compare corroborate it
+* Op-status settles at OKAY (0b00) after the write completes; a poll that lands before completion reads Busy (0b11). OKAY is the all-zero encoding, so the transaction count (`CHK-AXI-NONVAC` in SV-UVM, `CHK-AXI-STREAM-MIN` in cocotb) and the memory compare corroborate it
 * A strobe sweep below the full beat at every size: no lane at 1, 2, 4, and 8 bytes, the top lane alone at 2, 4, and 8 bytes, the low half of a 4-byte beat, and `0x55` and `0xAA` at 8 bytes, beside the full-strobe write at each size and the seeded random cases
 
 *Test Procedure*:
@@ -1795,7 +1795,7 @@ b. Confirm the captured B-response is OKAY.
 |===
 |Checker |Description
 |`smc_axi_wr_caps_chk` |CAPS TDR reports bus_type=AXI4, ADDR_SIZE=56, DATA_SIZE=64
-|`smc_axi_wr_status_chk` |Op-status settles at OKAY (0b00), corroborated by the responder burst count and the memory compare
+|`smc_axi_wr_status_chk` |Op-status settles at OKAY (0b00), corroborated by the transaction count and the memory compare
 |`smc_axi_wr_data_chk` |`OcahAxiSlaveAgent` subordinate holds the written address/data/wstrb
 |===
 
@@ -2088,7 +2088,7 @@ c. Verify exactly one write completed, no request activity followed it, and the 
 |`smc_axi_gate_no_traffic_chk` |No AXI write appears on `axi_smc_dbg_req_o` while gated
 |`smc_axi_gate_sentinel_chk` |The preloaded RAM sentinel is unchanged while gated and after release (no delayed replay); the gated request carries all-ones strobes, so a leaked write overwrites it
 |`smc_axi_gate_tdr_chk` |`CHK-J2A-GATE-TDR`: with the disable asserted, the gated request's Capture-DR and a NOP capture after its Update-DR equal the SINGLE_OP image captured before the disable in the op, size, wstrb, data, and address fields, and the request differs from that image in a latched field
-|`smc_axi_gate_queued_drop_chk` |The held beat completes and no queued beat reaches the bus while gated or after the release: exactly one write completes (`CHK-AXI-NOACT` cocotb, `CHK-AXI-GATE-EXACT` SV-UVM), the request counters stay flat after it (`CHK-AXI-NOACT` cocotb, `CHK-AXI-GATE-AW`, `CHK-AXI-GATE-W`, `CHK-AXI-GATE-AR` SV-UVM), and the slot keeps the first beat's word
+|`smc_axi_gate_queued_drop_chk` |The held beat completes and no queued beat reaches the bus while gated or after the release: exactly one write completes (`CHK-AXI-NOACT` cocotb, `CHK-AXI-GATE-EXACT` SV-UVM), the request counters stay flat after it (`CHK-AXI-NOACT`), and the slot keeps the first beat's word
 |`smc_axi_gate_restore_chk` |A legal write completes with OKAY after each release
 |===
 
@@ -2108,7 +2108,7 @@ c. Verify exactly one write completed, no request activity followed it, and the 
 * JTAG2AXI single-op AXI4-Lite write through the SMC OTP bridge (SMC_OTP_AXI_SINGLE_OP, IR=0x1C)
 * 32-bit address / 32-bit data field formatting consistent with the SMC OTP CAPS TDR (IR=0x1B, AXI4-Lite, 32/32)
 * Address/data/wstrb delivery to the AXI-Lite subordinate on `axil_smc_otp_jtag_req_o` at every legal size and with partial strobes: five directed cases (sizes 0, 1, and 2 at full strobe, then a 4-byte word under strobe `0x5` and under strobe `0xA`), then `DTP_RANDOM_COUNT` seeded cases, each with a seeded size of 0 to 2, seeded address bits above the responder window, seeded data, and a seeded nonzero strobe within the size
-* Op-status settles at OKAY (0b00) within the poll bound (`CHK-AXI-COMPLETION`); the Busy (0b11) capture before completion is the stall scenarios' evidence (section 4). OKAY is the all-zero encoding, so the responder burst count (`CHK-AXI-NONVAC` in SV-UVM, `CHK-AXI-STREAM-MIN` in cocotb) and the memory compare corroborate it
+* Op-status settles at OKAY (0b00) within the poll bound (`CHK-AXI-COMPLETION`); the Busy (0b11) capture before completion is the stall scenarios' evidence (section 4). OKAY is the all-zero encoding, so the transaction count (`CHK-AXI-NONVAC` in SV-UVM, `CHK-AXI-STREAM-MIN` in cocotb) and the memory compare corroborate it
 
 *Test Procedure*:
 
@@ -2132,7 +2132,7 @@ b. Confirm the captured B-response is OKAY.
 |===
 |Checker |Description
 |`smc_otp_axi_wr_caps_chk` |CAPS TDR reports bus_type=AXI4-Lite, 32-bit address/data
-|`smc_otp_axi_wr_status_chk` |Op-status settles at OKAY (0b00), corroborated by the responder burst count and the memory compare
+|`smc_otp_axi_wr_status_chk` |Op-status settles at OKAY (0b00), corroborated by the transaction count and the memory compare
 |`smc_otp_axi_wr_data_chk` |AXI-Lite subordinate holds the strobed bytes of every case at its address
 |===
 
@@ -2383,7 +2383,7 @@ a. With all disables clear, verify a legal write again completes with OKAY.
 |`smc_otp_axi_gate_no_traffic_chk` |No AXI-Lite write appears on `axil_smc_otp_jtag_req_o` while gated
 |`smc_otp_axi_gate_sentinel_chk` |The preloaded RAM sentinel is unchanged while gated and after release (no delayed replay)
 |`smc_otp_axi_gate_tdr_chk` |`CHK-J2A-GATE-TDR`: with the disable asserted, the gated request's Capture-DR and a NOP capture after its Update-DR equal the SINGLE_OP image captured before the disable in the op, size, wstrb, data, and address fields, and the request differs from that image in a latched field
-|`smc_otp_axi_gate_queued_drop_chk` |The held beat completes and no queued beat reaches the bus while gated or after the release: exactly one write completes (`CHK-AXI-NOACT` cocotb, `CHK-AXI-GATE-EXACT` SV-UVM), the request counters stay flat after it (`CHK-AXI-NOACT` cocotb, `CHK-AXI-GATE-AW`, `CHK-AXI-GATE-W`, `CHK-AXI-GATE-AR` SV-UVM), and the slot keeps the first beat's word
+|`smc_otp_axi_gate_queued_drop_chk` |The held beat completes and no queued beat reaches the bus while gated or after the release: exactly one write completes (`CHK-AXI-NOACT` cocotb, `CHK-AXI-GATE-EXACT` SV-UVM), the request counters stay flat after it (`CHK-AXI-NOACT`), and the slot keeps the first beat's word
 |`smc_otp_axi_gate_restore_chk` |A legal write completes with OKAY after each release
 |===
 
@@ -2403,7 +2403,7 @@ a. With all disables clear, verify a legal write again completes with OKAY.
 * JTAG2AXI single-op AXI4-Lite write through the SEP OTP bridge (SEP_OTP_AXI_SINGLE_OP, IR=0x22)
 * 32-bit address / 32-bit data field formatting consistent with the SEP OTP CAPS TDR (IR=0x21, AXI4-Lite, 32/32)
 * Address/data/wstrb delivery to the AXI-Lite subordinate on `axil_sep_otp_jtag_req_o` at every legal size and with partial strobes: five directed cases (sizes 0, 1, and 2 at full strobe, then a 4-byte word under strobe `0x5` and under strobe `0xA`), then `DTP_RANDOM_COUNT` seeded cases, each with a seeded size of 0 to 2, seeded address bits above the responder window, seeded data, and a seeded nonzero strobe within the size
-* Op-status settles at OKAY (0b00) within the poll bound (`CHK-AXI-COMPLETION`); the Busy (0b11) capture before completion is the stall scenarios' evidence (section 4). OKAY is the all-zero encoding, so the responder burst count (`CHK-AXI-NONVAC` in SV-UVM, `CHK-AXI-STREAM-MIN` in cocotb) and the memory compare corroborate it
+* Op-status settles at OKAY (0b00) within the poll bound (`CHK-AXI-COMPLETION`); the Busy (0b11) capture before completion is the stall scenarios' evidence (section 4). OKAY is the all-zero encoding, so the transaction count (`CHK-AXI-NONVAC` in SV-UVM, `CHK-AXI-STREAM-MIN` in cocotb) and the memory compare corroborate it
 
 *Test Procedure*:
 
@@ -2427,7 +2427,7 @@ b. Confirm the captured B-response is OKAY.
 |===
 |Checker |Description
 |`sep_otp_axi_wr_caps_chk` |CAPS TDR reports bus_type=AXI4-Lite, 32-bit address/data
-|`sep_otp_axi_wr_status_chk` |Op-status settles at OKAY (0b00), corroborated by the responder burst count and the memory compare
+|`sep_otp_axi_wr_status_chk` |Op-status settles at OKAY (0b00), corroborated by the transaction count and the memory compare
 |`sep_otp_axi_wr_data_chk` |AXI-Lite subordinate holds the strobed bytes of every case at its address
 |===
 
@@ -2678,7 +2678,7 @@ a. With all disables clear, verify a legal write again completes with OKAY.
 |`sep_otp_axi_gate_no_traffic_chk` |No AXI-Lite write appears on `axil_sep_otp_jtag_req_o` while gated
 |`sep_otp_axi_gate_sentinel_chk` |The preloaded RAM sentinel is unchanged while gated and after release (no delayed replay)
 |`sep_otp_axi_gate_tdr_chk` |`CHK-J2A-GATE-TDR`: with the disable asserted, the gated request's Capture-DR and a NOP capture after its Update-DR equal the SINGLE_OP image captured before the disable in the op, size, wstrb, data, and address fields, and the request differs from that image in a latched field
-|`sep_otp_axi_gate_queued_drop_chk` |The held beat completes and no queued beat reaches the bus while gated or after the release: exactly one write completes (`CHK-AXI-NOACT` cocotb, `CHK-AXI-GATE-EXACT` SV-UVM), the request counters stay flat after it (`CHK-AXI-NOACT` cocotb, `CHK-AXI-GATE-AW`, `CHK-AXI-GATE-W`, `CHK-AXI-GATE-AR` SV-UVM), and the slot keeps the first beat's word
+|`sep_otp_axi_gate_queued_drop_chk` |The held beat completes and no queued beat reaches the bus while gated or after the release: exactly one write completes (`CHK-AXI-NOACT` cocotb, `CHK-AXI-GATE-EXACT` SV-UVM), the request counters stay flat after it (`CHK-AXI-NOACT`), and the slot keeps the first beat's word
 |`sep_otp_axi_gate_restore_chk` |A legal write completes with OKAY after each release
 |===
 
@@ -4662,6 +4662,7 @@ b. Configure the `ocah_axi_vip` subordinate to skew the channels: accept AW (rea
 * No premature timeout, abort, or status corruption while a legal stall is in progress
 * The settle point of each stalled operation: the AW+W write outlasts four status polls (the long-wait poll class), the AW-only write and the read settle within three (the short-wait class)
 * A write with no READY stall whose status is captured only after the bridge drops its pending flag reads OKAY on its first capture
+* Legal corner operands once the stalls clear: a single write with no strobe lane set, and a full-strobe single write to the last word of the responder's 64 KiB window
 
 *Test Procedure*:
 
@@ -4676,6 +4677,7 @@ c. Launch a single-op write while only AW ready is stalled for longer than the f
 a. Launch a single-op read while AR ready is stalled for longer than the first status poll; observe AR valid/address hold stable with the port's AR stall counter advancing (`CHK-J2A-STALL-HOLD`), the bridge FSM on the read path, and the first status capture reading Busy.
 b. Release the stall and confirm the returned data matches the reference model.
 . Issue a single-op write with no READY stall, step TCK in Run-Test/Idle until the bridge's pending flag clears, then capture SINGLE_OP and confirm OKAY with the written word in memory.
+. Issue a single-op write with no strobe lane set, then a full-strobe single-op write to the last word of the responder's 64 KiB window: both complete OKAY (`CHK-J2A-FAULT-STATUS`), and the window's last word holds the written data (`CHK-AXI-WMEM`).
 . Verify the bridge does not declare a timeout or error during any legal stall and that each operation reaches its expected terminal status after release.
 
 *Checkers*:
@@ -6136,7 +6138,7 @@ a. Write `+CT_SRC[dst]_CONFIG_0.CT_DST_SELECT = (1 << src)+` for each selected C
 b. Read each written register back and confirm only the source-input bit is set.
 . Drive a cross-trigger request on the CLA source via the OCAH-local CTM BFM.
 . Observe the CTP destinations with the OCAH-local CTP monitor:
-a. Verify every selected CTP destination asserts the trigger simultaneously.
+a. Verify every selected CTP destination asserts the trigger in the same cycle, with one pulse of width (STRETCH_MULT{plus}1).
 b. Verify every non-selected destination port remains quiet.
 . Exercise wire-OR superposition:
 a. Program one CTP output's `CT_DST_SELECT` with the source-input bit and a second CLA source-input bit.
@@ -6148,7 +6150,7 @@ b. Pulse each source alone, then both in the same cycle: the shared destination 
 |===
 |Checker |Description
 |`ctm_wire_or_cla_to_ctp_csr_chk` |CSR readback of each selected output's `CT_DST_SELECT` matches its programmed source-input bits
-|`ctm_wire_or_cla_to_ctp_route_chk` |All selected CTP destinations assert on the CLA pulse against the reference model
+|`ctm_wire_or_cla_to_ctp_route_chk` |All selected CTP destinations assert on the CLA pulse against the reference model and start requesting in the same cycle (`CHK-XTRIG-ROUTE-MODEL`), each with one pulse of width (STRETCH_MULT{plus}1) (`CHK-XTRIG-STRETCH`)
 |`ctm_wire_or_cla_to_ctp_or_chk` |Each of the two sources selected on the shared CTP output fires it alone; both pulsed in the same cycle produce one merged pulse of width (STRETCH_MULT{plus}1)
 |`ctm_wire_or_cla_to_ctp_nospur_chk` |No non-selected destination port toggles
 |`ctm_wire_or_cla_to_ctp_receive_chk` |The internal port's `ct_dst` rises three clocks after the CLA request rises and never at its release (`CHK-XTRIG-WIRE`)
@@ -6181,7 +6183,7 @@ a. Write `+CT_SRC[dst]_CONFIG_0.CT_DST_SELECT = (1 << src)+` for each selected C
 b. Read each written register back and confirm only the source-input bit is set.
 . Let the chiplet on the source CTP's shared wire pull it via the OCAH-local CTP BFM.
 . Observe the CLA destinations with the OCAH-local CTM monitor:
-a. Verify every selected CLA destination asserts simultaneously.
+a. Verify every selected CLA destination asserts in the same cycle, with one two-cycle pulse.
 b. Verify non-selected CLA destinations remain quiet.
 . Exercise wire-OR superposition with a second CTP source selected on one CLA output: pulse each source alone, then both in the same cycle, and confirm the shared CLA destination fires for each and the two merge into one pulse of the single-source width (two cycles, the internal CTP stretch).
 
@@ -6191,7 +6193,7 @@ b. Verify non-selected CLA destinations remain quiet.
 |===
 |Checker |Description
 |`ctm_wire_or_ctp_to_cla_csr_chk` |CSR readback of each selected output's `CT_DST_SELECT` matches its programmed source-input bits
-|`ctm_wire_or_ctp_to_cla_route_chk` |All selected CLA destinations assert on the CTP pulse against the reference model
+|`ctm_wire_or_ctp_to_cla_route_chk` |All selected CLA destinations assert on the CTP pulse against the reference model and start requesting in the same cycle (`CHK-XTRIG-ROUTE-MODEL`), each with one two-cycle pulse (`CHK-XTRIG-STRETCH`)
 |`ctm_wire_or_ctp_to_cla_or_chk` |Each of the two sources selected on the shared CLA output fires it alone; both pulsed in the same cycle produce one merged two-cycle pulse
 |`ctm_wire_or_ctp_to_cla_nospur_chk` |No non-selected CLA destination toggles
 |`ctm_wire_or_ctp_to_cla_receive_chk` |The source port's `ct_dst` rises three clocks after its wire is pulled and never at the release (`CHK-XTRIG-WIRE`)
@@ -6224,7 +6226,7 @@ a. Write `+CT_SRC[dst]_CONFIG_0.CT_DST_SELECT = (1 << src)+` for each selected C
 b. Read each written register back and confirm only the source-input bit is set.
 . Pulse the source CLA via the OCAH-local CTM BFM.
 . Observe the destination CLA channels with the OCAH-local CTM monitor:
-a. Verify every selected destination CLA pulses.
+a. Verify every selected destination CLA pulses in the same cycle, with one two-cycle pulse.
 b. Verify the routing mask behavior: non-selected CLA channels stay idle and the source is not fed back to itself.
 . Exercise wire-OR superposition with a second CLA source selected on one destination channel: pulse each source alone, then both in the same cycle, and confirm the shared channel fires for each and the two merge into one pulse of the single-source width (two cycles, the internal CTP stretch).
 
@@ -6234,7 +6236,7 @@ b. Verify the routing mask behavior: non-selected CLA channels stay idle and the
 |===
 |Checker |Description
 |`ctm_wire_or_cla_to_cla_csr_chk` |CSR readback of each selected output's `CT_DST_SELECT` matches its programmed source-input bits
-|`ctm_wire_or_cla_to_cla_route_chk` |All selected destination CLA channels pulse against the reference model
+|`ctm_wire_or_cla_to_cla_route_chk` |All selected destination CLA channels pulse against the reference model and start requesting in the same cycle (`CHK-XTRIG-ROUTE-MODEL`), each with one two-cycle pulse (`CHK-XTRIG-STRETCH`)
 |`ctm_wire_or_cla_to_cla_or_chk` |Each of the two sources selected on the shared CLA channel fires it alone; both pulsed in the same cycle produce one merged two-cycle pulse
 |`ctm_wire_or_cla_to_cla_noloop_chk` |No feedback loop or self-retrigger of the source CLA
 |`ctm_wire_or_cla_to_cla_receive_chk` |The internal port's `ct_dst` rises three clocks after the CLA request rises and never at its release (`CHK-XTRIG-WIRE`)
@@ -6267,8 +6269,8 @@ a. Write `+CT_SRC[dst]_CONFIG_0.CT_DST_SELECT = (1 << src)+` for each selected C
 b. Read each written register back and confirm only the source-input bit is set.
 . Let the chiplet on the source CTP's shared wire pull it via the OCAH-local CTP BFM.
 . Observe the destination CTP ports with the OCAH-local CTP monitor:
-a. Verify every selected destination CTP port pulses.
-b. Verify pulse width on each destination matches the reference model.
+a. Verify every selected destination CTP port pulses, all in the same cycle.
+b. Verify each destination carries one pulse of width (STRETCH_MULT{plus}1).
 c. Verify no feedback loop re-triggers the source.
 . Exercise wire-OR superposition with a second CTP source selected on one destination port: pulse each source alone, then both in the same cycle, and confirm the shared port fires for each and the two merge into one pulse of the single-source width (STRETCH_MULT{plus}1, two cycles).
 
@@ -6278,7 +6280,7 @@ c. Verify no feedback loop re-triggers the source.
 |===
 |Checker |Description
 |`ctm_wire_or_ctp_to_ctp_csr_chk` |CSR readback of each selected output's `CT_DST_SELECT` matches its programmed source-input bits
-|`ctm_wire_or_ctp_to_ctp_route_chk` |All selected destination CTP ports pulse against the reference model
+|`ctm_wire_or_ctp_to_ctp_route_chk` |All selected destination CTP ports pulse against the reference model and start requesting in the same cycle (`CHK-XTRIG-ROUTE-MODEL`), each with one pulse of width (STRETCH_MULT{plus}1) (`CHK-XTRIG-STRETCH`)
 |`ctm_wire_or_ctp_to_ctp_width_chk` |Each of the two sources selected on the shared CTP port fires it alone; both pulsed in the same cycle produce one merged pulse of width (STRETCH_MULT{plus}1)
 |`ctm_wire_or_ctp_to_ctp_noloop_chk` |No feedback loop or self-retrigger of the source CTP
 |`ctm_wire_or_ctp_to_ctp_receive_chk` |The source port's `ct_dst` rises three clocks after its wire is pulled and never at the release (`CHK-XTRIG-WIRE`)
@@ -6637,7 +6639,7 @@ e. Verify every selected output is idle again at the end of the window.
 a. Draw one or two sources and two to four outputs (sources outside the output set).
 b. Clear every `+CT_SRC[N]_CONFIG_0+`, write the source mask into each selected output's register via `OcahAxiLiteMasterAgent`, and read each back.
 c. Pulse the drawn sources in the same cycle via the OCAH-local CTM/CTP BFMs (a chiplet pulls each CTP source's shared wire) inside an activity window over every output.
-d. Verify the outputs that start requesting after the sources are pulsed are exactly the reference model's prediction, each asserting once, and that every selected destination asserted.
+d. Verify the outputs that start requesting after the sources are pulsed are exactly the reference model's prediction, each asserting once, and that every selected destination asserted, all in the same cycle.
 e. Verify non-selected destinations stayed idle and the selected ones are idle again at the end of the window.
 
 *Checkers*:
@@ -6646,7 +6648,7 @@ e. Verify non-selected destinations stayed idle and the selected ones are idle a
 |===
 |Checker |Description
 |`ctm_rand_wire_or_only_csr_chk` |Every selected output's `CT_DST_SELECT` reads back the iteration's source mask
-|`ctm_rand_wire_or_only_route_chk` |All selected destinations assert per the reference model across iterations
+|`ctm_rand_wire_or_only_route_chk` |All selected destinations assert per the reference model across iterations and start requesting in the same cycle (`CHK-XTRIG-ROUTE-MODEL`)
 |`ctm_rand_wire_or_only_or_chk` |Two sources selected on the same outputs and pulsed in the same cycle fire exactly the modelled outputs
 |`ctm_rand_wire_or_only_nospur_chk` |No non-selected destination toggles
 |`ctm_rand_wire_or_only_receive_chk` |Every wire-OR source's `ct_dst` rises three clocks after its wire or CLA request asserts and never at the release (`CHK-XTRIG-WIRE`)

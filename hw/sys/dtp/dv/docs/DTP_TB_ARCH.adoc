@@ -64,8 +64,8 @@ rules, signal binding, or testbench fixtures:
 |`DtpScanModel` |8-bit BSR identity-loopback stimulus and checking |Models the compact DTP TB fixture, not generic IEEE 1149.1 boundary cells |A parameterized boundary-cell model with an independent DUT consumer
 |`DtpIjtagSibModel` |Three DTP SIBs with stored-open retention under a gate, per-SIB debug-disable gates, the bench's instrument stubs (chain layout, composed scans, capture prediction, latched instrument values) |Hard-coded DTP scan topology, stub widths, and security policy |Topology/instrument-neutral IEEE 1687 transactions plus a second consumer
 |`DtpStap3dcrModel` |Composed TAP_3DCR chain state (PTAP 3DCR, per-STAP SIB and 3DCR), network-wide IR-scan composition, the chain of a DR scan under ZERO_LENGTH_BYPASS or BYPASS, capture prediction, chain updates only while the PTAP 3DCR select is set, per-STAP debug-disable update blocking, the downstream TAP segments (IR, IDCODE, BYPASS, or a latched register) of the `ocah_jtag_vip` devices attached behind the STAP host ports, and the host segment behind the extended STAP host scan interface |The chain hierarchy, the splice flops, and the downstream parking rules are DTP-specific |A parameterized IEEE 1838/STAP model with an independent DUT consumer
-|`DtpXtrigBfm` / `DtpCtmRefModel` |DTP CTP wire-OR/P2P pins, CTM masks, CSR layout from the generated cross-trigger register headers |Assumes DTP port counts, flattened signal names, and OCAH routing policy |Parameterized binding and port counts with an independent consumer
-|`DtpBypassSuiteCfg` / `DtpBypassRefModel` |BYPASS opcode, pattern, capture, and one-bit-delay prediction |Encodes the DTP BYPASS scenario and evidence context |An independent JTAG consumer of the same model
+|`DtpXtrigBfm` / `DtpXtrigCtmModel` |DTP CTP wire-OR/P2P pins, CTM masks, CSR layout from the generated cross-trigger register headers |Assumes DTP port counts, flattened signal names, and OCAH routing policy |Parameterized binding and port counts with an independent consumer
+|`DtpBypassSuiteCfg` / `DtpJtagBypassModel` |BYPASS opcode, pattern, capture, and one-bit-delay prediction |Encodes the DTP BYPASS scenario and evidence context |An independent JTAG consumer of the same model
 |DTP TDR maps/packers |DTP instruction/register semantics layered over `ocah_jtag_vip` |Register layout and polling policy are DUT semantics, not JTAG protocol |A domain consumer of the same DTP register contract
 |===
 
@@ -82,7 +82,7 @@ The DTP BYPASS scenario is the concrete reference-model/scoreboard example:
 ----
 DtpBypassSuiteCfg
   -> load_ir / shift_dr JTAG stimulus
-  -> DtpBypassRefModel.predict(case) -> expected TDO
+  -> DtpJtagBypassModel.predict(case) -> expected TDO
 completed DtpJtagItem.result         -> observed TDO
 expected + observed
   -> OcahJtagChecker
@@ -379,9 +379,9 @@ scenario), `dtp_xtrig_ctm_model`
 (OR of the selected input ports onto each output, per the cross-trigger matrix
 register map; held by the cross-trigger scenarios and compared against the DUT
 output vector on every route as a scenario-level check, with each predicted
-output asserting once and only after the window's first input). The
-cocotb twins live in
-`env/dtp_scan_ref_model.py` and `env/dtp_xtrig_types.py`.
+output asserting once and only after the window's first input, and the
+predicted outputs that select the same inputs starting in the same cycle). Each
+cocotb twin has the same basename under `cocotb/env/`.
 
 ==== Sequence Library
 
@@ -393,13 +393,18 @@ Two tiers, one readable flow per scenario.
 |Reusable operation |One DUT operation on one agent, built from the VIP sequence API, started by a scenario on the virtual sequencer's handle for that agent |`dtp_jtag_tap_reset_seq`, `dtp_jtag_trst_seq`, `dtp_jtag_tms_walk_seq`, `dtp_jtag_goto_state_seq`, `dtp_jtag_ir_scan_seq`, `dtp_jtag_dr_scan_seq`, `dtp_jtag_read_tdr_seq`, `dtp_jtag_write_tdr_seq`, `dtp_jtag2axi_single_op_seq`, `dtp_jtag2axi_single_status_seq`, `dtp_jtag2axi_series_ctrl_seq`, `dtp_jtag2axi_series_data_seq`, `dtp_axi_csr_write_seq`, `dtp_axi_csr_read_seq`
 |Base virtual sequence |Operation wrappers with TAP-state tracking, DTP-local checks (TAP state, scan length, BYPASS latency), reset and dbg_disable sequencing, system-domain waits derived from the env clock period, per-pass seeding |`dtp_base_test_seq`
 |Family layer |Domain helpers and per-pass family evidence: basic JTAG (bypass, loopback, decoded-IR, TMP_STATUS), JTAG2AXI (bridge codec, polling bound, evidence arming, responder backdoor, gating), debug TDR, scan network (iJTAG SIBs, STAP 3DCR chain, downstream TAPs, temporal windows), cross-trigger (CSR map, CTM model, pin surface) |`dtp_jtag_base_test_seq`, `dtp_jtag2axi_base_test_seq`, `dtp_debug_tdr_base_test_seq`, `dtp_scan_base_test_seq`, `dtp_xtrig_base_test_seq`
-|Scenario |One VPLAN scenario as a virtual sequence: seed first, one flow of operations, named evidence with required IDs finalized once |`dtp_<scenario>_test_seq`
+|Scenario |One VPLAN scenario, or a family of them selected by the `scenario` string the test sets, as a virtual sequence: seed first, one flow of operations per scenario, named evidence with required IDs finalized once |`dtp_<scenario>_test_seq`, or a family sequence such as `dtp_jtag2axi_error_test_seq` or `dtp_xtrig_csr_test_seq`
 |===
 
-Every scenario keeps the one-sequence plus one-test pattern:
-`seq_lib/<scenario>_test_seq` and `tests/<scenario>_test` with the same
-basename in both realizations. Tests end in `_test`, scenario sequences in
-`_test_seq`, reusable operations in `_seq`.
+Every scenario has one test, `tests/<scenario>_test`. A scenario with a flow
+of its own has its own sequence, `seq_lib/<scenario>_test_seq`; the scenarios
+of one family share a family sequence that dispatches on the `scenario`
+string: the iJTAG and the STAP scan scenarios, the SMC fabric write and read
+scenarios, the OTP bridge scenarios, the bridge error and robustness
+scenarios, and the cross-trigger route, CSR, and CTM route scenarios. Both
+realizations have the same test and scenario-sequence basenames. Tests end in
+`_test`, scenario and family sequences in `_test_seq`, reusable operations in
+`_seq`.
 
 === Clock and Reset Strategy
 
@@ -443,12 +448,15 @@ pass`, resolved through the same knob names in both realizations:
 `+<SCENARIO>_LOOPS` (per test), the group knobs (`DTP_BASIC_JTAG_TEST_LOOPS`,
 `DTP_DEBUG_TDR_TEST_LOOPS`, `DTP_JTAG2AXI_TEST_LOOPS`, `DTP_SCAN_TEST_LOOPS`,
 `DTP_XTRIG_TEST_LOOPS`), `DTP_TEST_LOOPS` (suite-wide), `DTP_RANDOM_COUNT`
-(random volume per pass), plus the scenario knobs `DTP_IDCODE_READS_PER_LOOP`,
-`DTP_RAND_WALKS`, and `DTP_DBG_DISABLE_MULTI_HOT_ROWS`. The base-test hooks are
-`create_scenario_seq`, `configure_test_cfg`, `plumb_scenario_seq`,
-`bring_up`, `run_looped_scenario`, `specific_loops_knob`, `group_loops_knob`,
-and `default_loops`. The two `dbg_disable` matrix tests run one pass in both
-realizations: their rows (all-clear, one-hot per field,
+(random volume per pass), plus the scenario knobs `DTP_IDCODE_READS_PER_LOOP`
+(default 4, minimum 1), `DTP_RAND_WALKS`, and `DTP_DBG_DISABLE_MULTI_HOT_ROWS`.
+`dtp_sanity_test` and `dtp_jtag_idcode_test` read no group knob. The SV-UVM
+base-test hooks are `create_scenario_seq`, `configure_test_cfg`,
+`plumb_scenario_seq`, `bring_up`, `run_looped_scenario`,
+`specific_loops_knob`, `group_loops_knob`, and `default_loops`; a cocotb test
+overrides `run_scenario` and passes its sequence, scenario string, and knob
+names to `start_looped_seq`. The two `dbg_disable` matrix tests run one pass
+in both realizations: their rows (all-clear, one-hot per field,
 `DTP_DBG_DISABLE_MULTI_HOT_ROWS` seeded multi-hot, all-disabled) are the
 seeded iterations, and no loop knob applies to them.
 
@@ -495,9 +503,11 @@ value of one cross-trigger evidence ID wherever the scenario records it (1
 `CHK-XTRIG-CSR`, 2 `CHK-XTRIG-SIGNAL`, 3 `CHK-XTRIG-ROUTE-MODEL`, 4
 `CHK-XTRIG-ISOLATION`, 5 `CHK-XTRIG-QUIET`, 6 `CHK-XTRIG-STRETCH`, 7
 `CHK-XTRIG-AXIL`, 8 `CHK-XTRIG-AW-LOCK`, 9 `CHK-XTRIG-AR-STALL`, 10
-`CHK-XTRIG-WIRE`),
+`CHK-XTRIG-WIRE`, 11 `CHK-RESET-COUNT`),
 `DTP_J2A_REF_MODEL_NEGATIVE` makes the bridge request reference model predict
 corrupted addresses so the scoreboard pairing fails against the observed bus,
+`DTP_XTRIG_CSR_REF_MODEL_NEGATIVE` and `DTP_XTRIG_DECODE_REF_MODEL_NEGATIVE`
+flip one bit of every compared `xtrig_csr` and `xtrig_decode` prediction,
 `DTP_J2A_GEOMETRY_NEGATIVE` corrupts the expected address size of the per-pass
 CAPS comparison,
 `DTP_J2A_BUS_REQ_NEGATIVE` corrupts the address each `CHK-J2A-BUS-REQ` record
@@ -622,16 +632,16 @@ below; each row states what each realization does.
 |===
 |Element |cocotb realization |SV-UVM realization
 |Primary TAP agent |DUT-local `DtpJtagAgent`: a sequencer and `DtpJtagDriver` over the shared `OcahJtagMasterDriver` engine, with `DtpJtagItem` carrying the TAP, TDR, and JTAG2AXI operations |Shared `ocah_jtag_master_env`; the operations are `dtp_jtag_<op>_seq` and `dtp_jtag2axi_<op>_seq` on its sequencer
-|Scenario coordination |Every scenario runs on the JTAG agent's sequencer; the XTRIG CSR master and the CTP/CTM pin BFM are reached through `DtpEnvCfg` handles; the command libraries are helper objects held by the sequence |`dtp_virtual_sequencer` with typed handles; every scenario is a virtual sequence
+|Scenario coordination |Every scenario runs on the JTAG agent's sequencer; the XTRIG CSR master and the CTP/CTM pin BFM are reached through `DtpEnvCfg` handles |`dtp_virtual_sequencer` with typed handles; every scenario is a virtual sequence
 |Configuration |One `DtpEnvCfg` with `randomize_timing(seed)` |`dtp_test_cfg` randomized from the seed and the derived `dtp_env_cfg`
 |Cross-trigger pins |`DtpXtrigBfm` (`env/dtp_xtrig_agent.py`), reached through `DtpEnvCfg`, drives the CTP and CTM pins and samples them for the scenario |No CTP/CTM BFM or pin monitor: the cross-trigger sequences drive and sample the pins through the DUT-local `dtp_xtrig_if` (`xtrig_vif`)
 |Scoreboard |`DtpScoreboard` pairing seven `Dtp<Feature>RefModel` streams, always on; a required feature with zero comparisons fails, and a test that sets `use_axi_scoreboard` requires `jtag2axi_req` and `jtag2axi_status`. `DtpAxiScoreboard` builds the shared `ocah_axi_vip` reference models and scoreboard when a test opts in (`use_axi_scoreboard`, required IDs, stream minimums); every JTAG2AXI test does. A record from any bridge stream meets a required ID of the shared scoreboard, and the stream minimums hold each bridge to compared transactions; a test that drives the three bridges in one pass names its scenario IDs per bridge (`axi_checker_target_required_ids`), and `DtpAxiScoreboard` gives each bridge a checker that must record every one of them |`dtp_scoreboard` pairing seven `dtp_<feature>_ref_model` streams, always on; a required feature with zero comparisons fails. Each bridge's passive recorder requires the IDs the test names for that bridge
 |Debug-disable ledger |The two matrix tests fill the 22-cell `DtpDbgDisableFcov` ledger (`env/dtp_fcov.py`), and `require_cells` fails a run with a missing cell |No ledger: every matrix pass runs each field's one-hot row and both boundary rows; `cg_dbg_disable_scan` and `cg_dbg_disable_jtag2axi` record the cells in both realizations
 |JTAG2AXI responder write order |The responder accepts a write's W beat independently of its AW, so `arm_w_before_aw()` changes nothing on the wires |The responder accepts AW first; `arm_w_before_aw()` makes it accept the next write's W beat while that write's AW waits (the AW-only leg of `dtp_jtag2axi_backpressure_long_stall_test`)
-|TAP reference model |The VIP next-state and TMS-path helpers (`next_jtag_state`, `jtag_tms_path`) in the scenario layer; the `OcahJtagChecker` is attached per scenario |`dtp_tap_fsm_checker`, an env subscriber on the VIP next-state model
+|TAP reference model |The VIP next-state and TMS-path helpers (`next_jtag_state`, `jtag_tms_path`) in the scenario layer; the `OcahJtagChecker` is attached per scenario |`dtp_tap_fsm_checker`, an env subscriber on the VIP next-state model, records each illegal transition as a `CHK-TAP-STATE` failure with the expected and observed states
 |Reset-count evidence |`CHK-RESET-COUNT` on the scenario's evidence checker: the attached `OcahJtagChecker` in the basic JTAG, debug-TDR, and scan scenarios, the cross-trigger checker in the cross-trigger scenarios, and the shared AXI scoreboard in the JTAG2AXI scenarios; an inline assertion where the scenario attaches none |`CHK-RESET-COUNT` on the cross-trigger checker in the cross-trigger scenarios, and elsewhere on the env `ocah_jtag_checker`, which judges its required IDs once per run
-|Per-scan length evidence |`CHK-SCAN-IR-LEN` and `CHK-SCAN-DR-LEN` for each issued scan in `dtp_sanity_test` only |`CHK-SCAN-IR-LEN` and `CHK-SCAN-DR-LEN` for each issued scan on the env `ocah_jtag_checker` in every scenario that keeps the env scan builder
-|Plain-model basenames |`env/dtp_jtag_ir_model.py`, `env/dtp_jtag2axi_model.py` and `env/dtp_xtrig_csr_model.py` hold the reference models' state; `env/dtp_scan_ref_model.py` and `env/dtp_xtrig_types.py` hold the plain scan and cross-trigger models |`dtp_jtag_ir_model.svh`, `dtp_jtag2axi_model.svh`, `dtp_xtrig_csr_model.svh`, `dtp_stap_3dcr_model.svh`, `dtp_ijtag_sib_model.svh`, `dtp_xtrig_ctm_model.svh`
+|Per-scan length evidence |`CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, and `CHK-SCAN-DR-LEN` on the family checker, from the DUT's Shift-x episodes against the scans the sequence issued, in the basic JTAG, debug-TDR, and scan scenarios; `dtp_sanity_test` judges each issued scan's length as it returns; `dtp_jtag_idcode_test` and `dtp_jtag_tlr_reset_test` record none, since their random TMS walks visit Shift-x outside an issued scan |`CHK-SCAN-IR-LEN` and `CHK-SCAN-DR-LEN` for each issued scan on the env `ocah_jtag_checker` in every scenario that keeps the env scan builder; the scan scenarios' family checker also requires `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, and `CHK-SCAN-DR-LEN`
+|One-sided env modules |`env/dtp_axi_agent.py` and `env/dtp_xtrig_agent.py` (the bridge responders and port monitors, the XTRIG CSR master and pin BFM), `env/dtp_xtrig_types.py` (cross-trigger register constants), `env/dtp_dbg_disable.py` (debug-disable names), `env/dtp_tap_device.py` (the primary-TAP TDR map the JTAG driver and the sequences share), `env/dtp_jtag_bypass_model.py` and `env/dtp_scan_model.py` (BYPASS and BSR loopback prediction), `env/dtp_stap_ds_agent.py` (the downstream STAP devices), and `env/dtp_tb_if.py` and `env/dtp_dv_cfg.py` (the Python views of `tb/dtp_tb_if.sv` and `tb/dtp_dv_cfg_pkg.sv`) |`dtp_env` composes the shared VIP agents and builds the downstream STAP devices itself; `dtp_types.svh` holds the instruction encodings, the cross-trigger constants, and the debug-disable paths; `dtp_jtag_base_test_seq` predicts the BYPASS delay and the BSR loopback; the TB interfaces and `dtp_dv_cfg_pkg` are used directly
 |===
 
 === Adding a Scenario to the SV-UVM Realization
@@ -641,12 +651,14 @@ binding map carries both, and the same `--items` name selects either
 realization. To add the SV-UVM twin of a cocotb scenario:
 
 [arabic]
-. *Sequence* — add `uvm/seq_lib/<name>_seq.svh` mirroring the cocotb
-  `cocotb/seq_lib/<name>_seq.py` semantics as a virtual sequence on the family
-  layer that matches the scenario: `dtp_jtag_base_test_seq` for
-  instruction-family scenarios (per-pass family evidence and scan-builder
-  cross-checks), `dtp_jtag2axi_base_test_seq` for bridge scenarios (single
-  and series operations, responder backdoor, error arming),
+. *Sequence* — mirror the cocotb scenario sequence under the same basename:
+  `uvm/seq_lib/<name>_seq.svh` for a scenario with a sequence of its own, or a
+  branch of the family sequence's `scenario` dispatch for a family scenario.
+  The sequence is a virtual sequence on the family layer that matches the
+  scenario: `dtp_jtag_base_test_seq` for instruction-family scenarios
+  (per-pass family evidence and scan-builder cross-checks),
+  `dtp_jtag2axi_base_test_seq` for bridge scenarios (single and series
+  operations, responder backdoor, error arming),
   `dtp_debug_tdr_base_test_seq`, `dtp_scan_base_test_seq`, or
   `dtp_xtrig_base_test_seq`. The scenario starts the reusable operations
   (`dtp_jtag_<op>_seq`, `dtp_jtag2axi_<op>_seq`, `dtp_axi_csr_<op>_seq`)
