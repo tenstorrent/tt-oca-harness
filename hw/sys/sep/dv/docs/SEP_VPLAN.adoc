@@ -18036,7 +18036,7 @@ testlist entry whose leaf drives the `sep_reset_n` override (on the bench pins
 TDR) or a per-IP hold `jtag_<ip>_rst_hold_i` adds `+sep_edn_jtag_reset_waive`.
 The plusarg turns off only the crypto EDN arbiter and adapter request-hold
 assertions (`tb/tb_top.sv`), and `tb_top` logs that it is set. The Phase 3
-entries that add it are 5.17, 5.20, 5.21 and 6.29.
+entries that add it are 5.17, 5.20, 5.22 and 6.29.
 
 A test with two classes uses two of the three classes on different legs: a
 drawn configuration for one leg and a matrix point for another, or a directed
