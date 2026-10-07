@@ -10,12 +10,15 @@ reports the same DEPTH. The first request's response is then delayed while
 every later one is not: responses of other IDs overtake it, responses of its
 own ID wait behind it, and the reads return each request's own data, so the
 per-ID order is judged from the data and not from the ID alone. The requests
-held back by the full window are accepted once responses retire.
+held back by the full window are accepted once responses retire. Every
+response on the wires is counted, in total and per ID, through a quiet window
+longer than any response delay, so a missing or surplus response fails.
 """
 
 from __future__ import annotations
 
 import logging
+from collections import Counter
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
@@ -29,6 +32,7 @@ CHK_PEAK = "CHK-AXI-OUTSTANDING-PEAK"
 CHK_ORDER = "CHK-AXI-OUTSTANDING-ID-ORDER"
 CHK_OVERTAKE = "CHK-AXI-OUTSTANDING-OVERTAKE"
 CHK_DATA = "CHK-AXI-OUTSTANDING-DATA"
+CHK_COUNT = "CHK-AXI-OUTSTANDING-COUNT"
 
 DEPTH = 8
 # Two requests beyond the depth, so the full window is observable.
@@ -38,6 +42,9 @@ HEAD_DELAY = 30
 # Cycles the requests beyond the depth are offered with no response retiring.
 FULL_WINDOW_CYCLES = 3 * HEAD_DELAY
 DRAIN_CYCLES = 400
+# Cycles watched after the last expected response, longer than any response
+# delay, so a surplus response would land inside them.
+QUIET_CYCLES = 2 * HEAD_DELAY
 READ_BASE = 0x1000
 WRITE_BASE = 0x2000
 
@@ -108,6 +115,25 @@ def _check_window(checker, handshakes, responses, kind: str) -> None:
     )
 
 
+async def _drain(dut, responses: list) -> None:
+    """Wait for every expected response, then watch QUIET_CYCLES more."""
+    for _ in range(DRAIN_CYCLES):
+        await RisingEdge(dut.clk)
+        if len(responses) >= len(IDS):
+            break
+    await ClockCycles(dut.clk, QUIET_CYCLES)
+
+
+def _check_count(checker, ids: list[int], kind: str) -> None:
+    """One response per request, per ID, and none beyond them."""
+    checker.expect_equal(
+        CHK_COUNT,
+        (len(ids), sorted(Counter(ids).items())),
+        (len(IDS), sorted(Counter(IDS).items())),
+        context=f"{kind}: responses in total and per ID, through {QUIET_CYCLES} quiet cycles",
+    )
+
+
 def _check_order(checker, order: list[int], kind: str) -> None:
     """Same-ID responses in request order; a later ID overtakes the delayed request."""
     for request_id in sorted(set(IDS)):
@@ -142,17 +168,14 @@ async def _reads(dut, slave, wires, checker) -> None:
     await ClockCycles(dut.clk, FULL_WINDOW_CYCLES)
     _check_window(checker, list(wires.ar), list(wires.r), "read")
     dut.t_axi_rready.value = 1
-    for _ in range(DRAIN_CYCLES):
-        await RisingEdge(dut.clk)
-        if len(wires.r) == len(IDS):
-            break
+    await _drain(dut, wires.r)
     await offer
     seq.clear_response_delay()
     log.info("read handshakes ar=%s r=%s", wires.ar, wires.r)
-    returned = {data: rid for _, rid, data in wires.r}
+    _check_count(checker, [rid for _, rid, _ in wires.r], "read")
     checker.expect_equal(
         CHK_DATA,
-        sorted(returned.items()),
+        sorted((data, rid) for _, rid, data in wires.r),
         sorted((_data(i), rid) for i, rid in enumerate(IDS)),
         context="read: every request answered once with its own data and ID",
     )
@@ -177,15 +200,13 @@ async def _writes(dut, slave, wires, checker) -> None:
     await ClockCycles(dut.clk, FULL_WINDOW_CYCLES)
     _check_window(checker, list(wires.aw), list(wires.b), "write")
     dut.t_axi_bready.value = 1
-    for _ in range(DRAIN_CYCLES):
-        await RisingEdge(dut.clk)
-        if len(wires.b) == len(IDS):
-            break
+    await _drain(dut, wires.b)
     await aw
     await w
     seq.clear_response_delay()
     log.info("write handshakes aw=%s b=%s", wires.aw, wires.b)
     bids = [bid for _, bid in wires.b]
+    _check_count(checker, bids, "write")
     checker.expect_equal(
         CHK_DATA,
         (sorted(bids), [seq.read32(WRITE_BASE + 4 * i) for i in range(len(IDS))]),
@@ -217,13 +238,14 @@ async def ocah_axi_slave_outstanding_test(dut) -> None:
     await ClockCycles(dut.clk, 2)
     checker = OcahChecker(
         name="ocah_axi_slave_outstanding_test",
-        required_ids=(CHK_DEPTH, CHK_PEAK, CHK_ORDER, CHK_OVERTAKE, CHK_DATA),
+        required_ids=(CHK_DEPTH, CHK_PEAK, CHK_ORDER, CHK_OVERTAKE, CHK_DATA, CHK_COUNT),
         logger=log,
     )
     checker.expect_equal(CHK_DEPTH, slave.sequence.max_outstanding, DEPTH, context="config")
     wires = _Wires(dut)
     await _reads(dut, slave, wires, checker)
     await _writes(dut, slave, wires, checker)
+    _check_count(checker, [rid for _, rid, _ in wires.r], "read, after the write phase")
     checker.expect_equal(
         CHK_PEAK,
         slave.sequence.outstanding_peak(),
