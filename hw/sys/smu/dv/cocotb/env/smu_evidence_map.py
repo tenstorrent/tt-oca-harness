@@ -265,8 +265,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-LC-SIGINT-RAISED",
             "CHK-LC-SIGINT-RAISED",
-            "with the n rail of LC_STATE bit 0 inverted, lc_state_o and the SMC's LC_STATE "
-            "input carry the broken pair and lc_sigint_err_o is 1",
+            "with the n rail of LC_STATE bit 0 inverted at the SMC's LC_STATE input, "
+            "lc_sigint_err_o is 1",
         ),
         (
             "CHK-LC-SIGINT-SMC-OTP-CLOSED",

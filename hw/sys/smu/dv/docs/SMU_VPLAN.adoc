@@ -5336,7 +5336,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 * No eFuse image presents a broken pair: the SEP eFuse shadow regenerates `{~raw, raw}` from the raw state. The bench fault inject holds smu's `sep_lc_state`, the pair the SEP exports to the SMC eFuse wrapper and to `lc_state_o`, at its pre-inject value with the n rail of bit 0 inverted. The p rails keep the TEST_DEV state, which admits every access the leaf makes, so a refusal comes from the integrity error and not from a state change. The inject is a bench force, declared in the stand-ins section of `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
 * Spec gap: no chapter names the AXI response code of a refusal, so the checkers accept SLVERR or DECERR (JTAG2AXI status 1 or 2), as `smu_otp_prod_error_resp_test` does.
 * S1: with the legal pair, `lc_sigint_err_o` is 0, `lc_state_o` and the SMC's LC_STATE input carry the TEST_DEV word, and an SMC OTP write of MAP SPARE[0], its readback and a read of JTAG_PUBLIC_IDENTITY word 0 return SUCCESS.
-* S2: with the pair broken, `lc_state_o` and the SMC's LC_STATE input carry it and `lc_sigint_err_o` is 1; an SMC OTP read of SPARE[0] is refused with `0xBADCAB1E`, a write of a second pattern is refused, and the JTAG_PUBLIC_IDENTITY read is refused; a SEP OTP read of SPARE0 returns SUCCESS while `lc_sigint_err_o` is still 1.
+* S2: once `lc_state_o` and the SMC's LC_STATE input carry the broken pair (a precondition, since both read the forced net), `lc_sigint_err_o` is 1; an SMC OTP read of SPARE[0] is refused with `0xBADCAB1E`, a write of a second pattern is refused, and the JTAG_PUBLIC_IDENTITY read is refused; a SEP OTP read of SPARE0 returns SUCCESS while `lc_sigint_err_o` is still 1.
 * S3: with the pair released, `lc_sigint_err_o` is 0, both LC_STATE observations carry the TEST_DEV word, SPARE[0] reads back the S1 pattern, so the refused write did not land, and the JTAG_PUBLIC_IDENTITY read returns SUCCESS.
 
 *Test Procedure*:
@@ -5353,7 +5353,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 |===
 |Checker |Description
 |`CHK-LC-SIGINT-LEGAL-PAIR` |`lc_sigint_err_o` is 0, `lc_state_o` and the SMC's LC_STATE input are `0xF0`, and the SPARE[0] write, its readback of the written pattern and the JTAG_PUBLIC_IDENTITY read return SUCCESS
-|`CHK-LC-SIGINT-RAISED` |`lc_sigint_err_o` is 1, and `lc_state_o` and the SMC's LC_STATE input are `0xE0`
+|`CHK-LC-SIGINT-RAISED` |`lc_sigint_err_o` is 1. `lc_state_o` and the SMC's LC_STATE input reading `0xE0` is a precondition, not part of the check: both are the forced net, so they show only that the inject took
 |`CHK-LC-SIGINT-SMC-OTP-CLOSED` |the SMC SPARE[0] read returns SLVERR or DECERR with `0xBADCAB1E`, and the SPARE[0] write and the JTAG_PUBLIC_IDENTITY read return SLVERR or DECERR
 |`CHK-LC-SIGINT-SEP-OTP-OPEN` |the SEP SPARE0 read returns SUCCESS and `lc_sigint_err_o` is still 1 after it
 |`CHK-LC-SIGINT-RELEASED` |`lc_sigint_err_o` is 0, both LC_STATE observations are `0xF0`, the SPARE[0] read returns SUCCESS with the S1 pattern, and the JTAG_PUBLIC_IDENTITY read returns SUCCESS

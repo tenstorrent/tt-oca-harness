@@ -21,8 +21,8 @@ only from the integrity error.
 S1, legal pair: ``lc_sigint_err_o`` is 0 and ``lc_state_o`` carries the TEST_DEV word; an SMC
     OTP write of MAP SPARE[0], its readback and a read of JTAG_PUBLIC_IDENTITY word 0 return
     SUCCESS.
-S2, broken pair: ``lc_state_o`` and the SMC's LC_STATE input carry the broken pair and
-    ``lc_sigint_err_o`` is 1; an SMC OTP read of SPARE[0] is refused with 0xBADCAB1E, a write
+S2, broken pair: once ``lc_state_o`` and the SMC's LC_STATE input -- the forced net, so a
+    precondition rather than a check -- carry the broken pair, ``lc_sigint_err_o`` is 1; an SMC OTP read of SPARE[0] is refused with 0xBADCAB1E, a write
     of a second pattern to it is refused, and the JTAG_PUBLIC_IDENTITY read that PROD still
     admits is refused; a SEP OTP read of SPARE0 returns SUCCESS.
 S3, pair released: ``lc_sigint_err_o`` is 0 and ``lc_state_o`` carries the TEST_DEV word
@@ -128,14 +128,21 @@ class smu_lc_sigint_fail_closed_seq(smu_otp_prod_error_resp_seq):
         self.steps["S1"] = True
 
         await self._set_inject(1, LC_BROKEN)
-        pins = self._lc_pins()
-        self.log.info("OBSERVATION CHK-LC-SIGINT-RAISED pins=%s", pins)
-        sb.expect_eq(
-            "CHK-LC-SIGINT-RAISED",
-            pins,
-            (1, LC_BROKEN, LC_BROKEN),
-            evidence="CHK-LC-SIGINT-RAISED",
+        sigint, lc_out, lc_smc = self._lc_pins()
+        self.log.info(
+            "OBSERVATION CHK-LC-SIGINT-RAISED sigint=%d lc_state_o=0x%02x smc_lc_state_in=0x%02x",
+            sigint,
+            lc_out,
+            lc_smc,
         )
+        # lc_state_o and the SMC input are the forced net itself, so they show
+        # only that the inject took; the graded response is lc_sigint_err_o.
+        if (lc_out, lc_smc) != (LC_BROKEN, LC_BROKEN):
+            raise AssertionError(
+                f"inject did not reach the SMC: lc_state_o=0x{lc_out:02x} "
+                f"smc_lc_state_in=0x{lc_smc:02x} want 0x{LC_BROKEN:02x}"
+            )
+        sb.expect_eq("CHK-LC-SIGINT-RAISED", sigint, 1, evidence="CHK-LC-SIGINT-RAISED")
         ops = (
             await self._otp_op(jtag, smc, J2A_OP_READ, SMC_EFUSE_SPARE0),
             (await self._otp_op(jtag, smc, J2A_OP_WRITE, SMC_EFUSE_SPARE0, PATTERN_REFUSED))[0],
