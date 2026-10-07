@@ -159,6 +159,10 @@ buffers controlled by the `core2pad_en_o` signals. Connect multiplexed UART,
 I2C, I3C, and SPI pins to external devices according to the function assignments
 in the GPIO table.
 
+`spi_enable_i` hands the SPI pads to the SPI host. The adopter must change it
+only while the SPI host is idle, since the pad outputs can glitch while their
+owner changes. In the SMU it is constant, set by whether the SMU has the SEP.
+
 The SMC padring drives one GPIO pad per `u_gpio_interface` instance, so the
 adopter must integrate `smc_pkg::NumGpioWraps` pads: 61 bonded pads
 (GPIO 0-60) plus 4 unbonded pads (GPIO 61-64). If the adopter chooses to capture configuration straps from GPIO
@@ -648,11 +652,13 @@ interfaces. The telemetry interface group (`telemetry_atdata_i`, `telemetry_atid
 clock domain with separate `rst_telemetry_ni` reset. Connect these signals to ATB trace
 sources for debug data collection.
 
-The adopter must not assert `rst_telemetry_ni` while `rst_primary_smc_clk_no` is
-deasserted; assert it only together with, or while, the primary reset is asserted. The
-telemetry receivers are reset by the primary reset, and asserting `rst_telemetry_ni`
-alone clears the ATB FIFOs while the receivers are still reading from them, which can
-corrupt a received telemetry packet.
+The adopter must assert `rst_telemetry_ni` whenever `rst_primary_smc_clk_no` asserts,
+and must not assert it while `rst_primary_smc_clk_no` is deasserted; driving both from
+the same reset source meets this. The telemetry receivers are reset by the primary
+reset, and asserting `rst_telemetry_ni` alone clears the ATB FIFOs while the receivers
+are still reading from them, which can corrupt a received telemetry packet. The
+`telemetry_afvalid_o` synchronizers are reset by `rst_telemetry_ni` alone, so they rely
+on it asserting with the primary reset.
 
 At the SMC boundary, `ext_debug_bus_i` is 512 bits wide; the SMU concatenates
 the adopter-visible 128-bit input with the SEP's internal 384-bit bus before
