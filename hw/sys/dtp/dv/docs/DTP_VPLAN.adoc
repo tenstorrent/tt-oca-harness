@@ -155,7 +155,7 @@ Where the documents overlap, the table names the one that wins.
 |Which scenarios exist |`testlists/all.toml` and the per-area lists (`jtag.toml`, `debug_tdr.toml`, `jtag2axi.toml`, `scan.toml`, `xtrig.toml`) |The Test Procedures document every enrolled name; a name in one and not the other is a defect in whichever lacks it
 |Which scenarios count |The `all` group, `expected_count`-pinned |Every `[[tests]]` entry belongs to at least one scheduled group, so no declared scenario runs only by name (see <<dtp-credit-rules>>)
 |Coverage intent per requirement |`DTP_FCOV.adoc` and the `cov/sv/` modules |This matrix names the covergroup bins a row leans on; the bin definitions stay in `DTP_FCOV.adoc`
-|Points that cannot fire |The `ignore_bins` of the covergroups, and the hole entries in `cov/config/verilator/coverage_policy.toml` |Each ignore bin states the constraint that excludes it, and each hole entry its structural reason and tracker link; this matrix repeats neither
+|Points that cannot fire |The `ignore_bins` of the covergroups, and the two URG exclusion lists `cov/config/vcs/dtp_unreachable.el` and `cov/config/vcs/dtp_waivers.el` (`DTP_FCOV.adoc`, Unreachability exclusion list and Waiver list) |Each ignore bin states the constraint that excludes it, and each waiver-list entry the fact that rules it out; this matrix repeats neither
 |===
 
 Requirement identifiers in the matrix are the five feature areas F1–F5.

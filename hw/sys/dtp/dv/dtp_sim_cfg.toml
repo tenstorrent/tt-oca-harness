@@ -132,14 +132,23 @@ flags = [
 
 [coverage.verilator]
 # Instrument line/branch (--coverage-line), expression, and SVL user coverage
-# (the dtp_fcov cover-property points); toggle instrumentation stays off to
+# (the cov/sv cover-property points); toggle instrumentation stays off to
 # keep per-test databases lean. Replaces the simulator-default `--coverage`
 # (which enables all forms including toggle).
 # --output-groups 0 compiles the generated .cpp files one by one instead of
 # in --build-jobs groups. Verilator groups by file count, and on a
 # coverage-instrumented model one group can become a translation unit of
 # several hundred MB that a hosted runner cannot compile.
-build_args = ["--coverage-line", "--coverage-expr", "--coverage-user", "--output-groups", "0"]
+# dtp_cov_scope.vlt applies the coverage scope at compile time, so what it
+# drops never enters the database.
+build_args = [
+  "--coverage-line",
+  "--coverage-expr",
+  "--coverage-user",
+  "--output-groups",
+  "0",
+  "{repo_root}/hw/sys/dtp/dv/cov/config/verilator/dtp_cov_scope.vlt",
+]
 
 [coverage.vcs]
 # Restates the simulator defaults (`-cm`, `-cm_dir`) because a DUT table replaces

@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+//
+// Compile-time coverage scope of the DTP bench on Verilator, passed to the
+// compiler from [coverage.verilator].build_args in dtp_sim_cfg.toml, so what it
+// drops never enters the database. It follows ../vcs/dtp_cov_scope.hier: the
+// line, branch and expression families grade the DUT's sources, the vendored
+// cells included, and the bench, the coverage modules and the simulation-only
+// modules leave them.
+//
+// `coverage_off` takes `-file` with globs only, so the scope is by source file,
+// not by instance. The pattern is matched against the path as the compiler
+// opened the file, so it starts with `*` and no `/` follows that `*` directly.
+
+`verilator_config
+
+// The bench: tb_top, its TB interfaces, its protocol checkers and the
+// observation module it binds into every JTAG2AXI bridge.
+coverage_off -file "*hw/sys/dtp/dv/tb/*"
+
+// The shared VIP interfaces and protocol checkers and the open-drain wire
+// model the bench instantiates.
+coverage_off -file "*hw/common/dv/*"
+
+// The functional-coverage modules. `coverage_off` leaves their `cover
+// property` points, the `user` family, in the database.
+coverage_off -file "*hw/sys/dtp/dv/cov/sv/*"
+
+// The CDC jitter model the synchronizer primitives instantiate only under
+// SIMULATION.
+coverage_off -file "*prim_cdc_rand_delay.sv"
