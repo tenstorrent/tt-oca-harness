@@ -4,27 +4,30 @@
 # Vivado elaboration flow
 
 This flow elaborates a block with Vivado (`synth_design -rtl`) to check that the
-Bender sources read and elaborate in Vivado. It does not synthesize, implement or
-time the design, and it reads no constraints. Only `smu` includes it today.
+emulation view an integrator receives as `integration/filelists/<block>.emul.f`
+reads and elaborates in Vivado. It does not synthesize, implement or time the
+design, and it reads no constraints. Only `smu` includes it today.
 
 ## Running the flow
 
 From the repository root, with `vivado` and `bender` on `PATH`:
 
 ```bash
-make synth-vivado-all BLOCK=smu
-make synth-vivado-all BLOCK=smu OCAH_VIVADO_INPUT=script
-make synth-vivado-all BLOCK=smu OCAH_VIVADO_PART=<part>
+make fpga-vivado-all BLOCK=smu
+make fpga-vivado-all BLOCK=smu OCAH_VIVADO_INPUT=script
+make fpga-vivado-all BLOCK=smu OCAH_VIVADO_PART=<part>
 ```
 
 `OCAH_VIVADO_INPUT` selects the source description Vivado reads:
 
-- `flist` (default) reads the Bender file list that the Yosys flow also uses.
+- `flist` (default) reads the Bender file list (`bender script flist-plus`).
 - `script` sources Bender's Vivado script (`bender script vivado`).
 
-Both are generated with the same targets and defines. The log, the generated
-file list and script, and `reports/<top>_compile_order.rpt` are written to the
-block's `build/synth/vivado/` directory. A successful run prints
+Both are generated with the Bender targets of `<block>.emul.f`
+(`OCAH_EMUL_BENDER_TARGETS` in `flows/common.mk`). Vivado defines `SYNTHESIS`
+itself during `synth_design`. The log, the generated file list and script, and
+`reports/<top>_compile_order.rpt` are written to the block's
+`build/fpga/vivado/` directory. A successful run prints
 `VIVADO_ELABORATION_PASS: <top>`.
 
 ## What the scripts adjust
