@@ -3,10 +3,11 @@
 """AXI4 slave sequence API: the test-facing surface of the responder.
 
 `OcahAxiSlaveSequence` wraps one `OcahAxiSlaveDriver` and provides the
-backdoor memory access, deterministic fault injection, and bounded
-backpressure controls tests consume. Tests configure and inspect the
-responder through this class (or the agent's ``sequence``), never through the
-raw driver; missing operations get added here first.
+backdoor memory access, deterministic fault injection, bounded backpressure,
+response delay and outstanding-occupancy controls tests consume. Tests
+configure and inspect the responder through this class (or the agent's
+``sequence``), never through the raw driver; missing operations get added
+here first.
 """
 
 from __future__ import annotations
@@ -102,6 +103,25 @@ class OcahAxiSlaveSequence:
     def disable_backpressure(self) -> None:
         """Clear all READY stall generators."""
         self.driver.disable_backpressure()
+
+    @property
+    def max_outstanding(self) -> int | None:
+        """Outstanding depth per direction, or ``None`` for one request served at a time."""
+        return self.driver.max_outstanding
+
+    def set_response_delay(
+        self, delays: int | Iterable[int], *, read: bool = True, write: bool = True
+    ) -> None:
+        """Delay each B or R response by the next value of ``delays`` cycles."""
+        self.driver.set_response_delay(delays, read=read, write=write)
+
+    def clear_response_delay(self) -> None:
+        """Send every response as soon as it is ready."""
+        self.driver.clear_response_delay()
+
+    def outstanding_peak(self) -> dict[str, int]:
+        """Most write and read transactions outstanding at once (``max_outstanding`` set)."""
+        return self.driver.outstanding_peak()
 
     def get_statistics(self) -> dict[str, int]:
         """Return wrapper-level static statistics."""

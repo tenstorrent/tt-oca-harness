@@ -25,16 +25,10 @@ class smc_reset_unit_sanity_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_reset_unit_sanity_test_seq("reset_unit_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        # The verdict is the sequence's. Its fail-capable content is the
-        # `expected=`-bearing scratch and SS_* readbacks (scoreboard-enforced),
-        # `_await_warm_cleared`'s bounded poll, and the CSR-to-pin comparison
-        # against `tb_isolate_req_o`. A flag set at the end of a straight-line
-        # body cannot add a failure mode ([NO-ALWAYS-PASS-CHECKER]), so none is
-        # kept here.
-        #
-        # The line below is a ZERO-ACTIVITY GUARD, not a DUT check: it catches a
-        # sequence body that issued no register sweep at all
-        # ([NO-ZERO-ACTIVITY-PASS]).
+        # The scratch and SS_* readback verdicts, `_await_warm_cleared`'s bounded
+        # poll and the CSR-to-pin comparison against `tb_isolate_req_o` are
+        # enforced inside the sequence; this assert only catches a sequence body
+        # that issued no register sweep.
         assert seq.ss_regs_swept, (
             "the RESET_UNIT SS_* write/readback sweep issued no stimulus in this run"
         )

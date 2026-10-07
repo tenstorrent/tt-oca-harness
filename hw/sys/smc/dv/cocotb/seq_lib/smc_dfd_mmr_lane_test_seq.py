@@ -7,9 +7,8 @@ comes from the generated register map through :mod:`seq_lib.smc_rdl_regmap`.
 The vendored RTL is not a source for any value this sequence programs or
 compares against.
 
-The DFD MMR leaves on this branch write whole registers. Two parts of the
-write and read decode of the DST, DST-sink and funnel blocks are never
-exercised:
+The other DFD MMR leaves write whole registers. This sequence covers two parts
+of the write and read decode of the DST, DST-sink and funnel blocks:
 
 * **Byte writes.** A one-byte store covers only part of a register's 4-byte
   lane. Every register of the three blocks except the sink's RAM data port takes

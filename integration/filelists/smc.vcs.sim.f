@@ -254,7 +254,7 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_count.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_edge_detector.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync_cnt.sv
-// Package(opentitan) Target(not(synth))
+// Package(opentitan) Target(all(any(cross_trigger, drbg, dtp, entropy_source, key_manager, opentitan_smu, sep, smc, smu, system_timer_octs, uart), any(emulation, not(synth))))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_and2.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_buf.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_clock_buf.sv
@@ -516,7 +516,7 @@ hw/common/sync.sv
 // Package(tt-oca-harness) Target(any(key_manager, sep, smc))
 hw/common/ocah_prim/rtl/prim_ram_1p_adv_ext.sv
 hw/common/ocah_prim/rtl/prim_ram_1p_scr_ext.sv
-// Package(tt-oca-harness) Target(not(synth))
+// Package(tt-oca-harness) Target(all(any(dtp, entropy_source, key_manager, sep, smc, system_timer_octs, uart), any(emulation, not(synth))))
 hw/common/ocah_prim_generic/rtl/prim_and3.sv
 hw/common/ocah_prim_generic/rtl/prim_ao222.sv
 hw/common/ocah_prim_generic/rtl/prim_clock_nand2.sv

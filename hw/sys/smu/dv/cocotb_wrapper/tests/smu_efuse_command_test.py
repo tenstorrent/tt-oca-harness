@@ -19,7 +19,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_efuse_command_test(smu_base_test):
-    """eFuse fuse-command ports of the SEP and SMC; no Force."""
+    """eFuse fuse-command ports of the SEP and SMC."""
 
     use_shared_env = True
 

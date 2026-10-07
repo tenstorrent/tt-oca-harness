@@ -2,12 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS PyUVM environment.
 
-Agent / monitor honesty (U6-1):
+Agents and monitors:
   * SAMPLE-only agents: i2c / reset / clk / irq / gpio / axil — observability
     sampling, not protocol BFMs.
   * Protocol / traffic agents: sep_in_axi (alias: sys_axi) / sys_in_axi /
     jtag_axi / protocol_vip.
-  * Passive monitors: axi_monitor (SEP_IN), output_axi_monitor (SYS_OUT, U6-2),
+  * Passive monitors: axi_monitor (SEP_IN), output_axi_monitor (SYS_OUT),
     cpu_trace_mon (hart-0 retirement trace; idle without a firmware image).
 """
 

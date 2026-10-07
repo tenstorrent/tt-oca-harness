@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Cluster WDT magic-key unlock protocol and write-width rules, per core.
 
-No Force, no firmware.
+Every access is a frontdoor SEP_IN AXI CSR access.
 
 ``hw/sys/smc/regs/blocks/wdt/wdt.rdl`` specifies that the magic key
 ``0x51F15E`` must be written to ``KEY`` before a write to ANY other register in
@@ -113,8 +113,7 @@ class smc_wdt_key_csr_test_seq(SmcCsrSeq):
         # else written in between.
         await self.csr_read(f"WDT{core}_KEY_RELOCKED", key, expected=WDT_KEY_LOCKED)
 
-        # Restore: needs its own unlock, which is itself further evidence
-        # that the key is required for every write.
+        # Restore needs its own unlock: the block re-locked on the probe write.
         await self._unlock(f"WDT{core}_KEY_WR_RESTORE", core)
         await self.csr_write(f"WDT{core}_CMP_RESTORE", cmp_, WDT_CMP_RESET)
         await self.csr_read(f"WDT{core}_CMP_RESTORE_RB", cmp_, expected=WDT_CMP_RESET)

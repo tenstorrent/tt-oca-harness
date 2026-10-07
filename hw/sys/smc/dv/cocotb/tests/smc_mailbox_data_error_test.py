@@ -44,7 +44,7 @@ class smc_mailbox_data_error_test(smc_base_test):
             # The IRQ leg observes the aggregate `tb_mailbox_irq_any` (an OR of
             # peripheral_interrupts[7:0] in tb_top.sv), so it proves assert/clear
             # on the aggregate, not that mask 0x2 is the source that raised it
-            # ([MERGED-EVIDENCE]): seq_lib/smc_mailbox_vip_utils.py, shared with
+            # -- seq_lib/smc_mailbox_vip_utils.py, shared with
             # smc_mailbox_irq_test / smc_mailbox_event_irq_test, has no per-bit
             # probe.
             details=(

@@ -14,7 +14,7 @@ Public interface:
   proof is built from, published for callers that need the pad left *held* while
   they sample something else inside the asserted window (the IRQ positive
   control in ``smc_5agent_observability_test_seq``); the caller owns pad drive
-  and release (`[REUSE-AND-LAYERING]`).
+  and release.
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ def _irq_level(dut) -> int:
     The aggregate is a registered DUT output that is out of reset by the time
     the caller's CSR sequence has completed, so X/Z here is a defect, not a
     don't-care: fail with a diagnostic instead of letting ``int()`` resolve it
-    arbitrarily ([X-AWARE-CHECK]).
+    arbitrarily.
     """
     raw = dut.tb_gpio_irq_any.value
     assert raw.is_resolvable, f"tb_gpio_irq_any is not resolvable (X/Z): {raw}"
@@ -55,8 +55,8 @@ async def await_gpio_irq_level(dut, expected: int, label: str) -> int:
     held and sample other observables inside the asserted window.
 
     Returns the number of clk_smc_i cycles the level took to appear. Raises on
-    bound expiry with the last observed state (`[TIMEOUT-MUST-FAIL]`), and on
-    any X/Z seen while polling (`[X-AWARE-CHECK]`).
+    bound expiry with the last observed state, and on any X/Z seen while
+    polling.
     """
     clk = dut.clk_smc_i
     last = None

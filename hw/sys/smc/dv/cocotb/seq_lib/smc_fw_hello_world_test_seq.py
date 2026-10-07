@@ -2,14 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Boot the smallest SMC firmware image and read its verdict.
 
-`fw/tests/hello_world/hello_world.c` is `test_pass(0)` and a `wfi` loop, so the
-only thing this can prove is that the firmware path is intact end to end -- and
-that is what it is for. Everything on that path has to work for the store to
-land: c_compile builds the image, the runner stages `hello_world.ecc.hex` into
-the simulator directory, `smc_cpu_mem_dv` scatters it across the 32 scratch banks
-using the decode in `smc_scratch_map_pkg`, the sequence programs the reset
-vector and releases `boot_stall`, crt0
-runs picolibc init and `__metal_synchronize_harts` across all four harts, and
+`fw/tests/hello_world/hello_world.c` is `test_pass(0)` and a `wfi` loop, so it
+proves that the firmware path is intact end to end. Everything on that path has
+to work for the store to land: c_compile builds the image, the runner stages
+`hello_world.ecc.hex` into the simulator directory, `smc_cpu_mem_dv` scatters
+it across the 32 scratch banks using the decode in `smc_scratch_map_pkg`, the
+sequence programs the reset vector and releases `boot_stall`, crt0 runs
+picolibc init and `__metal_synchronize_harts` across all four harts, and
 `test_pass(0)` writes CPU_CTRL SCRATCH_0 over MMIO.
 
 The bank residency in the plan's pass criteria is checked on the CPU's own

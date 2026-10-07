@@ -392,11 +392,13 @@ locked_field_access_interrupt`, sourced from the eFuse controller path.
 |`286`
 |AXI hang detector OR
 |OR of the three AXI hang detectors (sys_axi, sep_axi, data_accel). Asserts
-while any detector's `irq_o` is high, so software must read
-`SMC_BASE_CONFIG.HANG_DET_{SYS_AXI,SEP_AXI,DATA_ACCEL}_CTRL` to identify the
-stalled master. There is no status latch to clear: the level drops when that
-master's bus makes progress, or when the detector's `enable` or `irq_en` is
-cleared. The CPU AXI master is not covered here; it is covered by the watchdog.
+while any detector's `irq_o` is high, either from a timeout or from its
+`irq_test` bit, so software must read
+`SMC_BASE_CONFIG.HANG_DET_{SYS_AXI,SEP_AXI,DATA_ACCEL}_CTRL.irq` to identify the
+stalled master. There is no status latch to clear: a timeout drops when that
+master's bus makes progress, a test assertion drops when `irq_test` is cleared,
+and either drops when the detector's `enable` or `irq_en` is cleared. The CPU
+AXI master is not covered here; it is covered by the watchdog.
 |`smc_base.sv` OR-reduces `hang_irq_sys_axi \| hang_irq_sep_axi \|
 hang_irq_data_accel` onto `axi_hang_irq_o`; `smc.sv` routes that back into
 `u_smc_peripherals`, and `smc_peripherals.sv` drives

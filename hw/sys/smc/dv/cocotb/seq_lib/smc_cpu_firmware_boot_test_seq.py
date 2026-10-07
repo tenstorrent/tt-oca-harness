@@ -155,11 +155,6 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
         baseline_pc = _pc_snapshot(dut.tb_cpu_wb_pc0)
 
         self.boot = await check_cpu_firmware_boot_contract(self, require_image=True)
-        # `self.accesses` is initialised to 0 in __init__ and bumped by the
-        # SmcCsrSeq helpers, so it is a measured count: a silent sequence
-        # reports 0 and fails the testcase's stimulus floor
-        # ([NO-DUMMY-DEAD-CODE]).
-
         assert self.boot.get("boot_checked"), self.boot
         rom_reads = int(self.boot["rom_reads"])
         scratch_reads = int(self.boot.get("scratch_reads", 0))

@@ -15,9 +15,10 @@ class smc_hang_detector_disable_test(smc_base_test):
 
     required_evidence = (
         "CHK-HANG-DISABLE-FIRED",
+        "CHK-HANG-DISABLE-STATUS",
         "CHK-HANG-TEST-GATED",
     )
-    min_evidence = 2
+    min_evidence = 3
 
     auto_protocol_vip = False
 

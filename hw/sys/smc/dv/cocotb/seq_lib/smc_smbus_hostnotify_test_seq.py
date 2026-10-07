@@ -198,7 +198,7 @@ class smc_smbus_hostnotify_test_seq(SmcCsrSeq):
         )
         # ACQ_START_STOP_EN makes the OT target push explicit START/STOP words
         # into ACQDATA, so the frame's address and termination are observable
-        # (same programming as smc_i2c_p0_multictrl_test_seq.py:193).
+        # (the same programming smc_i2c_p0_multictrl_test_seq uses).
         await self.csr_write(
             "I2C0_ENABLETARGET",
             I2C0_CTRL,

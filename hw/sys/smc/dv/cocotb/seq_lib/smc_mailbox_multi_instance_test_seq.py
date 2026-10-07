@@ -24,7 +24,7 @@ from cocotb.triggers import ClockCycles
 from .smc_addr_map import _REPO, _field_mask, smc_addr, smc_addr_symbols
 from .smc_csr_seq_utils import SmcCsrSeq
 
-# Same generated header the sibling `smc_mailbox_irq_test_seq.py:28-31` reads.
+# Same generated header the sibling `smc_mailbox_irq_test_seq.py` reads.
 _AXIL_MAILBOX_H = (
     _REPO / "hw" / "ip" / "axi_lite_mailbox_unit" / "regs" / "gen" / "c" / "axil_mailbox_smc_wrap.h"
 )
@@ -55,12 +55,9 @@ if _MAILBOX_COUNT != _SPEC_NUM_MAILBOXES or len(_INBOUND_SYMBOLS) != _SPEC_NUM_M
         f"{len(_INBOUND_SYMBOLS)} inbound mailbox instances; periphs.adoc gives "
         f"NumMailboxes = {_SPEC_NUM_MAILBOXES}"
     )
-# IRQEN is the ONE mailbox register in this block that a CSR test can genuinely
-# prove: the RDL (`axil_mailbox.rdl`) declares its three fields `sw = rw;
-# hw = r`, plain software-owned storage, so a write/read-back has teeth.
-#
-# The rest of the mailbox map does NOT, and is not swept, on the same RDL
-# attributes:
+# IRQEN's three fields are `sw = rw; hw = r` (`axil_mailbox.rdl`), plain
+# software-owned storage, so a write/read-back compares the written word. The
+# rest of the mailbox map takes no write/read-back, on the same RDL attributes:
 #   * `IRQS` fields are `sw = rw; hw = r` but their description makes a write
 #     an acknowledge ("Acknowledge and clear interrupt request") -- software
 #     can never set a bit, only clear one
@@ -73,17 +70,15 @@ if _MAILBOX_COUNT != _SPEC_NUM_MAILBOXES or len(_INBOUND_SYMBOLS) != _SPEC_NUM_M
 #     (`periphs.adoc`, MAILBOX_DEPTH) every value >= 2 reads back as 1 -- one
 #     bit of information
 #   * `STATUS`/`READ_DATA`/`ERROR` are declared `sw = r; hw = r`: unwritable
-#     from either side, so no generated-model CSR test should be credited with
-#     covering them.
+#     from either side.
 _IRQEN_OFFSET = 0x038
 _IRQEN_MASK = 0x7
 
 # Interrupt leg on one channel above the low byte. The SMC interrupt-vector map
 # (`interrupts.adoc`, "SMC CPU Interrupt Vector Map") gives `mailbox_interrupts`
 # one bit per mailbox, 32 wide, and the CSR sweep above only proves that each
-# instance decodes. Nothing in the package made an instance raise its own bit,
-# so everything past bit 7 of that vector was unobserved. The last instance is
-# the far end of it.
+# instance decodes. The last instance sits at the far end of that vector, so
+# raising its bit shows the vector is wired to full width.
 _IRQ_CHANNEL = _MAILBOX_COUNT - 1
 _WRITE_DATA_OFFSET = 0x000
 _IRQS_OFFSET = 0x030
@@ -250,8 +245,7 @@ class smc_mailbox_multi_instance_test_seq(SmcCsrSeq):
         # through the scoreboard, which asserts item.resp_ok and compares
         # `expected=`, so a mis-decoded instance (DECERR or bus hang) or a
         # non-idle word fails the test. STATUS is `sw = r; hw = r` in the RDL,
-        # so the idle value comes from the generated field mask rather than a
-        # generated model; csr_read_bounded would tolerate a dead mailbox.
+        # so the idle value comes from the generated field mask.
         for i in range(_MAILBOX_COUNT):
             addr = _OUTBOUND_MAILBOX_BASE + i * _MAILBOX_STRIDE + _STATUS_OFFSET
             await self.csr_read(f"MBOX_OUT_{i}_STATUS", addr, expected=MAILBOX_STATUS_IDLE)
@@ -274,9 +268,6 @@ class smc_mailbox_multi_instance_test_seq(SmcCsrSeq):
         await self._prove_channel_raises_its_own_bit()
 
         await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", _CLOCK_GATE_CONTROL, cg)
-        # `self.accesses` is bumped by this sequence's own csr_* calls, so
-        # asserting it against a literal only restates the loops above and
-        # cannot fail on anything the DUT did ([NO-ALWAYS-PASS-CHECKER]).
-        # `assert_all_reachable` cross-checks the same count against the
-        # scoreboard instead.
+        # `assert_all_reachable` cross-checks the access count against the
+        # scoreboard's own count.
         self.assert_all_reachable(3 + 2 * _MAILBOX_COUNT + 10 + 10, "MAILBOX_MULTI_INSTANCE")

@@ -327,7 +327,6 @@ int main(void) {
         simputs("  [CHECKER 1 FAILED] DUT did not detect SMBALERT# signal\n");
         simputs("  [CHECKER 2 FAILED] SMBUS_STATUS register was not updated\n");
 
-        // DEBUG: Check final status and configuration
         i2c__SMBUS_STATUS_t final_smbus_status = {
             .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_STATUS_BASE_ADDR(0) -
                                   SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
@@ -364,7 +363,6 @@ int main(void) {
         simputs("  [CHECKER 3 FAILED] Alert interrupt was not triggered (hardware)\n");
         simputs("  [CHECKER 5 FAILED] Firmware did not detect alert interrupt\n");
 
-        // DEBUG: Check both INTR_STATE and SMBUS_STATUS
         uint32_t base = i2c_get_base(CONTROLLER_IDX);
         i2c__INTR_STATE_t intr_state = {
             .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) -

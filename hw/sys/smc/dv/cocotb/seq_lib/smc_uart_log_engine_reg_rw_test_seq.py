@@ -15,8 +15,7 @@ _UART0 = 0  # UART_LOG_ENGINE_WRAP idx
 
 # --- Field masks from the generated register headers ---------------------
 # The masked readback compares below check exactly the sw-writable field of each
-# register. Deriving the mask from the generated `*_bm` symbols means it rots
-# with the RDL instead of silently narrowing when a field grows
+# register; the masks come from the generated `*_bm` symbols
 # ([EXACT-EXPECTATION] / [ADDRESS-FROM-AUTHORITATIVE-MAP]).
 _REPO = Path(__file__).resolve().parents[6]
 _UART_H = _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main.h"
@@ -45,8 +44,7 @@ LOG_REGION_ADDR_HI_MASK = (
     _field_mask(_LOG_ENGINE_H, "LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_HI_bm") >> 32
 )
 LOG_REGION_ADDR_RESERVED_MASK = (~LOG_REGION_ADDR_HI_MASK) & 0xFFFF_FFFF
-# INTR_ENABLE has exactly these two fields in log_engine.h; the mask is their
-# union rather than a hand-written 0x11.
+# INTR_ENABLE's two fields in log_engine.h.
 LOG_INTR_ENABLE_MASK = _field_mask(
     _LOG_ENGINE_H, "LOG_ENGINE__INTR_ENABLE__LOG_FETCH_ERR_bm"
 ) | _field_mask(_LOG_ENGINE_H, "LOG_ENGINE__INTR_ENABLE__LOG_WRITE_ERR_bm")
@@ -56,15 +54,13 @@ LOG_INTR_ENABLE_MASK = _field_mask(
 # write/read-back expectation is derivable for it.
 LOG_WRITE_ADDR_MASK = _field_mask(_LOG_ENGINE_H, "LOG_ENGINE__LOG_WRITE_ADDR__LOG_WRITE_ADDR_bm")
 # `LOG_CTRL` is outside the write sweep: its generated macro is doubly indexed
-# (`..._LOG_CTRL_BASE_ADDR(wrap_idx, LOG_CTRL_idx)`, smc_addr.h:756) so
+# (`..._LOG_CTRL_BASE_ADDR(wrap_idx, LOG_CTRL_idx)` in smc_addr.h) so
 # `smc_indexed_addr` cannot resolve it, and a write trips an arbiter assumption
 # on an unfinished log write.
 
 # Every row below passes `expected=None`, and `csr_read` with `expected=None`
 # books NO scoreboard value check (smc_csr_seq_utils.py) -- only `resp_ok` is
-# asserted. These rows are DECODE-ONLY evidence (the windows answer OKAY); the
-# register-coverage claim of this testcase rests on the masked write/read-back
-# sweep in `UART_LOG_WRITES` below, whose compares the scoreboard does book.
+# asserted, so these reads check decode (an OKAY response) only.
 UART_LOG_READS = [
     (
         "UART_LOG_ENGINE_CTRL",
@@ -267,9 +263,6 @@ class smc_uart_log_engine_reg_rw_test_seq(SmcCsrSeq):
                 value & mask,
             )
 
-        # Loop integrity against an INDEPENDENT module constant (not recomputed
-        # from the two tables this body walks) PLUS the scoreboard cross-check
-        # that the traffic actually reached the checker.
         self.assert_all_reachable(UART_LOG_MIN_CSR_ACCESSES, "uart_log_engine_rw")
         assert self.compares_passed == UART_LOG_EXPECTED_COMPARES, (
             f"uart_log_engine_rw: {self.compares_passed} masked read-back "

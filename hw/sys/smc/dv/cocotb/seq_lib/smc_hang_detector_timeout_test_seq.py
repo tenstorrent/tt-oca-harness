@@ -7,6 +7,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import RisingEdge
 
+from ._hang_status import check_hang_status
 from .smc_addr_map import (
     HANG_DET_ARMED,
     HANG_DET_DATA_ACCEL_CTRL,
@@ -122,6 +123,10 @@ class smc_hang_detector_timeout_test_seq(SmcCsrSeq):
         assert self._bit(dut.tb_axi_hang_irq, "tb_axi_hang_irq") == 0
         self.drop_ok = True
         cocotb.log.info("CHK-HANG-TIMEOUT-DROP: sep=0 OR=0 after R completion")
+        await check_hang_status(self.csr_read, "SEP_TIMEOUT_DROP", set())
+        cocotb.log.info(
+            "CHK-HANG-TIMEOUT-STATUS-DROP: every HANG_DET_*_CTRL.irq read 0 after R completion"
+        )
 
         await self.csr_write("HANG_SEP_THR0", HANG_DET_SEP_AXI_TIMEOUT, 0)
         await self.csr_read("HANG_SEP_THR0_RB", HANG_DET_SEP_AXI_TIMEOUT, expected=0)

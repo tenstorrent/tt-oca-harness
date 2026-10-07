@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_reset_release_sync_test (SMU_106).
+"""Sequence for smu_reset_release_sync_test.
 
 rst_cold_ni is released at a random phase that sits on no clock edge; the
 deassertion edges of the reference-domain outputs are then required to land
 on a clk_ref_i rising edge and the subsystem primary-reset deassertions on a
 clk_smu_i rising edge, none of them at the release instant itself. Only
-alignment is asserted; the synchronizer depth is unstated (SF-027), so the
-cycle count is logged, not compared.
+alignment is asserted; the synchronizer depth is unstated, so the cycle count
+is logged, not compared.
 """
 
 from __future__ import annotations
@@ -71,10 +71,9 @@ class smu_reset_release_sync_seq:
         await ClockCycles(dut.clk_smu_i, 8)
 
         signals = {name: getattr(dut, name) for name in REF_DOMAIN + SMU_DOMAIN}
-        # smu.sv wires the DTP's rst_n_i to the SMC primary reset net, and the
-        # bench's obs_dtp_rst_n_o / obs_smc_rst_n_o taps read those two ends of
-        # the same net. A compare between them cannot fail on any RTL, so it is
-        # logged as the composition fact it is and carries no checker.
+        # smu.sv wires the DTP's rst_n_i to the SMC primary reset net; the
+        # bench's obs_dtp_rst_n_o and obs_smc_rst_n_o taps read the two ends of
+        # that one net.
         self.log.info(
             "composition: u_dtp.rst_n_i=%d rst_primary_smc_clk_n_o=%d (one net, two taps)",
             sample(smu.u_dtp.rst_n_i, "u_dtp.rst_n_i"),

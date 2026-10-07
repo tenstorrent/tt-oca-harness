@@ -6,8 +6,7 @@
 reset for the cluster's uncore, and `RESET_TIMEOUT.reset_applied` as set once
 a software reset request "has been applied either after drain completes or
 after a force-mode timeout". A request is any held core or uncore reset, or a
-core pulse. The CPU reset leaves so far request core resets and pulses, but
-never the uncore reset alone with every core released.
+core pulse.
 
 With `RESET_TIMEOUT` in force mode, so the request is applied whether or not
 the cluster drains, the uncore reset is written low with every core field

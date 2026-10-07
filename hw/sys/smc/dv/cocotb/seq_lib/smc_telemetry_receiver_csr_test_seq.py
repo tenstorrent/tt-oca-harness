@@ -25,7 +25,8 @@ below) and each entry names its source:
   values are not derived from any document: they are the layout this bench
   drives and the receiver under test accepts (``_ATB_PROBE_ID_LSB``,
   ``_ATB_LAST_PACKET_BIT``, ``_ATB_FIRST_BLOCK_LSB``, ``_ATB_NEXT_BLOCK_LSB``),
-  recorded as DV-owned assumptions until a document states the packet layout.
+  recorded as DV-owned assumptions; no document in the tree states the packet
+  layout.
 
 What this testcase scores is the CSR-visible consequence of a message framed
 per that table (STATUS.EMPTY clearing, PROBE_ID reading back the value that was
@@ -52,7 +53,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 # All seven single-indexed register types are swept. `TELEMETRY_COUNTER` is
 # excluded: its generated macro is DOUBLY indexed
 # (`..._TELEMETRY_COUNTER_BASE_ADDR(receiver_idx, counter_idx)`,
-# smc_addr.h:820) and `smc_indexed_addr` resolves a single index only --
+# smc_addr.h) and `smc_indexed_addr` resolves a single index only --
 # computing the second stride here would be inventing an address the helper
 # cannot source from the map ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
 #
@@ -72,7 +73,7 @@ _TELEMETRY_RECEIVERS = 3
 # A reset sweep alone would leave receivers 1 and 2 at "mapped, and at reset",
 # so each also takes a write/readback/restore on INTR_ENABLE before its own
 # framed ATB message below. INTR_ENABLE's two writable fields are
-# `MISSING_LAST[0]` and `BUFFER_THRESHOLD[4]` (telemetry_receiver.rdl:127-141),
+# `MISSING_LAST[0]` and `BUFFER_THRESHOLD[4]` (telemetry_receiver.rdl INTR_ENABLE),
 # giving the pattern below. A window that decodes but does not store, or one
 # that returns a bus default, fails the readback
 # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Two endings of an I2C controller transaction that no leaf produced.
+"""Two endings of an I2C controller transaction.
 
 A read whose last byte carries no stop, and a NACK left unhandled until
 HOST_NACK_HANDLER_TIMEOUT runs out -- which is also where CONTROLLER_EVENTS is

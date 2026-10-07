@@ -45,7 +45,7 @@ which comprises:
 - **[Integrator Guide](https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/index.html)** — integrating the OCA Harness into a chiplet design.
 - **[Programmer's Guide](https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html)** — register programming model and firmware interfaces.
 - **[Application Notes](https://tenstorrent.github.io/tt-oca-harness/ocah-appnotes/latest/index.html)** — task-focused how-to notes.
-- **[Verification Dashboard](https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/dashboard.html)** — single entry point for the DV status of every OCA Harness IP and subsystem.
+- **[Verification Dashboard](https://tenstorrent.github.io/tt-oca-harness/ocah-home/latest/dashboard.html)** — single entry point for the DV status of every OCA Harness IP and subsystem.
 - Per-subsystem datasheets (PDF): [SMC](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-smc-datasheet.pdf), [SEP](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-sep-datasheet.pdf), [SMU](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-smu-datasheet.pdf), [DTP](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-dtp-datasheet.pdf), and [AoU](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-aou-datasheet.pdf).
 
 The site tracks `main`. The newest release of each of the two newest minor

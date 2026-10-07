@@ -66,9 +66,9 @@ module smc_dma_fcov (
   `OCAH_FCOV_COVER(c_next_id_0_nonzero_on_valid_setup, next_id_nonzero_e, clk_smc_i, in_reset)
 `ifdef SMC_FCOV_PHASE2
   // Phase 2 (SMC_FCOV.adoc): dma_ctrl.rdl and dma.adoc have NEXT_ID return 0
-  // for a command that was not set up correctly, and the stream-0 frontend
-  // returns the transfer-id generator unconditionally; the point waits on a
-  // ruling between the two.
+  // for a command that was not set up correctly, while the stream-0 frontend
+  // returns the transfer-id generator unconditionally. The two disagree, so
+  // the point compiles only under SMC_FCOV_PHASE2.
   `OCAH_FCOV_COVER(c_next_id_0_zero_on_invalid_setup, next_id_zero_e, clk_smc_i, in_reset)
 `endif
 

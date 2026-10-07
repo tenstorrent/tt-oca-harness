@@ -20,7 +20,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 # the STEP/CHK/FENCE evidence written through one never reaches the kept log
 # ([EVIDENCE-TOKEN-CONDITIONAL]).
 
-# SF-002: Enable Threshold == Hysteresis Control (same programmable field).
+# Enable threshold and hysteresis control are the same programmable field.
 # Lowest hysteresis whose DMA completion survives the gater with the SYS_OUT
 # slave agent's one-cycle response latency; 8 and below drop the transfer
 # (smc_clk_multi_window_test_seq.HYST_LOW_EXCLUSION records the band).

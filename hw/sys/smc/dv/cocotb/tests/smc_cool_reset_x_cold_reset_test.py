@@ -36,8 +36,8 @@ class smc_cool_reset_x_cold_reset_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_cool_reset_x_cold_reset_test_seq("flr_x_cold_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        # Gate on the values the run MEASURED, not on flags the body set next to
-        # the checks that would already have raised.
+        # The verdict is the measured isolate_req_o / cool / scratch words
+        # themselves, independent of any flag the sequence body set.
         assert seq.iso_live == _SMCEN, (
             f"isolate_req_o was 0x{seq.iso_live:x} while the FLR cool was live, "
             f"expected the programmed SMCEN word 0x{_SMCEN:x}"

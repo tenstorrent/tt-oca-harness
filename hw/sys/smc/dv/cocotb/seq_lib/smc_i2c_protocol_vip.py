@@ -7,10 +7,9 @@ Open-drain pad model on ``tb_top.sv``:
 * ``tb_i2c0_sda`` / ``tb_i2c0_scl`` — resolved bus (read)
 * ``tb_i2c0_sda_ext_low`` / ``tb_i2c0_scl_ext_low`` — cocotb ``1`` pulls low
 
-cocotbext-i2c Rising/FallingEdge waits on combinational OD nets miss updates on
-Verilator, so the DUT host NACKs, sets CONTROLLER_EVENTS.NACK, and freezes with
-SCL low (IDLE + trans_started). This VIP avoids OD Edge waits so VCS and
-Verilator run the same bus proofs.
+Edge waits on the combinational open-drain nets miss updates under Verilator,
+so this VIP samples levels and bit-bangs with timers; the same bus proofs then
+run on VCS and Verilator.
 """
 
 from __future__ import annotations
@@ -382,9 +381,8 @@ class SmcI2cBusMonitor:
 class SmcI2cMasterVip:
     """Timer bit-bang I2C master (level-based stretch wait, no OD Edge)."""
 
-    #: Half periods the wait for SCL allowed before this became configurable.
-    #: The default bound is expressed in those terms so an existing caller
-    #: sees the same behaviour it always did.
+    #: Default bound on the wait for a released SCL, in half periods of the
+    #: programmed bit rate.
     DEFAULT_SCL_TIMEOUT_HALF_PERIODS = 100000
 
     def __init__(

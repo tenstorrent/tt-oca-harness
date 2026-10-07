@@ -6,10 +6,8 @@
 // with RESP_OKAY, returning RESP_DATA on reads.
 //
 // The placeholder register blocks (pll_wrap, pvt_wrap) terminate an AXI-Lite
-// port that a real integration fills with the adopter's CSRs. pulp's
-// axi_err_slv cannot play that role: it asserts at time zero that Resp is
-// DECERR or SLVERR on every simulator except Verilator (the check sits under
-// `ifndef VERILATOR), so VCS stops before the first cycle.
+// port that a real integration fills with the adopter's CSRs, so every access
+// completes with RESP_OKAY.
 //
 // One write and one read may be in flight at a time. AW and W are accepted
 // independently; B rises the cycle after both have been seen and holds until

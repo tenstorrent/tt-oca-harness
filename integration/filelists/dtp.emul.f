@@ -209,6 +209,20 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_count.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_edge_detector.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync_cnt.sv
+// Package(opentitan) Target(all(any(cross_trigger, drbg, dtp, entropy_source, key_manager, opentitan_smu, sep, smc, smu, system_timer_octs, uart), any(emulation, not(synth))))
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_and2.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_buf.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_clock_buf.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_clock_gating.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_clock_inv.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_clock_mux2.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop_2sync.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop_en.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop_no_rst.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_inv.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_xnor2.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_xor2.sv
 // Package(tt-oca-harness) Target(all(dtp, not(sep)))
 hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv
 // Package(tt-oca-harness) Target(any(dtp, key_manager, sep, smc, system_timer_octs, uart))
@@ -280,6 +294,23 @@ hw/common/ocah_prim/rtl/prim_zero_counter.sv
 hw/common/sync.sv
 // Package(tt-oca-harness) Target(all(emulation, synth))
 hw/common/defs/ocah_vendor_defines.svh
+// Package(tt-oca-harness) Target(all(any(dtp, entropy_source, key_manager, sep, smc, system_timer_octs, uart), any(emulation, not(synth))))
+hw/common/ocah_prim_generic/rtl/prim_and3.sv
+hw/common/ocah_prim_generic/rtl/prim_ao222.sv
+hw/common/ocah_prim_generic/rtl/prim_clock_nand2.sv
+hw/common/ocah_prim_generic/rtl/prim_flop_3sync.sv
+hw/common/ocah_prim_generic/rtl/prim_flop_3sync_r.sv
+hw/common/ocah_prim_generic/rtl/prim_flop_3sync_s.sv
+hw/common/ocah_prim_generic/rtl/prim_flop_4sync.sv
+hw/common/ocah_prim_generic/rtl/prim_flop_4sync_r.sv
+hw/common/ocah_prim_generic/rtl/prim_flop_4sync_s.sv
+hw/common/ocah_prim_generic/rtl/prim_latch_n.sv
+hw/common/ocah_prim_generic/rtl/prim_metastab_hardened_dffr.sv
+hw/common/ocah_prim_generic/rtl/prim_nand4.sv
+hw/common/ocah_prim_generic/rtl/prim_nor4.sv
+hw/common/ocah_prim_generic/rtl/prim_or2.sv
+hw/common/ocah_prim_generic/rtl/prim_or4.sv
+hw/common/ocah_prim_generic/rtl/prim_stdmux2.sv
 // Package(tt-oca-harness) Target(any(cross_trigger, dtp))
 hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg.sv
 hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix.sv

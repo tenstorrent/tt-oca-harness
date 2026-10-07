@@ -3,12 +3,10 @@
 //
 // SMC clock and clock-gating functional coverage.
 //
-// Carries the `clk_bucket` intent of SMC_FCOV.adoc in a different shape. The
-// Python bin is `(ref_edges // 50, smc_edges // 50, periph_edges // 50)`,
-// whose unique count tracks how many seeds ran rather than which clock
-// relationships were exercised, and a cover point cannot express a bucket
-// index. The points here cover the relationship between the three domains
-// and the clock-gating behaviour, both of which have real hit-or-miss states.
+// Carries the `clk_bucket` intent of SMC_FCOV.adoc. A cover point cannot
+// express the Python bin's bucket index, so the points here cover the
+// relationship between the three domains and the clock-gating behaviour, both
+// of which have hit-or-miss states.
 //
 // One instance in the shared tb_top serves both flows. Every port is a
 // smc_tb_signal_list.svh signal.
@@ -164,9 +162,8 @@ module smc_clk_fcov #(
                    in_reset)
 
   // ------------------------------------------------------------------
-  // Clock-gate enables at both values. This is the `i2c_state` (resolvable,
-  // cg_en) intent split so the un-driven half is a named hole: the Python
-  // bin saturates at unique=1 precisely because cg_en never toggles.
+  // Clock-gate enables at both values: the `i2c_state` (resolvable, cg_en)
+  // intent split so an un-driven half is a named hole.
   //
   // A closed gate is the quiescent state, so an unqualified closed point is
   // hit at reset release with no stimulus at all. Each closed point is

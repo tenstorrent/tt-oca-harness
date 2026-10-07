@@ -11,7 +11,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_fabric_reg_bar_wr_test(smu_base_test):
-    """FAB_SMC_032 delivery-only via J2A; no Force / no sep_in."""
+    """FAB_SMC_032 delivery-only via J2A."""
 
     use_shared_env = True
 

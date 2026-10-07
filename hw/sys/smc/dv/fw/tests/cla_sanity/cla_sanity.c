@@ -2,12 +2,10 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /**
- * @brief CLA Sanity Test - Placeholder
+ * @brief CLA Sanity Test - boot check
  *
- * Placeholder with no CLA coverage: the test accesses no CLA register, so a
- * pass shows only that the SMC CPU boots and runs an SRAM image. It emits no
- * CHK-* line and claims no feature coverage. It prints no waiver attestation,
- * because no signed waiver exists for it.
+ * Passes once the SMC CPU runs this SRAM image. The test accesses no CLA
+ * register, emits no CHK-* line and claims no feature coverage.
  */
 
 #include <stdint.h>

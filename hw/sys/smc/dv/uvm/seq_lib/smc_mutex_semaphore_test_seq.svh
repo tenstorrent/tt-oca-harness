@@ -6,14 +6,15 @@
 // ingress: CPU_CTRL MUTEX[0] take / deny / release, MUTEX[1] independence,
 // and the SEMA[0] signed accumulator.
 //
-// EXPECT-SOURCE is the SPEC, not the RTL -- cpu_ctrl.rdl:270-293:
+// EXPECT-SOURCE is the SPEC, not the RTL -- the MUTEX and SEMA definitions in
+// cpu_ctrl.rdl:
 //   reg MUTEX  `mutex[0:0] = 0x1`, "Reads will attempt to acquire mutex, 1 on
 //              success. If the mutex is already acquired, the read will
 //              return 0. To release the mutex, write any value to the
-//              register." MUTEX[4] @ 0x240 -- four independent locks.
+//              register." MUTEX[4] -- four independent locks.
 //   reg SEMA   `sema[15:0] = 0x0`, "Writing to this register will inc/dec the
 //              semaphore value. The written value is treated as a signed
-//              number using 2s compliment." SEMA[4] @ 0x260.
+//              number using 2s compliment." SEMA[4].
 // Every address, field mask and reset value is symbol-sourced through
 // smc_types (smc_top_addrmap_pkg + the generated smc_reg.svh).
 //

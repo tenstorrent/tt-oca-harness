@@ -278,6 +278,7 @@ module smc_base #(
   logic hang_det_sys_axi_irq_test, hang_det_sep_axi_irq_test, hang_det_data_accel_irq_test;
   logic [19:0]
       hang_det_sys_axi_threshold, hang_det_sep_axi_threshold, hang_det_data_accel_threshold;
+  logic hang_irq_sys_axi, hang_irq_sep_axi, hang_irq_data_accel;
 
   // CSR structs for filter configurations
   filter_ctrl_reg_pkg::filter_ctrl__in_t  outbound_filter_status [smc_pkg::NumOutboundFilters-1:0];
@@ -641,6 +642,9 @@ module smc_base #(
     .hang_det_data_accel_irq_en_o     (hang_det_data_accel_irq_en),
     .hang_det_data_accel_irq_test_o   (hang_det_data_accel_irq_test),
     .hang_det_data_accel_threshold_o  (hang_det_data_accel_threshold),
+    .hang_det_sys_axi_irq_i           (hang_irq_sys_axi),
+    .hang_det_sep_axi_irq_i           (hang_irq_sep_axi),
+    .hang_det_data_accel_irq_i        (hang_irq_data_accel),
 
     // DFD signals
     .cla_interrupt_o                  (cla_interrupt),
@@ -721,12 +725,11 @@ module smc_base #(
   // ===========================================================================
   // One non-intrusive detector per independent master AXI into the fabric (CPU
   // is excluded -- covered by the watchdog). Snoop is local; config comes from
-  // the cpu_ctrl register block (u_internal_regs). The three irqs are OR'd into
-  // a single fault line on axi_hang_irq_o, which smc.sv feeds back into
-  // smc_peripherals to land on peripheral_interrupts[30] -> PLIC source 287.
-  // Software reads the per-detector HANG_DET_*_CTRL registers to tell which
-  // master stalled.
-  logic hang_irq_sys_axi, hang_irq_sep_axi, hang_irq_data_accel;
+  // the smc_base_config register block (u_internal_regs). The three irqs are
+  // OR'd into a single fault line on axi_hang_irq_o, which smc.sv feeds back
+  // into smc_peripherals to land on peripheral_interrupts[30] -> PLIC source
+  // 287. Software reads the irq bit of each HANG_DET_*_CTRL register to tell
+  // which master stalled.
 
   axi_hang_detector #(
     .OUTSTANDING_TX(smc_pkg::FabricOutstandingTx)

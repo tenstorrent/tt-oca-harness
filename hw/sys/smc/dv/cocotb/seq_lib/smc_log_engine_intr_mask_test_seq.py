@@ -72,7 +72,6 @@ _LOG_ENGINE_H = (
     / "c"
     / "log_engine.h"
 )
-# One field is enough to make the point and keeps the stimulus unambiguous.
 FETCH_ERR_STATUS = _field_mask(_LOG_ENGINE_H, "LOG_ENGINE__INTR_STATUS__LOG_FETCH_ERR_bm")
 FETCH_ERR_ENABLE = _field_mask(_LOG_ENGINE_H, "LOG_ENGINE__INTR_ENABLE__LOG_FETCH_ERR_bm")
 FETCH_ERR_TEST = _field_mask(_LOG_ENGINE_H, "LOG_ENGINE__INTR_TEST__LOG_FETCH_ERR_bm")

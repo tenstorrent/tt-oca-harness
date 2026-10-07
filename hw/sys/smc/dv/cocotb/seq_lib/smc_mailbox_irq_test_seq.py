@@ -5,9 +5,7 @@
 Every address and bit on the proof path is imported by symbol from the
 generated PeakRDL headers (``smc_addr.h`` for the register bases,
 ``smc_base_config.h`` for the clock-gate enable, ``axil_mailbox_smc_wrap.h``
-for the mailbox field masks). A regenerated map therefore moves this sequence
-with it instead of silently retargeting a still-passing decode smoke
-([ADDRESS-FROM-AUTHORITATIVE-MAP]).
+for the mailbox field masks) ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
 """
 
 from __future__ import annotations
@@ -18,8 +16,8 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 from .smc_addr_map import _REPO, _field_mask, smc_addr
 from .smc_base_test_seq import smc_base_test_seq
 
-# smc_addr_map.py exposes no generic accessor for these two generated headers,
-# so the module-level parser is reused here rather than a second offset table.
+# smc_addr_map.py exposes no accessor for these two generated headers;
+# `_field_mask` parses them directly.
 _SMC_BASE_CFG_H = (
     _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "smc_base_config.h"
 )
@@ -50,9 +48,8 @@ MAILBOX_WIRQT = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_WIRQT_BASE_ADDR
 MAILBOX_RIRQT = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_RIRQT_BASE_ADDR")
 MAILBOX_IRQEN = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_BASE_ADDR")
 
-# Idle STATUS of an untouched mailbox, stated per field from the generated
-# header instead of a magic literal ([EXACT-EXPECTATION]): the read FIFO is
-# empty (``EMPTY`` is defined as "1: Data is not available to read" in
+# Idle STATUS of an untouched mailbox, per field ([EXACT-EXPECTATION]): the
+# read FIFO is empty (``EMPTY`` is defined as "1: Data is not available to read" in
 # axil_mailbox.rdl) and FULL / WRITE_LEVEL_ABOVE_THRESH / READ_LEVEL_ABOVE_THRESH
 # are all 0, as is the rest of the 64-bit read-only register.
 MAILBOX_STATUS_IDLE = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__STATUS__EMPTY_bm")
@@ -66,8 +63,8 @@ MAILBOX_ERROR_FLAGS_IDLE = 0
 # WIRQT / RIRQT are threshold registers with a SPEC-defined clamp: "When a value
 # larger than or equal to the MailboxDepth parameter is written to this register,
 # it gets reduced to MailboxDepth - 1" (axil_mailbox register spec, WIRQT/RIRQT
-# field descriptions -- regs/axil_mailbox.rdl:85,95 and the generated
-# regs/gen/adoc/axil_mailbox_smc_wrap.adoc:59,67; the depth parameter itself is
+# field descriptions in regs/axil_mailbox.rdl and the generated
+# regs/gen/adoc/axil_mailbox_smc_wrap.adoc; the depth parameter itself is
 # documented in hw/ip/axi_lite_mailbox_unit/doc/architecture.adoc). So the exact
 # readback is `min(written, MAILBOX_DEPTH - 1)` -- a stated exact expectation
 # that an all-zero dead register fails ([EXACT-EXPECTATION]). Their

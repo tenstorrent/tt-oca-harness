@@ -22,7 +22,8 @@ CHK-FW-LOG-ENGINE-SPM-PATTERN, CHK-FW-LOG-ENGINE-UART-IRQ.
 Requires the staged image and a held boot:
   +smc_scratch_ram_hex=uart_log_engine_single_entry.ecc.hex   (bare basename; staged by c_compile)
   +smc_hold_cpu_boot
-Must NOT use +skip_fuse_sense -- see dv_policy 1.6.
+Must not use +skip_fuse_sense: a run with the fuse sense skipped is not
+evidence for the fuse-derived boot path.
 """
 
 from __future__ import annotations
@@ -57,8 +58,8 @@ class smc_fw_uart_log_engine_single_entry_test(smc_base_test):
         seq = smc_fw_log_engine_test_seq(
             "fw_uart_log_engine_single_entry_seq",
             tag="LOG-ENGINE-SINGLE",
-            # PASS landed 100 us after release in the reference run (~200 polls at a
-            # 5 ns clk_smc_i); 2000 is ~10x that.
+            # The image reaches PASS about 100 us after release (~200 polls);
+            # 2_000 is ~10x that.
             poll_iterations=2_000,
             spm_pattern=bytes(0xA0 + i for i in range(XFER_LEN)),
             engines=(LogEngineFinalState(0, LOG_BUFFER_BASE, LOG_REGION_SIZE, uart_reg(0, "RBR")),),

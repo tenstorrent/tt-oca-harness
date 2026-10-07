@@ -32,8 +32,9 @@ class smc_i2c_multi_instance_test(smc_base_test):
             SmcProtocolVipKind.I2C,
             type(self).__name__,
             # Directed stimulus floor: 3 reset reads plus 4 accesses per
-            # controller for the co-resident TARGET_ID leg. A constant of the
-            # sequence module, not read back from `seq.accesses`.
+            # controller for the co-resident TARGET_ID leg, a constant of the
+            # sequence module so a sequence that stops issuing accesses cannot
+            # lower it.
             min_csr_accesses=EXPECTED_ACCESSES,
             csr_accesses=seq.accesses,
             proxy=False,

@@ -8,12 +8,11 @@ it from the ``rst_cool_ni`` pin. It does NOT exercise the PCIe FLR request path.
 
 The FLR trigger path (``cfg_flr_pf_active_i`` -> isolate-req CSR -> FLR delay /
 hold counters -> ``rst_cool_no``) is a real, available TB stimulus
-(``tb_top.sv:143`` ``tb_cfg_flr_pf_active``, wired at ``tb_top.sv:1244``) and is
-covered by the enrolled sibling ``smc_cool_reset_from_pcie_test``
-(``seq_lib/smc_cool_reset_from_pcie_test_seq.py``). To keep the
-attribution exact, this sequence asserts ``tb_cfg_flr_pf_active`` is inactive
-while it drives its own pin-cool pulse, so the observed cool reset can only have
-come from ``rst_cool_ni``.
+(``tb_cfg_flr_pf_active`` in ``tb_top.sv``) and is covered by the sibling
+``smc_cool_reset_from_pcie_test`` (``seq_lib/smc_cool_reset_from_pcie_test_seq.py``).
+To keep the attribution exact, this sequence asserts ``tb_cfg_flr_pf_active``
+is inactive while it drives its own pin-cool pulse, so the observed cool reset
+can only have come from ``rst_cool_ni``.
 
 What this sequence proves: CSR access before the pulse, assert/release of cool
 reset, reset stability, and SEP_IN AXI CSR-path recovery afterwards.

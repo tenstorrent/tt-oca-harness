@@ -505,8 +505,8 @@ class smc_cpu_l2_read_wedge_test_seq(_CpuIsolateFlushSeq):
         dut.tb_sys_axi_r_drop.value = 0
         dut.tb_sep_axi_r_hold.value = 1
         try:
-            # Event API is intentional: these reads must remain pending while
-            # ordinary RESET_CTRL accesses continue through the sequencer/checker.
+            # The event API keeps these reads pending while ordinary RESET_CTRL
+            # accesses continue through the sequencer and checker.
             self.pending_axi_events.extend(
                 axi.init_read(
                     address=WEDGE_READ_BASE + i * WEDGE_BYTES,

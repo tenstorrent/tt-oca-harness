@@ -4,12 +4,10 @@
 // SMC fabric functional coverage: the `axil_master` intent of SMC_FCOV.adoc
 // plus the inbound/outbound AXI traffic it stands in for.
 //
-// The Python `axil_master` bin is the 1-tuple (any_master_active,), which
-// saturates at unique=1 and cannot say which downstream interface moved.
-// The per-interface actives are separate points here, and each inbound AXI
+// Each downstream interface's activity is its own point, and each inbound AXI
 // manager gets a smc_axi_chan_fcov instance carrying handshake, burst-shape
 // and response-code points, so a response code the suite never produces is
-// a named hole rather than invisible inside an OR reduction.
+// a named hole.
 //
 // One instance in the shared tb_top serves both flows. Every port is a
 // smc_tb_signal_list.svh signal.

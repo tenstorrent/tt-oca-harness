@@ -300,13 +300,11 @@ async def _compare_image_in_memory(seq, boot_from_scratch: bool, reset_vector: i
     points at the loader: `smc_dual_axi_sram_probe_test` requires the same
     decode to agree with AXI across both stripe bits, the wrap of the four-bank
     cycle and a group boundary, so a decode that is wrong in any of those fields
-    fails there first. It stays a report rather than an assertion because it
-    only ever runs on a path that is already failing for its own reason.
+    fails there first.
 
     The sidecar is `<name>.sram.bin`, staged by [c_build.default] beside the
-    .ecc.hex. Returns a report string; any reason it cannot compare is reported
-    rather than raised, because the caller is already failing for its own
-    reason.
+    .ecc.hex. It runs only on a path that is already failing, so it returns a
+    report string and reports, rather than raises, any reason it cannot compare.
     """
     hex_arg = cocotb.plusargs.get("smc_scratch_ram_hex") or cocotb.plusargs.get("smc_rom_hex")
     if not boot_from_scratch or not hex_arg:
@@ -402,10 +400,9 @@ async def check_cpu_firmware_boot_contract(
     # write_scratch() is an MMIO store to SMC_TOP_SMC_CPU_CTRL_SCRATCH, not to
     # the scratch RAM.
     #
-    # Clear it and read the clear back. SCRATCH_0 is plain storage that no reset
-    # in this sequence touches, so without the read-back a residual value from
-    # an earlier test -- TEST_ROM_PASS 0x77777777, or a stale TEST_PASS -- would
-    # be indistinguishable from one this run's firmware wrote.
+    # SCRATCH_0 is plain storage that no reset in this sequence touches, so a
+    # residual value from an earlier image (TEST_ROM_PASS 0x77777777, or a stale
+    # TEST_PASS) can be present until the clear is read back.
     await seq.csr_write("CPU_BOOT_SCRATCH0_CLEAR", CPU_CTRL_SCRATCH_0, 0)
     await seq.csr_read("CPU_BOOT_SCRATCH0_CLEAR_RB", CPU_CTRL_SCRATCH_0, expected=0)
 
@@ -457,9 +454,6 @@ async def check_cpu_firmware_boot_contract(
         fw_valid = int(dut.tb_cpu_fw_mailbox_valid.value)
         fw_mbox = int(dut.tb_cpu_fw_mailbox.value) if fw_valid else 0
         last_pass = last_csr
-        # TEST_FAIL from fw/include/smc_test.h. Without this the fail path is
-        # invisible and every firmware failure presents as a poll-bound
-        # expiry with no diagnosis.
         if arm_value is not None and not armed and last_pass == arm_value:
             armed = True
             cocotb.log.info(
@@ -469,6 +463,8 @@ async def check_cpu_firmware_boot_contract(
             if on_armed is not None:
                 await on_armed()
             continue
+        # TEST_FAIL from fw/include/smc_test.h: the firmware's fail verdict,
+        # distinct from a poll-bound expiry.
         if last_pass == CPU_FW_TEST_FAIL:
             raise AssertionError(
                 f"CPU firmware reported TEST_FAIL (SCRATCH_0=0x{last_pass:08x}); "

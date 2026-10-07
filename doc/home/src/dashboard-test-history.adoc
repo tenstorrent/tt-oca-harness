@@ -3,6 +3,7 @@
 
 [[verification-test-history]]
 = Test History
+:page-aliases: ocah-docs::dashboard-test-history.adoc
 
 Per-test outcomes for one block, from the run archives on the
 https://github.com/tenstorrent/tt-oca-harness/tree/dv-dashboard-data[`dv-dashboard-data`]

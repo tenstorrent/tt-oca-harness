@@ -37,7 +37,7 @@ _CHIP_CONFIG_H = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" 
 _CHIP_CONFIG = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR")
 
 # Generated RDL resets, imported by symbol rather than hand-copied
-# ([ADDRESS-FROM-AUTHORITATIVE-MAP]): chip_config.h:20 / :33, generated from
+# ([ADDRESS-FROM-AUTHORITATIVE-MAP]) from chip_config.h, generated from
 # hw/sys/smc/regs/blocks/chip_config/chip_config.rdl.
 VERSION_LO_RESET = _field_mask(_CHIP_CONFIG_H, "CHIP_CONFIG__VERSION_LO__VERSION_LO_reset")
 VERSION_HI_RESET = _field_mask(_CHIP_CONFIG_H, "CHIP_CONFIG__VERSION_HI__VERSION_HI_reset")
@@ -55,7 +55,7 @@ EFUSE_PROXY_READS = [
 
 
 class smc_efuse_otp_clock_config_depth_test_seq(SmcCsrSeq):
-    """Use OSS-safe fuse observability plus clock-gate RW depth."""
+    """Fuse observability proxies plus clock-gate RW depth."""
 
     def __init__(self, name: str = "smc_efuse_otp_clock_config_depth_test_seq") -> None:
         super().__init__(name)

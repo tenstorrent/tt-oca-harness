@@ -3,6 +3,7 @@
 
 [[verification-dashboard-trends]]
 = Verification Trends
+:page-aliases: ocah-docs::dashboard-trends.adoc
 :doctype: book
 
 Published regression results over time, from the trend history on the

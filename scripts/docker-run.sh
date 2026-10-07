@@ -584,7 +584,7 @@ doc_setup() {
     make "$setup_target"
 }
 
-# Stage verification dashboard JSON into a built site tree. doc/trm/src/
+# Stage verification dashboard JSON into a built site tree. doc/home/src/
 # dashboard.adoc fetches this at page load; without it the page renders its
 # unavailable state.
 doc_stage_dashboard_data() {
@@ -629,9 +629,9 @@ doc_html() {
   doc_release_enabled && release_args=(--attribute release)
   [[ "${OCAH_ANTORA_KROKI_OFFLINE:-}" == true ]] && kroki_args=(--attribute "kroki-server-url=http://kroki:8001")
   run --net "$NETWORK" antora --cache-dir /tmp/antora "${release_args[@]}" "${kroki_args[@]}" --attribute "basedir=${basedir}" "$playbook"
-  # Only the TRM carries the dashboard page; staging elsewhere would leave a
-  # stray ocah-docs/ tree inside another book's site.
-  if [ "$product" = trm ]; then
+  # Only the Home and TRM playbooks carry Home and its dashboard page; staging
+  # elsewhere would leave a stray ocah-home/ tree inside another book's site.
+  if [[ "$product" == trm || "$product" == home ]]; then
     doc_stage_dashboard_data "${ROOT}/${basedir}/_build/html_antora"
   fi
 }

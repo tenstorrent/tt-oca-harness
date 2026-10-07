@@ -152,7 +152,8 @@ endfunction
 function automatic bit smc_is_regblock_wide_access(
     ocah_axi_item t, output smc_regblock_wide_entry_t entry, output int unsigned index);
   if (!smc_regblock_wide_lookup(t.address, entry, index)) return 1'b0;
-  return t.is_ok() && t.data_words.size() == 1 && t.beat_count() == 1;
+  if (t.direction == OCAH_AXI_DIR_WRITE && !t.is_ok()) return 1'b0;
+  return t.data_words.size() == 1 && t.beat_count() == 1;
 endfunction
 
 // SMC_MISC_WRAP scratch windows: SCRATCH_COLD lives in the cold reset
@@ -231,12 +232,12 @@ endfunction
 // stable_cold_rst_n AND stable_cool_rst_n AND rst_cool_from_flr_n), and
 // "Primary reset covers the main SMC functional fabric, peripheral control
 // and configuration paths" -- every CSR block reached over SEP_IN, both
-// scratch windows included (misc_wrap.rdl:20-21; the warm reset equation
+// scratch windows included (misc_wrap.rdl; the warm reset equation
 // takes rst_primary_n as a term). A model that watched only the cold counter
 // would keep predicting pre-cool-reset values.
 //
-// SPM memory is deliberately NOT on this epoch: it is an SRAM, and nothing
-// in this bench establishes that a reset clears its contents.
+// SPM memory is not on this epoch: it is an SRAM, and nothing in this bench
+// establishes that a reset clears its contents.
 // ---------------------------------------------------------------------------
 function automatic bit [63:0] smc_csr_reset_epoch(bit [31:0] cold_count, bit [31:0] cool_count);
   return {cold_count, cool_count};
@@ -301,11 +302,10 @@ function automatic void smc_default_reg_catalog(ref smc_default_reg_entry_t entr
 
   // --- chip_config.rdl ---
   // VERSION_LO/HI and CHIP_ID are `sw=r; hw=w`, driven by smc_misc_wrap from
-  // its integration parameters; the OSS TB leaves those parameters at their
-  // defaults, which are the same constants the generated map declares, so the
-  // compare is exact and fails loudly if a variant ever drives something else.
-  // VERSION_LO's default is non-zero (0x000100A0), so a read path stuck at 0
-  // cannot pass this catalogue.
+  // its integration parameters; this bench leaves those parameters at their
+  // defaults, which are the constants the generated map declares, so the
+  // compare is exact. VERSION_LO's default is non-zero, so a read path stuck
+  // at 0 cannot pass this catalogue.
   entries.push_back(
       '{"CHIP_CONFIG_VERSION_LO",
       64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR),
@@ -357,18 +357,15 @@ function automatic void smc_default_reg_catalog(ref smc_default_reg_entry_t entr
   // SS_WARM_RESET_N is a plain PeakRDL-internal `sw=rw; hw=r` register
   // that no lock description in reset_unit.rdl names, so a write lands
   // unfiltered and the shadow rule above describes it. Its default is all
-  // ones, the second non-zero expectation in this catalogue.
+  // ones.
   entries.push_back('{"RESET_UNIT_SS_WARM_RESET_N",
                     64'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR),
                     SMC_REG_KIND_RW_RESTORE, 1'b1, 32'(RESET_UNIT_SS_WARM_RESET_N_REG_DEFAULT),
                     "reset_unit.rdl:44-49 sw=rw hw=r, default 0xFFFFFFFF (non-zero)"});
-  // SS_CONFIG, SS_CONFIG_LOCK and SS_COLD_RESET_N belong to the lock_csr
-  // feature, not here: the two locks are `onwrite=woset` (a written 0 is
-  // inert) and a locked bit of either guarded register "cannot be written to
-  // again" (reset_unit.rdl:20-27, :89-96), so the plain shadow rule of this
-  // catalogue would mispredict them the moment anything wrote them. Their
-  // reset values are 0, so they would add no discriminating power here
-  // either. One feature owns one set of semantics.
+  // SS_CONFIG, SS_CONFIG_LOCK and SS_COLD_RESET_N are lock_csr registers: the
+  // locks are `onwrite=woset` (a written 0 is inert) and a locked bit of a
+  // guarded register "cannot be written to again" (reset_unit.rdl), which the
+  // plain shadow rule of this catalogue cannot predict.
 endfunction
 
 // Catalogue entry addressing `word_addr`, if any. Used by the reference model
@@ -400,12 +397,12 @@ endfunction
 // reset 0 and one bit per subsystem, and each lock's RDL description names
 // its guarded register and the per-bit rule: SS_CONFIG_LOCK "lock[s] down SS
 // config. If bit 0 is written, then bit 0 of other SS config cannot be
-// written to again" (reset_unit.rdl:20-27); SS_COLD_RESET_LOCK the same for
-// SS cold reset (reset_unit.rdl:89-96). So a write to the guarded register
-// lands only on the bits that are strobed and unlocked, and a locked bit
-// keeps its value on read-back: that is the property the lock_csr feature
-// predicts. Both guarded registers reset to 0, the value the generated
-// *_REG_DEFAULT declares.
+// written to again" (reset_unit.rdl SS_CONFIG_LOCK description);
+// SS_COLD_RESET_LOCK the same for SS cold reset (its own description). So a
+// write to the guarded register lands only on the bits that are strobed and
+// unlocked, and a locked bit keeps its value on read-back: that is the
+// property the lock_csr feature predicts. Both guarded registers reset to 0,
+// the value the generated *_REG_DEFAULT declares.
 // ---------------------------------------------------------------------------
 
 typedef struct {
@@ -455,8 +452,7 @@ function automatic bit smc_is_lock_csr_access(ocah_axi_item t, output int unsign
 endfunction
 
 // Bits 1..bit_index of a 32-bit word: the bits this bench has put under a
-// lock by the given scenario pass, with bit 0 deliberately left out as the
-// never-locked control.
+// lock by the given scenario pass; bit 0 is the never-locked control.
 function automatic bit [31:0] smc_lock_accum_mask(int unsigned bit_index);
   return 32'((32'h1 << (bit_index + 1)) - 32'h2);
 endfunction
@@ -464,17 +460,17 @@ endfunction
 // ---------------------------------------------------------------------------
 // mutex_sema: the CPU_CTRL hardware mutexes and semaphores, whose READ and
 // WRITE both have side effects, so no plain shadow rule describes them.
-// Semantics from cpu_ctrl.rdl:270-293 (SPEC, not RTL):
+// Semantics from the cpu_ctrl.rdl MUTEX and SEMA field descriptions (SPEC,
+// not RTL):
 //
 //   reg MUTEX  `field ... mutex[0:0] = 0x1` -- "HW mutex. Reads will attempt
 //              to acquire mutex, 1 on success. If the mutex is already
 //              acquired, the read will return 0. To release the mutex, write
-//              any value to the register." MUTEX[4] @ 0x240: four independent
-//              locks.
+//              any value to the register." MUTEX[4]: four independent locks.
 //   reg SEMA   `field ... sema[15:0] = 0x0` -- "16-bit semaphore value to
 //              inc/dec. Writing to this register will inc/dec the semaphore
 //              value. The written value is treated as a signed number using
-//              2s compliment." SEMA[4] @ 0x260.
+//              2s compliment." SEMA[4].
 //
 // Both registers are declared regwidth/accesswidth 64, but each live field
 // sits inside the low 32 bits, so the bench's 4-byte CSR access covers the
@@ -488,15 +484,11 @@ localparam int unsigned SmcSemaCount = int'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU
 // Field masks and the mutex's two legal read values, symbol-sourced.
 localparam bit [31:0] SmcMutexMask = 32'(CPU_CTRL_MUTEX_MUTEX_MASK);
 localparam bit [31:0] SmcSemaMask = 32'(CPU_CTRL_SEMA_SEMA_MASK);
-// The field's reset value IS the "available" encoding, and it is
-// symbol-sourced. The taken encoding is NOT derivable from a symbol: the RDL
-// states it in prose -- cpu_ctrl.rdl:270-281, "If the mutex is already
-// acquired, the read will return 0" -- so it is written as the literal that
-// sentence gives, cited here, rather than as an expression over
-// SmcMutexMask that would be identically zero whatever the map said and would
-// therefore hide a changed encoding instead of catching it.
+// SmcMutexFree is the field's reset value. SmcMutexTaken is the value
+// cpu_ctrl.rdl gives in prose for a read of an already-acquired mutex ("the
+// read will return 0"); no generated symbol carries it.
 localparam bit [31:0] SmcMutexFree = 32'(CPU_CTRL_MUTEX_REG_DEFAULT) & SmcMutexMask;
-localparam bit [31:0] SmcMutexTaken = 32'h0;  // cpu_ctrl.rdl:270-281, quoted above
+localparam bit [31:0] SmcMutexTaken = 32'h0;  // cpu_ctrl.rdl MUTEX, quoted above
 
 function automatic bit [63:0] smc_mutex_addr(int unsigned idx);
   return 64'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_MUTEX_BASE_ADDR(idx));

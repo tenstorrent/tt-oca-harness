@@ -48,13 +48,9 @@ from .smc_gpio_irq_active_test_seq import (
     GPIO_INPUT_ACTIVE_LOW_IRQ,
 )
 
-# Bounded pad -> aggregate poll published by smc_gpio_vip_utils (expiry is a
-# failure, never a settle delay). `check_gpio0_active_low_irq` cannot be used
-# here because it releases the pad before returning, leaving no window in which
-# an IRQ item can be sampled while the aggregate is asserted;
-# `await_gpio_irq_level` is the assert-and-hold seam that module publishes for
-# exactly that, so this is a plain public import with no private-name fallback
-# (`[REUSE-AND-LAYERING]`).
+# `await_gpio_irq_level` asserts the pad and holds it, so an IRQ item can be
+# sampled while the aggregate is asserted; `check_gpio0_active_low_irq` releases
+# the pad before returning. Expiry of the bounded poll is a failure.
 from .smc_gpio_vip_utils import await_gpio_irq_level
 from .smc_probe_positive_control import ensure_gpio_pad_bus_control
 
@@ -216,8 +212,8 @@ class smc_5agent_observability_test_seq(smc_base_test_seq):
         # GPIO: a *pair* of SAMPLEs, not one, and the compare is on the raw
         # pad-bus vectors -- not on the three tb_gpio_*_any aggregates.
         #
-        # The aggregates are OR-reductions over the WHOLE pad bus (tb_top.sv
-        # :1375-1377), which also carries idle-high LSIO pads (UART TX): they
+        # The aggregates are OR-reductions over the WHOLE pad bus (tb_top.sv),
+        # which also carries idle-high LSIO pads (UART TX): they
         # read 1 from reset onward and no frontdoor stimulus can drive them to 0,
         # so they are declared in `env.smc_probe_liveness.UNBACKABLE_PROBES` and
         # `SmcScoreboard._check_gpio` REFUSES a stated `expect_` on them. And

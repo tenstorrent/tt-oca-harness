@@ -26,11 +26,9 @@ class smc_octs_dual_sync_test(smc_base_test):
             SmcProtocolVipKind.SIDEBAND,
             type(self).__name__,
             csr_accesses=0,
-            # No CSR traffic and no byte golden on the record, so nothing on it
-            # could fail: booked as an ACTIVITY STAMP in the scoreboard's
-            # protocol_vip_auto bin rather than as a protocol VIP check
-            # ([NO-ALWAYS-PASS-CHECKER]). The OCTS pad-edge asserts in the
-            # sequence remain the scenario's proof.
+            # With no CSR traffic and no byte golden, this record is an activity
+            # stamp in the scoreboard's protocol_vip_auto bin; the OCTS pad-edge
+            # asserts in the sequence carry the verdict.
             auto_evidence=True,
             proxy=False,
             details=(

@@ -28,28 +28,24 @@ static inline void write_mhpmevent6(uint64_t val) {
 
 static inline uint64_t read_mhpmcounter3(void) {
     uint64_t val;
-    // Reads the 64-bit mhpmcounter3 register
     asm volatile("csrr %0, mhpmcounter3" : "=r"(val));
     return val;
 }
 
 static inline uint64_t read_mhpmcounter4(void) {
     uint64_t val;
-    // Reads the 64-bit mhpmcounter4 register
     asm volatile("csrr %0, mhpmcounter4" : "=r"(val));
     return val;
 }
 
 static inline uint64_t read_mhpmcounter5(void) {
     uint64_t val;
-    // Reads the 64-bit mhpmcounter5 register
     asm volatile("csrr %0, mhpmcounter5" : "=r"(val));
     return val;
 }
 
 static inline uint64_t read_mhpmcounter6(void) {
     uint64_t val;
-    // Reads the 64-bit mhpmcounter6 register
     asm volatile("csrr %0, mhpmcounter6" : "=r"(val));
     return val;
 }
@@ -89,28 +85,28 @@ static inline void start_branch_target_miss_counter(void) {
 
 static inline uint32_t read_icache_miss_counter(void) {
     uint32_t icache_misses = read_mhpmcounter3();
-    // Clear the counter after reading
+    // Event selector 0 stops the counter without resetting it
     write_mhpmevent3(0);
     return icache_misses - icache_miss_counter;
 }
 
 static inline uint32_t read_dcache_miss_counter(void) {
     uint32_t dcache_misses = read_mhpmcounter4();
-    // Clear the counter after reading
+    // Event selector 0 stops the counter without resetting it
     write_mhpmevent4(0);
     return dcache_misses - dcache_miss_counter;
 }
 
 static inline uint32_t read_branch_direction_miss_counter(void) {
     uint32_t bdm_misses = read_mhpmcounter5();
-    // Clear the counter after reading
+    // Event selector 0 stops the counter without resetting it
     write_mhpmevent5(0);
     return bdm_misses - bdm_miss_counter;
 }
 
 static inline uint32_t read_branch_target_miss_counter(void) {
     uint32_t btm_misses = read_mhpmcounter6();
-    // Clear the counter after reading
+    // Event selector 0 stops the counter without resetting it
     write_mhpmevent6(0);
     return btm_misses - btm_miss_counter;
 }

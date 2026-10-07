@@ -18,9 +18,8 @@ from smc_base_test import smc_base_test
 # CSR writes + 2 JTAG-AXI payload write groups + 8 measured hysteresis windows
 # (3 required + 5 seeded extras), each programming CLOCK_GATE_CONTROL and the
 # DMA descriptor and then polling DMA_CTRL_DONE. The DONE poll length scales with
-# the programmed hysteresis, so the floor sits BELOW the run-to-run minimum: a
-# floor at any one observed count could false-fail on a seed that draws smaller
-# windows, while this floor still fails a scenario that stops measuring windows.
+# the programmed hysteresis, so the floor sits below the smallest count any seed
+# produces.
 CLK_MULTI_WINDOW_MIN_CSR_ACCESSES = 130
 
 

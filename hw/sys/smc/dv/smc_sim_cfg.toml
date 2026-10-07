@@ -35,15 +35,10 @@ format = "toml_list"
 #
 #   ignore    -- drops the "Error:" line of exactly these six assertions, and
 #                only when it reads "at time 0 fs".
-#   hard-fail -- the companion line carries the timestamp ("...: started at
+#   hard-fail -- the paired line carries the timestamp ("...: started at
 #                0fs failed at 0fs"). Matching "failed at <non-zero>" turns any
 #                post-time-0 firing of those exact assertions into a hard
 #                failure.
-#
-# So the t=0 X-init noise is waived and nothing else is: a later firing of the
-# same assertion still fails the run, loudly, on the timestamped line. No other
-# assertion is touched; `prim_ag_clk_mux` CheckMutualExclusionClk1 in
-# particular still fails the leaf that fires it.
 #
 # ($assertoff in the TB does not work here -- it races the always_ff's own
 # time-0 evaluation and the assertion fires first.)
@@ -104,35 +99,27 @@ sources = [
   # the bridge that places the wrapper's struct port on it.
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
-  # Two prims the SMC DUT instantiates but no `smc` Bender target supplies:
-  #   prim_fifo_async <- hw/common/ocah_prim/rtl/prim_refclk_count_w_cdc.sv:79
-  #                      (Bender.yml:152, target any(opentitan_smu, sep, smu))
-  #   prim_rst_sync   <- hw/ip/efuse/rtl/efuse_interface_controller.sv:159
-  #                      (Bender.yml:64,  target any(opentitan_smu, sep, smu, key_manager))
-  # Without them both cells elaborate as unresolved: VCS/Xcelium refuse the
-  # build outright, and Verilator only proceeds because `-Wno-fatal` demotes
-  # the missing-module error to a warning and black-boxes them, leaving a CDC
-  # FIFO and a reset synchronizer silently absent. Bender.yml carries them only
-  # under the targets above, so this DV-local source entry supplies them to all
-  # three simulators without editing vendor/.
+  # prim_fifo_async (instantiated by hw/common/ocah_prim/rtl/prim_refclk_count_w_cdc.sv)
+  # and prim_rst_sync (instantiated by hw/ip/efuse/rtl/efuse_interface_controller.sv)
+  # are listed here so every simulator resolves them whatever the vendored Bender
+  # targets carry: VCS and Xcelium refuse an unresolved cell outright, and Verilator
+  # proceeds only because `-Wno-fatal` demotes the missing-module error to a warning
+  # and black-boxes it, leaving a CDC FIFO and a reset synchronizer silently absent.
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_async.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_rst_sync.sv",
   # prim_flop_2sync instantiates prim_cdc_rand_delay when SIMULATION is defined
-  # (it is, see targets.default.tools.*). Bender.yml:38-42 closes exactly this
-  # gap for `dtp` with `target: all(dtp, simulation)`; `smc` has no equivalent
-  # entry, so this file is listed here.
+  # (it is, see targets.default.tools.*). The vendored opentitan Bender.yml
+  # supplies the delay model to the dtp-family graphs under a simulation target
+  # and to the sep/smu graphs, but to no `smc` target, so this file is listed here.
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv",
   # prim_ram_1p backs the CPU cluster memory macros
-  # (smc_cpu/mem_swaps/4core/OCAH4CORECluster_mem_swaps.sv:95, reached via
-  # smc_cpu_mem_integration -> prim_ram_1p_adv_ext). Bender.yml:81,197 carry it
-  # only for any(sep_wrapper, smu_wrapper) / any(opentitan_smu, sep, smu); the
-  # smc/smc_wrapper targets get prim_ram_1p_adv_ext but not the macro it wraps,
-  # so without this entry every CPU icache/dcache tag+data array elaborates as a black box.
+  # (smc_cpu/mem_swaps/4core/OCAH4CORECluster_mem_swaps.sv) and is listed here
+  # whatever the vendored Bender targets carry: a missing cell leaves every CPU
+  # icache/dcache tag+data array a black box.
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p.sv",
   # prim_ram_1p_adv backs the trace-mem banks in smc_ip_integration
-  # (gen_trace_mem_bank). Bender.yml:80-83 carries it only for
-  # any(sep_wrapper, smu_wrapper); VCS refuses the missing cell (Verilator
-  # -Wno-fatal black-boxes it). Same hole class as prim_ram_1p above.
+  # (gen_trace_mem_bank); VCS refuses a missing cell and Verilator -Wno-fatal
+  # black-boxes it. Same hole class as prim_ram_1p above.
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_adv.sv",
   # prim_subreg/prim_subreg_ext back idma_reg64_2d_reg_top (the iDMA register
   # file); prim_arbiter_tree backs log_engine. All three sit in Bender.yml under
@@ -348,10 +335,9 @@ outputs = [
 #   occp_unsecure_boot_test -> u_bfm  (controller, rom-mode DV image)
 #   hello_world             -> transferred over I3C by the controller. An
 #                              ordinary sram-mode image from the shared test
-#                              engine, matching the reference environment's
-#                              +ROM_FW_TEST=hello_world. cocotb writes it into
-#                              the controller's SRAM over AXI, so nothing has to
-#                              embed it in a ROM image.
+#                              engine; cocotb writes it into the controller's
+#                              SRAM over AXI, so nothing has to embed it in a
+#                              ROM image.
 #
 # {fw_target} is the only placeholder the runlib allows, so the DV test names
 # are spelled out rather than interpolated. Same host-toolchain-vs-container
@@ -377,8 +363,7 @@ outputs = [
 # [c_build.occp_rom_only] plus the payload the target ends up running: the
 # production boot ROM for the target, one rom-mode DV controller image named by
 # the test's `firmware = { name = ... }`, and hello_world as an ordinary
-# sram-mode image. This is the shape the reference expresses as
-# +ROM_FW_TEST=hello_world.
+# sram-mode image.
 #
 # Separate from [c_build.dual_occp], which hardcodes occp_unsecure_boot_test as
 # the controller; here the controller varies per test.

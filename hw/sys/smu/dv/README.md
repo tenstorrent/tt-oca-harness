@@ -48,18 +48,20 @@ and the DTP, and the entropy stack. `docs/SMU_VPLAN.adoc` cards every leaf.
 outbound boundary); product pins driven by the sequences; SMC ROM and SEP
 ITCM/DTCM images loaded at time zero; eFuse shadow preload images from
 `assets/`. Verdicts are `SmuScoreboard` compares, or -- for the firmware
-leaves -- the firmware's own terminal loop, observed by the bench. The one
-signal the bench forces (`+esrc_noise_force`, the ESRC raw-noise lanes) and
-the other stand-ins on a proof path are recorded, with their scope and
-approval fields, in the *Bench stand-ins and exceptions* section of
-`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
+leaves -- the firmware's own terminal loop, observed by the bench. The two
+nodes the bench forces (`+esrc_noise_force`, the ESRC raw-noise lanes;
+`+lc_sigint_inject`, the LC_STATE pair the SEP exports) and
+the other stand-ins on a proof path are declared, each with the claim it
+accepts and its scope, in the *Bench stand-ins and exceptions* section of
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`, which also states where
+their approvals are recorded.
 
 **Simulators.** Verilator runs every enrolled group and is the only
 simulator with a build and a coverage section in the sim config; it is
 what CI runs. `smu_sim_cfg.toml`
 lists `vcs` and `xcelium` as selectable tools, but no enrolled group
 runs on them: the cocotb targets on VCS fail the runner on live RTL
-assertions while every test passes (issue #1755, open), and `smu_sim_cfg.toml`
+assertions while every test passes, and `smu_sim_cfg.toml`
 declares no Xcelium target of its own -- only the shared
 `hw/common/dv/configs/profiles/native.toml` defaults, which no SMU group
 selects.
@@ -82,7 +84,7 @@ from, and a value with no pin says so.
 | cocotb / pyuvm / cocotbext-axi | 2.0.1 / 4.0.1 / 0.1.28 | `uv.lock` (`dv` group); `run_dv.py` bootstraps this environment itself |
 | Bender | whatever `pulp-platform/pulp-actions/bender-install@v2.5.1` installs; no Bender version is pinned in this repository | `.github/actions/dv-run/action.yml` |
 | g++ | the `g++` package of `ubuntu-latest` at run time; no version pinned. cocotb 2.x compiles with `-fcoroutines`, so a C++20 compiler is required | `.github/actions/dv-run/action.yml` |
-| RISC-V GCC (firmware leaves only) | `gcc-riscv64-unknown-elf` + `picolibc-riscv64-unknown-elf` from Debian trixie in the `ocah-toolchain` image; the base image is pinned by digest, the package version floats | `tools/docker/Dockerfile`; `tools/docker/README.md` |
+| RISC-V GCC (firmware leaves only) | the `riscv-unknown-elf-toolchain` package of the Nix-built `ocah-container` image: `gcc-riscv-unknown-elf` built with picolibc and `picolibc-riscv-unknown-elf`, pinned by the flake | `nix/packages/riscv-unknown-elf-toolchain.nix`, `ocah_deps.nix`, `flake.lock`; `scripts/docker.md` |
 
 Environment variables the package reads:
 
@@ -90,12 +92,12 @@ Environment variables the package reads:
 |---|---|---|
 | `TMPDIR` | the runner and the container scripts | scratch; must exist and be large (`AGENTS.md`). Never `/tmp` |
 | `RANDOM_SEED` | `smu_base_test`, two fabric sequences | the run seed; set by the runner from `--seed` or its own draw |
-| `RISCV_TOOLCHAIN`, `RISCV_PREFIX` | `fw/build_firmware.py`, i.e. every `[c_build.*]` stage | directory and tool prefix (default `riscv64-unknown-elf-`) of a RISC-V toolchain that has picolibc; unset, or without picolibc, the stage re-runs itself in the `ocah-toolchain` container through `scripts/docker-run.sh run-here`. No `PATH` or site probe |
+| `RISCV_TOOLCHAIN`, `RISCV_PREFIX` | `fw/build_firmware.py`, i.e. every `[c_build.*]` stage | directory and tool prefix (default `riscv64-unknown-elf-`) of a RISC-V toolchain that has picolibc; unset, or without picolibc, the stage re-runs itself in the `ocah-container` image through `scripts/docker-run.sh run-here`. No `PATH` or site probe |
 | `SMU_SMC_BOOT_MAX_CYCLES` | `smu_smc_smoke_seq.py` | SMC ROM boot budget in `clk_smu` cycles |
 | `SMU_SEP_BOOT_MAX_CYCLES` | `smu_sep_smoke_seq.py`, `smu_sep_boot_health_seq.py` | SEP boot budget |
 | `SMU_SEP_FW_MAX_CYCLES` | the `sep_real_fw`, lifecycle and chain sequences | terminal-loop budget for a SEP firmware image |
 | `SMU_SEP_SANITY_MAX_CYCLES`, `SMU_SEP_MODULES_MAX_CYCLES`, `SMU_SEP_ENTROPY_MAX_CYCLES` | the sequence of the same name | per-image budgets for the longer firmware runs |
-| `OCAH_TOOLCHAIN_ROOTFS` | `scripts/docker-run.sh`, i.e. every `[c_build.*]` stage when `RISCV_TOOLCHAIN` is unset | a toolchain rootfs extracted from the `ocah-toolchain` image; when set and `bwrap` is present the firmware builds run in a bubblewrap sandbox instead of a container (`scripts/docker.md`) |
+| `OCAH_TOOLCHAIN_ROOTFS` | `scripts/docker-run.sh`, i.e. every `[c_build.*]` stage when `RISCV_TOOLCHAIN` is unset | a toolchain rootfs extracted from the `ocah-container` image; when set and `bwrap` is present the firmware builds run in a bubblewrap sandbox instead of a container (`scripts/docker.md`) |
 | `OCAH_BWRAP_EXTRA_BINDS` | `scripts/docker-run.sh`, bubblewrap backend only | space-separated host paths bound into the sandbox at their own paths. The sandbox holds the rootfs (read-only), this repository at its real path and `/tmp`, and nothing else, so every host path a firmware build reaches outside those is listed here: the paths your `uv` binary and the Python interpreter behind the repository's `.venv` live under, `TMPDIR` when it is not under `/tmp` (gcc writes its temporaries there), and any `RISCV_TOOLCHAIN` |
 | `UV` (or `PYTHON`) | `hw/common/dv/fw/preamble.mk`, i.e. the SEP firmware engine that every `[c_build.sep_dv_fw*]` stage and `sep_smoke` run | `PYTHON` defaults to `$(UV) --directory <repo> run --locked` and `UV` to `uv`; the SEP engine's ELF-to-vmem step runs through it. The toolchain rootfs carries no `uv` and the sandbox replaces `PATH`, so a sandboxed build sets `UV` to the absolute path of a host `uv` on a bound path (or `PYTHON` to an interpreter that has `pyelftools`). The bubblewrap backend forwards the caller's environment; `make -f ocah.mk ... UV=<path>` passes the same value to a standalone firmware build |
 
@@ -114,7 +116,7 @@ python3 tools/dv/run_dv.py --dut smu --list
 python3 tools/dv/run_dv.py --dut smu --items smoke
 
 # 2. Nightly and weekly. `.github/workflows/regress.yml` runs this as the
-#    release qualification set: the 84 toolchain-free leaves of `hosted`, one
+#    release qualification set: the toolchain-free leaves of `hosted`, one
 #    seed per leaf on both tiers (`reseed: 1`), on `ubuntu-latest`. Neither
 #    tier collects coverage: both `smu` rows carry `coverage: false`, and the
 #    coverage regression runs on the licensed flow outside hosted CI
@@ -122,7 +124,7 @@ python3 tools/dv/run_dv.py --dut smu --items smoke
 #    only writes zero-filled preload images (Python, no toolchain).
 python3 tools/dv/run_dv.py --dut smu --items hosted
 
-# 3. The whole package: `all` adds the SEP firmware set (120 leaves). The
+# 3. The whole package: `all` adds the SEP firmware set. The
 #    firmware c_build stages build every image in the toolchain container
 #    (unless RISCV_TOOLCHAIN names a picolibc gcc), so make that toolchain
 #    available once first -- the container image, as below, or the rootfs
@@ -242,7 +244,7 @@ Every directory and top-level file under `dv/` is listed here.
 | `assets/` | the five SEP eFuse shadow preload images: `default_sep_efuse_shadow_reg.preload` and `sep_efuse_shadow_lc_{test_dev,prod,prod_end,rma_chiplet}.preload`, which set the diff-encoded lifecycle state word. Each carries its SPDX header as `//` comment lines, which the preload readers skip |
 | `cocotb/{env,seq_lib}/` | the shared half of the PyUVM environment: `env/` holds `SmuEnv`, `SmuScoreboard`, the evidence map and `smu_fcov.py`; `seq_lib/` the sequences and helpers written against the SMU's own interfaces (address map, lifecycle table, AXI, JTAG and filter helpers, the PTAP smoke sequence) |
 | `cocotb_wrapper/{env,seq_lib,tests}/` | the `--dut smu` framework tree: `tests/` holds every test body and the base test; `env/` the wrapper env pieces (`smu_boot_scoreboard.py`, `smu_sep_cpu_trace_monitor.py`, `smu_env_cfg.py`); `seq_lib/` the wrapper sequences. `env` and `seq_lib` are namespace packages spanning this tree and `cocotb/`, so an import resolves in either |
-| `cov/` | coverage collateral: `config/verilator/smu_wrapper_cov_scope.vlt` and `smu_wrapper_coverage_policy.toml`, `config/vcs/smu_wrapper_cov_scope.hier` (written by the companion's `gen_smu_cov_scope.py`; its README states the rule and how it differs from the Verilator scope), and `sv/` with the ten cover-property modules; intent in `docs/SMU_FCOV.adoc` |
+| `cov/` | coverage collateral: `config/verilator/smu_wrapper_cov_scope.vlt` and `smu_wrapper_coverage_policy.toml`, `config/vcs/smu_wrapper_cov_scope.hier` (generated; its README states the rule and how it differs from the Verilator scope), and `sv/` with the ten cover-property modules; intent in `docs/SMU_FCOV.adoc` |
 | `docs/` | `index.adoc` and the three chapters: `SMU_TB_ARCH.adoc`, `SMU_VPLAN.adoc`, `SMU_FCOV.adoc` |
 | `fw/` | this root's own firmware: `build_firmware.py`, `common/` (SMC and SEP start-up and linker files), `tests/` (the SMC smoke, the SEP smoke and the two SEP arm images). The `sep_real_fw` images come from `hw/sys/sep/dv/fw/` instead |
 | `tb/` | `tb_wrapper_top.sv` (the HDL top, `smu_wrapper_uvm_top`, one module in two shapes: the cocotb port list and the SV-UVM harness), `smu_tb_signal_list.svh` (the single declaration of its TB signals, expanded as ports or as internal signals), `smu_tb_if.sv` (the SMU-local TB interface of the SV-UVM shape) and `smu_wrapper_public_scope.vlt` (the Verilator public-signal scope `smu_sim_cfg.toml` `[build.verilator].public_scope` names) |
@@ -308,7 +310,7 @@ also builds the selected image of the SEP firmware engine (`hw/sys/sep/dv/fw`,
 `--sep-test {fw_target}`; the dual leaves add one SMC engine image) into
 `hw/sys/<sys>/dv/fw/build/tests/`. Those link against picolibc and `libsep.a`,
 so the builder uses the caller's `RISCV_TOOLCHAIN` only when that gcc has
-picolibc and otherwise re-runs itself inside the `ocah-toolchain` container
+picolibc and otherwise re-runs itself inside the `ocah-container` image
 (`scripts/docker-run.sh run-here`).
 
 `+esrc_noise_force` (three entries of `sep_real_fw` / `sep_entropy`) drives
@@ -344,7 +346,7 @@ python3 hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py \
 
 ```bash
 # Firmware toolchain (firmware leaves only): RISCV_TOOLCHAIN with picolibc,
-# otherwise the ocah-toolchain container via scripts/docker-run.sh run-here.
+# otherwise the ocah-container image via scripts/docker-run.sh run-here.
 python3 tools/dv/run_dv.py --dut smu --items smu_sep_smoke_test \
   --seed 1 --stage c_compile --stage sim
 ```
@@ -352,8 +354,8 @@ python3 tools/dv/run_dv.py --dut smu --items smu_sep_smoke_test \
 ## Enrollment
 
 `--dut smu` carries the regression: `all` is every entry of
-`testlists/all.toml` (120), `hosted` is the toolchain-free subset the workflows
-run (84), and the rest of `all` is the SEP firmware set.
+`testlists/all.toml`, `hosted` is the toolchain-free subset the workflows
+run, and the rest of `all` is the SEP firmware set.
 
 Every test entry of the testlist is in `all`, and every test module under
 `cocotb_wrapper/tests/` is enrolled. Names that cannot run or cannot pass on

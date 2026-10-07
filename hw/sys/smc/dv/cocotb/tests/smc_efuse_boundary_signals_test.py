@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""eFuse ext_boot_seq_done / fuse_reset_n interlock (G6)."""
+"""eFuse ext_boot_seq_done / fuse_reset_n interlock."""
 
 from __future__ import annotations
 
@@ -29,12 +29,8 @@ class smc_efuse_boundary_signals_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_efuse_boundary_signals_test_seq("efuse_bnd_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        # Gate on the sequence's own recorded evidence tokens, not on relayed
-        # booleans: `hold_ok`/`map_ok`/`release_ok` are literal `True`
-        # assignments on lines unreachable unless the real compares already
-        # passed, so asserting on them resembles a final gate while carrying
-        # no fail capability of its own ([NO-DUMMY-DEAD-CODE]). Each token below
-        # is added only after that leg's compares passed.
+        # The sequence records each token only after that leg's compares
+        # passed, so a missing token means the compare never ran or failed.
         required = (
             "CHK-EFUSE-BND-HOLD",
             "CHK-EFUSE-BND-STAY",

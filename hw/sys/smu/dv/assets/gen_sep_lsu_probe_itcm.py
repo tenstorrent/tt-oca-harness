@@ -5,8 +5,8 @@
 
 The image is a few RV32I instructions the SEP debug module points the hart at;
 the test sets the registers, resumes the hart and collects the result once
-``ebreak`` returns it to debug mode. It is generated here rather than built
-because it is short enough to encode by hand and needs no toolchain.
+``ebreak`` returns it to debug mode. The image is a handful of RV32I words, so
+this script encodes them directly and needs no toolchain.
 
 Register contract (set through abstract register writes before each resume):
   a0  base address of the probe window, 64-byte aligned

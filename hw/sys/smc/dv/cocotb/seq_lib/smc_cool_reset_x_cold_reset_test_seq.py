@@ -15,14 +15,12 @@ SMCEN = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_SMCEN_REG_BASE_ADDR")
 FLR_DELAY = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_BASE_ADDR")
 FLR_HOLD = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_BASE_ADDR")
 SCRATCH_COLD_WARM_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR")
-# misc_wrap.rdl instantiates TWO scratch banks (`scratch scratch_cold @0x0` and
+# misc_wrap.rdl instantiates two scratch banks (`scratch scratch_cold @0x0` and
 # `scratch scratch_cold_warm @0x80`), both `scratch.rdl` SCRATCH[8] sw=rw
-# reset 0x0. Both are swept here. Attribution note, measured on this bench and
-# recorded by CHK-FLR-COOL-SCRATCH-CLEAR below: the FLR cool clears BOTH banks,
-# so no scratch register in this map survives a cool. That is why the post-cold
-# leg is written as "cleared across the overlap" and does not claim the cold
-# reset performed the clear -- there is no register in this scenario that could
-# separate the two events.
+# reset 0x0; both are swept. The FLR cool clears both banks
+# (CHK-FLR-COOL-SCRATCH-CLEAR), so no scratch register in this map separates
+# the cool from the cold reset that overlaps it, and the post-cold leg claims
+# only that the banks were cleared across the overlap.
 SCRATCH_COLD_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR")
 
 # Hold of 0/1 never starts the FSM. Keep hold long enough to overlap cold.

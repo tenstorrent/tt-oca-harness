@@ -3,6 +3,7 @@
 
 [[verification-test-detail]]
 = Test Detail
+:page-aliases: ocah-docs::dashboard-test-detail.adoc
 
 Every published run of one test, with the seeds it ran and the reason given for
 any that failed.

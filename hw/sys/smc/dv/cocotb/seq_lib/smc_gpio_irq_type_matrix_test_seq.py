@@ -80,12 +80,8 @@ class smc_gpio_irq_type_matrix_test_seq(SmcCsrSeq):
         # Release the external pad drive.
         dut.tb_gpio_ext_drive_en.value = 0x0
 
-        # `self.accesses` is incremented by every csr_* call in
-        # smc_csr_seq_utils.py, so `self.accesses == <literal>` restates the
-        # loop above and cannot fail on anything the DUT did
-        # ([NO-ZERO-ACTIVITY-PASS]). `assert_all_reachable` cross-checks the
-        # same count against the scoreboard, which a mis-bound analysis path
-        # or a dead port fails.
+        # `assert_all_reachable` cross-checks the access count against the
+        # scoreboard, which a mis-bound analysis path or a dead port fails.
         self.assert_all_reachable(2, "GPIO_IRQ_TYPE_MATRIX")
         cocotb.log.info(
             "CHK-GPIO-IRQ-TYPE-POLARITY: GPIO0 DATA_CTRL=0x%08x (active-high level) "

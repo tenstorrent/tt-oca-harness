@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Inbound mailbox 0 CSR precheck (TC_SMC_P1CG_01).
+"""Inbound mailbox 0 CSR precheck.
 
 Reads the inbound-mailbox 0 STATUS/ERROR/IRQ CSR surface after enabling the
 mailbox clock-gate.

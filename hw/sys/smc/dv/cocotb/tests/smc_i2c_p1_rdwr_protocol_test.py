@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS I2C P1 DUT-host read/write protocol test (alias of U4-2)."""
+"""SMC OSS I2C P1 DUT-host read/write protocol test."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_i2c_p1_rdwr_protocol_test(smc_base_test):
-    """U4-2 alias: DUT I2C0 host write proof (same sequence as master_target)."""
+    """DUT I2C0 host write proof; same sequence as smc_i2c_master_target_test."""
 
     required_evidence = (
         "CHK-I2C0-HOST-REPEATED-START",
