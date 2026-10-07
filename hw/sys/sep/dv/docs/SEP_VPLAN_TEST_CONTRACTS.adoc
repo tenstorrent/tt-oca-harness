@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+// tag::test-procedures[]
 === Test Procedures
 
 Unless a procedure says otherwise, each test starts from the common
@@ -16090,3 +16091,120 @@ The image reports every value through the KM mailbox write register. It performs
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Scope limit*: The test extends `sep_km_mem_smoke_test`. Only the new cells are graded here: the open owner keeps the round trip under one key, the stored form that differs from the plaintext and the array word at each kept row, and those cells are controls. The byte permutation `perm8` of the KM SRAM and the address permutation `perm13` are not tabulated in the scrambler document, so the stored word and the physical row have no cipher golden (<<sep-vplan-phase3-blocked,Blocked features>>). The cipher golden is graded on the KPV path in `sep_km_kpv_rand_test`. The test grades a lock set with the enable at 0 by the scrambled-write count only: the value that SCRAMBLER_CTRL.enable reads after such a lock is not stated (<<sep-vplan-phase3-blocked,Blocked features>>). The SRAM parity status that a read under another key sets, the SRAM array contents after a cold reset and the SCRAMBLER_KEY value after a cold reset are not stated and are not graded. The number of SCRAMBLER_KEY writes in a boot, and the key provisioning order of the boot ROM, belong to `sep_km_boot_reset_rand_test`. The KPV scrambler belongs to `sep_km_kpv_rand_test`. The SCRAMBLER_KEY write and read with the lock clear belong to `sep_km_kmcsr_reset_rand_test`.
+// end::test-procedures[]
+
+// tag::sv-uvm-smoke[]
+[[sv-uvm-smoke]]
+=== SystemVerilog UVM Smoke Set
+
+The SV-UVM realization runs a smoke set of the cocotb scenarios on the same
+testbench top, for adopters with a commercial UVM simulator. It is VCS only and
+sits outside the three phases. A scenario keeps its cocotb name; its testlist
+entry binds both implementations
+(`module = { cocotb = "...", uvm = "..." }`), and the SV-UVM class name is the
+`uvm` entry (`+UVM_TESTNAME`). `--framework uvm --items all` runs every bound
+scenario. The class library and run recipes are in
+<<sep-uvm-realization,SEP_TB_ARCH>>.
+
+Each bound scenario proves the contract of its cocotb procedure. A row names
+only what the SV-UVM pass adds or names differently; a row with nothing to add
+reads "Same as the cocotb procedure."
+
+Every scenario except `sep_efuse_sense_test` runs with `+skip_fuse_sense`.
+Under that plusarg `hw/ip/efuse/rtl/efuse_shadow_regs.sv` sets
+`sep_fuse_sense_done_o` one cycle after reset with no sense, so the
+fabric-release wait in those scenarios is a bring-up gate and records no check.
+Only `sep_efuse_sense_test`, which runs the real sense, grades
+CHK-FUSE-SENSE-DONE.
+
+[cols="2,5",options="header"]
+|===
+|Scenario |SV-UVM contract
+
+|<<sep_axi_smoke_test,`sep_axi_smoke_test`>>
+|Same as the cocotb procedure, over sixteen seeded passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_SYSTEM_TEST_LOOPS`, `+SEP_AXI_SMOKE_TEST_LOOPS`).
+Adds `+SEP_RANDOM_COUNT` seeded random patterns per register (five by default),
+and a restore readback of each reset value (CHK-CSR-RANDOM-READBACK,
+CHK-CSR-RESTORE). CHK-DECODE, CHK-WR-RB and CHK-RESP are named
+CHK-CSR-RESET-VALUE, CHK-CSR-READBACK and CHK-CSR-RESP. The scoreboard check is
+CHK-SB-CPU-CTRL-CSR, and CHK-NONVAC requires the scoreboard compares of a pass
+to equal the predicted reads it issued. `+SEP_CSR_SCOREBOARD_NEGATIVE` corrupts
+the prediction, and the run must FAIL.
+
+|<<sep_sram_smoke_test,`sep_sram_smoke_test`>>
+|Same as the cocotb procedure, over sixteen seeded passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_MEMORY_TEST_LOOPS`, `+SEP_SRAM_SMOKE_TEST_LOOPS`), each
+on its own SRAM word so every read before a write sees the zero fill. Adds
+`+SEP_RANDOM_COUNT` seeded random rounds per pass (five by default): a 64-bit write and readback, then a 4-byte
+beat to a seeded half and a full-word readback (CHK-RANDOM-STORE,
+CHK-RANDOM-LANE). CHK-RESP is the sequence's own check: every access returns
+`OKAY` and every read returns one beat. There is no aggregate CHK-SRAM-SMOKE
+record; each checker is its own record.
+
+|<<sep_address_map_test,`sep_address_map_test`>>
+|Same as the cocotb procedure, over sixteen passes by default
+(`+SEP_ADDRESS_MAP_TEST_LOOPS`). A table in the scenario sequence gives the
+access class of each `sep_cpu_ctrl` register, transcribed from
+`sep_cpu_ctrl.rdl`. CHK-ADDRMAP names the reset compares, and CHK-CSR-RESP the
+response of each sweep access. Adds `+SEP_RANDOM_COUNT`
+seeded random patterns per storage register, a readback after each restore,
+and a read of `0x10A3_0170` after the hole write that must return zero. The
+scoreboard check CHK-SB-CPU-CTRL-CSR is required.
+
+|<<sep_periph_bus_err_misaligned_test,`sep_periph_bus_err_misaligned_test`>>
+|Same as the cocotb procedure, over sixteen seeded passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_SYSTEM_TEST_LOOPS`,
+`+SEP_PERIPH_BUS_ERR_MISALIGNED_TEST_LOOPS`). The R beats come from the master
+driver, not a bus monitor. Adds an OKAY check on each status read (CHK-CSR-RESP), and, at the end of each pass,
+a clear through `PERIPH_BUS_ERR_CLEAR.hmac` and `DMA_BUS_ERR_CLEAR.clr` with
+both registers read back as 0 (CHK-MISALIGN-CLEAR).
+
+|<<sep_clock_uvm_wdt_rst_input_reset_path_test,`sep_clock_uvm_wdt_rst_input_reset_path_test`>>
+|Same as the cocotb procedure, over sixteen seeded passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_SYSTEM_TEST_LOOPS`,
+`+SEP_CLOCK_UVM_WDT_RST_INPUT_RESET_PATH_TEST_LOOPS`). Adds a second CHK-ASSERT read after a seeded extra hold of
+0 to 15 system clocks. Each pass releases the main reset after the
+CHK-ISOLATION control, and the next pass's CHK-BASELINE proves both resets
+recovered.
+
+|<<sep_irq_ip_to_aggregator_test,`sep_irq_ip_to_aggregator_test`>>
+|Same as the cocotb procedure, over sixteen seeded passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_SYSTEM_TEST_LOOPS`,
+`+SEP_IRQ_IP_TO_AGGREGATOR_TEST_LOOPS`). Each source's walk is graded under
+CHK-BASE, CHK-SET, CHK-ISO and CHK-CLR, and CHK-AGG requires all ten sources
+to pass all four. Each walk ends with `INTR_ENABLE` back at 0. The DMA hole
+write carries a seeded random word. Adds an OKAY check on every other access (CHK-CSR-RESP).
+
+|<<sep_otbn_mem_smoke_test,`sep_otbn_mem_smoke_test`>>
+|Same as the cocotb procedure, over sixteen seeded passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_CRYPTO_TEST_LOOPS`, `+SEP_OTBN_MEM_SMOKE_TEST_LOOPS`).
+Adds `+SEP_RANDOM_COUNT` seeded
+random words per memory (five by default) after the directed word, each written
+and read back at the memory base. CHK-IMEM, CHK-DMEM and CHK-ARRIVED are
+recorded under CHK-OTBN-MEM, together with the read responses; the counters are
+graded as the increments of each pass. The STATUS read response is CHK-CSR-RESP.
+
+|<<sep_efuse_sense_test,`sep_efuse_sense_test`>>
+|Same as the cocotb procedure, over sixteen passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_EFUSE_LCC_TEST_LOOPS`, `+SEP_EFUSE_SENSE_TEST_LOOPS`);
+the sense runs once at bring-up and each pass compares the held shadow again.
+The staged image is the committed default preload (`+sep_efuse_hex`).
+CHK-SENSE-DONE is named CHK-FUSE-SENSE-DONE. CHK-SENSE compares the whole
+shadow probe with the committed expected shadow
+`tb/efuse_preloads/sep_efuse_default.shadow.hex` (`+sep_efuse_shadow_hex`),
+written by `cocotb/env/sep_efuse_default_shadow.py` and kept current by
+`cocotb/env/run_golden_selftests.py`. The word count is asserted against the
+256-word fuse map of `hw/sys/sep/doc/otp_fuse_controller.adoc`: the probe is
+8192 bits wide, and the file holds one data line of 2048 hex digits that loads
+with no X and at least one non-zero word.
+
+|<<sep_km_mem_smoke_test,`sep_km_mem_smoke_test`>>
+|Same as the cocotb procedure, over sixteen passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_KM_TEST_LOOPS`, `+SEP_KM_MEM_SMOKE_TEST_LOOPS`). Each
+pass after the first starts with a primary reset, and its marker poll also
+waits for the image's nine SRAM stores, because the SRAM keeps the words of the
+pass before. CHK-KM-MEM adds a control: the KM ROM request count is 0 while the
+KM is held in software reset. The KM release write records CHK-CSR-RESP.
+|===
+// end::sv-uvm-smoke[]
