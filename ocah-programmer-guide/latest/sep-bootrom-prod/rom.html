@@ -3743,11 +3743,90 @@ manifest slot. The first input that settles the question decides it. Outside <co
 <code>PROD_END</code>, secure boot is left off by <code>SBOOT_DIS</code>, by <code>RMA_CHIPLET</code>, or by an open debug
 posture in <code>TEST_DEV</code> / <code>RMA_SiP</code>.</p>
 </div>
-<div id="fig:secure_boot_decision" class="imageblock kroki">
+<div id="fig:secure_boot_decision" class="listingblock kroki-error">
+<div class="title">Secure-boot decision</div>
 <div class="content">
-<img src="_images/secure-boot-decision-c3515eedfa75ee10123b66894072b7ca5fdaf9cd.svg" alt="Secure-boot decision">
+<pre>@startuml
+skinparam ActivityBackgroundColor #f0f8e6
+skinparam ActivityDiamondBackgroundColor #fdf6e3
+skinparam NoteBackgroundColor #fffbe6
+start
+group Once per boot
+  :[S11] read LC_STATE;
+  if (LC_STATE is TEST_DEV, PROD, PROD_END,\nRMA_SiP 0x2..0x3 or RMA_CHIPLET 0x6..0x7 ?) then (no)
+    #ffe0e0:hold SMC in reset
+    ROM_ERR_LIFECYCLE_INVALID;
+    detach
+  else (yes)
+  endif
+  :[S18] read SBOOT_DIS once;
+  if (SBOOT_DIS rsvd[31:1] non-zero ?) then (yes)
+    #ffe0e0:ROM_ERR_SBOOT_DIS_RSVD_SET;
+    detach
+  else (no)
+  endif
+  :latch SBOOT_DIS = disable_secure_boot (bit 0);
+  :[S18] read LOCKS;
+  if (SIP_DIS or SYS_DIS\nread-locked ?) then (yes)
+    :debug locked
+    (value cannot be read: fail closed);
+  else (no)
+    if (CHIPLET_DBG, bit 1, set in\nSIP_DIS or SYS_DIS ?) then (yes)
+      :debug locked;
+    else (no)
+      :debug open;
+    endif
+  endif
+  :latch debug lock;
+end group
+group Each manifest slot
+  if (1. signed secure_boot_control[0]\nsecure_boot_enforced set ?) then (yes)
+    #e6f0f8:secure boot ENFORCED
+    (manifest request outranks
+    every device input, SB-040);
+    detach
+  else (no)
+  endif
+  if (2. latched SBOOT_DIS = 1 ?) then (yes)
+    #ffe0e0:secure boot OFF
+    (chicken bit), SBOOT_OFF at [S24];
+    detach
+  else (no)
+  endif
+  if (3. LC = PROD or PROD_END ?) then (yes)
+    #e6f0f8:secure boot ENFORCED
+    (lifecycle, SB-010);
+    detach
+  else (no: TEST_DEV, RMA_SiP, RMA_CHIPLET)
+  endif
+  if (4. LC = RMA_CHIPLET ?) then (yes)
+    #ffe0e0:secure boot OFF
+    (manifest-optional; debug lock
+    not consulted, SB-025)
+    SBOOT_OFF at [S24];
+    detach
+  else (no: TEST_DEV, RMA_SiP)
+  endif
+  if (5. latched debug lock ?) then (locked)
+    #e6f0f8:secure boot ENFORCED
+    (debug lock, SB-025)
+    SBOOT_DBG_LOCK reported at [S18];
+    detach
+  else (open)
+    #ffe0e0:secure boot OFF
+    (manifest-optional, SB-020)
+    SBOOT_OFF at [S24];
+    note right
+      SB-020's unauthenticated escalation
+      flag would force ENFORCED here.
+      It is not implemented yet
+      (see the gap table).
+    end note
+    detach
+  endif
+end group
+@enduml</pre>
 </div>
-<div class="title">Figure 11. Secure-boot decision</div>
 </div>
 </div>
 <div class="sect2">
@@ -4004,7 +4083,7 @@ shall additionally reject a result bit-identical to the signature it supplied, s
 <div class="content">
 <img src="_images/key-select-revoke-8965f4c05d370d155915ceffae907b652d8cf049.svg" alt="Key authorization, revocation, and verification">
 </div>
-<div class="title">Figure 12. Key authorization, revocation, and verification</div>
+<div class="title">Figure 11. Key authorization, revocation, and verification</div>
 </div>
 <div class="admonitionblock warning">
 <table>
@@ -4160,7 +4239,7 @@ bit — a stray ENABLE on a manifest that never stated a BL2 pair is not a reque
 <div class="content">
 <img src="_images/demotion-flow-db0836f665a2c8d944a06eff9ec6ef4bf87e2167.svg" alt="Demotion decision flow">
 </div>
-<div class="title">Figure 13. Demotion decision flow</div>
+<div class="title">Figure 12. Demotion decision flow</div>
 </div>
 <div class="admonitionblock warning">
 <table>
@@ -4474,7 +4553,7 @@ shall parameterize the KDF rather than hard-code it.</p>
 <div class="content">
 <img src="_images/payload-pipeline-790057e4eeeaeb51f3007e8051ec4c38fb732ce3.svg" alt="Payload verification pipeline">
 </div>
-<div class="title">Figure 14. Payload verification pipeline</div>
+<div class="title">Figure 13. Payload verification pipeline</div>
 </div>
 <div class="paragraph">
 <p>The ROM implements this order through the validation library&#8217;s <code>oca_check_payload_at()</code>,
@@ -4655,7 +4734,7 @@ the slot index.</p>
 <div class="content">
 <img src="_images/measurement-compose-01d5f7d0d83a0f6a28ed009f8c06d03af9ec615c.svg" alt="Measurement enrollment and PCRV hand-over">
 </div>
-<div class="title">Figure 15. Measurement enrollment and PCRV hand-over</div>
+<div class="title">Figure 14. Measurement enrollment and PCRV hand-over</div>
 </div>
 </div>
 </div>
@@ -4869,7 +4948,7 @@ re-entry paths are cold reset and the warm-reset protocol (<a href="#sec:warm_re
 <div class="content">
 <img src="_images/handoff-selfcheck-de4d2a6b31796f8a79150275c6b9c398e192309b.svg" alt="Pre-hand-off self-check and jump">
 </div>
-<div class="title">Figure 16. Pre-hand-off self-check and jump</div>
+<div class="title">Figure 15. Pre-hand-off self-check and jump</div>
 </div>
 <div class="admonitionblock warning">
 <table>
@@ -4959,7 +5038,7 @@ never leave a half-applied device-state change behind.</p>
 <div class="content">
 <img src="_images/retry-backup-sm-9befd28a4abd07cfb90aacc185c9fb5c1ff42e69.svg" alt="Slot retry state machine (`BOOT_MODE_SPI`)">
 </div>
-<div class="title">Figure 17. Slot retry state machine (<code>BOOT_MODE_SPI</code>)</div>
+<div class="title">Figure 16. Slot retry state machine (<code>BOOT_MODE_SPI</code>)</div>
 </div>
 </div>
 <div class="sect2">
