@@ -234,13 +234,14 @@ set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_cloc
 # the functional scenario pins it by case analysis, so the delay applies elsewhere.
 cdc_pinned_port_delay set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports tdr_dbg_ctrl_clock_stop_en_i] -add_delay
 
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {smc_cpu_jtag_TMS_i}] -add_delay
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {smc_cpu_jtag_TDI_i}] -add_delay
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {smc_cpu_jtag_TDO_data_o}] -add_delay
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {smc_cpu_jtag_reset_i}] -add_delay
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {smc_cpu_jtag_mfr_id_i*}] -add_delay
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {smc_cpu_jtag_part_number_i*}] -add_delay
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {smc_cpu_jtag_version_i*}] -add_delay
+# delay set to 45% to create a tight constraint window without making negedge TCK paths impossible
+set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.45]     -clock [get_clock JTAG_TCK] [get_ports {smc_cpu_jtag_TMS_i}] -add_delay
+set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.45]     -clock [get_clock JTAG_TCK] [get_ports {smc_cpu_jtag_TDI_i}] -add_delay
+set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.45]     -clock [get_clock JTAG_TCK] [get_ports {smc_cpu_jtag_TDO_data_o}] -add_delay
+set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.45]     -clock [get_clock JTAG_TCK] [get_ports {smc_cpu_jtag_reset_i}] -add_delay
+set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.45]     -clock [get_clock JTAG_TCK] [get_ports {smc_cpu_jtag_mfr_id_i*}] -add_delay
+set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.45]     -clock [get_clock JTAG_TCK] [get_ports {smc_cpu_jtag_part_number_i*}] -add_delay
+set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.45]     -clock [get_clock JTAG_TCK] [get_ports {smc_cpu_jtag_version_i*}] -add_delay
 
 cdc_pinned_port_delay set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {jtag_reset_ctrl_i.val*}] -add_delay
 cdc_pinned_port_delay set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {jtag_reset_ctrl_i.ovrd*}] -add_delay
