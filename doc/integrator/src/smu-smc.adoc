@@ -654,8 +654,9 @@ sources for debug data collection.
 How `rst_telemetry_ni` and the ATB source resets are generated is up to the adopter.
 Whatever the mechanism, `rst_telemetry_ni` must not assert unless
 `rst_primary_smc_clk_no` is also asserted, and the ATB sources must be held in reset
-whenever `rst_primary_smc_clk_no` is asserted. One way to meet these is to derive both
-resets from `rst_primary_smc_clk_no`.
+whenever `rst_primary_smc_clk_no` is asserted. If the ATB sources are reset by
+`rst_telemetry_ni`, it must therefore assert whenever `rst_primary_smc_clk_no` asserts
+and never on its own; deriving it from `rst_primary_smc_clk_no` meets this.
 
 At the SMC boundary, `ext_debug_bus_i` is 512 bits wide; the SMU concatenates
 the adopter-visible 128-bit input with the SEP's internal 384-bit bus before
