@@ -44,8 +44,8 @@ tracker
 
 `cov/sv/` carries ten cover-property modules, 109 points in all; the counts
 are the `OCAH_FCOV_COVER` invocations in each file. `tb/tb_wrapper_top.sv`
-instantiates all ten, and 100 points enter the database on its single
-target, `compile_smu_chiplet`, which has SEP present: five points sit behind
+instantiates all ten, and 101 points enter the database on its single
+target, `compile_smu_chiplet`, which has SEP present: four points sit behind
 `SMU_FCOV_PHASE2`, which no configuration defines, and the four inside
 `g_nosep` generate blocks exist only on a SEP=0 elaboration, which this
 package does not build (`hw/sys/smu/dv/docs/SMU_FCOV.adoc`).

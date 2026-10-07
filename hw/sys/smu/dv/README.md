@@ -48,8 +48,9 @@ and the DTP, and the entropy stack. `docs/SMU_VPLAN.adoc` cards every leaf.
 outbound boundary); product pins driven by the sequences; SMC ROM and SEP
 ITCM/DTCM images loaded at time zero; eFuse shadow preload images from
 `assets/`. Verdicts are `SmuScoreboard` compares, or -- for the firmware
-leaves -- the firmware's own terminal loop, observed by the bench. The one
-signal the bench forces (`+esrc_noise_force`, the ESRC raw-noise lanes) and
+leaves -- the firmware's own terminal loop, observed by the bench. The two
+nodes the bench forces (`+esrc_noise_force`, the ESRC raw-noise lanes;
+`+lc_sigint_inject`, the LC_STATE pair the SEP exports) and
 the other stand-ins on a proof path are declared, each with the claim it
 accepts and its scope, in the *Bench stand-ins and exceptions* section of
 `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`, which also states where

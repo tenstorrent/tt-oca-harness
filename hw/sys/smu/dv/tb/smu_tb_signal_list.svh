@@ -67,6 +67,8 @@
 // fabric JTAG2AXI bridge, read by its spec name rather than by bit position.
 `SMU_TB_OUT(logic, lcc_dbg_disable_smc_jtag2axi_o)
 `SMU_TB_OUT(logic [7:0], smc_lc_state_in_o)  // as SMC receives it
+// LC_STATE pair fault inject; inert unless +lc_sigint_inject is present.
+`SMU_TB_IN(logic, lc_sigint_inject_i)
 // DTP JTAG2AXI traffic into the SMC. dbg_disable.smc_jtag2axi stops the
 // bridge from launching a transaction at all (jtag2axi.sv: the update is
 // gated by `!security_disable_i`), so counting AW/AR here is how a test

@@ -461,7 +461,7 @@ A stand-in is anything that answers in place of the mechanism a claim is
 about: a testbench force, a simulation-only path selected by a plusarg, a
 configuration waiver, a loopback where a chain would be, a compiled-in
 substitute for a product cell, or a model inside the product composition.
-Nine sit on proof paths of enrolled SMU tests. Each has one entry of three
+Ten sit on proof paths of enrolled SMU tests. Each has one entry of three
 fields, filled from the tree: the claim that is accepted with the stand-in in
 place, why the real path cannot be used, and the exact scope. Who approved an
 entry, against which revision, and when it is next reviewed are recorded in
@@ -480,7 +480,8 @@ run.
 |===
 |Stand-in |Where it is |Tests on its scope
 |`+esrc_noise_force` |`tb/tb_wrapper_top.sv` (the `force` block in the SEP observation section), driver `cocotb_wrapper/seq_lib/esrc_noise.py` |`smu_sep_entropy_test`, `smu_sep_modules_test`, `smu_sep_aes_test`
-|`+skip_fuse_sense` with the shadow preload |per-test `args` of 105 of the 121 `testlists/all.toml` entries; live only under the `SIMULATION` define |every `--dut smu` leaf except the sixteen that sense: the five boot-stall leaves, `smu_sep_lcc_flow_test`, the three `sep_rtl_fuse_sense` leaves (`smu_sep_fuse_sense_done_test`, `smu_smc_fuse_sense_sequence_test`, `smu_smc_efuse_shadow_sense_reset_test`), and the seven composition leaves that carry no `+skip_fuse_sense` (`smu_boundary_port_composition_test`, `smu_clock_domain_composition_test`, `smu_composition_parameter_test`, `smu_reset_release_sync_test`, `smu_sram_auto_init_done_test`, `smu_xbar_connectivity_matrix_test`, `smu_xtrig_mode_composition_test`); load-bearing for the reset, boot-gate and OTP leaves named below
+|`+lc_sigint_inject` LC_STATE pair fault inject |`tb/tb_wrapper_top.sv` (the "LC_STATE pair fault inject" block), driven by `lc_sigint_inject_i` from `cocotb_wrapper/seq_lib/smu_lc_sigint_fail_closed_seq.py` |`smu_lc_sigint_fail_closed_test`
+|`+skip_fuse_sense` with the shadow preload |per-test `args` of 106 of the 122 `testlists/all.toml` entries; live only under the `SIMULATION` define |every `--dut smu` leaf except the sixteen that sense: the five boot-stall leaves, `smu_sep_lcc_flow_test`, the three `sep_rtl_fuse_sense` leaves (`smu_sep_fuse_sense_done_test`, `smu_smc_fuse_sense_sequence_test`, `smu_smc_efuse_shadow_sense_reset_test`), and the seven composition leaves that carry no `+skip_fuse_sense` (`smu_boundary_port_composition_test`, `smu_clock_domain_composition_test`, `smu_composition_parameter_test`, `smu_reset_release_sync_test`, `smu_sram_auto_init_done_test`, `smu_xbar_connectivity_matrix_test`, `smu_xtrig_mode_composition_test`); load-bearing for the reset, boot-gate and OTP leaves named below
 |`abr_reg.sv` external-ack waiver |`smu_sim_cfg.toml` `[pass_fail] extra_ignore_patterns` |every `--dut smu` leaf
 |SEP assertion-ignore patterns |`smu_sim_cfg.toml` `[pass_fail] extra_ignore_patterns`, the seven entries under `u_dut.u_smu.gen_sep.u_sep`, five of them paired with an `extra_hard_fail_patterns` guard that fails the run on a firing of the same hierarchy outside the window the class fires in |every `--dut smu` leaf on a four-state simulator
 |`+define+ASSERTS_OFF` / `COMMON_CELLS_ASSERTS_OFF` |every Verilator target of `smu_sim_cfg.toml` and `hw/common/dv/configs/profiles/native.toml` |every leaf on Verilator
@@ -495,7 +496,7 @@ run.
 
 Each row names one command and the string it prints when the entry above is
 still true of the tree in front of you. None of them needs a stored run: the
-first seven are static reads of the tree, and the last two pair a static read
+first eight are static reads of the tree, and the last two pair a static read
 with a line any run of the named group prints. A row that prints nothing is an entry that has gone
 stale, and the entry -- not the run -- is what needs the edit.
 
@@ -507,9 +508,13 @@ stale, and the entry -- not the run -- is what needs the edit.
 |`grep -c '\"+esrc_noise_force\",' hw/sys/smu/dv/testlists/all.toml`
 |`3` -- the three entries the *Scope* field names, and no fourth.
 
+|`+lc_sigint_inject` LC_STATE pair fault inject
+|`grep -c '\"+lc_sigint_inject\",' hw/sys/smu/dv/testlists/all.toml` and `grep -n 'force u_dut\|release u_dut' hw/sys/smu/dv/tb/tb_wrapper_top.sv`
+|`1`, the one entry the *Scope* field names; and three lines: the ESRC `force` macro, and the `force` and `release` of `u_dut.u_smu.sep_lc_state`.
+
 |`+skip_fuse_sense` with the shadow preload
 |`grep -c '\"+skip_fuse_sense\",' hw/sys/smu/dv/testlists/all.toml`, `grep -c '^\[\[tests\]\]' hw/sys/smu/dv/testlists/all.toml` and `grep -c '\"+skip_fuse_sense\"' hw/sys/smu/dv/smu_sim_cfg.toml`
-|`105` and `121`, leaving the sixteen the *Scope* field names; `0`, no run mode passes the plusarg (the file names it only in comments).
+|`106` and `122`, leaving the sixteen the *Scope* field names; `0`, no run mode passes the plusarg (the file names it only in comments).
 
 |`abr_reg.sv` external-ack waiver
 |`grep -n 'abr_reg' hw/sys/smu/dv/smu_sim_cfg.toml`
@@ -537,7 +542,7 @@ stale, and the entry -- not the run -- is what needs the edit.
 
 |eFuse models in the product composition
 |`grep -n 'u_efuse_bank_model' hw/top/smc_ip_integration.sv hw/top/sep_ip_integration.sv`, `grep -c 'Real fuse sense (no +skip_fuse_sense)' hw/sys/smu/dv/testlists/all.toml` and `grep -c 'run_modes = \[\"sep_rtl_fuse_sense\"\]' hw/sys/smu/dv/testlists/all.toml`, then `grep -n 'fuse sense'` in any leaf's test log
-|One instantiation in each file; `6` and `3`, the nine sensing leaves the *Scope* field names; `Not skipping fuse sense` at time zero on every leaf that carries no `+skip_fuse_sense` -- those nine and the seven composition leaves -- and `Skipping fuse sense` on the other 105, which says which path the run took.
+|One instantiation in each file; `6` and `3`, the nine sensing leaves the *Scope* field names; `Not skipping fuse sense` at time zero on every leaf that carries no `+skip_fuse_sense` -- those nine and the seven composition leaves -- and `Skipping fuse sense` on the other 106, which says which path the run took.
 |===
 
 === `+esrc_noise_force`
@@ -552,6 +557,18 @@ stale, and the entry -- not the run -- is what needs the edit.
 |Only under `+esrc_noise_force`; only the twelve `dcor.noise_i` lanes (`gen_ecmplx[0..11].u_generator.u_decorrelator.noise_i`), re-forced every `clk_smu_i` edge from `esrc_noise_ext_i`, which `SmuEsrcNoiseDriver` drives with twelve 16-bit LFSRs from the fixed seed `0xACE1`; every downstream tap is observe-only. The plusarg is carried by three `testlists/all.toml` entries: `smu_sep_entropy_test` (its verdict requires `esrc_noise_took_o`), `smu_sep_modules_test` (its `entropy` stage), and `smu_sep_aes_test` (a prerequisite outside its AES-128 known-answer claim). Neither the SEP nor SMU bench forces downstream EDN responses.
 |===
 
+=== `+lc_sigint_inject` LC_STATE pair fault inject
+
+[cols="1,4"]
+|===
+|Claim accepted
+|When the LC_STATE pair the SEP exports is broken in flight, the SMU raises `lc_sigint_err_o`, and the SMC eFuse wrapper's OTP JTAG2AXIL policy refuses every access until the pair is legal again, while the SEP OTP path keeps answering. The decoders, the OR onto `lc_sigint_err_o` and the SMC access policy are DUT logic and are proven. What corrupts the pair is not: the bench supplies the fault, so nothing here shows which physical fault produces it or that the SEP's own decoder raises its half of `lc_sigint_err_o`; the SEP bench grades that half.
+|Why the real path cannot be used
+|The SEP eFuse shadow regenerates the pair `{~raw, raw}` from the raw state, so no eFuse image and no frontdoor access presents a broken pair to the SMC, and `lc_sigint_err_o` has no other stimulus on this bench. The SEP DV bench takes the same kind of exception at the SEP lifecycle controller's decoder input.
+|Scope
+|Only under `+lc_sigint_inject` and only while `lc_sigint_inject_i` is high: `u_dut.u_smu.sep_lc_state`, the net between the SEP's `lc_state_o` and its two consumers (the SMC eFuse wrapper's `lc_state_i` and the `lc_state_o` port), is forced every `clk_smu_i` edge to the value it held the edge before the input rose with bit 4, the n rail of LC_STATE bit 0, inverted, and released on the first edge the input is low. The p rails, and so the decoded state, do not change. `smu_base_test` drives the input to 0 with the other idle inputs, and the SV-UVM shape ties it to 0. The plusarg is carried by one `testlists/all.toml` entry, `smu_lc_sigint_fail_closed_test`, whose verdict requires `lc_state_o` and `smc_lc_state_in_o` to show the broken pair before it grades the refusal.
+|===
+
 === `+skip_fuse_sense` with the shadow preload
 
 [cols="1,4"]
@@ -561,7 +578,7 @@ stale, and the entry -- not the run -- is what needs the edit.
 |Why the real path cannot be used
 |The real path is available -- `hw/top/smc_ip_integration.sv` instantiates `efuse_interface_shim` and `efuse_bank_model`, and the boot-stall leaves use it -- so for the remaining leaves the skip is a run-time and stimulus convenience: the SMC sense of the 768-word image takes 2280-2330 `clk_smu` after primary reset release on Verilator, and the preloaded shadow image, not a sensed one, is the value the OTP and lifecycle leaves declare as their input.
 |Scope
-|`testlists/all.toml`: 105 of 121 entries carry `+skip_fuse_sense` and `+smc_shadow_reg_preload=\{repo_root\}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload` in their own `args`, each above a one-line reason; the `sep_rtl` entries that carry the skip, other than `smu_sep_lcc_flow_test`, add `+sep_shadow_reg_preload=\{repo_root\}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload`, and the lifecycle leaves name their own image. The `[run_modes.*]` tables of `smu_sim_cfg.toml` carry no eFuse plusarg. The SMC shadow registers read the preload plusarg only under the skip and print `Loading SMC shadow reg preload data from` the image path at time zero; a log that prints `was NOT found` instead ran with the all-zero default array and is outside this scope. The plusarg is live only when the `SIMULATION` define is set (`hw/common/dv/configs/profiles/native.toml` sets it on every target); a build without it senses. `tb/tb_wrapper_top.sv` exports the SEP shadow registers' `sim_skip_fuse_sense` flag as `sep_fuse_sense_skipped_o`, and the SMC shadow registers print `Skipping fuse sense` or `Not skipping fuse sense` at time zero, so a log tells which path ran.
+|`testlists/all.toml`: 106 of 122 entries carry `+skip_fuse_sense` and `+smc_shadow_reg_preload=\{repo_root\}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload` in their own `args`, each above a one-line reason; the `sep_rtl` entries that carry the skip, other than `smu_sep_lcc_flow_test`, add `+sep_shadow_reg_preload=\{repo_root\}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload`, and the lifecycle leaves name their own image. The `[run_modes.*]` tables of `smu_sim_cfg.toml` carry no eFuse plusarg. The SMC shadow registers read the preload plusarg only under the skip and print `Loading SMC shadow reg preload data from` the image path at time zero; a log that prints `was NOT found` instead ran with the all-zero default array and is outside this scope. The plusarg is live only when the `SIMULATION` define is set (`hw/common/dv/configs/profiles/native.toml` sets it on every target); a build without it senses. `tb/tb_wrapper_top.sv` exports the SEP shadow registers' `sim_skip_fuse_sense` flag as `sep_fuse_sense_skipped_o`, and the SMC shadow registers print `Skipping fuse sense` or `Not skipping fuse sense` at time zero, so a log tells which path ran.
 |===
 
 === `abr_reg.sv` external-ack waiver

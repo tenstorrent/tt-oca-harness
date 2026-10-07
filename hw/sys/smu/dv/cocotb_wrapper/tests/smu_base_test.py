@@ -289,6 +289,7 @@ class smu_base_test(uvm_test):
         "tb_ss_reset_incomplete",
         "tb_chiplet_secondary",
         "tb_cool_reset_pin",
+        "lc_sigint_inject_i",
         "tb_secure_tm_req",
         "tb_smc_sram_auto_init_restore",
         "tb_gpio0_drive_en",
