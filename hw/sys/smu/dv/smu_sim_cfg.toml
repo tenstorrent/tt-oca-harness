@@ -244,8 +244,8 @@ policy_file = "hw/sys/smu/dv/cov/config/verilator/smu_wrapper_coverage_policy.to
 # directory this DUT never compiles into, so design_db names the database the
 # profile writes. cov/config/vcs/README.md explains the scope file and how a
 # finished run is read.
-# `smu_wrapper_cov_scope.hier` is written by the companion's gen_smu_cov_scope.py;
-# regenerate it after a build, then `--rebuild`.
+# `smu_wrapper_cov_scope.hier` is the compile-time instrumentation scope; a
+# change to it needs `--rebuild`.
 # Two DUTs share this dv tree, so the policy is named per DUT rather than
 # discovered at cov/config/vcs/coverage_policy.toml.
 policy_file = "hw/sys/smu/dv/cov/config/vcs/smu_wrapper_coverage_policy.toml"

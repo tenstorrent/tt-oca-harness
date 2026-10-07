@@ -2,9 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SMU boot and reset-sequencing functional coverage: the `smc_boot_cg`
-// bringup intent of smu_fcov.py as native cover-property points, so the
-// public flow records them in the `user` metric family instead of a static
-// test-name-to-bin table.
+// bringup intent of smu_fcov.py as cover-property points in the `user`
+// metric family.
 //
 // One passive, signal-driven module. Every port is a signal of the bench
 // top, so the module needs no hierarchical reference and no public-scope
