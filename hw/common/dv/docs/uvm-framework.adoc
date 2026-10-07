@@ -196,7 +196,10 @@ module — clock generation, test inclusion, `uvm_config_db` publication, and
 `ifdef UVM
     import uvm_pkg::*;
 
-    always #(u_tb_if.clk_period_ns * 0.5ns) u_tb_if.clk = ~u_tb_if.clk;  // period from the env cfg
+    initial begin
+        wait (u_tb_if.clk_period_ns != 0);  // period from the env cfg
+        forever #(u_tb_if.clk_period_ns * 0.5ns) u_tb_if.clk = ~u_tb_if.clk;
+    end
 
     `include "<dut>_tests.sv"
 
@@ -218,13 +221,17 @@ lockstep is the failure mode both patterns exist to remove.
 ==== Step 3: Carry DUT-local controls in a TB interface
 
 `<dut>_tb_if` owns what the harness and sequences exchange outside the
-protocol VIPs: the harness clock period the env publishes from the seeded
-test cfg, test-sequenced resets, DUT observables and reset counters, checker
-enables, and typed struct stimulus (a typed struct member beats re-flattened
-per-field scalars in the UVM shape). A bench may split the DUT-local signals
-across several TB interfaces by domain, as DTP does with `dtp_tb_if`,
-`dtp_scan_if`, and `dtp_xtrig_if`. Sequences, checkers, and the scoreboard
-reach DUT-local signals only through those interfaces. Reference:
+protocol VIPs: the system clock and the harness clock period the env
+publishes from the seeded test cfg, test-sequenced resets, DUT observables
+and reset counters, checker enables, and typed struct stimulus (a typed
+struct member beats re-flattened per-field scalars in the UVM shape). The
+harness block only inverts the clock, so declare it with its initial level
+(`logic clk = 1'b0;`). The toggle starts once the period is nonzero, so a
+period that defaults to 0 holds the clock until the env publishes the
+seeded one. A bench may split the DUT-local signals across several TB
+interfaces by domain, as DTP does with `dtp_tb_if`, `dtp_scan_if`, and
+`dtp_xtrig_if`. Sequences, checkers, and the scoreboard reach DUT-local
+signals only through those interfaces. Reference:
 `hw/sys/dtp/dv/tb/dtp_tb_if.sv`.
 
 ==== Step 4: Build the environment package
