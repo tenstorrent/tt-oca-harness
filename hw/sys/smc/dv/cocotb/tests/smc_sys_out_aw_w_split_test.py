@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Discriminate the Xcelium SYS_OUT write hang: AW vs W at both ends.
+"""Discriminate a SYS_OUT write hang: AW vs W at both ends.
 
 After the outbound filter is programmed pass-all, one JTAG AXI write is issued
 at the SYS_OUT responder window (0x0200_0000). A clocked sticky observer records

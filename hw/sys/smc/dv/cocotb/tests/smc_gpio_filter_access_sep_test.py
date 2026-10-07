@@ -35,17 +35,10 @@ class smc_gpio_filter_access_sep_test(smc_base_test):
         seq = smc_gpio_filter_access_sep_test_seq("gpio_filter_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
 
-        # The allow/deny proof is in the sequence: each denied access is compared
-        # against the AXI DECERR encoding and the error-slave data signature, and
-        # each allowed access carries an `expected=` the scoreboard enforces.
-        # None of that is restated here.
-        #
-        # This gate carries a quantity the sequence does not produce -- the
-        # number of exact rdata compares the SCOREBOARD booked on its own
-        # analysis path, incremented only after `got == exp` passed. A leg that
+        # The number of exact rdata compares the scoreboard booked on its own
+        # analysis path, incremented only after `got == exp` passed: a leg that
         # lost its `expected=`, or an analysis port that came unbound, drops the
-        # delta below the floor and fails here while every sequence-side assert
-        # still passes.
+        # delta below the floor.
         # GPIO0 pre / priv / priv-write readback, GPIO1 priv, and per requirement
         # value of the sweep one admitted read and one readback, plus the relock.
         _EXPECTED_VALUE_CHECKS = 4 + 8 * 2 + 1

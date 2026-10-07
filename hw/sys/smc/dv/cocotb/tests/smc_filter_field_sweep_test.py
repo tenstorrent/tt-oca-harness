@@ -26,8 +26,8 @@ class smc_filter_field_sweep_test(smc_base_test):
             SmcProtocolVipKind.OUTPUT_FABRIC,
             type(self).__name__,
             # Directed stimulus floor: 3 fields x 4 entries x 2 directions = 24
-            # SEP_IN AXI filter CSR accesses. Literal here, not read from
-            # `seq.accesses`.
+            # SEP_IN AXI filter CSR accesses; a floor taken from `seq.accesses`
+            # would shrink with a sequence that stopped issuing them.
             min_csr_accesses=24,
             csr_accesses=seq.accesses,
             proxy=False,

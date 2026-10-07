@@ -30,8 +30,9 @@ class smc_i2c2_controller_rdwr_test(smc_base_test):
             type(self).__name__,
             # Directed stimulus floor: the LSIO arming for three instances, the
             # target and controller bring-up writes, and the format-FIFO and
-            # readback accesses of both legs. Literal here, not read from
-            # `seq.accesses`.
+            # readback accesses of both legs; the floor is independent of
+            # `seq.accesses`, so a sequence that stops issuing accesses cannot
+            # lower it.
             min_csr_accesses=60,
             csr_accesses=seq.accesses,
             proxy=False,

@@ -28,13 +28,11 @@ class smc_gpio_p0_mux_test(smc_base_test):
         seq = smc_gpio_p0_mux_test_seq("gpio_p0_mux_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
 
-        # Three-way relation over the MEASURED `core2pad_en_o` samples the
-        # sequence retained, checked here as one statement rather than three
-        # booleans: the wrap-0 enable must be off at entry, on under the register
-        # path, still on when lsio_select competes with it, and on again under
-        # lsio_select alone -- the last being the leg a select bit tied to 0
-        # would fail. The individual samples are asserted in the sequence; what
-        # this adds is that all four came from the same run and hold together.
+        # The wrap-0 enable over the four measured `core2pad_en_o` samples: off at
+        # entry, on under the register path, still on when lsio_select competes
+        # with it, and on under lsio_select alone -- the leg a select bit tied to
+        # 0 fails. The sequence asserts each sample; this asserts that all four
+        # come from one run and hold together.
         bit = 1 << 0
         pattern = tuple((v & bit) != 0 for v in (seq.en_base, seq.en_reg, seq.en_both, seq.en_lsio))
         assert pattern == (False, True, True, True), (
