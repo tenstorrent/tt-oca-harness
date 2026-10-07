@@ -96,6 +96,7 @@ class dtp_jtag_tlr_reset_test_seq(dtp_debug_tdr_base_test_seq):
         negative: bool,
     ) -> tuple[int, bool]:
         """From ``state`` with BYPASS loaded, walk TMS high into TLR and judge the reset."""
+        self.log_step(1, "Program the debug TDRs, load BYPASS, park in %s", state.name)
         await self.reset_to_tlr()
         await self.program_debug_tdrs()
         await self.load_ir(DtpJtagInstr.BYPASS_3F)
@@ -114,12 +115,14 @@ class dtp_jtag_tlr_reset_test_seq(dtp_debug_tdr_base_test_seq):
             checker.sync_state(OcahJtagState.TEST_LOGIC_RESET)
 
         ones = rng.randint(5, 8)
+        self.log_step(2, "Walk %d TMS-high cycles into Test-Logic-Reset", ones)
         for _ in range(ones):
             await self.tms_expect(1)
         item = await self.sample_observables()
         checker.check_tms_ones_to_tlr(ones, item.result, context=f"from={state.name}")
 
         context = f"from={state.name} tms_ones={ones}"
+        self.log_step(3, "A DR scan with no IR load reads IDCODE")
         idcode = await self.shift_dr(0, 32)
         self.family_check(
             "CHK-TAP-TLR-IDCODE",
@@ -128,7 +131,9 @@ class dtp_jtag_tlr_reset_test_seq(dtp_debug_tdr_base_test_seq):
             DTP_DEFAULT_IDCODE,
             context=context,
         )
+        self.log_step(4, "Debug-TDR pin outputs and readbacks are back at their defaults")
         await self.check_tdr_defaults(context=f"after TLR {context}")
+        self.log_step(5, "IDCODE loaded by an IR scan reads back")
         await self.load_ir(DtpJtagInstr.IDCODE)
         resumed = await self.shift_dr(0, 32)
         self.family_check(

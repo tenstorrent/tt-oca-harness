@@ -41,8 +41,10 @@ class dtp_jtag_bypass_test_seq(dtp_jtag_base_test_seq):
             len(suite.cases),
             sorted({f"0x{case.instruction:02x}" for case in suite.cases}),
         )
+        self.log_step(1, "Reset TAP")
         await self.reset_to_tlr()
 
+        self.log_step(2, "Both BYPASS encodings: TDO is TDI one TCK late for every pattern")
         delayed_observations = 0
         observed_opcodes: set[int] = set()
         observed_patterns: set[int] = set()

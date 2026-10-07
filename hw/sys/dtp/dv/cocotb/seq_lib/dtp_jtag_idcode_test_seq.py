@@ -182,6 +182,7 @@ class dtp_jtag_idcode_test_seq(dtp_jtag_base_test_seq):
         # Test-Logic-Reset loads IDCODE into the instruction register, so a DR
         # scan with no IR load reads the device identification through the
         # reset-selected path.
+        self.log_step(1, "Reset TAP, then IDCODE with no IR load")
         await self.reset_to_tlr()
         item = await self.shift_dr(0, 32)
         observed_values.append(item.result & IDCODE_MASK)
@@ -192,7 +193,9 @@ class dtp_jtag_idcode_test_seq(dtp_jtag_base_test_seq):
             DTP_DEFAULT_IDCODE,
             context="precondition=tap_reset no_ir_load",
         )
+        self.log_step(2, "Power-on reset over a non-IDCODE instruction; IDCODE with no IR load")
         observed_values.append(await self.read_after_power_on_reset(self.rng("idcode_por")))
+        self.log_step(3, "%d IDCODE reads under seeded TAP preconditions", self.read_loops)
         for loop_idx in range(self.read_loops):
             await self.random_precondition(rng, loop_idx)
             item = await self.read_idcode()
@@ -206,6 +209,7 @@ class dtp_jtag_idcode_test_seq(dtp_jtag_base_test_seq):
                 context=f"loop={loop_idx} precondition=randomized",
             )
 
+        self.log_step(4, "Every read is identical and the first decodes to the IEEE 1149.1 fields")
         self.idcode = observed_values[0]
         self.second_idcode = observed_values[-1]
 

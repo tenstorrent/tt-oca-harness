@@ -102,6 +102,7 @@ class dtp_jtag_idcode_test_seq extends dtp_jtag_base_test_seq;
     // Test-Logic-Reset loads IDCODE into the instruction register, so a DR
     // scan with no IR load reads the device identification through the
     // reset-selected path.
+    log_step("1", "Reset TAP, then IDCODE with no IR load");
     reset_to_tlr();
     shift_dr(64'h0, 32, observed);
     reads.push_back(observed[31:0]);
@@ -112,6 +113,7 @@ class dtp_jtag_idcode_test_seq extends dtp_jtag_base_test_seq;
 
     // Power-on reset alone reloads IDCODE over the instruction loaded
     // before it: TRST_N stays high and TCK idles across the pulse.
+    log_step("2", "Power-on reset over a non-IDCODE instruction; IDCODE with no IR load");
     por_preload = random_non_idcode_preload();
     por_cycles  = $urandom_range(8, 2);
     por_ctx     = $sformatf("preload=0x%02h por_cycles=%0d", por_preload, por_cycles);
@@ -128,6 +130,7 @@ class dtp_jtag_idcode_test_seq extends dtp_jtag_base_test_seq;
     family_check("CHK-IDCODE-RECOVERY", "IDCODE DR scan after POR, no IR load, TRST high",
                  observed[31:0], ExpectedIdcode, por_ctx);
 
+    log_step("3", $sformatf("%0d IDCODE reads under seeded TAP preconditions", read_loops));
     for (int unsigned loop_idx = 0; loop_idx < read_loops; loop_idx++) begin
       random_precondition(loop_idx);
       read_idcode(observed);
@@ -138,6 +141,7 @@ class dtp_jtag_idcode_test_seq extends dtp_jtag_base_test_seq;
                    "loop=%0d precondition=randomized", loop_idx));
     end
 
+    log_step("4", "Every read is identical and the first decodes to the IEEE 1149.1 fields");
     family_check("CHK-IDCODE-STABLE", "distinct IDCODE reads", 64'(seen_values.num()), 64'h1,
                  $sformatf("reads=%0d values=%s", reads.size(), values_s));
 
