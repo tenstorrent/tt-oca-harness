@@ -692,11 +692,13 @@ locked_field_access_interrupt</code>, sourced from the eFuse controller path.</p
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>286</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AXI hang detector OR</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OR of the three AXI hang detectors (sys_axi, sep_axi, data_accel). Asserts
-while any detector&#8217;s <code>irq_o</code> is high, so software must read
-<code>SMC_BASE_CONFIG.HANG_DET_{SYS_AXI,SEP_AXI,DATA_ACCEL}_CTRL</code> to identify the
-stalled master. There is no status latch to clear: the level drops when that
-master&#8217;s bus makes progress, or when the detector&#8217;s <code>enable</code> or <code>irq_en</code> is
-cleared. The CPU AXI master is not covered here; it is covered by the watchdog.</p></td>
+while any detector&#8217;s <code>irq_o</code> is high, either from a timeout or from its
+<code>irq_test</code> bit, so software must read
+<code>SMC_BASE_CONFIG.HANG_DET_{SYS_AXI,SEP_AXI,DATA_ACCEL}_CTRL.irq</code> to identify the
+stalled master. There is no status latch to clear: a timeout drops when that
+master&#8217;s bus makes progress, a test assertion drops when <code>irq_test</code> is cleared,
+and either drops when the detector&#8217;s <code>enable</code> or <code>irq_en</code> is cleared. The CPU
+AXI master is not covered here; it is covered by the watchdog.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_base.sv</code> OR-reduces <code>hang_irq_sys_axi | hang_irq_sep_axi |
 hang_irq_data_accel</code> onto <code>axi_hang_irq_o</code>; <code>smc.sv</code> routes that back into
 <code>u_smc_peripherals</code>, and <code>smc_peripherals.sv</code> drives

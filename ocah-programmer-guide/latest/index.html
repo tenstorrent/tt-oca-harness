@@ -2757,9 +2757,11 @@ during bring-up.</p>
 </div>
 <div class="paragraph">
 <p>On the combined interrupt, read the three <code>HANG_DET_*_CTRL</code> registers to
-identify the stalled master. There is no status to clear: the interrupt drops
-when that master&#8217;s bus makes progress, or when its <code>enable</code> or <code>irq_en</code> is
-cleared. The CPU AXI master is covered by the watchdog instead.</p>
+identify the stalled master: <code>irq</code> reads 1 for each detector whose interrupt is
+asserted, from a timeout or from <code>irq_test</code>. <code>irq</code> is a live level, so there is
+nothing to clear: a timeout drops when that master&#8217;s bus makes progress, a test
+assertion drops when <code>irq_test</code> is cleared, and either drops when its <code>enable</code>
+or <code>irq_en</code> is cleared. The CPU AXI master is covered by the watchdog instead.</p>
 </div>
 </div>
 <div class="sect3">

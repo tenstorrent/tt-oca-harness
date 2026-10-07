@@ -1308,11 +1308,11 @@ reset control.</p>
 <tr><td>0x8</td><td><a href="#smc_base_config-LOCAL_BASE">LOCAL_BASE</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x10</td><td><a href="#smc_base_config-REGION_SIZE">REGION_SIZE</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x18</td><td><a href="#smc_base_config-CLOCK_GATE_CONTROL">CLOCK_GATE_CONTROL</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x20</td><td><a href="#smc_base_config-HANG_DET_SYS_AXI_CTRL">HANG_DET_SYS_AXI_CTRL</a></td><td>RW</td><td>AXI hang detector control.</td></tr>
+<tr><td>0x20</td><td><a href="#smc_base_config-HANG_DET_SYS_AXI_CTRL">HANG_DET_SYS_AXI_CTRL</a></td><td>RW</td><td>AXI hang detector control and interrupt status.</td></tr>
 <tr><td>0x28</td><td><a href="#smc_base_config-HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD">HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD</a></td><td>RW</td><td>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.</td></tr>
-<tr><td>0x30</td><td><a href="#smc_base_config-HANG_DET_SEP_AXI_CTRL">HANG_DET_SEP_AXI_CTRL</a></td><td>RW</td><td>AXI hang detector control.</td></tr>
+<tr><td>0x30</td><td><a href="#smc_base_config-HANG_DET_SEP_AXI_CTRL">HANG_DET_SEP_AXI_CTRL</a></td><td>RW</td><td>AXI hang detector control and interrupt status.</td></tr>
 <tr><td>0x38</td><td><a href="#smc_base_config-HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD">HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD</a></td><td>RW</td><td>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.</td></tr>
-<tr><td>0x40</td><td><a href="#smc_base_config-HANG_DET_DATA_ACCEL_CTRL">HANG_DET_DATA_ACCEL_CTRL</a></td><td>RW</td><td>AXI hang detector control.</td></tr>
+<tr><td>0x40</td><td><a href="#smc_base_config-HANG_DET_DATA_ACCEL_CTRL">HANG_DET_DATA_ACCEL_CTRL</a></td><td>RW</td><td>AXI hang detector control and interrupt status.</td></tr>
 <tr><td>0x48</td><td><a href="#smc_base_config-HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD">HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD</a></td><td>RW</td><td>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
@@ -1358,12 +1358,14 @@ reset control.</p>
 <span id="HANG_DET_SYS_AXI_CTRL"></span><h3 id="smc_base_config-HANG_DET_SYS_AXI_CTRL" data-register-alias="HANG_DET_SYS_AXI_CTRL">HANG_DET_SYS_AXI_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>31:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12</td><td>irq</td><td>R</td><td>0x0</td><td>Reads 1 while this detector&#x27;s interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops. Writes are ignored.</td></tr>
+<tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>8</td><td>irq_test</td><td>RW</td><td>0x0</td><td>Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.</td></tr>
 <tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>irq_en</td><td>RW</td><td>0x0</td><td>Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.</td></tr>
+<tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When 1, the timeout counter runs. When 0, the counter reloads from the threshold and irq_o is forced low.</td></tr>
 </table>
 <span id="HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD"></span><h3 id="smc_base_config-HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD" data-register-alias="HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD">HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD</h3>
 <table>
@@ -1374,12 +1376,14 @@ reset control.</p>
 <span id="HANG_DET_SEP_AXI_CTRL"></span><h3 id="smc_base_config-HANG_DET_SEP_AXI_CTRL" data-register-alias="HANG_DET_SEP_AXI_CTRL">HANG_DET_SEP_AXI_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>31:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12</td><td>irq</td><td>R</td><td>0x0</td><td>Reads 1 while this detector&#x27;s interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops. Writes are ignored.</td></tr>
+<tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>8</td><td>irq_test</td><td>RW</td><td>0x0</td><td>Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.</td></tr>
 <tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>irq_en</td><td>RW</td><td>0x0</td><td>Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.</td></tr>
+<tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When 1, the timeout counter runs. When 0, the counter reloads from the threshold and irq_o is forced low.</td></tr>
 </table>
 <span id="HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD"></span><h3 id="smc_base_config-HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD" data-register-alias="HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD">HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD</h3>
 <table>
@@ -1390,12 +1394,14 @@ reset control.</p>
 <span id="HANG_DET_DATA_ACCEL_CTRL"></span><h3 id="smc_base_config-HANG_DET_DATA_ACCEL_CTRL" data-register-alias="HANG_DET_DATA_ACCEL_CTRL">HANG_DET_DATA_ACCEL_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>31:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12</td><td>irq</td><td>R</td><td>0x0</td><td>Reads 1 while this detector&#x27;s interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops. Writes are ignored.</td></tr>
+<tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>8</td><td>irq_test</td><td>RW</td><td>0x0</td><td>Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.</td></tr>
 <tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>irq_en</td><td>RW</td><td>0x0</td><td>Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.</td></tr>
+<tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When 1, the timeout counter runs. When 0, the counter reloads from the threshold and irq_o is forced low.</td></tr>
 </table>
 <span id="HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD"></span><h3 id="smc_base_config-HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD" data-register-alias="HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD">HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD</h3>
 <table>

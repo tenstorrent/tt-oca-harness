@@ -695,6 +695,9 @@
 <tr><td><code>hang_det_data_accel_irq_en_o</code></td><td>output</td><td><code>logic</code></td><td>Enables the data-accelerator AXI hang interrupt.</td></tr>
 <tr><td><code>hang_det_data_accel_irq_test_o</code></td><td>output</td><td><code>logic</code></td><td>Forces the data-accelerator AXI hang interrupt high.</td></tr>
 <tr><td><code>hang_det_data_accel_threshold_o</code></td><td>output</td><td><code>logic [19:0]</code></td><td>Stall cycles after which the data-accelerator AXI hang detector fires.</td></tr>
+<tr><td><code>hang_det_sys_axi_irq_i</code></td><td>input</td><td><code>logic</code></td><td>System AXI hang detector interrupt, read back through HANG_DET_SYS_AXI_CTRL.irq.</td></tr>
+<tr><td><code>hang_det_sep_axi_irq_i</code></td><td>input</td><td><code>logic</code></td><td>SEP AXI hang detector interrupt, read back through HANG_DET_SEP_AXI_CTRL.irq.</td></tr>
+<tr><td><code>hang_det_data_accel_irq_i</code></td><td>input</td><td><code>logic</code></td><td>Data-accelerator AXI hang detector interrupt, read back through the irq bit of HANG_DET_DATA_ACCEL_CTRL.</td></tr>
 </table>
 </div>
 </article>
