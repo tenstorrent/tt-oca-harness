@@ -13,15 +13,15 @@
 // the bench implements with compare_equal() or record_compare(): a mismatch
 // is a uvm_error at once, carrying feature, expected, observed, and
 // context. Analysis subscriber order is unordered, so either stream may
-// arrive first. A reset that cancels predicted transactions withdraws them
-// with flush_expected(), on every lane or on one. check_phase errors on items
-// left unpaired, turns each feature, its unpaired items included, into one
-// CHK-SB-<FEATURE> record through the shared evidence recorder, and
-// finalizes it once; a required feature (require_feature, from the env cfg)
-// that ends with zero comparisons fails the run, so a scenario cannot pass
-// without exercising what it claims to check. The scoreboard holds no
-// expected-value state: prediction is the reference model's job. The cocotb
-// twin is ocah_lib.OcahScoreboard.
+// arrive first. An event that cancels predicted transactions, a reset or a
+// drop the bench models, withdraws them with flush_expected(), on every lane
+// or on one. check_phase errors on items left unpaired, turns each feature,
+// its unpaired items included, into one CHK-SB-<FEATURE> record through the
+// shared evidence recorder, and finalizes it once; a required feature
+// (require_feature, from the env cfg) that ends with zero comparisons fails
+// the run, so a scenario cannot pass without exercising what it claims to
+// check. The scoreboard holds no expected-value state: prediction is the
+// reference model's job. The cocotb twin is ocah_lib.OcahScoreboard.
 
 class ocah_scoreboard extends uvm_scoreboard;
   `uvm_component_utils(ocah_scoreboard)
@@ -183,8 +183,9 @@ class ocah_scoreboard extends uvm_scoreboard;
   endfunction
 
   // Drop every expected item of a feature still waiting for its
-  // observation, on every lane or on `lane` alone: a reset cancels the
-  // transactions they predicted. Returns how many were dropped.
+  // observation, on every lane or on `lane` alone, once an event cancels the
+  // transactions they predicted: a reset, or a drop the bench models.
+  // Returns how many were dropped.
   function int unsigned flush_expected(string feature, string lane = AllLanes);
     string only = (lane == AllLanes) ? "" : pair_key(feature, lane);
     int unsigned dropped = 0;

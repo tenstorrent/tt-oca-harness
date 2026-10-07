@@ -122,7 +122,8 @@ class ocah_test extends uvm_test;
   endtask
 
   // Plumb one sequence and start it on the scenario sequencer, or on `seqr`
-  // when given. The cocotb twin is OcahTest.start_seq.
+  // when given, at the scenario_seed the caller set. The cocotb twin,
+  // OcahTest.start_seq, gives a sequence without a seed the runner seed.
   task start_seq(ocah_sequence seq, uvm_sequencer_base seqr = null);
     if (seq == null) `uvm_fatal(get_type_name(), "start_seq() was handed a null sequence")
     if (seqr == null) seqr = scenario_sequencer();
