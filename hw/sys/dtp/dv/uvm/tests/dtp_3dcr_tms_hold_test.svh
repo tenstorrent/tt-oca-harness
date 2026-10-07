@@ -4,7 +4,7 @@
 // dtp_3dcr_tms_hold_test — per-STAP, per-polarity select/deselect flow in a seeded order: the
 // deselected port parks its host TMS at the stored TMS_HOLD for a whole scan,
 // never drives tdo_oen, and its 3DCR reads back through the chain
-// (looped runner with per-pass family evidence, 16-pass floor).
+// (looped runner with per-pass family evidence).
 
 class dtp_3dcr_tms_hold_test extends dtp_base_test;
   `uvm_component_utils(dtp_3dcr_tms_hold_test)

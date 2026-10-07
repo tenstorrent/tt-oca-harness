@@ -34,6 +34,7 @@ class dtp_jtag_tmp_status_chrst_n_in_persistence_test_seq extends dtp_debug_tdr_
     seed_scenario_rng();
     attach_family_checker(required);
 
+    log_step("1", "Reset TAP and enter TMP Persistence-On with CLAMP_HOLD");
     reset_to_tlr();
     load_ir(6'(CLAMP_HOLD_INSTR));
     read_tmp_status(persistence, bypass_escape);
@@ -43,23 +44,25 @@ class dtp_jtag_tmp_status_chrst_n_in_persistence_test_seq extends dtp_debug_tdr_
     // Seeded per-pass pulse width in clk_i cycles; TCK is idle during the
     // pulse.
     reset_cycles = $urandom_range(12, 3);
-    `uvm_info(get_type_name(), $sformatf("Pulse rst_n_i for %0d cycles with TAP held accessible",
-                                         reset_cycles), UVM_LOW)
+    log_step(
+        "2", $sformatf(
+        "Pulse the system reset rst_n_i for %0d cycles while keeping TAP accessible", reset_cycles
+        ));
     pulse_system_reset(reset_cycles);
 
+    log_step("3", "Confirm Persistence-On survives the system reset pulse");
     read_tmp_status(persistence, bypass_escape);
     family_check("CHK-TMP-PERSIST", "TMP_STATUS.persistence", 64'(persistence), 64'd1, $sformatf(
                  "after %0d-cycle system reset", reset_cycles));
 
-    // Persistence on: Test-Logic-Reset leaves chrst_n released and
-    // persistence set.
+    log_step("4", "Walk Test-Logic-Reset with persistence on: chrst_n stays released");
     check_chrst_n_in_tlr(1'b1, "persistence on");
     read_tmp_status(persistence, bypass_escape);
     family_check("CHK-TMP-PERSIST", "TMP_STATUS.persistence", 64'(persistence), 64'd1,
                  "after TMS Test-Logic-Reset");
 
-    // Persistence off: Test-Logic-Reset asserts chrst_n, which Run-Test/Idle
-    // releases.
+    // Run-Test/Idle releases the chrst_n Test-Logic-Reset asserts.
+    log_step("5", "Release persistence: Test-Logic-Reset asserts chrst_n");
     load_ir(6'(CLAMP_RELEASE_INSTR));
     read_tmp_status(persistence, bypass_escape);
     family_check("CHK-TMP-PERSIST", "TMP_STATUS.persistence", 64'(persistence), 64'd0,
@@ -67,6 +70,7 @@ class dtp_jtag_tmp_status_chrst_n_in_persistence_test_seq extends dtp_debug_tdr_
     check_chrst_n_in_tlr(1'b0, "persistence off");
     check_scan_observable("CHK-TMP-CHRST", "jtag_bsr_chrst_n", 1'b1, "Run-Test/Idle");
 
+    log_step("6", "Read IDCODE and expect the configured IDCODE");
     check_idcode_value(idcode, "after system reset and TLR");
 
     finalize_family_checker();

@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// Environment of the tap task on the dtp formal top, read by that task beside dtp_sby_env.sv: an
-// Update-IR loads an opcode the open-path model decodes as the RTL does. The frontend sizes a
-// type cast's operand on its own, so the RTL's `T'(2 ** shift)` decode is 32 bits wide in the
-// model and an opcode of 31 or more sets several instruction bits at once, among them the
-// zero-length bypass that routes TDO around its falling-edge retimer. Bound to dtp by the
-// statement at the end of this file.
+// Environment of the tap and ir tasks on the dtp formal top, read by those tasks beside
+// dtp_sby_env.sv: an Update-IR loads an opcode the open-path model decodes as the RTL does. The
+// frontend sizes a type cast's operand on its own, so the RTL's `T'(2 ** shift)` decode is 32 bits
+// wide in the model: opcode 0x1F sets instruction bits 31 to 63 at once, among them the zero-length
+// bypass that routes TDO around its falling-edge retimer, and every higher opcode sets none. Bound
+// to dtp by the statement at the end of this file.
 
 `include "ocah_fv_macros.svh"
 
-module dtp_tap_sby_env #(
+module dtp_ir_sby_env #(
   parameter int unsigned IR_WIDTH = 6
 ) (
   input logic                tck_i,
@@ -30,9 +30,9 @@ module dtp_tap_sby_env #(
   // verilog_format: on
 `endif
 
-endmodule : dtp_tap_sby_env
+endmodule : dtp_ir_sby_env
 
-bind dtp dtp_tap_sby_env u_dtp_tap_sby_env (
+bind dtp dtp_ir_sby_env u_dtp_ir_sby_env (
   .tck_i          (jtag_ptap_client_tap_ctrl_i.tck),
   .trst_ni        (jtag_ptap_client_tap_ctrl_i.trst_n & pwr_on_rst_ni),
   .ir_update_en_i (u_jtag_intf_unit.u_jtag_ptap.ir_scan_ctrl.update_en),

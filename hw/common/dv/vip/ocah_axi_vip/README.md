@@ -130,8 +130,8 @@ token in their basenames. Tests consume each side ONLY through its
 the sequence layer, never inlined in tests. The bus monitors and the passive
 UVM environment are side-NEUTRAL and carry no side token: they reconstruct
 traffic from the shared wires regardless of who generated it (a VIP master, a
-VIP responder, or the DUT itself — DTP observes purely DUT-generated traffic
-with no VIP master present).
+VIP responder, or the DUT itself — on the DTP JTAG2AXI ports the DUT
+generates the requests and a VIP responder answers them).
 
 The package contains only canonical component files, matching the SV-UVM
 flow's basenames one-to-one (flow-only components follow the same pattern):
@@ -259,10 +259,12 @@ observed = ram.read64(0x40)
 | `read32(addr)` / `read64(addr)` | `int` | Little-endian integer reads |
 | `write32(addr, value)` / `write64(addr, value)` | `None` | Little-endian integer writes |
 | `hexdump(addr, length)` | `str` | Backend-generated memory dump |
-| `inject_error(addr, resp, read=True, write=True)` | `None` | One-shot non-OKAY response injection |
+| `inject_error(addr, resp, read=True, write=True, rdata=0)` | `None` | One-shot non-OKAY response injection; the errored read beat answers `rdata` |
 | `clear_errors()` | `None` | Clear programmed errors |
 | `enable_backpressure(channels, stall_cycles)` | `None` | Bounded READY stalls on `aw`, `w`, and/or `ar` |
 | `disable_backpressure()` | `None` | Clear READY stalls |
+| `arm_w_before_aw()` | `None` | One-shot W-before-AW order for the next write; this responder already accepts W independently of AW |
+| `randomize_resp_user(seed)` | `None` | BUSER and RUSER drawn per beat from `seed` (zero until called) |
 | `backend` | cocotbext-backed RAM | Advanced debug-only access |
 
 ### OcahAxiLiteSlaveAgent — AXI4-Lite memory-backed responder
@@ -283,7 +285,8 @@ ram.write32(0x10, 0xA5A5_5A5A)
 ram.inject_error(0x20, RESP_DECERR, read=True, write=False)
 ```
 
-It has the same backdoor and fault-control helpers as `OcahAxiSlaveAgent`.
+It has the same backdoor and fault-control helpers as `OcahAxiSlaveAgent`,
+without `randomize_resp_user` because AXI4-Lite carries no USER signals.
 
 ---
 
@@ -461,8 +464,8 @@ replay of failures.
 | Transfers | AXI4 single-beat and burst reads and writes (`INCR`, `FIXED`, `WRAP`, up to 256 beats) at any `size` up to the bus width; byte-granular ranges through `write_bytes_result` / `read_bytes_result`; AXI4-Lite single-beat access with a contiguous partial `strb` | An explicit partial or non-contiguous `strb` on the AXI4 master (`check_strb` rejects it); exclusive (`LOCK`) transactions; `QOS`, `CACHE`, `REGION`, and `USER` values other than their idle defaults; bursts in a `pipeline_result` operation, which carries single-beat accesses only |
 | Responses | `OKAY`, `EXOKAY`, `SLVERR`, `DECERR` on every result; a typed exception or an inspectable `resp` per `raise_on_error`; responders inject a one-shot `SLVERR`/`DECERR` per address and, on AXI4, a one-shot response-ID corruption; the SV-UVM responder also withholds RLAST once at a programmed beat-aligned read address | Persistent error regions on a responder; address policy belongs to the adopter's reference model (`OcahAxiRegionExpectation`); a missing RLAST on the cocotb responders |
 | Backpressure | Responder READY stalls per channel (`enable_backpressure`); master `b_ready_*` / `r_ready_*` delay knobs; every stall bounded and deterministic | Random delays (opt-in, logged as a warning) |
-| Outstanding depth | The AXI4 responder serves one request at a time by default; with `max_outstanding=N` it holds up to N writes and N reads, delays each response by a configurable count (`set_response_delay`), keeps same-ID responses in request order while different IDs overtake, and reports its peak occupancy (`outstanding_peak()`); `ocah_axi_slave_outstanding_test` proves the depth, the bound and the per-ID order on the wire harness | Read-data interleaving between bursts; an outstanding depth on the AXI4-Lite responder |
-| Reset | `reset_active_level`, `wait_for_reset()`, idle payload from construction (`init_signals()`), responder channels held in reset until the reset input reads inactive; monitors given a `reset` flush in-flight requests while it is active, and an attached `OcahAxiScoreboard` releases their commit slots | A transaction cut by a mid-flight reset is the DUT bench's scenario; the VIP neither aborts nor replays it |
+| Outstanding depth | The AXI4 responder serves one request at a time by default; with `max_outstanding=N` it holds up to N writes and N reads, delays each response by a configurable count (`set_response_delay`), keeps same-ID responses in request order while different IDs overtake, and reports its peak occupancy (`outstanding_peak()`); `ocah_axi_slave_outstanding_test` proves the depth, the bound and the per-ID order on the wire harness, and that the errored-beat word, the W-before-AW order, the response USER streams and the reset drop hold at that depth | Read-data interleaving between bursts; an outstanding depth on the AXI4-Lite responder or the SV-UVM responder, which serves one request at a time per direction |
+| Reset | `reset_active_level`, `wait_for_reset()`, idle payload from construction (`init_signals()`), responder channels held in reset until the reset input reads inactive; the responders drive BVALID and RVALID low as the reset asserts and abandon every transfer in flight, so no request taken before the reset is answered; monitors given a `reset` flush in-flight requests while it is active, and an attached `OcahAxiScoreboard` releases their commit slots | A master transaction cut by a mid-flight reset is the DUT bench's scenario; the master neither aborts nor replays it |
 | Timeout | Every blocking operation is bounded (`timeout_ns`, else `DEFAULT_TIMEOUT_NS` or `+OCAH_AXI_TIMEOUT_NS`; `timeout_cycles` on the AXI4-Lite skew, hold, pair and pipeline operations); `allow_timeout=True` returns `RESP_TIMEOUT`, and a `pipeline_result` expiry keeps the results of its completed accesses | — |
 | Protocol checking | `OcahAxiChecker` item rules, the cycle-level watchers, and `sva/ocah_axi_sva.sv`, which the `dv/` harness binds to every VIP-driven bundle; `sva/ocah_axi_fv.sv` carries the handshake, reset, burst and ordering rules in the boolean subset a formal environment binds, each side asserted or assumed by parameter | Rules beyond the IHI 0022 A3/A5/A7/B1 subset listed in `MANUAL.md` |
 | Coverage | `cov/ocah_axi_cov.sv` covergroups, sampled by the SV-UVM harness through one `ocah_axi_cov_if` (`--dut ocah_axi_vip --framework uvm --cov`) together with the `OCAH_AXI_C_*` cover properties; `--cov` on `--dut ocah_axi_vip` collects Verilator line and branch coverage of the SV collateral, with holes classified by `dv/cov/config/verilator/coverage_policy.toml` | Python components carry no simulator coverage metric; their evidence is the `CHK-*` matrix of `dv/` and the scoreboard selftest |

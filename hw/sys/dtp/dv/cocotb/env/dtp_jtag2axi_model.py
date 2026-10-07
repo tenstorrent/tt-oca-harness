@@ -315,7 +315,7 @@ class DtpJtag2AxiModel:
             return self._update_series_data(target, request)
         return None
 
-    def complete(self, target: str, observed: OcahAxiItem, disabled: bool = False) -> None:
+    def complete(self, target: str, observed: OcahAxiItem, *, disabled: bool = False) -> None:
         """An AXI completion on a bridge port, applied at the next capture or update after it.
 
         An orphan of a TAP reset is consumed and changes nothing. ``disabled``:
@@ -339,7 +339,8 @@ class DtpJtag2AxiModel:
         capture_time_ns: float,
         context: str,
     ) -> DtpJtag2AxiStatusItem:
-        """Expected capture of a SINGLE_OP or SERIES_CTRL scan whose Capture-DR was at the time.
+        """Expected capture of a SINGLE_OP or SERIES_CTRL scan whose Capture-DR was at
+        ``capture_time_ns``.
 
         A completion inside the settle window before it has not crossed into
         the TCK domain yet, so the capture carries no contract.

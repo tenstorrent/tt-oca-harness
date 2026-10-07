@@ -119,53 +119,15 @@ class dtp_env extends ocah_env;
                  DtpXtrigNumCtmPorts
                  ))
 
-    // The JTAG2AXI responders take their write order from the DTP driver.
-    ocah_axi_slave_driver::type_id::set_type_override(dtp_axi_slave_driver::get_type());
     build_jtag_master();
     build_checking();
     m_vseqr = dtp_virtual_sequencer::type_id::create("m_vseqr", this);
 
-    m_smc_otp_axi_cfg = build_passive_axi(
-        '{
-            name: "m_smc_otp_axi",
-            vif_key: "smc_otp_axil_vif",
-            name_tag: "dtp_smc_otp_axil",
-            protocol: OCAH_AXI_PROTO_AXI4_LITE,
-            addr_width: dtp_dv_cfg_pkg::OtpAxilAddrWidth,
-            data_width: dtp_dv_cfg_pkg::OtpAxilDataWidth,
-            id_width: 0
-        },
-        cfg.axi_policy_for(
-            "smc_otp")
-    );
+    m_smc_otp_axi_cfg = build_bridge_port("smc_otp");
     m_smc_otp_axi_env = ocah_axi_env::type_id::create("m_smc_otp_axi_env", this);
-    m_sep_otp_axi_cfg = build_passive_axi(
-        '{
-            name: "m_sep_otp_axi",
-            vif_key: "sep_otp_axil_vif",
-            name_tag: "dtp_sep_otp_axil",
-            protocol: OCAH_AXI_PROTO_AXI4_LITE,
-            addr_width: dtp_dv_cfg_pkg::OtpAxilAddrWidth,
-            data_width: dtp_dv_cfg_pkg::OtpAxilDataWidth,
-            id_width: 0
-        },
-        cfg.axi_policy_for(
-            "sep_otp")
-    );
+    m_sep_otp_axi_cfg = build_bridge_port("sep_otp");
     m_sep_otp_axi_env = ocah_axi_env::type_id::create("m_sep_otp_axi_env", this);
-    m_smc_axi_cfg = build_passive_axi(
-        '{
-            name: "m_smc_axi",
-            vif_key: "m_axi_vif",
-            name_tag: "dtp_smc_axi",
-            protocol: OCAH_AXI_PROTO_AXI4,
-            addr_width: dtp_dv_cfg_pkg::SmcAxiAddrWidth,
-            data_width: dtp_dv_cfg_pkg::SmcAxiDataWidth,
-            id_width: dtp_dv_cfg_pkg::SmcAxiIdWidth
-        },
-        cfg.axi_policy_for(
-            "smc_axi")
-    );
+    m_smc_axi_cfg = build_bridge_port("smc_axi");
     m_smc_axi_env = ocah_axi_env::type_id::create("m_smc_axi_env", this);
     // Monitor only: the memory-shadow reference model cannot describe the
     // XTRIG CSR block (volatile status reads, reset-cleared selects,
@@ -177,8 +139,8 @@ class dtp_env extends ocah_env;
             vif_key: "xtrig_axil_vif",
             name_tag: "dtp_xtrig_axil",
             protocol: OCAH_AXI_PROTO_AXI4_LITE,
-            addr_width: 32,
-            data_width: 32,
+            addr_width: DtpXtrigCsrAddrWidth,
+            data_width: DtpXtrigCsrDataWidth,
             id_width: 0
         },
         cfg.axi_policy_for(
@@ -190,42 +152,15 @@ class dtp_env extends ocah_env;
 
     build_xtrig_master();
 
-    m_smc_otp_slave_cfg = build_axi_slave(
-        '{
-            name: "m_smc_otp_slave",
-            vif_key: "smc_otp_slave_vif",
-            name_tag: "dtp_smc_otp_slave",
-            protocol: OCAH_AXI_PROTO_AXI4_LITE,
-            addr_width: dtp_dv_cfg_pkg::OtpAxilAddrWidth,
-            data_width: dtp_dv_cfg_pkg::OtpAxilDataWidth,
-            id_width: 0
-        }
-    );
+    m_smc_otp_slave_cfg = build_axi_slave(dtp_j2a_port("smc_otp", 1'b1));
     m_smc_otp_slave_agent = ocah_axi_slave_agent::type_id::create("m_smc_otp_slave_agent", this);
-    m_sep_otp_slave_cfg = build_axi_slave(
-        '{
-            name: "m_sep_otp_slave",
-            vif_key: "sep_otp_slave_vif",
-            name_tag: "dtp_sep_otp_slave",
-            protocol: OCAH_AXI_PROTO_AXI4_LITE,
-            addr_width: dtp_dv_cfg_pkg::OtpAxilAddrWidth,
-            data_width: dtp_dv_cfg_pkg::OtpAxilDataWidth,
-            id_width: 0
-        }
-    );
+    m_sep_otp_slave_cfg = build_axi_slave(dtp_j2a_port("sep_otp", 1'b1));
     m_sep_otp_slave_agent = ocah_axi_slave_agent::type_id::create("m_sep_otp_slave_agent", this);
-    m_smc_axi_slave_cfg = build_axi_slave(
-        '{
-            name: "m_smc_axi_slave",
-            vif_key: "smc_axi_slave_vif",
-            name_tag: "dtp_smc_axi_slave",
-            protocol: OCAH_AXI_PROTO_AXI4,
-            addr_width: dtp_dv_cfg_pkg::SmcAxiAddrWidth,
-            data_width: dtp_dv_cfg_pkg::SmcAxiDataWidth,
-            id_width: dtp_dv_cfg_pkg::SmcAxiIdWidth
-        }
-    );
+    m_smc_axi_slave_cfg = build_axi_slave(dtp_j2a_port("smc_axi", 1'b1));
     m_smc_axi_slave_agent = ocah_axi_slave_agent::type_id::create("m_smc_axi_slave_agent", this);
+    // The bridge carries response USER across its CDC and never reads it,
+    // so any value is legal; seeded draws toggle every bit of that path.
+    m_smc_axi_slave_cfg.randomize_resp_user(cfg.resp_user_seed);
 
     for (int unsigned i = 0; i < DtpStapCount; i++) build_stap_ds(i);
   endfunction
@@ -255,6 +190,30 @@ class dtp_env extends ocah_env;
     super.check_phase(phase);
     m_fsm_checker.report_evidence();
     m_jtag_checker.finalize(cfg.jtag_policy.require_checks);
+  endfunction
+
+  // The passive cfg, evidence recorder, and reference model of the bridge
+  // port named `target` (smc_otp, sep_otp, smc_axi).
+  function void axi_bundle(string target, output ocah_axi_config cfg,
+                           output ocah_axi_checker evidence, output ocah_axi_ref_model ref_model);
+    ocah_axi_env port_env;
+    case (target)
+      "smc_otp": begin
+        cfg      = m_smc_otp_axi_cfg;
+        port_env = m_smc_otp_axi_env;
+      end
+      "sep_otp": begin
+        cfg      = m_sep_otp_axi_cfg;
+        port_env = m_sep_otp_axi_env;
+      end
+      "smc_axi": begin
+        cfg      = m_smc_axi_cfg;
+        port_env = m_smc_axi_env;
+      end
+      default: `uvm_fatal(get_type_name(), {"unknown JTAG2AXI bridge ", target})
+    endcase
+    evidence  = port_env.m_checker;
+    ref_model = port_env.m_ref_model;
   endfunction
 
   // ------------------------------------------------------------------
@@ -287,9 +246,10 @@ class dtp_env extends ocah_env;
     m_fsm_checker.require_activity = cfg.jtag_activity_required;
 
     m_scan_window = dtp_scan_window_monitor::type_id::create("m_scan_window", this);
-    m_scan_window.scan_vif = scan_vif;
-    m_scan_window.tb_vif   = tb_vif;
-    m_scan_window.jtag_vif = m_jtag_cfg.vif;
+    m_scan_window.scan_vif   = scan_vif;
+    m_scan_window.tb_vif     = tb_vif;
+    m_scan_window.jtag_vif   = m_jtag_cfg.vif;
+    m_scan_window.tck_period = 2 * m_jtag_cfg.tck_half_period;
 
     begin
       dtp_jtag_scan_builder builder = dtp_jtag_scan_builder::type_id::create(
@@ -318,8 +278,10 @@ class dtp_env extends ocah_env;
     m_bypass_ref_model.tb_vif = tb_vif;
     m_xtrig_csr_ref_model = dtp_xtrig_csr_ref_model::type_id::create("m_xtrig_csr_ref_model", this);
     m_xtrig_csr_ref_model.tb_vif = tb_vif;
+    m_xtrig_csr_ref_model.negative = cfg.xtrig_csr_ref_model_negative;
     m_xtrig_decode_ref_model =
         dtp_xtrig_decode_ref_model::type_id::create("m_xtrig_decode_ref_model", this);
+    m_xtrig_decode_ref_model.negative = cfg.xtrig_decode_ref_model_negative;
     m_jtag2axi_req_ref_model =
         dtp_jtag2axi_req_ref_model::type_id::create("m_jtag2axi_req_ref_model", this);
     m_jtag2axi_req_ref_model.tb_vif = tb_vif;
@@ -406,6 +368,11 @@ class dtp_env extends ocah_env;
     return c;
   endfunction
 
+  // The passive observer of JTAG2AXI bridge `target`'s port.
+  protected function ocah_axi_config build_bridge_port(string target);
+    return build_passive_axi(dtp_j2a_port(target, 1'b0), cfg.axi_policy_for(target));
+  endfunction
+
   // One memory-backed responder: the TB wires the master-driven signals
   // into its interface and the agent's driver answers.
   protected function ocah_axi_slave_config build_axi_slave(dtp_axi_port_t port);
@@ -431,8 +398,8 @@ class dtp_env extends ocah_env;
       `uvm_fatal(get_type_name(),
                  "virtual ocah_axi_if `xtrig_master_vif` not found in uvm_config_db")
     m_xtrig_master_cfg.protocol   = OCAH_AXI_PROTO_AXI4_LITE;
-    m_xtrig_master_cfg.addr_width = 32;
-    m_xtrig_master_cfg.data_width = 32;
+    m_xtrig_master_cfg.addr_width = DtpXtrigCsrAddrWidth;
+    m_xtrig_master_cfg.data_width = DtpXtrigCsrDataWidth;
     m_xtrig_master_cfg.id_width   = 0;
     m_xtrig_master_cfg.name_tag   = "dtp_xtrig_master";
     uvm_config_db#(ocah_axi_master_config)::set(this, "m_xtrig_master_env*", "cfg",

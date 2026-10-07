@@ -8,10 +8,10 @@
 // configuration supplies the transfer size and strobes. BREADY and RREADY
 // stay low for b_hold_cycles and r_hold_cycles after the first BVALID and
 // RVALID. `result` carries the per-channel request stall cycles the VIP
-// observed, and op_results[i] the completed item of ops[i]. Response
-// checking stays with the caller (check_response = 0), so scenarios that
-// expect DECERR judge the response themselves. Started by
-// dtp_xtrig_base_test_seq::pipeline_result().
+// observed, and op_results[i] the completed item of ops[i]. With the
+// default check_response = 1 the VIP reports a non-OKAY response as an
+// error; scenarios that expect DECERR clear it and judge the response
+// themselves. Started by dtp_xtrig_base_test_seq::pipeline_result().
 
 class dtp_axi_csr_pipeline_seq extends ocah_axi_master_sequence;
   `uvm_object_utils(dtp_axi_csr_pipeline_seq)

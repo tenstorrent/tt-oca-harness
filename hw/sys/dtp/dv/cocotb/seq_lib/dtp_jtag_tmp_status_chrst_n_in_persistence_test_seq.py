@@ -4,7 +4,8 @@
 
 from __future__ import annotations
 
-from env.dtp_types import DtpJtagInstr, DtpTapState
+from env.dtp_types import DtpJtagInstr
+from ocah_jtag_vip import OcahJtagState
 
 from .dtp_debug_tdr_base_test_seq import TMP_CHRST_CHECK_ID, dtp_debug_tdr_base_test_seq
 
@@ -20,14 +21,14 @@ class dtp_jtag_tmp_status_chrst_n_in_persistence_test_seq(dtp_debug_tdr_base_tes
 
     async def check_chrst_n_in_tlr(self, expected: int, *, context: str) -> None:
         """Walk to Test-Logic-Reset without TRST and record ``chrst_n`` there."""
-        await self.drive_tlr_without_trst()
+        await self.reset_tap_by_tms()
         await self.check_scan_observable(
             TMP_CHRST_CHECK_ID, "jtag_bsr_test_logic_reset", 1, context=context
         )
         await self.check_scan_observable(
             TMP_CHRST_CHECK_ID, "jtag_bsr_chrst_n", expected, context=context
         )
-        await self.tms_expect(0, DtpTapState.RUN_TEST_IDLE)
+        await self.tms_expect(0, OcahJtagState.RUN_TEST_IDLE)
 
     async def body(self) -> None:
         self.log_banner("TMP_STATUS CHRST_N Persistence")

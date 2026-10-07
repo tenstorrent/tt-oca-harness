@@ -2,6 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP INV_BYPASS instruction test."""
 
+from __future__ import annotations
+
 import pyuvm
 from dtp_base_test import dtp_base_test
 from env.dtp_types import DTP_FEATURE_BYPASS, DTP_FEATURE_IR_DECODE
@@ -10,7 +12,7 @@ from seq_lib.dtp_jtag_inv_bypass_test_seq import dtp_jtag_inv_bypass_test_seq
 
 @pyuvm.test()
 class dtp_jtag_inv_bypass_test(dtp_base_test):
-    """Run the DTP VPLAN inverted bypass scenario."""
+    """INV_BYPASS captures 1 and returns TDI inverted one TCK late."""
 
     required_features = (DTP_FEATURE_IR_DECODE, DTP_FEATURE_BYPASS)
 

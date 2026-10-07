@@ -8,25 +8,20 @@ name: virtual platform
 # title (PR title / commit message).
 run-name: ${{ github.event_name == 'schedule' && 'virtual platform nightly (scheduled)' || github.event_name == 'workflow_dispatch' && 'virtual platform (manual dispatch)' || '' }}
 
-# Path-gated on PRs: a cold run builds SystemC and CCI from source, so it is far
-# too heavy to pay on every unrelated change. The nightly on main is what catches
-# drift the path filter cannot see - the image's floating apt packages, and the
-# tt-oca-harness-model submodule moving under us.
+# The native legs are the pull-request gate: every PR runs them, and the
+# required checks `sep-vp (native)` and `smc-vp + smu-vp (native)` must pass to
+# merge. A required check whose workflow never starts blocks the PR, so
+# pull_request carries no paths filter; diff-class skips the legs instead for a
+# documentation-only diff, and a skipped job satisfies a required check.
 #
-# GitHub Actions does not support YAML anchors, so the paths list is spelled out
-# twice. Keep the two copies in sync.
+# The container legs are post-merge only: a push to main that touches the VP,
+# the nightly, and manual dispatch. They prove the toolchain image can still
+# build and run the VPs. The native legs run on those events too, which keeps
+# main's dependency cache current for the PR runs that restore from it. The
+# nightly catches drift no path filter can see: the image's floating apt
+# packages, and the tt-oca-harness-model submodule moving under us.
 on:
   pull_request:
-    paths:
-      - 'virtual_platform/**'
-      - 'flake.nix'
-      - 'flake.lock'
-      - 'ocah_deps.nix'
-      - 'nix/**'
-      - 'scripts/docker-run.sh'
-      - 'hw/sys/sep/bootrom/**'
-      - '.gitmodules'
-      - '.github/workflows/vp.yml'
   push:
     branches: [main]
     paths:
@@ -52,8 +47,30 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # The suites that read checked-in data only, and the one VP job a pull request
-  # runs: everything below needs the nix closure.
+  # Only a pull request is classified: push runs are already path-filtered, and
+  # schedule and dispatch always run everything.
+  diff-class:
+    runs-on: ubuntu-latest
+    permissions: { contents: read }
+    outputs:
+      run_hardware_ci: ${{ steps.diff-class.outputs.run_hardware_ci }}
+    steps:
+      - name: Checkout
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Classify the diff
+        id: diff-class
+        run: |
+          if [ "${{ github.event_name }}" = pull_request ]; then
+            python3 scripts/ci/diff_class.py --github-output >> "$GITHUB_OUTPUT"
+          else
+            echo "run_hardware_ci=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # The suites that read checked-in data only.
   vp-host-tests:
     name: vp host tests
     runs-on: ubuntu-latest
@@ -82,7 +99,10 @@ jobs:
 
   sep-vp-native:
     name: sep-vp (native)
-    if: github.event_name != 'pull_request'
+    needs: [diff-class]
+    # Fail closed: a diff-class failure leaves the output empty, which runs the
+    # leg rather than skipping it into a passing required check.
+    if: ${{ !cancelled() && needs.diff-class.outputs.run_hardware_ci != 'false' }}
     runs-on: ${{ vars.VP_CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 60
     permissions: { contents: read }
@@ -147,7 +167,10 @@ jobs:
   # ---------------------------------------------------------------------------
   smc-smu-native:
     name: smc-vp + smu-vp (native)
-    if: github.event_name != 'pull_request'
+    needs: [diff-class]
+    # Fail closed: a diff-class failure leaves the output empty, which runs the
+    # leg rather than skipping it into a passing required check.
+    if: ${{ !cancelled() && needs.diff-class.outputs.run_hardware_ci != 'false' }}
     runs-on: ${{ vars.VP_CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 60
     permissions: { contents: read }

@@ -8,9 +8,9 @@
 // from the flattened cross-trigger pins, the configuration register fields
 // of each CTP, the XTRIG CSR AXI-Lite port, and the tb_top models behind
 // them (the spill registers and crossbar demux of that port, the CT_Req_out
-// wires), all in the system-clock domain. A CTP bin samples the configuration the port runs
-// with when it acts; the CTM route bins follow a shadow of the CT_SRC
-// selects that the CSR writes program.
+// wires), all in the system-clock domain. A CTP bin samples the
+// configuration the port runs with when it acts; the CTM route bins follow
+// a shadow of the CT_SRC selects that the CSR writes program.
 //
 // CONVENTION (see dtp_fcov.sv): every cover-property body and disable-iff
 // argument is a single continuous-assign wire; no declaration initializers

@@ -62,9 +62,7 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
     // collapse to the three SIB bits are a transition from open SIBs.
     bit [DtpIjtagSibCount-1:0] open_pattern = DtpIjtagSibCount'($urandom_range(7, 1));
     `uvm_info(get_type_name(), "iJTAG SIB all-off", UVM_LOW)
-    `uvm_info(get_type_name(), $sformatf(
-                                   "Step 1: open a seeded SIB set 0b%03b, then close every SIB",
-                                   open_pattern), UVM_LOW)
+    log_step("1", $sformatf("open a seeded SIB set 0b%03b, then close every SIB", open_pattern));
     check_ijtag_pattern(open_pattern, '0, "all_off.open_seed");
     check_ijtag_pattern(3'b000, '0, "all_off.nominal");
     // Seeded per-pass disable mask: with every SIB closed, any lifecycle
@@ -72,8 +70,7 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
     d = '0;
     for (int unsigned s = 0; s < DtpIjtagSibCount; s++)
       dtp_dbg_path_set(d, dtp_ijtag_sib_dbg_path(s), bit'($urandom_range(1)));
-    `uvm_info(get_type_name(),
-              $sformatf("Step 2: close every SIB again under the disable mask 0x%03h", d), UVM_LOW)
+    log_step("2", $sformatf("close every SIB again under the disable mask 0x%03h", d));
     check_ijtag_pattern(3'b000, d, "all_off.random_disable");
     check_ijtag_all_closed(d, "all_off.recheck");
   endtask
@@ -92,12 +89,7 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
     end
     // Seeded per-pass order: each loop exercises a different gate
     // sequence.
-    for (int unsigned i = 3; i > 0; i--) begin
-      int unsigned j = $urandom_range(i);
-      int unsigned tmp = order[i];
-      order[i] = order[j];
-      order[j] = tmp;
-    end
+    order.shuffle();
     foreach (order[i])
       check_ijtag_pattern(3'b111, gate_masks[order[i]], $sformatf("all_on.gated#%0d", order[i]));
     // Full chain and scan controls again once every disable is clear.
@@ -112,14 +104,14 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
     // every disable mask of the three SIB fields in a seeded order, and
     // under each mask every open set of the ungated SIBs. A gated SIB's
     // request bit is drawn; it stays closed either way.
-    shuffle(masks);
+    masks.shuffle();
     foreach (masks[m]) begin
       bit [DtpIjtagSibCount-1:0] mask = DtpIjtagSibCount'(masks[m]);
       d = '0;
       for (int unsigned s = 0; s < DtpIjtagSibCount; s++)
       dtp_dbg_path_set(d, dtp_ijtag_sib_dbg_path(s), mask[DtpIjtagSibCount-1-s]);
-      `uvm_info(get_type_name(), $sformatf(
-                "Step %0d: SIB disable mask 0b%03b, every ungated open set", m + 1, mask), UVM_LOW)
+      log_iteration(m + 1, masks.size(), $sformatf(
+                    "SIB disable mask 0b%03b, every ungated open set", mask));
       for (int unsigned pattern = 0; pattern < 8; pattern++) begin
         bit [DtpIjtagSibCount-1:0] open_set = DtpIjtagSibCount'(pattern);
         if ((open_set & mask) != '0) continue;
@@ -132,9 +124,7 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
       d = '0;
       for (int unsigned s = 0; s < DtpIjtagSibCount; s++)
       dtp_dbg_path_set(d, dtp_ijtag_sib_dbg_path(s), bit'($urandom_range(1)));
-      `uvm_info(get_type_name(), $sformatf(
-                "Iteration %0d/16: pattern=0b%03b dbg_disable=0x%03h", idx + 1, pattern, d),
-                UVM_LOW)
+      log_iteration(idx + 1, 16, $sformatf("pattern=0b%03b dbg_disable=0x%03h", pattern, d));
       check_ijtag_pattern(pattern, d, $sformatf("random.iter_%0d", idx));
     end
   endtask
@@ -161,12 +151,7 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
     cases[3] = '{"nonsecure_gated_secure_open", 3'b110, 1'b0, 1'b1};
     // Seeded per-pass order: each loop exercises a different gate
     // sequence.
-    for (int unsigned i = 3; i > 0; i--) begin
-      int unsigned j = $urandom_range(i);
-      int unsigned tmp = order[i];
-      order[i] = order[j];
-      order[j] = tmp;
-    end
+    order.shuffle();
     foreach (order[i]) begin
       gate = '0;
       dtp_dbg_path_set(gate, DTP_DBG_PATH_DFT_SECURE, cases[order[i]].gate_secure);
@@ -188,9 +173,7 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
       bit dfd_disabled = bit'($urandom_range(1));
       d = '0;
       dtp_dbg_path_set(d, DTP_DBG_PATH_DFD, dfd_disabled);
-      `uvm_info(get_type_name(), $sformatf(
-                "Iteration %0d/8: pattern=0b%03b dfd_disable=%0d", idx + 1, pattern, dfd_disabled),
-                UVM_LOW)
+      log_iteration(idx + 1, 8, $sformatf("pattern=0b%03b dfd_disable=%0d", pattern, dfd_disabled));
       check_ijtag_pattern(pattern, d, $sformatf("dfd.random_%0d", idx));
     end
     d = dtp_dbg_disable_only(DTP_DBG_PATH_DFD);
@@ -203,8 +186,7 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
     string required[$] = {"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN", "CHK-SCAN-LEN", "CHK-SCAN-CHAIN"};
     if (scenario == "sib_all_on") required.push_back("CHK-SCAN-RESET");
     seed_scenario_rng();
-    // Scenario-owned Shift-x exits: skip the scan-count cross-check.
-    attach_family_checker(required, 1'b0);
+    attach_scan_family_checker(required);
     enable_all_debug();
     reset_to_tlr();
     case (scenario)

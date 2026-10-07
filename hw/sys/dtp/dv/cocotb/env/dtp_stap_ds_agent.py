@@ -26,8 +26,18 @@ from ocah_jtag_vip import (
 )
 from pyuvm import ConfigDB, uvm_component
 
-from .dtp_scan_ref_model import STAP_ORDER
+from .dtp_stap_3dcr_model import STAP_ORDER
 from .dtp_tb_if import JTAG_SIGNAL_MAP
+
+__all__ = [
+    "DtpStapDsAgent",
+    "STAP_DS_DEVICES",
+    "STAP_DS_IDCODE_OPCODE",
+    "STAP_DS_IR_WIDTH",
+    "STAP_DS_TDR_NAME",
+    "STAP_DS_TDR_OPCODE",
+    "stap_ds_config",
+]
 
 STAP_DS_IR_WIDTH = 5
 STAP_DS_IDCODE_OPCODE = 0x01
@@ -35,7 +45,7 @@ STAP_DS_TDR_OPCODE = 0x02
 STAP_DS_TDR_NAME = "DS_TDR"
 
 # STAP name -> (IDCODE with the IEEE 1149.1 marker bit set, DS_TDR width).
-# Parity contract with uvm/env/dtp_env.svh (stap_ds_idcode / stap_ds_tdr_width).
+# Parity contract with uvm/env/dtp_types.svh (dtp_stap_ds_idcode / dtp_stap_ds_tdr_width).
 STAP_DS_DEVICES: dict[str, tuple[int, int]] = {
     "io": (0x1D51_0101, 12),
     "smc": (0x1D51_0203, 16),

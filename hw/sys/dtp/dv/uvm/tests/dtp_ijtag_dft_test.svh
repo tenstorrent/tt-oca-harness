@@ -3,7 +3,7 @@
 //
 // dtp_ijtag_dft_test — secure/non-secure DFT SIB access, cross-resource isolation, and
 // stored-state preservation across a gate
-// (looped runner with per-pass family evidence, 16-pass floor).
+// (looped runner with per-pass family evidence).
 
 class dtp_ijtag_dft_test extends dtp_base_test;
   `uvm_component_utils(dtp_ijtag_dft_test)

@@ -2,19 +2,23 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP VPLAN scenario `dtp_xtrig_rand_deterministic_csr_sweep_test`."""
 
+from __future__ import annotations
+
 import pyuvm
 from dtp_xtrig_base_test import dtp_xtrig_base_test
 from env.dtp_types import DTP_FEATURE_XTRIG_CSR, DTP_FEATURE_XTRIG_DECODE
-from seq_lib.dtp_xtrig_base_test_seq import dtp_xtrig_base_test_seq
+from seq_lib.dtp_xtrig_csr_test_seq import dtp_xtrig_csr_test_seq
 
 
 @pyuvm.test()
 class dtp_xtrig_rand_deterministic_csr_sweep_test(dtp_xtrig_base_test):
+    """CTP CONFIG and STRETCH_MULT patterns, byte strobes, and holes on every CTP."""
+
     required_features = (DTP_FEATURE_XTRIG_CSR, DTP_FEATURE_XTRIG_DECODE)
 
     async def run_scenario(self) -> None:
         await self.start_looped_seq(
-            dtp_xtrig_base_test_seq,
+            dtp_xtrig_csr_test_seq,
             "ctp_csr_sweep",
             scenario="ctp_csr_sweep",
             specific_knob="DTP_XTRIG_RAND_DETERMINISTIC_CSR_SWEEP_TEST_LOOPS",
