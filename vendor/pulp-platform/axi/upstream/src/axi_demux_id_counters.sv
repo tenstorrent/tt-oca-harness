@@ -59,9 +59,9 @@ module axi_demux_id_counters #(
   //-----------------------------------
   // Push and Pop
   //-----------------------------------
-  assign push_en   = (push_i)   ? (1 << push_axi_id_i)   : '0;
-  assign inject_en = (inject_i) ? (1 << inject_axi_id_i) : '0;
-  assign pop_en    = (pop_i)    ? (1 << pop_axi_id_i)    : '0;
+  assign push_en   = (push_i)   ? (NoCounters'(1) << push_axi_id_i)   : '0;
+  assign inject_en = (inject_i) ? (NoCounters'(1) << inject_axi_id_i) : '0;
+  assign pop_en    = (pop_i)    ? (NoCounters'(1) << pop_axi_id_i)    : '0;
   assign full_o    = |cnt_full;
   //-----------------------------------
   // Status

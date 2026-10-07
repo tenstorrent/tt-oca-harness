@@ -1,7 +1,7 @@
 diff --git a/vendor/pulp-platform/axi/upstream/src/axi_burst_splitter_gran.sv b/vendor/pulp-platform/axi/upstream/src/axi_burst_splitter_gran.sv
 index fa8e8ab31..bb124378e 100644
---- a/vendor/pulp-platform/axi/upstream/src/axi_burst_splitter_gran.sv
-+++ b/vendor/pulp-platform/axi/upstream/src/axi_burst_splitter_gran.sv
+--- a/src/axi_burst_splitter_gran.sv
++++ b/src/axi_burst_splitter_gran.sv
 @@ -669,7 +669,7 @@ module axi_burst_splitter_gran_counters #(
      );
      assign cnt_free[i] = (cnt_oup[i] == '0);
@@ -22,8 +22,8 @@ index fa8e8ab31..bb124378e 100644
    assign idq_oup_pop = cnt_req_i & cnt_gnt_o & cnt_dec_i & (cnt_len_o < cnt_delta_i);
 diff --git a/vendor/pulp-platform/axi/upstream/src/axi_demux_id_counters.sv b/vendor/pulp-platform/axi/upstream/src/axi_demux_id_counters.sv
 index 7e8c88da5..028f2a892 100644
---- a/vendor/pulp-platform/axi/upstream/src/axi_demux_id_counters.sv
-+++ b/vendor/pulp-platform/axi/upstream/src/axi_demux_id_counters.sv
+--- a/src/axi_demux_id_counters.sv
++++ b/src/axi_demux_id_counters.sv
 @@ -59,9 +59,9 @@ module axi_demux_id_counters #(
    //-----------------------------------
    // Push and Pop

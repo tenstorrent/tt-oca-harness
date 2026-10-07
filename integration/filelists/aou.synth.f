@@ -13,19 +13,25 @@
 +incdir+vendor/tenstorrent/tt-hw-debug/upstream/rtl/cla
 +incdir+vendor/tenstorrent/tt-hw-debug/upstream/rtl/mmr
 +incdir+vendor/tenstorrent/tt-hw-debug/upstream/rtl/trace
++define+SYNTHESIS=1
 +define+TARGET_AOU
 +define+TARGET_FLIST
 +define+TARGET_SYNTH
-+define+SYNTHESIS=1
+// Package(common_cells) Target(*)
 vendor/pulp-platform/common_cells/upstream/src/cf_math_pkg.sv
+// Package(apb) Target(*)
 vendor/pulp-platform/apb/upstream/apb_pkg.sv
+// Package(axi) Target(*)
 vendor/pulp-platform/axi/upstream/src/axi_pkg.sv
+// Package(axi_stream) Target(*)
 vendor/pulp-platform/axi_stream/upstream/src/axi_stream_intf.sv
 vendor/pulp-platform/axi_stream/upstream/src/axi_stream_cut.sv
 vendor/pulp-platform/axi_stream/upstream/src/axi_stream_dw_downsizer.sv
 vendor/pulp-platform/axi_stream/upstream/src/axi_stream_dw_upsizer.sv
 vendor/pulp-platform/axi_stream/upstream/src/axi_stream_multicut.sv
+// Package(obi) Target(*)
 vendor/pulp-platform/obi/upstream/src/obi_pkg.sv
+// Package(aou) Target(aou)
 vendor/tenstorrent/aou/upstream/RTL/packet_def_pkg.sv
 vendor/tenstorrent/aou/upstream/RTL/AOU_RX_CORE.sv
 vendor/tenstorrent/aou/upstream/RTL/AOU_ACTIVATION_CTRL.sv
@@ -88,5 +94,6 @@ vendor/tenstorrent/aou/upstream/RTL/LIB/AOU_SOC_SYNCHSR.v
 vendor/tenstorrent/aou/upstream/RTL/LIB/ASYNC_APB_BRIDGE/ASYNC_APB_BRIDGE_MI.v
 vendor/tenstorrent/aou/upstream/RTL/LIB/ASYNC_APB_BRIDGE/ASYNC_APB_BRIDGE_SI.v
 vendor/tenstorrent/aou/upstream/RTL/LIB/ASYNC_APB_BRIDGE/ASYNC_APB_BRIDGE.v
+// Package(tt-oca-harness) Target(all(synth, not(emulation)))
 hw/common/defs/ocah_vendor_defines.svh
 

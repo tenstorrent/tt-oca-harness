@@ -52,6 +52,11 @@
 +incdir+vendor/tenstorrent/tt-hw-debug/upstream/rtl/cla
 +incdir+vendor/tenstorrent/tt-hw-debug/upstream/rtl/mmr
 +incdir+vendor/tenstorrent/tt-hw-debug/upstream/rtl/trace
++define+TECH_SPECIFIC_EC_RV_ICG
++define+SYNTHESIS=1
++define+CALIPTRA
++define+SEP_ABR_EN
++define+TECH_SPECIFIC_ICG
 +define+TARGET_APB_RTL
 +define+TARGET_AXI_RTL
 +define+TARGET_COMMON_CELLS_RTL
@@ -64,15 +69,14 @@
 +define+TARGET_SEP_EL2
 +define+TARGET_SMC
 +define+TARGET_SYNTH
-+define+TECH_SPECIFIC_EC_RV_ICG
-+define+SYNTHESIS=1
-+define+CALIPTRA
-+define+SEP_ABR_EN
-+define+TECH_SPECIFIC_ICG
+// Package(common_cells) Target(*)
 vendor/pulp-platform/common_cells/upstream/src/cf_math_pkg.sv
+// Package(common_cells) Target(any(sep_wrapper, smu_wrapper, all(common_cells_rtl, not(all(vivado_ipx, xilinx)))))
 vendor/pulp-platform/common_cells/upstream/src/fifo_v3.sv
 vendor/pulp-platform/common_cells/upstream/src/counter.sv
+// Package(common_cells) Target(common_cells_rtl)
 vendor/pulp-platform/common_cells/upstream/src/binary_to_gray.sv
+// Package(common_cells) Target(all(common_cells_rtl, not(all(vivado_ipx, xilinx))))
 vendor/pulp-platform/common_cells/upstream/src/cb_filter_pkg.sv
 vendor/pulp-platform/common_cells/upstream/src/cc_onehot.sv
 vendor/pulp-platform/common_cells/upstream/src/cdc_reset_ctrlr_pkg.sv
@@ -144,11 +148,15 @@ vendor/pulp-platform/common_cells/upstream/src/mem_to_banks_detailed.sv
 vendor/pulp-platform/common_cells/upstream/src/stream_arbiter.sv
 vendor/pulp-platform/common_cells/upstream/src/stream_omega_net.sv
 vendor/pulp-platform/common_cells/upstream/src/mem_to_banks.sv
+// Package(apb) Target(*)
 vendor/pulp-platform/apb/upstream/apb_pkg.sv
+// Package(apb) Target(apb_rtl)
 vendor/pulp-platform/apb/upstream/apb_intf.sv
 vendor/pulp-platform/apb/upstream/apb_cdc.sv
 vendor/pulp-platform/apb/upstream/apb_demux.sv
+// Package(axi) Target(*)
 vendor/pulp-platform/axi/upstream/src/axi_pkg.sv
+// Package(axi) Target(axi_rtl)
 vendor/pulp-platform/axi/upstream/src/axi_demux_id_counters.sv
 vendor/pulp-platform/axi/upstream/src/axi_intf.sv
 vendor/pulp-platform/axi/upstream/src/axi_atop_filter.sv
@@ -217,13 +225,17 @@ vendor/pulp-platform/axi/upstream/src/axi5_lite_demux_brcst.sv
 vendor/pulp-platform/axi/upstream/src/axi5_lite_xbar.sv
 vendor/pulp-platform/axi/upstream/src/axi5_lite_xbar_brcst.sv
 vendor/pulp-platform/axi/upstream/src/axi_hidestrb.sv
+// Package(axi) Target(any(axi_rtl, sep_wrapper, smu_wrapper))
 vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv
+// Package(axi_stream) Target(*)
 vendor/pulp-platform/axi_stream/upstream/src/axi_stream_intf.sv
 vendor/pulp-platform/axi_stream/upstream/src/axi_stream_cut.sv
 vendor/pulp-platform/axi_stream/upstream/src/axi_stream_dw_downsizer.sv
 vendor/pulp-platform/axi_stream/upstream/src/axi_stream_dw_upsizer.sv
 vendor/pulp-platform/axi_stream/upstream/src/axi_stream_multicut.sv
+// Package(obi) Target(*)
 vendor/pulp-platform/obi/upstream/src/obi_pkg.sv
+// Package(register_interface) Target(register_interface_l1)
 vendor/pulp-platform/register_interface/../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_pkg.sv
 vendor/pulp-platform/register_interface/../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi_pkg.sv
 vendor/pulp-platform/register_interface/upstream/src/reg_intf.sv
@@ -231,6 +243,7 @@ vendor/pulp-platform/register_interface/upstream/src/reg_demux.sv
 vendor/pulp-platform/register_interface/upstream/src/reg_mux.sv
 vendor/pulp-platform/register_interface/upstream/src/periph_to_reg.sv
 vendor/pulp-platform/register_interface/upstream/src/axi_to_reg_v2.sv
+// Package(el2) Target(sep_el2)
 vendor/chipsalliance/Cores-VeeR-EL2/overlay/snapshots/sep/common_defines.vh
 vendor/chipsalliance/Cores-VeeR-EL2/overlay/prim_shim/user_clock_gate.sv
 vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/lib/beh_lib.sv
@@ -280,6 +293,7 @@ vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/dmi/rvjtag_tap.v
 vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/lib/el2_regfile_if.sv
 vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/lib/el2_lib.sv
 vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/lib/el2_mem_if.sv
+// Package(idma) Target(idma_rtl)
 vendor/pulp-platform/idma/upstream/src/idma_pkg.sv
 vendor/pulp-platform/idma/upstream/src/frontend/inst64/idma_inst64_snitch_pkg.sv
 vendor/pulp-platform/idma/upstream/src/backend/idma_axil_read.sv
@@ -314,6 +328,7 @@ vendor/pulp-platform/idma/upstream/src/frontend/inst64/idma_inst64_events.sv
 vendor/pulp-platform/idma/upstream/src/frontend/desc64/idma_desc64_reg_wrapper.sv
 vendor/pulp-platform/idma/upstream/src/frontend/inst64/idma_inst64_top.sv
 vendor/pulp-platform/idma/upstream/src/frontend/desc64/idma_desc64_top.sv
+// Package(opentitan) Target(any(cross_trigger, drbg, dtp, entropy_source, key_manager, opentitan_smu, sep, smc, smu, system_timer_octs, uart))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_util_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_count_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_pkg.sv
@@ -321,6 +336,7 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_count.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_edge_detector.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync_cnt.sv
+// Package(opentitan) Target(any(drbg, key_manager, opentitan_smu, sep, smc, smu, uart))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sec_anchor_buf.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sec_anchor_flop.sv
@@ -332,15 +348,17 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_rst_sync.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_arb.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_ext.sv
+// Package(opentitan) Target(any(drbg, key_manager, opentitan_smu, sep, smu))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cipher_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_lfsr.sv
+// Package(opentitan) Target(any(opentitan_smu, sep, sep_wrapper, smc, smu, smu_wrapper))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_rom_pkg.sv
+// Package(opentitan) Target(any(sep_wrapper, smc, smu_wrapper))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_rom.sv
+// Package(opentitan) Target(any(drbg, opentitan_smu, sep, smu))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sha2_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_trivium_pkg.sv
-vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_pkg.sv
-vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_rom_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_2p_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/csrng/rtl/csrng_reg_pkg.sv
@@ -420,9 +438,6 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_shadow.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subst_perm.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_trivium.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_xoshiro256pp.sv
-vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop_en.sv
-vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop_no_rst.sv
-vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_rom.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_flop_macros.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_async_simple.sv
@@ -431,6 +446,7 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_adv.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_scr.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1r1w.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_2p.sv
+// Package(opentitan) Target(any(opentitan_smu, sep, smu))
 vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_adaptp_ht.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_cntr_reg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_markov_ht.sv
@@ -438,6 +454,7 @@ vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_repcnt_ht.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_watermark_reg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_main_sm_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_main_sm.sv
+// Package(opentitan) Target(any(drbg, opentitan_smu, sep, smu))
 vendor/lowRISC/opentitan/upstream/hw/ip/csrng/rtl/csrng_block_encrypt.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/csrng/rtl/csrng_cmd_stage.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/csrng/rtl/csrng_core.sv
@@ -452,6 +469,7 @@ vendor/lowRISC/opentitan/upstream/hw/ip/edn/rtl/edn_field_en.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/edn/rtl/edn_main_sm.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/edn/rtl/edn_reg_top.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/edn/rtl/edn.sv
+// Package(opentitan) Target(any(opentitan_smu, sep, smu))
 vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/rtl/aon_timer_core.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/rtl/aon_timer_reg_top.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/rtl/aon_timer.sv
@@ -467,6 +485,7 @@ vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/rtl/spi_controller_shift_regist
 vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/rtl/spi_host_reg_top.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/rtl/spi_host_window.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/rtl/spi_host.sv
+// Package(opentitan) Target(any(drbg, opentitan_smu, sep, smu))
 vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_cipher_control.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_cipher_control_fsm.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_cipher_control_fsm_n.sv
@@ -503,6 +522,7 @@ vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_sel_buf_chk.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_shift_rows.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_sub_bytes.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes.sv
+// Package(opentitan) Target(any(opentitan_smu, sep, smu))
 vendor/lowRISC/opentitan/upstream/hw/ip/hmac/rtl/hmac_reg_top.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/hmac/rtl/hmac_core.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/hmac/rtl/hmac.sv
@@ -548,6 +568,7 @@ vendor/lowRISC/opentitan/../../../hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv
 vendor/lowRISC/opentitan/../../../hw/sys/sep/rtl/sep_pkg.sv
 vendor/lowRISC/opentitan/../../../hw/sys/sep/rtl/sep_crypto_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn.sv
+// Package(picorv32) Target(any(picorv32_rtl, sep))
 vendor/tenstorrent/tt-picorv32/upstream/picorv32_regs.sv
 vendor/tenstorrent/tt-picorv32/upstream/picorv32_pcpi_mul.sv
 vendor/tenstorrent/tt-picorv32/upstream/picorv32_pcpi_fast_mul.sv
@@ -556,6 +577,7 @@ vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv
 vendor/tenstorrent/tt-picorv32/upstream/picorv32.sv
 vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi.sv
 vendor/tenstorrent/tt-picorv32/upstream/picorv32_wb.sv
+// Package(tt_dfd) Target(smc)
 vendor/tenstorrent/tt-hw-debug/overlay/prim_shim/generic_clkgate.sv
 vendor/tenstorrent/tt-hw-debug/overlay/prim_shim/generic_clkmux2.sv
 vendor/tenstorrent/tt-hw-debug/upstream/dependencies/common/generic_ipx_clk_rst_ctrl.sv
@@ -630,23 +652,32 @@ vendor/tenstorrent/tt-hw-debug/upstream/rtl/cla_wrapper.sv
 vendor/tenstorrent/tt-hw-debug/upstream/rtl/dst_wrapper.sv
 vendor/tenstorrent/tt-hw-debug/upstream/rtl/tnif_wrapper.sv
 vendor/tenstorrent/tt-hw-debug/upstream/rtl/top/dfd_top_cla_dst_apb.sv
+// Package(tt-oca-harness) Target(any(dtp, key_manager, sep, smc, system_timer_octs, uart))
 hw/common/ocah_prim/rtl/prim_jtag_pkg.sv
 hw/common/ocah_prim/rtl/prim_ram_1p_adv_ext_pkg.sv
+// Package(tt-oca-harness) Target(smc)
 hw/ip/avsbus_controller/regs/gen/sv/avsbus_controller_addrmap_pkg.sv
+// Package(tt-oca-harness) Target(sep)
 hw/ip/axi_alias_remap/regs/gen/sv/alias_remap_addrmap_pkg.sv
+// Package(tt-oca-harness) Target(any(sep, smc))
 hw/ip/axi_filter/regs/gen/sv/filter_ctrl_addrmap_pkg.sv
 hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_addrmap_pkg.sv
 hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_addrmap_pkg.sv
 hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_addrmap_pkg.sv
+// Package(tt-oca-harness) Target(smc)
 hw/ip/dfd/regs/gen/sv/smc_cla_addrmap_pkg.sv
+// Package(tt-oca-harness) Target(any(sep, smc))
 hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_addrmap_pkg.sv
 hw/ip/efuse/regs/gen/sv/efuse_mmr_addrmap_pkg.sv
+// Package(tt-oca-harness) Target(any(entropy_source, sep))
 hw/ip/entropy_source/regs/gen/sv/entropy_source_addrmap_pkg.sv
+// Package(tt-oca-harness) Target(smc)
 hw/ip/gpio/regs/gen/sv/gpio_intf_addrmap_pkg.sv
 hw/ip/i2c/regs/gen/sv/i2c_addrmap_pkg.sv
 hw/ip/i2c/regs/gen/sv/i2c_ctrl_addrmap_pkg.sv
 hw/ip/i2c/regs/gen/sv/i2c_wrap_addrmap_pkg.sv
 hw/ip/i3ccore_wrap/regs/gen/sv/oca_i3c_wrap_addrmap_pkg.sv
+// Package(tt-oca-harness) Target(any(key_manager, sep))
 hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_addrmap_pkg.sv
 hw/ip/key_manager/regs/gen/sv/aes_wrapper_key_addrmap_pkg.sv
 hw/ip/key_manager/regs/gen/sv/hmac_wrapper_key_addrmap_pkg.sv
@@ -658,24 +689,32 @@ hw/ip/key_manager/regs/gen/sv/km_mailbox_km_addrmap_pkg.sv
 hw/ip/key_manager/regs/gen/sv/km_mailbox_sep_addrmap_pkg.sv
 hw/ip/key_manager/regs/gen/sv/kmac_wrapper_key_addrmap_pkg.sv
 hw/ip/key_manager/regs/gen/sv/otbn_wrapper_key_addrmap_pkg.sv
+// Package(tt-oca-harness) Target(any(smc, uart))
 hw/ip/uart/log_engine/regs/gen/sv/log_engine_addrmap_pkg.sv
+// Package(tt-oca-harness) Target(sep)
 hw/ip/output_remap/regs/gen/sv/output_remap_addrmap_pkg.sv
+// Package(tt-oca-harness) Target(any(smc, system_timer_octs))
 hw/ip/system_timer_octs/regs/gen/sv/system_timer_octs_addrmap_pkg.sv
+// Package(tt-oca-harness) Target(smc)
 hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_addrmap_pkg.sv
 hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_wrap_addrmap_pkg.sv
+// Package(tt-oca-harness) Target(any(smc, uart))
 hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_dl_addrmap_pkg.sv
 hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_addrmap_pkg.sv
 hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_wo_addrmap_pkg.sv
 hw/ip/uart/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_ctrl_addrmap_pkg.sv
 hw/ip/uart/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_wrap_addrmap_pkg.sv
 hw/ip/uart/uart_wrap/regs/gen/sv/uart_wrap_addrmap_pkg.sv
+// Package(tt-oca-harness) Target(smc)
 hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_addrmap_pkg.sv
 hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv
+// Package(tt-oca-harness) Target(any(sep, smc))
 hw/ip/avsbus_controller/regs/gen/sv/avsbus_controller_reg_pkg.sv
 hw/ip/avsbus_controller/rtl/avsbus_controller_pkg.sv
 hw/ip/axi_alias_remap/regs/gen/sv/alias_remap_reg_pkg.sv
 hw/ip/axi_filter/regs/gen/sv/filter_ctrl_reg_pkg.sv
 hw/ip/axi_filter/rtl/axi_filter_pkg.sv
+// Package(tt-oca-harness) Target(any(cross_trigger, dtp))
 hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_addrmap_pkg.sv
 hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg_pkg.sv
 hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix_pkg.sv
@@ -683,12 +722,17 @@ hw/ip/cross_trigger/cross_trigger_network/regs/gen/sv/cross_trigger_network_addr
 hw/ip/cross_trigger/cross_trigger_network/rtl/cross_trigger_network_pkg.sv
 hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg_pkg.sv
 hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port_pkg.sv
+// Package(tt-oca-harness) Target(any(drbg, sep))
 hw/ip/drbg/rtl/drbg_pkg.sv
+// Package(tt-oca-harness) Target(any(sep, smc))
 hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_reg_pkg.sv
 hw/ip/efuse/regs/gen/sv/efuse_mmr_reg_pkg.sv
+// Package(tt-oca-harness) Target(any(dtp, sep, smc))
 hw/ip/efuse/rtl/efuse_pkg.sv
+// Package(tt-oca-harness) Target(any(entropy_source, sep))
 hw/ip/entropy_source/regs/gen/sv/entropy_source_reg_pkg.sv
 hw/ip/entropy_source/rtl/entropy_source_pkg.sv
+// Package(tt-oca-harness) Target(smc)
 hw/ip/gpio/regs/gen/sv/gpio_intf_reg_pkg.sv
 hw/ip/gpio/rtl/gpio_pkg.sv
 hw/ip/i2c/regs/gen/sv/i2c_reg_pkg.sv
@@ -696,9 +740,11 @@ hw/ip/i2c/rtl/i2c_pkg.sv
 hw/ip/i2c/regs/gen/sv/i2c_ctrl_reg_pkg.sv
 hw/ip/i2c/rtl/i2c_wrap_pkg.sv
 hw/ip/i3ccore_wrap/rtl/i3ccore_wrap_pkg.sv
+// Package(tt-oca-harness) Target(dtp)
 hw/ip/jtag/jtag_ptap/rtl/jtag_inst_reg_pkg.sv
 hw/ip/jtag/jtag_ptap/rtl/jtag_tap_pkg.sv
 hw/ip/jtag/jtag_ptap/rtl/jtag_tmp_pkg.sv
+// Package(tt-oca-harness) Target(any(key_manager, sep))
 hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg_pkg.sv
 hw/ip/key_manager/regs/gen/sv/aes_wrapper_key_reg_pkg.sv
 hw/ip/key_manager/regs/gen/sv/hmac_wrapper_key_reg_pkg.sv
@@ -710,17 +756,24 @@ hw/ip/key_manager/regs/gen/sv/km_mailbox_sep_reg_pkg.sv
 hw/ip/key_manager/regs/gen/sv/kmac_wrapper_key_reg_pkg.sv
 hw/ip/key_manager/regs/gen/sv/otbn_wrapper_key_reg_pkg.sv
 hw/ip/key_manager/rtl/km_intf_pkg.sv
+// Package(tt-oca-harness) Target(any(smc, uart))
 hw/ip/uart/log_engine/regs/gen/sv/log_engine_reg_pkg.sv
 hw/ip/uart/log_engine/rtl/log_engine_pkg.sv
+// Package(tt-oca-harness) Target(sep)
 hw/ip/memory_interface/rtl/examples/rom/example_rom_pkg.sv
 hw/ip/memory_interface/rtl/examples/sram/example_sram_pkg.sv
+// Package(tt-oca-harness) Target(any(sep, smc))
 hw/ip/output_remap/regs/gen/sv/output_remap_reg_pkg.sv
+// Package(tt-oca-harness) Target(any(key_manager, scrambler, sep))
 hw/ip/scrambler/rtl/scrambler_pkg.sv
+// Package(tt-oca-harness) Target(any(smc, system_timer_octs))
 hw/ip/system_timer_octs/regs/gen/sv/system_timer_octs_reg_pkg.sv
 hw/ip/system_timer_octs/rtl/system_timer_octs_pkg.sv
+// Package(tt-oca-harness) Target(smc)
 hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_reg_pkg.sv
 hw/ip/telemetry_receiver/rtl/telemetry_receiver_pkg.sv
 hw/ip/telemetry_receiver/rtl/telemetry_receiver_wrap_pkg.sv
+// Package(tt-oca-harness) Target(any(smc, uart))
 hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_dl_reg_pkg.sv
 hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_reg_pkg.sv
 hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_wo_reg_pkg.sv
@@ -728,17 +781,23 @@ hw/ip/uart/uart_16550/rtl/uart_16550_pkg.sv
 hw/ip/uart/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_ctrl_reg_pkg.sv
 hw/ip/uart/uart_log_engine_wrap/rtl/uart_log_engine_wrap_pkg.sv
 hw/ip/uart/uart_wrap/rtl/uart_wrap_pkg.sv
+// Package(tt-oca-harness) Target(smc)
 hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_reg_pkg.sv
+// Package(tt-oca-harness) Target(dtp)
 hw/sys/dtp/rtl/dtp_pkg.sv
+// Package(tt-oca-harness) Target(sep)
 hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg_pkg.sv
 hw/sys/sep/regs/gen/sv/blocks/sep_lifecycle_ctrl_reg_pkg.sv
 hw/sys/sep/regs/gen/sv/blocks/sep_reset_ctrl_reg_pkg.sv
 hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg_pkg.sv
 hw/sys/sep/rtl/crossbars/sep_local_axi_xbar_pkg.sv
 hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar_pkg.sv
+// Package(tt-oca-harness) Target(any(dtp, sep))
 hw/sys/sep/rtl/sep_lifecycle_ctrl_pkg.sv
 hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv
+// Package(tt-oca-harness) Target(sep)
 hw/sys/sep/rtl/sep_io_pkg.sv
+// Package(tt-oca-harness) Target(smc)
 hw/sys/smc/regs/gen/sv/blocks/chip_config_reg_pkg.sv
 hw/sys/smc/regs/gen/sv/blocks/cpu_ctrl_reg_pkg.sv
 hw/sys/smc/regs/gen/sv/blocks/dfx_ctrl_status_reg_pkg.sv
@@ -757,15 +816,22 @@ hw/sys/smc/rtl/smc_misc/rtl/smc_misc_pkg.sv
 hw/sys/smc/rtl/smc_peripherals/efuse/smc_efuse_pkg.sv
 hw/sys/smc/rtl/smc_peripherals/pkg/smc_padring_pkg.sv
 hw/sys/smc/rtl/smc_reset_unit/rtl/smc_reset_unit_pkg.sv
+// Package(tt-oca-harness) Target(all(dtp, sep, smc))
 hw/sys/smu/rtl/smu_axi_xbar_pkg.sv
 hw/sys/smu/rtl/smu_pkg.sv
+// Package(tt-oca-harness) Target(any(entropy_source, sep, smc))
 hw/common/axi/axi4lite_intf.sv
 hw/common/axi/axi_cg_snoop.sv
+// Package(tt-oca-harness) Target(any(axi_lite_to_ahb, sep))
 hw/common/axi/axi_lite_to_ahb.sv
+// Package(tt-oca-harness) Target(any(drbg, sep))
 hw/common/axi/axi_lite_to_tlul.sv
 hw/common/axi/tlul_to_axi_lite.sv
+// Package(tt-oca-harness) Target(any(axi_hang_detector, dtp, key_manager, sep, smc, system_timer_octs, uart))
 hw/common/ocah_prim/rtl/prim_axi_snoop.sv
+// Package(tt-oca-harness) Target(any(dtp, entropy_source, key_manager, sep, smc, system_timer_octs, uart))
 hw/common/ocah_prim/rtl/prim_clkmux4.sv
+// Package(tt-oca-harness) Target(any(dtp, key_manager, sep, smc, system_timer_octs, uart))
 hw/common/ocah_prim/rtl/prim_ag_clk_mux.sv
 hw/common/ocah_prim/rtl/prim_apb_arb.sv
 hw/common/ocah_prim/rtl/prim_axi_addr_fixer.sv
@@ -807,9 +873,12 @@ hw/common/ocah_prim/rtl/prim_sync_reset.sv
 hw/common/ocah_prim/rtl/prim_updown_counter.sv
 hw/common/ocah_prim/rtl/prim_zero_counter.sv
 hw/common/sync.sv
+// Package(tt-oca-harness) Target(any(key_manager, sep, smc))
 hw/common/ocah_prim/rtl/prim_ram_1p_adv_ext.sv
 hw/common/ocah_prim/rtl/prim_ram_1p_scr_ext.sv
+// Package(tt-oca-harness) Target(all(synth, not(emulation)))
 hw/common/defs/ocah_vendor_defines.svh
+// Package(tt-oca-harness) Target(any(drbg, sep))
 hw/common/tlul/rtl/tlul_adapter_host.sv
 hw/common/tlul/rtl/tlul_adapter_reg.sv
 hw/common/tlul/rtl/tlul_adapter_sram.sv
@@ -824,6 +893,7 @@ hw/common/tlul/rtl/tlul_rsp_intg_chk.sv
 hw/common/tlul/rtl/tlul_rsp_intg_gen.sv
 hw/common/tlul/rtl/tlul_socket_1n.sv
 hw/common/tlul/rtl/tlul_sram_byte.sv
+// Package(tt-oca-harness) Target(any(sep, smc))
 hw/ip/avsbus_controller/regs/gen/sv/avsbus_controller_reg.sv
 hw/ip/avsbus_controller/rtl/avsbus_controller.sv
 hw/ip/avsbus_controller/rtl/submodules/avsbus_async_fifo.sv
@@ -834,8 +904,11 @@ hw/ip/axi_alias_remap/rtl/axi_alias_remap_wrap.sv
 hw/ip/axi_filter/regs/gen/sv/filter_ctrl_reg.sv
 hw/ip/axi_filter/rtl/axi_filter_wrap.sv
 hw/ip/axi_filter/rtl/traffic_filter.sv
+// Package(tt-oca-harness) Target(any(axi_hang_detector, smc))
 hw/ip/axi_hang_detector/rtl/axi_hang_detector.sv
+// Package(tt-oca-harness) Target(any(sep, smc))
 hw/ip/axi_lite_mailbox_unit/rtl/axi_lite_mailbox_unit.sv
+// Package(tt-oca-harness) Target(any(cross_trigger, dtp))
 hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg.sv
 hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix.sv
 hw/ip/cross_trigger/cross_trigger_matrix/rtl/ctm_src_selector.sv
@@ -848,11 +921,13 @@ hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_edge_detector.sv
 hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_handshake_ctrl.sv
 hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_pulse_stretcher.sv
 hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_synchronizer.sv
+// Package(tt-oca-harness) Target(any(drbg, sep))
 hw/ip/drbg/rtl/drbg.sv
 hw/ip/drbg/rtl/drbg_axil64_lane_adapter.sv
 hw/ip/drbg/rtl/drbg_axis_edn_adapter.sv
 hw/ip/drbg/rtl/drbg_csrng_seed_adapter.sv
 hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv
+// Package(tt-oca-harness) Target(any(sep, smc))
 hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_reg.sv
 hw/ip/efuse/regs/gen/sv/efuse_mmr_reg.sv
 hw/ip/efuse/rtl/efuse_guard.sv
@@ -863,8 +938,10 @@ hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv
 hw/ip/efuse/rtl/efuse_shadow_regs.sv
 hw/ip/efuse/rtl/efuse_token_digest_comparator.sv
 hw/ip/efuse/rtl/efuse_triple_redundant_comparator.sv
+// Package(tt-oca-harness) Target(sep)
 hw/ip/efuse/rtl/efuse_token_digest_sha256.sv
 hw/ip/efuse/rtl/efuse_token_processing.sv
+// Package(tt-oca-harness) Target(any(entropy_source, sep))
 hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv
 hw/ip/entropy_source/rtl/entropy_debug_monitor.sv
 hw/ip/entropy_source/rtl/entropy_decorrelator.sv
@@ -882,6 +959,7 @@ hw/ip/entropy_source/rtl/entropy_sha256_whitener.sv
 hw/ip/entropy_source/rtl/entropy_source.sv
 hw/ip/entropy_source/rtl/entropy_source_rec_thresh_lut.sv
 hw/ip/entropy_source/rtl/gf_muladd.sv
+// Package(tt-oca-harness) Target(smc)
 hw/ip/gpio/regs/gen/sv/gpio_intf_reg.sv
 hw/ip/gpio/rtl/gpio.sv
 hw/ip/gpio/rtl/gpio_filter.sv
@@ -961,6 +1039,7 @@ hw/ip/idma_wrapper/rtl/idma_backend_wrapper.sv
 hw/ip/idma_wrapper/rtl/idma_frontend_wrapper.sv
 hw/ip/idma_wrapper/rtl/idma_request_manager_wrapper.sv
 hw/ip/idma_wrapper/rtl/idma_wrapper.sv
+// Package(tt-oca-harness) Target(dtp)
 hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv
 hw/ip/jtag/jtag_intf_unit/rtl/jtag_intf_unit.sv
 hw/ip/jtag/jtag_ptap/rtl/jtag_3dcr_reg.sv
@@ -977,6 +1056,7 @@ hw/ip/jtag/jtag_ptap/rtl/jtag_tap_ctrlr.sv
 hw/ip/jtag/jtag_ptap/rtl/jtag_tmp.sv
 hw/ip/jtag/jtag_ptap/rtl/jtag_tmp_status_reg.sv
 hw/ip/jtag/jtag_stap/rtl/jtag_stap.sv
+// Package(tt-oca-harness) Target(any(key_manager, sep))
 hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv
 hw/ip/key_manager/regs/gen/sv/aes_wrapper_key_reg.sv
 hw/ip/key_manager/regs/gen/sv/hmac_wrapper_key_reg.sv
@@ -1001,12 +1081,17 @@ hw/ip/key_manager/rtl/km_rom_interface.sv
 hw/ip/key_manager/rtl/km_sram_interface.sv
 hw/ip/key_manager/rtl/picorv32_pcpi_crc.sv
 hw/ip/key_manager/rtl/picorv32_wrapper.sv
+// Package(tt-oca-harness) Target(sep)
 hw/ip/axi_window_remap/rtl/axi_window_remap.sv
+// Package(tt-oca-harness) Target(any(smc, uart))
 hw/ip/uart/log_engine/regs/gen/sv/log_engine_reg.sv
 hw/ip/uart/log_engine/rtl/log_engine.sv
+// Package(tt-oca-harness) Target(sep)
 hw/ip/memory_interface/rtl/memory_interface.sv
+// Package(tt-oca-harness) Target(any(sep, smc))
 hw/ip/output_remap/regs/gen/sv/output_remap_reg.sv
 hw/ip/output_remap/rtl/output_remap.sv
+// Package(tt-oca-harness) Target(any(key_manager, scrambler, sep))
 hw/ip/scrambler/rtl/scrambler.sv
 hw/ip/scrambler/rtl/scrambler_1024x32.sv
 hw/ip/scrambler/rtl/scrambler_2048x32.sv
@@ -1014,12 +1099,15 @@ hw/ip/scrambler/rtl/scrambler_4096x32.sv
 hw/ip/scrambler/rtl/scrambler_512x32.sv
 hw/ip/scrambler/rtl/scrambler_8192x32.sv
 hw/ip/scrambler/rtl/scrambler_addr_tweak.sv
+// Package(tt-oca-harness) Target(any(smc, system_timer_octs))
 hw/ip/system_timer_octs/regs/gen/sv/system_timer_octs_reg.sv
 hw/ip/system_timer_octs/rtl/system_timer_octs.sv
 hw/ip/system_timer_octs/rtl/system_timer_octs_core.sv
+// Package(tt-oca-harness) Target(smc)
 hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_reg.sv
 hw/ip/telemetry_receiver/rtl/telemetry_receiver.sv
 hw/ip/telemetry_receiver/rtl/telemetry_receiver_wrap.sv
+// Package(tt-oca-harness) Target(any(smc, uart))
 hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_dl_reg.sv
 hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_reg.sv
 hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_wo_reg.sv
@@ -1030,9 +1118,12 @@ hw/ip/uart/uart_16550/rtl/uart_tx.sv
 hw/ip/uart/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_ctrl_reg.sv
 hw/ip/uart/uart_log_engine_wrap/rtl/uart_log_engine_wrap.sv
 hw/ip/uart/uart_wrap/rtl/uart_wrap.sv
+// Package(tt-oca-harness) Target(smc)
 hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_reg.sv
 hw/ip/zeroer/rtl/zeroer.sv
+// Package(tt-oca-harness) Target(dtp)
 hw/sys/dtp/rtl/dtp.sv
+// Package(tt-oca-harness) Target(sep)
 hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv
 hw/sys/sep/regs/gen/sv/blocks/sep_lifecycle_ctrl_reg.sv
 hw/sys/sep/regs/gen/sv/blocks/sep_reset_ctrl_reg.sv
@@ -1217,6 +1308,7 @@ vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_top.sv
 vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_reg.sv
 hw/sys/sep/rtl/sep_abr_kv_shim.sv
 hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv
+// Package(tt-oca-harness) Target(smc)
 hw/sys/smc/regs/gen/sv/blocks/chip_config_reg.sv
 hw/sys/smc/regs/gen/sv/blocks/cpu_ctrl_reg.sv
 hw/sys/smc/regs/gen/sv/blocks/dfx_ctrl_status_reg.sv
@@ -1536,6 +1628,7 @@ hw/sys/smc/rtl/smc_reset_unit/rtl/smc_reset_ctrl.sv
 hw/sys/smc/rtl/smc_reset_unit/rtl/smc_reset_sync.sv
 hw/sys/smc/rtl/smc_reset_unit/rtl/smc_reset_unit.sv
 hw/sys/smc/rtl/smc_reset_unit/rtl/smc_subsystem_resets.sv
+// Package(tt-oca-harness) Target(all(dtp, sep, smc))
 hw/sys/smu/rtl/smu.sv
 hw/sys/smu/rtl/smu_axi_xbar.sv
 
