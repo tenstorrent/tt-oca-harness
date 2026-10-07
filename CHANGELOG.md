@@ -8,7 +8,7 @@ Releases before 1.0.0 are early-stage: public interfaces (register maps, RTL
 ports) may change between minor versions. A patch stays compatible with the
 minor release it updates.
 
-## [0.5.1] - Unreleased
+## [0.5.1] - 2026-10-07 (Beta)
 
 ### Added
 
@@ -89,5 +89,5 @@ First public release of the Open Chiplet Atlas (OCA) Harness.
 - Lint, format and DV tooling, and a Nix-based reproducible environment with a
   container for the RISC-V firmware toolchain.
 
-[0.5.1]: https://github.com/tenstorrent/tt-oca-harness/compare/v0.5.0...HEAD
+[0.5.1]: https://github.com/tenstorrent/tt-oca-harness/releases/tag/v0.5.1
 [0.5.0]: https://github.com/tenstorrent/tt-oca-harness/releases/tag/v0.5.0
