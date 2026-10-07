@@ -558,33 +558,44 @@ in this repository; a reader without it runs their own unreachability tool
 over the same database with the same environment and writes the same URG
 exclusion format.
 
-The accepted list is seeded from the merged database of the commercial-path
-`--items hosted fw` regression (<<smc-cov-paths>>), so it targets the points
-that regression left uncovered, and it runs on the RTL that produced that
-database, because the formal model and the seed must describe one RTL.
+The analysis that writes the accepted list starts from the merged database
+of the commercial-path `--items hosted fw` regression (<<smc-cov-paths>>), so
+it targets the points that regression left uncovered. Every run of the
+analysis, the check mode below included, takes its seed from the checkout it
+runs in, because the formal model and the seed must describe one RTL.
 
-A re-run of the analysis over the accepted list is a check that no accepted
-entry has become reachable, not a source of the list: a list seeded from a
-group smaller than the coverage set (the `smoke` group, for one) leaves far
-more points uncovered, so it proves a larger exclusion set and leaves a
-smaller effective population behind it. A signoff-grade list takes a hand-run
-coverage-set seed, and a list of unrecorded provenance is not one.
+The analysis has a check mode. With
+`SMC_FCA_ELFILE=hw/sys/smc/dv/cov/config/vcs/smc_unreachable.el` and
+`SMC_FCA_CHECK_EL=1` the goals of the accepted list are the only goals, and
+the item fails when the analysis reaches one of them or when the tool cannot
+apply an entry to the current RTL. A scheduled formal job runs the check
+weekly. A seed's holes do not decide which goals a check analyses, so the
+check needs no coverage-set seed. They do decide what the analysis without
+the check mode proves: a seed narrower than the coverage set leaves more
+points uncovered, so a list regenerated from it proves a larger exclusion set
+and leaves a smaller effective population behind it. The scheduled check
+therefore validates the accepted list and is not a source of it. A
+signoff-grade list takes a coverage-set seed, and a list of unrecorded
+provenance is not one.
 
 The `pass:[[[native_files]]]` entry of `cov/config/vcs/coverage_policy.toml`
 that names the list pins the file's SHA-256. The runner refuses the policy
 when the file and the pinned digest differ, so a regenerated list takes a new
 entry. URG applies no entry whose module or instance checksum differs from
 the design it reports on, so an RTL change under an excluded scope drops that
-scope's exclusions on its own.
+scope's exclusions on its own. The runner applies the list at report time
+without re-checking it, so until the check has run against a changed RTL,
+the effective figures rest on a list proven against the RTL before the
+change.
 
 Regeneration rule: after a change to the SMC RTL file set, the list is
 regenerated from the merged database of a fresh `--items hosted fw`
 regression. Until it is, URG drops the entries of every scope whose checksum
 the change moved, and the entries of the other scopes still apply; the
-analysis's check mode over the accepted list fails when an excluded point has
-become reachable. A regenerated list
-takes design review before its entry changes, and the review accepts no entry
-that stimulus can reach.
+analysis's check mode over the accepted list, which a scheduled formal job
+runs weekly, fails when an excluded point has become reachable or an entry no
+longer applies to the design. A regenerated list takes design review before
+its entry changes, and the review accepts no entry that stimulus can reach.
 
 [[smc-fcov-exclusion-files]]
 === Exclusions and Limitations
