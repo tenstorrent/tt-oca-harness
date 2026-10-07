@@ -30,9 +30,9 @@ cannot use a container.
 | *Supported.* This is what CI uses.
 | Documented for Ubuntu 26.04 LTS. Other distributions should work, but package names differ.
 
-| macOS, Intel or Apple silicon
-| *Supported* with Podman. On Apple silicon the x86_64 image runs under emulation,
-  which is noticeably slower than on an x86_64 Linux host.
+| macOS
+| *Supported* with Podman. On Macs with Apple silicon (M-series) the x86_64 image
+  runs under emulation, which is noticeably slower.
 | Not documented.
 
 | Linux, arm64
