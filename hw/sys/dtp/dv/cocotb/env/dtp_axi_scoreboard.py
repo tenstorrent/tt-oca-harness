@@ -20,12 +20,14 @@ from ocah_axi_vip import OcahAxiRefModel, OcahAxiScoreboard
 from ocah_checker import OcahChecker
 from pyuvm import ConfigDB, uvm_component
 
-from .dtp_types import get_jtag2axi_target
+from .dtp_types import JTAG2AXI_TARGETS
 
-JTAG2AXI_TARGETS = ("smc_axi", "smc_otp", "sep_otp")
+__all__ = ["DtpAxiScoreboard"]
 
 
 class DtpAxiScoreboard(uvm_component):
+    """Builds, publishes and finalizes the shared AXI scoreboard and its per-bridge checkers."""
+
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.scoreboard: OcahAxiScoreboard | None = None
@@ -34,11 +36,8 @@ class DtpAxiScoreboard(uvm_component):
             return
 
         models = {
-            target: OcahAxiRefModel(
-                name=f"dtp_{target}_model",
-                beat_bytes=get_jtag2axi_target(target).beat_bytes,
-            )
-            for target in JTAG2AXI_TARGETS
+            target: OcahAxiRefModel(name=f"dtp_{target}_model", beat_bytes=cfg.beat_bytes)
+            for target, cfg in JTAG2AXI_TARGETS.items()
         }
         self.scoreboard = OcahAxiScoreboard(
             name="dtp-axi-scoreboard",

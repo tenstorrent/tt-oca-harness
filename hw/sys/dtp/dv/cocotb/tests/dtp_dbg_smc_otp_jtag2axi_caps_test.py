@@ -2,6 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP SMC OTP JTAG2AXI_CAPS test."""
 
+from __future__ import annotations
+
 import pyuvm
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_dbg_smc_otp_jtag2axi_caps_test_seq import (

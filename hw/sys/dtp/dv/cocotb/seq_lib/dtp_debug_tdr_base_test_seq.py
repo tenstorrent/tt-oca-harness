@@ -28,7 +28,6 @@ from env.dtp_tap_device import (
     unpack_jtag2axi_caps,
 )
 from env.dtp_types import DtpJtag2AxiTargetCfg, DtpJtagInstr
-from ocah_jtag_vip import OcahJtagState
 
 from .dtp_jtag_base_test_seq import dtp_jtag_base_test_seq
 
@@ -112,19 +111,6 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
         for name, value in expected.items():
             self.family_check(check_id, name, observed[name], value, context=context)
 
-    async def drive_tlr_without_trst(self) -> None:
-        """Enter Test-Logic-Reset with five TMS-high clocks, TRST untouched.
-
-        The TAP stays there, TCK idle, until the next operation. The DUT's
-        exported state after the fifth clock must be Test-Logic-Reset; an
-        attached checker records it as ``CHK-TAP-TLR-TMS5``.
-        """
-        for _ in range(5):
-            item = await self.tms_step(1)
-        if self.tap_checker is not None:
-            self.tap_checker.check_tms_ones_to_tlr(5, item.result)
-        self.record_tap_state(item.result, OcahJtagState.TEST_LOGIC_RESET)
-
     def decode_tmp_status(self, value: int) -> dict[str, int]:
         """Decode TMP_STATUS. Bit 1 reflects TMP persistence; bit 0 arms escape."""
         return {
@@ -134,6 +120,7 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
         }
 
     def log_tmp_status(self, label: str, value: int) -> dict[str, int]:
+        """Log a decoded TMP_STATUS capture and return its fields."""
         decoded = self.decode_tmp_status(value)
         self.log.info(
             "%s TMP_STATUS raw=0b%s persistence=%d bypass_escape=%d",
@@ -225,6 +212,7 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
         }
 
     def log_debug_control(self, label: str, value: int) -> dict[str, int]:
+        """Log a decoded DEBUG_CONTROL capture and return its fields."""
         decoded = self.decode_debug_control(value)
         self.log.info(
             "%s DEBUG_CONTROL raw=0x%02x cla_stop=%d jtag_stop=%d "
@@ -279,7 +267,7 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
             )
 
     def decode_ic_reset(self, value: int) -> dict[str, object]:
-        """Decode IC_RESET TDR using OSS default EXT, SEP, SMC one-port order."""
+        """Decode the IC_RESET TDR in the bench's one-port EXT, SEP, SMC slice order."""
         decoded_ports = {}
         for name, index in IC_RESET_PORT_INDEX.items():
             decoded_ports[name] = {
@@ -293,6 +281,7 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
         }
 
     def log_ic_reset(self, label: str, value: int) -> dict[str, object]:
+        """Log a decoded IC_RESET capture, one line per port, and return its fields."""
         decoded = self.decode_ic_reset(value)
         self.log.info(
             "%s IC_RESET raw=0b%s reset_hold=%d",
@@ -404,6 +393,7 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
         }
 
     def log_jtag2axi_caps(self, reg: str, value: int) -> dict[str, int]:
+        """Log a decoded ``*_JTAG2AXI_CAPS`` capture and return its fields."""
         decoded = self.decode_jtag2axi_caps(value)
         self.log.info("%s raw=0x%04x", reg, decoded["raw"])
         self.log.info("  rd_pl_depth    = %d", decoded["rd_pl_depth"])

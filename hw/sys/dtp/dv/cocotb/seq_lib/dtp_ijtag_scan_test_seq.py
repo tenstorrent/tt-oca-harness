@@ -12,8 +12,9 @@ instrument registers against the SIB model (``CHK-SCAN-CHAIN``).
 from __future__ import annotations
 
 from env.dtp_dbg_disable import IJTAG_SIB_DISABLE
-from env.dtp_scan_ref_model import DtpIjtagSibModel
+from env.dtp_ijtag_sib_model import DtpIjtagSibModel
 
+from .dtp_jtag_base_test_seq import SCAN_LENGTH_CHECK_IDS
 from .dtp_scan_base_test_seq import dtp_scan_base_test_seq
 
 
@@ -58,9 +59,8 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
         self.scenario = scenario
 
     async def body(self) -> None:
-        # Scenario-owned Shift-x exits: skip the scan-count cross-check.
         required = set(self.REQUIRED_IDS) | self.SCENARIO_REQUIRED_IDS.get(self.scenario, set())
-        await self.attach_family_checker(required, use_monitor=False)
+        await self.attach_family_checker(required | SCAN_LENGTH_CHECK_IDS)
         await self.enable_all_debug()
         await self.reset_to_tlr()
         await self.enable_all_debug()
@@ -97,8 +97,8 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
         )
         await self.check_pattern(open_pattern, context="all_off.open_seed")
         await self.check_pattern(0b000, context="all_off.nominal")
-        # Seeded per-pass disable mask: with every SIB closed, any lifecycle
-        # gating state must leave the outcome identical (closed stays closed).
+        # With every SIB closed, any lifecycle gating state leaves the outcome
+        # identical (closed stays closed).
         random_disable = {
             "dft_secure": rng.randrange(2),
             "dft_nonsecure": rng.randrange(2),
@@ -123,7 +123,6 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
             ("dfd", 0b111, {"dfd": 1}),
             ("all", 0b111, {"dft_secure": 1, "dft_nonsecure": 1, "dfd": 1}),
         ]
-        # Seeded per-pass order: each loop exercises a different gate sequence.
         self.rng("ijtag_all_on_order").shuffle(gate_vectors)
         for label, pattern, dbg in gate_vectors:
             await self.check_pattern(pattern, dbg_disable=dbg, context=f"all_on.gated.{label}")
@@ -179,7 +178,6 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
             ("secure_gated_nonsecure_open", 0b110, {"dft_secure": 1}),
             ("nonsecure_gated_secure_open", 0b110, {"dft_nonsecure": 1}),
         ]
-        # Seeded per-pass order: each loop exercises a different gate sequence.
         self.rng("ijtag_dft_order").shuffle(gate_cases)
         for label, pattern, dbg in gate_cases:
             await self.check_pattern(pattern, dbg_disable=dbg, context=f"dft.gated.{label}")

@@ -11,13 +11,77 @@ three JTAG2AXI bridge geometries are part of the bench configuration `tb_top`
 elaborates the DUT with: `dtp_dv_cfg` republishes them for the parity check
 against the SystemVerilog package, the geometry gate compares each bridge's
 `*_JTAG2AXI_CAPS` publication with them every pass, and every TDR field width
-derives from them.
+derives from them. The SV-UVM twin is ``dtp_types.svh``.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum, IntEnum
+from enum import Enum, IntEnum, StrEnum
+
+__all__ = [
+    "ABORT_ESCAPE_CHECK_ID",
+    "ABORT_FSM_CHECK_ID",
+    "ABORT_MIDFLIGHT_CHECK_ID",
+    "ABORT_RECOVERY_CHECK_ID",
+    "CDC_CLEAR_CHECK_ID",
+    "CDC_PHASE_CHECK_ID",
+    "DTP_FEATURE_BYPASS",
+    "DTP_FEATURE_IDCODE",
+    "DTP_FEATURE_IR_DECODE",
+    "DTP_FEATURE_JTAG2AXI_REQ",
+    "DTP_FEATURE_JTAG2AXI_STATUS",
+    "DTP_FEATURE_XTRIG_CSR",
+    "DTP_FEATURE_XTRIG_DECODE",
+    "DTP_IR_CAPTURE_PATTERN",
+    "DTP_IR_WIDTH",
+    "DTP_J2A_STATUS_POLLS",
+    "DTP_J2A_STATUS_SETTLE_TCK",
+    "DTP_OTP_AXIL_ADDR_WIDTH",
+    "DTP_OTP_AXIL_DATA_WIDTH",
+    "DTP_SEP_OTP_RD_PL_DEPTH",
+    "DTP_SEP_OTP_WR_PL_DEPTH",
+    "DTP_SMC_AXI_ADDR_WIDTH",
+    "DTP_SMC_AXI_DATA_WIDTH",
+    "DTP_SMC_AXI_ID_WIDTH",
+    "DTP_SMC_AXI_USER_WIDTH",
+    "DTP_SMC_OTP_RD_PL_DEPTH",
+    "DTP_SMC_OTP_WR_PL_DEPTH",
+    "DTP_SMC_RD_PL_DEPTH",
+    "DTP_SMC_WR_PL_DEPTH",
+    "DtpJtag2AxiOp",
+    "DtpJtag2AxiStatus",
+    "DtpJtag2AxiTargetCfg",
+    "DtpJtagInstr",
+    "DtpScanCtrlExpect",
+    "DtpScanKind",
+    "FAULT_STATUS_CHECK_ID",
+    "GATE_TDR_CHECK_ID",
+    "JTAG2AXI_TARGETS",
+    "MEM_IMAGE_CHECK_ID",
+    "ORPHAN_DISCARD_CHECK_ID",
+    "ORPHAN_DRAIN_CHECK_ID",
+    "ORPHAN_ORDER_CHECK_ID",
+    "RESET_COUNT_CHECK_ID",
+    "SMC_DBG_AXSIZE_8B",
+    "SMC_DBG_SINGLE_OP_LEN",
+    "STALL_BUSY_CHECK_ID",
+    "STALL_FSM_CHECK_ID",
+    "STALL_HOLD_CHECK_ID",
+    "UNDEFINED_BYPASS_INSTRS",
+    "decode_idcode",
+    "get_jtag2axi_target",
+    "ic_reset_after_tlr",
+    "pack_series_ctrl",
+    "pack_series_data",
+    "pack_single_op",
+    "series_data_len",
+    "size_field_bits",
+    "unpack_series_ctrl",
+    "unpack_series_data",
+    "unpack_single_op",
+    "unpack_single_op_fields",
+]
 
 # Primary TAP instruction register width: "6-bit instruction encodings"
 # (`hw/ip/jtag/jtag_intf_unit/doc/interface.adoc` and
@@ -47,6 +111,8 @@ DTP_FEATURE_JTAG2AXI_STATUS = "jtag2axi_status"
 # scan's start. A status capture whose scan starts inside this window after a
 # completion is not checkable.
 DTP_J2A_STATUS_SETTLE_TCK = 8
+# Status re-reads while the JTAG2AXI bridge completes the CDC + AXI round trip.
+DTP_J2A_STATUS_POLLS = 16
 
 
 class DtpJtagInstr(IntEnum):
@@ -186,6 +252,20 @@ class DtpScanCtrlExpect(Enum):
     GATED = "gated"
 
 
+class DtpScanKind(StrEnum):
+    """The scan a composed STAP chain image is built for.
+
+    ``DR``: a TAP_3DCR data scan, PTAP 3DCR first; ``IR``: an instruction
+    scan, PTAP IR first; ``ZLB``: a data scan under ZERO_LENGTH_BYPASS;
+    ``BYPASS``: a data scan under BYPASS, the PTAP bypass register first.
+    """
+
+    DR = "dr"
+    IR = "ir"
+    ZLB = "zlb"
+    BYPASS = "bypass"
+
+
 # A reset the sequence drove advanced its tb_top assertion counter by one.
 RESET_COUNT_CHECK_ID = "CHK-RESET-COUNT"
 # Reset-abort scenario evidence: the bridge observed mid-flight before the
@@ -245,6 +325,10 @@ def ic_reset_after_tlr(reset_hold: int, written: int, reset_image: int) -> int:
 # wrong parameter reads back a value the bench does not expect.
 DTP_SMC_AXI_ADDR_WIDTH = 56
 DTP_SMC_AXI_DATA_WIDTH = 64
+# The bench's SMC fabric request ID and user widths (dtp_dv_cfg_pkg
+# SmcAxiIdWidth, SmcAxiUserWidth).
+DTP_SMC_AXI_ID_WIDTH = 2
+DTP_SMC_AXI_USER_WIDTH = 12
 DTP_OTP_AXIL_ADDR_WIDTH = 32
 DTP_OTP_AXIL_DATA_WIDTH = 32
 DTP_SMC_OTP_RD_PL_DEPTH = 2
@@ -294,6 +378,11 @@ class DtpJtag2AxiTargetCfg:
     memory_attr: str
     activity_prefix: str
     dbg_disable_bit: str
+    # tb_top instances of the bridge port: the responder side and the
+    # monitor tap, and the port's bit in dtp_tb_if.sys_rst_on_ar_arm.
+    slave_if: str
+    monitor_if: str
+    reset_arm_bit: int
 
     @property
     def data_size(self) -> int:
@@ -303,6 +392,15 @@ class DtpJtag2AxiTargetCfg:
     @property
     def beat_bytes(self) -> int:
         return self.data_width // 8
+
+    @property
+    def monitor_name(self) -> str:
+        """Name of the port monitor, the ``source`` of every item it publishes."""
+        return f"dtp_{self.name}_monitor"
+
+    @property
+    def watcher_name(self) -> str:
+        return f"dtp_{self.name}_watcher"
 
     @property
     def default_size(self) -> int:
@@ -356,6 +454,9 @@ JTAG2AXI_TARGETS: dict[str, DtpJtag2AxiTargetCfg] = {
         memory_attr="axi_ram",
         activity_prefix="smc_axi",
         dbg_disable_bit="smc_jtag2axi",
+        slave_if="u_smc_axi_slave_if",
+        monitor_if="u_m_axi_if",
+        reset_arm_bit=0,
     ),
     "smc_otp": DtpJtag2AxiTargetCfg(
         name="smc_otp",
@@ -373,6 +474,9 @@ JTAG2AXI_TARGETS: dict[str, DtpJtag2AxiTargetCfg] = {
         memory_attr="smc_otp_axil_ram",
         activity_prefix="smc_otp_axil",
         dbg_disable_bit="smc_otp_jtag2axi",
+        slave_if="u_smc_otp_slave_if",
+        monitor_if="u_smc_otp_axil_if",
+        reset_arm_bit=1,
     ),
     "sep_otp": DtpJtag2AxiTargetCfg(
         name="sep_otp",
@@ -390,13 +494,15 @@ JTAG2AXI_TARGETS: dict[str, DtpJtag2AxiTargetCfg] = {
         memory_attr="sep_otp_axil_ram",
         activity_prefix="sep_otp_axil",
         dbg_disable_bit="sep_otp_jtag2axi",
+        slave_if="u_sep_otp_slave_if",
+        monitor_if="u_sep_otp_axil_if",
+        reset_arm_bit=2,
     ),
 }
 
 # SMC fabric bridge shorthands of the SMC-only helpers.
 SMC_DBG_AXSIZE_8B = JTAG2AXI_TARGETS["smc_axi"].default_size
 SMC_DBG_SINGLE_OP_LEN = JTAG2AXI_TARGETS["smc_axi"].single_op_len
-SMC_DBG_SERIES_CTRL_LEN = JTAG2AXI_TARGETS["smc_axi"].series_ctrl_len
 
 
 def get_jtag2axi_target(target: str | DtpJtag2AxiTargetCfg) -> DtpJtag2AxiTargetCfg:

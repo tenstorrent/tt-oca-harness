@@ -46,7 +46,7 @@ from env.dtp_xtrig_types import (
     pack_ctp_config,
     xtrig_csr_decode,
 )
-from ocah_axi_vip import OcahAxiPipelineOp
+from ocah_axi_vip import RESP_DECERR, RESP_OKAY, OcahAxiPipelineOp, OcahAxiWritePairResult
 
 from .dtp_xtrig_base_test_seq import FULL_WORD, dtp_xtrig_base_test_seq
 
@@ -291,7 +291,7 @@ class dtp_xtrig_csr_test_seq(dtp_xtrig_base_test_seq):
         observables.
         """
         self.require_pulse_mode_lanes("run_reg_stall")
-        self.log_banner("DTP XTRIG accepted-path CSR access and stall rationale")
+        self.log_banner("DTP XTRIG accepted-path CSR access")
         # Seeded per-pass CSR payloads and control ports: each loop writes
         # different values down the accepted path.
         rng = self.rng("reg_stall")
@@ -326,7 +326,7 @@ class dtp_xtrig_csr_test_seq(dtp_xtrig_base_test_seq):
             self.check_evidence(
                 self.CHK_QUIET,
                 f"regstall.in_flight.{name}",
-                activity.get(name, 0),
+                activity[name],
                 0,
                 context=f"cycles={window.cycles}",
             )
@@ -380,10 +380,7 @@ class dtp_xtrig_csr_test_seq(dtp_xtrig_base_test_seq):
                 context=f"cycles={control.cycles}",
             )
         await self.clear_xtrig()
-        self.log_summary(
-            "reg_stall",
-            rationale="local regblock stall path documented as structurally unreachable",
-        )
+        self.log_summary("reg_stall", demux_stall="none with one access in flight")
 
     async def run_axi_channel_skew(self) -> None:
         self.log_banner("DTP XTRIG manual AXI-Lite AW/W and RREADY skew")
@@ -403,7 +400,7 @@ class dtp_xtrig_csr_test_seq(dtp_xtrig_base_test_seq):
             w_valid_delay=rng.randint(3, 7),
             b_ready_delay=rng.randint(*self.SKEW_B_READY_DELAY),
         )
-        self.check_evidence(self.CHK_AXIL, "axi_skew.aw_before_w.bresp", result.resp, self.AXI_OKAY)
+        self.check_evidence(self.CHK_AXIL, "axi_skew.aw_before_w.bresp", result.resp, RESP_OKAY)
         observed = await self.csr_read(addr, label="axi_skew.aw_before_w.readback")
         self.check_evidence(
             self.CHK_AXIL, "axi_skew.aw_before_w.stretch", observed & XTRIG_CTP_STRETCH_MASK, d1
@@ -428,7 +425,7 @@ class dtp_xtrig_csr_test_seq(dtp_xtrig_base_test_seq):
                 "xtrig_axil_spill_err_count",
             )
         }
-        self.check_evidence(self.CHK_AXIL, "axi_skew.w_before_aw.bresp", result.resp, self.AXI_OKAY)
+        self.check_evidence(self.CHK_AXIL, "axi_skew.w_before_aw.bresp", result.resp, RESP_OKAY)
         # The CSR port's W spill register takes the early W beat with WREADY
         # high. The demux behind it passes a W beat from the cycle after its AW
         # enters the demux's W-select queue, so the beat stalls there for at
@@ -457,14 +454,13 @@ class dtp_xtrig_csr_test_seq(dtp_xtrig_base_test_seq):
             self.CHK_AXIL, "axi_skew.final_stretch", observed & XTRIG_CTP_STRETCH_MASK, d3
         )
         held = await self.axil.read_hold_result(addr, rng.randint(3, 7))
-        self.check_evidence(self.CHK_AXIL, "axi_skew.rresp", held.resp, self.AXI_OKAY)
+        self.check_evidence(self.CHK_AXIL, "axi_skew.rresp", held.resp, RESP_OKAY)
         self.check_evidence(self.CHK_AXIL, "axi_skew.rstable", int(held.hold_stable), 1)
         self.check_evidence(self.CHK_AXIL, "axi_skew.rdata", held.data & XTRIG_CTP_STRETCH_MASK, d3)
         self.log_summary("axi_channel_skew", final=f"0x{held.data:08x}")
 
     async def run_axi_channel_skew_demux_aw_lock_release(self) -> None:
         self.log_banner("DTP XTRIG AXI-Lite demux AW-lock release")
-        # Seeded per-pass targets, payloads, and skew timing.
         rng = self.rng("demux_aw_lock")
         ctp_a, ctp_b = rng.sample(range(XTRIG_NUM_CTP), 2)
         data_a = pack_ctp_config(mode=rng.randrange(2), invert=rng.randrange(2))
@@ -505,10 +501,10 @@ class dtp_xtrig_csr_test_seq(dtp_xtrig_base_test_seq):
             check_response=False,
         )
         self.check_evidence(
-            self.CHK_AXIL, "demux_aw_lock.order.first_bresp", result.first.resp, self.AXI_OKAY
+            self.CHK_AXIL, "demux_aw_lock.order.first_bresp", result.first.resp, RESP_OKAY
         )
         self.check_evidence(
-            self.CHK_AXIL, "demux_aw_lock.order.second_bresp", result.second.resp, self.AXI_DECERR
+            self.CHK_AXIL, "demux_aw_lock.order.second_bresp", result.second.resp, RESP_DECERR
         )
         observed = await self.csr_read(ctm_config_addr(select_port), label="demux_aw_lock.order")
         self.check_evidence(
@@ -531,7 +527,7 @@ class dtp_xtrig_csr_test_seq(dtp_xtrig_base_test_seq):
         b_ready_delay: int = 0,
         label: str,
         check_response: bool = True,
-    ):
+    ) -> OcahAxiWritePairResult:
         """Two outstanding skewed writes judged against the demux state mirrors.
 
         The CSR port's spill registers accept both AWs and both W beats with
@@ -578,11 +574,9 @@ class dtp_xtrig_csr_test_seq(dtp_xtrig_base_test_seq):
             delta["xtrig_demux_aw_open_accept_count"],
         )
         if check_response:
+            self.check_evidence(self.CHK_AXIL, f"{label}.first_bresp", result.first.resp, RESP_OKAY)
             self.check_evidence(
-                self.CHK_AXIL, f"{label}.first_bresp", result.first.resp, self.AXI_OKAY
-            )
-            self.check_evidence(
-                self.CHK_AXIL, f"{label}.second_bresp", result.second.resp, self.AXI_OKAY
+                self.CHK_AXIL, f"{label}.second_bresp", result.second.resp, RESP_OKAY
             )
         self.check_evidence(
             self.CHK_AXIL, f"{label}.spill_contract", delta["xtrig_axil_spill_err_count"], 0
@@ -674,9 +668,7 @@ class dtp_xtrig_csr_test_seq(dtp_xtrig_base_test_seq):
         )
         # The first read returns the STRETCH_MULT word written before the pair.
         # No subordinate decodes the unmapped second address: AXI answers DECERR.
-        self.check_evidence(
-            self.CHK_AXIL, "read_decode.first.resp", result.first.resp, self.AXI_OKAY
-        )
+        self.check_evidence(self.CHK_AXIL, "read_decode.first.resp", result.first.resp, RESP_OKAY)
         self.check_evidence(
             self.CHK_AXIL,
             "read_decode.first.data",
@@ -684,7 +676,7 @@ class dtp_xtrig_csr_test_seq(dtp_xtrig_base_test_seq):
             stretch,
         )
         self.check_evidence(
-            self.CHK_AXIL, "read_decode.second.resp", result.second.resp, self.AXI_DECERR
+            self.CHK_AXIL, "read_decode.second.resp", result.second.resp, RESP_DECERR
         )
         self.check_evidence(
             self.CHK_AXIL, "read_decode.first.hold_stable", int(result.first.hold_stable), 1
@@ -790,7 +782,7 @@ class dtp_xtrig_csr_test_seq(dtp_xtrig_base_test_seq):
         )
         for index, (op, res) in enumerate(zip(ops, result.results)):
             kind, _ = xtrig_csr_decode(op.address)
-            expected = self.AXI_DECERR if kind is DtpXtrigCsrKind.UNMAPPED else self.AXI_OKAY
+            expected = RESP_DECERR if kind is DtpXtrigCsrKind.UNMAPPED else RESP_OKAY
             self.check_evidence(
                 self.CHK_AXIL,
                 f"{label}.{op.direction}{index}.resp",
@@ -1081,14 +1073,14 @@ class dtp_xtrig_csr_test_seq(dtp_xtrig_base_test_seq):
         ):
             resp = await self.axil.write(addr, FULL_WORD)
             self.check_evidence(
-                self.CHK_CSR, f"{name}.bresp", resp, self.AXI_DECERR, context=f"addr=0x{addr:03x}"
+                self.CHK_CSR, f"{name}.bresp", resp, RESP_DECERR, context=f"addr=0x{addr:03x}"
             )
             result = await self.axil.read_result(addr)
             self.check_evidence(
                 self.CHK_CSR,
                 f"{name}.rresp",
                 result.resp,
-                self.AXI_DECERR,
+                RESP_DECERR,
                 context=f"addr=0x{addr:03x}",
             )
         self.log_step(

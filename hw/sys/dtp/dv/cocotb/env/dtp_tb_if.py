@@ -22,7 +22,16 @@ from ocah_axi_vip import OcahAxiBus, OcahAxiConfig, OcahAxiProtocol
 
 from .dtp_dbg_disable import DBG_DISABLE_FIELDS, full_dbg_disable, validate_dbg_disable
 from .dtp_dv_cfg import DTP_NUM_CLK_STOP_REQ, DV_CFG_PARITY
-from .dtp_scan_ref_model import STAP_ORDER
+from .dtp_stap_3dcr_model import STAP_ORDER
+from .dtp_types import (
+    DTP_OTP_AXIL_ADDR_WIDTH,
+    DTP_OTP_AXIL_DATA_WIDTH,
+    DTP_SMC_AXI_ADDR_WIDTH,
+    DTP_SMC_AXI_DATA_WIDTH,
+    DTP_SMC_AXI_ID_WIDTH,
+    DTP_SMC_AXI_USER_WIDTH,
+    JTAG2AXI_TARGETS,
+)
 
 __all__ = ["DtpTbIf"]
 
@@ -31,9 +40,6 @@ __all__ = ["DtpTbIf"]
 JTAG_SIGNAL_MAP: dict[str, str] = {"trst": "trst_n"}
 
 _DBG_DISABLE_PREFIX = "dbg_disable_"
-
-# Bit of each JTAG2AXI bridge in dtp_tb_if.sys_rst_on_ar_arm.
-_BRIDGE_BIT = {"smc_axi": 0, "smc_otp": 1, "sep_otp": 2}
 
 # Flat observable names that map onto a member of a different name (or of the
 # primary-TAP interface).
@@ -57,10 +63,16 @@ class DtpTbIf:
 
     JTAG_SIGNAL_MAP = JTAG_SIGNAL_MAP
     SMC_AXI_GEOMETRY = OcahAxiConfig(
-        protocol=OcahAxiProtocol.AXI4, addr_width=56, data_width=64, id_width=2, user_width=12
+        protocol=OcahAxiProtocol.AXI4,
+        addr_width=DTP_SMC_AXI_ADDR_WIDTH,
+        data_width=DTP_SMC_AXI_DATA_WIDTH,
+        id_width=DTP_SMC_AXI_ID_WIDTH,
+        user_width=DTP_SMC_AXI_USER_WIDTH,
     )
     OTP_AXIL_GEOMETRY = OcahAxiConfig(
-        protocol=OcahAxiProtocol.AXI4_LITE, addr_width=32, data_width=32
+        protocol=OcahAxiProtocol.AXI4_LITE,
+        addr_width=DTP_OTP_AXIL_ADDR_WIDTH,
+        data_width=DTP_OTP_AXIL_DATA_WIDTH,
     )
     XTRIG_AXIL_GEOMETRY = OcahAxiConfig(
         protocol=OcahAxiProtocol.AXI4_LITE, addr_width=32, data_width=32
@@ -74,23 +86,18 @@ class DtpTbIf:
         self.jtag = top.u_jtag_if
         self.stap_ds = {stap: getattr(top, f"u_stap_{stap}_ds_if") for stap in STAP_ORDER}
         self._axi_active = {
-            "smc_axi": top.u_smc_axi_slave_if,
-            "smc_otp": top.u_smc_otp_slave_if,
-            "sep_otp": top.u_sep_otp_slave_if,
-            "xtrig": top.u_xtrig_master_if,
+            name: getattr(top, cfg.slave_if) for name, cfg in JTAG2AXI_TARGETS.items()
         }
+        self._axi_active["xtrig"] = top.u_xtrig_master_if
         self._axi_passive = {
-            "smc_axi": top.u_m_axi_if,
-            "smc_otp": top.u_smc_otp_axil_if,
-            "sep_otp": top.u_sep_otp_axil_if,
-            "xtrig": top.u_xtrig_axil_if,
+            name: getattr(top, cfg.monitor_if) for name, cfg in JTAG2AXI_TARGETS.items()
         }
+        self._axi_passive["xtrig"] = top.u_xtrig_axil_if
         self._axi_geometry = {
-            "smc_axi": self.SMC_AXI_GEOMETRY,
-            "smc_otp": self.OTP_AXIL_GEOMETRY,
-            "sep_otp": self.OTP_AXIL_GEOMETRY,
-            "xtrig": self.XTRIG_AXIL_GEOMETRY,
+            name: self.OTP_AXIL_GEOMETRY if cfg.bus_type else self.SMC_AXI_GEOMETRY
+            for name, cfg in JTAG2AXI_TARGETS.items()
         }
+        self._axi_geometry["xtrig"] = self.XTRIG_AXIL_GEOMETRY
 
     # --- clock and resets -----------------------------------------------------
     @property
@@ -130,8 +137,18 @@ class DtpTbIf:
         return True
 
     def sample(self, name: str) -> int:
-        """Integer value of a member by its flat name."""
-        return int(self.handle(name).value)
+        """Integer value of a member by its flat name.
+
+        A member holding an X or Z bit raises ``ValueError`` naming it.
+        """
+        return self._resolve(name, self.handle(name).value)
+
+    @staticmethod
+    def _resolve(name: str, value: Any) -> int:
+        try:
+            return int(value)
+        except ValueError as exc:
+            raise ValueError(f"{name} holds {value}, which has an X or Z bit") from exc
 
     # --- lifecycle debug disables ---------------------------------------------
     def dbg_disable(self) -> dict[str, int]:
@@ -139,8 +156,8 @@ class DtpTbIf:
         return {name: self.dbg_field(name) for name in DBG_DISABLE_FIELDS}
 
     def dbg_field(self, name: str) -> int:
-        """Driven value of one dbg_disable field by name."""
-        return int(self._dbg_handle(name).value)
+        """Driven value of one dbg_disable field by name; an X or Z bit raises ``ValueError``."""
+        return self._resolve(name, self._dbg_handle(name).value)
 
     def set_dbg_disable(self, values: Mapping[str, int]) -> None:
         """Drive the named dbg_disable fields; the other fields keep their state."""
@@ -196,7 +213,7 @@ class DtpTbIf:
     def arm_reset_on_read(self, target: str, *, cycles: int = 1) -> None:
         """Arm one system-reset pulse of ``cycles`` clocks on ``target``'s next AR handshake."""
         self.ctrl.sys_rst_on_ar_cycles.value = cycles
-        self.ctrl.sys_rst_on_ar_arm.value = 1 << _BRIDGE_BIT[target]
+        self.ctrl.sys_rst_on_ar_arm.value = 1 << JTAG2AXI_TARGETS[target].reset_arm_bit
 
     def disarm_reset_on_read(self) -> None:
         """Clear the read-armed system reset of every bridge."""

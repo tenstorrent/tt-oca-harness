@@ -23,6 +23,7 @@ from .dtp_jtag_base_test_seq import NON_IDCODE_PRELOADS, dtp_jtag_base_test_seq
 
 IDCODE_MASK = 0xFFFF_FFFF
 RECOVERY_CHECK_ID = "CHK-IDCODE-RECOVERY"
+POR_CHECK_ID = "CHK-TAP-POR-TLR"
 REQUIRED_CHECK_IDS: frozenset[str] = frozenset(
     {
         "CHK-IDCODE-RAW",
@@ -110,10 +111,19 @@ class dtp_jtag_idcode_test_seq(dtp_jtag_base_test_seq):
         context = f"preload=0x{int(preload):02x} por_cycles={cycles}"
         await self.load_ir(preload)
         item = await self.pulse_por(cycles=cycles)
-        self.record_tap_state(item.result, OcahJtagState.TEST_LOGIC_RESET)
-        assert item.signals["jtag_trst"] == 1, f"TRST_N low during the power-on reset ({context})"
-        assert self.tap_checker is not None
-        self.tap_checker.sync_state(OcahJtagState.TEST_LOGIC_RESET)
+        self.check_tap_state(
+            POR_CHECK_ID,
+            item.result,
+            OcahJtagState.TEST_LOGIC_RESET,
+            context=f"during POR {context}",
+        )
+        self.family_check(
+            POR_CHECK_ID,
+            "TRST_N deasserted during POR",
+            item.signals["jtag_trst"],
+            1,
+            context=context,
+        )
         await self.tms_expect(0, OcahJtagState.RUN_TEST_IDLE)
         item = await self.shift_dr(0, 32)
         value = item.result & IDCODE_MASK
@@ -166,9 +176,7 @@ class dtp_jtag_idcode_test_seq(dtp_jtag_base_test_seq):
             # sequence never issued as scans.
             use_monitor=False,
         )
-        seed = self.scenario_seed
-        self.log.info("Using IDCODE random seed %d", seed)
-        rng = random.Random(seed)
+        rng = self.rng("idcode")
 
         observed_values: list[int] = []
         # Test-Logic-Reset loads IDCODE into the instruction register, so a DR

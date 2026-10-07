@@ -2,6 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP TMP_STATUS persistence across the system reset and Test-Logic-Reset test."""
 
+from __future__ import annotations
+
 import pyuvm
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_jtag_tmp_status_chrst_n_in_persistence_test_seq import (

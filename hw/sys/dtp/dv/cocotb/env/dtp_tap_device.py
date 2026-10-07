@@ -72,9 +72,9 @@ DTP_IC_RESET_LEN = (2 * DTP_IC_RESET_PORTS) + 1
 DTP_JTAG_CAPS_LEN = 60
 DTP_JTAG2AXI_CAPS_LEN = 14
 # SELECT_IJTAG: one bit per SIB of the DTP iJTAG network
-# (dtp_scan_ref_model.IJTAG_SIB_ORDER).
+# (dtp_ijtag_sib_model.IJTAG_SIB_ORDER).
 DTP_SELECT_IJTAG_MIN_LEN = 3
-# The OSS TB uses a compact local scan model for boundary-scan scenarios.
+# The bench models the boundary-scan register as an 8-bit loopback (DtpScanModel).
 DTP_BSR_MODEL_LEN = 8
 
 
@@ -194,7 +194,7 @@ def _jtag2axi_registers(cfg: DtpJtag2AxiTargetCfg) -> dict[str, _TapRegister]:
 
 
 def dtp_tap_device(idle_delay: int = 0) -> OcahJtagDevice:
-    """DTP primary TAP with the TDRs exercised by the OSS tests.
+    """DTP primary TAP with the TDRs the tests exercise.
 
     ``idle_delay`` is the idle TCK cycles after every register access (the
     JTAG2AXI CDC and AXI round trip).

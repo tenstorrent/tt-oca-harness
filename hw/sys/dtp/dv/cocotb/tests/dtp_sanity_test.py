@@ -5,6 +5,8 @@
 Exercises IEEE 1149.1 primary TAP state transitions via the shared ocah_jtag_vip BFM.
 """
 
+from __future__ import annotations
+
 import pyuvm
 from dtp_base_test import dtp_base_test
 from env.dtp_types import DTP_FEATURE_BYPASS, DTP_FEATURE_IDCODE, DTP_FEATURE_IR_DECODE

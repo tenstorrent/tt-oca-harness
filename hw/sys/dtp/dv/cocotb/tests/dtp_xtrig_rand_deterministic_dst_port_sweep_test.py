@@ -2,6 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP VPLAN scenario `dtp_xtrig_rand_deterministic_dst_port_sweep_test`."""
 
+from __future__ import annotations
+
 import pyuvm
 from dtp_xtrig_base_test import dtp_xtrig_base_test
 from seq_lib.dtp_xtrig_route_test_seq import dtp_xtrig_route_test_seq
@@ -9,6 +11,8 @@ from seq_lib.dtp_xtrig_route_test_seq import dtp_xtrig_route_test_seq
 
 @pyuvm.test()
 class dtp_xtrig_rand_deterministic_dst_port_sweep_test(dtp_xtrig_base_test):
+    """One internal source routed to every CTM destination, then every CTP routed to itself."""
+
     async def run_scenario(self) -> None:
         await self.start_looped_seq(
             dtp_xtrig_route_test_seq,

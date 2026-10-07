@@ -15,8 +15,8 @@ The SV-UVM twin is ``uvm/seq_lib/dtp_ctm_route_test_seq.svh``.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from random import Random
-from typing import ClassVar
 
 import cocotb
 from env.dtp_xtrig_types import (
@@ -37,8 +37,31 @@ CTM_RAND_PULSE_MAX_CYCLES = 8
 CTM_RAND_LEAD_MAX_CYCLES = 3
 
 
+@dataclass
+class DtpCtmRouteWalk:
+    """The route walk of a random mix, which its test keeps across the passes.
+
+    ``pending`` holds the routes, as (source, destination) in a seeded order,
+    that no single-source window has driven yet: each iteration starts from
+    the first one. ``driven`` holds the routes single-source windows drove.
+    """
+
+    pending: list[tuple[int, int]] = field(default_factory=list)
+    driven: set[tuple[int, int]] = field(default_factory=set)
+
+
 class dtp_ctm_route_test_seq(dtp_xtrig_base_test_seq):
     """CTM route-class, reset and random route-mix scenarios."""
+
+    def __init__(
+        self,
+        name: str = "dtp_ctm_route_test_seq",
+        *,
+        route_walk: DtpCtmRouteWalk | None = None,
+        **kwargs: object,
+    ) -> None:
+        super().__init__(name, **kwargs)
+        self.route_walk = DtpCtmRouteWalk() if route_walk is None else route_walk
 
     # The reset observables that move with every CTP in wire-OR mode, where
     # the acknowledge pads are static.
@@ -50,14 +73,6 @@ class dtp_ctm_route_test_seq(dtp_xtrig_base_test_seq):
         "xtrig_ctp_ct_dst",
         "xtrig_int_ct_dst",
     )
-    # Pending routes of a random mix, as (source, destination) in a seeded
-    # order, kept across the passes of the test: each iteration starts from
-    # the first pending route, and only a window whose one input is a
-    # route's source retires that route.
-    _route_pending: ClassVar[dict[str, list[tuple[int, int]]]] = {}
-    # The routes of a random mix that a single-source window has driven in
-    # the test.
-    _route_driven: ClassVar[dict[str, set[tuple[int, int]]]] = {}
     # The random mixes whose last pass continues until every route of their
     # class has been driven alone.
     ROUTE_WALK_MIXES = ("cla_to_ctp", "ctp_to_cla")
@@ -127,9 +142,33 @@ class dtp_ctm_route_test_seq(dtp_xtrig_base_test_seq):
         overlap_output: int,
     ) -> None:
         self.log_banner(f"DTP CTM wire-OR routing {name}")
-        await self.verify_route(
-            input_port, output_mask, XTRIG_CTP_MODE_WIRE_OR, label=f"wire_or.{name}.main"
+        main = f"wire_or.{name}.main"
+        await self.configure_ctp_modes_for_route_mask(
+            1 << input_port, output_mask, XTRIG_CTP_MODE_WIRE_OR
         )
+        await self.program_routes(1 << input_port, output_mask, label=main)
+        # Every destination of the main route carries one pulse of the route
+        # stretch width.
+        widths = {
+            port: cocotb.start_soon(self.xtrig.measure_mask_width(*self._request_bit(port)))
+            for port in self.port_bits(output_mask)
+        }
+        await self.run_route_window(
+            1 << input_port, output_mask, XTRIG_CTP_MODE_WIRE_OR, label=main
+        )
+        for port, task in widths.items():
+            pulse = await task
+            context = f"output={port} source={input_port}"
+            self.check_evidence(
+                self.CHK_STRETCH,
+                f"{main}.port{port}.width",
+                pulse.width,
+                self.ROUTE_STRETCH_MULT + 1,
+                context=context,
+            )
+            self.check_evidence(
+                self.CHK_STRETCH, f"{main}.port{port}.pulses", pulse.pulses, 1, context=context
+            )
         # Two sources selected into one destination: each source alone reaches
         # it, and both pulsed in the same cycle merge into one pulse of the
         # single-source width.
@@ -146,8 +185,9 @@ class dtp_ctm_route_test_seq(dtp_xtrig_base_test_seq):
             await self.run_route_window(
                 pulsed, 1 << overlap_output, XTRIG_CTP_MODE_WIRE_OR, label=f"wire_or.{name}.{tag}"
             )
-        signal, bit = self.request_observable(overlap_output)
-        width_task = cocotb.start_soon(self.xtrig.measure_mask_width(signal, 1 << bit))
+        width_task = cocotb.start_soon(
+            self.xtrig.measure_mask_width(*self._request_bit(overlap_output))
+        )
         await self.run_route_window(
             both,
             1 << overlap_output,
@@ -171,11 +211,11 @@ class dtp_ctm_route_test_seq(dtp_xtrig_base_test_seq):
         )
         self.log_summary(f"ctm_wire_or_{name}", input=input_port, outputs=f"0x{output_mask:x}")
 
-    def request_observable(self, output_port: int) -> tuple[str, int]:
-        """Observable and bit that carry a wire-OR request of ``output_port``."""
+    def _request_bit(self, output_port: int) -> tuple[str, int]:
+        """Observable and bit mask that carry a wire-OR request of ``output_port``."""
         if self.is_ctp_port(output_port):
-            return "xtrig_ctp_req_out_dout_en", output_port
-        return "xtrig_ctm_src_req", self.int_idx_from_port(output_port)
+            return "xtrig_ctp_req_out_dout_en", 1 << output_port
+        return "xtrig_ctm_src_req", 1 << self.int_idx_from_port(output_port)
 
     # Seeded per-pass pairs: each loop proves the P2P route class on three
     # different source/destination combinations (source != destination).
@@ -227,7 +267,6 @@ class dtp_ctm_route_test_seq(dtp_xtrig_base_test_seq):
     # ------------------------------------------------------------------
     async def run_ctm_reset_wire_or_mode(self) -> None:
         self.log_banner("DTP CTM reset in wire-OR mode")
-        # Seeded per-pass ports: each loop resets and recovers different routes.
         rng = self.rng("ctm_reset_wire_or")
         int_a, int_b, int_c = rng.sample(range(XTRIG_NUM_INT_CT), 3)
         ctps = rng.sample(range(XTRIG_NUM_CTP), 5)
@@ -279,7 +318,6 @@ class dtp_ctm_route_test_seq(dtp_xtrig_base_test_seq):
 
     async def run_ctm_reset_p2p_mode(self) -> None:
         self.log_banner("DTP CTM reset in P2P mode")
-        # Seeded per-pass ports: each loop resets and recovers different routes.
         rng = self.rng("ctm_reset_p2p")
         int_a, int_b, int_c = rng.sample(range(XTRIG_NUM_INT_CT), 3)
         ctps = rng.sample(range(XTRIG_NUM_CTP), 3)
@@ -333,7 +371,6 @@ class dtp_ctm_route_test_seq(dtp_xtrig_base_test_seq):
 
     async def run_ctm_reset_all_modes(self) -> None:
         self.log_banner("DTP CTM reset across wire-OR and P2P modes")
-        # Seeded per-pass ports: each loop resets and recovers different routes.
         rng = self.rng("ctm_reset_all_modes")
         int_a, int_b, int_c = rng.sample(range(XTRIG_NUM_INT_CT), 3)
         ctps = rng.sample(range(XTRIG_NUM_CTP), 5)
@@ -449,7 +486,7 @@ class dtp_ctm_route_test_seq(dtp_xtrig_base_test_seq):
         used = input_mask | output_mask
         free_src = [port for port in source_pool if not (used >> port) & 1]
         free_dst = [port for port in dest_pool if not (used >> port) & 1]
-        pending = self._route_pending.get(name, [])
+        pending = self.route_walk.pending
         candidates = [
             (src, dst)
             for (src, dst) in pending
@@ -467,7 +504,7 @@ class dtp_ctm_route_test_seq(dtp_xtrig_base_test_seq):
             out2 = rng.choice(free_dst)
         if (in2, out2) in pending:
             pending.remove((in2, out2))
-        self._route_driven.setdefault(name, set()).add((in2, out2))
+        self.route_walk.driven.add((in2, out2))
         self.log.info("%s: second P2P route input=%d output=%d alongside", label, in2, out2)
         await self.configure_ctp_modes_for_route_mask(1 << in2, 1 << out2, XTRIG_CTP_MODE_P2P)
         await self.program_ctm_src(out2, 1 << in2)
@@ -517,7 +554,7 @@ class dtp_ctm_route_test_seq(dtp_xtrig_base_test_seq):
                 p2p=p2p,
             )
         iterations = self.random_count
-        driven = self._route_driven.setdefault(name, set())
+        driven = self.route_walk.driven
         if closes_walk and self.loop_index == self.total_passes - 1:
             # Every single-source iteration retires at least its head route,
             # so the walk closes within this many iterations.
@@ -570,11 +607,10 @@ class dtp_ctm_route_test_seq(dtp_xtrig_base_test_seq):
         )
         pulse_cycles = rng.randint(2, CTM_RAND_PULSE_MAX_CYCLES)
         lead_cycles = rng.randint(0, CTM_RAND_LEAD_MAX_CYCLES)
-        pending = self._route_pending.get(name)
+        pending = self.route_walk.pending
         if not pending:
-            pending = list(walk)
+            pending[:] = walk
             rng.shuffle(pending)
-            self._route_pending[name] = pending
         head_src, head_dst = pending[0]
         inputs = [head_src]
         if n_inputs == 2:
@@ -600,7 +636,7 @@ class dtp_ctm_route_test_seq(dtp_xtrig_base_test_seq):
         if len(inputs) == 1:
             retired = {(head_src, d) for d in selected}
             pending[:] = [route for route in pending if route not in retired]
-            self._route_driven.setdefault(name, set()).update(retired)
+            self.route_walk.driven.update(retired)
         self.log_iteration(
             idx + 1,
             total,

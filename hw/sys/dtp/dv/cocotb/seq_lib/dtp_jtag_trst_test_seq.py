@@ -44,17 +44,18 @@ class dtp_jtag_trst_test_seq(dtp_jtag_base_test_seq):
         cycles = rng.randint(2, 8)
         item = await self.assert_trst(cycles=cycles)
         context = f"trst_from={state.name} cycles={cycles}"
-        checker.check_reset_to_tlr(
+        self.check_tap_state(
+            "CHK-TAP-TRST-ASYNC",
             item.reset_state,
-            check_id="CHK-TAP-TRST-ASYNC",
+            OcahJtagState.TEST_LOGIC_RESET,
             context=f"before any TCK edge {context}",
         )
-        checker.check_reset_to_tlr(
+        self.check_tap_state(
+            "CHK-TAP-TRST-TLR",
             item.result,
-            check_id="CHK-TAP-TRST-TLR",
+            OcahJtagState.TEST_LOGIC_RESET,
             context=f"after TMS-low TCK cycles under TRST {context}",
         )
-        self.record_tap_state(item.result, OcahJtagState.TEST_LOGIC_RESET)
         await self.deassert_trst(cycles=rng.randint(1, 3))
 
         await self.tms_expect(0, OcahJtagState.RUN_TEST_IDLE)

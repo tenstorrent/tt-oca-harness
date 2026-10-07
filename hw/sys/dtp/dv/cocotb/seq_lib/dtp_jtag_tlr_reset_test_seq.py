@@ -152,15 +152,12 @@ class dtp_jtag_tlr_reset_test_seq(dtp_debug_tdr_base_test_seq):
                 RESUME_CHECK_ID,
                 "CHK-NONVAC",
             },
-            # The navigation into the Pause states and the TMS-high walk out of
-            # the Shift states leave Shift-x without a scan the sequence
-            # issued.
+            # The TMS-high walk out of the Shift states leaves Shift-x without
+            # a scan the sequence issued.
             use_monitor=False,
         )
-        # DTP_JTAG_TAP_CHECKER_NEGATIVE=1 is the documented negative-validation
-        # hook: it desyncs the TAP reference model so the next
-        # state check must FAIL, proving the checker rejects a bad prediction
-        # end to end.
+        # DTP_JTAG_TAP_CHECKER_NEGATIVE=1 desyncs the TAP reference model, so
+        # the next state check must fail.
         negative = OcahKnobs.is_set("DTP_JTAG_TAP_CHECKER_NEGATIVE")
 
         states = [

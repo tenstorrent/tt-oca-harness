@@ -2,15 +2,19 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP VPLAN scenario `dtp_xtrig_axi_channel_skew_read_decode_backpressure_test`."""
 
+from __future__ import annotations
+
 import pyuvm
 from dtp_xtrig_base_test import dtp_xtrig_base_test
-from env.dtp_types import DTP_FEATURE_XTRIG_DECODE
+from env.dtp_types import DTP_FEATURE_XTRIG_CSR, DTP_FEATURE_XTRIG_DECODE
 from seq_lib.dtp_xtrig_csr_test_seq import dtp_xtrig_csr_test_seq
 
 
 @pyuvm.test()
 class dtp_xtrig_axi_channel_skew_read_decode_backpressure_test(dtp_xtrig_base_test):
-    required_features = (DTP_FEATURE_XTRIG_DECODE,)
+    """Two reads under RREADY backpressure return OKAY with the written data, then DECERR."""
+
+    required_features = (DTP_FEATURE_XTRIG_CSR, DTP_FEATURE_XTRIG_DECODE)
 
     async def run_scenario(self) -> None:
         await self.start_looped_seq(

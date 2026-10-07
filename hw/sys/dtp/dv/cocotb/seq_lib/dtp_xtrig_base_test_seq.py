@@ -17,7 +17,8 @@ import cocotb
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly
 from env.dtp_dv_cfg import DTP_INT_CT_MODE
 from env.dtp_types import RESET_COUNT_CHECK_ID
-from env.dtp_xtrig_agent import DtpXtrigActivityWindow
+from env.dtp_xtrig_agent import DtpXtrigActivityWindow, DtpXtrigBfm
+from env.dtp_xtrig_ctm_model import DtpXtrigCtmModel
 from env.dtp_xtrig_types import (
     XTRIG_CT_DST_LATENCY,
     XTRIG_CTM_SELECT_DEFAULT,
@@ -39,7 +40,6 @@ from env.dtp_xtrig_types import (
     XTRIG_NUM_INT_CT,
     XTRIG_WIRE_OR_ASSERT,
     XTRIG_WIRE_OR_PULL,
-    DtpCtmRefModel,
     ctm_config_addr,
     ctp_config_addr,
     ctp_status_addr,
@@ -50,6 +50,7 @@ from env.dtp_xtrig_types import (
     project_ctp_mask,
     project_internal_mask,
 )
+from ocah_axi_vip import RESP_OKAY, OcahAxiLiteMasterSequence
 from ocah_checker import OcahChecker
 from ocah_lib import OcahKnobs
 
@@ -74,7 +75,7 @@ STATUS_BITS = {
 
 
 class dtp_xtrig_base_test_seq(dtp_base_test_seq):
-    """Helpers and scenario bodies for DTP XTRIG, CTP, and CTM tests.
+    """Helpers shared by the DTP XTRIG, CTP, and CTM scenario sequences.
 
     ``CT_SRC[k].CONFIG_0.CT_DST_SELECT`` (cross_trigger_matrix.rdl) selects the
     CT_Dst input ports whose pulses are OR'd onto CT_Src output ``k``: CT_Src
@@ -94,8 +95,6 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     whenever a CTP is programmed.
     """
 
-    AXI_OKAY = 0
-    AXI_DECERR = 3
     # The internal-lane requests and the CTP request and acknowledge enables.
     # The internal lanes run in pulse mode, where their acknowledge is unused.
     QUIET_GROUPS = (
@@ -152,9 +151,9 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     # STRETCH_MULT of the pulse a system reset lands on: wide enough that the
     # output enable is active when the reset asserts.
     RESET_HOLD_STRETCH = 0xFFFF
+
     # Named-evidence IDs recorded by the shared helpers below. finalize() at
-    # the end of body() rejects a zero-check run and any missing required ID,
-    # so a scenario whose checks were silently skipped fails.
+    # the end of body() rejects a zero-check run and any missing required ID.
     CHK_CSR = "CHK-XTRIG-CSR"
     CHK_SIGNAL = "CHK-XTRIG-SIGNAL"
     CHK_ROUTE_MODEL = "CHK-XTRIG-ROUTE-MODEL"
@@ -181,6 +180,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         CHK_AW_LOCK: 8,
         CHK_AR_STALL: 9,
         CHK_WIRE: 10,
+        CHK_RESET_COUNT: 11,
     }
 
     _ROUTE_IDS = (CHK_CSR, CHK_SIGNAL, CHK_ROUTE_MODEL, CHK_ISOLATION)
@@ -222,7 +222,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         self,
         name: str = "dtp_xtrig_base_test_seq",
         *,
-        scenario: str = "reg_stall",
+        scenario: str,
         total_passes: int = 0,
         **kwargs,
     ) -> None:
@@ -232,10 +232,9 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         # to find their last pass.
         self.total_passes = total_passes
         self._p2p_hold_rngs: dict[str, Random] = {}
-        self.ctm_model = DtpCtmRefModel()
-        # Named-evidence checker: every route observation, CSR readback, quiet
-        # window, and stretch measurement lands one evidence record; body()
-        # finalizes so a check-free pass cannot report PASS.
+        self.ctm_model = DtpXtrigCtmModel()
+        # Every route observation, CSR readback, quiet window, and stretch
+        # measurement lands one evidence record.
         self.checker = OcahChecker(
             name=f"dtp_xtrig_checker[{name}]",
             required_ids=self.SCENARIO_REQUIRED_IDS[scenario],
@@ -243,12 +242,12 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         )
 
     @property
-    def axil(self):
+    def axil(self) -> OcahAxiLiteMasterSequence:
         assert self.cfg.xtrig_axil is not None, "XTRIG AXI-Lite BFM is not ready"
         return self.cfg.xtrig_axil
 
     @property
-    def xtrig(self):
+    def xtrig(self) -> DtpXtrigBfm:
         assert self.cfg.xtrig_bfm is not None, "XTRIG GPIO BFM is not ready"
         return self.cfg.xtrig_bfm
 
@@ -263,9 +262,6 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         self.check_evidence(
             self.CHK_AXIL, "spill_contract_all", sample["xtrig_axil_spill_err_count"], 0
         )
-        # End-of-sequence enforcement: zero recorded checks or a missing
-        # required evidence ID fails the pass — a silently skipped check net
-        # cannot report PASS.
         self.checker.finalize()
 
     def check_evidence(
@@ -285,11 +281,12 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
 
     def check_reset_counted(self, counter: str, before: int, after: int, context: str) -> None:
         """``CHK-RESET-COUNT`` under the cross-trigger checker."""
-        self.checker.expect_equal(
+        self.check_evidence(
             self.CHK_RESET_COUNT,
+            counter,
             after - before,
             1,
-            context=f"{counter} before={before} after={after} {context}",
+            context=f"before={before} after={after} {context}",
         )
 
     @staticmethod
@@ -305,6 +302,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     # CSR helpers
     # ------------------------------------------------------------------
     async def csr_write(self, addr: int, data: int, *, wstrb: int = 0xF, label: str = "") -> int:
+        """Write one CSR word; records its BRESP under CHK-XTRIG-CSR and returns it."""
         resp = await self.axil.write(addr, data, strb=wstrb)
         self.log.info(
             "XTRIG CSR WRITE %-34s addr=0x%03x data=0x%08x wstrb=0x%x resp=%d",
@@ -314,10 +312,17 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             wstrb & 0xF,
             resp,
         )
-        self.assert_equal(f"{label or hex(addr)}.bresp", resp, self.AXI_OKAY)
+        self.check_evidence(
+            self.CHK_CSR,
+            f"{label or hex(addr)}.bresp",
+            resp,
+            RESP_OKAY,
+            context=f"addr=0x{addr:03x}",
+        )
         return resp
 
     async def csr_read(self, addr: int, *, label: str = "") -> int:
+        """Read one CSR word; records its RRESP under CHK-XTRIG-CSR and returns the data."""
         result = await self.axil.read_result(addr)
         data, resp = result.data, result.resp
         self.log.info(
@@ -327,7 +332,13 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             data,
             resp,
         )
-        self.assert_equal(f"{label or hex(addr)}.rresp", resp, self.AXI_OKAY)
+        self.check_evidence(
+            self.CHK_CSR,
+            f"{label or hex(addr)}.rresp",
+            resp,
+            RESP_OKAY,
+            context=f"addr=0x{addr:03x}",
+        )
         return data
 
     async def write_read_check(
@@ -340,6 +351,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         mask: int = FULL_WORD,
         label: str = "",
     ) -> int:
+        """Write a CSR word and record its readback under ``mask`` (CHK-XTRIG-CSR)."""
         await self.csr_write(addr, data, wstrb=wstrb, label=label)
         observed = await self.csr_read(addr, label=label)
         self.check_evidence(
@@ -374,6 +386,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         reset: int = 0,
         stretch: int = 0,
     ) -> None:
+        """Program one CTP's CONFIG and STRETCH_MULT, read both back, and rest its pads."""
         cfg = pack_ctp_config(mode=mode, invert=invert, reset=reset)
         self.cfg.xtrig_ctp_shadow.note(ctp_idx, mode=mode, invert=invert)
         self.log.info(
@@ -405,12 +418,11 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         self.apply_idle_levels()
 
     async def program_ctm_src(self, output_port: int, input_mask: int) -> None:
+        """Select ``input_mask`` on CTM output ``output_port`` in the DUT and the model."""
         input_mask &= XTRIG_CTM_SELECT_MASK
         model_mask = input_mask
-        # DTP_XTRIG_CHECKER_NEGATIVE=1 is the documented negative-validation
-        # hook: the reference model is programmed with an INVERTED select so
-        # CHK-XTRIG-ROUTE-MODEL must fail, proving the model comparison gates
-        # pass/fail end to end (route scenarios only).
+        # DTP_XTRIG_CHECKER_NEGATIVE=1 programs the model with the inverted
+        # select, so CHK-XTRIG-ROUTE-MODEL fails (route scenarios only).
         if OcahKnobs.is_set("DTP_XTRIG_CHECKER_NEGATIVE"):
             model_mask = (~input_mask) & XTRIG_CTM_SELECT_MASK
             self.log.warning(
@@ -428,11 +440,12 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         )
 
     async def clear_ctm_routes(self) -> None:
-        self.ctm_model = DtpCtmRefModel()
+        self.ctm_model = DtpXtrigCtmModel()
         for src_idx in range(XTRIG_NUM_CTM_PORTS):
             await self.csr_write(ctm_config_addr(src_idx), 0, label=f"clear.ctm{src_idx}")
 
     async def clear_xtrig(self) -> None:
+        """Idle every input and clear every CTP and CTM register."""
         await self.xtrig.clear_inputs()
         self.cfg.xtrig_ctp_shadow.clear()
         for ctp_idx in range(XTRIG_NUM_CTP):
@@ -479,7 +492,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         window.start()
         await ClockCycles(self.xtrig.clk, cycles - 1)
         self.xtrig.set_sys_reset(active=False)
-        self.ctm_model = DtpCtmRefModel()
+        self.ctm_model = DtpXtrigCtmModel()
         self.cfg.xtrig_ctp_shadow.clear()
         await ClockCycles(self.xtrig.clk, cycles + 2)
         activity, _hold, _last = await window.stop()
@@ -493,7 +506,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             self.check_evidence(
                 self.CHK_QUIET,
                 f"reset_window.{label}.{name}",
-                activity.get(name, 0),
+                activity[name],
                 0,
                 context=f"cycles={window.cycles}",
             )
@@ -570,14 +583,15 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         await self.xtrig.drive_ctp_p2p_ack_in(ctp_idx, level)
 
     async def sample_xtrig(self, label: str) -> dict[str, int]:
+        """Sample every cross-trigger observable and log the output enables and requests."""
         sample = await self.xtrig.sample()
         self.log.info(
             "XTRIG SAMPLE %-28s ctm_src_req=0x%03x req_out_en=0x%04x req_out=0x%04x ack_out=0x%04x",
             label,
-            sample.get("xtrig_ctm_src_req", 0),
-            sample.get("xtrig_ctp_req_out_dout_en", 0),
-            sample.get("xtrig_ctp_req_out_dout", 0),
-            sample.get("xtrig_ctp_ack_out_dout", 0),
+            sample["xtrig_ctm_src_req"],
+            sample["xtrig_ctp_req_out_dout_en"],
+            sample["xtrig_ctp_req_out_dout"],
+            sample["xtrig_ctp_ack_out_dout"],
         )
         return sample
 
@@ -590,6 +604,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         cycles: int = 60,
         label: str = "",
     ) -> int:
+        """CHK-XTRIG-SIGNAL: wait up to ``cycles`` for ``name`` & ``mask`` to equal ``expected``."""
         observed = 0
         for _ in range(cycles):
             await ReadOnly()
@@ -631,11 +646,6 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             )
         await self.program_ctp(port, mode=mode, stretch=stretch)
 
-    async def configure_ctp_modes_for_route(
-        self, input_port: int, output_mask: int, mode: int
-    ) -> None:
-        await self.configure_ctp_modes_for_route_mask(1 << input_port, output_mask, mode)
-
     async def configure_ctp_modes_for_route_mask(
         self, input_mask: int, output_mask: int, mode: int
     ) -> None:
@@ -656,9 +666,6 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         await self.clear_ctm_routes()
         for output_port in self.port_bits(output_mask):
             await self.program_ctm_src(output_port, input_mask)
-
-    async def drive_input_port(self, input_port: int, mode: int, *, cycles: int = 2) -> None:
-        await self.drive_input_mask(1 << input_port, mode, cycles=cycles)
 
     async def drive_input_mask(
         self, input_mask: int, mode: int, *, cycles: int = 2, label: str = ""
@@ -799,11 +806,11 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         all_ctp = (1 << XTRIG_NUM_CTP) - 1
         p2p = self._ctp_p2p_mask()
         inverted = self._ctp_invert_mask()
-        dout_any = activity.get("xtrig_ctp_req_out_dout", 0)
-        dout_all = hold.get("xtrig_ctp_req_out_dout", 0)
+        dout_any = activity["xtrig_ctp_req_out_dout"]
+        dout_all = hold["xtrig_ctp_req_out_dout"]
         p2p_fired = ((dout_any & ~inverted) | (~dout_all & inverted)) & p2p
-        wire_or_fired = activity.get("xtrig_ctp_req_out_dout_en", 0) & ~p2p
-        int_fired = activity.get("xtrig_ctm_src_req", 0) & ((1 << XTRIG_NUM_INT_CT) - 1)
+        wire_or_fired = activity["xtrig_ctp_req_out_dout_en"] & ~p2p
+        int_fired = activity["xtrig_ctm_src_req"] & ((1 << XTRIG_NUM_INT_CT) - 1)
         return ((p2p_fired | wire_or_fired) & all_ctp) | (int_fired << XTRIG_NUM_CTP)
 
     def level_vector(self, sample: dict[str, int]) -> int:
@@ -811,9 +818,9 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         all_ctp = (1 << XTRIG_NUM_CTP) - 1
         p2p = self._ctp_p2p_mask()
         inverted = self._ctp_invert_mask()
-        p2p_level = (sample.get("xtrig_ctp_req_out_dout", 0) ^ inverted) & p2p
-        wire_or_level = sample.get("xtrig_ctp_req_out_dout_en", 0) & ~p2p
-        int_level = sample.get("xtrig_ctm_src_req", 0) & ((1 << XTRIG_NUM_INT_CT) - 1)
+        p2p_level = (sample["xtrig_ctp_req_out_dout"] ^ inverted) & p2p
+        wire_or_level = sample["xtrig_ctp_req_out_dout_en"] & ~p2p
+        int_level = sample["xtrig_ctm_src_req"] & ((1 << XTRIG_NUM_INT_CT) - 1)
         return ((p2p_level | wire_or_level) & all_ctp) | (int_level << XTRIG_NUM_CTP)
 
     def input_vector(self, sample: dict[str, int]) -> int:
@@ -826,9 +833,9 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         all_ctp = (1 << XTRIG_NUM_CTP) - 1
         p2p = self._ctp_p2p_mask()
         inverted = self._ctp_invert_mask()
-        wire_or_input = sample.get("xtrig_ctp_wire_ext_assert", 0) & ~p2p
-        p2p_input = (sample.get("xtrig_ctp_req_in_din", 0) ^ inverted) & p2p
-        int_input = sample.get("xtrig_ctm_dst_req", 0) & ((1 << XTRIG_NUM_INT_CT) - 1)
+        wire_or_input = sample["xtrig_ctp_wire_ext_assert"] & ~p2p
+        p2p_input = (sample["xtrig_ctp_req_in_din"] ^ inverted) & p2p
+        int_input = sample["xtrig_ctm_dst_req"] & ((1 << XTRIG_NUM_INT_CT) - 1)
         return ((wire_or_input | p2p_input) & all_ctp) | (int_input << XTRIG_NUM_CTP)
 
     async def wait_window_fired(
@@ -1047,6 +1054,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
                     1,
                     context=f"input@{input_at} request@{request_at}",
                 )
+        self.check_same_cycle_rise(window, predicted, label=label)
         # Isolation: no unselected output fired anywhere in the window, and the
         # selected outputs are idle again at its end.
         self.check_evidence(
@@ -1063,6 +1071,29 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             0,
             context=f"mode={mode}",
         )
+
+    def check_same_cycle_rise(
+        self, window: DtpXtrigActivityWindow, predicted: int, *, label: str
+    ) -> None:
+        """CHK-XTRIG-ROUTE-MODEL: the predicted outputs that select the same inputs start
+        requesting in the same window cycle."""
+        groups: dict[int, list[int]] = {}
+        for port in self.port_bits(predicted & XTRIG_CTM_SELECT_MASK):
+            groups.setdefault(self.ctm_model.select[port], []).append(port)
+        for select, ports in groups.items():
+            if len(ports) < 2:
+                continue
+            rises = {port: window.first_seen["ctm_port_request"].get(port, -1) for port in ports}
+            self.check_evidence(
+                self.CHK_ROUTE_MODEL,
+                f"{label}.multicast_same_cycle",
+                len(set(rises.values())),
+                1,
+                context=(
+                    f"select=0x{select:07x} first_rise="
+                    + ",".join(f"{port}@{cycle}" for port, cycle in rises.items())
+                ),
+            )
 
     async def run_route_window(
         self,
@@ -1125,15 +1156,6 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             pulse_cycles=pulse_cycles,
             lead_cycles=lead_cycles,
         )
-
-    async def verify_route_cases(
-        self, cases: list[tuple[int, int]], mode: int, *, label: str
-    ) -> None:
-        for idx, (input_port, output_mask) in enumerate(cases, start=1):
-            self.log_iteration(
-                idx, len(cases), "%s input=%d output_mask=0x%x", label, input_port, output_mask
-            )
-            await self.verify_route(input_port, output_mask, mode, label=f"{label}.{idx}")
 
     async def verify_wire_or_pulse(
         self, ctp_idx: int, int_idx: int, *, stretch: int, invert: int = 0, label: str

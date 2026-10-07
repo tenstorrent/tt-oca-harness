@@ -2,6 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP INV_BYPASS instruction test."""
 
+from __future__ import annotations
+
 import pyuvm
 from dtp_base_test import dtp_base_test
 from env.dtp_types import DTP_FEATURE_BYPASS, DTP_FEATURE_IR_DECODE

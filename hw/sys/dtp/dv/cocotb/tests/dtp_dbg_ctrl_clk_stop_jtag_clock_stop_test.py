@@ -2,6 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP DEBUG_CONTROL JTAG clock-stop test."""
 
+from __future__ import annotations
+
 import pyuvm
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_dbg_ctrl_clk_stop_jtag_clock_stop_test_seq import (

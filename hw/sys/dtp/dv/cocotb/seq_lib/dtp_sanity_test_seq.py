@@ -131,7 +131,12 @@ class dtp_sanity_test_seq(dtp_jtag_base_test_seq):
     async def reset_ladder(self) -> None:
         """Pulse power-on and system reset, hold every debug disable fail-closed, reset the TAP."""
         item = await self.pulse_por(cycles=POR_PULSE_TCK_PERIODS)
-        self.record_tap_state(item.result, OcahJtagState.TEST_LOGIC_RESET)
+        self.check_tap_state(
+            "CHK-TAP-POR-TLR",
+            item.result,
+            OcahJtagState.TEST_LOGIC_RESET,
+            context=f"during POR cycles={POR_PULSE_TCK_PERIODS}",
+        )
         await self.pulse_system_reset(cycles=SYS_RESET_PULSE_CYCLES)
         await self.set_dbg_disable_vector({name: 1 for name in DBG_DISABLE_FIELDS})
         await self.reset_to_tlr()
@@ -342,9 +347,7 @@ class dtp_sanity_test_seq(dtp_jtag_base_test_seq):
             use_monitor=False,
             op_scan_len=True,
         )
-        seed = self.scenario_seed
-        self.log.info("Using TAP FSM random seed %d", seed)
-        rng = random.Random(seed)
+        rng = self.rng("sanity")
 
         self.log_step(1, "Power-on and system reset, fail-closed debug disables, TAP reset")
         await self.reset_ladder()

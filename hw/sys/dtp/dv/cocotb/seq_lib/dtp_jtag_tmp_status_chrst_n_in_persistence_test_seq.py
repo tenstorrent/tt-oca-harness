@@ -21,7 +21,7 @@ class dtp_jtag_tmp_status_chrst_n_in_persistence_test_seq(dtp_debug_tdr_base_tes
 
     async def check_chrst_n_in_tlr(self, expected: int, *, context: str) -> None:
         """Walk to Test-Logic-Reset without TRST and record ``chrst_n`` there."""
-        await self.drive_tlr_without_trst()
+        await self.reset_tap_by_tms()
         await self.check_scan_observable(
             TMP_CHRST_CHECK_ID, "jtag_bsr_test_logic_reset", 1, context=context
         )

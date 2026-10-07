@@ -2,6 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP JTAG_CAPS TDR test."""
 
+from __future__ import annotations
+
 import pyuvm
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_dbg_jtag_caps_test_seq import dtp_dbg_jtag_caps_test_seq

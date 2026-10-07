@@ -11,9 +11,10 @@ from dataclasses import dataclass
 import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly
 from env.dtp_axi_port_history import DtpAxiPortHistory
-from env.dtp_jtag_item import DtpJtagItem, DtpJtagOp
 from env.dtp_tap_device import unpack_jtag2axi_caps
 from env.dtp_types import (
+    DTP_J2A_STATUS_POLLS,
+    FAULT_STATUS_CHECK_ID,
     GATE_TDR_CHECK_ID,
     JTAG2AXI_TARGETS,
     MEM_IMAGE_CHECK_ID,
@@ -21,6 +22,7 @@ from env.dtp_types import (
     SMC_DBG_AXSIZE_8B,
     DtpJtag2AxiOp,
     DtpJtag2AxiStatus,
+    DtpJtag2AxiTargetCfg,
     DtpJtagInstr,
     get_jtag2axi_target,
     pack_series_ctrl,
@@ -31,25 +33,46 @@ from env.dtp_types import (
     unpack_single_op,
     unpack_single_op_fields,
 )
+from ocah_axi_vip import (
+    RESP_DECERR,
+    RESP_OKAY,
+    RESP_SLVERR,
+    OcahAxiLiteSlaveSequence,
+    OcahAxiRefModel,
+    OcahAxiScoreboard,
+    OcahAxiSlaveSequence,
+)
+from ocah_checker import OcahChecker
 from ocah_jtag_vip import OcahJtagChecker, OcahJtagState
 from ocah_lib import OcahKnobs
 
 from .dtp_base_test_seq import dtp_base_test_seq
 
-AXI_MEM_SIZE = 2**16
-AXI_BEAT_BYTES = 8
+# The SMC fabric bridge's beat, which the SMC-only helpers place data in.
+AXI_BEAT_BYTES = JTAG2AXI_TARGETS["smc_axi"].beat_bytes
 GEOMETRY_CHECK_ID = "CHK-J2A-GEOMETRY"
 STATUS_BIT_CHECK_ID = "CHK-J2A-STATUS-BIT"
 ERR_RDATA_CHECK_ID = "CHK-J2A-ERR-RDATA"
 SERIES_ADDR_CHECK_ID = "CHK-J2A-SERIES-ADDR"
 BUS_REQ_CHECK_ID = "CHK-J2A-BUS-REQ"
 BLOCKED_CHECK_ID = "CHK-AXI-BLOCKED"
+# Shared AXI scoreboard IDs the sequences record directly: the data a bridge
+# returns to the debugger, the subordinate memory, request-activity windows,
+# completion within a bound, and per-pass non-vacuity.
+RDATA_CHECK_ID = "CHK-AXI-RDATA"
+WMEM_CHECK_ID = "CHK-AXI-WMEM"
+NOACT_CHECK_ID = "CHK-AXI-NOACT"
+COMPLETION_CHECK_ID = "CHK-AXI-COMPLETION"
+NONVAC_CHECK_ID = "CHK-AXI-NONVAC"
+TAP_STATE_CHECK_ID = "CHK-TAP-STATE"
 STATUS_BIT_NEGATIVE_KNOB = "DTP_J2A_STATUS_BIT_NEGATIVE"
 BUS_REQ_NEGATIVE_KNOB = "DTP_J2A_BUS_REQ_NEGATIVE"
 # System cycles a launched bridge transaction has to complete on its port.
 PORT_COMPLETION_CYCLES = 200
-AXI_RESP_SLVERR = 2
-AXI_RESP_DECERR = 3
+# The SINGLE_OP fields a capture returns from the bridge's update latch; the
+# op and data fields capture the status and the read data.
+GATE_LATCH_FIELDS = ("size", "wstrb", "addr")
+SINGLE_OP_FIELDS = ("op", "size", "wstrb", "data", "addr")
 # Increment flag per beat of the WITH_ERROR_STATUS streams: the second beat
 # re-writes the held address.
 SERIES_STATUS_INCREMENTS = (1, 0, 1, 1)
@@ -150,12 +173,29 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
     """Helpers for DTP JTAG2AXI single-operation and series-operation tests."""
 
     _bus_ledger: DtpBusLedger | None = None
+    # Transactions each bridge port had completed when the pass began.
+    _completed_baseline: dict[str, int]
 
     async def pre_body(self) -> None:
         """Gate every pass on the DUT publishing the geometry the DV table holds."""
         await super().pre_body()
         await self.verify_bridge_geometry()
+        self._completed_baseline = {
+            target: sum(self.port_history(target).counts()) for target in JTAG2AXI_TARGETS
+        }
         self.open_bus_ledger()
+
+    def completed_since_pass(self, target: str) -> int:
+        """Transactions the port behind ``target`` completed since the pass began."""
+        return sum(self.port_history(target).counts()) - self._completed_baseline[target]
+
+    def emit_nonvacuity(self, target: str, condition: bool, *, context: str) -> None:
+        """CHK-AXI-NONVAC: ``condition`` holds and the port completed a transaction in the pass."""
+        completed = self.completed_since_pass(target)
+        self.axi_scoreboard.expect_nonvacuous(
+            condition and completed > 0,
+            context=f"{context} target={target} responder_bursts={completed}",
+        )
 
     async def post_body(self) -> None:
         await super().post_body()
@@ -166,8 +206,8 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
 
         Records ``CHK-J2A-GEOMETRY`` per bridge and fails the pass on a mismatch,
         before any bridge request is packed with the table's field widths.
-        ``DTP_J2A_GEOMETRY_NEGATIVE=1`` corrupts the expected address size so the
-        run must FAIL, proving the gate rejects a wrong table end to end.
+        ``DTP_J2A_GEOMETRY_NEGATIVE=1`` corrupts the expected address size, so
+        the run must fail.
         """
         checker = OcahJtagChecker(
             name=f"{self.get_name()}.geometry",
@@ -212,26 +252,6 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             )
         checker.finalize()
 
-    async def jtag2axi_write(
-        self,
-        addr: int,
-        data: int,
-        wstrb: int = 0xFF,
-        size: int = 3,
-    ) -> DtpJtagItem:
-        """Issue a JTAG2AXI SMC fabric single write; returns item with status."""
-        return await self._send(
-            op=DtpJtagOp.J2A_WRITE,
-            axi_addr=addr,
-            axi_data=data,
-            axi_wstrb=wstrb,
-            axi_size=size,
-        )
-
-    async def jtag2axi_read(self, addr: int, size: int = 3) -> DtpJtagItem:
-        """Issue a JTAG2AXI SMC fabric single read; returns item with status+rdata."""
-        return await self._send(op=DtpJtagOp.J2A_READ, axi_addr=addr, axi_size=size)
-
     # --- common data/address helpers -----------------------------------------
     @staticmethod
     def size_bytes(size: int) -> int:
@@ -245,20 +265,6 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
     def full_wstrb(size: int) -> int:
         return (1 << (1 << size)) - 1
 
-    def aligned_addr(self, addr: int, size: int) -> int:
-        """Align an address to the active transfer size."""
-        align = self.size_bytes(size)
-        return addr - (addr % align)
-
-    def random_aligned_addr(self, rng, size: int) -> int:
-        """Pick a 64-bit-beat-aligned address inside the SMC fabric responder window.
-
-        The window bounds the low address bits only: a caller adds a
-        size-aligned offset within the beat and ``random_upper_addr`` bits.
-        """
-        max_addr = AXI_MEM_SIZE - AXI_BEAT_BYTES
-        return rng.randrange(0, (max_addr // AXI_BEAT_BYTES) + 1) * AXI_BEAT_BYTES
-
     def read_mem_int(self, addr: int, size: int) -> int:
         """Read the backdoor AXI RAM for the transfer size."""
         return self.read_target_mem_int("smc_axi", addr, size)
@@ -269,17 +275,20 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
 
     # --- shared-VIP AXI scoreboard glue ---------------------------------------
     @property
-    def axi_scoreboard(self):
-        """The shared OcahAxiScoreboard, or None when the test did not opt in."""
-        return getattr(self.cfg, "axi_scoreboard", None)
+    def axi_scoreboard(self) -> OcahAxiScoreboard:
+        """The shared OcahAxiScoreboard every JTAG2AXI test enables."""
+        scoreboard = self.cfg.axi_scoreboard
+        if scoreboard is None:
+            raise RuntimeError(f"{self.get_name()} needs use_axi_scoreboard = True in its test")
+        return scoreboard
 
-    def target_evidence(self, target: str):
+    def target_evidence(self, target: str) -> OcahChecker | OcahAxiScoreboard:
         """The recorder of the sequence's judgements of ``target``: the bridge's own
-        checker when the test names per-bridge IDs, else the shared scoreboard or None."""
-        checker = getattr(self.cfg, "axi_target_evidence", {}).get(target)
+        checker when the test names per-bridge IDs, else the shared scoreboard."""
+        checker = self.cfg.axi_target_evidence.get(target)
         return checker if checker is not None else self.axi_scoreboard
 
-    def axi_model(self, target: str):
+    def axi_model(self, target: str) -> OcahAxiRefModel | None:
         """The shared OcahAxiRefModel for one JTAG2AXI target, or None."""
         return getattr(self.cfg, "axi_models", {}).get(target)
 
@@ -289,29 +298,46 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         if model is not None:
             model.write_bytes(addr, payload)
 
-    async def scoreboard_expect_no_activity(
-        self, target: str, cycles: int, *, context: str
+    def check_bridge_status(
+        self,
+        target: str,
+        observed: int,
+        expected: DtpJtag2AxiStatus = DtpJtag2AxiStatus.SUCCESS,
+        *,
+        context: str,
     ) -> None:
-        """Emit CHK-AXI-NOACT from tb pulse counters and monitor counters."""
-        scoreboard = self.axi_scoreboard
-        if scoreboard is None:
-            return
-        before = await self.target_activity_counts(target)
-        monitor = getattr(self.cfg, "axi_monitors", {}).get(target)
-        monitor_before = monitor.get_request_activity() if monitor else None
-        await self.wait_sys_cycles(cycles)
-        after = await self.target_activity_counts(target)
-        scoreboard.expect_no_activity(
+        """CHK-J2A-FAULT-STATUS: the status a SINGLE_OP or SERIES_CTRL capture returned."""
+        self.check_equal(
+            self.target_evidence(target),
+            FAULT_STATUS_CHECK_ID,
+            DtpJtag2AxiStatus(observed).name,
+            DtpJtag2AxiStatus(expected).name,
+            context=f"{context} target={target}",
+        )
+
+    def check_bridge_rdata(
+        self, target: str, observed: int, expected: int, *, context: str
+    ) -> None:
+        """CHK-AXI-RDATA: the data a bridge capture returned to the debugger."""
+        self.check_equal(
+            self.axi_scoreboard,
+            RDATA_CHECK_ID,
+            observed,
+            expected,
+            context=f"{context} target={target} source=bridge_capture",
+        )
+
+    def check_no_activity(
+        self, target: str, before: dict[str, int], after: dict[str, int], *, context: str
+    ) -> None:
+        """CHK-AXI-NOACT: the port's request-activity counters did not move."""
+        self.log.info("%s %s activity before=%s after=%s", context, target, before, after)
+        if not self.axi_scoreboard.expect_no_activity(
             before=before,
             after=after,
-            context=f"{context} target={target} cycles={cycles} source=tb_pulse_counters",
-        )
-        if monitor_before is not None:
-            scoreboard.expect_no_activity(
-                before=monitor_before,
-                after=monitor.get_request_activity(),
-                context=f"{context} target={target} cycles={cycles} source=vip_monitor",
-            )
+            context=f"{context} target={target} source=tb_pulse_counters",
+        ):
+            raise AssertionError(f"{NOACT_CHECK_ID} FAIL: {context} target={target}")
 
     async def scoreboard_expect_no_activity_since(
         self, target: str, before: dict[str, int], *, context: str
@@ -321,39 +347,18 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         Returns the closing snapshot so a later window can start from it.
         """
         after = await self.target_activity_counts(target)
-        self.log.info("%s %s activity before=%s after=%s", context, target, before, after)
-        scoreboard = self.axi_scoreboard
-        if scoreboard is not None:
-            scoreboard.expect_no_activity(
-                before=before,
-                after=after,
-                context=f"{context} target={target} source=tb_pulse_counters",
-            )
-        for key in ("aw", "w", "ar"):
-            self.assert_equal(f"{context}.{key}_count", after[key], before[key])
+        self.check_no_activity(target, before, after, context=context)
         return after
 
     def scoreboard_begin_blocked(self, target: str) -> None:
         """Open a blocked window: any monitored item on the stream fails."""
-        scoreboard = self.axi_scoreboard
-        if scoreboard is not None:
-            scoreboard.begin_blocked_window(stream=target)
+        self.axi_scoreboard.begin_blocked_window(stream=target)
 
     def scoreboard_end_blocked(
-        self, target: str, *, context: str, check_id: str | None = None
+        self, target: str, *, context: str, check_id: str = NOACT_CHECK_ID
     ) -> None:
-        """Close a blocked window and emit zero-transaction evidence.
-
-        ``check_id`` names the evidence ID; the scoreboard's default applies
-        without one.
-        """
-        scoreboard = self.axi_scoreboard
-        if scoreboard is None:
-            return
-        if check_id is None:
-            scoreboard.end_blocked_window(stream=target, context=context)
-        else:
-            scoreboard.end_blocked_window(stream=target, check_id=check_id, context=context)
+        """Close a blocked window and record that no transaction reached the port in it."""
+        self.axi_scoreboard.end_blocked_window(stream=target, check_id=check_id, context=context)
 
     def scoreboard_check_target_memory(
         self,
@@ -362,27 +367,20 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         length: int,
         *,
         context: str,
-        expected: bytes | None = None,
+        expected: bytes,
     ) -> None:
-        """Emit CHK-AXI-WMEM: backdoor RAM bytes versus an expectation.
-
-        Pass ``expected`` with intent-derived bytes (what the stimulus meant to
-        write) for a non-circular check; without it the model shadow is used,
-        which only proves RAM-vs-observed-bus consistency.
-        """
-        scoreboard = self.axi_scoreboard
-        if scoreboard is None:
-            return
-        scoreboard.check_memory(
+        """CHK-AXI-WMEM: the subordinate's bytes at ``addr`` equal the stimulus ``expected``."""
+        if not self.axi_scoreboard.check_memory(
             dut_bytes=bytes(
                 self.target_memory(target).read(self.target_slot(target, addr), length)
             ),
             address=addr,
             length=length,
             stream=target,
-            context=context,
+            context=f"{context} target={target}",
             expected=expected,
-        )
+        ):
+            raise AssertionError(f"{WMEM_CHECK_ID} FAIL: {context} target={target}")
 
     def check_target_word(
         self, target: str, addr: int, expected: int, *, size: int, context: str
@@ -393,18 +391,23 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         self.scoreboard_check_target_memory(
             target, addr, nbytes, context=context, expected=expected.to_bytes(nbytes, "little")
         )
-        self.assert_equal(
-            context,
-            self.read_target_mem_int(target, addr, size),
-            expected,
-            f"target={target} addr=0x{addr:x}",
+
+    def check_target_lanes(
+        self, target: str, addr: int, data: int, *, wstrb: int, size: int, context: str
+    ) -> None:
+        """CHK-AXI-WMEM: the ``wstrb`` lanes of the ``size`` word at ``addr`` hold ``data``."""
+        lanes = self.strobe_lane_mask(wstrb) & self.data_mask(size)
+        self.check_equal(
+            self.axi_scoreboard,
+            WMEM_CHECK_ID,
+            self.read_target_mem_int(target, addr, size) & lanes,
+            data & lanes,
+            context=f"{context} target={target} addr=0x{addr:x} wstrb=0x{wstrb:02x} source=intent",
         )
 
     def scoreboard_arm_strobes(self, target: str, wstrb: int, addr: int, *, context: str) -> None:
         """Arm the intent write strobes for the next observed write."""
         scoreboard = self.axi_scoreboard
-        if scoreboard is None:
-            return
         cfg = self.target_cfg(target)
         aligned = addr - (addr % cfg.beat_bytes)
         scoreboard.arm_expected_strobes(
@@ -415,30 +418,33 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         )
 
     def scoreboard_expect_completion(
-        self, target: str, status: int, *, context: str, polls: int = 16
+        self, target: str, status: int, *, context: str, polls: int = DTP_J2A_STATUS_POLLS
     ) -> None:
         """Emit CHK-AXI-COMPLETION: the bridge left BUSY within the poll bound."""
-        scoreboard = self.axi_scoreboard
-        if scoreboard is None:
-            return
         cfg = self.target_cfg(target)
         # Bound: `polls` status polls, each one wide TDR scan plus TAP navigation.
         bound_ns = polls * (cfg.single_op_len + 16) * self.cfg.jtag_period_ns
-        scoreboard.expect_not_timed_out(
-            "CHK-AXI-COMPLETION",
+        self.axi_scoreboard.expect_not_timed_out(
+            COMPLETION_CHECK_ID,
             timed_out=(int(status) == int(DtpJtag2AxiStatus.BUSY_OR_FULL)),
             timeout_ns=float(bound_ns),
             context=f"{context} target={target} polls={polls}",
         )
 
+    def check_within(self, target: str, done: bool, *, cycles: int, context: str) -> None:
+        """CHK-AXI-COMPLETION: a wait on ``target``'s port ended within ``cycles`` system cycles."""
+        if not self.axi_scoreboard.expect_not_timed_out(
+            COMPLETION_CHECK_ID,
+            timed_out=not done,
+            timeout_ns=float(cycles * self.cfg.sys_clk_period_ns),
+            context=f"{context} target={target} cycles={cycles}",
+        ):
+            raise AssertionError(f"{COMPLETION_CHECK_ID} FAIL: {context} target={target}")
+
     def check_reset_counted(self, counter: str, before: int, after: int, context: str) -> None:
-        """``CHK-RESET-COUNT`` on the shared AXI scoreboard, or the base
-        assertion when the test attaches none."""
-        scoreboard = self.axi_scoreboard
-        if scoreboard is None:
-            super().check_reset_counted(counter, before, after, context)
-            return
-        scoreboard.expect_equal(
+        """``CHK-RESET-COUNT`` on the shared AXI scoreboard."""
+        self.check_equal(
+            self.axi_scoreboard,
             RESET_COUNT_CHECK_ID,
             after - before,
             1,
@@ -504,17 +510,18 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         self, target: str, fields: list[tuple[str, int, int]], *, context: str
     ) -> None:
         """Record every (field, observed, expected) under CHK-J2A-BUS-REQ, then raise on a mismatch."""
-        scoreboard = self.axi_scoreboard
-        if scoreboard is not None:
-            for field, observed, expected in fields:
-                scoreboard.expect_equal(
-                    BUS_REQ_CHECK_ID,
-                    observed,
-                    expected,
-                    context=f"{context} target={target} field={field}",
-                )
-        for field, observed, expected in fields:
-            self.assert_equal(f"{context}.bus_{field}", observed, expected, f"target={target}")
+        failed = [
+            field
+            for field, observed, expected in fields
+            if not self.axi_scoreboard.expect_equal(
+                BUS_REQ_CHECK_ID,
+                observed,
+                expected,
+                context=f"{context} target={target} field={field}",
+            )
+        ]
+        if failed:
+            raise AssertionError(f"{BUS_REQ_CHECK_ID} FAIL: {context} target={target} {failed}")
 
     async def wait_port_completion(
         self,
@@ -539,6 +546,21 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
                 return True
             await self.wait_sys_cycles(1)
         return history.count(read=read) > above
+
+    async def require_port_completion(
+        self,
+        target: str,
+        *,
+        read: bool,
+        above: int,
+        context: str,
+        timeout_cycles: int = PORT_COMPLETION_CYCLES,
+    ) -> None:
+        """``wait_port_completion`` judged under CHK-AXI-COMPLETION."""
+        done = await self.wait_port_completion(
+            target, read=read, above=above, timeout_cycles=timeout_cycles
+        )
+        self.check_within(target, done, cycles=timeout_cycles, context=context)
 
     @staticmethod
     def strobe_lane_mask(wstrb: int) -> int:
@@ -585,7 +607,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         self._record_bus_fields(target, fields, context=context)
 
     @staticmethod
-    def target_cfg(target: str):
+    def target_cfg(target: str) -> DtpJtag2AxiTargetCfg:
         return get_jtag2axi_target(target)
 
     def target_data_mask(self, target: str, size: int | None = None) -> int:
@@ -598,13 +620,13 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         strobe_bits = cfg.wstrb_bits if size is None else self.size_bytes(size)
         return (1 << strobe_bits) - 1
 
-    def target_memory(self, target: str):
+    def target_memory(self, target: str) -> OcahAxiSlaveSequence | OcahAxiLiteSlaveSequence:
         cfg = self.target_cfg(target)
         memory = getattr(self.cfg, cfg.memory_attr)
         assert memory is not None, f"{cfg.memory_attr} is not ready"
         return memory
 
-    def target_responder(self, target: str):
+    def target_responder(self, target: str) -> OcahAxiSlaveSequence | OcahAxiLiteSlaveSequence:
         responder = self.cfg.jtag2axi_responders.get(target)
         assert responder is not None, f"JTAG2AXI responder for {target} is not ready"
         return responder
@@ -612,11 +634,11 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
     @staticmethod
     def axi_resp_to_jtag_status(resp: int) -> DtpJtag2AxiStatus:
         """Map AXI BRESP/RRESP encoding into the JTAG2AXI status field."""
-        if int(resp) == 0:
+        if int(resp) == RESP_OKAY:
             return DtpJtag2AxiStatus.SUCCESS
-        if int(resp) == 2:
+        if int(resp) == RESP_SLVERR:
             return DtpJtag2AxiStatus.SLVERR
-        if int(resp) == 3:
+        if int(resp) == RESP_DECERR:
             return DtpJtag2AxiStatus.DECERR
         raise ValueError(f"unsupported AXI response for JTAG2AXI status: {resp}")
 
@@ -660,9 +682,8 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         # Arm the shared reference model and scoreboard credit so the injected
         # non-OKAY is classified as EXPECTED. One credit covers
         # the single op; direction narrows when only one side is armed.
-        # DTP_AXI_SCOREBOARD_NEGATIVE=1 is the documented negative-validation
-        # hook: it arms the WRONG response so the run must FAIL,
-        # proving the checker rejects a bad expectation end to end.
+        # DTP_AXI_SCOREBOARD_NEGATIVE=1 arms the other error response, so the
+        # run must fail.
         armed_resp = int(resp)
         if OcahKnobs.is_set("DTP_AXI_SCOREBOARD_NEGATIVE"):
             armed_resp = 2 if armed_resp == 3 else 3
@@ -699,6 +720,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         channels: tuple[str, ...],
         stall_cycles: int,
     ) -> None:
+        """Hold the READY of ``channels`` on ``target``'s responder low for ``stall_cycles``."""
         self.log.info(
             "Configure %s backpressure channels=%s stall_cycles=%d",
             target,
@@ -731,13 +753,15 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         """``addr`` as the bridge's address field holds it."""
         return addr & ((1 << self.target_cfg(target).addr_width) - 1)
 
-    def random_target_aligned_addr(self, target: str, rng, size: int | None = None) -> int:
+    def random_target_aligned_addr(
+        self, target: str, rng: random.Random, size: int | None = None
+    ) -> int:
         cfg = self.target_cfg(target)
         align = cfg.beat_bytes if size is None else max(cfg.beat_bytes, self.size_bytes(size))
         max_addr = self.target_mem_size(target) - align
         return rng.randrange(0, (max_addr // align) + 1) * align
 
-    def random_upper_addr(self, target: str, rng) -> int:
+    def random_upper_addr(self, target: str, rng: random.Random) -> int:
         """Seeded address bits above the responder window, up to the bridge address width.
 
         The responder memory never sees them; ``CHK-J2A-BUS-REQ`` judges them
@@ -746,7 +770,9 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         shift = self.target_mem_size(target).bit_length() - 1
         return rng.getrandbits(self.target_cfg(target).addr_width - shift) << shift
 
-    def random_series_base(self, target: str, rng, *, span: int, straddle: bool = False) -> int:
+    def random_series_base(
+        self, target: str, rng: random.Random, *, span: int, straddle: bool = False
+    ) -> int:
         """A seeded beat-aligned stream base with seeded address bits above the responder window.
 
         The stream's ``span`` bytes stay inside one window. With ``straddle``,
@@ -766,7 +792,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             low = mem - rng.randrange(1, span // cfg.beat_bytes) * cfg.beat_bytes
         return upper | low
 
-    def random_distinct_word(self, rng, target: str, *avoid: int) -> int:
+    def random_distinct_word(self, rng: random.Random, target: str, *avoid: int) -> int:
         """A seeded data-width word, nonzero and different from every ``avoid`` word.
 
         A capture that repeats an ``avoid`` word, or a data field a status
@@ -804,7 +830,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             image.setdefault(slot + byte_idx, (word >> (8 * byte_idx)) & 0xFF)
 
     def image_write(
-        self, target: str, image: dict[int, int], addr: int, data: int, wstrb: int, size: int
+        self, target: str, image: dict[int, int], addr: int, data: int, *, wstrb: int, size: int
     ) -> None:
         """Apply one write's enabled lanes to the byte image."""
         slot = self.target_slot(target, addr)
@@ -819,48 +845,20 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         untouched lane of a touched word at its prior value, so a write that
         landed on the wrong lane or disturbed a neighbour fails here.
         """
-        mismatches = 0
-        for addr in sorted(image):
-            observed = self.read_target_mem_int(target, addr, 0)
-            if observed != image[addr]:
-                mismatches += 1
-                self.log.error(
-                    "%s: %s byte 0x%x holds 0x%02x, image 0x%02x",
-                    context,
-                    target,
-                    addr,
-                    observed,
-                    image[addr],
-                )
-        detail = f"target={target} bytes={len(image)}"
-        scoreboard = self.axi_scoreboard
-        if scoreboard is not None:
-            scoreboard.expect_equal(
-                MEM_IMAGE_CHECK_ID, mismatches, 0, context=f"{context} {detail}"
-            )
-        self.assert_equal(f"{context}.mem_image", mismatches, 0, detail)
-
-    def log_jtag2axi_op(
-        self,
-        context: str,
-        *,
-        addr: int,
-        data: int = 0,
-        size: int = SMC_DBG_AXSIZE_8B,
-        wstrb: int = 0,
-        status: int | None = None,
-    ) -> None:
-        """Log raw and decoded JTAG2AXI fields for failure replay."""
-        status_text = "" if status is None else f" status={DtpJtag2AxiStatus(status).name}"
-        self.log.info(
-            "%s addr=0x%08x size=%d bytes=%d wstrb=0x%02x data=0x%x%s",
-            context,
-            addr,
-            size,
-            self.size_bytes(size),
-            wstrb,
-            data & self.data_mask(size),
-            status_text,
+        mismatches = [
+            f"0x{addr:x}:0x{observed:02x}/0x{image[addr]:02x}"
+            for addr in sorted(image)
+            if (observed := self.read_target_mem_int(target, addr, 0)) != image[addr]
+        ]
+        self.check_equal(
+            self.axi_scoreboard,
+            MEM_IMAGE_CHECK_ID,
+            len(mismatches),
+            0,
+            context=(
+                f"{context} target={target} bytes={len(image)} "
+                f"slot:held/image=[{' '.join(mismatches)}]"
+            ),
         )
 
     def log_target_jtag2axi_op(
@@ -874,6 +872,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         wstrb: int = 0,
         status: int | None = None,
     ) -> None:
+        """Log one target operation's fields for failure replay."""
         cfg = self.target_cfg(target)
         size = cfg.default_size if size is None else size
         status_text = "" if status is None else f" status={DtpJtag2AxiStatus(status).name}"
@@ -890,77 +889,6 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         )
 
     # --- checked single operations -------------------------------------------
-    async def write_single_and_check(
-        self,
-        addr: int,
-        data: int,
-        *,
-        size: int = SMC_DBG_AXSIZE_8B,
-        wstrb: int | None = None,
-        context: str = "single_write",
-    ) -> DtpJtagItem:
-        """Issue one single-op write and verify status plus enabled byte lanes.
-
-        ``data`` and ``wstrb`` start at ``addr``; the request carries them on
-        the bus lanes ``addr`` selects in the 64-bit beat.
-        """
-        wstrb = self.full_wstrb(size) if wstrb is None else wstrb
-        data &= self.data_mask(size)
-        lane = addr % AXI_BEAT_BYTES
-        self.log_jtag2axi_op(context, addr=addr, data=data, size=size, wstrb=wstrb)
-        self.scoreboard_arm_strobes("smc_axi", wstrb << lane, addr, context=context)
-        item = await self.jtag2axi_write(addr, data << (8 * lane), wstrb=wstrb << lane, size=size)
-        self.scoreboard_expect_completion("smc_axi", item.status, context=context)
-        self.assert_equal(f"{context}.status", item.status, DtpJtag2AxiStatus.SUCCESS)
-        await self.expect_bus_request(
-            "smc_axi",
-            read=False,
-            addr=addr,
-            size=size,
-            context=context,
-            data=data << (8 * lane),
-            wstrb=wstrb << lane,
-        )
-        observed = self.read_mem_int(addr, size)
-        for byte_idx in range(self.size_bytes(size)):
-            if (wstrb >> byte_idx) & 0x1:
-                exp = (data >> (8 * byte_idx)) & 0xFF
-                obs = (observed >> (8 * byte_idx)) & 0xFF
-                self.assert_equal(
-                    f"{context}.byte{byte_idx}",
-                    obs,
-                    exp,
-                    f"addr=0x{addr + byte_idx:x} wstrb=0x{wstrb:02x}",
-                )
-        return item
-
-    async def read_single_and_check(
-        self,
-        addr: int,
-        expected: int,
-        *,
-        size: int = SMC_DBG_AXSIZE_8B,
-        context: str = "single_read",
-    ) -> DtpJtagItem:
-        """Issue one single-op read and verify status plus returned data.
-
-        The data field returns the whole beat; the ``size`` bytes at
-        ``addr`` sit on the lanes ``addr`` selects.
-        """
-        expected &= self.data_mask(size)
-        self.log_jtag2axi_op(context, addr=addr, size=size)
-        item = await self.jtag2axi_read(addr, size=size)
-        self.scoreboard_expect_completion("smc_axi", item.status, context=context)
-        self.assert_equal(f"{context}.status", item.status, DtpJtag2AxiStatus.SUCCESS)
-        await self.expect_bus_request("smc_axi", read=True, addr=addr, size=size, context=context)
-        self.assert_equal(
-            f"{context}.rdata",
-            (item.rdata >> (8 * (addr % AXI_BEAT_BYTES))) & self.data_mask(size),
-            expected,
-            f"addr=0x{addr:x} size={size}",
-        )
-        return item
-
     async def write_target_single_raw(
         self,
         target: str,
@@ -1015,8 +943,12 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         for bit_idx in range(cfg.single_op_len):
             await self.tms_step(int(bit_idx == cfg.single_op_len - 1), tdi=(value >> bit_idx) & 1)
         item = await self.tms_step(1)
-        self.assert_equal(
-            f"{target}.single_op_held_in_update_dr", item.result, OcahJtagState.UPDATE_DR
+        self.check_equal(
+            self.target_evidence(target),
+            TAP_STATE_CHECK_ID,
+            item.result,
+            int(OcahJtagState.UPDATE_DR),
+            context=f"{target}.single_op held in Update-DR",
         )
 
     async def poll_target_single_status(self, target: str) -> tuple[int, int]:
@@ -1029,7 +961,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         cfg = self.target_cfg(target)
         status, rdata = DtpJtag2AxiStatus.BUSY_OR_FULL, 0
         busy_polls = 0
-        for _ in range(16):
+        for _ in range(DTP_J2A_STATUS_POLLS):
             raw = await self.read_tdr(cfg.single_op_reg)
             status, rdata = unpack_single_op(raw, target=cfg)
             if status != DtpJtag2AxiStatus.BUSY_OR_FULL:
@@ -1104,7 +1036,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         lane = addr % cfg.beat_bytes
         status, rdata = await self.poll_target_single_status(target)
         self.scoreboard_expect_completion(target, status, context=context)
-        self.assert_equal(f"{context}.status", status, DtpJtag2AxiStatus.SUCCESS)
+        self.check_bridge_status(target, status, context=f"{context}.status")
         await self.expect_bus_request(
             target,
             read=False,
@@ -1114,17 +1046,9 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             data=data << (8 * lane),
             wstrb=wstrb << lane,
         )
-        observed = self.read_target_mem_int(target, addr, size)
-        for byte_idx in range(self.size_bytes(size)):
-            if (wstrb >> byte_idx) & 0x1:
-                exp = (data >> (8 * byte_idx)) & 0xFF
-                obs = (observed >> (8 * byte_idx)) & 0xFF
-                self.assert_equal(
-                    f"{context}.byte{byte_idx}",
-                    obs,
-                    exp,
-                    f"target={cfg.name} addr=0x{addr + byte_idx:x}",
-                )
+        self.check_target_lanes(
+            target, addr, data, wstrb=wstrb, size=size, context=f"{context}.mem"
+        )
         return status, rdata
 
     async def read_target_single_and_check(
@@ -1157,13 +1081,13 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         cfg = self.target_cfg(target)
         status, rdata = await self.poll_target_single_status(target)
         self.scoreboard_expect_completion(target, status, context=context)
-        self.assert_equal(f"{context}.status", status, DtpJtag2AxiStatus.SUCCESS)
+        self.check_bridge_status(target, status, context=f"{context}.status")
         await self.expect_bus_request(target, read=True, addr=addr, size=size, context=context)
-        self.assert_equal(
-            f"{context}.rdata",
+        self.check_bridge_rdata(
+            target,
             (rdata >> (8 * (addr % cfg.beat_bytes))) & self.target_data_mask(target, size),
             expected,
-            f"target={cfg.name} addr=0x{addr:x} size={size}",
+            context=f"{context}.rdata addr=0x{addr:x} size={size}",
         )
         return status, rdata
 
@@ -1173,10 +1097,8 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         """Write a seeded word at ``addr`` and another at the next beat, then read ``addr`` back.
 
         The neighbouring write leaves its word in the SINGLE_OP data field,
-        which the read must replace with the word the bus returns. On the SMC
-        fabric every operation is a JTAG item the DTP scoreboard judges.
-        Returns the read's status and data field and the word written at
-        ``addr``.
+        which the read must replace with the word the bus returns. Returns the
+        read's status and data field and the word written at ``addr``.
         """
         cfg = self.target_cfg(target)
         size = cfg.default_size
@@ -1186,22 +1108,12 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             (addr, data, "write"),
             (addr + cfg.beat_bytes, other, "neighbour"),
         ):
-            if target == "smc_axi":
-                await self.write_single_and_check(
-                    word_addr, word, size=size, context=f"{context}.{label}"
-                )
-            else:
-                await self.write_target_single_and_check(
-                    target, word_addr, word, context=f"{context}.{label}"
-                )
+            await self.write_target_single_and_check(
+                target, word_addr, word, context=f"{context}.{label}"
+            )
             self.check_target_word(
                 target, word_addr, word, size=size, context=f"{context}.{label}.mem"
             )
-        if target == "smc_axi":
-            item = await self.read_single_and_check(
-                addr, data, size=size, context=f"{context}.read"
-            )
-            return item.status, item.rdata, data
         status, rdata = await self.read_target_single_and_check(
             target, addr, data, context=f"{context}.read"
         )
@@ -1240,7 +1152,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         )
         status, rdata = await self.poll_target_single_status(target)
         self.scoreboard_expect_completion(target, status, context=context)
-        self.assert_equal(f"{context}.status", status, expected_status)
+        self.check_bridge_status(target, status, expected_status, context=f"{context}.status")
         await self.expect_bus_request(
             target, read=False, addr=addr, size=size, context=context, data=data, wstrb=wstrb
         )
@@ -1262,7 +1174,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         await self.write_target_single_raw(target, DtpJtag2AxiOp.READ, addr, size=size)
         status, rdata = await self.poll_target_single_status(target)
         self.scoreboard_expect_completion(target, status, context=context)
-        self.assert_equal(f"{context}.status", status, expected_status)
+        self.check_bridge_status(target, status, expected_status, context=f"{context}.status")
         await self.expect_bus_request(target, read=True, addr=addr, size=size, context=context)
         return status, rdata
 
@@ -1295,17 +1207,11 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
                 size=size,
                 context=f"{context}.recover_write",
             )
-            # CHK-AXI-WMEM against the STIMULUS intent (non-circular): the
-            # bytes the recovery write meant to store must be in the RAM.
-            intent = (data & self.data_mask(size)).to_bytes(self.size_bytes(size), "little")
-            self.scoreboard_check_target_memory(
-                target,
-                addr,
-                self.size_bytes(size),
-                context=f"{context}.recover_write",
-                expected=intent,
+            # CHK-AXI-WMEM against the stimulus intent: the bytes the recovery
+            # write meant to store must be in the RAM.
+            self.check_target_word(
+                target, addr, data, size=size, context=f"{context}.recover_write"
             )
-        self.assert_equal(f"{context}.recovery_status", status, DtpJtag2AxiStatus.SUCCESS)
         return DtpJtag2AxiStatus(status)
 
     # --- gated SINGLE_OP evidence ---------------------------------------------
@@ -1319,10 +1225,47 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         flow that takes several bridges' references in turn keeps the zero
         image, since each reference scan also loads the other bridges'
         latches.
+
+        The reference must hold the shifted ``image`` in every field the
+        capture reads from the update latch (``CHK-J2A-GATE-TDR``
+        ``field=reference_vs_image``).
         """
         cfg = self.target_cfg(target)
         await self.read_tdr(cfg.single_op_reg, image)
-        return await self.read_tdr(cfg.single_op_reg, image)
+        reference = await self.read_tdr(cfg.single_op_reg, image)
+        self.log.info("%s gate reference: image=0x%x reference=0x%x", target, image, reference)
+        captured = self.single_op_fields(target, reference)
+        shifted = self.single_op_fields(target, image)
+        self._record_target_fields(
+            target,
+            GATE_TDR_CHECK_ID,
+            [
+                (f"reference_vs_image.{name}", captured[name], shifted[name])
+                for name in GATE_LATCH_FIELDS
+            ],
+            context=f"gate_reference image=0x{image:x} reference=0x{reference:x}",
+        )
+        return reference
+
+    def single_op_fields(self, target: str, value: int) -> dict[str, int]:
+        """The named fields of a SINGLE_OP image of ``target``."""
+        cfg = self.target_cfg(target)
+        return dict(zip(SINGLE_OP_FIELDS, unpack_single_op_fields(value, target=cfg), strict=True))
+
+    def _record_target_fields(
+        self, target: str, check_id: str, fields: list[tuple[str, object, object]], *, context: str
+    ) -> None:
+        """Record each (field, observed, expected) under ``check_id``; raise on a mismatch."""
+        recorder = self.target_evidence(target)
+        failed = [
+            field
+            for field, observed, expected in fields
+            if not recorder.expect_equal(
+                check_id, observed, expected, context=f"{context} target={target} field={field}"
+            )
+        ]
+        if failed:
+            raise AssertionError(f"{check_id} FAIL: {context} target={target} {failed}")
 
     async def gate_image_reference(
         self, target: str, rng: random.Random, *, request_addr: int
@@ -1364,34 +1307,133 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         update latch (size, wstrb, address), so a latching bridge cannot
         pass.
         """
-        cfg = self.target_cfg(target)
-        names = ("op", "size", "wstrb", "data", "addr")
-
-        def fields(value: int) -> dict[str, int]:
-            return dict(zip(names, unpack_single_op_fields(value, target=cfg), strict=True))
-
-        expected = fields(reference)
-        stimulus = fields(request)
-        distinct = any(stimulus[name] != expected[name] for name in ("size", "wstrb", "addr"))
-        detail = f"{context} target={target} request=0x{request:x} reference=0x{reference:x}"
-        scoreboard = self.target_evidence(target)
-        if scoreboard is not None:
-            scoreboard.expect_true(
-                GATE_TDR_CHECK_ID, distinct, context=f"{detail} field=request_differs"
-            )
-        assert distinct, f"{context}: the gated request repeats the reference size, wstrb and addr"
+        expected = self.single_op_fields(target, reference)
+        stimulus = self.single_op_fields(target, request)
+        distinct = any(stimulus[name] != expected[name] for name in GATE_LATCH_FIELDS)
+        detail = f"{context} request=0x{request:x} reference=0x{reference:x}"
+        self.check_true(
+            self.target_evidence(target),
+            GATE_TDR_CHECK_ID,
+            distinct,
+            context=f"{detail} target={target} field=request_differs",
+        )
         captures = {"request_capture": request_capture, "post_update_capture": post_capture}
-        for label, capture in captures.items():
-            observed = fields(capture)
-            for name in names:
-                if scoreboard is not None:
-                    scoreboard.expect_equal(
-                        GATE_TDR_CHECK_ID,
-                        observed[name],
-                        expected[name],
-                        context=f"{detail} {label} field={name}",
-                    )
-                self.assert_equal(f"{context}.{label}.{name}", observed[name], expected[name])
+        self._record_target_fields(
+            target,
+            GATE_TDR_CHECK_ID,
+            [
+                (f"{label}.{name}", self.single_op_fields(target, capture)[name], expected[name])
+                for label, capture in captures.items()
+                for name in SINGLE_OP_FIELDS
+            ],
+            context=detail,
+        )
+
+    async def gated_attempt(
+        self,
+        target: str,
+        op: DtpJtag2AxiOp,
+        addr: int,
+        *,
+        data: int,
+        image_rng: random.Random,
+        context: str,
+        sentinel: int | None = None,
+    ) -> dict[str, int]:
+        """A SINGLE_OP ``op`` to ``addr`` under ``target``'s lifecycle disable, then the release.
+
+        A blocked window held from before the attempt until the release has
+        settled sees no transaction on the port (CHK-AXI-NOACT), the request
+        counters stay flat across the attempt, and the register latches
+        nothing (CHK-J2A-GATE-TDR). A write's ``sentinel``, preloaded at
+        ``addr`` while gated, survives the attempt and the release
+        (CHK-AXI-WMEM). Returns the port's request counters from before the
+        attempt.
+        """
+        cfg = self.target_cfg(target)
+        size = cfg.default_size
+        write = op == DtpJtag2AxiOp.WRITE
+        reference = await self.gate_image_reference(target, image_rng, request_addr=addr)
+        await self.disable_debug_bits(cfg.dbg_disable_bit)
+        if sentinel is not None:
+            self.write_target_mem_int(target, addr, sentinel, size)
+        gate_before = await self.target_activity_counts(target)
+        self.scoreboard_begin_blocked(target)
+        raw = pack_single_op(
+            op,
+            addr,
+            data if write else 0,
+            wstrb=self.target_full_wstrb(target, size) if write else 0,
+            size=size,
+            target=cfg,
+        )
+        gated = await self.read_tdr(cfg.single_op_reg, raw)
+        await self.expect_no_target_activity(target, 8, context=f"{context}.no_axi")
+        self.check_no_activity(
+            target,
+            gate_before,
+            await self.target_activity_counts(target),
+            context=f"{context} window=gated_attempt+8cyc",
+        )
+        if sentinel is not None:
+            self.check_target_word(target, addr, sentinel, size=size, context=f"{context}.sentinel")
+        post = await self.read_tdr(cfg.single_op_reg)
+        self.check_gated_tdr(
+            target, reference, raw, request_capture=gated, post_capture=post, context=context
+        )
+        # The blocked window stays open across the release: a bridge that
+        # queued the gated request replays it once the gate re-opens.
+        await self.enable_all_debug()
+        await self.wait_sys_cycles(8)
+        self.scoreboard_end_blocked(target, context=context)
+        if sentinel is not None:
+            self.check_target_word(
+                target, addr, sentinel, size=size, context=f"{context}.sentinel_post_release"
+            )
+        return gate_before
+
+    async def restore_after_gate(
+        self,
+        target: str,
+        *,
+        read: bool,
+        addr: int,
+        data: int,
+        gate_before: dict[str, int],
+        context: str,
+    ) -> int:
+        """A sanctioned access after a gated attempt; returns its status.
+
+        From before the gated attempt to after this access only this access
+        reaches the port (a read ar +1, a write aw/w +1), so a delayed replay
+        anywhere in the span fails CHK-AXI-NOACT.
+        """
+        before = await self.target_activity_counts(target)
+        if read:
+            status, _ = await self.read_target_single_and_check(
+                target, addr, data, context=f"{context}.restore"
+            )
+        else:
+            status, _ = await self.write_target_single_and_check(
+                target, addr, data, context=f"{context}.restore"
+            )
+        await self.expect_target_activity(
+            target, before=before, read=read, context=f"{context}.restore"
+        )
+        exact = dict(gate_before)
+        if read:
+            exact["ar"] += 1
+        else:
+            exact["aw"] += 1
+            exact["w"] += 1
+        sanctioned = "restore_read(ar+1)" if read else "restore_write(aw+1,w+1)"
+        self.check_no_activity(
+            target,
+            exact,
+            await self.target_activity_counts(target),
+            context=f"{context} window=exact_delta sanctioned={sanctioned}",
+        )
+        return status
 
     async def run_queued_write_drop(
         self, target: str, rng: random.Random, *, addr: int, context: str
@@ -1450,12 +1492,15 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             await self.series_data_no_incr(word, size=size, target=target, back_to_rti=True)
         # A beat the bridge refused would leave the series status BUSY_OR_FULL.
         _, _, _, _, status = await self.read_series_ctrl(size=size, target=target)
-        self.assert_equal(f"{context}.queued_status", status, DtpJtag2AxiStatus.SUCCESS)
+        self.check_bridge_status(target, status, context=f"{context}.queued_status")
         await self.disable_debug_bits(cfg.dbg_disable_bit)
-        if not await self.wait_port_completion(
-            target, read=False, above=writes_before, timeout_cycles=2 * stall + 200
-        ):
-            raise AssertionError(f"{context}.first_beat: {target} write did not complete")
+        await self.require_port_completion(
+            target,
+            read=False,
+            above=writes_before,
+            timeout_cycles=2 * stall + 200,
+            context=f"{context}.first_beat",
+        )
         # The state machine runs on TCK: it leaves the write path, and drops
         # the queue, only while TCK toggles.
         for _ in range(QUEUE_DROP_TCK):
@@ -1471,7 +1516,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         after = await self.target_activity_counts(target)
         writes = self.port_history(target).count(read=False)
         scoreboard = self.axi_scoreboard
-        if scoreboard is not None:
+        windows = [
             scoreboard.expect_no_activity(
                 before=settled,
                 after=after,
@@ -1479,7 +1524,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
                     f"{context} target={target} source=tb_pulse_counters "
                     f"window=first_beat_completion+release"
                 ),
-            )
+            ),
             scoreboard.expect_no_activity(
                 before={"writes": writes_before + 1},
                 after={"writes": writes},
@@ -1487,16 +1532,11 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
                     f"{context} target={target} source=vip_monitor "
                     f"window=exact_delta sanctioned=first_beat(writes+1) queued={queued}"
                 ),
-            )
-        for key in ("aw", "w", "ar"):
-            self.assert_equal(f"{context}.{key}_count", after[key], settled[key])
-        self.assert_equal(f"{context}.writes", writes, writes_before + 1)
-        self.assert_equal(
-            f"{context}.slot",
-            self.read_target_mem_int(target, addr, size),
-            words[0],
-            f"addr=0x{addr:x}",
-        )
+            ),
+        ]
+        if not all(windows):
+            raise AssertionError(f"{NOACT_CHECK_ID} FAIL: {context} target={target}")
+        self.check_target_word(target, addr, words[0], size=size, context=f"{context}.slot")
 
     # --- errored-beat evidence ------------------------------------------------
     def check_error_rdata(
@@ -1523,44 +1563,25 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         mask = self.target_data_mask(target, size)
         observed = rdata & mask
         errored &= mask
-        detail = (
-            f"{context} target={target} addr=0x{addr:x} preload=0x{preload & mask:x} "
-            f"errored=0x{errored:x}"
+        detail = f"{context} addr=0x{addr:x} preload=0x{preload & mask:x} errored=0x{errored:x}"
+        item = self.port_history(target).last(read=True)
+        if item is None:
+            raise AssertionError(f"{context}: no read observed on {target}")
+        beat_addr = int(item.address) - int(item.address) % cfg.beat_bytes
+        beat_word = int(item.data_words[0]) & mask
+        self._record_target_fields(
+            target,
+            ERR_RDATA_CHECK_ID,
+            [
+                ("beat_addr", beat_addr, addr - addr % cfg.beat_bytes),
+                ("beat_resp", int(item.resp), int(resp)),
+                ("rdata", observed, beat_word),
+                ("beat_intent", beat_word, errored),
+                ("rdata_intent", observed, errored),
+                ("rdata_not_preload", observed != (preload & mask), True),
+            ],
+            context=detail,
         )
-        scoreboard = self.target_evidence(target)
-        if scoreboard is not None:
-            item = self.port_history(target).last(read=True)
-            if item is None:
-                raise AssertionError(f"{context}: no read observed on {target}")
-            beat_addr = int(item.address) - int(item.address) % cfg.beat_bytes
-            beat_word = int(item.data_words[0]) & mask
-            scoreboard.expect_equal(
-                ERR_RDATA_CHECK_ID,
-                beat_addr,
-                addr - addr % cfg.beat_bytes,
-                context=f"{detail} field=beat_addr",
-            )
-            scoreboard.expect_equal(
-                ERR_RDATA_CHECK_ID,
-                int(item.resp),
-                int(resp),
-                context=f"{detail} field=beat_resp",
-            )
-            scoreboard.expect_equal(
-                ERR_RDATA_CHECK_ID, observed, beat_word, context=f"{detail} field=rdata"
-            )
-            scoreboard.expect_equal(
-                ERR_RDATA_CHECK_ID, beat_word, errored, context=f"{detail} field=beat_intent"
-            )
-            scoreboard.expect_equal(
-                ERR_RDATA_CHECK_ID, observed, errored, context=f"{detail} field=rdata_intent"
-            )
-            scoreboard.expect_true(
-                ERR_RDATA_CHECK_ID,
-                observed != (preload & mask),
-                context=f"{detail} field=rdata_not_preload",
-            )
-        self.assert_equal(f"{context}.err_rdata", observed, errored, f"addr=0x{addr:x}")
 
     # --- raw series TDR helpers ----------------------------------------------
     async def jtag2axi_series_ctrl(
@@ -1619,13 +1640,22 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         """Emit CHK-J2A-SERIES-ADDR: the SERIES_CTRL capture holds ``expected_addr``; returns its status."""
         expected = self.masked_addr(target, expected_addr)
         _, addr_after, _, _, status = await self.read_series_ctrl(size=size, target=target)
-        scoreboard = self.target_evidence(target)
-        if scoreboard is not None:
-            scoreboard.expect_equal(
-                SERIES_ADDR_CHECK_ID, addr_after, expected, context=f"{context} target={target}"
-            )
-        self.assert_equal(f"{context}.addr_after", addr_after, expected)
+        self.check_equal(
+            self.target_evidence(target),
+            SERIES_ADDR_CHECK_ID,
+            addr_after,
+            expected,
+            context=f"{context}.addr_after target={target}",
+        )
         return status
+
+    async def check_series_end(
+        self, target: str, expected_addr: int, *, size: int, context: str
+    ) -> DtpJtag2AxiStatus:
+        """The SERIES_CTRL capture after a clean stream: ``expected_addr`` and an OKAY status."""
+        status = await self.check_series_addr(target, expected_addr, size=size, context=context)
+        self.check_bridge_status(target, status, context=f"{context}.status")
+        return DtpJtag2AxiStatus(status)
 
     async def _series_data_shift(
         self,
@@ -1654,6 +1684,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         target: str = "smc_axi",
         back_to_rti: bool = False,
     ) -> int:
+        """One SERIES_DATA_INCR shift of ``data``; returns the captured DR bits."""
         cfg = self.target_cfg(target)
         result, _ = await self._series_data_shift(
             cfg.series_data_incr_instr,
@@ -1672,6 +1703,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         target: str = "smc_axi",
         back_to_rti: bool = False,
     ) -> int:
+        """One SERIES_DATA_NO_INCR shift of ``data``; returns the captured DR bits."""
         cfg = self.target_cfg(target)
         result, _ = await self._series_data_shift(
             cfg.series_data_no_incr_instr,
@@ -1691,6 +1723,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         target: str = "smc_axi",
         back_to_rti: bool = False,
     ) -> tuple[int, int]:
+        """One WITH_ERROR_STATUS shift of ``data``; returns the captured payload and status bit."""
         cfg = self.target_cfg(target)
         result, _ = await self._series_data_shift(
             cfg.series_data_with_status_instr,
@@ -1725,8 +1758,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         await self.wait_for_target_activity(
             target, before=before, read=False, context=f"{context}.axi"
         )
-        if not await self.wait_port_completion(target, read=False, above=completed):
-            raise AssertionError(f"{context}: {target} write did not complete")
+        await self.require_port_completion(target, read=False, above=completed, context=context)
         await self.expect_bus_request(
             target,
             read=False,
@@ -1755,8 +1787,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         await self.wait_for_target_activity(
             target, before=before, read=True, context=f"{context}.axi"
         )
-        if not await self.wait_port_completion(target, read=True, above=completed):
-            raise AssertionError(f"{context}: {target} read did not complete")
+        await self.require_port_completion(target, read=True, above=completed, context=context)
         cfg = self.target_cfg(target)
         await self.expect_bus_request(
             target, read=True, addr=addr, size=cfg.axsize(size), context=context
@@ -1769,17 +1800,18 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         self,
         target: str,
         addr: int,
+        *,
         last_word: int,
         beats: int,
         rng: random.Random,
-        *,
         context: str,
-    ) -> int:
+    ) -> DtpJtag2AxiStatus:
         """Read the fixed series address ``addr`` ``beats`` times; returns the SERIES_CTRL status after.
 
         The first read returns ``last_word``, the last word the stream wrote;
         before every later read the slot takes a fresh word, so each capture
-        is its own. The series address stays at ``addr``.
+        is its own. The series address stays at ``addr`` and the status is
+        OKAY.
         """
         size = self.target_cfg(target).default_size
         expected = last_word
@@ -1791,10 +1823,8 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
                 target, addr=addr, size=size, increment=False, context=f"{context}.read#{idx}"
             )
             self.log_iteration(idx, beats, "series no-incr read addr=0x%x obs=0x%x", addr, obs)
-            self.assert_equal(f"{context}.rdata#{idx}", obs, expected)
-        _, addr_after, _, _, status = await self.read_series_ctrl(size=size, target=target)
-        self.assert_equal(f"{context}.addr_after", addr_after, self.masked_addr(target, addr))
-        return status
+            self.check_bridge_rdata(target, obs, expected, context=f"{context}.rdata#{idx}")
+        return await self.check_series_end(target, addr, size=size, context=context)
 
     # --- WITH_ERROR_STATUS streams ---------------------------------------------
     def plan_series_status(self, target: str, rng: random.Random) -> DtpSeriesStatusPlan:
@@ -1820,7 +1850,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         responder unarmed, so the fault beat's checks must fail.
         """
         fault_idx = rng.choice(plan.first_visit_beats())
-        resp = rng.choice((AXI_RESP_SLVERR, AXI_RESP_DECERR))
+        resp = rng.choice((RESP_SLVERR, RESP_DECERR))
         armed = dataclasses.replace(
             plan, fault_idx=fault_idx, expected=self.axi_resp_to_jtag_status(resp)
         )
@@ -1846,18 +1876,15 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         self, plan: DtpSeriesStatusPlan, shift: int, observed: int, *, context: str
     ) -> None:
         """Judge the WITH_ERROR_STATUS bit returned by ``shift`` (1 = the previous beat failed)."""
-        expected = plan.expected_status_bit(shift)
-        name = f"{context}.status_bit#{shift}"
-        detail = f"addr=0x{plan.addr(shift):x}"
-        scoreboard = self.axi_scoreboard
-        if scoreboard is not None:
-            scoreboard.expect_equal(
-                STATUS_BIT_CHECK_ID,
-                observed,
-                expected,
-                context=f"{name} target={plan.target} {detail}",
-            )
-        self.assert_equal(name, observed, expected, detail)
+        self.check_equal(
+            self.axi_scoreboard,
+            STATUS_BIT_CHECK_ID,
+            observed,
+            plan.expected_status_bit(shift),
+            context=(
+                f"{context}.status_bit#{shift} target={plan.target} addr=0x{plan.addr(shift):x}"
+            ),
+        )
 
     async def _series_status_shift(
         self, plan: DtpSeriesStatusPlan, shift: int, data: int, *, read: bool, context: str
@@ -1878,10 +1905,9 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         await self.wait_for_target_activity(
             plan.target, before=before, read=read, context=f"{context}.axi#{shift}"
         )
-        if not await self.wait_port_completion(plan.target, read=read, above=completed):
-            raise AssertionError(
-                f"{context}.commit#{shift}: {plan.target} transaction did not complete"
-            )
+        await self.require_port_completion(
+            plan.target, read=read, above=completed, context=f"{context}.commit#{shift}"
+        )
         await self.expect_bus_request(
             plan.target,
             read=read,
@@ -1936,12 +1962,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
                     target, addr, data, size=plan.size, context=f"{context}.mem#{idx}"
                 )
         await self._series_status_shift(plan, plan.beats, 0, read=False, context=context)
-        _, addr_after, _, _, _ = await self.read_series_ctrl(size=plan.size, target=target)
-        self.assert_equal(
-            f"{context}.addr_after",
-            addr_after,
-            self.masked_addr(target, plan.final_addr),
-        )
+        await self.check_series_addr(target, plan.final_addr, size=plan.size, context=context)
 
     async def run_series_status_read(
         self, plan: DtpSeriesStatusPlan, expected: list[int], *, context: str
@@ -1975,8 +1996,11 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             rdata, _ = await self._series_status_shift(plan, shift, 0, read=True, context=context)
             beat = shift - 1
             if beat >= 0 and not plan.is_fault(beat):
-                self.assert_equal(
-                    f"{context}.rdata#{beat}", rdata, expected[beat], f"addr=0x{plan.addr(beat):x}"
+                self.check_bridge_rdata(
+                    target,
+                    rdata,
+                    expected[beat],
+                    context=f"{context}.rdata#{beat} addr=0x{plan.addr(beat):x}",
                 )
             if shift + 1 < plan.beats and plan.addr(shift + 1) == plan.addr(shift):
                 fresh = self.random_distinct_word(rng, target, expected[shift])
@@ -1989,43 +2013,23 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
                 )
                 self.write_target_mem_int(target, plan.addr(shift), fresh, plan.size)
                 expected[shift + 1] = fresh
-        _, addr_after, _, _, _ = await self.read_series_ctrl(size=plan.size, target=target)
-        self.assert_equal(
-            f"{context}.addr_after",
-            addr_after,
-            self.masked_addr(target, plan.final_addr),
-        )
+        await self.check_series_addr(target, plan.final_addr, size=plan.size, context=context)
 
     def emit_series_status_nonvacuity(
         self, label: str, plan: DtpSeriesStatusPlan, operations: int
     ) -> None:
         """CHK-AXI-NONVAC: the stream ran and a real bus response consumed its fault credit."""
-        scoreboard = self.axi_scoreboard
-        if scoreboard is None:
-            return
-        unconsumed = scoreboard.unconsumed_credits()
-        scoreboard.expect_nonvacuous(
+        unconsumed = self.axi_scoreboard.unconsumed_credits()
+        self.emit_nonvacuity(
+            plan.target,
             operations >= plan.beats and plan.fault_idx is not None and unconsumed == 0,
             context=(
-                f"scenario={label} target={plan.target} operations={operations} "
-                f"fault_beat={plan.fault_idx} resp={plan.expected.name} "
-                f"credits_unconsumed={unconsumed}"
+                f"scenario={label} operations={operations} fault_beat={plan.fault_idx} "
+                f"resp={plan.expected.name} credits_unconsumed={unconsumed}"
             ),
         )
 
     # --- AXI activity helpers -------------------------------------------------
-    async def axi_activity_counts(self) -> dict[str, int]:
-        """Sample the SMC AXI request activity counters on dtp_tb_if."""
-        await ReadOnly()
-        tb = self.cfg.tb_if
-        counts = {
-            "aw": tb.sample("smc_axi_awvalid_count"),
-            "w": tb.sample("smc_axi_wvalid_count"),
-            "ar": tb.sample("smc_axi_arvalid_count"),
-        }
-        await ClockCycles(tb.clk, 1)
-        return counts
-
     async def target_activity_counts(self, target: str) -> dict[str, int]:
         """Sample request activity counters for one JTAG2AXI target."""
         cfg = self.target_cfg(target)
@@ -2051,38 +2055,12 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         await ClockCycles(tb.clk, 1)
         return counts
 
-    async def expect_no_smc_axi_activity(self, cycles: int, *, context: str) -> None:
-        """Verify no SMC AXI request-valid pulse occurs across a bounded window."""
-        before = await self.axi_activity_counts()
-        await self.wait_sys_cycles(cycles)
-        after = await self.axi_activity_counts()
-        self.log.info("%s AXI activity before=%s after=%s", context, before, after)
-        self.assert_equal(f"{context}.aw_count", after["aw"], before["aw"])
-        self.assert_equal(f"{context}.w_count", after["w"], before["w"])
-        self.assert_equal(f"{context}.ar_count", after["ar"], before["ar"])
-
     async def expect_no_target_activity(self, target: str, cycles: int, *, context: str) -> None:
-        """Verify no target request-valid pulse occurs across a bounded window."""
+        """CHK-AXI-NOACT: no request-valid pulse on ``target``'s port for ``cycles`` sys cycles."""
         before = await self.target_activity_counts(target)
         await self.wait_sys_cycles(cycles)
         after = await self.target_activity_counts(target)
-        self.log.info("%s %s activity before=%s after=%s", context, target, before, after)
-        self.assert_equal(f"{context}.aw_count", after["aw"], before["aw"])
-        self.assert_equal(f"{context}.w_count", after["w"], before["w"])
-        self.assert_equal(f"{context}.ar_count", after["ar"], before["ar"])
-
-    async def expect_smc_axi_activity(
-        self,
-        *,
-        before: dict[str, int],
-        read: bool,
-        context: str,
-    ) -> None:
-        """Verify a read or write produced SMC AXI request activity."""
-        after = await self.axi_activity_counts()
-        self.log.info("%s AXI activity before=%s after=%s", context, before, after)
-        key = "ar" if read else "aw"
-        assert after[key] > before[key], f"{context}: expected {key.upper()} activity"
+        self.check_no_activity(target, before, after, context=f"{context} cycles={cycles}")
 
     async def expect_target_activity(
         self,
@@ -2092,11 +2070,18 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         read: bool,
         context: str,
     ) -> None:
-        """Verify a target read or write produced request activity."""
+        """CHK-AXI-NONVAC: request activity on ``target``'s port since the ``before`` snapshot."""
         after = await self.target_activity_counts(target)
         self.log.info("%s %s activity before=%s after=%s", context, target, before, after)
         key = "ar" if read else "aw"
-        assert after[key] > before[key], f"{context}: expected {target} {key.upper()} activity"
+        self.check_true(
+            self.axi_scoreboard,
+            NONVAC_CHECK_ID,
+            after[key] > before[key],
+            context=(
+                f"{context} target={target} {key}_before={before[key]} {key}_after={after[key]}"
+            ),
+        )
 
     async def wait_for_target_activity(
         self,
@@ -2105,18 +2090,23 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         before: dict[str, int],
         read: bool,
         context: str,
-        timeout_cycles: int = 100,
+        timeout_cycles: int = 200,
     ) -> dict[str, int]:
-        """Wait until a series operation has reached the target request channel."""
+        """Wait until a series operation has reached the target request channel.
+
+        Each sample advances one system cycle, so the wait spans
+        ``timeout_cycles`` cycles (CHK-AXI-COMPLETION).
+        """
         key = "ar" if read else "aw"
         for _ in range(timeout_cycles):
             after = await self.target_activity_counts(target)
             if after[key] > before[key]:
-                self.log.info("%s %s activity before=%s after=%s", context, target, before, after)
-                return after
-            await self.wait_sys_cycles(1)
-        after = await self.target_activity_counts(target)
-        raise AssertionError(
-            f"{context}: expected {target} {key.upper()} activity within {timeout_cycles} "
-            f"cycles, before={before}, after={after}"
+                break
+        self.log.info("%s %s activity before=%s after=%s", context, target, before, after)
+        self.check_within(
+            target,
+            after[key] > before[key],
+            cycles=timeout_cycles,
+            context=f"{context} {key.upper()} activity",
         )
+        return after

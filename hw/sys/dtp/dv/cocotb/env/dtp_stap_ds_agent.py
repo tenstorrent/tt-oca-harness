@@ -26,8 +26,18 @@ from ocah_jtag_vip import (
 )
 from pyuvm import ConfigDB, uvm_component
 
-from .dtp_scan_ref_model import STAP_ORDER
+from .dtp_stap_3dcr_model import STAP_ORDER
 from .dtp_tb_if import JTAG_SIGNAL_MAP
+
+__all__ = [
+    "DtpStapDsAgent",
+    "STAP_DS_DEVICES",
+    "STAP_DS_IDCODE_OPCODE",
+    "STAP_DS_IR_WIDTH",
+    "STAP_DS_TDR_NAME",
+    "STAP_DS_TDR_OPCODE",
+    "stap_ds_config",
+]
 
 STAP_DS_IR_WIDTH = 5
 STAP_DS_IDCODE_OPCODE = 0x01

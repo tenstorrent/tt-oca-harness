@@ -2,6 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP DEBUG_CONTROL boot-stall override test."""
 
+from __future__ import annotations
+
 import pyuvm
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_dbg_ctrl_boot_stall_test_seq import dtp_dbg_ctrl_boot_stall_test_seq

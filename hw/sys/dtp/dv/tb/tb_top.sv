@@ -441,7 +441,7 @@ module dtp_uvm_top
   // every open-SIB subset a unique chain length; each stub captures its own
   // update register, so the value shifted through an open SIB on one scan
   // is the capture of the next. The widths are mirrored in the scan models
-  // (env/dtp_scan_ref_model.py, dtp_types.svh).
+  // (env/dtp_ijtag_sib_model.py, dtp_types.svh).
   localparam int unsigned IjtagDftSecureInstrumentWidth = 4;
   localparam int unsigned IjtagDftInstrumentWidth = 5;
   localparam int unsigned IjtagDfdInstrumentWidth = 6;
@@ -485,7 +485,7 @@ module dtp_uvm_top
   // Extended STAP host segment on the gated host scan control, the TDO end
   // of the TAP_3DCR chain while the PTAP 3DCR select is set: it captures
   // its own update register, which resets in Test-Logic-Reset. The width
-  // is mirrored in the STAP chain models (env/dtp_scan_ref_model.py,
+  // is mirrored in the STAP chain models (env/dtp_stap_3dcr_model.py,
   // dtp_types.svh).
   localparam int unsigned StapHostSegmentWidth = 7;
   logic [StapHostSegmentWidth-1:0] stap_host_segment_q;
