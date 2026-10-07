@@ -152,7 +152,7 @@ class SepFabricTap:
 
     async def stop(self) -> None:
         if self._task is not None:
-            self._task.kill()
+            self._task.cancel()
             self._task = None
 
     def mark(self) -> int:

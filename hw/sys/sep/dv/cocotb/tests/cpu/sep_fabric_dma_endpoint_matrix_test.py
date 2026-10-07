@@ -849,7 +849,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         )
         close_graded_window(self.logger)
         for m in mons:
-            m.kill()
+            m.cancel()
         await stop_taps(self.taps)
         assert self.sb.fw_done and self.sb.fw_pass, "firmware did not complete with PASS"
 
