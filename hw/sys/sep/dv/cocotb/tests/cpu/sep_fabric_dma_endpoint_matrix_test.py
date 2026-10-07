@@ -246,11 +246,24 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
 
     # ---- live monitors ----
     async def _console(self) -> None:
-        """Follow the M and R lines; mark the taps and drive the window."""
+        """Follow the M and R lines; mark the taps and drive the window.
+
+        The tap marks are taken in the read-only phase of the edge that ends an
+        M line. The gate write waits for the next edge, where writes are legal;
+        the firmware spins after every M line, so no bus access of the leg
+        falls between the two.
+        """
         dut = cocotb.top
         line = []
+        gate = None
         while True:
             await RisingEdge(dut.clk_i)
+            if gate is not None:
+                if gate:
+                    open_graded_window(_TEST, self.logger)
+                else:
+                    close_graded_window(self.logger)
+                gate = None
             await ReadOnly()
             v = dut.fw_char_valid_o.value
             if not (v.is_resolvable and int(v)):
@@ -268,10 +281,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                 leg.sram_mark = len(self.sram_wr)
                 leg.irq_mark = len(self.irq_edges)
                 self.legs.append(leg)
-                if leg.kind == "G":
-                    open_graded_window(_TEST, self.logger)
-                else:
-                    close_graded_window(self.logger)
+                gate = leg.kind == "G"
             elif text.startswith("R "):
                 self.recs.append((len(self.legs) - 1, text))
 
