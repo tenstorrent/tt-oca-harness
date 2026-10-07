@@ -27,15 +27,21 @@
 +define+TARGET_FLIST
 +define+TARGET_REGISTER_INTERFACE_L1
 +define+TARGET_SIMULATION
+// Package(common_verification) Target(any(simulation, verilator))
 vendor/pulp-platform/common_verification/upstream/src/clk_rst_gen.sv
 vendor/pulp-platform/common_verification/upstream/src/sim_timeout.sv
 vendor/pulp-platform/common_verification/upstream/src/stream_watchdog.sv
 vendor/pulp-platform/common_verification/upstream/src/signal_highlighter.sv
+// Package(common_verification) Target(simulation)
 vendor/pulp-platform/common_verification/upstream/src/rand_verif_pkg.sv
+// Package(common_cells) Target(*)
 vendor/pulp-platform/common_cells/upstream/src/cf_math_pkg.sv
+// Package(common_cells) Target(any(sep_wrapper, smu_wrapper, all(common_cells_rtl, not(all(vivado_ipx, xilinx)))))
 vendor/pulp-platform/common_cells/upstream/src/fifo_v3.sv
 vendor/pulp-platform/common_cells/upstream/src/counter.sv
+// Package(common_cells) Target(common_cells_rtl)
 vendor/pulp-platform/common_cells/upstream/src/binary_to_gray.sv
+// Package(common_cells) Target(all(common_cells_rtl, not(all(vivado_ipx, xilinx))))
 vendor/pulp-platform/common_cells/upstream/src/cb_filter_pkg.sv
 vendor/pulp-platform/common_cells/upstream/src/cc_onehot.sv
 vendor/pulp-platform/common_cells/upstream/src/cdc_reset_ctrlr_pkg.sv
@@ -107,11 +113,15 @@ vendor/pulp-platform/common_cells/upstream/src/mem_to_banks_detailed.sv
 vendor/pulp-platform/common_cells/upstream/src/stream_arbiter.sv
 vendor/pulp-platform/common_cells/upstream/src/stream_omega_net.sv
 vendor/pulp-platform/common_cells/upstream/src/mem_to_banks.sv
+// Package(apb) Target(*)
 vendor/pulp-platform/apb/upstream/apb_pkg.sv
+// Package(apb) Target(apb_rtl)
 vendor/pulp-platform/apb/upstream/apb_intf.sv
 vendor/pulp-platform/apb/upstream/apb_cdc.sv
 vendor/pulp-platform/apb/upstream/apb_demux.sv
+// Package(axi) Target(*)
 vendor/pulp-platform/axi/upstream/src/axi_pkg.sv
+// Package(axi) Target(axi_rtl)
 vendor/pulp-platform/axi/upstream/src/axi_demux_id_counters.sv
 vendor/pulp-platform/axi/upstream/src/axi_intf.sv
 vendor/pulp-platform/axi/upstream/src/axi_atop_filter.sv
@@ -180,13 +190,17 @@ vendor/pulp-platform/axi/upstream/src/axi5_lite_demux_brcst.sv
 vendor/pulp-platform/axi/upstream/src/axi5_lite_xbar.sv
 vendor/pulp-platform/axi/upstream/src/axi5_lite_xbar_brcst.sv
 vendor/pulp-platform/axi/upstream/src/axi_hidestrb.sv
+// Package(axi) Target(any(axi_rtl, sep_wrapper, smu_wrapper))
 vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv
+// Package(axi_stream) Target(*)
 vendor/pulp-platform/axi_stream/upstream/src/axi_stream_intf.sv
 vendor/pulp-platform/axi_stream/upstream/src/axi_stream_cut.sv
 vendor/pulp-platform/axi_stream/upstream/src/axi_stream_dw_downsizer.sv
 vendor/pulp-platform/axi_stream/upstream/src/axi_stream_dw_upsizer.sv
 vendor/pulp-platform/axi_stream/upstream/src/axi_stream_multicut.sv
+// Package(obi) Target(*)
 vendor/pulp-platform/obi/upstream/src/obi_pkg.sv
+// Package(register_interface) Target(register_interface_l1)
 vendor/pulp-platform/register_interface/../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_pkg.sv
 vendor/pulp-platform/register_interface/../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi_pkg.sv
 vendor/pulp-platform/register_interface/upstream/src/reg_intf.sv
@@ -194,6 +208,7 @@ vendor/pulp-platform/register_interface/upstream/src/reg_demux.sv
 vendor/pulp-platform/register_interface/upstream/src/reg_mux.sv
 vendor/pulp-platform/register_interface/upstream/src/periph_to_reg.sv
 vendor/pulp-platform/register_interface/upstream/src/axi_to_reg_v2.sv
+// Package(opentitan) Target(any(cross_trigger, drbg, dtp, entropy_source, key_manager, opentitan_smu, sep, smc, smu, system_timer_octs, uart))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_util_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_count_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_pkg.sv
@@ -201,6 +216,7 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_count.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_edge_detector.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync_cnt.sv
+// Package(opentitan) Target(all(any(cross_trigger, drbg, dtp, entropy_source, key_manager, opentitan_smu, sep, smc, smu, system_timer_octs, uart), any(emulation, not(synth))))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_and2.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_buf.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_clock_buf.sv
@@ -209,13 +225,19 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_clock_inv.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_clock_mux2.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop_2sync.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop_en.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop_no_rst.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_inv.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_xnor2.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_xor2.sv
+// Package(opentitan) Target(all(simulation, any(cross_trigger, dtp, system_timer_octs, uart)))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv
+// Package(tt-oca-harness) Target(all(dtp, not(sep)))
 hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv
+// Package(tt-oca-harness) Target(any(dtp, key_manager, sep, smc, system_timer_octs, uart))
 hw/common/ocah_prim/rtl/prim_jtag_pkg.sv
 hw/common/ocah_prim/rtl/prim_ram_1p_adv_ext_pkg.sv
+// Package(tt-oca-harness) Target(any(cross_trigger, dtp))
 hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_addrmap_pkg.sv
 hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg_pkg.sv
 hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix_pkg.sv
@@ -223,15 +245,21 @@ hw/ip/cross_trigger/cross_trigger_network/regs/gen/sv/cross_trigger_network_addr
 hw/ip/cross_trigger/cross_trigger_network/rtl/cross_trigger_network_pkg.sv
 hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg_pkg.sv
 hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port_pkg.sv
+// Package(tt-oca-harness) Target(any(dtp, sep, smc))
 hw/ip/efuse/rtl/efuse_pkg.sv
+// Package(tt-oca-harness) Target(dtp)
 hw/ip/jtag/jtag_ptap/rtl/jtag_inst_reg_pkg.sv
 hw/ip/jtag/jtag_ptap/rtl/jtag_tap_pkg.sv
 hw/ip/jtag/jtag_ptap/rtl/jtag_tmp_pkg.sv
 hw/sys/dtp/rtl/dtp_pkg.sv
+// Package(tt-oca-harness) Target(any(dtp, sep))
 hw/sys/sep/rtl/sep_lifecycle_ctrl_pkg.sv
 hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv
+// Package(tt-oca-harness) Target(any(axi_hang_detector, dtp, key_manager, sep, smc, system_timer_octs, uart))
 hw/common/ocah_prim/rtl/prim_axi_snoop.sv
+// Package(tt-oca-harness) Target(any(dtp, entropy_source, key_manager, sep, smc, system_timer_octs, uart))
 hw/common/ocah_prim/rtl/prim_clkmux4.sv
+// Package(tt-oca-harness) Target(any(dtp, key_manager, sep, smc, system_timer_octs, uart))
 hw/common/ocah_prim/rtl/prim_ag_clk_mux.sv
 hw/common/ocah_prim/rtl/prim_apb_arb.sv
 hw/common/ocah_prim/rtl/prim_axi_addr_fixer.sv
@@ -273,6 +301,7 @@ hw/common/ocah_prim/rtl/prim_sync_reset.sv
 hw/common/ocah_prim/rtl/prim_updown_counter.sv
 hw/common/ocah_prim/rtl/prim_zero_counter.sv
 hw/common/sync.sv
+// Package(tt-oca-harness) Target(all(any(dtp, entropy_source, key_manager, sep, smc, system_timer_octs, uart), any(emulation, not(synth))))
 hw/common/ocah_prim_generic/rtl/prim_and3.sv
 hw/common/ocah_prim_generic/rtl/prim_ao222.sv
 hw/common/ocah_prim_generic/rtl/prim_clock_nand2.sv
@@ -289,6 +318,7 @@ hw/common/ocah_prim_generic/rtl/prim_nor4.sv
 hw/common/ocah_prim_generic/rtl/prim_or2.sv
 hw/common/ocah_prim_generic/rtl/prim_or4.sv
 hw/common/ocah_prim_generic/rtl/prim_stdmux2.sv
+// Package(tt-oca-harness) Target(any(cross_trigger, dtp))
 hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg.sv
 hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix.sv
 hw/ip/cross_trigger/cross_trigger_matrix/rtl/ctm_src_selector.sv
@@ -301,6 +331,7 @@ hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_edge_detector.sv
 hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_handshake_ctrl.sv
 hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_pulse_stretcher.sv
 hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_synchronizer.sv
+// Package(tt-oca-harness) Target(dtp)
 hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv
 hw/ip/jtag/jtag_intf_unit/rtl/jtag_intf_unit.sv
 hw/ip/jtag/jtag_ptap/rtl/jtag_3dcr_reg.sv
