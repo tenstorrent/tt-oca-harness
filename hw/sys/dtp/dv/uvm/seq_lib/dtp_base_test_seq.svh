@@ -120,19 +120,6 @@ class dtp_base_test_seq extends ocah_sequence;
     run_jtag_op(op);
   endtask
 
-  // Walk to a seeded random state outside `exclude`.
-  task goto_random_state(output ocah_jtag_tap_state_e reached,
-                         input ocah_jtag_tap_state_e exclude[$] = {});
-    ocah_jtag_tap_state_e pool[$];
-    for (int unsigned s = 0; s < 16; s++) begin
-      ocah_jtag_tap_state_e st = ocah_jtag_tap_state_e'(s);
-      if (!(st inside {exclude})) pool.push_back(st);
-    end
-    if (pool.size() == 0) `uvm_fatal(get_type_name(), "goto_random_state: every TAP state excluded")
-    reached = pool[$urandom_range(pool.size()-1)];
-    goto_state(reached);
-  endtask
-
   // Seeded random TMS walk (TDI = 0); read the landing state with
   // current_state().
   task random_tms_walk(int unsigned cycles);
@@ -201,9 +188,15 @@ class dtp_base_test_seq extends ocah_sequence;
                 UVM_MEDIUM)
       return;
     end
-    ctx = $sformatf("%s %s expected_state=%s", checker_tag, what, expected.name());
+    ctx = $sformatf(
+        "%s %s expected_state=%s observed_onehot=%04h",
+        checker_tag,
+        what,
+        expected.name(),
+        tb_vif.tap_state
+    );
     if (evidence == null) `uvm_fatal(get_type_name(), "evidence recorder not plumbed by the test")
-    void'(evidence.expect_equal("CHK-TAP-STATE", 64'(tb_vif.tap_state), 64'(expected), ctx));
+    void'(evidence.expect_true("CHK-TAP-STATE", tb_vif.tap_state === expected, ctx));
   endfunction
 
   // CHK-RESET-COUNT: the tb_top assertion counter of a reset this sequence

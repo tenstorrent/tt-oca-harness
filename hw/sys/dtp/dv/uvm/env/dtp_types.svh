@@ -122,12 +122,6 @@ typedef enum logic [15:0] {
   UPDATE_IR        = 16'h8000
 } dtp_tap_state_e;
 
-// A legal exported TAP state is exactly one of the sixteen one-hot codes.
-function automatic bit dtp_tap_state_is_valid(logic [15:0] state);
-  if ($isunknown(state)) return 1'b0;
-  return $countones(state) == 1;
-endfunction
-
 // The DUT is in a Shift state: one data bit moves through the selected register
 // on every TCK cycle the exported state spends here.
 function automatic bit dtp_tap_state_is_shift(logic [15:0] state, bit is_ir);

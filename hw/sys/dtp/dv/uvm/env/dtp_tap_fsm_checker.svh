@@ -106,9 +106,7 @@ class dtp_tap_fsm_checker extends ocah_subscriber #(ocah_jtag_event);
         tb_vif.tap_state
     );
     if (evidence != null)
-      void'(evidence.expect_equal(
-          "CHK-TAP-STATE", 64'(tb_vif.tap_state), 64'(expected_onehot), context_s
-      ));
+      void'(evidence.expect_true("CHK-TAP-STATE", tb_vif.tap_state === expected_onehot, context_s));
     else
       `uvm_error("CHK-TAP-STATE", $sformatf(
                  "FAIL expected=0x%0h observed=0x%0h context=%s",
