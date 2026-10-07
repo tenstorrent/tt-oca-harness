@@ -1514,9 +1514,11 @@ status when that post does not succeed.</p>
 </div>
 <div class="paragraph">
 <p>Documentation-only diffs (every changed path is under <code>doc/</code>, an Antora playbook,
-or a <code>.md</code> / <code>.adoc</code> / image) skip lint, Verilator smoke, and the nonfree GitLab
-child; <code>lint-vale</code>, which checks documentation prose, runs on every diff. The required <code>verilator-smoke (dtp)</code> / <code>(sep)</code> and GitLab checks still
-report success. <code>scripts/ci/diff_class.py --self-test</code> checks the classifier.
+or a <code>.md</code> / <code>.adoc</code> / image) skip lint, Verilator smoke, the native VP legs, and
+the nonfree GitLab child; <code>lint-vale</code>, which checks documentation prose, runs on
+every diff. The required <code>verilator-smoke (dtp)</code> / <code>(sep)</code>, <code>sep-vp (native)</code>,
+<code>smc-vp + smu-vp (native)</code> and GitLab checks still report success.
+<code>scripts/ci/diff_class.py --self-test</code> checks the classifier.
 Scheduled and manually dispatched pipelines always run in full.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
