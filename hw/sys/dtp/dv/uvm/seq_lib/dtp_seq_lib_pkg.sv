@@ -36,6 +36,7 @@ package dtp_seq_lib_pkg;
   // Reusable operations (one agent, one operation).
   `include "dtp_jtag_op_seq.svh"
   `include "dtp_jtag_tap_reset_seq.svh"
+  `include "dtp_jtag_trst_seq.svh"
   `include "dtp_jtag_tms_walk_seq.svh"
   `include "dtp_jtag_goto_state_seq.svh"
   `include "dtp_jtag_ir_scan_seq.svh"

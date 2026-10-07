@@ -26,7 +26,7 @@ class dtp_scan_dbg_disable_matrix_test extends dtp_base_test;
 
   task run_phase(uvm_phase phase);
     phase.raise_objection(this, {get_type_name(), " running"});
-    run_single_pass();
+    run_single_scenario();
     phase.drop_objection(this, {get_type_name(), " done"});
   endtask
 

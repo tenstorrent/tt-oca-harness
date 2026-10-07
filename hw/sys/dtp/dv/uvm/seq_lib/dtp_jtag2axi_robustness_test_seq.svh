@@ -68,6 +68,12 @@
 // base-class handles so every inherited helper acts on the bridge under
 // test. The body always clears injections and backpressure on all bridges
 // and re-enables debug on exit.
+//
+// The back-to-back reset legs time each system-reset deposit from dtp_tb_if
+// clock edges and CDC phase observables, and start a deposit that follows
+// TRST once the TRST operation returns, with no TCK edge in between; a
+// phase watcher that never fires is killed once the TCK steps it races
+// have run.
 
 class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
   `uvm_object_utils(dtp_jtag2axi_robustness_test_seq)
@@ -1255,13 +1261,11 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
             B2bReceiverWaitEdges, cycles, hold), UVM_LOW)
     clear_cdc_clear_seen();
     @(negedge tb_vif.clk);
+    trst_op(1'b1);
     fork
-      begin
-        @(negedge jtag_vif.trst_n);
-        reset_after_edges(B2bReceiverWaitEdges, "aclk_dst_wait_ack", cycles,
-                          "back_to_back_reset.aclk_wda", seen);
-      end
-      set_trst(1'b0, hold);
+      reset_after_edges(B2bReceiverWaitEdges, "aclk_dst_wait_ack", cycles,
+                        "back_to_back_reset.aclk_wda", seen);
+      hold_trst(hold);
     join
     leave_tap_reset(1'b1, B2bPhaseTck);
   endtask

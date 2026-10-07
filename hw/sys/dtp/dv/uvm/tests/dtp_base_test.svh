@@ -112,7 +112,6 @@ class dtp_base_test extends ocah_test;
     dtp_seq.tb_vif       = m_env.tb_vif;
     dtp_seq.scan_vif     = m_env.scan_vif;
     dtp_seq.xtrig_vif    = m_env.xtrig_vif;
-    dtp_seq.jtag_vif     = m_env.m_jtag_cfg.vif;
     dtp_seq.test_cfg     = test_cfg;
     dtp_seq.evidence     = m_env.m_jtag_checker;
     dtp_seq.scan_builder = m_env.m_scan_builder;
@@ -140,20 +139,6 @@ class dtp_base_test extends ocah_test;
   virtual function void pre_scenario_pass(int unsigned idx);
     m_env.m_scan_builder.clear_scan_history();
   endfunction
-
-  // One scenario pass at the runner seed, for a scenario whose seeded
-  // iterations are the rows of that pass.
-  task run_single_pass();
-    ocah_sequence seq;
-    bring_up();
-    seq = create_scenario_seq();
-    seq.scenario_seed = base_seed();
-    seq.random_count  = random_count();
-    seq.loop_index    = 0;
-    pre_scenario_pass(0);
-    plumb_scenario_seq(seq);
-    seq.start(scenario_sequencer());
-  endtask
 
   // Clock/reset bring-up (cocotb bring_up parity): route the downstream
   // STAP TAPs, then sequence POR and system reset through dtp_tb_if with

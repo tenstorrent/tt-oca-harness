@@ -138,15 +138,18 @@ class DtpJtagDriver(uvm_driver):
         )
 
     async def _set_trst(self, item: DtpJtagItem) -> None:
-        """Drive TRST_N, hold it across TCK cycles, and sample the TAP state.
+        """Change the TRST_N level, hold it across TCK cycles, and sample the TAP state.
 
-        Asserting samples the state once the pin has settled and before any
+        Asserting samples the state once the level has settled and before any
         TCK edge, then clocks TCK with TMS low, which leaves Test-Logic-Reset
         unless the reset holds the controller there. Releasing clocks TCK
         with TMS high, the Test-Logic-Reset self-loop.
         """
         asserted = (item.value & 0x1) == 0
-        self.tb_if.jtag.trst_n.value = item.value & 0x1
+        if asserted:
+            await self.jtag.assert_trst(tck_cycles=0)
+        else:
+            await self.jtag.release_trst(tck_cycles=0)
         await ReadOnly()
         item.reset_state = self.tb_if.sample("jtag_ptap_state")
         await NextTimeStep()

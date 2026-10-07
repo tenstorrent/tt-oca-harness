@@ -387,7 +387,7 @@ Two tiers, one readable flow per scenario.
 [cols=",,",options="header",]
 |===
 |Tier |Role |Names
-|Reusable operation |One DUT operation on one agent, built from the VIP sequence API, started by a scenario on the virtual sequencer's handle for that agent |`dtp_jtag_tap_reset_seq`, `dtp_jtag_tms_walk_seq`, `dtp_jtag_goto_state_seq`, `dtp_jtag_ir_scan_seq`, `dtp_jtag_dr_scan_seq`, `dtp_jtag_read_tdr_seq`, `dtp_jtag_write_tdr_seq`, `dtp_jtag2axi_single_op_seq`, `dtp_jtag2axi_single_status_seq`, `dtp_jtag2axi_series_ctrl_seq`, `dtp_jtag2axi_series_data_seq`, `dtp_axi_csr_write_seq`, `dtp_axi_csr_read_seq`
+|Reusable operation |One DUT operation on one agent, built from the VIP sequence API, started by a scenario on the virtual sequencer's handle for that agent |`dtp_jtag_tap_reset_seq`, `dtp_jtag_trst_seq`, `dtp_jtag_tms_walk_seq`, `dtp_jtag_goto_state_seq`, `dtp_jtag_ir_scan_seq`, `dtp_jtag_dr_scan_seq`, `dtp_jtag_read_tdr_seq`, `dtp_jtag_write_tdr_seq`, `dtp_jtag2axi_single_op_seq`, `dtp_jtag2axi_single_status_seq`, `dtp_jtag2axi_series_ctrl_seq`, `dtp_jtag2axi_series_data_seq`, `dtp_axi_csr_write_seq`, `dtp_axi_csr_read_seq`
 |Base virtual sequence |Operation wrappers with TAP-state tracking, DTP-local checks (TAP state, scan length, BYPASS latency), reset and dbg_disable sequencing, system-domain waits derived from the env clock period, per-pass seeding |`dtp_base_test_seq`
 |Family layer |Domain helpers and per-pass family evidence: basic JTAG (bypass, loopback, decoded-IR, TMP_STATUS), JTAG2AXI (bridge codec, polling bound, evidence arming, responder backdoor, gating), debug TDR, scan network (iJTAG SIBs, STAP 3DCR chain, downstream TAPs, temporal windows), cross-trigger (CSR map, CTM model, pin surface) |`dtp_jtag_base_test_seq`, `dtp_jtag2axi_base_test_seq`, `dtp_debug_tdr_base_test_seq`, `dtp_scan_base_test_seq`, `dtp_xtrig_base_test_seq`
 |Scenario |One VPLAN scenario as a virtual sequence: seed first, one flow of operations, named evidence with required IDs finalized once |`dtp_<scenario>_test_seq`
@@ -405,8 +405,8 @@ basename in both realizations. Tests end in `_test`, scenario sequences in
 |Clock / Reset |cocotb realization |SV-UVM realization |Notes
 |`dtp_tb_if.clk` |`Clock(...)` started in the base test bring-up |`always` in the tb_top harness block with the period from `dtp_tb_if.clk_period_ns` |Period randomized in the test cfg (10..100 ns); system, AXI, and XTRIG domain
 |JTAG TCK |shared JTAG engine |`ocah_jtag_master_driver` |Half period from the VIP config, randomized in the test cfg (TCK 100..1000 ns)
-|`dtp_tb_if.sys_rst_n`, `por_rst_n` |base test bring-up through `DtpTbIf` |base test `bring_up()` through `dtp_tb_if`, in cycles of the randomized period |Scenarios re-sequence them through the TB interface; tb_top counts assertions for the scoreboard
-|TRST |JTAG engine TAP-reset operation |`dtp_jtag_tap_reset_seq` (VIP TAP reset) |Reset-family scenarios hold TRST through the plumbed JTAG interface
+|`dtp_tb_if.sys_rst_n`, `por_rst_n` |base test bring-up through `DtpTbIf` |base test `bring_up()` through `dtp_tb_if`, in cycles of the randomized period |Scenarios re-sequence them through the TB interface, and the back-to-back reset legs time their deposits from its clock edges and CDC phase observables; tb_top counts assertions for the scoreboard
+|TRST |JTAG engine TAP-reset operation, and `assert_trst` / `release_trst` for a held level |`dtp_jtag_tap_reset_seq` (VIP TAP reset) and `dtp_jtag_trst_seq` (VIP TRST level) |Reset-family scenarios hold TRST through the JTAG VIP's TRST-level operation and sample the TAP state before the first TCK edge
 |===
 
 JTAG2AXI sequences poll response status, and every system-domain wait
@@ -651,11 +651,12 @@ realization. To add the SV-UVM twin of a cocotb scenario:
 . *Test* — add `uvm/tests/<name>.svh` (file, class, and scenario share the
   name) extending `dtp_base_test`: override `create_scenario_seq()` and the
   loop-count knob hooks (`specific_loops_knob`, `group_loops_knob`), or
-  `run_phase()` with `run_single_pass()` for a scenario whose rows are its
-  seeded iterations, declare the scoreboard features and the required `CHK-*`
-  IDs the scenario owns in `configure_test_cfg()` (`cfg.require_feature`,
-  `cfg.require_jtag_ids`, `cfg.require_axi_ids`), and plumb scenario evidence
-  handles in `plumb_scenario_seq()` after `super`. Add the include line to
+  `run_phase()` with the library's `run_single_scenario()` for a scenario
+  whose rows are its seeded iterations, declare the scoreboard features and
+  the required `CHK-*` IDs the scenario owns in `configure_test_cfg()`
+  (`cfg.require_feature`, `cfg.require_jtag_ids`, `cfg.require_axi_ids`),
+  and plumb scenario evidence handles in `plumb_scenario_seq()` after
+  `super`. Add the include line to
   `uvm/tests/dtp_tests.sv`.
 . *Testlist* — change the scenario's entry to
   `module = { cocotb = "<name>", uvm = "<name>" }`; the `uvm` value drives

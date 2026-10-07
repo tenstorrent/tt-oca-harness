@@ -20,7 +20,7 @@ class DtpJtagOp(Enum):
     TMS_STEP = "tms_step"  # drive one raw TMS cycle and sample DUT TAP state
     SHIFT_IR = "shift_ir"  # shift a raw IR value -> captured previous IR bits
     SHIFT_DR = "shift_dr"  # shift a raw DR value -> captured TDO bits
-    SET_TRST = "set_trst"  # directly drive TRST_N and optionally tick TCK
+    SET_TRST = "set_trst"  # change the TRST_N level and optionally tick TCK
     PULSE_POR = "pulse_por"  # pulse pwr_on_rst_ni and sample TAP state
     SAMPLE = "sample"  # sample exposed DUT observables
     READ = "read"  # read a TDR by name -> result

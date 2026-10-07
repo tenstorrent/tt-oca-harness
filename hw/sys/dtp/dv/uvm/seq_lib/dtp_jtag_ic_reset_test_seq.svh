@@ -143,8 +143,7 @@ class dtp_jtag_ic_reset_test_seq extends dtp_debug_tdr_base_test_seq;
     read_ic_reset(observed, expected);
     family_check("CHK-DBG-TDR", "IC_RESET reset_hold=1 TLR clear", observed, expected);
 
-    // TRST always restores reset_hold and enable/control defaults
-    // (set_trst drives the active-low trst_n pin directly).
+    // TRST always restores reset_hold and enable/control defaults.
     write_ic_reset(1'b0, '0, '0, held_pattern);
     set_trst(1'b0, 5);
     set_trst(1'b1, 2);

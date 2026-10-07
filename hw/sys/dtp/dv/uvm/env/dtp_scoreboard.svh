@@ -355,14 +355,12 @@ class dtp_scoreboard extends ocah_scoreboard;
   // bridge idle and disabled, which drops the requests queued behind it, so
   // the predictions waiting on its port are withdrawn.
   protected function void drop_queued_predictions(string source);
-    string key = pair_key(DtpFeatureJtag2axiReq, source);
     dtp_j2a_target_t target;
     int unsigned dropped;
-    if (!m_target_by_source.exists(source) || !m_expected_q.exists(key)) return;
+    if (!m_target_by_source.exists(source)) return;
     target = dtp_j2a_target_by_name(m_target_by_source[source]);
     if (!dtp_dbg_path_disabled(tb_vif.dbg_disable, target.dbg_path)) return;
-    dropped = m_expected_q[key].size();
-    m_expected_q[key].delete();
+    dropped = flush_expected(DtpFeatureJtag2axiReq, source);
     if (dropped != 0)
       `uvm_info(get_type_name(), $sformatf(
                 "%s: the disable dropped %0d queued bridge request(s)", source, dropped),

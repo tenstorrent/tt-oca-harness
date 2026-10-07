@@ -6,23 +6,21 @@
 // (JTAG operations on p_sequencer.m_jtag_seqr, CSR AXI-Lite operations on
 // p_sequencer.m_xtrig_seqr in the XTRIG family, responder backdoor through
 // the slave sequences). It never touches a driver or a VIP virtual
-// interface; the written exceptions are the DTP-local TB interfaces tb_vif
-// (reset sequencing, dbg_disable stimulus, control-domain observables),
-// scan_vif (scan-network observables and downstream-TAP attach), xtrig_vif
-// (cross-trigger pins), and jtag_vif (the reset-family scenarios hold TRST
-// across TCK cycles and sample it under a power-on reset), all plumbed by
-// the base test.
+// interface; the pins it drives and samples are on the DTP-local TB
+// interfaces tb_vif (reset sequencing, dbg_disable stimulus, control-domain
+// observables), scan_vif (scan-network observables and downstream-TAP
+// attach), and xtrig_vif (cross-trigger pins), all plumbed by the base test.
 //
-// The scenario layer tracks the TAP state itself (m_tap_state) and hands it
-// to every JTAG operation, since the VIP sequence's model lives inside the
-// operation sequence. On top of the operations it keeps the DTP-local
-// checks: TAP-state checks against the one-hot observable, scan-length
-// evidence through the env scan builder, the BYPASS latency check, the
-// lifecycle dbg_disable settle rule, and system-domain waits derived from
-// the env clock period. Every draw in a pass follows seed_scenario_rng()
-// (first statement of body()). The cocotb twin is
-// seq_lib/dtp_base_test_seq.py; feature families extend this class
-// (dtp_jtag_base_test_seq, dtp_jtag2axi_base_test_seq,
+// The scenario layer tracks the TAP state itself (m_tap_state) and the TRST
+// level (m_trst_asserted) and hands the state to every JTAG operation, since
+// the VIP sequence's model lives inside the operation sequence. On top of
+// the operations it keeps the DTP-local checks: TAP-state checks against
+// the one-hot observable, scan-length evidence through the env scan
+// builder, the BYPASS latency check, the lifecycle dbg_disable settle rule,
+// and system-domain waits derived from the env clock period. Every draw in
+// a pass follows seed_scenario_rng() (first statement of body()). The
+// cocotb twin is seq_lib/dtp_base_test_seq.py; feature families extend this
+// class (dtp_jtag_base_test_seq, dtp_jtag2axi_base_test_seq,
 // dtp_debug_tdr_base_test_seq, dtp_scan_base_test_seq,
 // dtp_xtrig_base_test_seq).
 
@@ -48,10 +46,6 @@ class dtp_base_test_seq extends ocah_sequence;
   virtual dtp_scan_if  scan_vif;
   virtual dtp_xtrig_if xtrig_vif;
   dtp_test_cfg         test_cfg;
-  // Plumbed by the test for scenarios that hold, sequence, or sample TRST
-  // directly (reset family). Safe alongside the VIP driver, which drives
-  // trst_n only while executing a TAP_RESET item.
-  virtual ocah_jtag_if jtag_vif;
   // Env-owned evidence and observation handles: the aggregate JTAG
   // recorder, the pin-level scan reconstruction with the DUT's Shift-x
   // episodes (a scenario clears the handle to skip scan-length evidence),
@@ -63,6 +57,9 @@ class dtp_base_test_seq extends ocah_sequence;
   // TAP state tracked across operations (each operation re-syncs the VIP
   // model from it and hands the landing state back).
   protected ocah_jtag_tap_state_e m_tap_state = OCAH_JTAG_TEST_LOGIC_RESET;
+  // TRST level after the last TRST operation; a TAP-reset pulse ends with
+  // TRST released.
+  protected bit m_trst_asserted;
   // TAP state sampled by set_trst with TRST_N low and no TCK edge since.
   protected bit [15:0] m_trst_async_state;
   // The scan builder's closed Shift-IR / Shift-DR episode counts when the
@@ -91,6 +88,17 @@ class dtp_base_test_seq extends ocah_sequence;
   task tap_reset_op();
     dtp_jtag_tap_reset_seq op = dtp_jtag_tap_reset_seq::type_id::create("tap_reset");
     run_jtag_op(op);
+    m_trst_asserted = 1'b0;
+  endtask
+
+  // One TRST level change, then `tck_cycles` TCK cycles with TMS at `tms`.
+  task trst_op(bit asserted, int unsigned tck_cycles = 0, bit tms = 1'b1);
+    dtp_jtag_trst_seq op = dtp_jtag_trst_seq::type_id::create("trst");
+    op.asserted   = asserted;
+    op.tck_cycles = tck_cycles;
+    op.tms        = tms;
+    run_jtag_op(op);
+    m_trst_asserted = op.trst_asserted();
   endtask
 
   // One raw TCK step from any state.
@@ -253,24 +261,28 @@ class dtp_base_test_seq extends ocah_sequence;
     check_state(TEST_LOGIC_RESET, "sanity_scan_path_chk", "after 5x TMS=1");
   endtask
 
-  // Hold or release TRST directly (active-low). Asserting samples the TAP
-  // state once the pin has settled and before any TCK edge (the driver
-  // idles TCK between items), then clocks TCK with TMS low, which leaves
-  // Test-Logic-Reset unless the reset holds the controller there. Releasing
-  // clocks TCK with TMS high, the Test-Logic-Reset self-loop.
+  // Hold or release TRST (active-low value). Asserting is hold_trst() after
+  // the level change. Releasing clocks TCK with TMS high, the
+  // Test-Logic-Reset self-loop.
   task set_trst(bit value, int unsigned cycles = 1);
-    if (jtag_vif == null)
-      `uvm_fatal(get_type_name(), "set_trst() needs jtag_vif plumbed by the test")
-    jtag_vif.trst_n <= value;
     if (value == 1'b0) begin
-      wait_sys_cycles(1);
-      m_trst_async_state = tb_vif.tap_state;
+      trst_op(1'b1);
+      hold_trst(cycles);
+    end else begin
+      trst_op(1'b0, (cycles > 0) ? cycles : 1);
     end
-    repeat (cycles > 0 ? cycles : 1) step(value);
-    if (value == 1'b0) begin
-      sync_model(OCAH_JTAG_TEST_LOGIC_RESET);
-      if (evidence != null) evidence.reset_model();
-    end
+  endtask
+
+  // With TRST asserted and no TCK edge since (the driver idles TCK between
+  // items): sample the TAP state once the reset has settled, then clock TCK
+  // with TMS low, which leaves Test-Logic-Reset unless the reset holds the
+  // controller there.
+  task hold_trst(int unsigned cycles);
+    wait_sys_cycles(1);
+    m_trst_async_state = tb_vif.tap_state;
+    repeat ((cycles > 0) ? cycles : 1) step(1'b0);
+    sync_model(OCAH_JTAG_TEST_LOGIC_RESET);
+    if (evidence != null) evidence.reset_model();
   endtask
 
   // The TAP state set_trst sampled under TRST_N before any TCK edge.
@@ -279,19 +291,18 @@ class dtp_base_test_seq extends ocah_sequence;
   endfunction
 
   // Hold power-on reset for `cycles` TCK periods with TRST_N untouched and
-  // TCK idle, sample the TAP state and TRST_N under the reset, then release
-  // it and idle as long again. The reset moves the TAP to Test-Logic-Reset
-  // without a TCK edge, so the tracked state follows it here.
+  // TCK idle, sample the TAP state and the TRST level under the reset, then
+  // release it and idle as long again. The reset moves the TAP to
+  // Test-Logic-Reset without a TCK edge, so the tracked state follows it
+  // here.
   task pulse_por(input int unsigned cycles, output bit [15:0] state_under_por,
                  output bit trst_n_under_por);
     logic [31:0] before_count = tb_vif.por_assert_count;
     int unsigned hold = (cycles > 0) ? cycles : 1;
-    if (jtag_vif == null)
-      `uvm_fatal(get_type_name(), "pulse_por() needs jtag_vif plumbed by the test")
     tb_vif.por_rst_n <= 1'b0;
     wait_tck_periods(hold);
     state_under_por  = tb_vif.tap_state;
-    trst_n_under_por = jtag_vif.trst_n;
+    trst_n_under_por = !m_trst_asserted;
     tb_vif.por_rst_n <= 1'b1;
     wait_tck_periods(hold);
     check_reset_counted("por_assert_count", before_count, tb_vif.por_assert_count, $sformatf(
