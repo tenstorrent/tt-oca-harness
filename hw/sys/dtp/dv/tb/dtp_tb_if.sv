@@ -5,7 +5,7 @@
 // the system clock and its period, the test-sequenced resets and their
 // assertion counters, the lifecycle debug disables, the TAP-state and
 // debug-TDR observables the checkers read, the stop_clks change counters,
-// the request-activity pulse counters and READY-stall counters tb_top
+// the request-VALID-high cycle counters and READY-stall counters tb_top
 // derives from the bus pins, and the SVA enables.
 // The scan-network observables live in dtp_scan_if and the cross-trigger
 // pins in dtp_xtrig_if; the primary TAP pins are on the shared ocah_jtag_if.
@@ -18,8 +18,9 @@
 interface dtp_tb_if;
 
   // System-clock period the harness clock generator reads, set by the env
-  // from dtp_env_cfg (the test cfg randomizes it from the runner seed).
-  int unsigned clk_period_ns = 10;
+  // from dtp_env_cfg (the test cfg randomizes it from the runner seed); 0
+  // until the env publishes it.
+  int unsigned clk_period_ns = 0;
 
   // System clock: cocotb drives it with Clock(); the SV-UVM harness toggles
   // it every half period.
@@ -42,7 +43,8 @@ interface dtp_tb_if;
 
   // DFT controls of the DUT: test_en_i (test-mode enable for the JTAG2AXI
   // bridges and the CTN CSR crossbar) and scan_rst_ni (unused by the DUT),
-  // both idle in functional mode; a DFT-mode scenario drives them here.
+  // held at their functional values; DFT mode is outside the bench's scope
+  // (DTP_VPLAN).
   logic test_en    = 1'b0;
   logic scan_rst_n = 1'b1;
 
@@ -116,7 +118,7 @@ interface dtp_tb_if;
   // Runtime enable for the shared JTAG protocol SVA checker.
   logic jtag_sva_en = 1'b1;
 
-  // Request-activity pulse-counter mirrors (driven by tb_top): no-activity
+  // Request-VALID-high cycle counter mirrors (driven by tb_top): no-activity
   // security evidence sampled from the bus pins.
   logic [31:0] smc_axi_awvalid_count;
   logic [31:0] smc_axi_wvalid_count;

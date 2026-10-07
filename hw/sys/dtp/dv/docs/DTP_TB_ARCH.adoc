@@ -173,7 +173,7 @@ tb/tb_top.sv                  one framework-neutral core: interface instances, D
 |Scoreboard |`DtpScoreboard` pairing one `Dtp<Feature>RefModel` per feature with the monitor streams and `DtpTbIf`, always on; shared AXI scoreboard per test |`dtp_scoreboard` pairing one `dtp_<feature>_ref_model` per feature with the VIP monitor streams and `dtp_tb_if`, always on
 |Interface handoff |`DtpTbIf` hands the agents the interface scopes; the AXI scopes are bound through `OcahAxiConfig.bus()` at the real bus geometry |`uvm_config_db#(virtual ocah_<proto>_if)` set on the VIP config by `dtp_env`
 |TB interface |`DtpTbIf` over `cocotb.top`, published through ConfigDB and the env cfg |`virtual dtp_tb_if`, `dtp_scan_if`, `dtp_xtrig_if` from `uvm_config_db`
-|Clock |`Clock(...)` on `dtp_tb_if.clk` in the base test bring-up, period from the env cfg |`always` in the harness block toggling `dtp_tb_if.clk`, period from `dtp_tb_if.clk_period_ns` set by `dtp_env`
+|Clock |`Clock(...)` on `dtp_tb_if.clk` in the base test bring-up, period from the env cfg |A loop in the harness block toggling `dtp_tb_if.clk`, period from `dtp_tb_if.clk_period_ns` set by `dtp_env`, started once it is set
 |Knob transport |environment variables |plusargs through `ocah_knobs`
 |Seed source |`RANDOM_SEED` |`+ntb_random_seed`
 |Run verdict |phase assertions, `results.xml` |`UVM_ERROR`/`UVM_FATAL` counts plus `UVM TEST PASSED` from `report_phase`
@@ -414,7 +414,7 @@ realizations have the same test and scenario-sequence basenames. Tests end in
 [cols=",,,",options="header",]
 |===
 |Clock / Reset |cocotb realization |SV-UVM realization |Notes
-|`dtp_tb_if.clk` |`Clock(...)` started in the base test bring-up |`always` in the tb_top harness block with the period from `dtp_tb_if.clk_period_ns` |Period randomized in the test cfg (10..100 ns); system, AXI, and XTRIG domain
+|`dtp_tb_if.clk` |`Clock(...)` started in the base test bring-up |A loop in the tb_top harness block with the period from `dtp_tb_if.clk_period_ns`, started once it is set |Period randomized in the test cfg (10..100 ns); system, AXI, and XTRIG domain
 |JTAG TCK |shared JTAG engine |`ocah_jtag_master_driver` |Half period from the VIP config, randomized in the test cfg (TCK 100..1000 ns)
 |`dtp_tb_if.sys_rst_n`, `por_rst_n` |base test bring-up through `DtpTbIf` |base test `bring_up()` through `dtp_tb_if`, in cycles of the randomized period |Scenarios re-sequence them through the TB interface, and the back-to-back reset legs time their deposits from its clock edges and CDC phase observables; tb_top counts assertions for the scoreboard
 |TRST |JTAG engine TAP-reset operation, and `assert_trst` / `release_trst` for a held level |`dtp_jtag_tap_reset_seq` (VIP TAP reset) and `dtp_jtag_trst_seq` (VIP TRST level) |Reset-family scenarios hold TRST through the JTAG VIP's TRST-level operation and sample the TAP state before the first TCK edge

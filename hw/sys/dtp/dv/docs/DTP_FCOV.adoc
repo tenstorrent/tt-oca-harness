@@ -572,8 +572,10 @@ every STAP 3DCR.
 Sampled once per 3DCR holding a non-zero image at each reset, against the image
 held just before it: a Test-Logic-Reset entered through TMS, compared on the
 edge that leaves its first cycle, and a TRST, compared on the first edge after
-its release. Test-Logic-Reset keeps the image while CONFIG_HOLD is set and
-clears it otherwise; TRST clears it at either value.
+its release. The PTAP ANDs power-on reset into the TRST it applies and
+forwards to the STAPs, so a power-on reset samples the `trst` bins too.
+Test-Logic-Reset keeps the image while CONFIG_HOLD is set and clears it
+otherwise; TRST clears it at either value.
 
 ==== `cg_ijtag_sib`
 

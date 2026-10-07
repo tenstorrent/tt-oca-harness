@@ -15,9 +15,10 @@
 // where the acknowledge signals are unused. The STAP count, the IC_RESET
 // slice widths, the instruction enables, the IDCODE fields, and the version
 // are the bench's choice; the DUT publishes them through JTAG_CAPS ("JTAG
-// Capabilities" table, PTAP document) and IDCODE. The IDCODE fields and the
-// version differ from the dtp parameter defaults, so a DUT that drops a
-// parameter publishes a value the bench does not expect.
+// Capabilities" table, PTAP document) and IDCODE. tb_top wires one extra STAP
+// and one-bit IC_RESET slices and stops elaboration on any other count. The
+// IDCODE fields and the version differ from the dtp parameter defaults, so a
+// DUT that drops a parameter publishes a value the bench does not expect.
 //
 // The SMC fabric JTAG2AXI bridge drives SMC jtag_axi_in_req_i, whose row in
 // the SMC port table states a 56-bit address, 64-bit data, a 2-bit ID, and a

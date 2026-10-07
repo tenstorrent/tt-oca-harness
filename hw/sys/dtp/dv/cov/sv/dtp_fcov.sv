@@ -9,11 +9,11 @@
 //
 // Two collection layers per DTP_FCOV.adoc:
 //   * Labeled `OCAH_FCOV_COVER cover-property points — live in every flow;
-//     under Verilator they form the public-CI functional-coverage database
+//     under Verilator they form the functional-coverage database
 //     (coverage.dat user points via --coverage-user).
 //   * SV covergroups under `ifndef VERILATOR — commercial-simulator closure
-//     (Verilator cannot compile covergroups; the public build defines
-//     VERILATOR explicitly).
+//     (Verilator cannot compile covergroups; dtp_sim_cfg.toml defines
+//     VERILATOR for the Verilator build).
 //
 // JTAG-core coverage lives here; JTAG2AXI/OTP, debug TDR, scan/STAP, and
 // cross-trigger coverage live in the sibling dtp_*_fcov.sv modules. The
@@ -24,7 +24,6 @@
 module dtp_fcov (
   input wire        tck_i,
   input wire        tms_i,
-  input wire        tdi_i,
   input wire        tdo_i,
   input wire        trst_ni,
   input wire        por_ni,          // power-on reset, ANDed with TRST into the TAP reset
