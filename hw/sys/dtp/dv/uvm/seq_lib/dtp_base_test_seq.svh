@@ -11,16 +11,16 @@
 // observables), scan_vif (scan-network observables and downstream-TAP
 // attach), and xtrig_vif (cross-trigger pins), all plumbed by the base test.
 //
-// The scenario layer tracks the TAP state itself (m_tap_state) and the TRST
-// level (m_trst_asserted) and hands the state to every JTAG operation, since
-// the VIP sequence's model lives inside the operation sequence. On top of
-// the operations it keeps the DTP-local checks: TAP-state checks against
-// the one-hot observable, scan-length evidence through the env scan
-// builder, the BYPASS latency check, the lifecycle dbg_disable settle rule,
-// and system-domain waits derived from the env clock period. Every draw in
-// a pass follows seed_scenario_rng() (first statement of body()). The
-// cocotb twin is seq_lib/dtp_base_test_seq.py; feature families extend this
-// class (dtp_jtag_base_test_seq, dtp_jtag2axi_base_test_seq,
+// The scenario layer tracks the TAP state itself (m_tap_state) and hands it
+// to every JTAG operation, since the VIP sequence's model lives inside the
+// operation sequence. On top of the operations it keeps the DTP-local
+// checks: TAP-state checks against the one-hot observable, scan-length
+// evidence through the env scan builder, the BYPASS latency check, the
+// lifecycle dbg_disable settle rule, and system-domain waits derived from
+// the env clock period. Every draw in a pass follows seed_scenario_rng()
+// (first statement of body()). The cocotb twin is
+// seq_lib/dtp_base_test_seq.py; feature families extend this class
+// (dtp_jtag_base_test_seq, dtp_jtag2axi_base_test_seq,
 // dtp_debug_tdr_base_test_seq, dtp_scan_base_test_seq,
 // dtp_xtrig_base_test_seq).
 
@@ -49,17 +49,16 @@ class dtp_base_test_seq extends ocah_sequence;
   // Env-owned evidence and observation handles: the aggregate JTAG
   // recorder, the pin-level scan reconstruction with the DUT's Shift-x
   // episodes (a scenario clears the handle to skip scan-length evidence),
-  // and the scan-window monitor.
+  // the scan-window monitor, and the TAP FSM checker, which holds the
+  // observed TRST_N level.
   ocah_jtag_checker       evidence;
   dtp_jtag_scan_builder   scan_builder;
   dtp_scan_window_monitor scan_window;
+  dtp_tap_fsm_checker     fsm_checker;
 
   // TAP state tracked across operations (each operation re-syncs the VIP
   // model from it and hands the landing state back).
   protected ocah_jtag_tap_state_e m_tap_state = OCAH_JTAG_TEST_LOGIC_RESET;
-  // TRST level after the last TRST operation; a TAP-reset pulse ends with
-  // TRST released.
-  protected bit m_trst_asserted;
   // TAP state sampled by set_trst with TRST_N low and no TCK edge since.
   protected bit [15:0] m_trst_async_state;
   // The scan builder's closed Shift-IR / Shift-DR episode counts when the
@@ -88,7 +87,6 @@ class dtp_base_test_seq extends ocah_sequence;
   task tap_reset_op();
     dtp_jtag_tap_reset_seq op = dtp_jtag_tap_reset_seq::type_id::create("tap_reset");
     run_jtag_op(op);
-    m_trst_asserted = 1'b0;
   endtask
 
   // One TRST level change, then `tck_cycles` TCK cycles with TMS at `tms`.
@@ -98,7 +96,6 @@ class dtp_base_test_seq extends ocah_sequence;
     op.tck_cycles = tck_cycles;
     op.tms        = tms;
     run_jtag_op(op);
-    m_trst_asserted = op.trst_asserted();
   endtask
 
   // One raw TCK step from any state.
@@ -291,18 +288,20 @@ class dtp_base_test_seq extends ocah_sequence;
   endfunction
 
   // Hold power-on reset for `cycles` TCK periods with TRST_N untouched and
-  // TCK idle, sample the TAP state and the TRST level under the reset, then
-  // release it and idle as long again. The reset moves the TAP to
+  // TCK idle, sample the TAP state and the observed TRST_N under the reset,
+  // then release it and idle as long again. The reset moves the TAP to
   // Test-Logic-Reset without a TCK edge, so the tracked state follows it
   // here.
   task pulse_por(input int unsigned cycles, output bit [15:0] state_under_por,
                  output bit trst_n_under_por);
     logic [31:0] before_count = tb_vif.por_assert_count;
     int unsigned hold = (cycles > 0) ? cycles : 1;
+    if (fsm_checker == null)
+      `uvm_fatal(get_type_name(), "pulse_por() needs fsm_checker plumbed by the test")
     tb_vif.por_rst_n <= 1'b0;
     wait_tck_periods(hold);
     state_under_por  = tb_vif.tap_state;
-    trst_n_under_por = !m_trst_asserted;
+    trst_n_under_por = fsm_checker.trst_n();
     tb_vif.por_rst_n <= 1'b1;
     wait_tck_periods(hold);
     check_reset_counted("por_assert_count", before_count, tb_vif.por_assert_count, $sformatf(

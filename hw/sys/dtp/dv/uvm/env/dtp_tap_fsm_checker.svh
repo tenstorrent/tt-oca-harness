@@ -11,6 +11,8 @@
 // which records CHK-TAP-VISIT-ALL, at the end of each pass and
 // clear_closure() before the next. report_evidence() turns the run into one
 // aggregate CHK-TAP-STATE record through the env's evidence recorder.
+// trst_n() reports the TRST_N level of the last TRST edge on the pin, which
+// the scenario layer samples under a power-on reset.
 //
 // Events arrive on the TCK falling edge (monitor contract), when the
 // rising-edge state transition has settled, so sampling tb_vif.tap_state
@@ -40,6 +42,8 @@ class dtp_tap_fsm_checker extends ocah_subscriber #(ocah_jtag_event);
   // event; the tb_top assertion counter marks it, and the model
   // re-baselines before the next step is judged.
   protected logic [31:0] m_por_count = '0;
+  // TRST_N after the last TRST edge; the JTAG driver idles it high.
+  protected bit m_trst_n = 1'b1;
 
   function new(string name = "dtp_tap_fsm_checker", uvm_component parent = null);
     super.new(name, parent);
@@ -56,6 +60,7 @@ class dtp_tap_fsm_checker extends ocah_subscriber #(ocah_jtag_event);
 
     if (t.kind == OCAH_JTAG_EV_TRST) begin
       // Asynchronous TAP reset: re-baseline the model (reset-aware flush).
+      m_trst_n = t.trst_n;
       if (t.trst_asserted) m_model = OCAH_JTAG_TEST_LOGIC_RESET;
       return;
     end
@@ -91,6 +96,11 @@ class dtp_tap_fsm_checker extends ocah_subscriber #(ocah_jtag_event);
     end
 
     m_model = expected;
+  endfunction
+
+  // The TRST_N level of the last TRST edge the monitor published.
+  function bit trst_n();
+    return m_trst_n;
   endfunction
 
   // One aggregate named-evidence record for the always-on per-cycle

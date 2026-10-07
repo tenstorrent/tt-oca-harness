@@ -116,6 +116,7 @@ class dtp_base_test extends ocah_test;
     dtp_seq.evidence     = m_env.m_jtag_checker;
     dtp_seq.scan_builder = m_env.m_scan_builder;
     dtp_seq.scan_window  = m_env.m_scan_window;
+    dtp_seq.fsm_checker  = m_env.m_fsm_checker;
     if ($cast(scan_seq, seq)) plumb_stap_ds(scan_seq);
     if ($cast(j2a_seq, seq)) j2a_seq.axi_ports = m_env.m_axi_port_history;
   endfunction
