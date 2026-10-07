@@ -50,7 +50,7 @@ from env.sep_lcc_golden import LC_PROD, LCC_FEAT_CTRL, feat_ctrl_expected
 from env.sep_rebase_model import rebase
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import SEP_CPU_CTRL
+from sep_reg_meta import SEP_CPU_CTRL, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 
@@ -78,25 +78,31 @@ BASE = 0x40_0000_0000
 SIZE_A = 0x2000_0000
 SIZE_B = 0x1000_0000
 SIZE_C = 0x8000_0000
-RESTORE_BASE = 0x0
-RESTORE_SIZE = 0x0100_0000
+RESTORE_BASE = SEP_CPU_CTRL.reset("SEP_GLOBAL_BASE_ADDR")
+RESTORE_SIZE = SEP_CPU_CTRL.reset("SEP_REGION_SIZE")
 
-# Local addresses (memory_map.adoc).
-SRAM_BASE = 0x1000_0000
-SRAM_LAST_WORD = 0x3_FFF8
-SCRATCH_COLD = 0x1080_2000
-SCRATCH_BANK = 0x40
-BOOT_ROM = 0x1004_0000
-RESET_CTRL_SW_RESET_N = 0x1080_3000
-AP_REGION = 0x1100_0000
-STEE_REGION = 0x1180_0000
+# Local addresses, from the generated register map.
+SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
+SRAM_SIZE = sym("SEP_SRAM_MEM_SIZE")
+SRAM_LAST_WORD = SRAM_SIZE - 8
+SCRATCH_COLD = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR")
+SCRATCH_BANK = sym("SEP_SCRATCH_COLD_REG_MAP_SIZE")
+BOOT_ROM = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
+RESET_CTRL_SW_RESET_N = sym("SEP_RESET_CTRL_SW_RESET_N_REG_ADDR")
+AP_REGION = sym("AP_REGION_MEM_BASE_ADDR")
+STEE_REGION = sym("STEE_REGION_MEM_BASE_ADDR")
+STEE_LAST = STEE_REGION + sym("STEE_REGION_MEM_SIZE") - 1
 XBAR_LIMIT = 0x4000_0000
-ABOVE_LIMIT = 0x4000_0100
+ABOVE_LIMIT = XBAR_LIMIT + 0x100
+_DCCM = sym("SEP_DCCM_MEM_BASE_ADDR")
 CPU_RESOURCES = (
-    ("iccm", 0xC000_0000),
-    ("dccm", 0xC004_0000),
-    ("reserved_c006", 0xC006_0000),
-    ("pic", 0xC008_0000),
+    ("iccm", sym("SEP_ICCM_MEM_BASE_ADDR")),
+    ("dccm", _DCCM),
+    # The Reserved row that follows the DCCM.
+    ("reserved_c006", _DCCM + sym("SEP_DCCM_MEM_SIZE")),
+    ("pic", sym("PIC_REG_MAP_BASE_ADDR")),
+    # The Reserved row of the CPU Resources map after the PIC page; the
+    # register map gives it no symbol.
     ("reserved_c0088", 0xC008_8000),
 )
 UNITS = (
@@ -108,9 +114,8 @@ UNITS = (
 
 ADDR_56 = (1 << 56) - 1
 ADDR_64 = (1 << 64) - 1
-# RDL field bits: SEP_GLOBAL_BASE_ADDR.addr [55:0], SEP_REGION_SIZE.size [31:0].
-GLOBAL_BASE_MASK = ADDR_56
-REGION_SIZE_MASK = 0xFFFF_FFFF
+GLOBAL_BASE_MASK = SEP_CPU_CTRL.mask("SEP_GLOBAL_BASE_ADDR")
+REGION_SIZE_MASK = SEP_CPU_CTRL.mask("SEP_REGION_SIZE")
 
 
 @dataclass(frozen=True)
@@ -316,10 +321,10 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
     async def _unit_cells(self, cfg: str) -> None:
         """Steps 10 to 13: units unreachable from the inbound port, through an entry."""
         g = self.ap_base
-        await self.infilt.program(3, _entry(g + 0x1000_0000, g + 0x11FF_FFFF))
-        out0 = _entry(AP_REGION, 0x11FF_FFFF)
+        await self.infilt.program(3, _entry(g + SRAM_BASE, g + STEE_LAST))
+        out0 = _entry(AP_REGION, STEE_LAST)
         out0.allow_ns = False
-        out1 = _entry(AP_REGION, 0x11FF_FFFF)
+        out1 = _entry(AP_REGION, STEE_LAST)
         out1.allow_ns = True
         await self.outfilt.program(0, out0)
         await self.outfilt.program(1, out1)
@@ -434,7 +439,7 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         # scores the window of the last entry programmed, and the SRAM entry
         # carries both the read and the write allow cell.
         await self.infilt.program(1, _entry(G + SCRATCH_COLD, G + SCRATCH_COLD + SCRATCH_BANK - 1))
-        await self.infilt.program(0, _entry(G + SRAM_BASE, G + SRAM_BASE + 0x3_FFFF))
+        await self.infilt.program(0, _entry(G + SRAM_BASE, G + SRAM_BASE + SRAM_SIZE - 1))
 
         # Steps 6 to 9: in-window rebase, three legs.
         self._open()
@@ -494,7 +499,7 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         # Steps 14 to 17: filter-first corner.
         await self.infilt.set_enabled(0, False)
         await self.infilt.set_enabled(1, False)
-        await self.infilt.program(2, _entry(SRAM_BASE, SRAM_BASE + 0x3_FFFF))
+        await self.infilt.program(2, _entry(SRAM_BASE, SRAM_BASE + SRAM_SIZE - 1))
         self._open()
         ga = G + SRAM_BASE + d.o
         mx = self.xext.mark()
@@ -626,8 +631,25 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
 
         # Steps 29 to 31: local addresses at or above the limit, outside the window.
         await self.infilt.set_enabled(0, False)
-        await self.infilt.program(0, _entry(ABOVE_LIMIT, ABOVE_LIMIT + 0xFF))
-        await self.infilt.program(1, _entry(0xC000_0000, 0xCFFF_FFFF))
+        above_ranges = ((ABOVE_LIMIT, ABOVE_LIMIT + 0xFF), (0xC000_0000, 0xCFFF_FFFF))
+        for idx, (lo, hi) in enumerate(above_ranges):
+            await self.infilt.program(idx, _entry(lo, hi))
+        # Control of the refusals below: both entries hold their programmed
+        # range and admit it. The ranges are 8-byte aligned, so the 8-byte
+        # granule leaves START_ADDR and END_ADDR unchanged, and the model admits
+        # every probed address through them.
+        for idx, (lo, hi) in enumerate(above_ranges):
+            _, rb_lo, rb_hi = await self.infilt.read_entry(idx)
+            if (rb_lo, rb_hi) != (lo, hi):
+                raise AssertionError(
+                    f"CHK-REBASE-ABOVE FAIL: entry {idx} read back START=0x{rb_lo:x} "
+                    f"END=0x{rb_hi:x}, programmed 0x{lo:x}..0x{hi:x}"
+                )
+        for addr in [ABOVE_LIMIT] + [a for _, a in CPU_RESOURCES]:
+            for write in (False, True):
+                v = self.infilt.model.verdict(addr, write=write, prot1=SI_NS, user=0)
+                assert v.allowed, f"model: entry does not admit 0x{addr:x} ({v.summary()})"
+        control_seen = f"{control_seen} entries_admit=1"
         self._open()
         assert not rebase(ABOVE_LIMIT, self.ap_base, self.ap_size).in_window
         line = await self._expect_refused(
