@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""P2-2 / U7-6: public secure-error negative via OTP program-fail + signature gate.
+"""Public secure-error negative via OTP program-fail + signature gate.
 
 The OCCP command path is ROM firmware; this sequence uses only the security
 hooks reachable on the smc_wrapper unit TB without running the ROM:
@@ -84,7 +84,7 @@ class smc_occp_sanity_secure_error_test_seq(SmcCsrSeq):
         # MODEL-BACKED, NOT DUT-EARNED.
         #
         # With +smc_efuse_prog_fail_count set, hw/ip/efuse/dv/models/
-        # efuse_bank_model.sv:120 drives the bank macro as
+        # efuse_bank_model.sv drives the bank macro as
         #     .s_apb_pwdata(prog_fail_act ? 32'h0 : apb_req_i.pwdata)
         # so on the injected-failure write the DV model substitutes 32'h0 for
         # whatever the DUT's eFuse controller actually put on the bus. The word

@@ -4,16 +4,15 @@
 
 Each SMC register block decodes an address together with a direction. For a
 read-only register the decode term is the address *and* a read; for a
-write-only one it is the address *and* a write. The half of each term that
-pairs the address with the other direction -- a write at a read-only register,
-a read at a write-only one -- has never been driven, and neither has a read of
-the few registers nobody reads at all.
+write-only one it is the address *and* a write.
 
-This leaf drives those accesses, and holds each to the generated block's
-contract. A write to a read-only register is answered OKAY and takes no effect;
-a read of a write-only register is answered OKAY and returns zero, because the
-register has no readable field to contribute. Both follow from the regblock
-the RDL compiles to, and both are checked here rather than assumed:
+This leaf drives the other half of each term -- a write at a read-only
+register, a read at a write-only one -- and reads the few registers nothing
+else reads, holding each access to the generated block's contract. A write to
+a read-only register is answered OKAY and takes no effect; a read of a
+write-only register is answered OKAY and returns zero, because the register
+has no readable field to contribute. Both follow from the regblock the RDL
+compiles to, and both are checked here rather than assumed:
 
 * every write at a read-only register must be answered, and where the register
   holds still at idle and reading it has no side effect, it must read the same

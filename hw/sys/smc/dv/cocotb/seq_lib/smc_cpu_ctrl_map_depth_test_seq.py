@@ -13,14 +13,11 @@ symbol from ``hw/sys/smc/regs/gen/c/blocks/smc_base_config.h`` -- never a hand
 literal and never an address computed as ``BASE_ADDR + <offset>``. So every read
 verifies decode *and* spec-defined reset content.
 
-``SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR`` is ``0xC0010000`` and
-``SMC_TOP_SMC_BASE_CONFIG_SIZE`` is ``0x0000004C`` (generated ``smc_addr.h``),
-so the block ends at ``0xC001004B`` and the fabric refuses the space above it.
-A row that named an address there would log a register-shaped name that names
-no register (``[ADDRESS-FROM-AUTHORITATIVE-MAP]``); every row therefore
-addresses a register inside the block, and ``REGION_SIZE`` -- a real
-register of the same block with a non-zero generated reset -- fails if the
-fabric ever stops decoding it.
+The fabric refuses addresses at and above ``SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR +
+SMC_TOP_SMC_BASE_CONFIG_SIZE`` (generated ``smc_addr.h``), so every row
+addresses a register inside the block by its generated symbol, and
+``REGION_SIZE`` -- a register of the same block with a non-zero generated reset
+-- fails if the fabric stops decoding it (``[ADDRESS-FROM-AUTHORITATIVE-MAP]``).
 """
 
 from __future__ import annotations
@@ -81,13 +78,6 @@ class smc_cpu_ctrl_map_depth_test_seq(SmcCsrSeq):
 
     async def body(self) -> None:
         await self.csr_read_many(CPU_MAP_READS)
-        # `accesses == len(...)` alone is loop integrity, not reachability: the
-        # counter is bumped unconditionally by `csr_read` regardless of what the
-        # DUT returned, so a mis-bound analysis path would leave the scoreboard
-        # checking zero items while this sequence still passed
-        # ([NO-ZERO-ACTIVITY-PASS]). `assert_all_reachable` adds the scoreboard
-        # cross-check (`sys_axi_checks_seen >= accesses`) that carries the claim.
-
         # Positive control for the sweep above. Every row compares a reset value,
         # so a window that answered its reset word from a dead responder, or a
         # read path stuck at those constants, satisfies all of them. Writing a

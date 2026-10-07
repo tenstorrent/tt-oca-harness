@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""ALIAS_REMAP translation + MMODE_REMAP/ALIAS reset sweep + CLA
-(TC_SMC_P1CG_16/17/18).
+"""ALIAS_REMAP translation + MMODE_REMAP/ALIAS reset sweep + CLA.
 
 Three surfaces, each with a fail-capable expectation:
 
@@ -280,9 +279,9 @@ CLA_SCRATCH_PATTERN = 0xA5A5_5A5A_C3C3_3C3C
 # vendor/tenstorrent/tt-hw-debug/overlay/regs/dfd/regs/include/). Their read
 # value is not required to equal the RDL reset once time has advanced (the
 # free-running `CDbgClaTimestamp` counter reads non-zero against a generated
-# reset of 0x0), so they are EXCLUDED from the reset sweep. Derived from the
-# RDL, 55 of the 137 registers; the remaining 82 are `hw = r` software-owned
-# config/scratch and are the ones the sweep can hold to a reset.
+# reset of 0x0), so they are EXCLUDED from the reset sweep. The `hw = r`
+# software-owned config/scratch registers are the ones the sweep can hold to a
+# reset.
 CLA_HW_DRIVEN = (
     "CLA.CDbgClaCounter0Cfg",
     "CLA.CDbgClaCounter1Cfg",
@@ -342,7 +341,7 @@ CLA_HW_DRIVEN = (
 )
 
 # Registers declared `regwidth = 32` (from the generated JSON model's `regsize`).
-# The aperture MIXES 32- and 64-bit registers (113 are 64-bit, 24 are 32-bit);
+# The aperture MIXES 32- and 64-bit registers;
 # an 8-byte read of a 32-bit register spans past it and answers non-OKAY, so
 # each row is read at its declared width.
 CLA_REG32 = (
@@ -387,16 +386,15 @@ _CLA_BLOCKS = (
 def _cla_reset_sweep() -> tuple[tuple[str, int, int, int], ...]:
     """Every CLA register with its generated reset value, from generated symbols.
 
-    Built by introspecting ``smc_reg`` at import time rather than transcribing a
-    137-row table, so the expectations cannot drift from the generated register
-    map ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
+    Built by introspecting ``smc_reg`` at import time
+    ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
 
-    A reset compare is a real check here: of the 82 software-owned rows the
-    sweep keeps, 5 have NON-ZERO resets (``Trdstimpl`` 0x41010101,
+    A reset compare is a real check here: five of the software-owned rows the
+    sweep keeps have NON-ZERO resets (``Trdstimpl`` 0x41010101,
     ``Trdstinstfeatures`` 0x40000000, ``Trdstramimpl`` 0x01003901,
     ``CDbgDebugTraceCfg`` 0x00102810, ``Trfunnelimpl`` 0x0801) -- values no
     error slave and no unmapped read can fabricate. In-window holes also
-    complete OKAY with data 0, so the 77 zero-reset rows are not distinguished
+    complete OKAY with data 0, so the zero-reset rows are not distinguished
     from a hole by response; the five non-zero rows and the scratch
     write/readback carry that discrimination.
 
@@ -521,8 +519,8 @@ ALIAS0_ATTRS = SMC_ALIAS_REMAP_0__REGION_REGION_ATTRS_REG_ADDR
 _RESET_SWEEP_ACCESSES = 8 + 24 + 8 + 4 * (8 + 24 + 8)
 # resets + scratch wr/rd/restore + in-window holes + the full-aperture reset
 # sweep. The sweep length is taken from the table built off the generated
-# register map (82 software-owned rows of the 137 in the generated CLA map);
-# it is guarded by an explicit `len(CLA_RESET_SWEEP) >= 82` assert in
+# register map (the software-owned rows of the generated CLA map); it is
+# guarded by an explicit `len(CLA_RESET_SWEEP) >= 82` assert in
 # `_cla_window`, so a generated map that lost rows fails loudly instead of
 # silently lowering this floor.
 _CLA_ACCESSES = 2 + 4 + 3 + len(CLA_RESET_SWEEP)

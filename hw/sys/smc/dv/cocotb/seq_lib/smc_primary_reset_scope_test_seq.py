@@ -93,7 +93,6 @@ UART_DIVISOR = 0x00FF
 UART_TX_BYTE = 0x00
 
 FILTER_END_PATTERN = 0x0000_0000_00AB_CDE8
-# Window over which the cores must be seen fetching before the reset.
 # Time the cores get to resume fetching after the primary reset releases.
 FETCH_RESUME_BOUND_NS = 20_000
 FETCH_RESUME_POLL_NS = 250

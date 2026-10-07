@@ -15,7 +15,7 @@ clocked from ``clk_smc_i`` (a different, faster period on every seed) or from
 
 The CLINT ``mtime`` half of the scenario is not reachable from SEP_IN in this
 bench (at the reset REGION_SIZE the cluster-local window lies outside the local
-and global apertures and answers DECERR) and is left open.
+and global apertures and answers DECERR) and is not covered here.
 """
 
 from __future__ import annotations

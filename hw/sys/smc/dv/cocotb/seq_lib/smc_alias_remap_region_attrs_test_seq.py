@@ -2,21 +2,16 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """An alias-remap region marked valid, and its attributes held across a write.
 
-`smc_alias_remap_spare_block_decode_test` writes `REGION_START` on all eight
-regions and restores it, but nothing writes `REGION_ATTRS`: no region has ever
-been marked cacheable or valid, so the two attribute bits have never held a one
-while a write arrived that did not select their lanes.
-
-This leaf sets them on one region and then writes the other half of the
-register, which is what puts that contract to the test.
+`REGION_ATTRS` retains a field a write does not select. This leaf sets both
+attribute bits on one region and then writes the other half of the register,
+which is what puts that contract to the test.
 
 **The region cannot match an address, by its own reset.** `alias_remap.rdl`
 makes `REGION_END` "End of remap region (non-inclusive)", and the generated map
 gives both `REGION_START` and `REGION_END` the reset `0x0`. A region whose end
 is non-inclusive and equal to its start contains no address at all, so this
 leaf **never writes either of them**: it leaves the window empty and touches
-only `REGION_ATTRS`. That is a stronger guarantee than choosing an address
-range believed to be unused, and it keeps the footprint to one register.
+only `REGION_ATTRS`.
 
 **`valid` is an identity remap even so.** `REGION_ATTRS.offset` is "added to
 bits [55:12] of the input address when it falls within the remap region", and

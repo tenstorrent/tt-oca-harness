@@ -5,8 +5,7 @@
 Six SMC register blocks carry an external register: an access to it is handed
 to logic outside the generated block, and until that logic acknowledges, the
 block holds `external_pending` and stalls every further request. Serial traffic
-never presents a second request during that window, so the stall has never
-held anything back on any of them.
+never presents a second request during that window.
 
 Each block here takes one outstanding group that opens with an access to its
 external register and follows it at once with a read and a write of the block's

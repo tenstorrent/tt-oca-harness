@@ -15,7 +15,7 @@ a net tied to constant 1 reads exactly like the real aggregate, so their value i
 an OBSERVED-ONLY diagnostic and never checked evidence.
 
 The same SAMPLE therefore also captures the **raw pad-output bus vectors**
-mirrored at tb_top (``tb_core2pad_o`` / ``tb_core2pad_en_o``, tb_top.sv:1378-1379).
+mirrored at tb_top (``tb_core2pad_o`` / ``tb_core2pad_en_o``).
 Those move under real frontdoor GPIO CSR programming, which is what makes a
 stated expectation on them backable, and they are what
 ``smc_gpio_output_driveback_test`` and

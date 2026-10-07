@@ -28,9 +28,8 @@ from smc_reg import (  # noqa: E402
     FILTER_CTRL_START_ADDR_REG_DEFAULT,
 )
 
-# RDL-traceable reset constants (filter_ctrl.rdl -> FILTER_CONFIG = 0x3000,
-# START_ADDR = 0, END_ADDR = 0x7). Each read verifies field decode AND the
-# full 64-bit spec reset content (AxSIZE=3 / length=8).
+# Reset words from the generated map (filter_ctrl.rdl). Each read verifies
+# field decode AND the full 64-bit spec reset content (AxSIZE=3 / length=8).
 _FIELDS = (
     ("FILTER_CONFIG", FILTER_CTRL_FILTER_CONFIG_REG_DEFAULT),
     ("START_ADDR", FILTER_CTRL_START_ADDR_REG_DEFAULT),

@@ -4,14 +4,14 @@
 
 EXPECT-SOURCE (SPEC, not RTL): ``hw/sys/smc/regs/blocks/cpu_ctrl/cpu_ctrl.rdl``:
 
-* ``reg MUTEX`` (rdl:270-281), ``field ... mutex[0:0] = 0x1``, desc: "HW mutex.
+* ``reg MUTEX``, ``field ... mutex[0:0] = 0x1``, desc: "HW mutex.
   Reads will attempt to acquire mutex, 1 on success. If the mutex is already
   acquired, the read will return 0. To release the mutex, write any value to
-  the register."  ``MUTEX[4] @ 0x240`` (rdl:378) -- four *independent* locks.
-* ``reg SEMA`` (rdl:283-293), ``field ... sema[15:0] = 0x0``, desc: "16-bit
+  the register."  ``MUTEX[4] @ 0x240`` -- four *independent* locks.
+* ``reg SEMA``, ``field ... sema[15:0] = 0x0``, desc: "16-bit
   semaphore value to inc/dec. Writing to this register will inc/dec the
   semaphore value. The written value is treated as a signed number using 2s
-  compliment."  ``SEMA[4] @ 0x260`` (rdl:379).
+  compliment."  ``SEMA[4] @ 0x260``.
 
 Every address AND every field mask / reset value below is imported by symbol
 from the generated PeakRDL output (``smc_addr.h`` / ``blocks/cpu_ctrl.h``), so
@@ -31,7 +31,7 @@ SEMA0 = smc_indexed_addr("SMC_TOP_SMC_CPU_CTRL_SEMA_BASE_ADDR", 0)
 
 # `mutex` is a 1-bit field (bw=1); its reset value IS the "available" encoding
 # and the RDL desc gives the only other legal read result as 0 ("already
-# acquired").  Both constants come from the generated header, not from RTL.
+# acquired").
 MUTEX_BM = cpu_ctrl_u32("CPU_CTRL__MUTEX__MUTEX_bm")
 MUTEX_FREE = cpu_ctrl_u32("CPU_CTRL__MUTEX__MUTEX_reset")
 MUTEX_TAKEN = MUTEX_FREE & ~MUTEX_BM  # the 1-bit field's only other value: 0

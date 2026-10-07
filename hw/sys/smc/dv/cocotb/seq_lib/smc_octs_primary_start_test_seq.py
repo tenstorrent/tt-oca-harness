@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The OCTS timer started as PRIMARY from reset, and started again during its own sync pulse.
 
-The OCTS leaves so far start the timer only after a secondary phase has
-already enabled it. This leaf keeps the bench strap at PRIMARY and starts a
-timer that has never run:
+This leaf keeps the bench strap at PRIMARY and starts a timer that has never
+run:
 
 * **Programmed before it runs.** `CTRL` is written while the timer is idle
   with the setting it runs on: `CREDIT_VAL` 0xFF and `PULSE_WIDTH` 0xF0, which

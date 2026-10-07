@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Passive AXI response monitor for SMC SYS_OUT (output fabric) bus (U6-2).
+"""Passive AXI response monitor for the SMC SYS_OUT (output fabric) bus.
 
 Snoops ``tb_output_axi_{b,r}*`` lifted from ``output_axi_req/resp`` in tb_top.
 Tallies OKAY / SLVERR / DECERR on B and R channels. Both error codes are a hard
@@ -43,7 +43,7 @@ class SmcOutputAxiMonitor(uvm_component):
         self.last_awaddr: int | None = None
         self.r_resp_tally = {0: 0, 1: 0, 2: 0, 3: 0, None: 0}
         self.b_resp_tally = {0: 0, 1: 0, 2: 0, 3: 0, None: 0}
-        # SYS_OUT slave may inject SLVERR or DECERR (U1-2). Default False for
+        # The SYS_OUT slave may inject SLVERR or DECERR. Default False for
         # both: a testcase that expects one opts in with `mon.allow_slverr` /
         # `mon.allow_decerr` (smc_output_fabric_slverr_inject_test), so an
         # unexpected error response stays a hard fail everywhere else.

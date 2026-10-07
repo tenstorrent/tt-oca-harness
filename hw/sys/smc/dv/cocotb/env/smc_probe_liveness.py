@@ -40,10 +40,9 @@ distinguish the net from a stuck one, in either direction**.  Such a probe is
 never exact-compared by the scoreboard, never credited, and never counted as
 checked evidence; its value is logged as a diagnostic and declared as such.
 
-* ``tb_axil_dtp_csr_active`` -- unbackable *at 1*. ``tb_top.sv:1100`` ties
+* ``tb_axil_dtp_csr_active`` -- unbackable *at 1*. ``tb_top.sv`` ties
   ``axil_dtp_csr_resp = '0'``: there is no responder, so an AXI-Lite access to
-  the DTP CSR window would wedge rather than complete, and the DTP CSR boundary
-  is a recorded TB-policy deferral (``hw/sys/smc/dv/README.md``).
+  the DTP CSR window would wedge rather than complete.
 * ``gpio_core2pad_any`` / ``gpio_core2pad_en_any`` / ``gpio_pad2core_en_any`` --
   unbackable *at 0*.  ``tb_top.sv`` defines all three as OR-reductions over the
   **whole** pad bus (``|u_dut.u_smc.core2pad_o`` and friends).  The AVSBus
@@ -195,11 +194,9 @@ def credit_probe(probe: str, evidence: str) -> None:
 def refuse_expectation_on_unbackable(probe: str, label: str, expectation, where: str) -> None:
     """Refuse a stated ``expect_*`` on a probe that can never be backed.
 
-    The compare side of the scoreboard needs the same structural rail
-    :func:`credit_probe` has on the ledger side. Without it, the invariant "an
-    unbackable probe is never exact-compared" holds only for as long as nobody
-    writes a setter -- and the first sequence that does gets a silent, unbacked
-    negative compare that the guard comments claim cannot exist.
+    Enforces on the compare side the rail :func:`credit_probe` enforces on the
+    ledger side: an unbackable probe is never exact-compared, whatever a
+    sequence sets in ``expect_*``.
     """
     if probe in UNBACKABLE_PROBES and expectation is not None:
         raise AssertionError(
@@ -247,10 +244,6 @@ async def watch_probe_liveness(dut=None) -> None:
     clk = dut.clk_smc_i
     missing = [probe for probe in WATCHED_PROBES if not hasattr(dut, PROBE_SIGNALS[probe])]
     if missing:
-        # Dropping an absent handle would shrink the watched set silently: a
-        # tb_top rename then fails later (or not at all) as "idle legs were
-        # booked on a probe no control credited", across every test that
-        # samples that class. Fail at the source instead.
         detail = ", ".join(f"{p} ({PROBE_SIGNALS[p]})" for p in missing)
         raise AssertionError(
             f"watch_probe_liveness: {len(missing)} WATCHED_PROBES signal(s) "

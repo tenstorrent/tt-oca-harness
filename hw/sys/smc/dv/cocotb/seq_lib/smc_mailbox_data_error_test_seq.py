@@ -3,12 +3,11 @@
 """Mailbox data path and error-response depth test over real SEP_IN AXI.
 
 Every register address and the clock-gate field mask are imported by generated
-symbol (``hw/sys/smc/regs/gen/c/smc_addr.h`` / ``blocks/smc_base_config.h``),
-the way the sibling ``smc_mailbox_irq_test_seq`` does, so a regenerated map
-moves this sequence with it ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
+symbol (``hw/sys/smc/regs/gen/c/smc_addr.h`` / ``blocks/smc_base_config.h``)
+([ADDRESS-FROM-AUTHORITATIVE-MAP]).
 
 The DUT-vs-golden compare is the ``expected=`` on each paired ``READ_DATA``
-read, enforced by ``SmcScoreboard`` (``env/smc_scoreboard.py:711-716``): data
+read, enforced by ``SmcScoreboard._check_sys_axi`` (``env/smc_scoreboard.py``): data
 written into ``OUTBOUND_WRITE_DATA`` must come back out of
 ``INBOUND_READ_DATA`` in FIFO order, and vice versa. The scoreboard's
 ``update_golden`` / ``check_golden`` path is keyed by ``item.addr``, and a

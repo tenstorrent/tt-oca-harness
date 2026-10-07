@@ -21,10 +21,8 @@ put on the wire. The address phase is carried by the controller itself: the
 bench VIP raises on a NACK, so a write that completes is one the target
 acknowledged from the address byte onwards.
 
-Only the mid-transaction stretch is driven here. Holding SCL through the
-address phase of a *later* transaction needs the acquisition FIFO to still be
-full when that transaction starts, which this bench cannot arrange without
-first letting the current one finish and so freeing the room.
+Only the mid-transaction stretch is driven here; the hold through the address
+phase of a repeated START is driven by `smc_i2c_target_addr_stretch_test_seq`.
 """
 
 from __future__ import annotations

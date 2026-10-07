@@ -8,10 +8,9 @@ DUT instance as the controller and another as the target, the shape
 `smc_i2c_p0_multictrl_test_seq` and `smc_i2c_p0_stretch_test_seq` already use,
 so both ends of each check are DUT-produced.
 
-Four behaviours, each on the instances that have never seen it:
+Four behaviours, on I2C1 and I2C2:
 
-* **Transmit** -- the target sources a byte the controller reads back. On I2C2
-  this is the whole transmit path; the instance has only ever been written to.
+* **Transmit** -- the target sources a byte the controller reads back.
 * **Transmit stretch** -- with `CTRL.TX_STRETCH_CTRL_EN` set and the transmit
   FIFO empty, the target holds the bus and raises
   `TARGET_EVENTS.TX_PENDING` until software supplies the byte.
@@ -29,9 +28,9 @@ drains `ACQDATA`. The bench-side variant of the same check, where the bench
 controller releases SCL and only the target can be pulling it, is
 `smc_i2c_target_acq_stretch_test` on I2C0.
 
-Address-phase stretch (`STRETCH_ADDR_ACK`, `STRETCH_ADDR_ACK_SETUP`) stays out: it
-needs the acquisition FIFO still full when a later transaction starts, plus
-`nack_addr_after_timeout`, which no register this bench programs reaches.
+The address-phase stretch (`STRETCH_ADDR_ACK`, `STRETCH_ADDR_ACK_SETUP`), which
+needs the acquisition FIFO still full when a later transaction starts, is driven
+by `smc_i2c_target_addr_stretch_test_seq`.
 """
 
 from __future__ import annotations
@@ -79,8 +78,7 @@ from .smc_i2c_target_smbus_test_seq import (
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
 INSTANCES = (0, 1, 2)
-# Controller for every leg. Instance 0 already has the target-side paths these
-# legs drive, so using it as the controller leaves them to I2C1 and I2C2.
+# Controller for every leg; I2C1 and I2C2 are the targets.
 HOST = 0
 # Target addresses, one per instance, so a transfer cannot be answered by the
 # instance it was not aimed at.
