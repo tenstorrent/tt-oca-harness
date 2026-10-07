@@ -71,8 +71,12 @@ RESP_NAME = {-1: "TIMEOUT", 0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 
 SMC_SIZE = 0x0100_0000
 CFG = {"A": 0x4000_0000, "B": 0x9000_0000}
-# SMU window and an SMU-window word outside both apertures.
-SMU_PROBE = 0x8000_0100
+# The SMU window at its RDL reset aperture, and an SMU-window word outside both
+# SMC apertures.
+SMU_BASE = SEP_CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR")
+SMU_SIZE = SEP_CPU_CTRL.reset("SMU_REGION_SIZE")
+SMU_LAST = SMU_BASE + SMU_SIZE - 1
+SMU_PROBE = SMU_BASE + 0x100
 # Fixed, pairwise different markers: [first word, last word] per leg.
 MARK_ROUTE = (0x5A3C_0001, 0xA5C3_0002)
 MARK_UNFILT = (0x3C5A_0003, 0xC3A5_0004)
@@ -195,7 +199,7 @@ class sep_fabric_smc_route_test(sep_base_test):
     async def _config_a(self, base: int) -> None:
         last = base + SMC_SIZE - 4
         above = base + SMC_SIZE
-        await self._program_pair(0x4000_0000, 0xBFFF_FFFF)
+        await self._program_pair(CFG["A"], SMU_LAST)
 
         open_graded_window(TEST, self.logger)
         route = [
@@ -286,7 +290,7 @@ class sep_fabric_smc_route_test(sep_base_test):
 
     async def _config_b(self, base: int) -> None:
         last = base + SMC_SIZE - 4
-        await self._program_pair(0x8000_0000, 0xBFFF_FFFF)
+        await self._program_pair(SMU_BASE, SMU_LAST)
 
         open_graded_window(TEST, self.logger)
         cells = [
@@ -340,6 +344,19 @@ class sep_fabric_smc_route_test(sep_base_test):
             "BRINGUP LOG: feat_ctrl=0x%016x smu_base=0x%08x smu_size=0x%08x fcov=%d",
             feat, self.smu_base, smu_size, int(fcov_present()),
         )
+        # Configuration B places the SMC aperture inside the SMU window, so the
+        # window must sit at its RDL reset aperture.
+        lo32 = 0xFFFF_FFFF
+        smu_ok = (self.smu_base & lo32) == (SMU_BASE & lo32) and (smu_size & lo32) == (
+            SMU_SIZE & lo32
+        )
+        inside = SMU_BASE <= CFG["B"] and CFG["B"] + SMC_SIZE - 1 <= SMU_LAST
+        line = (
+            f"smu_base=0x{self.smu_base:08x} smu_size=0x{smu_size:08x} "
+            f"rdl_base=0x{SMU_BASE:08x} rdl_size=0x{SMU_SIZE:08x} cfg_b_inside={int(inside)}"
+        )
+        assert smu_ok and inside, f"CTL-SMC-SMU-RESET FAIL: {line}"
+        self.logger.info("CTL-SMC-SMU-RESET LOG: %s", line)
         assert self.taps["PR-SMC"].count() == 0, "SMC request before smc_fuse_sense_done read 1"
         await self._wait_smc_fuse_done()
 
