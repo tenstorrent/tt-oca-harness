@@ -1623,22 +1623,15 @@ module dtp_uvm_top
   assign u_smc_otp_slave_if.aruser   = '0;
   assign u_smc_otp_slave_if.rready   = smc_otp_axil_rready;
 
-  // Responder-side signals: agent driver -> DUT response inputs. An R beat
-  // the responder answers with SLVERR or DECERR carries the port's
-  // dtp_tb_if errored-beat word in place of the responder's zero data, so
-  // the DUT and the passive monitor see the word the sequence chose. On all
-  // three bridge ports BVALID and RVALID are low while rst_n_i is low: a
-  // responder sees the reset only at its next clock edge.
+  // Responder-side signals: agent driver -> DUT response inputs.
   assign smc_otp_axil_awready = u_smc_otp_slave_if.awready;
   assign smc_otp_axil_wready  = u_smc_otp_slave_if.wready;
   assign smc_otp_axil_bresp   = u_smc_otp_slave_if.bresp;
-  assign smc_otp_axil_bvalid  = u_smc_otp_slave_if.bvalid && rst_n_i;
+  assign smc_otp_axil_bvalid  = u_smc_otp_slave_if.bvalid;
   assign smc_otp_axil_arready = u_smc_otp_slave_if.arready;
-  assign smc_otp_axil_rdata   = (u_smc_otp_slave_if.rvalid && u_smc_otp_slave_if.rresp[1])
-                                ? u_tb_if.smc_otp_axil_err_rdata
-                                : u_smc_otp_slave_if.rdata[31:0];
+  assign smc_otp_axil_rdata   = u_smc_otp_slave_if.rdata[31:0];
   assign smc_otp_axil_rresp   = u_smc_otp_slave_if.rresp;
-  assign smc_otp_axil_rvalid  = u_smc_otp_slave_if.rvalid && rst_n_i;
+  assign smc_otp_axil_rvalid  = u_smc_otp_slave_if.rvalid;
 
   // SEP OTP AXI-Lite responder: the shared ocah_axi_vip responder
   // (same pattern as the SMC OTP port) answers JTAG2AXI SEP OTP traffic.
@@ -1678,13 +1671,11 @@ module dtp_uvm_top
   assign sep_otp_axil_awready = u_sep_otp_slave_if.awready;
   assign sep_otp_axil_wready  = u_sep_otp_slave_if.wready;
   assign sep_otp_axil_bresp   = u_sep_otp_slave_if.bresp;
-  assign sep_otp_axil_bvalid  = u_sep_otp_slave_if.bvalid && rst_n_i;
+  assign sep_otp_axil_bvalid  = u_sep_otp_slave_if.bvalid;
   assign sep_otp_axil_arready = u_sep_otp_slave_if.arready;
-  assign sep_otp_axil_rdata   = (u_sep_otp_slave_if.rvalid && u_sep_otp_slave_if.rresp[1])
-                                ? u_tb_if.sep_otp_axil_err_rdata
-                                : u_sep_otp_slave_if.rdata[31:0];
+  assign sep_otp_axil_rdata   = u_sep_otp_slave_if.rdata[31:0];
   assign sep_otp_axil_rresp   = u_sep_otp_slave_if.rresp;
-  assign sep_otp_axil_rvalid  = u_sep_otp_slave_if.rvalid && rst_n_i;
+  assign sep_otp_axil_rvalid  = u_sep_otp_slave_if.rvalid;
 
   // SMC fabric AXI4 responder: the shared ocah_axi_vip responder (same
   // pattern as the SMC OTP port) answers JTAG2AXI fabric traffic. The
@@ -1725,43 +1716,20 @@ module dtp_uvm_top
   assign u_smc_axi_slave_if.arvalid  = m_axi_arvalid;
   assign u_smc_axi_slave_if.rready   = m_axi_rready;
 
-  // The bridge carries response USER across its CDC and never reads it, so
-  // any value is legal. Each channel's value is a 32-bit maximal LFSR
-  // (x^32 + x^22 + x^2 + x + 1) that steps only on that channel's handshake,
-  // which keeps it stable while a response waits for READY.
-  logic [31:0] smc_axi_buser_q;
-  logic [31:0] smc_axi_ruser_q;
-  always_ff @(posedge clk_i or negedge rst_n_i) begin
-    if (!rst_n_i) begin
-      smc_axi_buser_q <= 32'h1D87_2B41;
-      smc_axi_ruser_q <= 32'h6A0F_93C5;
-    end else begin
-      if (m_axi_bvalid && m_axi_bready) begin
-        smc_axi_buser_q <= {smc_axi_buser_q[30:0], smc_axi_buser_q[31] ^ smc_axi_buser_q[21]
-                            ^ smc_axi_buser_q[1] ^ smc_axi_buser_q[0]};
-      end
-      if (m_axi_rvalid && m_axi_rready) begin
-        smc_axi_ruser_q <= {smc_axi_ruser_q[30:0], smc_axi_ruser_q[31] ^ smc_axi_ruser_q[21]
-                            ^ smc_axi_ruser_q[1] ^ smc_axi_ruser_q[0]};
-      end
-    end
-  end
-
   // Responder-side signals: agent driver -> DUT response inputs.
   assign m_axi_awready = u_smc_axi_slave_if.awready;
   assign m_axi_wready  = u_smc_axi_slave_if.wready;
   assign m_axi_bid     = u_smc_axi_slave_if.bid[1:0];
   assign m_axi_bresp   = u_smc_axi_slave_if.bresp;
-  assign m_axi_buser   = smc_axi_buser_q[dtp_dv_cfg_pkg::SmcAxiUserWidth-1:0];
-  assign m_axi_bvalid  = u_smc_axi_slave_if.bvalid && rst_n_i;
+  assign m_axi_buser   = u_smc_axi_slave_if.buser[dtp_dv_cfg_pkg::SmcAxiUserWidth-1:0];
+  assign m_axi_bvalid  = u_smc_axi_slave_if.bvalid;
   assign m_axi_arready = u_smc_axi_slave_if.arready;
   assign m_axi_rid     = u_smc_axi_slave_if.rid[1:0];
-  assign m_axi_rdata   = (u_smc_axi_slave_if.rvalid && u_smc_axi_slave_if.rresp[1])
-                         ? u_tb_if.smc_axi_err_rdata : u_smc_axi_slave_if.rdata;
+  assign m_axi_rdata   = u_smc_axi_slave_if.rdata;
   assign m_axi_rresp   = u_smc_axi_slave_if.rresp;
   assign m_axi_rlast   = u_smc_axi_slave_if.rlast && m_axi_rvalid;
-  assign m_axi_ruser   = smc_axi_ruser_q[dtp_dv_cfg_pkg::SmcAxiUserWidth-1:0];
-  assign m_axi_rvalid  = u_smc_axi_slave_if.rvalid && rst_n_i;
+  assign m_axi_ruser   = u_smc_axi_slave_if.ruser[dtp_dv_cfg_pkg::SmcAxiUserWidth-1:0];
+  assign m_axi_rvalid  = u_smc_axi_slave_if.rvalid;
 
   // Shared-VIP passive monitor interfaces at the default geometry (the
   // SV-UVM layer sees one `virtual ocah_axi_if` type and masks in its cfg;

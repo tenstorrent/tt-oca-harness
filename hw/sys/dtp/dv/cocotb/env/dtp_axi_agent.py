@@ -58,6 +58,9 @@ class DtpAxiAgent(uvm_agent):
             data_width=64,
             strb_width=8,
         ).sequence
+        # The bridge carries response USER across its CDC and never reads it,
+        # so any value is legal; seeded draws toggle every bit of that path.
+        self.axi_ram.randomize_resp_user(self.cfg.resp_user_seed)
         # Publish for backdoor checks once the memory model exists.
         self.cfg.axi_ram = self.axi_ram
         self.smc_otp_axil_ram = OcahAxiLiteSlaveAgent(

@@ -4,11 +4,17 @@
 
 `OcahAxiSlaveDriver` is the cocotbext-backed RAM responder that answers AXI4
 traffic on the wires, extended with the OCAH fault controls (one-shot
-non-OKAY response injection and bounded READY backpressure) shared through
-`OcahFaultMixin`. The test-facing backdoor/fault API lives in
+non-OKAY response injection with an errored-beat read word, and bounded
+READY backpressure) shared through `OcahFaultMixin`, and with the response
+USER policy. The test-facing backdoor/fault API lives in
 `OcahAxiSlaveSequence`; the AXI4-Lite variant lives in
 `ocah_axi_lite_slave_driver.py` and reuses the mixin and the reset gate from
 here.
+
+The channel endpoints follow the reset input on its edges, so BVALID and
+RVALID go low as the reset asserts (IHI 0022 A3.1.2), not at a clock edge.
+The W channel accepts beats independently of AW, up to its queue depth, so a
+write's first W beat is accepted while its AW waits.
 
 The responder exists from construction so its READY signals are driven from
 time zero, and `OcahAxiResetGate` keeps its cocotbext channel endpoints parked
@@ -22,6 +28,7 @@ from __future__ import annotations
 
 import itertools
 import logging
+import random
 from collections.abc import Awaitable, Callable, Iterable, Iterator
 from typing import Any
 
@@ -106,6 +113,7 @@ class OcahFaultMixin:
     def _init_fault_state(self, name: str) -> None:
         self.write_errors: dict[int, AxiResp] = {}
         self.read_errors: dict[int, AxiResp] = {}
+        self.read_error_data: dict[int, int] = {}
         self.write_id_corrupt: int | None = None
         self.read_id_corrupt: int | None = None
         self.log = logging.getLogger(name)
@@ -117,20 +125,32 @@ class OcahFaultMixin:
         *,
         read: bool = True,
         write: bool = True,
+        rdata: int = 0,
     ) -> None:
-        """Program a one-shot non-OKAY response at a beat-aligned address."""
+        """Program a one-shot non-OKAY response at a beat-aligned address.
+
+        The errored read beat answers ``rdata`` as its RDATA word.
+        """
         response = AxiResp(int(resp))
         if write:
             self.write_errors[int(addr)] = response
         if read:
             self.read_errors[int(addr)] = response
+            self.read_error_data[int(addr)] = int(rdata)
         self.log.info(
-            "Injecting AXI error addr=0x%08x resp=%s read=%d write=%d",
+            "Injecting AXI error addr=0x%08x resp=%s read=%d write=%d rdata=0x%x",
             addr,
             response.name,
             read,
             write,
+            rdata,
         )
+
+    def take_read_error(self, addr: int, data_bits: int) -> tuple[AxiResp, int]:
+        """Consume the one-shot read injection at ``addr``: its response and RDATA word."""
+        resp = self.read_errors.pop(addr, AxiResp.OKAY)
+        rdata = self.read_error_data.pop(addr, 0) & ((1 << data_bits) - 1)
+        return resp, rdata
 
     def inject_id_corruption(
         self,
@@ -163,6 +183,7 @@ class OcahFaultMixin:
     def clear_errors(self) -> None:
         self.write_errors.clear()
         self.read_errors.clear()
+        self.read_error_data.clear()
         self.write_id_corrupt = None
         self.read_id_corrupt = None
 
@@ -186,6 +207,14 @@ class OcahFaultMixin:
             channel.clear_pause_generator()
             channel.pause = False
         self.log.info("Disabled AXI backpressure")
+
+    def arm_w_before_aw(self) -> None:
+        """Arm a one-shot W-before-AW order for the next write.
+
+        The W channel takes beats independently of AW, so the next write's
+        first W beat is accepted while its AW waits with or without the arm.
+        """
+        self.log.info("Armed W-before-AW for the next write")
 
 
 class _OutstandingWindow:
@@ -332,6 +361,10 @@ class _FaultAxiRamWrite(AxiRamWrite):
             self._bid_mask = (1 << len(self.bus.b.bid)) - 1
         except (AttributeError, TypeError):
             self._bid_mask = None
+        try:
+            self._buser_width = len(self.bus.b.buser)
+        except (AttributeError, TypeError):
+            self._buser_width = 0
         self.window = _OutstandingWindow(
             self.aw_channel,
             self.b_channel,
@@ -431,7 +464,13 @@ class _FaultAxiRamWrite(AxiRamWrite):
                     if burst == AxiBurstType.WRAP and cur_addr == upper_wrap_boundary:
                         cur_addr = lower_wrap_boundary
 
-            await self.window.respond(awid, lambda b=b: self.b_channel.send(b))
+            await self.window.respond(awid, lambda b=b: self._send_b(b))
+
+    async def _send_b(self, b) -> None:
+        # BUSER is drawn as the response is queued, so the stream follows the
+        # order of B on the wires when responses of different IDs overtake.
+        b.buser = self.fault_owner.next_resp_user(0, self._buser_width)
+        await self.b_channel.send(b)
 
 
 class _FaultAxiRamRead(AxiRamRead):
@@ -453,6 +492,10 @@ class _FaultAxiRamRead(AxiRamRead):
             self._rid_mask = (1 << len(self.bus.r.rid)) - 1
         except (AttributeError, TypeError):
             self._rid_mask = None
+        try:
+            self._ruser_width = len(self.bus.r.ruser)
+        except (AttributeError, TypeError):
+            self._ruser_width = 0
         # Bursts of different IDs are not interleaved beat by beat on R.
         self._r_lock = Lock()
         self.window = _OutstandingWindow(
@@ -516,7 +559,10 @@ class _FaultAxiRamRead(AxiRamRead):
             for _ in range(beats):
                 cur_word_addr = (cur_addr // self.byte_lanes) * self.byte_lanes
                 plan.append(
-                    (cur_word_addr, self.fault_owner.read_errors.pop(cur_word_addr, AxiResp.OKAY))
+                    (
+                        cur_word_addr,
+                        *self.fault_owner.take_read_error(cur_word_addr, 8 * self.byte_lanes),
+                    )
                 )
                 if burst != AxiBurstType.FIXED:
                     cur_addr += num_bytes
@@ -527,19 +573,20 @@ class _FaultAxiRamRead(AxiRamRead):
                 arid, lambda rid=rid, plan=plan, prot=prot: self._send_burst(rid, plan, prot)
             )
 
-    async def _send_burst(self, rid: int, plan: list[tuple[int, AxiResp]], prot: AxiProt) -> None:
+    async def _send_burst(
+        self, rid: int, plan: list[tuple[int, AxiResp, int]], prot: AxiProt
+    ) -> None:
         async with self._r_lock:
-            for beat, (word_addr, resp) in enumerate(plan):
+            for beat, (word_addr, resp, error_rdata) in enumerate(plan):
                 r = self.r_channel._transaction_obj()
                 r.rid = rid
                 r.rlast = beat == len(plan) - 1
                 r.rresp = resp
-                data = (
-                    bytes(self.byte_lanes)
-                    if resp != AxiResp.OKAY
-                    else await self._read(word_addr, self.byte_lanes)
-                )
-                r.rdata = int.from_bytes(data, "little")
+                r.rdata = error_rdata
+                if resp == AxiResp.OKAY:
+                    data = await self._read(word_addr, self.byte_lanes)
+                    r.rdata = int.from_bytes(data, "little")
+                r.ruser = self.fault_owner.next_resp_user(1, self._ruser_width)
                 await self.r_channel.send(r)
                 self.log.info(
                     "Read beat araddr=0x%08x arprot=%s resp=%s",
@@ -567,6 +614,7 @@ class OcahAxiSlaveDriver(Memory, OcahFaultMixin):
     ):
         self.write_if = None
         self.read_if = None
+        self._resp_user_rngs: tuple[random.Random, random.Random] | None = None
         self._init_fault_state(name)
         Memory.__init__(self, size, mem, **kwargs)
         self.write_if = _FaultAxiRamWrite(
@@ -651,6 +699,22 @@ class OcahAxiSlaveDriver(Memory, OcahFaultMixin):
             for handle in channel.bus._signals.values():
                 if id(handle) not in handshake:
                     handle.setimmediatevalue(0)
+
+    def randomize_resp_user(self, seed: int) -> None:
+        """Answer every later B and R beat with BUSER and RUSER drawn per beat from ``seed``.
+
+        B draws from ``random.Random(seed)`` and R from ``random.Random(seed + 1)``,
+        the seeds the SV-UVM responder gives its write and read pumps. A beat
+        holds its value until its handshake; both stay zero until this is called.
+        """
+        self._resp_user_rngs = (random.Random(int(seed)), random.Random(int(seed) + 1))
+        self.log.info("Random response USER seed=%d", seed)
+
+    def next_resp_user(self, stream: int, width: int) -> int:
+        """USER value of the next B (``stream`` 0) or R (``stream`` 1) beat, ``width`` bits."""
+        if self._resp_user_rngs is None or width <= 0:
+            return 0
+        return self._resp_user_rngs[stream].getrandbits(width)
 
     @classmethod
     def from_prefix(cls, dut, prefix: str, clock, reset=None, **kwargs):

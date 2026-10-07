@@ -130,8 +130,8 @@ token in their basenames. Tests consume each side ONLY through its
 the sequence layer, never inlined in tests. The bus monitors and the passive
 UVM environment are side-NEUTRAL and carry no side token: they reconstruct
 traffic from the shared wires regardless of who generated it (a VIP master, a
-VIP responder, or the DUT itself — DTP observes purely DUT-generated traffic
-with no VIP master present).
+VIP responder, or the DUT itself — on the DTP JTAG2AXI ports the DUT
+generates the requests and a VIP responder answers them).
 
 The package contains only canonical component files, matching the SV-UVM
 flow's basenames one-to-one (flow-only components follow the same pattern):
@@ -259,10 +259,12 @@ observed = ram.read64(0x40)
 | `read32(addr)` / `read64(addr)` | `int` | Little-endian integer reads |
 | `write32(addr, value)` / `write64(addr, value)` | `None` | Little-endian integer writes |
 | `hexdump(addr, length)` | `str` | Backend-generated memory dump |
-| `inject_error(addr, resp, read=True, write=True)` | `None` | One-shot non-OKAY response injection |
+| `inject_error(addr, resp, read=True, write=True, rdata=0)` | `None` | One-shot non-OKAY response injection; the errored read beat answers `rdata` |
 | `clear_errors()` | `None` | Clear programmed errors |
 | `enable_backpressure(channels, stall_cycles)` | `None` | Bounded READY stalls on `aw`, `w`, and/or `ar` |
 | `disable_backpressure()` | `None` | Clear READY stalls |
+| `arm_w_before_aw()` | `None` | One-shot W-before-AW order for the next write; this responder already accepts W independently of AW |
+| `randomize_resp_user(seed)` | `None` | BUSER and RUSER drawn per beat from `seed` (zero until called) |
 | `backend` | cocotbext-backed RAM | Advanced debug-only access |
 
 ### OcahAxiLiteSlaveAgent — AXI4-Lite memory-backed responder
@@ -283,7 +285,8 @@ ram.write32(0x10, 0xA5A5_5A5A)
 ram.inject_error(0x20, RESP_DECERR, read=True, write=False)
 ```
 
-It has the same backdoor and fault-control helpers as `OcahAxiSlaveAgent`.
+It has the same backdoor and fault-control helpers as `OcahAxiSlaveAgent`,
+without `randomize_resp_user` because AXI4-Lite carries no USER signals.
 
 ---
 

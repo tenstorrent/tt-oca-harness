@@ -2,11 +2,12 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // DTP environment configuration, derived from dtp_test_cfg and read by
-// dtp_env: the chosen clock and TCK timing, responder memory geometry, the
-// downstream STAP attach mask, the scoreboard features that must compare,
-// and the evidence policy of every shared-VIP recorder the env builds. The
-// env fills each VIP config from this object and publishes the clock period
-// on dtp_tb_if. Never randomized. The cocotb twin is env/dtp_env_cfg.py.
+// dtp_env: the chosen clock and TCK timing, responder memory geometry and
+// response USER seed, the downstream STAP attach mask, the scoreboard
+// features that must compare, and the evidence policy of every shared-VIP
+// recorder the env builds. The env fills each VIP config from this object
+// and publishes the clock period on dtp_tb_if. Never randomized. The cocotb
+// twin is env/dtp_env_cfg.py.
 
 class dtp_env_cfg extends ocah_env_cfg;
   `uvm_object_utils(dtp_env_cfg)
@@ -15,6 +16,8 @@ class dtp_env_cfg extends ocah_env_cfg;
   int unsigned tck_half_period_ns = 50;
   // Memory footprint of every AXI responder (addresses wrap).
   int unsigned axi_mem_bytes = DtpJ2aTargetMemBytes;
+  // Seed of the SMC fabric responder's BUSER and RUSER draws.
+  int unsigned resp_user_seed;
   // Downstream STAP TAPs attached for this run (dtp_stap_ds_name order).
   bit [DtpStapCount-1:0] stap_ds_attach_mask = '0;
   // TAP FSM checker: a JTAG-free run is legitimate only for the
@@ -36,6 +39,7 @@ class dtp_env_cfg extends ocah_env_cfg;
     dtp_env_cfg c = dtp_env_cfg::type_id::create("env_cfg");
     c.clk_period_ns          = t.sys_clk_period_ns;
     c.tck_half_period_ns     = t.tck_period_ns / 2;
+    c.resp_user_seed         = ocah_rng::salted_seed(t.seed, "resp_user");
     c.stap_ds_attach_mask    = t.stap_ds_attach_mask;
     c.jtag_activity_required = t.jtag_activity_required;
     c.jtag2axi_ref_model_negative = t.jtag2axi_ref_model_negative;

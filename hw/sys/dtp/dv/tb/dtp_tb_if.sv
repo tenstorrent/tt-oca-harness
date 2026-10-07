@@ -226,13 +226,6 @@ interface dtp_tb_if;
   logic j2a_cdc_tck_dst_wait_ack;
   logic j2a_cdc_aclk_dst_wait_ack;
 
-  // Errored-beat read word per JTAG2AXI bridge port (driven by the JTAG2AXI
-  // sequences): tb_top drives it onto the DUT-facing RDATA of every R beat
-  // the port's responder answers with SLVERR or DECERR.
-  logic [dtp_dv_cfg_pkg::SmcAxiDataWidth-1:0]  smc_axi_err_rdata = '0;
-  logic [dtp_dv_cfg_pkg::OtpAxilDataWidth-1:0] smc_otp_axil_err_rdata = '0;
-  logic [dtp_dv_cfg_pkg::OtpAxilDataWidth-1:0] sep_otp_axil_err_rdata = '0;
-
   // Debug-TDR observables (driven by tb_top): DEBUG_CONTROL clock-stop /
   // boot-stall outputs and the flattened IC_RESET slice outputs.
   logic stop_clks;

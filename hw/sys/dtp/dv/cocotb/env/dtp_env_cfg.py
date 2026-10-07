@@ -27,6 +27,8 @@ class DtpEnvCfg(uvm_object):
         # OCAH AXI RAM memory size (bytes)
         self.axi_mem_size = 2**16
         self.otp_axil_mem_size = 2**16
+        # Seed of the SMC fabric responder's BUSER and RUSER draws.
+        self.resp_user_seed = 0
         # Set by the base test once clocks are running and resets released, so
         # the JTAG/AXI agents start their BFMs at the right time.
         self.reset_done = Event("dtp_reset_done")

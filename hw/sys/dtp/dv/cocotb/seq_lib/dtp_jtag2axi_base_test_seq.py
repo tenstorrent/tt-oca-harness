@@ -639,9 +639,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         reach the bus (an armed credit that is never consumed correctly fails
         CHK-AXI-CREDITS at finalization).
 
-        A read injection also sets the port's errored-beat word, which
-        ``tb_top`` drives onto the DUT-facing RDATA of every SLVERR or DECERR
-        beat of that port until the next injection or clear.
+        The errored read beat answers ``err_rdata`` as its RDATA word.
         """
         cfg = self.target_cfg(target)
         aligned = addr - (addr % cfg.beat_bytes)
@@ -655,9 +653,9 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             write,
             err_rdata,
         )
-        if read:
-            self.cfg.tb_if.set_error_rdata(cfg.activity_prefix, err_rdata)
-        self.target_responder(target).inject_error(aligned, resp, read=read, write=write)
+        self.target_responder(target).inject_error(
+            aligned, resp, read=read, write=write, rdata=err_rdata
+        )
         if not arm:
             return self.axi_resp_to_jtag_status(resp)
         # Arm the shared reference model and scoreboard credit so the injected
@@ -691,7 +689,6 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
 
     def clear_target_errors(self, target: str) -> None:
         self.target_responder(target).clear_errors()
-        self.cfg.tb_if.set_error_rdata(self.target_cfg(target).activity_prefix, 0)
         model = self.axi_model(target)
         if model is not None:
             model.clear_expected_errors()
@@ -716,6 +713,10 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
 
     def clear_target_backpressure(self, target: str) -> None:
         self.target_responder(target).disable_backpressure()
+
+    def arm_target_w_before_aw(self, target: str) -> None:
+        """Arm the target's responder to accept the next write's W beat while its AW waits."""
+        self.target_responder(target).arm_w_before_aw()
 
     def target_mem_size(self, target: str) -> int:
         return int(self.cfg.axi_mem_size if target == "smc_axi" else self.cfg.otp_axil_mem_size)
@@ -1513,11 +1514,11 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
     ) -> None:
         """Emit CHK-J2A-ERR-RDATA: the SINGLE_OP rdata is the RDATA of the errored beat.
 
-        ``tb_top`` drives the seeded ``errored`` word on the errored R beat,
-        and the bridge latches the beat's data together with its status, so
-        the capture returns that word: it equals ``errored`` and the beat the
-        monitor observed at ``addr`` with ``resp``, and differs from the word
-        preloaded in the slot.
+        The responder answers the errored R beat with the seeded ``errored``
+        word, and the bridge latches the beat's data together with its status,
+        so the capture returns that word: it equals ``errored`` and the beat
+        the monitor observed at ``addr`` with ``resp``, and differs from the
+        word preloaded in the slot.
         """
         cfg = self.target_cfg(target)
         mask = self.target_data_mask(target, size)
@@ -1953,8 +1954,8 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         last beat. ``expected`` holds each beat's word when the stream starts;
         once a read completes, a beat that re-reads its address gets a fresh
         seeded word written there, so that read's capture cannot repeat the
-        earlier one. The fault beat returns the port's errored-beat word,
-        which this stream sets to zero, and is not judged.
+        earlier one. The fault beat answers a zero errored-beat word and is
+        not judged.
         """
         target = plan.target
         expected = list(expected)

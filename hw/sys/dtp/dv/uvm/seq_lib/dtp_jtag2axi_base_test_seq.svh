@@ -16,13 +16,12 @@
 // target-under-test evidence bundle (axi_cfg / axi_evidence / axi_ref_model)
 // and the three bridge port histories (axi_ports) before start(). Error
 // arming discipline: arm_target_error() programs the responder injection,
-// for a read the port's errored-beat word on dtp_tb_if, AND
-// cfg.arm_expected_resp() in one place, so the injected non-OKAY is
-// EXPECTED for the shared AXI scoreboard; clear_target_error() clears the
-// injection and the word. test_cfg.axi_scoreboard_negative
-// (+DTP_AXI_SCOREBOARD_NEGATIVE) is the negative-validation hook: it arms
-// the WRONG expected response so the run must FAIL, proving the checker
-// rejects a bad expectation end to end.
+// with the errored-beat word for a read, AND cfg.arm_expected_resp() in one
+// place, so the injected non-OKAY is EXPECTED for the shared AXI
+// scoreboard; clear_target_error() clears the injection.
+// test_cfg.axi_scoreboard_negative (+DTP_AXI_SCOREBOARD_NEGATIVE) is the
+// negative-validation hook: it arms the WRONG expected response so the run
+// must FAIL, proving the checker rejects a bad expectation end to end.
 //
 // Gated attempts must never arm credits: issue_single() skips intent arming
 // whenever the target's lifecycle disable is asserted, and an operation the
@@ -717,11 +716,11 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   endtask
 
   // CHK-J2A-ERR-RDATA: the SINGLE_OP rdata is the RDATA of the errored beat.
-  // tb_top drives the seeded `errored` word on the errored R beat, and the
-  // bridge latches the beat's data together with its status, so the capture
-  // returns that word: it equals `errored` and the beat the port's monitor
-  // observed at `addr` with `resp`, and differs from the word preloaded in
-  // the slot.
+  // The responder answers the errored R beat with the seeded `errored` word,
+  // and the bridge latches the beat's data together with its status, so the
+  // capture returns that word: it equals `errored` and the beat the port's
+  // monitor observed at `addr` with `resp`, and differs from the word
+  // preloaded in the slot.
   function void check_error_rdata(dtp_j2a_target_t t, bit [63:0] addr, bit [63:0] rdata,
                                   ocah_axi_resp_e resp, bit [63:0] preload, bit [63:0] errored,
                                   int unsigned size, string context_s);
@@ -1210,20 +1209,11 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   endtask
 
   // --- error arming (responder injection + shared checker, one place) ----
-  // The errored-beat read word of the port behind `t`: tb_top drives it onto
-  // the DUT-facing RDATA of every SLVERR or DECERR beat of that port.
-  function void set_error_rdata(dtp_j2a_target_t t, bit [63:0] value);
-    if (t.name == "smc_otp") tb_vif.smc_otp_axil_err_rdata = value[31:0];
-    else if (t.name == "sep_otp") tb_vif.sep_otp_axil_err_rdata = value[31:0];
-    else tb_vif.smc_axi_err_rdata = value;
-  endfunction
-
-  // A read injection also sets the port's errored-beat word, `err_rdata`.
+  // The errored read beat answers `err_rdata` as its RDATA word.
   task arm_target_error(dtp_j2a_target_t t, bit [63:0] addr, ocah_axi_resp_e resp, bit for_read,
                         bit for_write, bit arm_expected = 1'b1, bit [63:0] err_rdata = '0);
     ocah_axi_resp_e armed_resp = resp;
-    if (for_read) set_error_rdata(t, err_rdata);
-    responder(t).inject_error(addr, resp, for_read, for_write);
+    responder(t).inject_error(addr, resp, for_read, for_write, err_rdata);
     // arm_expected=0 injects WITHOUT arming the scoreboard expectation —
     // for gated attempts whose op must never reach the bus.
     if (arm_expected && axi_cfg != null) begin
@@ -1243,7 +1233,6 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
 
   task clear_target_error(dtp_j2a_target_t t);
     responder(t).clear_errors();
-    set_error_rdata(t, '0);
     wait_sys_cycles(InjectSettleCycles);
   endtask
 
@@ -1263,13 +1252,10 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   endfunction
 
   // Arms the target's responder so the W beat of the next write is accepted
-  // while its AW waits against a stalled AWREADY (the cocotb RAM responder's
-  // order); later writes take AW first. Call it with the write channels idle.
+  // while its AW waits against a stalled AWREADY; later writes take AW
+  // first. Call it with the write channels idle.
   function void arm_target_w_before_aw(dtp_j2a_target_t t);
-    dtp_axi_slave_driver drv;
-    if (!$cast(drv, responder(t).responder))
-      `uvm_fatal(get_type_name(), $sformatf("%s responder is not a dtp_axi_slave_driver", t.name))
-    drv.w_before_aw = 1'b1;
+    responder(t).arm_w_before_aw();
   endfunction
 
   // --- request-activity evidence (security gating) -----------------------

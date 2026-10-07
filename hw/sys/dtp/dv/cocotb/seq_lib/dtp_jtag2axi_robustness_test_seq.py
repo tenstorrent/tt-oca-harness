@@ -421,6 +421,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             )
             # AW held alone, the responder taking the W beat during the AW
             # stall (W before AW); only AW is judged.
+            self.arm_target_w_before_aw(target)
             await self._write_with_backpressure(
                 target,
                 channels=("aw",),

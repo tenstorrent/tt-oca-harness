@@ -119,8 +119,6 @@ class dtp_env extends ocah_env;
                  DtpXtrigNumCtmPorts
                  ))
 
-    // The JTAG2AXI responders take their write order from the DTP driver.
-    ocah_axi_slave_driver::type_id::set_type_override(dtp_axi_slave_driver::get_type());
     build_jtag_master();
     build_checking();
     m_vseqr = dtp_virtual_sequencer::type_id::create("m_vseqr", this);
@@ -226,6 +224,9 @@ class dtp_env extends ocah_env;
         }
     );
     m_smc_axi_slave_agent = ocah_axi_slave_agent::type_id::create("m_smc_axi_slave_agent", this);
+    // The bridge carries response USER across its CDC and never reads it,
+    // so any value is legal; seeded draws toggle every bit of that path.
+    m_smc_axi_slave_cfg.randomize_resp_user(cfg.resp_user_seed);
 
     for (int unsigned i = 0; i < DtpStapCount; i++) build_stap_ds(i);
   endfunction

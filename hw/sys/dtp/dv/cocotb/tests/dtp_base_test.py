@@ -10,7 +10,7 @@ from pathlib import Path
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles
-from ocah_lib import OcahSequence, OcahTest
+from ocah_lib import OcahRng, OcahSequence, OcahTest
 from pyuvm import ConfigDB, uvm_sequencer
 
 # The cocotb runner only puts the test dir on sys.path; make the DV root (env/,
@@ -79,6 +79,7 @@ class dtp_base_test(OcahTest):
     def build_phase(self) -> None:
         self.cfg = DtpEnvCfg("cfg")
         self.cfg.randomize_timing(self.base_seed())
+        self.cfg.resp_user_seed = OcahRng.salted_seed(self.base_seed(), "resp_user")
         self.logger.info(
             "DTP timing: jtag_period=%dns sys_clk_period=%dns (seed=%d)",
             self.cfg.jtag_period_ns,
