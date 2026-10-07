@@ -50,9 +50,10 @@ ITCM/DTCM images loaded at time zero; eFuse shadow preload images from
 `assets/`. Verdicts are `SmuScoreboard` compares, or -- for the firmware
 leaves -- the firmware's own terminal loop, observed by the bench. The one
 signal the bench forces (`+esrc_noise_force`, the ESRC raw-noise lanes) and
-the other stand-ins on a proof path are recorded, with their scope and
-approval fields, in the *Bench stand-ins and exceptions* section of
-`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
+the other stand-ins on a proof path are declared, each with the claim it
+accepts and its scope, in the *Bench stand-ins and exceptions* section of
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`, which also states where
+their approvals are recorded.
 
 **Simulators.** Verilator runs every enrolled group and is the only
 simulator with a build and a coverage section in the sim config; it is

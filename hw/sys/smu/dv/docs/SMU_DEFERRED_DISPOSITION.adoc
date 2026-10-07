@@ -487,7 +487,7 @@ run.
 |Scan-chain loopbacks |`tb/tb_wrapper_top.sv` (five host scan chains and the I/O and extra STAP TDO-to-TDI returns) |`smu_dtp_bsr_extest_loopback_test`, `smu_dtp_scan_chain_boundary_test`
 |CTP data-input tie-offs |`tb/tb_wrapper_top.sv` (the `xtrig_ctp_*_din_i` bindings of `u_dut`), `cocotb_wrapper/tests/smu_base_test.py` (`IDLE_INPUTS`) |`smu_boundary_port_composition_test`
 |`prim_sync2` / `prim_sync3` stand-ins |`[build].stubs` of `smu_sim_cfg.toml`, from `hw/sys/smc/dv/tb/verilator_stubs/` |every leaf on Verilator; reset and boot-gate observes downstream
-|eFuse models in the product composition |`hw/top/smc_ip_integration.sv`, `hw/top/sep_ip_integration.sv` |the OTP JTAG2AXI leaves, `smu_sep_efuse_test`, the lifecycle and chain leaves, and the eight leaves whose real sense they answer: the five boot-stall leaves, `smu_sep_lcc_flow_test`, `smu_sep_fuse_sense_done_test`, `smu_smc_fuse_sense_sequence_test`
+|eFuse models in the product composition |`hw/top/smc_ip_integration.sv`, `hw/top/sep_ip_integration.sv` |the OTP JTAG2AXI leaves, `smu_sep_efuse_test`, the lifecycle and chain leaves, and the nine leaves whose real sense they answer: the five boot-stall leaves, `smu_sep_lcc_flow_test`, `smu_sep_fuse_sense_done_test`, `smu_smc_fuse_sense_sequence_test`, `smu_smc_efuse_shadow_sense_reset_test`
 |===
 
 [[smu-standin-recheck]]
@@ -633,7 +633,7 @@ stale, and the entry -- not the run -- is what needs the edit.
 |Why the real path cannot be used
 |The product `prim_sync2` / `prim_sync3` start with X on the first stage and the wrapper port exposes no `rst_ni` to clear it, so on a four-state view the X persists into every consumer; the stand-ins add `initial '0` on each stage and change nothing else about the pipe.
 |Scope
-|`smu_sim_cfg.toml` `[build].stubs` lists `hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv` and `prim_sync3.sv`; the runner emits them ahead of the Bender filelist so Verilator's first-definition-wins picks them, and drops them on VCS. Every leaf compiles them in. Downstream observes on this bench: `obs_powergood_stable_o`, `obs_powergood_stable_low_seen_o`, the reset-release observes of `smu_smc_reset_ctrl_test` and `smu_ext_boot_seq_gate_test`, and the boot-stall gate of the five boot-stall leaves.
+|`smu_sim_cfg.toml` `[build].stubs` lists `hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv` and `prim_sync3.sv`; the runner emits them ahead of the Bender filelist so Verilator's first-definition-wins picks them, and drops them on VCS. Every leaf compiles them in. Downstream observes on this bench: `obs_powergood_stable_o`, `obs_powergood_stable_low_seen_o`, the reset-release observes of `smu_smc_reset_ctrl_test` and `smu_ext_boot_seq_gate_test`, and the boot-stall gate of the five boot-stall leaves. No control run with the product cells has been made on this composition. The entry closes when `[build].stubs` no longer lists the two files and the same observes pass on the product cells.
 |===
 
 === eFuse models in the product composition
