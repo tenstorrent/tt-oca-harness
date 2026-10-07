@@ -29,6 +29,9 @@ schema_version = 1
 #     smc_ref_clock_timer_rate_test compares the OCTS system timer rate against
 #     clk_rst.adoc, which places the timer in the reference clock domain, while
 #     the RTL clocks it from clk_smc_i.
+#     smc_fw_i3c5_csr_access_test, defined in fw.toml, takes a load access
+#     fault on its first load: the CPU cluster's MMIO port does not cover I3C
+#     instance 5's CSR window. It returns to `fw` and `all` when it does.
 #   * scope-named UVM groups -- UVM-only leaves excluded from `all` and
 #     `hosted` because those groups do not run the UVM framework. Each group is
 #     named for the verification scope it exercises (`csr_uvm_extended`) and
@@ -110,7 +113,8 @@ tests = [
 [[groups]]
 # Leaves whose comparison the RTL and the specification disagree on; run on demand.
 name = "held_out"
-expected_count = 1
+expected_count = 2
 tests = [
+    "smc_fw_i3c5_csr_access_test",
     "smc_ref_clock_timer_rate_test",
 ]

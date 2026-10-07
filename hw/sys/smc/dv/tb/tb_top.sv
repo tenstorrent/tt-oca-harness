@@ -708,6 +708,33 @@ module smc_uvm_top
     assign tb_i3c0_scl = !(tb_i3c0_scl_dut_low || tb_i3c0_scl_ext_low);
     assign tb_i3c0_sda = !(tb_i3c0_sda_dut_low || tb_i3c0_sda_ext_low);
 
+    for (genvar i = 0; i < smc_config_pkg::NumI3c; i++) begin : gen_i3c_csr_count
+        logic [31:0] reads_q;
+        logic [31:0] writes_q;
+        always_ff @(posedge u_dut.u_smc.u_smc_peripherals.u_i3ccore_wrapper.clk_i or
+                    negedge u_dut.u_smc.u_smc_peripherals.u_i3ccore_wrapper.rst_ni) begin
+            if (!u_dut.u_smc.u_smc_peripherals.u_i3ccore_wrapper.rst_ni) begin
+                reads_q  <= '0;
+                writes_q <= '0;
+            end else begin
+                if (u_dut.u_smc.u_smc_peripherals.u_i3ccore_wrapper.gen_i3c_inst[i]
+                        .u_i3c_wrapper.rvalid_o &&
+                    u_dut.u_smc.u_smc_peripherals.u_i3ccore_wrapper.gen_i3c_inst[i]
+                        .u_i3c_wrapper.rready_i) begin
+                    reads_q <= reads_q + 32'd1;
+                end
+                if (u_dut.u_smc.u_smc_peripherals.u_i3ccore_wrapper.gen_i3c_inst[i]
+                        .u_i3c_wrapper.bvalid_o &&
+                    u_dut.u_smc.u_smc_peripherals.u_i3ccore_wrapper.gen_i3c_inst[i]
+                        .u_i3c_wrapper.bready_i) begin
+                    writes_q <= writes_q + 32'd1;
+                end
+            end
+        end
+        assign tb_i3c_csr_read_count[i*32 +: 32]  = reads_q;
+        assign tb_i3c_csr_write_count[i*32 +: 32] = writes_q;
+    end
+
     // ------------------------------------------------------------------
     // Pad injection (KNOWN RISK).
     //

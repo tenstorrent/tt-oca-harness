@@ -83,6 +83,10 @@
 `SMC_TB_OUT(logic, tb_i3c0_sda)
 `SMC_TB_OUT(logic, tb_i3c0_scl_dut_low)
 `SMC_TB_OUT(logic, tb_i3c0_sda_dut_low)
+// Completed CSR accesses at each I3C core's AXI-Lite port, after the wrapper's
+// instance decode: R handshakes and B handshakes, 32 bits per instance.
+`SMC_TB_OUT(logic [smc_config_pkg::NumI3c*32-1:0], tb_i3c_csr_read_count)
+`SMC_TB_OUT(logic [smc_config_pkg::NumI3c*32-1:0], tb_i3c_csr_write_count)
 `SMC_TB_IN(logic, tb_cpu_jtag_tck)
 `SMC_TB_IN(logic, tb_cpu_jtag_tms)
 `SMC_TB_IN(logic, tb_cpu_jtag_tdi)
