@@ -69,10 +69,10 @@
 .equ DFT_MBIST_PASS,           (1 << 8)
 .equ DFT_MBIST_ABORT,          (1 << 12)
 
-/* Straps live in the SMC external supplementary window. These offsets match
+/* Straps live in the SMC external mandatory window. These offsets match
  * sep_smc_interface.h and the captured-GPIO straps map. */
-.equ SMC_STRAPS_LO,            SEP_SMC_GLOBAL_BASE + 0x405800
-.equ SMC_STRAPS_HI,            SEP_SMC_GLOBAL_BASE + 0x405804
+.equ SMC_STRAPS_LO,            SEP_SMC_GLOBAL_BASE + 0x403000
+.equ SMC_STRAPS_HI,            SEP_SMC_GLOBAL_BASE + 0x403004
 /* BYPASS_SRAM_REPAIR, GPIO pin 13 -> STRAPS_LO[13]. It drives
  * skip_mem_repair_o, so repair NEVER RAN.
  *

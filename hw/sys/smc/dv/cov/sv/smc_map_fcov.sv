@@ -554,35 +554,53 @@ module smc_map_fcov (
   `OCAH_FCOV_COVER(c_lc_state_readback_matches_input, lc_state_readback_e, clk_smc_i, in_reset)
 
   // ------------------------------------------------------------------
-  // AXI-Lite external window: mandatory blocks, per-pad control stride and
-  // the supplementary region with the captured straps. Offsets are the
+  // AXI-Lite external window: mandatory blocks with the captured straps,
+  // per-pad control stride and the supplementary region. Offsets are the
   // reference placement in smc_top_regs.h (SMC_TOP_SMC_EXTERNAL_MANDATORY_*).
   //
   // The window belongs to the adopter: SMC routes every access in it to the
   // external AXI-Lite port and specifies nothing behind it (memmap.adoc,
-  // AXI-Lite External Window). The clock-observation, pad-bias,
-  // reference-clock and per-pad control points therefore take a completion the
-  // external port carried, whatever the response; the reference integration
-  // implements none of those blocks and terminates them with an error slave.
+  // AXI-Lite External Window). The supplementary-region block and per-pad
+  // control points therefore take a completion the external port carried,
+  // whatever the response; the reference integration implements none of those
+  // blocks and terminates them with an error slave.
   // ------------------------------------------------------------------
   `define SMC_MAP_EXT(lo, hi) \
       ((rd_ext_done && in_win(rd_addr_q, (lo), (hi))) \
        || (wr_ext_done && in_win(wr_addr_q, (lo), (hi))))
-  wire pll_obs_intf_e = `SMC_MAP_EXT(32'h0040_1000, 32'h0040_100B);
-  wire pll_obs_ctrl_e = `SMC_MAP_EXT(32'h0040_100C, 32'h0040_100F);
-  wire pvt_obs_intf_e = `SMC_MAP_EXT(32'h0040_1010, 32'h0040_101B);
-  wire pvt_obs_ctrl_e = `SMC_MAP_EXT(32'h0040_101C, 32'h0040_101F);
-  wire gpio_refclk_ctrl_e = `SMC_MAP_EXT(32'h0040_102C, 32'h0040_102F);
-  `OCAH_FCOV_COVER(c_pll_obs_intf_decode, pll_obs_intf_e, clk_smc_i, in_reset)
-  `OCAH_FCOV_COVER(c_pll_obs_ctrl_decode, pll_obs_ctrl_e, clk_smc_i, in_reset)
-  `OCAH_FCOV_COVER(c_pvt_obs_intf_decode, pvt_obs_intf_e, clk_smc_i, in_reset)
-  `OCAH_FCOV_COVER(c_pvt_obs_ctrl_decode, pvt_obs_ctrl_e, clk_smc_i, in_reset)
-  `OCAH_FCOV_COVER(c_gpio_refclk_ctrl_decode, gpio_refclk_ctrl_e, clk_smc_i, in_reset)
+  localparam logic [31:0] ControllerWrapLo =
+      32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_CONTROLLER_WRAP_BASE_ADDR - LocalBase);
+  localparam logic [31:0] ControllerWrapHi =
+      ControllerWrapLo + 32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_CONTROLLER_WRAP_SIZE) - 32'd1;
+  localparam logic [31:0] GpioExtraIntfLo =
+      32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_INTF_BASE_ADDR - LocalBase);
+  localparam logic [31:0] GpioExtraIntfHi =
+      GpioExtraIntfLo + 32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_INTF_SIZE) - 32'd1;
+  localparam logic [31:0] GpioExtraCtrlLo =
+      32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_CTRL_BASE_ADDR - LocalBase);
+  localparam logic [31:0] GpioExtraCtrlHi =
+      GpioExtraCtrlLo + 32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_CTRL_SIZE) - 32'd1;
+  wire controller_wrap_e = `SMC_MAP_EXT(ControllerWrapLo, ControllerWrapHi);
+  wire gpio_extra_intf_e = `SMC_MAP_EXT(GpioExtraIntfLo, GpioExtraIntfHi);
+  wire gpio_extra_ctrl_e = `SMC_MAP_EXT(GpioExtraCtrlLo, GpioExtraCtrlHi);
+  `OCAH_FCOV_COVER(c_controller_wrap_decode, controller_wrap_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_gpio_extra_intf_decode, gpio_extra_intf_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_gpio_extra_ctrl_decode, gpio_extra_ctrl_e, clk_smc_i, in_reset)
 
-  // Per-pad GPIO control, 65 instances 0x20 apart from +0x1100.
-  wire per_pad_inst0_e = `SMC_MAP_EXT(32'h0040_1100, 32'h0040_111F);
-  wire per_pad_inst1_e = `SMC_MAP_EXT(32'h0040_1120, 32'h0040_113F);
-  wire per_pad_inst64_e = `SMC_MAP_EXT(32'h0040_1900, 32'h0040_191F);
+  // Per-pad GPIO control: the first, second and last of the array.
+  localparam logic [31:0] PadStride = 32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_STRIDE);
+  localparam logic [31:0] Pad0Lo = 32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_BASE_ADDR(
+      0
+  ) - LocalBase);
+  localparam logic [31:0] Pad1Lo = 32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_BASE_ADDR(
+      1
+  ) - LocalBase);
+  localparam logic [31:0] PadLastLo = 32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_BASE_ADDR(
+      32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_NUM) - 1
+  ) - LocalBase);
+  wire per_pad_inst0_e = `SMC_MAP_EXT(Pad0Lo, Pad0Lo + PadStride - 32'd1);
+  wire per_pad_inst1_e = `SMC_MAP_EXT(Pad1Lo, Pad1Lo + PadStride - 32'd1);
+  wire per_pad_inst64_e = `SMC_MAP_EXT(PadLastLo, PadLastLo + PadStride - 32'd1);
   `OCAH_FCOV_COVER(c_per_pad_instance_0, per_pad_inst0_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_per_pad_block_first, per_pad_inst0_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_per_pad_instance_64, per_pad_inst64_e, clk_smc_i, in_reset)
@@ -603,16 +621,33 @@ module smc_map_fcov (
   wire per_pad_stride_e = pad_inst0_seen_q && pad_inst1_seen_q && !pad_stride_q;
   `OCAH_FCOV_COVER(c_per_pad_stride_0x20, per_pad_stride_e, clk_smc_i, in_reset)
 
+  localparam logic [31:0] MandatoryLo = 32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_BASE_ADDR - LocalBase);
+  localparam logic [31:0] PllWrapLo =
+      32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_BASE_ADDR - LocalBase);
+  localparam logic [31:0] PllWrapHi =
+      PllWrapLo + 32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_SIZE) - 32'd1;
+  localparam logic [31:0] PvtWrapLo =
+      32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_BASE_ADDR - LocalBase);
+  localparam logic [31:0] PvtWrapHi =
+      PvtWrapLo + 32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_SIZE) - 32'd1;
+  localparam logic [31:0] EfuseShimLo =
+      32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_BASE_ADDR - LocalBase);
+  localparam logic [31:0] EfuseShimHi =
+      EfuseShimLo + 32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_SIZE) - 32'd1;
+  localparam logic [31:0] SupplementaryLo =
+      32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_BASE_ADDR - LocalBase);
+
+
   // The eFuse SHIM CSR at the window base, then the PLL and PVT wrappers, each
   // over its register extent. The bench answers all three OKAY.
-  wire mandatory_base_e = `SMC_MAP_OK(32'h0040_0000, 32'h0040_0007);
-  wire efuse_shim_e = `SMC_MAP_OK(32'h0040_0000, 32'h0040_0043);
-  wire pll_wrapper_e = `SMC_MAP_OK(32'h0040_2000, 32'h0040_2EE1);
-  wire pvt_wrapper_e = `SMC_MAP_OK(32'h0040_3000, 32'h0040_3947);
+  wire mandatory_base_e = `SMC_MAP_OK(MandatoryLo, MandatoryLo + 32'd7);
+  wire efuse_shim_e = `SMC_MAP_OK(EfuseShimLo, EfuseShimHi);
+  wire pll_wrapper_e = `SMC_MAP_OK(PllWrapLo, PllWrapHi);
+  wire pvt_wrapper_e = `SMC_MAP_OK(PvtWrapLo, PvtWrapHi);
   // The supplementary region holds the adopter's own devices, so a completion
   // there is the terminator's rather than a device's. The point takes a
   // completed access that the external port carried.
-  wire supplementary_base_e = `SMC_MAP_EXT(32'h0040_4000, 32'h0040_4007);
+  wire supplementary_base_e = `SMC_MAP_EXT(SupplementaryLo, SupplementaryLo + 32'd7);
   `OCAH_FCOV_COVER(c_mandatory_region_base_decodes, mandatory_base_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_pll_wrapper_decodes, pll_wrapper_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_pvt_wrapper_decode, pvt_wrapper_e, clk_smc_i, in_reset)
@@ -620,10 +655,14 @@ module smc_map_fcov (
   `OCAH_FCOV_COVER(c_efuse_shim_decodes, efuse_shim_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_supplementary_region_base_decodes, supplementary_base_e, clk_smc_i, in_reset)
 
-  // Captured straps, read-only: STRAPS_LO at +0x5800, STRAPS_HI at +0x5804.
-  wire straps_lo_read_e = rd_okay && in_win(rd_addr_q, 32'h0040_5800, 32'h0040_5803);
-  wire straps_hi_read_e = rd_okay && in_win(rd_addr_q, 32'h0040_5804, 32'h0040_5807);
-  wire strap_write_done = wr_done && in_win(wr_addr_q, 32'h0040_5800, 32'h0040_5807);
+  // Captured straps, read-only.
+  localparam logic [31:0] StrapsLoLo =
+      32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_BASE_ADDR - LocalBase);
+  localparam logic [31:0] StrapsHiLo =
+      32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_BASE_ADDR - LocalBase);
+  wire straps_lo_read_e = rd_okay && in_win(rd_addr_q, StrapsLoLo, StrapsLoLo + 32'd3);
+  wire straps_hi_read_e = rd_okay && in_win(rd_addr_q, StrapsHiLo, StrapsHiLo + 32'd3);
+  wire strap_write_done = wr_done && in_win(wr_addr_q, StrapsLoLo, StrapsHiLo + 32'd3);
   `OCAH_FCOV_COVER(c_straps_lo_read, straps_lo_read_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_straps_lo_decodes, straps_lo_read_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_straps_hi_read, straps_hi_read_e, clk_smc_i, in_reset)

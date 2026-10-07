@@ -9004,17 +9004,688 @@ localparam int unsigned SMC_CLA_DST_0__SCRATCHHI_REG_ADDR                       
 
 
 localparam int unsigned SMC_EXTERNAL_REG_MAP_BASE_ADDR                                                            = 32'hC0400000;
-localparam int unsigned SMC_EXTERNAL_REG_MAP_SIZE                                                                 = 32'h00400000;
+localparam int unsigned SMC_EXTERNAL_REG_MAP_SIZE                                                                 = 32'h00006548;
 
 
 
 
 //==============================================================================
-// Memory: region
+// Addresses for Address Map: mandatory
 //==============================================================================
 
-localparam int unsigned SMC_EXTERNAL_REGION_MEM_BASE_ADDR                                                         = 32'hC0400000;
-localparam int unsigned SMC_EXTERNAL_REGION_MEM_SIZE                                                              = 32'h00400000;
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_REG_MAP_BASE_ADDR                                                  = 32'hC0400000;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_REG_MAP_SIZE                                                       = 32'h00003008;
+
+
+
+
+//==============================================================================
+// Addresses for Address Map: efuse_shim_ctrl
+//==============================================================================
+
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_REG_MAP_BASE_ADDR                                  = 32'hC0400000;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_REG_MAP_SIZE                                       = 32'h00000004;
+
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_OFFSET                    = 32'h00000000;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_ADDR                      = 32'hC0400000;
+
+
+//==============================================================================
+// Memory: gpio_ctrl[0]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_0__MEM_BASE_ADDR                                         = 32'hC0401000;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_0__MEM_SIZE                                              = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[1]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_1__MEM_BASE_ADDR                                         = 32'hC0401020;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_1__MEM_SIZE                                              = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[2]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_2__MEM_BASE_ADDR                                         = 32'hC0401040;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_2__MEM_SIZE                                              = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[3]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_3__MEM_BASE_ADDR                                         = 32'hC0401060;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_3__MEM_SIZE                                              = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[4]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_4__MEM_BASE_ADDR                                         = 32'hC0401080;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_4__MEM_SIZE                                              = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[5]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_5__MEM_BASE_ADDR                                         = 32'hC04010A0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_5__MEM_SIZE                                              = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[6]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_6__MEM_BASE_ADDR                                         = 32'hC04010C0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_6__MEM_SIZE                                              = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[7]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_7__MEM_BASE_ADDR                                         = 32'hC04010E0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_7__MEM_SIZE                                              = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[8]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_8__MEM_BASE_ADDR                                         = 32'hC0401100;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_8__MEM_SIZE                                              = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[9]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_9__MEM_BASE_ADDR                                         = 32'hC0401120;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_9__MEM_SIZE                                              = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[10]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_10__MEM_BASE_ADDR                                        = 32'hC0401140;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_10__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[11]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_11__MEM_BASE_ADDR                                        = 32'hC0401160;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_11__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[12]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_12__MEM_BASE_ADDR                                        = 32'hC0401180;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_12__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[13]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_13__MEM_BASE_ADDR                                        = 32'hC04011A0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_13__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[14]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_14__MEM_BASE_ADDR                                        = 32'hC04011C0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_14__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[15]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_15__MEM_BASE_ADDR                                        = 32'hC04011E0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_15__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[16]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_16__MEM_BASE_ADDR                                        = 32'hC0401200;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_16__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[17]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_17__MEM_BASE_ADDR                                        = 32'hC0401220;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_17__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[18]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_18__MEM_BASE_ADDR                                        = 32'hC0401240;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_18__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[19]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_19__MEM_BASE_ADDR                                        = 32'hC0401260;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_19__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[20]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_20__MEM_BASE_ADDR                                        = 32'hC0401280;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_20__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[21]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_21__MEM_BASE_ADDR                                        = 32'hC04012A0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_21__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[22]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_22__MEM_BASE_ADDR                                        = 32'hC04012C0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_22__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[23]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_23__MEM_BASE_ADDR                                        = 32'hC04012E0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_23__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[24]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_24__MEM_BASE_ADDR                                        = 32'hC0401300;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_24__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[25]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_25__MEM_BASE_ADDR                                        = 32'hC0401320;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_25__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[26]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_26__MEM_BASE_ADDR                                        = 32'hC0401340;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_26__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[27]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_27__MEM_BASE_ADDR                                        = 32'hC0401360;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_27__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[28]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_28__MEM_BASE_ADDR                                        = 32'hC0401380;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_28__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[29]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_29__MEM_BASE_ADDR                                        = 32'hC04013A0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_29__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[30]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_30__MEM_BASE_ADDR                                        = 32'hC04013C0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_30__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[31]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_31__MEM_BASE_ADDR                                        = 32'hC04013E0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_31__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[32]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_32__MEM_BASE_ADDR                                        = 32'hC0401400;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_32__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[33]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_33__MEM_BASE_ADDR                                        = 32'hC0401420;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_33__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[34]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_34__MEM_BASE_ADDR                                        = 32'hC0401440;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_34__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[35]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_35__MEM_BASE_ADDR                                        = 32'hC0401460;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_35__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[36]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_36__MEM_BASE_ADDR                                        = 32'hC0401480;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_36__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[37]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_37__MEM_BASE_ADDR                                        = 32'hC04014A0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_37__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[38]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_38__MEM_BASE_ADDR                                        = 32'hC04014C0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_38__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[39]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_39__MEM_BASE_ADDR                                        = 32'hC04014E0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_39__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[40]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_40__MEM_BASE_ADDR                                        = 32'hC0401500;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_40__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[41]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_41__MEM_BASE_ADDR                                        = 32'hC0401520;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_41__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[42]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_42__MEM_BASE_ADDR                                        = 32'hC0401540;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_42__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[43]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_43__MEM_BASE_ADDR                                        = 32'hC0401560;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_43__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[44]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_44__MEM_BASE_ADDR                                        = 32'hC0401580;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_44__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[45]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_45__MEM_BASE_ADDR                                        = 32'hC04015A0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_45__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[46]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_46__MEM_BASE_ADDR                                        = 32'hC04015C0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_46__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[47]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_47__MEM_BASE_ADDR                                        = 32'hC04015E0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_47__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[48]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_48__MEM_BASE_ADDR                                        = 32'hC0401600;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_48__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[49]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_49__MEM_BASE_ADDR                                        = 32'hC0401620;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_49__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[50]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_50__MEM_BASE_ADDR                                        = 32'hC0401640;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_50__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[51]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_51__MEM_BASE_ADDR                                        = 32'hC0401660;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_51__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[52]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_52__MEM_BASE_ADDR                                        = 32'hC0401680;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_52__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[53]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_53__MEM_BASE_ADDR                                        = 32'hC04016A0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_53__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[54]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_54__MEM_BASE_ADDR                                        = 32'hC04016C0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_54__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[55]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_55__MEM_BASE_ADDR                                        = 32'hC04016E0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_55__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[56]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_56__MEM_BASE_ADDR                                        = 32'hC0401700;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_56__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[57]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_57__MEM_BASE_ADDR                                        = 32'hC0401720;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_57__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[58]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_58__MEM_BASE_ADDR                                        = 32'hC0401740;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_58__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[59]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_59__MEM_BASE_ADDR                                        = 32'hC0401760;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_59__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[60]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_60__MEM_BASE_ADDR                                        = 32'hC0401780;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_60__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[61]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_61__MEM_BASE_ADDR                                        = 32'hC04017A0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_61__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[62]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_62__MEM_BASE_ADDR                                        = 32'hC04017C0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_62__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[63]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_63__MEM_BASE_ADDR                                        = 32'hC04017E0;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_63__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: gpio_ctrl[64]
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_64__MEM_BASE_ADDR                                        = 32'hC0401800;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_GPIO_CTRL_64__MEM_SIZE                                             = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: smc_pll_wrap
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_MEM_BASE_ADDR                                         = 32'hC0402000;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_MEM_SIZE                                              = 32'h00000EE8;
+
+
+
+//==============================================================================
+// Addresses for Address Map: straps
+//==============================================================================
+
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_STRAPS_REG_MAP_BASE_ADDR                                           = 32'hC0403000;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_STRAPS_REG_MAP_SIZE                                                = 32'h00000008;
+
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_REG_OFFSET                                        = 32'h00000000;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_REG_ADDR                                          = 32'hC0403000;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_REG_OFFSET                                        = 32'h00000004;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_REG_ADDR                                          = 32'hC0403004;
+
+
+//==============================================================================
+// Addresses for Address Map: supplementary
+//==============================================================================
+
+
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_REG_MAP_BASE_ADDR                                              = 32'hC0404000;
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_REG_MAP_SIZE                                                   = 32'h00002548;
+
+
+
+
+//==============================================================================
+// Memory: controller_wrap
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_CONTROLLER_WRAP_MEM_BASE_ADDR                                  = 32'hC0404000;
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_CONTROLLER_WRAP_MEM_SIZE                                       = 32'h00000390;
+
+
+
+//==============================================================================
+// Memory: gpio_extra_intf
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_INTF_MEM_BASE_ADDR                                  = 32'hC0405000;
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_INTF_MEM_SIZE                                       = 32'h0000000C;
+
+
+
+//==============================================================================
+// Memory: gpio_extra_ctrl
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_CTRL_MEM_BASE_ADDR                                  = 32'hC040500C;
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_CTRL_MEM_SIZE                                       = 32'h00000004;
+
+
+
+//==============================================================================
+// Memory: smc_pvt_wrap
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_MEM_BASE_ADDR                                     = 32'hC0405C00;
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_MEM_SIZE                                          = 32'h00000948;
 
 
 
@@ -10587,7 +11258,14 @@ localparam longint unsigned DFD_DST_Trdstinstfeatures_REG_DEFAULT               
 localparam longint unsigned DFD_DST_CDbgDebugTraceCfg_REG_DEFAULT                                                 = 32'h00102810;
 localparam longint unsigned DFD_DST_ScratchLo_REG_DEFAULT                                                         = 32'h00000000;
 localparam longint unsigned DFD_DST_ScratchHi_REG_DEFAULT                                                         = 32'h00000000;
-localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_100000_MEM_WORD_REG_DEFAULT                                    = 32'h00000000;
+localparam longint unsigned EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_DEFAULT                                      = 32'h00000020;
+localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_1_MEM_WORD_REG_DEFAULT                                         = 32'h00000000;
+localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_3BA_MEM_WORD_REG_DEFAULT                                       = 32'h00000000;
+localparam longint unsigned STRAPS_STRAPS_LO_REG_DEFAULT                                                          = 32'h00000000;
+localparam longint unsigned STRAPS_STRAPS_HI_REG_DEFAULT                                                          = 32'h00000000;
+localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_REG_DEFAULT                                        = 32'h00000000;
+localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_REG_DEFAULT                                         = 32'h00000000;
+localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_252_MEM_WORD_REG_DEFAULT                                       = 32'h00000000;
 localparam longint unsigned REMAPPED_REGION_MEM_WORD_REG_DEFAULT                                                  = 64'h0000000000000000;
 localparam longint unsigned PLIC_PRIORITY_REG_DEFAULT                                                             = 32'h00000000;
 localparam longint unsigned PLIC_PENDING_REG_DEFAULT                                                              = 32'h00000000;
@@ -15465,8 +16143,29 @@ localparam int unsigned DFD_DST_ScratchLo_DATA_SHIFT                            
 localparam int unsigned DFD_DST_ScratchHi_DATA_MASK                                                               = 32'hFFFFFFFF;
 localparam int unsigned DFD_DST_ScratchHi_DATA_SHIFT                                                              = 0;
 
-localparam int unsigned EXT_MEMORY_NUM_ENTRIES_100000_MEM_WORD_DATA_MASK                                          = 32'hFFFFFFFF;
-localparam int unsigned EXT_MEMORY_NUM_ENTRIES_100000_MEM_WORD_DATA_SHIFT                                         = 0;
+localparam int unsigned EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_INIT_TIME_MASK                                       = 32'hFFFFFFFF;
+localparam int unsigned EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_INIT_TIME_SHIFT                                      = 0;
+
+localparam int unsigned EXT_MEMORY_NUM_ENTRIES_1_MEM_WORD_DATA_MASK                                               = 32'hFFFFFFFF;
+localparam int unsigned EXT_MEMORY_NUM_ENTRIES_1_MEM_WORD_DATA_SHIFT                                              = 0;
+
+localparam int unsigned EXT_MEMORY_NUM_ENTRIES_3BA_MEM_WORD_DATA_MASK                                             = 32'hFFFFFFFF;
+localparam int unsigned EXT_MEMORY_NUM_ENTRIES_3BA_MEM_WORD_DATA_SHIFT                                            = 0;
+
+localparam int unsigned STRAPS_STRAPS_LO_STRAPS_MASK                                                              = 32'hFFFFFFFF;
+localparam int unsigned STRAPS_STRAPS_LO_STRAPS_SHIFT                                                             = 0;
+
+localparam int unsigned STRAPS_STRAPS_HI_STRAPS_MASK                                                              = 32'h1FFFFFFF;
+localparam int unsigned STRAPS_STRAPS_HI_STRAPS_SHIFT                                                             = 0;
+
+localparam int unsigned EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_DATA_MASK                                              = 32'hFFFFFFFF;
+localparam int unsigned EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_DATA_SHIFT                                             = 0;
+
+localparam int unsigned EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_DATA_MASK                                               = 32'hFFFFFFFF;
+localparam int unsigned EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_DATA_SHIFT                                              = 0;
+
+localparam int unsigned EXT_MEMORY_NUM_ENTRIES_252_MEM_WORD_DATA_MASK                                             = 32'hFFFFFFFF;
+localparam int unsigned EXT_MEMORY_NUM_ENTRIES_252_MEM_WORD_DATA_SHIFT                                            = 0;
 
 localparam longint unsigned REMAPPED_REGION_MEM_WORD_DATA_MASK                                                    = 64'hFFFFFFFFFFFFFFFF;
 localparam     int unsigned REMAPPED_REGION_MEM_WORD_DATA_SHIFT                                                   = 0;
@@ -15602,6 +16301,18 @@ localparam     int unsigned BUS_ERROR_UNIT_LOCAL_ENABLE_DCACHE_UNCORRECTABLE_SHI
 
 localparam int unsigned ERROR_DEVICE_MEM_WORD_DATA_MASK                                                           = 32'hFFFFFFFF;
 localparam int unsigned ERROR_DEVICE_MEM_WORD_DATA_SHIFT                                                          = 0;
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -20670,8 +21381,50 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [31:0]   init_time ;
+} efuse_shim_ctrl_efuse_bank_init_time_reg_t;
+
+
+
+typedef struct packed {
     logic [31:0]   data ;
-} ext_memory_num_entries_100000_mem_word_reg_t;
+} ext_memory_num_entries_1_mem_word_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   data ;
+} ext_memory_num_entries_3ba_mem_word_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   straps ;
+} straps_straps_lo_reg_t;
+
+
+
+typedef struct packed {
+    logic [28:0]   straps ;
+} straps_straps_hi_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   data ;
+} ext_memory_num_entries_e4_mem_word_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   data ;
+} ext_memory_num_entries_3_mem_word_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   data ;
+} ext_memory_num_entries_252_mem_word_reg_t;
 
 
 
