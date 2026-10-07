@@ -490,3 +490,84 @@ tags = ["fabric", "axi", "protocol", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
+
+# Fabric and remap, Phase 3 (docs/SEP_VPLAN.adoc, test_contracts/fabric_remap.adoc).
+
+[[tests]]
+# Inbound global-to-local rebase, the filter-first order, the window edges and the crossbar limit. Real PROD fuse sense: the inbound filter is active.
+name = "sep_fabric_inbound_rebase_test"
+module = "system.sep_fabric_inbound_rebase_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["fabric", "rebase", "inbound_filter", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Filter match, priority, source ID, default deny and granule rules on both filter instances. RANDCFG and RAND-REP legs. Real PROD fuse sense.
+name = "sep_fabric_filter_match_priority_rand_test"
+module = "system.sep_fabric_filter_match_priority_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["fabric", "inbound_filter", "outbound_filter", "security", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Outbound route of the SMU aperture and the AP and STEE regions, AxPROT and AxUSER at the outbound port, and the outbound filter with the inbound filter bypassed. Real PROD fuse sense.
+name = "sep_fabric_outbound_route_attr_test"
+module = "system.sep_fabric_outbound_route_attr_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["fabric", "remap", "outbound_filter", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Local-master alias remap: region boundary classes, the AxCACHE override and the valid gate. RANDCFG.
+name = "sep_fabric_alias_remap_attr_rand_test"
+module = "system.sep_fabric_alias_remap_attr_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["fabric", "alias", "remap", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# SMC aperture route through BH-SMC: the aperture edges, the word above the top and the first-match order. The seed draws the aperture.
+name = "sep_fabric_smc_route_test"
+module = "system.sep_fabric_smc_route_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["fabric", "smc", "route", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# AXI Extension port window for the LSU and the System Interface, the eFuse shim window and the SI bursts. Real PROD fuse sense.
+name = "sep_fabric_extension_port_window_test"
+module = "system.sep_fabric_extension_port_window_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["fabric", "extension", "inbound_filter", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Response code and data of every graded address-map row cell, the OTBN AxCACHE cells and the crypto-region burst refusal. Real PROD fuse sense.
+name = "sep_fabric_row_response_matrix_test"
+module = "system.sep_fabric_row_response_matrix_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["fabric", "decode", "memory_map", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
