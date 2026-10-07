@@ -96,6 +96,7 @@ include $(OCAH_ROOT)/flows/lint/pre-commit.mk
 include $(OCAH_ROOT)/flows/lint/tclint.mk
 include $(OCAH_ROOT)/flows/lint/nix-fmt.mk
 include $(OCAH_ROOT)/flows/synth/yosys/yosys.mk
+include $(OCAH_ROOT)/flows/synth/vivado/vivado.mk
 
 HELP_TITLE = "OCAH Make Targets"
 HELP_DESCRIPTION = "Regeneration and helper targets for the OCA Harness repository"

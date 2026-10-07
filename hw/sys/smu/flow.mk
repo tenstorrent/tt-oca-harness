@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# SMU lint/synth flow descriptor, shared by `make lint-slang-all BLOCK=smu`
-# and `make synth-yosys-all BLOCK=smu TECH=...`.
+# SMU lint/synth flow descriptor, shared by `make lint-slang-all BLOCK=smu`,
+# `make synth-yosys-all BLOCK=smu TECH=...` and `make synth-vivado-all BLOCK=smu`.
 FLOW_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 include $(FLOW_DIR)/../../../flows/preamble.mk
 
@@ -19,3 +19,4 @@ include $(OCAH_ROOT)/flows/common.mk
 include $(OCAH_ROOT)/flows/lint/slang.mk
 include $(OCAH_ROOT)/flows/lint/verilator.mk
 include $(OCAH_ROOT)/flows/synth/yosys/yosys.mk
+include $(OCAH_ROOT)/flows/synth/vivado/vivado.mk

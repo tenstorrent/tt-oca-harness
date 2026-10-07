@@ -714,6 +714,7 @@ statement has the companion's own documentation.
 | Verilator `--public-flat-rw` build | `make lint-verilator-public-all BLOCK=smu` builds the block's packages under the flag cocotb's Verilator runner forces |
 | SystemVerilog lint (verible) | `make lint-sv-verible`; report-only in CI while the classified legacy style backlog remains |
 | Structural synthesis readiness | Select `flows/synth/yosys/scripts/readiness.tcl` as the synthesis driver; commands, scope and warning-review requirements are in `flows/synth/yosys/README.md` |
+| Vivado elaboration | `make synth-vivado-all BLOCK=smu` elaborates with Vivado from the Bender file list, or from Bender's Vivado script with `OCAH_VIVADO_INPUT=script`; needs a licensed `vivado` on `PATH`. See `flows/synth/vivado/README.md` |
 | SystemVerilog formatting | `make format-sv`, `make format-sv-check`; both use the same inventory as Verible lint |
 | SystemVerilog comments | `make lint-sv-comments` checks the `//` header and parameter/port clauses of every source the RTL Modules Reference documents; `tools/doc/check_sv_comments.py <files>` checks individual files |
 | SystemVerilog enums | `make lint-sv-enums` checks that every enum member outside `vendor/` and `regs/gen/` is UPPER_SNAKE_CASE and every enum type is lower_snake_case with an `_e` suffix; `scripts/ci/check_sv_enums.py <files>` checks individual files |
