@@ -8,8 +8,6 @@
 This document is currently under development.
 
 - Contribution documentation may not be required at this point.
-- For public contributions, it is probably better to encourage people to fork and
-PR from forks rather than directly give them push access to upstream as this doc implies?
 ====
 
 OCAH development is hosted on GitHub under the Tenstorrent organization.
@@ -22,33 +20,43 @@ typically available on shared Linux build hosts when needed.
 
 Follow these steps to get set up and started with development.
 
+Changes are proposed from your own copy of the repository, called a fork, so you
+do not need write access to the main repository.
+
 . Create a GitHub account if you do not already have one.
-. Generate an SSH key pair:
+. Fork the repository: open https://github.com/tenstorrent/tt-oca-harness and
+select *Fork*. GitHub creates `tt-oca-harness` under your own account.
+. Clone the repository and initialise its submodules, as described in
+xref:setup.adoc#quick-start[Environment Setup] (Steps 1 and 2). The clone's `origin`
+remote is the main repository.
+. Let Git push to GitHub on your behalf. Install the https://cli.github.com[GitHub CLI]
+and run `gh auth login`, choosing HTTPS when asked.
+. Add your fork as a second remote, replacing `<your-username>`:
 +
 ....
-ssh-keygen -t ed25519
+git remote add fork https://github.com/<your-username>/tt-oca-harness.git
 ....
-. *(Optional)* Start the SSH agent and add your key. You may want to add this to your
-shell startup script:
+. Create a feature branch from the latest `main` (see below for branch management):
 +
 ....
-eval "$(ssh-agent -s)"
-ssh-add <name of your key>
+git fetch origin
+git checkout -b <your-branch> origin/main
 ....
-. Add the public key to your GitHub account under
-https://github.com/settings/keys.
-. Clone the repository
+. Commit your work and push the branch to your fork:
 +
 ....
-git clone git@github.com:tenstorrent/tt-oca-harness.git
-cd tt-oca-harness
-git checkout -b <your-branch>
+git push -u fork <your-branch>
 ....
-. Create a feature branch for your work (see below for branch management).
-+
-....
-git checkout -b <your-branch>
-....
+. Open a pull request from that branch to `main` of `tenstorrent/tt-oca-harness`
+(see <<creating-a-pull-request>>). GitHub offers a *Compare & pull request* button
+on the repository page after the push.
+
+Contributors who have write access to the main repository can skip the fork and
+push the branch to `origin` instead.
+
+To clone over SSH instead of HTTPS, add your key to GitHub and use
+`git@github.com:tenstorrent/tt-oca-harness.git` as the URL, or switch an existing
+clone with `git remote set-url origin <ssh-url>`.
 
 == Development Flow
 
@@ -127,6 +135,7 @@ into multiple, self-contained PRs.
 
 For bug fixes - a single PR is ideal to fix a single bug.
 
+[[creating-a-pull-request]]
 ==== Creating a Pull Request
 
 Open a pull request against `main`. There is a default template which asks for:

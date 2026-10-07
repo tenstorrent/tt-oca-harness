@@ -2,6 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The OT SPI host drives the exact flash command sequence, and program, erase and read land.
 
+OCAH provenance: ``spi_ot_flash_write_read_test`` checks flash program and
+read, and ``spi_ot_flash_sector_erase_test`` checks sector erase.
+
 A cpu-firmware test, randomized ([RAND-REP]). It boots the VeeR EL2 core and runs the
 spi_ot_flash_cmd firmware, which drives the OT SPI host (@ 0x10B0_0000) against the
 OcahSpiFlash BFM:

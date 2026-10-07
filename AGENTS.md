@@ -718,6 +718,7 @@ statement has the companion's own documentation.
 | SystemVerilog formatting | `make format-sv`, `make format-sv-check`; both use the same inventory as Verible lint |
 | SystemVerilog comments | `make lint-sv-comments` checks the `//` header and parameter/port clauses of every source the RTL Modules Reference documents; `tools/doc/check_sv_comments.py <files>` checks individual files |
 | SystemVerilog enums | `make lint-sv-enums` checks that every enum member outside `vendor/` and `regs/gen/` is UPPER_SNAKE_CASE and every enum type is lower_snake_case with an `_e` suffix; `scripts/ci/check_sv_enums.py <files>` checks individual files |
+| Bender sources | `make lint-bender-sources` fails when one `Bender.yml` lists a source path twice under targets that can match together; `scripts/ci/check_bender_sources.py` is the check |
 | C formatting | `make format-c`, `make format-c-check` |
 | Python | `make lint-python`, `make lint-python-fix`, `make format-python`, `make format-python-check` |
 | TCL | `make lint-tcl`, `make format-tcl`, `make format-tcl-check` |

@@ -2,6 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Fabric remap and filter CSR banks: field R/W, 64-bit upper words, a write-once lock, RO width.
 
+OCAH provenance: ``sep_fabric_64bit_regwidth_test`` checks 64-bit and lock
+fields, ``sep_outbound_filter_cfg_test`` checks filter configuration,
+``sep_cpuctrl_misc_regs_test`` checks CPU-control registers, and
+``sep_reg_sanity_test`` checks the System-block CSR subset.
+
 Combined-per-group CSR sweep over the SEP System-block fabric banks on the CPU-LSU
 AXI master (no_cpu): local-master alias-remap, AP/STEE output-remap, and the
 inbound/outbound filter config banks. Proves field R/W + 64-bit upper-word access +

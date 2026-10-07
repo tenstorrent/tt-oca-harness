@@ -281,17 +281,16 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_rst_sync.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_arb.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_ext.sv
-// Package(opentitan) Target(any(opentitan_smu, sep, sep_wrapper, smc, smu, smu_wrapper))
+// Package(opentitan) Target(any(drbg, opentitan_smu, sep, sep_wrapper, smc, smu, smu_wrapper))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_rom_pkg.sv
-// Package(opentitan) Target(any(sep_wrapper, smc, smu_wrapper))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_rom.sv
 // Package(opentitan) Target(any(smc_wrapper, smu_wrapper))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_pad_wrapper_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_pad_wrapper.sv
-// Package(opentitan) Target(any(sep_wrapper, smc_wrapper, smu_wrapper))
+// Package(opentitan) Target(any(drbg, opentitan_smu, sep, sep_wrapper, smc_wrapper, smu, smu_wrapper))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_adv.sv
-// Package(opentitan) Target(any(smc_wrapper, smu_wrapper))
+// Package(opentitan) Target(any(drbg, opentitan_smu, sep, smc_wrapper, smu, smu_wrapper))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_2p_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_2p.sv
 // Package(tt_dfd) Target(smc)
@@ -667,6 +666,9 @@ hw/ip/uart/uart_wrap/rtl/uart_wrap.sv
 // Package(tt-oca-harness) Target(smc)
 hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_reg.sv
 hw/ip/zeroer/rtl/zeroer.sv
+// Package(tt-oca-harness) Target(any(sep_wrapper, smc))
+hw/sys/smc/rtl/smc_peripherals/rtl/ext_boot_seq_done_qual.sv
+// Package(tt-oca-harness) Target(smc)
 hw/sys/smc/regs/gen/sv/blocks/chip_config_reg.sv
 hw/sys/smc/regs/gen/sv/blocks/cpu_ctrl_reg.sv
 hw/sys/smc/regs/gen/sv/blocks/dfx_ctrl_status_reg.sv
@@ -977,7 +979,6 @@ hw/sys/smc/rtl/smc_misc/rtl/smc_dfx_ctrl_status_wrap.sv
 hw/sys/smc/rtl/smc_misc/rtl/smc_misc_wrap.sv
 hw/sys/smc/rtl/smc_misc/rtl/smc_version_id_wrap.sv
 hw/sys/smc/rtl/smc_peripherals/efuse/smc_efuse_wrapper.sv
-hw/sys/smc/rtl/smc_peripherals/rtl/ext_boot_seq_done_qual.sv
 hw/sys/smc/rtl/smc_peripherals/rtl/smc_padring.sv
 hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv
 hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals_cdc.sv

@@ -29,10 +29,11 @@
 +define+TARGET_SIMULATION
 // Package(common_verification) Target(any(simulation, verilator))
 vendor/pulp-platform/common_verification/upstream/src/clk_rst_gen.sv
+// Package(common_verification) Target(any(common_verification_simulation, simulation, verilator))
 vendor/pulp-platform/common_verification/upstream/src/sim_timeout.sv
 vendor/pulp-platform/common_verification/upstream/src/stream_watchdog.sv
 vendor/pulp-platform/common_verification/upstream/src/signal_highlighter.sv
-// Package(common_verification) Target(simulation)
+// Package(common_verification) Target(any(common_verification_simulation, simulation))
 vendor/pulp-platform/common_verification/upstream/src/rand_verif_pkg.sv
 // Package(common_cells) Target(*)
 vendor/pulp-platform/common_cells/upstream/src/cf_math_pkg.sv
@@ -230,7 +231,7 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop_no_rst.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_inv.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_xnor2.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_xor2.sv
-// Package(opentitan) Target(all(simulation, any(cross_trigger, dtp, system_timer_octs, uart)))
+// Package(opentitan) Target(any(cross_trigger, drbg, dtp, opentitan_smu, sep, smu, system_timer_octs, uart))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv
 // Package(tt-oca-harness) Target(all(dtp, not(sep)))
 hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv

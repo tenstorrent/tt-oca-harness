@@ -357,6 +357,24 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop_no_rst.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_inv.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_xnor2.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_xor2.sv
+// Package(opentitan) Target(any(cross_trigger, drbg, dtp, opentitan_smu, sep, smu, system_timer_octs, uart))
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv
+// Package(opentitan) Target(any(drbg, entropy_source, opentitan_smu, sep, smu))
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sha2_pkg.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_max_tree.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sha2_pad.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sha2.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sha2_32.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sparse_fsm_flop.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sum_tree.sv
+// Package(opentitan) Target(any(entropy_source, opentitan_smu, sep, smu))
+vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_main_sm_pkg.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_adaptp_ht.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_cntr_reg.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_markov_ht.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_repcnt_ht.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_watermark_reg.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_main_sm.sv
 // Package(opentitan) Target(any(drbg, key_manager, opentitan_smu, sep, smc, smu, uart))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sec_anchor_buf.sv
@@ -372,21 +390,19 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_ext.sv
 // Package(opentitan) Target(any(drbg, key_manager, opentitan_smu, sep, smu))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cipher_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_lfsr.sv
-// Package(opentitan) Target(any(opentitan_smu, sep, sep_wrapper, smc, smu, smu_wrapper))
+// Package(opentitan) Target(any(drbg, opentitan_smu, sep, sep_wrapper, smc, smu, smu_wrapper))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_rom_pkg.sv
-// Package(opentitan) Target(any(sep_wrapper, smc, smu_wrapper))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_rom.sv
 // Package(opentitan) Target(any(smc_wrapper, smu_wrapper))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_pad_wrapper_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_pad_wrapper.sv
-// Package(opentitan) Target(any(sep_wrapper, smc_wrapper, smu_wrapper))
+// Package(opentitan) Target(any(drbg, opentitan_smu, sep, sep_wrapper, smc_wrapper, smu, smu_wrapper))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_adv.sv
-// Package(opentitan) Target(any(smc_wrapper, smu_wrapper))
+// Package(opentitan) Target(any(drbg, opentitan_smu, sep, smc_wrapper, smu, smu_wrapper))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_2p_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_2p.sv
 // Package(opentitan) Target(any(drbg, opentitan_smu, sep, smu))
-vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sha2_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_trivium_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_pkg.sv
@@ -439,7 +455,6 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_lc_sync.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi4_sync.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi4_sender.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi8_sync.sv
-vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_max_tree.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_onehot_check.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_onehot_enc.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_onehot_mux.sv
@@ -455,12 +470,7 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_39_32_dec.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_39_32_enc.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_64_57_dec.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_64_57_enc.sv
-vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sha2.sv
-vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sha2_32.sv
-vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sha2_pad.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_slicer.sv
-vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sparse_fsm_flop.sv
-vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sum_tree.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sync_reqack.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sync_reqack_data.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_shadow.sv
@@ -468,19 +478,9 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subst_perm.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_trivium.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_xoshiro256pp.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_flop_macros.sv
-vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_async_simple.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_scr.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1r1w.sv
-// Package(opentitan) Target(any(opentitan_smu, sep, smu))
-vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_adaptp_ht.sv
-vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_cntr_reg.sv
-vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_markov_ht.sv
-vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_repcnt_ht.sv
-vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_watermark_reg.sv
-vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_main_sm_pkg.sv
-vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_main_sm.sv
-// Package(opentitan) Target(any(drbg, opentitan_smu, sep, smu))
 vendor/lowRISC/opentitan/upstream/hw/ip/csrng/rtl/csrng_block_encrypt.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/csrng/rtl/csrng_cmd_stage.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/csrng/rtl/csrng_core.sv
@@ -1349,6 +1349,8 @@ vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_top.sv
 vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_reg.sv
 hw/sys/sep/rtl/sep_abr_kv_shim.sv
 hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv
+// Package(tt-oca-harness) Target(any(sep_wrapper, smc))
+hw/sys/smc/rtl/smc_peripherals/rtl/ext_boot_seq_done_qual.sv
 // Package(tt-oca-harness) Target(smc)
 hw/sys/smc/regs/gen/sv/blocks/chip_config_reg.sv
 hw/sys/smc/regs/gen/sv/blocks/cpu_ctrl_reg.sv
@@ -1660,7 +1662,6 @@ hw/sys/smc/rtl/smc_misc/rtl/smc_dfx_ctrl_status_wrap.sv
 hw/sys/smc/rtl/smc_misc/rtl/smc_misc_wrap.sv
 hw/sys/smc/rtl/smc_misc/rtl/smc_version_id_wrap.sv
 hw/sys/smc/rtl/smc_peripherals/efuse/smc_efuse_wrapper.sv
-hw/sys/smc/rtl/smc_peripherals/rtl/ext_boot_seq_done_qual.sv
 hw/sys/smc/rtl/smc_peripherals/rtl/smc_padring.sv
 hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv
 hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals_cdc.sv

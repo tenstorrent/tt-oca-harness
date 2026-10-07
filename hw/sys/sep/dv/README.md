@@ -23,7 +23,7 @@ python3 hw/sys/sep/dv/cocotb/env/run_golden_selftests.py               # golden-
 python3 tools/dv/run_dv.py --dut sep --build-only                      # filelist and Verilator build
 python3 tools/dv/run_dv.py --dut sep --items smoke                     # the pull-request gate
 python3 tools/dv/run_dv.py --dut sep --items all --regress \
-  --sim-jobs 8 --build-jobs 24                                         # every graded test
+  --sim-jobs 8 --build-jobs 24                                         # 133 graded entries; Verilator runs 132 and logs the VCS-only entry as skipped_wrong_tool
 python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke     # the SV-UVM subset, on VCS
 ```
 
@@ -84,8 +84,8 @@ evidence from `results.xml`. A clean simulator exit is not evidence.
 
 | Variable | When it is needed |
 |---|---|
-| `PATH` | `uv`, `verilator`, `python3`, `bender` and `ccache`; a RISC-V GCC for `--items all`, `cpu`, `rom_fw` and `--tag boot` |
-| `RISCV_TOOLCHAIN`, `RISCV_PREFIX` | Optional override for `--stage c_compile`. Unset, the stage probes a site toolchain, then a local xPack install, then the container |
+| `PATH` | `uv`, `verilator`, `python3`, `bender` and `ccache` |
+| `RISCV_TOOLCHAIN`, `RISCV_PREFIX` | Optional host-toolchain override for `--stage c_compile`. When unset, required RISC-V builds run through `scripts/docker-run.sh` in the `ocah-container` image |
 | `OCAH_DV_SKIP_UV` | `1` on a host that already supplies the `dv` dependency group. It skips only the uv re-execution |
 | `OCAH_ROOT` | Firmware `make` by hand only (`OCAH_ROOT="$PWD"` from the repository root) |
 | `TMPDIR` | Large local scratch for sim and build temporaries |
