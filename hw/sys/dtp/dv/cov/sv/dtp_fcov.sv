@@ -12,8 +12,8 @@
 //     under Verilator they form the functional-coverage database
 //     (coverage.dat user points via --coverage-user).
 //   * SV covergroups under `ifndef VERILATOR — commercial-simulator closure
-//     (Verilator cannot compile covergroups; dtp_sim_cfg.toml defines
-//     VERILATOR for the Verilator build).
+//     (dtp_sim_cfg.toml defines VERILATOR for the Verilator build, so only
+//     the commercial simulators compile them).
 //
 // JTAG-core coverage lives here; JTAG2AXI/OTP, debug TDR, scan/STAP, and
 // cross-trigger coverage live in the sibling dtp_*_fcov.sv modules. The

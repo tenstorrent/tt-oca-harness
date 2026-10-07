@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[dtp-dv-functional-coverage]]
-== DTP OCAH Open-Source Functional Coverage Plan
+== DTP Functional Coverage Plan
 
 === Overview
 
@@ -12,9 +12,9 @@ its cocotb and SV-UVM realizations.
 Functional coverage is collected by the SystemVerilog coverage modules under
 `hw/sys/dtp/dv/cov/sv/`, instantiated once in the shared `tb_top` so the same
 source serves the cocotb and SV-UVM flows. Each module carries two layers. Its
-SV covergroups sit under an `ifndef VERILATOR` guard, because Verilator does
-not compile `covergroup`, `coverpoint`, or `cross`, and they are the functional
-model on VCS: the runner maps URG's `group` metric to the functional family.
+SV covergroups sit under an `ifndef VERILATOR` guard, so only the commercial
+simulators compile them, and they are the functional model on VCS: the runner
+maps URG's `group` metric to the functional family.
 Its labeled `cover property` points are compiled in every flow: under
 Verilator they land in the coverage database as the functional `user` points,
 and on VCS they are graded with the assertion family as cover directives.
@@ -1160,7 +1160,7 @@ access, and debug-disable configuration change.
 [cols=",",options="header",]
 |===
 |Item |Reason
-|SV covergroups in Verilator |Unsupported by the tool; the cover-property layer carries the Verilator flow
+|SV covergroups in Verilator |The bench's `ifndef VERILATOR` guard leaves them out of the Verilator build; the cover-property layer carries the Verilator flow
 |Capability TDR field values (JTAG_CAPS fields, JTAG2AXI bus type, address and data size, pipeline depths) |Elaboration-time constants with one reachable value each; `CHK-CAPS` compares every field on every read, and `cg_caps_tdr` covers their stability and read-only behavior
 |Illegal bins: a TAP state or instruction decode that is not one-hot, a TAP transition off the IEEE 1149.1 state graph, a Capture-IR update that is not IDCODE, an invalid IDCODE marker, a contradictory debug-disable outcome, an open SIB under its disable, a 3DCR reset result CONFIG_HOLD does not call for, an XTRIG CSR response the memory map does not give, and the other illegal bins each definition names |Only a design or checker failure reaches them; VCS reports a hit as a runtime error, and the ledger records a contradictory outcome as a checker failure, never a cell
 |Unaligned and unmapped JTAG2AXI addresses |Outside the bridge TDR and testbench address-map contract
