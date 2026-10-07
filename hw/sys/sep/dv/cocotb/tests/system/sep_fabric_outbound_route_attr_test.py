@@ -85,12 +85,15 @@ _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0C
 _SYS_DIS = 0x00FF_00FF_00FF_00FC
 
 ADDR_MASK = (1 << 56) - 1
-SMU_BASE = 0x8000_0000
-SMU_SIZE = 0x4000_0000
+SMU_BASE = SEP_CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR")
+SMU_SIZE = SEP_CPU_CTRL.reset("SMU_REGION_SIZE")
 SMU_LAST = SMU_BASE + SMU_SIZE - 1
-SMU_WORDS = (("first", SMU_BASE), ("middle", 0xA000_0000), ("last", 0xBFFF_FFF8))
-LOCAL_LO = 0x1080_2000
-LOCAL_HI = 0x10A3_1FFF
+SMU_MID = SMU_BASE + SMU_SIZE // 2
+SMU_WORDS = (("first", SMU_BASE), ("middle", SMU_MID), ("last", SMU_LAST - 7))
+LOCAL_LO = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR")
+# The pair covers cold scratch up to the last byte of the SEP_CPU_CTRL pages.
+_CPU_CTRL_END = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR") + sym("SEP_CPU_CTRL_REG_MAP_SIZE")
+LOCAL_HI = ((_CPU_CTRL_END + 0xFFF) & ~0xFFF) - 1
 IN_REGION = 0x100  # word address a inside a remap region (below 0x8_0000)
 COLD_SCRATCH = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR")
 SW_DEBUG = SEP_CPU_CTRL.addr("SEP_SW_DEBUG")
@@ -279,7 +282,10 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             f"prot=0x{prot:x} user={user} resp={_rname(seq.resp_code)} expect={_rname(want)} "
             f"out_seen={len(beats)}"
         )
-        if seq.resp_code == RESP_OKAY and beats:
+        if seq.resp_code == RESP_OKAY:
+            # An admitted outbound access must show on PR-OUT; _capture fails
+            # CHK-OUT-CAPTURE when its address beat is missing.
+            self.n_expect += 1
             self._capture(
                 cls, addr, pred, write=write, prot=prot, user=user, wdata=wdata, beats=beats
             )
@@ -592,8 +598,8 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         # Capture control: the SMU pair is enabled.
         _, beats = await self._cell(
             "smu",
-            0xA000_0000,
-            0xA000_0000,
+            SMU_MID,
+            SMU_MID,
             write=False,
             prot=self.tcfg.prot(1),
             expect_okay=True,
@@ -640,8 +646,8 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         await self._pair_enable(PAIR_SMU, False)
         r_off, b_off = await self._cell(
             "smu",
-            0xA000_0000,
-            0xA000_0000,
+            SMU_MID,
+            SMU_MID,
             write=False,
             prot=self.tcfg.prot(1),
             expect_okay=False,
@@ -651,8 +657,8 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         await self._pair_enable(PAIR_SMU, True)
         r_on, _ = await self._cell(
             "smu",
-            0xA000_0000,
-            0xA000_0000,
+            SMU_MID,
+            SMU_MID,
             write=False,
             prot=self.tcfg.prot(1),
             expect_okay=True,
@@ -674,6 +680,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         self.tcfg = cfg = _Cfg(self.random_seed())
         self.logger.info("outbound route attr: %s", cfg.summary())
         self.n_capture = 0
+        self.n_expect = 0
         self._stack_prot1 = {"ap": cfg._rng.getrandbits(1), "stee": cfg._rng.getrandbits(1)}
 
         await self._bring_up()
@@ -692,7 +699,11 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         await self._nobypass_leg()
         close_graded_window(self.logger)
         await self.out.stop()
-        self.logger.info("outbound route attr: %d PR-OUT captures graded", self.n_capture)
+        line = f"captures={self.n_capture} admitted={self.n_expect}"
+        assert self.n_expect > 0 and self.n_capture == self.n_expect, (
+            f"CHK-OUT-CAPTURE FAIL: {line}"
+        )
+        self.logger.info("CHK-OUT-CAPTURE PASS: %s", line)
 
 
 def _hx(v) -> str:
