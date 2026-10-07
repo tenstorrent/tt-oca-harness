@@ -9,10 +9,10 @@
 // TELEMETRY_RECEIVER_0__REG_MAP_SIZE; other addresses get DECERR with read data 0xBADCAB1E.
 // The demux allows one outstanding transaction per channel.
 // Each ATB stream crosses into clk_i through an 8-entry prim_fifo_async. afready_i passes
-// through a 2-flop synchronizer clocked by clk_i, and afvalid_o through one clocked by
-// clk_telemetry_i.
-// Either reset clears both sides of every ATB FIFO and the afvalid_o synchronizer; atready_o
-// stays high while the write side is in reset, so beats offered then are dropped.
+// through a 2-flop synchronizer clocked by clk_telemetry_i, and afvalid_o through one
+// clocked by clk_i.
+// Either reset clears both sides of every ATB FIFO; atready_o stays high while the write side
+// is in reset, so beats offered then are dropped.
 // NUM_TELEMETRY_RECEIVERS must be between 1 and MaxNumTelemetryReceivers.
 // TELEMETRY_RECEIVER_BUFFER_DEPTH must be a power of two and greater than or equal to 2.
 // NumRegMaps is NUM_TELEMETRY_RECEIVERS plus one for the error slave.
@@ -249,7 +249,7 @@ module telemetry_receiver_wrap #(
     ) u_afvalid_sync2r (
       .clk_i                  (clk_telemetry_i),
       .d_i                    (afvalid),
-      .rst_ni                 (rst_at_fifo_wr_n),
+      .rst_ni                 (rst_telemetry_ni),
       .q_o                    (afvalid_o[i])
     );
 

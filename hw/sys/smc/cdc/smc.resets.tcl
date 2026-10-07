@@ -241,6 +241,16 @@ set_rdc_define_assertion_sequence \
     -from_reset {PRIMARY_RESET_N_PERIPH_CLK} \
     -to_reset {AVS_APB_CLK_RESET_N AVS_CLK_RESET_N AVS_PRE_DIV_CLK_RESET_N}
 
+# Telemetry reset pairing. rst_telemetry_ni is a chip-level input that passes through smu.sv
+# and smc.sv untouched. Chip integration confirms it asserts whenever PRIMARY asserts and never
+# on its own. VC accepts an assertion sequence for a reset pair in one direction only, so only
+# the PRIMARY -> TELEMETRY direction is declared; the co-assertion carries the
+# SMC_RDC_CORRUPT_TELEM_FIFO_STORAGE disposition in hw/sys/smc/rdc/smc.vcrdc.waiver.tcl.
+set_rdc_define_assertion_sequence \
+    -from_reset {PRIMARY_RESET_N PRIMARY_RESET_N_SMC_CLK PRIMARY_RESET_N_REF_CLK PRIMARY_RESET_N_PERIPH_CLK} \
+    -to_reset {TELEMETRY_RESET_N}
+
+
 # asyncrst_assert_sequence needs this app var (default off); set before first use.
 set_app_var rdc_new_asyncrst_commands true
 
@@ -252,11 +262,9 @@ asyncrst_assert_sequence \
     -from_reset {WARM_RESET_N WARM_RESET_N_SMC_CLK FUSE_RESET_N} \
     -to_reset {PRIMARY_RESET_N PRIMARY_RESET_N_SMC_CLK}
 
-# TELEMETRY => PRIMARY: rst_telemetry_ni is a chip-level input that passes through smu.sv
-# and smc.sv untouched. The integrator guide requires it never to assert without PRIMARY
-# (doc/integrator/src/smu-smc.adoc, Telemetry and Debug Integration), so the telemetry
-# receivers are in reset whenever their ATB FIFO is. PRIMARY -> TELEMETRY needs no
-# declaration: every telemetry-domain flop is reset by rst_ni & rst_telemetry_ni.
+# TELEMETRY => PRIMARY: the other direction of the telemetry reset pairing above, which
+# set_rdc_define_assertion_sequence cannot declare. rst_telemetry_ni never asserts without
+# PRIMARY, so the telemetry receivers are in reset whenever their ATB FIFO is.
 asyncrst_assert_sequence \
     -from_reset {TELEMETRY_RESET_N} \
     -to_reset {PRIMARY_RESET_N PRIMARY_RESET_N_SMC_CLK}
