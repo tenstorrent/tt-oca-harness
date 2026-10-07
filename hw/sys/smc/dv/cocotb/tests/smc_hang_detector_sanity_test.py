@@ -26,10 +26,13 @@ class smc_hang_detector_sanity_test(smc_base_test):
         "CHK-HANG-POISON",
         "CHK-HANG-SEP-CLR",
         "CHK-HANG-SEP-FIRE",
+        "CHK-HANG-STATUS-GATED",
+        "CHK-HANG-STATUS-MAP",
+        "CHK-HANG-STATUS-OR",
         "CHK-HANG-SYS-CLR",
         "CHK-HANG-SYS-FIRE",
     )
-    min_evidence = 11
+    min_evidence = 14
 
     auto_protocol_vip = False
 

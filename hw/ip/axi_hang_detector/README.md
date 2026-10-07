@@ -9,15 +9,17 @@ OR'd into a single fault line for the safety island.
 `irq_o` is a direct combinational **level**: high while the bus is
 hung, dropping on its own once the bus makes progress (no software clear needed).
 
-## Registers (per detector, in `cpu_ctrl`)
+## Registers (per detector, in `smc_base_config`)
 
 `HANG_DET_<master>_CTRL`
 
-- `enable`   — run the detector. When 0, the counter is held and `irq_o` is forced low.
+- `enable`   — run the detector. When 0, the counter reloads from the threshold and `irq_o` is forced low.
 - `irq_en`   — gate `irq_o`. When 0, both a detected hang and `irq_test` are suppressed
   (the counter still runs).
 - `irq_test` — assert `irq_o` without a real stall, subject to `enable` and `irq_en`.
   Software self-test only; the detector does **not** need this to catch a real hang.
+- `irq`      — read-only copy of `irq_o`, so software can tell which detector raised the
+  shared interrupt. A live level, not a latch; writes are ignored.
 
 `HANG_DET_<master>_TIMEOUT_THRESHOLD`
 
@@ -40,6 +42,6 @@ The SMC arming, disable and interrupt-service sequence is in the
 Block-level bench on the unified DV flow: `dv/README.md`
 (`python3 tools/dv/run_dv.py --dut axi_hang_detector`).
 
-The SMC integration — the three detectors' `cpu_ctrl` configuration, real bus
+The SMC integration — the three detectors' `smc_base_config` configuration, real bus
 stalls, the OR into the safety-island fault line, and the PLIC route — is covered
 by the `smc_hang_detector_*` tests in `hw/sys/smc/dv/testlists/irq.toml`.

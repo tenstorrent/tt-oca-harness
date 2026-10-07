@@ -11,6 +11,20 @@ package smc_base_config_reg_pkg;
     localparam SMC_BASE_CONFIG_REG_SIZE = 'h4c;
 
     typedef struct {
+        logic next;
+    } smc_base_config__HANG_DET_CTRL__irq__in_t;
+
+    typedef struct {
+        smc_base_config__HANG_DET_CTRL__irq__in_t irq;
+    } smc_base_config__HANG_DET_CTRL__in_t;
+
+    typedef struct {
+        smc_base_config__HANG_DET_CTRL__in_t HANG_DET_SYS_AXI_CTRL;
+        smc_base_config__HANG_DET_CTRL__in_t HANG_DET_SEP_AXI_CTRL;
+        smc_base_config__HANG_DET_CTRL__in_t HANG_DET_DATA_ACCEL_CTRL;
+    } smc_base_config__in_t;
+
+    typedef struct {
         logic [55:0] value;
     } smc_base_config__GLOBAL_BASE__base__out_t;
 

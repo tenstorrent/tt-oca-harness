@@ -108,14 +108,33 @@ module smc_base_config_wrap (
                                                                                // data-accelerator
                                                                                // AXI hang
                                                                                // interrupt high.
-  output logic [19:0]                         hang_det_data_accel_threshold_o  // Stall cycles
-                                                                               // after which the
-                                                                               // data-accelerator
-                                                                               // AXI hang detector
-                                                                               // fires.
+  output logic [19:0]                         hang_det_data_accel_threshold_o,  // Stall cycles
+                                                                                // after which the
+                                                                                // data-accelerator
+                                                                                // AXI hang detector
+                                                                                // fires.
+
+  input  logic                                hang_det_sys_axi_irq_i,  // System AXI hang detector
+                                                                       // interrupt, read back
+                                                                       // through
+                                                                       // HANG_DET_SYS_AXI_CTRL.irq.
+  input  logic                                hang_det_sep_axi_irq_i,  // SEP AXI hang detector
+                                                                       // interrupt, read back
+                                                                       // through
+                                                                       // HANG_DET_SEP_AXI_CTRL.irq.
+  input  logic                                hang_det_data_accel_irq_i  // Data-accelerator AXI
+                                                                         // hang detector
+                                                                         // interrupt, read back
+                                                                         // through the irq bit of
+                                                                         // HANG_DET_DATA_ACCEL_CTRL.
 );
 
+  smc_base_config_reg_pkg::smc_base_config__in_t  hwif_in;
   smc_base_config_reg_pkg::smc_base_config__out_t hwif_out;
+
+  assign hwif_in.HANG_DET_SYS_AXI_CTRL.irq.next    = hang_det_sys_axi_irq_i;
+  assign hwif_in.HANG_DET_SEP_AXI_CTRL.irq.next    = hang_det_sep_axi_irq_i;
+  assign hwif_in.HANG_DET_DATA_ACCEL_CTRL.irq.next = hang_det_data_accel_irq_i;
 
   smc_base_config_reg u_smc_base_config_reg (
     .clk(clk_i),
@@ -141,6 +160,7 @@ module smc_base_config_wrap (
     .s_axil_rdata   (axil_base_config_resp_o.r.data),
     .s_axil_rresp   (axil_base_config_resp_o.r.resp),
 
+    .hwif_in        (hwif_in),
     .hwif_out       (hwif_out)
   );
 

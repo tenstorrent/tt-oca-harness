@@ -28,6 +28,7 @@ module smc_base_config_reg (
         output logic [63:0] s_axil_rdata,
         output logic [1:0] s_axil_rresp,
 
+        input smc_base_config_reg_pkg::smc_base_config__in_t hwif_in,
         output smc_base_config_reg_pkg::smc_base_config__out_t hwif_out
     );
 
@@ -1240,6 +1241,7 @@ module smc_base_config_reg (
             readback_data_var[0] = field_storage.HANG_DET_SYS_AXI_CTRL.enable.value;
             readback_data_var[4] = field_storage.HANG_DET_SYS_AXI_CTRL.irq_en.value;
             readback_data_var[8] = field_storage.HANG_DET_SYS_AXI_CTRL.irq_test.value;
+            readback_data_var[12] = hwif_in.HANG_DET_SYS_AXI_CTRL.irq.next;
         end
         if(rd_mux_addr == 7'h28) begin
             readback_data_var[19:0] = field_storage.HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD.value.value;
@@ -1248,6 +1250,7 @@ module smc_base_config_reg (
             readback_data_var[0] = field_storage.HANG_DET_SEP_AXI_CTRL.enable.value;
             readback_data_var[4] = field_storage.HANG_DET_SEP_AXI_CTRL.irq_en.value;
             readback_data_var[8] = field_storage.HANG_DET_SEP_AXI_CTRL.irq_test.value;
+            readback_data_var[12] = hwif_in.HANG_DET_SEP_AXI_CTRL.irq.next;
         end
         if(rd_mux_addr == 7'h38) begin
             readback_data_var[19:0] = field_storage.HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD.value.value;
@@ -1256,6 +1259,7 @@ module smc_base_config_reg (
             readback_data_var[0] = field_storage.HANG_DET_DATA_ACCEL_CTRL.enable.value;
             readback_data_var[4] = field_storage.HANG_DET_DATA_ACCEL_CTRL.irq_en.value;
             readback_data_var[8] = field_storage.HANG_DET_DATA_ACCEL_CTRL.irq_test.value;
+            readback_data_var[12] = hwif_in.HANG_DET_DATA_ACCEL_CTRL.irq.next;
         end
         if(rd_mux_addr == 7'h48) begin
             readback_data_var[19:0] = field_storage.HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD.value.value;

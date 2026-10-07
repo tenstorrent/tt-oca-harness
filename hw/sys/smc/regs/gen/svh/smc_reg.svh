@@ -12852,6 +12852,9 @@ localparam int unsigned SMC_BASE_CONFIG_HANG_DET_CTRL_IRQ_EN_SHIFT              
 localparam int unsigned SMC_BASE_CONFIG_HANG_DET_CTRL_IRQ_TEST_MASK                                               = 32'h100;
 localparam int unsigned SMC_BASE_CONFIG_HANG_DET_CTRL_IRQ_TEST_SHIFT                                              = 8;
 
+localparam int unsigned SMC_BASE_CONFIG_HANG_DET_CTRL_IRQ_MASK                                                    = 32'h1000;
+localparam int unsigned SMC_BASE_CONFIG_HANG_DET_CTRL_IRQ_SHIFT                                                   = 12;
+
 localparam int unsigned SMC_BASE_CONFIG_HANG_DET_TIMEOUT_THRESHOLD_VALUE_MASK                                     = 32'hFFFFF;
 localparam int unsigned SMC_BASE_CONFIG_HANG_DET_TIMEOUT_THRESHOLD_VALUE_SHIFT                                    = 0;
 
@@ -18403,6 +18406,8 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [0:0]   irq ;
+    logic [2:0]   rsvd_2 ;
     logic [0:0]   irq_test ;
     logic [2:0]   rsvd_1 ;
     logic [0:0]   irq_en ;

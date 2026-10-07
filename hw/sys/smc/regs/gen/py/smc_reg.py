@@ -11941,6 +11941,8 @@ class SMC_BASE_CONFIG_HANG_DET_CTRL_reg_t(Structure):
         ('irq_en', c_uint16, 1),
         ('rsvd_1', c_uint16, 3),
         ('irq_test', c_uint16, 1),
+        ('rsvd_2', c_uint16, 3),
+        ('irq', c_uint16, 1),
     ]
 
 SMC_BASE_CONFIG_HANG_DET_CTRL_REG_DEFAULT = 0x00000000
