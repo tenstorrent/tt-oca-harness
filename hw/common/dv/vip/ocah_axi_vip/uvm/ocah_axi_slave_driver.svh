@@ -79,15 +79,19 @@ class ocah_axi_slave_driver extends uvm_component;
   endtask
 
   // BVALID and RVALID go low as ARESETn asserts, not at the next sampled
-  // edge (IHI 0022 A3.1.2). A pump compares m_resets with its count at the
-  // address handshake, so a reset that ends before the next sampled edge
+  // edge (IHI 0022 A3.1.2), and the READYs with them, so no handshake lands
+  // on the edge after a reset. A pump compares m_resets with its count at the
+  // start of the transfer, so a reset that ends before the next sampled edge
   // abandons the transfer too.
   protected task watch_reset();
     forever begin
       @(negedge cfg.vif.aresetn);
       m_resets++;
-      cfg.vif.bvalid <= 1'b0;
-      cfg.vif.rvalid <= 1'b0;
+      cfg.vif.awready <= 1'b0;
+      cfg.vif.wready  <= 1'b0;
+      cfg.vif.arready <= 1'b0;
+      cfg.vif.bvalid  <= 1'b0;
+      cfg.vif.rvalid  <= 1'b0;
     end
   endtask
 
@@ -151,14 +155,15 @@ class ocah_axi_slave_driver extends uvm_component;
   // and a stall disabled mid-pattern releases READY on the next edge (the
   // cocotb pause generators likewise apply immediately).
   // All three return at the handshake edge (mon_cb holds that beat's
-  // sampled values) or on reset deassertion — callers re-check aresetn.
+  // sampled values) or at the first sampled edge after a reset asserted
+  // since the pump read `resets`; callers re-check reset_since(resets).
 
-  protected task accept_aw();
+  protected task accept_aw(int unsigned resets);
     forever begin
       if (cfg.aw_stall_cycles == 0) begin
         cfg.vif.awready <= 1'b1;
         @(cfg.vif.mon_cb);
-        if (!cfg.vif.aresetn) begin
+        if (reset_since(resets)) begin
           cfg.vif.awready <= 1'b0;
           return;
         end
@@ -170,23 +175,23 @@ class ocah_axi_slave_driver extends uvm_component;
         cfg.vif.awready <= 1'b0;
         for (int unsigned n = 0; n < cfg.aw_stall_cycles; n++) begin
           @(cfg.vif.mon_cb);
-          if (!cfg.vif.aresetn) return;
+          if (reset_since(resets)) return;
         end
         cfg.vif.awready <= 1'b1;
         @(cfg.vif.mon_cb);
         cfg.vif.awready <= 1'b0;
-        if (!cfg.vif.aresetn) return;
+        if (reset_since(resets)) return;
         if (cfg.vif.mon_cb.awvalid && cfg.vif.mon_cb.awready) return;
       end
     end
   endtask
 
-  protected task accept_ar();
+  protected task accept_ar(int unsigned resets);
     forever begin
       if (cfg.ar_stall_cycles == 0) begin
         cfg.vif.arready <= 1'b1;
         @(cfg.vif.mon_cb);
-        if (!cfg.vif.aresetn) begin
+        if (reset_since(resets)) begin
           cfg.vif.arready <= 1'b0;
           return;
         end
@@ -198,12 +203,12 @@ class ocah_axi_slave_driver extends uvm_component;
         cfg.vif.arready <= 1'b0;
         for (int unsigned n = 0; n < cfg.ar_stall_cycles; n++) begin
           @(cfg.vif.mon_cb);
-          if (!cfg.vif.aresetn) return;
+          if (reset_since(resets)) return;
         end
         cfg.vif.arready <= 1'b1;
         @(cfg.vif.mon_cb);
         cfg.vif.arready <= 1'b0;
-        if (!cfg.vif.aresetn) return;
+        if (reset_since(resets)) return;
         if (cfg.vif.mon_cb.arvalid && cfg.vif.mon_cb.arready) return;
       end
     end
@@ -212,22 +217,22 @@ class ocah_axi_slave_driver extends uvm_component;
   // One W beat. With stall 0, WREADY stays asserted across beats (the
   // caller lowers it after the last beat); with a stall pattern, each
   // beat gets its own low-for-N / high-for-one window.
-  protected task accept_w();
+  protected task accept_w(int unsigned resets);
     forever begin
       if (cfg.w_stall_cycles == 0) begin
         cfg.vif.wready <= 1'b1;
         @(cfg.vif.mon_cb);
-        if (!cfg.vif.aresetn) return;
+        if (reset_since(resets)) return;
         if (cfg.vif.mon_cb.wvalid && cfg.vif.mon_cb.wready) return;
       end else begin
         cfg.vif.wready <= 1'b0;
         for (int unsigned n = 0; n < cfg.w_stall_cycles; n++) begin
           @(cfg.vif.mon_cb);
-          if (!cfg.vif.aresetn) return;
+          if (reset_since(resets)) return;
         end
         cfg.vif.wready <= 1'b1;
         @(cfg.vif.mon_cb);
-        if (!cfg.vif.aresetn) return;
+        if (reset_since(resets)) return;
         if (cfg.vif.mon_cb.wvalid && cfg.vif.mon_cb.wready) return;
       end
     end
@@ -250,6 +255,7 @@ class ocah_axi_slave_driver extends uvm_component;
         cfg.vif.bvalid  <= 1'b0;
         continue;
       end
+      resets = m_resets;
       // Address phase. With cfg.w_before_aw armed before or during the AW
       // wait, the first data beat is taken alongside it, its fields held
       // from its own handshake edge.
@@ -258,7 +264,7 @@ class ocah_axi_slave_driver extends uvm_component;
         aw_taken = 1'b0;
         fork
           begin
-            accept_aw();
+            accept_aw(resets);
             take_aw(id, size, len, burst, start_addr);
             aw_taken = 1'b1;
           end
@@ -272,26 +278,25 @@ class ocah_axi_slave_driver extends uvm_component;
         cfg.w_before_aw = 1'b0;
         fork
           begin
-            accept_aw();
+            accept_aw(resets);
             take_aw(id, size, len, burst, start_addr);
           end
           begin
-            accept_w();
+            accept_w(resets);
             cfg.vif.wready <= 1'b0;
             take_w(wdata, wstrb, wlast);
           end
         join
       end
-      if (!cfg.vif.aresetn) continue;
-      resets = m_resets;
+      if (reset_since(resets)) continue;
       addr  = (start_addr >> size) << size;
       beats = int'(len) + 1;
       resp  = OCAH_AXI_RESP_OKAY;
       // Data phase.
       for (int unsigned beat = 0; beat < beats; beat++) begin
         if (!(w_early && beat == 0)) begin
-          accept_w();
-          if (!cfg.vif.aresetn) break;
+          accept_w(resets);
+          if (reset_since(resets)) break;
           take_w(wdata, wstrb, wlast);
         end
         beat_resp = cfg.consume_injected(addr, OCAH_AXI_DIR_WRITE, armed, unused_rdata);
@@ -368,10 +373,10 @@ class ocah_axi_slave_driver extends uvm_component;
         cfg.vif.rvalid  <= 1'b0;
         continue;
       end
-      // Address phase.
-      accept_ar();
-      if (!cfg.vif.aresetn) continue;
       resets = m_resets;
+      // Address phase.
+      accept_ar(resets);
+      if (reset_since(resets)) continue;
       id    = cfg.vif.mon_cb.arid;
       size  = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE)
                     ? 3'($clog2(cfg.beat_bytes())) : cfg.vif.mon_cb.arsize;

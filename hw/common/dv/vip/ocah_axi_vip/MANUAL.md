@@ -680,9 +680,9 @@ The cocotb responder accepts W independently of AW, which gives the same
 order on every write. `randomize_resp_user(seed)` answers every later B and
 R beat with BUSER and RUSER drawn per beat, the write pump's process RNG
 seeded from `seed` and the read pump's from `seed + 1` (AXI4 only; zero
-until called). The responder drives BVALID and RVALID low as `aresetn`
-asserts and abandons the transfer in flight, including after a reset that
-ends between two clock edges.
+until called). The responder drives BVALID, RVALID and its READYs low as
+`aresetn` asserts and abandons the transfer in flight, including after a
+reset that ends between two clock edges.
 `check_response=1` (default) escalates a non-OKAY response to `uvm_error`;
 `allow_timeout=1` downgrades a watchdog expiry to a returned result with
 `timed_out` set.
