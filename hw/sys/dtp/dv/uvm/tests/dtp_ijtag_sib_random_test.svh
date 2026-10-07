@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_ijtag_sib_random_test — exhaustive 8-pattern iJTAG SIB sweep plus 16 seeded pattern/mask
-// combinations with temporal-window outcome proofs
+// dtp_ijtag_sib_random_test — every combination of closed, open, and gated iJTAG SIBs (27)
+// plus 16 seeded pattern/mask combinations with temporal-window outcome proofs
 // (looped runner with per-pass family evidence).
 
 class dtp_ijtag_sib_random_test extends dtp_base_test;

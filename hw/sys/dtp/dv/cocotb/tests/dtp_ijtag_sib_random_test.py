@@ -11,7 +11,7 @@ from seq_lib.dtp_ijtag_scan_test_seq import dtp_ijtag_scan_test_seq
 
 @pyuvm.test()
 class dtp_ijtag_sib_random_test(dtp_base_test):
-    """All eight iJTAG SIB patterns, then seeded pattern and disable-mask combinations."""
+    """Every closed, open, and gated SIB combination, then 16 seeded pattern/mask combinations."""
 
     async def run_scenario(self) -> None:
         await self.start_looped_seq(

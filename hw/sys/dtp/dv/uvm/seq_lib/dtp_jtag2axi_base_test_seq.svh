@@ -135,8 +135,9 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
 
   // Every pass opens with the burst baseline and the geometry gate: the
   // three *_JTAG2AXI_CAPS TDRs are read and their bus type, address size,
-  // and data size compared with the dtp_types table (CHK-J2A-GEOMETRY), so
-  // no bridge request is packed with field widths the DUT does not publish.
+  // data size, and write and read pipeline depths compared with the
+  // dtp_types table (CHK-J2A-GEOMETRY), so no bridge request is packed with
+  // field widths the DUT does not publish.
   virtual task pre_body();
     super.pre_body();
     snapshot_burst_baseline();
