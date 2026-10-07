@@ -17,9 +17,10 @@
 // The open-path frontend sizes the operand of the decode's type cast on its own, so the power
 // of an unsized literal it casts is 32 bits wide and the model decodes an opcode above 0x1E to
 // zero or to a sign-extended pattern. The ir tasks bound the opcode an Update-IR loads to 0x1E
-// (dtp_ir_sby_env.sv) and the opcode covers span that range, so on the open path the zero-length
-// bypass and the undefined opcodes from 0x2D are never loaded and the two upper capability
-// registers have no cover.
+// (dtp_ir_sby_env.sv) and the opcode covers span that range, so on the open path no instruction
+// from 0x1F up is loaded and no clause over one is checked: the SMC OTP series data instructions
+// 0x1F and 0x20, the SEP OTP and SMC capability and bridge instructions, the undefined opcodes from
+// 0x2D, ZERO_LENGTH_BYPASS, INV_BYPASS and BYPASS.
 
 `include "ocah_fv_macros.svh"
 

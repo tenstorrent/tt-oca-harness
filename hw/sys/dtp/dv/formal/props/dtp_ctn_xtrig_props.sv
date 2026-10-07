@@ -9,8 +9,9 @@
 // the formal top. Every property body is a boolean over current and one-cycle-past values
 // (hw/common/dv/docs/formal-property-style.adoc); the state machines are stated as their exact
 // next-state functions of the handshake controller's own inputs, which the port core gates: wire-OR
-// mode masks the source and holds the sender in reset, and the synchronized request and
-// acknowledge pass only from two cycles after the point-to-point input enable rises.
+// mode masks the source and holds the sender in reset (ast_ctp_mode_enables_exclusive), and the
+// synchronized request and acknowledge pass only from two cycles after the point-to-point input
+// enable rises (ast_ctp_p2p_inputs_gated).
 
 `include "ocah_fv_macros.svh"
 
@@ -39,6 +40,7 @@ module dtp_ctn_xtrig_props #(
   input logic                  hs_busy_i,         // u_handshake_ctrl.busy_q
   input logic                  req_in_sync_i,     // u_core.ct_req_in_din_sync_inv
   input logic                  ack_in_sync_i,     // u_core.ct_ack_in_din_sync_inv
+  input logic [1:0]            p2p_din_valid_q_i, // u_core.p2p_din_valid_q
   // External port 0: wire-OR receive path and pad control
   input logic                  req_out_din_raw_sync_i,  // u_core.ct_req_out_din_sync
   input logic                  req_out_din_sync_i,  // u_core.ct_req_out_din_sync_inv
@@ -161,6 +163,13 @@ module dtp_ctn_xtrig_props #(
                   hs_sender_reset_i == (hs_reset_i || mode_wire_or_i) &&
                   int_mode_wire_or_i == '1 && ctm_src_req_i == int_req_out_dout_en_i,
                   clk_i, rst_ni)
+  `OCAH_FV_ASSERT(ast_ctp_p2p_inputs_gated,
+                  hs_req_in_i == (req_in_sync_i && p2p_din_valid_q_i[1]) &&
+                  hs_ack_in_i == (ack_in_sync_i && p2p_din_valid_q_i[1]) &&
+                  `OCAH_FV_IMPLIES($past(rst_ni),
+                                   p2p_din_valid_q_i == {$past(p2p_din_valid_q_i[0]),
+                                                         $past(req_in_din_en_i)}),
+                  clk_i, rst_ni)
   // The optional inversion sits after the synchronizer: INVERT=0 senses the raw wire, INVERT=1
   // its complement, so the sensed wire rests at 1 and reads 0 while asserted in either sense.
   `OCAH_FV_ASSERT(ast_ctp_wire_or_sense,
@@ -212,6 +221,8 @@ module dtp_ctn_xtrig_props #(
   `OCAH_FV_COVER(cov_hs_request_received,
                  $past(receiver_state_i) == RWaitReqDeassert && receiver_state_i == RIdle,
                  clk_i, rst_ni)
+  `OCAH_FV_COVER(cov_ctp_p2p_request_gated, req_in_sync_i && !p2p_din_valid_q_i[1], clk_i,
+                 rst_ni)
   `OCAH_FV_COVER(cov_stretch_max_width,
                  mode_wire_or_i && $past(ct_src_i) && stretch_count_i == 16'd4, clk_i, rst_ni)
   `OCAH_FV_COVER(cov_wire_or_receive_normal, mode_wire_or_i && !invert_i && ct_dst_i,

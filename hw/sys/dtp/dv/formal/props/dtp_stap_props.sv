@@ -115,10 +115,12 @@ module dtp_stap_props
   // ---- dbg_disable_i synchronizers: reset to disabled, two tck edges of latency --------------
   // The check runs through reset, so the first sampled cycle, which has no past sample, takes the
   // reset clause alone.
+  logic past_valid_q = 1'b0;
+  always_ff @(posedge tck_i) past_valid_q <= 1'b1;
   `OCAH_FV_ASSERT(ast_dbg_disable_sync_fail_closed,
                   `OCAH_FV_IMPLIES(!pwr_on_rst_ni,
                                    dbg_disable_q_i == '1 && dbg_disable_stage1_i == '1) &&
-                  `OCAH_FV_IMPLIES(!ocah_fv_first_cycle_q && $past(pwr_on_rst_ni) && pwr_on_rst_ni,
+                  `OCAH_FV_IMPLIES(past_valid_q && $past(pwr_on_rst_ni) && pwr_on_rst_ni,
                                    dbg_disable_stage1_i == $past(dbg_disable_i) &&
                                    dbg_disable_q_i == $past(dbg_disable_stage1_i)),
                   tck_i, 1'b1)

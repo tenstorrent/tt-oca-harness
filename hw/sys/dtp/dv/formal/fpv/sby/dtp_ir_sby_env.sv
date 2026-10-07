@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// Environment of the ir tasks on the dtp formal top, read by those tasks beside dtp_sby_env.sv: an
-// Update-IR loads an opcode the open-path model decodes as the RTL does. The frontend sizes a
-// type cast's operand on its own, so the RTL's `T'(2 ** shift)` decode is 32 bits wide in the
-// model: opcode 0x1F sets instruction bits 31 to 63 at once and every higher opcode sets none.
-// Bound to dtp by the statement at the end of this file.
+// Environment of the tap and ir tasks on the dtp formal top, read by those tasks beside
+// dtp_sby_env.sv: an Update-IR loads an opcode the open-path model decodes as the RTL does. The
+// frontend sizes a type cast's operand on its own, so the RTL's `T'(2 ** shift)` decode is 32 bits
+// wide in the model: opcode 0x1F sets instruction bits 31 to 63 at once, among them the zero-length
+// bypass that routes TDO around its falling-edge retimer, and every higher opcode sets none. Bound
+// to dtp by the statement at the end of this file.
 
 `include "ocah_fv_macros.svh"
 

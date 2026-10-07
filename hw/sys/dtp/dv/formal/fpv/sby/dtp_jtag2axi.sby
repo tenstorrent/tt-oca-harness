@@ -15,16 +15,16 @@
 # side toward the request machine and its clear-pending flag are free, so a response needs no round
 # trip through the clearable CDC and its post-reset clear handshake, which holds the machine idle
 # while it runs; dtp_jtag2axi_free_resp_sby_env.sv lets that handshake hold the machine for any
-# prefix of the trace and never again. The checker instance on
-# that side constrains it as a responder in every task, which holds for the real CDC too. Every
-# proof over the control logic holds for the real signals because the free ones include every
-# value they can take. The prove task keeps the CDC in the loop: the property-directed engine
-# generalizes over its state, while the free response side makes its clause set outgrow the
-# host's memory, and k-induction cannot close `$past` relations under explicit clocks, since an
-# induction window may hold a single tck edge. The cover depth must exceed the step at which the
-# deepest cov_ label is reached; the bmc depth matches it. The bmc and prove engines keep going past
-# a failed assertion, and the prove engine solves each assertion on its own, so a failure leaves
-# every other assertion its own verdict.
+# prefix of the trace and never again. The checker instance on that side constrains it as a
+# responder in every task, which holds for the real CDC too. Every proof over the control logic
+# holds for the real signals because the free ones include every value they can take and the
+# clear-pending flag every shape the CDC gives it. The prove task keeps the CDC in the loop: the
+# property-directed engine generalizes over its state, while the free response side makes its
+# clause set outgrow the host's memory, and k-induction cannot close `$past` relations under
+# explicit clocks, since an induction window may hold a single tck edge. The cover depth must
+# exceed the step at which the deepest cov_ label is reached; the bmc depth matches it. The bmc and
+# prove engines keep going past a failed assertion, and the prove engine solves each assertion on
+# its own, so a failure leaves every other assertion its own verdict.
 
 [tasks]
 j2a_ctrl_bmc    j2a_ctrl bmc free_resp
