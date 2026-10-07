@@ -1823,7 +1823,54 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |Proves that the stored form of an SRAM word depends on key and address, that the old key reads its data back after a key change, that a key write after the lock is ignored, and that a lock set with the enable clear keeps the scrambler on.
 |===
 
-include::SEP_VPLAN_TEST_CONTRACTS.adoc[tag=test-procedures]
+=== Test Procedures
+
+Unless a procedure says otherwise, each test starts from the common
+SEP bring-up for its run mode (`bring_up_no_cpu`,
+`bring_up_and_wait_fuse_sense`, or `boot_firmware`), drives stimulus
+through the agents above, and ends with zero UVM/scoreboard errors
+plus the checkers listed here.
+
+Each test entry carries these labelled fields, in this order: *Phase*,
+*Area*, *Run mode*, *Source Module*, *BFM / Model*, *Randomization* (where
+the entry states one), *Objective*, *Test Coverage*, *Test Procedure*,
+*Checkers* and *Pass Criteria*. Optional notes (*Evidence*, *Anti-vacuity*,
+*Scope*, *Not claimed* and others) follow *Pass Criteria*. *Area* is the
+Test Summary table that lists the test. *Test Coverage* is one line: the cells
+or path walked. *Pass Criteria* is that every named checker PASSes and
+`UVM_ERROR` is 0. The checker table is the fail-able contract.
+
+Some records come from shared bring-up code and the shared sequences, and an
+entry does not repeat them. Each one fails the leaf that runs it:
+
+* `CHK-FW-IDENTITY` (every firmware leaf): the loaded TCM images carry the
+  `FW-BUILD-ID` of the firmware source at the run's commit.
+* `CHK-FW-CONSOLE` (every firmware leaf): the firmware mailbox reports
+  completion with the PASS magic.
+* `CHK-ALERTS-ZERO` (leaves that bring up real entropy): CSRNG and EDN
+  `ERR_CODE` and `RECOV_ALERT` read 0 at the end of the run.
+* `CHK-NOISE-FORCE` (leaves that hold the ESRC noise constant):
+  `+esrc_noise_force` routes `esrc_noise_ext_i` to lane 0, shown by driving
+  both values.
+* `CHK-DONE-RW1C` and `CHK-ERR` (every KMAC operation of the KMAC sequence):
+  `INTR_STATE.kmac_done` sets after absorb and clears by W1C, and `ERR_CODE`
+  and `INTR_STATE.kmac_err` read 0.
+
+include::test_contracts/smoke_uvm.adoc[tag=smoke]
+
+include::test_contracts/crypto_entropy.adoc[]
+
+include::test_contracts/fabric_remap.adoc[]
+
+include::test_contracts/mailbox_irq_pic.adoc[]
+
+include::test_contracts/spi_dma.adoc[]
+
+include::test_contracts/memory_boot_reset.adoc[]
+
+include::test_contracts/efuse_lifecycle.adoc[]
+
+include::test_contracts/key_manager.adoc[]
 
 '''''
 
@@ -5057,7 +5104,7 @@ test that owns the feature, or states why no pass or fail value exists.
 
 '''''
 
-include::SEP_VPLAN_TEST_CONTRACTS.adoc[tag=sv-uvm-smoke]
+include::test_contracts/smoke_uvm.adoc[tag=sv-uvm-smoke]
 
 [[sep-vplan-formal]]
 === Formal Verification Plan
