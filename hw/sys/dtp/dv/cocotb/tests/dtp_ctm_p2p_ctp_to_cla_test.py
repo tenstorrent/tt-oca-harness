@@ -4,14 +4,14 @@
 
 import pyuvm
 from dtp_xtrig_base_test import dtp_xtrig_base_test
-from seq_lib.dtp_xtrig_base_test_seq import dtp_xtrig_base_test_seq
+from seq_lib.dtp_ctm_route_test_seq import dtp_ctm_route_test_seq
 
 
 @pyuvm.test()
 class dtp_ctm_p2p_ctp_to_cla_test(dtp_xtrig_base_test):
     async def run_scenario(self) -> None:
         await self.start_looped_seq(
-            dtp_xtrig_base_test_seq,
+            dtp_ctm_route_test_seq,
             "ctm_p2p_ctp_to_cla",
             scenario="ctm_p2p_ctp_to_cla",
             specific_knob="DTP_CTM_P2P_CTP_TO_CLA_TEST_LOOPS",

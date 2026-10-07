@@ -4,14 +4,14 @@
 
 import pyuvm
 from dtp_xtrig_base_test import dtp_xtrig_base_test
-from seq_lib.dtp_xtrig_base_test_seq import dtp_xtrig_base_test_seq
+from seq_lib.dtp_xtrig_csr_test_seq import dtp_xtrig_csr_test_seq
 
 
 @pyuvm.test()
 class dtp_ctm_rand_all_source_select_coverage_test(dtp_xtrig_base_test):
     async def run_scenario(self) -> None:
         await self.start_looped_seq(
-            dtp_xtrig_base_test_seq,
+            dtp_xtrig_csr_test_seq,
             "ctm_all_source_select",
             scenario="ctm_all_source_select",
             specific_knob="DTP_CTM_RAND_ALL_SOURCE_SELECT_COVERAGE_TEST_LOOPS",

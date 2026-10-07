@@ -4,14 +4,14 @@
 
 import pyuvm
 from dtp_xtrig_base_test import dtp_xtrig_base_test
-from seq_lib.dtp_xtrig_base_test_seq import dtp_xtrig_base_test_seq
+from seq_lib.dtp_xtrig_route_test_seq import dtp_xtrig_route_test_seq
 
 
 @pyuvm.test()
 class dtp_xtrig_reset_test(dtp_xtrig_base_test):
     async def run_scenario(self) -> None:
         await self.start_looped_seq(
-            dtp_xtrig_base_test_seq,
+            dtp_xtrig_route_test_seq,
             "reset",
             scenario="reset",
             specific_knob="DTP_XTRIG_RESET_TEST_LOOPS",
