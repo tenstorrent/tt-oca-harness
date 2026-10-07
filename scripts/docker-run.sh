@@ -285,8 +285,9 @@ run_image() {
   # The image's python carries the uv workspace members as editable installs
   # resolved through $REPO_ROOT when they are imported (nix/load-uv-env.nix), so
   # it has to name the repository as the container sees it, not as the host does.
-  "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${f[@]}" \
-    "${net_flags[@]}" "${USER_FLAGS[@]}" "${GIT_ENGINE_MOUNT[@]}" \
+  "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm ${f[@]+"${f[@]}"} \
+    ${net_flags[@]+"${net_flags[@]}"} ${USER_FLAGS[@]+"${USER_FLAGS[@]}"} \
+    ${GIT_ENGINE_MOUNT[@]+"${GIT_ENGINE_MOUNT[@]}"} \
     -e "REPO_ROOT=${RUN_ROOT}" \
     -v "${ROOT}:${RUN_ROOT}${VOL}" -w "$RUN_ROOT" "$image" "$@"
 }
@@ -547,8 +548,9 @@ run_image_1to1() {
     f=(-it)
     shift
   }
-  "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${f[@]}" \
-    "${net_flags[@]}" "${USER_FLAGS[@]}" "${GIT_ENGINE_MOUNT[@]}" \
+  "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm ${f[@]+"${f[@]}"} \
+    ${net_flags[@]+"${net_flags[@]}"} ${USER_FLAGS[@]+"${USER_FLAGS[@]}"} \
+    ${GIT_ENGINE_MOUNT[@]+"${GIT_ENGINE_MOUNT[@]}"} \
     -e "REPO_ROOT=${ROOT}" \
     -v "${ROOT}:${ROOT}${VOL}" -w "$PWD" "$image" "$@"
 }
@@ -629,7 +631,7 @@ doc_html() {
   fi
   doc_release_enabled && release_args=(--attribute release)
   [[ "${OCAH_ANTORA_KROKI_OFFLINE:-}" == true ]] && kroki_args=(--attribute "kroki-server-url=http://kroki:8001")
-  run --net "$NETWORK" antora --cache-dir /tmp/antora "${release_args[@]}" "${kroki_args[@]}" --attribute "basedir=${basedir}" "$playbook"
+  run --net "$NETWORK" antora --cache-dir /tmp/antora ${release_args[@]+"${release_args[@]}"} ${kroki_args[@]+"${kroki_args[@]}"} --attribute "basedir=${basedir}" "$playbook"
   # Only the Home and TRM playbooks carry Home and its dashboard page; staging
   # elsewhere would leave a stray ocah-home/ tree inside another book's site.
   if [[ "$product" == trm || "$product" == home ]]; then
@@ -652,9 +654,9 @@ doc_html_all() {
   doc_setup home
   doc_setup starting
   rtl_modules_reference
-  run "${net_args[@]}" env \
+  run ${net_args[@]+"${net_args[@]}"} env \
     SITE_SEARCH_PROVIDER=lunr \
-    antora --cache-dir /tmp/antora "${release_args[@]}" "${kroki_args[@]}" antora-playbook.yml
+    antora --cache-dir /tmp/antora ${release_args[@]+"${release_args[@]}"} ${kroki_args[@]+"${kroki_args[@]}"} antora-playbook.yml
 }
 
 doc_pdf() {
