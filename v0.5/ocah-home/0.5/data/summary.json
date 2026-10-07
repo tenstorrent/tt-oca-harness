@@ -1,0 +1,316 @@
+{
+  "dut_status": [
+    {
+      "coverage_total_percent": 16.6,
+      "flow": "aou",
+      "framework": "uvm",
+      "pass_rate": 100.0,
+      "tests_total": 72,
+      "tool": "vcs"
+    },
+    {
+      "coverage_total_percent": 97.12,
+      "flow": "dtp",
+      "framework": "cocotb",
+      "pass_rate": 100.0,
+      "tests_total": 465,
+      "tool": "vcs"
+    },
+    {
+      "coverage_total_percent": 97.41,
+      "flow": "dtp",
+      "framework": "uvm",
+      "pass_rate": 100.0,
+      "tests_total": 465,
+      "tool": "vcs"
+    },
+    {
+      "coverage_total_percent": 97.48,
+      "flow": "dtp",
+      "framework": "",
+      "pass_rate": 100.0,
+      "tests_total": 930,
+      "tool": "vcs"
+    },
+    {
+      "coverage_total_percent": 89.26,
+      "flow": "sep",
+      "framework": "cocotb",
+      "pass_rate": 100.0,
+      "tests_total": 174,
+      "tool": "vcs"
+    },
+    {
+      "coverage_total_percent": 34.6,
+      "flow": "sep",
+      "framework": "uvm",
+      "pass_rate": 100.0,
+      "tests_total": 9,
+      "tool": "vcs"
+    },
+    {
+      "coverage_total_percent": 89.34,
+      "flow": "sep",
+      "framework": "",
+      "pass_rate": 100.0,
+      "tests_total": 183,
+      "tool": "vcs"
+    },
+    {
+      "coverage_total_percent": 94.66,
+      "flow": "smc",
+      "framework": "cocotb",
+      "pass_rate": 99.68,
+      "tests_total": 317,
+      "tool": "vcs"
+    },
+    {
+      "coverage_total_percent": 36.92,
+      "flow": "smc",
+      "framework": "uvm",
+      "pass_rate": 100.0,
+      "tests_total": 6,
+      "tool": "vcs"
+    },
+    {
+      "coverage_total_percent": 94.33,
+      "flow": "smc",
+      "framework": "",
+      "pass_rate": 99.69,
+      "tests_total": 323,
+      "tool": "vcs"
+    },
+    {
+      "coverage_total_percent": 99.89,
+      "flow": "smu",
+      "framework": "cocotb",
+      "pass_rate": 99.18,
+      "tests_total": 122,
+      "tool": "vcs"
+    },
+    {
+      "coverage_total_percent": 70.9,
+      "flow": "smu",
+      "framework": "uvm",
+      "pass_rate": 100.0,
+      "tests_total": 5,
+      "tool": "vcs"
+    },
+    {
+      "coverage_total_percent": 99.07,
+      "flow": "smu",
+      "framework": "",
+      "pass_rate": 99.21,
+      "tests_total": 127,
+      "tool": "vcs"
+    }
+  ],
+  "generated_at": "2026-10-07T17:01:54+00:00",
+  "results": [
+    {
+      "coverage": {
+        "effective_metrics": {
+          "functional": 16.6
+        }
+      },
+      "flow": "aou",
+      "framework": "uvm",
+      "tool": "vcs"
+    },
+    {
+      "coverage": {
+        "effective_metrics": {
+          "assertion": 100.0,
+          "branch": 96.84,
+          "condition": 96.4,
+          "fsm_state": 89.59,
+          "functional": 100.0,
+          "line": 98.13,
+          "toggle": 98.86,
+          "user": 100.0
+        }
+      },
+      "flow": "dtp",
+      "framework": "cocotb",
+      "tool": "vcs"
+    },
+    {
+      "coverage": {
+        "effective_metrics": {
+          "assertion": 100.0,
+          "branch": 97.77,
+          "condition": 96.73,
+          "fsm_state": 89.59,
+          "functional": 100.0,
+          "line": 98.99,
+          "toggle": 98.82,
+          "user": 100.0
+        }
+      },
+      "flow": "dtp",
+      "framework": "uvm",
+      "tool": "vcs"
+    },
+    {
+      "coverage": {
+        "effective_metrics": {
+          "assertion": 100.0,
+          "branch": 97.85,
+          "condition": 97.08,
+          "fsm_state": 89.59,
+          "functional": 100.0,
+          "line": 99.0,
+          "toggle": 98.86,
+          "user": 100.0
+        }
+      },
+      "flow": "dtp",
+      "framework": "",
+      "tool": "vcs"
+    },
+    {
+      "coverage": {
+        "effective_metrics": {
+          "branch": 90.05,
+          "condition": 79.86,
+          "fsm_state": 88.36,
+          "functional": 100.0,
+          "line": 94.86,
+          "toggle": 82.45
+        }
+      },
+      "flow": "sep",
+      "framework": "cocotb",
+      "tool": "vcs"
+    },
+    {
+      "coverage": {
+        "effective_metrics": {
+          "branch": 52.71,
+          "condition": 25.07,
+          "fsm_state": 37.09,
+          "functional": 10.27,
+          "line": 67.26,
+          "toggle": 15.22
+        }
+      },
+      "flow": "sep",
+      "framework": "uvm",
+      "tool": "vcs"
+    },
+    {
+      "coverage": {
+        "effective_metrics": {
+          "branch": 90.05,
+          "condition": 79.87,
+          "fsm_state": 88.73,
+          "functional": 100.0,
+          "line": 94.86,
+          "toggle": 82.51
+        }
+      },
+      "flow": "sep",
+      "framework": "",
+      "tool": "vcs"
+    },
+    {
+      "coverage": {
+        "effective_metrics": {
+          "assertion": 96.35,
+          "branch": 87.68,
+          "condition": 89.28,
+          "fsm_state": 97.24,
+          "functional": 98.29,
+          "line": 99.74,
+          "toggle": 94.02,
+          "user": 99.5951
+        }
+      },
+      "flow": "smc",
+      "framework": "cocotb",
+      "tool": "vcs"
+    },
+    {
+      "coverage": {
+        "effective_metrics": {
+          "assertion": 59.98,
+          "branch": 53.17,
+          "condition": 31.65,
+          "fsm_state": 4.26,
+          "functional": 36.12,
+          "line": 69.93,
+          "toggle": 3.3,
+          "user": 23.4252
+        }
+      },
+      "flow": "smc",
+      "framework": "uvm",
+      "tool": "vcs"
+    },
+    {
+      "coverage": {
+        "effective_metrics": {
+          "assertion": 93.97,
+          "branch": 87.68,
+          "condition": 89.33,
+          "fsm_state": 97.24,
+          "functional": 98.29,
+          "line": 99.74,
+          "toggle": 94.04,
+          "user": 98.0315
+        }
+      },
+      "flow": "smc",
+      "framework": "",
+      "tool": "vcs"
+    },
+    {
+      "coverage": {
+        "effective_metrics": {
+          "assertion": 100.0,
+          "branch": 100.0,
+          "condition": 100.0,
+          "functional": 100.0,
+          "line": 100.0,
+          "toggle": 99.34,
+          "user": 100.0
+        }
+      },
+      "flow": "smu",
+      "framework": "cocotb",
+      "tool": "vcs"
+    },
+    {
+      "coverage": {
+        "effective_metrics": {
+          "assertion": 59.02,
+          "branch": 100.0,
+          "condition": 100.0,
+          "functional": 60.08,
+          "line": 100.0,
+          "toggle": 6.29,
+          "user": 56.4815
+        }
+      },
+      "flow": "smu",
+      "framework": "uvm",
+      "tool": "vcs"
+    },
+    {
+      "coverage": {
+        "effective_metrics": {
+          "assertion": 95.08,
+          "branch": 100.0,
+          "condition": 100.0,
+          "functional": 100.0,
+          "line": 100.0,
+          "toggle": 99.34,
+          "user": 97.2222
+        }
+      },
+      "flow": "smu",
+      "framework": "",
+      "tool": "vcs"
+    }
+  ]
+}

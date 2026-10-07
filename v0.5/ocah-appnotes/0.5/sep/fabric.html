@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Interconnect :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP internal fabric, external interfaces, address remapping, and mailboxes.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-appnotes" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Application Notes</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Application Notes 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component is-current">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../index.html">Application Notes</a></li>
+    <li><a href="fabric.html">Interconnect</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Interconnect</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="sep-interconnect" class="paragraph">
+<p>SEP uses a hierarchical AXI4 crossbar fabric. Masters initiate transactions;
+slaves connect directly or through bridges for AXI4-Lite and OpenTitan TL-UL
+interfaces. The <code>axi_to_axi_lite</code> bridge splits bursts into individual
+transactions and retains the AXI IDs needed for responses; register regions
+accept single beats only (<a href="memory_map.html#sep-register-single-beat" class="xref page">Single-Beat Register Access</a>). Write strobes
+remain available on AXI4-Lite; <code>axi_lite_to_tlul</code> translates them into TL-UL
+byte masks. Each peripheral&#8217;s register definition determines which writes
+are permitted.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="topology"><a class="anchor" href="#topology"></a><a class="link" href="#topology">1. Topology</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="top-level-axi4"><a class="anchor" href="#top-level-axi4"></a><a class="link" href="#top-level-axi4">1.1. Top Level AXI4</a></h3>
+<div class="paragraph">
+<p><a href="#sep-axi-connectivity">Figure 1</a> shows the crossbar connectivity implemented in
+<code>hw/sys/sep/rtl/crossbars/sep_local_axi_xbar.sv</code>, along with the dedicated
+Boot ROM path that lies outside the crossbar. The crossbar has five
+initiators (CPU IFU, CPU LSU, CPU DBG, DMA, and the System Interface)
+and ten targets. The CPU masters and the DMA issue single-beat transactions
+only; the System Interface may issue bursts.</p>
+</div>
+<div class="paragraph">
+<p>A few access paths are intentionally outside this crossbar:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Boot ROM</strong> is accessed by the CPU IFU and LSU through a dedicated
+point-to-point path, not through this crossbar.</p>
+</li>
+<li>
+<p>The CPU&#8217;s own <strong>ICCM/DCCM</strong> are tightly coupled to the core and are not
+reached through this crossbar by the IFU/LSU. The <strong>CPU TCM</strong> target below
+is a backdoor AXI path into the ICCM/DCCM, used by the DMA engine to
+preload code/data.</p>
+</li>
+<li>
+<p>The <em>Alarm AGP is a feature deferred to the next generation</em> and is
+not present.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The <strong>System Periph</strong> target aggregates the System Bus interface, the dual
+scratch register bank, the AP/STEE remap regions, and the outbound
+routing to SMC/SMN resources.</p>
+</div>
+<div class="paragraph">
+<p>The <strong>Entropy Pool</strong> target is <code>sep_entropy_fifo</code> (0x1095_0000): a 64-bit
+read-only entropy drain aperture, filled autonomously by a native EDN
+endpoint on a separate hardware path (not this crossbar). Writes to it
+terminate with <code>BRESP=SLVERR</code>.</p>
+</div>
+<div id="sep-sram-target" class="paragraph">
+<p>The <strong>SRAM</strong> target serves INCR bursts of every length and single-beat
+bursts of every type. A multi-beat FIXED or WRAP burst is refused before it
+reaches the memory: the write terminates with <code>BRESP=SLVERR</code> and leaves
+SRAM unchanged, and every beat of the read returns <code>RRESP=SLVERR</code>.</p>
+</div>
+<div class="paragraph">
+<p>The <strong>System Interface</strong> initiator is the external inbound master. It does
+not attach to this crossbar directly; it enters SEP through the dedicated
+<code>smn_inbound</code> port and the inbound traffic filter (block-by-default), then
+through the <code>sep_system_peripherals</code> inner crossbar. That inner crossbar
+reaches the <strong>mailboxes</strong> and <strong>system CSRs</strong> directly, and loops everything
+else back into this crossbar&#8217;s System Interface initiator. The inbound filter
+controls which addresses the external master may reach; it is block-by-default
+after POR and configured by SEP firmware.</p>
+</div>
+<table id="sep-axi-terms" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SEP AXI4 connectivity terms</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Label</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU IFU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU instruction-fetch unit; initiates instruction reads.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU LSU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU load/store unit; initiates data reads and writes.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU debug (<code>dbg</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU debug access path.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Direct memory access engine; moves data without CPU load/store instructions.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU TCM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tightly coupled memory backdoor: DMA access to the instruction
+closely coupled memory (ICCM) and data closely coupled memory (DCCM).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SRAM (<code>sram</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Static random-access memory used for SEP working storage.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA registers (<code>dma_csr</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA control and status registers.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog (<code>sep_wdt</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog timer.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset controller (<code>sep_reset_ctrl</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP software reset controller.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Crypto (<code>sep_crypto</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cryptographic accelerators (AES, HMAC, KMAC, OTBN), entropy-source registers, eFuse controller, lifecycle controller, Key Manager mailbox, and external TRNG window.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System peripherals (<code>sep_system_peripherals</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System-peripheral routing, remapping, mailboxes and system registers.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI host (<code>sep_io</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Local input/output peripheral path, including SPI boot-flash access.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy pool (<code>entropy_fifo</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read-only aperture for entropy supplied by the entropy distribution
+network (EDN).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extension, eFuse shim (<code>sep_external</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound AXI4 port for resources outside the local crossbar; the eFuse shim CSR window is diverted by <code>u_efuse_shim_demux</code> to the eFuse wrapper.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMN inbound (<code>ext</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Filtered inbound path from the System Management Network (SMN).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boot ROM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read-only boot memory on the dedicated CPU fetch/load path.</p></td>
+</tr>
+</tbody>
+</table>
+<div id="sep-axi-connectivity" class="imageblock">
+<div class="content">
+<img src="_images/sep_axi_connectivity.svg" alt="SEP AXI4 connectivity matrix with five initiators and ten crossbar targets plus a separate Boot ROM path" width="920">
+</div>
+<div class="title">Figure 1. SEP AXI4 connectivity. Filled circles indicate connections; dashes indicate no connection.</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="sep-fabric-topology"><a class="anchor" href="#sep-fabric-topology"></a><a class="link" href="#sep-fabric-topology">1.2. Fabric Topology</a></h3>
+<div class="paragraph">
+<p>The input fabric admits external traffic through the inbound filter and
+system-peripheral decode. The local fabric connects SEP initiators to local
+resources, while the output fabric selects remapped or direct outbound paths.</p>
+</div>
+<div class="paragraph">
+<p>In the fabric diagrams, labels such as <code>ID 3 to 4</code> give the input and output
+AXI transaction-ID widths in bits; they do not count ports or data bits.
+The wider side of the symbol indicates the side with multiple ports.
+Bus labels identify address and ID widths where they change. The filter wrapper
+checks reads and writes independently, forwards permitted requests, and routes
+rejected requests to an AXI error responder.</p>
+</div>
+<div class="paragraph">
+<p>The input paths are shown in <a href="#sep-input-fabric-diagram">Figure 2</a>, the local resource
+connections in <a href="#sep-local-fabric-diagram">Figure 3</a>, and the outbound paths in
+<a href="#sep-output-fabric-diagram">Figure 4</a>. The three figures share one notation. Crossbars
+are rectangles, muxes and demuxes are trapezoids with the wide side towards the
+many ports, address remaps are hexagons and traffic filters are octagons. Green
+boxes are converters: address-width, data-width, ID-width and protocol
+conversion, and register cuts. Thick lines are AXI4 and thin lines AXI-Lite or
+TL-UL; every AXI data path is 64 bits wide unless a converter narrows it. The
+labels give the address and ID widths where they change, and the port badges
+mark where a path crosses the module boundary.</p>
+</div>
+<div id="sep-input-fabric-diagram" class="imageblock">
+<div class="content">
+<img src="_images/sep-input-fabric.svg" alt="Inbound path of sep_system_peripherals: inbound filter, global-to-local remap, peripheral crossbar with mailbox, system CSR and local-fabric legs" width="100%">
+</div>
+<div class="title">Figure 2. SEP input fabric</div>
+</div>
+<div class="paragraph">
+<p><a href="#sep-input-fabric-diagram">Figure 2</a> follows a request from the system interconnect through
+<code>sep_system_peripherals</code>. The inbound filter checks it first; while SEP-scope
+debug is enabled, <code>SEP_DBG</code> bypasses the filter. The global-to-local remap then
+rebases the <code>SEP_REGION_SIZE</code> window at <code>SEP_GLOBAL_BASE_ADDR</code> to address 0 and
+passes every other address unchanged. The peripheral crossbar has a second
+initiator, the <code>SEP_LOCAL</code> port of the output fabric&#8217;s route demux, so local
+masters reach the mailboxes and system CSRs through the same decode. Addresses
+outside the mailbox and system CSR windows but below <code>0x4000_0000</code> are truncated
+to 32 bits, their IDs reduced from 7 to 3 bits, and forwarded to the <code>ext</code>
+initiator of the local crossbar. Inside the system CSR windows the crossbar
+decodes each register block separately and answers the addresses between them
+with DECERR on reads and writes, as it does any address at or above
+<code>0x4000_0000</code>. The system CSRs program the inbound filter entries and the SEP aperture,
+as well as the output fabric&#8217;s remaps and outbound filter.</p>
+</div>
+<div id="sep-local-fabric-diagram" class="imageblock">
+<div class="content">
+<img src="_images/sep-local-fabric.svg" alt="SEP local crossbar with its five initiators, their alias remaps and demuxes, the boot ROM path and the converters in front of its ten targets" width="100%">
+</div>
+<div class="title">Figure 3. SEP local fabric</div>
+</div>
+<div class="paragraph">
+<p><a href="#sep-local-fabric-diagram">Figure 3</a> shows the local crossbar with its initiators on the
+left and its targets on the right, in crossbar port order. Each CPU master and
+the secure DMA master pass a local alias remap before the crossbar; the remap
+rewrites the 768 MiB window at <code>SEP_LOCAL_BASE_ADDR</code> to <code>0x1000_0000</code>. The IFU
+and LSU demuxes inside <code>sep_cpu</code> send boot ROM addresses to the boot ROM mux,
+which reaches the ROM macro without passing the crossbar, and the IFU demux
+answers addresses outside the boot ROM and SEP SRAM with DECERR. The chain on
+each target row is the conversion the target needs: the secure DMA registers
+and the watchdog are reached as 32-bit TL-UL, and the IO block, reset
+controller and entropy pool as AXI-Lite. The <code>sep_external</code> demux diverts the
+eFuse shim CSR window to the eFuse wrapper; every other address in the
+<code>0x2000_0000</code> to <code>0x3FFF_FFFF</code> aperture leaves SEP on the AXI extension port.
+<a href="#sep-axi-connectivity">Figure 1</a> gives the initiator-to-target connections.</p>
+</div>
+<div id="sep-output-fabric-diagram" class="imageblock">
+<div class="content">
+<img src="_images/sep-output-fabric.svg" alt="Outbound path of sep_system_peripherals: address expansion, alias remap, route demux, AP and STEE output remaps, outbound mux and outbound filter" width="100%">
+</div>
+<div class="title">Figure 4. SEP output fabric</div>
+</div>
+<div class="paragraph">
+<p><a href="#sep-output-fabric-diagram">Figure 4</a> follows local-master traffic that the local
+crossbar sends to <code>sep_system_peripherals</code>. The address is zero-extended from
+32 to 56 bits, passes the 16-region alias remap and a register cut, and reaches
+the route demux. The demux takes the first match in the order shown: the SMC
+aperture, supplied by the SMC, goes straight to the SMC without filtering; the
+SMU aperture from <code>SMU_GLOBAL_BASE_ADDR</code> and <code>SMU_REGION_SIZE</code>, and any address
+at or above <code>0x1_0000_0000</code>, goes to the outbound mux; the AP and STEE regions
+pass their output remaps, which replace the address with the programmed region
+offset and set the source ID to <code>OTHERS</code>, before the same mux; and every other
+address returns to the peripheral crossbar of the input fabric. The outbound mux
+widens the ID from 6 to 8 bits, and the outbound filter, which has no bypass,
+guards the path to the system interconnect.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="subsystem-external-interfaces"><a class="anchor" href="#subsystem-external-interfaces"></a><a class="link" href="#subsystem-external-interfaces">2. Interfaces</a></h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p>Memory interfaces: BL0 ROM, DCCM, ICCM, Scratch SRAM, KM SRAM, KM ROM,
+OTBN IMEM, OTBN DMEM</p>
+</li>
+<li>
+<p>Fuse controller interface</p>
+</li>
+<li>
+<p>Entropy source interface</p>
+</li>
+<li>
+<p>JTAG interfaces</p>
+</li>
+<li>
+<p><em>RAS Interface - Alarm Processor is deferred to next generation</em></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="address-remapping"><a class="anchor" href="#address-remapping"></a><a class="link" href="#address-remapping">3. Address Remapping</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Sixteen remap regions are available, each supported by an address
+remapper. Remappers define the following attributes:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Input address range</p>
+</li>
+<li>
+<p>Remapped output address offset</p>
+</li>
+<li>
+<p>AxCACHE value, which replaces the transaction&#8217;s own on a hit</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The programmable remap regions accomplish several jobs. First, they
+expand local 32-bit addresses to the global 56-bit address space.
+Second, they provide software-programmed translation and cacheability
+attributes for locally initiated transactions. Out of reset, these
+programmable remap entries are invalid and therefore behave as
+transparent pass-through entries until firmware programs them.</p>
+</div>
+<div class="paragraph">
+<p>After the alias remap, traffic routing is done as follows:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>External or cross-subsystem traffic reaches SEP through the global
+aperture described by <code>SEP_GLOBAL_BASE_ADDR</code> and <code>SEP_REGION_SIZE</code>.
+The current <code>SEP_REGION_SIZE</code> reset is <code>0x0100_0000</code> (16 MiB); the
+runtime value is software-programmed to match the chiplet map.</p>
+</li>
+<li>
+<p>SEP CPU local-alias traffic is an internal CPU-side view of the SEP
+map. It exists so software can use high alias addresses such as
+<code>0xD000_0000</code> for resources whose direct internal addresses begin at
+<code>0x1000_0000</code>. This high local alias span has a fixed SEP-local size
+of 768 MiB.</p>
+</li>
+<li>
+<p>Any transaction that doesn’t get routed to local resources is directly
+routed out to the SMN.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Both the chiplet ID and chiplet BAR are available in SMC as MMRs. The
+Programmer&#8217;s Guide gives the
+<a href="../../../ocah-programmer-guide/0.5/index.html#sep-smc-address-remapping" class="xref page">aperture programming sequence</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-traffic-filter-decode"><a class="anchor" href="#sep-traffic-filter-decode"></a><a class="link" href="#sep-traffic-filter-decode">4. Filtering and Protection</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Both SEP filters are instances of the common <code>axi_filter_wrap</code> block. The
+inbound filter has 16 entries and the outbound filter has 32; each entry
+is one <code>filter_ctrl</code> register triple (<code>FILTER_CONFIG</code>, <code>START_ADDR</code>,
+<code>END_ADDR</code>). Both carry 56-bit addresses on a 64-bit data bus, both
+enable NS and source ID matching, and both block traffic that matches no
+entry.</p>
+</div>
+<div class="paragraph">
+<p>The inbound filter is bypassed in its entirety, admitting all inbound
+traffic, while SEP-scope debug is enabled; see
+<a href="lifecycle_controller.html#feature-control-vector-definition" class="xref page">Disable Vector Format (SIP_DIS / SYS_DIS)</a> for the <code>SEP_DBG</code> control. The
+outbound filter has no bypass and is always in effect.</p>
+</div>
+<div class="paragraph">
+<p>Register regions accept single-beat accesses only
+(<a href="memory_map.html#sep-register-single-beat" class="xref page">Single-Beat Register Access</a>), so an inbound entry covering one with
+<code>allow_burst</code> set admits bursts the target rejects. The Programmer&#8217;s Guide
+gives the
+<a href="../../../ocah-programmer-guide/0.5/index.html#sep-smc-axi-filters" class="xref page">filter programming rules</a>.</p>
+</div>
+<div class="paragraph">
+<p>The decode algorithm&#8201;&#8212;&#8201;entry priority, the match conditions, the
+address range granule and its widening direction, and the response
+returned to a blocked initiator&#8201;&#8212;&#8201;is common to SEP and SMC. It is
+documented once with the IP in <a href="../ip/axi_filter/doc/index.html#axi-traffic-filter" class="xref page">AXI Traffic Filter</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="local-and-external-axi4-traffic-remapping"><a class="anchor" href="#local-and-external-axi4-traffic-remapping"></a><a class="link" href="#local-and-external-axi4-traffic-remapping">5. Routing</a></h2>
+<div class="sectionbody">
+<div id="sep-system-peripheral-traffic-management-figure" class="imageblock">
+<div class="content">
+<img src="_images/sep-system-peripherals.svg" alt="Overview of sep_system_peripherals: the outbound path through the alias remap, route demux, AP and STEE remaps and outbound filter, and the inbound path through the inbound filter, global-to-local remap and peripheral crossbar to the mailboxes, system CSRs and local crossbar" width="100%">
+</div>
+<div class="title">Figure 5. SEP system-peripheral traffic management</div>
+</div>
+<div class="paragraph">
+<p><a href="#sep-system-peripheral-traffic-management-figure">Figure 5</a> illustrates the AXI4 traffic management performed by
+the system peripherals block. Its left edge faces the SEP local crossbar and
+its right edge the SMU; the upper lane is the outbound path and the lower lane
+the inbound path, drawn in the notation of <a href="#sep-fabric-topology">Section 1.2</a>. The figure
+is an overview: <a href="#sep-output-fabric-diagram">Figure 4</a> and <a href="#sep-input-fabric-diagram">Figure 2</a>
+give every element with its instance name and address window. The AXI4
+subordinate port on the left is driven by the local masters that the local
+crossbar connects to it: the CPU LSU, the CPU debug master and the secure DMA.
+Traffic may be local to the SEP or outbound to external resources either
+within the SMU or beyond the SMU. Traffic beyond the SMU to the rest of
+the chiplet or remote chiplets will bridge to the system NOC also known
+as the SMN.</p>
+</div>
+<div class="sect2">
+<h3 id="transaction-routing"><a class="anchor" href="#transaction-routing"></a><a class="link" href="#transaction-routing">5.1. Transaction Routing</a></h3>
+<div class="paragraph">
+<p>Local SEP resources include peripheral CSRs, SRAM and the AP- and
+STEE-controlled remappers. SEP CPU direct addresses, the CPU local-alias view
+and the external global aperture are distinct views, as described in
+<a href="#address-remapping">Address Remapping</a>.</p>
+</div>
+<div class="paragraph">
+<p>Neighboring SMC resources are accessed through the SMC global aperture
+programmed by SMC firmware and supplied to SEP/SMU integration logic.
+That aperture is independent from the SEP CPU local-alias range.</p>
+</div>
+<div class="paragraph">
+<p>Traffic not routed to local SEP or neighboring SMC resources goes to the
+SMN system NoC, either through the AP- or STEE-controlled remappers, which
+external software such as the Ascalon AP controls, or through the direct SMN
+path.</p>
+</div>
+<div class="paragraph">
+<p>SEP outbound traffic carries a source ID in AxUSER. Both AP- and STEE-controlled
+remappers replace it with <code>OTHERS</code>. Other traffic retains the initiator&#8217;s ID:
+the CPU masters drive SEP&#8217;s ID, while the secure DMA master leaves AxUSER at
+zero (<code>OTHERS</code>). AxPROT, including NS, passes unchanged. The outbound filter
+checks address, NS and source ID after remapping. The Programmer&#8217;s Guide
+describes how to
+<a href="../../../ocah-programmer-guide/0.5/index.html#sep-smc-address-remapping" class="xref page">select the outbound path and restrict <code>OTHERS</code> traffic</a>.</p>
+</div>
+<div class="paragraph">
+<p>The inbound filter blocks traffic by default. Its entries reside in the system
+CSRs, reached directly by local masters and by external masters only through
+an enabled inbound filter entry (or the stated SEP debug bypass). Matching
+rules are in <a href="#sep-traffic-filter-decode">Filtering and Protection</a>.</p>
+</div>
+<div id="mailboxes" class="paragraph">
+<p>See <a href="mailbox.html" class="xref page">Mailboxes</a> under Peripherals for host mailbox operation.</p>
+</div>
+<div id="sep-mailbox-diagram" class="paragraph">
+<p>See <a href="mailbox.html#sep-mailbox-diagram" class="xref page">Mailbox architecture and interrupt routing</a>.</p>
+</div>
+<div id="sep-mailbox-qualification-table" class="paragraph">
+<p>See <a href="mailbox.html#sep-mailbox-qualification-table" class="xref page">Mailbox qualification</a>.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-map-and-register-reference"><a class="anchor" href="#memory-map-and-register-reference"></a><a class="link" href="#memory-map-and-register-reference">6. Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<span id="register-reference"></span>
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">6.1. Memory Map</a></h3>
+<div class="paragraph">
+<p>The Memory Map chapter lists the address windows. The common AXI Traffic
+Filter reference describes the filter register layout and programming rules.</p>
+</div>
+<div class="paragraph">
+<p><a href="memory_map.html" class="xref page">Memory Map</a>; <a href="../ip/axi_filter/doc/index.html#axi-traffic-filter" class="xref page">AXI Traffic Filter</a>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">6.2. Detailed Register Map</a></h3>
+<div class="paragraph">
+<p>See the owning register references linked above.</p>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

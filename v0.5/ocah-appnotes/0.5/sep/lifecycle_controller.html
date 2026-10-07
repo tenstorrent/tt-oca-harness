@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Life Cycle Controller (LCC) :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP lifecycle states, demotion, feature control, and asset protection.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-appnotes" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Application Notes</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Application Notes 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component is-current">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../index.html">Application Notes</a></li>
+    <li><a href="lifecycle_controller.html">Life Cycle Controller (LCC)</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Life Cycle Controller (LCC)</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="life-cycle-controller-lcc-life-cycle-controller-lcc" class="paragraph">
+<p>The Life Cycle Controller (LCC) converts the OTP lifecycle state and owner
+restrictions into <code>feat_ctrl_o</code>, the 64-bit vector that enables debug and
+functional features. Two volatile demotion controls can change the debug
+profile for the current boot without changing OTP.</p>
+</div>
+<div class="paragraph">
+<p>The OTP controller supplies <code>LC_STATE</code>, <code>SIP_DIS</code> and <code>SYS_DIS</code> after fuse
+sensing. The LCC checks the differentially encoded state and disables features
+on an integrity error, except when the final <code>SEC_DIS</code> override forces them on.
+Downstream logic uses these outputs to gate debug, test and functional paths.</p>
+</div>
+<div class="paragraph">
+<p>The sections below explain states and security domains, feature-control rules,
+demotion, scan protection and firmware authorization. Hardware gating is
+implemented; the multi-owner signing model in <a href="#demote-signing-model">Firmware Authorization</a>
+is a deferred firmware design. Do not use that model as a description of current
+ROM verification.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sep-lifecycle-controller-figure">Figure 1</a> shows a high-level view of the Life Cycle Controller
+components.</p>
+</div>
+<div id="sep-lifecycle-controller-figure" class="imageblock">
+<div class="content">
+<img src="_images/sep-lifecycle-controller.svg" alt="sep_lifecycle_ctrl: LC_STATE decoder, feature control decode, security-disable override, debug and DFT disable derivation, register block and demotion encoders" width="100%">
+</div>
+<div class="title">Figure 1. SEP lifecycle controller</div>
+</div>
+<div class="paragraph">
+<p>In <a href="#sep-lifecycle-controller-figure">Figure 1</a>, the inputs enter on the left and the
+outputs leave on the right, each labelled with its consumer. <code>u_lc_state_dec</code>
+decodes the differentially encoded LC_STATE from the eFuse shadow registers and
+raises <code>lc_sigint_err</code> on a non-complementary codeword, which forces the feature
+control decode to all zeros. While <code>security_disable_i</code> is high, the
+multiplexer replaces the decoded vector with all ones, even on an integrity
+error. The <code>lc_sigint_err</code> line crosses the <code>security_disable_i</code> line without
+connecting; the gap marks the crossing.</p>
+</div>
+<div class="paragraph">
+<p>The debug and DFT disable derivation turns the <code>sip_debug</code>, <code>chiplet_dbg</code>,
+<code>sep_debug</code>, <code>sep_fuse_dbg</code> and <code>smc_fuse_dbg</code> bits of the result into the 11
+debug disables for the DTP and the two fuse DFT disables. No functional logic
+consumes the fuse DFT disables; they leave the SMU for adopter DFT insertion.
+The <code>demote</code> and <code>lock</code> bits of DEMOTE_1 and DEMOTE_2 are set-only: firmware
+can set <code>demote</code> only while <code>lock</code> is clear, and both hold until SEP cold
+reset. The demote bits feed the feature control decode and, through the
+differential encoders, the Key Manager and the SEP outputs.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="lc-state-machine"><a class="anchor" href="#lc-state-machine"></a><a class="link" href="#lc-state-machine">1. Lifecycle States</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The LCC decodes the OTP controller&#8217;s <code>LC_STATE</code> shadow output; it does not
+sequence lifecycle transitions itself. Before fuse sensing completes, that
+output holds INVALID (<code>4&#8217;b1111</code>). The LCC then follows the sensed state and
+its feature-control profile.</p>
+</div>
+<div class="paragraph">
+<p>The raw four-bit OTP value is carried as a complementary code in the shadow
+path. A failed integrity check sets <code>lc_sigint_err</code> and forces the base feature
+vector to zero. <code>SEC_DIS</code> is applied afterward and can override that result;
+see <a href="#feat-ctrl-overrides-and-gates">Section 3.5</a>.</p>
+</div>
+<div class="paragraph">
+<p>Hardware orders the RMA token transitions: <code>RMA_SIP_TOKEN</code> first admits
+RMA_SIP, then <code>RMA_CHIPLET_TOKEN</code> admits RMA_CHIPLET. Volatile demotion is
+separate from those transitions and does not change the OTP state.</p>
+</div>
+<div class="paragraph">
+<p>Key Manager includes DEMOTE_1/2 with CHIPLET_UID, SIP_UID, SYS_UID and LC_STATE
+in key derivation, separating demoted-state keys from non-demoted production
+keys.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sep-lifecycle-state-machine-figure">Figure 2</a> shows the lifecycle states and transition paths.</p>
+</div>
+<div id="sep-lifecycle-state-machine-figure" class="imageblock">
+<div class="content">
+<img src="_images/sep-lifecycle-state-machine.svg" alt="Lifecycle states TEST_DEV, PROD, PROD_END, RMA_SIP and RMA_CHIPLET with their encodings and the LC_STATE bit that each transition sets, the in-field demotion overlay, and the INVALID end-of-life state" width="100%">
+</div>
+<div class="title">Figure 2. SEP lifecycle state machine</div>
+</div>
+<div class="paragraph">
+<p>Each rounded box in <a href="#sep-lifecycle-state-machine-figure">Figure 2</a> is a lifecycle state
+with its raw OTP encoding, where X marks a bit that does not change the state.
+LC_STATE bits can only be set, so each arrow names the bit that it sets.
+Setting LC_STATE[1] requires an RMA_SIP token match. Setting LC_STATE[2]
+requires an RMA_CHIPLET token match and a state that already has LC_STATE[1]
+set. Every other encoding is INVALID and permanent: for example, setting
+LC_STATE[3] in any state other than TEST_DEV, or setting any further bit in
+PROD_END. Before fuse sensing completes, the shadow output holds the INVALID
+encoding 4&#8217;b1111. The dashed box is the volatile demotion overlay, which acts
+in TEST_DEV and PROD without changing the encoding.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sep-lifecycle-state-encodings-table">Table 1</a> lists the raw OTP encodings. The
+complementary shadow encoding is a transport integrity check, not an
+additional lifecycle state.</p>
+</div>
+<table id="sep-lifecycle-state-encodings-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SEP lifecycle state encodings</caption>
+<colgroup>
+<col style="width: 22%;">
+<col style="width: 16%;">
+<col style="width: 62%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">LC State Name</th>
+<th class="tableblock halign-left valign-top">Encoding</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4’b0000</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>Default silicon state at manufacturing time.</p>
+</div>
+<div class="paragraph">
+<p>The chip is open for ATE/SLT testing, fuse provisioning, and mission-mode
+software development, with certain chiplet features disabled as defined
+by the chiplet creator, the SiP owner, and the system owner.</p>
+</div>
+<div class="paragraph">
+<p>In this state, the hash digests of the secret tokens (RMA_CHIPLET_TOKEN and
+RMA_SIP_TOKEN) are programmed into OTP by the chiplet creator and the
+SiP owner, respectively.</p>
+</div>
+<div class="paragraph">
+<p>The disable vectors (SIP_DIS and SYS_DIS) are likewise programmed into OTP by
+the chiplet creator and the SiP owner.</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PROD</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4’b0001</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>Product functioning state. In-field debug is enabled by the volatile
+DEMOTE_1 / DEMOTE_2 registers (not a separate LC encoding): DEMOTE_1 opens the
+local debug group (DBG_1) and DEMOTE_2 opens the inter-chiplet debug-bypass
+group (DBG_2).</p>
+</div>
+<div class="paragraph">
+<p>See <a href="#demote-1-2-in-field-debug-demotion">Section 4</a>.</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PROD_END</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4’b1000</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>Terminal product state; the only permitted transition is to INVALID.</p>
+</div>
+<div class="paragraph">
+<p>This state is entered from TEST_DEV for special use cases in which RMA
+is not allowed.</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RMA_SIP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4’b001X</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>Enables the SiP owner to debug and test the part.</p>
+</div>
+<div class="paragraph">
+<p>The secret token (RMA_SIP_TOKEN) must be presented to enable the
+transition from PROD or TEST_DEV.</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RMA_CHIPLET</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4’b011X</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>Enables the chiplet owner to debug and test the part.
+All features are enabled (neither SIP_DIS nor SYS_DIS applies), unlike
+TEST_DEV, which still honors SIP_DIS/SYS_DIS.</p>
+</div>
+<div class="paragraph">
+<p>The secret token (RMA_CHIPLET_TOKEN) must be presented to enable the
+transition from RMA_SIP.</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">INVALID</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All other values</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Disables all features unless SEC_DIS overrides it.
+Also used before fuse sensing completes; observing this profile alone does
+not establish that the OTP has been programmed to an end-of-life state.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="multiple-security-domains"><a class="anchor" href="#multiple-security-domains"></a><a class="link" href="#multiple-security-domains">2. Multiple Security Domains</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SiP owner controls the debug-access network between chiplets. Each chiplet
+owner controls access to its own local assets. A system has one shared
+SiP-owner domain and a local domain for each chiplet with independently
+protected assets.</p>
+</div>
+<div class="paragraph">
+<p><code>SIP_DBG</code> admits and forwards external debug traffic at each chiplet with a
+local SEP/LCC. Access to local resources additionally requires <code>CHIPLET_DBG</code>;
+SEP resources also require <code>SEP_DBG</code>. Opening another chiplet&#8217;s local debug
+gate is unnecessary when traffic only passes through it.</p>
+</div>
+<div class="paragraph">
+<p>A chiplet without a local SEP/LCC contributes no local disable vector.
+The preceding LCC-bearing chiplet controls forwarding to it, as described
+in <a href="#non-primary-chiplets">Section 6</a>.</p>
+</div>
+<div id="sep-security-domains-figure" class="imageblock">
+<div class="content">
+<img src="_images/sep-security-domains.svg" alt="Three chiplets on one JTAG chain inside a SiP: the primary chiplet and a secondary chiplet with a SEP each gate debug traffic with SIP_DBG, CHIPLET_DBG and SEP_DBG, and a secondary chiplet without a SEP has no gate of its own" width="100%">
+</div>
+<div class="title">Figure 3. SEP security domains</div>
+</div>
+<div class="paragraph">
+<p>In <a href="#sep-security-domains-figure">Figure 3</a>, each chiplet with a SEP gates the debug
+path from its PTAP downwards: SIP_DBG opens the Case 1 targets, CHIPLET_DBG adds
+the Case 2 targets and SEP_DBG adds the Case 3 targets, each listed to the right
+of its gate. The targets are the debug paths that <code>sep_lifecycle_ctrl</code> disables
+through <code>dbg_disable_o</code> and the two fuse DFT disables, as given in
+<a href="#dtp-path-gating">Section 5.4</a>; the fuse DFT paths also need their own SEP_FUSE_DBG or
+SMC_FUSE_DBG bit. The green gate belongs to the SiP-owner domain and is a DBG_2
+bit, opened in the field by Demotion 2. The cream gates belong to the
+chiplet-owner domain and are DBG_1 bits, opened by Demotion 1. The I/O STAP
+forwards the chain to the next chiplet&#8217;s PTAP.</p>
+</div>
+<div class="paragraph">
+<p>In <a href="#sep-security-domains-figure">Figure 3</a>, chiplet 1 is primary, chiplet 2 has no SEP,
+and chiplet 3 has its own LCC:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Chiplet 1 local debug requires <code>SIP_DBG(1)</code> and <code>CHIPLET_DBG(1)</code>.</p>
+</li>
+<li>
+<p>Chiplet 2 access requires <code>SIP_DBG(1)</code>; chiplet 2 adds no local gate.</p>
+</li>
+<li>
+<p>Chiplet 3 local debug requires <code>SIP_DBG(1)</code>, <code>SIP_DBG(3)</code> and
+<code>CHIPLET_DBG(3)</code>. It does not require <code>CHIPLET_DBG(1)</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The per-path conjunctions are listed in <a href="#dtp-path-gating">Section 5.4</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="debug-test-and-functional-feature-control-vectors-debug-test-and-functional-feature-control-vectors"><a class="anchor" href="#debug-test-and-functional-feature-control-vectors-debug-test-and-functional-feature-control-vectors"></a><a class="link" href="#debug-test-and-functional-feature-control-vectors-debug-test-and-functional-feature-control-vectors">3. Debug and Functional Feature Control</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>feat_ctrl_o</code> uses positive logic: 1 enables a feature. The 64-bit
+<code>SIP_DIS</code> and <code>SYS_DIS</code> shadows use negative logic: 1 restricts a feature.
+The applicable masks depend on lifecycle state and demotion. Where both
+apply, the enable is <code>~(SIP_DIS | SYS_DIS)</code>.</p>
+</div>
+<div class="paragraph">
+<p><a href="#feature-control-table">Table 4</a> gives the complete state-dependent formulas.
+The final <code>SEC_DIS</code> override is described in <a href="#feat-ctrl-overrides-and-gates">Section 3.5</a>.</p>
+</div>
+<div class="sect2">
+<h3 id="feature-control-vector-definition"><a class="anchor" href="#feature-control-vector-definition"></a><a class="link" href="#feature-control-vector-definition">3.1. Disable Vector Format (SIP_DIS / SYS_DIS)</a></h3>
+<div class="paragraph">
+<p><a href="#sep-feature-disable-vector-table">Table 2</a> defines the <strong>disable</strong> vector format&#8201;&#8212;&#8201;the bit layout shared by
+both SIP_DIS and SYS_DIS (each is 64 bits). Each defined bit gates a specific
+feature or its associated scan chain; the remaining bits are
+reserved for adopter extension (see <a href="#asset-and-scan-chain-protection">Section 5</a> and
+<a href="#adopter-extension">Section 7</a>).</p>
+</div>
+<div class="paragraph">
+<p>In the policy tables, <code>T</code> means enabled and <code>F</code> means disabled.
+A clear disable bit permits a feature only where the lifecycle profile
+allows it; it does not by itself open a production debug path.</p>
+</div>
+<div class="paragraph">
+<p>DBG_1 covers <code>[23:0]</code> and is controlled by Demotion 1. DBG_2 covers <code>[47:24]</code>
+and is controlled by Demotion 2. Function bits occupy <code>[63:48]</code>.</p>
+</div>
+<div class="lifecycle-table-scroll" role="region" aria-label="Feature disable vector" tabindex="0">
+<table id="sep-feature-disable-vector-table" class="tableblock frame-all grid-all stretch lifecycle-table">
+<caption class="title">Table 2. SEP feature-disable vector</caption>
+<colgroup>
+<col style="width: 8%;">
+<col style="width: 13%;">
+<col style="width: 22%;">
+<col style="width: 57%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">DIS bit index</th>
+<th class="tableblock halign-left valign-top">Feature Category</th>
+<th class="tableblock halign-left valign-top">Feature Name</th>
+<th class="tableblock halign-left valign-top">Feature Description (<code>1&#8217;b1</code> disables the feature; <code>1&#8217;b0</code> enables it)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">debug (DBG_1)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_DBG</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Coarse-grained debug enable for the <strong>SEP</strong> scope: the local gate for SEP internal state. <code>1&#8217;b1</code>: SEP-scope debug / scan-dump access disabled and inbound (<code>ext</code>) traffic is filtered before it can reach SEP internal state. <code>1&#8217;b0</code>: enabled&#8201;&#8212;&#8201;inbound traffic bypasses the filter and scan dump is allowed. SEP_DBG is a local gate, not the chiplet ingress: <code>SIP_DBG</code> (bit 24) admits external debug traffic into the chiplet, <code>CHIPLET_DBG</code> (bit 1) admits it to chiplet-internal resources, and <code>SEP_DBG</code> then governs whether it can reach SEP internal state. Debugging SEP assets from an external debugger therefore requires <strong>all three</strong>&#8201;&#8212;&#8201;Case 3 of <a href="#dtp-path-gating">Section 5.4</a>&#8201;&#8212;&#8201;not <code>SEP_DBG</code> alone.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">debug (DBG_1)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIPLET_DBG</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Coarse-grained debug enable for the <strong>chiplet</strong> scope. <code>1&#8217;b1</code>: chiplet-scope debug / scan-dump access disabled. <code>1&#8217;b0</code>: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when <code>SIP_DBG</code> is open as well (Case 2 of <a href="#dtp-path-gating">Section 5.4</a>). Contributes to the reachability of the crypto / KM secure chain but never authorizes a dump from it: that chain admits only test commands, and only while <code>secure_tm = 1</code>. In <code>TEST_DEV</code> and <code>RMA_SiP</code>, this bit set in <code>SIP_DIS</code> or <code>SYS_DIS</code> makes the production ROM enforce secure boot; it has no such effect in <code>RMA_CHIPLET</code>. See <a href="#secure-boot-enforcement">Firmware Authorization</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">debug (DBG_1)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_FUSE_DBG</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1&#8217;b1</code>: the DFT-inserted access path into the SEP OTP is disabled. <code>1&#8217;b0</code>: enabled. This gate also covers the OTP IP-vendor test and calibration interface (used during ATE for vendor-specific OTP test functions and internal-voltage calibration), which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">debug (DBG_1)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_FUSE_DBG</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1&#8217;b1</code>: the DFT-inserted access path into the SMC OTP is disabled. <code>1&#8217;b0</code>: enabled. (The bit is produced by SEP-LCC&#8217;s <code>feat_ctrl_o</code>, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4-23</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">debug (DBG_1)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Reserved</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Available for adopter-defined local (DBG_1) debug scan chains. See <a href="#adopter-extension">Section 7</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">24</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">debug (DBG_2)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SIP_DBG</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Coarse-grained debug enable for the <strong>SiP</strong> scope: the inter-chiplet debug-bypass gate (DBG_2, gated by Demotion 2) that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. Debugging a chiplet&#8217;s assets requires SIP_DBG enabled on each LCC-bearing chiplet along the debug path, including the target itself when it has its own LCC; chiplets without a local SEP/LCC contribute no gate (see <a href="#multiple-security-domains">Section 2</a>). <code>1&#8217;b1</code>: disabled. <code>1&#8217;b0</code>: enabled.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">25-47</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">debug (DBG_2)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Reserved</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Available for adopter-defined
+inter-chiplet debug / DFT forwarding paths. Each allocated bit is consumed
+on the LCC-bearing chiplet to gate the corresponding traffic before it is
+forwarded downstream. See <a href="#adopter-extension">Section 7</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">48-63</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">function</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Reserved</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Available for adopter-defined functional feature gating. See <a href="#adopter-extension">Section 7</a>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="dis-vector-ownership"><a class="anchor" href="#dis-vector-ownership"></a><a class="link" href="#dis-vector-ownership">3.2. DIS Vector Ownership: Predecessor-Programs-Disables</a></h3>
+<div class="paragraph">
+<p>The vector name identifies the receiving owner, not the programmer:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The chiplet creator programs <code>SIP_DIS</code> before SiP handoff. Its restrictions
+remain effective in RMA_SIP and are bypassed in RMA_CHIPLET.</p>
+</li>
+<li>
+<p>The SiP owner programs <code>SYS_DIS</code> before system handoff. Its restrictions
+are bypassed in RMA_SIP and RMA_CHIPLET.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>RMA bypass does not erase either fuse vector. The system owner has no
+successor and therefore no third disable vector. It provisions its own
+<code>SYS_PUBK_HASH</code> and <code>SYS_UID</code> before TEST_DEV-to-PROD transition; see the
+OTP Fuse Controller chapter for the provisioning sequence.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="dis-vector-or-rationale"><a class="anchor" href="#dis-vector-or-rationale"></a><a class="link" href="#dis-vector-or-rationale">3.3. Combining Rule: OR then Invert</a></h3>
+<div class="paragraph">
+<p>Where both owner masks apply, a feature is disabled if either mask has its
+bit set. OR combines the restrictions; inversion produces the positive-logic
+enable. Since an OTP bit can only change from 0 to 1, a later owner cannot
+erase an earlier owner&#8217;s programmed restriction. Lifecycle profiles can
+bypass masks for RMA access without changing OTP.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="dis-vector-applicability"><a class="anchor" href="#dis-vector-applicability"></a><a class="link" href="#dis-vector-applicability">3.4. When Each DIS Vector Applies</a></h3>
+<div class="paragraph">
+<p>The table below gives mask applicability before demotion and the final
+overrides. In TEST_DEV, demotion can bypass the masks for its debug group;
+in PROD, demotion opens that group only subject to both masks. See
+<a href="#feature-control-table">Table 4</a> for those exceptions.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sep-disable-vector-applicability-table">Table 3</a> identifies which disable vectors apply in
+each lifecycle state.</p>
+</div>
+<table id="sep-disable-vector-applicability-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. SEP disable-vector applicability</caption>
+<colgroup>
+<col style="width: 26%;">
+<col style="width: 74%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">LC state</th>
+<th class="tableblock halign-left valign-top">Applicable DIS vectors</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Both SIP_DIS and SYS_DIS apply. TEST_DEV is the shared phase the part
+passes through under the chiplet creator, SiP owner, and system owner in
+turn.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PROD / PROD_END</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Both SIP_DIS and SYS_DIS apply.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RMA_SIP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Only SIP_DIS applies. At the SiP-owner level, the SiP owner sits <strong>above</strong>
+the system owner, so its own SYS_DIS&#8201;&#8212;&#8201;which restricts the
+system owner&#8201;&#8212;&#8201;does not bind it; only the chiplet creator&#8217;s SIP_DIS
+restriction remains in force.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RMA_CHIPLET</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Neither SIP_DIS nor SYS_DIS apply (all features enabled).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">INVALID</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Neither applies (all features disabled by fail-closed default).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">(any) with SEC_DIS = 1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Neither DIS vector applies (all features enabled).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="feat-ctrl-overrides-and-gates"><a class="anchor" href="#feat-ctrl-overrides-and-gates"></a><a class="link" href="#feat-ctrl-overrides-and-gates">3.5. Overrides and Final Gates (SEC_DIS)</a></h3>
+<div class="paragraph">
+<p>Two controls sit <strong>on top of</strong> the per-LC-state / DIS-vector computation, applied in
+this order (a later step overrides an earlier one):</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Signal-integrity fail-closed (base):</strong> if the differentially encoded LC_STATE
+fails its integrity check (<code>lc_sigint_err</code>), the base <code>feat_ctrl</code> is forced to
+all-0s (all features disabled).</p>
+</li>
+<li>
+<p><strong>SEC_DIS override:</strong> when <code>SEC_DIS = 1</code>, <code>feat_ctrl</code> is forced to all-1s&#8201;&#8212;&#8201;every
+feature enabled, regardless of the LC state, the DIS vectors, or the sigint
+result (an emergency bring-up bypass on A0 silicon; see the Security Disable
+section).</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p><code>SECURE_TM</code> is <strong>not</strong> a term in <code>feat_ctrl_o</code>. No feature control bit is qualified
+by secure test mode: the debug group <code>[47:0]</code> and the function group <code>[63:48]</code>
+are both determined solely by the LC state, the DIS vectors, and the SEC_DIS
+override. <code>secure_tm</code> acts on the scan path and on the fuse controller rather
+than on feature control&#8201;&#8212;&#8201;see <a href="#secure-tm-vs-scandump">Section 5.2</a>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="per-lc-state-feature-control-profile-section"><a class="anchor" href="#per-lc-state-feature-control-profile-section"></a><a class="link" href="#per-lc-state-feature-control-profile-section">3.6. Per-LC-state Feature Control Profile</a></h3>
+<div class="paragraph">
+<p>The output is shown as DBG_1 / DBG_2 / Function. <code>T</code> enables all bits of a
+group; <code>F</code> disables them. A formula applies the indicated disable masks.
+Demotion has no effect on Function.</p>
+</div>
+<div class="lifecycle-table-scroll" role="region" aria-label="Per-LC-state feature control profile" tabindex="0">
+<table id="feature-control-table" class="tableblock frame-all grid-all stretch lifecycle-table lifecycle-table-wide">
+<caption class="title">Table 4. Per-LC-state feature control profile</caption>
+<colgroup>
+<col style="width: 17%;">
+<col style="width: 10%;">
+<col style="width: 12%;">
+<col style="width: 35%;">
+<col style="width: 26%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">LC_STATE</th>
+<th class="tableblock halign-center valign-top">SEC_DIS</th>
+<th class="tableblock halign-center valign-top">DEMOTE (1 / 2)</th>
+<th class="tableblock halign-left valign-top">Feature Control: \{DBG_1 / DBG_2 / Function}</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top" rowspan="5"><p class="tableblock">TEST_DEV (4&#8217;b0000)</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">0 / 0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">~(SIP_DIS.DBG_1 | SYS_DIS.DBG_1) / ~(SIP_DIS.DBG_2 | SYS_DIS.DBG_2) / ~(SIP_DIS.FUNC | SYS_DIS.FUNC)</p></td>
+<td class="tableblock halign-left valign-top" rowspan="5"><p class="tableblock">ATE/SLT test, fuse provisioning (SIP_DIS / SYS_DIS and the RMA tokens), and product firmware development. Both SIP_DIS and SYS_DIS apply; a demotion forces its debug group open, overriding the DIS vectors. Function is not affected by demotion.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">1 / 0</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">T / ~(SIP_DIS.DBG_2 | SYS_DIS.DBG_2) / ~(SIP_DIS.FUNC | SYS_DIS.FUNC)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">0 / 1</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">~(SIP_DIS.DBG_1 | SYS_DIS.DBG_1) / T / ~(SIP_DIS.FUNC | SYS_DIS.FUNC)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">1 / 1</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">T / T / ~(SIP_DIS.FUNC | SYS_DIS.FUNC)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">X</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">T / T / T</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" rowspan="5"><p class="tableblock">PROD (4&#8217;b0001)</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">0 / 0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">F / F / ~(SIP_DIS.FUNC | SYS_DIS.FUNC)</p></td>
+<td class="tableblock halign-left valign-top" rowspan="5"><p class="tableblock">Product state. A demotion relaxes its debug group to honor the DIS vectors (one level down from disabled). Both SIP_DIS and SYS_DIS still apply; Function is not affected by demotion.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">1 / 0</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">~(SIP_DIS.DBG_1 | SYS_DIS.DBG_1) / F / ~(SIP_DIS.FUNC | SYS_DIS.FUNC)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">0 / 1</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">F / ~(SIP_DIS.DBG_2 | SYS_DIS.DBG_2) / ~(SIP_DIS.FUNC | SYS_DIS.FUNC)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">1 / 1</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">~(SIP_DIS.DBG_1 | SYS_DIS.DBG_1) / ~(SIP_DIS.DBG_2 | SYS_DIS.DBG_2) / ~(SIP_DIS.FUNC | SYS_DIS.FUNC)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">X</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">T / T / T</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" rowspan="2"><p class="tableblock">PROD_END (4&#8217;b1000)</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">&#8201;&#8212;&#8201;</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">F / F / ~(SIP_DIS.FUNC | SYS_DIS.FUNC)</p></td>
+<td class="tableblock halign-left valign-top" rowspan="2"><p class="tableblock">Terminal product state&#8201;&#8212;&#8201;normal function only; the only permitted transition is to INVALID. Demotion has no effect.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">&#8201;&#8212;&#8201;</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">T / T / T</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" rowspan="2"><p class="tableblock">RMA_SIP (4&#8217;b001X)</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">&#8201;&#8212;&#8201;</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">~SIP_DIS.DBG_1 / ~SIP_DIS.DBG_2 / ~SIP_DIS.FUNC</p></td>
+<td class="tableblock halign-left valign-top" rowspan="2"><p class="tableblock">SiP-owner debug/test. Honors SIP_DIS only (SYS_DIS does not bind the SiP owner). Entered via RMA_SIP_TOKEN. Demotion has no effect.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">&#8201;&#8212;&#8201;</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">T / T / T</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RMA_CHIPLET (4&#8217;b011X)</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">X</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">&#8201;&#8212;&#8201;</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">T / T / T</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chiplet-owner debug/test&#8201;&#8212;&#8201;all features enabled. Entered via RMA_CHIPLET_TOKEN.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" rowspan="2"><p class="tableblock">INVALID (others)</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">&#8201;&#8212;&#8201;</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">F / F / F</p></td>
+<td class="tableblock halign-left valign-top" rowspan="2"><p class="tableblock">The chip is not live: end of life, immediately after reset, or an invalid LC_STATE.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">&#8201;&#8212;&#8201;</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">T / T / T</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="paragraph">
+<p>In the DEMOTE column, a dash means the state ignores demotion; X means
+SEC_DIS makes its value irrelevant. The two demotions act independently.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="demote-1-2-in-field-debug-demotion"><a class="anchor" href="#demote-1-2-in-field-debug-demotion"></a><a class="link" href="#demote-1-2-in-field-debug-demotion">4. In-Field Debug Demotion</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>DEMOTE_1</code> and <code>DEMOTE_2</code> each contain a <code>demote</code> bit and a <code>lock</code> bit.
+They are two registers, not separate demotion and lock register banks.
+Cold reset clears both and removes the volatile debug profile.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 5. SEP demotion controls</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Register</th>
+<th class="tableblock halign-left valign-top">Feature group</th>
+<th class="tableblock halign-left valign-top">Scope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DEMOTE_1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DBG_1, bits <code>[23:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Local debug, including SEP and chiplet gates.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DEMOTE_2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DBG_2, bits <code>[47:24]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inter-chiplet debug access and forwarding, including <code>SIP_DBG</code>.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The controls are independent: either may be set first or used alone.
+In TEST_DEV, demotion forces its group open; in PROD, it enables the group
+subject to the disable vectors. Other lifecycle profiles and function bits
+are unchanged. The complete formulas are in <a href="#feature-control-table">Table 4</a>.</p>
+</div>
+<div class="paragraph">
+<p>Opening local debug does not open the external access path. For example,
+a Case 3 SEP debug path requires both groups; see <a href="#dtp-path-gating">Section 5.4</a>.
+The LCC applies register values without authenticating the writer or a
+manifest. Firmware authorization is discussed under
+<a href="#lcc-firmware-policy">Firmware Authorization</a>.</p>
+</div>
+<div class="sect2">
+<h3 id="demote-lock-behavior"><a class="anchor" href="#demote-lock-behavior"></a><a class="link" href="#demote-lock-behavior">4.1. Programming and Locking</a></h3>
+<div class="paragraph">
+<p>Both <code>demote</code> (bit 0) and <code>lock</code> (bit 1) are write-one-to-set fields.
+Writing zero does not clear them. While <code>lock</code> is zero, firmware can set
+<code>demote</code>; once locked, the demotion decision cannot change until cold reset.
+The lock can commit either a demoted or a non-demoted state. The
+<a href="../../../ocah-programmer-guide/0.5/index.html#sep-lifecycle-demotion" class="xref page">demotion sequence</a>
+is in the Programmer&#8217;s Guide.</p>
+</div>
+<div class="paragraph">
+<p>This is the hardware mechanism. The current ROM&#8217;s manifest handling is
+documented in the Boot ROM chapter; the multi-owner authorization model
+above remains deferred.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="demote-reset-behavior"><a class="anchor" href="#demote-reset-behavior"></a><a class="link" href="#demote-reset-behavior">4.2. Reset Behavior</a></h3>
+<div class="paragraph">
+<p>SEP cold reset clears the <code>demote</code> and <code>lock</code> fields in both registers.
+The LCC then applies the profile of the sensed OTP state without demotion.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="asset-and-scan-chain-protection"><a class="anchor" href="#asset-and-scan-chain-protection"></a><a class="link" href="#asset-and-scan-chain-protection">5. Asset and Scan-Chain Protection</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Two distinct DFT operations use the scan chains, and the protection model
+treats them differently:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Scan test</strong>&#8201;&#8212;&#8201;shift in a test pattern, run the functional clock for one or
+two cycles, then shift the result out. Used for manufacturing / DFT coverage.</p>
+</li>
+<li>
+<p><strong>Scan dump</strong>&#8201;&#8212;&#8201;shift the live internal state out directly. Used for debug.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The integration must preserve test coverage without exposing live secrets.
+The rules below define the required scan partitioning and command gates;
+feature-vector generation alone does not implement or verify DFT insertion.</p>
+</div>
+<div class="sect2">
+<h3 id="asset-classes"><a class="anchor" href="#asset-classes"></a><a class="link" href="#asset-classes">5.1. Asset Classes</a></h3>
+<div class="paragraph">
+<p>SEP assets are partitioned into three classes. Class 1 (non-scannable) and
+Class 2 (scannable for test coverage but <strong>never</strong> scan-dumpable) are each split by
+protection rationale&#8201;&#8212;&#8201;<strong>a</strong> for confidentiality and <strong>b</strong> for integrity. Class 3 is
+everything else.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sep-security-asset-classes-table">Table 6</a> relates the asset classes to scan and scan-dump
+treatment.</p>
+</div>
+<div class="lifecycle-table-scroll" role="region" aria-label="Asset classes and scan-chain treatment" tabindex="0">
+<table id="sep-security-asset-classes-table" class="tableblock frame-all grid-all stretch lifecycle-table lifecycle-table-wide">
+<caption class="title">Table 6. SEP security asset classes</caption>
+<colgroup>
+<col style="width: 17%;">
+<col style="width: 25%;">
+<col style="width: 10%;">
+<col style="width: 12%;">
+<col style="width: 36%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Class</th>
+<th class="tableblock halign-left valign-top">Asset Examples</th>
+<th class="tableblock halign-center valign-top">Scannable (test)</th>
+<th class="tableblock halign-center valign-top">Scan-dumpable (debug)</th>
+<th class="tableblock halign-left valign-top">Gate &amp; Scan-Chain Treatment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>1a</strong><br>
+(non-scannable; confidentiality)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UIDs (<code>CHIPLET_UID</code>, <code>SIP_UID</code>, <code>SYS_UID</code>); <code>*_TOKEN_I</code> JTAG input registers (<code>SEC_DIS_TOKEN_I</code>, <code>RMA_SIP_TOKEN_I</code>, <code>RMA_CHIPLET_TOKEN_I</code>); <code>CLASS_KEY</code>; raw fuse read-back data.</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Excluded</strong> from all scan chains. <strong>Confidentiality</strong> rationale: these registers hold the actual secrets; the data lives <strong>in</strong> them, so the only safe option is to keep them off every scan chain.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>1b</strong><br>
+(non-scannable; integrity)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOCKS</code>/<code>LOCKS_SPARE</code>, <code>LC_STATE</code>, <code>SIP_DIS</code>, <code>SYS_DIS</code> shadow registers; <code>*_TOKEN_DIGEST</code> shadow registers; token-hash digest/valid and RMA match state</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Excluded</strong> from all scan chains. <strong>Integrity</strong> rationale: the values are not secret (digests are SHA-256 preimage-resistant), but scan shifting could change them and illegitimately enable a disabled feature or make an attacker-presented token match. Stability against scan-induced perturbation is required.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>2a</strong><br>
+(secret-bearing; confidentiality)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The complete Key Manager; AES, HMAC-SHA2, KMAC-SHA3, OTBN, entropy,
+DRBG/EDN, Adams Bridge, and TRNG sequential state; KM/OTBN companion SRAMs
+(see <a href="attack_countermeasures.html#class-2-asset-manifest" class="xref page">Class 2 Asset Manifest and Naming</a>)</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">Yes</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><strong>Never</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Dedicated secure scan chain.</strong> Reachable when its SIB is opened by the
+<code><strong>_DBG</code> feature control bits; a *test</strong> command is then admitted only when
+<code>secure_tm = 1</code>, and at <code>secure_tm = 0</code> no command is admitted at all. The
+secret-bearing shadow registers (UIDs / <code>CLASS_KEY</code>) are disconnected from
+downstream while <code>secure_tm = 1</code>, so these consumers hold no real secret during
+scan test. <strong>Scan dump is never permitted&#8201;&#8212;&#8201;for any owner or LC state</strong>: a dump
+command is never admitted on this chain (see <a href="#secure-tm-vs-scandump">Section 5.2</a>).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>2b</strong><br>
+(fuse program path; integrity)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fuse programming <strong>control</strong> MMRs and <strong>status</strong> MMRs of the SEP fuse controller</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">Yes</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><strong>Never</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Dedicated secure scan chain</strong>, alongside Class 2a, under the same command-class
+rule. <strong>Integrity</strong> rationale: shifting is not read-only with respect to the flops
+it passes through. During a dump every flop in the chain takes on a succession of
+arbitrary transient values, so a program-control register on a dumpable chain
+would pass through the encoding for "program" during an ordinary dump, and the
+dump itself could burn fuses. Status registers are included because spoofed
+status can steer the program sequencer. Class 2 rather than Class 1 so the fuse
+controller keeps manufacturing defect coverage; at <code>secure_tm = 1</code> the OTP
+write-enable inputs are tied inactive, so scan toggling cannot reach the fuse
+array.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>3</strong><br>
+(general logic)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The rest of the logic not classified above</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">Yes</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">Yes (gated)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>General scan chains.</strong> Scannable and scan-dumpable when permitted by the <code>*_DBG</code> feature control bits (the scope&#8217;s local gate&#8201;&#8212;&#8201;<code>SEP_DBG</code> or <code>CHIPLET_DBG</code>&#8201;&#8212;&#8201;plus the <code>SIP_DBG</code> debug-access path; see <a href="#multiple-security-domains">Section 2</a>) and the LC state. <code>secure_tm</code> plays no part here: these chains hold no secret, so both command classes are admitted whenever the chain is reachable.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="secure-tm-vs-scandump"><a class="anchor" href="#secure-tm-vs-scandump"></a><a class="link" href="#secure-tm-vs-scandump">5.2. <code>secure_tm</code> and the Secure Scan Chain</a></h3>
+<div class="paragraph">
+<p><code>secure_tm</code> is the secure-test-mode indicator: the <code>TEST_EN</code> strap latched into
+the internal <code>SECURE_TM</code> signal. It is latched when SEP fuse sensing completes
+if <code>SEC_DIS</code> is not asserted, or on chiplet cold-reset release if <code>SEC_DIS</code> is
+asserted (see the Test Mode section).</p>
+</div>
+<div class="paragraph">
+<p><code>secure_tm</code> establishes the required test configuration; it does not identify
+or authenticate the owner at the JTAG port. The protection rules require it to:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Admit test commands on the secure chain only while asserted.</p>
+</li>
+<li>
+<p>Block updates to <code>LOCKS</code>, <code>LC_STATE</code>, <code>SIP_DIS</code> and <code>SYS_DIS</code> from SEP,
+OTP, JTAG and TRoot while the part is shiftable.</p>
+</li>
+<li>
+<p>Hold OTP write-enable inputs inactive.</p>
+</li>
+<li>
+<p>Disconnect UID and <code>CLASS_KEY</code> shadow outputs from downstream consumers.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Secure-chain access requires both an open SIB, under the feature gates in
+<a href="#dtp-path-gating">Section 5.4</a>, and an allowed command. Test commands require
+<code>secure_tm = 1</code>; dump commands are never allowed, for any owner or lifecycle
+state. With <code>secure_tm = 0</code>, no command is admitted on that chain.</p>
+</div>
+<div class="paragraph">
+<p>These conditions distinguish Class 1 from Class 2. Class 1 registers contain
+secrets or state that directly controls protection, so they are excluded from
+scan. Class 2 consumers and fuse-program controls may be scanned only with
+their secret sources disconnected and the fuse-write path blocked. The
+feature bits control reachability; they do not waive these command rules.</p>
+</div>
+<div class="paragraph">
+<p>The adopter&#8217;s DFT implementation must enforce this separation. General
+Class 3 chains follow their debug gates and do not use <code>secure_tm</code> as an
+additional gate.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="feature-bit-to-scan-chain-mapping"><a class="anchor" href="#feature-bit-to-scan-chain-mapping"></a><a class="link" href="#feature-bit-to-scan-chain-mapping">5.3. Feature-Bit to Scan-Chain Mapping</a></h3>
+<div class="paragraph">
+<p>Each <strong>general</strong> (Class 3) scan chain is gated by a per-scope <code>*_DBG</code>
+feature control bit in <code>feat_ctrl_o</code>; the bit&#8217;s owner&#8201;&#8212;&#8201;which predecessor DIS
+vector sets its default (see <a href="#dis-vector-ownership">Section 3.2</a>)&#8201;&#8212;&#8201;sets the multi-owner
+default policy. External access to any general chain additionally requires the
+<code>SIP_DBG</code> debug-access path into the chiplet to be open (see
+<a href="#multiple-security-domains">Section 2</a>). The Class 2 secure chain is reached through its
+own SIB, which the feature control bits gate in the same way; what distinguishes
+it is that reaching it never permits a dump, because the DFT controller admits
+only test commands there and only while <code>secure_tm = 1</code>.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sep-scan-chain-gates-table">Table 7</a> maps each asset class to its scan chain and dump gate.</p>
+</div>
+<div class="lifecycle-table-scroll" role="region" aria-label="Feature-bit to scan-chain mapping" tabindex="0">
+<table id="sep-scan-chain-gates-table" class="tableblock frame-all grid-all stretch lifecycle-table">
+<caption class="title">Table 7. SEP scan-chain gates</caption>
+<colgroup>
+<col style="width: 18%;">
+<col style="width: 20%;">
+<col style="width: 27%;">
+<col style="width: 35%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Asset Class</th>
+<th class="tableblock halign-left valign-top">Scan Chain</th>
+<th class="tableblock halign-left valign-top">Dump Gate</th>
+<th class="tableblock halign-left valign-top">Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1a / 1b (non-scannable)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">&#8201;&#8212;&#8201;</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">&#8201;&#8212;&#8201;</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Excluded from all scan chains.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2a (secret-bearing) + 2b (fuse program path)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Shared dedicated secure chain</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Command class&#8201;&#8212;&#8201;a dump command is never admitted; a test command requires
+<code>secure_tm = 1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Never scan-dumpable, any owner / LC state. Its SIB is
+feature-bit gated like any other chain, but opening it grants test access only&#8201;&#8212;&#8201;with the shadow secrets disconnected (2a) and the OTP write-enables tied inactive
+(2b).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3 (general logic)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-scope general chains</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Local scope <code>*_DBG</code> bit (<code>SEP_DBG</code>, <code>CHIPLET_DBG</code>) + <code>SIP_DBG</code> access path + LC state</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Coarse-grained: a scope&#8217;s general logic is scan-dumpable only when its local <code>*_DBG</code> bit enables it, the <code>SIP_DBG</code> debug-access path is open, and the LC state permits.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="paragraph">
+<p>Reserved-bit ranges available for adopter-defined scan chains (see
+<a href="#adopter-extension">Section 7</a>):</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Debug group: bits 4-23 (DBG_1, 20 reserved bits) and bits 25-47 (DBG_2, 23 reserved bits)</p>
+</li>
+<li>
+<p>Function group: bits 48-63 (16 reserved bits)</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="dtp-path-gating"><a class="anchor" href="#dtp-path-gating"></a><a class="link" href="#dtp-path-gating">5.4. Debug and Test Port Path Gating</a></h3>
+<div class="paragraph">
+<p>DTP reachability uses three nested combinations of feature bits.
+A granular fuse-debug bit adds another AND term; it never replaces the
+case&#8217;s required bits.</p>
+</div>
+<div class="paragraph">
+<p><a href="#dtp-access-cases-table">Table 8</a> defines the three cases used to determine debug-path access.</p>
+</div>
+<table id="dtp-access-cases-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 8. DTP access cases</caption>
+<colgroup>
+<col style="width: 10%;">
+<col style="width: 35%;">
+<col style="width: 55%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-center valign-top">Case</th>
+<th class="tableblock halign-left valign-top">Condition</th>
+<th class="tableblock halign-left valign-top">Applies to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SIP_DBG</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Paths that only enter or traverse the chiplet without reaching chiplet-internal
+resources.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SIP_DBG &amp; CHIPLET_DBG</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Paths reaching chiplet-internal resources.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock">3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SIP_DBG &amp; CHIPLET_DBG &amp; SEP_DBG</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Paths reaching the SEP or the secure domain.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Case 1 admits traffic, Case 2 reaches chiplet resources, and Case 3 reaches
+SEP resources. Every bit in the applicable case must be enabled. For example,
+leaving SEP_DBG open while CHIPLET_DBG is closed does not grant SEP access.</p>
+</div>
+<div class="paragraph">
+<p><a href="#dtp-path-feature-gates-table">Table 9</a> lists the feature-control terms required for each DTP
+path.</p>
+</div>
+<table id="dtp-path-feature-gates-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 9. DTP path feature gates</caption>
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 20%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">DTP path</th>
+<th class="tableblock halign-left valign-top">Gating</th>
+<th class="tableblock halign-left valign-top">Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I/O S-TAP host path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Case 1</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External S-TAP return path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Case 1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Onward forwarding to a downstream chiplet is
+part of the SiP-owner domain (see <a href="#multiple-security-domains">Section 2</a>).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFD iJTAG path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Case 1</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC debug S-TAP host path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Case 2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No dedicated SMC debug bit exists; see the
+note below.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP configurable (extra) S-TAP host paths</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Case 2</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Non-secure external DFT iJTAG path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Case 2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The DFT non-secure chain SIB. Not
+gated by <code>secure_tm</code>&#8201;&#8212;&#8201;see <a href="#secure-tm-vs-scandump">Section 5.2</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric JTAG2AXI path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Case 2</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP debug S-TAP host path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Case 3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Requires the full Case 3 conjunction;
+<code>SEP_DBG</code> alone is not sufficient.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure external DFT iJTAG path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Case 3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The DFT secure chain SIB. Reaching it
+grants test access only, under the command-class rule of
+<a href="#secure-tm-vs-scandump">Section 5.2</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFT-inserted SEP fuse path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Case 3 <code>&amp; SEP_FUSE_DBG</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Includes the OTP IP-vendor
+test and calibration interface, which is reachable only over this path.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFT-inserted SMC fuse path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Case 2 <code>&amp; SMC_FUSE_DBG</code></p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP JTAG2AXIL path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Ungated</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reaches the whole SEP eFuse interface: the
+shadow register map, the token-input MMRs, and the eFuse interface control
+registers, fuse program and read controls included. No feature control bit gates
+it. Enforcement is per-field <code>LOCKS</code> plus a wrapper access policy that, in PROD,
+RMA_SIP, or on an LC differential-decode integrity error, admits only the MMR
+region for both reads and writes, so an RMA token can still be presented.
+<code>LOCKS</code> is only in force once sensed, so this depends on nothing on this path
+being able to execute before fuse sensing completes.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP JTAG2AXIL path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Ungated</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reaches the whole SMC eFuse interface on the
+same terms, under a stricter access policy. SMC holds no <code>LC_STATE</code> fuse field
+of its own; its wrapper decodes the state forwarded from SEP. In PROD or RMA_SIP
+it admits no writes at all and only reads of <code>CHIPLET_ID</code> and <code>PACKAGE_ID</code>; on an
+integrity error it admits nothing.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Case 3 spans both demotion groups: SEP_DBG and CHIPLET_DBG are in DBG_1,
+while SIP_DBG is in DBG_2. In PROD, enabling only one demotion leaves a
+Case 3 path closed.</p>
+</div>
+<div class="paragraph">
+<p>There is no separate SMC_DBG bit. SMC debug shares Case 2, so opening
+CHIPLET_DBG also admits SMC debug when SIP_DBG is open. A separate SMC
+policy would require an adopter-defined bit and corresponding path gating.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="non-primary-chiplets"><a class="anchor" href="#non-primary-chiplets"></a><a class="link" href="#non-primary-chiplets">6. Non-Primary Chiplets</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Primary chiplets always include a local SEP and LCC; the asset
+partitioning described in <a href="#asset-and-scan-chain-protection">Section 5</a> applies
+directly. <strong>Non-primary</strong> chiplets may not include a local SEP, in which
+case debug access is governed by the <strong>SiP-owner domain</strong>. The primary
+chiplet&#8217;s SiP-owner feature control gates the DFT traffic before forwarding
+it to the non-primary chiplet (see <a href="#multiple-security-domains">Section 2</a>).</p>
+</div>
+<div class="paragraph">
+<p>For non-primary chiplets, the adopter is responsible for:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Identifying which non-primary chiplet assets require protection.</p>
+</li>
+<li>
+<p>Partitioning those assets across scan chains analogous to the
+class scheme in <a href="#asset-classes">Section 5.1</a> (1a/1b, 2, 3).</p>
+</li>
+<li>
+<p>Routing the non-primary chiplet&#8217;s scan / DFT traffic through the
+appropriate DTP path on the primary chiplet, where SiP-owner feature
+control gates forwarding.</p>
+</li>
+<li>
+<p>Applying the same scan-protection treatment to any non-primary chiplet
+logic that handles secrets: Class 1 excluded from scan chains, Class 2
+never scan-dumpable.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The <code>SIP_DBG</code> mechanism documented in
+<a href="#feature-control-vector-definition">Section 3.1</a> gates the DTP path on the primary
+chiplet. The primary LCC therefore governs debug access to a non-primary
+chiplet by controlling whether DFT traffic is forwarded to it.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="adopter-extension"><a class="anchor" href="#adopter-extension"></a><a class="link" href="#adopter-extension">7. Adopter Extension</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>If an adopter integrates SEP into a chiplet with assets that require
+their own scan-chain protection&#8201;&#8212;&#8201;assets not covered by the
+chiplet-scope SEP scan chain or the general-logic scan chain in
+<a href="#asset-and-scan-chain-protection">Section 5</a>&#8201;&#8212;&#8201;the LCC architecture
+accommodates this via the <strong>reserved bits</strong> in <code>feat_ctrl_o</code> (and the
+matching positions in SIP_DIS / SYS_DIS):</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Debug group: bits 4-23 (DBG_1, 20 reserved bits) and bits 25-47 (DBG_2, 23 reserved bits)</p>
+</li>
+<li>
+<p>Function group: bits 48-63 (16 reserved bits)</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>OCAH assigns no standard function to these reserved bits. An adopter may
+allocate a DBG_2 bit to an additional inter-chiplet DFT forwarding path; the
+bit is consumed on the LCC-bearing chiplet to gate the corresponding traffic
+before it is forwarded downstream.</p>
+</div>
+<div class="paragraph">
+<p>Each new scan chain or forwarding path is gated by exactly one reserved bit. The
+corresponding bit position in SIP_DIS or SYS_DIS (chosen by which
+predecessor owner sets the default policy&#8201;&#8212;&#8201;see
+<a href="#dis-vector-ownership">Section 3.2</a>) determines the default OTP-programmed
+restriction.</p>
+</div>
+<div class="paragraph">
+<p>Constraints any adopter extension must satisfy:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>One feature control bit per scan chain.</strong></p>
+</li>
+<li>
+<p><strong>Asset-class compliance.</strong> Secret-bearing fields used by the new chain
+must follow the asset-class scheme (see <a href="#asset-and-scan-chain-protection">Section 5</a>):
+actual secrets and integrity-critical state are excluded from scan chains
+(Class 1). A Class 2 chain must never admit a dump command. It may admit
+test commands only while <code>secure_tm = 1</code>, with secret sources disconnected
+and fuse programming blocked as specified above. The chain&#8217;s feature-control
+bit controls reachability; it does not authorize a dump.</p>
+</li>
+<li>
+<p><strong>Per-LC-state policy.</strong> The new bit follows the standard
+per-LC-state formulas for its group (see <a href="#feature-control-table">Table 4</a>).
+DBG_1 and DBG_2 are disabled in undemoted PROD and in PROD_END;
+their respective demotion controls relax PROD to honor the disable vectors.
+Function bits continue to honor <code>~(SIP_DIS.FUNC | SYS_DIS.FUNC)</code> in both
+production states and are unaffected by demotion. All groups follow their
+listed TEST_DEV and RMA policies and the SEC_DIS override.</p>
+</li>
+</ul>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The specific bit-allocation convention&#8201;&#8212;&#8201;which reserved bits
+are reserved for which adopters, and how bit assignments are advertised
+in the RDL / package outputs&#8201;&#8212;&#8201;is currently <strong>open</strong> and will be defined
+in a future revision of this specification.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="lcc-firmware-policy"><a class="anchor" href="#lcc-firmware-policy"></a><a class="link" href="#lcc-firmware-policy">8. Firmware Authorization</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a id="secure-boot-enforcement"></a><a id="demote-signing-model"></a>The LCC does not inspect
+manifests or signatures. It supplies the lifecycle state, and the OTP Fuse
+Controller chapter defines the fuse fields that govern firmware authorization:
+<code>SBOOT_DIS</code>, the <code>SIP_DIS</code> and <code>SYS_DIS</code> debug vectors, the public-key digests, <code>CHIPLET_PUBK_REVOKE</code>, and the <code>REQUIRED_SIGNERS</code> and
+<code>REQUIRED_ALGS</code> fields reserved for a deferred multi-owner signing model.
+Firmware, not the LCC, interprets them. The SEP Boot ROM reads <code>CHIPLET_DBG</code>
+from the <code>SIP_DIS</code> and <code>SYS_DIS</code> fuse shadows rather than from <code>FEAT_CTRL</code>,
+because <code>SEC_DIS</code> and demotion can force <code>FEAT_CTRL</code> open on a part whose fuses
+disable debug.</p>
+</div>
+<div class="paragraph">
+<p>The
+<a href="../../../ocah-programmer-guide/0.5/index.html#sec:secure_boot" class="xref page">Secure Boot Decision</a>
+section of the SEP Boot ROM appendix in the Programmer&#8217;s Guide specifies when
+the ROM requires a verified manifest, including the rule that a debug-locked
+<code>TEST_DEV</code> or <code>RMA_SiP</code> part is treated as <code>PROD</code>. The
+<a href="../sip-secure-boot.html#sip-secure-boot-decision" class="xref page">SiP Secure Boot application note</a>
+summarizes that decision and describes the multi-owner model, which the
+current ROM does not implement, under
+<a href="../sip-secure-boot.html#sip-secure-boot-multi-owner-model" class="xref page">deferred multi-owner signing model</a>
+there.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-map-and-register-reference"><a class="anchor" href="#memory-map-and-register-reference"></a><a class="link" href="#memory-map-and-register-reference">9. Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<span id="register-reference"></span>
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">9.1. Memory Map</a></h3>
+<div class="paragraph">
+<p>Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">9.2. Detailed Register Map</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-sep_lifecycle_ctrl">SEP Lifecycle Control Address Map</h2>
+<p>Lifecycle feature-control and demotion registers with their associated locks.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#sep_lifecycle_ctrl-FEAT_CTRL">FEAT_CTRL</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#sep_lifecycle_ctrl-DEMOTE_1">DEMOTE_1</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#sep_lifecycle_ctrl-DEMOTE_2">DEMOTE_2</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="FEAT_CTRL"></span><h3 id="sep_lifecycle_ctrl-FEAT_CTRL" data-register-alias="FEAT_CTRL">FEAT_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>feature_control</td><td>R</td><td>0x0</td><td>Lifecycle feature control bits,</td></tr>
+</table>
+<span id="DEMOTE_1"></span><h3 id="sep_lifecycle_ctrl-DEMOTE_1" data-register-alias="DEMOTE_1">DEMOTE_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>rsvd</td><td>RW1S</td><td>0x0</td><td>Not used</td></tr>
+<tr><td>1</td><td>lock</td><td>RW1S</td><td>0x0</td><td>Demote lock bit. Once locked, demote can no longer be changed</td></tr>
+<tr><td>0</td><td>demote</td><td>RW1S</td><td>0x0</td><td>Demote bit to enter PROD_DBG state</td></tr>
+</table>
+<span id="DEMOTE_2"></span><h3 id="sep_lifecycle_ctrl-DEMOTE_2" data-register-alias="DEMOTE_2">DEMOTE_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>rsvd</td><td>RW1S</td><td>0x0</td><td>Not used</td></tr>
+<tr><td>1</td><td>lock</td><td>RW1S</td><td>0x0</td><td>Demote lock bit. Once locked, demote can no longer be changed</td></tr>
+<tr><td>0</td><td>demote</td><td>RW1S</td><td>0x0</td><td>Demote bit to enter PROD_DBG state</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

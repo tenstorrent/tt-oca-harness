@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Interrupts :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <link rel="prev" href="fabric.html">
+    <link rel="next" href="periphs.html">
+    <meta name="description" content="SMC interrupt routing, PLIC source IDs, local interrupts and software handling.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-docs" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Technical Reference Manual</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Documentation Overview</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../list-of-figures.html">List of Figures</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../list-of-tables.html">List of Tables</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../architecture.html">OCAH Architecture &amp; Design</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../overview.html">Platform Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../memory_map.html">OCAH Memory Map</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../power_domains.html">Power Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../clock_domains.html">Clock Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../reset.html">Reset</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../architecture.html#ocah-rtl-assertions">RTL Assertions</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">OCAH Platform Components</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../smu/index.html">System Management Unit (SMU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/index.html">Security Processor (SEP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/threat_model.html">Threat Model</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/attack_countermeasures.html">Attack Countermeasures</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/clk_rst.html">Clocks and Resets</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/reset_controller.html">SEP Reset Controller</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/cpu.html">CPU</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/fabric.html">Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/dma.html">Direct Memory Access (DMA)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/mailbox.html">Mailboxes</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/peripheral_subsystem.html">Peripheral Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/spi.html">Serial Peripheral Interface (SPI)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/security.html">Security and Lifecycle</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/otp_fuse_controller.html">OTP Fuse Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/token_processing.html">Token Processing</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/security_disable.html">Security Disable</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/lifecycle_controller.html">Lifecycle Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/test_mode.html">Test Mode Entry</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/crypto.html">Cryptographic Subsystem</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/trng.html">TRNG and DRBG</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/entropy_source/doc/index.html">Entropy Source</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/entropy_pool.html">Entropy Pool</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/aes.html">AES Cipher</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/hmac.html">HMAC-SHA2</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/kmac.html">KMAC-SHA3</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/adams_bridge.html">Adams Bridge (ABR)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/otbn.html">OTBN PKA Public Key Accelerator</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../ip/key_manager/doc/index.html">Key Manager</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-architecture">Architecture</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/memory_map.html">Memory Map and Register Reference</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="index.html">System Management Controller (SMC)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="clk_rst.html">Clocks and Resets</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="cpu.html">CPU</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="fabric.html">Interconnect</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="4">
+    <a class="nav-link" href="interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="dma.html">Direct Memory Access Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/axi_lite_mailbox_unit/doc/index.html">Mailboxes</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/system_timer_octs/doc/index.html">System Timer OCTS</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/efuse/doc/index.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/uart_16550/doc/index.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/log_engine/doc/index.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/i2c/doc/index.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/i3ccore_wrap/doc/index.html">I3C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/avsbus_controller/doc/index.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/gpio/doc/index.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/telemetry_receiver/doc/index.html">Telemetry Receiver</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dfd.html">Design-for-Debug and CLA</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="scan_protection.html">eFuse Scan Protection</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="memmap.html">Memory Map and Register Reference</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../dtp/index.html">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/clk_rst.html">Clocks and Resets</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/jtag.html">JTAG Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/cross_trigger.html">Cross-Trigger Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../dtp/ip_reference.html">IP Reference</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">JTAG</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Cross-Trigger</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/reference.html">Configuration and Reference</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../smn.html">System Management Network (SMN)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../aou.html">AXI-over-UCIe Bridge (AoU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-overview.html">Overview and Features</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-architecture.html">Architecture</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-interrupts-errors.html">Interrupts and Errors</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-ppa-appendices.html">PPA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../aou-appendices.html">Appendices</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../aou-referenced-documents.html">Appendix B. Referenced Documents</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../rtl-modules-reference.html">RTL Modules Reference</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../rtl-modules-reference.html#ip">IP</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/avsbus_controller.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/axi_alias_remap.html">AXI Alias Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/axi_filter.html">AXI Filter</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/axi_hang_detector.html">AXI Hang Detector</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/axi_lite_mailbox_unit.html">AXI-Lite Mailbox</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/axi_window_remap.html">AXI Window Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/drbg.html">DRBG</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/efuse.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/entropy_source.html">Entropy Source</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/gpio.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/i2c.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/i3ccore_wrap.html">I3C</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/idma_wrapper.html">iDMA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/key_manager.html">Key Manager</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/memory_interface.html">Memory Interface</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/output_remap.html">Output Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/scrambler.html">Scrambler</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/system_timer_octs.html">System Timer</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/telemetry_receiver.html">Telemetry Receiver</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/cross_trigger_matrix.html">Cross-Trigger Matrix</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/cross_trigger_network.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/cross_trigger_port.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/jtag2axi.html">JTAG to AXI</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/jtag_intf_unit.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/jtag_ptap.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/jtag_stap.html">JTAG STAP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/log_engine.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/uart_16550.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/uart_log_engine_wrap.html">UART Log Engine Wrapper</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/uart_wrap.html">UART Wrapper</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../rtl-modules-reference.html#subsystems">Subsystems</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/sys/sep.html">SEP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/sys/smc.html">SMC</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/sys/dtp.html">DTP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/sys/smu.html">SMU</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/sys/aou.html">AXI-over-UCIe</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../rtl-modules-reference.html#common">Common</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/common/ocah_prim.html">ocah_prim</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/common/ocah_prim_generic.html">ocah_prim_generic</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/common/tlul.html">TL-UL</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../ip-reference.html">IP Reference</a>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../register-field-access.html">Register Field Access Notation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../referenced-documents.html">Referenced Documents</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Technical Reference Manual 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../index.html">Technical Reference Manual</a></li>
+    <li>OCAH Platform Components</li>
+    <li><a href="../smu/index.html">System Management Unit (SMU)</a></li>
+    <li><a href="index.html">System Management Controller (SMC)</a></li>
+    <li><a href="interrupts.html">Interrupts</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="5">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Interrupts</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="interrupts" class="paragraph">
+<p>SMC external interrupts pass through the Platform-Level Interrupt Controller
+(PLIC). CLINT supplies per-core timer and software interrupts. Each bus error
+unit (BEU) has both a direct core output and a separately selected PLIC output.
+This chapter distinguishes raw SMC vector bits from software-visible PLIC IDs.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="controllers"><a class="anchor" href="#controllers"></a><a class="link" href="#controllers">1. Controllers</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="smc-interrupts-interrupt-controllers-mmio"><a class="anchor" href="#smc-interrupts-interrupt-controllers-mmio"></a><a class="link" href="#smc-interrupts-interrupt-controllers-mmio">1.1. Controller Addresses</a></h3>
+<span id="interrupt-controllers-mmio"></span>
+<div class="paragraph">
+<p>These addresses use the SMC-local view. N ranges from 0 through 3 for the
+per-core watchdog and BEU apertures.</p>
+</div>
+<table id="smc-interrupt-controller-addresses-table" class="tableblock frame-all grid-all stretch smc-interrupt-table">
+<caption class="title">Table 1. SMC interrupt-controller addresses</caption>
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 40%;">
+<col style="width: 12%;">
+<col style="width: 18%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Block</th>
+<th class="tableblock halign-left valign-top">Base Addr</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Interface</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU Control Regs</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC003_9000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLIC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC400_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 MB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TileLink (cluster control bus)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLINT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC800_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TileLink (cluster control bus)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog Timers (N)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC000_0000 + (N * 0x400)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 KB x4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TileLink (cluster peripheral bus)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bus Error Units (N)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC801_0000 + (N * 0x1000)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KB x4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TileLink (cluster control bus)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="smc-interrupts-risc-v-plic"><a class="anchor" href="#smc-interrupts-risc-v-plic"></a><a class="link" href="#smc-interrupts-risc-v-plic">1.2. PLIC Sources and Contexts</a></h3>
+<span id="advanced-plic-management-and-adaptive-priority-control"></span>
+<span id="multi-context-architecture-and-privilege-level-integration"></span>
+<span id="risc-v-plic"></span>
+<span id="smc-interrupt-sources-table"></span>
+<span id="smc-interrupts-advanced-plic-management-and-adaptive-priority-control"></span>
+<span id="smc-interrupts-multi-context-architecture-and-privilege-level-integration"></span>
+<span id="smc-interrupts-system-management-interrupt-source-integration"></span>
+<span id="system-management-interrupt-source-integration"></span>
+<div class="paragraph">
+<p>The four-core implementation has 336 PLIC inputs with source IDs 1–336.
+ID 0 means no interrupt. The inputs comprise:</p>
+</div>
+<table id="trm-table-2" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. PLIC input groups</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Input group</th>
+<th class="tableblock halign-left valign-top">PLIC IDs</th>
+<th class="tableblock halign-left valign-top">Origin</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Raw SMC vector bits 0–327</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1–328</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cpu_interrupts_o</code>; detailed below.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cluster watchdogs 0–3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">329–332</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Added by the cluster interrupt crossbar.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Core BEU PLIC outputs 0–3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">333–336</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Added within the PLIC clock domain.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Reserved raw-vector positions remain reserved PLIC IDs. The 256 external input
+meanings come from the enclosing SoC integration; an input count is not a promise
+that every position is an active source.</p>
+</div>
+<div class="paragraph">
+<p>There are eight delivery contexts: machine contexts for cores 0–3, then
+supervisor contexts for cores 0–3. Priorities are shared per source; enable masks,
+thresholds and claim/complete registers are per context. A priority must exceed
+the context threshold to raise its external-interrupt output. Priority zero
+suppresses a source. See the generated map for context offsets and priority range.
+These settings route interrupts; they do not themselves enforce MMIO access policy.</p>
+</div>
+<div class="paragraph">
+<p>The gateways are active-high and level-sensitive, with no selectable edge mode.
+External SMC pins pass through <code>prim_sync3</code> before the raw vector. A short pulse
+can be missed if it is not sampled; stretch it or hold the request until serviced.
+A gateway admits one request and waits for completion before accepting another.
+It does not count repeated pulses while one request is in flight.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-interrupts-risc-v-clint-and-precise-system-management-timing"><a class="anchor" href="#smc-interrupts-risc-v-clint-and-precise-system-management-timing"></a><a class="link" href="#smc-interrupts-risc-v-clint-and-precise-system-management-timing">1.3. CLINT</a></h3>
+<span id="risc-v-clint-and-precise-system-management-timing"></span>
+<div class="paragraph">
+<p>CLINT provides a shared 64-bit timer, per-core compare registers and per-core
+software-interrupt state. Timer and software interrupts go directly to the cores
+rather than through PLIC claim/complete. The timer advances on the cluster&#8217;s
+periodic tick; see the Clocks and Resets chapter for its clock relationship.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-interrupts-bus-error-unit-interrupts"><a class="anchor" href="#smc-interrupts-bus-error-unit-interrupts"></a><a class="link" href="#smc-interrupts-bus-error-unit-interrupts">1.4. Bus Error Units</a></h3>
+<span id="bus-error-unit-interrupts"></span>
+<div class="paragraph">
+<p>A Bus Error Unit (BEU) accumulates error events for one core. The register
+named <code>ACCRUED_ENABLE</code> is sticky status, not an enable mask: events set its bits
+independently of <code>ENABLE</code>. Ordinary writes replace those bits; write zero to
+clear them. <code>ENABLE</code> instead gates capture of the first error&#8217;s <code>CAUSE</code> and
+<code>PHYS_ADDR</code> while <code>CAUSE</code> is zero. Software can also write <code>PHYS_ADDR</code>.</p>
+</div>
+<div class="paragraph">
+<p><code>LOCAL_ENABLE</code> selects accrued errors for direct delivery to the core, bypassing
+the PLIC and the ordinary per-source <code>mie</code> bits. This is not an unconditionally
+non-maskable interrupt: in machine mode, <code>mstatus.MIE = 0</code> suppresses delivery.
+The machine interrupt is enabled while executing in lower privilege modes.
+The BEU also has a separate output selected by <code>PLIC_ENABLE</code>. The
+<a href="../../../ocah-programmer-guide/0.5/index.html#smc-bus-error-units" class="xref page">Bus Error Unit service sequence</a>
+is in the Programmer&#8217;s Guide.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sources-and-routing"><a class="anchor" href="#sources-and-routing"></a><a class="link" href="#sources-and-routing">2. Sources and Routing</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="smc-interrupts-smc-interrupt-vector-cpu_interrupts_o"><a class="anchor" href="#smc-interrupts-smc-interrupt-vector-cpu_interrupts_o"></a><a class="link" href="#smc-interrupts-smc-interrupt-vector-cpu_interrupts_o">2.1. Raw Vector and PLIC Numbering</a></h3>
+<span id="smc-interrupt-vector-cpu_interrupts_o"></span>
+<div class="paragraph">
+<p>Raw bit N maps to PLIC source ID N+1. For example, DMA completion is raw bit 322
+and PLIC ID 323. Watchdog IDs 329–332 and BEU IDs 333–336 are not additional bits
+on the 328-bit raw SMC vector.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="cpu-interrupt-vector-map"><a class="anchor" href="#cpu-interrupt-vector-map"></a><a class="link" href="#cpu-interrupt-vector-map">2.2. SMC CPU Interrupt Vector Map</a></h3>
+<div class="paragraph">
+<p>This section documents the raw <code>cpu_interrupts_o</code> vector assembled in
+<code>hw/sys/smc/rtl/smc_base.sv</code>. The vector is built from four sources:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>smc_ext_interrupts_i</code></p>
+</li>
+<li>
+<p><code>peripheral_interrupts_i[31:0]</code></p>
+</li>
+<li>
+<p><code>mailbox_interrupts[31:0]</code></p>
+</li>
+<li>
+<p>four internal interrupt signals</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Unless otherwise noted, the bit numbers below are raw <code>cpu_interrupts_o</code>
+bit indices, not PLIC source IDs. When these signals feed the PLIC, the
+PLIC source ID is <code>cpu_interrupts_o</code> bit index + 1.</p>
+</div>
+<div class="paragraph">
+<p>The vector layout is:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-systemverilog hljs" data-lang="systemverilog">cpu_interrupts_o[NumExtInterrupts-1:0]        = ext_interrupts_smc_clk; // smc_ext_interrupts_i after 3-stage sync to clk_smc
+cpu_interrupts_o[NumExtInterrupts+:32]        = peripheral_interrupts_i;
+cpu_interrupts_o[(NumExtInterrupts+32)+:32]   = mailbox_interrupts;
+cpu_interrupts_o[(NumExtInterrupts+64)]       = tdr_dbg_ctrl_clocks_stopped_by_cla_o;
+cpu_interrupts_o[(NumExtInterrupts+64)+1]     = cla_interrupt;
+cpu_interrupts_o[(NumExtInterrupts+64)+2]     = dma_intp;
+cpu_interrupts_o[(NumExtInterrupts+64)+3]     = zeroer_intp;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>NumExtInterrupts = 256</code> and <code>NumCpuInterrupts = 328</code>.</p>
+</div>
+<span id="exact-indexed-map"></span>
+<div class="sect3">
+<h4 id="smc-interrupts-exact-indexed-map"><a class="anchor" href="#smc-interrupts-exact-indexed-map"></a><a class="link" href="#smc-interrupts-exact-indexed-map">2.2.1. Exact Indexed Map</a></h4>
+<div class="paragraph">
+<p><a href="#smc-indexed-interrupt-map-table">Table 3</a> shows the exact raw <code>cpu_interrupts_o</code> indexing. The
+<code>Source</code> column is intentionally human-readable; implementation signal
+names are called out in the <code>RTL trace</code> column instead.</p>
+</div>
+<div class="smc-interrupt-table-scroll" role="region" aria-label="SMC CPU interrupt vector map" tabindex="0">
+<table id="smc-indexed-interrupt-map-table" class="tableblock frame-all grid-all stretch smc-interrupt-table smc-interrupt-table-wide">
+<caption class="title">Table 3. SMC indexed interrupt map</caption>
+<colgroup>
+<col style="width: 12%;">
+<col style="width: 20%;">
+<col style="width: 28%;">
+<col style="width: 40%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Bit(s)</th>
+<th class="tableblock halign-left valign-top">Source</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">RTL trace</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[255:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External interrupts</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Integration-defined external interrupt inputs</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hw/sys/smc/rtl/smc_base.sv</code> synchronizes <code>ext_interrupts_i</code> to <code>clk_smc</code>
+(<code>prim_sync3 u_ext_interrupts_sync3</code>; wired from <code>smc.sv</code>
+<code>smc_ext_interrupts_i</code>) and drives
+<code>cpu_interrupts_o[NumExtInterrupts-1:0] = ext_interrupts_smc_clk</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>256</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP mailbox interrupt 0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP-to-SMC mailbox channel 0 interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[0] =
+sep_mailbox_interrupts_i[0]</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>257</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP mailbox interrupt 1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP-to-SMC mailbox channel 1 interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[1] =
+sep_mailbox_interrupts_i[1]</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>258</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP mailbox interrupt 2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP-to-SMC mailbox channel 2 interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[2] =
+sep_mailbox_interrupts_i[2]</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>259</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP mailbox interrupt 3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP-to-SMC mailbox channel 3 interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[3] =
+sep_mailbox_interrupts_i[3]</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>260</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP mailbox interrupt 4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP-to-SMC mailbox channel 4 interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[4] =
+sep_mailbox_interrupts_i[4]</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>261</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP mailbox interrupt 5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP-to-SMC mailbox channel 5 interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[5] =
+sep_mailbox_interrupts_i[5]</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>262</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP mailbox interrupt 6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP-to-SMC mailbox channel 6 interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[6] =
+sep_mailbox_interrupts_i[6]</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>263</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP mailbox interrupt 7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP-to-SMC mailbox channel 7 interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[7] =
+sep_mailbox_interrupts_i[7]</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>264</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry interrupt 0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry receiver instance 0 interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[8] =
+telemetry_irq[0]</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>265</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry interrupt 1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry receiver instance 1 interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[9] =
+telemetry_irq[1]</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>266</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry interrupt 2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry receiver instance 2 interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[10] =
+telemetry_irq[2]</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>267</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">NDM Reset Request</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OR-reduced synchronized NDM reset request interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[11] =
+|ndmreset_request_smc_clk</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>268</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C interrupt 0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller instance 0 interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[12] =
+i3c_irqs_smc_clk[0]</code>; sourced from the I3C wrapper through the peripheral CDC block.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>269</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C interrupt 1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller instance 1 interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[13] =
+i3c_irqs_smc_clk[1]</code>; sourced from the I3C wrapper through the peripheral CDC block.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>270</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C interrupt 2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller instance 2 interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[14] =
+i3c_irqs_smc_clk[2]</code>; sourced from the I3C wrapper through the peripheral CDC block.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>271</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C interrupt 3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller instance 3 interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[15] =
+i3c_irqs_smc_clk[3]</code>; sourced from the I3C wrapper through the peripheral CDC block.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>272</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C interrupt 4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller instance 4 interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[16] =
+i3c_irqs_smc_clk[4]</code>; sourced from the I3C wrapper through the peripheral CDC block.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>273</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C interrupt 5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller instance 5 interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[17] =
+i3c_irqs_smc_clk[5]</code>; sourced from the I3C wrapper through the peripheral CDC block.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>274</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART/Log Engine interrupt 0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Combined UART IRQ, UART error, and log-engine interrupt for instance 0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[18] =
+uart_irq_combined_smc_clk[0]</code>; the combined signal is formed in
+<code>smc_peripherals_cdc.sv</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>275</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART/Log Engine interrupt 1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Combined UART IRQ, UART error, and log-engine interrupt for instance 1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[19] =
+uart_irq_combined_smc_clk[1]</code>; the combined signal is formed in
+<code>smc_peripherals_cdc.sv</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>276</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART/Log Engine interrupt 2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Combined UART IRQ, UART error, and log-engine interrupt for instance 2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[20] =
+uart_irq_combined_smc_clk[2]</code>; the combined signal is formed in
+<code>smc_peripherals_cdc.sv</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>277</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART/Log Engine interrupt 3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Combined UART IRQ, UART error, and log-engine interrupt for instance 3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[21] =
+uart_irq_combined_smc_clk[3]</code>; the combined signal is formed in
+<code>smc_peripherals_cdc.sv</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>278</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adaptive voltage scaling interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[22] =
+avsbus_irq_smc_clk</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>279</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C interrupt 0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C controller instance 0 interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[23] =
+i2c_irqs_smc_clk[0]</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>280</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C interrupt 1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C controller instance 1 interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[24] =
+i2c_irqs_smc_clk[1]</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>281</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C interrupt 2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C controller instance 2 interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[25] =
+i2c_irqs_smc_clk[2]</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>282</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP watchdog reset</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External watchdog reset indication from SEP path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> synchronizes <code>~rst_ext_wdt_ni</code> through
+<code>u_rst_ext_wdt_irq_sync</code> and drives <code>peripheral_interrupts_o[26] =
+rst_ext_wdt_smc_clk</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>283</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Locked field access</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse locked-field access violation interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[27] =
+locked_field_access_interrupt</code>, sourced from the eFuse controller path.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>284</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO interrupt OR, lower half</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OR-reduction across GPIO interrupt sources 0-31</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[28] =
+|gpio_interrupt[smc_pkg::NumGpioWraps/2-1:0]</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>285</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO interrupt OR, upper half</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OR-reduction across GPIO interrupt sources 32-64</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[29] =
+|gpio_interrupt[smc_pkg::NumGpioWraps-1:smc_pkg::NumGpioWraps/2]</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>286</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI hang detector OR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OR of the three AXI hang detectors (sys_axi, sep_axi, data_accel). Asserts
+while any detector&#8217;s <code>irq_o</code> is high, either from a timeout or from its
+<code>irq_test</code> bit, so software must read
+<code>SMC_BASE_CONFIG.HANG_DET_{SYS_AXI,SEP_AXI,DATA_ACCEL}_CTRL.irq</code> to identify the
+stalled master. There is no status latch to clear: a timeout drops when that
+master&#8217;s bus makes progress, a test assertion drops when <code>irq_test</code> is cleared,
+and either drops when the detector&#8217;s <code>enable</code> or <code>irq_en</code> is cleared. The CPU
+AXI master is not covered here; it is covered by the watchdog.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_base.sv</code> OR-reduces <code>hang_irq_sys_axi | hang_irq_sep_axi |
+hang_irq_data_accel</code> onto <code>axi_hang_irq_o</code>; <code>smc.sv</code> routes that back into
+<code>u_smc_peripherals</code>, and <code>smc_peripherals.sv</code> drives
+<code>peripheral_interrupts_o[30] = axi_hang_irq_i</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>287</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Unused peripheral interrupt slots; tied to zero</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>peripheral_interrupts_o</code> is initialized to <code>'0</code>, and bit 31 is never
+overwritten in <code>smc_peripherals.sv</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[319:288]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC mailbox interrupts <code>[31:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound SMC mailbox interrupt channels 31:0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_base.sv</code> drives
+<code>cpu_interrupts_o[(NumExtInterrupts+32)+:32] = mailbox_interrupts</code>;
+<code>mailbox.sv</code> drives <code>inbound_interrupt_o[m]</code> per mailbox channel.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>320</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLA Clock Stop</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFD CLA clock-stop status interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_base.sv</code> drives this bit from
+<code>tdr_dbg_ctrl_clocks_stopped_by_cla_o</code>, sourced through
+<code>u_smc_dfd_wrap</code> in <code>smc_internal_regs.sv</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>321</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLA Interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFD CLA interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_base.sv</code> drives this bit from <code>cla_interrupt</code>, sourced from
+<code>external_action_debug_interrupt_o</code> on <code>u_smc_dfd_wrap</code> in
+<code>smc_internal_regs.sv</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>322</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA transfer complete</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Falling-edge pulse when DMA busy deasserts</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_base.sv</code> drives this bit from <code>dma_intp</code>; <code>idma_wrapper.sv</code> generates
+<code>dma_intp_o</code> as a falling-edge pulse of <code>dma_busy_o</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>323</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Zeroer transfer complete</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Falling-edge pulse when Zeroer busy deasserts</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_base.sv</code> drives this bit from <code>zeroer_intp</code>; <code>zeroer.sv</code> generates
+<code>zeroer_intp_o</code> on the falling edge of <code>zeroer_busy_o</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[327:324]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Unused tail bits; tied to zero</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cpu_interrupts_o</code> is initialized to <code>'0</code>, and no RTL overwrites these
+tail bits in <code>smc_base.sv</code>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="smc-interrupts-trace-notes"><a class="anchor" href="#smc-interrupts-trace-notes"></a><a class="link" href="#smc-interrupts-trace-notes">2.2.2. Routing Notes</a></h4>
+<span id="trace-notes"></span>
+<div class="paragraph">
+<p><code>smc_base.sv</code> assembles the raw vector; <code>smc_peripherals.sv</code> assembles its
+32-bit peripheral slice. The AXI hang-detector OR enters peripheral bit 30
+(raw bit 286), while bit 31 is reserved. The table preserves the individual
+sources behind combined GPIO, UART/log-engine and hang-detector indications;
+software must inspect their local status to identify and service the cause.</p>
+</div>
+<div class="paragraph">
+<p>The six I3C entries are connected through the peripheral CDC block. The AVSBus
+and external-watchdog indications are also synchronized into the SMC domain.
+Do not infer pulse-capture guarantees merely from the presence of a synchronizer.
+DMA and zeroer completion indications are busy-falling pulses, not counted queues.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="software-handling"><a class="anchor" href="#software-handling"></a><a class="link" href="#software-handling">3. Software Handling</a></h2>
+<div class="sectionbody">
+<span id="multi-core-interrupt-distribution-and-load-management"></span>
+<span id="multi-tier-interrupt-classification-and-response-strategy"></span>
+<span id="smc-interrupts-multi-core-interrupt-distribution-and-load-management"></span>
+<span id="smc-interrupts-multi-tier-interrupt-classification-and-response-strategy"></span>
+<span id="fault-detection-and-recovery-architecture"></span>
+<span id="precision-timer-management-and-inter-core-coordination"></span>
+<span id="smc-interrupts-fault-detection-and-recovery-architecture"></span>
+<span id="smc-interrupts-precision-timer-management-and-inter-core-coordination"></span>
+<div class="paragraph">
+<p>The PLIC priority, enable and threshold registers are not reset by hardware. A
+source&#8217;s priority is shared by every context that enables it. Completion
+releases the source&#8217;s gateway, so a still-asserted source pends again; claim
+and complete do not clear a peripheral&#8217;s own sticky status. CLINT timer and
+software interrupts do not use PLIC completion.</p>
+</div>
+<div class="paragraph">
+<p>The
+<a href="../../../ocah-programmer-guide/0.5/index.html#smc-interrupt-control" class="xref page">Interrupt Control section</a>
+of the Programmer&#8217;s Guide gives the PLIC initialization and claim/complete
+sequence, CLINT timer and software interrupt service, and Bus Error Unit
+service. Watchdog recovery and CPU reset/isolation ordering are described in
+the Watchdog Timers and CPU chapters. For CPU cluster context, see
+<a href="cpu.html#cpu-memory-system" class="xref page">CPU and Memory System</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="smc-interrupts-register-interfaces"><a class="anchor" href="#smc-interrupts-register-interfaces"></a><a class="link" href="#smc-interrupts-register-interfaces">4. Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<span id="register-interfaces"></span>
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">4.1. Memory Map</a></h3>
+<div class="paragraph">
+<p>Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">4.2. Detailed Register Map</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-plic">PLIC Address Map</h2>
+<p>Platform-Level Interrupt Controller register interface.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>PRIORITY[337]</strong>: 337 registers, base 0x0, stride 0x4</li>
+<li><strong>PENDING[11]</strong>: 11 registers, base 0x1000, stride 0x4</li>
+<li><strong>CORE0_MEIP_ENABLE[11]</strong>: 11 registers, base 0x2000, stride 0x4</li>
+<li><strong>CORE1_MEIP_ENABLE[11]</strong>: 11 registers, base 0x2080, stride 0x4</li>
+<li><strong>CORE2_MEIP_ENABLE[11]</strong>: 11 registers, base 0x2100, stride 0x4</li>
+<li><strong>CORE3_MEIP_ENABLE[11]</strong>: 11 registers, base 0x2180, stride 0x4</li>
+<li><strong>CORE0_SEIP_ENABLE[11]</strong>: 11 registers, base 0x2200, stride 0x4</li>
+<li><strong>CORE1_SEIP_ENABLE[11]</strong>: 11 registers, base 0x2280, stride 0x4</li>
+<li><strong>CORE2_SEIP_ENABLE[11]</strong>: 11 registers, base 0x2300, stride 0x4</li>
+<li><strong>CORE3_SEIP_ENABLE[11]</strong>: 11 registers, base 0x2380, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table id="trm-table-4">
+<caption class="title"><a href="#trm-table-4">Table 4</a>. PLIC Address Map register list</caption>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x540</td><td><a href="#plic-PRIORITY_337_">PRIORITY[337]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1000 - 0x1028</td><td><a href="#plic-PENDING_11_">PENDING[11]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x2000 - 0x2028</td><td><a href="#plic-CORE0_MEIP_ENABLE_11_">CORE0_MEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2080 - 0x20A8</td><td><a href="#plic-CORE1_MEIP_ENABLE_11_">CORE1_MEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2100 - 0x2128</td><td><a href="#plic-CORE2_MEIP_ENABLE_11_">CORE2_MEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2180 - 0x21A8</td><td><a href="#plic-CORE3_MEIP_ENABLE_11_">CORE3_MEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2200 - 0x2228</td><td><a href="#plic-CORE0_SEIP_ENABLE_11_">CORE0_SEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2280 - 0x22A8</td><td><a href="#plic-CORE1_SEIP_ENABLE_11_">CORE1_SEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2300 - 0x2328</td><td><a href="#plic-CORE2_SEIP_ENABLE_11_">CORE2_SEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2380 - 0x23A8</td><td><a href="#plic-CORE3_SEIP_ENABLE_11_">CORE3_SEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x200000</td><td><a href="#plic-CORE0_MEIP_THRESHOLD">CORE0_MEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x200004</td><td><a href="#plic-CORE0_MEIP_CLAIM_COMPLETE">CORE0_MEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x201000</td><td><a href="#plic-CORE1_MEIP_THRESHOLD">CORE1_MEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x201004</td><td><a href="#plic-CORE1_MEIP_CLAIM_COMPLETE">CORE1_MEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x202000</td><td><a href="#plic-CORE2_MEIP_THRESHOLD">CORE2_MEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x202004</td><td><a href="#plic-CORE2_MEIP_CLAIM_COMPLETE">CORE2_MEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x203000</td><td><a href="#plic-CORE3_MEIP_THRESHOLD">CORE3_MEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x203004</td><td><a href="#plic-CORE3_MEIP_CLAIM_COMPLETE">CORE3_MEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x204000</td><td><a href="#plic-CORE0_SEIP_THRESHOLD">CORE0_SEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x204004</td><td><a href="#plic-CORE0_SEIP_CLAIM_COMPLETE">CORE0_SEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x205000</td><td><a href="#plic-CORE1_SEIP_THRESHOLD">CORE1_SEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x205004</td><td><a href="#plic-CORE1_SEIP_CLAIM_COMPLETE">CORE1_SEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x206000</td><td><a href="#plic-CORE2_SEIP_THRESHOLD">CORE2_SEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x206004</td><td><a href="#plic-CORE2_SEIP_CLAIM_COMPLETE">CORE2_SEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x207000</td><td><a href="#plic-CORE3_SEIP_THRESHOLD">CORE3_SEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x207004</td><td><a href="#plic-CORE3_SEIP_CLAIM_COMPLETE">CORE3_SEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="PRIORITY_337_"></span><h3 id="plic-PRIORITY_337_" data-register-alias="PRIORITY_337_">PRIORITY[337]</h3>
+<table id="trm-table-5">
+<caption class="title"><a href="#trm-table-5">Table 5</a>. plic.PRIORITY[337] fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Priority of interrupt. The higher the set value, the higher the priority.<br>For interrupts with the same priority, the tie is broken by interrupt ID; interrupts with the lowest ID has highest effective priority.<br>Interrupts start counting at 1.</td></tr>
+</table>
+<span id="PENDING_11_"></span><h3 id="plic-PENDING_11_" data-register-alias="PENDING_11_">PENDING[11]</h3>
+<table id="trm-table-6">
+<caption class="title"><a href="#trm-table-6">Table 6</a>. plic.PENDING[11] fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>R</td><td>0x0</td><td>Set to 1 if interrupt source 1 is pending, regardless of its enable or priority setting.<br>Interrupts start counting at 1.</td></tr>
+</table>
+<span id="CORE0_MEIP_ENABLE_11_"></span><h3 id="plic-CORE0_MEIP_ENABLE_11_" data-register-alias="CORE0_MEIP_ENABLE_11_">CORE0_MEIP_ENABLE[11]</h3>
+<table id="trm-table-7">
+<caption class="title"><a href="#trm-table-7">Table 7</a>. plic.CORE0_MEIP_ENABLE[11] fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
+</table>
+<span id="CORE1_MEIP_ENABLE_11_"></span><h3 id="plic-CORE1_MEIP_ENABLE_11_" data-register-alias="CORE1_MEIP_ENABLE_11_">CORE1_MEIP_ENABLE[11]</h3>
+<table id="trm-table-8">
+<caption class="title"><a href="#trm-table-8">Table 8</a>. plic.CORE1_MEIP_ENABLE[11] fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
+</table>
+<span id="CORE2_MEIP_ENABLE_11_"></span><h3 id="plic-CORE2_MEIP_ENABLE_11_" data-register-alias="CORE2_MEIP_ENABLE_11_">CORE2_MEIP_ENABLE[11]</h3>
+<table id="trm-table-9">
+<caption class="title"><a href="#trm-table-9">Table 9</a>. plic.CORE2_MEIP_ENABLE[11] fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
+</table>
+<span id="CORE3_MEIP_ENABLE_11_"></span><h3 id="plic-CORE3_MEIP_ENABLE_11_" data-register-alias="CORE3_MEIP_ENABLE_11_">CORE3_MEIP_ENABLE[11]</h3>
+<table id="trm-table-10">
+<caption class="title"><a href="#trm-table-10">Table 10</a>. plic.CORE3_MEIP_ENABLE[11] fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
+</table>
+<span id="CORE0_SEIP_ENABLE_11_"></span><h3 id="plic-CORE0_SEIP_ENABLE_11_" data-register-alias="CORE0_SEIP_ENABLE_11_">CORE0_SEIP_ENABLE[11]</h3>
+<table id="trm-table-11">
+<caption class="title"><a href="#trm-table-11">Table 11</a>. plic.CORE0_SEIP_ENABLE[11] fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
+</table>
+<span id="CORE1_SEIP_ENABLE_11_"></span><h3 id="plic-CORE1_SEIP_ENABLE_11_" data-register-alias="CORE1_SEIP_ENABLE_11_">CORE1_SEIP_ENABLE[11]</h3>
+<table id="trm-table-12">
+<caption class="title"><a href="#trm-table-12">Table 12</a>. plic.CORE1_SEIP_ENABLE[11] fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
+</table>
+<span id="CORE2_SEIP_ENABLE_11_"></span><h3 id="plic-CORE2_SEIP_ENABLE_11_" data-register-alias="CORE2_SEIP_ENABLE_11_">CORE2_SEIP_ENABLE[11]</h3>
+<table id="trm-table-13">
+<caption class="title"><a href="#trm-table-13">Table 13</a>. plic.CORE2_SEIP_ENABLE[11] fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
+</table>
+<span id="CORE3_SEIP_ENABLE_11_"></span><h3 id="plic-CORE3_SEIP_ENABLE_11_" data-register-alias="CORE3_SEIP_ENABLE_11_">CORE3_SEIP_ENABLE[11]</h3>
+<table id="trm-table-14">
+<caption class="title"><a href="#trm-table-14">Table 14</a>. plic.CORE3_SEIP_ENABLE[11] fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
+</table>
+<span id="CORE0_MEIP_THRESHOLD"></span><h3 id="plic-CORE0_MEIP_THRESHOLD" data-register-alias="CORE0_MEIP_THRESHOLD">CORE0_MEIP_THRESHOLD</h3>
+<table id="trm-table-15">
+<caption class="title"><a href="#trm-table-15">Table 15</a>. plic.CORE0_MEIP_THRESHOLD fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
+</table>
+<span id="CORE0_MEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE0_MEIP_CLAIM_COMPLETE" data-register-alias="CORE0_MEIP_CLAIM_COMPLETE">CORE0_MEIP_CLAIM_COMPLETE</h3>
+<table id="trm-table-16">
+<caption class="title"><a href="#trm-table-16">Table 16</a>. plic.CORE0_MEIP_CLAIM_COMPLETE fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
+</table>
+<span id="CORE1_MEIP_THRESHOLD"></span><h3 id="plic-CORE1_MEIP_THRESHOLD" data-register-alias="CORE1_MEIP_THRESHOLD">CORE1_MEIP_THRESHOLD</h3>
+<table id="trm-table-17">
+<caption class="title"><a href="#trm-table-17">Table 17</a>. plic.CORE1_MEIP_THRESHOLD fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
+</table>
+<span id="CORE1_MEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE1_MEIP_CLAIM_COMPLETE" data-register-alias="CORE1_MEIP_CLAIM_COMPLETE">CORE1_MEIP_CLAIM_COMPLETE</h3>
+<table id="trm-table-18">
+<caption class="title"><a href="#trm-table-18">Table 18</a>. plic.CORE1_MEIP_CLAIM_COMPLETE fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
+</table>
+<span id="CORE2_MEIP_THRESHOLD"></span><h3 id="plic-CORE2_MEIP_THRESHOLD" data-register-alias="CORE2_MEIP_THRESHOLD">CORE2_MEIP_THRESHOLD</h3>
+<table id="trm-table-19">
+<caption class="title"><a href="#trm-table-19">Table 19</a>. plic.CORE2_MEIP_THRESHOLD fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
+</table>
+<span id="CORE2_MEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE2_MEIP_CLAIM_COMPLETE" data-register-alias="CORE2_MEIP_CLAIM_COMPLETE">CORE2_MEIP_CLAIM_COMPLETE</h3>
+<table id="trm-table-20">
+<caption class="title"><a href="#trm-table-20">Table 20</a>. plic.CORE2_MEIP_CLAIM_COMPLETE fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
+</table>
+<span id="CORE3_MEIP_THRESHOLD"></span><h3 id="plic-CORE3_MEIP_THRESHOLD" data-register-alias="CORE3_MEIP_THRESHOLD">CORE3_MEIP_THRESHOLD</h3>
+<table id="trm-table-21">
+<caption class="title"><a href="#trm-table-21">Table 21</a>. plic.CORE3_MEIP_THRESHOLD fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
+</table>
+<span id="CORE3_MEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE3_MEIP_CLAIM_COMPLETE" data-register-alias="CORE3_MEIP_CLAIM_COMPLETE">CORE3_MEIP_CLAIM_COMPLETE</h3>
+<table id="trm-table-22">
+<caption class="title"><a href="#trm-table-22">Table 22</a>. plic.CORE3_MEIP_CLAIM_COMPLETE fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
+</table>
+<span id="CORE0_SEIP_THRESHOLD"></span><h3 id="plic-CORE0_SEIP_THRESHOLD" data-register-alias="CORE0_SEIP_THRESHOLD">CORE0_SEIP_THRESHOLD</h3>
+<table id="trm-table-23">
+<caption class="title"><a href="#trm-table-23">Table 23</a>. plic.CORE0_SEIP_THRESHOLD fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
+</table>
+<span id="CORE0_SEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE0_SEIP_CLAIM_COMPLETE" data-register-alias="CORE0_SEIP_CLAIM_COMPLETE">CORE0_SEIP_CLAIM_COMPLETE</h3>
+<table id="trm-table-24">
+<caption class="title"><a href="#trm-table-24">Table 24</a>. plic.CORE0_SEIP_CLAIM_COMPLETE fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
+</table>
+<span id="CORE1_SEIP_THRESHOLD"></span><h3 id="plic-CORE1_SEIP_THRESHOLD" data-register-alias="CORE1_SEIP_THRESHOLD">CORE1_SEIP_THRESHOLD</h3>
+<table id="trm-table-25">
+<caption class="title"><a href="#trm-table-25">Table 25</a>. plic.CORE1_SEIP_THRESHOLD fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
+</table>
+<span id="CORE1_SEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE1_SEIP_CLAIM_COMPLETE" data-register-alias="CORE1_SEIP_CLAIM_COMPLETE">CORE1_SEIP_CLAIM_COMPLETE</h3>
+<table id="trm-table-26">
+<caption class="title"><a href="#trm-table-26">Table 26</a>. plic.CORE1_SEIP_CLAIM_COMPLETE fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
+</table>
+<span id="CORE2_SEIP_THRESHOLD"></span><h3 id="plic-CORE2_SEIP_THRESHOLD" data-register-alias="CORE2_SEIP_THRESHOLD">CORE2_SEIP_THRESHOLD</h3>
+<table id="trm-table-27">
+<caption class="title"><a href="#trm-table-27">Table 27</a>. plic.CORE2_SEIP_THRESHOLD fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
+</table>
+<span id="CORE2_SEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE2_SEIP_CLAIM_COMPLETE" data-register-alias="CORE2_SEIP_CLAIM_COMPLETE">CORE2_SEIP_CLAIM_COMPLETE</h3>
+<table id="trm-table-28">
+<caption class="title"><a href="#trm-table-28">Table 28</a>. plic.CORE2_SEIP_CLAIM_COMPLETE fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
+</table>
+<span id="CORE3_SEIP_THRESHOLD"></span><h3 id="plic-CORE3_SEIP_THRESHOLD" data-register-alias="CORE3_SEIP_THRESHOLD">CORE3_SEIP_THRESHOLD</h3>
+<table id="trm-table-29">
+<caption class="title"><a href="#trm-table-29">Table 29</a>. plic.CORE3_SEIP_THRESHOLD fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
+</table>
+<span id="CORE3_SEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE3_SEIP_CLAIM_COMPLETE" data-register-alias="CORE3_SEIP_CLAIM_COMPLETE">CORE3_SEIP_CLAIM_COMPLETE</h3>
+<table id="trm-table-30">
+<caption class="title"><a href="#trm-table-30">Table 30</a>. plic.CORE3_SEIP_CLAIM_COMPLETE fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+<nav class="pagination">
+  <span class="prev"><a href="fabric.html">Interconnect</a></span>
+  <span class="next"><a href="periphs.html">Peripherals</a></span>
+</nav>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

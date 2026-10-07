@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Peripheral Subsystem :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP access to SMC peripherals and the local SPI boot interface.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-programmer-guide" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Programmer&#x27;s Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Programmer&#8217;s Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../index.html#smc-programming-guide">SMC Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../index.html#sep-programming-guide">SEP Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../index.html#sep-smc-common-blocks-communication">SEP &amp; SMC Common Blocks &amp; Communication</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../index.html#dtp-programming-guide">DTP Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../index.html#aou-software-operation-guide">AoU Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#smc-boot-rom">A. SMC Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#sep-boot-rom">B. SEP Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#km-application-rom">C. Key Manager Application ROM</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Programmer&#x27;s Guide 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../index.html">Programmer&#8217;s Guide</a></li>
+    <li><a href="peripheral_subsystem.html">Peripheral Subsystem</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Peripheral Subsystem</h1>
+<div id="peripheral-subsystem" class="paragraph">
+<p>SEP reaches the serial-I/O peripherals in SMC over a dedicated AXI4 port,
+<code>sep_ext_to_smc_axi_req_o</code>, split off by the route demux in
+<code>sep_system_peripherals</code> and wired to SMC&#8217;s <code>sep_axi_in</code>. It reaches every SMC
+local target without passing the SEP outbound filter. SEP also has a local SPI
+host for boot-flash access. The SPI chapter describes that controller; SMC
+documents the shared peripherals.</p>
+</div>
+<div class="paragraph">
+<p>SEP boot uses configuration straps, which it reads from the SMC strap registers.
+For their role in selecting boot options, see
+<a href="cpu.html#configuration-straps" class="xref page">Configuration Straps</a> and
+<a href="rom.html#bl0-secure-boot-and-bl1-execution-unlock" class="xref page">BL0 Boot Flow</a>.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sep-peripheral-extension-port-figure">SEP peripheral extension port</a> shows the connection from SEP to peripherals
+shared with SMC.</p>
+</div>
+<div id="sep-peripheral-extension-port-figure" class="imageblock">
+<div class="content">
+<img src="_images/sep-peripheral-extension-port.svg" alt="SEP local SPI host path and the dedicated AXI4 port from the SEP route demux through the SMU to the SMC input fabric, local crossbar and peripheral crossbar" width="100%">
+</div>
+<div class="title">Figure 1. SEP peripheral extension port</div>
+</div>
+<div class="paragraph">
+<p>The figure reads from the SEP local crossbar outwards. The SPI host sits
+behind the <code>sep_io</code> target, which downsizes the 64-bit AXI4 request to 32
+bits and converts it to AXI-Lite; the quad SPI signals leave for the SPI pads.
+The local crossbar sends only the SPI host register extent to <code>sep_io</code> and
+answers the rest of its aperture with DECERR on reads and writes. The error
+responder in <code>sep_io</code> answers only the beats of a burst that run past the
+extent.
+Requests in the SMC aperture take the route demux of <code>sep_system_peripherals</code> (see
+<a href="fabric.html#sep-output-fabric-diagram" class="xref page">SEP output fabric</a>) onto the SMC port, which the SMU wires directly
+to the SMC&#8217;s <code>sep_axi_in</code> port with no crossbar and no clock-domain crossing.
+The SMC flow is drawn right to left. The SMC input fabric passes addresses in
+the SMC local or global window, truncated to 32 bits, and answers others with
+DECERR. The SMC local fabric rebases them onto the SMC local base, and the
+<code>sep_in</code> initiator of the SMC local crossbar reaches every target, including
+the peripheral port, which is converted to 32-bit AXI-Lite for the SMC
+peripheral crossbar. The UART, I2C and AVSBus controllers sit behind
+clock-domain crossings into the peripheral clock.</p>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

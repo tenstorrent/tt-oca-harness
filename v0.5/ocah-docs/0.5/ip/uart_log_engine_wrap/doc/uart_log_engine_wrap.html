@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>OCAH UART &amp; Log Engine Wrapper :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-docs" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../../../index.html">Technical Reference Manual</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../index.html">Documentation Overview</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../list-of-figures.html">List of Figures</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../list-of-tables.html">List of Tables</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../architecture.html">OCAH Architecture &amp; Design</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../overview.html">Platform Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../memory_map.html">OCAH Memory Map</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../power_domains.html">Power Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../clock_domains.html">Clock Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../reset.html">Reset</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../architecture.html#ocah-rtl-assertions">RTL Assertions</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">OCAH Platform Components</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../smu/index.html">System Management Unit (SMU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../sep/index.html">Security Processor (SEP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/threat_model.html">Threat Model</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/attack_countermeasures.html">Attack Countermeasures</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../sep/clk_rst.html">Clocks and Resets</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/reset_controller.html">SEP Reset Controller</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/cpu.html">CPU</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/fabric.html">Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../sep/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/dma.html">Direct Memory Access (DMA)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/mailbox.html">Mailboxes</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/peripheral_subsystem.html">Peripheral Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/spi.html">Serial Peripheral Interface (SPI)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../sep/security.html">Security and Lifecycle</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/otp_fuse_controller.html">OTP Fuse Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/token_processing.html">Token Processing</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/security_disable.html">Security Disable</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/lifecycle_controller.html">Lifecycle Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/test_mode.html">Test Mode Entry</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../sep/crypto.html">Cryptographic Subsystem</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/trng.html">TRNG and DRBG</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../entropy_source/doc/index.html">Entropy Source</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/entropy_pool.html">Entropy Pool</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/aes.html">AES Cipher</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/hmac.html">HMAC-SHA2</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/kmac.html">KMAC-SHA3</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/adams_bridge.html">Adams Bridge (ABR)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/otbn.html">OTBN PKA Public Key Accelerator</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../key_manager/doc/index.html">Key Manager</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../key_manager/doc/index.html#key-manager-architecture">Architecture</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/memory_map.html">Memory Map and Register Reference</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../smc/index.html">System Management Controller (SMC)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/clk_rst.html">Clocks and Resets</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/cpu.html">CPU</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/fabric.html">Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../smc/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../smc/dma.html">Direct Memory Access Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../smc/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../smc/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../axi_lite_mailbox_unit/doc/index.html">Mailboxes</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../system_timer_octs/doc/index.html">System Timer OCTS</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../efuse/doc/index.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../uart_16550/doc/index.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../log_engine/doc/index.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../i2c/doc/index.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../i3ccore_wrap/doc/index.html">I3C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../avsbus_controller/doc/index.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../gpio/doc/index.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../telemetry_receiver/doc/index.html">Telemetry Receiver</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/dfd.html">Design-for-Debug and CLA</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/scan_protection.html">eFuse Scan Protection</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/memmap.html">Memory Map and Register Reference</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../dtp/index.html">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../dtp/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../dtp/clk_rst.html">Clocks and Resets</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../dtp/jtag.html">JTAG Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../dtp/cross_trigger.html">Cross-Trigger Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../dtp/ip_reference.html">IP Reference</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">JTAG</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../jtag_ptap/doc/index.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Cross-Trigger</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../dtp/reference.html">Configuration and Reference</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../smn.html">System Management Network (SMN)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../aou.html">AXI-over-UCIe Bridge (AoU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../aou-overview.html">Overview and Features</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../aou-architecture.html">Architecture</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../aou-interrupts-errors.html">Interrupts and Errors</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../aou-ppa-appendices.html">PPA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../aou-appendices.html">Appendices</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../aou-referenced-documents.html">Appendix B. Referenced Documents</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../rtl-modules-reference.html">RTL Modules Reference</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../rtl-modules-reference.html#ip">IP</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/avsbus_controller.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/axi_alias_remap.html">AXI Alias Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/axi_filter.html">AXI Filter</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/axi_hang_detector.html">AXI Hang Detector</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/axi_lite_mailbox_unit.html">AXI-Lite Mailbox</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/axi_window_remap.html">AXI Window Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/drbg.html">DRBG</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/efuse.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/entropy_source.html">Entropy Source</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/gpio.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/i2c.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/i3ccore_wrap.html">I3C</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/idma_wrapper.html">iDMA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/key_manager.html">Key Manager</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/memory_interface.html">Memory Interface</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/output_remap.html">Output Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/scrambler.html">Scrambler</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/system_timer_octs.html">System Timer</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/telemetry_receiver.html">Telemetry Receiver</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/cross_trigger_matrix.html">Cross-Trigger Matrix</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/cross_trigger_network.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/cross_trigger_port.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/jtag2axi.html">JTAG to AXI</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/jtag_intf_unit.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/jtag_ptap.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/jtag_stap.html">JTAG STAP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/log_engine.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/uart_16550.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/uart_log_engine_wrap.html">UART Log Engine Wrapper</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/ip/uart_wrap.html">UART Wrapper</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../rtl-modules-reference.html#subsystems">Subsystems</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/sys/sep.html">SEP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/sys/smc.html">SMC</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/sys/dtp.html">DTP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/sys/smu.html">SMU</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/sys/aou.html">AXI-over-UCIe</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../rtl-modules-reference.html#common">Common</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/common/ocah_prim.html">ocah_prim</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/common/ocah_prim_generic.html">ocah_prim_generic</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../rtl-modules-reference/common/tlul.html">TL-UL</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../../../ip-reference.html">IP Reference</a>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../register-field-access.html">Register Field Access Notation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../referenced-documents.html">Referenced Documents</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Technical Reference Manual 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../../../index.html">Technical Reference Manual</a></li>
+    <li><a href="uart_log_engine_wrap.html">OCAH UART &amp; Log Engine Wrapper</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="5">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">OCAH UART &amp; Log Engine Wrapper</h1>
+<div class="sect1">
+<h2 id="sec-description"><a class="anchor" href="#sec-description"></a><a class="link" href="#sec-description">1. Description</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The OCAH UART &amp; Log Engine Wrapper is a hardware module that integrates an UART 16550 with a Log
+Engine. This wrapper is designed to facilitate communication between the UART and the log engine,
+allowing for logging capabilities.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sec-features"><a class="anchor" href="#sec-features"></a><a class="link" href="#sec-features">2. Features</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The features of this design include:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>An UART 16550</p>
+</li>
+<li>
+<p>An optional Log Engine</p>
+</li>
+<li>
+<p>Configurable APB4 or AXI4-Lite register interface</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sec-parameters"><a class="anchor" href="#sec-parameters"></a><a class="link" href="#sec-parameters">3. Parameters and Ports</a></h2>
+<div class="sectionbody">
+<span id="sec-input-and-output-ports"></span>
+<div class="paragraph">
+<p>The parameters and ports of <code>uart_log_engine_wrap</code> are listed in <a href="../../../rtl-modules-reference/ip/uart_log_engine_wrap/uart_log_engine_wrap.html" class="xref page">uart_log_engine_wrap</a>.</p>
+</div>
+<div class="paragraph">
+<p><code>LOG_ENGINE_FIFO_DEPTH</code> must be a power of 2 greater than or equal to 16.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sec-registers"><a class="anchor" href="#sec-registers"></a><a class="link" href="#sec-registers">4. Registers — LCR.DLAB=0, Read Direction</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The UART 16550 follows the 8250 layout: single offsets map to different registers by
+access direction and by <code>LCR.DLAB</code>. This table is the <code>LCR.DLAB=0</code> read view at wrapper
+offset <code>+0x100</code>; write-only and divisor-latch aliases at the same offsets are in the
+next section. When this wrapper is arrayed by <code>uart_wrap</code>, instance <em>N</em> adds a further
+<code>N * 0x400</code>.</p>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-uart_log_engine_wrap">UART Log Engine Wrapper Address Map</h2>
+<p>Composes the UART 16550 core, log engine, and their control registers for one UART instance.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>LOG_CTRL[16]</strong>: 16 registers, base 0x240, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table id="trm-table-1">
+<caption class="title"><a href="#trm-table-1">Table 1</a>. UART Log Engine Wrapper Address Map register list</caption>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#uart_log_engine_wrap-uart_log_engine_ctrl.CTRL">uart_log_engine_ctrl.CTRL</a></td><td>RW</td><td>Control Register</td></tr>
+<tr><td>0x100</td><td><a href="#uart_log_engine_wrap-RBR">RBR</a></td><td>R</td><td>Receiver Buffer Register</td></tr>
+<tr><td>0x104</td><td><a href="#uart_log_engine_wrap-IER">IER</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
+<tr><td>0x108</td><td><a href="#uart_log_engine_wrap-IIR">IIR</a></td><td>R</td><td>Interrupt Identification Register</td></tr>
+<tr><td>0x10C</td><td><a href="#uart_log_engine_wrap-LCR">LCR</a></td><td>RW</td><td>Line Control Register</td></tr>
+<tr><td>0x110</td><td><a href="#uart_log_engine_wrap-MCR">MCR</a></td><td>RW</td><td>Modem Control Register</td></tr>
+<tr><td>0x114</td><td><a href="#uart_log_engine_wrap-LSR">LSR</a></td><td>R</td><td>Line Status Register</td></tr>
+<tr><td>0x118</td><td><a href="#uart_log_engine_wrap-MSR">MSR</a></td><td>R</td><td>Modem Status Register</td></tr>
+<tr><td>0x11C</td><td><a href="#uart_log_engine_wrap-SCR">SCR</a></td><td>RW</td><td>Scratch Register</td></tr>
+<tr><td>0x120</td><td><a href="#uart_log_engine_wrap-ECR">ECR</a></td><td>RW</td><td>Extended Control Register</td></tr>
+<tr><td>0x124</td><td><a href="#uart_log_engine_wrap-ITR">ITR</a></td><td>RW</td><td>Interrupt Test Register</td></tr>
+<tr><td>0x200</td><td><a href="#uart_log_engine_wrap-log_engine.CTRL">log_engine.CTRL</a></td><td>RW</td><td>Control Register</td></tr>
+<tr><td>0x204</td><td><a href="#uart_log_engine_wrap-LOG_REGION_SIZE">LOG_REGION_SIZE</a></td><td>RW</td><td>Log Region Size Register</td></tr>
+<tr><td>0x208</td><td><a href="#uart_log_engine_wrap-LOG_REGION_ADDR">LOG_REGION_ADDR</a></td><td>RW</td><td>Log Region Address Register</td></tr>
+<tr><td>0x210</td><td><a href="#uart_log_engine_wrap-LOG_WRITE_ADDR">LOG_WRITE_ADDR</a></td><td>RW</td><td>Log Write Address Register</td></tr>
+<tr><td>0x214</td><td><a href="#uart_log_engine_wrap-INTR_STATUS">INTR_STATUS</a></td><td>RW</td><td>Interrupt Status Register</td></tr>
+<tr><td>0x218</td><td><a href="#uart_log_engine_wrap-INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
+<tr><td>0x21C</td><td><a href="#uart_log_engine_wrap-INTR_TEST">INTR_TEST</a></td><td>W</td><td>Interrupt Test Register</td></tr>
+<tr><td>0x240 - 0x27C</td><td><a href="#uart_log_engine_wrap-LOG_CTRL_16_">LOG_CTRL[16]</a></td><td>RW</td><td>Log Control Register</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="uart_log_engine_ctrl.CTRL"></span><h3 id="uart_log_engine_wrap-uart_log_engine_ctrl.CTRL" data-register-alias="uart_log_engine_ctrl.CTRL">uart_log_engine_ctrl.CTRL</h3>
+<table id="trm-table-2">
+<caption class="title"><a href="#trm-table-2">Table 2</a>. uart_log_engine_wrap.uart_log_engine_ctrl.CTRL fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>UART_EN</td><td>RW</td><td>0x0</td><td>UART Enable. When set, the pad-mux downstream will be forced to accept UART<br>traffic.</td></tr>
+</table>
+<span id="RBR"></span><h3 id="uart_log_engine_wrap-RBR" data-register-alias="RBR">RBR</h3>
+<table id="trm-table-3">
+<caption class="title"><a href="#trm-table-3">Table 3</a>. uart_log_engine_wrap.RBR fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>DATA</td><td>R RMOD</td><td>0x0</td><td>Received Data. Contains a received character. If FIFOs are enabled, this field<br>points to the bottom of the RX FIFO. Otherwise, this field points to a single-<br>byte Receiver Buffer Register.</td></tr>
+</table>
+<span id="IER"></span><h3 id="uart_log_engine_wrap-IER" data-register-alias="IER">IER</h3>
+<table id="trm-table-4">
+<caption class="title"><a href="#trm-table-4">Table 4</a>. uart_log_engine_wrap.IER fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>EFEI</td><td>RW</td><td>0x0</td><td>Enable FIFO Error Interrupt.</td></tr>
+<tr><td>3</td><td>EDSSI</td><td>RW</td><td>0x0</td><td>Enable (Delta Status of) Modem Status Interrupt.</td></tr>
+<tr><td>2</td><td>ELSI</td><td>RW</td><td>0x0</td><td>Enable (Receiver) Line Status Interrupt.</td></tr>
+<tr><td>1</td><td>ETBEI</td><td>RW</td><td>0x0</td><td>Enable Transmitter Buffer Empty (Transmitter Holding Register Empty)<br>Interrupt.</td></tr>
+<tr><td>0</td><td>ERBFI</td><td>RW</td><td>0x0</td><td>Enable Receiver Buffer Full (Received Data Ready) Interrupt.</td></tr>
+</table>
+<span id="IIR"></span><h3 id="uart_log_engine_wrap-IIR" data-register-alias="IIR">IIR</h3>
+<table id="trm-table-5">
+<caption class="title"><a href="#trm-table-5">Table 5</a>. uart_log_engine_wrap.IIR fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:6</td><td>FIFOS_ENABLED</td><td>R</td><td>0x0</td><td>FIFOs Enabled:<br>* `0x0` - FIFOs are disabled<br>* `0x3` - FIFOs are enabled</td></tr>
+<tr><td>5:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3:1</td><td>INTERRUPT_ID</td><td>R</td><td>0x0</td><td>Interrupt ID:<br>* `0x7` - FIFO Error Interrupt                         (priority 0)<br>* `0x3` - Receiver Line Status Interrupt               (priority 1)<br>* `0x6` - Reception Timeout Interrupt                  (priority 2)<br>* `0x2` - Received Data Ready Interrupt                (priority 3)<br>* `0x1` - Transmitter Holding Register Empty Interrupt (priority 4)<br>* `0x0` - Modem Status Interrupt                       (priority 5)</td></tr>
+<tr><td>0</td><td>INTERRUPT_PENDING</td><td>R</td><td>0x1</td><td>Interrupt Pending. Active-low.</td></tr>
+</table>
+<span id="LCR"></span><h3 id="uart_log_engine_wrap-LCR" data-register-alias="LCR">LCR</h3>
+<table id="trm-table-6">
+<caption class="title"><a href="#trm-table-6">Table 6</a>. uart_log_engine_wrap.LCR fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>DLAB</td><td>RW</td><td>0x0</td><td>Divisor Latch Access Bit. If set, allows access to the `DLL` and `DLM` registers<br>when accessing addresses `0x0` and `0x4`, respectively. If unset, allows access<br>to the `THR`, `RBR`, and `IIR` registers.</td></tr>
+<tr><td>6</td><td>SET_BREAK</td><td>RW</td><td>0x0</td><td>Set Break. If set, forces the `tx_o` output to `0` to cause a break condition<br>on the receiving UART.</td></tr>
+<tr><td>5</td><td>STICK_PARITY</td><td>RW</td><td>0x0</td><td>Stick Parity. If set, forces the transmit and received parity bits to be `0` if<br>even parity is selected and `1` if odd parity is selected.</td></tr>
+<tr><td>4</td><td>EPS</td><td>RW</td><td>0x0</td><td>Even Parity Select:<br>* `1` - even parity<br>* `0` - odd parity</td></tr>
+<tr><td>3</td><td>PEN</td><td>RW</td><td>0x0</td><td>Parity Enable.</td></tr>
+<tr><td>2</td><td>STB</td><td>RW</td><td>0x0</td><td>Stop Bits:<br>* `0` - 1 stop bit.<br>* `1` - 2 stop bits (or 1.5 stop bits if word length is set to 5 bits)</td></tr>
+<tr><td>1:0</td><td>WLS</td><td>RW</td><td>0x0</td><td>Word Length Select:<br>* `0x0` - 5 bits per character<br>* `0x1` - 6 bits per character<br>* `0x2` - 7 bits per character<br>* `0x3` - 8 bits per character</td></tr>
+</table>
+<span id="MCR"></span><h3 id="uart_log_engine_wrap-MCR" data-register-alias="MCR">MCR</h3>
+<table id="trm-table-7">
+<caption class="title"><a href="#trm-table-7">Table 7</a>. uart_log_engine_wrap.MCR fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5</td><td>LINE_LOOPBACK</td><td>RW</td><td>0x0</td><td>Line Loopback. If set, the `rx_i` input is internally connected to the<br>`tx_o` output.</td></tr>
+<tr><td>4</td><td>LOOP</td><td>RW</td><td>0x0</td><td>System Loopback. If set, the transmitter is internally connected to the<br>receiver. The `tx_o` output is set to `1`.</td></tr>
+<tr><td>3</td><td>OUT2</td><td>RW</td><td>0x0</td><td>User Output 2. Writing to this bit drives the `out2_no` in the opposite<br>polarity.</td></tr>
+<tr><td>2</td><td>OUT1</td><td>RW</td><td>0x0</td><td>User Output 1. Writing to this bit drives the `out1_no` in the opposite<br>polarity.</td></tr>
+<tr><td>1</td><td>RTS</td><td>RW</td><td>0x0</td><td>Request to Send. Writing to this bit drives the `rts_no` output in the opposite<br>polarity.</td></tr>
+<tr><td>0</td><td>DTR</td><td>RW</td><td>0x0</td><td>Data Terminal Ready. Writing to this bit drives the `dtr_no` output in the<br>opposite polarity.</td></tr>
+</table>
+<span id="LSR"></span><h3 id="uart_log_engine_wrap-LSR" data-register-alias="LSR">LSR</h3>
+<table id="trm-table-8">
+<caption class="title"><a href="#trm-table-8">Table 8</a>. uart_log_engine_wrap.LSR fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>ERROR_IN_RCVR_FIFO</td><td>R</td><td>0x0</td><td>Error in Receiver FIFO. When set, indicates that the receiver FIFO or (RBR in<br>non-FIFO mode) has the parity, framing, or break error. In other words, at<br>least one of the PE, FE, and BI bits is set.</td></tr>
+<tr><td>6</td><td>TEMT</td><td>R</td><td>0x1</td><td>Transmitter Empty. When set, indicates that the transmitter shift register and<br>the transmitter FIFO (or THR in non-FIFO mode) are empty.</td></tr>
+<tr><td>5</td><td>THRE</td><td>R</td><td>0x1</td><td>Transmitter Holding Register Empty. When set, indicates that the TX FIFO (or<br>THR in non-FIFO mode) is empty. Clearing the Transmitter Holding Register Empty<br>Interrupt does NOT clear this bit.</td></tr>
+<tr><td>4</td><td>BI</td><td>R RC</td><td>0x0</td><td>Break Interrupt. When set, indicates that the `rx_i` input is `0` for an entire<br>frame&#x27;s time (start + data + parity + stop bits). In FIFO mode, this bit set<br>when the character reaches the top of the receiver FIFO. In non-FIFO mode, this<br>bit is set when the character enters the RBR. This bit triggers the Receiver<br>Line Status Interrupt.</td></tr>
+<tr><td>3</td><td>FE</td><td>R RC</td><td>0x0</td><td>Framing Error. When set, indicates that the received character is missing a<br>stop bit. In FIFO mode, this bit is set when the character reaches the top of<br>the FIFO. In non-FIFO mode, this bit is set when the character enters the RBR.<br>This bit triggers the Receiver Line Status Interrupt.</td></tr>
+<tr><td>2</td><td>PE</td><td>R RC</td><td>0x0</td><td>Parity Error. When set, indicates that the character at the top of the receiver<br>FIFO (or RBR in non-FIFO mode) has a parity error. This bit triggers the<br>Receiver Line Status Interrupt.</td></tr>
+<tr><td>1</td><td>OE</td><td>R RC</td><td>0x0</td><td>Overrun Error. When set, indicates that the RX FIFO (or Receiver Buffer<br>Register in Non-FIFO Mode) is full when new character is received. In FIFO Mode, the new character<br>is dropped. In non-FIFO mode, the existing character in the RBR is overwritten.<br>This bit triggers the Receiver Line Status Interrupt.</td></tr>
+<tr><td>0</td><td>DR</td><td>R</td><td>0x0</td><td>Data Ready. When set, indicates that the RX FIFO (or RBR in non-FIFO<br>mode) contains data.</td></tr>
+</table>
+<span id="MSR"></span><h3 id="uart_log_engine_wrap-MSR" data-register-alias="MSR">MSR</h3>
+<table id="trm-table-9">
+<caption class="title"><a href="#trm-table-9">Table 9</a>. uart_log_engine_wrap.MSR fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>DCD</td><td>R</td><td>0x0</td><td>Data Carrier Detect. This bit reflects the `dcd_ni` input in the opposite<br>polarity, so it reads `1` while a carrier is detected.</td></tr>
+<tr><td>6</td><td>RI</td><td>R</td><td>0x0</td><td>Ring Indicator. This bit reflects the `ri_ni` input in the opposite polarity, so<br>it reads `1` while the remote modem signals an incoming call.</td></tr>
+<tr><td>5</td><td>DSR</td><td>R</td><td>0x0</td><td>Data Set Ready. This bit reflects the `dsr_ni` input in the opposite polarity,<br>so it reads `1` while the remote modem is connected and ready.</td></tr>
+<tr><td>4</td><td>CTS</td><td>R</td><td>0x0</td><td>Clear to Send. This bit reflects the `cts_ni` input in the opposite polarity, so<br>it reads `1` while the remote device is ready to receive data.</td></tr>
+<tr><td>3</td><td>DDCD</td><td>R RC</td><td>0x0</td><td>Delta Data Carrier Detect. When set, indicates that the `DCD` bit has changed<br>since the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>
+<tr><td>2</td><td>TERI</td><td>R RC</td><td>0x0</td><td>Trailing Edge Ring Indicator. When set, indicates that the `RI` bit has changed<br>from a `1` to a `0`. This bit triggers the Modem Status Interrupt.</td></tr>
+<tr><td>1</td><td>DDSR</td><td>R RC</td><td>0x0</td><td>Delta Data Set Ready. When set, indicates that the `DSR` bit has changed since<br>the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>
+<tr><td>0</td><td>DCTS</td><td>R RC</td><td>0x0</td><td>Delta Clear to Send. When set, indicates that the `CTS` bit has changed since<br>the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>
+</table>
+<span id="SCR"></span><h3 id="uart_log_engine_wrap-SCR" data-register-alias="SCR">SCR</h3>
+<table id="trm-table-10">
+<caption class="title"><a href="#trm-table-10">Table 10</a>. uart_log_engine_wrap.SCR fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>SCR</td><td>RW</td><td>0x0</td><td>Scratch. Holds user data.</td></tr>
+</table>
+<span id="ECR"></span><h3 id="uart_log_engine_wrap-ECR" data-register-alias="ECR">ECR</h3>
+<table id="trm-table-11">
+<caption class="title"><a href="#trm-table-11">Table 11</a>. uart_log_engine_wrap.ECR fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1:0</td><td>RCVR_TRIGGER_MS2B</td><td>RW</td><td>0x0</td><td>Receiver FIFO Trigger Level Most Significant 2 Bits. To configure the least<br>significant 2 bits, use the `FCR.RCVR_TRIGGER` register field. The<br>configurations for the trigger levels are:<br>* `0x0` -    1 character<br>* `0x1` -    4 characters<br>* `0x2` -    8 characters<br>* `0x3` -   14 characters<br>* `0x4` -   32 characters<br>* `0x5` -   64 characters<br>* `0x6` -  128 characters<br>* `0x7` -  256 characters<br>* `0x8` -  512 characters<br>* `0x9` - 1024 characters<br>* `0xA` - 2048 characters<br>* `0xB` - 4096 characters</td></tr>
+</table>
+<span id="ITR"></span><h3 id="uart_log_engine_wrap-ITR" data-register-alias="ITR">ITR</h3>
+<table id="trm-table-12">
+<caption class="title"><a href="#trm-table-12">Table 12</a>. uart_log_engine_wrap.ITR fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5</td><td>TRTI</td><td>RW</td><td>0x0</td><td>Test Reception Timeout Interrupt. Writing a `1` forces the interrupt and<br>writing `0` releases it.</td></tr>
+<tr><td>4</td><td>TFEI</td><td>RW</td><td>0x0</td><td>Test FIFO Error Interrupt. Writing `1` forces the interrupt and writing `0`<br>releases it.</td></tr>
+<tr><td>3</td><td>TDSSI</td><td>RW</td><td>0x0</td><td>Test (Delta Status of) Modem Status Interrupt. Writing `1` forces the<br>interrupt and writing `0` releases it.</td></tr>
+<tr><td>2</td><td>TLSI</td><td>RW</td><td>0x0</td><td>Test (Receiver) Line Status Interrupt. Writing `1` forces the interrupt and<br>writing `0` releases it.</td></tr>
+<tr><td>1</td><td>TTBEI</td><td>RW</td><td>0x0</td><td>Test Transmitter Buffer Empty (Transmitter Holding Register Empty) Interrupt.<br>Writing `1` forces the interrupt and writing `0` releases it.</td></tr>
+<tr><td>0</td><td>TRBFI</td><td>RW</td><td>0x0</td><td>Test Receiver Buffer Full (Received Data Ready) Interrupt. Writing `1` forces<br>the interrupt and writing `0` releases it.</td></tr>
+</table>
+<span id="log_engine.CTRL"></span><h3 id="uart_log_engine_wrap-log_engine.CTRL" data-register-alias="log_engine.CTRL">log_engine.CTRL</h3>
+<table id="trm-table-13">
+<caption class="title"><a href="#trm-table-13">Table 13</a>. uart_log_engine_wrap.log_engine.CTRL fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>EN</td><td>RW</td><td>0x0</td><td>Log Engine Enable. When set, enables the Log Engine. When cleared, the engine<br>stops fetching and writing, discards buffered log data and resets transfer<br>progress. Configuration and pending LOG_LEN values are retained, so a pending<br>entry restarts from the start of its slot when the engine is enabled again.<br>Clearing does not wait for outstanding bus responses.</td></tr>
+</table>
+<span id="LOG_REGION_SIZE"></span><h3 id="uart_log_engine_wrap-LOG_REGION_SIZE" data-register-alias="LOG_REGION_SIZE">LOG_REGION_SIZE</h3>
+<table id="trm-table-14">
+<caption class="title"><a href="#trm-table-14">Table 14</a>. uart_log_engine_wrap.LOG_REGION_SIZE fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>LOG_REGION_SIZE</td><td>RW</td><td>0x0</td><td>Log region size in bytes. Supported values are at most 512 KiB and aligned<br>to 128 bytes (16 slots times the 8-byte fetch beat). If software programs a<br>larger value, RTL clamps the effective region to 512 KiB. For a value that is<br>not 128-byte aligned, RTL divides the effective region among the 16 slots and<br>rounds each slot&#x27;s transferable capacity down to complete 8-byte fetch beats.<br>A requested LOG_LEN above that capacity is clamped to the capacity.</td></tr>
+</table>
+<span id="LOG_REGION_ADDR"></span><h3 id="uart_log_engine_wrap-LOG_REGION_ADDR" data-register-alias="LOG_REGION_ADDR">LOG_REGION_ADDR</h3>
+<table id="trm-table-15">
+<caption class="title"><a href="#trm-table-15">Table 15</a>. uart_log_engine_wrap.LOG_REGION_ADDR fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:56</td><td>RESERVED</td><td>R</td><td>0x0</td><td>Reserved. Reads as zero; writes are ignored.</td></tr>
+<tr><td>55:32</td><td>LOG_REGION_ADDR_HI</td><td>RW</td><td>0x0</td><td>Log Region Start Address High. Contains fabric address bits [55:32].</td></tr>
+<tr><td>31:0</td><td>LOG_REGION_ADDR_LO</td><td>RW</td><td>0x0</td><td>Log Region Start Address Low.</td></tr>
+</table>
+<span id="LOG_WRITE_ADDR"></span><h3 id="uart_log_engine_wrap-LOG_WRITE_ADDR" data-register-alias="LOG_WRITE_ADDR">LOG_WRITE_ADDR</h3>
+<table id="trm-table-16">
+<caption class="title"><a href="#trm-table-16">Table 16</a>. uart_log_engine_wrap.LOG_WRITE_ADDR fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>LOG_WRITE_ADDR</td><td>RW</td><td>0x0</td><td>Log Write Address. This is the address where the log data is written to.</td></tr>
+</table>
+<span id="INTR_STATUS"></span><h3 id="uart_log_engine_wrap-INTR_STATUS" data-register-alias="INTR_STATUS">INTR_STATUS</h3>
+<table id="trm-table-17">
+<caption class="title"><a href="#trm-table-17">Table 17</a>. uart_log_engine_wrap.INTR_STATUS fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>LOG_WRITE_ERR</td><td>RW1C</td><td>0x0</td><td>Log Write Error Interrupt. Asserted when the bus for writing log data returns<br>an error.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>LOG_FETCH_ERR</td><td>RW1C</td><td>0x0</td><td>Log Fetch Error Interrupt. Asserted when the bus for fetching log data returns<br>an error.</td></tr>
+</table>
+<span id="INTR_ENABLE"></span><h3 id="uart_log_engine_wrap-INTR_ENABLE" data-register-alias="INTR_ENABLE">INTR_ENABLE</h3>
+<table id="trm-table-18">
+<caption class="title"><a href="#trm-table-18">Table 18</a>. uart_log_engine_wrap.INTR_ENABLE fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>LOG_WRITE_ERR</td><td>RW</td><td>0x0</td><td>Log Write Error Interrupt Enable.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>LOG_FETCH_ERR</td><td>RW</td><td>0x0</td><td>Log Fetch Error Interrupt Enable.</td></tr>
+</table>
+<span id="INTR_TEST"></span><h3 id="uart_log_engine_wrap-INTR_TEST" data-register-alias="INTR_TEST">INTR_TEST</h3>
+<table id="trm-table-19">
+<caption class="title"><a href="#trm-table-19">Table 19</a>. uart_log_engine_wrap.INTR_TEST fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>LOG_WRITE_ERR</td><td>W 1P</td><td>0x0</td><td>Log Write Error Interrupt Test. Writing `1` forces the interrupt.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>LOG_FETCH_ERR</td><td>W 1P</td><td>0x0</td><td>Log Fetch Error Interrupt Test. Writing `1` forces the interrupt.</td></tr>
+</table>
+<span id="LOG_CTRL_16_"></span><h3 id="uart_log_engine_wrap-LOG_CTRL_16_" data-register-alias="LOG_CTRL_16_">LOG_CTRL[16]</h3>
+<table id="trm-table-20">
+<caption class="title"><a href="#trm-table-20">Table 20</a>. uart_log_engine_wrap.LOG_CTRL[16] fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>LOG_LEN</td><td>RW</td><td>0x0</td><td>Log Length. Writing a nonzero value representing the log length in bytes to this field<br>starts the log transfer process. The field holds the requested length until the<br>transfer completes, when hardware clears it to zero; it is not a remaining-byte<br>counter. There are 16 copies of this register, each representing<br>a log entry. The log entries go through round robin arbitration.</td></tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sec-register-aliases"><a class="anchor" href="#sec-register-aliases"></a><a class="link" href="#sec-register-aliases">5. Registers — Write-Only and LCR.DLAB=1 Views</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>THR</code> (write) shares <code>+0x100</code> with <code>RBR</code> (read); <code>FCR</code> (write) shares <code>+0x108</code> with
+<code>IIR</code> (read); <code>DLL</code>/<code>DLM</code> occupy <code>+0x100</code>/<code>+0x104</code> when <code>LCR.DLAB=1</code>.</p>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-uart_16550_main_wo">UART 16550 Main Write-Only Address Map</h2>
+<p>Contains the write-only registers. THR is accessible only when `LCR.DLAB = 0`;<br>FCR is writable for either `LCR.DLAB` value.</p>
+<p><strong>Register List:</strong></p>
+<table id="trm-table-21">
+<caption class="title"><a href="#trm-table-21">Table 21</a>. UART 16550 Main Write-Only Address Map register list</caption>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#uart_16550_main_wo-THR">THR</a></td><td>W</td><td>Transmitter Holding Register</td></tr>
+<tr><td>0x8</td><td><a href="#uart_16550_main_wo-FCR">FCR</a></td><td>W</td><td>FIFO Control Register</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="THR"></span><h3 id="uart_16550_main_wo-THR" data-register-alias="THR">THR</h3>
+<table id="trm-table-22">
+<caption class="title"><a href="#trm-table-22">Table 22</a>. uart_16550_main_wo.THR fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>DATA</td><td>W WMOD</td><td>0x0</td><td>Transmit Data. Holds a character to be transmitted. If FIFOs are enabled, this<br>field points to the top of the TX FIFO. Otherwise, this field points to a<br>single-byte Transmitter Holding Register.</td></tr>
+</table>
+<span id="FCR"></span><h3 id="uart_16550_main_wo-FCR" data-register-alias="FCR">FCR</h3>
+<table id="trm-table-23">
+<caption class="title"><a href="#trm-table-23">Table 23</a>. uart_16550_main_wo.FCR fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:6</td><td>RCVR_TRIGGER</td><td>W</td><td>0x0</td><td>Receiver FIFO Trigger Level (Least Significant 2 Bits). To configure the most<br>significant 2 bits, use the `ECR.RCVR_TRIGGER_MS2B` register field. The<br>configurations for the trigger levels are:<br>* `0x0` -    1 character<br>* `0x1` -    4 characters<br>* `0x2` -    8 characters<br>* `0x3` -   14 characters<br>* `0x4` -   32 characters<br>* `0x5` -   64 characters<br>* `0x6` -  128 characters<br>* `0x7` -  256 characters<br>* `0x8` -  512 characters<br>* `0x9` - 1024 characters<br>* `0xA` - 2048 characters<br>* `0xB` - 4096 characters</td></tr>
+<tr><td>5:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>DMA_MODE_SELECT</td><td>W</td><td>0x0</td><td>DMA mode select:<br>* `0` - DMA Mode 0<br>* `1` - DMA Mode 1</td></tr>
+<tr><td>2</td><td>XMIT_FIFO_RESET</td><td>W 1P</td><td>0x0</td><td>Transmitter FIFO Reset. Writing `1` clears the TX FIFO.</td></tr>
+<tr><td>1</td><td>RCVR_FIFO_RESET</td><td>W 1P</td><td>0x0</td><td>Receiver FIFO Reset. Writing `1` clears the RX FIFO.</td></tr>
+<tr><td>0</td><td>FIFO_ENABLE</td><td>W</td><td>0x0</td><td>FIFO Enable. When set, enables the TX and RX FIFOs (FIFO Mode). When unset,<br>disables the FIFOs (Non-FIFO Mode).</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-uart_16550_dl">UART 16550 Divisor Latch Address Map</h2>
+<p>Contains the registers accessible only when `LCR.DLAB = 1`.</p>
+<p><strong>Register List:</strong></p>
+<table id="trm-table-24">
+<caption class="title"><a href="#trm-table-24">Table 24</a>. UART 16550 Divisor Latch Address Map register list</caption>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#uart_16550_dl-DLL">DLL</a></td><td>RW</td><td>Divisor Latch Least Significant Byte Register</td></tr>
+<tr><td>0x4</td><td><a href="#uart_16550_dl-DLM">DLM</a></td><td>RW</td><td>Divisor Latch Most Significant Byte Register</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="DLL"></span><h3 id="uart_16550_dl-DLL" data-register-alias="DLL">DLL</h3>
+<table id="trm-table-25">
+<caption class="title"><a href="#trm-table-25">Table 25</a>. uart_16550_dl.DLL fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>DLL</td><td>RW</td><td>0x0</td><td>Divisor Latch Least Significant Byte. Baud rate is calculated as<br>`baud_rate = system_clock_frequency / (16 * (divisor + 1))`. When the divisor is set<br>to `0`, the transmitter and receiver logic are disabled.</td></tr>
+</table>
+<span id="DLM"></span><h3 id="uart_16550_dl-DLM" data-register-alias="DLM">DLM</h3>
+<table id="trm-table-26">
+<caption class="title"><a href="#trm-table-26">Table 26</a>. uart_16550_dl.DLM fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>DLM</td><td>RW</td><td>0x0</td><td>Divisor Latch Most Significant Byte. Baud rate is calculated as<br>`baud_rate = system_clock_frequency / (16 * (divisor + 1))`. When the divisor is set<br>to `0`, the transmitter and receiver logic are disabled.</td></tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sec-interrupts"><a class="anchor" href="#sec-interrupts"></a><a class="link" href="#sec-interrupts">6. Interrupts</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>TODO</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sec-shared-thr"><a class="anchor" href="#sec-shared-thr"></a><a class="link" href="#sec-shared-thr">7. Shared Transmit Holding Register</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>When the Log Engine is enabled (<code>GEN_LOG_ENGINE=1</code>, the default), the UART transmit
+holding register (<code>THR</code>, at wrapper offset <code>0x100</code>) is written by two initiators: the
+CPU through the register interface, and the Log Engine through an internal 2:1 AXI4-Lite
+arbiter. The Log Engine&#8217;s write target is not fixed in hardware — it is taken from
+<code>LOG_WRITE_ADDR</code> (offset <code>0x210</code>), which firmware must program to the <code>THR</code> address for
+log output to reach the UART.</p>
+</div>
+<div class="paragraph">
+<p>The arbiter serialises the two initiators, but no hardware lock protects the shared
+register. The
+<a href="../../../../../ocah-programmer-guide/0.5/index.html#smc-log-engine-setup" class="xref page">Log Engine configuration sequence</a>
+in the Programmer&#8217;s Guide states the resulting firmware rules.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../../../_/js/register-sections.js"></script>
+<script src="../../../../../_/js/toc-collapse.js"></script>
+<script src="../../../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/version-menu.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
+<script async src="../../../../../_/js/vendor/highlight.js"></script>
+<script src="../../../../../_/js/vendor/lunr.js"></script>
+<script src="../../../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../../../.." data-snippet-length="100" data-stylesheet="../../../../../_/css/search.css"></script>
+<script async src="../../../../../search-index.js"></script>
+  </body>
+</html>

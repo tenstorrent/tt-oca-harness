@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="552" viewBox="0 0 1040 552" role="img" aria-labelledby="title desc">
+<title id="title">SEP security domains</title>
+<desc id="desc">A SiP holds three chiplets on one JTAG chain. External debug enters the PTAP of chiplet 1, the primary chiplet with its own SEP and LCC. There, SIP_DBG, the SiP-owner domain gate, admits the traffic and opens Case 1: the I/O STAP that forwards the chain to the next chiplet, host scan injection and DFD. CHIPLET_DBG, a chiplet-owner domain gate, adds Case 2: the SMC STAP, extra STAPs, non-secure DFT, SMC fabric JTAG2AXI and, with SMC_FUSE_DBG, the SMC fuse DFT path. SEP_DBG adds Case 3: the SEP STAP, secure DFT and, with SEP_FUSE_DBG, the SEP fuse DFT path. Chiplet 2 has no SEP, so its PTAP passes traffic to its local assets and to its STAP without a local gate; only SIP_DBG of chiplet 1 governs it. Chiplet 3 has its own SEP and repeats the three gates of chiplet 1 with its own SIP_DBG, CHIPLET_DBG and SEP_DBG.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+</style>
+</defs>
+<rect width="1040" height="552" fill="#ffffff"/>
+<rect class="smu" x="104" y="20" width="928" height="484" rx="8"/>
+<text class="b" x="116" y="492" text-anchor="start">SiP</text>
+<rect class="external" x="14" y="50" width="80" height="52" rx="6"/>
+<text class="s" x="54" y="72.5" text-anchor="middle">JTAG</text>
+<text class="s" x="54" y="89.5" text-anchor="middle">debug port</text>
+<rect class="smu" x="116" y="34" width="286" height="438" rx="8"/>
+<text class="bs" x="128" y="460" text-anchor="start">Chiplet 1: primary</text>
+<rect class="core" x="126" y="58" width="70" height="34" rx="6"/>
+<text class="s" x="161" y="80" text-anchor="middle">PTAP</text>
+<path class="jtag" d="M161,92 L161,111"/>
+<rect class="network" x="126" y="116" width="120" height="40" rx="6"/>
+<text class="bs" x="186" y="134" text-anchor="middle">SIP_DBG</text>
+<text class="s" x="186" y="150" text-anchor="middle">Case 1</text>
+<path class="jtag" d="M161,156 L161,207"/>
+<rect class="fabric" x="126" y="212" width="120" height="40" rx="6"/>
+<text class="bs" x="186" y="230" text-anchor="middle">CHIPLET_DBG</text>
+<text class="s" x="186" y="246" text-anchor="middle">Case 2</text>
+<path class="jtag" d="M161,252 L161,339"/>
+<rect class="core" x="258" y="215" width="138" height="108" rx="6"/>
+<text class="s" x="327" y="235" text-anchor="middle">SMC STAP,</text>
+<text class="s" x="327" y="251" text-anchor="middle">extra STAPs</text>
+<text class="s" x="327" y="267" text-anchor="middle">non-secure DFT</text>
+<text class="s" x="327" y="283" text-anchor="middle">SMC fabric JTAG2AXI</text>
+<text class="s" x="327" y="299" text-anchor="middle">SMC fuse DFT,</text>
+<text class="s" x="327" y="315" text-anchor="middle">+ SMC_FUSE_DBG</text>
+<path class="jtag" d="M246,232.0 L253,232.0"/>
+<rect class="fabric" x="126" y="344" width="120" height="40" rx="6"/>
+<text class="bs" x="186" y="362" text-anchor="middle">SEP_DBG</text>
+<text class="s" x="186" y="378" text-anchor="middle">Case 3</text>
+<rect class="core" x="258" y="347" width="138" height="76" rx="6"/>
+<text class="s" x="327" y="367" text-anchor="middle">SEP STAP</text>
+<text class="s" x="327" y="383" text-anchor="middle">secure DFT</text>
+<text class="s" x="327" y="399" text-anchor="middle">SEP fuse DFT,</text>
+<text class="s" x="327" y="415" text-anchor="middle">+ SEP_FUSE_DBG</text>
+<path class="jtag" d="M246,364.0 L253,364.0"/>
+<rect class="core" x="258" y="121" width="138" height="30" rx="6"/>
+<text class="s" x="327" y="141" text-anchor="middle">I/O STAP</text>
+<path class="jtag" d="M246,136.0 L253,136.0"/>
+<text class="s" x="327" y="172" text-anchor="middle">host scan, DFD</text>
+<rect class="smu" x="426" y="34" width="286" height="438" rx="8"/>
+<text class="bs" x="438" y="460" text-anchor="start">Chiplet 2: no SEP</text>
+<rect class="core" x="436" y="58" width="70" height="34" rx="6"/>
+<text class="s" x="471" y="80" text-anchor="middle">PTAP</text>
+<rect class="core" x="568" y="121" width="138" height="30" rx="6"/>
+<text class="s" x="637" y="141" text-anchor="middle">STAP</text>
+<path class="jtag" d="M471,92 L471,136.0 L563,136.0"/>
+<circle cx="471" cy="136" r="3.5" fill="#42759b"/>
+<rect class="core" x="436" y="212" width="270" height="172" rx="6"/>
+<text class="s" x="571" y="276" text-anchor="middle">Local chiplet assets</text>
+<text class="si" x="571" y="298" text-anchor="middle">no local SEP or LCC:</text>
+<text class="si" x="571" y="315" text-anchor="middle">gated by SIP_DBG of chiplet 1</text>
+<path class="jtag" d="M471,136.0 L471,207"/>
+<rect class="smu" x="736" y="34" width="286" height="438" rx="8"/>
+<text class="bs" x="748" y="460" text-anchor="start">Chiplet 3: with SEP</text>
+<rect class="core" x="746" y="58" width="70" height="34" rx="6"/>
+<text class="s" x="781" y="80" text-anchor="middle">PTAP</text>
+<path class="jtag" d="M781,92 L781,111"/>
+<rect class="network" x="746" y="116" width="120" height="40" rx="6"/>
+<text class="bs" x="806" y="134" text-anchor="middle">SIP_DBG</text>
+<text class="s" x="806" y="150" text-anchor="middle">Case 1</text>
+<path class="jtag" d="M781,156 L781,207"/>
+<rect class="fabric" x="746" y="212" width="120" height="40" rx="6"/>
+<text class="bs" x="806" y="230" text-anchor="middle">CHIPLET_DBG</text>
+<text class="s" x="806" y="246" text-anchor="middle">Case 2</text>
+<path class="jtag" d="M781,252 L781,339"/>
+<rect class="core" x="878" y="215" width="138" height="108" rx="6"/>
+<text class="s" x="947" y="235" text-anchor="middle">SMC STAP,</text>
+<text class="s" x="947" y="251" text-anchor="middle">extra STAPs</text>
+<text class="s" x="947" y="267" text-anchor="middle">non-secure DFT</text>
+<text class="s" x="947" y="283" text-anchor="middle">SMC fabric JTAG2AXI</text>
+<text class="s" x="947" y="299" text-anchor="middle">SMC fuse DFT,</text>
+<text class="s" x="947" y="315" text-anchor="middle">+ SMC_FUSE_DBG</text>
+<path class="jtag" d="M866,232.0 L873,232.0"/>
+<rect class="fabric" x="746" y="344" width="120" height="40" rx="6"/>
+<text class="bs" x="806" y="362" text-anchor="middle">SEP_DBG</text>
+<text class="s" x="806" y="378" text-anchor="middle">Case 3</text>
+<rect class="core" x="878" y="347" width="138" height="76" rx="6"/>
+<text class="s" x="947" y="367" text-anchor="middle">SEP STAP</text>
+<text class="s" x="947" y="383" text-anchor="middle">secure DFT</text>
+<text class="s" x="947" y="399" text-anchor="middle">SEP fuse DFT,</text>
+<text class="s" x="947" y="415" text-anchor="middle">+ SEP_FUSE_DBG</text>
+<path class="jtag" d="M866,364.0 L873,364.0"/>
+<rect class="core" x="878" y="121" width="138" height="30" rx="6"/>
+<text class="s" x="947" y="141" text-anchor="middle">I/O STAP</text>
+<path class="jtag" d="M866,136.0 L873,136.0"/>
+<text class="s" x="947" y="172" text-anchor="middle">host scan, DFD</text>
+<path class="jtagb" d="M98,75.0 L121,75.0"/>
+<path class="jtag" d="M396,136.0 L414,136.0 L414,75.0 L431,75.0"/>
+<path class="jtag" d="M706,136.0 L724,136.0 L724,75.0 L741,75.0"/>
+<rect class="network" x="14" y="522" width="40" height="18" rx="4"/>
+<text class="s" x="62" y="536" text-anchor="start">SiP-owner domain gate (DBG_2)</text>
+<rect class="fabric" x="279.4" y="522" width="40" height="18" rx="4"/>
+<text class="s" x="327.4" y="536" text-anchor="start">Chiplet-owner domain gate (DBG_1)</text>
+<rect class="core" x="571.2" y="522" width="40" height="18" rx="4"/>
+<text class="s" x="619.2" y="536" text-anchor="start">Debug path target</text>
+<path class="jtag" d="M757.3999999999999,531 L791.3999999999999,531"/>
+<text class="s" x="803.4" y="536" text-anchor="start">JTAG debug traffic</text>
+</svg>

@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>AXI-over-UCIe :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <link rel="prev" href="smu.html">
+    <link rel="next" href="../../rtl-modules-reference.html#common">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-docs" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../../index.html">Technical Reference Manual</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../index.html">Documentation Overview</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../list-of-figures.html">List of Figures</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../list-of-tables.html">List of Tables</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../architecture.html">OCAH Architecture &amp; Design</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../overview.html">Platform Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../memory_map.html">OCAH Memory Map</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../power_domains.html">Power Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../clock_domains.html">Clock Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../reset.html">Reset</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../architecture.html#ocah-rtl-assertions">RTL Assertions</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">OCAH Platform Components</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../smu/index.html">System Management Unit (SMU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../sep/index.html">Security Processor (SEP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../sep/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../sep/threat_model.html">Threat Model</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../sep/attack_countermeasures.html">Attack Countermeasures</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../sep/clk_rst.html">Clocks and Resets</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../sep/reset_controller.html">SEP Reset Controller</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../sep/cpu.html">CPU</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../sep/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../sep/fabric.html">Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../sep/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../sep/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../sep/dma.html">Direct Memory Access (DMA)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../sep/mailbox.html">Mailboxes</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../sep/peripheral_subsystem.html">Peripheral Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../sep/spi.html">Serial Peripheral Interface (SPI)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../sep/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../sep/security.html">Security and Lifecycle</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../sep/otp_fuse_controller.html">OTP Fuse Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../sep/token_processing.html">Token Processing</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../sep/security_disable.html">Security Disable</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../sep/lifecycle_controller.html">Lifecycle Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../sep/test_mode.html">Test Mode Entry</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../sep/crypto.html">Cryptographic Subsystem</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../sep/trng.html">TRNG and DRBG</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../ip/entropy_source/doc/index.html">Entropy Source</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../sep/entropy_pool.html">Entropy Pool</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../sep/aes.html">AES Cipher</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../sep/hmac.html">HMAC-SHA2</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../sep/kmac.html">KMAC-SHA3</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../sep/adams_bridge.html">Adams Bridge (ABR)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../sep/otbn.html">OTBN PKA Public Key Accelerator</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../ip/key_manager/doc/index.html">Key Manager</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../ip/key_manager/doc/index.html#key-manager-architecture">Architecture</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../sep/memory_map.html">Memory Map and Register Reference</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../smc/index.html">System Management Controller (SMC)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../smc/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../smc/clk_rst.html">Clocks and Resets</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../smc/cpu.html">CPU</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../smc/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../smc/fabric.html">Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../smc/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../smc/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../smc/dma.html">Direct Memory Access Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../smc/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../smc/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../ip/axi_lite_mailbox_unit/doc/index.html">Mailboxes</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../ip/system_timer_octs/doc/index.html">System Timer OCTS</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../ip/efuse/doc/index.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../ip/uart_16550/doc/index.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../ip/log_engine/doc/index.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../ip/i2c/doc/index.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../ip/i3ccore_wrap/doc/index.html">I3C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../ip/avsbus_controller/doc/index.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../ip/gpio/doc/index.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../ip/telemetry_receiver/doc/index.html">Telemetry Receiver</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../smc/dfd.html">Design-for-Debug and CLA</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../smc/scan_protection.html">eFuse Scan Protection</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../smc/memmap.html">Memory Map and Register Reference</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../dtp/index.html">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../dtp/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../dtp/clk_rst.html">Clocks and Resets</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../dtp/jtag.html">JTAG Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../dtp/cross_trigger.html">Cross-Trigger Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../dtp/ip_reference.html">IP Reference</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">JTAG</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../ip/jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Cross-Trigger</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../dtp/reference.html">Configuration and Reference</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../smn.html">System Management Network (SMN)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../aou.html">AXI-over-UCIe Bridge (AoU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../aou-overview.html">Overview and Features</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../aou-architecture.html">Architecture</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../aou-interrupts-errors.html">Interrupts and Errors</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../aou-ppa-appendices.html">PPA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../aou-appendices.html">Appendices</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../aou-referenced-documents.html">Appendix B. Referenced Documents</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../rtl-modules-reference.html">RTL Modules Reference</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../rtl-modules-reference.html#ip">IP</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/avsbus_controller.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/axi_alias_remap.html">AXI Alias Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/axi_filter.html">AXI Filter</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/axi_hang_detector.html">AXI Hang Detector</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/axi_lite_mailbox_unit.html">AXI-Lite Mailbox</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/axi_window_remap.html">AXI Window Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/drbg.html">DRBG</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/efuse.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/entropy_source.html">Entropy Source</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/gpio.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/i2c.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/i3ccore_wrap.html">I3C</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/idma_wrapper.html">iDMA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/key_manager.html">Key Manager</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/memory_interface.html">Memory Interface</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/output_remap.html">Output Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/scrambler.html">Scrambler</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/system_timer_octs.html">System Timer</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/telemetry_receiver.html">Telemetry Receiver</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/cross_trigger_matrix.html">Cross-Trigger Matrix</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/cross_trigger_network.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/cross_trigger_port.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/jtag2axi.html">JTAG to AXI</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/jtag_intf_unit.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/jtag_ptap.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/jtag_stap.html">JTAG STAP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/log_engine.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/uart_16550.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/uart_log_engine_wrap.html">UART Log Engine Wrapper</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/uart_wrap.html">UART Wrapper</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../rtl-modules-reference.html#subsystems">Subsystems</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="sep.html">SEP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smc.html">SMC</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="dtp.html">DTP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu.html">SMU</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="3">
+    <a class="nav-link" href="aou.html">AXI-over-UCIe</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../rtl-modules-reference.html#common">Common</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../common/ocah_prim.html">ocah_prim</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../common/ocah_prim_generic.html">ocah_prim_generic</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../common/tlul.html">TL-UL</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../../ip-reference.html">IP Reference</a>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../register-field-access.html">Register Field Access Notation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../referenced-documents.html">Referenced Documents</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Technical Reference Manual 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../../index.html">Technical Reference Manual</a></li>
+    <li><a href="../../rtl-modules-reference.html">RTL Modules Reference</a></li>
+    <li><a href="../../rtl-modules-reference.html#subsystems">Subsystems</a></li>
+    <li><a href="aou.html">AXI-over-UCIe</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="5">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">AXI-over-UCIe</h1>
+<p>Connect the UCIe 3.0 FDI bringup controller to the AXI-over-UCIe protocol engine.</p><p>AOU_TOP is the top-level wrapper around AOU_FDI_BRINGUP_CTRL, the UCIe 3.0 FDI state machine, and AOU_CORE_TOP, the AXI-over-UCIe protocol engine. The bringup controller manages the FDI handshakes (wake, clock, state, and rx-active) and drives I_INT_FSM_IN_ACTIVE into the AOU core, so the core needs no external UCIE_CORE connection.</p><p>The FDI data-plane ports mirror the _0/_1 naming and the +define+TWO_PHY gating of AOU_CORE_TOP. PHY0 is always present. PHY1 and I_PHY_TYPE are exposed only when the design is built with +define+TWO_PHY.</p><p>The single FDI_CONFIG parameter is an integer that picks the FDI data bus widths for both PHYs and, in two-PHY builds, the per-PHY pairing; packet_def_pkg::FDI_CFG_* enumerates its values. FDI_CONFIG is forwarded unchanged to AOU_CORE_TOP. Its default matches the legacy +define+FDI_32B single-PHY configuration. Keeping FDI_CONFIG consistent with +define+TWO_PHY is the integrator&#x27;s responsibility. The local FDI_IF_WD0 and FDI_IF_WD1 localparams are derived from FDI_CONFIG only to size this wrapper&#x27;s own FDI ports and the FIFO-depth defaults, and are not forwarded.</p><p>The RX W and R FIFO depths default to 140 when either FDI data path is 1024 bits (128B) wide, and to 88 otherwise. This matches the legacy +define+FDI_128B configuration, which applied to both the single-PHY (FDI_IF_WD0 == 1024) and the two-PHY (FDI_IF_WD1 == 1024) cases.</p><p>The ports fall into these groups:</p><ul><li>APB slave interface.</li><li>AXI master interface (O_AOU_RX_AXI_M_*, I_AOU_TX_AXI_M_*): the RX side, facing the downstream bus.</li><li>AXI slave interface (I_AOU_TX_AXI_S_*, O_AOU_RX_AXI_S_*): the TX side, facing the upstream bus.</li><li>PHY type select (I_PHY_TYPE), present only with +define+TWO_PHY.</li><li>FDI data path for PHY0, always present, and for PHY1, present only with +define+TWO_PHY.</li><li>FDI bringup control (I_PL_*, O_LP_*), connected to AOU_FDI_BRINGUP_CTRL.</li><li>FDI bringup software control (I_SW_*) and status (O_FDI_FSM_STATE, O_FDI_LINK_UP).</li><li>Interrupt outputs (INT_*).</li><li>Bus quiescence inputs from external transaction monitors.</li><li>DFT.</li></ul>
+<div class="ocah-reg-html">
+<h2>Parameters</h2>
+<table id="trm-table-1">
+<caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
+<tr><td><code>RP_COUNT</code></td><td><code></code></td><td><code>1</code></td><td>Number of receive ports (AXI master/slave pairs), up to 4.</td></tr>
+<tr><td><code>FDI_CONFIG</code></td><td><code>int</code></td><td><code>FDI_CFG_SP_32B</code></td><td>FDI configuration, one of packet_def_pkg::FDI_CFG_*.</td></tr>
+<tr><td><code>FDI_IF_WD0</code></td><td><code>int</code></td><td><code>(FDI_CONFIG == FDI_CFG_SP_32B ) ? 256 : (FDI_CONFIG == FDI_CFG_SP_64B ) ? 512 : (FDI_CONFIG == FDI_CFG_SP_128B ) ? 1024 : (FDI_CONFIG == FDI_CFG_TP_32B_64B ) ? 256 : (FDI_CONFIG == FDI_CFG_TP_64B_128B) ? 512 : 256</code></td><td>PHY0 FDI data bus width, in bits. Local only.</td></tr>
+<tr><td><code>FDI_IF_WD1</code></td><td><code>int</code></td><td><code>(FDI_CONFIG == FDI_CFG_SP_32B ) ? 512 : (FDI_CONFIG == FDI_CFG_SP_64B ) ? 512 : (FDI_CONFIG == FDI_CFG_SP_128B ) ? 1024 : (FDI_CONFIG == FDI_CFG_TP_32B_64B ) ? 512 : (FDI_CONFIG == FDI_CFG_TP_64B_128B) ? 1024 : 512</code></td><td>PHY1 FDI data bus width, in bits. Local only.</td></tr>
+<tr><td><code>RP0_RX_AW_FIFO_DEPTH</code></td><td><code></code></td><td><code>44</code></td><td>RP0 RX write-address FIFO depth.</td></tr>
+<tr><td><code>RP0_RX_AR_FIFO_DEPTH</code></td><td><code></code></td><td><code>44</code></td><td>RP0 RX read-address FIFO depth.</td></tr>
+<tr><td><code>RP0_RX_W_FIFO_DEPTH</code></td><td><code></code></td><td><code>((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88</code></td><td>RP0 RX write-data FIFO depth.</td></tr>
+<tr><td><code>RP0_RX_R_FIFO_DEPTH</code></td><td><code></code></td><td><code>((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88</code></td><td>RP0 RX read-data FIFO depth.</td></tr>
+<tr><td><code>RP0_RX_B_FIFO_DEPTH</code></td><td><code></code></td><td><code>44</code></td><td>RP0 RX write-response FIFO depth.</td></tr>
+<tr><td><code>RP1_RX_AW_FIFO_DEPTH</code></td><td><code></code></td><td><code>44</code></td><td>RP1 RX write-address FIFO depth.</td></tr>
+<tr><td><code>RP1_RX_AR_FIFO_DEPTH</code></td><td><code></code></td><td><code>44</code></td><td>RP1 RX read-address FIFO depth.</td></tr>
+<tr><td><code>RP1_RX_W_FIFO_DEPTH</code></td><td><code></code></td><td><code>((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88</code></td><td>RP1 RX write-data FIFO depth.</td></tr>
+<tr><td><code>RP1_RX_R_FIFO_DEPTH</code></td><td><code></code></td><td><code>((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88</code></td><td>RP1 RX read-data FIFO depth.</td></tr>
+<tr><td><code>RP1_RX_B_FIFO_DEPTH</code></td><td><code></code></td><td><code>44</code></td><td>RP1 RX write-response FIFO depth.</td></tr>
+<tr><td><code>RP2_RX_AW_FIFO_DEPTH</code></td><td><code></code></td><td><code>44</code></td><td>RP2 RX write-address FIFO depth.</td></tr>
+<tr><td><code>RP2_RX_AR_FIFO_DEPTH</code></td><td><code></code></td><td><code>44</code></td><td>RP2 RX read-address FIFO depth.</td></tr>
+<tr><td><code>RP2_RX_W_FIFO_DEPTH</code></td><td><code></code></td><td><code>((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88</code></td><td>RP2 RX write-data FIFO depth.</td></tr>
+<tr><td><code>RP2_RX_R_FIFO_DEPTH</code></td><td><code></code></td><td><code>((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88</code></td><td>RP2 RX read-data FIFO depth.</td></tr>
+<tr><td><code>RP2_RX_B_FIFO_DEPTH</code></td><td><code></code></td><td><code>44</code></td><td>RP2 RX write-response FIFO depth.</td></tr>
+<tr><td><code>RP3_RX_AW_FIFO_DEPTH</code></td><td><code></code></td><td><code>44</code></td><td>RP3 RX write-address FIFO depth.</td></tr>
+<tr><td><code>RP3_RX_AR_FIFO_DEPTH</code></td><td><code></code></td><td><code>44</code></td><td>RP3 RX read-address FIFO depth.</td></tr>
+<tr><td><code>RP3_RX_W_FIFO_DEPTH</code></td><td><code></code></td><td><code>((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88</code></td><td>RP3 RX write-data FIFO depth.</td></tr>
+<tr><td><code>RP3_RX_R_FIFO_DEPTH</code></td><td><code></code></td><td><code>((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88</code></td><td>RP3 RX read-data FIFO depth.</td></tr>
+<tr><td><code>RP3_RX_B_FIFO_DEPTH</code></td><td><code></code></td><td><code>44</code></td><td>RP3 RX write-response FIFO depth.</td></tr>
+<tr><td><code>RX_AW_FIFO_RS_EN</code></td><td><code></code></td><td><code>1</code></td><td>Register slice on the RX write-address FIFO output.</td></tr>
+<tr><td><code>RX_AR_FIFO_RS_EN</code></td><td><code></code></td><td><code>1</code></td><td>Register slice on the RX read-address FIFO output.</td></tr>
+<tr><td><code>RX_W_FIFO_RS_EN</code></td><td><code></code></td><td><code>1</code></td><td>Register slice on the RX write-data FIFO output.</td></tr>
+<tr><td><code>RX_R_FIFO_RS_EN</code></td><td><code></code></td><td><code>1</code></td><td>Register slice on the RX read-data FIFO output.</td></tr>
+<tr><td><code>RX_B_FIFO_RS_EN</code></td><td><code></code></td><td><code>1</code></td><td>Register slice on the RX write-response FIFO output.</td></tr>
+<tr><td><code>RP0_AXI_DATA_WD</code></td><td><code></code></td><td><code>512</code></td><td>RP0 AXI data width, in bits.</td></tr>
+<tr><td><code>RP1_AXI_DATA_WD</code></td><td><code></code></td><td><code>512</code></td><td>RP1 AXI data width, in bits.</td></tr>
+<tr><td><code>RP2_AXI_DATA_WD</code></td><td><code></code></td><td><code>512</code></td><td>RP2 AXI data width, in bits.</td></tr>
+<tr><td><code>RP3_AXI_DATA_WD</code></td><td><code></code></td><td><code>512</code></td><td>RP3 AXI data width, in bits.</td></tr>
+<tr><td><code>AXI_PEER_DIE_MAX_DATA_WD</code></td><td><code></code></td><td><code>1024</code></td><td>Widest AXI data width on the peer die, in bits.</td></tr>
+<tr><td><code>APB_ADDR_WD</code></td><td><code></code></td><td><code>32</code></td><td>APB address width.</td></tr>
+<tr><td><code>APB_DATA_WD</code></td><td><code></code></td><td><code>32</code></td><td>APB data width.</td></tr>
+<tr><td><code>S_RD_MO_CNT</code></td><td><code></code></td><td><code>32</code></td><td>Outstanding reads on the AXI slave interface.</td></tr>
+<tr><td><code>S_WR_MO_CNT</code></td><td><code></code></td><td><code>32</code></td><td>Outstanding writes on the AXI slave interface.</td></tr>
+<tr><td><code>M_RD_MO_CNT</code></td><td><code></code></td><td><code>32</code></td><td>Outstanding reads on the AXI master interface.</td></tr>
+<tr><td><code>M_WR_MO_CNT</code></td><td><code></code></td><td><code>32</code></td><td>Outstanding writes on the AXI master interface.</td></tr>
+<tr><td><code>RP_AXI_DATA_WD_MAX</code></td><td><code></code></td><td><code>max4(RP0_AXI_DATA_WD, RP1_AXI_DATA_WD, RP2_AXI_DATA_WD, RP3_AXI_DATA_WD)</code></td><td>Widest RPn AXI data width; sizes the AXI data ports.</td></tr>
+<tr><td><code>RP_AXI_STRB_WD_MAX</code></td><td><code></code></td><td><code>RP_AXI_DATA_WD_MAX / 8</code></td><td>AXI write-strobe width for that data width.</td></tr>
+<tr><td><code>AXI_ADDR_WD</code></td><td><code></code></td><td><code>64</code></td><td>AXI address width.</td></tr>
+<tr><td><code>AXI_ID_WD</code></td><td><code></code></td><td><code>10</code></td><td>AXI ID width.</td></tr>
+<tr><td><code>AXI_LEN_WD</code></td><td><code></code></td><td><code>8</code></td><td>AXI burst-length width.</td></tr>
+</table>
+<h2>Ports</h2>
+<table id="trm-table-2">
+<caption class="title"><a href="#trm-table-2">Table 2</a>. Ports</caption><tr><th>Name</th><th>Direction</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>I_CLK</code></td><td>input</td><td><code>logic</code></td><td>Clock for the AOU core and the FDI bringup controller.</td></tr>
+<tr><td><code>I_RESETN</code></td><td>input</td><td><code>logic</code></td><td>Active-low asynchronous reset for the I_CLK domain.</td></tr>
+<tr><td><code>I_PCLK</code></td><td>input</td><td><code>logic</code></td><td>APB clock, asynchronous to I_CLK.</td></tr>
+<tr><td><code>I_PRESETN</code></td><td>input</td><td><code>logic</code></td><td>Active-low reset for the I_PCLK domain.</td></tr>
+<tr><td><code>I_AOU_APB_SI0_PSEL</code></td><td>input</td><td><code>logic</code></td><td>APB select.</td></tr>
+<tr><td><code>I_AOU_APB_SI0_PENABLE</code></td><td>input</td><td><code>logic</code></td><td>APB enable.</td></tr>
+<tr><td><code>I_AOU_APB_SI0_PADDR</code></td><td>input</td><td><code>logic [APB_ADDR_WD-1:0]</code></td><td>APB address.</td></tr>
+<tr><td><code>I_AOU_APB_SI0_PWRITE</code></td><td>input</td><td><code>logic</code></td><td>APB write.</td></tr>
+<tr><td><code>I_AOU_APB_SI0_PWDATA</code></td><td>input</td><td><code>logic [APB_DATA_WD-1:0]</code></td><td>APB write data.</td></tr>
+<tr><td><code>O_AOU_APB_SI0_PRDATA</code></td><td>output</td><td><code>logic [APB_DATA_WD-1:0]</code></td><td>APB read data.</td></tr>
+<tr><td><code>O_AOU_APB_SI0_PREADY</code></td><td>output</td><td><code>logic</code></td><td>APB ready.</td></tr>
+<tr><td><code>O_AOU_APB_SI0_PSLVERR</code></td><td>output</td><td><code>logic</code></td><td>APB slave error.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_ARID</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][AXI_ID_WD-1:0]</code></td><td>AXI master read-address ID.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_ARADDR</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][AXI_ADDR_WD-1:0]</code></td><td>AXI master read address.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_ARLEN</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][AXI_LEN_WD-1:0]</code></td><td>AXI master read burst length.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_ARSIZE</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][2:0]</code></td><td>AXI master read transfer size.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_ARBURST</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][1:0]</code></td><td>AXI master read burst type.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_ARLOCK</code></td><td>output</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI master read lock.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_ARCACHE</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][3:0]</code></td><td>AXI master read cache attributes.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_ARPROT</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][2:0]</code></td><td>AXI master read protection.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_ARQOS</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][3:0]</code></td><td>AXI master read QoS.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_ARVALID</code></td><td>output</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI master read-address valid.</td></tr>
+<tr><td><code>I_AOU_RX_AXI_M_ARREADY</code></td><td>input</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI master read-address ready.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_M_RID</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][AXI_ID_WD-1:0]</code></td><td>AXI master read-data ID.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_M_RDATA</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][RP_AXI_DATA_WD_MAX-1:0]</code></td><td>AXI master read data.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_M_RRESP</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][1:0]</code></td><td>AXI master read response.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_M_RLAST</code></td><td>input</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI master last read beat.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_M_RVALID</code></td><td>input</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI master read-data valid.</td></tr>
+<tr><td><code>O_AOU_TX_AXI_M_RREADY</code></td><td>output</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI master read-data ready.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_AWID</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][AXI_ID_WD-1:0]</code></td><td>AXI master write-address ID.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_AWADDR</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][AXI_ADDR_WD-1:0]</code></td><td>AXI master write address.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_AWLEN</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][AXI_LEN_WD-1:0]</code></td><td>AXI master write burst length.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_AWSIZE</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][2:0]</code></td><td>AXI master write transfer size.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_AWBURST</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][1:0]</code></td><td>AXI master write burst type.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_AWLOCK</code></td><td>output</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI master write lock.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_AWCACHE</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][3:0]</code></td><td>AXI master write cache attributes.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_AWPROT</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][2:0]</code></td><td>AXI master write protection.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_AWQOS</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][3:0]</code></td><td>AXI master write QoS.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_AWVALID</code></td><td>output</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI master write-address valid.</td></tr>
+<tr><td><code>I_AOU_RX_AXI_M_AWREADY</code></td><td>input</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI master write-address ready.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_WDATA</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][RP_AXI_DATA_WD_MAX-1:0]</code></td><td>AXI master write data.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_WSTRB</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][RP_AXI_STRB_WD_MAX-1:0]</code></td><td>AXI master write strobes.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_WLAST</code></td><td>output</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI master last write beat.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_M_WVALID</code></td><td>output</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI master write-data valid.</td></tr>
+<tr><td><code>I_AOU_RX_AXI_M_WREADY</code></td><td>input</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI master write-data ready.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_M_BID</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][AXI_ID_WD-1:0]</code></td><td>AXI master write-response ID.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_M_BRESP</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][1:0]</code></td><td>AXI master write response.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_M_BVALID</code></td><td>input</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI master write-response valid.</td></tr>
+<tr><td><code>O_AOU_TX_AXI_M_BREADY</code></td><td>output</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI master write-response ready.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_ARID</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][AXI_ID_WD-1:0]</code></td><td>AXI slave read-address ID.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_ARADDR</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][AXI_ADDR_WD-1:0]</code></td><td>AXI slave read address.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_ARLEN</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][AXI_LEN_WD-1:0]</code></td><td>AXI slave read burst length.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_ARSIZE</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][2:0]</code></td><td>AXI slave read transfer size.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_ARBURST</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][1:0]</code></td><td>AXI slave read burst type.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_ARLOCK</code></td><td>input</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI slave read lock.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_ARCACHE</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][3:0]</code></td><td>AXI slave read cache attributes.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_ARPROT</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][2:0]</code></td><td>AXI slave read protection.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_ARQOS</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][3:0]</code></td><td>AXI slave read QoS.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_ARVALID</code></td><td>input</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI slave read-address valid.</td></tr>
+<tr><td><code>O_AOU_TX_AXI_S_ARREADY</code></td><td>output</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI slave read-address ready.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_S_RID</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][AXI_ID_WD-1:0]</code></td><td>AXI slave read-data ID.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_S_RDATA</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][RP_AXI_DATA_WD_MAX-1:0]</code></td><td>AXI slave read data.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_S_RRESP</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][1:0]</code></td><td>AXI slave read response.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_S_RLAST</code></td><td>output</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI slave last read beat.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_S_RVALID</code></td><td>output</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI slave read-data valid.</td></tr>
+<tr><td><code>I_AOU_RX_AXI_S_RREADY</code></td><td>input</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI slave read-data ready.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_AWID</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][AXI_ID_WD-1:0]</code></td><td>AXI slave write-address ID.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_AWADDR</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][AXI_ADDR_WD-1:0]</code></td><td>AXI slave write address.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_AWLEN</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][AXI_LEN_WD-1:0]</code></td><td>AXI slave write burst length.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_AWSIZE</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][2:0]</code></td><td>AXI slave write transfer size.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_AWBURST</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][1:0]</code></td><td>AXI slave write burst type.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_AWLOCK</code></td><td>input</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI slave write lock.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_AWCACHE</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][3:0]</code></td><td>AXI slave write cache attributes.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_AWPROT</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][2:0]</code></td><td>AXI slave write protection.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_AWQOS</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][3:0]</code></td><td>AXI slave write QoS.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_AWVALID</code></td><td>input</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI slave write-address valid.</td></tr>
+<tr><td><code>O_AOU_TX_AXI_S_AWREADY</code></td><td>output</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI slave write-address ready.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_WDATA</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][RP_AXI_DATA_WD_MAX-1:0]</code></td><td>AXI slave write data.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_WSTRB</code></td><td>input</td><td><code>logic [RP_COUNT-1:0][RP_AXI_STRB_WD_MAX-1:0]</code></td><td>AXI slave write strobes.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_WLAST</code></td><td>input</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI slave last write beat.</td></tr>
+<tr><td><code>I_AOU_TX_AXI_S_WVALID</code></td><td>input</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI slave write-data valid.</td></tr>
+<tr><td><code>O_AOU_TX_AXI_S_WREADY</code></td><td>output</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI slave write-data ready.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_S_BID</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][AXI_ID_WD-1:0]</code></td><td>AXI slave write-response ID.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_S_BRESP</code></td><td>output</td><td><code>logic [RP_COUNT-1:0][1:0]</code></td><td>AXI slave write response.</td></tr>
+<tr><td><code>O_AOU_RX_AXI_S_BVALID</code></td><td>output</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI slave write-response valid.</td></tr>
+<tr><td><code>I_AOU_RX_AXI_S_BREADY</code></td><td>input</td><td><code>logic [RP_COUNT-1:0]</code></td><td>AXI slave write-response ready.</td></tr>
+<tr><td><code>I_FDI_PL_0_VALID</code></td><td>input</td><td><code>logic</code></td><td>PHY0 received-flit valid.</td></tr>
+<tr><td><code>I_FDI_PL_0_DATA</code></td><td>input</td><td><code>logic [FDI_IF_WD0-1:0]</code></td><td>PHY0 received-flit data.</td></tr>
+<tr><td><code>I_FDI_PL_0_FLIT_CANCEL</code></td><td>input</td><td><code>logic</code></td><td>PHY0 flit cancel.</td></tr>
+<tr><td><code>I_FDI_PL_0_TRDY</code></td><td>input</td><td><code>logic</code></td><td>PHY0 ready for transmit-flit data.</td></tr>
+<tr><td><code>I_FDI_PL_0_STALLREQ</code></td><td>input</td><td><code>logic</code></td><td>PHY0 stall request.</td></tr>
+<tr><td><code>I_FDI_PL_0_STATE_STS</code></td><td>input</td><td><code>logic [3:0]</code></td><td>PHY0 state status.</td></tr>
+<tr><td><code>O_FDI_LP_0_DATA</code></td><td>output</td><td><code>logic [FDI_IF_WD0-1:0]</code></td><td>PHY0 transmit-flit data.</td></tr>
+<tr><td><code>O_FDI_LP_0_VALID</code></td><td>output</td><td><code>logic</code></td><td>PHY0 transmit-flit valid.</td></tr>
+<tr><td><code>O_FDI_LP_0_IRDY</code></td><td>output</td><td><code>logic</code></td><td>PHY0 transmit initiator ready.</td></tr>
+<tr><td><code>O_FDI_LP_0_STALLACK</code></td><td>output</td><td><code>logic</code></td><td>PHY0 stall acknowledge.</td></tr>
+<tr><td><code>I_PL_INBAND_PRES</code></td><td>input</td><td><code>logic</code></td><td>PHY in-band presence.</td></tr>
+<tr><td><code>I_PL_CLK_REQ</code></td><td>input</td><td><code>logic</code></td><td>PHY clock request.</td></tr>
+<tr><td><code>I_PL_WAKE_ACK</code></td><td>input</td><td><code>logic</code></td><td>PHY wake acknowledge.</td></tr>
+<tr><td><code>I_PL_RX_ACTIVE_REQ</code></td><td>input</td><td><code>logic</code></td><td>PHY rx-active request.</td></tr>
+<tr><td><code>O_LP_STATE_REQ</code></td><td>output</td><td><code>logic [3:0]</code></td><td>Link state request to the PHY.</td></tr>
+<tr><td><code>O_LP_WAKE_REQ</code></td><td>output</td><td><code>logic</code></td><td>Wake request to the PHY.</td></tr>
+<tr><td><code>O_LP_CLK_ACK</code></td><td>output</td><td><code>logic</code></td><td>Clock acknowledge to the PHY.</td></tr>
+<tr><td><code>O_LP_RX_ACTIVE_STS</code></td><td>output</td><td><code>logic</code></td><td>Rx-active status to the PHY.</td></tr>
+<tr><td><code>I_SW_ACTIVATE_START</code></td><td>input</td><td><code>logic</code></td><td>Software request to start activation.</td></tr>
+<tr><td><code>I_SW_DEACTIVATE_START</code></td><td>input</td><td><code>logic</code></td><td>Software request to start deactivation.</td></tr>
+<tr><td><code>I_SW_RETRAIN_REQ</code></td><td>input</td><td><code>logic</code></td><td>Software request to retrain the link.</td></tr>
+<tr><td><code>I_SW_LINKERROR_INJECT</code></td><td>input</td><td><code>logic</code></td><td>Software request to inject a link error.</td></tr>
+<tr><td><code>O_FDI_FSM_STATE</code></td><td>output</td><td><code>logic [3:0]</code></td><td>FDI bringup FSM state.</td></tr>
+<tr><td><code>O_FDI_LINK_UP</code></td><td>output</td><td><code>logic</code></td><td>FDI link is up.</td></tr>
+<tr><td><code>INT_REQ_LINKRESET</code></td><td>output</td><td><code>logic</code></td><td>Link reset request interrupt.</td></tr>
+<tr><td><code>INT_SI0_ID_MISMATCH</code></td><td>output</td><td><code>logic</code></td><td>AXI slave ID mismatch interrupt.</td></tr>
+<tr><td><code>INT_MI0_ID_MISMATCH</code></td><td>output</td><td><code>logic</code></td><td>AXI master ID mismatch interrupt.</td></tr>
+<tr><td><code>INT_EARLY_RESP_ERR</code></td><td>output</td><td><code>logic</code></td><td>Early-response error interrupt.</td></tr>
+<tr><td><code>INT_ACTIVATE_START</code></td><td>output</td><td><code>logic</code></td><td>Activation start interrupt from the AOU core. Also drives the bringup controller.</td></tr>
+<tr><td><code>INT_DEACTIVATE_START</code></td><td>output</td><td><code>logic</code></td><td>Deactivation start interrupt from the AOU core. Also drives the bringup controller.</td></tr>
+<tr><td><code>I_MST_BUS_CLEANY_COMPLETE</code></td><td>input</td><td><code>logic</code></td><td>All responses to remote-die requests have completed. Tie to 1 when BUS_CLEANY is not used.</td></tr>
+<tr><td><code>I_SLV_BUS_CLEANY_COMPLETE</code></td><td>input</td><td><code>logic</code></td><td>All remote-die responses to local requests have arrived. Tie to 1 when BUS_CLEANY is not used.</td></tr>
+<tr><td><code>TIEL_DFT_MODESCAN</code></td><td>input</td><td><code>logic</code></td><td>DFT scan mode. Tie low for functional operation.</td></tr>
+</table>
+</div>
+<nav class="pagination">
+  <span class="prev"><a href="smu.html">SMU</a></span>
+  <span class="next"><a href="../../rtl-modules-reference.html#common">Common</a></span>
+</nav>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../../_/js/register-sections.js"></script>
+<script src="../../../../_/js/toc-collapse.js"></script>
+<script src="../../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../_/js/version-menu.js"></script>
+<script src="../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../../_/js/site.js" data-ui-root-path="../../../../_"></script>
+<script async src="../../../../_/js/vendor/highlight.js"></script>
+<script src="../../../../_/js/vendor/lunr.js"></script>
+<script src="../../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../../.." data-snippet-length="100" data-stylesheet="../../../../_/css/search.css"></script>
+<script async src="../../../../search-index.js"></script>
+  </body>
+</html>

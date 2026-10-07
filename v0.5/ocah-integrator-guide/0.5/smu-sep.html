@@ -1,0 +1,1435 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Security Processor (SEP) Integration :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-integrator-guide" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Integrator Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="index.html">Integrator Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="checklist.html">SoC Integration Checklist</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smu.html">SMU Top-Level Integration</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-filelists.html">RTL Filelists</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-address-map.html">Address Map Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-rom-fw.html">Immutable ROM FW Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-smc.html">System Management Controller (SMC) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-dtp.html">Debug &amp; Test Ports (DTP) Integration</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="3">
+    <a class="nav-link" href="smu-sep.html">Security Processor (SEP) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-composition.html">SMU Composition and Internal Wiring</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="smn.html">SMN Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aou.html">AXI-over-UCIe Bridge (AoU) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="defines.html">Project Defines</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="prim.html">Prim Cell Replacement and Don&#8217;t-Touch Constraints</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="cdc.html">CDC Timing Constraints</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Integrator Guide 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="index.html">Integrator Guide</a></li>
+    <li><a href="smu.html">SMU Top-Level Integration</a></li>
+    <li><a href="smu-sep.html">Security Processor (SEP) Integration</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Security Processor (SEP) Integration</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>The Security Processor (SEP) is the Root of Trust for the chiplet, providing
+a physically isolated execution environment for security-critical services
+such as secure boot, lifecycle control, device attestation, cryptographic
+acceleration, and key management. This section provides practical integration
+procedures for adopters integrating the SEP as part of the SMU or as a
+standalone out-of-context IP.</p>
+</div>
+<div class="paragraph">
+<p>For detailed architectural documentation about the SEP internal design, refer to
+the dedicated documentation located in the SEP reference manual. The SEP
+hardware overview and interconnect fabric are described in the SEP
+<a href="sep/overview.html" class="xref page">Overview</a>
+and
+<a href="sep/fabric.html" class="xref page">Interconnect</a>
+sections.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="module-overview"><a class="anchor" href="#module-overview"></a><a class="link" href="#module-overview">1. Module Overview</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The module in <code>sep.sv</code> provides the complete SEP functionality with logic-level
+interfaces. Technology-specific components&#8201;&#8212;&#8201;SRAM, ROM, and eFuse shims&#8201;&#8212;&#8201;are
+instantiated by the adopter outside SEP, following the same vendor-neutral
+philosophy used for the SMC.</p>
+</div>
+<div class="paragraph">
+<p>Separately, SEP exposes interfaces for supplementary peripherals an adopter may
+add on rather than substitute: an external TRNG and an additional SPI
+controller. These are not technology-specific&#8201;&#8212;&#8201;SEP contains its own entropy
+source and SPI host&#8201;&#8212;&#8201;so the interfaces exist to supplement what SEP already
+provides, and may be left unused.</p>
+</div>
+<div class="paragraph">
+<p>When integrated inside the SMU, the SEP&#8217;s external interfaces are passed through
+the SMU boundary with a <code>sep_</code> prefix.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="clock-and-reset-requirements"><a class="anchor" href="#clock-and-reset-requirements"></a><a class="link" href="#clock-and-reset-requirements">2. Clock and Reset Requirements</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SEP requires two clock inputs. Connect <code>clk_i</code> to the primary system clock
+driving all SEP internal logic. Connect <code>clk_wdt_i</code> to a 200 kHz clock source
+for the watchdog timer; this clock must be independent of the system clock so
+that the WDT can detect system clock failures.</p>
+</div>
+<div class="paragraph">
+<p>The primary reset <code>rst_ni</code> follows the standard active-low, asynchronous
+assertion / synchronous deassertion convention. The <code>dbg_rstb_i</code> input provides
+a separate reset for the EL2 CPU debug module. The <code>wdt_rst_ni</code> input receives
+the watchdog reset generated by the SMC reset unit. The SEP outputs
+<code>wdt_timer_rst_req_o</code> when the WDT triggers a reset request.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="axi-interfaces"><a class="anchor" href="#axi-interfaces"></a><a class="link" href="#axi-interfaces">3. AXI Interfaces</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SEP connects to the system through three AXI paths. The <code>smn_outbound_axi</code>
+master interface allows SEP firmware to access system resources outside the SEP
+domain, such as SMC registers or external memory. The <code>smn_inbound_axi</code> slave
+interface accepts requests from system masters requiring access to SEP-managed
+resources. System masters must access SEP register regions with single-beat
+transactions. The <code>sep_ext_to_smc_axi</code> output provides a dedicated AXI path for
+SEP-to-SMC transactions, connecting to the SMC&#8217;s <code>sep_axi_in</code> port.</p>
+</div>
+<div class="paragraph">
+<p>An additional AXI extension port (<code>axi_extension_axi</code>) enables adopters to
+attach custom peripherals to the SEP interconnect fabric without modifying the
+SEP core. When unused, tie the response input to return DECERR.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-memory-interfaces"><a class="anchor" href="#sep-memory-interfaces"></a><a class="link" href="#sep-memory-interfaces">4. Memory Interfaces</a></h2>
+<div class="sectionbody">
+<div id="memory-interfaces" class="paragraph">
+<p>All SEP memory macros are instantiated externally and connected through
+dedicated request/response interfaces. The <code>sep_cpu_tcm</code> interface provides
+tightly-coupled memory (ICCM and DCCM) for the VeeR EL2 CPU. The <code>sep_sram</code>
+interface connects scratch SRAM used for firmware data. The <code>sep_boot_rom</code>
+interface provides the BL0 ROM containing the first-stage bootloader.</p>
+</div>
+<div class="paragraph">
+<p>The crypto subsystem requires additional memory interfaces.
+<code>sep_crypto_pka_imem_sram</code> and <code>sep_crypto_pka_dmem_sram</code> connect to the OTBN
+public key accelerator instruction and data memories respectively.
+<code>km_rom_mem</code> and <code>km_sram_mem</code> connect to the Key Manager&#8217;s dedicated ROM and
+SRAM macros. The KM SRAM must assert <code>rvalid</code> at least one cycle after the cycle
+in which it grants a read; a registered-read macro meets this.</p>
+</div>
+<div class="paragraph">
+<p><code>abr_mem</code> connects the Adams Bridge working SRAM. On an idle cycle (<code>re</code> low),
+ABR expects the channel&#8217;s read data to return 0 the following cycle.
+<code>SEP_ABR_SRAM_LATENCY</code> must equal the macros' native registered-read latency
+(default 1). Word-write channels are full-word <code>we</code> / <code>re</code> / address / data.
+<code>sig_z</code> and <code>pk</code> carry one-bit-per-byte <code>wstrobe</code>; map those to the macros'
+byte-write enables. <code>SEP_ABR_MASKING_EN</code> (default 1) selects 2-share DOM:
+thirteen 1R1W macros versus nine, plus a second NTT. This changes ABR internal
+behavior (sequencing, SCA, memory topology), not merely throughput. Give the
+same value to SEP and to the SRAM instances. When it is 0, do not instantiate
+the four masked coefficient banks; their response fields read as 0.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="cryptographic-subsystem-connections"><a class="anchor" href="#cryptographic-subsystem-connections"></a><a class="link" href="#cryptographic-subsystem-connections">5. Cryptographic Subsystem Connections</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SEP includes an internal entropy source that requires a ring-oscillator
+sample clock connected to <code>entropy_rosc_sample_clk_i</code>. This clock must be
+asynchronous to <code>clk_i</code> and typically runs between 100 and 400 MHz.</p>
+</div>
+<div class="sect2">
+<h3 id="sep-ext-trng"><a class="anchor" href="#sep-ext-trng"></a><a class="link" href="#sep-ext-trng">5.1. External TRNG</a></h3>
+<div class="paragraph">
+<p>For adopters providing an external TRNG, the <code>ext_trng_axil</code> AXI-Lite interface
+connects to the external TRNG&#8217;s control registers, while the <code>ext_trng_axis</code>
+AXI-Stream interfaces carry entropy data. The <code>ext_trng_irq_i</code> input is routed
+to the PIC.</p>
+</div>
+<div class="paragraph">
+<p>SEP decodes the 4 kB TRNG aperture (<code>0x1091_7000</code> - <code>0x1091_7FFF</code>) as a single
+window and forwards every access on <code>ext_trng_axil</code>. It does not decode offsets
+inside that window: the endpoint is an adopter-defined IP.</p>
+</div>
+<div class="paragraph">
+<p>The adopter must perform the intra-aperture decode. An address that owns no
+register must return an error response and must not alias onto a live register.
+When no external TRNG is connected, terminate <code>ext_trng_axil</code> with a DECERR
+slave.</p>
+</div>
+<div class="paragraph">
+<p>The TRNG path reaches <code>ext_trng_axil</code> through an AXI4-to-AXI-Lite conversion
+(64-to-32 downsizer and burst splitter). An errored read returns the slave&#8217;s
+response verbatim. A single-beat write does too, so a DECERR slave answers
+both an errored read and an errored write with DECERR. A write the splitter
+breaks into more than one beat is reported as SLVERR when an earlier fragment
+erred and the last fragment is OKAY. An adopter whose endpoint returns DECERR
+for an unowned offset sees that code on a single-beat access.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="efuse-and-lifecycle"><a class="anchor" href="#efuse-and-lifecycle"></a><a class="link" href="#efuse-and-lifecycle">6. eFuse and Lifecycle</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>SEP has its own eFuse bank. Instantiate a separate SHIM and physical eFuse bank;
+do not share the SMC&#8217;s. The SHIM contract is the
+<a href="smu-smc.html#smc-efuse-connection" class="xref page">eFuse Interface</a>. On <code>sep.sv</code>, connect
+<code>efuse_bank_ctrl_*</code> and <code>efuse_shim_command_*</code>. Through the SMU those ports
+appear as <code>sep_efuse_bank_ctrl_*</code> and <code>sep_efuse_shim_command_*</code>. The SEP SHIM
+control CSRs sit at the base of <code>sep_external</code>; see the
+<a href="smu-smc.html#efuse-bank-ctrl-window" class="xref page">SHIM control address window</a>. SEP
+routes a burst on its first address, so a burst that begins in that window
+carries its later beats to the SHIM. An address that owns no SHIM register must
+return SLVERR and must not alias onto a live register.</p>
+</div>
+<div class="paragraph">
+<p>SEP senses this bank after its own reset. Watch <code>sep_fuse_sense_done_o</code>.
+On <code>sep.sv</code>, drive <code>smc_fuse_sense_done_i</code> from the SMC so firmware can
+see when the SMC fabric is out of reset; the SMU wires that input
+internally.</p>
+</div>
+<div class="paragraph">
+<p>Lifecycle and test-mode ports on <code>sep.sv</code>, and what to do with them.
+Behaviour is in the Technical Reference Manual, not here.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>secure_tm_req_i</code> signals a request to enter secure test mode.
+SEP latches it into <code>secure_tm_o</code> when fuse sensing completes, or at
+cold-reset release if SEC_DIS is already asserted. Secure test mode
+forces a no-secret, no-fuse-program configuration; it is not an
+authorization bit. See
+<a href="../../ocah-docs/0.5/sep/test_mode.html#test-mode-entry" class="xref page">Test Mode Entry</a>
+and
+<a href="../../ocah-docs/0.5/sep/lifecycle_controller.html#secure-tm-vs-scandump" class="xref page"><code>secure_tm</code> and the Secure Scan Chain</a>
+in the TRM. <code>secure_tm_o</code> is also an SMU output.</p>
+</li>
+<li>
+<p><code>security_disable_o</code> is the SEC_DIS token-match result (emergency
+A0 unlock). On <code>sep.sv</code>, route it to SMC <code>sep_security_disable_i</code>; the
+SMU does that internally. See
+<a href="../../ocah-docs/0.5/sep/security_disable.html#security-disable-sec_dis" class="xref page">Security Disable</a>
+in the TRM.</p>
+</li>
+<li>
+<p><code>lc_state_o</code> is the differentially encoded LC_STATE shadow.
+<code>lc_sigint_err_o</code> is the decode integrity error (fail-closed). Both
+are SMU outputs. See
+<a href="../../ocah-docs/0.5/sep/lifecycle_controller.html#life-cycle-controller-lcc-life-cycle-controller-lcc" class="xref page">Life Cycle Controller</a>
+in the TRM.</p>
+</li>
+<li>
+<p><code>dbg_disable_o</code> is the typed per-path debug/test disable vector
+(active-high: 1 = path disabled). On <code>sep.sv</code>, route it to DTP
+<code>dbg_disable_i</code>; the SMU does that internally.</p>
+</li>
+<li>
+<p><code>lcc_demote_state_1_o</code> / <code>lcc_demote_state_2_o</code> are differentially
+encoded in-field debug demotion. They leave the SMU for adopter
+lifecycle logic and are not connected to the SMC. See
+<a href="../../ocah-docs/0.5/sep/lifecycle_controller.html#demote-1-2-in-field-debug-demotion" class="xref page">in-field debug demotion</a>
+in the TRM.</p>
+</li>
+<li>
+<p><code>sep_fuse_dft_disable_o</code> / <code>smc_fuse_dft_disable_o</code> gate DFT-inserted
+OTP access. Leave them open if no such path is inserted. They are SMU
+outputs.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>OTP debug AXI-Lite (<code>axil_sep_otp_jtag</code>) is connected to the DTP inside
+the SMU; when <code>CFG.SEP=0</code> the SMU instantiates an AXI-Lite error slave on
+that path.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="spi-host-interface"><a class="anchor" href="#spi-host-interface"></a><a class="link" href="#spi-host-interface">7. SPI Host Interface</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SEP provides a SPI host controller through the <code>sep_io_spi</code> interface,
+supporting standard, dual and quad modes. The controller&#8217;s own interrupt leaves
+the module as the <code>irq</code> field of <code>sep_io_spi_req_o</code>, so no separate interrupt
+output is needed.</p>
+</div>
+<div class="sect2">
+<h3 id="sep-spi-host-pin-assignment"><a class="anchor" href="#sep-spi-host-pin-assignment"></a><a class="link" href="#sep-spi-host-pin-assignment">7.1. SEP SPI Host Pin Assignment</a></h3>
+<div class="paragraph">
+<p>When the SMU is built with the SEP, the SMU drives the SMC SPI port
+(<code>spi_*_i</code> of <code>smc.sv</code>) from <code>sep_io_spi_req_o</code> and returns the data-pad
+inputs to the SEP in <code>sep_io_spi_rsp_i.sd</code>. The SMC places these signals on
+GPIO 0-10 and 54. Inside <code>smc.sv</code>, no register selects another SPI source for
+these pads.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 28.5714%;">
+<col style="width: 57.1429%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">GPIO</th>
+<th class="tableblock halign-left valign-top">Function</th>
+<th class="tableblock halign-left valign-top">SEP SPI host source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0-3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI.DATA[0-3]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lane n drives <code>sd[n]</code> with output enable <code>sd_oe[n]</code>; the pad input returns as <code>sd[n]</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4-7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI.DATA[4-7]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not driven. Output disabled, input disabled.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI.CS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cs_n</code>, output enable <code>cs_oe</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI.CLK</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sck</code>, output enable <code>sck_oe</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI.DQS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not driven. Output disabled, input disabled.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">54</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI DQS Loopback</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not driven. Output disabled, input disabled.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>In standard mode, SPI.DATA[0] is the host output (COPI) and SPI.DATA[1] is the
+host input (CIPO).</p>
+</div>
+<div class="paragraph">
+<p>The SMC holds the SPI function select of these pads on whenever the SMU has
+the SEP. A pad follows the SEP SPI host once it is out of cold reset and while
+its GPIO <code>DATA_CTRL.lsio_disable</code> is clear; setting <code>lsio_disable</code> returns the
+pad to register control. A pad shim outside <code>smc.sv</code> can also hand a pad to a
+second function with its <code>CONTROL.hw2_ovrd</code>.</p>
+</div>
+<div class="paragraph">
+<p>On SPI.CS, SPI.CLK and SPI.DATA[0-3], the pad input is enabled only while the
+host does not drive that pad. The host drives a data lane only while chip
+select is asserted, and drives no pad until software sets its
+<code>CONTROL.OUTPUT_EN</code>. Until then SPI.CS is undriven, so its level comes from the
+pad pull; the GPIO pin table recommends a pull-up.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="bring-up-considerations"><a class="anchor" href="#bring-up-considerations"></a><a class="link" href="#bring-up-considerations">8. Bring-Up Considerations</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SEP boot sequence begins after the SMC completes fuse sensing and releases
+the SEP reset. The SEP BL0 ROM FW verifies the BL1 software image using
+non-volatile public keys before transferring control. Feature controls derived
+from secure boot authentication and lifecycle state govern what operations are
+permitted after boot.</p>
+</div>
+<div class="paragraph">
+<p>The <code>jtag_id_i</code> input
+must be tied to an appropriate constant in the top-level integration. A
+<code>rst_vec_i</code> port exists on <code>tb_top.sv</code> for DV reset vector injection; it is not
+present on <code>sep.sv</code> itself and requires no integration tie-off.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-port-interface"><a class="anchor" href="#sep-port-interface"></a><a class="link" href="#sep-port-interface">9. SEP Port Interface</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SEP exposes interfaces for clocks, resets, JTAG debug, CPU control, memory
+macros, AXI bus connections, cryptographic subsystem, eFuse, lifecycle,
+SPI host, and mailbox. The following table defines all SEP top-level ports.</p>
+</div>
+<div class="paragraph">
+<p>The generated module and port pages are in the TRM under RTL Modules Reference.
+This table keeps each port&#8217;s connection and tie-off default.</p>
+</div>
+<div class="port-reference-scroll" role="region" aria-label="SEP port reference" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference port-reference-wide small">
+<caption class="title">Table 1. SEP Port Declaration</caption>
+<colgroup>
+<col style="width: 19%;">
+<col style="width: 15%;">
+<col style="width: 11%;">
+<col style="width: 8%;">
+<col style="width: 20%;">
+<col style="width: 14%;">
+<col style="width: 13%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Interface Name</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Direction</th>
+<th class="tableblock halign-left valign-top">Width</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Connection</th>
+<th class="tableblock halign-left valign-top">Default value (if applicable)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Primary SEP clock. All SEP internal logic operates synchronously to this clock.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System clock</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_wdt_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">200 kHz clock for watchdog timer.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Low-frequency clock source</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_ni</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Primary reset (active low). Asynchronous assertion, synchronous deassertion.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System reset</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_rstb_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">EL2 debugger reset (active low).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG debug infrastructure</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>wdt_rst_ni</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog timer reset from SMC (active low).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC reset unit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>wdt_timer_rst_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WDT reset request output. Triggers memory interface reset in <code>sep_wrapper</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP wrapper</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tck_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG test clock.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG pads (via DTP STAP)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tms_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG test mode select.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG pads (via DTP STAP)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tdi_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG test data in.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG pads (via DTP STAP)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_trst_ni</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG test reset (active low).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG pads (via DTP STAP)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tdo_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG test data out.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG pads (via DTP STAP)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tdoEn_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG test data out enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG pads (via DTP STAP)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_sep_otp_jtag_req_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_efuse_pkg::efuse_axil_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTP debug AXI-Lite request from JTAG.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP <code>axil_sep_otp_jtag_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_sep_otp_jtag_resp_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_efuse_pkg::efuse_axil_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTP debug AXI-Lite response to JTAG.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP <code>axil_sep_otp_jtag_resp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>mpc_debug_halt_req_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Async halt request from MPC.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>mpc_debug_run_req_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Async run request from MPC.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>mpc_reset_run_req_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Run/halt selection after reset.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cpu_halt_req_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Async halt request to CPU.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cpu_run_req_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Async restart request to CPU.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>test_en_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFT/scan test-enable. Drives clock-gater test ports and AXI cell test inputs.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Test controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b0</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scan_rst_ni</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scan reset (active-low). Bypasses reset synchronizers during DFT.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Test controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_boot_seq_done_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boot sequence completion qualified to <code>clk_i</code> (memory repair and shadow register override done); gates reset release. In SMU, driven from SMC-qualified logic. In standalone SEP, synchronize and qualify before this port.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-qualified boot done or external synchronizer</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_core_enable_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables DMI accesses to the core debug module (addresses 0x00-0x4F). Tied high at SMU; TAP access is already lifecycle-gated.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug infrastructure</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_uncore_enable_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables DMI accesses to an external uncore aperture (addresses 0x50+). Unused: the core debug module AXI master already reaches the SEP fabric.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug infrastructure</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_uncore_en_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMI uncore access enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug infrastructure</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_uncore_wr_en_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMI uncore write enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug infrastructure</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_uncore_addr_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[6:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMI uncore address.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug infrastructure</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_uncore_wdata_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[31:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMI uncore write data.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug infrastructure</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_uncore_rdata_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[31:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMI uncore read data.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug infrastructure</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_active_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMI active indicator.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug infrastructure</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_cpu_trace_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_cpu_trace_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU trace output for debug.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Trace infrastructure</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lockstep_ctrl_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_pkg::sep_lockstep_ctrl_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">VeeR lockstep controls: disable corruption detection, and error-injection enable. Inert unless the core is built with <code>RV_LOCKSTEP_ENABLE</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chip-level RAS control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lockstep_status_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_pkg::sep_lockstep_status_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">VeeR lockstep status: corruption detected. Reads 0 unless the core is built with <code>RV_LOCKSTEP_ENABLE</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chip-level RAS aggregation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_id_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[31:1]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG ID value.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configuration tie-off</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>timer_int_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Timer interrupt.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Internal timer</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>soft_int_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Software interrupt.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Software IRQ source</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>extintsrc_req_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_EXTERNAL_IRQS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External interrupt sources for PIC.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External IRQ sources</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_cpu_tcm_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_cpu_tcm_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU tightly-coupled memory (TCM) request (ICCM + DCCM).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SRAM macros</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_cpu_tcm_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_cpu_tcm_rsp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU TCM response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SRAM macros</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_sram_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_sram_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scratch SRAM request.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SRAM macros</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_sram_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_sram_rsp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scratch SRAM response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SRAM macros</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_boot_rom_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_sram_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boot ROM (BL0) request.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ROM macro</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_boot_rom_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_sram_rsp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boot ROM (BL0) response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ROM macro</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smn_outbound_axi_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_system_peripherals_outbound_axi_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMN outbound AXI request (system bus master).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMN fabric</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smn_outbound_axi_resp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_system_peripherals_outbound_axi_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMN outbound AXI response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMN fabric</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smn_inbound_axi_req_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_system_peripherals_internal_axi_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMN inbound AXI request (system bus slave).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMN fabric</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smn_inbound_axi_resp_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_system_peripherals_internal_axi_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMN inbound AXI response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMN fabric</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_ext_to_smc_axi_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_system_peripherals_internal_axi_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP-to-SMC AXI request. Dedicated path for SEP to access SMC resources.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC <code>sep_axi_in_req_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_ext_to_smc_axi_resp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_system_peripherals_internal_axi_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP-to-SMC AXI response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC <code>sep_axi_in_resp_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>entropy_rosc_sample_clk_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Ring-oscillator sample clock for entropy source (async vs <code>clk_i</code>; ~100-400 MHz typical).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Ring oscillator</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_crypto_pka_imem_sram_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_crypto_pka_imem_sram_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTBN PKA instruction memory SRAM request.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SRAM macro</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_crypto_pka_imem_sram_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_crypto_pka_imem_sram_rsp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTBN PKA instruction memory SRAM response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SRAM macro</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_crypto_pka_dmem_sram_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_crypto_pka_dmem_sram_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTBN PKA data memory SRAM request.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SRAM macro</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_crypto_pka_dmem_sram_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_crypto_pka_dmem_sram_rsp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTBN PKA data memory SRAM response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SRAM macro</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_trng_axil_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_32_32_axil_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG AXI-Lite passthrough request (to <code>sep_ip_integration</code>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG shim</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_trng_axil_resp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_32_32_axil_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG AXI-Lite passthrough response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG shim</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_trng_axis_req_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_trng_axis_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[EXT_TRNG_NUM_AXIS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG AXI-Stream request array (from <code>sep_ip_integration</code>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG shim</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_trng_axis_rsp_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_trng_axis_rsp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[EXT_TRNG_NUM_AXIS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG AXI-Stream response array.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG shim</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_trng_irq_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG interrupt (routed to PIC).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG shim</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>km_rom_mem_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>km_intf_pkg::km_rom_mem_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager ROM memory request.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ROM macro</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>km_rom_mem_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>km_intf_pkg::km_rom_mem_rsp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager ROM memory response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ROM macro</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>km_sram_mem_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>km_intf_pkg::km_sram_mem_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager SRAM memory request.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SRAM macro</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>km_sram_mem_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>km_intf_pkg::km_sram_mem_rsp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager SRAM memory response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SRAM macro</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_bank_ctrl_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_efuse_pkg::efuse_axil_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse bank control AXI-Lite request.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse shim</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_bank_ctrl_resp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_efuse_pkg::efuse_axil_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse bank control AXI-Lite response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse shim</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_shim_command_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_efuse_pkg::fuse_command_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse command interface request.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse shim</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_shim_command_resp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_efuse_pkg::fuse_command_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse command interface response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse shim</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lcc_demote_state_1_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle demote state output 1. Exported at SMU boundary; not currently connected to SMC.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lcc_demote_state_2_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle demote state output 2. Exported at SMU boundary; not currently connected to SMC.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_io_spi_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_io_spi_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI host controller request.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI pad interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_io_spi_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_io_spi_rsp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI host controller response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI pad interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lc_state_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[2*LcStateBitWidth-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle state output (differentially encoded). Routed to SMC and the SMU external output; debug-disable control to DTP is via <code>dbg_disable_o</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC, SMU external</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_lifecycle_ctrl_pkg::dbg_disable_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Typed debug-disable struct routed by SMU to DTP debug-disable control.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU → DTP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_fuse_dft_disable_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Gate for the DFT-inserted access path into the SEP OTP, composed as Case 3 AND <code>SEP_FUSE_DBG</code>. Unconnected in the functional design; an adopter&#8217;s DFT insertion connects it.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter DFT insertion</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Leave open if no path is inserted</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_fuse_dft_disable_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Gate for the DFT-inserted access path into the SMC OTP, composed as Case 2 AND <code>SMC_FUSE_DBG</code>. Unconnected in the functional design; an adopter&#8217;s DFT insertion connects it.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter DFT insertion</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Leave open if no path is inserted</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lc_sigint_err_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle signal integrity error.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>security_disable_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Security disable output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>secure_tm_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure test mode output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_mailbox_interrupt_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumMailboxes-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt outputs to SMC.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC interrupt aggregator</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_fuse_sense_done_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC fuse sense done indication.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC <code>fuse_sense_done_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_fuse_sense_done_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP fuse sense done output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System integration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>secure_tm_req_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure test mode request.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring / tie-off</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axi_extension_axi_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_32_64_6_12_axi_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI extension port request for adopter peripheral expansion.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter peripherals</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axi_extension_axi_resp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_32_64_6_12_axi_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI extension port response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter peripherals</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tie to DECERR if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_global_base_addr_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[55:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC global base address for outbound address translation.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System configuration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_region_size_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[55:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC region size for outbound address translation.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC <code>smc_region_size_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>km_unrecoverable_err_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager unrecoverable error.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAS / error handling</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>km_recoverable_err_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager recoverable error.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAS / error handling</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_debug_bus_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[511:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External debug observation bus.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug infrastructure</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/register-sections.js"></script>
+<script src="../../_/js/toc-collapse.js"></script>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script src="../../_/js/version-menu.js"></script>
+<script src="../../_/js/vendor/viewer.min.js"></script>
+<script src="../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>

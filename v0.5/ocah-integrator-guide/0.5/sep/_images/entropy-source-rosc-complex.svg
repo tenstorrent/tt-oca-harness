@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="624" viewBox="0 0 1040 624" role="img" aria-labelledby="title desc">
+<title id="title">Entropy source ring-oscillator complex</title>
+<desc id="desc">Entropy source ring-oscillator complex, in three bands. Sample clock, one per lane: a clock mux selects rosc_sample_clk_i or a shared ring oscillator of 109 stages with a 53-stage tap, which runs when any lane is enabled and detunes when any lane detunes; a five-stage ripple divider and divide-select clock muxes give divide-by-1 to divide-by-32 as sample_clk[i]. Noise lane, twelve instances: the lane ring oscillator, enabled by RING_OSC_ENABLE[i], is sampled by a flop on sample_clk[i], synchronized by two flops on clk_i and decorrelated into a byte for the BIW extractor. An 8-bit health test on that byte drives an auto-tune FSM, and a detune select chooses the auto-tune state or RING_OSC_TUNE.DETUNE[i] as the lane detune. Ring oscillator: a NAND2 stage gated by enable_i feeds a buffer chain; the tap mux takes the stage TAPPED_LENGTH-1 output or the stage TOTAL_LENGTH-1 output under detune_i, feeds it back to the NAND2 and drives noise_o through an output buffer.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+</style>
+</defs>
+<rect width="1040" height="624" fill="#ffffff"/>
+<rect class="smu" x="16" y="16" width="1008" height="164" rx="8"/>
+<text class="b" x="26" y="168" text-anchor="start">Sample clock, one per lane (entropy_sampler_clocks)</text>
+<path class="a-per" d="M4,76 L377,76"/>
+<text class="s" x="24" y="68" text-anchor="start">rosc_sample_clk_i</text>
+<rect class="core" x="120" y="88" width="220" height="60" rx="6"/>
+<text class="bs" x="230" y="107" text-anchor="middle">Shared ring oscillator</text>
+<text class="s" x="230" y="124" text-anchor="middle">109 stages, 53-stage tap</text>
+<text class="s" x="230" y="140" text-anchor="middle">OR of lane enables and detunes</text>
+<path class="a-rosc" d="M340,112 L377,112"/>
+<text class="s" x="370" y="70" text-anchor="end">0</text>
+<text class="s" x="370" y="106" text-anchor="end">1</text>
+<rect class="fabric" x="380" y="56" width="70" height="74" rx="6"/>
+<text class="s" x="415" y="89" text-anchor="middle">Clock</text>
+<text class="s" x="415" y="107" text-anchor="middle">mux</text>
+<path class="sigo" d="M415,40 L415,53"/>
+<text class="s" x="415" y="34" text-anchor="middle">SAMPLE_CLK_SELECT[i]</text>
+<path class="a-per" d="M450,93 L487,93"/>
+<rect class="core" x="490" y="66" width="120" height="54" rx="6"/>
+<text class="s" x="550" y="90" text-anchor="middle">Ripple divider</text>
+<text class="s" x="550" y="106" text-anchor="middle">5 toggle stages</text>
+<path class="a-per" d="M610,93 L677,93"/>
+<text class="s" x="645" y="86" text-anchor="middle">÷1 to ÷32</text>
+<rect class="fabric" x="680" y="66" width="130" height="54" rx="6"/>
+<text class="s" x="745" y="90" text-anchor="middle">Divide select</text>
+<text class="s" x="745" y="106" text-anchor="middle">clock muxes</text>
+<path class="sigo" d="M745,40 L745,63"/>
+<text class="s" x="745" y="34" text-anchor="middle">SAMPLE_CLK_DIVIDE[i]</text>
+<path class="a-per" d="M745,120 L745,190 L386,190 L386,223"/>
+<text class="s" x="753" y="152" text-anchor="start">sample_clk[i]</text>
+<rect class="smu" x="16" y="200" width="1008" height="196" rx="8"/>
+<text class="b" x="26" y="384" text-anchor="start">Noise lane ×12 (entropy_generator)</text>
+<path class="sigo" d="M4,256 L177,256"/>
+<text class="s" x="24" y="248" text-anchor="start">RING_OSC_ENABLE[i]</text>
+<rect class="core" x="180" y="226" width="120" height="60" rx="6"/>
+<text class="s" x="240" y="253" text-anchor="middle">Ring oscillator</text>
+<text class="s" x="240" y="269" text-anchor="middle">5 to 23 stages</text>
+<path class="a-rosc" d="M300,256 L333,256"/>
+<rect class="core" x="336" y="226" width="100" height="60" rx="6"/>
+<text class="s" x="386" y="253" text-anchor="middle">Sample flop</text>
+<text class="s" x="386" y="269" text-anchor="middle">prim_flop</text>
+<path class="a-per" d="M436,256 L473,256"/>
+<rect class="core" x="476" y="226" width="110" height="60" rx="6"/>
+<text class="s" x="531" y="253" text-anchor="middle">Synchronizer</text>
+<text class="s" x="531" y="269" text-anchor="middle">2 flops, clk_i</text>
+<path class="sigo" d="M586,256 L623,256"/>
+<rect class="core" x="626" y="226" width="120" height="60" rx="6"/>
+<text class="s" x="686" y="253" text-anchor="middle">Decorrelator</text>
+<text class="s" x="686" y="269" text-anchor="middle">29-stage</text>
+<path class="sigo" d="M746,256 L1012,256"/>
+<text class="s" x="880" y="248" text-anchor="middle">entropy byte to BIW extractor</text>
+<rect class="core" x="626" y="314" width="120" height="54" rx="6"/>
+<text class="s" x="686" y="338" text-anchor="middle">Health test</text>
+<text class="s" x="686" y="354" text-anchor="middle">8-bit</text>
+<path class="sigo" d="M686,286 L686,311"/>
+<rect class="core" x="476" y="314" width="110" height="54" rx="6"/>
+<text class="s" x="531" y="338" text-anchor="middle">Auto-tune FSM</text>
+<text class="s" x="531" y="354" text-anchor="middle">toggles on fail</text>
+<path class="sigo" d="M626,341 L589,341"/>
+<rect class="fabric" x="250" y="314" width="186" height="54" rx="6"/>
+<text class="s" x="343" y="338" text-anchor="middle">Detune select</text>
+<text class="s" x="343" y="354" text-anchor="middle">auto-tune or DETUNE[i]</text>
+<path class="sigo" d="M476,341 L439,341"/>
+<path class="sigo" d="M250,341 L232,341 L232,289"/>
+<rect class="smu" x="16" y="412" width="1008" height="168" rx="8"/>
+<text class="b" x="26" y="568" text-anchor="start">Ring oscillator (entropy_ring_oscillator)</text>
+<path class="sigo" d="M4,490 L147,490"/>
+<text class="s" x="24" y="482" text-anchor="start">enable_i</text>
+<rect class="core" x="150" y="464" width="90" height="52" rx="6"/>
+<text class="s" x="195" y="487" text-anchor="middle">NAND2</text>
+<text class="s" x="195" y="503" text-anchor="middle">u_en</text>
+<path class="a-rosc" d="M240,490 L269,490"/>
+<rect class="core" x="272" y="464" width="136" height="52" rx="6"/>
+<text class="s" x="340" y="487" text-anchor="middle">Stages 1 to</text>
+<text class="s" x="340" y="503" text-anchor="middle">TAPPED_LENGTH-1</text>
+<path class="a-rosc" d="M408,490 L447,490"/>
+<circle cx="428" cy="490" r="3.5" fill="#336633"/>
+<rect class="core" x="450" y="464" width="140" height="52" rx="6"/>
+<text class="s" x="520" y="487" text-anchor="middle">Stages up to</text>
+<text class="s" x="520" y="503" text-anchor="middle">TOTAL_LENGTH-1</text>
+<path class="a-rosc" d="M590,490 L637,490"/>
+<path class="a-rosc" d="M428,490 L428,530 L637,530"/>
+<text class="s" x="628" y="484" text-anchor="end">1</text>
+<text class="s" x="628" y="524" text-anchor="end">0</text>
+<rect class="fabric" x="640" y="456" width="90" height="88" rx="6"/>
+<text class="s" x="685" y="497" text-anchor="middle">Tap mux</text>
+<text class="s" x="685" y="513" text-anchor="middle">u_tap</text>
+<path class="sigo" d="M685,578 L685,547"/>
+<text class="s" x="693" y="570" text-anchor="start">detune_i</text>
+<path class="a-rosc" d="M730,500 L777,500"/>
+<circle cx="752" cy="500" r="3.5" fill="#336633"/>
+<path class="a-rosc" d="M752,500 L752,436 L195,436 L195,461"/>
+<text class="s" x="470" y="430" text-anchor="middle">feedback</text>
+<rect class="core" x="780" y="474" width="100" height="52" rx="6"/>
+<text class="s" x="830" y="497" text-anchor="middle">Output buffer</text>
+<text class="s" x="830" y="513" text-anchor="middle">u_fbf</text>
+<path class="a-rosc" d="M880,500 L1012,500"/>
+<text class="s" x="946" y="492" text-anchor="middle">noise_o</text>
+<path class="a-rosc" d="M16,606 L50,606"/>
+<text class="s" x="60" y="611" text-anchor="start">Asynchronous ring-oscillator signal</text>
+<path class="a-per" d="M300,606 L334,606"/>
+<text class="s" x="344" y="611" text-anchor="start">Sample clock domain</text>
+<path class="sigo" d="M500,606 L534,606"/>
+<text class="s" x="544" y="611" text-anchor="start">clk_i domain or control</text>
+<rect class="fabric" x="720" y="597" width="40" height="18" rx="4"/>
+<text class="s" x="768" y="611" text-anchor="start">Clock or signal select</text>
+</svg>

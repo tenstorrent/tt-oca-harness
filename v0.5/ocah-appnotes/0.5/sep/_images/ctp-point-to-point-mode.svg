@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="812" viewBox="0 0 1040 812" role="img" aria-labelledby="title desc">
+<title id="title">Cross Trigger Port in point-to-point mode</title>
+<desc id="desc">The Cross Trigger Port with CONFIG.MODE set to point-to-point, showing only the logic that is active in that mode. ct_src_i starts the sender state machine in u_handshake_ctrl. Its ct_req_out_o, XOR invert_i, is registered onto the CT_Req_out pad, whose output enable is 1. The CT_Ack_in and CT_Req_in pad inputs, enabled by registered 1s, each pass through two synchroniser registers, an XOR with invert_i and an AND gate with p2p_din_valid into the handshake controller. p2p_din_valid is the registered CT_Req_in pad input enable delayed by two more registers, so the controller sees the pad inputs only once the synchronisers carry pad data. The ungated CT_Req_in level also feeds u_edge_detector, whose output is unused. The handshake ct_ack_out_o, XOR invert_i, is registered onto the CT_Ack_out pad, enabled by a registered 1. The handshake busy_o and ct_dst_o are registered once more to become the port's busy_o and ct_dst_o. handshake_reset_i from CONFIG.RESET resets the sender state machine.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.axil { fill: none; stroke: #103525; stroke-width: 1.5; marker-start: url(#as); marker-end: url(#ae); }
+.sigd { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 5 4; marker-end: url(#ge); }
+.axin { fill: none; stroke: #103525; stroke-width: 2.5; }
+.axis { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); }
+.axie { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#ae); }
+.axiln { fill: none; stroke: #103525; stroke-width: 1.5; }
+.gate { fill: #fff0cc; stroke: #937027; stroke-width: 1.5; }
+.reg { fill: #ffffff; stroke: #937027; stroke-width: 1.5; }
+.pad { fill: #ffffff; stroke: #77736b; stroke-width: 1.4; }
+.bus { fill: none; stroke: #5b6670; stroke-width: 4.5; }
+.wire { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.net { font-size: 13px; font-style: italic; fill: #484848; }
+
+</style>
+</defs>
+<rect width="1040" height="812" fill="#ffffff"/>
+<rect class="smu" x="96" y="20" width="788" height="720" rx="6"/>
+<text class="b" x="106" y="730" text-anchor="start">cross_trigger_port</text>
+<rect class="core" x="120" y="34" width="750" height="58" rx="6"/>
+<text class="bs" x="140" y="58" text-anchor="start">u_reg</text>
+<text class="s" x="140" y="78" text-anchor="start">cross_trigger_port_reg</text>
+<text class="s" x="470" y="82" text-anchor="middle">CONFIG.INVERT</text>
+<path class="sigplain" d="M470,92 L470,106"/>
+<text class="net" x="476" y="108" text-anchor="start">invert_i</text>
+<text class="s" x="590" y="82" text-anchor="middle">CONFIG.RESET</text>
+<path class="sigplain" d="M590,92 L590,106"/>
+<text class="net" x="596" y="108" text-anchor="start">handshake_reset_i</text>
+<path class="axi" d="M12,63.0 L117,63.0"/>
+<text class="s" x="12" y="55" text-anchor="start">AXI-Lite</text>
+<rect class="smu" x="112" y="118" width="760" height="590" rx="6"/>
+<text class="b" x="122" y="698" text-anchor="start">u_core (cross_trigger_port_core)</text>
+<rect class="external" x="896" y="185" width="134" height="97" rx="4"/>
+<text class="bs" x="904" y="203" text-anchor="start">CT_Req_out</text>
+<path class="pad" d="M916,248 L942,260 L916,272 Z"/>
+<path class="sigo" d="M854,260 L913,260"/>
+<path class="sigo" d="M854,215 L929,215 L929,251"/>
+<path class="sigplain" d="M942,260 L1006,260"/>
+<rect class="pad" x="1006" y="254" width="12" height="12" rx="0"/>
+<path class="sigplain" d="M1006,254 L1018,266 M1018,254 L1006,266"/>
+<rect class="external" x="896" y="290" width="134" height="92" rx="4"/>
+<text class="bs" x="904" y="308" text-anchor="start">CT_Ack_in</text>
+<path class="pad" d="M942,348 L916,360 L942,372 Z"/>
+<path class="sigo" d="M916,360 L857,360"/>
+<path class="sigo" d="M854,320 L933,320 L933,349"/>
+<path class="sigo" d="M1006,360 L945,360"/>
+<rect class="pad" x="1006" y="354" width="12" height="12" rx="0"/>
+<path class="sigplain" d="M1006,354 L1018,366 M1018,354 L1006,366"/>
+<rect class="external" x="896" y="430" width="134" height="92" rx="4"/>
+<text class="bs" x="904" y="448" text-anchor="start">CT_Req_in</text>
+<path class="pad" d="M942,488 L916,500 L942,512 Z"/>
+<path class="sigo" d="M916,500 L857,500"/>
+<path class="sigo" d="M854,460 L933,460 L933,489"/>
+<path class="sigo" d="M1006,500 L945,500"/>
+<rect class="pad" x="1006" y="494" width="12" height="12" rx="0"/>
+<path class="sigplain" d="M1006,494 L1018,506 M1018,494 L1006,506"/>
+<rect class="external" x="896" y="530" width="134" height="97" rx="4"/>
+<text class="bs" x="904" y="548" text-anchor="start">CT_Ack_out</text>
+<path class="pad" d="M916,593 L942,605 L916,617 Z"/>
+<path class="sigo" d="M854,605 L913,605"/>
+<path class="sigo" d="M854,560 L929,560 L929,596"/>
+<path class="sigplain" d="M942,605 L1006,605"/>
+<rect class="pad" x="1006" y="599" width="12" height="12" rx="0"/>
+<path class="sigplain" d="M1006,599 L1018,611 M1018,599 L1006,611"/>
+<text class="s" x="814" y="219.5" text-anchor="end">1</text>
+<path class="sigo" d="M817,215 L823,215"/>
+<rect class="reg" x="826" y="200" width="28" height="30" rx="2"/>
+<path class="sigplain" d="M835,230 L840,223 L845,230"/>
+<text class="s" x="814" y="324.5" text-anchor="end">1</text>
+<path class="sigo" d="M817,320 L823,320"/>
+<rect class="reg" x="826" y="305" width="28" height="30" rx="2"/>
+<path class="sigplain" d="M835,335 L840,328 L845,335"/>
+<text class="s" x="814" y="464.5" text-anchor="end">1</text>
+<path class="sigo" d="M817,460 L823,460"/>
+<rect class="reg" x="826" y="445" width="28" height="30" rx="2"/>
+<path class="sigplain" d="M835,475 L840,468 L845,475"/>
+<text class="s" x="814" y="564.5" text-anchor="end">1</text>
+<path class="sigo" d="M817,560 L823,560"/>
+<rect class="reg" x="826" y="545" width="28" height="30" rx="2"/>
+<path class="sigplain" d="M835,575 L840,568 L845,575"/>
+<rect class="reg" x="826" y="245" width="28" height="30" rx="2"/>
+<path class="sigplain" d="M835,275 L840,268 L845,275"/>
+<rect class="reg" x="826" y="590" width="28" height="30" rx="2"/>
+<path class="sigplain" d="M835,620 L840,613 L845,620"/>
+<rect class="reg" x="826" y="345" width="28" height="30" rx="2"/>
+<path class="sigplain" d="M835,375 L840,368 L845,375"/>
+<rect class="reg" x="776" y="345" width="28" height="30" rx="2"/>
+<path class="sigplain" d="M785,375 L790,368 L795,375"/>
+<path class="sigo" d="M826,360 L807,360"/>
+<path class="sigo" d="M776,360 L718,360"/>
+<circle class="gate" cx="705" cy="360" r="10"/>
+<path class="sigplain" d="M698,360 L712,360 M705,353 L705,367"/>
+<path class="sigo" d="M705,334 L705,347"/>
+<text class="net" x="705" y="330" text-anchor="middle">invert_i</text>
+<rect class="reg" x="826" y="485" width="28" height="30" rx="2"/>
+<path class="sigplain" d="M835,515 L840,508 L845,515"/>
+<rect class="reg" x="776" y="485" width="28" height="30" rx="2"/>
+<path class="sigplain" d="M785,515 L790,508 L795,515"/>
+<path class="sigo" d="M826,500 L807,500"/>
+<path class="sigo" d="M776,500 L718,500"/>
+<circle class="gate" cx="705" cy="500" r="10"/>
+<path class="sigplain" d="M698,500 L712,500 M705,493 L705,507"/>
+<path class="sigo" d="M705,474 L705,487"/>
+<text class="net" x="705" y="470" text-anchor="middle">invert_i</text>
+<circle class="gate" cx="705" cy="260" r="10"/>
+<path class="sigplain" d="M698,260 L712,260 M705,253 L705,267"/>
+<path class="sigo" d="M705,286 L705,273"/>
+<text class="net" x="705" y="300" text-anchor="middle">invert_i</text>
+<path class="sigo" d="M715,260 L823,260"/>
+<circle class="gate" cx="705" cy="605" r="10"/>
+<path class="sigplain" d="M698,605 L712,605 M705,598 L705,612"/>
+<path class="sigo" d="M705,631 L705,618"/>
+<text class="net" x="705" y="645" text-anchor="middle">invert_i</text>
+<path class="sigo" d="M715,605 L823,605"/>
+<rect class="core" x="420" y="200" width="150" height="455" rx="6"/>
+<text class="bs" x="495" y="540" text-anchor="middle">u_handshake_ctrl</text>
+<text class="s" x="495" y="557" text-anchor="middle">sender and</text>
+<text class="s" x="495" y="574" text-anchor="middle">receiver FSMs</text>
+<text class="s" x="426" y="234.5" text-anchor="start">busy_o</text>
+<text class="s" x="426" y="304.5" text-anchor="start">ct_src_i</text>
+<text class="s" x="426" y="414.5" text-anchor="start">ct_dst_o</text>
+<text class="s" x="564" y="264.5" text-anchor="end">ct_req_out_o</text>
+<text class="s" x="564" y="372.5" text-anchor="end">ct_ack_in_sync_i</text>
+<text class="s" x="564" y="496.5" text-anchor="end">ct_req_in_sync_i</text>
+<text class="s" x="564" y="609.5" text-anchor="end">ct_ack_out_o</text>
+<path class="sigo" d="M495,673 L495,658"/>
+<text class="net" x="495" y="687" text-anchor="middle">handshake_reset_i</text>
+<text class="s" x="495" y="645" text-anchor="middle">reset_i</text>
+<text class="s" x="12" y="224" text-anchor="start">busy_o</text>
+<path class="sigo" d="M208,230 L14,230"/>
+<text class="s" x="12" y="404" text-anchor="start">ct_dst_o</text>
+<path class="sigo" d="M208,410 L14,410"/>
+<text class="s" x="12" y="294" text-anchor="start">ct_src_i</text>
+<path class="sigo" d="M12,300 L417,300"/>
+<rect class="reg" x="208" y="215" width="28" height="30" rx="2"/>
+<path class="sigplain" d="M217,245 L222,238 L227,245"/>
+<path class="sigo" d="M420,230 L239,230"/>
+<rect class="reg" x="208" y="395" width="28" height="30" rx="2"/>
+<path class="sigplain" d="M217,425 L222,418 L227,425"/>
+<path class="sigo" d="M420,410 L239,410"/>
+<path class="sigo" d="M570,260 L692,260"/>
+<path class="sigo" d="M570,605 L692,605"/>
+<path class="gate" d="M625,353 L610,353 A15,15 0 0 0 610,383 L625,383 Z"/>
+<path class="sigo" d="M695,360 L628,360"/>
+<path class="sigo" d="M595,368 L573,368"/>
+<path class="gate" d="M625,477 L610,477 A15,15 0 0 0 610,507 L625,507 Z"/>
+<path class="sigo" d="M695,500 L628,500"/>
+<path class="sigo" d="M595,492 L573,492"/>
+<path class="sigo" d="M645,410 L645,376 L628,376"/>
+<path class="sigo" d="M645,410 L645,484 L628,484"/>
+<circle cx="645" cy="410" r="3.5" fill="#5b6670"/>
+<circle cx="862" cy="460" r="3.5" fill="#5b6670"/>
+<rect class="reg" x="800" y="395" width="28" height="30" rx="2"/>
+<path class="sigplain" d="M809,425 L814,418 L819,425"/>
+<rect class="reg" x="750" y="395" width="28" height="30" rx="2"/>
+<path class="sigplain" d="M759,425 L764,418 L769,425"/>
+<path class="sigo" d="M862,460 L862,410 L831,410"/>
+<path class="sigo" d="M800,410 L781,410"/>
+<path class="sigplain" d="M750,410 L645,410"/>
+<text class="s" x="652" y="404" text-anchor="start">p2p_din_valid</text>
+<rect class="core" x="580" y="528" width="110" height="44" rx="6"/>
+<text class="s" x="635" y="546.5" text-anchor="middle">u_edge_detector</text>
+<text class="si" x="635" y="563.5" text-anchor="middle">output unused</text>
+<circle cx="660" cy="500" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M660,500 L660,525"/>
+<rect class="core" x="14" y="759" width="36" height="18" rx="4"/>
+<text class="s" x="58" y="772.5" text-anchor="start">RTL block</text>
+<circle class="gate" cx="154.1" cy="768" r="10"/>
+<path class="sigplain" d="M147.1,768 L161.1,768 M154.1,761 L154.1,775"/>
+<text class="s" x="172.1" y="772.5" text-anchor="start">XOR</text>
+<path class="gate" d="M216.8,758 L230.8,758 A10,10 0 0 1 230.8,778 L216.8,778 Z"/>
+<text class="s" x="248.8" y="772.5" text-anchor="start">AND</text>
+<rect class="reg" x="293.5" y="757" width="18" height="22" rx="2"/>
+<path class="sigplain" d="M297.5,779 L302.5,772 L307.5,779"/>
+<text class="s" x="319.5" y="772.5" text-anchor="start">Register on clk_i</text>
+<rect class="external" x="460.8" y="759" width="36" height="18" rx="4"/>
+<text class="s" x="504.8" y="772.5" text-anchor="start">GPIO pad</text>
+<path class="pad" d="M584,759 L602,768 L584,777 Z"/>
+<text class="s" x="610" y="772.5" text-anchor="start">Pad buffer</text>
+<rect class="pad" x="704" y="762" width="12" height="12" rx="0"/>
+<path class="sigplain" d="M704,762 L716,774 M716,762 L704,774"/>
+<text class="s" x="725" y="772.5" text-anchor="start">Pin</text>
+<path class="sigo" d="M17,796 L59,796"/>
+<text class="s" x="70" y="800.5" text-anchor="start">Signal</text>
+<text class="net" x="135.4" y="800.5" text-anchor="start">name</text>
+<text class="s" x="175.4" y="800.5" text-anchor="start">Net from u_reg</text>
+<text class="s" x="326" y="800.5" text-anchor="start">AXI-Lite subordinate</text>
+<rect class="ps" x="109.0" y="54.0" width="22" height="18" rx="4"/>
+<text class="pst" x="120" y="67.5" text-anchor="middle">S</text>
+<rect class="ps" x="296.0" y="787.0" width="22" height="18" rx="4"/>
+<text class="pst" x="307" y="800.5" text-anchor="middle">S</text>
+</svg>

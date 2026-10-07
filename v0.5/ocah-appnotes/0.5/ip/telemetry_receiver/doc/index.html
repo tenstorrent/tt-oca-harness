@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Telemetry Receiver :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-appnotes" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../../../index.html">Application Notes</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Application Notes 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component is-current">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../../../index.html">Application Notes</a></li>
+    <li><a href="index.html">Telemetry Receiver</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Telemetry Receiver</h1>
+<div class="sect1">
+<h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1. Overview</a></h2>
+<div class="sectionbody">
+<span id="description-and-features"></span>
+<div class="paragraph">
+<p>The receiver assembles an 8-bit ATB stream into probe-ID and counter messages.
+Software reads completed messages through a 32-bit AXI4-Lite register interface
+and explicitly pops each message. The core defaults to eight queued messages
+and four counters per message; these are elaboration parameters, not software
+settings. Threshold and missing-last-packet interrupts report service needs.</p>
+</div>
+<div class="paragraph">
+<p>Reception does not stop when the message queue fills: a new message replaces
+the oldest one, including while software is reading it through several
+registers. The
+<a href="../../../../../ocah-programmer-guide/0.5/index.html#smc-telemetry-receiver" class="xref page">Telemetry Receiver section</a>
+of the Programmer&#8217;s Guide gives the buffer, flush and interrupt procedures. The receiver does not use <code>atid_i</code> to maintain separate
+source contexts; producers sharing a receiver must serialize complete messages.</p>
+</div>
+<div class="sect2">
+<h3 id="telemetry-receiver-message-format"><a class="anchor" href="#telemetry-receiver-message-format"></a><a class="link" href="#telemetry-receiver-message-format">1.1. Message Format</a></h3>
+<div class="paragraph">
+<p>Eight little-endian ATB beats form a 64-bit packet. One or more packets
+form a message that ends when <code>last_packet</code> is set.</p>
+</div>
+<div class="paragraph">
+<p><a href="#telemetry-packet-fields-table">Table 1</a> defines the fields carried in each telemetry packet.</p>
+</div>
+<table id="telemetry-packet-fields-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Telemetry packet fields</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 15%;">
+<col style="width: 65%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Field</th>
+<th class="tableblock halign-left valign-top">Width</th>
+<th class="tableblock halign-left valign-top">Location</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>last_packet</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bit 63 of each packet</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>probe_id</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">5 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bits <code>[60:56]</code> of the first packet</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">block</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">9 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Seven per packet: 1-bit valid + 8-bit data</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">counter</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Four consecutive blocks, most-significant byte first</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>A counter is valid only when all four of its blocks are valid. The number of
+counters per message is parameterized (default 4); the field layout is fixed.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="telemetry-receiver-architecture"><a class="anchor" href="#telemetry-receiver-architecture"></a><a class="link" href="#telemetry-receiver-architecture">2. Architecture</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The receiver has two stores: a byte assembly buffer for the incoming message
+and a queue of decoded messages for software. Neither is a second independently
+configurable telemetry channel.</p>
+</div>
+<div class="sect2">
+<h3 id="assembly-and-decode"><a class="anchor" href="#assembly-and-decode"></a><a class="link" href="#assembly-and-decode">2.1. Assembly and Decode</a></h3>
+<span id="functional-blocks"></span>
+<span id="atb-interface-block"></span>
+<span id="assembly-buffer"></span>
+<span id="message-decoder"></span>
+<span id="data-flow"></span>
+<div class="paragraph">
+<p>An accepted beat (<code>atvalid_i &amp;&amp; atready_o</code>) writes one assembly byte. Eight
+beats form a packet, least-significant byte first. Bit 63 marks the last packet;
+the first packet carries the probe ID at bits <code>[60:56]</code>. Counter decoding starts
+at block 1 of the first packet, continues across packet boundaries, and assembles
+each counter most-significant byte first. All four block-valid bits must be set
+for a counter to be valid; otherwise its decoded value is zero.</p>
+</div>
+<div class="paragraph">
+<p>The assembly capacity is derived from <code>MAX_NUM_COUNTERS_PER_MESSAGE</code>. Reaching
+that capacity without a last-packet marker raises <code>MISSING_LAST</code> and resets the
+write pointer. A last-packet marker also resets the pointer and queues the
+decoded message. The core accepts beats except during a receiver-flush pulse;
+message-queue fullness does not apply backpressure.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+Every configured counter position is decoded, including positions
+beyond the last packet received. A short message following a longer one can
+therefore inherit trailing values and validity bits. Producers must overwrite
+the complete configured message footprint and mark unused counter blocks
+invalid. Receiver flush resets the pointer but leaves assembly bytes intact;
+only reset clears that storage.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="message-queue-and-readout"><a class="anchor" href="#message-queue-and-readout"></a><a class="link" href="#message-queue-and-readout">2.2. Message Queue and Readout</a></h3>
+<span id="register-interface-block"></span>
+<span id="message-buffer"></span>
+<span id="control-path"></span>
+<div class="paragraph">
+<p>The queue exposes its oldest message in <code>TELEMETRY_PROBE_ID</code>,
+<code>TELEMETRY_COUNTER_VLDS</code> and <code>TELEMETRY_COUNTER[0..31]</code>. Reads do not consume data;
+<code>CTRL.BUFFER_POP</code> advances the queue only when it is nonempty. Empty-queue reads
+return zero. Counter registers beyond the configured counter count also return
+zero and have cleared validity bits.</p>
+</div>
+<div class="paragraph">
+<p>On arrival while full, hardware drops the oldest message and advances the read
+pointer. There is no snapshot across the separate software reads: overflow can
+change the visible message mid-read. Arrange sufficient buffering/service rate,
+or quiesce the producer, when a coherent software snapshot is required. <code>STATUS</code>
+reports empty/full, not a numeric occupancy count or an overflow interrupt.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="interrupts"><a class="anchor" href="#interrupts"></a><a class="link" href="#interrupts">2.3. Interrupts</a></h3>
+<div class="paragraph">
+<p><code>irq_o</code> is the OR of the two status sources masked by their corresponding
+<code>INTR_ENABLE</code> bits. Masking an interrupt does not acknowledge its source.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. Telemetry interrupt conditions</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Source</th>
+<th class="tableblock halign-left valign-top">Condition and clearing</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MISSING_LAST</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sticky status when assembly capacity is reached without the
+last-packet marker. It latches even while disabled. Write one to the status bit
+to clear it; <code>INTR_TEST.MISSING_LAST</code> supplies a test pulse.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BUFFER_THRESHOLD</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read-only live status while occupancy is strictly greater
+than the effective threshold, or <code>INTR_TEST.BUFFER_THRESHOLD</code> is set. Drain to
+at most the threshold, raise the threshold, or clear the test bit as appropriate.
+Writing the status bit does not clear this source.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="reset-and-flush"><a class="anchor" href="#reset-and-flush"></a><a class="link" href="#reset-and-flush">2.4. Reset and Flush</a></h3>
+<span id="clocking-and-reset"></span>
+<span id="reset-behavior"></span>
+<div class="paragraph">
+<p>Reset clears assembly bytes, queue pointers and control/interrupt registers.
+Queue payload storage is not reset, but empty-queue reads return zero. Supply
+<code>rst_ni</code> with asynchronous assertion and deassertion synchronized to <code>clk_i</code>.</p>
+</div>
+<div class="paragraph">
+<p><code>CTRL.TELEMETRY_RX_FLUSH</code> is a pulse that discards queued messages and resets
+the assembly pointer. It does not erase either payload store or purge the
+wrapper&#8217;s upstream ATB crossing FIFO. Quiesce traffic when an empty receiver
+must remain empty after the pulse.</p>
+</div>
+<div class="paragraph">
+<p><code>CTRL.TELEMETRY_TX_FLUSH</code> requests a flush from the upstream transmitter through
+<code>afvalid_o</code>. Hardware clears the request after <code>afvalid_o &amp;&amp; afready_i</code>.
+Completion depends on the producer&#8217;s acknowledgement; this is separate from a
+local receiver flush.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="telemetry-receiver-interface"><a class="anchor" href="#telemetry-receiver-interface"></a><a class="link" href="#telemetry-receiver-interface">3. Interface</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The Telemetry Receiver component provides AXI4-Lite register access and
+Advanced Trace Bus (ATB) telemetry data reception interfaces.</p>
+</div>
+<div class="sect2">
+<h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">3.1. Configuration Parameters</a></h3>
+<div class="paragraph">
+<p>The parameters and ports of <code>telemetry_receiver</code> are listed in <a href="../../../../../ocah-docs/0.5/rtl-modules-reference/ip/telemetry_receiver/telemetry_receiver.html" class="xref page">telemetry_receiver</a>.</p>
+</div>
+<div class="paragraph">
+<p>The core has two elaboration parameters. <code>BUFFER_DEPTH</code> (default 8) sets the
+number of decoded messages the queue holds; it must be a power of two and at
+least 2. <code>MAX_NUM_COUNTERS_PER_MESSAGE</code> (default 4) sets the number of counters
+decoded from each message.</p>
+</div>
+<div class="paragraph">
+<p>The ATB beat width (8 bits), packet width (64 bits), counter width (32 bits)
+and ATB ID width (7 bits) are package constants.
+The core register port has an 8-bit address and 32-bit data path.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="signal-interfaces"><a class="anchor" href="#signal-interfaces"></a><a class="link" href="#signal-interfaces">3.2. Signal Interfaces</a></h3>
+
+</div>
+<div class="sect2">
+<h3 id="global-interface"><a class="anchor" href="#global-interface"></a><a class="link" href="#global-interface">3.3. Global Interface</a></h3>
+<div class="paragraph">
+<p>The global interface provides fundamental clock and reset signals
+required for basic operation.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="telemetry-receiver-clock-reset"><a class="anchor" href="#telemetry-receiver-clock-reset"></a><a class="link" href="#telemetry-receiver-clock-reset">3.4. Clock and Reset</a></h3>
+<div class="paragraph">
+<p><code>clk_i</code> is the core clock and <code>rst_ni</code> its asynchronous, active-low reset;
+<code>telemetry_receiver_wrap</code> adds <code>clk_telemetry_i</code> / <code>rst_telemetry_ni</code> for
+the ATB side. Clock frequency, jitter, reset duration and physical timing
+constraints must come from the integration timing specification.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="atb-telemetry-interface"><a class="anchor" href="#atb-telemetry-interface"></a><a class="link" href="#atb-telemetry-interface">3.5. ATB Telemetry Interface</a></h3>
+<div class="paragraph">
+<p>The ATB (Advanced Trace Bus) interface receives telemetry data using standard
+ATB protocol.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="atb-protocol-specifications"><a class="anchor" href="#atb-protocol-specifications"></a><a class="link" href="#atb-protocol-specifications">3.6. ATB Protocol Specifications</a></h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Data Width</strong>: 8 bits per beat</p>
+</li>
+<li>
+<p><strong>ID Width</strong>: 7 bits; the receiver ignores <code>atid_i</code></p>
+</li>
+<li>
+<p><strong>Flow Control</strong>: Valid/ready handshaking for reliable data transfer</p>
+</li>
+<li>
+<p><strong>Flush Support</strong>: Bidirectional flush signaling for stream management</p>
+</li>
+<li>
+<p><strong>Back-pressure</strong>: Component can assert <code>atready_o</code> low to apply
+back-pressure</p>
+</li>
+<li>
+<p><strong>Latency</strong>: Zero-cycle latency when ready, immediate acceptance when
+<code>atready_o</code> is high</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="interrupt-interface"><a class="anchor" href="#interrupt-interface"></a><a class="link" href="#interrupt-interface">3.7. Interrupt Interface</a></h3>
+<div class="paragraph">
+<p>The interrupt interface provides a single interrupt output for event
+notification.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="interrupt-specifications"><a class="anchor" href="#interrupt-specifications"></a><a class="link" href="#interrupt-specifications">3.8. Interrupt Specifications</a></h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Polarity</strong>: Active high (asserted when high)</p>
+</li>
+<li>
+<p><strong>Duration</strong>: Level-sensitive, remains asserted until cleared</p>
+</li>
+<li>
+<p><strong>Sources</strong>: Buffer threshold and error condition interrupts</p>
+</li>
+<li>
+<p><strong>Clearing</strong>: <code>MISSING_LAST</code> is write-one-to-clear. The read-only
+<code>BUFFER_THRESHOLD</code> source remains asserted while occupancy exceeds the configured
+threshold or its test bit is set; it cannot be cleared by writing status.</p>
+</li>
+<li>
+<p><strong>Latency</strong>: Interrupt assertion within 2 clock cycles of triggering
+condition</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="subsystem-wrapper"><a class="anchor" href="#subsystem-wrapper"></a><a class="link" href="#subsystem-wrapper">3.9. Subsystem Wrapper</a></h3>
+<div class="paragraph">
+<p><code>telemetry_receiver_wrap</code> defaults to three receivers. It configures their queue
+depth with <code>TELEMETRY_RECEIVER_BUFFER_DEPTH</code> (default 8) and counter counts with
+<code>TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE</code> (default 4 per receiver).
+Actual subsystem values and aperture assignments come from the integration.</p>
+</div>
+<div class="paragraph">
+<p>The wrapper receives ATB traffic on <code>clk_telemetry_i</code> / <code>rst_telemetry_ni</code> and
+crosses it into <code>clk_i</code> / <code>rst_ni</code> through an eight-entry asynchronous FIFO per
+receiver. Its external ready signal reflects crossing-FIFO capacity. This does
+not turn the core&#8217;s decoded-message queue into a lossless backpressured queue.
+The wrapper also contains flush-handshake synchronizers and returns a decode
+error for register addresses outside its configured receiver apertures.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="telemetry-receiver-memory-map"><a class="anchor" href="#telemetry-receiver-memory-map"></a><a class="link" href="#telemetry-receiver-memory-map">4. Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">4.1. Memory Map</a></h3>
+<span id="address-space-overview"></span>
+<div class="paragraph">
+<p>Each core occupies 256 bytes with 32-bit registers at four-byte offsets.
+Control, status, interrupt and message-header registers occupy <code>0x00</code>–<code>0x18</code>;
+32 counter registers occupy <code>0x80</code>–<code>0xFC</code>. The wrapper map places each receiver
+in its integration-defined aperture. Reset values and field access types are
+specified below; reset and flush storage behavior is described in Architecture.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">4.2. Detailed Register Map</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-telemetry_receiver">Telemetry Receiver Address Map</h2>
+<p>Configuration, status, and data-buffer registers for a single telemetry receiver channel.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>TELEMETRY_COUNTER[32]</strong>: 32 registers, base 0x80, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#telemetry_receiver-CTRL">CTRL</a></td><td>RW</td><td>Control Register</td></tr>
+<tr><td>0x4</td><td><a href="#telemetry_receiver-STATUS">STATUS</a></td><td>R</td><td>Status Register</td></tr>
+<tr><td>0x8</td><td><a href="#telemetry_receiver-INTR_STATUS">INTR_STATUS</a></td><td>RW</td><td>Interrupt Status Register</td></tr>
+<tr><td>0xC</td><td><a href="#telemetry_receiver-INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
+<tr><td>0x10</td><td><a href="#telemetry_receiver-INTR_TEST">INTR_TEST</a></td><td>RW</td><td>Interrupt Test Register</td></tr>
+<tr><td>0x14</td><td><a href="#telemetry_receiver-TELEMETRY_PROBE_ID">TELEMETRY_PROBE_ID</a></td><td>R</td><td>Telemetry Probe ID Register</td></tr>
+<tr><td>0x18</td><td><a href="#telemetry_receiver-TELEMETRY_COUNTER_VLDS">TELEMETRY_COUNTER_VLDS</a></td><td>R</td><td>Telemetry Counter Valid Bits Register</td></tr>
+<tr><td>0x80 - 0xFC</td><td><a href="#telemetry_receiver-TELEMETRY_COUNTER_32_">TELEMETRY_COUNTER[32]</a></td><td>R</td><td>Telemetry Counter Register</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="CTRL"></span><h3 id="telemetry_receiver-CTRL" data-register-alias="CTRL">CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>23:12</td><td>BUFFER_THRESHOLD</td><td>RW</td><td>0x0</td><td>Telemetry Message Buffer Threshold. The Telemetry Buffer Threshold Interrupt is<br>asserted when the number of entries in the buffer is greater than this value.<br>Only the low log2(queue depth)+1 bits are compared, so values alias modulo<br>twice the queue depth, and only values below the queue depth can assert the<br>interrupt.</td></tr>
+<tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>TELEMETRY_TX_FLUSH</td><td>RW</td><td>0x0</td><td>Telemetry Transmitter Flush. Writing `1` flushes all FIFOs in the telemetry<br>transmitter. The flushing is done via the ATB AF interface. This bit clears<br>itself after the flush completes.</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>TELEMETRY_RX_FLUSH</td><td>W 1P</td><td>0x0</td><td>Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write<br>pointer. Stored payload bytes are not cleared. In particular, a later short<br>message can retain trailing counter values and validity from an earlier<br>message. This operation does not erase storage.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUFFER_POP</td><td>W 1P</td><td>0x0</td><td>Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.<br>Writing `1` pops the buffer and thus updates the data in the<br>`TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`<br>registers.</td></tr>
+</table>
+<span id="STATUS"></span><h3 id="telemetry_receiver-STATUS" data-register-alias="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>BUFFER_FULL</td><td>R</td><td>0x0</td><td>Telemetry Message Buffer Full.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUFFER_EMPTY</td><td>R</td><td>0x1</td><td>Telemetry Message Buffer Empty.</td></tr>
+</table>
+<span id="INTR_STATUS"></span><h3 id="telemetry_receiver-INTR_STATUS" data-register-alias="INTR_STATUS">INTR_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>BUFFER_THRESHOLD</td><td>R</td><td>0x0</td><td>Telemetry Message Buffer Threshold Interrupt. Asserted when the number of<br>telemetry messages in the Telemetry Message Buffer is greater than<br>`CTRL.BUFFER_THRESHOLD`.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>MISSING_LAST</td><td>RW1C</td><td>0x0</td><td>Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not<br>received a Last Packet flag when the maximum number of packets a message can<br>consist of has been received.</td></tr>
+</table>
+<span id="INTR_ENABLE"></span><h3 id="telemetry_receiver-INTR_ENABLE" data-register-alias="INTR_ENABLE">INTR_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>BUFFER_THRESHOLD</td><td>RW</td><td>0x0</td><td>Telemetry Message Buffer Threshold Interrupt Enable.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>MISSING_LAST</td><td>RW</td><td>0x0</td><td>Last Packet Missing Interrupt Enable.</td></tr>
+</table>
+<span id="INTR_TEST"></span><h3 id="telemetry_receiver-INTR_TEST" data-register-alias="INTR_TEST">INTR_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>BUFFER_THRESHOLD</td><td>RW</td><td>0x0</td><td>Telemetry Message Buffer Threshold Interrupt Test. Writing `1` forces the<br>interrupt and writing `0` releases it.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>MISSING_LAST</td><td>W 1P</td><td>0x0</td><td>Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.</td></tr>
+</table>
+<span id="TELEMETRY_PROBE_ID"></span><h3 id="telemetry_receiver-TELEMETRY_PROBE_ID" data-register-alias="TELEMETRY_PROBE_ID">TELEMETRY_PROBE_ID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>PROBE_ID</td><td>R</td><td>0x0</td><td>Probe ID. Contains the Probe ID field of the telemetry message at the bottom of<br>the Telemetry Message Buffer.</td></tr>
+</table>
+<span id="TELEMETRY_COUNTER_VLDS"></span><h3 id="telemetry_receiver-TELEMETRY_COUNTER_VLDS" data-register-alias="TELEMETRY_COUNTER_VLDS">TELEMETRY_COUNTER_VLDS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>COUNTER_VLDS</td><td>R</td><td>0x0</td><td>Counter Valid Bits. Indicates which of the counter values in the telemetry<br>message at the bottom of the Telemetry Message Buffer are valid. Bit `i` is for<br>the `i`-th counter.</td></tr>
+</table>
+<span id="TELEMETRY_COUNTER_32_"></span><h3 id="telemetry_receiver-TELEMETRY_COUNTER_32_" data-register-alias="TELEMETRY_COUNTER_32_">TELEMETRY_COUNTER[32]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>COUNTER</td><td>R</td><td>0x0</td><td>Counter Value. Contains one of the 32 counter values in the telemetry message<br>at the bottom of the Telemetry Message Buffer.</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-telemetry_receiver_wrap">Telemetry Receiver Wrapper Address Map</h2>
+<p>Wrapper address map instantiating the telemetry receiver channels.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>telemetry_receiver[3].CTRL</strong>: 3 registers, base 0x0, stride 0x100</li>
+<li><strong>telemetry_receiver[3].STATUS</strong>: 3 registers, base 0x4, stride 0x100</li>
+<li><strong>telemetry_receiver[3].INTR_STATUS</strong>: 3 registers, base 0x8, stride 0x100</li>
+<li><strong>telemetry_receiver[3].INTR_ENABLE</strong>: 3 registers, base 0xC, stride 0x100</li>
+<li><strong>telemetry_receiver[3].INTR_TEST</strong>: 3 registers, base 0x10, stride 0x100</li>
+<li><strong>telemetry_receiver[3].TELEMETRY_PROBE_ID</strong>: 3 registers, base 0x14, stride 0x100</li>
+<li><strong>telemetry_receiver[3].TELEMETRY_COUNTER_VLDS</strong>: 3 registers, base 0x18, stride 0x100</li>
+<li><strong>telemetry_receiver[3].TELEMETRY_COUNTER[32]</strong>: 96 registers, base 0x80 (telemetry_receiver x3 stride 0x100, TELEMETRY_COUNTER x32 stride 0x4)</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x200</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_3_.CTRL">telemetry_receiver[3].CTRL</a></td><td>RW</td><td>Control Register</td></tr>
+<tr><td>0x4 - 0x204</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_3_.STATUS">telemetry_receiver[3].STATUS</a></td><td>R</td><td>Status Register</td></tr>
+<tr><td>0x8 - 0x208</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_3_.INTR_STATUS">telemetry_receiver[3].INTR_STATUS</a></td><td>RW</td><td>Interrupt Status Register</td></tr>
+<tr><td>0xC - 0x20C</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_3_.INTR_ENABLE">telemetry_receiver[3].INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
+<tr><td>0x10 - 0x210</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_3_.INTR_TEST">telemetry_receiver[3].INTR_TEST</a></td><td>RW</td><td>Interrupt Test Register</td></tr>
+<tr><td>0x14 - 0x214</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_3_.TELEMETRY_PROBE_ID">telemetry_receiver[3].TELEMETRY_PROBE_ID</a></td><td>R</td><td>Telemetry Probe ID Register</td></tr>
+<tr><td>0x18 - 0x218</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_3_.TELEMETRY_COUNTER_VLDS">telemetry_receiver[3].TELEMETRY_COUNTER_VLDS</a></td><td>R</td><td>Telemetry Counter Valid Bits Register</td></tr>
+<tr><td>0x80 - 0x2FC</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_3_.TELEMETRY_COUNTER_32_">telemetry_receiver[3].TELEMETRY_COUNTER[32]</a></td><td>R</td><td>Telemetry Counter Register</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="telemetry_receiver_3_.CTRL"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_3_.CTRL" data-register-alias="telemetry_receiver_3_.CTRL">telemetry_receiver[3].CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>23:12</td><td>BUFFER_THRESHOLD</td><td>RW</td><td>0x0</td><td>Telemetry Message Buffer Threshold. The Telemetry Buffer Threshold Interrupt is<br>asserted when the number of entries in the buffer is greater than this value.<br>Only the low log2(queue depth)+1 bits are compared, so values alias modulo<br>twice the queue depth, and only values below the queue depth can assert the<br>interrupt.</td></tr>
+<tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>TELEMETRY_TX_FLUSH</td><td>RW</td><td>0x0</td><td>Telemetry Transmitter Flush. Writing `1` flushes all FIFOs in the telemetry<br>transmitter. The flushing is done via the ATB AF interface. This bit clears<br>itself after the flush completes.</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>TELEMETRY_RX_FLUSH</td><td>W 1P</td><td>0x0</td><td>Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write<br>pointer. Stored payload bytes are not cleared. In particular, a later short<br>message can retain trailing counter values and validity from an earlier<br>message. This operation does not erase storage.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUFFER_POP</td><td>W 1P</td><td>0x0</td><td>Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.<br>Writing `1` pops the buffer and thus updates the data in the<br>`TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`<br>registers.</td></tr>
+</table>
+<span id="telemetry_receiver_3_.STATUS"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_3_.STATUS" data-register-alias="telemetry_receiver_3_.STATUS">telemetry_receiver[3].STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>BUFFER_FULL</td><td>R</td><td>0x0</td><td>Telemetry Message Buffer Full.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUFFER_EMPTY</td><td>R</td><td>0x1</td><td>Telemetry Message Buffer Empty.</td></tr>
+</table>
+<span id="telemetry_receiver_3_.INTR_STATUS"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_3_.INTR_STATUS" data-register-alias="telemetry_receiver_3_.INTR_STATUS">telemetry_receiver[3].INTR_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>BUFFER_THRESHOLD</td><td>R</td><td>0x0</td><td>Telemetry Message Buffer Threshold Interrupt. Asserted when the number of<br>telemetry messages in the Telemetry Message Buffer is greater than<br>`CTRL.BUFFER_THRESHOLD`.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>MISSING_LAST</td><td>RW1C</td><td>0x0</td><td>Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not<br>received a Last Packet flag when the maximum number of packets a message can<br>consist of has been received.</td></tr>
+</table>
+<span id="telemetry_receiver_3_.INTR_ENABLE"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_3_.INTR_ENABLE" data-register-alias="telemetry_receiver_3_.INTR_ENABLE">telemetry_receiver[3].INTR_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>BUFFER_THRESHOLD</td><td>RW</td><td>0x0</td><td>Telemetry Message Buffer Threshold Interrupt Enable.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>MISSING_LAST</td><td>RW</td><td>0x0</td><td>Last Packet Missing Interrupt Enable.</td></tr>
+</table>
+<span id="telemetry_receiver_3_.INTR_TEST"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_3_.INTR_TEST" data-register-alias="telemetry_receiver_3_.INTR_TEST">telemetry_receiver[3].INTR_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>BUFFER_THRESHOLD</td><td>RW</td><td>0x0</td><td>Telemetry Message Buffer Threshold Interrupt Test. Writing `1` forces the<br>interrupt and writing `0` releases it.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>MISSING_LAST</td><td>W 1P</td><td>0x0</td><td>Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.</td></tr>
+</table>
+<span id="telemetry_receiver_3_.TELEMETRY_PROBE_ID"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_3_.TELEMETRY_PROBE_ID" data-register-alias="telemetry_receiver_3_.TELEMETRY_PROBE_ID">telemetry_receiver[3].TELEMETRY_PROBE_ID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>PROBE_ID</td><td>R</td><td>0x0</td><td>Probe ID. Contains the Probe ID field of the telemetry message at the bottom of<br>the Telemetry Message Buffer.</td></tr>
+</table>
+<span id="telemetry_receiver_3_.TELEMETRY_COUNTER_VLDS"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_3_.TELEMETRY_COUNTER_VLDS" data-register-alias="telemetry_receiver_3_.TELEMETRY_COUNTER_VLDS">telemetry_receiver[3].TELEMETRY_COUNTER_VLDS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>COUNTER_VLDS</td><td>R</td><td>0x0</td><td>Counter Valid Bits. Indicates which of the counter values in the telemetry<br>message at the bottom of the Telemetry Message Buffer are valid. Bit `i` is for<br>the `i`-th counter.</td></tr>
+</table>
+<span id="telemetry_receiver_3_.TELEMETRY_COUNTER_32_"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_3_.TELEMETRY_COUNTER_32_" data-register-alias="telemetry_receiver_3_.TELEMETRY_COUNTER_32_">telemetry_receiver[3].TELEMETRY_COUNTER[32]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>COUNTER</td><td>R</td><td>0x0</td><td>Counter Value. Contains one of the 32 counter values in the telemetry message<br>at the bottom of the Telemetry Message Buffer.</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../../../_/js/register-sections.js"></script>
+<script src="../../../../../_/js/toc-collapse.js"></script>
+<script src="../../../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/version-menu.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
+<script async src="../../../../../_/js/vendor/highlight.js"></script>
+<script src="../../../../../_/js/vendor/lunr.js"></script>
+<script src="../../../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../../../.." data-snippet-length="100" data-stylesheet="../../../../../_/css/search.css"></script>
+<script async src="../../../../../search-index.js"></script>
+  </body>
+</html>

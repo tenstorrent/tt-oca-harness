@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Attack Countermeasures :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP architectural, debug, and DFT security protections.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-starting" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Getting Started and Contributing Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a user</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../dependencies.html">Dependencies</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../setup.html">Environment Setup</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../workflows.html">Workflows</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../guidelines.html">Guidelines</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a contributor</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../licensing.html">Licensing</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../contribution.html">Contributions</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../contribution.html#versioning">Versioning</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../defects.html">Defect Reporting</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../documentation.html">Documentation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../code_of_conduct.html">Code of Conduct</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Getting Started and Contributing Guide 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../index.html">Starting with OCAH</a></li>
+    <li><a href="attack_countermeasures.html">Attack Countermeasures</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Attack Countermeasures</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="attack-countermeasures" class="paragraph">
+<p>Countermeasures include:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Protection of BL0 boot ROM and subsequent secure boot via digital
+signature verification</p>
+</li>
+<li>
+<p>Glitch and error detection</p>
+<div class="ulist">
+<ul>
+<li>
+<p>SRAMs and other memory structures such as FIFOs and register files
+are protected by parity (byte-wise) or SECDED</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Temporal noise injection, masking, secret splitting and obfuscation on
+sensitive operations</p>
+</li>
+<li>
+<p>Transaction filtering and firewalling</p>
+</li>
+<li>
+<p>Functional and physical isolation of private data assets
+e.g. cryptographic keys</p>
+</li>
+<li>
+<p>Anti-replay facilities e.g. non-volatile counterj in OTP</p>
+</li>
+<li>
+<p>Obfuscate data stored in SRAM and OTP memories</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="debug-and-dft-security-considerations"><a class="anchor" href="#debug-and-dft-security-considerations"></a><a class="link" href="#debug-and-dft-security-considerations">1. Debug and DFT Security Considerations</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The debug facilities and DFT share the scan chain infrastructure for
+their respective tasks. This is a security hazard as certain secret
+values will be resident in the registers: tokens, secrets, cryptographic
+keys. Unless prevented, an attacker could halt the chip execution and
+extract the register state containing these secrets. This section
+describes the countermeasures we take to prevent this from happening.</p>
+</div>
+<div class="paragraph">
+<p>One debug feature is scandump which provides access to all internal
+register states. We must ensure that a certain subset of registers
+holding secrets are never dumped out in this mode.</p>
+</div>
+<div class="paragraph">
+<p>There are three scenarios of how registers are handled for DFT scan test
+and debug scandump:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Full DFT and Debug access</p>
+</li>
+<li>
+<p>DFT access but no Debug access</p>
+</li>
+<li>
+<p>No DFT and no Debug access</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Consequently there will be two discrete scan chains to handle the
+registers in groups 1 and 2. The register instances (or module
+instances) will be labelled as belonging to one of the three groups and
+the DFT scan insertion tool will group the registers into the respective
+scan chains which will be managed for security in the TAP controller.</p>
+</div>
+<div class="paragraph">
+<p>These three groups correspond to the SEP asset classes defined
+authoritatively in the Lifecycle Controller chapter (<em>Asset and Scan-Chain
+Protection</em>): group 1 = Class 3 (general), group 2 = Class 2 (crypto / KM
+secret-bearing, plus the fuse program path), group 3 = Class 1 (secrets and
+integrity-critical control fields).</p>
+</div>
+<div class="sect2">
+<h3 id="debug-and-scan-dump"><a class="anchor" href="#debug-and-scan-dump"></a><a class="link" href="#debug-and-scan-dump">1.1. Debug and Scan Dump</a></h3>
+<div class="paragraph">
+<p>Debug mode is enabled when in-field debug is granted, via demotion (DEMOTE_1 /
+DEMOTE_2) or an RMA debug state (RMA_SIP / RMA_CHIPLET). In
+this mode, the user has near full control and observability of the chip
+state, but we must enforce security restrictions.</p>
+</div>
+<div class="paragraph">
+<p><strong>General logic (Class 3)</strong> scan dump is gated by the <code>*_DBG</code> feature-control
+bits (sourced from the OTP DIS vectors; <code>1&#8217;b0</code> = enabled, <code>1&#8217;b1</code> = disabled,
+irreversible) and the LC state&#8201;&#8212;&#8201;a scope&#8217;s general logic is dumpable only
+when its local gate (<code>SEP_DBG</code> / <code>CHIPLET_DBG</code>), the <code>SIP_DBG</code> debug-access
+path into the chiplet, and the LC state permit it.</p>
+</div>
+<div class="paragraph">
+<p><strong>Secret-bearing logic (Class 2)</strong>&#8201;&#8212;&#8201;crypto-engine key / round-key storage and
+the Key Manager key vault / shared key storage&#8201;&#8212;&#8201;is placed on a <strong>dedicated
+secure scan chain</strong> so DFT keeps coverage, but is <strong>never scan-dumpable</strong>, for any
+owner or LC state. The <code><strong>_DBG</code> bits decide whether that chain is reachable, as
+they do for any chain; what makes it undumpable is the command class. The DFT
+controller admits a *test</strong> command on it only when <code>secure_tm = 1</code>, admits
+nothing at <code>secure_tm = 0</code>, and never admits a <strong>dump</strong> command at all. Under
+<code>secure_tm = 1</code> the secret sources (UID / <code>CLASS_KEY</code>) are disconnected from
+these consumers, so a permitted test shift moves no real secret.</p>
+</div>
+<div class="paragraph">
+<p><strong>Secrets and integrity-critical fields (Class 1)</strong> are excluded from every scan
+chain (never scannable):</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Class 1a (confidentiality): UIDs, <code>CLASS_KEY</code>, token-plaintext input
+registers (<code>*_TOKEN_I</code>), raw fuse read-back data.</p>
+</li>
+<li>
+<p>Class 1b (integrity): <code>LOCKS</code>/<code>LOCKS_SPARE</code>, <code>LC_STATE</code>, <code>SIP_DIS</code>, <code>SYS_DIS</code>,
+<code>*_TOKEN_DIGEST</code> shadow registers.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="class-2-asset-manifest"><a class="anchor" href="#class-2-asset-manifest"></a><a class="link" href="#class-2-asset-manifest">1.2. Class 2 Asset Manifest and Naming</a></h3>
+<div class="paragraph">
+<p>The authoritative class definitions, scan-chain policy, and gating rules are
+in the Lifecycle Controller chapter (<em>Asset and Scan-Chain Protection</em>); Key
+Manager specifics are in the Key Manager chapter (<em>Scan and Scan-Dump
+Protection</em>). This section records the implementation manifest. A complete
+module instance is classified as Class <strong>2a</strong> when it is the Key Manager, a
+device-secret-consuming cryptographic engine, an entropy engine, or sequential
+distribution logic that retains key, seed, random, digest-working, or round-key
+state. Classifying complete instances deliberately includes their control
+flops and avoids fragile per-register marking.</p>
+</div>
+<div class="paragraph">
+<p>The current SEP implementation has exactly 11 Class 2a RTL scan roots:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>u_sep_crypto.u_hmac_wrapper_s3c_scan</code></p>
+</li>
+<li>
+<p><code>u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan</code></p>
+</li>
+<li>
+<p><code>u_sep_crypto.u_aes_wrapper_s3c_scan</code></p>
+</li>
+<li>
+<p><code>u_sep_crypto.u_kmac_wrapper_s3c_scan</code></p>
+</li>
+<li>
+<p><code>u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan</code></p>
+</li>
+<li>
+<p><code>u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan</code></p>
+</li>
+<li>
+<p><code>u_sep_crypto.u_sep_trng.u_drbg_s3c_scan</code></p>
+</li>
+<li>
+<p><code>u_sep_crypto.u_axis_edn_crypto_s3c_scan</code></p>
+</li>
+<li>
+<p><code>u_sep_crypto.u_axis_edn_pool_s3c_scan</code></p>
+</li>
+<li>
+<p><code>u_sep_crypto.u_key_manager_s3c_scan</code></p>
+</li>
+<li>
+<p><code>u_trng_wrapper_s3c_scan</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The <code>_s3c_scan</code> suffix is reserved for Class 2 instance and generate-scope
+names. It is not a module-name or per-flop suffix. A nested <code>_n0_scan</code> name
+remains Class 1 and takes precedence over an enclosing <code>_s3c_scan</code> hierarchy.</p>
+</div>
+<div class="paragraph">
+<p>Three writable companion SRAMs are also Class 2a assets:
+<code>u_km_sram</code>, <code>u_otbn_imem_sram</code>, and <code>u_otbn_dmem_sram</code>. Their macro instance
+names remain unchanged because <code>_s3c_scan</code> identifies RTL scan hierarchies;
+the owning memory-DFT/MBIST policy must provide the same never-dump outcome.
+<code>u_km_rom</code> is explicitly excluded because immutable executable contents
+cannot retain runtime secrets. The vendor TRNG core keeps its delivered DFT
+view beneath <code>u_trng_wrapper_s3c_scan</code>.</p>
+</div>
+<div class="paragraph">
+<p>Class <strong>2b</strong> covers the fuse programming <strong>control</strong> and <strong>status</strong> MMRs of the SEP
+fuse controller. These hold no secret; they are never-dumpable because scan
+shifting drives arbitrary transient values through them, and a program-control
+register reached during an ordinary dump could burn fuses (see the Lifecycle
+Controller chapter, <em>Asset Classes</em>). Class 2b shares the secure chain and the
+command-class rule with Class 2a, so the <code>_s3c_scan</code> suffix applies to it as
+well. Unlike Class 2a it is <strong>not</strong> a whole-instance classification: the remainder
+of the fuse controller stays Class 3, so the implementation must identify the
+program-path scan roots and name them accordingly.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="secure-test-mode-secure_tm-secure-test-mode-secure_tm"><a class="anchor" href="#secure-test-mode-secure_tm-secure-test-mode-secure_tm"></a><a class="link" href="#secure-test-mode-secure_tm-secure-test-mode-secure_tm">1.3. Secure Test Mode (SECURE_TM)</a></h3>
+<div class="paragraph">
+<p>We assert a GPIO pin strap to enable secure test mode. This generates
+the SECURE_TM signal which is consumed by</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The DFT controller, which admits a <strong>test</strong> command on the Class 2 secure chain only while SECURE_TM is asserted. SECURE_TM does not enable scan test and authorizes nothing; it is the condition under which that chain will accept a test command at all.</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Shadow registers of LOCKS/LOCKS_SPARE, LC_STATE, SIP_DIS, and SYS_DIS are non-scannable registers</p>
+</li>
+<li>
+<p>Any downstream registers in the path from these registers to the feature control outputs or the fuse write-enable signals are also non-scannable, as are the SECURE_TM latch and the command-admission logic that consumes it</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Dedicated test registers may be inserted in the path while in SECURE_TM mode to enable testing of downstream logic</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>During scan test (<code>secure_tm = 1</code>) the secret-source outputs (UID / <code>CLASS_KEY</code>) are disconnected from the Class 2 consumers, so no real secret is shifted. On the Class 2 secure chain the DFT controller admits a test command only at <code>secure_tm = 1</code>, admits no command at <code>secure_tm = 0</code>, and never admits a dump command (never dumpable). See the Lifecycle Controller chapter, <em>`secure_tm` and the Secure Scan Chain</em>.</p>
+</li>
+<li>
+<p>Disable writing to any OTP fuse state to prevent updates.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>OTP controller</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Disable <em>writing</em> of shadow registers: LOCKS/LOCKS_SPARE, LC_STATE, SIP_DIS and SYS_DIS</p>
+</li>
+<li>
+<p>Other shadow register fields may optionally also have write disabled</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

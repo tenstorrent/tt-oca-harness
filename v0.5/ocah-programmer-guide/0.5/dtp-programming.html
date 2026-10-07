@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-programmer-guide" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Programmer&#x27;s Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="index.html">Programmer&#8217;s Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#smc-programming-guide">SMC Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#sep-programming-guide">SEP Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#sep-smc-common-blocks-communication">SEP &amp; SMC Common Blocks &amp; Communication</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#dtp-programming-guide">DTP Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#aou-software-operation-guide">AoU Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="index.html#smc-boot-rom">A. SMC Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="index.html#sep-boot-rom">B. SEP Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="index.html#km-application-rom">C. Key Manager Application ROM</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Programmer&#x27;s Guide 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect1">
+<h2 id="dtp-programming-guide"><a class="anchor" href="#dtp-programming-guide"></a><a class="link" href="#dtp-programming-guide">1. DTP Programming Guide</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The Debug and Test Ports (DTP) are programmed from two sides: firmware or a
+debugger configures the cross-trigger network through its CSR window, and an
+external debugger drives the JTAG test access ports.</p>
+</div>
+<div class="sect2">
+<h3 id="dtp-cross-trigger"><a class="anchor" href="#dtp-cross-trigger"></a><a class="link" href="#dtp-cross-trigger">1.1. Cross-Trigger Network</a></h3>
+<div class="paragraph">
+<p>Cross-trigger configuration is static. Software programs every external CTP
+from the SiP cross-trigger topology once per boot, then opens the CTM routes
+that use those ports, and leaves both unchanged for the rest of the session.
+Register offsets are relative to the CTN base address; the
+<a href="../../ocah-docs/0.5/ip/cross_trigger_network/doc/index.html#ctn-address-allocation-table" class="xref page">CTN address allocation table</a>
+lists the CTM and CTP windows. Firmware and an external debugger share this
+window, and whichever of them programs cross triggers follows the sequence
+below.</p>
+</div>
+<div class="sect3">
+<h4 id="dtp-ctn-requirements"><a class="anchor" href="#dtp-ctn-requirements"></a><a class="link" href="#dtp-ctn-requirements">1.1.1. Requirements</a></h4>
+<div class="ulist">
+<ul>
+<li>
+<p>Both ends of a CTP link use the same protocol and polarity, and the board
+determines both:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>A shared wire-OR line with pull-ups uses <code>MODE</code> = 0 and <code>INVERT</code> = 0; with
+pull-downs it uses <code>MODE</code> = 0 and <code>INVERT</code> = 1.</p>
+</li>
+<li>
+<p>A point-to-point link with active-high signaling uses <code>MODE</code> = 1 and
+<code>INVERT</code> = 0; with active-low signaling it uses <code>MODE</code> = 1 and <code>INVERT</code> = 1.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>The configuration stays fixed for the session. Change a port whose routes
+are already open only through the sequence in
+<a href="#dtp-ctn-reconfigure">Changing a Port&#8217;s Configuration</a>.</p>
+</li>
+<li>
+<p>After reset every CTP is in wire-OR mode with <code>INVERT</code> = 0, and every CTM
+output is disabled because each <code>CT_DST_SELECT</code> resets to zero. Until
+software writes <code>CONFIG</code>, a CTP drives neither <code>CT_Req_out</code> nor
+<code>CT_Ack_out</code>, so the board pulls set the level the far end sees on those
+lines. Choose pulls that the far end reads as deasserted.</p>
+</li>
+<li>
+<p>Internal CTPs have no registers. The <code>INT_CT_MODE</code> parameter fixes their
+protocol.</p>
+</li>
+<li>
+<p>The CTM configuration across the SiP is free of loops. A wire-OR CTP
+receives its own assertion of the shared wire, so a route from a wire-OR
+CTP back to the same CTP is a loop.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="dtp-ctn-init"><a class="anchor" href="#dtp-ctn-init"></a><a class="link" href="#dtp-ctn-init">1.1.2. Initialization Sequence</a></h4>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>For each external CTP <code>i</code> that the SiP uses:</p>
+<div class="olist loweralpha">
+<ol class="loweralpha" type="a">
+<li>
+<p>For a wire-OR port, write <code>STRETCH_MULT</code> with the pulse width the shared
+wire requires, minus one.</p>
+</li>
+<li>
+<p>Write <code>CONFIG</code> with <code>MODE</code> and <code>INVERT</code> for the board in a single write,
+with <code>RESET</code> = 0.</p>
+</li>
+</ol>
+</div>
+</li>
+<li>
+<p>For each CTM output <code>n</code> that carries triggers, write
+  <code>CT_SRC[n].CONFIG_0.CT_DST_SELECT</code>. Setting bit <code>m</code> forwards the triggers
+  that port <code>m</code> receives to port <code>n</code>. The
+<a href="../../ocah-docs/0.5/ip/cross_trigger_network/doc/index.html#ctn-matrix-port-indices-table" class="xref page">CTM port index table</a>
+maps port indices to external and internal CTPs.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The order matters. A CTM route delivers triggers to a CTP from the moment it
+is written. A CTP still in its reset-default wire-OR mode transmits a trigger
+by driving <code>CT_Req_out</code> to the asserted wire-OR level, which is low with
+<code>INVERT</code> = 0. A point-to-point far end built for active-low signaling reads
+that level as a request. Writing <code>MODE</code> and <code>INVERT</code> together keeps a port from
+running, even briefly, with one field set for the board and the other still
+at its reset value.</p>
+</div>
+<div class="paragraph">
+<p>The following example configures external CTP 0 for an active-low
+point-to-point link and external CTP 1 for a wire-OR line with pull-ups, then
+routes triggers between them.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">#define CTP_REG(i, reg)  (ctn_base + CROSS_TRIGGER_NETWORK_CTP_BASE_ADDR(i) + (reg))
+#define CTM_ROUTE(n)     (ctn_base + CROSS_TRIGGER_NETWORK_CTM_BASE_ADDR + \
+                          CROSS_TRIGGER_MATRIX_CT_SRC_CONFIG_0_BASE_ADDR(n))
+
+#define CONFIG_MODE_P2P  (1u &lt;&lt; 0)
+#define CONFIG_INVERT    (1u &lt;&lt; 1)
+#define CONFIG_RESET     (1u &lt;&lt; 2)
+
+// Configure every port before opening any route.
+write32(CTP_REG(0, CROSS_TRIGGER_PORT_CONFIG_BASE_ADDR), CONFIG_MODE_P2P | CONFIG_INVERT);
+write32(CTP_REG(1, CROSS_TRIGGER_PORT_STRETCH_MULT_BASE_ADDR), 15); // 16-cycle pulses
+write32(CTP_REG(1, CROSS_TRIGGER_PORT_CONFIG_BASE_ADDR), 0);
+
+// Triggers received on port 1 go out on port 0, and the reverse.
+write32(CTM_ROUTE(0), 1u &lt;&lt; 1);
+write32(CTM_ROUTE(1), 1u &lt;&lt; 0);</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="dtp-ctn-sip-example"><a class="anchor" href="#dtp-ctn-sip-example"></a><a class="link" href="#dtp-ctn-sip-example">1.1.3. Example SiP Routing</a></h4>
+<div class="paragraph">
+<p>The TRM&#8217;s
+<a href="../../ocah-docs/0.5/ip/cross_trigger_network/doc/index.html#sip-cross-trigger-topology-figure" class="xref page">example SiP cross-trigger topology</a>
+links six chiplets: Chiplets 0, 1 and 2 share a wire-OR line, and
+point-to-point pairs link Chiplet 0 with Chiplets 3 and 4, and Chiplet 3 with
+Chiplet 5. <a href="#dtp-ctn-sip-example-table">CTM programming for the example SiP</a> lists the CTM routing that each
+chiplet programs for that topology. No route leads from a CTP back to itself.</p>
+</div>
+<table id="dtp-ctn-sip-example-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. CTM programming for the example SiP</caption>
+<colgroup>
+<col style="width: 16%;">
+<col style="width: 84%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Chiplet</th>
+<th class="tableblock halign-left valign-top">CTM forwarding</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">From Chiplets 1 and 2 through the wire-OR CTP to the local CLAs and Chiplets 3 and 4.<br>
+From Chiplet 3 to the local CLAs, the wire-OR CTP and Chiplet 4.<br>
+From Chiplet 4 to the local CLAs, the wire-OR CTP and Chiplet 3.<br>
+From the local CLAs to the wire-OR CTP and Chiplets 3 and 4.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">From Chiplets 0 and 2 through the wire-OR CTP to the local CLAs.<br>
+From the local CLAs to the wire-OR CTP.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">From Chiplets 0 and 1 through the wire-OR CTP to the local CLAs.<br>
+From the local CLAs to the wire-OR CTP.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">From Chiplet 0 to the local CLAs and Chiplet 5.<br>
+From Chiplet 5 to the local CLAs and Chiplet 0.<br>
+From the local CLAs to Chiplets 0 and 5.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">From Chiplet 0 to the local CLAs.<br>
+From the local CLAs to Chiplet 0.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">From Chiplet 3 to the local CLAs.<br>
+From the local CLAs to Chiplet 3.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="dtp-ctn-reconfigure"><a class="anchor" href="#dtp-ctn-reconfigure"></a><a class="link" href="#dtp-ctn-reconfigure">1.1.4. Changing a Port&#8217;s Configuration</a></h4>
+<div class="paragraph">
+<p>Changing <code>CONFIG</code> after routes are open is discouraged. When a link must
+change protocol or polarity, for example after both chiplets agree on a new
+topology, reconfigure port <code>p</code> as shown below. A poll that times out means
+the point-to-point far end never acknowledged; recover the port as described in
+<a href="#dtp-ctn-deadlock">Handshake Deadlock Recovery</a>.</p>
+</div>
+<div class="imageblock text-center kroki">
+<div class="content">
+<img src="_images/ocah-ctn-reconfigure-07fa03403e9240284b5504a086bae4e09c706477.svg" alt="Changing a CTP&#8217;s configuration." width="60%">
+</div>
+<div class="title">Figure 1. Changing a CTP&#8217;s configuration.</div>
+</div>
+<div class="paragraph">
+<p>The CTP holds its point-to-point handshake idle while wire-OR mode is
+selected. After point-to-point mode is selected, the handshake ignores
+<code>CT_Req_in</code> and <code>CT_Ack_in</code> until their synchronized levels are valid.
+Closing the routes first keeps triggers from being sent or forwarded while
+the two ends of the link disagree.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="dtp-ctn-deadlock"><a class="anchor" href="#dtp-ctn-deadlock"></a><a class="link" href="#dtp-ctn-deadlock">1.1.5. Handshake Deadlock Recovery</a></h4>
+<div class="paragraph">
+<p>A point-to-point sender waits for <code>CT_Ack_in</code> without a timeout. If the far
+end stops responding, <code>STATUS.REQ_OUT</code> and <code>STATUS.BUSY</code> stay 1, and the port
+transmits no further triggers.</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Write <code>CONFIG</code> with <code>RESET</code> = 1, keeping <code>MODE</code> and <code>INVERT</code> unchanged.
+<code>CT_Req_out</code> deasserts, and the port discards triggers delivered to it
+while <code>RESET</code> is set.</p>
+</li>
+<li>
+<p>Write <code>CONFIG</code> with <code>RESET</code> = 0.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p><code>RESET</code> does not affect the receiving side. A far end that holds <code>CT_Req_in</code>
+asserted keeps <code>STATUS.BUSY</code> at 1 until it releases the request.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="dtp-debug-host-procedures"><a class="anchor" href="#dtp-debug-host-procedures"></a><a class="link" href="#dtp-debug-host-procedures">1.2. Debug Host Procedures</a></h3>
+<div class="paragraph">
+<p>These procedures are performed by an external debugger through the chiplet&#8217;s
+JTAG port. An IR scan loads an instruction with the IR-Scan sequence; a DR scan
+shifts the selected test data register (TDR) with the DR-Scan sequence, least
+significant bit first. The TRM defines every instruction and TDR field.</p>
+</div>
+<div class="sect3">
+<h4 id="dtp-ptap-tdr-access"><a class="anchor" href="#dtp-ptap-tdr-access"></a><a class="link" href="#dtp-ptap-tdr-access">1.2.1. Primary TAP Registers</a></h4>
+<div class="paragraph">
+<p>To read or write a primary TAP TDR:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Shift its instruction into the instruction register with an IR scan.</p>
+</li>
+<li>
+<p>Shift the TDR with a DR scan, starting with the least significant bit.</p>
+</li>
+<li>
+<p>Read the TDR contents shifted out on TDO.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The TDRs differ in what the shifted-in bits do:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>IDCODE</strong> and <strong>JTAG_CAPS</strong> are read-only. Shift in any pattern; the bits are
+ignored. Read JTAG_CAPS to discover which instructions and ports an
+instance enables before using them.</p>
+</li>
+<li>
+<p><strong>DEBUG_CONTROL</strong> captures the bits shifted into its read/write fields and
+ignores those shifted into its read-only fields.</p>
+</li>
+<li>
+<p><strong>Boundary scan</strong> instructions that select the boundary-scan registers shift
+their contents out on TDO. An instruction disabled in the instance behaves as
+BYPASS.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The
+<a href="../../ocah-docs/0.5/ip/jtag_ptap/doc/index.html#ptap-debug-control-fields-table" class="xref page">DEBUG_CONTROL fields table</a>
+and the
+<a href="../../ocah-docs/0.5/ip/jtag_ptap/doc/index.html#ptap-jtag-caps-fields-table" class="xref page">JTAG_CAPS fields table</a>
+define the fields.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="dtp-runbist"><a class="anchor" href="#dtp-runbist"></a><a class="link" href="#dtp-runbist">1.2.2. Running BIST</a></h4>
+<div class="paragraph">
+<p>The PTAP adds no scan cell of its own to the RUNBIST path, so the attached
+iJTAG network defines the length and contents of the RUNBIST DR.</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Shift RUNBIST into the instruction register with an IR scan.</p>
+</li>
+<li>
+<p>Shift the configuration vector that the attached iJTAG network defines for
+reaching the BIST TDR with a DR scan. A hierarchical network needs one DR scan
+for each level of Segment Insertion Bits (SIBs) opened on the way.</p>
+</li>
+<li>
+<p>Shift the BIST TDR contents, together with the bits of every SIB and register
+still on the scan path, with a DR scan.</p>
+</li>
+<li>
+<p>Read the captured contents of the same scan path on TDO.</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect3">
+<h4 id="dtp-ijtag-access"><a class="anchor" href="#dtp-ijtag-access"></a><a class="link" href="#dtp-ijtag-access">1.2.3. iJTAG Segment Access</a></h4>
+<div class="paragraph">
+<p>The JTAG Interface Unit&#8217;s iJTAG network starts with three one-bit SIBs. With
+every SIB closed the DR is three bits long: bit 0 (nearest TDO, shifted in
+first) is the DFD SIB, bit 1 the DFT Non-Secure SIB and bit 2 the DFT Secure
+SIB. A SIB whose debug-disable field is set stays closed and captures 0.</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Shift SELECT_IJTAG, or RUNBIST to run BIST, into the instruction register
+with an IR scan.</p>
+</li>
+<li>
+<p>Open the target SIB with a three-bit DR scan: <code>3&#8217;b100</code> for DFT Secure,
+<code>3&#8217;b010</code> for DFT Non-Secure or <code>3&#8217;b001</code> for DFD. The target SIB&#8217;s
+debug-disable field must be clear.</p>
+</li>
+<li>
+<p>Shift the lengthened DR with the target SIB&#8217;s bit held at 1. With the DFT
+Non-Secure SIB open and an N-bit segment, the DR is N + 3 bits long: bit 0 is
+the DFD SIB, bits N to 1 are the segment with the bit nearest its scan output
+at bit 1, bit N + 1 is the DFT Non-Secure SIB and bit N + 2 is the DFT Secure
+SIB. The network attached to each segment defines its contents and length.</p>
+</li>
+<li>
+<p>Read the captured contents of the same scan path on TDO.</p>
+</li>
+<li>
+<p>Close the SIB by shifting the same DR with the target SIB&#8217;s bit at 0.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The
+<a href="../../ocah-docs/0.5/ip/jtag_intf_unit/doc/index.html#jiu-ijtag-network" class="xref page">iJTAG network description</a>
+gives the SIB bit map and segment ports.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="dtp-ic-reset-overrides"><a class="anchor" href="#dtp-ic-reset-overrides"></a><a class="link" href="#dtp-ic-reset-overrides">1.2.4. IC_RESET Overrides</a></h4>
+<div class="paragraph">
+<p>Each IC_RESET port has an active-low <code>reset_control</code> value and a <code>reset_enable</code>
+select that is also active low: writing 0 hands the port to <code>reset_control</code>.
+Consumers select between the functional reset and <code>reset_control</code> with a
+hazard-free multiplexer, which holds its output only while the select moves
+alone. To assert an override:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Shift IC_RESET into the instruction register with an IR scan.</p>
+</li>
+<li>
+<p>Write the port&#8217;s <code>reset_control</code> with a DR scan, leaving <code>reset_enable</code> at 1.</p>
+</li>
+<li>
+<p>Clear <code>reset_enable</code> in a second DR scan, so that its Update-DR moves only the
+select.</p>
+</li>
+</ol>
+</div>
+<div class="imageblock text-center kroki">
+<div class="content">
+<img src="_images/ocah-dtp-ic-reset-override-2c76612fa73cd01ca54dbe13f7309b15edf0dde4.svg" alt="Asserting an IC_RESET override." width="90%">
+</div>
+<div class="title">Figure 2. Asserting an IC_RESET override.</div>
+</div>
+<div class="paragraph">
+<p>Changing both in one Update-DR can pulse a reset on a port that neither source
+is resetting. Write <code>reset_hold</code> to 0 to keep the override asserted across
+Test-Logic-Reset; only TRST clears <code>reset_hold</code> itself. The
+<a href="../../ocah-docs/0.5/dtp/clk_rst.html#dtp-ic-reset-overrides" class="xref page">IC_RESET override description</a>
+gives the TDR slice order.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="dtp-sep-reset-vector"><a class="anchor" href="#dtp-sep-reset-vector"></a><a class="link" href="#dtp-sep-reset-vector">1.2.5. SEP Reset Vector Redirect</a></h4>
+<div class="paragraph">
+<p>The SEP CPU reset vector is held in a TDR of the EL2 debug TAP, reached through
+the SEP Core Debug STAP. To start the SEP CPU from a memory other than the Boot
+ROM for bring-up or failure analysis:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Hold the SEP CPU in reset, for example with the SEP main-reset IC_RESET
+override (<a href="#dtp-ic-reset-overrides">IC_RESET Overrides</a>).</p>
+</li>
+<li>
+<p>Select the reset-vector TDR with JTAG instruction opcode <code>0x18</code> and shift in
+the alternate address. The TDR stores address bits [31:1]; bit 0 is zero.</p>
+</li>
+<li>
+<p>Release the reset.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The value persists until it is rewritten or the TAP is reset (TRST or
+Test-Logic-Reset); CPU reset alone does not restore the Boot ROM default.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="dtp-smc-cmderr"><a class="anchor" href="#dtp-smc-cmderr"></a><a class="link" href="#dtp-smc-cmderr">1.2.6. SMC Debug Module Abstract Command Errors</a></h4>
+<div class="paragraph">
+<p>The SMC Debug Module departs from the RISC-V External Debug Support
+specification: a <code>command</code> write while <code>abstractcs.cmderr</code> is nonzero replaces
+the stored command, and no abstract command executes until <code>cmderr</code> is cleared.
+A debugger therefore:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Reads <code>abstractcs</code> to capture the error code of a failed command before it
+writes <code>command</code> again.</p>
+</li>
+<li>
+<p>Clears <code>cmderr</code> by writing 1s to the field and confirms that it reads 0 before
+issuing the next command.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The
+<a href="../../ocah-docs/0.5/smc/cpu.html#smc-debug-command-cmderr" class="xref page">SMC Debug Module description</a>
+gives the full write behavior.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/register-sections.js"></script>
+<script src="../../_/js/toc-collapse.js"></script>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script src="../../_/js/version-menu.js"></script>
+<script src="../../_/js/vendor/viewer.min.js"></script>
+<script src="../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>

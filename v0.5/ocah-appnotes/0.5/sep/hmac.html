@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>HMAC-SHA2 :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP HMAC-SHA2 integration, host interface, and Key Manager key delivery.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-appnotes" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Application Notes</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Application Notes 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component is-current">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../index.html">Application Notes</a></li>
+    <li><a href="hmac.html">HMAC-SHA2</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">HMAC-SHA2</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="hmac-sha2" class="paragraph">
+<p>The HMAC component is based on the
+<a href="https://opentitan.org/book/hw/ip/hmac/index.html">OpenTitan HMAC</a> design.</p>
+</div>
+<div id="sep-hmac-reference-diagram" class="imageblock">
+<div class="content">
+<img src="_images/opentitan_hmac.svg" alt="OpenTitan HMAC core reference architecture" width="100%">
+</div>
+<div class="title">Figure 1. OpenTitan HMAC core reference architecture</div>
+</div>
+<div class="paragraph">
+<p><a href="#sep-hmac-reference-diagram">Figure 1</a> shows the upstream core. The OCAH bus, key-delivery, and entropy
+connections are described in the integration details below.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="och-modifications-4"><a class="anchor" href="#och-modifications-4"></a><a class="link" href="#och-modifications-4">1. OCAH Modifications</a></h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p>AXI4-lite key bus slave interface replaces side loading interface</p>
+</li>
+<li>
+<p>AXI4-lite control/status bus slave interface</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The crypto interconnect narrows HMAC&#8217;s host path from 64-bit AXI to 32-bit AXI,
+converts and isolates it as AXI-Lite, then <code>hmac_wrapper</code> bridges it to TL-UL
+for the <code>tt_hmac</code> core. The address path subtracts the HMAC base address and
+masks to a 13-bit window (8 KB), accommodating both the register space and the
+message FIFO window at offset <code>0x1000</code>. HMAC exposes a single fatal
+alert channel (index <code>[0]</code> in <a href="crypto.html#sep-crypto-alert-policy" class="xref page">OpenTitan Alert Termination</a>), three interrupts
+(<code>done</code>, <code>fifo_empty</code>, <code>err</code>), and an <code>idle_o</code> status output. Unlike the other
+crypto wrappers, HMAC has no EDN connection.</p>
+</div>
+<div class="paragraph">
+<p>The Key Manager delivers a 256-bit HMAC key as eight words per share, in the
+format given in <a href="crypto.html#km-key-delivery" class="xref page">Key Manager Key Delivery</a>. HMAC has no select bit: the delivered key
+is used in preference to the engine&#8217;s software key registers whenever
+<code>KEY_CTRL.KEY_VALID</code> is set.</p>
+</div>
+<div class="paragraph">
+<p>The delivered key is most-significant-bit justified in the engine&#8217;s 1024-bit
+key field, and the engine takes its key length from <code>CFG.key_length</code>, which the
+delivery path does not write; only the 256-bit encoding matches the delivered
+key. An unset or unsupported length
+raises a configuration error when hashing starts. A supported length that
+disagrees with the delivered key does not raise an error: the engine takes key
+material from the top of the 1024-bit field, so the padding below the delivered
+key is mixed into the key and the resulting digest is wrong but repeatable.</p>
+</div>
+<div class="paragraph">
+<p>Consult the
+<a href="https://opentitan.org/book/hw/ip/hmac/index.html">OpenTitan HMAC
+documentation</a> for the authoritative core functionality of the IP.
+The Programmer&#8217;s Guide gives the
+<a href="../../../ocah-programmer-guide/0.5/index.html#sep-hmac" class="xref page">programming guidance</a>
+for this block.
+The
+register map follows below.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-map-and-register-reference"><a class="anchor" href="#memory-map-and-register-reference"></a><a class="link" href="#memory-map-and-register-reference">2. Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<span id="register-reference"></span>
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">2.1. Memory Map</a></h3>
+<div class="paragraph">
+<p>Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">2.2. Detailed Register Map</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-hmac">HMAC Accelerator</h2>
+<p>Accelerator for SHA-2 256/384/512-based keyed HMAC and the hash function</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>KEY[32]</strong>: 32 registers, base 0x24, stride 0x4</li>
+<li><strong>DIGEST[16]</strong>: 16 registers, base 0xA4, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#hmac-INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#hmac-INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#hmac-INTR_TEST">INTR_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#hmac-ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#hmac-CFG">CFG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x14</td><td><a href="#hmac-CMD">CMD</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#hmac-STATUS">STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1C</td><td><a href="#hmac-ERR_CODE">ERR_CODE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#hmac-WIPE_SECRET">WIPE_SECRET</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x24 - 0xA0</td><td><a href="#hmac-KEY_32_">KEY[32]</a></td><td>W</td><td>-</td></tr>
+<tr><td>0xA4 - 0xE0</td><td><a href="#hmac-DIGEST_16_">DIGEST[16]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xE4</td><td><a href="#hmac-MSG_LENGTH_LOWER">MSG_LENGTH_LOWER</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xE8</td><td><a href="#hmac-MSG_LENGTH_UPPER">MSG_LENGTH_UPPER</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="INTR_STATE"></span><h3 id="hmac-INTR_STATE" data-register-alias="INTR_STATE">INTR_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>hmac_err</td><td>RW1C</td><td>0x0</td><td>HMAC error has occurred. ERR_CODE register shows which error occurred.</td></tr>
+<tr><td>1</td><td>fifo_empty</td><td>R</td><td>0x0</td><td>The message FIFO is empty.<br>This interrupt is raised only if the message FIFO is actually writable by software, i.e., if all of the following conditions are met:<br>i) The HMAC block is not running in HMAC mode and performing the second round of computing the final hash of the outer key as well as the result of the first round using the inner key.<br>ii) Software has not yet written the Process or Stop command to finish the hashing operation.<br>For the interrupt to be raised, the message FIFO must also have been full previously.<br>Otherwise, the hardware empties the FIFO faster than software can fill it and there is no point in interrupting the software to inform it about the message FIFO being empty.</td></tr>
+<tr><td>0</td><td>hmac_done</td><td>RW1C</td><td>0x0</td><td>HMAC/SHA-2 has completed.</td></tr>
+</table>
+<span id="INTR_ENABLE"></span><h3 id="hmac-INTR_ENABLE" data-register-alias="INTR_ENABLE">INTR_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>hmac_err</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.hmac_err is set.</td></tr>
+<tr><td>1</td><td>fifo_empty</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.fifo_empty is set.</td></tr>
+<tr><td>0</td><td>hmac_done</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.hmac_done is set.</td></tr>
+</table>
+<span id="INTR_TEST"></span><h3 id="hmac-INTR_TEST" data-register-alias="INTR_TEST">INTR_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>hmac_err</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.hmac_err to 1.</td></tr>
+<tr><td>1</td><td>fifo_empty</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.fifo_empty to 1.</td></tr>
+<tr><td>0</td><td>hmac_done</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.hmac_done to 1.</td></tr>
+</table>
+<span id="ALERT_TEST"></span><h3 id="hmac-ALERT_TEST" data-register-alias="ALERT_TEST">ALERT_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>fatal_fault</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+</table>
+<span id="CFG"></span><h3 id="hmac-CFG" data-register-alias="CFG">CFG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:15</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>14:9</td><td>key_length</td><td>RW</td><td>0x20</td><td>Key length configuration.<br><br>This is a 6-bit one-hot encoded field to configure the key length for HMAC.<br><br>The HMAC can be programmed with the following key lengths: 128-bit, 256-bit, 384-bit, 512-bit and 1024-bit.<br>But the HMAC supports any arbitrary key length: the software should configure the HMAC with the next largest supported key length and concatenate zeros to reach the programmed key length.<br>The position of these zeros depends on the endianness, thus on the programmed [`CFG.key_swap`](registers.md#cfg--key_swap).<br>For example, for an 80-bit key, HMAC should be configured with an 128-bit key length, fed with the 80-bit key and with 48 zero-bits.<br><br>Note that the key length cannot be greater than the block size: up to 1024-bit for SHA-2 384/512 and up to 512-bit for SHA-2 256.<br>The value of this register is irrelevant when only SHA-2 (not keyed HMAC) is configured.<br>However, for HMAC mode (`hmac_en == 1`), when HMAC is triggered to start while !!KEY_LENGTH holds `Key_None` or !!KEY_LENGTH holds `Key_1024` for !!DIGEST_SIZE = `SHA2_256`, starting is blocked and an error is signalled to SW.</td></tr>
+<tr><td>8:5</td><td>digest_size</td><td>RW</td><td>0x8</td><td>Digest size configuration.<br><br>This is a 4-bit one-hot encoded field to select digest size for either HMAC or SHA-2.<br>Invalid/unsupported values, i.e., values that don&#x27;t correspond to SHA2_256, SHA2_384, or SHA2_512, are mapped to SHA2_None.</td></tr>
+<tr><td>4</td><td>key_swap</td><td>RW</td><td>0x0</td><td>Key register byte swap (deprecated: KEY path is for DV only; production uses key manager sideload).<br><br>If 1 the endianness of each KEY_* register is swapped. Default value (value 0) is big endian representation of the KEY_* CSRs.</td></tr>
+<tr><td>3</td><td>digest_swap</td><td>RW</td><td>0x0</td><td>Digest register byte swap.<br><br>If 1 the value in each digest output register is converted to big-endian byte order.<br>This setting does not affect the order of the digest output registers, !!DIGEST_0 still contains the first 4 bytes of the digest.</td></tr>
+<tr><td>2</td><td>endian_swap</td><td>RW</td><td>0x0</td><td>Endian swap.<br><br>If 0, each value will be added to the message in little-endian byte order.<br>The value is written to MSG_FIFO same to the SW writes.<br>If 1, then each individual multi-byte value, regardless of its alignment, written to !!MSG_FIFO will be added to the message in big-endian byte order.<br>A message written to !!MSG_FIFO one byte at a time will not be affected by this setting.<br>From a hardware perspective byte swaps are performed on a TL-UL word granularity.</td></tr>
+<tr><td>1</td><td>sha_en</td><td>RW</td><td>-</td><td>SHA-2 enable.<br><br>If 0, the SHA engine will not initiate compression, this is used to stop operation of the SHA-2 engine until configuration has been done.<br>When the SHA-2 engine is disabled the digest is cleared.</td></tr>
+<tr><td>0</td><td>hmac_en</td><td>RW</td><td>-</td><td>HMAC datapath enable.<br><br>If this bit is 1, HMAC operates when `hash_start` toggles.</td></tr>
+</table>
+<span id="CMD"></span><h3 id="hmac-CMD" data-register-alias="CMD">CMD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>hash_continue</td><td>W1C</td><td>-</td><td>When 1 is written to this field, SHA-2 or HMAC will continue hashing based on the current hash in the digest registers and the message length, which both have to be restored to switch context.</td></tr>
+<tr><td>2</td><td>hash_stop</td><td>W1C</td><td>-</td><td>When 1 is written to this field, SHA-2 or HMAC will afterwards set the `hmac_done` interrupt as soon as the current block has been hashed.<br>The hash can then be read from the registers !!DIGEST_0 to !!DIGEST_15.<br>Together with the message length in !!MSG_LENGTH_LOWER and !!MSG_LENGTH_UPPER, this forms the information that has to be saved before switching context.</td></tr>
+<tr><td>1</td><td>hash_process</td><td>W1C</td><td>-</td><td>If 1 is written to this field, SHA-2 or HMAC calculates the digest or signing based on currently received message.</td></tr>
+<tr><td>0</td><td>hash_start</td><td>W1C</td><td>-</td><td>If 1 is written into this field, SHA-2 or HMAC begins its operation.<br>CPU must configure relative information first, such as the digest size, secret key and the key length.</td></tr>
+</table>
+<span id="STATUS"></span><h3 id="hmac-STATUS" data-register-alias="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9:4</td><td>fifo_depth</td><td>R</td><td>-</td><td>FIFO entry count.</td></tr>
+<tr><td>3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>fifo_full</td><td>R</td><td>-</td><td>FIFO full. Data written to the FIFO whilst it is full will cause back-pressure on the interconnect</td></tr>
+<tr><td>1</td><td>fifo_empty</td><td>R</td><td>0x1</td><td>FIFO empty</td></tr>
+<tr><td>0</td><td>hmac_idle</td><td>R</td><td>0x1</td><td>HMAC idle status.<br>When IDLE, the `DIGEST` and the `MSG_LENGTH_LOWER`/`MSG_LENGTH_UPPER` can be written to from SW which enables restoring context (to support context switching).</td></tr>
+</table>
+<span id="ERR_CODE"></span><h3 id="hmac-ERR_CODE" data-register-alias="ERR_CODE">ERR_CODE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>err_code</td><td>R</td><td>0x0</td><td>If an error interrupt occurs, this register has information of error cause.<br>Please take a look at `hw/ip/prim/rtl/prim_sha2_pkg.sv:err_code_e enum type.</td></tr>
+</table>
+<span id="WIPE_SECRET"></span><h3 id="hmac-WIPE_SECRET" data-register-alias="WIPE_SECRET">WIPE_SECRET</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>secret</td><td>W</td><td>-</td><td>Secret value</td></tr>
+</table>
+<span id="KEY_32_"></span><h3 id="hmac-KEY_32_" data-register-alias="KEY_32_">KEY[32]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>key_0</td><td>W</td><td>-</td><td>32-bit chunk of 1024-bit secret key</td></tr>
+</table>
+<span id="DIGEST_16_"></span><h3 id="hmac-DIGEST_16_" data-register-alias="DIGEST_16_">DIGEST[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>digest_0</td><td>RW</td><td>-</td><td>32-bit chunk of 512-bit digest</td></tr>
+</table>
+<span id="MSG_LENGTH_LOWER"></span><h3 id="hmac-MSG_LENGTH_LOWER" data-register-alias="MSG_LENGTH_LOWER">MSG_LENGTH_LOWER</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>v</td><td>RW</td><td>-</td><td>Message Length [31:0]</td></tr>
+</table>
+<span id="MSG_LENGTH_UPPER"></span><h3 id="hmac-MSG_LENGTH_UPPER" data-register-alias="MSG_LENGTH_UPPER">MSG_LENGTH_UPPER</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>v</td><td>RW</td><td>-</td><td>Message Length [63:32]</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

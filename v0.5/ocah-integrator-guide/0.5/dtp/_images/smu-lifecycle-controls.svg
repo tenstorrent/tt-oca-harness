@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="570" viewBox="0 0 1040 570" role="img" aria-labelledby="title desc">
+<title id="title">SEP lifecycle and feature-control distribution</title>
+<desc id="desc">The OTP shadow registers (LC_STATE, SIP_DIS and SYS_DIS), the demotion CSRs and the security-disable token feed the SEP Life Cycle Controller and its Feature Control logic. dbg_disable_o parks the DTP STAPs, closes the DFT and DFD SIBs and blocks SMC-fabric JTAG2AXI. lc_state_o sets the SMC eFuse JTAG policy and LC_STATE CSR and leaves the SMU, security_disable_o drives the SMC eFuse security-disable override, and the fuse DFT disables leave the SMU for adopter DFT insertion. Inside the SEP, feat_ctrl.sep_debug bypasses the inbound AXI filter, and the demotion state reaches the Key Manager and the SMU boundary.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+</style>
+</defs>
+<rect width="1040" height="570" fill="#ffffff"/>
+<text class="bs" x="14" y="26" text-anchor="start">Sources</text>
+<rect class="external" x="14" y="40" width="160" height="104" rx="6"/>
+<text class="t" x="94" y="70" text-anchor="middle">OTP shadow registers</text>
+<text class="t" x="94" y="88" text-anchor="middle">LC_STATE[7:0]</text>
+<text class="t" x="94" y="106" text-anchor="middle">SIP_DIS[63:0]</text>
+<text class="t" x="94" y="124" text-anchor="middle">SYS_DIS[63:0]</text>
+<rect class="external" x="14" y="176" width="160" height="88" rx="6"/>
+<text class="t" x="94" y="207" text-anchor="middle">Demotion CSRs</text>
+<text class="t" x="94" y="225" text-anchor="middle">DEMOTE_1 / LOCK_1</text>
+<text class="t" x="94" y="243" text-anchor="middle">DEMOTE_2 / LOCK_2</text>
+<rect class="external" x="14" y="296" width="160" height="70" rx="6"/>
+<text class="t" x="94" y="327" text-anchor="middle">SEC_DIS</text>
+<text class="t" x="94" y="345" text-anchor="middle">security-disable token</text>
+<rect class="smu" x="268" y="26" width="402" height="486" rx="8"/>
+<text class="b" x="280" y="500" text-anchor="start">SEP</text>
+<rect class="fabric" x="284" y="42" width="368" height="280" rx="5"/>
+<text class="bs" x="468" y="64" text-anchor="middle">Life Cycle Controller</text>
+<rect class="core" x="312" y="88" width="188" height="206" rx="6"/>
+<text class="bs" x="406" y="196" text-anchor="middle">Feature Control</text>
+<rect class="core" x="284" y="384" width="176" height="90" rx="6"/>
+<text class="t" x="372" y="416" text-anchor="middle">Inbound AXI filter</text>
+<text class="t" x="372" y="434" text-anchor="middle">feat_ctrl.sep_debug:</text>
+<text class="t" x="372" y="452" text-anchor="middle">1 skips, 0 filters</text>
+<rect class="core" x="470" y="384" width="182" height="90" rx="6"/>
+<text class="t" x="561" y="416" text-anchor="middle">Key Manager</text>
+<text class="t" x="561" y="434" text-anchor="middle">LC_STATE and</text>
+<text class="t" x="561" y="452" text-anchor="middle">demotion context</text>
+<path class="sigo" d="M177,76 L278,76"/>
+<text class="s" x="184" y="70" text-anchor="start">LC_STATE</text>
+<path class="sigo" d="M177,116 L278,116"/>
+<text class="s" x="184" y="110" text-anchor="start">SIP/SYS_DIS</text>
+<path class="sigplain" d="M246,122 L258,110"/>
+<text class="s" x="252" y="134" text-anchor="middle">64</text>
+<path class="sigo" d="M177,220 L278,220"/>
+<text class="s" x="184" y="214" text-anchor="start">DEMOTE_1/2</text>
+<path class="sigo" d="M177,331 L240,331 L240,300 L278,300"/>
+<text class="s" x="184" y="290" text-anchor="start">SEC_DIS</text>
+<path class="sigo" d="M360,297 L360,378"/>
+<path class="sigplain" d="M354,346 L366,334"/>
+<text class="s" x="350" y="345" text-anchor="end">64</text>
+<text class="s" x="368" y="368" text-anchor="start">feat_ctrl_o</text>
+<path class="sigo" d="M490,297 L490,378"/>
+<circle cx="490" cy="344" r="3.2" fill="#5b6670"/>
+<text class="s" x="498" y="368" text-anchor="start">lcc_demote_state_1/2_o</text>
+<rect class="core" x="770" y="26" width="256" height="160" rx="6"/>
+<text class="bs" x="782" y="48" text-anchor="start">DTP</text>
+<text class="s" x="782" y="90" text-anchor="start">dbg_disable_i</text>
+<text class="s" x="782" y="119" text-anchor="start">park STAPs: I/O, SMC, SEP,</text>
+<text class="s" x="782" y="135" text-anchor="start">extra and host</text>
+<text class="s" x="782" y="151" text-anchor="start">close DFT and DFD SIBs</text>
+<text class="s" x="782" y="167" text-anchor="start">block SMC fabric JTAG2AXI</text>
+<rect class="core" x="770" y="200" width="256" height="166" rx="6"/>
+<text class="bs" x="782" y="222" text-anchor="start">SMC</text>
+<text class="s" x="782" y="262" text-anchor="start">sep_security_disable_i</text>
+<text class="s" x="782" y="278" text-anchor="start">eFuse security-disable override</text>
+<text class="s" x="782" y="318" text-anchor="start">lc_state_i</text>
+<text class="s" x="782" y="334" text-anchor="start">eFuse JTAG policy, LC_STATE CSR</text>
+<rect class="external" x="770" y="386" width="256" height="126" rx="6"/>
+<text class="bs" x="782" y="408" text-anchor="start">SMU boundary</text>
+<text class="s" x="782" y="436" text-anchor="start">lc_state_o</text>
+<text class="s" x="782" y="466" text-anchor="start">sep/smc_fuse_dft_disable_o</text>
+<text class="s" x="782" y="496" text-anchor="start">lcc_demote_state_1/2_o</text>
+<text class="s" x="644" y="90" text-anchor="end">dbg_disable_o</text>
+<text class="s" x="644" y="210" text-anchor="end">security_disable_o</text>
+<text class="s" x="644" y="240" text-anchor="end">lc_state_o</text>
+<text class="s" x="644" y="270" text-anchor="end">*_fuse_dft_disable_o</text>
+<path class="sigo" d="M652,86 L764,86"/>
+<path class="sigplain" d="M704,92 L716,80"/>
+<text class="s" x="710" y="77" text-anchor="middle">11</text>
+<path class="sigo" d="M652,206 L752,206 L752,258 L764,258"/>
+<path class="sigo" d="M652,236 L734,236 L734,314 L764,314"/>
+<path class="sigo" d="M734,314 L734,432 L764,432"/>
+<circle cx="734" cy="314" r="3.2" fill="#5b6670"/>
+<path class="sigo" d="M652,266 L716,266 L716,462 L764,462"/>
+<path class="sigo" d="M490,344 L698,344 L698,492 L764,492"/>
+<rect class="external" x="14" y="536" width="40" height="18" rx="4"/>
+<text class="s" x="62" y="550" text-anchor="start">Register source or SMU boundary</text>
+<rect class="fabric" x="319.2" y="536" width="40" height="18" rx="4"/>
+<text class="s" x="367.2" y="550" text-anchor="start">Lifecycle logic</text>
+<rect class="core" x="509.2" y="536" width="40" height="18" rx="4"/>
+<text class="s" x="557.2" y="550" text-anchor="start">SEP block or consumer</text>
+<path class="sigplain" d="M764,545 L800,545 M776,551 L788,539"/>
+<text class="s" x="810" y="550" text-anchor="start">Bus, with its width</text>
+</svg>

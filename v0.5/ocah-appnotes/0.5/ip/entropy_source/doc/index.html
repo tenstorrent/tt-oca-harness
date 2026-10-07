@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Entropy Source :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-appnotes" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../../../index.html">Application Notes</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Application Notes 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component is-current">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../../../index.html">Application Notes</a></li>
+    <li><a href="index.html">Entropy Source</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Entropy Source</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>The entropy source component is a random number generator which is based
+on multiple asynchronous ring oscillators sampled in such a way to
+generate random bits from the jitter noise and metastable latching
+behavior. It forms the basis of a True Random Number Generator (TRNG).</p>
+</div>
+<div class="paragraph">
+<p>The generated stream is ``raw'' noise in the sense that there may still
+be some statistical biases present which need to be filtered out by an
+optional entropy conditioner post processing unit which would consume
+the output noise bits. NIST specifies a set of acceptable conditioners.
+Common conditioners are based on standard hash functions such as SHA256
+and ASCON as well as standard keyed hash functions such as AES-CMAC and
+HMAC.</p>
+</div>
+<div class="paragraph">
+<p>The source includes a configurable SHA-256 whitener. Software can bypass
+whitening to observe the unconditioned stream; health tests also monitor the
+individual noise generators and the combined stream.</p>
+</div>
+<div id="entropy-source-diagram" class="imageblock">
+<div class="content">
+<img src="../../_images/entropy-source-architecture.svg" alt="Entropy source microarchitecture: twelve generator lanes feed the BIW extractor; a 32-bit health test and the main state machine gate the stream into the optional SHA-256 whitener, the output select and the main FIFO, whose write data also leaves towards the DRBG; observe FIFOs, the register block and the debug monitor sit beside the datapath" width="100%">
+</div>
+<div class="title">Figure 1. Entropy source microarchitecture</div>
+</div>
+<div class="paragraph">
+<p><a href="#entropy-source-diagram">Figure 1</a> shows the entropy source and its conditioning pipeline.
+The client controls the component via the AXI4-Lite bus
+interface which provides access to a set of memory mapped configuration
+and status registers (CSRs) described later in this document. The noise
+generators feed the decorrelation, mixing, health-test, and optional whitening
+stages. Each word written into the main FIFO also leaves the block as
+<code>entropy_stream_data_o</code>, qualified by <code>entropy_stream_vld_o</code>, towards the DRBG;
+the FIFO itself is drained through the <code>FIFO_RDATA</code> register.</p>
+</div>
+<div class="paragraph">
+<p>The main datapath in the figure runs left to right along the top row. The
+generator lane stands for all twelve lanes, and <a href="#entropy-rosc-diagram">Figure 2</a> shows its
+noise source and sample clock in detail. The boot gate passes entropy only after
+the main state machine has seen a passing boot health-test window; it qualifies
+the whitener input, the uncompressed-byte path and the BIW observe FIFO, while
+the 32-bit health test and the noise observe FIFO see the stream ungated. The
+output select takes the whitener output, or, when
+<code>CTRL.BYPASS_ENTROPY_COMPRESSOR</code> is set, the twelve uncompressed decorrelator
+bytes as three 32-bit words, downsampled by <code>CTRL.DOWNSAMPLE_RATE</code>. The 32-bit
+health test is clock-gated off in that mode. The register block configures every
+stage; its connections to individual stages are not drawn. The debug monitor
+routes one of 256 internal signals to <code>signal_monitor_o</code>.</p>
+</div>
+<div class="paragraph">
+<p>The health-test modules are OpenTitan&#8217;s <code>entropy_src</code> repetition count, adaptive
+proportion and Markov tests, and the main state machine is OpenTitan&#8217;s
+<code>entropy_src_main_sm</code>. Their internal structure is described in the
+<a href="https://opentitan.org/book/hw/ip/entropy_src/">OpenTitan entropy source</a>
+documentation.
+The Programmer&#8217;s Guide gives the
+<a href="../../../../../ocah-programmer-guide/0.5/index.html#ocah-trng-bring-up" class="xref page">programming guidance</a>
+for this block.</p>
+</div>
+<div class="paragraph">
+<p>The entropy source is designed according to guidelines set forth in the
+NIST SP800-90B specification and is planned to be ready for FIPS 140-2
+and 140-3 certification. It will also be compliant with AIS31
+statistical requirements specified by the BSI agency.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="noise-generation"><a class="anchor" href="#noise-generation"></a><a class="link" href="#noise-generation">1. Noise Generation</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The entropy source uses 12 independent ring oscillators as its noise source. Each ring oscillator is constructed from the shared OCAH primitives (<code>prim_clock_nand2</code>, <code>prim_buf</code>, <code>prim_stdmux2</code>) to preserve the asynchronous feedback-loop structure through technology mapping. Each oscillator has two configurable lengths: a <code>TOTAL_LENGTH</code> and a <code>TAPPED_LENGTH</code>, where a multiplexer selects between the short and long feedback paths. The <code>entropy_rosc_tune_fsm</code> toggles between these two lengths on a rising edge of any health test failure, providing a rudimentary frequency detuning mechanism.</p>
+</div>
+<div class="paragraph">
+<p>The oscillator output is sampled by a metastable D flip-flop (<code>prim_flop</code>) clocked by a sampling clock. The sampled bit is then synchronized to the system clock domain through a two-stage synchronizer. Each lane can be clocked either by an external sampling clock (<code>rosc_sample_clk_i</code>) or by a shared internal ring oscillator (total length 109, tapped length 53). A per-lane ripple divider provides division ratios of 1, 2, 4, 8, 16, and 32, selected through the CSR. Both selects are clock mux cells. Software changes a lane&#8217;s source or division only while that generator is disabled. A division value outside 0-5 selects divide-by-4.</p>
+</div>
+<div class="paragraph">
+<p><a href="#entropy-rosc-diagram">Figure 2</a> shows the ring oscillators, sampling paths, and clock selection
+used to generate noise.</p>
+</div>
+<div id="entropy-rosc-diagram" class="imageblock">
+<div class="content">
+<img src="../../_images/entropy-source-rosc-complex.svg" alt="Entropy source ring-oscillator complex: per-lane sample clock selection and division, the noise lane from ring oscillator through sampling, synchronization, decorrelation, health test and auto-tune, and the ring oscillator stage chain with its tap mux" width="100%">
+</div>
+<div class="title">Figure 2. Entropy source ring-oscillator complex</div>
+</div>
+<div class="paragraph">
+<p><a href="#entropy-rosc-diagram">Figure 2</a> has three bands. The top band builds one sample clock
+per lane: <code>RING_OSC_CTRL.SAMPLE_CLK_SELECT</code> bit <em>i</em> chooses <code>rosc_sample_clk_i</code>
+(0) or the shared ring oscillator (1), and
+<code>GENERATOR_i_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE</code> picks one ripple-divider tap.
+The middle band is one of the twelve noise lanes; when <code>CTRL.AUTOTUNE_ENABLE</code> is
+set the lane detune follows the auto-tune FSM, otherwise
+<code>RING_OSC_TUNE.DETUNE</code> bit <em>i</em>. The bottom band is the ring oscillator used both
+in each lane and, with 109 and 53 stages, as the shared sampling oscillator. Green
+lines carry asynchronous oscillator signals, brown lines are in the sample-clock
+domain and grey lines are in the <code>clk_i</code> domain or are controls.
+<a href="#entropy-rosc-lengths-table">Table 1</a> lists the lane ring lengths.</p>
+</div>
+<table id="entropy-rosc-lengths-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Noise ring-oscillator lengths per lane</caption>
+<colgroup>
+<col style="width: 22.9166%;">
+<col style="width: 6.25%;">
+<col style="width: 6.25%;">
+<col style="width: 6.25%;">
+<col style="width: 6.25%;">
+<col style="width: 6.25%;">
+<col style="width: 6.25%;">
+<col style="width: 6.25%;">
+<col style="width: 6.25%;">
+<col style="width: 6.25%;">
+<col style="width: 6.25%;">
+<col style="width: 6.25%;">
+<col style="width: 8.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Lane</th>
+<th class="tableblock halign-center valign-top">0</th>
+<th class="tableblock halign-center valign-top">1</th>
+<th class="tableblock halign-center valign-top">2</th>
+<th class="tableblock halign-center valign-top">3</th>
+<th class="tableblock halign-center valign-top">4</th>
+<th class="tableblock halign-center valign-top">5</th>
+<th class="tableblock halign-center valign-top">6</th>
+<th class="tableblock halign-center valign-top">7</th>
+<th class="tableblock halign-center valign-top">8</th>
+<th class="tableblock halign-center valign-top">9</th>
+<th class="tableblock halign-center valign-top">10</th>
+<th class="tableblock halign-center valign-top">11</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TOTAL_LENGTH</code> (detune 1)</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">5</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">7</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">11</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">13</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">17</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">19</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">6</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">12</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">15</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">18</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">23</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TAPPED_LENGTH</code> (detune 0)</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">3</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">5</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">9</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">10</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">14</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">4</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">7</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">11</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">13</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">15</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">21</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="decorrelation-and-biw-mixing"><a class="anchor" href="#decorrelation-and-biw-mixing"></a><a class="link" href="#decorrelation-and-biw-mixing">2. Decorrelation and BIW Mixing</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Each sampled noise bit enters a serial decorrelator (<code>entropy_decorrelator</code>), which shifts bits through a 29-stage shift register with XOR feedback from the last stage, as <a href="#entropy-decorrelator-diagram">Figure 3</a> shows. A downsample counter reloaded from <code>DECORRELATOR_CTRL.SAMPLE_CLK_DIV</code> latches the top 8 bits of the shift register as an entropy byte every <code>SAMPLE_CLK_DIV</code> + 1 <code>clk_i</code> cycles, 64 cycles at the reset value of 63, and pulses the byte-valid strobe for one cycle. The byte is ANDed with <code>DECORRELATOR_MASK.ENTROPY_BYTE_MASK</code>, so a cleared mask bit reads as zero; the mask and the divider are shared by all 12 lanes. Setting a lane&#8217;s bit in <code>DECORRELATOR_CTRL.BYPASS</code> forces the feedback to zero, so raw noise bits shift through the chain unmixed; the byte is still taken from the top 8 stages, downsampled and masked.</p>
+</div>
+<div id="entropy-decorrelator-diagram" class="imageblock">
+<div class="content">
+<img src="../../_images/entropy-source-decorrelator.svg" alt="Entropy source decorrelator: noise_i is XORed with the gated feedback from ff_stage[28] into a 29-stage shift chain; ff_stage[28:21] is ANDed with byte_mask_i and captured by the output register when the downsample counter reaches zero" width="100%">
+</div>
+<div class="title">Figure 3. Entropy source decorrelator</div>
+</div>
+<div class="paragraph">
+<p><a href="#entropy-decorrelator-diagram">Figure 3</a> shows one lane&#8217;s decorrelator. The chain shifts on every <code>clk_i</code> cycle while <code>enable_i</code> is high, and the eight taps from <code>ff_stage[21]</code> to <code>ff_stage[28]</code> join into one byte-wide bundle. The output register loads when the counter reaches zero. While <code>enable_i</code> is low, the chain holds its contents and the counter reloads from <code>sample_clk_div_i</code>.</p>
+</div>
+<div class="paragraph">
+<p>The 12 decorrelated byte streams are combined by the Barak-Impagliazzo-Wigderson (BIW) stage, which uses four <code>gf_muladd</code> instances performing y = a*b + c in GF(2^8) with the AES field polynomial (0x1B). The 12 input bytes are grouped into three sets of four and reduced to a single 32-bit word. This mixing step improves the statistical independence of the output without introducing significant latency.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="health-testing"><a class="anchor" href="#health-testing"></a><a class="link" href="#health-testing">3. Health Testing</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Health tests operate at two levels. Each of the 12 <code>entropy_generator</code> instances runs an 8-bit <code>entropy_health_test</code> on its individual decorrelated output. At the top level, a second 32-bit <code>entropy_health_test</code> instance monitors the post-BIW (or post-bypass) stream.</p>
+</div>
+<div class="paragraph">
+<p>The health test wrapper instantiates three OpenTitan-derived test modules. The repetition count test (<code>entropy_src_repcnt_ht</code>) tracks consecutive identical values per bit lane and flags when a threshold is exceeded. The adaptive proportion test (<code>entropy_src_adaptp_ht</code>) accumulates per-bit ones counts within a configurable window and compares the maximum and minimum lane counts against high and low thresholds. The Markov test (<code>entropy_src_markov_ht</code>) counts bit-pair transitions and compares to high and low thresholds at window boundaries. Window synchronization is driven by a <code>prim_count</code> counter in the <code>entropy_generator_complex</code>.</p>
+</div>
+<div class="paragraph">
+<p>Health test thresholds, enable bits, and window sizes are all programmable through the CSR interface. Test status is reported as an 8-bit vector where bit 0 indicates a repetition count failure, bit 3 an adaptive proportion failure, and bits 4-5 Markov high/low failures.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="health-test-watermark"><a class="anchor" href="#health-test-watermark"></a><a class="link" href="#health-test-watermark">4. Health Test Watermark</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>HT_WATERMARK</code> is one shared register whose source and maximum/minimum direction are selected by <code>HT_WATERMARK_NUM</code>; there is no independent storage per selector. A selector write changes which counter updates the shared register but does not clear it, so changing only the selector carries the value recorded by the previous mode.</p>
+</div>
+<div class="paragraph">
+<p>The shared watermark is armed by a <code>CTRL.MODULE_ENABLE</code> 0-to-1 transition. High modes (<code>REPCNT_HI</code>, <code>APT_HI</code>, and <code>MARKOV_HI</code>) arm to <code>0x0000</code>; low modes (<code>APT_LO</code> and <code>MARKOV_LO</code>) arm to <code>0xFFFF</code>. A hardware reset restores the selector and watermark together, so a deterministic baseline requires <code>HT_WATERMARK_NUM</code> to be written before the <code>MODULE_ENABLE</code> toggle. With the reset-default <code>MODULE_ENABLE=1</code>, the power-on enable pulse performs the first mode-aware arm automatically.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="persistent-failure-and-alerthang"><a class="anchor" href="#persistent-failure-and-alerthang"></a><a class="link" href="#persistent-failure-and-alerthang">5. Persistent Failure and AlertHang</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The health-test subsystem includes a persistent-failure path that halts entropy output when failures persist beyond a programmed threshold. A saturating counter (<code>ALERT_SUMMARY_FAIL_COUNTS.ANY_FAIL_COUNT</code>) records one count per health-test window in which any test failed; a mid-window failure of the continuous repetition-count test is captured and counted once for that window. When the counter reaches <code>ALERT_THRESHOLD.THRESHOLD</code> (default 4, i.e. four failing windows, locked by <code>FIPS_LOCK</code>), <code>alert_thresh_fail</code> is asserted and the main FSM transitions through <code>AlertState</code> into <code>AlertHang</code>, halting entropy output. <code>AlertHang</code> persists until the FSM is reset by <code>rst_ni</code> or software clears <code>CTRL.MODULE_ENABLE</code>. The event sets <code>MAIN_SM_STATUS.ALERT</code> and raises <code>INTR_STATUS.PERSISTENT_FAILURE</code>. The sticky <code>MAIN_SM_STATUS.ALERT</code> and <code>MAIN_SM_STATUS.ERR</code> status bits are cleared by writing 1 (W1C) or by the full entropy-source reset.</p>
+</div>
+<div class="paragraph">
+<p>Setting <code>ALERT_THRESHOLD.THRESHOLD</code> to zero disables the comparator, leaving the counter accumulating without ever asserting <code>alert_thresh_fail</code>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sha-256-whitening"><a class="anchor" href="#sha-256-whitening"></a><a class="link" href="#sha-256-whitening">6. SHA-256 Whitening</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>When the SHA-256 whitener is enabled via the CSR, the 32-bit BIW output stream feeds into the <code>entropy_sha256_whitener</code> module. This module accumulates 16 consecutive 32-bit words (one SHA-256 block of 512 bits), computes the SHA-256 digest using the OpenTitan <code>prim_sha2_32</code> primitive, and emits the 8-word (256-bit) digest. The compression ratio is 2:1 (16 input words produce 8 output words). When the whitener is disabled, the BIW output passes through to the FIFO without modification.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="output-fifo"><a class="anchor" href="#output-fifo"></a><a class="link" href="#output-fifo">7. Output FIFO</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The conditioned entropy stream is stored in a 64-entry FIFO (<code>entropy_fifo</code>). Each entry is 36 bits wide: 32 data bits plus 4 byte-wise odd parity bits. The FIFO includes pointer integrity checking (normal and inverted pointer pairs with mismatch detection) and parity verification on reads. An optional churn mode XORs the incoming data with a word read from the diametrically opposite FIFO position, improving entropy distribution. Overflow, underflow, parity error, and pointer error conditions are all reported to the CSR block and can trigger interrupts.</p>
+</div>
+<div class="paragraph">
+<p>The <code>entropy_stream_data_o</code> and <code>entropy_stream_vld_o</code> top-level ports carry each word as it is written into the FIFO, not the FIFO read data, and there is no backpressure. In SEP they connect to the DRBG seed path, which distributes the generated random data to the entropy consumers.</p>
+</div>
+<div class="paragraph">
+<p>Because the FIFO holds the same words that seed the DRBG, <code>FIFO_CTRL.ENABLE</code> is covered by <code>FIPS_LOCK</code>. The field gates only the FIFO write, so the DRBG seed stream continues whatever its value. It resets to one, keeping the <code>FIFO_RDATA</code> read path live out of reset; the TRNG bring-up sequence in the Programmer&#8217;s Guide closes it before <code>FIPS_LOCK</code>. Reads remain available while writes are disabled, so words already in the FIFO stay readable until they are drained.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="reset"><a class="anchor" href="#reset"></a><a class="link" href="#reset">8. Reset</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The entropy source <code>rst_ni</code> input resets its register block, health-test/FSM
+state, conditioning pipeline, counters, and FIFOs. Reserved <code>CTRL[0]</code> reads as
+zero and ignores writes.</p>
+</div>
+<div class="paragraph">
+<p>At SEP integration level, <code>SEP_RESET_CTRL.SW_RESET_N.TRNG_SW_RST_N</code> requests a
+shared reset of the entropy source and DRBG. Hardware first drains and isolates
+the ESRC, CSRNG, and EDN AXI ports, then asserts the common reset. This is a
+full-IP reset: all entropy-source CSRs and <code>FIPS_LOCK</code> return to reset values.
+Post-mux EDN adapters and the fabric entropy pool remain in the POR reset domain;
+they synchronously clear buffered entropy while the internal reset is active.
+After reset release, <code>MODULE_ENABLE</code> returning to one produces the normal
+enable pulse and restarts startup health testing before entropy is released.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="debug-observation-pin"><a class="anchor" href="#debug-observation-pin"></a><a class="link" href="#debug-observation-pin">9. Debug Observation Pin</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>DEBUG_CTRL.SELECT_SIGNAL</code> routes one of 256 internal signals to the
+<code>signal_monitor_o</code> output, and <code>DEBUG_CTRL.SELECT_FREQ_DIV</code> divides it down for
+external observation. Some selections expose entropy ahead of conditioning: the
+raw per-generator noise bits, the compressed 32-bit entropy stream, and the
+uncompressed per-generator entropy bytes.</p>
+</div>
+<div class="paragraph">
+<p>Both fields are covered by <code>FIPS_LOCK</code>: once <code>FIPS_LOCK.LOCK</code> is set, software can
+no longer retarget the pin or change its divider, so a locked, certified part
+cannot route pre-conditioning entropy to the observation pin. The raw and BIW
+observe-FIFO capture enables (<code>NOISE_OBS_CTRL.RAW_ENABLE</code>,
+<code>BIW_OBS_CTRL.RAW_ENABLE</code>) are held under the lock the same way. SP 800-90B treats
+this pre-conditioning observation as a validation-time interface that may be
+disabled in the field, which the lock enforces. As defense in depth, SEP also
+leaves <code>signal_monitor_o</code> unconnected and false-paths the port in synthesis; an
+integration that routes the pin off-chip still owns restricting access to the
+lifecycle or debug states in which observing pre-conditioning entropy is
+acceptable.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-map-and-register-reference"><a class="anchor" href="#memory-map-and-register-reference"></a><a class="link" href="#memory-map-and-register-reference">10. Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<span id="register-reference"></span>
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">10.1. Memory Map</a></h3>
+<div class="paragraph">
+<p>Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">10.2. Detailed Register Map</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-entropy_source">Entropy Source Address Map</h2>
+<p>Entropy-source configuration, status, and data registers.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#entropy_source-COMPONENT_ID">COMPONENT_ID</a></td><td>R</td><td>Identifies the entropy-source register interface.</td></tr>
+<tr><td>0x4</td><td><a href="#entropy_source-CTRL">CTRL</a></td><td>RW</td><td>Controls entropy generation and conditioning.</td></tr>
+<tr><td>0xC</td><td><a href="#entropy_source-DEBUG_CTRL">DEBUG_CTRL</a></td><td>RW</td><td>Controls the external debug observation pin. FIPS_LOCK.LOCK prevents software changes to the signal selection and divider.</td></tr>
+<tr><td>0x10</td><td><a href="#entropy_source-INTR_STATUS">INTR_STATUS</a></td><td>RW</td><td>Reports latched interrupt status; write one to clear a bit.</td></tr>
+<tr><td>0x14</td><td><a href="#entropy_source-INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>Enables individual interrupt sources.</td></tr>
+<tr><td>0x18</td><td><a href="#entropy_source-INTR_TEST">INTR_TEST</a></td><td>W</td><td>Triggers individual interrupt sources for testing.</td></tr>
+<tr><td>0x1C</td><td><a href="#entropy_source-SHA256_STATUS">SHA256_STATUS</a></td><td>R</td><td>Reports SHA-256 conditioner progress.</td></tr>
+<tr><td>0x20</td><td><a href="#entropy_source-FIFO_CTRL">FIFO_CTRL</a></td><td>RW</td><td>Controls the 64-entry main entropy FIFO.</td></tr>
+<tr><td>0x24</td><td><a href="#entropy_source-FIFO_STATUS">FIFO_STATUS</a></td><td>R</td><td>Reports main FIFO occupancy and pointers.</td></tr>
+<tr><td>0x28</td><td><a href="#entropy_source-FIFO_RDATA">FIFO_RDATA</a></td><td>R</td><td>Provides the next main FIFO word.</td></tr>
+<tr><td>0x30</td><td><a href="#entropy_source-HEALTH_TEST_CTRL">HEALTH_TEST_CTRL</a></td><td>RW</td><td>Controls continuous entropy health tests.</td></tr>
+<tr><td>0x34</td><td><a href="#entropy_source-HEALTH_TEST_WINDOW_SIZE">HEALTH_TEST_WINDOW_SIZE</a></td><td>RW</td><td>Sets the APT and Markov window length.</td></tr>
+<tr><td>0x38</td><td><a href="#entropy_source-MARKOV_TEST_PROB_THRESHOLDS">MARKOV_TEST_PROB_THRESHOLDS</a></td><td>RW</td><td>Sets high and low Markov alternation-count thresholds.</td></tr>
+<tr><td>0x40</td><td><a href="#entropy_source-HEALTH_TEST_STATUS">HEALTH_TEST_STATUS</a></td><td>RW</td><td>Latches 32-bit stream health-test failures: repetition [0], APT high or low [3], Markov high [4], and Markov low [5]. Write one to clear.</td></tr>
+<tr><td>0x44</td><td><a href="#entropy_source-REPETITION_TEST_COUNT">REPETITION_TEST_COUNT</a></td><td>R</td><td>Reports the highest current repetition count.</td></tr>
+<tr><td>0x50</td><td><a href="#entropy_source-APT_PATTERN_COUNT_1BIT">APT_PATTERN_COUNT_1BIT</a></td><td>R</td><td>Reports the highest per-lane APT one-count in the current window.</td></tr>
+<tr><td>0x54</td><td><a href="#entropy_source-APT_PATTERN_COUNT_2BIT">APT_PATTERN_COUNT_2BIT</a></td><td>R</td><td>Reports the lowest per-lane APT one-count in the current window.</td></tr>
+<tr><td>0x60</td><td><a href="#entropy_source-APT_PROPORTION_1BIT">APT_PROPORTION_1BIT</a></td><td>RW</td><td>Sets the APT high one-count threshold.</td></tr>
+<tr><td>0x70</td><td><a href="#entropy_source-APT_PROPORTION_LO">APT_PROPORTION_LO</a></td><td>RW</td><td>Sets the APT low one-count threshold.</td></tr>
+<tr><td>0x80</td><td><a href="#entropy_source-MARKOV_TEST_COUNTS_0">MARKOV_TEST_COUNTS_0</a></td><td>R</td><td>Reports the highest and lowest per-lane alternation counts in the current Markov window.</td></tr>
+<tr><td>0x90</td><td><a href="#entropy_source-RING_OSC_ENABLE">RING_OSC_ENABLE</a></td><td>RW</td><td>Controls noise and sample-clock ring oscillators.</td></tr>
+<tr><td>0x94</td><td><a href="#entropy_source-RING_OSC_TUNE">RING_OSC_TUNE</a></td><td>RW</td><td>Selects detuned ring-oscillator tap points.</td></tr>
+<tr><td>0x98</td><td><a href="#entropy_source-RING_OSC_CTRL">RING_OSC_CTRL</a></td><td>RW</td><td>Selects each generator sample-clock source.</td></tr>
+<tr><td>0xA0</td><td><a href="#entropy_source-DECORRELATOR_CTRL">DECORRELATOR_CTRL</a></td><td>RW</td><td>Controls generator decorrelation and byte cadence.</td></tr>
+<tr><td>0xA4</td><td><a href="#entropy_source-DECORRELATOR_MASK">DECORRELATOR_MASK</a></td><td>RW</td><td>Masks bits in every generator entropy byte.</td></tr>
+<tr><td>0xB4</td><td><a href="#entropy_source-MAIN_SM_STATUS">MAIN_SM_STATUS</a></td><td>RW</td><td>Reports the startup health-test gate state machine.</td></tr>
+<tr><td>0xC0</td><td><a href="#entropy_source-GENERATOR_0_HEALTH_STATUS">GENERATOR_0_HEALTH_STATUS</a></td><td>RW</td><td>Latches generator 0 health-test failures; write one to clear.</td></tr>
+<tr><td>0xC4</td><td><a href="#entropy_source-GENERATOR_1_HEALTH_STATUS">GENERATOR_1_HEALTH_STATUS</a></td><td>RW</td><td>Latches generator 1 health-test failures; write one to clear.</td></tr>
+<tr><td>0xC8</td><td><a href="#entropy_source-GENERATOR_2_HEALTH_STATUS">GENERATOR_2_HEALTH_STATUS</a></td><td>RW</td><td>Latches generator 2 health-test failures; write one to clear.</td></tr>
+<tr><td>0xCC</td><td><a href="#entropy_source-GENERATOR_3_HEALTH_STATUS">GENERATOR_3_HEALTH_STATUS</a></td><td>RW</td><td>Latches generator 3 health-test failures; write one to clear.</td></tr>
+<tr><td>0xD0</td><td><a href="#entropy_source-GENERATOR_4_HEALTH_STATUS">GENERATOR_4_HEALTH_STATUS</a></td><td>RW</td><td>Latches generator 4 health-test failures; write one to clear.</td></tr>
+<tr><td>0xD4</td><td><a href="#entropy_source-GENERATOR_5_HEALTH_STATUS">GENERATOR_5_HEALTH_STATUS</a></td><td>RW</td><td>Latches generator 5 health-test failures; write one to clear.</td></tr>
+<tr><td>0xD8</td><td><a href="#entropy_source-GENERATOR_6_HEALTH_STATUS">GENERATOR_6_HEALTH_STATUS</a></td><td>RW</td><td>Latches generator 6 health-test failures; write one to clear.</td></tr>
+<tr><td>0xDC</td><td><a href="#entropy_source-GENERATOR_7_HEALTH_STATUS">GENERATOR_7_HEALTH_STATUS</a></td><td>RW</td><td>Latches generator 7 health-test failures; write one to clear.</td></tr>
+<tr><td>0xE0</td><td><a href="#entropy_source-GENERATOR_8_HEALTH_STATUS">GENERATOR_8_HEALTH_STATUS</a></td><td>RW</td><td>Latches generator 8 health-test failures; write one to clear.</td></tr>
+<tr><td>0xE4</td><td><a href="#entropy_source-GENERATOR_9_HEALTH_STATUS">GENERATOR_9_HEALTH_STATUS</a></td><td>RW</td><td>Latches generator 9 health-test failures; write one to clear.</td></tr>
+<tr><td>0xE8</td><td><a href="#entropy_source-GENERATOR_10_HEALTH_STATUS">GENERATOR_10_HEALTH_STATUS</a></td><td>RW</td><td>Latches generator 10 health-test failures; write one to clear.</td></tr>
+<tr><td>0xEC</td><td><a href="#entropy_source-GENERATOR_11_HEALTH_STATUS">GENERATOR_11_HEALTH_STATUS</a></td><td>RW</td><td>Latches generator 11 health-test failures; write one to clear.</td></tr>
+<tr><td>0x100</td><td><a href="#entropy_source-GENERATOR_0_SAMPLE_CLK_CONFIG">GENERATOR_0_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Controls generator 0 sample-clock division.</td></tr>
+<tr><td>0x104</td><td><a href="#entropy_source-GENERATOR_1_SAMPLE_CLK_CONFIG">GENERATOR_1_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Controls generator 1 sample-clock division.</td></tr>
+<tr><td>0x108</td><td><a href="#entropy_source-GENERATOR_2_SAMPLE_CLK_CONFIG">GENERATOR_2_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Controls generator 2 sample-clock division.</td></tr>
+<tr><td>0x10C</td><td><a href="#entropy_source-GENERATOR_3_SAMPLE_CLK_CONFIG">GENERATOR_3_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Controls generator 3 sample-clock division.</td></tr>
+<tr><td>0x110</td><td><a href="#entropy_source-GENERATOR_4_SAMPLE_CLK_CONFIG">GENERATOR_4_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Controls generator 4 sample-clock division.</td></tr>
+<tr><td>0x114</td><td><a href="#entropy_source-GENERATOR_5_SAMPLE_CLK_CONFIG">GENERATOR_5_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Controls generator 5 sample-clock division.</td></tr>
+<tr><td>0x118</td><td><a href="#entropy_source-GENERATOR_6_SAMPLE_CLK_CONFIG">GENERATOR_6_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Controls generator 6 sample-clock division.</td></tr>
+<tr><td>0x11C</td><td><a href="#entropy_source-GENERATOR_7_SAMPLE_CLK_CONFIG">GENERATOR_7_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Controls generator 7 sample-clock division.</td></tr>
+<tr><td>0x120</td><td><a href="#entropy_source-GENERATOR_8_SAMPLE_CLK_CONFIG">GENERATOR_8_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Controls generator 8 sample-clock division.</td></tr>
+<tr><td>0x124</td><td><a href="#entropy_source-GENERATOR_9_SAMPLE_CLK_CONFIG">GENERATOR_9_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Controls generator 9 sample-clock division.</td></tr>
+<tr><td>0x128</td><td><a href="#entropy_source-GENERATOR_10_SAMPLE_CLK_CONFIG">GENERATOR_10_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Controls generator 10 sample-clock division.</td></tr>
+<tr><td>0x12C</td><td><a href="#entropy_source-GENERATOR_11_SAMPLE_CLK_CONFIG">GENERATOR_11_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Controls generator 11 sample-clock division.</td></tr>
+<tr><td>0x130</td><td><a href="#entropy_source-HT_WATERMARK_NUM">HT_WATERMARK_NUM</a></td><td>RW</td><td>Selects the counter and direction for the shared health-test watermark. Changing the selection preserves the current watermark.</td></tr>
+<tr><td>0x134</td><td><a href="#entropy_source-HT_WATERMARK">HT_WATERMARK</a></td><td>R</td><td>Reports one selector-dependent watermark. A CTRL.MODULE_ENABLE rising edge arms high modes to zero and low modes to 0xFFFF.</td></tr>
+<tr><td>0x138</td><td><a href="#entropy_source-REPCNT_TOTAL_FAILS">REPCNT_TOTAL_FAILS</a></td><td>R</td><td>Counts repetition-test failures since the last CTRL.MODULE_ENABLE rising edge.</td></tr>
+<tr><td>0x13C</td><td><a href="#entropy_source-APT_HI_TOTAL_FAILS">APT_HI_TOTAL_FAILS</a></td><td>R</td><td>Counts APT high-threshold failures since the last CTRL.MODULE_ENABLE rising edge.</td></tr>
+<tr><td>0x140</td><td><a href="#entropy_source-APT_LO_TOTAL_FAILS">APT_LO_TOTAL_FAILS</a></td><td>R</td><td>Counts APT low-threshold failures since the last CTRL.MODULE_ENABLE rising edge.</td></tr>
+<tr><td>0x144</td><td><a href="#entropy_source-MARKOV_HI_TOTAL_FAILS">MARKOV_HI_TOTAL_FAILS</a></td><td>R</td><td>Counts Markov high-threshold failures since the last CTRL.MODULE_ENABLE rising edge.</td></tr>
+<tr><td>0x148</td><td><a href="#entropy_source-MARKOV_LO_TOTAL_FAILS">MARKOV_LO_TOTAL_FAILS</a></td><td>R</td><td>Counts Markov low-threshold failures since the last CTRL.MODULE_ENABLE rising edge.</td></tr>
+<tr><td>0x14C</td><td><a href="#entropy_source-ALERT_SUMMARY_FAIL_COUNTS">ALERT_SUMMARY_FAIL_COUNTS</a></td><td>R</td><td>Counts consecutive health-test windows containing any failure and clears after an accepted passing window.</td></tr>
+<tr><td>0x150</td><td><a href="#entropy_source-ALERT_FAIL_COUNTS">ALERT_FAIL_COUNTS</a></td><td>R</td><td>Reports saturating per-test failure counts for the current alert sequence.</td></tr>
+<tr><td>0x154</td><td><a href="#entropy_source-FIPS_LOCK">FIPS_LOCK</a></td><td>RW</td><td>Locks entropy generation, conditioning, and health-test configuration against software writes until hardware reset.</td></tr>
+<tr><td>0x158</td><td><a href="#entropy_source-ALERT_THRESHOLD">ALERT_THRESHOLD</a></td><td>RW</td><td>Sets the failing-window count that enters the persistent-failure alert path.</td></tr>
+<tr><td>0x15C</td><td><a href="#entropy_source-MIN_ENTROPY_H">MIN_ENTROPY_H</a></td><td>RW</td><td>Stores assessed per-sample min-entropy in unsigned Q4.4 format for advisory threshold calculation.</td></tr>
+<tr><td>0x160</td><td><a href="#entropy_source-RECOMMENDED_THRESHOLDS">RECOMMENDED_THRESHOLDS</a></td><td>R</td><td>Reports advisory repetition and APT thresholds derived from MIN_ENTROPY_H.</td></tr>
+<tr><td>0x164</td><td><a href="#entropy_source-BIW_OBS_CTRL">BIW_OBS_CTRL</a></td><td>RW</td><td>Controls copy-only capture of the post-BIW, pre-SHA stream.</td></tr>
+<tr><td>0x168</td><td><a href="#entropy_source-BIW_OBS_STATUS">BIW_OBS_STATUS</a></td><td>R</td><td>Reports BIW observe FIFO occupancy and pointers.</td></tr>
+<tr><td>0x16C</td><td><a href="#entropy_source-BIW_OBS_RDATA">BIW_OBS_RDATA</a></td><td>R</td><td>Provides the next post-BIW, pre-SHA observe word.</td></tr>
+<tr><td>0x170</td><td><a href="#entropy_source-NOISE_OBS_CTRL">NOISE_OBS_CTRL</a></td><td>RW</td><td>Controls copy-only capture of one pre-decorrelator generator lane.</td></tr>
+<tr><td>0x174</td><td><a href="#entropy_source-NOISE_OBS_STATUS">NOISE_OBS_STATUS</a></td><td>R</td><td>Reports raw-noise observe FIFO occupancy and pointers.</td></tr>
+<tr><td>0x178</td><td><a href="#entropy_source-NOISE_OBS_RDATA">NOISE_OBS_RDATA</a></td><td>R</td><td>Provides the next packed raw-noise observe word.</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="COMPONENT_ID"></span><h3 id="entropy_source-COMPONENT_ID" data-register-alias="COMPONENT_ID">COMPONENT_ID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:28</td><td>MAJOR_VERSION</td><td>R</td><td>0x0</td><td>Major interface version.</td></tr>
+<tr><td>27:24</td><td>MINOR_VERSION</td><td>R</td><td>0x1</td><td>Minor interface version.</td></tr>
+<tr><td>23:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>NAME</td><td>R</td><td>0x1</td><td>Entropy-source component identifier.</td></tr>
+</table>
+<span id="CTRL"></span><h3 id="entropy_source-CTRL" data-register-alias="CTRL">CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>28</td><td>SHA256_WHITENING_ENABLE</td><td>RW</td><td>0x1</td><td>Enables SHA-256 conditioning of each 512-bit BIW input block into a 256-bit digest. When clear, BIW words pass directly to the FIFO. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+<tr><td>27:26</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>25:16</td><td>DOWNSAMPLE_RATE</td><td>RW</td><td>0x0</td><td>Selects every (N+1)th decorrelator output while BIW extraction is bypassed. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+<tr><td>15:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>BYPASS_ENTROPY_COMPRESSOR</td><td>RW</td><td>0x0</td><td>Bypasses BIW extraction and writes the twelve generator bytes to the FIFO as three 32-bit words. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>AUTOTUNE_ENABLE</td><td>RW</td><td>0x0</td><td>Enables per-generator automatic detuning after a lane health-test failure. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+<tr><td>3:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>MODULE_ENABLE</td><td>RW</td><td>0x1</td><td>Enables startup health testing and entropy output. Clearing this field holds the main state machine idle. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+<tr><td>0</td><td>RSVD0</td><td>R</td><td>0x0</td><td>Reserved; reads zero and ignores writes.</td></tr>
+</table>
+<span id="DEBUG_CTRL"></span><h3 id="entropy_source-DEBUG_CTRL" data-register-alias="DEBUG_CTRL">DEBUG_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>10:8</td><td>SELECT_FREQ_DIV</td><td>RW</td><td>0x0</td><td>Selects observation division by 1, 2, 4, 8, 16, 32, 64, or 128. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+<tr><td>7:0</td><td>SELECT_SIGNAL</td><td>RW</td><td>0x0</td><td>Selects the observed signal: generator noise bits [11:0], sample clocks [27:16], BIW data [63:32], FIFO input [95:64], or generator bytes [223:128]. Other selections drive the divider input low. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="INTR_STATUS"></span><h3 id="entropy_source-INTR_STATUS" data-register-alias="INTR_STATUS">INTR_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>28</td><td>NOISE_OBS_OVERFLOW</td><td>RW1C</td><td>0x0</td><td>Indicates that a raw-noise observe FIFO word was discarded while full. Write one to clear.</td></tr>
+<tr><td>27:25</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>24</td><td>BIW_OBS_OVERFLOW</td><td>RW1C</td><td>0x0</td><td>Indicates that a BIW observe FIFO word was discarded while full. Write one to clear.</td></tr>
+<tr><td>23:21</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>20</td><td>AUTOTUNE_FAIL</td><td>RW1C</td><td>0x0</td><td>Indicates a per-generator health-test failure while automatic detuning is enabled. Write one to clear.</td></tr>
+<tr><td>19:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>16</td><td>PERSISTENT_FAILURE</td><td>RW1C</td><td>0x0</td><td>Indicates a persistent health-test failure or health-test counter error. Write one to clear.</td></tr>
+<tr><td>15:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12</td><td>FIFO_UNDERFLOW</td><td>RW1C</td><td>0x0</td><td>Indicates that software read the empty main FIFO. Write one to clear.</td></tr>
+<tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>FIFO_OVERFLOW</td><td>RW1C</td><td>0x0</td><td>Indicates that a main FIFO write was discarded while full. Write one to clear.</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>FIFO_ERROR</td><td>RW1C</td><td>0x0</td><td>Indicates a FIFO integrity error. Write one to clear.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>HEALTH_TEST_FAILED</td><td>RW1C</td><td>0x0</td><td>Indicates a failure in the 32-bit entropy-stream health tests. Write one to clear.</td></tr>
+</table>
+<span id="INTR_ENABLE"></span><h3 id="entropy_source-INTR_ENABLE" data-register-alias="INTR_ENABLE">INTR_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>28</td><td>NOISE_OBS_OVERFLOW</td><td>RW</td><td>0x0</td><td>Enables the raw-noise observe FIFO overflow interrupt.</td></tr>
+<tr><td>27:25</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>24</td><td>BIW_OBS_OVERFLOW</td><td>RW</td><td>0x0</td><td>Enables the BIW observe FIFO overflow interrupt.</td></tr>
+<tr><td>23:21</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>20</td><td>AUTOTUNE_FAIL</td><td>RW</td><td>0x0</td><td>Enables the automatic-detuning failure interrupt.</td></tr>
+<tr><td>19:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>16</td><td>PERSISTENT_FAILURE</td><td>RW</td><td>0x0</td><td>Enables the persistent-failure interrupt.</td></tr>
+<tr><td>15:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12</td><td>FIFO_UNDERFLOW</td><td>RW</td><td>0x0</td><td>Enables the main FIFO underflow interrupt.</td></tr>
+<tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>FIFO_OVERFLOW</td><td>RW</td><td>0x0</td><td>Enables the main FIFO overflow interrupt.</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>FIFO_ERROR</td><td>RW</td><td>0x0</td><td>Enables the FIFO integrity-error interrupt.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>HEALTH_TEST_FAILED</td><td>RW</td><td>0x0</td><td>Enables the health-test failure interrupt.</td></tr>
+</table>
+<span id="INTR_TEST"></span><h3 id="entropy_source-INTR_TEST" data-register-alias="INTR_TEST">INTR_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>28</td><td>NOISE_OBS_OVERFLOW</td><td>W 1P</td><td>0x0</td><td>Write one to pulse the raw-noise observe FIFO overflow interrupt source.</td></tr>
+<tr><td>27:25</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>24</td><td>BIW_OBS_OVERFLOW</td><td>W 1P</td><td>0x0</td><td>Write one to pulse the BIW observe FIFO overflow interrupt source.</td></tr>
+<tr><td>23:21</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>20</td><td>AUTOTUNE_FAIL</td><td>W 1P</td><td>0x0</td><td>Write one to pulse the automatic-detuning failure interrupt source.</td></tr>
+<tr><td>19:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>16</td><td>PERSISTENT_FAILURE</td><td>W 1P</td><td>0x0</td><td>Write one to pulse the persistent-failure interrupt source.</td></tr>
+<tr><td>15:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12</td><td>FIFO_UNDERFLOW</td><td>W 1P</td><td>0x0</td><td>Write one to pulse the main FIFO underflow interrupt source.</td></tr>
+<tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>FIFO_OVERFLOW</td><td>W 1P</td><td>0x0</td><td>Write one to pulse the main FIFO overflow interrupt source.</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>FIFO_ERROR</td><td>W 1P</td><td>0x0</td><td>Write one to pulse the FIFO integrity-error interrupt source.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>HEALTH_TEST_FAILED</td><td>W 1P</td><td>0x0</td><td>Write one to pulse the health-test failure interrupt source.</td></tr>
+</table>
+<span id="SHA256_STATUS"></span><h3 id="entropy_source-SHA256_STATUS" data-register-alias="SHA256_STATUS">SHA256_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:12</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>11:8</td><td>OUTPUT_COUNT</td><td>R</td><td>0x0</td><td>Number of 32-bit digest words remaining for output. Reports 8 when a digest becomes available, decrements through 0 as words are accepted, and remains 0 while idle or bypassed.</td></tr>
+<tr><td>7:4</td><td>INPUT_COUNT</td><td>R</td><td>0x0</td><td>Number of 32-bit words currently accumulated in the 512-bit input block.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates that SHA-256 processing or digest output is active.</td></tr>
+</table>
+<span id="FIFO_CTRL"></span><h3 id="entropy_source-FIFO_CTRL" data-register-alias="FIFO_CTRL">FIFO_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>ENTROPY_CHURN_ENABLE</td><td>RW</td><td>0x0</td><td>XORs each incoming word with the FIFO entry 32 positions ahead of the write pointer. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>ENABLE</td><td>RW</td><td>0x1</td><td>Enables FIFO writes. Reads remain available while writes are disabled. Words offered to the FIFO are also the DRBG seed stream, which this field does not gate. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="FIFO_STATUS"></span><h3 id="entropy_source-FIFO_STATUS" data-register-alias="FIFO_STATUS">FIFO_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:22</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>21:16</td><td>RPTR</td><td>R</td><td>0x0</td><td>Current FIFO read pointer.</td></tr>
+<tr><td>15:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>13:8</td><td>WPTR</td><td>R</td><td>0x0</td><td>Current FIFO write pointer.</td></tr>
+<tr><td>7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>6:0</td><td>LEVEL</td><td>R</td><td>0x0</td><td>Number of valid 32-bit words in the FIFO.</td></tr>
+</table>
+<span id="FIFO_RDATA"></span><h3 id="entropy_source-FIFO_RDATA" data-register-alias="FIFO_RDATA">FIFO_RDATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>RDATA</td><td>R RMOD</td><td>0x0</td><td>Returns and removes the next FIFO word. Reading an empty FIFO sets INTR_STATUS.FIFO_UNDERFLOW and returns undefined data.</td></tr>
+</table>
+<span id="HEALTH_TEST_CTRL"></span><h3 id="entropy_source-HEALTH_TEST_CTRL" data-register-alias="HEALTH_TEST_CTRL">HEALTH_TEST_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:8</td><td>REPETITION_LIMIT</td><td>RW</td><td>0x19</td><td>Maximum allowed per-lane repetition count before the test fails. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+<tr><td>7:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>ENABLE</td><td>RW</td><td>0x7</td><td>Enables the repetition-count, adaptive-proportion, and Markov tests in bits 0, 1, and 2. Disabling a test clears its state.</td></tr>
+</table>
+<span id="HEALTH_TEST_WINDOW_SIZE"></span><h3 id="entropy_source-HEALTH_TEST_WINDOW_SIZE" data-register-alias="HEALTH_TEST_WINDOW_SIZE">HEALTH_TEST_WINDOW_SIZE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>SIZE</td><td>RW</td><td>0x800</td><td>Number of valid entropy words per APT and Markov window. FIPS_LOCK.LOCK requires a value of at least 1024 and prevents software changes.</td></tr>
+</table>
+<span id="MARKOV_TEST_PROB_THRESHOLDS"></span><h3 id="entropy_source-MARKOV_TEST_PROB_THRESHOLDS" data-register-alias="MARKOV_TEST_PROB_THRESHOLDS">MARKOV_TEST_PROB_THRESHOLDS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>PROB_10_THRESHOLD</td><td>RW</td><td>0x64</td><td>Minimum allowed per-lane alternation count at the window boundary. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+<tr><td>15:0</td><td>PROB_01_THRESHOLD</td><td>RW</td><td>0x4B0</td><td>Maximum allowed per-lane alternation count at the window boundary. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="HEALTH_TEST_STATUS"></span><h3 id="entropy_source-HEALTH_TEST_STATUS" data-register-alias="HEALTH_TEST_STATUS">HEALTH_TEST_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>HEALTH_STATUS</td><td>RW1C</td><td>0x0</td><td>Latched health-test failure bits; write one to clear.</td></tr>
+</table>
+<span id="REPETITION_TEST_COUNT"></span><h3 id="entropy_source-REPETITION_TEST_COUNT" data-register-alias="REPETITION_TEST_COUNT">REPETITION_TEST_COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>REPETITION_COUNT</td><td>R</td><td>0x0</td><td>Highest current repetition count among the 32 entropy lanes.</td></tr>
+</table>
+<span id="APT_PATTERN_COUNT_1BIT"></span><h3 id="entropy_source-APT_PATTERN_COUNT_1BIT" data-register-alias="APT_PATTERN_COUNT_1BIT">APT_PATTERN_COUNT_1BIT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>PATTERN_COUNT</td><td>R</td><td>0x0</td><td>Highest current one-count among the 32 entropy lanes.</td></tr>
+</table>
+<span id="APT_PATTERN_COUNT_2BIT"></span><h3 id="entropy_source-APT_PATTERN_COUNT_2BIT" data-register-alias="APT_PATTERN_COUNT_2BIT">APT_PATTERN_COUNT_2BIT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>PATTERN_COUNT</td><td>R</td><td>0x0</td><td>Lowest current one-count among the 32 entropy lanes.</td></tr>
+</table>
+<span id="APT_PROPORTION_1BIT"></span><h3 id="entropy_source-APT_PROPORTION_1BIT" data-register-alias="APT_PROPORTION_1BIT">APT_PROPORTION_1BIT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>LIMIT</td><td>RW</td><td>0x4B0</td><td>Maximum allowed per-lane one-count at the window boundary. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="APT_PROPORTION_LO"></span><h3 id="entropy_source-APT_PROPORTION_LO" data-register-alias="APT_PROPORTION_LO">APT_PROPORTION_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>LIMIT</td><td>RW</td><td>0x350</td><td>Minimum allowed per-lane one-count at the window boundary. Zero disables the low-side test. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="MARKOV_TEST_COUNTS_0"></span><h3 id="entropy_source-MARKOV_TEST_COUNTS_0" data-register-alias="MARKOV_TEST_COUNTS_0">MARKOV_TEST_COUNTS_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>COUNT_10</td><td>R</td><td>0x0</td><td>Lowest current per-lane alternation count.</td></tr>
+<tr><td>15:0</td><td>COUNT_01</td><td>R</td><td>0x0</td><td>Highest current per-lane alternation count.</td></tr>
+</table>
+<span id="RING_OSC_ENABLE"></span><h3 id="entropy_source-RING_OSC_ENABLE" data-register-alias="RING_OSC_ENABLE">RING_OSC_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>23:12</td><td>SAMPLE_CLK_ENABLE</td><td>RW</td><td>0xFFF</td><td>Enables the shared sample-clock ring oscillator when any bit is set. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+<tr><td>11:0</td><td>ENABLE</td><td>RW</td><td>0xFFF</td><td>Enables each generator noise ring oscillator. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="RING_OSC_TUNE"></span><h3 id="entropy_source-RING_OSC_TUNE" data-register-alias="RING_OSC_TUNE">RING_OSC_TUNE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>23:12</td><td>SAMPLE_CLK_DETUNE</td><td>RW</td><td>0x0</td><td>Selects the full-length (longer) shared sample-clock oscillator tap, lowering its frequency, when any bit is set. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+<tr><td>11:0</td><td>DETUNE</td><td>RW</td><td>0x0</td><td>Selects the full-length (longer) tap for each noise ring oscillator, lowering its frequency, while automatic tuning is disabled; the reset value (clear) selects the shorter tap. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="RING_OSC_CTRL"></span><h3 id="entropy_source-RING_OSC_CTRL" data-register-alias="RING_OSC_CTRL">RING_OSC_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:12</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>11:0</td><td>SAMPLE_CLK_SELECT</td><td>RW</td><td>0xFFF</td><td>Selects the shared internal sample clock when set and the external sample clock when clear. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="DECORRELATOR_CTRL"></span><h3 id="entropy_source-DECORRELATOR_CTRL" data-register-alias="DECORRELATOR_CTRL">DECORRELATOR_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:12</td><td>SAMPLE_CLK_DIV</td><td>RW</td><td>0x3F</td><td>Sets the generator byte-output period to this value plus one sample-clock cycles. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+<tr><td>11:0</td><td>BYPASS</td><td>RW</td><td>0x0</td><td>Bypasses the LFSR feedback path independently for each generator. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="DECORRELATOR_MASK"></span><h3 id="entropy_source-DECORRELATOR_MASK" data-register-alias="DECORRELATOR_MASK">DECORRELATOR_MASK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>ENTROPY_BYTE_MASK</td><td>RW</td><td>0xFF</td><td>Enables corresponding entropy-byte bits when set. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="MAIN_SM_STATUS"></span><h3 id="entropy_source-MAIN_SM_STATUS" data-register-alias="MAIN_SM_STATUS">MAIN_SM_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>13</td><td>ALERT_CNTR_CLR_OK</td><td>R</td><td>0x0</td><td>Indicates that a passing window may clear alert failure counters.</td></tr>
+<tr><td>12</td><td>BOOT_PHASE_DONE</td><td>R</td><td>0x0</td><td>Indicates successful completion of startup health testing and permits entropy output.</td></tr>
+<tr><td>11</td><td>ERR</td><td>RW1C</td><td>0x0</td><td>Latches an illegal state or health-test counter integrity error. Write one or reset the block to clear.</td></tr>
+<tr><td>10</td><td>ALERT</td><td>RW1C</td><td>0x0</td><td>Latches entry into the persistent-failure alert path, which halts entropy output. Write one or reset the block to clear.</td></tr>
+<tr><td>9</td><td>IDLE</td><td>R</td><td>0x0</td><td>Indicates that the state machine is idle.</td></tr>
+<tr><td>8:0</td><td>STATE</td><td>R</td><td>0x0</td><td>Current sparse-encoded state-machine state.</td></tr>
+</table>
+<span id="GENERATOR_0_HEALTH_STATUS"></span><h3 id="entropy_source-GENERATOR_0_HEALTH_STATUS" data-register-alias="GENERATOR_0_HEALTH_STATUS">GENERATOR_0_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 0 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+</table>
+<span id="GENERATOR_1_HEALTH_STATUS"></span><h3 id="entropy_source-GENERATOR_1_HEALTH_STATUS" data-register-alias="GENERATOR_1_HEALTH_STATUS">GENERATOR_1_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 1 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+</table>
+<span id="GENERATOR_2_HEALTH_STATUS"></span><h3 id="entropy_source-GENERATOR_2_HEALTH_STATUS" data-register-alias="GENERATOR_2_HEALTH_STATUS">GENERATOR_2_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 2 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+</table>
+<span id="GENERATOR_3_HEALTH_STATUS"></span><h3 id="entropy_source-GENERATOR_3_HEALTH_STATUS" data-register-alias="GENERATOR_3_HEALTH_STATUS">GENERATOR_3_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 3 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+</table>
+<span id="GENERATOR_4_HEALTH_STATUS"></span><h3 id="entropy_source-GENERATOR_4_HEALTH_STATUS" data-register-alias="GENERATOR_4_HEALTH_STATUS">GENERATOR_4_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 4 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+</table>
+<span id="GENERATOR_5_HEALTH_STATUS"></span><h3 id="entropy_source-GENERATOR_5_HEALTH_STATUS" data-register-alias="GENERATOR_5_HEALTH_STATUS">GENERATOR_5_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 5 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+</table>
+<span id="GENERATOR_6_HEALTH_STATUS"></span><h3 id="entropy_source-GENERATOR_6_HEALTH_STATUS" data-register-alias="GENERATOR_6_HEALTH_STATUS">GENERATOR_6_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 6 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+</table>
+<span id="GENERATOR_7_HEALTH_STATUS"></span><h3 id="entropy_source-GENERATOR_7_HEALTH_STATUS" data-register-alias="GENERATOR_7_HEALTH_STATUS">GENERATOR_7_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 7 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+</table>
+<span id="GENERATOR_8_HEALTH_STATUS"></span><h3 id="entropy_source-GENERATOR_8_HEALTH_STATUS" data-register-alias="GENERATOR_8_HEALTH_STATUS">GENERATOR_8_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 8 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+</table>
+<span id="GENERATOR_9_HEALTH_STATUS"></span><h3 id="entropy_source-GENERATOR_9_HEALTH_STATUS" data-register-alias="GENERATOR_9_HEALTH_STATUS">GENERATOR_9_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 9 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+</table>
+<span id="GENERATOR_10_HEALTH_STATUS"></span><h3 id="entropy_source-GENERATOR_10_HEALTH_STATUS" data-register-alias="GENERATOR_10_HEALTH_STATUS">GENERATOR_10_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 10 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+</table>
+<span id="GENERATOR_11_HEALTH_STATUS"></span><h3 id="entropy_source-GENERATOR_11_HEALTH_STATUS" data-register-alias="GENERATOR_11_HEALTH_STATUS">GENERATOR_11_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 11 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+</table>
+<span id="GENERATOR_0_SAMPLE_CLK_CONFIG"></span><h3 id="entropy_source-GENERATOR_0_SAMPLE_CLK_CONFIG" data-register-alias="GENERATOR_0_SAMPLE_CLK_CONFIG">GENERATOR_0_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x0</td><td>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="GENERATOR_1_SAMPLE_CLK_CONFIG"></span><h3 id="entropy_source-GENERATOR_1_SAMPLE_CLK_CONFIG" data-register-alias="GENERATOR_1_SAMPLE_CLK_CONFIG">GENERATOR_1_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x0</td><td>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="GENERATOR_2_SAMPLE_CLK_CONFIG"></span><h3 id="entropy_source-GENERATOR_2_SAMPLE_CLK_CONFIG" data-register-alias="GENERATOR_2_SAMPLE_CLK_CONFIG">GENERATOR_2_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x1</td><td>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="GENERATOR_3_SAMPLE_CLK_CONFIG"></span><h3 id="entropy_source-GENERATOR_3_SAMPLE_CLK_CONFIG" data-register-alias="GENERATOR_3_SAMPLE_CLK_CONFIG">GENERATOR_3_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x1</td><td>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="GENERATOR_4_SAMPLE_CLK_CONFIG"></span><h3 id="entropy_source-GENERATOR_4_SAMPLE_CLK_CONFIG" data-register-alias="GENERATOR_4_SAMPLE_CLK_CONFIG">GENERATOR_4_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x2</td><td>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="GENERATOR_5_SAMPLE_CLK_CONFIG"></span><h3 id="entropy_source-GENERATOR_5_SAMPLE_CLK_CONFIG" data-register-alias="GENERATOR_5_SAMPLE_CLK_CONFIG">GENERATOR_5_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x2</td><td>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="GENERATOR_6_SAMPLE_CLK_CONFIG"></span><h3 id="entropy_source-GENERATOR_6_SAMPLE_CLK_CONFIG" data-register-alias="GENERATOR_6_SAMPLE_CLK_CONFIG">GENERATOR_6_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x0</td><td>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="GENERATOR_7_SAMPLE_CLK_CONFIG"></span><h3 id="entropy_source-GENERATOR_7_SAMPLE_CLK_CONFIG" data-register-alias="GENERATOR_7_SAMPLE_CLK_CONFIG">GENERATOR_7_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x0</td><td>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="GENERATOR_8_SAMPLE_CLK_CONFIG"></span><h3 id="entropy_source-GENERATOR_8_SAMPLE_CLK_CONFIG" data-register-alias="GENERATOR_8_SAMPLE_CLK_CONFIG">GENERATOR_8_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x1</td><td>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="GENERATOR_9_SAMPLE_CLK_CONFIG"></span><h3 id="entropy_source-GENERATOR_9_SAMPLE_CLK_CONFIG" data-register-alias="GENERATOR_9_SAMPLE_CLK_CONFIG">GENERATOR_9_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x1</td><td>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="GENERATOR_10_SAMPLE_CLK_CONFIG"></span><h3 id="entropy_source-GENERATOR_10_SAMPLE_CLK_CONFIG" data-register-alias="GENERATOR_10_SAMPLE_CLK_CONFIG">GENERATOR_10_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x2</td><td>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="GENERATOR_11_SAMPLE_CLK_CONFIG"></span><h3 id="entropy_source-GENERATOR_11_SAMPLE_CLK_CONFIG" data-register-alias="GENERATOR_11_SAMPLE_CLK_CONFIG">GENERATOR_11_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x2</td><td>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="HT_WATERMARK_NUM"></span><h3 id="entropy_source-HT_WATERMARK_NUM" data-register-alias="HT_WATERMARK_NUM">HT_WATERMARK_NUM</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3:0</td><td>WATERMARK_NUM</td><td>RW</td><td>0x0</td><td>Selects the watermark source. Unsupported values select REPCNT_HI.</td></tr>
+</table>
+<span id="HT_WATERMARK"></span><h3 id="entropy_source-HT_WATERMARK" data-register-alias="HT_WATERMARK">HT_WATERMARK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>WATERMARK_VALUE</td><td>R</td><td>0x0</td><td>Current shared watermark value.</td></tr>
+</table>
+<span id="REPCNT_TOTAL_FAILS"></span><h3 id="entropy_source-REPCNT_TOTAL_FAILS" data-register-alias="REPCNT_TOTAL_FAILS">REPCNT_TOTAL_FAILS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>FAIL_COUNT</td><td>R</td><td>0x0</td><td>Total repetition-test failure pulses.</td></tr>
+</table>
+<span id="APT_HI_TOTAL_FAILS"></span><h3 id="entropy_source-APT_HI_TOTAL_FAILS" data-register-alias="APT_HI_TOTAL_FAILS">APT_HI_TOTAL_FAILS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>FAIL_COUNT</td><td>R</td><td>0x0</td><td>Total APT high-threshold failure pulses.</td></tr>
+</table>
+<span id="APT_LO_TOTAL_FAILS"></span><h3 id="entropy_source-APT_LO_TOTAL_FAILS" data-register-alias="APT_LO_TOTAL_FAILS">APT_LO_TOTAL_FAILS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>FAIL_COUNT</td><td>R</td><td>0x0</td><td>Total APT low-threshold failure pulses.</td></tr>
+</table>
+<span id="MARKOV_HI_TOTAL_FAILS"></span><h3 id="entropy_source-MARKOV_HI_TOTAL_FAILS" data-register-alias="MARKOV_HI_TOTAL_FAILS">MARKOV_HI_TOTAL_FAILS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>FAIL_COUNT</td><td>R</td><td>0x0</td><td>Total Markov high-threshold failure pulses.</td></tr>
+</table>
+<span id="MARKOV_LO_TOTAL_FAILS"></span><h3 id="entropy_source-MARKOV_LO_TOTAL_FAILS" data-register-alias="MARKOV_LO_TOTAL_FAILS">MARKOV_LO_TOTAL_FAILS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>FAIL_COUNT</td><td>R</td><td>0x0</td><td>Total Markov low-threshold failure pulses.</td></tr>
+</table>
+<span id="ALERT_SUMMARY_FAIL_COUNTS"></span><h3 id="entropy_source-ALERT_SUMMARY_FAIL_COUNTS" data-register-alias="ALERT_SUMMARY_FAIL_COUNTS">ALERT_SUMMARY_FAIL_COUNTS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>ANY_FAIL_COUNT</td><td>R</td><td>0x0</td><td>Number of consecutive failing health-test windows.</td></tr>
+</table>
+<span id="ALERT_FAIL_COUNTS"></span><h3 id="entropy_source-ALERT_FAIL_COUNTS" data-register-alias="ALERT_FAIL_COUNTS">ALERT_FAIL_COUNTS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:16</td><td>REPCNT_FAIL_COUNT</td><td>R</td><td>0x0</td><td>Saturating repetition-test failure count.</td></tr>
+<tr><td>15:12</td><td>MARKOV_HI_FAIL_COUNT</td><td>R</td><td>0x0</td><td>Saturating Markov high-threshold failure count.</td></tr>
+<tr><td>11:8</td><td>MARKOV_LO_FAIL_COUNT</td><td>R</td><td>0x0</td><td>Saturating Markov low-threshold failure count.</td></tr>
+<tr><td>7:4</td><td>APT_HI_FAIL_COUNT</td><td>R</td><td>0x0</td><td>Saturating APT high-threshold failure count.</td></tr>
+<tr><td>3:0</td><td>APT_LO_FAIL_COUNT</td><td>R</td><td>0x0</td><td>Saturating APT low-threshold failure count.</td></tr>
+</table>
+<span id="FIPS_LOCK"></span><h3 id="entropy_source-FIPS_LOCK" data-register-alias="FIPS_LOCK">FIPS_LOCK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>LOCK</td><td>RW1S</td><td>0x0</td><td>Write one to set the configuration lock. Only hardware reset clears it.</td></tr>
+</table>
+<span id="ALERT_THRESHOLD"></span><h3 id="entropy_source-ALERT_THRESHOLD" data-register-alias="ALERT_THRESHOLD">ALERT_THRESHOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>THRESHOLD</td><td>RW</td><td>0x4</td><td>Number of consecutive failing windows that triggers the alert; zero disables this trigger. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="MIN_ENTROPY_H"></span><h3 id="entropy_source-MIN_ENTROPY_H" data-register-alias="MIN_ENTROPY_H">MIN_ENTROPY_H</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>H</td><td>RW</td><td>0xC</td><td>Assessed min-entropy in bits per sample. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="RECOMMENDED_THRESHOLDS"></span><h3 id="entropy_source-RECOMMENDED_THRESHOLDS" data-register-alias="RECOMMENDED_THRESHOLDS">RECOMMENDED_THRESHOLDS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>APT_LIMIT</td><td>R</td><td>0x0</td><td>Advisory APT high cutoff derived for a 1024-sample window.</td></tr>
+<tr><td>15:0</td><td>RCT_LIMIT</td><td>R</td><td>0x0</td><td>Advisory repetition-count cutoff C = 1 + ceil(20 / H).</td></tr>
+</table>
+<span id="BIW_OBS_CTRL"></span><h3 id="entropy_source-BIW_OBS_CTRL" data-register-alias="BIW_OBS_CTRL">BIW_OBS_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>RAW_ENABLE</td><td>RW</td><td>0x0</td><td>Enables capture after startup health testing completes. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="BIW_OBS_STATUS"></span><h3 id="entropy_source-BIW_OBS_STATUS" data-register-alias="BIW_OBS_STATUS">BIW_OBS_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:22</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>21:16</td><td>RPTR</td><td>R</td><td>0x0</td><td>Current BIW observe FIFO read pointer.</td></tr>
+<tr><td>15:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>13:8</td><td>WPTR</td><td>R</td><td>0x0</td><td>Current BIW observe FIFO write pointer.</td></tr>
+<tr><td>7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>6:0</td><td>LEVEL</td><td>R</td><td>0x0</td><td>Number of valid 32-bit words in the BIW observe FIFO.</td></tr>
+</table>
+<span id="BIW_OBS_RDATA"></span><h3 id="entropy_source-BIW_OBS_RDATA" data-register-alias="BIW_OBS_RDATA">BIW_OBS_RDATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>RDATA</td><td>R RMOD</td><td>0x0</td><td>Returns and removes the next BIW observe FIFO word.</td></tr>
+</table>
+<span id="NOISE_OBS_CTRL"></span><h3 id="entropy_source-NOISE_OBS_CTRL" data-register-alias="NOISE_OBS_CTRL">NOISE_OBS_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:4</td><td>LANE_SEL</td><td>RW</td><td>0x0</td><td>Selects generator lane 0 through 11; other values select lane 0. Changing lanes restarts packing and flushes buffered words.</td></tr>
+<tr><td>3:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>FLUSH</td><td>W 1P</td><td>0x0</td><td>Write one to discard buffered raw-noise words. Changing LANE_SEL also flushes the FIFO.</td></tr>
+<tr><td>0</td><td>RAW_ENABLE</td><td>RW</td><td>0x0</td><td>Enables LSB-first packing of selected-lane samples into 32-bit observe words. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+</table>
+<span id="NOISE_OBS_STATUS"></span><h3 id="entropy_source-NOISE_OBS_STATUS" data-register-alias="NOISE_OBS_STATUS">NOISE_OBS_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:22</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>21:16</td><td>RPTR</td><td>R</td><td>0x0</td><td>Current raw-noise observe FIFO read pointer.</td></tr>
+<tr><td>15:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>13:8</td><td>WPTR</td><td>R</td><td>0x0</td><td>Current raw-noise observe FIFO write pointer.</td></tr>
+<tr><td>7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>6:0</td><td>LEVEL</td><td>R</td><td>0x0</td><td>Number of valid 32-bit words in the raw-noise observe FIFO.</td></tr>
+</table>
+<span id="NOISE_OBS_RDATA"></span><h3 id="entropy_source-NOISE_OBS_RDATA" data-register-alias="NOISE_OBS_RDATA">NOISE_OBS_RDATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>RDATA</td><td>R RMOD</td><td>0x0</td><td>Returns and removes 32 LSB-first pre-decorrelator samples from the selected lane.</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../../../_/js/register-sections.js"></script>
+<script src="../../../../../_/js/toc-collapse.js"></script>
+<script src="../../../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/version-menu.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
+<script async src="../../../../../_/js/vendor/highlight.js"></script>
+<script src="../../../../../_/js/vendor/lunr.js"></script>
+<script src="../../../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../../../.." data-snippet-length="100" data-stylesheet="../../../../../_/css/search.css"></script>
+<script async src="../../../../../search-index.js"></script>
+  </body>
+</html>

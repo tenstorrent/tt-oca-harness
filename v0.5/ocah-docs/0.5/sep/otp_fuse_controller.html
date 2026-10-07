@@ -1,0 +1,1941 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>OTP Fuse Controller :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <link rel="prev" href="security.html">
+    <link rel="next" href="token_processing.html">
+    <meta name="description" content="SEP OTP fuse fields, access policy, anti-rollback counters, and RTL integration.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-docs" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Technical Reference Manual</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Documentation Overview</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../list-of-figures.html">List of Figures</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../list-of-tables.html">List of Tables</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../architecture.html">OCAH Architecture &amp; Design</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../overview.html">Platform Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../memory_map.html">OCAH Memory Map</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../power_domains.html">Power Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../clock_domains.html">Clock Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../reset.html">Reset</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../architecture.html#ocah-rtl-assertions">RTL Assertions</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">OCAH Platform Components</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../smu/index.html">System Management Unit (SMU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="index.html">Security Processor (SEP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="threat_model.html">Threat Model</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="attack_countermeasures.html">Attack Countermeasures</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="clk_rst.html">Clocks and Resets</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="reset_controller.html">SEP Reset Controller</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="cpu.html">CPU</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="fabric.html">Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="dma.html">Direct Memory Access (DMA)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="mailbox.html">Mailboxes</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="peripheral_subsystem.html">Peripheral Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="spi.html">Serial Peripheral Interface (SPI)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="security.html">Security and Lifecycle</a>
+<ul class="nav-list">
+  <li class="nav-item is-current-page" data-depth="5">
+    <a class="nav-link" href="otp_fuse_controller.html">OTP Fuse Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="token_processing.html">Token Processing</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="security_disable.html">Security Disable</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="lifecycle_controller.html">Lifecycle Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="test_mode.html">Test Mode Entry</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="crypto.html">Cryptographic Subsystem</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="trng.html">TRNG and DRBG</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/entropy_source/doc/index.html">Entropy Source</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="entropy_pool.html">Entropy Pool</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="aes.html">AES Cipher</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="hmac.html">HMAC-SHA2</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="kmac.html">KMAC-SHA3</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="adams_bridge.html">Adams Bridge (ABR)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="otbn.html">OTBN PKA Public Key Accelerator</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../ip/key_manager/doc/index.html">Key Manager</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-architecture">Architecture</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="memory_map.html">Memory Map and Register Reference</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../smc/index.html">System Management Controller (SMC)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/clk_rst.html">Clocks and Resets</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/cpu.html">CPU</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/fabric.html">Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../smc/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../smc/dma.html">Direct Memory Access Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../smc/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../smc/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/axi_lite_mailbox_unit/doc/index.html">Mailboxes</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/system_timer_octs/doc/index.html">System Timer OCTS</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/efuse/doc/index.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/uart_16550/doc/index.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/log_engine/doc/index.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/i2c/doc/index.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/i3ccore_wrap/doc/index.html">I3C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/avsbus_controller/doc/index.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/gpio/doc/index.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/telemetry_receiver/doc/index.html">Telemetry Receiver</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/dfd.html">Design-for-Debug and CLA</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/scan_protection.html">eFuse Scan Protection</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/memmap.html">Memory Map and Register Reference</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../dtp/index.html">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/clk_rst.html">Clocks and Resets</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/jtag.html">JTAG Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/cross_trigger.html">Cross-Trigger Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../dtp/ip_reference.html">IP Reference</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">JTAG</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Cross-Trigger</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/reference.html">Configuration and Reference</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../smn.html">System Management Network (SMN)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../aou.html">AXI-over-UCIe Bridge (AoU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-overview.html">Overview and Features</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-architecture.html">Architecture</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-interrupts-errors.html">Interrupts and Errors</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-ppa-appendices.html">PPA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../aou-appendices.html">Appendices</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../aou-referenced-documents.html">Appendix B. Referenced Documents</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../rtl-modules-reference.html">RTL Modules Reference</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../rtl-modules-reference.html#ip">IP</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/avsbus_controller.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/axi_alias_remap.html">AXI Alias Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/axi_filter.html">AXI Filter</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/axi_hang_detector.html">AXI Hang Detector</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/axi_lite_mailbox_unit.html">AXI-Lite Mailbox</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/axi_window_remap.html">AXI Window Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/drbg.html">DRBG</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/efuse.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/entropy_source.html">Entropy Source</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/gpio.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/i2c.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/i3ccore_wrap.html">I3C</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/idma_wrapper.html">iDMA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/key_manager.html">Key Manager</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/memory_interface.html">Memory Interface</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/output_remap.html">Output Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/scrambler.html">Scrambler</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/system_timer_octs.html">System Timer</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/telemetry_receiver.html">Telemetry Receiver</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/cross_trigger_matrix.html">Cross-Trigger Matrix</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/cross_trigger_network.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/cross_trigger_port.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/jtag2axi.html">JTAG to AXI</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/jtag_intf_unit.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/jtag_ptap.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/jtag_stap.html">JTAG STAP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/log_engine.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/uart_16550.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/uart_log_engine_wrap.html">UART Log Engine Wrapper</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/uart_wrap.html">UART Wrapper</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../rtl-modules-reference.html#subsystems">Subsystems</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/sys/sep.html">SEP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/sys/smc.html">SMC</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/sys/dtp.html">DTP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/sys/smu.html">SMU</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/sys/aou.html">AXI-over-UCIe</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../rtl-modules-reference.html#common">Common</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/common/ocah_prim.html">ocah_prim</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/common/ocah_prim_generic.html">ocah_prim_generic</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/common/tlul.html">TL-UL</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../ip-reference.html">IP Reference</a>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../register-field-access.html">Register Field Access Notation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../referenced-documents.html">Referenced Documents</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Technical Reference Manual 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../index.html">Technical Reference Manual</a></li>
+    <li>OCAH Platform Components</li>
+    <li><a href="../smu/index.html">System Management Unit (SMU)</a></li>
+    <li><a href="index.html">Security Processor (SEP)</a></li>
+    <li><a href="security.html">Security and Lifecycle</a></li>
+    <li><a href="otp_fuse_controller.html">OTP Fuse Controller</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="5">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">OTP Fuse Controller</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="fuse-controller-otp-fuse-controller-otp" class="paragraph">
+<p>The One-Time Programmable (OTP) fuse controller stores persistent chiplet
+policy. At cold reset it senses the fuse bank into shadow registers for
+software access and hardware policy enforcement. Programming a fuse and
+updating its shadow are separate operations.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sep-otp-fuse-bank-diagram">Figure 1</a> shows the fuse-bank organization.</p>
+</div>
+<div id="sep-otp-fuse-bank-diagram" class="imageblock">
+<div class="content">
+<img src="_images/sep-otp-fuse-map.svg" alt="SEP fuse map: 256 32-bit words drawn eight per row with each field at its offset, coloured by storage class, and the nine spare fields compressed into one band" width="100%">
+</div>
+<div class="title">Figure 1. SEP OTP fuse bank</div>
+</div>
+<div class="paragraph">
+<p>Each row of <a href="#sep-otp-fuse-bank-diagram">Figure 1</a> is 32 bytes, eight 32-bit words, at
+the offset given on the left from the base of the MAP window; a field that
+crosses a row boundary continues at the start of the next row. The shading
+gives the storage class of each field&#8217;s shadow register. The lock field, the
+lifecycle state, the two disable vectors and the two RMA token digests are held
+in non-scannable storage. CLASS_KEY, CHIPLET_UID, SIP_UID and SYS_UID are
+non-scannable as well and read as zero downstream while SECURE_TM is 1. The
+nine spare fields fill the last nine rows and are drawn as one band.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sep-efuse-interface-diagram">Figure 2</a> shows the controller boundary and the
+technology-specific fuse interface.</p>
+</div>
+<div id="sep-efuse-interface-diagram" class="imageblock">
+<div class="content">
+<img src="_images/sep-efuse-interface.svg" alt="eFuse wrapper front end, efuse_interface_controller with its register windows, command path and guard, and the interface shim in front of the fuse bank, with the SEP-only logic outlined dashed" width="100%">
+</div>
+<div class="title">Figure 2. eFuse controller and technology-specific interface shim</div>
+</div>
+<div class="paragraph">
+<p>The figure reads from the bus ports on the left to the fuse bank at the
+bottom. Thick arrows are AXI4, AXI-Lite or APB, and thin double-headed arrows
+carry a fuse command and its response. The dashed line separates the OCAH
+controller from the interface shim, which an adopter replaces with one for its
+fuse technology.</p>
+</div>
+<div class="paragraph">
+<p>Both wrappers pass the OTP JTAG port through a lifecycle filter that answers a
+blocked access with an error response. Inside the controller, an AXI-Lite
+multiplexer merges the functional and JTAG ports. Addresses from the MAP window
+to the end of the last register window go through the AXI-Lite to APB bridge,
+and all others go to the shim&#8217;s bank control registers. The APB decode answers
+any address in that span outside the register windows with SLVERR. The command
+multiplexer gives automatic sensing priority until it completes, then gives
+programming priority over reading, and <code>efuse_guard</code> filters every command
+before it reaches the shim.</p>
+</div>
+<div class="paragraph">
+<p>The SMC reuses the controller in <code>smc_efuse_wrapper</code> with <code>HAS_LC_STATE=0</code>, so
+the logic with a dashed outline is absent there:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The MMR window and <code>efuse_token_processing</code>: the SMC address map has no MMR
+window, and <code>security_disable_o</code> and <code>token_match_fault_o</code> are tied low.</p>
+</li>
+<li>
+<p>The LC_STATE handling in <code>efuse_shadow_regs</code>: the held INVALID output before
+sensing, the token-gated LC_STATE writes and the secret masking in secure test
+mode. The SMC has no secret-shadow ranges and ties <code>secure_tm_i</code> low.</p>
+</li>
+<li>
+<p>The RMA token-bit gate in <code>efuse_guard</code>.</p>
+</li>
+<li>
+<p>The width converter and the Key Manager port of <code>sep_efuse_wrapper</code>: the SMC
+functional port is a 32-bit AXI-Lite port connected to the controller
+directly.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The SMC has no local lifecycle controller. Its JTAG lifecycle filter decodes
+the lifecycle state received from SEP, and its <code>security_disable_i</code> input takes
+the SEP security-disable status, which skips fuse sensing and opens the shadow
+registers to software.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="fuse-sensing-and-boot-sequencing"><a class="anchor" href="#fuse-sensing-and-boot-sequencing"></a><a class="link" href="#fuse-sensing-and-boot-sequencing">1. Fuse Sensing and Boot Sequencing</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>When SEP is released from reset (chiplet_cold_reset), the sensing FSM
+automatically copies each fuse field into its dedicated memory-mapped
+shadow register.</p>
+</div>
+<div class="paragraph">
+<p>The logical <code>LC_STATE</code> output remains <code>4&#8217;b1111</code> until fuse
+sensing completes; only then is the LC_STATE value sensed from the fuses driven
+to downstream logic such as the lifecycle controller. <a href="#sep-fuse-fields-table">Table 1</a>
+defines whether software can read and write the shadow register of each fuse
+field. Shadow registers that are not software-visible drive their fuse values
+directly to downstream hardware. All fuse fields other than LOCKS and LC_STATE
+are made available to downstream logic as soon as they are ready.</p>
+</div>
+<div class="paragraph">
+<p>After the fuses have been read into their shadow registers, a sense-completion
+indicator is generated. This triggers the DFT-based memory-repair machine for
+the SEP SRAMs. Once memory repair completes or is bypassed, the SEP CPU is
+enabled and fetches its first instruction from the SEP ROM.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sep-efuse-sense-diagram">Figure 3</a> shows the fuse-sensing sequence and shadow-register timing.</p>
+</div>
+<div id="sep-efuse-sense-diagram" class="imageblock">
+<div class="content">
+<img src="_images/sep-efuse-sensing.svg" alt="Sensing FSM states ST_IDLE, ST_READ, ST_WAIT and ST_FINISHED, above a timing diagram of the response strobes, the word counter and the shadow words they fill" width="100%">
+</div>
+<div class="title">Figure 3. eFuse sensing state machine and shadow-register timing</div>
+</div>
+<div class="paragraph">
+<p>The upper part of <a href="#sep-efuse-sense-diagram">Figure 3</a> shows the four states of the
+sensing FSM in <code>efuse_shadow_regs</code>, and the lower part shows one sensing run
+cycle by cycle. ST_READ issues a single READ command for all 256 shadow words.
+The shim then returns one <code>fuse_command_resp.valid</code> strobe per word, and
+strobes may arrive on consecutive cycles. Each strobe stores its data in the
+shadow word indexed by <code>words_received_q</code> and increments the counter; a strobe
+with its status bit set still advances the counter but leaves that word
+unwritten. The strobe that arrives while the counter is 255 stores the last
+word and moves the FSM to ST_FINISHED, and <code>fuse_sense_done_o</code> rises one cycle
+later. Until then, APB accesses to the MAP window return SLVERR.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="shadow-register-and-jtag-access-control"><a class="anchor" href="#shadow-register-and-jtag-access-control"></a><a class="link" href="#shadow-register-and-jtag-access-control">2. Shadow Register and JTAG Access Control</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Each assigned lock slot contains an independent write-lock and read-lock bit.
+A write-lock blocks fuse programming and shadow writes; a read-lock blocks
+software and JTAG reads of both the fuse field and its shadow. The sensing FSM
+can still read locked fuses to populate the shadows.</p>
+</div>
+<div class="paragraph">
+<p>There are two exceptions: the <code>LOCKS</code> and <code>LOCKS_SPARE</code> registers have no lock
+slot of their own, and <code>LC_STATE</code> ignores its assigned lock bits. Lifecycle
+transition and token checks still apply to <code>LC_STATE</code>. The slot numbers and
+bit positions are defined in <a href="#sep-fuse-fields-table">Table 1</a>.</p>
+</div>
+<div class="paragraph">
+<p>The fuse block’s internal space, including the fuse-programming configuration
+space, is accessible through both a JTAG interface and an AXI interface, as
+shown in the figure, and each interface has its own access control. In addition
+to the shadow-register access control defined by <a href="#sep-fuse-fields-table">Table 1</a>, the
+JTAG port shall be further restricted: in the PROD and RMA_SIP states it may
+reach only the eFuse MMR token block. That block is the three token-input arrays
+(RMA_SIP_TOKEN_I, RMA_CHIPLET_TOKEN_I and SEC_DISABLE_TOKEN_I), the TOKEN_EOP
+register that triggers a match, and the three match-status registers. Every
+other JTAG access to the fuse block — the shadow registers, the interface
+control registers and the SHIM — shall complete with an error response.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="fuse-programming-and-rma-authorization"><a class="anchor" href="#fuse-programming-and-rma-authorization"></a><a class="link" href="#fuse-programming-and-rma-authorization">3. Fuse Programming and RMA Authorization</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The fuse-programming protection shall enable the fuse-programming function only
+after the LOCKS field has been sensed, and shall honor the write-lock value of
+each field. Programming LC_STATE is subject to additional restrictions:
+LC_STATE[2:1] indicate whether the chiplet is in an RMA state (see the LC State
+Machine section of the Life Cycle Controller). The SEP fuse controller
+implements two 256-bit registers, RMA_SIP_TOKEN_I and RMA_CHIPLET_TOKEN_I.</p>
+</div>
+<div class="paragraph">
+<p>These two registers can be populated by both SEP software and JTAG. Each input
+is hashed (SHA-256) and compared with the stored RMA_SIP_TOKEN_DIGEST and
+RMA_CHIPLET_TOKEN_DIGEST, respectively. Only on a match can LC_STATE[1] and
+LC_STATE[2] be programmed; the
+<a href="../../../ocah-programmer-guide/0.5/index.html#sep-token-matching" class="xref page">token matching section</a>
+of the Programmer&#8217;s Guide gives the firmware sequence. For the matching
+mechanism, see
+<a href="token_processing.html#token-matching-mechanism-and-attack-countermeasures" class="xref page">Token Matching Mechanism and Attack Countermeasures</a>.</p>
+</div>
+<div class="sect2">
+<h3 id="programming-voltage"><a class="anchor" href="#programming-voltage"></a><a class="link" href="#programming-voltage">3.1. Programming Voltage</a></h3>
+<div class="paragraph">
+<p>The fuse bank shall support keeping the programming-voltage rail active for an
+unlimited lifetime. This is achieved by using only the internal
+charge-pump-generated programming voltage rather than the external programming
+voltage.</p>
+</div>
+<div class="paragraph">
+<p>The charge pump is calibrated early in wafer test, and its calibration values
+are burned into the corresponding fuse bits; this is the only time the external
+fuse-programming voltage is used. Consequently, software-initiated fuse
+programming never needs to configure the programming voltage.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="shadow-register-updates-and-test-mode-protection"><a class="anchor" href="#shadow-register-updates-and-test-mode-protection"></a><a class="link" href="#shadow-register-updates-and-test-mode-protection">4. Shadow Register Updates and Test-Mode Protection</a></h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p>Programming a fuse does not update its shadow register until the next fuse
+sensing occurs.</p>
+</li>
+<li>
+<p>The shadow registers of LOCK (both the LOCKS and LOCKS_SPARE windows),
+LC_STATE, SIP_DIS, and SYS_DIS are non-scannable. Any register on the path
+from these registers to the feature control outputs or the fuse write-enable
+signals is likewise non-scannable.</p>
+</li>
+<li>
+<p>When SECURE_TM is 1 (see the Test Mode section), the shadow registers of LOCK
+(both the LOCKS and LOCKS_SPARE windows), LC_STATE, SIP_DIS, and SYS_DIS shall
+be blocked from any update, from every source&#8201;&#8212;&#8201;software, JTAG, and TRoot.
+This list is normative and exhaustive: these are the fields whose perturbation
+could enable a feature that a DIS vector or the lifecycle state has disabled.
+An implementation may block further fields, but no other requirement in this
+specification depends on it.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>To prevent test patterns from accidentally or maliciously changing or reading
+out the fuse values:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>When SECURE_TM is 1, the fuse write-enable inputs to the fuse IP block are
+tied inactive, and the fuse-bank outputs are disconnected from downstream
+logic. If needed, dedicated test registers can be added to drive the
+downstream logic during test.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="fuse-fields"><a class="anchor" href="#fuse-fields"></a><a class="link" href="#fuse-fields">5. Fuse Fields</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="#sep-fuse-fields-table">Table 1</a> lists lock slots, field sizes, shadow access permissions and purposes.
+Slot numbers select lock bits; they are neither OTP word offsets nor register
+addresses. Access permissions remain subject to the lock and lifecycle rules above.</p>
+</div>
+<table id="sep-fuse-fields-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SEP fuse fields</caption>
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 45%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Field</th>
+<th class="tableblock halign-left valign-top">Lock slot</th>
+<th class="tableblock halign-left valign-top">Size (bits)</th>
+<th class="tableblock halign-left valign-top">SW writable</th>
+<th class="tableblock halign-left valign-top">SW readable</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">LOCK</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">96</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">set-only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lock state occupies OTP words 0–2:</p>
+<p class="tableblock"><code>LOCKS</code> (64 bits at <code>0x0</code>) covers slots 0–31: write-lock at bit <code>2n</code>,
+read-lock at bit <code>2n+1</code> for slot <code>n</code>.</p>
+<p class="tableblock"><code>LOCKS_SPARE</code> (32 bits at <code>0x8</code>) covers slots 32–40: write-lock at bit
+<code>2(n-32)</code>, read-lock at bit <code>2(n-32)+1</code>. Bits [31:18] are unassigned slots 41–47.</p>
+<p class="tableblock">Firmware reads the complete state as three consecutive 32-bit words.
+There are 41 assigned slots (0–40); slot 0 belongs to <code>LC_STATE</code>, which ignores
+both lock bits. LOCK has no lock-bit pair and cannot lock itself.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">LC_STATE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 (4-bit state, 8-bit encoding)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">set-only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Life-cycle state of the
+chiplet. The shadow encodes the logical state as <code>{~raw[3:0], raw[3:0]}</code>
+in bits [7:0]; the bit numbers below refer to the logical state.
+<strong><em>LC_STATE shall never be write-locked or read-locked by the
+corresponding LOCKS bits</em></strong>. LC_STATE[3] and LC_STATE[0] are set-only.
+LC_STATE[2:1] shall be set-only when the corresponding *_TOKEN has a
+match. Setting bit 2 also requires bit 1 to be set in the pre-write state;
+one write cannot establish both RMA stages. Invalid lifecycle encodings are
+terminal. Otherwise, LC_STATE[2:1] cannot be updated.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SBOOT_DIS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 (use only 1 bit)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Disables secure boot when
+set to 1, in any lifecycle state. It overrides lifecycle enforcement in PROD
+and PROD_END and the TEST_DEV / RMA_SiP debug-lock rule, but not a signed manifest&#8217;s
+request for verification; see Firmware Authorization in the Lifecycle
+Controller section.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TRANSIENT_RMA_EN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 (use only 1 bit)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables automatic
+RMA shadow-state updates after token matching, without requiring a reset.
+It does not enable the token matcher itself. The chiplet-token path has
+priority and requires an already established RMA_SIP state; a chiplet match
+without that state blocks the transition rather than falling through to a
+simultaneous SiP match. When 0, token matches do not automatically update
+<code>LC_STATE</code>; explicit shadow writes remain subject to token and transition checks.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SIP_DIS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">set-only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SiP owner’s feature-control disable vector,
+provisioned by the chiplet owner. A bit set to 1 disables the corresponding
+feature.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SYS_DIS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">set-only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System owner’s feature-control disable vector,
+provisioned by the SiP owner. A bit set to 1 disables the corresponding
+feature.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RMA_SIP_TOKEN_DIGEST</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hash digest of the secret
+RMA_SIP_TOKEN, that enables entering RMA_SIP Life Cycle state</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RMA_CHIPLET_TOKEN_DIGEST</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hash digest of the secret
+RMA_CHIPLET_TOKEN that enables entering RMA_CHIPLET Life Cycle state</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLASS_KEY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Can be used for firmware encryption and decryption.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIPLET_PUBK_REVOKE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">set-only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Global public-key revocation
+vector covering every boot-verification key of every owner (classical and
+PQC). SEP ROM embeds a set of public-key hash digests and accesses
+additional fused key hashes; each key entry maps to one bit here. Once set,
+SEP ROM rejects the corresponding key. Bit map: [7:0] ROM chiplet-creator
+classical keys (bits 0,1 are development keys); [15:8] ROM chiplet-creator
+PQC keys; [16]/[17] CHIPLET_PUBK_HASH0/1; [18]/[19] CHIPLET_PUBK_PQC_HASH0/1;
+[20]/[21] SIP_PUBK_HASH0 / SIP_PUBK_PQC_HASH0; [22]/[23] SYS_PUBK_HASH /
+SYS_PUBK_PQC_HASH; [24]/[25] SIP_PUBK_HASH1 / SIP_PUBK_PQC_HASH1; [31:26]
+reserved. Before the chiplet owner transfers a
+part to the customer, the development-key bits shall be set (revoked).
+(Name retained for compatibility; scope is now all owners.)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BL1_VERSION</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">set-only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BL1 anti-rollback storage. The
+production ROM supplies the low 128 raw bits as security-version flags to
+the manifest validator; the upper 128 bits do not participate in that check.
+See <a href="#anti-rollback-counter-arbc-anti-rollback-counter-arbc">Section 6</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BL2_VERSION</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">set-only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BL2 anti-rollback storage for later-stage
+firmware policy. This bank is not the production ROM&#8217;s BL1 security-version
+input; software using it must define its encoding and enforcement policy.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIPLET_UID</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Silicon creator’s <em>secret</em> device unique
+ID (also referred to as the UDS, Unique Device Secret). The
+chiplet creator is responsible for CHIPLET_UID provisioning and public
+identity enrollment. Write-lock and read-lock independently control
+modification and software visibility. Hardware recording of provisioning
+measurements is a proposed enhancement.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SIP_PUBK_HASH0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hash digest of SiP owner’s root
+public key for secure boot (slot 0). Note: The chiplet creator’s actual root
+public key is embedded in the SEPROM. The digest is used to validate
+that public key.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SIP_UID</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">13</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SiP owner’s <em>secret</em> device unique ID. The
+SiP owner is responsible for SIP_UID provisioning and public identity
+enrollment. Write-lock and read-lock independently control modification
+and software visibility. Hardware recording of provisioning measurements
+and retention of prior-owner key/UID pairs in the derivation hierarchy
+are proposed enhancements.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SYS_PUBK_HASH</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">14</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hash digest of system owner’s root
+public key for secure boot.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SYS_UID</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">15</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System owner’s <em>secret</em> device unique ID. The
+system owner is responsible for SYS_UID provisioning and public identity
+enrollment. Write-lock and read-lock independently control modification
+and software visibility.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">STATUS_RPT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 (2 used)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When STATUS_RPT[1:0] == 2&#8217;b00, the
+boot ROM samples an SMC GPIO (STATUS_RPT) to determine whether to report
+status. When STATUS_RPT[1:0] == 2&#8217;b01, the boot ROM reports status; otherwise,
+it does not.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ROM_CTL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">17</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ROM_CTL[0]: 0 = little-endian, 1 = big-endian.
+ROM_CTL[5:1]: row-swap control; swaps ROM slices when set. ROM_CTL[31:6]:
+reserved.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SYSCLK_FREQ_MHZ</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">18</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 (11 used)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configured sysclk PLL frequency
+in MHz (<code>sysclk_freq_mhz[10:0]</code>). Ignored when 0. Consumed by boot ROM clock
+math (PLL selection and SPI <code>CLKDIV</code> derivation).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIPLET_PUBK_HASH0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">19</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hash of chiplet-owner authentication
+key 0, fused. These fused chiplet-owner key hashes can be used in addition to
+the hashes embedded in the ROM to authenticate manifests.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIPLET_PUBK_HASH1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">20</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hash of chiplet-owner authentication
+key 1, fused.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">REQUIRED_SIGNERS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">21</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 (use only 2 bits)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Owners whose signature
+a manifest must carry to be authenticated by SEP ROM. Per owner, 1 = required,
+0 = not-required; the default all-zero value requires no additional owner. [0]
+SiP owner, [1] system owner, [31:2] reserved. The chiplet creator is the root of
+trust&#8201;&#8212;&#8201;its classical and PQC root digests are embedded in SEP ROM and always
+authenticate BL1&#8201;&#8212;&#8201;so it has no bit here. Burning a fuse bit only ever adds a
+required signer, so the fuse is monotonic: the standard LOCK bits exist but
+locking this field is unnecessary, since a later burn can never weaken security.
+The value is applied via the shadow register (loaded from the fuse at cold reset,
+SW-writable): firmware may update the shadow to set the required signers for each
+manifest it verifies (BL1, BL2, runtime, &#8230;&#8203;). See Secure-Boot Signing Model in
+the Life Cycle Controller section.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">REQUIRED_ALGS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">22</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 (use only 12 bits)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">set-only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-owner required
+signature algorithms, applied only when that owner is required. Each owner has a
+4-bit nibble; bit 0 = classical (ECDSA P-384 or RSA), bit 1 = post-quantum
+(ML-DSA), bits 3:2 reserved. The specific classical scheme and ML-DSA parameter
+set (e.g., ML-DSA-44/65/87) are set by the owner&#8217;s provisioned keys, not mandated
+here. [3:0] chiplet, [7:4] SiP owner, [11:8] system owner, [31:12] reserved. For
+each required (owner, algorithm) the manifest must carry a signature verified
+against that owner&#8217;s burned, non-revoked key of that type; all required pairs
+must verify, and any signature from a non-required owner is ignored.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIPLET_PUBK_PQC_HASH0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">23</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chiplet owner ML-DSA PQC
+authentication key 0 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH0.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIPLET_PUBK_PQC_HASH1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">24</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chiplet owner ML-DSA PQC
+authentication key 1 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH1.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SIP_PUBK_PQC_HASH0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">25</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hash digest of the SiP owner&#8217;s
+ML-DSA PQC root public key for secure boot (slot 0). PQC counterpart of
+SIP_PUBK_HASH0.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SYS_PUBK_PQC_HASH</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">26</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hash digest of the system owner&#8217;s
+ML-DSA PQC root public key for secure boot. PQC counterpart of
+SYS_PUBK_HASH.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SIP_PUBK_HASH1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">27</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hash digest of the SiP owner&#8217;s root
+public key for secure boot, slot 1. Second slot so the SiP owner retains a
+usable root key after revoking slot 0 via CHIPLET_PUBK_REVOKE[24].</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SIP_PUBK_PQC_HASH1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">28</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hash digest of the SiP owner&#8217;s ML-DSA
+PQC root public key for secure boot, slot 1. PQC counterpart of
+SIP_PUBK_HASH1; revocable via CHIPLET_PUBK_REVOKE[25].</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_CHIPLET_ID</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">29</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-owner chiplet public identity fuse
+used as a public identity input to the Key Manager. No read protection
+is required.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_SIP_ID</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">30</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SiP-owner public identity fuse used as a public identity
+input to the Key Manager. No read protection is required.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_SYS_ID</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">31</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System-owner public identity fuse used as a public identity
+input to the Key Manager. No read protection is required.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spare0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 0 for future use.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spare1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">33</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 1 for future use.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spare2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">34</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 2 for future use.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spare3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">35</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 3 for future use.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spare4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">36</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 4 for future use.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spare5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">37</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 5 for future use.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spare6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">38</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 6 for future use.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spare7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">39</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 7 for future use.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spare8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">40</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 8 for future use.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The fuse map is exactly 8192 bits with exclusive end address <code>0x400</code> (1024 bytes, 256 × 32-bit words).</p>
+</div>
+<div class="paragraph">
+<p>The JTAG_ID field has been removed from the fuse map and will be implemented as a top-level port.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="anti-rollback-counter-arbc-anti-rollback-counter-arbc"><a class="anchor" href="#anti-rollback-counter-arbc-anti-rollback-counter-arbc"></a><a class="link" href="#anti-rollback-counter-arbc-anti-rollback-counter-arbc">6. Anti-Rollback Security-Version Flags</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>BL1_VERSION</code> holds the device security-version flags for BL1. They are
+independent flags rather than a counter, and the production ROM uses bits
+<code>[127:0]</code>. <code>BL2_VERSION</code> is separate storage whose interpretation belongs to
+later-stage firmware. Both fields are set-only, so a burned flag stays set.</p>
+</div>
+<div class="paragraph">
+<p>The
+<a href="../../../ocah-programmer-guide/0.5/index.html#req-SEP-ROM-SB-070" class="xref page">Anti-Rollback</a>
+requirements of the SEP Boot ROM appendix in the Programmer&#8217;s Guide define the
+check a manifest must pass and how firmware commits new flags.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="rtl-integration"><a class="anchor" href="#rtl-integration"></a><a class="link" href="#rtl-integration">7. RTL Integration</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>sep_crypto</code> instantiates <code>sep_efuse_wrapper</code>. The wrapper converts the
+64-bit SEP AXI interface to 32-bit AXI4-Lite through <code>axi_dw_converter</code>
+and <code>axi_to_axi_lite</code>, then connects to the shared <code>efuse_interface_controller</code>.
+A separate JTAG AXI4-Lite port provides manufacturing and lifecycle-restricted
+access.</p>
+</div>
+<div class="paragraph">
+<p>The controller uses <code>HAS_LC_STATE=1</code>. Its four-bit logical lifecycle state
+starts at bit 96 in the shadow map and uses an eight-bit differential encoding.
+<code>sep_lifecycle_ctrl</code> decodes that state with <code>prim_diff_decode_multi</code>, derives
+feature controls from <code>SIP_DIS</code> and <code>SYS_DIS</code>, and differentially encodes its
+two demotion outputs. The pre-sense invalid-state behavior is described under
+Fuse Sensing and Boot Sequencing above.</p>
+</div>
+<div class="paragraph">
+<p><code>sep_crypto</code> assembles the Key Manager&#8217;s <code>km_otp_data_t</code> input from:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The encoded lifecycle shadow and the lifecycle controller&#8217;s two demotion
+outputs; demotion is not read directly from fuses.</p>
+</li>
+<li>
+<p>The secret shadows <code>chiplet_uid</code>, <code>sip_uid</code>, <code>sys_uid</code> and <code>class_key</code>.</p>
+</li>
+<li>
+<p>The public identity shadows <code>sep_chiplet_id</code>, <code>sep_sip_id</code> and <code>sep_sys_id</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><code>BL1_VERSION</code>, <code>BL2_VERSION</code>, RMA token digests and public-key hashes are not
+part of that Key Manager interface. SEP firmware accesses them through the
+shadow interface; the token matcher also consumes the RMA digests internally.</p>
+</div>
+<div class="paragraph">
+<p>For simulation, adopters need to provide an external eFuse macro model behind the
+shim interface. Only the generic controller and the shim interfaces are defined
+here.</p>
+</div>
+<div class="paragraph">
+<p>For the canonical eFuse IP documentation covering the <code>efuse_interface_controller</code> internals, sensing FSM, and programming protocol, see <code>hw/ip/efuse/doc/index.adoc</code> (included in the SMC documentation via <code>hw/sys/smc/doc/periphs.adoc</code>).</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-map-and-register-reference"><a class="anchor" href="#memory-map-and-register-reference"></a><a class="link" href="#memory-map-and-register-reference">8. Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<span id="register-reference"></span>
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">8.1. Memory Map</a></h3>
+<div class="paragraph">
+<p>Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">8.2. Detailed Register Map</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-sep_efuse_map">SEP eFuse Map Address Map</h2>
+<p>Per-field write-lock and read-lock registers for the SEP eFuse map.</p>
+<p><strong>Register List:</strong></p>
+<table id="trm-table-2">
+<caption class="title"><a href="#trm-table-2">Table 2</a>. SEP eFuse Map Address Map register list</caption>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#sep_efuse_map-LOCKS">LOCKS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#sep_efuse_map-LOCKS_SPARE">LOCKS_SPARE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#sep_efuse_map-LC_STATE">LC_STATE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#sep_efuse_map-SBOOT_DIS">SBOOT_DIS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x14</td><td><a href="#sep_efuse_map-TRANSIENT_RMA_EN">TRANSIENT_RMA_EN</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#sep_efuse_map-SIP_DIS">SIP_DIS</a></td><td>RW</td><td>An owner&#x27;s feature control vector. When set (1&#x27;b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.</td></tr>
+<tr><td>0x20</td><td><a href="#sep_efuse_map-SYS_DIS">SYS_DIS</a></td><td>RW</td><td>An owner&#x27;s feature control vector. When set (1&#x27;b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.</td></tr>
+<tr><td>0x28</td><td><a href="#sep_efuse_map-RMA_SIP_TOKEN_DIGEST">RMA_SIP_TOKEN_DIGEST</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x48</td><td><a href="#sep_efuse_map-RMA_CHIPLET_TOKEN_DIGEST">RMA_CHIPLET_TOKEN_DIGEST</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x68</td><td><a href="#sep_efuse_map-CLASS_KEY">CLASS_KEY</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x88</td><td><a href="#sep_efuse_map-CHIPLET_PUBK_REVOKE">CHIPLET_PUBK_REVOKE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x8C</td><td><a href="#sep_efuse_map-BL1_VERSION">BL1_VERSION</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xAC</td><td><a href="#sep_efuse_map-BL2_VERSION">BL2_VERSION</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xCC</td><td><a href="#sep_efuse_map-CHIPLET_UID">CHIPLET_UID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xEC</td><td><a href="#sep_efuse_map-SIP_PUBK_HASH0">SIP_PUBK_HASH0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x10C</td><td><a href="#sep_efuse_map-SIP_UID">SIP_UID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x12C</td><td><a href="#sep_efuse_map-SYS_PUBK_HASH">SYS_PUBK_HASH</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x14C</td><td><a href="#sep_efuse_map-SYS_UID">SYS_UID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x16C</td><td><a href="#sep_efuse_map-STATUS_RPT">STATUS_RPT</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x170</td><td><a href="#sep_efuse_map-ROM_CTL">ROM_CTL</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x174</td><td><a href="#sep_efuse_map-SYSCLK_FREQ_MHZ">SYSCLK_FREQ_MHZ</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x178</td><td><a href="#sep_efuse_map-CHIPLET_PUBK_HASH0">CHIPLET_PUBK_HASH0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x198</td><td><a href="#sep_efuse_map-CHIPLET_PUBK_HASH1">CHIPLET_PUBK_HASH1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1B8</td><td><a href="#sep_efuse_map-REQUIRED_SIGNERS">REQUIRED_SIGNERS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1BC</td><td><a href="#sep_efuse_map-REQUIRED_ALGS">REQUIRED_ALGS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1C0</td><td><a href="#sep_efuse_map-CHIPLET_PUBK_PQC_HASH0">CHIPLET_PUBK_PQC_HASH0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1E0</td><td><a href="#sep_efuse_map-CHIPLET_PUBK_PQC_HASH1">CHIPLET_PUBK_PQC_HASH1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x200</td><td><a href="#sep_efuse_map-SIP_PUBK_PQC_HASH0">SIP_PUBK_PQC_HASH0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x220</td><td><a href="#sep_efuse_map-SYS_PUBK_PQC_HASH">SYS_PUBK_PQC_HASH</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x240</td><td><a href="#sep_efuse_map-SIP_PUBK_HASH1">SIP_PUBK_HASH1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x260</td><td><a href="#sep_efuse_map-SIP_PUBK_PQC_HASH1">SIP_PUBK_PQC_HASH1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x280</td><td><a href="#sep_efuse_map-SEP_CHIPLET_ID">SEP_CHIPLET_ID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x2A0</td><td><a href="#sep_efuse_map-SEP_SIP_ID">SEP_SIP_ID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x2C0</td><td><a href="#sep_efuse_map-SEP_SYS_ID">SEP_SYS_ID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x2E0</td><td><a href="#sep_efuse_map-spare0">spare0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x300</td><td><a href="#sep_efuse_map-spare1">spare1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x320</td><td><a href="#sep_efuse_map-spare2">spare2</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x340</td><td><a href="#sep_efuse_map-spare3">spare3</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x360</td><td><a href="#sep_efuse_map-spare4">spare4</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x380</td><td><a href="#sep_efuse_map-spare5">spare5</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x3A0</td><td><a href="#sep_efuse_map-spare6">spare6</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x3C0</td><td><a href="#sep_efuse_map-spare7">spare7</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x3E0</td><td><a href="#sep_efuse_map-spare8">spare8</a></td><td>R</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="LOCKS"></span><h3 id="sep_efuse_map-LOCKS" data-register-alias="LOCKS">LOCKS</h3>
+<table id="trm-table-3">
+<caption class="title"><a href="#trm-table-3">Table 3</a>. sep_efuse_map.LOCKS fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63</td><td>SEP_SYS_ID_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sep_sys_id_read_lock (slot 31): when set, SEP_SYS_ID is not read-able.</td></tr>
+<tr><td>62</td><td>SEP_SYS_ID_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sep_sys_id_write_lock (slot 31): when set, SEP_SYS_ID is not write-able.</td></tr>
+<tr><td>61</td><td>SEP_SIP_ID_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sep_sip_id_read_lock (slot 30): when set, SEP_SIP_ID is not read-able.</td></tr>
+<tr><td>60</td><td>SEP_SIP_ID_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sep_sip_id_write_lock (slot 30): when set, SEP_SIP_ID is not write-able.</td></tr>
+<tr><td>59</td><td>SEP_CHIPLET_ID_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sep_chiplet_id_read_lock (slot 29): when set, SEP_CHIPLET_ID is not read-able.</td></tr>
+<tr><td>58</td><td>SEP_CHIPLET_ID_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sep_chiplet_id_write_lock (slot 29): when set, SEP_CHIPLET_ID is not write-able.</td></tr>
+<tr><td>57</td><td>SIP_PUBK_PQC_HASH1_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_pubk_pqc_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>56</td><td>SIP_PUBK_PQC_HASH1_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_pubk_pqc_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>55</td><td>SIP_PUBK_HASH1_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_pubk_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>54</td><td>SIP_PUBK_HASH1_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_pubk_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>53</td><td>SYS_PUBK_PQC_HASH_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sys_pubk_pqc_hash_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>52</td><td>SYS_PUBK_PQC_HASH_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sys_pubk_pqc_hash_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>51</td><td>SIP_PUBK_PQC_HASH0_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_pubk_pqc_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>50</td><td>SIP_PUBK_PQC_HASH0_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_pubk_pqc_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>49</td><td>CHIPLET_PUBK_PQC_HASH1_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_pubk_pqc_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>48</td><td>CHIPLET_PUBK_PQC_HASH1_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_pubk_pqc_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>47</td><td>CHIPLET_PUBK_PQC_HASH0_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_pubk_pqc_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>46</td><td>CHIPLET_PUBK_PQC_HASH0_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_pubk_pqc_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>45</td><td>REQUIRED_ALGS_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>required_algs_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>44</td><td>REQUIRED_ALGS_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>required_algs_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>43</td><td>REQUIRED_SIGNERS_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>required_signers_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>42</td><td>REQUIRED_SIGNERS_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>required_signers_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>41</td><td>CHIPLET_PUBK_HASH1_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_pubk_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>40</td><td>CHIPLET_PUBK_HASH1_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_pubk_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>39</td><td>CHIPLET_PUBK_HASH0_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_pubk_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>38</td><td>CHIPLET_PUBK_HASH0_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_pubk_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>37</td><td>SYSCLK_FREQ_MHZ_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sysclk_freq_mhz_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>36</td><td>SYSCLK_FREQ_MHZ_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sysclk_freq_mhz_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>35</td><td>ROM_CTL_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>rom_ctl_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>34</td><td>ROM_CTL_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>rom_ctl_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>33</td><td>STATUS_RPT_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>status_rpt_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>32</td><td>STATUS_RPT_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>status_rpt_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>31</td><td>SYS_UID_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sys_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>30</td><td>SYS_UID_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sys_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>29</td><td>SYS_PUBK_HASH_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sys_pubk_hash_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>28</td><td>SYS_PUBK_HASH_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sys_pubk_hash_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>27</td><td>SIP_UID_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>26</td><td>SIP_UID_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>25</td><td>SIP_PUBK_HASH0_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_pubk_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>24</td><td>SIP_PUBK_HASH0_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_pubk_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>23</td><td>CHIPLET_UID_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>22</td><td>CHIPLET_UID_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>21</td><td>BL2_VERSION_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>bl2_version_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>20</td><td>BL2_VERSION_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>bl2_version_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>19</td><td>BL1_VERSION_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>bl1_version_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>18</td><td>BL1_VERSION_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>bl1_version_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>17</td><td>CHIPLET_PUBK_REVOKE_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_pubk_revoke_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>16</td><td>CHIPLET_PUBK_REVOKE_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_pubk_revoke_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>15</td><td>CLASS_KEY_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>class_key_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>14</td><td>CLASS_KEY_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>class_key_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>13</td><td>RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>rma_chiplet_token_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>12</td><td>RMA_CHIPLET_TOKEN_DIGEST_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>rma_chiplet_token_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>11</td><td>RMA_SIP_TOKEN_DIGEST_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>rma_sip_token_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>10</td><td>RMA_SIP_TOKEN_DIGEST_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>rma_sip_token_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>9</td><td>SYS_DIS_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sys_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>8</td><td>SYS_DIS_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sys_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>7</td><td>SIP_DIS_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>6</td><td>SIP_DIS_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>5</td><td>TRANSIENT_RMA_EN_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>TRANSIENT_RMA_EN_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>4</td><td>TRANSIENT_RMA_EN_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>TRANSIENT_RMA_EN_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>3</td><td>SBOOT_DIS_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sboot_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>2</td><td>SBOOT_DIS_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sboot_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>1</td><td>LC_STATE_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>lc_state_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>0</td><td>LC_STATE_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>lc_state_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+</table>
+<span id="LOCKS_SPARE"></span><h3 id="sep_efuse_map-LOCKS_SPARE" data-register-alias="LOCKS_SPARE">LOCKS_SPARE</h3>
+<table id="trm-table-4">
+<caption class="title"><a href="#trm-table-4">Table 4</a>. sep_efuse_map.LOCKS_SPARE fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:18</td><td>SPARE_LOCK_RSVD</td><td>RW1S</td><td>0x0</td><td>Unassigned lock slots 41-47. Reserved for future field lock assignments.</td></tr>
+<tr><td>17</td><td>SPARE8_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>spare8_read_lock (slot 40): when set, spare8 is not read-able.</td></tr>
+<tr><td>16</td><td>SPARE8_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>spare8_write_lock (slot 40): when set, spare8 is not write-able.</td></tr>
+<tr><td>15</td><td>SPARE7_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>spare7_read_lock (slot 39): when set, spare7 is not read-able.</td></tr>
+<tr><td>14</td><td>SPARE7_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>spare7_write_lock (slot 39): when set, spare7 is not write-able.</td></tr>
+<tr><td>13</td><td>SPARE6_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>spare6_read_lock (slot 38): when set, spare6 is not read-able.</td></tr>
+<tr><td>12</td><td>SPARE6_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>spare6_write_lock (slot 38): when set, spare6 is not write-able.</td></tr>
+<tr><td>11</td><td>SPARE5_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>spare5_read_lock (slot 37): when set, spare5 is not read-able.</td></tr>
+<tr><td>10</td><td>SPARE5_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>spare5_write_lock (slot 37): when set, spare5 is not write-able.</td></tr>
+<tr><td>9</td><td>SPARE4_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>spare4_read_lock (slot 36): when set, spare4 is not read-able.</td></tr>
+<tr><td>8</td><td>SPARE4_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>spare4_write_lock (slot 36): when set, spare4 is not write-able.</td></tr>
+<tr><td>7</td><td>SPARE3_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>spare3_read_lock (slot 35): when set, spare3 is not read-able.</td></tr>
+<tr><td>6</td><td>SPARE3_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>spare3_write_lock (slot 35): when set, spare3 is not write-able.</td></tr>
+<tr><td>5</td><td>SPARE2_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>spare2_read_lock (slot 34): when set, spare2 is not read-able.</td></tr>
+<tr><td>4</td><td>SPARE2_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>spare2_write_lock (slot 34): when set, spare2 is not write-able.</td></tr>
+<tr><td>3</td><td>SPARE1_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>spare1_read_lock (slot 33): when set, spare1 is not read-able.</td></tr>
+<tr><td>2</td><td>SPARE1_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>spare1_write_lock (slot 33): when set, spare1 is not write-able.</td></tr>
+<tr><td>1</td><td>SPARE0_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>spare0_read_lock (slot 32): when set, spare0 is not read-able.</td></tr>
+<tr><td>0</td><td>SPARE0_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>spare0_write_lock (slot 32): when set, spare0 is not write-able.</td></tr>
+</table>
+<span id="LC_STATE"></span><h3 id="sep_efuse_map-LC_STATE" data-register-alias="LC_STATE">LC_STATE</h3>
+<table id="trm-table-5">
+<caption class="title"><a href="#trm-table-5">Table 5</a>. sep_efuse_map.LC_STATE fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>rsvd</td><td>R</td><td>0x0</td><td>Unused</td></tr>
+<tr><td>7:0</td><td>lc_state</td><td>R</td><td>0xF0</td><td>Life cycle manufacturing state, differentially encoded: {~raw[3:0], raw[3:0]}</td></tr>
+</table>
+<span id="SBOOT_DIS"></span><h3 id="sep_efuse_map-SBOOT_DIS" data-register-alias="SBOOT_DIS">SBOOT_DIS</h3>
+<table id="trm-table-6">
+<caption class="title"><a href="#trm-table-6">Table 6</a>. sep_efuse_map.SBOOT_DIS fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Unused</td></tr>
+<tr><td>0</td><td>disable_secure_boot</td><td>R</td><td>0x0</td><td>Chicken bit to disable secure boot in SEP ROM.</td></tr>
+</table>
+<span id="TRANSIENT_RMA_EN"></span><h3 id="sep_efuse_map-TRANSIENT_RMA_EN" data-register-alias="TRANSIENT_RMA_EN">TRANSIENT_RMA_EN</h3>
+<table id="trm-table-7">
+<caption class="title"><a href="#trm-table-7">Table 7</a>. sep_efuse_map.TRANSIENT_RMA_EN fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Unused</td></tr>
+<tr><td>0</td><td>transient_rma_en</td><td>R</td><td>0x0</td><td>When Transient RMA EN is 1, matching on corresponding *_Tokens will automatically transfer the chip to the corresponding RMA state by setting the LC_STATE reg</td></tr>
+</table>
+<span id="SIP_DIS"></span><h3 id="sep_efuse_map-SIP_DIS" data-register-alias="SIP_DIS">SIP_DIS</h3>
+<table id="trm-table-8">
+<caption class="title"><a href="#trm-table-8">Table 8</a>. sep_efuse_map.SIP_DIS fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:48</td><td>func_reserved</td><td>RW1S</td><td>0x0</td><td>Reserved for adopter-defined functional feature gating (bits 63:48).</td></tr>
+<tr><td>47:25</td><td>debug_reserved_dbg2</td><td>RW1S</td><td>0x0</td><td>Reserved for adopter-defined inter-chiplet-bypass (DBG_2) debug scan chains (bits 47:25).</td></tr>
+<tr><td>24</td><td>sip_debug</td><td>RW1S</td><td>0x0</td><td>SIP_DBG (bit 24): Coarse-grained debug enable for the SiP scope: the inter-chiplet debug-bypass gate that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. 1&#x27;b1: disabled. 1&#x27;b0: enabled.</td></tr>
+<tr><td>23:4</td><td>debug_reserved_dbg1</td><td>RW1S</td><td>0x0</td><td>Reserved for adopter-defined local (DBG_1) debug scan chains (bits 23:4).</td></tr>
+<tr><td>3</td><td>smc_fuse_dbg</td><td>RW1S</td><td>0x0</td><td>SMC_FUSE_DBG (bit 3): 1&#x27;b1: the DFT-inserted access path into the SMC OTP is disabled. 1&#x27;b0: enabled. Produced by SEP-LCC feat_ctrl_o, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.</td></tr>
+<tr><td>2</td><td>sep_fuse_dbg</td><td>RW1S</td><td>0x0</td><td>SEP_FUSE_DBG (bit 2): 1&#x27;b1: the DFT-inserted access path into the SEP OTP is disabled. 1&#x27;b0: enabled. Also covers the OTP IP-vendor test and calibration interface, which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.</td></tr>
+<tr><td>1</td><td>chiplet_dbg</td><td>RW1S</td><td>0x0</td><td>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1&#x27;b1: chiplet-scope debug/scan-dump access disabled. 1&#x27;b0: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when SIP_DBG is open as well. Contributes to the reachability of the crypto/KM secure chain but never authorizes a dump from it.</td></tr>
+<tr><td>0</td><td>sep_debug</td><td>RW1S</td><td>0x0</td><td>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1&#x27;b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1&#x27;b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.</td></tr>
+</table>
+<span id="SYS_DIS"></span><h3 id="sep_efuse_map-SYS_DIS" data-register-alias="SYS_DIS">SYS_DIS</h3>
+<table id="trm-table-9">
+<caption class="title"><a href="#trm-table-9">Table 9</a>. sep_efuse_map.SYS_DIS fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:48</td><td>func_reserved</td><td>RW1S</td><td>0x0</td><td>Reserved for adopter-defined functional feature gating (bits 63:48).</td></tr>
+<tr><td>47:25</td><td>debug_reserved_dbg2</td><td>RW1S</td><td>0x0</td><td>Reserved for adopter-defined inter-chiplet-bypass (DBG_2) debug scan chains (bits 47:25).</td></tr>
+<tr><td>24</td><td>sip_debug</td><td>RW1S</td><td>0x0</td><td>SIP_DBG (bit 24): Coarse-grained debug enable for the SiP scope: the inter-chiplet debug-bypass gate that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. 1&#x27;b1: disabled. 1&#x27;b0: enabled.</td></tr>
+<tr><td>23:4</td><td>debug_reserved_dbg1</td><td>RW1S</td><td>0x0</td><td>Reserved for adopter-defined local (DBG_1) debug scan chains (bits 23:4).</td></tr>
+<tr><td>3</td><td>smc_fuse_dbg</td><td>RW1S</td><td>0x0</td><td>SMC_FUSE_DBG (bit 3): 1&#x27;b1: the DFT-inserted access path into the SMC OTP is disabled. 1&#x27;b0: enabled. Produced by SEP-LCC feat_ctrl_o, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.</td></tr>
+<tr><td>2</td><td>sep_fuse_dbg</td><td>RW1S</td><td>0x0</td><td>SEP_FUSE_DBG (bit 2): 1&#x27;b1: the DFT-inserted access path into the SEP OTP is disabled. 1&#x27;b0: enabled. Also covers the OTP IP-vendor test and calibration interface, which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.</td></tr>
+<tr><td>1</td><td>chiplet_dbg</td><td>RW1S</td><td>0x0</td><td>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1&#x27;b1: chiplet-scope debug/scan-dump access disabled. 1&#x27;b0: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when SIP_DBG is open as well. Contributes to the reachability of the crypto/KM secure chain but never authorizes a dump from it.</td></tr>
+<tr><td>0</td><td>sep_debug</td><td>RW1S</td><td>0x0</td><td>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1&#x27;b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1&#x27;b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.</td></tr>
+</table>
+<span id="RMA_SIP_TOKEN_DIGEST"></span><h3 id="sep_efuse_map-RMA_SIP_TOKEN_DIGEST" data-register-alias="RMA_SIP_TOKEN_DIGEST">RMA_SIP_TOKEN_DIGEST</h3>
+<table id="trm-table-10">
+<caption class="title"><a href="#trm-table-10">Table 10</a>. sep_efuse_map.RMA_SIP_TOKEN_DIGEST fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>token_digest</td><td>R</td><td>0x0</td><td>Hash digest of life cycle secret that allows entering RMA_SIP state / Note this is a 256 bit field</td></tr>
+</table>
+<span id="RMA_CHIPLET_TOKEN_DIGEST"></span><h3 id="sep_efuse_map-RMA_CHIPLET_TOKEN_DIGEST" data-register-alias="RMA_CHIPLET_TOKEN_DIGEST">RMA_CHIPLET_TOKEN_DIGEST</h3>
+<table id="trm-table-11">
+<caption class="title"><a href="#trm-table-11">Table 11</a>. sep_efuse_map.RMA_CHIPLET_TOKEN_DIGEST fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>token_digest</td><td>R</td><td>0x0</td><td>Hash digest of life cycle secret that allows entering RMA_CHIPLET state/ Note this is a 256 bit field</td></tr>
+</table>
+<span id="CLASS_KEY"></span><h3 id="sep_efuse_map-CLASS_KEY" data-register-alias="CLASS_KEY">CLASS_KEY</h3>
+<table id="trm-table-12">
+<caption class="title"><a href="#trm-table-12">Table 12</a>. sep_efuse_map.CLASS_KEY fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>key</td><td>R</td><td>0x0</td><td>Class key that could be used for FW encryption/decryption</td></tr>
+</table>
+<span id="CHIPLET_PUBK_REVOKE"></span><h3 id="sep_efuse_map-CHIPLET_PUBK_REVOKE" data-register-alias="CHIPLET_PUBK_REVOKE">CHIPLET_PUBK_REVOKE</h3>
+<table id="trm-table-13">
+<caption class="title"><a href="#trm-table-13">Table 13</a>. sep_efuse_map.CHIPLET_PUBK_REVOKE fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>select</td><td>R</td><td>0x0</td><td>Global public-key revocation vector covering every boot-verification key of every owner (classical and PQC). SEP ROM embeds a set of public-key hash digests and accesses additional fused key hashes; each key entry maps to one bit here. Once set, SEP ROM rejects the corresponding key. Bit map: [7:0] ROM chiplet-creator classical keys (bits 0,1 are development keys); [15:8] ROM chiplet-creator PQC keys; [16]/[17] CHIPLET_PUBK_HASH0/1; [18]/[19] CHIPLET_PUBK_PQC_HASH0/1; [20]/[21] SIP_PUBK_HASH0 / SIP_PUBK_PQC_HASH0; [22]/[23] SYS_PUBK_HASH / SYS_PUBK_PQC_HASH; [24]/[25] SIP_PUBK_HASH1 / SIP_PUBK_PQC_HASH1; [31:26] reserved. Before the chiplet owner transfers a part to the customer, the development-key bits shall be set (revoked).</td></tr>
+</table>
+<span id="BL1_VERSION"></span><h3 id="sep_efuse_map-BL1_VERSION" data-register-alias="BL1_VERSION">BL1_VERSION</h3>
+<table id="trm-table-14">
+<caption class="title"><a href="#trm-table-14">Table 14</a>. sep_efuse_map.BL1_VERSION fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>version</td><td>R</td><td>0x0</td><td>Minimum BL1 version that can be loaded by SEPROM</td></tr>
+</table>
+<span id="BL2_VERSION"></span><h3 id="sep_efuse_map-BL2_VERSION" data-register-alias="BL2_VERSION">BL2_VERSION</h3>
+<table id="trm-table-15">
+<caption class="title"><a href="#trm-table-15">Table 15</a>. sep_efuse_map.BL2_VERSION fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>version</td><td>R</td><td>0x0</td><td>Minimum BL2 version that can be loaded by BL1. If more boot stages exist, rollback protection can be implemented by BL2.</td></tr>
+</table>
+<span id="CHIPLET_UID"></span><h3 id="sep_efuse_map-CHIPLET_UID" data-register-alias="CHIPLET_UID">CHIPLET_UID</h3>
+<table id="trm-table-16">
+<caption class="title"><a href="#trm-table-16">Table 16</a>. sep_efuse_map.CHIPLET_UID fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>uid</td><td>R</td><td>0x0</td><td>Silicon creator&#x27;s secret device unique ID (also referred to as UDS - Unique Device Secret). The chiplet creator is responsible for CHIPLET_UID provisioning and public identity enrollment. When read-locked, both writability and software visibility are disabled.</td></tr>
+</table>
+<span id="SIP_PUBK_HASH0"></span><h3 id="sep_efuse_map-SIP_PUBK_HASH0" data-register-alias="SIP_PUBK_HASH0">SIP_PUBK_HASH0</h3>
+<table id="trm-table-17">
+<caption class="title"><a href="#trm-table-17">Table 17</a>. sep_efuse_map.SIP_PUBK_HASH0 fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of SiP owner&#x27;s root public key for secure boot. The chiplet creator&#x27;s actual root public key is embedded in the SEPROM; this digest is used to validate that public key.</td></tr>
+</table>
+<span id="SIP_UID"></span><h3 id="sep_efuse_map-SIP_UID" data-register-alias="SIP_UID">SIP_UID</h3>
+<table id="trm-table-18">
+<caption class="title"><a href="#trm-table-18">Table 18</a>. sep_efuse_map.SIP_UID fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>uid</td><td>R</td><td>0x0</td><td>SiP owner&#x27;s secret device unique ID. The SiP owner is responsible for SIP_UID provisioning and public identity enrollment. When read-locked, both writability and software visibility are disabled.</td></tr>
+</table>
+<span id="SYS_PUBK_HASH"></span><h3 id="sep_efuse_map-SYS_PUBK_HASH" data-register-alias="SYS_PUBK_HASH">SYS_PUBK_HASH</h3>
+<table id="trm-table-19">
+<caption class="title"><a href="#trm-table-19">Table 19</a>. sep_efuse_map.SYS_PUBK_HASH fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of system owner&#x27;s root public key for secure boot.</td></tr>
+</table>
+<span id="SYS_UID"></span><h3 id="sep_efuse_map-SYS_UID" data-register-alias="SYS_UID">SYS_UID</h3>
+<table id="trm-table-20">
+<caption class="title"><a href="#trm-table-20">Table 20</a>. sep_efuse_map.SYS_UID fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>uid</td><td>R</td><td>0x0</td><td>System owner&#x27;s secret device unique ID. The system owner is responsible for SYS_UID provisioning and public identity enrollment. When read-locked, both writability and software visibility are disabled.</td></tr>
+</table>
+<span id="STATUS_RPT"></span><h3 id="sep_efuse_map-STATUS_RPT" data-register-alias="STATUS_RPT">STATUS_RPT</h3>
+<table id="trm-table-21">
+<caption class="title"><a href="#trm-table-21">Table 21</a>. sep_efuse_map.STATUS_RPT fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>reserved</td><td>R</td><td>0x0</td><td>reserved</td></tr>
+<tr><td>1:0</td><td>rpt</td><td>R</td><td>0x0</td><td>BOOTROM report status based on the bit. 2&#x27;b00-&gt; bootrom report status based on GPIO; 2&#x27;b01-&gt;bootrom report status;otherwise, bootrom does not report status</td></tr>
+</table>
+<span id="ROM_CTL"></span><h3 id="sep_efuse_map-ROM_CTL" data-register-alias="ROM_CTL">ROM_CTL</h3>
+<table id="trm-table-22">
+<caption class="title"><a href="#trm-table-22">Table 22</a>. sep_efuse_map.ROM_CTL fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>reserved</td><td>R</td><td>0x0</td><td>reserved</td></tr>
+<tr><td>5:1</td><td>rom_swap_ctrl</td><td>R</td><td>0x0</td><td>controls how the rom slices are swapped</td></tr>
+<tr><td>0</td><td>rom_endianness_ctrl</td><td>R</td><td>0x0</td><td>controls the endianness of the rom data out. 0-&gt;little endian; 1-&gt;big endian</td></tr>
+</table>
+<span id="SYSCLK_FREQ_MHZ"></span><h3 id="sep_efuse_map-SYSCLK_FREQ_MHZ" data-register-alias="SYSCLK_FREQ_MHZ">SYSCLK_FREQ_MHZ</h3>
+<table id="trm-table-23">
+<caption class="title"><a href="#trm-table-23">Table 23</a>. sep_efuse_map.SYSCLK_FREQ_MHZ fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:11</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>10:0</td><td>sysclk_freq_mhz</td><td>R</td><td>0x0</td><td>Configured sysclk PLL frequency in MHz; ignored if 0. Consumed by boot ROM clock math.</td></tr>
+</table>
+<span id="CHIPLET_PUBK_HASH0"></span><h3 id="sep_efuse_map-CHIPLET_PUBK_HASH0" data-register-alias="CHIPLET_PUBK_HASH0">CHIPLET_PUBK_HASH0</h3>
+<table id="trm-table-24">
+<caption class="title"><a href="#trm-table-24">Table 24</a>. sep_efuse_map.CHIPLET_PUBK_HASH0 fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner authentication key hash digest, fused. These chiplet owner fused key hashes can be used in addition to the hashes in the ROM itself to authenticate manifests.</td></tr>
+</table>
+<span id="CHIPLET_PUBK_HASH1"></span><h3 id="sep_efuse_map-CHIPLET_PUBK_HASH1" data-register-alias="CHIPLET_PUBK_HASH1">CHIPLET_PUBK_HASH1</h3>
+<table id="trm-table-25">
+<caption class="title"><a href="#trm-table-25">Table 25</a>. sep_efuse_map.CHIPLET_PUBK_HASH1 fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner authentication key hash digest, fused. These chiplet owner fused key hashes can be used in addition to the hashes in the ROM itself to authenticate manifests.</td></tr>
+</table>
+<span id="REQUIRED_SIGNERS"></span><h3 id="sep_efuse_map-REQUIRED_SIGNERS" data-register-alias="REQUIRED_SIGNERS">REQUIRED_SIGNERS</h3>
+<table id="trm-table-26">
+<caption class="title"><a href="#trm-table-26">Table 26</a>. sep_efuse_map.REQUIRED_SIGNERS fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>reserved</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>1:0</td><td>required_signers</td><td>RW1S</td><td>0x0</td><td>Owners whose signature is required to authenticate any image loadable by SEP ROM. Per owner, 1 = required, 0 = not-required; the default all-zero value requires no additional owner. [0] SiP owner, [1] system owner. The chiplet creator is the root of trust and always authenticates BL1, so it has no bit here.</td></tr>
+</table>
+<span id="REQUIRED_ALGS"></span><h3 id="sep_efuse_map-REQUIRED_ALGS" data-register-alias="REQUIRED_ALGS">REQUIRED_ALGS</h3>
+<table id="trm-table-27">
+<caption class="title"><a href="#trm-table-27">Table 27</a>. sep_efuse_map.REQUIRED_ALGS fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:12</td><td>reserved</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>11:8</td><td>sys_algs</td><td>RW1S</td><td>0x0</td><td>Per-owner required signature algorithms for system owner. bit 0 = classical, bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.</td></tr>
+<tr><td>7:4</td><td>sip_algs</td><td>RW1S</td><td>0x0</td><td>Per-owner required signature algorithms for SiP owner. bit 0 = classical, bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.</td></tr>
+<tr><td>3:0</td><td>chiplet_algs</td><td>RW1S</td><td>0x0</td><td>Per-owner required signature algorithms for chiplet. Each nibble: bit 0 = classical (ECDSA P-384 or RSA), bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.</td></tr>
+</table>
+<span id="CHIPLET_PUBK_PQC_HASH0"></span><h3 id="sep_efuse_map-CHIPLET_PUBK_PQC_HASH0" data-register-alias="CHIPLET_PUBK_PQC_HASH0">CHIPLET_PUBK_PQC_HASH0</h3>
+<table id="trm-table-28">
+<caption class="title"><a href="#trm-table-28">Table 28</a>. sep_efuse_map.CHIPLET_PUBK_PQC_HASH0 fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
+</table>
+<span id="CHIPLET_PUBK_PQC_HASH1"></span><h3 id="sep_efuse_map-CHIPLET_PUBK_PQC_HASH1" data-register-alias="CHIPLET_PUBK_PQC_HASH1">CHIPLET_PUBK_PQC_HASH1</h3>
+<table id="trm-table-29">
+<caption class="title"><a href="#trm-table-29">Table 29</a>. sep_efuse_map.CHIPLET_PUBK_PQC_HASH1 fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
+</table>
+<span id="SIP_PUBK_PQC_HASH0"></span><h3 id="sep_efuse_map-SIP_PUBK_PQC_HASH0" data-register-alias="SIP_PUBK_PQC_HASH0">SIP_PUBK_PQC_HASH0</h3>
+<table id="trm-table-30">
+<caption class="title"><a href="#trm-table-30">Table 30</a>. sep_efuse_map.SIP_PUBK_PQC_HASH0 fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
+</table>
+<span id="SYS_PUBK_PQC_HASH"></span><h3 id="sep_efuse_map-SYS_PUBK_PQC_HASH" data-register-alias="SYS_PUBK_PQC_HASH">SYS_PUBK_PQC_HASH</h3>
+<table id="trm-table-31">
+<caption class="title"><a href="#trm-table-31">Table 31</a>. sep_efuse_map.SYS_PUBK_PQC_HASH fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the system owner&#x27;s ML-DSA PQC root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</td></tr>
+</table>
+<span id="SIP_PUBK_HASH1"></span><h3 id="sep_efuse_map-SIP_PUBK_HASH1" data-register-alias="SIP_PUBK_HASH1">SIP_PUBK_HASH1</h3>
+<table id="trm-table-32">
+<caption class="title"><a href="#trm-table-32">Table 32</a>. sep_efuse_map.SIP_PUBK_HASH1 fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of SiP owner&#x27;s root public key for secure boot. The chiplet creator&#x27;s actual root public key is embedded in the SEPROM; this digest is used to validate that public key.</td></tr>
+</table>
+<span id="SIP_PUBK_PQC_HASH1"></span><h3 id="sep_efuse_map-SIP_PUBK_PQC_HASH1" data-register-alias="SIP_PUBK_PQC_HASH1">SIP_PUBK_PQC_HASH1</h3>
+<table id="trm-table-33">
+<caption class="title"><a href="#trm-table-33">Table 33</a>. sep_efuse_map.SIP_PUBK_PQC_HASH1 fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
+</table>
+<span id="SEP_CHIPLET_ID"></span><h3 id="sep_efuse_map-SEP_CHIPLET_ID" data-register-alias="SEP_CHIPLET_ID">SEP_CHIPLET_ID</h3>
+<table id="trm-table-34">
+<caption class="title"><a href="#trm-table-34">Table 34</a>. sep_efuse_map.SEP_CHIPLET_ID fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>id</td><td>R</td><td>0x0</td><td>Per-owner public identity fuse. Personalization input for the Key Manager identity root. Being public, no read protection is required. Individually lockable via LOCKS[58:63] (slots 29-31).</td></tr>
+</table>
+<span id="SEP_SIP_ID"></span><h3 id="sep_efuse_map-SEP_SIP_ID" data-register-alias="SEP_SIP_ID">SEP_SIP_ID</h3>
+<table id="trm-table-35">
+<caption class="title"><a href="#trm-table-35">Table 35</a>. sep_efuse_map.SEP_SIP_ID fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>id</td><td>R</td><td>0x0</td><td>Per-owner public identity fuse. Personalization input for the Key Manager identity root. Being public, no read protection is required. Individually lockable via LOCKS[58:63] (slots 29-31).</td></tr>
+</table>
+<span id="SEP_SYS_ID"></span><h3 id="sep_efuse_map-SEP_SYS_ID" data-register-alias="SEP_SYS_ID">SEP_SYS_ID</h3>
+<table id="trm-table-36">
+<caption class="title"><a href="#trm-table-36">Table 36</a>. sep_efuse_map.SEP_SYS_ID fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>id</td><td>R</td><td>0x0</td><td>Per-owner public identity fuse. Personalization input for the Key Manager identity root. Being public, no read protection is required. Individually lockable via LOCKS[58:63] (slots 29-31).</td></tr>
+</table>
+<span id="spare0"></span><h3 id="sep_efuse_map-spare0" data-register-alias="spare0">spare0</h3>
+<table id="trm-table-37">
+<caption class="title"><a href="#trm-table-37">Table 37</a>. sep_efuse_map.spare0 fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
+</table>
+<span id="spare1"></span><h3 id="sep_efuse_map-spare1" data-register-alias="spare1">spare1</h3>
+<table id="trm-table-38">
+<caption class="title"><a href="#trm-table-38">Table 38</a>. sep_efuse_map.spare1 fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
+</table>
+<span id="spare2"></span><h3 id="sep_efuse_map-spare2" data-register-alias="spare2">spare2</h3>
+<table id="trm-table-39">
+<caption class="title"><a href="#trm-table-39">Table 39</a>. sep_efuse_map.spare2 fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
+</table>
+<span id="spare3"></span><h3 id="sep_efuse_map-spare3" data-register-alias="spare3">spare3</h3>
+<table id="trm-table-40">
+<caption class="title"><a href="#trm-table-40">Table 40</a>. sep_efuse_map.spare3 fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
+</table>
+<span id="spare4"></span><h3 id="sep_efuse_map-spare4" data-register-alias="spare4">spare4</h3>
+<table id="trm-table-41">
+<caption class="title"><a href="#trm-table-41">Table 41</a>. sep_efuse_map.spare4 fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
+</table>
+<span id="spare5"></span><h3 id="sep_efuse_map-spare5" data-register-alias="spare5">spare5</h3>
+<table id="trm-table-42">
+<caption class="title"><a href="#trm-table-42">Table 42</a>. sep_efuse_map.spare5 fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
+</table>
+<span id="spare6"></span><h3 id="sep_efuse_map-spare6" data-register-alias="spare6">spare6</h3>
+<table id="trm-table-43">
+<caption class="title"><a href="#trm-table-43">Table 43</a>. sep_efuse_map.spare6 fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
+</table>
+<span id="spare7"></span><h3 id="sep_efuse_map-spare7" data-register-alias="spare7">spare7</h3>
+<table id="trm-table-44">
+<caption class="title"><a href="#trm-table-44">Table 44</a>. sep_efuse_map.spare7 fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
+</table>
+<span id="spare8"></span><h3 id="sep_efuse_map-spare8" data-register-alias="spare8">spare8</h3>
+<table id="trm-table-45">
+<caption class="title"><a href="#trm-table-45">Table 45</a>. sep_efuse_map.spare8 fields</caption>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+<nav class="pagination">
+  <span class="prev"><a href="security.html">Security and Lifecycle</a></span>
+  <span class="next"><a href="token_processing.html">Token Processing</a></span>
+</nav>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

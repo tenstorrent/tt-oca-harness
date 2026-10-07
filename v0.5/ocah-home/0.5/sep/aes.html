@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>AES Cipher :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP AES integration, entropy interface, and Key Manager key delivery.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-home" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Home</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../features.html">Feature Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../motivation.html">Motivation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../use-cases.html">Use Cases</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../license.html">License</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Guides</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-programmer-guide/0.5/index.html">Programmer&#8217;s Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Verification</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../dashboard.html">Dashboard</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="aes.html">AES Cipher</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">AES Cipher</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="aes-cipher" class="paragraph">
+<p>The module is based on the
+<a href="https://opentitan.org/book/hw/ip/aes/index.html">OpenTitan AES</a> design.</p>
+</div>
+<div class="paragraph">
+<p>Key sizes: 128, 192 and 256
+Modes: ECB, CBC, CFB, OFB, CTR, CTR-GCM</p>
+</div>
+<div id="sep-aes-reference-diagram" class="imageblock">
+<div class="content">
+<img src="_images/opentitan_aes.svg" alt="OpenTitan AES core reference architecture" width="100%">
+</div>
+<div class="title">Figure 1. OpenTitan AES core reference architecture</div>
+</div>
+<div class="paragraph">
+<p><a href="#sep-aes-reference-diagram">OpenTitan AES core reference architecture</a> shows the upstream core. The OCAH bus, key-delivery, and entropy
+connections are described in the integration details below.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="och-modifications-2"><a class="anchor" href="#och-modifications-2"></a><a class="link" href="#och-modifications-2">OCAH Modifications</a></h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p>AXI4-lite key bus slave interface replaces side loading interface</p>
+</li>
+<li>
+<p>AXI4-lite control/status bus slave interface</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The AES host path follows the standard conversion and isolation sequence in the
+crypto interconnect (64-bit AXI → 32-bit AXI → AXI-Lite → isolate), without
+address adjustment or cache-attribute patching. <code>aes_wrapper</code> bridges the
+isolated path to TL-UL. EDN requests are served by the shared
+<code>drbg_axis_edn_adapter</code> instance
+<code>u_axis_edn_crypto_s3c_scan</code>, which converts the post-CSRNG DRBG AXI-Stream feed
+for the crypto sink domain into AES&#8217;s native-protocol EDN response. The adapter
+forwards the per-beat FIPS bit from the stream&#8217;s <code>tuser</code> sideband into
+<code>edn_fips</code>; AES itself does not consume the flag. The AES core uses <code>rst_ni</code> for
+both the main and shadow reset domains. Life-cycle escalation is tied to its
+inactive state. AES occupies alert indices <code>[4:3]</code> in
+<a href="crypto.html#sep-crypto-alert-policy" class="xref page">OpenTitan Alert Termination</a> and exports an <code>idle_o</code> status output but no
+interrupt.</p>
+</div>
+<div class="paragraph">
+<p>The Key Manager delivers a 256-bit AES key as eight words per share, in the
+format given in <a href="crypto.html#km-key-delivery" class="xref page">Key Manager Key Delivery</a>. In AES,
+<code>CTRL_SHADOWED.sideload</code> selects the delivered key. While that bit is 0 the
+engine uses its software key registers and the delivered key has no effect,
+and no error is reported. <code>CTRL_SHADOWED.key_len</code> is independent of the
+delivery path: only its 256-bit encoding consumes the whole delivered key, and
+a shorter setting consumes only part of it. AES carries the two shares into the cipher datapath as a masked pair and
+does not combine them on the delivery path.</p>
+</div>
+<div class="paragraph">
+<p>Consult the
+<a href="https://opentitan.org/book/hw/ip/aes/index.html">OpenTitan AES
+documentation</a> for the authoritative core functionality of the IP.
+The Programmer&#8217;s Guide gives the
+<a href="../../../ocah-programmer-guide/0.5/index.html#sep-aes" class="xref page">programming guidance</a>
+for this block.
+The
+register map follows below.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-map-and-register-reference"><a class="anchor" href="#memory-map-and-register-reference"></a><a class="link" href="#memory-map-and-register-reference">Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<span id="register-reference"></span>
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">Memory Map</a></h3>
+<div class="paragraph">
+<p>Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Detailed Register Map</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-aes">AES Accelerator</h2>
+<p>AES encryption and decryption engine with SCA and FI countermeasures</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>KEY_SHARE0[8]</strong>: 8 registers, base 0x4, stride 0x4</li>
+<li><strong>KEY_SHARE1[8]</strong>: 8 registers, base 0x24, stride 0x4</li>
+<li><strong>IV[4]</strong>: 4 registers, base 0x44, stride 0x4</li>
+<li><strong>DATA_IN[4]</strong>: 4 registers, base 0x54, stride 0x4</li>
+<li><strong>DATA_OUT[4]</strong>: 4 registers, base 0x64, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#aes-ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x4 - 0x20</td><td><a href="#aes-KEY_SHARE0_8_">KEY_SHARE0[8]</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x24 - 0x40</td><td><a href="#aes-KEY_SHARE1_8_">KEY_SHARE1[8]</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x44 - 0x50</td><td><a href="#aes-IV_4_">IV[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x54 - 0x60</td><td><a href="#aes-DATA_IN_4_">DATA_IN[4]</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x64 - 0x70</td><td><a href="#aes-DATA_OUT_4_">DATA_OUT[4]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x74</td><td><a href="#aes-CTRL_SHADOWED">CTRL_SHADOWED</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x78</td><td><a href="#aes-CTRL_AUX_SHADOWED">CTRL_AUX_SHADOWED</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x7C</td><td><a href="#aes-CTRL_AUX_REGWEN">CTRL_AUX_REGWEN</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x80</td><td><a href="#aes-TRIGGER">TRIGGER</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x84</td><td><a href="#aes-STATUS">STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x88</td><td><a href="#aes-CTRL_GCM_SHADOWED">CTRL_GCM_SHADOWED</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="ALERT_TEST"></span><h3 id="aes-ALERT_TEST" data-register-alias="ALERT_TEST">ALERT_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>FATAL_FAULT</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+<tr><td>0</td><td>RECOV_CTRL_UPDATE_ERR</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+</table>
+<span id="KEY_SHARE0_8_"></span><h3 id="aes-KEY_SHARE0_8_" data-register-alias="KEY_SHARE0_8_">KEY_SHARE0[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>KEY_SHARE0</td><td>W</td><td>0x0</td><td>Initial Key Share 0</td></tr>
+</table>
+<span id="KEY_SHARE1_8_"></span><h3 id="aes-KEY_SHARE1_8_" data-register-alias="KEY_SHARE1_8_">KEY_SHARE1[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>KEY_SHARE1</td><td>W</td><td>0x0</td><td>Initial Key Share 1</td></tr>
+</table>
+<span id="IV_4_"></span><h3 id="aes-IV_4_" data-register-alias="IV_4_">IV[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>IV</td><td>RW</td><td>0x0</td><td>Initialization Vector</td></tr>
+</table>
+<span id="DATA_IN_4_"></span><h3 id="aes-DATA_IN_4_" data-register-alias="DATA_IN_4_">DATA_IN[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DATA_IN</td><td>W</td><td>0x0</td><td>Input Data</td></tr>
+</table>
+<span id="DATA_OUT_4_"></span><h3 id="aes-DATA_OUT_4_" data-register-alias="DATA_OUT_4_">DATA_OUT[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DATA_OUT</td><td>R</td><td>0x0</td><td>Output Data</td></tr>
+</table>
+<span id="CTRL_SHADOWED"></span><h3 id="aes-CTRL_SHADOWED" data-register-alias="CTRL_SHADOWED">CTRL_SHADOWED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15</td><td>MANUAL_OPERATION</td><td>RW</td><td>0x0</td><td>Controls whether the AES unit is operated in normal/automatic mode (0) or fully manual mode (1).<br>In automatic mode (0), the AES unit automatically i) starts to encrypt/decrypt when it receives new input data, and ii) stalls during the last encryption/decryption cycle if the previous output data has not yet been read.<br>This is the most efficient mode to operate in.<br>Note that the corresponding status tracking is automatically cleared upon a write to the Control Register.<br>In manual mode (1), the AES unit i) only starts to encrypt/decrypt after receiving a start trigger (see Trigger Register), and ii) overwrites previous output data irrespective of whether it has been read out or not.<br>This mode is useful if software needs full control over the AES unit.</td></tr>
+<tr><td>14:12</td><td>PRNG_RESEED_RATE</td><td>RW</td><td>0x1</td><td>3-bit one-hot field to control the reseeding rate of the internal pseudo-random number generator (PRNG) used for masking.<br>Invalid input values, i.e., values with multiple bits set and value 3&#x27;b000 are mapped to the highest reseeding rate PER_1 (3&#x27;b001).</td></tr>
+<tr><td>11</td><td>SIDELOAD</td><td>RW</td><td>0x0</td><td>Controls whether the AES unit uses the key provided by the key manager via key sideload interface (1) or the key provided by software via Initial Key Registers KEY_SHARE1_0 - KEY_SHARE1_7 (0).</td></tr>
+<tr><td>10:8</td><td>KEY_LEN</td><td>RW</td><td>0x1</td><td>3-bit one-hot field to select AES key length.<br>Invalid input values, i.e., values with multiple bits set, value 3&#x27;b000, and value 3&#x27;b010 in case 192-bit keys are not supported (because disabled at compile time) are mapped to AES_256 (3&#x27;b100).</td></tr>
+<tr><td>7:2</td><td>MODE</td><td>RW</td><td>0x3F</td><td>6-bit one-hot field to select AES block cipher mode.<br>Invalid input values, i.e., values with multiple bits set and value 6&#x27;b00_0000, are mapped to AES_NONE (6&#x27;b11_1111).</td></tr>
+<tr><td>1:0</td><td>OPERATION</td><td>RW</td><td>0x1</td><td>2-bit one-hot field to select the operation of AES unit.<br>Invalid input values, i.e., values with multiple bits set and value 2&#x27;b00, are mapped to AES_ENC (2&#x27;b01).</td></tr>
+</table>
+<span id="CTRL_AUX_SHADOWED"></span><h3 id="aes-CTRL_AUX_SHADOWED" data-register-alias="CTRL_AUX_SHADOWED">CTRL_AUX_SHADOWED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>FORCE_MASKS</td><td>RW</td><td>0x0</td><td>Allow the internal masking PRNG to advance (0) or force its internal state (1) leading to constant masks.<br>Setting all masks to constant value can be useful when performing SCA.<br>To completely disable the masking, the second key share (KEY_SHARE1_0 - KEY_SHARE1_7) must be zero as well.<br>In addition, a special seed needs to be loaded into the masking PRNG using the EDN interface.<br>Only applicable if both the Masking parameter and the SecAllowForcingMasks parameter are set to one.</td></tr>
+<tr><td>0</td><td>KEY_TOUCH_FORCES_RESEED</td><td>RW</td><td>0x1</td><td>Controls whether providing a new key triggers the reseeding of internal pseudo-random number generators used for clearing and masking (1) or not (0).</td></tr>
+</table>
+<span id="CTRL_AUX_REGWEN"></span><h3 id="aes-CTRL_AUX_REGWEN" data-register-alias="CTRL_AUX_REGWEN">CTRL_AUX_REGWEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>CTRL_AUX_REGWEN</td><td>RW0C</td><td>0x1</td><td>Auxiliary Control Register configuration enable bit.<br>If this is cleared to 0, the Auxiliary Control Register cannot be written anymore.</td></tr>
+</table>
+<span id="TRIGGER"></span><h3 id="aes-TRIGGER" data-register-alias="TRIGGER">TRIGGER</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>PRNG_RESEED</td><td>W</td><td>0x1</td><td>Keep continuing with the current states of the internal pseudo-random number generators used for register clearing and masking (0) or perform a reseed of the internal states from the connected entropy source (1).<br>If the KEY_TOUCH_FORCES_RESEED bit in the Auxiliary Control Register is set to one, this trigger will automatically get set after providing a new initial key.</td></tr>
+<tr><td>2</td><td>DATA_OUT_CLEAR</td><td>W</td><td>0x1</td><td>Keep current values in Output Data registers (0) or clear those registers with pseudo-random data (1).</td></tr>
+<tr><td>1</td><td>KEY_IV_DATA_IN_CLEAR</td><td>W</td><td>0x1</td><td>Keep current values in Initial Key, internal Full Key and Decryption Key registers, IV registers and Input Data registers (0) or clear all those registers with pseudo-random data (1).</td></tr>
+<tr><td>0</td><td>START</td><td>W</td><td>0x0</td><td>Keep AES unit paused (0) or trigger the encryption/decryption of one data block (1).<br>This trigger is cleared to `0` if MANUAL_OPERATION=0 or if MODE=AES_NONE (see Control Register).</td></tr>
+</table>
+<span id="STATUS"></span><h3 id="aes-STATUS" data-register-alias="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>6</td><td>ALERT_FATAL_FAULT</td><td>R</td><td>0x0</td><td>No fatal fault has occurred inside the AES unit (0).<br>A fatal fault has occurred and the AES unit needs to be reset (1).<br>Examples for fatal faults include<br>i) storage errors in the Control Register,<br>ii) if any internal FSM enters an invalid state,<br>iii) if any sparsely encoded signal takes on an invalid value,<br>iv) errors in the internal round counter,<br>v) escalations triggered by the life cycle controller, and<br>vi) fatal integrity failures on the TL-UL bus.</td></tr>
+<tr><td>5</td><td>ALERT_RECOV_CTRL_UPDATE_ERR</td><td>R</td><td>0x0</td><td>An update error has not occurred (0) or has occurred (1) in the shadowed Control Register.<br>AES operation needs to be restarted by re-writing the Control Register.</td></tr>
+<tr><td>4</td><td>INPUT_READY</td><td>R</td><td>0x0</td><td>The AES unit is ready (1) or not ready (0) to receive new data input via the DATA_IN registers.<br>If the present values in the DATA_IN registers have not yet been loaded into the<br>module this flag is `0` (not ready).</td></tr>
+<tr><td>3</td><td>OUTPUT_VALID</td><td>R</td><td>0x0</td><td>The AES unit has no valid output (0) or has valid output data (1).</td></tr>
+<tr><td>2</td><td>OUTPUT_LOST</td><td>R</td><td>0x0</td><td>All previous output data has been fully read by the processor (0) or at least one previous output data block has been lost (1).<br>It has been overwritten by the AES unit before the processor could fully read it.<br>Once set to `1`, this flag remains set until AES operation is restarted by re-writing the Control Register.<br>The primary use of this flag is for design verification.<br>This flag is not meaningful if MANUAL_OPERATION=0 (see Control Register).</td></tr>
+<tr><td>1</td><td>STALL</td><td>R</td><td>0x0</td><td>The AES unit is not stalled (0) or stalled (1) because there is previous<br>output data that must be read by the processor before the AES unit can<br>overwrite this data.<br>This flag is not meaningful if MANUAL_OPERATION=1 (see Control Register).</td></tr>
+<tr><td>0</td><td>IDLE</td><td>R</td><td>0x0</td><td>The AES unit is idle (1) or busy (0).<br>This flag is `0` if one of the following operations is currently running: i) encryption/decryption, ii) register clearing or iii) PRNG reseeding.<br>This flag is also `0` if an encryption/decryption is running but the AES unit is stalled.</td></tr>
+</table>
+<span id="CTRL_GCM_SHADOWED"></span><h3 id="aes-CTRL_GCM_SHADOWED" data-register-alias="CTRL_GCM_SHADOWED">CTRL_GCM_SHADOWED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>10:6</td><td>NUM_VALID_BYTES</td><td>RW</td><td>0x10</td><td>Number of valid bytes of the current input block.<br>Only the last block in the GCM_AAD and GCM_TEXT phases are expected to have not all bytes marked as valid.<br>For all other blocks, the number of valid bytes should be set to 16.<br>Invalid input values, i.e., the value 5&#x27;b0_0000, and all other values different from 5&#x27;b1_0000 in case GCM is not supported (because disabled at compile time) are mapped to 5&#x27;b1_0000.</td></tr>
+<tr><td>5:0</td><td>PHASE</td><td>RW</td><td>0x1</td><td>6-bit one-hot field to select the phase of the Galois/Counter Mode (GCM) of operation.<br>Invalid input values, i.e., values with multiple bits set and value 6&#x27;b00_0000, are mapped to GCM_INIT (6&#x27;b00_0001).<br>In case support for GCM has been disabled at compile time, this field is not writable and always reads as GCM_INIT (6&#x27;b00_0001).</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

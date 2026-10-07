@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Log Engine :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-starting" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../../../index.html">Getting Started and Contributing Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../../../index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a user</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../dependencies.html">Dependencies</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../setup.html">Environment Setup</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../workflows.html">Workflows</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../guidelines.html">Guidelines</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a contributor</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../licensing.html">Licensing</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../contribution.html">Contributions</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../contribution.html#versioning">Versioning</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../defects.html">Defect Reporting</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../documentation.html">Documentation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../code_of_conduct.html">Code of Conduct</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Getting Started and Contributing Guide 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../../../index.html">Starting with OCAH</a></li>
+    <li><a href="index.html">Log Engine</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Log Engine</h1>
+<div id="preamble">
+<div class="sectionbody">
+<span id="description-and-features"></span>
+</div>
+</div>
+<div class="sect1">
+<h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1. Overview</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The Log Engine sends memory-resident messages to a UART without a CPU
+copying each byte. Software supplies one memory region, divided into 16
+slots, and submits each message by writing its slot&#8217;s length. The engine
+selects pending slots in round-robin order and completes one message before
+moving to the next.</p>
+</div>
+<div class="paragraph">
+<p>A 64-bit AXI4-Lite read path fetches message data into a FIFO. A separate
+32-bit AXI4-Lite write path sends one character at a time to a fixed UART
+address, paced by <code>uart_tx_ready_i</code>. The register interface is also
+32-bit AXI4-Lite. Fetch addresses are 56 bits; UART addresses are 32 bits.
+The
+<a href="../../../../../ocah-programmer-guide/0.5/index.html#smc-log-engine" class="xref page">Log Engine section</a>
+of the Programmer&#8217;s Guide gives the configuration, submission and recovery
+procedures.</p>
+</div>
+<div id="log-engine-wrapper-diagram" class="imageblock">
+<div class="content">
+<img src="../../_images/log-engine-wrapper.svg" alt="uart_log_engine_wrap: a register demux to the UART, the log engine, the control registers and an error subordinate; the log engine&#8217;s fetch path to memory and its write path through an AXI-Lite mux into the UART 16550" width="100%">
+</div>
+<div class="title">Figure 1. SMC log-engine wrapper and data paths</div>
+</div>
+<div class="paragraph">
+<p><a href="#log-engine-wrapper-diagram">SMC log-engine wrapper and data paths</a> shows the SMC wrapper and its memory-to-UART
+data paths. Parentheses after an instance name give its module or, for a
+block taken from another project, that project: the demuxes, the mux and
+the <code>axi_lite_from_mem</code> converters come from PULP, and <code>u_uart_core</code>,
+<code>u_arbiter_tree</code> and <code>u_rdata_fifo</code> from OpenTitan.
+<code>uart_log_engine_wrap</code> runs on one clock, <code>clk_i</code>. Its register
+port, with 32-bit address and data, comes from <code>uart_wrap</code>, and the demux
+<code>u_csr_axi_lite_demux</code> decodes it by base and size onto four maps: the UART,
+the log engine, the control block and an error slave that answers DECERR.
+The control block <code>u_uart_log_engine_ctrl_reg</code>, generated by PeakRDL from
+<code>uart_log_engine_ctrl.rdl</code>, drives <code>uart_en_o</code> from <code>CTRL.UART_EN</code>.</p>
+</div>
+<div class="paragraph">
+<p>The UART register path and the log engine&#8217;s write path share the UART&#8217;s
+register port through the mux <code>u_log_write_axi_lite_mux</code>: port 0 carries
+register accesses and port 1 the log engine&#8217;s writes. Inside <code>u_uart_16550</code>,
+the demux <code>u_axi_lite_demux</code> selects one of three PeakRDL register blocks.
+While <code>LCR.DLAB</code> is set, <code>DLL</code> and <code>DLM</code> go to the divisor-latch block
+(<code>dl</code>); writes to <code>THR</code> and <code>FCR</code> go to the write-only block (<code>main_wo</code>);
+everything else goes to the main block. <code>u_uart_core</code> holds the TX and RX FIFOs, the transmitter and
+the receiver, and passes <code>uart_rx_i</code> and the modem inputs through two-flop
+synchronizers, marked by the synchronizer badge on its edge.</p>
+</div>
+<div class="paragraph">
+<p>The dashed outline marks the log engine, which exists only when
+<code>GEN_LOG_ENGINE</code> is set; without it the log-fetch port is driven to zero and
+<code>log_engine_irq_o</code> is low. <code>u_log_engine_reg</code>, generated from
+<code>log_engine.rdl</code>, holds the 16 <code>LOG_CTRL</code> registers and the interrupt
+registers, and drives <code>log_engine_irq_o</code>. <code>u_arbiter_tree</code> picks a log entry
+whose <code>LOG_LEN</code> is non-zero and gives its index and length to the log fetch
+FSM. The fetch FSM reads 64-bit words through the <code>axi_lite_from_mem</code>
+converter <code>u_axil_lite_from_log_fetch_fsm</code> on the log-fetch port, which has 56-bit address and 64-bit data,
+into <code>u_rdata_fifo</code>, whose depth is <code>FIFO_DEPTH</code> (4 in the SMC). The log
+write FSM takes one byte at a time from the FIFO and writes it, through a
+second converter, <code>u_axi_lite_from_log_write_fsm</code>, to <code>LOG_WRITE_ADDR</code> over a 32-bit
+AXI4-Lite port. It waits for <code>uart_txrdy_o</code> before each write.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="log-engine-architecture"><a class="anchor" href="#log-engine-architecture"></a><a class="link" href="#log-engine-architecture">2. Operation</a></h2>
+<div class="sectionbody">
+<span id="overview-2"></span>
+<span id="functional-blocks"></span>
+<span id="control-and-status-registers-csrs"></span>
+<div class="sect2">
+<h3 id="log-engine-slots"><a class="anchor" href="#log-engine-slots"></a><a class="link" href="#log-engine-slots">2.1. Memory Slots and Lengths</a></h3>
+<div class="paragraph">
+<p><code>LOG_REGION_ADDR</code> specifies the start of a shared region. <code>LOG_REGION_SIZE</code>
+specifies its total size in bytes. Use an 8-byte-aligned base and a nonzero
+size aligned to 128 bytes, up to 512 KiB. The region is divided equally
+among 16 slots; it does not provide independently sized buffers.</p>
+</div>
+<div class="paragraph">
+<p>For supported settings, slot <code>i</code> starts at:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>LOG_REGION_ADDR + (LOG_REGION_SIZE / 16) * i</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A nonzero <code>LOG_CTRL[i].LOG_LEN</code> makes that slot pending. The length is in
+bytes and remains the submitted value until hardware clears it on completion;
+it is not a bytes-remaining counter. Keep the buffer and its configuration
+unchanged until completion.</p>
+</div>
+<div class="paragraph">
+<p>For oversized regions, hardware clamps the effective size to 512 KiB.
+For a size not aligned to 128 bytes, it divides the effective size by 16
+and rounds each slot&#8217;s transferable capacity down to a multiple of eight.
+Requested lengths above that capacity are clamped. A zero-capacity slot
+completes without a transfer. Software should validate size and length
+instead of relying on truncation.</p>
+</div>
+<span id="round-robin-arbiter"></span>
+<span id="log-fetch-fsm"></span>
+<span id="rdata-fifo"></span>
+<span id="log-write-fsm"></span>
+<span id="data-flow-and-control-path"></span>
+<span id="data-flow"></span>
+<span id="control-path"></span>
+<span id="memory-interface-protocol"></span>
+<span id="performance-characteristics"></span>
+<span id="design-trade-offs"></span>
+</div>
+<div class="sect2">
+<h3 id="log-engine-transfer"><a class="anchor" href="#log-engine-transfer"></a><a class="link" href="#log-engine-transfer">2.2. Arbitration and Data Transfer</a></h3>
+<div class="paragraph">
+<p>The arbiter selects among nonzero lengths and advances when the selected
+message completes. Scheduling is per message, not per byte. A stalled UART
+or bus response holds up that message and all later entries; round-robin
+selection does not impose a completion-time bound.</p>
+</div>
+<div class="paragraph">
+<p>The fetch FSM issues single-beat 64-bit reads and waits for each response.
+A <code>FIFO_DEPTH</code>-entry FIFO buffers the returned words. The final read still
+fetches a full eight-byte word when the message length is not a multiple of
+eight, so the whole fetched word must be readable within the slot.</p>
+</div>
+<div class="paragraph">
+<p>The write FSM sends bytes in increasing address order, least-significant
+byte first within each fetched word. It waits for FIFO data and
+<code>uart_tx_ready_i</code>, writes the character in data bits <code>[7:0]</code> to
+<code>LOG_WRITE_ADDR</code>, then waits for the response. The current implementation
+sets all four write strobes; the UART target must accept that access.</p>
+</div>
+<div class="paragraph">
+<p>Completion clears the selected length and advances arbitration. It means
+the write responses have returned, not that the UART has finished shifting
+the final character onto its serial output.</p>
+</div>
+<span id="interrupt-sources"></span>
+</div>
+<div class="sect2">
+<h3 id="log-engine-errors"><a class="anchor" href="#log-engine-errors"></a><a class="link" href="#log-engine-errors">2.3. Errors and Interrupts</a></h3>
+<div class="paragraph">
+<p><code>INTR_STATUS.LOG_FETCH_ERR</code> (bit 0) and <code>LOG_WRITE_ERR</code> (bit 4) latch bus
+response errors whether or not their interrupts are enabled.
+<code>INTR_ENABLE</code> masks the corresponding contributions to <code>irq_o</code>.
+Write 1 to a status bit to clear it; <code>INTR_TEST</code> can force either condition.</p>
+</div>
+<div class="paragraph">
+<p>The FSMs advance on error responses as well as successful responses. There
+is no automatic retry or per-slot success flag, and a cleared length alone
+does not prove successful delivery. Software must inspect error status and
+choose recovery appropriate to its logging requirements.</p>
+</div>
+<span id="clocking-and-reset-methodology"></span>
+</div>
+<div class="sect2">
+<h3 id="log-engine-reset"><a class="anchor" href="#log-engine-reset"></a><a class="link" href="#log-engine-reset">2.4. Reset and Disable</a></h3>
+<div class="paragraph">
+<p>All logic uses <code>clk_i</code>. Active-low <code>rst_ni</code> asynchronously resets the
+registers, state machines, counters and FIFO. Reset release timing is the
+integrator&#8217;s responsibility; the module does not synchronize it internally.</p>
+</div>
+<div class="paragraph">
+<p>Clearing <code>CTRL.EN</code> returns the fetch/write FSMs and counters to idle and
+clears the FIFO. It does not clear configuration or pending lengths, and
+it does not reset the AXI adapters. Disabling an active transfer is not a
+guaranteed drain or clean cancellation. Configure while idle; following an
+aborted transfer, reconcile outstanding bus traffic before reusing buffers
+or restarting the engine.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="log-engine-interface"><a class="anchor" href="#log-engine-interface"></a><a class="link" href="#log-engine-interface">3. Interface</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The parameters and ports of <code>log_engine</code> are listed in <a href="../../../../../ocah-docs/0.5/rtl-modules-reference/ip/log_engine/log_engine.html" class="xref page">log_engine</a>.</p>
+</div>
+<span id="configuration-parameters"></span>
+<table id="log-engine-configuration-parameters-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Log-engine configuration</caption>
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 16.6666%;">
+<col style="width: 50.0001%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Setting</th>
+<th class="tableblock halign-left valign-top">Value</th>
+<th class="tableblock halign-left valign-top">Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>FIFO_DEPTH</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 by default</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Module parameter: buffered 64-bit words.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NumLogEntries</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Package constant and generated register inventory.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum region</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Package constant <code>MaxLogRegionSize</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fetch address/data</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56/64 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Package types.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write address/data</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32/32 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Package types.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSR data</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Register interface; address width comes from the generated map.</p></td>
+</tr>
+</tbody>
+</table>
+<span id="signal-interfaces"></span>
+<span id="global-interface"></span>
+<div class="paragraph">
+<p>A shared <code>clk_i</code> and active-low asynchronous <code>rst_ni</code> drive all interfaces and
+internal logic. The CSR AXI4-Lite slave (<code>csr_axil_req_i</code> / <code>csr_axil_resp_o</code>)
+carries register traffic; two AXI4-Lite initiators carry memory reads
+(<code>log_fetch_axil_req_o</code> / <code>log_fetch_axil_resp_i</code>) and UART writes
+(<code>log_write_axil_req_o</code> / <code>log_write_axil_resp_i</code>). Both initiator adapters use
+<code>PROT = 3&#8217;b010</code> (non-secure, unprivileged data) and allow one outstanding
+request each. They issue no bursts.</p>
+</div>
+<span id="dma-interface"></span>
+<span id="flow-control-operation"></span>
+<div class="paragraph">
+<p><code>uart_tx_ready_i</code> permits the write FSM to request the next character transfer.
+The UART integration supplies readiness in the engine&#8217;s clock domain and
+must account for writes already accepted by the bus. See <a href="#log-engine-transfer">Arbitration and Data Transfer</a>
+for the write data and strobe behavior.</p>
+</div>
+<span id="interrupt-interface"></span>
+<div class="paragraph">
+<p><code>irq_o</code> is the active-high OR of enabled, latched fetch and write error status.</p>
+</div>
+<span id="overview-3"></span>
+</div>
+</div>
+<div class="sect1">
+<h2 id="log-engine-memory-map"><a class="anchor" href="#log-engine-memory-map"></a><a class="link" href="#log-engine-memory-map">4. Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<span id="register-map"></span>
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">4.1. Memory Map</a></h3>
+<div class="paragraph">
+<p>Offsets below are relative to the Log Engine register bank. All registers
+reset to zero. The generated map gives field access and side effects.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. Log-engine register summary</caption>
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 16.6666%;">
+<col style="width: 50.0001%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Register</th>
+<th class="tableblock halign-left valign-top">Offset</th>
+<th class="tableblock halign-left valign-top">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CTRL</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Engine enable.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOG_REGION_SIZE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x04</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Total region size in bytes.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOG_REGION_ADDR</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x08/0x0C</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Low/high halves of the 56-bit fetch base.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOG_WRITE_ADDR</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART write address.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INTR_STATUS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x14</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Latched fetch/write errors; write 1 to clear.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INTR_ENABLE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x18</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Error interrupt enables.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INTR_TEST</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1C</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Force error status for interrupt testing.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOG_CTRL[i]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x40 + 4*i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Submitted byte length for slot 0–15; cleared on completion.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">4.2. Detailed Register Map</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-log_engine">Log Engine Address Map</h2>
+<p>Configuration and status registers for the UART log engine, including the log region and write pointers.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>LOG_CTRL[16]</strong>: 16 registers, base 0x40, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#log_engine-CTRL">CTRL</a></td><td>RW</td><td>Control Register</td></tr>
+<tr><td>0x4</td><td><a href="#log_engine-LOG_REGION_SIZE">LOG_REGION_SIZE</a></td><td>RW</td><td>Log Region Size Register</td></tr>
+<tr><td>0x8</td><td><a href="#log_engine-LOG_REGION_ADDR">LOG_REGION_ADDR</a></td><td>RW</td><td>Log Region Address Register</td></tr>
+<tr><td>0x10</td><td><a href="#log_engine-LOG_WRITE_ADDR">LOG_WRITE_ADDR</a></td><td>RW</td><td>Log Write Address Register</td></tr>
+<tr><td>0x14</td><td><a href="#log_engine-INTR_STATUS">INTR_STATUS</a></td><td>RW</td><td>Interrupt Status Register</td></tr>
+<tr><td>0x18</td><td><a href="#log_engine-INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
+<tr><td>0x1C</td><td><a href="#log_engine-INTR_TEST">INTR_TEST</a></td><td>W</td><td>Interrupt Test Register</td></tr>
+<tr><td>0x40 - 0x7C</td><td><a href="#log_engine-LOG_CTRL_16_">LOG_CTRL[16]</a></td><td>RW</td><td>Log Control Register</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="CTRL"></span><h3 id="log_engine-CTRL" data-register-alias="CTRL">CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>EN</td><td>RW</td><td>0x0</td><td>Log Engine Enable. When set, enables the Log Engine. When cleared, the engine<br>stops fetching and writing, discards buffered log data and resets transfer<br>progress. Configuration and pending LOG_LEN values are retained, so a pending<br>entry restarts from the start of its slot when the engine is enabled again.<br>Clearing does not wait for outstanding bus responses.</td></tr>
+</table>
+<span id="LOG_REGION_SIZE"></span><h3 id="log_engine-LOG_REGION_SIZE" data-register-alias="LOG_REGION_SIZE">LOG_REGION_SIZE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>LOG_REGION_SIZE</td><td>RW</td><td>0x0</td><td>Log region size in bytes. Supported values are at most 512 KiB and aligned<br>to 128 bytes (16 slots times the 8-byte fetch beat). If software programs a<br>larger value, RTL clamps the effective region to 512 KiB. For a value that is<br>not 128-byte aligned, RTL divides the effective region among the 16 slots and<br>rounds each slot&#x27;s transferable capacity down to complete 8-byte fetch beats.<br>A requested LOG_LEN above that capacity is clamped to the capacity.</td></tr>
+</table>
+<span id="LOG_REGION_ADDR"></span><h3 id="log_engine-LOG_REGION_ADDR" data-register-alias="LOG_REGION_ADDR">LOG_REGION_ADDR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:56</td><td>RESERVED</td><td>R</td><td>0x0</td><td>Reserved. Reads as zero; writes are ignored.</td></tr>
+<tr><td>55:32</td><td>LOG_REGION_ADDR_HI</td><td>RW</td><td>0x0</td><td>Log Region Start Address High. Contains fabric address bits [55:32].</td></tr>
+<tr><td>31:0</td><td>LOG_REGION_ADDR_LO</td><td>RW</td><td>0x0</td><td>Log Region Start Address Low.</td></tr>
+</table>
+<span id="LOG_WRITE_ADDR"></span><h3 id="log_engine-LOG_WRITE_ADDR" data-register-alias="LOG_WRITE_ADDR">LOG_WRITE_ADDR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>LOG_WRITE_ADDR</td><td>RW</td><td>0x0</td><td>Log Write Address. This is the address where the log data is written to.</td></tr>
+</table>
+<span id="INTR_STATUS"></span><h3 id="log_engine-INTR_STATUS" data-register-alias="INTR_STATUS">INTR_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>LOG_WRITE_ERR</td><td>RW1C</td><td>0x0</td><td>Log Write Error Interrupt. Asserted when the bus for writing log data returns<br>an error.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>LOG_FETCH_ERR</td><td>RW1C</td><td>0x0</td><td>Log Fetch Error Interrupt. Asserted when the bus for fetching log data returns<br>an error.</td></tr>
+</table>
+<span id="INTR_ENABLE"></span><h3 id="log_engine-INTR_ENABLE" data-register-alias="INTR_ENABLE">INTR_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>LOG_WRITE_ERR</td><td>RW</td><td>0x0</td><td>Log Write Error Interrupt Enable.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>LOG_FETCH_ERR</td><td>RW</td><td>0x0</td><td>Log Fetch Error Interrupt Enable.</td></tr>
+</table>
+<span id="INTR_TEST"></span><h3 id="log_engine-INTR_TEST" data-register-alias="INTR_TEST">INTR_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>LOG_WRITE_ERR</td><td>W 1P</td><td>0x0</td><td>Log Write Error Interrupt Test. Writing `1` forces the interrupt.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>LOG_FETCH_ERR</td><td>W 1P</td><td>0x0</td><td>Log Fetch Error Interrupt Test. Writing `1` forces the interrupt.</td></tr>
+</table>
+<span id="LOG_CTRL_16_"></span><h3 id="log_engine-LOG_CTRL_16_" data-register-alias="LOG_CTRL_16_">LOG_CTRL[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>LOG_LEN</td><td>RW</td><td>0x0</td><td>Log Length. Writing a nonzero value representing the log length in bytes to this field<br>starts the log transfer process. The field holds the requested length until the<br>transfer completes, when hardware clears it to zero; it is not a remaining-byte<br>counter. There are 16 copies of this register, each representing<br>a log entry. The log entries go through round robin arbitration.</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../../../_/js/register-sections.js"></script>
+<script src="../../../../../_/js/toc-collapse.js"></script>
+<script src="../../../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/version-menu.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
+<script async src="../../../../../_/js/vendor/highlight.js"></script>
+<script src="../../../../../_/js/vendor/lunr.js"></script>
+<script src="../../../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../../../.." data-snippet-length="100" data-stylesheet="../../../../../_/css/search.css"></script>
+<script async src="../../../../../search-index.js"></script>
+  </body>
+</html>

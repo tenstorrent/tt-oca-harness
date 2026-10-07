@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="834" viewBox="0 0 1040 834" role="img" aria-labelledby="title desc">
+<title id="title">AVSBus protocol state machine</title>
+<desc id="desc">After reset the protocol FSM enters AVS_SLAVE_RESYNC and holds avs_mdata_o high until its resync counter reaches 34. It then launches a frame through AVS_LAUNCH_FRAME_POST_RESYNC when a frame is ready, or waits in AVS_IDLE. From idle a ready frame starts the first subframe; with STOP_AVS_CLOCK_ON_IDLE set, a ready frame returns to the resync instead, as does a due resync while no frame is ready. Each subframe box pairs a SHIFT state that shifts 32 bits with the END state that evaluates them. The first subframe goes to the middle subframe when another frame is ready and to the last subframe otherwise; the middle subframe repeats while frames are ready. The last subframe starts a new first subframe when a frame is ready and otherwise returns to idle. A retry condition in the middle or last subframe, with MAX_RETRIES above zero, enters the retry states: the transmit-and-receive variant after a middle subframe, the transmit variant after a last subframe, both followed by the receive variant. From the receive variant the FSM retries again while retries remain, processes a held reply in AVS_PROCESS_PREVIOUS_SDATA if one is pending, or returns to the resync; processing the held reply either retries it or returns to the resync.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.axil { fill: none; stroke: #103525; stroke-width: 1.5; marker-start: url(#as); marker-end: url(#ae); }
+.sigd { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 5 4; marker-end: url(#ge); }
+.axin { fill: none; stroke: #103525; stroke-width: 2.5; }
+.axis { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); }
+.axie { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#ae); }
+.axiln { fill: none; stroke: #103525; stroke-width: 1.5; }
+</style>
+</defs>
+<rect width="1040" height="834" fill="#ffffff"/>
+<rect class="core" x="338" y="13" width="264" height="54" rx="14"/>
+<text class="bs" x="470" y="45" text-anchor="middle">AVS_RESET</text>
+<rect class="core" x="338" y="123" width="264" height="54" rx="14"/>
+<text class="bs" x="470" y="147" text-anchor="middle">Slave resync</text>
+<text class="s" x="470" y="163" text-anchor="middle">AVS_SLAVE_RESYNC</text>
+<rect class="core" x="338" y="233" width="264" height="54" rx="14"/>
+<text class="bs" x="470" y="257" text-anchor="middle">Launch after resync</text>
+<text class="s" x="470" y="273" text-anchor="middle">AVS_LAUNCH_FRAME_POST_RESYNC</text>
+<rect class="core" x="65" y="233" width="170" height="54" rx="14"/>
+<text class="bs" x="150" y="257" text-anchor="middle">Idle</text>
+<text class="s" x="150" y="273" text-anchor="middle">AVS_IDLE</text>
+<rect class="core" x="338" y="343" width="264" height="54" rx="14"/>
+<text class="bs" x="470" y="367" text-anchor="middle">First subframe</text>
+<text class="s" x="470" y="383" text-anchor="middle">AVS_{SHIFT,END}_1ST_SUBFRAME</text>
+<rect class="core" x="338" y="453" width="264" height="54" rx="14"/>
+<text class="bs" x="470" y="477" text-anchor="middle">Middle subframe</text>
+<text class="s" x="470" y="493" text-anchor="middle">AVS_{SHIFT,END}_MID_SUBFRAME</text>
+<rect class="core" x="338" y="563" width="264" height="54" rx="14"/>
+<text class="bs" x="470" y="587" text-anchor="middle">Last subframe</text>
+<text class="s" x="470" y="603" text-anchor="middle">AVS_{SHIFT,END}_LAST_SUBFRAME</text>
+<rect class="core" x="338" y="673" width="264" height="54" rx="14"/>
+<text class="bs" x="470" y="697" text-anchor="middle">Process held reply</text>
+<text class="s" x="470" y="713" text-anchor="middle">AVS_PROCESS_PREVIOUS_SDATA</text>
+<rect class="core" x="680" y="448" width="240" height="64" rx="14"/>
+<text class="bs" x="800" y="469" text-anchor="middle">Retry, transmit and receive</text>
+<text class="s" x="800" y="485" text-anchor="middle">AVS_RETRY_{SHIFT,END}_</text>
+<text class="s" x="800" y="501" text-anchor="middle">XMIT_AND_RECV_SUBFRAME</text>
+<rect class="core" x="680" y="558" width="240" height="64" rx="14"/>
+<text class="bs" x="800" y="579" text-anchor="middle">Retry, transmit</text>
+<text class="s" x="800" y="595" text-anchor="middle">AVS_RETRY_{SHIFT,END}_</text>
+<text class="s" x="800" y="611" text-anchor="middle">XMIT_SUBFRAME</text>
+<rect class="core" x="680" y="668" width="240" height="64" rx="14"/>
+<text class="bs" x="800" y="689" text-anchor="middle">Retry, receive</text>
+<text class="s" x="800" y="705" text-anchor="middle">AVS_RETRY_{SHIFT,END}_</text>
+<text class="s" x="800" y="721" text-anchor="middle">RECV_SUBFRAME</text>
+<path class="sigo" d="M470,67.0 L470,119.0"/>
+<path class="sigo" d="M470,177.0 L470,229.0"/>
+<text class="s" x="478" y="212" text-anchor="start">resync done, RDY</text>
+<path class="sigo" d="M470,287.0 L470,339.0"/>
+<path class="sigo" d="M470,397.0 L470,449.0"/>
+<text class="s" x="478" y="432" text-anchor="start">RDY</text>
+<path class="sigo" d="M470,507.0 L470,559.0"/>
+<text class="s" x="478" y="542" text-anchor="start">not RDY</text>
+<path class="sigo" d="M338.0,143 L150,143 L150,229.0"/>
+<text class="s" x="250" y="135" text-anchor="middle">resync done, not RDY</text>
+<path class="sigo" d="M200,233.0 L200,160 L334.0,160"/>
+<text class="s" x="208" y="199" text-anchor="start">RDY and stop on idle,</text>
+<text class="s" x="208" y="215" text-anchor="start">or resync due</text>
+<path class="sigo" d="M150,287.0 L150,358 L334.0,358"/>
+<text class="s" x="250" y="350" text-anchor="middle">RDY, no stop on idle</text>
+<path class="sigo" d="M338.0,380 L262,380 L262,605 L334.0,605"/>
+<text class="s" x="254" y="500" text-anchor="end">not RDY</text>
+<path class="sigo" d="M338.0,575 L300,575 L300,392 L334.0,392"/>
+<text class="s" x="306" y="565" text-anchor="start">RDY</text>
+<path class="sigo" d="M338.0,472 L314.0,472 L314.0,490 L334.0,490"/>
+<text class="s" x="319" y="465" text-anchor="middle">RDY</text>
+<path class="sigo" d="M470,617.0 L470,650 L40,650 L40,260 L61.0,260"/>
+<text class="s" x="160" y="644" text-anchor="middle">not RDY</text>
+<path class="sigo" d="M602.0,480 L676.0,480"/>
+<text class="s" x="641" y="472" text-anchor="middle">retry</text>
+<path class="sigo" d="M602.0,590 L676.0,590"/>
+<text class="s" x="641" y="582" text-anchor="middle">retry</text>
+<path class="sigo" d="M920.0,480 L945,480 L945,700 L924.0,700"/>
+<path class="sigo" d="M760,622.0 L760,664.0"/>
+<path class="sigo" d="M840,668.0 L840,626.0"/>
+<text class="s" x="848" y="645" text-anchor="start">retry,</text>
+<text class="s" x="848" y="661" text-anchor="start">retries left</text>
+<path class="sigo" d="M680.0,700 L606.0,700"/>
+<text class="s" x="641" y="692" text-anchor="middle">reply held</text>
+<path class="sigo" d="M560,673.0 L560,635 L650,635 L650,605 L676.0,605"/>
+<text class="s" x="605" y="628" text-anchor="middle">retry</text>
+<path class="sigplain" d="M470,727.0 L470,768 L800,768"/>
+<circle cx="800" cy="768" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M800,732.0 L800,768 L990,768 L990,150 L606.0,150"/>
+<text class="s" x="560" y="760" text-anchor="middle">otherwise</text>
+<text class="s" x="890" y="760" text-anchor="middle">otherwise</text>
+<rect class="core" x="14" y="799" width="40" height="22" rx="8"/>
+<text class="s" x="62" y="814.5" text-anchor="start">State, or SHIFT and END state pair</text>
+<path class="sigo" d="M330,810 L370,810"/>
+<text class="s" x="380" y="814.5" text-anchor="start">Transition</text>
+<path class="sigplain" d="M480,810 L520,810 M500,810 L500,820"/>
+<circle cx="500" cy="810" r="3.5" fill="#5b6670"/>
+<text class="s" x="530" y="814.5" text-anchor="start">Merged transitions</text>
+</svg>

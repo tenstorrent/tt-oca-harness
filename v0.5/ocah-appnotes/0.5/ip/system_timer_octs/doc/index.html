@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>System Timer OCTS :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-appnotes" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../../../index.html">Application Notes</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Application Notes 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component is-current">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../../../index.html">Application Notes</a></li>
+    <li><a href="index.html">System Timer OCTS</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">System Timer OCTS</h1>
+<div id="preamble">
+<div class="sectionbody">
+<span id="description-and-features"></span>
+</div>
+</div>
+<div class="sect1">
+<h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1. Overview</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The System Timer implements Open Chiplet Time Synchronization (OCTS).
+A primary timer counts local clock cycles and sends load and credit pulses
+to secondary timers. Each secondary advances between pulses, then corrects
+its count at the next credit boundary.</p>
+</div>
+<div class="paragraph">
+<p>The counter is 64 bits. Its time unit depends on the primary clock;
+resolution and alignment accuracy also depend on the clock ratios, pulse
+routing and synchronization delay. The block does not guarantee nanosecond
+accuracy or simultaneous sampling across chiplets.</p>
+</div>
+<div class="paragraph">
+<p>Software configures the timer through a 32-bit AXI4-Lite interface.
+The <code>is_primary_i</code> input selects its role. The sections below cover counting,
+synchronization constraints, setup and register access.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="system-timer-octs-architecture"><a class="anchor" href="#system-timer-octs-architecture"></a><a class="link" href="#system-timer-octs-architecture">2. Operation</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="#system-timer-octs-diagram">Figure 1</a> shows how primary and secondary timers exchange
+synchronization information. The dashed groups hold the logic that acts in only one mode,
+as <code>is_primary_i</code> selects it; the enable and the 64-bit count serve both. The inbound
+sync-load and credit pulses cross into <code>clk_i</code> through a flop and a <code>prim_edge_detector</code>,
+which synchronizes them with two flops and turns each rising edge into a one-cycle pulse;
+an AND gate with <code>is_primary_i</code> on its inverted input masks each pulse in PRIMARY mode.
+The enable flop is sticky: an OR gate holds it set once a PRIMARY-mode
+<code>TIMER_START.START</code> or a sync-load pulse has set it. In SECONDARY mode, the
+sync-load pulse loads the preset, a credit pulse moves the count to the
+expected count plus CREDIT_VAL, and between pulses
+the count advances by <code>CTRL.STEP</code>, which drives the core&#8217;s <code>timer_cnt_step_i</code>, while
+credits are left. The credit tracking block holds the <code>cur_credits</code> accumulator, which
+adds STEP each cycle while it is below CREDIT_VAL (<code>credits_left</code>); the expected count,
+which <code>u_adder_expected_credit</code> advances by CREDIT_VAL on each credit pulse; and the
+<code>credit_expired_o</code> counter of cycles spent without credits. Both inbound pulses reset
+<code>cur_credits</code> and <code>credit_expired_o</code>. In PRIMARY mode, the count advances by one, and the
+credit counter and pulse state machine drive the outbound pulses. The wrapper keeps the
+longest credit-starved run reported by the core in a flop that loads the larger of its
+own value and <code>credit_expired_o</code>, and reads it back as <code>CREDIT_EXPIRED</code>; a write to
+<code>CREDIT_EXPIRED</code> clears both. In the
+SMC, the timer pulses use GPIO pads 55 and 56, which drive them on the primary chiplet and
+sample them on a secondary one.</p>
+</div>
+<div id="system-timer-octs-diagram" class="imageblock">
+<div class="content">
+<img src="../../_images/system-timer-octs.svg" alt="System Timer OCTS with synchronized sync-load and credit inputs masked in primary mode, secondary credit tracking, the sticky enable flop and 64-bit count, primary credit counter and pulse state machine, the CREDIT_EXPIRED maximum-hold flop, and the AXI-Lite register block" width="100%">
+</div>
+<div class="title">Figure 1. System Timer OCTS primary/secondary synchronization and credit CDC</div>
+</div>
+<span id="timer-core-processing"></span>
+<span id="synchronization-protocol"></span>
+<span id="credit-based-synchronization"></span>
+<span id="credit-management"></span>
+<span id="synchronization-logic"></span>
+<span id="data-flow-and-control-path"></span>
+<span id="control-path-overview"></span>
+<div class="sect2">
+<h3 id="octs-counting"><a class="anchor" href="#octs-counting"></a><a class="link" href="#octs-counting">2.1. Counting and Synchronization</a></h3>
+<div class="paragraph">
+<p>A write of 1 to <code>TIMER_START.START</code> starts the primary and loads
+<code>TIMER_PRESET_HI:LO</code>. The primary then increments by one on each <code>clk_i</code>
+cycle. It ignores synchronization inputs and generates load and credit
+pulses for the secondaries.</p>
+</div>
+<div class="paragraph">
+<p>A secondary loads its own preset when it detects a rising edge on
+<code>timer_sync_load_i</code>. On each credit edge, it advances its expected count by
+<code>CTRL.CREDIT_VAL</code> and replaces its actual count with that expected value.
+Between edges, it increments by <code>CTRL.STEP</code> while credits remain. This
+replacement is a correction, not just a diagnostic comparison: a secondary
+count can move backward if its previous increments overshot the boundary.</p>
+</div>
+<table id="octs-credit-management-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. OCTS credit management</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Role</th>
+<th class="tableblock halign-left valign-top">Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Primary</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">An 8-bit interval counter generates a credit event every
+<code>CREDIT_VAL</code> cycles while enabled. START clears this interval counter.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secondary</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A 9-bit consumed-credit counter starts at zero on load or
+credit edges. While it is less than <code>CREDIT_VAL</code>, both it and the timer
+advance by <code>STEP</code>. Counting pauses once the credit limit is reached.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Choose a nonzero secondary <code>STEP</code> appropriate to the clock ratio.
+The limit is checked before adding the step, so the last increment can
+cross it. A lost credit pulse also leaves the expected count behind the
+primary; receiving a later credit does not recover the missing interval.</p>
+</div>
+<span id="clock-domain-crossing"></span>
+<span id="edge-detection"></span>
+<span id="pulse-generation"></span>
+<span id="pulse-state-machine"></span>
+<span id="pulse-width-control"></span>
+<span id="pulse-generation-in-primary-mode"></span>
+<span id="timing-specifications"></span>
+<span id="octs-timing-requirements-table"></span>
+</div>
+<div class="sect2">
+<h3 id="octs-pulses"><a class="anchor" href="#octs-pulses"></a><a class="link" href="#octs-pulses">2.2. Pulse Generation and Clock Crossing</a></h3>
+<table id="octs-pulse-states-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. OCTS pulse states</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">State</th>
+<th class="tableblock halign-left valign-top">Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PULSE_IDLE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Accept START, or a credit event while enabled. START has priority.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PULSE_SYNC_LOAD</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Assert the primary load output for the configured width.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PULSE_CREDIT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Assert the primary credit output for the configured width.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>CTRL.PULSE_WIDTH</code> sets the high duration in primary clock cycles; zero
+is treated as one. <code>CREDIT_VAL</code> must exceed this effective width. The FSM
+accepts triggers only while idle and does not queue them. In particular,
+START can reload the primary count while an active pulse prevents a new
+load pulse; use a coordinated reset and setup sequence for restarting.</p>
+</div>
+<div class="paragraph">
+<p>Each synchronization input passes through an input flop, a two-flop
+synchronizer and an edge detector in the receiving clock domain. Pulses
+must stay high long enough to be sampled and low long enough to distinguish
+successive events. Determine those intervals from the destination clock,
+routing delay and CDC analysis; the RTL defines no universal frequency
+ratio, nanosecond timing guarantee or fixed system-wide alignment bound.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="octs-status"><a class="anchor" href="#octs-status"></a><a class="link" href="#octs-status">2.3. Status and Credit Expiration</a></h3>
+<div class="paragraph">
+<p><code>STATUS.MODE</code> is 0 for primary and 1 for secondary. <code>STATUS.RUNNING</code> is set
+when the internal enable is set and the count is nonzero. It can therefore
+remain set while a secondary is paused for lack of credit, or remain clear
+immediately after loading a zero preset. It is not a synchronization check.</p>
+</div>
+<div class="paragraph">
+<p>The secondary core counts cycles spent without credit. Load and credit
+edges clear this interval counter. The register wrapper retains the largest
+observed value in <code>CREDIT_EXPIRED</code>; writing any value clears the saved
+maximum, while only a load or credit pulse clears the running interval
+counter in the core. Normal credit reception does not clear the saved
+maximum. In a primary configured from reset, it stays zero.</p>
+</div>
+<div class="paragraph">
+<p>Use this value to detect waiting for credit, with thresholds derived from
+the clock ratio and pulse interval. It does not directly measure timestamp
+error or prove that all credit pulses arrived.</p>
+</div>
+<span id="reset-behavior-and-initialization"></span>
+</div>
+<div class="sect2">
+<h3 id="octs-reset"><a class="anchor" href="#octs-reset"></a><a class="link" href="#octs-reset">2.4. Reset</a></h3>
+<div class="paragraph">
+<p><code>rst_ni</code> asynchronously clears the counter, enable, pulse state and
+registers. Reset release must meet the integration&#8217;s timing requirements;
+this block does not synchronize reset deassertion internally.</p>
+</div>
+<div class="paragraph">
+<p>Enable is sticky after a PRIMARY-mode START or a received load edge. There is no stop CSR;
+writing START=0 does not stop counting. Configure role and timing before
+starting, and use system reset when a coordinated reconfiguration is needed.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="system-timer-octs-interface"><a class="anchor" href="#system-timer-octs-interface"></a><a class="link" href="#system-timer-octs-interface">3. Interface</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The System Timer OCTS IP has a 32-bit AXI4-Lite register interface. The
+<code>is_primary_i</code> input selects PRIMARY or SECONDARY mode at runtime. All
+signals are synchronous to <code>clk_i</code> except <code>timer_sync_load_i</code> and
+<code>timer_cnt_credit_i</code>, which are synchronized internally as described in
+<a href="#octs-pulses">Section 2.2</a>.</p>
+</div>
+<div class="sect2">
+<h3 id="ports"><a class="anchor" href="#ports"></a><a class="link" href="#ports">3.1. Ports</a></h3>
+<div class="paragraph">
+<p>The ports of <code>system_timer_octs</code> are listed in <a href="../../../../../ocah-docs/0.5/rtl-modules-reference/ip/system_timer_octs/system_timer_octs.html" class="xref page">system_timer_octs</a>.</p>
+</div>
+<div class="paragraph">
+<p><code>system_timer_octs</code> has no parameters. Its AXI4-Lite request and response
+types, with 32-bit address and data, are defined in <code>system_timer_octs_pkg</code>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="octs-synchronization-interface"><a class="anchor" href="#octs-synchronization-interface"></a><a class="link" href="#octs-synchronization-interface">3.2. OCTS Synchronization Interface</a></h3>
+<div class="paragraph">
+<p>When operating in PRIMARY mode, the timer generates synchronization
+pulses: <code>timer_sync_load_o</code> is asserted for <code>CTRL.PULSE_WIDTH</code> cycles when
+the START register is written, and <code>timer_cnt_credit_o</code> is asserted for
+<code>CTRL.PULSE_WIDTH</code> cycles every <code>CTRL.CREDIT_VAL</code> cycles. Any
+synchronization input signals are ignored in PRIMARY mode. In contrast,
+SECONDARY mode relies on input from the PRIMARY: <code>timer_sync_load_i</code>
+directs the timer to initialize using a preset value, and
+<code>timer_cnt_credit_i</code> delivers credit pulses that allow continuous
+synchronization. In this mode, the outputs remain inactive.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="timer-count"><a class="anchor" href="#timer-count"></a><a class="link" href="#timer-count">3.3. Timer Count</a></h3>
+<div class="paragraph">
+<p><code>timer_count_o</code> is the live 64-bit count, also readable through
+<code>TIMER_COUNT_LO</code> and <code>TIMER_COUNT_HI</code>. A PRIMARY advances it by one each
+<code>clk_i</code> cycle. A SECONDARY advances it by <code>CTRL.STEP</code> each cycle while
+credits remain.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="octs-interface-timing"><a class="anchor" href="#octs-interface-timing"></a><a class="link" href="#octs-interface-timing">3.4. Timing</a></h3>
+<div class="paragraph">
+<p>The RTL defines no setup, hold or clock-to-output limit, maximum clock
+frequency or frequency ratio between OCTS clock domains. Clock frequency,
+jitter, reset timing and physical timing constraints must come from the
+integration timing specification.</p>
+</div>
+<div class="paragraph">
+<p>Synchronization inputs cross into <code>clk_i</code> as described in <a href="#octs-pulses">Section 2.2</a>;
+derive the required pulse high and low intervals from the destination clock
+and CDC analysis. Reset behavior is described in <a href="#octs-reset">Section 2.4</a>.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="system-timer-octs-memory-map"><a class="anchor" href="#system-timer-octs-memory-map"></a><a class="link" href="#system-timer-octs-memory-map">4. Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<span id="register-map"></span>
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">4.1. Memory Map</a></h3>
+<div class="paragraph">
+<p>The register bank occupies <code>0x00</code>–<code>0x23</code> and uses 32-bit AXI4-Lite accesses.
+Use the enclosing subsystem&#8217;s memory map for its base address.</p>
+</div>
+<span id="address-alignment-and-access-requirements"></span>
+<span id="reset-values-and-power-on-behavior"></span>
+<table id="octs-register-reset-values-and-power-on-behavior-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. OCTS register offsets and reset values</caption>
+<colgroup>
+<col style="width: 28.5714%;">
+<col style="width: 14.2857%;">
+<col style="width: 14.2857%;">
+<col style="width: 42.8572%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Register</th>
+<th class="tableblock halign-left valign-top">Offset</th>
+<th class="tableblock halign-left valign-top">Reset</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TIMER_START</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">START is a single-cycle command.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CTRL</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x04</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001020A</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">STEP=1, PULSE_WIDTH=2, CREDIT_VAL=10.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STATUS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x08</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">MODE subsequently reflects the role input; RUNNING reflects enable and nonzero count.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TIMER_PRESET_LO/HI</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0C/0x10</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Two independently writable preset halves.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TIMER_COUNT_LO/HI</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x14/0x18</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Live count halves, with no snapshot latch; the
+<a href="../../../../../ocah-programmer-guide/0.5/index.html#smc-octs-read-count" class="xref page">timestamp read sequence</a>
+is in the Programmer&#8217;s Guide.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CREDIT_EXPIRED</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1C</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Saved maximum wait for credit; any write clears it.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TIMER_GPIO_ENABLE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x20</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Timer GPIO LSIO selection starts disabled.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">4.2. Detailed Register Map</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-system_timer_octs">OCTS System Timer Address Map</h2>
+<p>Open Chiplet Time Synchronization (OCTS) System Timer Registers</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#system_timer_octs-TIMER_START">TIMER_START</a></td><td>RW</td><td>System Timer Start Register</td></tr>
+<tr><td>0x4</td><td><a href="#system_timer_octs-CTRL">CTRL</a></td><td>RW</td><td>System Timer Control Register</td></tr>
+<tr><td>0x8</td><td><a href="#system_timer_octs-STATUS">STATUS</a></td><td>R</td><td>System Timer Status Register</td></tr>
+<tr><td>0xC</td><td><a href="#system_timer_octs-TIMER_PRESET_LO">TIMER_PRESET_LO</a></td><td>RW</td><td>System Timer Preset Value [31:0]</td></tr>
+<tr><td>0x10</td><td><a href="#system_timer_octs-TIMER_PRESET_HI">TIMER_PRESET_HI</a></td><td>RW</td><td>System Timer Preset Value [63:32]</td></tr>
+<tr><td>0x14</td><td><a href="#system_timer_octs-TIMER_COUNT_LO">TIMER_COUNT_LO</a></td><td>R</td><td>Current System Timer Count [31:0]</td></tr>
+<tr><td>0x18</td><td><a href="#system_timer_octs-TIMER_COUNT_HI">TIMER_COUNT_HI</a></td><td>R</td><td>Current System Timer Count [63:32]</td></tr>
+<tr><td>0x1C</td><td><a href="#system_timer_octs-CREDIT_EXPIRED">CREDIT_EXPIRED</a></td><td>RW</td><td>Credit Expired Register</td></tr>
+<tr><td>0x20</td><td><a href="#system_timer_octs-TIMER_GPIO_ENABLE">TIMER_GPIO_ENABLE</a></td><td>RW</td><td>System Timer GPIO Enable Register</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="TIMER_START"></span><h3 id="system_timer_octs-TIMER_START" data-register-alias="TIMER_START">TIMER_START</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>START</td><td>RW 1P</td><td>0x0</td><td>Start the system timer. In PRIMARY mode, a write of 1 loads the preset and pulses the sync-load output for PULSE_WIDTH cycles.<br>In SECONDARY mode, the write has no effect; a secondary starts on the primary&#x27;s sync-load pulse, which is what loads its preset.<br>Ensure both primary and secondary are out of reset.</td></tr>
+</table>
+<span id="CTRL"></span><h3 id="system_timer_octs-CTRL" data-register-alias="CTRL">CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>23:16</td><td>STEP</td><td>RW</td><td>0x1</td><td>Step amount for secondary timer</td></tr>
+<tr><td>15:8</td><td>PULSE_WIDTH</td><td>RW</td><td>0x2</td><td>Pulse width for sync load and credit signals. A value of 0 will be rounded up to 1. WARNING: This value must be less than CREDIT_VAL</td></tr>
+<tr><td>7:0</td><td>CREDIT_VAL</td><td>RW</td><td>0xA</td><td>Credit value factor. WARNING: This value must be greater than PULSE_WIDTH</td></tr>
+</table>
+<span id="STATUS"></span><h3 id="system_timer_octs-STATUS" data-register-alias="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>RUNNING</td><td>R</td><td>0x0</td><td>Timer is enabled and its count is nonzero.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>MODE</td><td>R</td><td>0x0</td><td>Timer mode driven by the is_primary_i input: 0=PRIMARY (is_primary_i=1), 1=SECONDARY (is_primary_i=0).</td></tr>
+</table>
+<span id="TIMER_PRESET_LO"></span><h3 id="system_timer_octs-TIMER_PRESET_LO" data-register-alias="TIMER_PRESET_LO">TIMER_PRESET_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>PRESET_LO</td><td>RW</td><td>0x0</td><td>Lower 32 bits of preset value</td></tr>
+</table>
+<span id="TIMER_PRESET_HI"></span><h3 id="system_timer_octs-TIMER_PRESET_HI" data-register-alias="TIMER_PRESET_HI">TIMER_PRESET_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>PRESET_HI</td><td>RW</td><td>0x0</td><td>Upper 32 bits of preset value</td></tr>
+</table>
+<span id="TIMER_COUNT_LO"></span><h3 id="system_timer_octs-TIMER_COUNT_LO" data-register-alias="TIMER_COUNT_LO">TIMER_COUNT_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>COUNT_LO</td><td>R</td><td>0x0</td><td>Lower 32 bits of current timer count</td></tr>
+</table>
+<span id="TIMER_COUNT_HI"></span><h3 id="system_timer_octs-TIMER_COUNT_HI" data-register-alias="TIMER_COUNT_HI">TIMER_COUNT_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>COUNT_HI</td><td>R</td><td>0x0</td><td>Upper 32 bits of current timer count</td></tr>
+</table>
+<span id="CREDIT_EXPIRED"></span><h3 id="system_timer_octs-CREDIT_EXPIRED" data-register-alias="CREDIT_EXPIRED">CREDIT_EXPIRED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>MAX_CYCLES_EXPIRED</td><td>RW</td><td>0x0</td><td>Maximum number of clock cycles since a count credit expired (SECONDARY only). To reset the value of this register, write anything to it.<br>If this number is very high (exact value depends on clock speed and credit value), this indicates that the secondary has not received a count credit pulse in a while, and is likely not syncing properly with the primary.<br>This register can also be used to determine the clock skew between the primary and secondary.<br>If PRIMARY, this field is always 0.</td></tr>
+</table>
+<span id="TIMER_GPIO_ENABLE"></span><h3 id="system_timer_octs-TIMER_GPIO_ENABLE" data-register-alias="TIMER_GPIO_ENABLE">TIMER_GPIO_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>GPIO_ENABLE</td><td>RW</td><td>0x0</td><td>Enable the GPIO pad lsio interface for the system timer. This is done to prevent X-prop on reset into the secondary timer, which can cause the secondary timer to start counting early.</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../../../_/js/register-sections.js"></script>
+<script src="../../../../../_/js/toc-collapse.js"></script>
+<script src="../../../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/version-menu.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
+<script async src="../../../../../_/js/vendor/highlight.js"></script>
+<script src="../../../../../_/js/vendor/lunr.js"></script>
+<script src="../../../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../../../.." data-snippet-length="100" data-stylesheet="../../../../../_/css/search.css"></script>
+<script async src="../../../../../search-index.js"></script>
+  </body>
+</html>

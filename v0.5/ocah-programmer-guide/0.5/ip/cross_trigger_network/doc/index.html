@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Cross-Trigger Network :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="CTN — inter-chiplet and on-chip cross-trigger routing, wire-OR/P2P modes, clock stop aggregation and register map.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-programmer-guide" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../../../index.html">Programmer&#x27;s Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../index.html">Programmer&#8217;s Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../index.html#smc-programming-guide">SMC Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../index.html#sep-programming-guide">SEP Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../index.html#sep-smc-common-blocks-communication">SEP &amp; SMC Common Blocks &amp; Communication</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../index.html#dtp-programming-guide">DTP Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../index.html#aou-software-operation-guide">AoU Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../index.html#smc-boot-rom">A. SMC Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../index.html#sep-boot-rom">B. SEP Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../index.html#km-application-rom">C. Key Manager Application ROM</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Programmer&#x27;s Guide 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../../../index.html">Programmer&#8217;s Guide</a></li>
+    <li><a href="index.html">Cross-Trigger Network</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Cross-Trigger Network</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="cross-trigger-network" class="paragraph">
+<p>The Cross-Trigger Network (CTN) implements inter-chiplet and on-chip
+cross-trigger routing per the Open Chiplet Cross Triggering (OCCT)
+specification. It combines a configurable set of Cross Trigger Ports (CTPs)
+facing the I/O pads with a Cross Trigger Matrix (CTM) that routes trigger
+pulses between all sources and sinks under AXI-Lite CSR control.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1. Overview</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The CTN serves four purposes:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Die-to-die cross triggering</strong> — trigger pulses propagate between chiplets
+in a multi-die SiP through the CTP GPIO pads.</p>
+</li>
+<li>
+<p><strong>On-chip cross triggering</strong> — internal CLAs and other logic exchange trigger
+pulses without leaving the chiplet.</p>
+</li>
+<li>
+<p><strong>Unified management</strong> — a single AXI-Lite interface configures all CTP and
+CTM settings through a contiguous address window.</p>
+</li>
+<li>
+<p><strong>Clock stop coordination</strong> — the CTN OR-reduces CLA <code>xtrig_clk_stop_req_i</code>
+inputs and combines the result with the JTAG <code>jtag_clock_stop</code> bit to
+produce the registered <code>stop_clks_o</code> output.</p>
+</li>
+</ol>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">2. Configuration Parameters</a></h2>
+<div class="sectionbody">
+<span id="ctn-configuration-parameters-table"></span>
+<div class="paragraph">
+<p>The CTN is configured through its external and internal port counts, the number of
+clock-stop request inputs, and the protocol of each internal CTP.</p>
+</div>
+<div class="paragraph">
+<p>The parameters of <code>cross_trigger_network</code> are listed in <a href="../../../../../ocah-docs/0.5/rtl-modules-reference/ip/cross_trigger_network/cross_trigger_network.html" class="xref page">cross_trigger_network</a>.</p>
+</div>
+<div class="paragraph">
+<p>The DTP passes these counts through as <code>XTRIG_NUM_CTP</code>, <code>XTRIG_NUM_INT_CT</code>, and
+<code>XTRIG_NUM_CLK_STOP_REQ</code>. The elaborated <code>NUM_CTP + NUM_INT_CT</code> must equal the
+generated Cross-Trigger Matrix <code>NUM_CT_SRC</code> and <code>NUM_CT_DST</code>; see
+<a href="../../cross_trigger_matrix/doc/index.html" class="xref page">Cross-Trigger Matrix</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="architecture"><a class="anchor" href="#architecture"></a><a class="link" href="#architecture">3. Architecture</a></h2>
+<div class="sectionbody">
+<div id="cross-trigger-network-architecture" class="paragraph">
+<p><a href="#sip-cross-trigger-topology-figure">SiP cross-trigger topology</a> is an example of a SiP with a heterogeneous cross
+triggering scheme utilizing both wire-OR and point-to-point cross triggering
+interfaces:</p>
+</div>
+<div id="sip-cross-trigger-topology-figure" class="imageblock">
+<div class="content">
+<img src="../../_images/ctn-sip-topology.svg" alt="Six-chiplet SiP: chiplets 0, 1 and 2 share a wire-OR net that also reaches a package pin, and point-to-point CTP pairs link chiplets 4 and 0, 0 and 3, and 3 and 5" width="100%">
+</div>
+<div class="title">Figure 1. SiP cross-trigger topology</div>
+</div>
+<div class="paragraph">
+<p>The package carries a single cross trigger across six chiplets. Chiplets 0, 1
+and 2 each have a CTP in wire-OR mode on one shared wire, and point-to-point CTP
+pairs link Chiplet 0 with Chiplets 3 and 4, and Chiplet 3 with Chiplet 5.
+Chiplet 0 is the bridge between the wire-OR group and the point-to-point
+chiplets. Each CTP lists its pads on the side that faces its partner, in the
+order that keeps every point-to-point wire straight. The wire-OR net also
+reaches a package pin, which makes the trigger visible outside the package and
+could accept an external trigger; a package pin is impractical for
+point-to-point signalling.</p>
+</div>
+<div class="paragraph">
+<p>The Programmer&#8217;s Guide lists the
+<a href="../../../index.html#dtp-ctn-sip-example" class="xref page">CTM routing that each chiplet programs</a>
+for this topology.</p>
+</div>
+<div class="paragraph">
+<p>No route leads from a CTP back to itself, but a CTP in wire-OR mode also
+receives the falling edge that it drives onto the shared wire. A trigger that
+Chiplet 0 forwards to its wire-OR CTP therefore comes back from that CTP one
+wire-OR round trip later, and Chiplet 0&#8217;s wire-OR rule forwards it again. For a
+trigger from Chiplet 3, the echo reaches Chiplet 0&#8217;s local CLAs and Chiplets 3
+and 4 a second time, and Chiplet 3 passes it on to Chiplet 5. Triggers from
+Chiplet 4, Chiplet 5 and Chiplet 0&#8217;s local CLAs echo in the same way; triggers
+that enter from Chiplets 1 and 2 do not. Any bridge between a wire-OR group and
+point-to-point links behaves like this, so a destination can see one trigger
+twice, the second copy one wire-OR round trip after the first.</p>
+</div>
+<div class="sect2">
+<h3 id="cross-trigger-port-ctp"><a class="anchor" href="#cross-trigger-port-ctp"></a><a class="link" href="#cross-trigger-port-ctp">3.1. Cross Trigger Port (CTP)</a></h3>
+<span id="ctn-cross-trigger-port-structure-figure"></span>
+<div class="paragraph">
+<p>The CTN supports from 1 to 32 external CTPs, set by its <code>NUM_CTP</code> parameter,
+which defaults to 16. Each external CTP uses one GPIO pad in wire-OR mode and
+two or four in point-to-point mode. These ports support both point-to-point and
+wire-OR cross trigger signaling modes.</p>
+</div>
+<div class="paragraph">
+<p>Each CTP connects to four separate I/O pads:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>CT_Req_out</strong> - The cross trigger request output signal. The CTP asserts this
+signal to transmit a cross trigger in both point-to-point and wire-OR modes.
+In point-to-point mode the request is held high until the receiver
+acknowledges the request. In wire-OR mode, this signal drives the
+output-enable port of the I/O pad for duration defined by a pulse stretching
+module, and the pad output is driven static-low. Also in wire-OR mode the I/O
+pad input connects to the CTP without inversion. The shared wire is an
+open-drain active-low signal, and the CTP receives a cross trigger on its
+falling (assertion) edge.<br></p>
+</li>
+<li>
+<p><strong>CT_Ack_in</strong> - The cross trigger acknowledge input signal. Exclusive to
+point-to-point mode. The cross trigger receiver asserts this signal when it
+acknowledges the CTP&#8217;s cross trigger request.<br></p>
+</li>
+<li>
+<p><strong>CT_Req_in</strong> - The cross trigger request input signal. Exclusive to
+point-to-point mode. This is the external cross trigger request received by
+the CTP.<br></p>
+</li>
+<li>
+<p><strong>CT_Ack_out</strong> - The cross trigger acknowledge output signal. Exclusive to
+point-to-point mode. The CTP asserts this signal after receiving a cross
+trigger request, and de-asserts this signal after the cross trigger request is
+released.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>When a GPIO pad is configured for cross triggering, the I/O pad assumes the role
+of one of these four cross trigger signals, and the pad controls and I/O data
+signals are connected to the associated CTP.</p>
+</div>
+<div class="paragraph">
+<p>The logical structure of a CTP module is shown in
+<a href="../../cross_trigger_port/doc/index.html#ctp-module-structure-figure" class="xref page">CTP module structure</a>
+in the Cross-Trigger Port architecture.</p>
+</div>
+<div class="paragraph">
+<p>Signal names, directions, and pad controls are listed in the
+<a href="#cross-trigger-network-interface">CTP Signal Interface</a>.</p>
+</div>
+<div class="paragraph">
+<p>The register interface for each CTP module is described in the
+<a href="#ctn-memory-map">CTN Memory Map</a> section below.</p>
+</div>
+<div class="sect3">
+<h4 id="wire-or-mode"><a class="anchor" href="#wire-or-mode"></a><a class="link" href="#wire-or-mode">3.1.1. Wire-OR Mode</a></h4>
+<span id="ctn-wire-or-port-behavior-figure"></span>
+<span id="ctn-wire-or-chiplet-connections-figure"></span>
+<div class="paragraph">
+<p>Wire-OR mode is a 1-wire cross trigger signaling scheme compatible with many
+existing cross triggering implementations. This scheme is very resource
+efficient, as it only requires a single pin per chiplet connected to the
+network. However, the performance of the network decreases as the number of
+connected chiplets increase. Also, the duration of the cross trigger pulse must
+be pre-arranged across all connected chiplets.</p>
+</div>
+<div class="paragraph">
+<p>Each chiplet has an open-drain I/O connected to a single shared wire. Any
+connected chiplet may pull this signal low to assert a cross trigger. Depending
+on the electrical requirements, one or more internal pad pull-ups or external
+keepers ensure the cross trigger request signal remains high when no cross
+trigger is asserted. To ensure no connected chiplet misses a cross trigger
+pulse, all chiplets transmitting a trigger pulse must stretch the pulse a
+mutually agreed upon length of time.</p>
+</div>
+<div class="paragraph">
+<p>Note that in wire-OR mode the <em>CT_Req_out</em> signal is connected to an open-drain
+configured I/O pad. For I/O pads that do have explicit open-drain control, the
+request data signal should connect to the output-enable control pin of the I/O
+pad, and the output data signal of the I/O pin should be driven statically low.</p>
+</div>
+<div class="paragraph">
+<p>The logical behavior of a CTP in wire-OR mode is shown in
+<a href="../../cross_trigger_port/doc/index.html#ctp-wire-or-behavior-figure" class="xref page">CTP wire-OR behavior</a>
+in the Cross-Trigger Port architecture, and any number of chiplets may have
+their <em>CT_Req_out</em> pads interconnected as shown in
+<a href="../../cross_trigger_port/doc/index.html#ctp-wire-or-chiplet-connections-figure" class="xref page">CTP wire-OR chiplet connections</a>
+in the same architecture section.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="point-to-point-mode"><a class="anchor" href="#point-to-point-mode"></a><a class="link" href="#point-to-point-mode">3.1.2. Point-to-Point Mode</a></h4>
+<span id="ctn-point-to-point-port-behavior-figure"></span>
+<span id="ctn-point-to-point-chiplet-connections-figure"></span>
+<span id="ctn-request-acknowledge-timing-figure"></span>
+<div class="paragraph">
+<p>Point-to-point mode utilizes a four-phase handshaking scheme to synchronize a
+cross trigger quickly and reliably between two chiplets without pulse
+stretching. While this scheme is simple and fast, it requires a dedicated CTP
+for each chiplet-to-chiplet interconnection, and each CTP requires four I/O pads
+for bi-directional communication, or two pads for unidirectional communication.
+All output pads are configured for push-pull operation.</p>
+</div>
+<div class="paragraph">
+<p>The logical behavior of a CTP in point-to-point mode is shown in
+<a href="../../cross_trigger_port/doc/index.html#ctp-point-to-point-behavior-figure" class="xref page">CTP point-to-point behavior</a>
+in the Cross-Trigger Port architecture, and any two chiplets may have their four
+cross trigger pads cross-coupled as shown in
+<a href="../../cross_trigger_port/doc/index.html#ctp-point-to-point-chiplet-connections-figure" class="xref page">CTP point-to-point chiplet connections</a>
+in the same architecture section.</p>
+</div>
+<div class="paragraph">
+<p>On the sender side, the receiver&#8217;s <em>CT_Ack_out</em> is connected to the sender&#8217;s
+<em>CT_Ack_in</em> pad. <em>CT_Req_out</em> asserts whenever <em>CT_Src</em> asserts. <em>CT_Req_out</em>
+will then remain asserted until <em>CT_Ack_in</em> asserts.</p>
+</div>
+<div class="paragraph">
+<p>On the receiver side, the sender&#8217;s <em>CT_Req_out</em> is connected to the receiver&#8217;s
+<em>CT_Req_in</em> pad. On any positive edge of <em>CT_Req_in</em>, the receiver generates a
+pulse on <em>CT_Dst</em> and asserts <em>CT_Ack_out</em>. Deassertion proceeds in exactly the
+same sequence.</p>
+</div>
+<div class="paragraph">
+<p>The timing of the request/acknowledge handshake is shown in
+<a href="../../cross_trigger_port/doc/index.html#ctp-request-acknowledge-timing-figure" class="xref page">CTP request-acknowledge timing</a>
+in the Cross-Trigger Port architecture.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="cross-trigger-matrix-ctm"><a class="anchor" href="#cross-trigger-matrix-ctm"></a><a class="link" href="#cross-trigger-matrix-ctm">3.2. Cross Trigger Matrix (CTM)</a></h3>
+<span id="ctn-cross-trigger-matrix-figure"></span>
+<div class="paragraph">
+<p>The CTM is a crossbar that aggregates and statically routes cross trigger pulses
+between various sources and sinks. Typical connections to the CTM include Core
+Logic Analyzers (CLAs) and CTPs, including other miscellaneous devices. The CTM
+is compatible with CTPs operating in either of the two signaling modes,
+point-to-point or wire-OR. Typically, each device or logic module connected to
+the CTM will act as both a source and a sink for cross trigger pulses.</p>
+</div>
+<div class="paragraph">
+<p>The source selection and destination routing performed by the CTM are shown in
+<a href="../../cross_trigger_matrix/doc/index.html#ctm-routing-structure-figure" class="xref page">CTM routing structure</a>
+in the Cross-Trigger Matrix architecture.</p>
+</div>
+<div class="paragraph">
+<p>The CTM is programmed at runtime via firmware or debug transactions. Proper
+configuration of the CTMs in each chiplet will minimize trigger latency and
+prevent loops in the SiP cross trigger network. Configuration is accomplished
+via CSRs. The CTM register interface is described in the <a href="#ctn-memory-map">CTN Memory Map</a>
+section below, and the Programmer&#8217;s Guide gives the
+<a href="../../../index.html#dtp-ctn-init" class="xref page">order in which to program the CTPs and the CTM</a>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="address-map"><a class="anchor" href="#address-map"></a><a class="link" href="#address-map">3.3. Address Map</a></h3>
+<div class="paragraph">
+<p>The CTN provides a unified CSR address space accessed via a single AXI-Lite
+subordinate port. An internal AXI-Lite crossbar (<code>axi_lite_xbar</code>) routes
+transactions to the CTM and external CTPs based on address decoding. The
+crossbar registers all five channels at the subordinate port, so no
+combinational path runs from the port&#8217;s inputs to its outputs, and each
+channel adds one cycle of latency. Each channel&#8217;s register holds up to two
+beats and keeps its READY high while it holds fewer than two. The crossbar
+serves one CSR access at a time, so the port can accept a second request on
+a channel while the crossbar is still serving the first.</p>
+</div>
+<div class="paragraph">
+<p><a href="#ctn-address-allocation-table">CTN address allocation</a> lists the CTM and external-CTP address ranges.</p>
+</div>
+<div class="port-reference-scroll" role="region" aria-label="CTN address map" tabindex="0">
+<table id="ctn-address-allocation-table" class="tableblock frame-all grid-all stretch port-reference">
+<caption class="title">Table 1. CTN address allocation</caption>
+<colgroup>
+<col style="width: 18%;">
+<col style="width: 25%;">
+<col style="width: 12%;">
+<col style="width: 45%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Component</th>
+<th class="tableblock halign-left valign-top">Address Range</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000 - 0x01FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 bytes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross Trigger Matrix configuration registers (one 8-byte <code>CT_SRC[k].CONFIG_0</code> slot per CT_Src port, up to 64 ports)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTP[0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0200 - 0x020F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 bytes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External CTP 0 configuration</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTP[1]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0210 - 0x021F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 bytes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External CTP 1 configuration</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">&#8230;&#8203;</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">&#8230;&#8203;</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">&#8230;&#8203;</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">&#8230;&#8203;</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTP[15]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x02F0 - 0x02FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 bytes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External CTP 15 configuration</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Internal CTPs</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No CSR address</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configured via build-time parameters only</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="paragraph">
+<p>The table shows the default 16 external CTPs. External CTP <em>n</em> occupies the
+16 bytes from <code>0x200 + 0x10*n</code>.</p>
+</div>
+<div class="paragraph">
+<p>The crossbar is configured with <code>MaxMstTrans=1</code> and <code>MaxSlvTrans=1</code>, serializing
+all CSR accesses. This simplification reduces arbitration logic at the cost of
+concurrent access capability.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="internal-vs-external-ctp-architecture"><a class="anchor" href="#internal-vs-external-ctp-architecture"></a><a class="link" href="#internal-vs-external-ctp-architecture">3.4. Internal vs External CTP Architecture</a></h3>
+<div class="paragraph">
+<p>The CTN instantiates <code>NUM_CTP</code> external CTPs, 16 by default, using the full
+<code>cross_trigger_port</code> module with CSR interface, and <code>NUM_INT_CT</code> internal CTPs,
+10 by default, using only the <code>cross_trigger_port_core</code> module without
+registers.</p>
+</div>
+<div class="paragraph">
+<p><a href="#external-and-internal-ctp-comparison-table">External and internal CTP comparison</a> compares the modules, configuration, and
+connections used for external and internal CTPs.</p>
+</div>
+<div class="port-reference-scroll" role="region" aria-label="External and internal CTP comparison" tabindex="0">
+<table id="external-and-internal-ctp-comparison-table" class="tableblock frame-all grid-all stretch port-reference">
+<caption class="title">Table 2. External and internal CTP comparison</caption>
+<colgroup>
+<col style="width: 22%;">
+<col style="width: 39%;">
+<col style="width: 39%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Aspect</th>
+<th class="tableblock halign-left valign-top">External CTP</th>
+<th class="tableblock halign-left valign-top">Internal CTP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Module</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cross_trigger_port</code> (full)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cross_trigger_port_core</code> (CSR-less)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSR Interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16-byte AXI-Lite address space</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None (build-time parameters)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO Interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4-pad interface to die I/O</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Logical signals to internal CLAs</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configuration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Runtime via CSRs (mode, invert, stretch_mult, reset)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Build-time via <code>INT_CT_MODE</code> parameter</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Index Range</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ctm_ct_src/dst[0:15]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ctm_ct_src/dst[16:25]</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Signal Mapping</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Standard GPIO pad controls</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Repurposed GPIO signals (see <a href="#internal-ctp-wire-or-connections-table">Internal CTP wire-OR connections</a> and <a href="#internal-ctp-point-to-point-connections-table">Internal CTP point-to-point connections</a>)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="internal-ctp-signal-remapping"><a class="anchor" href="#internal-ctp-signal-remapping"></a><a class="link" href="#internal-ctp-signal-remapping">3.4.1. Internal CTP Signal Remapping</a></h4>
+<div class="paragraph">
+<p>Internal CTPs reuse the cross_trigger_port_core GPIO interface but connect to
+logical signals rather than physical pads. The <code>INT_CT_MODE</code> parameter bits are
+inverted before use: <code>ModeWireOr = ~INT_CT_MODE[i]</code>. This means
+<code>INT_CT_MODE[i]=0</code> selects Wire-OR mode, while <code>INT_CT_MODE[i]=1</code> selects
+Point-to-Point mode.</p>
+</div>
+<div class="paragraph">
+<p>The internal wire-OR request from a CLA is active-high, while the CTP core
+receives a wire-OR cross trigger on the falling edge of an idle-high wire. The
+network therefore inverts <code>ctm_dst_req_i[i]</code> before <code>ct_req_out_din</code>, so an
+internal CTP receives a cross trigger on the rising edge of the CLA request.</p>
+</div>
+<div class="paragraph">
+<p><strong>Wire-OR Mode (INT_CT_MODE[i]=0, internal ModeWireOr=1):</strong></p>
+</div>
+<div class="paragraph">
+<p><a href="#internal-ctp-wire-or-connections-table">Internal CTP wire-OR connections</a> maps the CTP core signals to internal
+connections in wire-OR mode.</p>
+</div>
+<div class="port-reference-scroll" role="region" aria-label="Internal CTP wire-OR signal mapping" tabindex="0">
+<table id="internal-ctp-wire-or-connections-table" class="tableblock frame-all grid-all stretch port-reference">
+<caption class="title">Table 3. Internal CTP wire-OR connections</caption>
+<colgroup>
+<col style="width: 32%;">
+<col style="width: 68%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">CTP Core Signal</th>
+<th class="tableblock halign-left valign-top">Internal Connection</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ct_req_out_dout_en</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">→ <code>ctm_src_req_o[i]</code> (stretched pulse to CLA)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ct_req_out_din</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">← <code>~ctm_dst_req_i[i]</code> (stretched pulse from CLA, inverted)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All other signals</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Unused (tied to constants)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="paragraph">
+<p><strong>Point-to-Point Mode (INT_CT_MODE[i]=1, internal ModeWireOr=0):</strong></p>
+</div>
+<div class="paragraph">
+<p><a href="#internal-ctp-point-to-point-connections-table">Internal CTP point-to-point connections</a> maps the CTP core signals to internal
+connections in point-to-point mode.</p>
+</div>
+<div class="port-reference-scroll" role="region" aria-label="Internal CTP point-to-point signal mapping" tabindex="0">
+<table id="internal-ctp-point-to-point-connections-table" class="tableblock frame-all grid-all stretch port-reference">
+<caption class="title">Table 4. Internal CTP point-to-point connections</caption>
+<colgroup>
+<col style="width: 32%;">
+<col style="width: 68%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">CTP Core Signal</th>
+<th class="tableblock halign-left valign-top">Internal Connection</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ct_req_out_dout</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">→ <code>ctm_src_req_o[i]</code> (level-based request to CLA)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ct_req_in_din</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">← <code>ctm_dst_req_i[i]</code> (level-based request from CLA)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ct_ack_in_din</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">← <code>ctm_src_ack_i[i]</code> (acknowledge from CLA)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ct_ack_out_dout</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">→ <code>ctm_dst_ack_o[i]</code> (acknowledge to CLA)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="paragraph">
+<p>This remapping allows internal CTPs to operate in either mode without physical
+GPIO pads, enabling on-chip cross-triggering between CLAs and the external
+cross-trigger network.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="signal-flow"><a class="anchor" href="#signal-flow"></a><a class="link" href="#signal-flow">3.5. Signal Flow</a></h3>
+<div class="paragraph">
+<p><strong>External Cross Trigger Flow</strong></p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Outgoing Trigger</strong>: CTM ct_src &#8594; CTP ct_src_i &#8594; GPIO pads</p>
+</li>
+<li>
+<p><strong>Incoming Trigger</strong>: GPIO pads &#8594; CTP ct_dst_o &#8594; CTM ct_dst_i</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p><strong>Internal Cross Trigger Flow</strong></p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>To Internal Sink</strong>: CTM ct_src &#8594; Internal CTP &#8594; ctm_src_req_o</p>
+</li>
+<li>
+<p><strong>From Internal Source</strong>: ctm_dst_req_i &#8594; Internal CTP &#8594; CTM ct_dst</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect2">
+<h3 id="clock-stop-control"><a class="anchor" href="#clock-stop-control"></a><a class="link" href="#clock-stop-control">3.6. Clock Stop Control</a></h3>
+<span id="ctn-clock-stop-signals-table"></span>
+<div class="paragraph">
+<p>The <code>ctn_clock_stop_ctrl</code> module aggregates clock stop requests from multiple
+sources using a two-stage OR-tree architecture. The module separates CLA-only
+status from the combined functional halt signal to support independent JTAG
+visibility and chiplet clock gating control. The CTN sizes its request input
+with its own <code>NUM_CLK_STOP_REQ</code> parameter, which defaults to 9.</p>
+</div>
+<div class="paragraph">
+<p>The parameters and ports of <code>ctn_clock_stop_ctrl</code> are listed in <a href="../../../../../ocah-docs/0.5/rtl-modules-reference/ip/cross_trigger_network/ctn_clock_stop_ctrl.html" class="xref page">ctn_clock_stop_ctrl</a>.</p>
+</div>
+<div class="paragraph">
+<p>The aggregation logic operates as follows:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>CLA OR-Tree</strong>: All CLA request inputs are OR-reduced combinationally:
+<code>cla_clk_stop_req = |clk_stop_req_i</code></p>
+</li>
+<li>
+<p><strong>Combined Request</strong>: JTAG and CLA requests are OR-combined:
+<code>clk_stop_req_combined = jtag_clock_stop_i | cla_clk_stop_req</code></p>
+</li>
+<li>
+<p><strong>Synchronization and Output Registration</strong>: The combined request passes
+through a two-flop synchronizer into <code>clk_i</code> and then an output register, so
+<code>stop_clks_o</code> follows a change in either request after three <code>clk_i</code> cycles.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The synchronizer resolves the asynchronous JTAG and CLA requests into <code>clk_i</code>,
+and the output register keeps glitches out of the chiplet&#8217;s functional clock
+gating logic. The combinatorial <code>cla_clock_stop_o</code>
+output provides immediate visibility of CLA activity to the JTAG interface,
+allowing debuggers to distinguish between JTAG-initiated and CLA-initiated clock
+stops.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="port-indexing"><a class="anchor" href="#port-indexing"></a><a class="link" href="#port-indexing">3.7. Port Indexing</a></h3>
+<div class="paragraph">
+<p><a href="#ctn-matrix-port-indices-table">CTN matrix port indices</a> maps CTM port indices to external CTPs, internal CTPs,
+and clock-stop connections.</p>
+</div>
+<table id="ctn-matrix-port-indices-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 5. CTN matrix port indices</caption>
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Port Index</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0 to N-1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External CTPs (NUM_CTP)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N to N+M-1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Internal CTPs (NUM_INT_CT)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Where N = NUM_CTP and M = NUM_INT_CT. This indexing is used for CTM ct_dst_i and
+ct_src_o port assignment and CTM routing configuration registers.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="interface"><a class="anchor" href="#interface"></a><a class="link" href="#interface">4. Interface</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="cross-trigger-network-interface"><a class="anchor" href="#cross-trigger-network-interface"></a><a class="link" href="#cross-trigger-network-interface">4.1. Cross Trigger Port (CTP)</a></h3>
+<span id="ctn-cross-trigger-signal-interface-table"></span>
+<div class="paragraph">
+<p>For the module diagram and signalling modes, see
+<a href="#cross-trigger-network-architecture">CTN Architecture</a>.</p>
+</div>
+<div class="paragraph">
+<p>Each CTP is built on <code>cross_trigger_port_core</code>. Its operating mode resets to
+wire-OR: the CSR MODE field of an external CTP resets to 0, which selects
+wire-OR, and 1 selects peer-to-peer. <code>INT_CT_MODE</code> sets the mode of each
+internal CTP.</p>
+</div>
+<div class="paragraph">
+<p>The parameters and ports of <code>cross_trigger_port_core</code> are listed in <a href="../../../../../ocah-docs/0.5/rtl-modules-reference/ip/cross_trigger_port/cross_trigger_port_core.html" class="xref page">cross_trigger_port_core</a>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="cross-trigger-matrix-ctm-2"><a class="anchor" href="#cross-trigger-matrix-ctm-2"></a><a class="link" href="#cross-trigger-matrix-ctm-2">4.2. Cross Trigger Matrix (CTM)</a></h3>
+<div class="paragraph">
+<p>The CTM has the following data ports and logical structure:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>CT_Src[N-1:0]</strong> - Cross trigger pulse output signals from the CTM to CLAs,
+CTPs, or other cross trigger sinking devices, where N is the number of these
+cross trigger sinks.<br></p>
+</li>
+<li>
+<p><strong>CT_Dst[M-1:0]</strong> - Cross trigger pulse input signals to the CTM from CLAs,
+CTPs, or other cross trigger generating devices, where M is the number of
+these cross trigger sources.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="cross-trigger-network-module-interface"><a class="anchor" href="#cross-trigger-network-module-interface"></a><a class="link" href="#cross-trigger-network-module-interface">4.3. Cross Trigger Network Module Interface</a></h3>
+<div class="paragraph">
+<p>The parameters and ports of <code>cross_trigger_network</code> are listed in <a href="../../../../../ocah-docs/0.5/rtl-modules-reference/ip/cross_trigger_network/cross_trigger_network.html" class="xref page">cross_trigger_network</a>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="dependencies"><a class="anchor" href="#dependencies"></a><a class="link" href="#dependencies">4.4. Dependencies</a></h3>
+<div class="paragraph">
+<p>The CTN depends on the following components:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>hw/ip/cross_trigger/cross_trigger_port</code> - Cross Trigger Port IP</p>
+</li>
+<li>
+<p><code>hw/ip/cross_trigger/cross_trigger_matrix</code> - Cross Trigger Matrix IP</p>
+</li>
+<li>
+<p><code>vendor/pulp-platform/axi</code> - AXI infrastructure (<code>axi_lite_xbar</code>)</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="ctn-programming"><a class="anchor" href="#ctn-programming"></a><a class="link" href="#ctn-programming">5. Programming</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Cross-trigger configuration is static: every external CTP is configured once
+per boot before the CTM routes that use it are opened. The Programmer&#8217;s Guide
+gives the
+<a href="../../../index.html#dtp-cross-trigger" class="xref page">cross-trigger programming sequence</a>
+with reconfiguration and handshake deadlock recovery.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">6. Memory Map</a></h2>
+<div class="sectionbody">
+<span id="memory-map"></span>
+<div class="sect2">
+<h3 id="ctn-memory-map"><a class="anchor" href="#ctn-memory-map"></a><a class="link" href="#ctn-memory-map">6.1. Memory Map</a></h3>
+<div class="paragraph">
+<p>The Cross Trigger Network combines the Cross Trigger Matrix (CTM) and Cross
+Trigger Port (CTP) registers into a unified address space. Its generated map
+keeps the CTP instance count and stride with the allocated apertures:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 6. Cross Trigger Network Address Map</caption>
+<colgroup>
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Base Address</th>
+<th class="tableblock halign-left valign-top">End Address</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Decoded Extent</th>
+<th class="tableblock halign-left valign-top">Unit</th>
+<th class="tableblock halign-left valign-top">Instances</th>
+<th class="tableblock halign-left valign-top">Stride</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Hole in Extent (R / W)</th>
+<th class="tableblock halign-left valign-top">Past Extent (R / W)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00000000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x000001FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">208 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross Trigger Matrix Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configuration registers for the cross trigger matrix</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00000200</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x000002FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">252 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross Trigger Port Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configuration and status registers for the cross trigger port</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The CTN adds no CTN-specific registers; it decodes the AXI-Lite CSR interface
+onto the CTM and CTP blocks it instantiates. The composite SystemRDL top is the
+common source for these addresses and for the generated RTL constants.</p>
+</div>
+<div class="paragraph">
+<p>The last two columns state how the network answers a 32-bit access that no
+register backs, as seen at its AXI-Lite CSR port, and
+<a href="../../../../../ocah-docs/0.5/memory_map.html#ocah-decode-response-codes" class="xref page">Decode Response Codes</a>
+defines them and their codes. An address above <code>0x2FF</code> matches no block and
+answers <code>DECERR</code>, with read data <code>0xBADCAB1E</code>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">6.2. Detailed Register Map</a></h3>
+<div class="sect3">
+<h4 id="cross-trigger-matrix-registers"><a class="anchor" href="#cross-trigger-matrix-registers"></a><a class="link" href="#cross-trigger-matrix-registers">6.2.1. Cross Trigger Matrix Registers</a></h4>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-cross_trigger_matrix">Cross Trigger Matrix Address Map</h2>
+<p>Configuration registers for the cross trigger matrix</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>CT_SRC[26].CONFIG_0</strong>: 26 registers, base 0x0, stride 0x8</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0xC8</td><td><a href="#cross_trigger_matrix-CT_SRC_26_.CONFIG_0">CT_SRC[26].CONFIG_0</a></td><td>RW</td><td>Cross Trigger Source Configuration - CT_Dst select mask</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="CT_SRC_26_.CONFIG_0"></span><h3 id="cross_trigger_matrix-CT_SRC_26_.CONFIG_0" data-register-alias="CT_SRC_26_.CONFIG_0">CT_SRC[26].CONFIG_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:26</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>25:0</td><td>CT_DST_SELECT</td><td>RW</td><td>0x0</td><td>Selects the CT_Dst port(s) to forward on the CT_Src output<br>at this array index. Each bit corresponds to one CT_Dst<br>port, from CT_Dst[0] at bit 0 upwards. Multiple ports may<br>be selected as a trigger source. All selected source ports<br>are then OR&#x27;d together to produce the CT_Src output. Set<br>this register to all-zero to disable that output.</td></tr>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="cross-trigger-port-registers"><a class="anchor" href="#cross-trigger-port-registers"></a><a class="link" href="#cross-trigger-port-registers">6.2.2. Cross Trigger Port Registers</a></h4>
+<div class="paragraph">
+<p>Each CTP window repeats the following register layout.</p>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-cross_trigger_port">Cross Trigger Port Address Map</h2>
+<p>Configuration and status registers for the cross trigger port</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#cross_trigger_port-CONFIG">CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x4</td><td><a href="#cross_trigger_port-STATUS">STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
+<tr><td>0x8</td><td><a href="#cross_trigger_port-STRETCH_MULT">STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="CONFIG"></span><h3 id="cross_trigger_port-CONFIG" data-register-alias="CONFIG">CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>RESET</td><td>RW</td><td>0x0</td><td>While set, holds the outgoing point-to-point handshake idle with CT_Req_out deasserted and discards core-side cross trigger pulses for transmission. The incoming handshake keeps running. Set and then clear it to recover a handshake deadlock.</td></tr>
+<tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.</td></tr>
+<tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package&#x27;s cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.</td></tr>
+</table>
+<span id="STATUS"></span><h3 id="cross_trigger_port-STATUS" data-register-alias="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out level with CONFIG.INVERT undone, so 1 means the acknowledge is asserted whatever the pad polarity. Reads 0 in wire-OR mode.</td></tr>
+<tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in level with CONFIG.INVERT undone, so 1 means the request is asserted whatever the pad polarity.</td></tr>
+<tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in level with CONFIG.INVERT undone, so 1 means the acknowledge is asserted whatever the pad polarity.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out level with CONFIG.INVERT undone, so 1 means the request is asserted whatever the pad polarity. Reads 0 in wire-OR mode.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
+</table>
+<span id="STRETCH_MULT"></span><h3 id="cross_trigger_port-STRETCH_MULT" data-register-alias="STRETCH_MULT">STRETCH_MULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="composite-network-registers"><a class="anchor" href="#composite-network-registers"></a><a class="link" href="#composite-network-registers">6.2.3. Composite Network Registers</a></h4>
+<div class="paragraph">
+<p>This map gives the CTM and CTP register offsets within the generated CTN
+composition. The individual block maps above give offsets within each block.</p>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-cross_trigger_network">Cross Trigger Network Address Map</h2>
+<p>Cross trigger matrix and externally visible cross trigger ports</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>CT_SRC[26].CONFIG_0</strong>: 26 registers, base 0x0, stride 0x8</li>
+<li><strong>ctp[16].CONFIG</strong>: 16 registers, base 0x200, stride 0x10</li>
+<li><strong>ctp[16].STATUS</strong>: 16 registers, base 0x204, stride 0x10</li>
+<li><strong>ctp[16].STRETCH_MULT</strong>: 16 registers, base 0x208, stride 0x10</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0xC8</td><td><a href="#cross_trigger_network-CT_SRC_26_.CONFIG_0">CT_SRC[26].CONFIG_0</a></td><td>RW</td><td>Cross Trigger Source Configuration - CT_Dst select mask</td></tr>
+<tr><td>0x200 - 0x2F0</td><td><a href="#cross_trigger_network-ctp_16_.CONFIG">ctp[16].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x204 - 0x2F4</td><td><a href="#cross_trigger_network-ctp_16_.STATUS">ctp[16].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
+<tr><td>0x208 - 0x2F8</td><td><a href="#cross_trigger_network-ctp_16_.STRETCH_MULT">ctp[16].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="cross_trigger_network-CT_SRC_26_.CONFIG_0" data-register-alias="CT_SRC_26_.CONFIG_0">CT_SRC[26].CONFIG_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:26</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>25:0</td><td>CT_DST_SELECT</td><td>RW</td><td>0x0</td><td>Selects the CT_Dst port(s) to forward on the CT_Src output<br>at this array index. Each bit corresponds to one CT_Dst<br>port, from CT_Dst[0] at bit 0 upwards. Multiple ports may<br>be selected as a trigger source. All selected source ports<br>are then OR&#x27;d together to produce the CT_Src output. Set<br>this register to all-zero to disable that output.</td></tr>
+</table>
+<span id="ctp_16_.CONFIG"></span><h3 id="cross_trigger_network-ctp_16_.CONFIG" data-register-alias="ctp_16_.CONFIG">ctp[16].CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>RESET</td><td>RW</td><td>0x0</td><td>While set, holds the outgoing point-to-point handshake idle with CT_Req_out deasserted and discards core-side cross trigger pulses for transmission. The incoming handshake keeps running. Set and then clear it to recover a handshake deadlock.</td></tr>
+<tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.</td></tr>
+<tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package&#x27;s cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.</td></tr>
+</table>
+<span id="ctp_16_.STATUS"></span><h3 id="cross_trigger_network-ctp_16_.STATUS" data-register-alias="ctp_16_.STATUS">ctp[16].STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out level with CONFIG.INVERT undone, so 1 means the acknowledge is asserted whatever the pad polarity. Reads 0 in wire-OR mode.</td></tr>
+<tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in level with CONFIG.INVERT undone, so 1 means the request is asserted whatever the pad polarity.</td></tr>
+<tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in level with CONFIG.INVERT undone, so 1 means the acknowledge is asserted whatever the pad polarity.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out level with CONFIG.INVERT undone, so 1 means the request is asserted whatever the pad polarity. Reads 0 in wire-OR mode.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
+</table>
+<span id="ctp_16_.STRETCH_MULT"></span><h3 id="cross_trigger_network-ctp_16_.STRETCH_MULT" data-register-alias="ctp_16_.STRETCH_MULT">ctp[16].STRETCH_MULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../../../_/js/register-sections.js"></script>
+<script src="../../../../../_/js/toc-collapse.js"></script>
+<script src="../../../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/version-menu.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
+<script async src="../../../../../_/js/vendor/highlight.js"></script>
+<script src="../../../../../_/js/vendor/lunr.js"></script>
+<script src="../../../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../../../.." data-snippet-length="100" data-stylesheet="../../../../../_/css/search.css"></script>
+<script async src="../../../../../search-index.js"></script>
+  </body>
+</html>

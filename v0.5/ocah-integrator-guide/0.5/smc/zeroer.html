@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Zeroer :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SMC hardware-assisted memory clearing architecture and operation.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-integrator-guide" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Integrator Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Integrator Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../checklist.html">SoC Integration Checklist</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../smu.html">SMU Top-Level Integration</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-filelists.html">RTL Filelists</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-address-map.html">Address Map Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-rom-fw.html">Immutable ROM FW Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-smc.html">System Management Controller (SMC) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-dtp.html">Debug &amp; Test Ports (DTP) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-sep.html">Security Processor (SEP) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-composition.html">SMU Composition and Internal Wiring</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../smn.html">SMN Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../aou.html">AXI-over-UCIe Bridge (AoU) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../defines.html">Project Defines</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../prim.html">Prim Cell Replacement and Don&#8217;t-Touch Constraints</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../cdc.html">CDC Timing Constraints</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Integrator Guide 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../index.html">Integrator Guide</a></li>
+    <li><a href="zeroer.html">Zeroer</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Zeroer</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="memory-zeroer" class="paragraph">
+<p>The SMC Memory Zeroer efficiently initializes large memory regions to
+zero without CPU intervention. The unit uses a state machine-based
+architecture with dual clock domains.</p>
+</div>
+<div class="paragraph">
+<p><a href="#smc-memory-zeroer-integration-table">SMC Memory Zeroer Integration</a> summarises the zeroer control aperture and
+fabric integration.</p>
+</div>
+<table id="smc-memory-zeroer-integration-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SMC Memory Zeroer Integration</caption>
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Parameter</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address Range</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC003_8200 - 0xC003_83FF (512 bytes)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Control Interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4 (5-bit address, 64-bit data, 8-bit ID), converted internally to
+AXI4-Lite for the registers</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Data Interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4 Master (56-bit address, 64-bit data, 3-bit ID; 4-bit ID
+after the shared DMA/zeroer mux)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum Burst Length</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 beats (<code>AWLEN = 255</code>)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Outstanding Transactions</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Counted by a 32-bit counter; no 32-transaction
+issuance limit or counter-based back-pressure</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="use-cases"><a class="anchor" href="#use-cases"></a><a class="link" href="#use-cases">1. Use Cases</a></h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p><strong>System Initialization</strong>: Clear memory regions during boot or reset
+sequences</p>
+</li>
+<li>
+<p><strong>Security Operations</strong>: Sanitize sensitive data areas</p>
+</li>
+<li>
+<p><strong>Memory Management</strong>: Initialize allocated memory blocks</p>
+</li>
+<li>
+<p><strong>Error Recovery</strong>: Clear corrupted memory regions</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="architecture"><a class="anchor" href="#architecture"></a><a class="link" href="#architecture">2. Architecture</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The DMA and zeroer share the data-accelerator fabric path shown in
+<a href="dma.html#smc-dma-zeroer-diagram" class="xref page">SMC DMA frontend, backend and shared fabric path</a>.</p>
+</div>
+<div class="sect2">
+<h3 id="state-machine"><a class="anchor" href="#state-machine"></a><a class="link" href="#state-machine">2.1. State Machine</a></h3>
+<div class="paragraph">
+<p>The zeroer state machine has three operating states and an error state
+(<a href="#smc-zeroer-state-machine-table">SMC zeroer state machine</a>).</p>
+</div>
+<table id="smc-zeroer-state-machine-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. SMC zeroer state machine</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">State</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ST_IDLE (3&#8217;b001)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Idle state waiting for configuration and trigger</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ST_ISSUE_ADDR (3&#8217;b010)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address phase - issuing AXI write addresses</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ST_ISSUE_DATA (3&#8217;b100)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Data phase - streaming zero data for all beats</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ST_ERROR (3&#8217;b000)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entered from any illegal state encoding; holds the zeroer busy, with
+no interrupt, until reset</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><a href="#smc-memory-zeroer-diagram">SMC memory zeroer state machine and AXI write flow</a> shows the state machine and its AXI write flow.</p>
+</div>
+<div id="smc-memory-zeroer-diagram" class="imageblock">
+<div class="content">
+<img src="_images/smc-memory-zeroer.svg" alt="SMC memory zeroer: register path, clear state machine with its four states, and the AW, W and B channels of its AXI4 master port" width="100%">
+</div>
+<div class="title">Figure 1. SMC memory zeroer state machine and AXI write flow</div>
+</div>
+<div class="paragraph">
+<p>Rounded boxes are the states of the clear state machine, with their encodings; grey
+arrows are transitions, labelled with their conditions. A write to <code>CTRL_STATUS</code> while
+<code>SIZE</code> is non-zero leaves <code>ST_IDLE</code>. Each pass through <code>ST_ISSUE_ADDR</code> and
+<code>ST_ISSUE_DATA</code> issues one write burst of zeros, and the machine returns to <code>ST_IDLE</code>
+once no bytes remain. <code>ST_ERROR</code> is entered only from an illegal state encoding and
+is left only by reset. The write-response channel is always ready and its response code
+is not checked; the outstanding-request count decides when the zeroer stops being busy.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="operation-flow"><a class="anchor" href="#operation-flow"></a><a class="link" href="#operation-flow">2.2. Operation Flow</a></h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Configuration</strong>: Software writes destination address and size to
+registers</p>
+</li>
+<li>
+<p><strong>Trigger</strong>: Write to control/status register initiates operation</p>
+</li>
+<li>
+<p><strong>Address Phase</strong>: Hardware calculates optimal burst patterns and
+issues write addresses</p>
+</li>
+<li>
+<p><strong>Data Phase</strong>: Hardware streams zero data matching issued address
+beats</p>
+</li>
+<li>
+<p><strong>Completion</strong>: State machine returns to idle with status update and
+optional interrupt</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect2">
+<h3 id="axi-master-interface"><a class="anchor" href="#axi-master-interface"></a><a class="link" href="#axi-master-interface">2.3. AXI Master Interface</a></h3>
+<div class="paragraph">
+<p><a href="#smc-zeroer-axi4-master-characteristics-table">SMC zeroer AXI4 Master Characteristics</a> summarises the zeroer&#8217;s AXI master
+interface.</p>
+</div>
+<table id="smc-zeroer-axi4-master-characteristics-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. SMC zeroer AXI4 Master Characteristics</caption>
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Parameter</th>
+<th class="tableblock halign-left valign-top">Specification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address Width</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56-bit addressing for large system integration</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Data Width</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit data path</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ID Width</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4-bit transaction ID (internal 3-bit usage)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User Signals</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">12-bit user field for system-specific attributes</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum Burst Length</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 beats (<code>AWLEN = 255</code>)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Burst Calculation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Automatic optimal burst sizing</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address Alignment</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intelligent handling of unaligned start addresses</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boundary Handling</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Automatic burst fragmentation at page boundaries</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="outstanding-transaction-management"><a class="anchor" href="#outstanding-transaction-management"></a><a class="link" href="#outstanding-transaction-management">2.4. Outstanding Transaction Management</a></h3>
+<div class="paragraph">
+<p>The zeroer counts accepted write addresses and consumed write responses in a
+32-bit outstanding-request counter. The counter determines whether responses
+remain pending; it does not impose a limit of 32 transactions or throttle
+address issuance. AXI <code>AWREADY</code> and <code>WREADY</code> provide downstream back-pressure.</p>
+</div>
+<div class="paragraph">
+<p>The response channel is consumed without checking <code>BRESP</code>. Completion means
+that all responses have arrived, not that every write succeeded. The internal
+error state handles an illegal state-machine encoding, not AXI bus errors.
+The
+<a href="../../../ocah-programmer-guide/0.5/index.html#smc-zeroer-general-use" class="xref page">Memory Zeroer procedure</a>
+in the Programmer&#8217;s Guide covers validating a request and verifying a clear.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="dual-clock-domain-architecture"><a class="anchor" href="#dual-clock-domain-architecture"></a><a class="link" href="#dual-clock-domain-architecture">2.5. Dual Clock Domain Architecture</a></h3>
+<div class="paragraph">
+<p>The zeroer implements dual clock domain operation for power management
+and interface isolation.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="clock-domains"><a class="anchor" href="#clock-domains"></a><a class="link" href="#clock-domains">2.6. Clock Domains</a></h3>
+<div class="paragraph">
+<p><a href="#smc-zeroer-clock-domain-characteristics-table">SMC zeroer Clock Domain Characteristics</a> identifies the AXI and APB clock
+domains and their roles.</p>
+</div>
+<table id="smc-zeroer-clock-domain-characteristics-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. SMC zeroer Clock Domain Characteristics</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Clock Domain</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI Clock (axi_clk)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Dedicated clock for AXI master operations, enabled
+only during active zeroing</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Register Clock (reg_clk)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Separate clock for register interface,
+independent of AXI activity</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="clock-gating"><a class="anchor" href="#clock-gating"></a><a class="link" href="#clock-gating">2.7. Clock Gating</a></h3>
+<div class="paragraph">
+<p><a href="#smc-zeroer-clock-gating-control-table">SMC zeroer Clock Gating Control</a> gives the gating conditions for each clock
+domain.</p>
+</div>
+<table id="smc-zeroer-clock-gating-control-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 5. SMC zeroer Clock Gating Control</caption>
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Domain</th>
+<th class="tableblock halign-left valign-top">Gating Logic</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI Clock</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">axi_clk_enable = disable_cg | zeroer_busy_o | ~rst_ni</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Register Clock</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">reg_clk_enable = disable_cg | register_activity | ~rst_ni</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implementation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">prim_clock_gating for glitch-free operation</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Test Support</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Test enable override for manufacturing test</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Override</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Ensures proper reset domain operation</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="control-and-status"><a class="anchor" href="#control-and-status"></a><a class="link" href="#control-and-status">2.8. Control and Status</a></h3>
+<div class="sect3">
+<h4 id="operation-control"><a class="anchor" href="#operation-control"></a><a class="link" href="#operation-control">2.8.1. Operation Control</a></h4>
+<div class="paragraph">
+<p><a href="#smc-zeroer-configuration-and-control-table">SMC zeroer Configuration and Control</a> defines the registers used to configure
+and start a zeroing operation.</p>
+</div>
+<table id="smc-zeroer-configuration-and-control-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 6. SMC zeroer Configuration and Control</caption>
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Register</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DEST_ADDR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit byte address for destination memory region</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SIZE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit byte count for zeroing operation</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTRL_STATUS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Control and status register (trigger, busy status)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTRL_STATUS.INT_EN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the completion pulse</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="status-features"><a class="anchor" href="#status-features"></a><a class="link" href="#status-features">2.8.2. Status Features</a></h4>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Busy Status</strong>: Real-time indication of zeroing operation in progress</p>
+</li>
+<li>
+<p><strong>Completion Status</strong>: Updates when all write responses received</p>
+</li>
+<li>
+<p><strong>Error Reporting</strong>: No software-visible AXI error report; failed write
+responses are not distinguished from successful responses</p>
+</li>
+<li>
+<p><strong>Interrupt Generation</strong>: Optional interrupt on operation completion</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="operation-details"><a class="anchor" href="#operation-details"></a><a class="link" href="#operation-details">3. Operation Details</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="#smc-zeroer-data-generation-and-control-table">SMC zeroer Data Generation and Control</a> summarises zero-data generation and
+transfer control.</p>
+</div>
+<table id="smc-zeroer-data-generation-and-control-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 7. SMC zeroer Data Generation and Control</caption>
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Feature</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Zero Data Generation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hardware generates zero data for all beats</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Strobe Calculation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Correct byte strobes for partial transfers and
+unaligned addresses</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Last Beat Handling</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Proper w_last assertion for burst completion</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Size Tracking</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Accurate remaining size calculation throughout operation</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Overflow Protection</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Overflow assertions are simulation checks; there is
+no hardware overflow-rejection status or recovery control</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Abort</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No software abort control or guarantee that a reset safely drains
+outstanding writes</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-map-and-register-reference"><a class="anchor" href="#memory-map-and-register-reference"></a><a class="link" href="#memory-map-and-register-reference">4. Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">4.1. Memory Map</a></h3>
+<div class="paragraph">
+<p>Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">4.2. Detailed Register Map</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-zeroer_ctrl">Zeroer Control Address Map</h2>
+<p>Control and status registers for the AXI memory-zeroing engine.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#zeroer_ctrl-DEST_ADDR">DEST_ADDR</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#zeroer_ctrl-SIZE">SIZE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#zeroer_ctrl-CTRL_STATUS">CTRL_STATUS</a></td><td>RW</td><td>Writing this register will trigger start of zeroer. The write is ignored while SIZE is 0.</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="DEST_ADDR"></span><h3 id="zeroer_ctrl-DEST_ADDR" data-register-alias="DEST_ADDR">DEST_ADDR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>DEST_ADDR</td><td>RW</td><td>0x0</td><td>Byte address to write zeros to</td></tr>
+</table>
+<span id="SIZE"></span><h3 id="zeroer_ctrl-SIZE" data-register-alias="SIZE">SIZE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>SIZE</td><td>RW</td><td>0x0</td><td>Size in bytes of zeros to write</td></tr>
+</table>
+<span id="CTRL_STATUS"></span><h3 id="zeroer_ctrl-CTRL_STATUS" data-register-alias="CTRL_STATUS">CTRL_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:33</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>32</td><td>STATUS</td><td>R</td><td>0x0</td><td>Indicates whether the zeroer is busy. 1 means the zeroer is active, has pending work, or is in an error state; 0 means it is idle with no pending or outstanding work, including after completion.</td></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>INT_EN</td><td>RW</td><td>0x0</td><td>If enabled, an interrupt will be outputted once zeroer completes.</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

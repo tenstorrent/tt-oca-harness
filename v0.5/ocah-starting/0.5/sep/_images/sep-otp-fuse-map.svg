@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="1030" viewBox="0 0 1040 1030" role="img" aria-labelledby="title desc">
+<title id="title">SEP OTP fuse map</title>
+<desc id="desc">The SEP fuse bank holds 8192 bits, 256 32-bit words from offset 0x000 to 0x3FF, drawn eight words per row. From offset 0x000: LOCKS (64 bits), LOCKS_SPARE, LC_STATE, SBOOT_DIS and TRANSIENT_RMA_EN (32 bits each), SIP_DIS and SYS_DIS (64 bits each), then the 256-bit RMA_SIP_TOKEN_DIGEST, RMA_CHIPLET_TOKEN_DIGEST and CLASS_KEY, the 32-bit CHIPLET_PUBK_REVOKE, the 256-bit BL1_VERSION, BL2_VERSION, CHIPLET_UID, SIP_PUBK_HASH0, SIP_UID, SYS_PUBK_HASH and SYS_UID, the 32-bit STATUS_RPT, ROM_CTL and SYSCLK_FREQ_MHZ, the 256-bit CHIPLET_PUBK_HASH0 and CHIPLET_PUBK_HASH1, the 32-bit REQUIRED_SIGNERS and REQUIRED_ALGS, the 256-bit CHIPLET_PUBK_PQC_HASH0, CHIPLET_PUBK_PQC_HASH1, SIP_PUBK_PQC_HASH0, SYS_PUBK_PQC_HASH, SIP_PUBK_HASH1, SIP_PUBK_PQC_HASH1, SEP_CHIPLET_ID, SEP_SIP_ID and SEP_SYS_ID, and nine 256-bit spare fields, spare0 to spare8, from 0x2E0 to the end. The lock, lifecycle, disable-vector and RMA digest fields are held in non-scannable shadow storage; CLASS_KEY, CHIPLET_UID, SIP_UID and SYS_UID are also non-scannable and read as zero downstream in secure test mode.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+</style>
+</defs>
+<rect width="1040" height="1030" fill="#ffffff"/>
+<text class="s" x="60" y="32" text-anchor="end">offset</text>
+<text class="s" x="129.75" y="32" text-anchor="middle">+0x00</text>
+<text class="s" x="249.25" y="32" text-anchor="middle">+0x04</text>
+<text class="s" x="368.75" y="32" text-anchor="middle">+0x08</text>
+<text class="s" x="488.25" y="32" text-anchor="middle">+0x0C</text>
+<text class="s" x="607.75" y="32" text-anchor="middle">+0x10</text>
+<text class="s" x="727.25" y="32" text-anchor="middle">+0x14</text>
+<text class="s" x="846.75" y="32" text-anchor="middle">+0x18</text>
+<text class="s" x="966.25" y="32" text-anchor="middle">+0x1C</text>
+<text class="s" x="60" y="68" text-anchor="end">0x000</text>
+<text class="s" x="60" y="106" text-anchor="end">0x020</text>
+<text class="s" x="60" y="144" text-anchor="end">0x040</text>
+<text class="s" x="60" y="182" text-anchor="end">0x060</text>
+<text class="s" x="60" y="220" text-anchor="end">0x080</text>
+<text class="s" x="60" y="258" text-anchor="end">0x0A0</text>
+<text class="s" x="60" y="296" text-anchor="end">0x0C0</text>
+<text class="s" x="60" y="334" text-anchor="end">0x0E0</text>
+<text class="s" x="60" y="372" text-anchor="end">0x100</text>
+<text class="s" x="60" y="410" text-anchor="end">0x120</text>
+<text class="s" x="60" y="448" text-anchor="end">0x140</text>
+<text class="s" x="60" y="486" text-anchor="end">0x160</text>
+<text class="s" x="60" y="524" text-anchor="end">0x180</text>
+<text class="s" x="60" y="562" text-anchor="end">0x1A0</text>
+<text class="s" x="60" y="600" text-anchor="end">0x1C0</text>
+<text class="s" x="60" y="638" text-anchor="end">0x1E0</text>
+<text class="s" x="60" y="676" text-anchor="end">0x200</text>
+<text class="s" x="60" y="714" text-anchor="end">0x220</text>
+<text class="s" x="60" y="752" text-anchor="end">0x240</text>
+<text class="s" x="60" y="790" text-anchor="end">0x260</text>
+<text class="s" x="60" y="828" text-anchor="end">0x280</text>
+<text class="s" x="60" y="866" text-anchor="end">0x2A0</text>
+<text class="s" x="60" y="904" text-anchor="end">0x2C0</text>
+<rect class="fabric" x="72" y="46" width="235" height="34" rx="4"/>
+<text class="s" x="189.5" y="68" text-anchor="middle">LOCKS</text>
+<rect class="fabric" x="311" y="46" width="115.5" height="34" rx="4"/>
+<text class="s" x="368.75" y="68" text-anchor="middle">LOCKS_SPARE</text>
+<rect class="fabric" x="430.5" y="46" width="115.5" height="34" rx="4"/>
+<text class="s" x="488.25" y="68" text-anchor="middle">LC_STATE</text>
+<rect class="core" x="550" y="46" width="115.5" height="34" rx="4"/>
+<text class="s" x="607.75" y="68" text-anchor="middle">SBOOT_DIS</text>
+<rect class="core" x="669.5" y="46" width="115.5" height="34" rx="4"/>
+<text class="s" x="727.25" y="60" text-anchor="middle">TRANSIENT_</text>
+<text class="s" x="727.25" y="76" text-anchor="middle">RMA_EN</text>
+<rect class="fabric" x="789" y="46" width="235" height="34" rx="4"/>
+<text class="s" x="906.5" y="68" text-anchor="middle">SIP_DIS</text>
+<rect class="fabric" x="72" y="84" width="235" height="34" rx="4"/>
+<text class="s" x="189.5" y="106" text-anchor="middle">SYS_DIS</text>
+<rect class="fabric" x="311" y="84" width="713" height="34" rx="4"/>
+<text class="s" x="667.5" y="106" text-anchor="middle">RMA_SIP_TOKEN_DIGEST</text>
+<rect class="fabric" x="72" y="122" width="235" height="34" rx="4"/>
+<text class="s" x="189.5" y="144" text-anchor="middle">RMA_SIP_TOKEN_DIGEST</text>
+<rect class="fabric" x="311" y="122" width="713" height="34" rx="4"/>
+<text class="s" x="667.5" y="144" text-anchor="middle">RMA_CHIPLET_TOKEN_DIGEST</text>
+<rect class="fabric" x="72" y="160" width="235" height="34" rx="4"/>
+<text class="s" x="189.5" y="182" text-anchor="middle">RMA_CHIPLET_TOKEN_DIGEST</text>
+<rect class="network" x="311" y="160" width="713" height="34" rx="4"/>
+<text class="s" x="667.5" y="182" text-anchor="middle">CLASS_KEY</text>
+<rect class="network" x="72" y="198" width="235" height="34" rx="4"/>
+<text class="s" x="189.5" y="220" text-anchor="middle">CLASS_KEY</text>
+<rect class="core" x="311" y="198" width="115.5" height="34" rx="4"/>
+<text class="s" x="368.75" y="212" text-anchor="middle">CHIPLET_PUBK_</text>
+<text class="s" x="368.75" y="228" text-anchor="middle">REVOKE</text>
+<rect class="core" x="430.5" y="198" width="593.5" height="34" rx="4"/>
+<text class="s" x="727.25" y="220" text-anchor="middle">BL1_VERSION</text>
+<rect class="core" x="72" y="236" width="354.5" height="34" rx="4"/>
+<text class="s" x="249.25" y="258" text-anchor="middle">BL1_VERSION</text>
+<rect class="core" x="430.5" y="236" width="593.5" height="34" rx="4"/>
+<text class="s" x="727.25" y="258" text-anchor="middle">BL2_VERSION</text>
+<rect class="core" x="72" y="274" width="354.5" height="34" rx="4"/>
+<text class="s" x="249.25" y="296" text-anchor="middle">BL2_VERSION</text>
+<rect class="network" x="430.5" y="274" width="593.5" height="34" rx="4"/>
+<text class="s" x="727.25" y="296" text-anchor="middle">CHIPLET_UID</text>
+<rect class="network" x="72" y="312" width="354.5" height="34" rx="4"/>
+<text class="s" x="249.25" y="334" text-anchor="middle">CHIPLET_UID</text>
+<rect class="core" x="430.5" y="312" width="593.5" height="34" rx="4"/>
+<text class="s" x="727.25" y="334" text-anchor="middle">SIP_PUBK_HASH0</text>
+<rect class="core" x="72" y="350" width="354.5" height="34" rx="4"/>
+<text class="s" x="249.25" y="372" text-anchor="middle">SIP_PUBK_HASH0</text>
+<rect class="network" x="430.5" y="350" width="593.5" height="34" rx="4"/>
+<text class="s" x="727.25" y="372" text-anchor="middle">SIP_UID</text>
+<rect class="network" x="72" y="388" width="354.5" height="34" rx="4"/>
+<text class="s" x="249.25" y="410" text-anchor="middle">SIP_UID</text>
+<rect class="core" x="430.5" y="388" width="593.5" height="34" rx="4"/>
+<text class="s" x="727.25" y="410" text-anchor="middle">SYS_PUBK_HASH</text>
+<rect class="core" x="72" y="426" width="354.5" height="34" rx="4"/>
+<text class="s" x="249.25" y="448" text-anchor="middle">SYS_PUBK_HASH</text>
+<rect class="network" x="430.5" y="426" width="593.5" height="34" rx="4"/>
+<text class="s" x="727.25" y="448" text-anchor="middle">SYS_UID</text>
+<rect class="network" x="72" y="464" width="354.5" height="34" rx="4"/>
+<text class="s" x="249.25" y="486" text-anchor="middle">SYS_UID</text>
+<rect class="core" x="430.5" y="464" width="115.5" height="34" rx="4"/>
+<text class="s" x="488.25" y="486" text-anchor="middle">STATUS_RPT</text>
+<rect class="core" x="550" y="464" width="115.5" height="34" rx="4"/>
+<text class="s" x="607.75" y="486" text-anchor="middle">ROM_CTL</text>
+<rect class="core" x="669.5" y="464" width="115.5" height="34" rx="4"/>
+<text class="s" x="727.25" y="478" text-anchor="middle">SYSCLK_</text>
+<text class="s" x="727.25" y="494" text-anchor="middle">FREQ_MHZ</text>
+<rect class="core" x="789" y="464" width="235" height="34" rx="4"/>
+<text class="s" x="906.5" y="486" text-anchor="middle">CHIPLET_PUBK_HASH0</text>
+<rect class="core" x="72" y="502" width="713" height="34" rx="4"/>
+<text class="s" x="428.5" y="524" text-anchor="middle">CHIPLET_PUBK_HASH0</text>
+<rect class="core" x="789" y="502" width="235" height="34" rx="4"/>
+<text class="s" x="906.5" y="524" text-anchor="middle">CHIPLET_PUBK_HASH1</text>
+<rect class="core" x="72" y="540" width="713" height="34" rx="4"/>
+<text class="s" x="428.5" y="562" text-anchor="middle">CHIPLET_PUBK_HASH1</text>
+<rect class="core" x="789" y="540" width="115.5" height="34" rx="4"/>
+<text class="s" x="846.75" y="554" text-anchor="middle">REQUIRED_</text>
+<text class="s" x="846.75" y="570" text-anchor="middle">SIGNERS</text>
+<rect class="core" x="908.5" y="540" width="115.5" height="34" rx="4"/>
+<text class="s" x="966.25" y="554" text-anchor="middle">REQUIRED_</text>
+<text class="s" x="966.25" y="570" text-anchor="middle">ALGS</text>
+<rect class="core" x="72" y="578" width="952" height="34" rx="4"/>
+<text class="s" x="548" y="600" text-anchor="middle">CHIPLET_PUBK_PQC_HASH0</text>
+<rect class="core" x="72" y="616" width="952" height="34" rx="4"/>
+<text class="s" x="548" y="638" text-anchor="middle">CHIPLET_PUBK_PQC_HASH1</text>
+<rect class="core" x="72" y="654" width="952" height="34" rx="4"/>
+<text class="s" x="548" y="676" text-anchor="middle">SIP_PUBK_PQC_HASH0</text>
+<rect class="core" x="72" y="692" width="952" height="34" rx="4"/>
+<text class="s" x="548" y="714" text-anchor="middle">SYS_PUBK_PQC_HASH</text>
+<rect class="core" x="72" y="730" width="952" height="34" rx="4"/>
+<text class="s" x="548" y="752" text-anchor="middle">SIP_PUBK_HASH1</text>
+<rect class="core" x="72" y="768" width="952" height="34" rx="4"/>
+<text class="s" x="548" y="790" text-anchor="middle">SIP_PUBK_PQC_HASH1</text>
+<rect class="core" x="72" y="806" width="952" height="34" rx="4"/>
+<text class="s" x="548" y="828" text-anchor="middle">SEP_CHIPLET_ID</text>
+<rect class="core" x="72" y="844" width="952" height="34" rx="4"/>
+<text class="s" x="548" y="866" text-anchor="middle">SEP_SIP_ID</text>
+<rect class="core" x="72" y="882" width="952" height="34" rx="4"/>
+<text class="s" x="548" y="904" text-anchor="middle">SEP_SYS_ID</text>
+<text class="s" x="60" y="943" text-anchor="end">0x2E0</text>
+<text class="s" x="60" y="965" text-anchor="end">to 0x3FF</text>
+<rect class="external" x="72" y="920" width="952" height="60" rx="4"/>
+<text class="s" x="548" y="946" text-anchor="middle">spare0 to spare8</text>
+<text class="s" x="548" y="964" text-anchor="middle">nine 256-bit spare fields, one per row, drawn compressed</text>
+<rect class="core" x="14" y="1000" width="40" height="18" rx="4"/>
+<text class="s" x="62" y="1014" text-anchor="start">Shadow register field</text>
+<rect class="fabric" x="226.6" y="1000" width="40" height="18" rx="4"/>
+<text class="s" x="274.6" y="1014" text-anchor="start">Non-scannable shadow storage</text>
+<rect class="network" x="485.4" y="1000" width="40" height="18" rx="4"/>
+<text class="s" x="533.4" y="1014" text-anchor="start">Non-scannable secret, zero in secure test mode</text>
+<rect class="external" x="863" y="1000" width="40" height="18" rx="4"/>
+<text class="s" x="911" y="1014" text-anchor="start">Spare</text>
+</svg>

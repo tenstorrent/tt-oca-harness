@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Clocks and Resets :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SMC clock domains, reset distribution and FLR isolation sequencing.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-home" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Home</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../features.html">Feature Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../motivation.html">Motivation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../use-cases.html">Use Cases</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../license.html">License</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Guides</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-programmer-guide/0.5/index.html">Programmer&#8217;s Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Verification</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../dashboard.html">Dashboard</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="clk_rst.html">Clocks and Resets</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Clocks and Resets</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="clock-and-reset-management" class="paragraph">
+<p>SMC separates CPU/fabric operation, peripheral timing, reference-clock reset
+control and incoming telemetry into distinct clock domains. Reset sources are
+combined before release is synchronized into each destination domain. Subsystem
+isolation and reset-retention controls require support in the receiving subsystem.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="clock-architecture"><a class="anchor" href="#clock-architecture"></a><a class="link" href="#clock-architecture">Clock Architecture</a></h2>
+<div class="sectionbody">
+<span id="the-reference-clock-domain"></span>
+<span id="the-smc-clock-domain"></span>
+<span id="the-telemetry-clock-domain"></span>
+<div id="smc-clock-tree" class="imageblock">
+<div class="content">
+<img src="_images/smc-clock-distribution.svg" alt="Clock gates in u_smc_base and the instances each gated clock reaches, by RTL instance name" width="100%">
+</div>
+<div class="title">Figure 1. SMC clock tree and clock domains in u_smc_base</div>
+</div>
+<div id="smc-clock-tree-cpu-periph" class="imageblock">
+<div class="content">
+<img src="_images/smc-clock-distribution-cpu-periph.svg" alt="Clock inputs of u_smc_cpu_wrapper and u_smc_peripherals, their clock gates and gated instances, the synchronisers of u_smc_peripherals_cdc and the AVSBus clock chain" width="100%">
+</div>
+<div class="title">Figure 2. SMC clock tree and clock domains in u_smc_cpu_wrapper and u_smc_peripherals</div>
+</div>
+<div class="paragraph">
+<p>The two figures split the SMC clock tree at its subsystem instances. Each
+clock input enters on the left in its own colour, with one arrow into each
+of <code>u_smc_base</code>, <code>u_smc_cpu_wrapper</code> and <code>u_smc_peripherals</code> that it
+reaches; an arrow into an instance means the clock reaches the logic inside
+it. Each box is an RTL instance, tinted with the colour of the clock that
+runs it, and a box split into bands runs on several clocks. A clock gate is
+drawn as a CG tab coloured by the clock it gates, with the gate&#8217;s instance
+name in italics. A dashed arrow runs from the gate to every instance its
+gated clock reaches, branching at a junction dot. A count such as ×16 is the
+number of instances a generate loop creates. A box that no gate arrow
+reaches runs on the ungated clock.</p>
+</div>
+<div class="paragraph">
+<p>Most gates in <code>u_smc_base</code> are activity-based: each watches the AXI or
+AXI-Lite port of the logic it clocks and stops the clock once the port has
+been idle for the programmed hysteresis. Each filter and remap register gate
+clocks the AXI-Lite demux in front of its register set as well as the
+registers, and each filter gate also clocks the error slave that answers
+writes to a locked filter. <code>u_fabric_cg</code> and the instances inside the dashed
+outline exist only when <code>NO_ADDR_REMAP</code> is 0, the default in
+<code>smc_config_pkg</code>. <code>u_dfd_clk_gate</code> clocks the debug bus muxes, <code>u_dfd_top</code>
+and <code>u_ref_cnt_sync</code>, which receives the Gray-coded count of the reference
+counter beside <code>u_ref_rst_sync</code> and forms the CLA time tick. <code>u_axi_clk_gater</code>
+clocks logic written directly in <code>u_zeroer</code> rather than an instance.</p>
+</div>
+<div class="paragraph">
+<p><code>u_debug_clock_gate</code> runs the debug module clock, the <code>debug_clock</code> port of
+<code>u_digital_top</code>, while the debugger holds <code>dmactive</code>. The I2C, UART, I3C,
+AVSBus and telemetry gates are controlled by <code>CLOCK_GATE_CONTROL</code> in
+<code>u_smc_base</code>. <code>u_smc_peripherals_cdc</code> is drawn as one row per synchroniser or
+CDC instance, or per group of instances that cross the same way, with the
+source clock on the left half and the destination clock on the right half.
+The clock-gate enable synchronisers carry each enable into the ungated clock
+of the gate it controls. <code>u_ndmreset_request_sync</code> has no source clock:
+<code>ndmreset_request_i</code> is asynchronous.</p>
+</div>
+<div class="paragraph">
+<p>Each of the five peripheral enables also steers that peripheral&#8217;s leg of
+the register crossbar into an error slave (<code>u_avsbus_access_gate</code>,
+<code>u_i2c_access_gate</code>, <code>u_uart_access_gate</code>, <code>u_telemetry_access_gate</code> and
+<code>u_i3c_access_gate</code> in <code>u_smc_peripherals</code>, all on <code>clk_smc_i</code>): while the
+enable is set, a read of the gated peripheral&#8217;s window completes with
+<code>SLVERR</code> and data <code>0xBADCAB1E</code> and a write completes with <code>SLVERR</code>, instead
+of waiting on a register block whose clock has stopped. The leg is
+redirected as soon as the <code>CLOCK_GATE_CONTROL</code> write completes; an access
+the peripheral has already accepted finishes there, since its clock stops
+only after the enable has crossed into its domain.</p>
+</div>
+<div class="paragraph">
+<p>The AVSBus clock starts at <code>u_avs_clk_ref_gater</code> and
+<code>u_avs_clk_periph_gater</code>, which drive the <code>clk_ref_i</code> and <code>clk_reg_i</code> ports of
+<code>u_avsbus_controller</code>. Inside it, <code>u_refclk_clkgate</code> and <code>u_apbclk_clkgate</code>
+feed the glitch-free mux <code>u_refclk_apbclk_mux</code>, selected by
+<code>avs_clock_select[1]</code>. The test mux <code>u_test_clkmux2_0</code> takes that output on
+<code>clk0_i</code> and the test clock input <code>clk_test_i</code> on <code>clk1_i</code>, and selects the
+test clock in test mode; <code>u_smc_peripherals</code> connects <code>clk_test_i</code> to
+<code>clk_periph_i</code>. The divider <code>u_clk_div</code>, used while <code>avs_clock_select[0]</code> is
+set, divides by a programmable value, 4 after reset, and <code>u_avs_bus_clkgate</code>
+stops the result on idle. The output, <code>avs_clock</code>, leaves through
+<code>u_smc_padring</code> on GPIO 49. <code>spi_clk_i</code> reaches only the SPI pad datapath in
+<code>u_smc_padring</code>.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SMC clock-domain responsibilities</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Clock</th>
+<th class="tableblock halign-left valign-top">Logic and boundary</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_smc_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU cluster, local fabric, remapping/filtering, register crossbar,
+OCTS, and telemetry decoding/message storage. Individual blocks may gate this clock.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_ref_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Power-good/reset conditioning, FLR countdowns, DFD local time tick
+and peripheral reference-clock inputs.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_periph_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus, I2C, UART/log-engine and I3C operation. Register accesses
+cross through per-port AXI-Lite CDC bridges after the SMC-domain crossbar.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_telemetry_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Incoming ATB side of each telemetry crossing FIFO. The
+receiver core and its CSRs operate in the SMC domain; the external telemetry
+reset is <code>rst_telemetry_ni</code>.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="sect2">
+<h3 id="timer-and-debug-timebases"><a class="anchor" href="#timer-and-debug-timebases"></a><a class="link" href="#timer-and-debug-timebases">Timer and Debug Timebases</a></h3>
+<div class="ulist">
+<ul>
+<li>
+<p>OCTS uses <code>clk_smc_i</code>.</p>
+</li>
+<li>
+<p>CLINT receives one tick per 1000 CPU-cluster <code>cbus</code> cycles; the uncore input
+uses the main SMC clock. This timer tick is not the reference-clock input.</p>
+</li>
+<li>
+<p>The CPU debug module uses a gated CPU-wrapper clock, enabled by debug
+activation with a test override. JTAG TCK clocks the scan interface separately.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-peripheral-timing-requirements"><a class="anchor" href="#smc-peripheral-timing-requirements"></a><a class="link" href="#smc-peripheral-timing-requirements">Peripheral Timing Requirements</a></h3>
+<span id="the-peripheral-clock-domain"></span>
+<div class="paragraph">
+<p>The integrator supplies <code>clk_periph_i</code> at a frequency satisfying every enabled
+peripheral. A minimum frequency of 100 MHz applies; the upper limit is not fixed
+and is set by the integrator according to timing closure, peripheral IP limits,
+and system power and performance goals.</p>
+</div>
+<div class="paragraph">
+<p>The I3C target&#8217;s worst-case internal SCL-to-SDA turnaround is four core-clock
+cycles. Meeting the 12 ns target turnaround limit therefore requires a clock
+period no greater than 3 ns (approximately 333.3 MHz or faster) before allowing
+for pad and routing delays. The integrator must include those delays in the
+timing budget and select a higher frequency where needed. See the
+<a href="https://chipsalliance.github.io/i3c-core/phy.html#i3c-timing-configuration">CHIPS
+Alliance I3C PHY timing requirements</a>. This is a target-mode requirement;
+controller-mode timing configuration does not establish target compliance.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="reset-architecture"><a class="anchor" href="#reset-architecture"></a><a class="link" href="#reset-architecture">Reset Architecture</a></h2>
+<div class="sectionbody">
+<div id="smc-reset-distribution-figure" class="imageblock">
+<div class="content">
+<img src="_images/smc-reset-unit.svg" alt="SMC reset unit: reset controller with its AND gates, synchronisers, cool-reset and isolation logic with its AND and OR gates, JTAG override muxes, registers and subsystem resets" width="100%">
+</div>
+<div class="title">Figure 3. SMC reset unit architecture</div>
+</div>
+<div class="paragraph">
+<p>Reset inputs enter on the left and the unit&#8217;s outputs leave on the right.
+Each reset net has its own colour, listed in the legend. The blue mux
+symbols are JTAG override muxes: <code>jtag_reset_ctrl_i</code> drives their input 1
+and select, drawn as short stubs, and each mux passes the value on input 1
+while its override bit is set.</p>
+</div>
+<div class="paragraph">
+<p>In <code>u_smc_reset_ctrl</code>, <code>powergood_i</code> is stretched by 32 reference clock
+cycles into <code>powergood_stable</code>, which leaves as <code>powergood_stable_o</code>,
+clears the de-glitchers while low and holds the cold-reset extender. The
+cold reset, after its JTAG override, must stay low for 32 reference clock
+cycles to pass the de-glitcher, and its release is extended by 255 cycles.
+The cool-reset pin passes its own 32-cycle de-glitcher. The primary reset is
+the AND of the stable cold reset, the de-glitched cool-reset pin and the FLR
+cool reset. The watchdog reset is the AND of <code>rst_ext_wdt_ni</code>, which comes
+from the SEP watchdog, and the inverted SMC watchdog second timeout;
+<code>smc_wdt_first_timeout_i</code> does not reach the reset logic. The warm reset is
+the AND of the watchdog reset, the primary reset and the fuse reset, which
+the eFuse wrapper releases once fuse sensing completes and any boot stall
+ends. Debug-initiated resets are the JTAG overrides of the cold, cool,
+warm, fuse and per-subsystem resets.</p>
+</div>
+<div class="paragraph">
+<p><code>u_smc_reset_sync</code> gives each output an asynchronous assertion and a
+deassertion synchronised to its clock. <code>u_smc_cool_reset_wrap</code> runs the FLR
+sequence and isolation logic described in <a href="#smc-function-level-reset">Function Level Reset and Isolation</a>.
+Its gates act on each of the 32 bits; the inputs labelled SMCEN, REG and
+PINEN are the <code>ISOLATE_REQ_SMCEN_REG</code>, <code>ISOLATE_REQ_REG</code> and
+<code>ISOLATE_REQ_PINEN_REG</code> bits. <code>skip_mem_repair_o</code> is high while the
+synchronised isolation pin or <code>ISOLATE_REQ_SMC</code> is set.
+<code>u_reset_unit_reg</code> is reset by <code>rst_primary_smc_clk_no</code>, as are the
+<code>SS_CONFIG</code> and <code>SS_COLD_RESET_N</code> registers in <code>u_smc_subsystem_resets</code>;
+the isolation registers and FLR counters are reset only by the stable cold
+reset, so they survive a cool reset. The per-subsystem cold and warm resets
+leave <code>ss_reset_ctrl_o</code> unsynchronised, and each subsystem synchronises them.
+In test mode, <code>scan_rst_ni</code> replaces the stretched powergood, the
+de-glitched cold reset and every synchroniser output.</p>
+</div>
+<div class="sect2">
+<h3 id="power-good-and-cold-reset"><a class="anchor" href="#power-good-and-cold-reset"></a><a class="link" href="#power-good-and-cold-reset">Power-Good and Cold Reset</a></h3>
+<div class="paragraph">
+<p><code>BP_POWERGOOD</code> is the POR root. A 32-stage reference-clock synchronizer produces
+<code>powergood_stable</code>. Cold reset from <code>BP_RESETN</code> is filtered through a 32-bit
+shift register: once released, assertion requires 32 consecutive low samples.
+A 255-cycle reference-clock extension holds cold reset after the filtered input
+releases. Incoming cool reset has the same low-sample filter but no cold-reset
+extension. These are clock-cycle conditions, not fixed nanosecond delays.</p>
+</div>
+<div class="paragraph">
+<p>Power-good also enters JTAG/DTP as <code>pwr_on_rst_ni</code>. The primary TAP combines it
+with pad TRST, so loss of power-good resets TAP/TDR state even if TRST is released.
+Functional cold reset alone does not reset that state.</p>
+</div>
+<table id="smc-reset-sources-and-characteristics-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. SMC reset sources and effects</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Source</th>
+<th class="tableblock halign-left valign-top">Functional effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Power-good low</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Holds functional reset and resets the JTAG/TDR POR path.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BP_RESETN</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Filtered and extended cold reset feeds primary reset.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Incoming cool reset</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Filtered pin request feeds primary reset.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FLR cool reset</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reference-domain timed reset feeds primary reset; isolation
+is controlled separately as described below.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External watchdog reset / second SMC watchdog timeout</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Assert the watchdog
+reset term, which also asserts warm reset. The first-timeout input does not
+enter the reset equation in <code>smc_reset_ctrl</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fuse reset</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Holds warm reset until released by the fuse-control path.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG reset overrides</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Select alternate fuse, cold, cool or warm reset values;
+normal functional equations below assume these overrides and scan mode are inactive.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="primary-and-warm-reset"><a class="anchor" href="#primary-and-warm-reset"></a><a class="link" href="#primary-and-warm-reset">Primary and Warm Reset</a></h3>
+<span id="primary-reset-activation-sources-table"></span>
+<span id="primary-reset-rst_primary_no"></span>
+<span id="warm-reset-activation-sources-table"></span>
+<span id="warm-reset-rst_warm_no"></span>
+<div class="paragraph">
+<p>In normal operation the active-low reset equations are:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">rst_primary_n = stable_cold_rst_n AND stable_cool_rst_n
+                AND rst_cool_from_flr_n
+rst_wdt_n     = rst_ext_wdt_ni AND NOT smc_wdt_second_timeout_i
+rst_warm_n    = rst_primary_n AND rst_wdt_n AND fuse_reset_ni</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Primary reset covers the main SMC functional fabric, peripheral control and
+configuration paths. Warm reset drives CPU core/uncore reset control, including
+the cluster&#8217;s interrupt and timer logic, without resetting every primary-domain
+peripheral. CPU control registers also provide per-core/uncore reset controls;
+debug reset requests and JTAG overrides should not be treated as one unconditional
+warm-reset input. See the CPU chapter for its isolation/reset interlock.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="reset-synchronization"><a class="anchor" href="#reset-synchronization"></a><a class="link" href="#reset-synchronization">Reset Synchronization</a></h3>
+<span id="reset-synchronization-and-timing-integrity"></span>
+<div class="paragraph">
+<p><code>smc_reset_sync</code> uses four-stage <code>prim_sync_reset</code> instances for asynchronous
+assertion and destination-clock-synchronous release. Scan mode selects the scan
+reset. A stopped destination clock cannot complete functional reset release.</p>
+</div>
+<table id="reset-synchronization-domains-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. Reset synchronization domains</caption>
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 20%;">
+<col style="width: 40%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Output from <code>smc_reset_sync</code></th>
+<th class="tableblock halign-left valign-top">Clock</th>
+<th class="tableblock halign-left valign-top">Reset source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_cold_smc_no</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Stable cold reset; exported by the unit as
+<code>rst_cold_stable_smc_clk_no</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_primary_smc_clk_no</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Primary reset.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_warm_smc_clk_no</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Warm reset after JTAG override selection.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_wdt_smc_clk_no</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog reset term.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_cold_ref_clk_no</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reference</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Stable cold reset; exported as
+<code>rst_cold_stable_ref_clk_no</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_primary_ref_clk_no</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reference</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Primary reset.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_primary_periph_clk_no</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Peripheral</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Primary reset.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>JTAG overrides for outgoing per-subsystem cold/warm controls leave the unit
+unsynchronized. The receiving subsystem must synchronize release at its boundary.
+The separate telemetry input reset belongs to its integration domain.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="smc-function-level-reset"><a class="anchor" href="#smc-function-level-reset"></a><a class="link" href="#smc-function-level-reset">Function Level Reset and Isolation</a></h2>
+<div class="sectionbody">
+<span id="function-level-reset-and-isolation"></span>
+<span id="clock-domain-crossing-and-synchronization"></span>
+<span id="function-level-reset-flr"></span>
+<div class="paragraph">
+<p>PCIe <code>cfg_flr_pf_active_i</code> crosses independently into the SMC and reference
+clock domains. Its synchronized rising edge sets the SMC isolation latch and
+starts the reference-domain reset sequence when enabled by a nonzero hold count.
+The reset state machine has no isolation-complete input: its delay must be
+chosen to accommodate the system&#8217;s isolation requirements.</p>
+</div>
+<div class="sect2">
+<h3 id="isolation-controls"><a class="anchor" href="#isolation-controls"></a><a class="link" href="#isolation-controls">Isolation Controls</a></h3>
+<span id="isolation-control-architecture"></span>
+<div class="paragraph">
+<p>Each of the 32 <code>isolate_req_o</code> bits is the OR of three requests:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">ISOLATE_REQ_REG[i]
+OR (ISOLATE_REQ_PINEN_REG[i] AND synchronized isolate_req_pin_i)
+OR (ISOLATE_REQ_SMCEN_REG[i] AND ISOLATE_REQ_SMC_REG)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The FLR edge sets <code>ISOLATE_REQ_SMC_REG</code>. After recovery, a write to that register
+with any write strobe asserted clears the latch; write data is ignored. An FLR
+edge in the same cycle takes priority. Ending the timed cool reset does not clear
+the latch or release isolation automatically. Clearing one source does not cancel
+an isolation request held by either of the others.</p>
+</div>
+<div class="paragraph">
+<p>The isolation registers and FLR count storage are cold-reset state, so they
+survive cool reset. <code>ISOLATE_REQ_PINEN_REG</code> has a conditional synchronous clear:
+it clears on cold reset only while the synchronized isolation pin is low.
+Do not assume an uninitialized pin-enable mask becomes known while that pin is high.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="timing-and-recovery"><a class="anchor" href="#timing-and-recovery"></a><a class="link" href="#timing-and-recovery">Timing and Recovery</a></h3>
+<span id="memory-test-bypass"></span>
+<span id="programmable-reset-timing"></span>
+<div class="paragraph">
+<p>The FLR count values cross from SMC to the reference domain through handshaked
+synchronizers; readback in the SMC domain does not acknowledge arrival in the
+reference domain. <code>ISOLATE_REQ_FLR_COUNTER_VALUE</code> selects the pre-reset
+countdown; zero allows assertion without that countdown.
+<code>ISOLATE_REQ_FLR_RESET_COUNTER_VALUE</code> selects the cool-reset hold count, and
+must be nonzero to start the timed flow.</p>
+</div>
+<div class="paragraph">
+<p>On a synchronized FLR edge, the sequencer counts in reference-clock cycles,
+asserts cool reset, then releases it after the hold countdown. Destination
+reset synchronizers add their release latency. The sequencer is not a queue of
+overlapping FLR requests. The
+<a href="../../../ocah-programmer-guide/0.5/index.html#smc-flr-isolation" class="xref page">FLR preparation and recovery sequence</a>
+is in the Programmer&#8217;s Guide.</p>
+</div>
+<div class="paragraph">
+<p>A zero hold count disables the timed reset sequence, but does not prevent the
+SMC-domain FLR edge from setting the isolation latch. <code>ISOLATE_REQ_VIS</code> reports
+synchronized pin and cool-reset levels; it is not an isolation-completion handshake.</p>
+</div>
+<div class="paragraph">
+<p><code>skip_mem_repair_o</code> is the OR of the synchronized isolation pin and the FLR
+isolation latch. It does not depend on the per-subsystem masks, and a software-only
+<code>ISOLATE_REQ_REG</code> request does not assert it. The receiving logic determines how
+this request bypasses memory repair/MBIST; it is not a general SRAM-retention guarantee.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="isolation-connections"><a class="anchor" href="#isolation-connections"></a><a class="link" href="#isolation-connections">Isolation Connections</a></h3>
+<div class="paragraph">
+<p><a href="#smc-flr-isolation-diagram">SMC FLR isolation connections between chiplets</a> shows cool-reset and isolation connections between primary
+and secondary chiplets. The next three figures repeat the same drawing
+and highlight the path that each kind of request activates, so they can
+be compared directly.</p>
+</div>
+<div id="smc-flr-isolation-diagram" class="imageblock">
+<div class="content">
+<img src="_images/smc-flr-isolation.svg" alt="Primary and secondary chiplet SMCs with their FLR counters, isolation OR gate, primary reset AND gate, BP_COOL_RESET_N_I pins and cool-reset pads, and the board connections between them" width="100%">
+</div>
+<div class="title">Figure 4. SMC FLR isolation connections between chiplets</div>
+</div>
+<div class="paragraph">
+<p>Each chiplet&#8217;s SMC takes its cold reset from the board <code>BP_RESET_N</code> and
+its cool reset from its <code>BP_COOL_RESET_N_I</code> input; the primary reset
+is the AND of these and the FLR cool reset. The FLR cool reset also
+drives the open-drain <code>BP_COOL_RESET_N_O</code> pad, GPIO 62, which pulls the
+line low while the reset is asserted and leaves it undriven otherwise. The
+primary chiplet&#8217;s <code>BP_COOL_RESET_N_O</code> connects to the secondary chiplet&#8217;s
+<code>BP_COOL_RESET_N_I</code>, so an FLR on the primary chiplet cool-resets the
+secondary. To the secondary chiplet, a cold reset on <code>BP_RESET_N</code> and a
+cool reset on <code>BP_COOL_RESET_N_I</code> are the same: both assert its primary
+reset. Only its FLR and isolation registers are reset by the cold reset
+alone, and the secondary chiplet does not use them. The primary chiplet&#8217;s
+<code>BP_COOL_RESET_N_I</code> and the secondary chiplet&#8217;s <code>BP_COOL_RESET_N_O</code> are not connected. The board drives
+<code>ISOLATE_REQ</code>, sampled on GPIO 53, into the primary chiplet only; the
+secondary chiplet ties its <code>ISOLATE_REQ</code> and <code>cfg_flr_pf_active_i</code> low and
+leaves its <code>isolate_req_o</code> unconnected. The labels REG, PINEN and SMCEN
+on the isolation OR&#8217;s inputs name the registers that qualify each source.
+The drawing leaves out the de-glitchers and synchronisers shown in
+<a href="#smc-reset-distribution-figure">SMC reset unit architecture</a>.</p>
+</div>
+<div class="paragraph">
+<p><a href="#smc-flr-software-diagram">SMC-driven FLR isolation</a> shows isolation propagation for an SMC software request.
+Software sets bits of <code>ISOLATE_REQ_REG</code>, which reach <code>isolate_req_o</code> directly.
+Software cannot start the FLR counters, so this request isolates tiles without
+a cool reset.</p>
+</div>
+<div id="smc-flr-software-diagram" class="imageblock">
+<div class="content">
+<img src="_images/smc-flr-isolation-smc-driven.svg" alt="The FLR isolation drawing with the path from the primary SMC CPU through ISOLATE_REQ_REG and the isolation OR to the chiplet tiles highlighted" width="100%">
+</div>
+<div class="title">Figure 5. SMC-driven FLR isolation</div>
+</div>
+<div class="paragraph">
+<p><a href="#smc-flr-tile-diagram">Tile-request-driven FLR isolation</a> shows isolation propagation for a tile request.
+A tile such as the PCIe controller raises <code>cfg_flr_pf_active_i</code>. Its
+synchronised rising edge sets <code>ISOLATE_REQ_SMC</code>, which isolates the
+subsystems enabled in <code>ISOLATE_REQ_SMCEN_REG</code>, and starts the FLR
+counters. When they expire, the FLR cool reset asserts the primary reset of
+the primary chiplet and, through <code>BP_COOL_RESET_N_O</code>, of the secondary
+chiplet.</p>
+</div>
+<div id="smc-flr-tile-diagram" class="imageblock">
+<div class="content">
+<img src="_images/smc-flr-isolation-tile-request.svg" alt="The FLR isolation drawing with the paths from the tile&#8217;s cfg_flr_pf_active_i through the FLR counters to the primary chiplet&#8217;s primary reset and, through BP_COOL_RESET_N_O and the secondary chiplet&#8217;s BP_COOL_RESET_N_I pin, to the secondary chiplet&#8217;s primary reset, and through the isolation OR to the chiplet tiles, highlighted" width="100%">
+</div>
+<div class="title">Figure 6. Tile-request-driven FLR isolation</div>
+</div>
+<div class="paragraph">
+<p><a href="#smc-flr-gpio-diagram">GPIO-driven FLR isolation</a> shows isolation propagation for a GPIO request, in two
+numbered steps. First the board raises <code>ISOLATE_REQ</code>, which isolates the
+subsystems enabled in <code>ISOLATE_REQ_PINEN_REG</code>; then it asserts <code>BP_RESET_N</code>,
+which cold-resets both chiplets. <code>ISOLATE_REQ_PINEN_REG</code> is not reset by the
+cold reset while the pin is high, so the isolation holds across it.</p>
+</div>
+<div id="smc-flr-gpio-diagram" class="imageblock">
+<div class="content">
+<img src="_images/smc-flr-isolation-gpio.svg" alt="The FLR isolation drawing with step 1, the board ISOLATE_REQ through GPIO 53 and the isolation OR to the chiplet tiles, and step 2, the board BP_RESET_N into both primary resets, highlighted" width="100%">
+</div>
+<div class="title">Figure 7. GPIO-driven FLR isolation</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="smc-subsystem-controls"><a class="anchor" href="#smc-subsystem-controls"></a><a class="link" href="#smc-subsystem-controls">Subsystem Controls and Clock Gating</a></h2>
+<div class="sectionbody">
+<span id="advanced-reset-features-table"></span>
+<span id="advanced-subsystem-reset-capabilities"></span>
+<span id="clock-and-reset-based-power-management-integration"></span>
+<span id="clock-gating-control-parameters-table"></span>
+<div class="paragraph">
+<p>The reset unit exports cold/warm reset, force-to-reference-clock and configuration,
+SRAM, debug and critical-signal hold controls for 32 subsystems. These are requests
+to the receiving subsystem, whose implementation defines the retained state.
+<code>SS_CONFIG_LOCK</code> and <code>SS_COLD_RESET_LOCK</code> mask writes to the corresponding
+configuration and cold-reset bits. <code>SS_RESET_COMPLETE</code> samples the return vector
+through a three-stage synchronizer; the unit does not sequence releases from it.
+The
+<a href="../../../ocah-programmer-guide/0.5/index.html#smc-subsystem-resets" class="xref page">subsystem reset sequences</a>
+are in the Programmer&#8217;s Guide.</p>
+</div>
+<div class="paragraph">
+<p>SMC blocks have their own clock-gating enables, activity detection and hysteresis
+controls. For example, DMA uses a six-bit hysteresis input and bus-aware wakeup.
+A gate suppresses clock transitions; it does not itself create a power island or
+establish that outstanding bus traffic is drained. Follow the owning block&#8217;s
+quiescence requirements before reset, isolation or clock changes. The I2C,
+UART, I3C, AVSBus and telemetry windows answer <code>SLVERR</code> with read data
+<code>0xBADCAB1E</code> while their <code>CLOCK_GATE_CONTROL</code> enable is set, so software can
+detect an access to a gated peripheral rather than stall on it; the other gated
+blocks wake on bus activity and need no such response.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-map-and-register-reference"><a class="anchor" href="#memory-map-and-register-reference"></a><a class="link" href="#memory-map-and-register-reference">Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<span id="register-interface"></span>
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">Memory Map</a></h3>
+<div class="paragraph">
+<p>The following reset-unit map defines subsystem controls, isolation masks,
+visibility and FLR timing registers. Offsets are relative to the reset-unit base
+in the subsystem memory map. External state in the cool-reset wrapper follows
+the cold-reset behavior described above rather than the primary reset of the
+register-interface logic.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Detailed Register Map</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-reset_unit">Reset Unit Address Map</h2>
+<p>Subsystem reset control, hold and isolation controls, and reset-sequencing status registers.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x20</td><td><a href="#reset_unit-SS_CONFIG">SS_CONFIG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x24</td><td><a href="#reset_unit-SS_CONFIG_LOCK">SS_CONFIG_LOCK</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x40</td><td><a href="#reset_unit-SS_COLD_RESET_N">SS_COLD_RESET_N</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x44</td><td><a href="#reset_unit-SS_WARM_RESET_N">SS_WARM_RESET_N</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x48</td><td><a href="#reset_unit-SS_CONFIG_HOLD">SS_CONFIG_HOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4C</td><td><a href="#reset_unit-SS_SRAM_HOLD">SS_SRAM_HOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x50</td><td><a href="#reset_unit-SS_CRITICAL_HOLD">SS_CRITICAL_HOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x54</td><td><a href="#reset_unit-SS_DEBUG_HOLD">SS_DEBUG_HOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x60</td><td><a href="#reset_unit-SS_RESET_COMPLETE">SS_RESET_COMPLETE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x70</td><td><a href="#reset_unit-SS_COLD_RESET_LOCK">SS_COLD_RESET_LOCK</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x80</td><td><a href="#reset_unit-SS_FORCE_TO_REF_CLK">SS_FORCE_TO_REF_CLK</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xA8</td><td><a href="#reset_unit-SYNC_REG">SYNC_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xB0</td><td><a href="#reset_unit-ISOLATE_REQ_REG">ISOLATE_REQ_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xB4</td><td><a href="#reset_unit-ISOLATE_REQ_PINEN_REG">ISOLATE_REQ_PINEN_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xB8</td><td><a href="#reset_unit-ISOLATE_REQ_SMC_REG">ISOLATE_REQ_SMC_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xBC</td><td><a href="#reset_unit-ISOLATE_REQ_SMCEN_REG">ISOLATE_REQ_SMCEN_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xC0</td><td><a href="#reset_unit-ISOLATE_REQ_VIS">ISOLATE_REQ_VIS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xC4</td><td><a href="#reset_unit-ISOLATE_REQ_FLR_COUNTER_VALUE">ISOLATE_REQ_FLR_COUNTER_VALUE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xC8</td><td><a href="#reset_unit-ISOLATE_REQ_FLR_RESET_COUNTER_VALUE">ISOLATE_REQ_FLR_RESET_COUNTER_VALUE</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="SS_CONFIG"></span><h3 id="reset_unit-SS_CONFIG" data-register-alias="SS_CONFIG">SS_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>ss_config</td><td>RW</td><td>0x0</td><td>Configuration registers to setup system configuration.<br>Usage is integration-specific; see the adopter chiplet specification.</td></tr>
+</table>
+<span id="SS_CONFIG_LOCK"></span><h3 id="reset_unit-SS_CONFIG_LOCK" data-register-alias="SS_CONFIG_LOCK">SS_CONFIG_LOCK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>config_lock</td><td>RW1S</td><td>0x0</td><td>Written to lock down SS config. If bit 0 is written, then bit 0 of other SS config<br>cannot be written to again</td></tr>
+</table>
+<span id="SS_COLD_RESET_N"></span><h3 id="reset_unit-SS_COLD_RESET_N" data-register-alias="SS_COLD_RESET_N">SS_COLD_RESET_N</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>reset_n_n0_scan</td><td>RW</td><td>0x0</td><td>Subsystem active low cold resets</td></tr>
+</table>
+<span id="SS_WARM_RESET_N"></span><h3 id="reset_unit-SS_WARM_RESET_N" data-register-alias="SS_WARM_RESET_N">SS_WARM_RESET_N</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>reset_n_n0_scan</td><td>RW</td><td>0xFFFFFFFF</td><td>Subsystem active low warm resets</td></tr>
+</table>
+<span id="SS_CONFIG_HOLD"></span><h3 id="reset_unit-SS_CONFIG_HOLD" data-register-alias="SS_CONFIG_HOLD">SS_CONFIG_HOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>configuration_state_hold</td><td>RW</td><td>0x0</td><td>Used with warm_reset_n. Asserting ensures all registers configured during boot, including fuse values for<br>export compliance, SRAM repair, other fuse values, etc. are preserved</td></tr>
+</table>
+<span id="SS_SRAM_HOLD"></span><h3 id="reset_unit-SS_SRAM_HOLD" data-register-alias="SS_SRAM_HOLD">SS_SRAM_HOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>sram_hold</td><td>RW</td><td>0x0</td><td>Used with warm_reset_n. Asserting ensures SRAMs, latch arrays and anything else that MBIST is<br>used to test and initialize during cold reset are preserved</td></tr>
+</table>
+<span id="SS_CRITICAL_HOLD"></span><h3 id="reset_unit-SS_CRITICAL_HOLD" data-register-alias="SS_CRITICAL_HOLD">SS_CRITICAL_HOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>critical_signal_hold</td><td>RW</td><td>0x0</td><td>Used with warm_reset_n. Asserting ensures security, RAS, NMIs, perf counters, debug/trace and other<br>subsystem specific registers are preserved</td></tr>
+</table>
+<span id="SS_DEBUG_HOLD"></span><h3 id="reset_unit-SS_DEBUG_HOLD" data-register-alias="SS_DEBUG_HOLD">SS_DEBUG_HOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>debug_hold</td><td>RW</td><td>0x0</td><td>Used with warm_reset_n. Debug hold signal to ensure any debug registers are preserved</td></tr>
+</table>
+<span id="SS_RESET_COMPLETE"></span><h3 id="reset_unit-SS_RESET_COMPLETE" data-register-alias="SS_RESET_COMPLETE">SS_RESET_COMPLETE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>reset_complete</td><td>R</td><td>0x0</td><td>Response signal from subsystem to indicate reset (or some other critical step) has completed.<br>Bitwise write 1 to clear</td></tr>
+</table>
+<span id="SS_COLD_RESET_LOCK"></span><h3 id="reset_unit-SS_COLD_RESET_LOCK" data-register-alias="SS_COLD_RESET_LOCK">SS_COLD_RESET_LOCK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>cold_reset_lock</td><td>RW1S</td><td>0x0</td><td>Written to lock down SS cold reset. If bit 0 is written, then bit 0 of other SS cold reset<br>cannot be written to again</td></tr>
+</table>
+<span id="SS_FORCE_TO_REF_CLK"></span><h3 id="reset_unit-SS_FORCE_TO_REF_CLK" data-register-alias="SS_FORCE_TO_REF_CLK">SS_FORCE_TO_REF_CLK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>force_ss_to_ref_clk_n</td><td>RW</td><td>0x0</td><td>Forces clock to be ref clk. The ensures reset reaches all FFs within a subsystem in same clock cycle</td></tr>
+</table>
+<span id="SYNC_REG"></span><h3 id="reset_unit-SYNC_REG" data-register-alias="SYNC_REG">SYNC_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>sync</td><td>RW</td><td>0x0</td><td>Set to assert global sync bit</td></tr>
+</table>
+<span id="ISOLATE_REQ_REG"></span><h3 id="reset_unit-ISOLATE_REQ_REG" data-register-alias="ISOLATE_REQ_REG">ISOLATE_REQ_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>isolate_req_reg</td><td>RW</td><td>0x0</td><td>Isolate request. This prevents reset from being propagated to SS, keeping them alive in case of a cold reset</td></tr>
+</table>
+<span id="ISOLATE_REQ_PINEN_REG"></span><h3 id="reset_unit-ISOLATE_REQ_PINEN_REG" data-register-alias="ISOLATE_REQ_PINEN_REG">ISOLATE_REQ_PINEN_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>isolate_req_pinen_reg</td><td>RW</td><td>0x0</td><td>Isolate request pin enable. This enables the external isolate request pin to have an effect on ss isolate requests</td></tr>
+</table>
+<span id="ISOLATE_REQ_SMC_REG"></span><h3 id="reset_unit-ISOLATE_REQ_SMC_REG" data-register-alias="ISOLATE_REQ_SMC_REG">ISOLATE_REQ_SMC_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>isolate_req_smc_reg</td><td>RW</td><td>0x0</td><td>Isolate request smc. Asserted once cfg_flr_pf_active is asserted, de-asserted by sw</td></tr>
+</table>
+<span id="ISOLATE_REQ_SMCEN_REG"></span><h3 id="reset_unit-ISOLATE_REQ_SMCEN_REG" data-register-alias="ISOLATE_REQ_SMCEN_REG">ISOLATE_REQ_SMCEN_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>isolate_req_smcen_reg</td><td>RW</td><td>0x0</td><td>Isolate request smc enable. This enables the FLR lock to have an effect on ss isolate requests</td></tr>
+</table>
+<span id="ISOLATE_REQ_VIS"></span><h3 id="reset_unit-ISOLATE_REQ_VIS" data-register-alias="ISOLATE_REQ_VIS">ISOLATE_REQ_VIS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>cool_reset_n_o</td><td>R</td><td>0x1</td><td>Visibility bit for cool reset output</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>cool_reset_n_i</td><td>R</td><td>0x1</td><td>Visibility bit for cool reset input</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>isolate_req_pin</td><td>R</td><td>0x1</td><td>Visibility bit for isolate request pin</td></tr>
+</table>
+<span id="ISOLATE_REQ_FLR_COUNTER_VALUE"></span><h3 id="reset_unit-ISOLATE_REQ_FLR_COUNTER_VALUE" data-register-alias="ISOLATE_REQ_FLR_COUNTER_VALUE">ISOLATE_REQ_FLR_COUNTER_VALUE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>isolate_req_flr_counter_value</td><td>RW</td><td>0x0</td><td>Number of cycles post cfg_flr_pf_active assertion is waited until cool_reset_n is asserted</td></tr>
+</table>
+<span id="ISOLATE_REQ_FLR_RESET_COUNTER_VALUE"></span><h3 id="reset_unit-ISOLATE_REQ_FLR_RESET_COUNTER_VALUE" data-register-alias="ISOLATE_REQ_FLR_RESET_COUNTER_VALUE">ISOLATE_REQ_FLR_RESET_COUNTER_VALUE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>isolate_req_flr_reset_counter_value</td><td>RW</td><td>0x0</td><td>Number of cycles cool_reset_n is asserted for. NOTE: The cool reset flow requires this value to be greater than 0; a value of 0 will prevent initiation, regardless of ISOLATE_REQ_FLR_COUNTER_VALUE&#x27;s value</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="990" viewBox="0 0 1040 990" role="img" aria-labelledby="title desc">
+<title id="title">SEP crypto AXI isolation</title>
+<desc id="desc">AXI isolation inside sep_crypto. The host AXI4 port from the SEP local crossbar enters u_axi_demux in u_sep_crypto_axi_interconnect, which has thirteen manager ports. The OTBN, AES, HMAC and KMAC ports are converted to 32-bit AXI4-Lite and pass through u_otbn_host_isolate, u_aes_host_isolate, u_hmac_host_isolate and u_kmac_host_isolate into the engine wrappers; the Adams Bridge port stays 64-bit AXI4 and passes through u_abr_host_isolate into the Adams Bridge wrapper, which exists only when SEP_ABR_EN is defined. The entropy source port is converted to 32-bit AXI4-Lite and the CSRNG and EDN ports to 64-bit AXI4-Lite; they pass through u_esrc_host_isolate, u_csrng_host_isolate and u_edn_host_isolate into u_sep_trng. The Key Manager crossbar u_xbar drives its private AXI4-Lite key bus through u_otbn_key_isolate, u_aes_key_isolate, u_hmac_key_isolate, u_kmac_key_isolate and u_abr_key_isolate into the key CSRs of each engine wrapper, and its eFuse bus through u_km_efuse_isolate into u_sep_efuse_wrapper. The eFuse and lifecycle ports leave the demux as AXI4 without isolation, the eFuse leg through u_efuse_shim_axi_mux; the Key Manager mailbox port and the external TRNG port are converted to 32-bit AXI4-Lite without isolation, the external TRNG leg through u_trng_axil_cut to ext_trng_axil_req_o; the thirteenth port is the DECERR slave u_axi_err_slv. Each isolate stage names the sequencer in u_sep_reset_ctrl that requests it: a host isolate belongs to its engine's sequencer, a key isolate to its engine's sequencer or the Key Manager sequencer, and the eFuse isolate to the Key Manager sequencer. The sequencers exchange isolate requests and acknowledges with the interconnect and drive the seven gated resets. A coloured bar on each instance marks its reset: rst_ni for the interconnect, the isolate stages, the eFuse wrapper and the lifecycle controller; one gated_rst_ni bit for each engine wrapper, the TRNG and the Key Manager crossbar; and both sep_reset_ni and the Key Manager warm reset for the mailbox.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="ke" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#937027"/></marker>
+<marker id="ks" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#937027"/></marker>
+<marker id="m-bus" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#b2566c"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.key { fill: none; stroke: #937027; stroke-width: 2.5; marker-start: url(#ks); marker-end: url(#ke); }
+.n-bus { fill: none; stroke: #b2566c; stroke-width: 3; }
+.a-bus { fill: none; stroke: #b2566c; stroke-width: 3; marker-end: url(#m-bus); }
+</style>
+</defs>
+<rect width="1040" height="990" fill="#ffffff"/>
+<text class="s" x="20" y="26" text-anchor="start">from SEP local crossbar</text>
+<text class="s" x="20" y="42" text-anchor="start">sep_crypto_axi_req_i (AXI4, 64-bit)</text>
+<rect class="external" x="300" y="10" width="600" height="52" rx="6"/>
+<text class="bs" x="312" y="31" text-anchor="start">u_sep_reset_ctrl</text>
+<text class="s" x="312" y="51" text-anchor="start">sequencers u_&lt;name&gt;_isolate_seq for otbn, aes, hmac, kmac, abr, trng and km</text>
+<rect class="smu" x="8" y="96" width="1024" height="724" rx="8"/>
+<text class="b" x="20" y="810" text-anchor="start">sep_crypto</text>
+<path class="fabric" d="M18,110 L376,110 L376,604 L666,604 L666,110 L846,110 L846,790 L18,790 Z"/>
+<text class="bs" x="28" y="780" text-anchor="start">u_sep_crypto_axi_interconnect</text>
+<rect class="core" x="26" y="128" width="96" height="632" rx="4"/>
+<rect x="28.5" y="130.5" width="6" height="627" fill="#103525"/>
+<text class="s" x="38" y="158" text-anchor="start">u_axi_demux</text>
+<text class="si" x="38" y="176" text-anchor="start">13 ports</text>
+<path class="axi" d="M70,56 L70,125"/>
+<path class="sig" d="M330,65 L330,107"/>
+<path class="sig" d="M760,65 L760,107"/>
+<text class="s" x="338" y="86" text-anchor="start">isolate_req_o, isolated_i</text>
+<text class="s" x="768" y="86" text-anchor="start">isolate_req_o, isolated_i</text>
+<path class="a-bus" d="M540,62 L540,122"/>
+<text class="s" x="548" y="86" text-anchor="start">gated_rst_no[6:0]</text>
+<path class="axi" d="M125,146 L193,146"/>
+<text class="s" x="159" y="138" text-anchor="middle">AXI-Lite 32</text>
+<rect class="core" x="196" y="128" width="164" height="36" rx="4"/>
+<rect x="198.5" y="130.5" width="6" height="31" fill="#103525"/>
+<text class="s" x="212" y="143" text-anchor="start">u_otbn_host_isolate</text>
+<text class="si" x="212" y="159" text-anchor="start">otbn seq</text>
+<path class="axi" d="M363,146 L391,146"/>
+<rect class="core" x="394" y="128" width="254" height="36" rx="4"/>
+<rect x="396.5" y="130.5" width="6" height="31" fill="#b2566c"/>
+<text class="s" x="410" y="143" text-anchor="start">u_sep_crypto_otbn_wrapper_s3c_scan</text>
+<text class="si" x="410" y="159" text-anchor="start">gated_rst_ni.otbn</text>
+<path class="key" d="M651,146 L681,146"/>
+<rect class="core" x="684" y="128" width="148" height="36" rx="4"/>
+<rect x="686.5" y="130.5" width="6" height="31" fill="#103525"/>
+<text class="s" x="700" y="143" text-anchor="start">u_otbn_key_isolate</text>
+<text class="si" x="700" y="159" text-anchor="start">otbn or km seq</text>
+<path class="key" d="M835,146 L865,146"/>
+<path class="axi" d="M125,192 L193,192"/>
+<text class="s" x="159" y="184" text-anchor="middle">AXI-Lite 32</text>
+<rect class="core" x="196" y="174" width="164" height="36" rx="4"/>
+<rect x="198.5" y="176.5" width="6" height="31" fill="#103525"/>
+<text class="s" x="212" y="189" text-anchor="start">u_aes_host_isolate</text>
+<text class="si" x="212" y="205" text-anchor="start">aes seq</text>
+<path class="axi" d="M363,192 L391,192"/>
+<rect class="core" x="394" y="174" width="254" height="36" rx="4"/>
+<rect x="396.5" y="176.5" width="6" height="31" fill="#b2566c"/>
+<text class="s" x="410" y="189" text-anchor="start">u_aes_wrapper_s3c_scan</text>
+<text class="si" x="410" y="205" text-anchor="start">gated_rst_ni.aes</text>
+<path class="key" d="M651,192 L681,192"/>
+<rect class="core" x="684" y="174" width="148" height="36" rx="4"/>
+<rect x="686.5" y="176.5" width="6" height="31" fill="#103525"/>
+<text class="s" x="700" y="189" text-anchor="start">u_aes_key_isolate</text>
+<text class="si" x="700" y="205" text-anchor="start">aes or km seq</text>
+<path class="key" d="M835,192 L865,192"/>
+<path class="axi" d="M125,238 L193,238"/>
+<text class="s" x="159" y="230" text-anchor="middle">AXI-Lite 32</text>
+<rect class="core" x="196" y="220" width="164" height="36" rx="4"/>
+<rect x="198.5" y="222.5" width="6" height="31" fill="#103525"/>
+<text class="s" x="212" y="235" text-anchor="start">u_hmac_host_isolate</text>
+<text class="si" x="212" y="251" text-anchor="start">hmac seq</text>
+<path class="axi" d="M363,238 L391,238"/>
+<rect class="core" x="394" y="220" width="254" height="36" rx="4"/>
+<rect x="396.5" y="222.5" width="6" height="31" fill="#b2566c"/>
+<text class="s" x="410" y="235" text-anchor="start">u_hmac_wrapper_s3c_scan</text>
+<text class="si" x="410" y="251" text-anchor="start">gated_rst_ni.hmac</text>
+<path class="key" d="M651,238 L681,238"/>
+<rect class="core" x="684" y="220" width="148" height="36" rx="4"/>
+<rect x="686.5" y="222.5" width="6" height="31" fill="#103525"/>
+<text class="s" x="700" y="235" text-anchor="start">u_hmac_key_isolate</text>
+<text class="si" x="700" y="251" text-anchor="start">hmac or km seq</text>
+<path class="key" d="M835,238 L865,238"/>
+<path class="axi" d="M125,284 L193,284"/>
+<text class="s" x="159" y="276" text-anchor="middle">AXI-Lite 32</text>
+<rect class="core" x="196" y="266" width="164" height="36" rx="4"/>
+<rect x="198.5" y="268.5" width="6" height="31" fill="#103525"/>
+<text class="s" x="212" y="281" text-anchor="start">u_kmac_host_isolate</text>
+<text class="si" x="212" y="297" text-anchor="start">kmac seq</text>
+<path class="axi" d="M363,284 L391,284"/>
+<rect class="core" x="394" y="266" width="254" height="36" rx="4"/>
+<rect x="396.5" y="268.5" width="6" height="31" fill="#b2566c"/>
+<text class="s" x="410" y="281" text-anchor="start">u_kmac_wrapper_s3c_scan</text>
+<text class="si" x="410" y="297" text-anchor="start">gated_rst_ni.kmac</text>
+<path class="key" d="M651,284 L681,284"/>
+<rect class="core" x="684" y="266" width="148" height="36" rx="4"/>
+<rect x="686.5" y="268.5" width="6" height="31" fill="#103525"/>
+<text class="s" x="700" y="281" text-anchor="start">u_kmac_key_isolate</text>
+<text class="si" x="700" y="297" text-anchor="start">kmac or km seq</text>
+<path class="key" d="M835,284 L865,284"/>
+<path class="axi" d="M125,330 L193,330"/>
+<text class="s" x="159" y="322" text-anchor="middle">AXI4 64</text>
+<rect class="core" x="196" y="312" width="164" height="36" rx="4"/>
+<rect x="198.5" y="314.5" width="6" height="31" fill="#103525"/>
+<text class="s" x="212" y="327" text-anchor="start">u_abr_host_isolate</text>
+<text class="si" x="212" y="343" text-anchor="start">abr seq</text>
+<path class="axi" d="M363,330 L391,330"/>
+<rect class="core opt" x="394" y="312" width="254" height="36" rx="4"/>
+<rect x="396.5" y="314.5" width="6" height="31" fill="#b2566c"/>
+<text class="s" x="410" y="327" text-anchor="start">u_sep_crypto_abr_wrapper_s3c_scan</text>
+<text class="si" x="410" y="343" text-anchor="start">gated_rst_ni.abr</text>
+<path class="key" d="M651,330 L681,330"/>
+<rect class="core" x="684" y="312" width="148" height="36" rx="4"/>
+<rect x="686.5" y="314.5" width="6" height="31" fill="#103525"/>
+<text class="s" x="700" y="327" text-anchor="start">u_abr_key_isolate</text>
+<text class="si" x="700" y="343" text-anchor="start">abr or km seq</text>
+<path class="key" d="M835,330 L865,330"/>
+<rect class="core" x="394" y="368" width="254" height="128" rx="4"/>
+<rect x="396.5" y="370.5" width="6" height="123" fill="#b2566c"/>
+<text class="s" x="504" y="429" text-anchor="start">u_sep_trng</text>
+<text class="si" x="504" y="447" text-anchor="start">gated_rst_ni.trng</text>
+<path class="axi" d="M125,386 L193,386"/>
+<text class="s" x="159" y="378" text-anchor="middle">AXI-Lite 32</text>
+<rect class="core" x="196" y="368" width="164" height="36" rx="4"/>
+<rect x="198.5" y="370.5" width="6" height="31" fill="#103525"/>
+<text class="s" x="212" y="383" text-anchor="start">u_esrc_host_isolate</text>
+<text class="si" x="212" y="399" text-anchor="start">trng seq</text>
+<path class="axi" d="M363,386 L391,386"/>
+<text class="s" x="410" y="391" text-anchor="start">ESRC</text>
+<path class="axi" d="M125,432 L193,432"/>
+<text class="s" x="159" y="424" text-anchor="middle">AXI-Lite 64</text>
+<rect class="core" x="196" y="414" width="164" height="36" rx="4"/>
+<rect x="198.5" y="416.5" width="6" height="31" fill="#103525"/>
+<text class="s" x="212" y="429" text-anchor="start">u_csrng_host_isolate</text>
+<text class="si" x="212" y="445" text-anchor="start">trng seq</text>
+<path class="axi" d="M363,432 L391,432"/>
+<text class="s" x="410" y="437" text-anchor="start">CSRNG</text>
+<path class="axi" d="M125,478 L193,478"/>
+<text class="s" x="159" y="470" text-anchor="middle">AXI-Lite 64</text>
+<rect class="core" x="196" y="460" width="164" height="36" rx="4"/>
+<rect x="198.5" y="462.5" width="6" height="31" fill="#103525"/>
+<text class="s" x="212" y="475" text-anchor="start">u_edn_host_isolate</text>
+<text class="si" x="212" y="491" text-anchor="start">trng seq</text>
+<path class="axi" d="M363,478 L391,478"/>
+<text class="s" x="410" y="483" text-anchor="start">EDN</text>
+<path class="axi" d="M125,534 L391,534"/>
+<text class="s" x="159" y="526" text-anchor="middle">AXI4 64</text>
+<text class="si" x="278" y="526" text-anchor="middle">not isolated</text>
+<rect class="core" x="394" y="516" width="254" height="36" rx="4"/>
+<rect x="396.5" y="518.5" width="6" height="31" fill="#103525"/>
+<text class="s" x="410" y="531" text-anchor="start">u_sep_efuse_wrapper</text>
+<text class="si" x="410" y="547" text-anchor="start">via u_efuse_shim_axi_mux</text>
+<path class="axi" d="M651,534 L681,534"/>
+<rect class="core" x="684" y="516" width="148" height="36" rx="4"/>
+<rect x="686.5" y="518.5" width="6" height="31" fill="#103525"/>
+<text class="s" x="700" y="531" text-anchor="start">u_km_efuse_isolate</text>
+<text class="si" x="700" y="547" text-anchor="start">km seq</text>
+<path class="axi" d="M835,534 L865,534"/>
+<path class="axi" d="M125,580 L391,580"/>
+<text class="s" x="159" y="572" text-anchor="middle">AXI4 64</text>
+<text class="si" x="278" y="572" text-anchor="middle">not isolated</text>
+<rect class="core" x="394" y="562" width="254" height="36" rx="4"/>
+<rect x="396.5" y="564.5" width="6" height="31" fill="#103525"/>
+<text class="s" x="410" y="585" text-anchor="start">u_sep_lifecycle_ctrl</text>
+<path class="axi" d="M125,636 L193,636"/>
+<text class="s" x="159" y="628" text-anchor="middle">AXI-Lite 32</text>
+<rect class="core" x="196" y="618" width="164" height="36" rx="4"/>
+<rect x="198.5" y="620.5" width="6" height="31" fill="#103525"/>
+<text class="s" x="212" y="633" text-anchor="start">u_km_axi_to_axi_lite</text>
+<text class="si" x="212" y="649" text-anchor="start">not isolated</text>
+<path class="axi" d="M363,636 L865,636"/>
+<path class="axi" d="M125,682 L193,682"/>
+<rect class="core" x="196" y="664" width="164" height="36" rx="4"/>
+<rect x="198.5" y="666.5" width="6" height="31" fill="#103525"/>
+<text class="s" x="212" y="679" text-anchor="start">u_axi_err_slv</text>
+<text class="si" x="212" y="695" text-anchor="start">DECERR</text>
+<path class="axi" d="M125,728 L193,728"/>
+<text class="s" x="159" y="720" text-anchor="middle">AXI-Lite 32</text>
+<rect class="core" x="196" y="710" width="164" height="36" rx="4"/>
+<rect x="198.5" y="712.5" width="6" height="31" fill="#103525"/>
+<text class="s" x="212" y="725" text-anchor="start">u_trng_axil_cut</text>
+<text class="si" x="212" y="741" text-anchor="start">not isolated</text>
+<path class="axi" d="M300,749.0 L300,857"/>
+<text class="s" x="310" y="846" text-anchor="start">ext_trng_axil_req_o</text>
+<rect class="external" x="230" y="860" width="140" height="40" rx="6"/>
+<text class="s" x="300" y="885" text-anchor="middle">External TRNG</text>
+<rect class="core" x="856" y="118" width="170" height="596" rx="6"/>
+<rect class="fabric" x="868" y="128" width="146" height="424" rx="4"/>
+<rect x="870.5" y="130.5" width="6" height="419" fill="#b2566c"/>
+<text class="bs" x="884" y="420" text-anchor="start">u_xbar</text>
+<text class="si" x="884" y="440" text-anchor="start">warm reset</text>
+<text class="s" x="864" y="572" text-anchor="start">cold: sep_reset_ni</text>
+<text class="s" x="864" y="590" text-anchor="start">warm: gated_rst_ni.km</text>
+<rect class="core" x="868" y="618" width="146" height="36" rx="4"/>
+<rect x="870.5" y="620.5" width="6" height="15.5" fill="#2f7f79"/>
+<rect x="870.5" y="636" width="6" height="15.5" fill="#b2566c"/>
+<text class="s" x="884" y="633" text-anchor="start">u_mailbox</text>
+<text class="si" x="884" y="649" text-anchor="start">cold and warm</text>
+<text class="bs" x="864" y="682" text-anchor="start">Key Manager</text>
+<text class="s" x="864" y="700" text-anchor="start">u_key_manager_s3c_scan</text>
+<rect class="core" x="14" y="903" width="40" height="18" rx="4"/>
+<text class="s" x="62" y="917" text-anchor="start">RTL instance</text>
+<rect class="fabric" x="170" y="903" width="40" height="18" rx="4"/>
+<text class="s" x="218" y="917" text-anchor="start">Interconnect or crossbar</text>
+<rect class="core opt" x="406" y="903" width="40" height="18" rx="4"/>
+<text class="s" x="454" y="917" text-anchor="start">Only with SEP_ABR_EN</text>
+<rect class="external" x="640" y="903" width="40" height="18" rx="4"/>
+<text class="s" x="688" y="917" text-anchor="start">Outside sep_crypto</text>
+<path class="axi" d="M17,940 L51,940"/>
+<text class="s" x="62" y="945" text-anchor="start">AXI4 or AXI4-Lite</text>
+<path class="key" d="M206,940 L240,940"/>
+<text class="s" x="251" y="945" text-anchor="start">Key Manager key bus (AXI4-Lite)</text>
+<path class="sig" d="M500,940 L534,940"/>
+<text class="s" x="545" y="945" text-anchor="start">Isolation handshake</text>
+<path class="a-bus" d="M700,940 L734,940"/>
+<text class="s" x="745" y="945" text-anchor="start">Gated reset bus</text>
+<text class="s" x="14" y="973" text-anchor="start">Reset bar:</text>
+<rect x="92" y="959" width="6" height="18" fill="#103525"/>
+<text class="s" x="106" y="973" text-anchor="start">rst_ni</text>
+<rect x="206" y="959" width="6" height="18" fill="#2f7f79"/>
+<text class="s" x="220" y="973" text-anchor="start">sep_reset_ni</text>
+<rect x="350" y="959" width="6" height="18" fill="#b2566c"/>
+<text class="s" x="364" y="973" text-anchor="start">gated_rst_ni bit (software reset)</text>
+<rect class="ps" x="59.0" y="119.0" width="22" height="18" rx="4"/>
+<text class="pst" x="70" y="132.5" text-anchor="middle">S</text>
+</svg>

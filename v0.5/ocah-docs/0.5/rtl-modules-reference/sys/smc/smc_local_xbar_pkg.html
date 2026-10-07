@@ -1,0 +1,1948 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>smc_local_xbar_pkg :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-docs" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../../../index.html">Technical Reference Manual</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../index.html">Documentation Overview</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../list-of-figures.html">List of Figures</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../list-of-tables.html">List of Tables</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../architecture.html">OCAH Architecture &amp; Design</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../overview.html">Platform Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../memory_map.html">OCAH Memory Map</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../power_domains.html">Power Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../clock_domains.html">Clock Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../reset.html">Reset</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../architecture.html#ocah-rtl-assertions">RTL Assertions</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">OCAH Platform Components</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../smu/index.html">System Management Unit (SMU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../sep/index.html">Security Processor (SEP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/threat_model.html">Threat Model</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/attack_countermeasures.html">Attack Countermeasures</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../sep/clk_rst.html">Clocks and Resets</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/reset_controller.html">SEP Reset Controller</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/cpu.html">CPU</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/fabric.html">Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../sep/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/dma.html">Direct Memory Access (DMA)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/mailbox.html">Mailboxes</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/peripheral_subsystem.html">Peripheral Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/spi.html">Serial Peripheral Interface (SPI)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../sep/security.html">Security and Lifecycle</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/otp_fuse_controller.html">OTP Fuse Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/token_processing.html">Token Processing</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/security_disable.html">Security Disable</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/lifecycle_controller.html">Lifecycle Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/test_mode.html">Test Mode Entry</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../sep/crypto.html">Cryptographic Subsystem</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/trng.html">TRNG and DRBG</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../ip/entropy_source/doc/index.html">Entropy Source</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/entropy_pool.html">Entropy Pool</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/aes.html">AES Cipher</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/hmac.html">HMAC-SHA2</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/kmac.html">KMAC-SHA3</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/adams_bridge.html">Adams Bridge (ABR)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/otbn.html">OTBN PKA Public Key Accelerator</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../ip/key_manager/doc/index.html">Key Manager</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../../ip/key_manager/doc/index.html#key-manager-architecture">Architecture</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/memory_map.html">Memory Map and Register Reference</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../smc/index.html">System Management Controller (SMC)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/clk_rst.html">Clocks and Resets</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/cpu.html">CPU</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/fabric.html">Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../smc/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../smc/dma.html">Direct Memory Access Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../smc/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../smc/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../ip/axi_lite_mailbox_unit/doc/index.html">Mailboxes</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../ip/system_timer_octs/doc/index.html">System Timer OCTS</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../ip/efuse/doc/index.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../ip/uart_16550/doc/index.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../ip/log_engine/doc/index.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../ip/i2c/doc/index.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../ip/i3ccore_wrap/doc/index.html">I3C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../ip/avsbus_controller/doc/index.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../ip/gpio/doc/index.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../ip/telemetry_receiver/doc/index.html">Telemetry Receiver</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/dfd.html">Design-for-Debug and CLA</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/scan_protection.html">eFuse Scan Protection</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/memmap.html">Memory Map and Register Reference</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../dtp/index.html">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../dtp/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../dtp/clk_rst.html">Clocks and Resets</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../dtp/jtag.html">JTAG Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../dtp/cross_trigger.html">Cross-Trigger Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../dtp/ip_reference.html">IP Reference</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">JTAG</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../../ip/jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Cross-Trigger</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../../ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../dtp/reference.html">Configuration and Reference</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../smn.html">System Management Network (SMN)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../aou.html">AXI-over-UCIe Bridge (AoU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../aou-overview.html">Overview and Features</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../aou-architecture.html">Architecture</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../aou-interrupts-errors.html">Interrupts and Errors</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../aou-ppa-appendices.html">PPA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../aou-appendices.html">Appendices</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../aou-referenced-documents.html">Appendix B. Referenced Documents</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../rtl-modules-reference.html">RTL Modules Reference</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../rtl-modules-reference.html#ip">IP</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/avsbus_controller.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/axi_alias_remap.html">AXI Alias Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/axi_filter.html">AXI Filter</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/axi_hang_detector.html">AXI Hang Detector</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/axi_lite_mailbox_unit.html">AXI-Lite Mailbox</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/axi_window_remap.html">AXI Window Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/drbg.html">DRBG</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/efuse.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/entropy_source.html">Entropy Source</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/gpio.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/i2c.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/i3ccore_wrap.html">I3C</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/idma_wrapper.html">iDMA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/key_manager.html">Key Manager</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/memory_interface.html">Memory Interface</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/output_remap.html">Output Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/scrambler.html">Scrambler</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/system_timer_octs.html">System Timer</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/telemetry_receiver.html">Telemetry Receiver</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/cross_trigger_matrix.html">Cross-Trigger Matrix</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/cross_trigger_network.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/cross_trigger_port.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/jtag2axi.html">JTAG to AXI</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/jtag_intf_unit.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/jtag_ptap.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/jtag_stap.html">JTAG STAP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/log_engine.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/uart_16550.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/uart_log_engine_wrap.html">UART Log Engine Wrapper</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/uart_wrap.html">UART Wrapper</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../rtl-modules-reference.html#subsystems">Subsystems</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../sep.html">SEP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smc.html">SMC</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../dtp.html">DTP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu.html">SMU</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou.html">AXI-over-UCIe</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../rtl-modules-reference.html#common">Common</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../common/ocah_prim.html">ocah_prim</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../common/ocah_prim_generic.html">ocah_prim_generic</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../common/tlul.html">TL-UL</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../../../ip-reference.html">IP Reference</a>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../register-field-access.html">Register Field Access Notation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../referenced-documents.html">Referenced Documents</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Technical Reference Manual 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../../../index.html">Technical Reference Manual</a></li>
+    <li><a href="smc_local_xbar_pkg.html">smc_local_xbar_pkg</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="5">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">smc_local_xbar_pkg</h1>
+<p>Declare SMC local AXI crossbar types and configuration.</p><p>Defines initiator/target counts and AXI typedefs for the local SMC xbar: three initiators with 6-bit IDs, five targets whose IDs widen to 8 bits, and 20 address rules on a 32-bit address and 64-bit data bus, with eight outstanding transactions per port, every port cut and full connectivity. It also declares the AXI-Lite and APB types of the converted CSR ports. Address rules are defined by smc_local_xbar.</p>
+<div class="ocah-reg-html">
+<h2 id="apb32_addr_t"><code>apb32_addr_t</code></h2>
+<p>Protocol: apb32 (APB4)</p>
+<p>Alias for <code>logic [31:0]</code></p>
+<h2 id="apb32_data_t"><code>apb32_data_t</code></h2>
+<p>Alias for <code>logic [31:0]</code></p>
+<h2 id="apb32_strb_t"><code>apb32_strb_t</code></h2>
+<p>Alias for <code>logic [3:0]</code></p>
+<h2 id="apb32_req_t"><code>apb32_req_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-1">
+<caption class="title"><a href="#trm-table-1">Table 1</a>. <code>apb32_req_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>paddr</code></td><td><code>apb32_addr_t</code></td><td></td></tr>
+<tr><td><code>pprot</code></td><td><code>apb_pkg::prot_t</code></td><td></td></tr>
+<tr><td><code>psel</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>penable</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>pwrite</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>pwdata</code></td><td><code>apb32_data_t</code></td><td></td></tr>
+<tr><td><code>pstrb</code></td><td><code>apb32_strb_t</code></td><td></td></tr>
+</table>
+<h2 id="apb32_resp_t"><code>apb32_resp_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-2">
+<caption class="title"><a href="#trm-table-2">Table 2</a>. <code>apb32_resp_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>pready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>prdata</code></td><td><code>apb32_data_t</code></td><td></td></tr>
+<tr><td><code>pslverr</code></td><td><code>logic</code></td><td></td></tr>
+</table>
+<h2 id="axi64_addr_t"><code>axi64_addr_t</code></h2>
+<p>Protocol: axi64 (AXI4)</p>
+<p>Alias for <code>logic [31:0]</code></p>
+<h2 id="axi64_data_t"><code>axi64_data_t</code></h2>
+<p>Alias for <code>logic [63:0]</code></p>
+<h2 id="axi64_strb_t"><code>axi64_strb_t</code></h2>
+<p>Alias for <code>logic [7:0]</code></p>
+<h2 id="axi64_id_t"><code>axi64_id_t</code></h2>
+<p>Alias for <code>logic [5:0]</code></p>
+<h2 id="axi64_user_t"><code>axi64_user_t</code></h2>
+<p>Alias for <code>logic [11:0]</code></p>
+<h2 id="axi64_aw_chan_t"><code>axi64_aw_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-3">
+<caption class="title"><a href="#trm-table-3">Table 3</a>. <code>axi64_aw_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>axi64_id_t</code></td><td></td></tr>
+<tr><td><code>addr</code></td><td><code>axi64_addr_t</code></td><td></td></tr>
+<tr><td><code>len</code></td><td><code>axi_pkg::len_t</code></td><td></td></tr>
+<tr><td><code>size</code></td><td><code>axi_pkg::size_t</code></td><td></td></tr>
+<tr><td><code>burst</code></td><td><code>axi_pkg::burst_t</code></td><td></td></tr>
+<tr><td><code>lock</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>cache</code></td><td><code>axi_pkg::cache_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+<tr><td><code>qos</code></td><td><code>axi_pkg::qos_t</code></td><td></td></tr>
+<tr><td><code>region</code></td><td><code>axi_pkg::region_t</code></td><td></td></tr>
+<tr><td><code>atop</code></td><td><code>axi_pkg::atop_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>axi64_user_t</code></td><td></td></tr>
+</table>
+<h2 id="axi64_w_chan_t"><code>axi64_w_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-4">
+<caption class="title"><a href="#trm-table-4">Table 4</a>. <code>axi64_w_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>data</code></td><td><code>axi64_data_t</code></td><td></td></tr>
+<tr><td><code>strb</code></td><td><code>axi64_strb_t</code></td><td></td></tr>
+<tr><td><code>last</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>axi64_user_t</code></td><td></td></tr>
+</table>
+<h2 id="axi64_b_chan_t"><code>axi64_b_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-5">
+<caption class="title"><a href="#trm-table-5">Table 5</a>. <code>axi64_b_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>axi64_id_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>axi64_user_t</code></td><td></td></tr>
+</table>
+<h2 id="axi64_ar_chan_t"><code>axi64_ar_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-6">
+<caption class="title"><a href="#trm-table-6">Table 6</a>. <code>axi64_ar_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>axi64_id_t</code></td><td></td></tr>
+<tr><td><code>addr</code></td><td><code>axi64_addr_t</code></td><td></td></tr>
+<tr><td><code>len</code></td><td><code>axi_pkg::len_t</code></td><td></td></tr>
+<tr><td><code>size</code></td><td><code>axi_pkg::size_t</code></td><td></td></tr>
+<tr><td><code>burst</code></td><td><code>axi_pkg::burst_t</code></td><td></td></tr>
+<tr><td><code>lock</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>cache</code></td><td><code>axi_pkg::cache_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+<tr><td><code>qos</code></td><td><code>axi_pkg::qos_t</code></td><td></td></tr>
+<tr><td><code>region</code></td><td><code>axi_pkg::region_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>axi64_user_t</code></td><td></td></tr>
+</table>
+<h2 id="axi64_r_chan_t"><code>axi64_r_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-7">
+<caption class="title"><a href="#trm-table-7">Table 7</a>. <code>axi64_r_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>axi64_id_t</code></td><td></td></tr>
+<tr><td><code>data</code></td><td><code>axi64_data_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+<tr><td><code>last</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>axi64_user_t</code></td><td></td></tr>
+</table>
+<h2 id="axi64_req_t"><code>axi64_req_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-8">
+<caption class="title"><a href="#trm-table-8">Table 8</a>. <code>axi64_req_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw</code></td><td><code>axi64_aw_chan_t</code></td><td></td></tr>
+<tr><td><code>aw_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w</code></td><td><code>axi64_w_chan_t</code></td><td></td></tr>
+<tr><td><code>w_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar</code></td><td><code>axi64_ar_chan_t</code></td><td></td></tr>
+<tr><td><code>ar_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r_ready</code></td><td><code>logic</code></td><td></td></tr>
+</table>
+<h2 id="axi64_resp_t"><code>axi64_resp_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-9">
+<caption class="title"><a href="#trm-table-9">Table 9</a>. <code>axi64_resp_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b</code></td><td><code>axi64_b_chan_t</code></td><td></td></tr>
+<tr><td><code>r_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r</code></td><td><code>axi64_r_chan_t</code></td><td></td></tr>
+</table>
+<h2 id="axi_lite32_addr_t"><code>axi_lite32_addr_t</code></h2>
+<p>Protocol: axi_lite32 (AXI4_LITE)</p>
+<p>Alias for <code>logic [31:0]</code></p>
+<h2 id="axi_lite32_data_t"><code>axi_lite32_data_t</code></h2>
+<p>Alias for <code>logic [31:0]</code></p>
+<h2 id="axi_lite32_strb_t"><code>axi_lite32_strb_t</code></h2>
+<p>Alias for <code>logic [3:0]</code></p>
+<h2 id="axi_lite32_aw_chan_t"><code>axi_lite32_aw_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-10">
+<caption class="title"><a href="#trm-table-10">Table 10</a>. <code>axi_lite32_aw_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>addr</code></td><td><code>axi_lite32_addr_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+</table>
+<h2 id="axi_lite32_w_chan_t"><code>axi_lite32_w_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-11">
+<caption class="title"><a href="#trm-table-11">Table 11</a>. <code>axi_lite32_w_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>data</code></td><td><code>axi_lite32_data_t</code></td><td></td></tr>
+<tr><td><code>strb</code></td><td><code>axi_lite32_strb_t</code></td><td></td></tr>
+</table>
+<h2 id="axi_lite32_b_chan_t"><code>axi_lite32_b_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-12">
+<caption class="title"><a href="#trm-table-12">Table 12</a>. <code>axi_lite32_b_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+</table>
+<h2 id="axi_lite32_ar_chan_t"><code>axi_lite32_ar_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-13">
+<caption class="title"><a href="#trm-table-13">Table 13</a>. <code>axi_lite32_ar_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>addr</code></td><td><code>axi_lite32_addr_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+</table>
+<h2 id="axi_lite32_r_chan_t"><code>axi_lite32_r_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-14">
+<caption class="title"><a href="#trm-table-14">Table 14</a>. <code>axi_lite32_r_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>data</code></td><td><code>axi_lite32_data_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+</table>
+<h2 id="axi_lite32_req_t"><code>axi_lite32_req_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-15">
+<caption class="title"><a href="#trm-table-15">Table 15</a>. <code>axi_lite32_req_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw</code></td><td><code>axi_lite32_aw_chan_t</code></td><td></td></tr>
+<tr><td><code>aw_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w</code></td><td><code>axi_lite32_w_chan_t</code></td><td></td></tr>
+<tr><td><code>w_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar</code></td><td><code>axi_lite32_ar_chan_t</code></td><td></td></tr>
+<tr><td><code>ar_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r_ready</code></td><td><code>logic</code></td><td></td></tr>
+</table>
+<h2 id="axi_lite32_resp_t"><code>axi_lite32_resp_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-16">
+<caption class="title"><a href="#trm-table-16">Table 16</a>. <code>axi_lite32_resp_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b</code></td><td><code>axi_lite32_b_chan_t</code></td><td></td></tr>
+<tr><td><code>b_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r</code></td><td><code>axi_lite32_r_chan_t</code></td><td></td></tr>
+<tr><td><code>r_valid</code></td><td><code>logic</code></td><td></td></tr>
+</table>
+<h2 id="axi_lite64_addr_t"><code>axi_lite64_addr_t</code></h2>
+<p>Protocol: axi_lite64 (AXI4_LITE)</p>
+<p>Alias for <code>logic [31:0]</code></p>
+<h2 id="axi_lite64_data_t"><code>axi_lite64_data_t</code></h2>
+<p>Alias for <code>logic [63:0]</code></p>
+<h2 id="axi_lite64_strb_t"><code>axi_lite64_strb_t</code></h2>
+<p>Alias for <code>logic [7:0]</code></p>
+<h2 id="axi_lite64_aw_chan_t"><code>axi_lite64_aw_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-17">
+<caption class="title"><a href="#trm-table-17">Table 17</a>. <code>axi_lite64_aw_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>addr</code></td><td><code>axi_lite64_addr_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+</table>
+<h2 id="axi_lite64_w_chan_t"><code>axi_lite64_w_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-18">
+<caption class="title"><a href="#trm-table-18">Table 18</a>. <code>axi_lite64_w_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>data</code></td><td><code>axi_lite64_data_t</code></td><td></td></tr>
+<tr><td><code>strb</code></td><td><code>axi_lite64_strb_t</code></td><td></td></tr>
+</table>
+<h2 id="axi_lite64_b_chan_t"><code>axi_lite64_b_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-19">
+<caption class="title"><a href="#trm-table-19">Table 19</a>. <code>axi_lite64_b_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+</table>
+<h2 id="axi_lite64_ar_chan_t"><code>axi_lite64_ar_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-20">
+<caption class="title"><a href="#trm-table-20">Table 20</a>. <code>axi_lite64_ar_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>addr</code></td><td><code>axi_lite64_addr_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+</table>
+<h2 id="axi_lite64_r_chan_t"><code>axi_lite64_r_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-21">
+<caption class="title"><a href="#trm-table-21">Table 21</a>. <code>axi_lite64_r_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>data</code></td><td><code>axi_lite64_data_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+</table>
+<h2 id="axi_lite64_req_t"><code>axi_lite64_req_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-22">
+<caption class="title"><a href="#trm-table-22">Table 22</a>. <code>axi_lite64_req_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw</code></td><td><code>axi_lite64_aw_chan_t</code></td><td></td></tr>
+<tr><td><code>aw_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w</code></td><td><code>axi_lite64_w_chan_t</code></td><td></td></tr>
+<tr><td><code>w_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar</code></td><td><code>axi_lite64_ar_chan_t</code></td><td></td></tr>
+<tr><td><code>ar_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r_ready</code></td><td><code>logic</code></td><td></td></tr>
+</table>
+<h2 id="axi_lite64_resp_t"><code>axi_lite64_resp_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-23">
+<caption class="title"><a href="#trm-table-23">Table 23</a>. <code>axi_lite64_resp_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b</code></td><td><code>axi_lite64_b_chan_t</code></td><td></td></tr>
+<tr><td><code>b_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r</code></td><td><code>axi_lite64_r_chan_t</code></td><td></td></tr>
+<tr><td><code>r_valid</code></td><td><code>logic</code></td><td></td></tr>
+</table>
+<h2 id="axi_out_addr_t"><code>axi_out_addr_t</code></h2>
+<p>All AXI4 outputs use this type with xbar-expanded ID width</p>
+<p>Alias for <code>logic [XbarAddrWidth-1:0]</code></p>
+<h2 id="axi_out_data_t"><code>axi_out_data_t</code></h2>
+<p>Alias for <code>logic [XbarDataWidth-1:0]</code></p>
+<h2 id="axi_out_strb_t"><code>axi_out_strb_t</code></h2>
+<p>Alias for <code>logic [XbarStrbWidth-1:0]</code></p>
+<h2 id="axi_out_id_t"><code>axi_out_id_t</code></h2>
+<p>Alias for <code>logic [XbarOutputIdW-1:0]</code></p>
+<h2 id="axi_out_user_t"><code>axi_out_user_t</code></h2>
+<p>Alias for <code>logic [XbarUserWidth-1:0]</code></p>
+<h2 id="axi_out_aw_chan_t"><code>axi_out_aw_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-24">
+<caption class="title"><a href="#trm-table-24">Table 24</a>. <code>axi_out_aw_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>axi_out_id_t</code></td><td></td></tr>
+<tr><td><code>addr</code></td><td><code>axi_out_addr_t</code></td><td></td></tr>
+<tr><td><code>len</code></td><td><code>axi_pkg::len_t</code></td><td></td></tr>
+<tr><td><code>size</code></td><td><code>axi_pkg::size_t</code></td><td></td></tr>
+<tr><td><code>burst</code></td><td><code>axi_pkg::burst_t</code></td><td></td></tr>
+<tr><td><code>lock</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>cache</code></td><td><code>axi_pkg::cache_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+<tr><td><code>qos</code></td><td><code>axi_pkg::qos_t</code></td><td></td></tr>
+<tr><td><code>region</code></td><td><code>axi_pkg::region_t</code></td><td></td></tr>
+<tr><td><code>atop</code></td><td><code>axi_pkg::atop_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>axi_out_user_t</code></td><td></td></tr>
+</table>
+<h2 id="axi_out_w_chan_t"><code>axi_out_w_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-25">
+<caption class="title"><a href="#trm-table-25">Table 25</a>. <code>axi_out_w_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>data</code></td><td><code>axi_out_data_t</code></td><td></td></tr>
+<tr><td><code>strb</code></td><td><code>axi_out_strb_t</code></td><td></td></tr>
+<tr><td><code>last</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>axi_out_user_t</code></td><td></td></tr>
+</table>
+<h2 id="axi_out_b_chan_t"><code>axi_out_b_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-26">
+<caption class="title"><a href="#trm-table-26">Table 26</a>. <code>axi_out_b_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>axi_out_id_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>axi_out_user_t</code></td><td></td></tr>
+</table>
+<h2 id="axi_out_ar_chan_t"><code>axi_out_ar_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-27">
+<caption class="title"><a href="#trm-table-27">Table 27</a>. <code>axi_out_ar_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>axi_out_id_t</code></td><td></td></tr>
+<tr><td><code>addr</code></td><td><code>axi_out_addr_t</code></td><td></td></tr>
+<tr><td><code>len</code></td><td><code>axi_pkg::len_t</code></td><td></td></tr>
+<tr><td><code>size</code></td><td><code>axi_pkg::size_t</code></td><td></td></tr>
+<tr><td><code>burst</code></td><td><code>axi_pkg::burst_t</code></td><td></td></tr>
+<tr><td><code>lock</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>cache</code></td><td><code>axi_pkg::cache_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+<tr><td><code>qos</code></td><td><code>axi_pkg::qos_t</code></td><td></td></tr>
+<tr><td><code>region</code></td><td><code>axi_pkg::region_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>axi_out_user_t</code></td><td></td></tr>
+</table>
+<h2 id="axi_out_r_chan_t"><code>axi_out_r_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-28">
+<caption class="title"><a href="#trm-table-28">Table 28</a>. <code>axi_out_r_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>axi_out_id_t</code></td><td></td></tr>
+<tr><td><code>data</code></td><td><code>axi_out_data_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+<tr><td><code>last</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>axi_out_user_t</code></td><td></td></tr>
+</table>
+<h2 id="axi_out_req_t"><code>axi_out_req_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-29">
+<caption class="title"><a href="#trm-table-29">Table 29</a>. <code>axi_out_req_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw</code></td><td><code>axi_out_aw_chan_t</code></td><td></td></tr>
+<tr><td><code>aw_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w</code></td><td><code>axi_out_w_chan_t</code></td><td></td></tr>
+<tr><td><code>w_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar</code></td><td><code>axi_out_ar_chan_t</code></td><td></td></tr>
+<tr><td><code>ar_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r_ready</code></td><td><code>logic</code></td><td></td></tr>
+</table>
+<h2 id="axi_out_resp_t"><code>axi_out_resp_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-30">
+<caption class="title"><a href="#trm-table-30">Table 30</a>. <code>axi_out_resp_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b</code></td><td><code>axi_out_b_chan_t</code></td><td></td></tr>
+<tr><td><code>r_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r</code></td><td><code>axi_out_r_chan_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_addr_t"><code>xbar_addr_t</code></h2>
+<p>Alias for <code>logic [XbarAddrWidth-1:0]</code></p>
+<h2 id="xbar_data_t"><code>xbar_data_t</code></h2>
+<p>Alias for <code>logic [XbarDataWidth-1:0]</code></p>
+<h2 id="xbar_strb_t"><code>xbar_strb_t</code></h2>
+<p>Alias for <code>logic [XbarStrbWidth-1:0]</code></p>
+<h2 id="xbar_slv_id_t"><code>xbar_slv_id_t</code></h2>
+<p>Alias for <code>logic [MaxInputIdW-1:0]</code></p>
+<h2 id="xbar_mst_id_t"><code>xbar_mst_id_t</code></h2>
+<p>Alias for <code>logic [XbarOutputIdW-1:0]</code></p>
+<h2 id="xbar_user_t"><code>xbar_user_t</code></h2>
+<p>Alias for <code>logic [XbarUserWidth-1:0]</code></p>
+<h2 id="xbar_slv_aw_chan_t"><code>xbar_slv_aw_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-31">
+<caption class="title"><a href="#trm-table-31">Table 31</a>. <code>xbar_slv_aw_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>xbar_slv_id_t</code></td><td></td></tr>
+<tr><td><code>addr</code></td><td><code>xbar_addr_t</code></td><td></td></tr>
+<tr><td><code>len</code></td><td><code>axi_pkg::len_t</code></td><td></td></tr>
+<tr><td><code>size</code></td><td><code>axi_pkg::size_t</code></td><td></td></tr>
+<tr><td><code>burst</code></td><td><code>axi_pkg::burst_t</code></td><td></td></tr>
+<tr><td><code>lock</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>cache</code></td><td><code>axi_pkg::cache_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+<tr><td><code>qos</code></td><td><code>axi_pkg::qos_t</code></td><td></td></tr>
+<tr><td><code>region</code></td><td><code>axi_pkg::region_t</code></td><td></td></tr>
+<tr><td><code>atop</code></td><td><code>axi_pkg::atop_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_slv_w_chan_t"><code>xbar_slv_w_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-32">
+<caption class="title"><a href="#trm-table-32">Table 32</a>. <code>xbar_slv_w_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>data</code></td><td><code>xbar_data_t</code></td><td></td></tr>
+<tr><td><code>strb</code></td><td><code>xbar_strb_t</code></td><td></td></tr>
+<tr><td><code>last</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_slv_b_chan_t"><code>xbar_slv_b_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-33">
+<caption class="title"><a href="#trm-table-33">Table 33</a>. <code>xbar_slv_b_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>xbar_slv_id_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_slv_ar_chan_t"><code>xbar_slv_ar_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-34">
+<caption class="title"><a href="#trm-table-34">Table 34</a>. <code>xbar_slv_ar_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>xbar_slv_id_t</code></td><td></td></tr>
+<tr><td><code>addr</code></td><td><code>xbar_addr_t</code></td><td></td></tr>
+<tr><td><code>len</code></td><td><code>axi_pkg::len_t</code></td><td></td></tr>
+<tr><td><code>size</code></td><td><code>axi_pkg::size_t</code></td><td></td></tr>
+<tr><td><code>burst</code></td><td><code>axi_pkg::burst_t</code></td><td></td></tr>
+<tr><td><code>lock</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>cache</code></td><td><code>axi_pkg::cache_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+<tr><td><code>qos</code></td><td><code>axi_pkg::qos_t</code></td><td></td></tr>
+<tr><td><code>region</code></td><td><code>axi_pkg::region_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_slv_r_chan_t"><code>xbar_slv_r_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-35">
+<caption class="title"><a href="#trm-table-35">Table 35</a>. <code>xbar_slv_r_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>xbar_slv_id_t</code></td><td></td></tr>
+<tr><td><code>data</code></td><td><code>xbar_data_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+<tr><td><code>last</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_slv_req_t"><code>xbar_slv_req_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-36">
+<caption class="title"><a href="#trm-table-36">Table 36</a>. <code>xbar_slv_req_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw</code></td><td><code>xbar_slv_aw_chan_t</code></td><td></td></tr>
+<tr><td><code>aw_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w</code></td><td><code>xbar_slv_w_chan_t</code></td><td></td></tr>
+<tr><td><code>w_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar</code></td><td><code>xbar_slv_ar_chan_t</code></td><td></td></tr>
+<tr><td><code>ar_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r_ready</code></td><td><code>logic</code></td><td></td></tr>
+</table>
+<h2 id="xbar_slv_resp_t"><code>xbar_slv_resp_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-37">
+<caption class="title"><a href="#trm-table-37">Table 37</a>. <code>xbar_slv_resp_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b</code></td><td><code>xbar_slv_b_chan_t</code></td><td></td></tr>
+<tr><td><code>r_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r</code></td><td><code>xbar_slv_r_chan_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_mst_aw_chan_t"><code>xbar_mst_aw_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-38">
+<caption class="title"><a href="#trm-table-38">Table 38</a>. <code>xbar_mst_aw_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>xbar_mst_id_t</code></td><td></td></tr>
+<tr><td><code>addr</code></td><td><code>xbar_addr_t</code></td><td></td></tr>
+<tr><td><code>len</code></td><td><code>axi_pkg::len_t</code></td><td></td></tr>
+<tr><td><code>size</code></td><td><code>axi_pkg::size_t</code></td><td></td></tr>
+<tr><td><code>burst</code></td><td><code>axi_pkg::burst_t</code></td><td></td></tr>
+<tr><td><code>lock</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>cache</code></td><td><code>axi_pkg::cache_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+<tr><td><code>qos</code></td><td><code>axi_pkg::qos_t</code></td><td></td></tr>
+<tr><td><code>region</code></td><td><code>axi_pkg::region_t</code></td><td></td></tr>
+<tr><td><code>atop</code></td><td><code>axi_pkg::atop_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_mst_b_chan_t"><code>xbar_mst_b_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-39">
+<caption class="title"><a href="#trm-table-39">Table 39</a>. <code>xbar_mst_b_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>xbar_mst_id_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_mst_ar_chan_t"><code>xbar_mst_ar_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-40">
+<caption class="title"><a href="#trm-table-40">Table 40</a>. <code>xbar_mst_ar_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>xbar_mst_id_t</code></td><td></td></tr>
+<tr><td><code>addr</code></td><td><code>xbar_addr_t</code></td><td></td></tr>
+<tr><td><code>len</code></td><td><code>axi_pkg::len_t</code></td><td></td></tr>
+<tr><td><code>size</code></td><td><code>axi_pkg::size_t</code></td><td></td></tr>
+<tr><td><code>burst</code></td><td><code>axi_pkg::burst_t</code></td><td></td></tr>
+<tr><td><code>lock</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>cache</code></td><td><code>axi_pkg::cache_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+<tr><td><code>qos</code></td><td><code>axi_pkg::qos_t</code></td><td></td></tr>
+<tr><td><code>region</code></td><td><code>axi_pkg::region_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_mst_r_chan_t"><code>xbar_mst_r_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-41">
+<caption class="title"><a href="#trm-table-41">Table 41</a>. <code>xbar_mst_r_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>xbar_mst_id_t</code></td><td></td></tr>
+<tr><td><code>data</code></td><td><code>xbar_data_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+<tr><td><code>last</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_mst_req_t"><code>xbar_mst_req_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-42">
+<caption class="title"><a href="#trm-table-42">Table 42</a>. <code>xbar_mst_req_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw</code></td><td><code>xbar_mst_aw_chan_t</code></td><td></td></tr>
+<tr><td><code>aw_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w</code></td><td><code>xbar_slv_w_chan_t</code></td><td></td></tr>
+<tr><td><code>w_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar</code></td><td><code>xbar_mst_ar_chan_t</code></td><td></td></tr>
+<tr><td><code>ar_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r_ready</code></td><td><code>logic</code></td><td></td></tr>
+</table>
+<h2 id="xbar_mst_resp_t"><code>xbar_mst_resp_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-43">
+<caption class="title"><a href="#trm-table-43">Table 43</a>. <code>xbar_mst_resp_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b</code></td><td><code>xbar_mst_b_chan_t</code></td><td></td></tr>
+<tr><td><code>r_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r</code></td><td><code>xbar_mst_r_chan_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_out_local_reg_addr_t"><code>xbar_out_local_reg_addr_t</code></h2>
+<p>AXI4 typedefs for xbar_out_local_reg</p>
+<p>Alias for <code>logic [31:0]</code></p>
+<h2 id="xbar_out_local_reg_data_t"><code>xbar_out_local_reg_data_t</code></h2>
+<p>Alias for <code>logic [63:0]</code></p>
+<h2 id="xbar_out_local_reg_strb_t"><code>xbar_out_local_reg_strb_t</code></h2>
+<p>Alias for <code>logic [7:0]</code></p>
+<h2 id="xbar_out_local_reg_id_t"><code>xbar_out_local_reg_id_t</code></h2>
+<p>Alias for <code>logic [7:0]</code></p>
+<h2 id="xbar_out_local_reg_user_t"><code>xbar_out_local_reg_user_t</code></h2>
+<p>Alias for <code>logic [11:0]</code></p>
+<h2 id="xbar_out_local_reg_aw_chan_t"><code>xbar_out_local_reg_aw_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-44">
+<caption class="title"><a href="#trm-table-44">Table 44</a>. <code>xbar_out_local_reg_aw_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>xbar_out_local_reg_id_t</code></td><td></td></tr>
+<tr><td><code>addr</code></td><td><code>xbar_out_local_reg_addr_t</code></td><td></td></tr>
+<tr><td><code>len</code></td><td><code>axi_pkg::len_t</code></td><td></td></tr>
+<tr><td><code>size</code></td><td><code>axi_pkg::size_t</code></td><td></td></tr>
+<tr><td><code>burst</code></td><td><code>axi_pkg::burst_t</code></td><td></td></tr>
+<tr><td><code>lock</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>cache</code></td><td><code>axi_pkg::cache_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+<tr><td><code>qos</code></td><td><code>axi_pkg::qos_t</code></td><td></td></tr>
+<tr><td><code>region</code></td><td><code>axi_pkg::region_t</code></td><td></td></tr>
+<tr><td><code>atop</code></td><td><code>axi_pkg::atop_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_out_local_reg_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_out_local_reg_w_chan_t"><code>xbar_out_local_reg_w_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-45">
+<caption class="title"><a href="#trm-table-45">Table 45</a>. <code>xbar_out_local_reg_w_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>data</code></td><td><code>xbar_out_local_reg_data_t</code></td><td></td></tr>
+<tr><td><code>strb</code></td><td><code>xbar_out_local_reg_strb_t</code></td><td></td></tr>
+<tr><td><code>last</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_out_local_reg_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_out_local_reg_b_chan_t"><code>xbar_out_local_reg_b_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-46">
+<caption class="title"><a href="#trm-table-46">Table 46</a>. <code>xbar_out_local_reg_b_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>xbar_out_local_reg_id_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_out_local_reg_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_out_local_reg_ar_chan_t"><code>xbar_out_local_reg_ar_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-47">
+<caption class="title"><a href="#trm-table-47">Table 47</a>. <code>xbar_out_local_reg_ar_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>xbar_out_local_reg_id_t</code></td><td></td></tr>
+<tr><td><code>addr</code></td><td><code>xbar_out_local_reg_addr_t</code></td><td></td></tr>
+<tr><td><code>len</code></td><td><code>axi_pkg::len_t</code></td><td></td></tr>
+<tr><td><code>size</code></td><td><code>axi_pkg::size_t</code></td><td></td></tr>
+<tr><td><code>burst</code></td><td><code>axi_pkg::burst_t</code></td><td></td></tr>
+<tr><td><code>lock</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>cache</code></td><td><code>axi_pkg::cache_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+<tr><td><code>qos</code></td><td><code>axi_pkg::qos_t</code></td><td></td></tr>
+<tr><td><code>region</code></td><td><code>axi_pkg::region_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_out_local_reg_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_out_local_reg_r_chan_t"><code>xbar_out_local_reg_r_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-48">
+<caption class="title"><a href="#trm-table-48">Table 48</a>. <code>xbar_out_local_reg_r_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>xbar_out_local_reg_id_t</code></td><td></td></tr>
+<tr><td><code>data</code></td><td><code>xbar_out_local_reg_data_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+<tr><td><code>last</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_out_local_reg_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_out_local_reg_req_t"><code>xbar_out_local_reg_req_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-49">
+<caption class="title"><a href="#trm-table-49">Table 49</a>. <code>xbar_out_local_reg_req_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw</code></td><td><code>xbar_out_local_reg_aw_chan_t</code></td><td></td></tr>
+<tr><td><code>aw_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w</code></td><td><code>xbar_out_local_reg_w_chan_t</code></td><td></td></tr>
+<tr><td><code>w_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar</code></td><td><code>xbar_out_local_reg_ar_chan_t</code></td><td></td></tr>
+<tr><td><code>ar_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r_ready</code></td><td><code>logic</code></td><td></td></tr>
+</table>
+<h2 id="xbar_out_local_reg_resp_t"><code>xbar_out_local_reg_resp_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-50">
+<caption class="title"><a href="#trm-table-50">Table 50</a>. <code>xbar_out_local_reg_resp_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b</code></td><td><code>xbar_out_local_reg_b_chan_t</code></td><td></td></tr>
+<tr><td><code>r_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r</code></td><td><code>xbar_out_local_reg_r_chan_t</code></td><td></td></tr>
+</table>
+<h2 id="local_reg_addr_t"><code>local_reg_addr_t</code></h2>
+<p>AXI4-Lite typedefs for local_reg</p>
+<p>Alias for <code>logic [31:0]</code></p>
+<h2 id="local_reg_data_t"><code>local_reg_data_t</code></h2>
+<p>Alias for <code>logic [63:0]</code></p>
+<h2 id="local_reg_strb_t"><code>local_reg_strb_t</code></h2>
+<p>Alias for <code>logic [7:0]</code></p>
+<h2 id="local_reg_aw_chan_t"><code>local_reg_aw_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-51">
+<caption class="title"><a href="#trm-table-51">Table 51</a>. <code>local_reg_aw_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>addr</code></td><td><code>local_reg_addr_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+</table>
+<h2 id="local_reg_w_chan_t"><code>local_reg_w_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-52">
+<caption class="title"><a href="#trm-table-52">Table 52</a>. <code>local_reg_w_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>data</code></td><td><code>local_reg_data_t</code></td><td></td></tr>
+<tr><td><code>strb</code></td><td><code>local_reg_strb_t</code></td><td></td></tr>
+</table>
+<h2 id="local_reg_b_chan_t"><code>local_reg_b_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-53">
+<caption class="title"><a href="#trm-table-53">Table 53</a>. <code>local_reg_b_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+</table>
+<h2 id="local_reg_ar_chan_t"><code>local_reg_ar_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-54">
+<caption class="title"><a href="#trm-table-54">Table 54</a>. <code>local_reg_ar_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>addr</code></td><td><code>local_reg_addr_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+</table>
+<h2 id="local_reg_r_chan_t"><code>local_reg_r_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-55">
+<caption class="title"><a href="#trm-table-55">Table 55</a>. <code>local_reg_r_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>data</code></td><td><code>local_reg_data_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+</table>
+<h2 id="local_reg_req_t"><code>local_reg_req_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-56">
+<caption class="title"><a href="#trm-table-56">Table 56</a>. <code>local_reg_req_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw</code></td><td><code>local_reg_aw_chan_t</code></td><td></td></tr>
+<tr><td><code>aw_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w</code></td><td><code>local_reg_w_chan_t</code></td><td></td></tr>
+<tr><td><code>w_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar</code></td><td><code>local_reg_ar_chan_t</code></td><td></td></tr>
+<tr><td><code>ar_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r_ready</code></td><td><code>logic</code></td><td></td></tr>
+</table>
+<h2 id="local_reg_resp_t"><code>local_reg_resp_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-57">
+<caption class="title"><a href="#trm-table-57">Table 57</a>. <code>local_reg_resp_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b</code></td><td><code>local_reg_b_chan_t</code></td><td></td></tr>
+<tr><td><code>b_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r</code></td><td><code>local_reg_r_chan_t</code></td><td></td></tr>
+<tr><td><code>r_valid</code></td><td><code>logic</code></td><td></td></tr>
+</table>
+<h2 id="xbar_out_periph_reg_addr_t"><code>xbar_out_periph_reg_addr_t</code></h2>
+<p>AXI4 typedefs for xbar_out_periph_reg</p>
+<p>Alias for <code>logic [31:0]</code></p>
+<h2 id="xbar_out_periph_reg_data_t"><code>xbar_out_periph_reg_data_t</code></h2>
+<p>Alias for <code>logic [63:0]</code></p>
+<h2 id="xbar_out_periph_reg_strb_t"><code>xbar_out_periph_reg_strb_t</code></h2>
+<p>Alias for <code>logic [7:0]</code></p>
+<h2 id="xbar_out_periph_reg_id_t"><code>xbar_out_periph_reg_id_t</code></h2>
+<p>Alias for <code>logic [7:0]</code></p>
+<h2 id="xbar_out_periph_reg_user_t"><code>xbar_out_periph_reg_user_t</code></h2>
+<p>Alias for <code>logic [11:0]</code></p>
+<h2 id="xbar_out_periph_reg_aw_chan_t"><code>xbar_out_periph_reg_aw_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-58">
+<caption class="title"><a href="#trm-table-58">Table 58</a>. <code>xbar_out_periph_reg_aw_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>xbar_out_periph_reg_id_t</code></td><td></td></tr>
+<tr><td><code>addr</code></td><td><code>xbar_out_periph_reg_addr_t</code></td><td></td></tr>
+<tr><td><code>len</code></td><td><code>axi_pkg::len_t</code></td><td></td></tr>
+<tr><td><code>size</code></td><td><code>axi_pkg::size_t</code></td><td></td></tr>
+<tr><td><code>burst</code></td><td><code>axi_pkg::burst_t</code></td><td></td></tr>
+<tr><td><code>lock</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>cache</code></td><td><code>axi_pkg::cache_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+<tr><td><code>qos</code></td><td><code>axi_pkg::qos_t</code></td><td></td></tr>
+<tr><td><code>region</code></td><td><code>axi_pkg::region_t</code></td><td></td></tr>
+<tr><td><code>atop</code></td><td><code>axi_pkg::atop_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_out_periph_reg_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_out_periph_reg_w_chan_t"><code>xbar_out_periph_reg_w_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-59">
+<caption class="title"><a href="#trm-table-59">Table 59</a>. <code>xbar_out_periph_reg_w_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>data</code></td><td><code>xbar_out_periph_reg_data_t</code></td><td></td></tr>
+<tr><td><code>strb</code></td><td><code>xbar_out_periph_reg_strb_t</code></td><td></td></tr>
+<tr><td><code>last</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_out_periph_reg_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_out_periph_reg_b_chan_t"><code>xbar_out_periph_reg_b_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-60">
+<caption class="title"><a href="#trm-table-60">Table 60</a>. <code>xbar_out_periph_reg_b_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>xbar_out_periph_reg_id_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_out_periph_reg_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_out_periph_reg_ar_chan_t"><code>xbar_out_periph_reg_ar_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-61">
+<caption class="title"><a href="#trm-table-61">Table 61</a>. <code>xbar_out_periph_reg_ar_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>xbar_out_periph_reg_id_t</code></td><td></td></tr>
+<tr><td><code>addr</code></td><td><code>xbar_out_periph_reg_addr_t</code></td><td></td></tr>
+<tr><td><code>len</code></td><td><code>axi_pkg::len_t</code></td><td></td></tr>
+<tr><td><code>size</code></td><td><code>axi_pkg::size_t</code></td><td></td></tr>
+<tr><td><code>burst</code></td><td><code>axi_pkg::burst_t</code></td><td></td></tr>
+<tr><td><code>lock</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>cache</code></td><td><code>axi_pkg::cache_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+<tr><td><code>qos</code></td><td><code>axi_pkg::qos_t</code></td><td></td></tr>
+<tr><td><code>region</code></td><td><code>axi_pkg::region_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_out_periph_reg_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_out_periph_reg_r_chan_t"><code>xbar_out_periph_reg_r_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-62">
+<caption class="title"><a href="#trm-table-62">Table 62</a>. <code>xbar_out_periph_reg_r_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>xbar_out_periph_reg_id_t</code></td><td></td></tr>
+<tr><td><code>data</code></td><td><code>xbar_out_periph_reg_data_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+<tr><td><code>last</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_out_periph_reg_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_out_periph_reg_req_t"><code>xbar_out_periph_reg_req_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-63">
+<caption class="title"><a href="#trm-table-63">Table 63</a>. <code>xbar_out_periph_reg_req_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw</code></td><td><code>xbar_out_periph_reg_aw_chan_t</code></td><td></td></tr>
+<tr><td><code>aw_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w</code></td><td><code>xbar_out_periph_reg_w_chan_t</code></td><td></td></tr>
+<tr><td><code>w_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar</code></td><td><code>xbar_out_periph_reg_ar_chan_t</code></td><td></td></tr>
+<tr><td><code>ar_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r_ready</code></td><td><code>logic</code></td><td></td></tr>
+</table>
+<h2 id="xbar_out_periph_reg_resp_t"><code>xbar_out_periph_reg_resp_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-64">
+<caption class="title"><a href="#trm-table-64">Table 64</a>. <code>xbar_out_periph_reg_resp_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b</code></td><td><code>xbar_out_periph_reg_b_chan_t</code></td><td></td></tr>
+<tr><td><code>r_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r</code></td><td><code>xbar_out_periph_reg_r_chan_t</code></td><td></td></tr>
+</table>
+<h2 id="periph_reg_stage1_addr_t"><code>periph_reg_stage1_addr_t</code></h2>
+<p>AXI4 typedefs for periph_reg_stage1</p>
+<p>Alias for <code>logic [31:0]</code></p>
+<h2 id="periph_reg_stage1_data_t"><code>periph_reg_stage1_data_t</code></h2>
+<p>Alias for <code>logic [31:0]</code></p>
+<h2 id="periph_reg_stage1_strb_t"><code>periph_reg_stage1_strb_t</code></h2>
+<p>Alias for <code>logic [3:0]</code></p>
+<h2 id="periph_reg_stage1_id_t"><code>periph_reg_stage1_id_t</code></h2>
+<p>Alias for <code>logic [7:0]</code></p>
+<h2 id="periph_reg_stage1_user_t"><code>periph_reg_stage1_user_t</code></h2>
+<p>Alias for <code>logic [11:0]</code></p>
+<h2 id="periph_reg_stage1_aw_chan_t"><code>periph_reg_stage1_aw_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-65">
+<caption class="title"><a href="#trm-table-65">Table 65</a>. <code>periph_reg_stage1_aw_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>periph_reg_stage1_id_t</code></td><td></td></tr>
+<tr><td><code>addr</code></td><td><code>periph_reg_stage1_addr_t</code></td><td></td></tr>
+<tr><td><code>len</code></td><td><code>axi_pkg::len_t</code></td><td></td></tr>
+<tr><td><code>size</code></td><td><code>axi_pkg::size_t</code></td><td></td></tr>
+<tr><td><code>burst</code></td><td><code>axi_pkg::burst_t</code></td><td></td></tr>
+<tr><td><code>lock</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>cache</code></td><td><code>axi_pkg::cache_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+<tr><td><code>qos</code></td><td><code>axi_pkg::qos_t</code></td><td></td></tr>
+<tr><td><code>region</code></td><td><code>axi_pkg::region_t</code></td><td></td></tr>
+<tr><td><code>atop</code></td><td><code>axi_pkg::atop_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>periph_reg_stage1_user_t</code></td><td></td></tr>
+</table>
+<h2 id="periph_reg_stage1_w_chan_t"><code>periph_reg_stage1_w_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-66">
+<caption class="title"><a href="#trm-table-66">Table 66</a>. <code>periph_reg_stage1_w_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>data</code></td><td><code>periph_reg_stage1_data_t</code></td><td></td></tr>
+<tr><td><code>strb</code></td><td><code>periph_reg_stage1_strb_t</code></td><td></td></tr>
+<tr><td><code>last</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>periph_reg_stage1_user_t</code></td><td></td></tr>
+</table>
+<h2 id="periph_reg_stage1_b_chan_t"><code>periph_reg_stage1_b_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-67">
+<caption class="title"><a href="#trm-table-67">Table 67</a>. <code>periph_reg_stage1_b_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>periph_reg_stage1_id_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>periph_reg_stage1_user_t</code></td><td></td></tr>
+</table>
+<h2 id="periph_reg_stage1_ar_chan_t"><code>periph_reg_stage1_ar_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-68">
+<caption class="title"><a href="#trm-table-68">Table 68</a>. <code>periph_reg_stage1_ar_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>periph_reg_stage1_id_t</code></td><td></td></tr>
+<tr><td><code>addr</code></td><td><code>periph_reg_stage1_addr_t</code></td><td></td></tr>
+<tr><td><code>len</code></td><td><code>axi_pkg::len_t</code></td><td></td></tr>
+<tr><td><code>size</code></td><td><code>axi_pkg::size_t</code></td><td></td></tr>
+<tr><td><code>burst</code></td><td><code>axi_pkg::burst_t</code></td><td></td></tr>
+<tr><td><code>lock</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>cache</code></td><td><code>axi_pkg::cache_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+<tr><td><code>qos</code></td><td><code>axi_pkg::qos_t</code></td><td></td></tr>
+<tr><td><code>region</code></td><td><code>axi_pkg::region_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>periph_reg_stage1_user_t</code></td><td></td></tr>
+</table>
+<h2 id="periph_reg_stage1_r_chan_t"><code>periph_reg_stage1_r_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-69">
+<caption class="title"><a href="#trm-table-69">Table 69</a>. <code>periph_reg_stage1_r_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>periph_reg_stage1_id_t</code></td><td></td></tr>
+<tr><td><code>data</code></td><td><code>periph_reg_stage1_data_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+<tr><td><code>last</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>periph_reg_stage1_user_t</code></td><td></td></tr>
+</table>
+<h2 id="periph_reg_stage1_req_t"><code>periph_reg_stage1_req_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-70">
+<caption class="title"><a href="#trm-table-70">Table 70</a>. <code>periph_reg_stage1_req_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw</code></td><td><code>periph_reg_stage1_aw_chan_t</code></td><td></td></tr>
+<tr><td><code>aw_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w</code></td><td><code>periph_reg_stage1_w_chan_t</code></td><td></td></tr>
+<tr><td><code>w_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar</code></td><td><code>periph_reg_stage1_ar_chan_t</code></td><td></td></tr>
+<tr><td><code>ar_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r_ready</code></td><td><code>logic</code></td><td></td></tr>
+</table>
+<h2 id="periph_reg_stage1_resp_t"><code>periph_reg_stage1_resp_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-71">
+<caption class="title"><a href="#trm-table-71">Table 71</a>. <code>periph_reg_stage1_resp_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b</code></td><td><code>periph_reg_stage1_b_chan_t</code></td><td></td></tr>
+<tr><td><code>r_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r</code></td><td><code>periph_reg_stage1_r_chan_t</code></td><td></td></tr>
+</table>
+<h2 id="periph_reg_addr_t"><code>periph_reg_addr_t</code></h2>
+<p>AXI4-Lite typedefs for periph_reg</p>
+<p>Alias for <code>logic [31:0]</code></p>
+<h2 id="periph_reg_data_t"><code>periph_reg_data_t</code></h2>
+<p>Alias for <code>logic [31:0]</code></p>
+<h2 id="periph_reg_strb_t"><code>periph_reg_strb_t</code></h2>
+<p>Alias for <code>logic [3:0]</code></p>
+<h2 id="periph_reg_aw_chan_t"><code>periph_reg_aw_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-72">
+<caption class="title"><a href="#trm-table-72">Table 72</a>. <code>periph_reg_aw_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>addr</code></td><td><code>periph_reg_addr_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+</table>
+<h2 id="periph_reg_w_chan_t"><code>periph_reg_w_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-73">
+<caption class="title"><a href="#trm-table-73">Table 73</a>. <code>periph_reg_w_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>data</code></td><td><code>periph_reg_data_t</code></td><td></td></tr>
+<tr><td><code>strb</code></td><td><code>periph_reg_strb_t</code></td><td></td></tr>
+</table>
+<h2 id="periph_reg_b_chan_t"><code>periph_reg_b_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-74">
+<caption class="title"><a href="#trm-table-74">Table 74</a>. <code>periph_reg_b_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+</table>
+<h2 id="periph_reg_ar_chan_t"><code>periph_reg_ar_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-75">
+<caption class="title"><a href="#trm-table-75">Table 75</a>. <code>periph_reg_ar_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>addr</code></td><td><code>periph_reg_addr_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+</table>
+<h2 id="periph_reg_r_chan_t"><code>periph_reg_r_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-76">
+<caption class="title"><a href="#trm-table-76">Table 76</a>. <code>periph_reg_r_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>data</code></td><td><code>periph_reg_data_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+</table>
+<h2 id="periph_reg_req_t"><code>periph_reg_req_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-77">
+<caption class="title"><a href="#trm-table-77">Table 77</a>. <code>periph_reg_req_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw</code></td><td><code>periph_reg_aw_chan_t</code></td><td></td></tr>
+<tr><td><code>aw_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w</code></td><td><code>periph_reg_w_chan_t</code></td><td></td></tr>
+<tr><td><code>w_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar</code></td><td><code>periph_reg_ar_chan_t</code></td><td></td></tr>
+<tr><td><code>ar_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r_ready</code></td><td><code>logic</code></td><td></td></tr>
+</table>
+<h2 id="periph_reg_resp_t"><code>periph_reg_resp_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-78">
+<caption class="title"><a href="#trm-table-78">Table 78</a>. <code>periph_reg_resp_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b</code></td><td><code>periph_reg_b_chan_t</code></td><td></td></tr>
+<tr><td><code>b_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r</code></td><td><code>periph_reg_r_chan_t</code></td><td></td></tr>
+<tr><td><code>r_valid</code></td><td><code>logic</code></td><td></td></tr>
+</table>
+<h2 id="xbar_out_smc_dfd_reg_addr_t"><code>xbar_out_smc_dfd_reg_addr_t</code></h2>
+<p>AXI4 typedefs for xbar_out_smc_dfd_reg</p>
+<p>Alias for <code>logic [31:0]</code></p>
+<h2 id="xbar_out_smc_dfd_reg_data_t"><code>xbar_out_smc_dfd_reg_data_t</code></h2>
+<p>Alias for <code>logic [63:0]</code></p>
+<h2 id="xbar_out_smc_dfd_reg_strb_t"><code>xbar_out_smc_dfd_reg_strb_t</code></h2>
+<p>Alias for <code>logic [7:0]</code></p>
+<h2 id="xbar_out_smc_dfd_reg_id_t"><code>xbar_out_smc_dfd_reg_id_t</code></h2>
+<p>Alias for <code>logic [7:0]</code></p>
+<h2 id="xbar_out_smc_dfd_reg_user_t"><code>xbar_out_smc_dfd_reg_user_t</code></h2>
+<p>Alias for <code>logic [11:0]</code></p>
+<h2 id="xbar_out_smc_dfd_reg_aw_chan_t"><code>xbar_out_smc_dfd_reg_aw_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-79">
+<caption class="title"><a href="#trm-table-79">Table 79</a>. <code>xbar_out_smc_dfd_reg_aw_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>xbar_out_smc_dfd_reg_id_t</code></td><td></td></tr>
+<tr><td><code>addr</code></td><td><code>xbar_out_smc_dfd_reg_addr_t</code></td><td></td></tr>
+<tr><td><code>len</code></td><td><code>axi_pkg::len_t</code></td><td></td></tr>
+<tr><td><code>size</code></td><td><code>axi_pkg::size_t</code></td><td></td></tr>
+<tr><td><code>burst</code></td><td><code>axi_pkg::burst_t</code></td><td></td></tr>
+<tr><td><code>lock</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>cache</code></td><td><code>axi_pkg::cache_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+<tr><td><code>qos</code></td><td><code>axi_pkg::qos_t</code></td><td></td></tr>
+<tr><td><code>region</code></td><td><code>axi_pkg::region_t</code></td><td></td></tr>
+<tr><td><code>atop</code></td><td><code>axi_pkg::atop_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_out_smc_dfd_reg_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_out_smc_dfd_reg_w_chan_t"><code>xbar_out_smc_dfd_reg_w_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-80">
+<caption class="title"><a href="#trm-table-80">Table 80</a>. <code>xbar_out_smc_dfd_reg_w_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>data</code></td><td><code>xbar_out_smc_dfd_reg_data_t</code></td><td></td></tr>
+<tr><td><code>strb</code></td><td><code>xbar_out_smc_dfd_reg_strb_t</code></td><td></td></tr>
+<tr><td><code>last</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_out_smc_dfd_reg_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_out_smc_dfd_reg_b_chan_t"><code>xbar_out_smc_dfd_reg_b_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-81">
+<caption class="title"><a href="#trm-table-81">Table 81</a>. <code>xbar_out_smc_dfd_reg_b_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>xbar_out_smc_dfd_reg_id_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_out_smc_dfd_reg_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_out_smc_dfd_reg_ar_chan_t"><code>xbar_out_smc_dfd_reg_ar_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-82">
+<caption class="title"><a href="#trm-table-82">Table 82</a>. <code>xbar_out_smc_dfd_reg_ar_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>xbar_out_smc_dfd_reg_id_t</code></td><td></td></tr>
+<tr><td><code>addr</code></td><td><code>xbar_out_smc_dfd_reg_addr_t</code></td><td></td></tr>
+<tr><td><code>len</code></td><td><code>axi_pkg::len_t</code></td><td></td></tr>
+<tr><td><code>size</code></td><td><code>axi_pkg::size_t</code></td><td></td></tr>
+<tr><td><code>burst</code></td><td><code>axi_pkg::burst_t</code></td><td></td></tr>
+<tr><td><code>lock</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>cache</code></td><td><code>axi_pkg::cache_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+<tr><td><code>qos</code></td><td><code>axi_pkg::qos_t</code></td><td></td></tr>
+<tr><td><code>region</code></td><td><code>axi_pkg::region_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_out_smc_dfd_reg_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_out_smc_dfd_reg_r_chan_t"><code>xbar_out_smc_dfd_reg_r_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-83">
+<caption class="title"><a href="#trm-table-83">Table 83</a>. <code>xbar_out_smc_dfd_reg_r_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>xbar_out_smc_dfd_reg_id_t</code></td><td></td></tr>
+<tr><td><code>data</code></td><td><code>xbar_out_smc_dfd_reg_data_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+<tr><td><code>last</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>xbar_out_smc_dfd_reg_user_t</code></td><td></td></tr>
+</table>
+<h2 id="xbar_out_smc_dfd_reg_req_t"><code>xbar_out_smc_dfd_reg_req_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-84">
+<caption class="title"><a href="#trm-table-84">Table 84</a>. <code>xbar_out_smc_dfd_reg_req_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw</code></td><td><code>xbar_out_smc_dfd_reg_aw_chan_t</code></td><td></td></tr>
+<tr><td><code>aw_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w</code></td><td><code>xbar_out_smc_dfd_reg_w_chan_t</code></td><td></td></tr>
+<tr><td><code>w_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar</code></td><td><code>xbar_out_smc_dfd_reg_ar_chan_t</code></td><td></td></tr>
+<tr><td><code>ar_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r_ready</code></td><td><code>logic</code></td><td></td></tr>
+</table>
+<h2 id="xbar_out_smc_dfd_reg_resp_t"><code>xbar_out_smc_dfd_reg_resp_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-85">
+<caption class="title"><a href="#trm-table-85">Table 85</a>. <code>xbar_out_smc_dfd_reg_resp_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b</code></td><td><code>xbar_out_smc_dfd_reg_b_chan_t</code></td><td></td></tr>
+<tr><td><code>r_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r</code></td><td><code>xbar_out_smc_dfd_reg_r_chan_t</code></td><td></td></tr>
+</table>
+<h2 id="smc_dfd_reg_stage1_addr_t"><code>smc_dfd_reg_stage1_addr_t</code></h2>
+<p>AXI4 typedefs for smc_dfd_reg_stage1</p>
+<p>Alias for <code>logic [31:0]</code></p>
+<h2 id="smc_dfd_reg_stage1_data_t"><code>smc_dfd_reg_stage1_data_t</code></h2>
+<p>Alias for <code>logic [31:0]</code></p>
+<h2 id="smc_dfd_reg_stage1_strb_t"><code>smc_dfd_reg_stage1_strb_t</code></h2>
+<p>Alias for <code>logic [3:0]</code></p>
+<h2 id="smc_dfd_reg_stage1_id_t"><code>smc_dfd_reg_stage1_id_t</code></h2>
+<p>Alias for <code>logic [7:0]</code></p>
+<h2 id="smc_dfd_reg_stage1_user_t"><code>smc_dfd_reg_stage1_user_t</code></h2>
+<p>Alias for <code>logic [11:0]</code></p>
+<h2 id="smc_dfd_reg_stage1_aw_chan_t"><code>smc_dfd_reg_stage1_aw_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-86">
+<caption class="title"><a href="#trm-table-86">Table 86</a>. <code>smc_dfd_reg_stage1_aw_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>smc_dfd_reg_stage1_id_t</code></td><td></td></tr>
+<tr><td><code>addr</code></td><td><code>smc_dfd_reg_stage1_addr_t</code></td><td></td></tr>
+<tr><td><code>len</code></td><td><code>axi_pkg::len_t</code></td><td></td></tr>
+<tr><td><code>size</code></td><td><code>axi_pkg::size_t</code></td><td></td></tr>
+<tr><td><code>burst</code></td><td><code>axi_pkg::burst_t</code></td><td></td></tr>
+<tr><td><code>lock</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>cache</code></td><td><code>axi_pkg::cache_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+<tr><td><code>qos</code></td><td><code>axi_pkg::qos_t</code></td><td></td></tr>
+<tr><td><code>region</code></td><td><code>axi_pkg::region_t</code></td><td></td></tr>
+<tr><td><code>atop</code></td><td><code>axi_pkg::atop_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>smc_dfd_reg_stage1_user_t</code></td><td></td></tr>
+</table>
+<h2 id="smc_dfd_reg_stage1_w_chan_t"><code>smc_dfd_reg_stage1_w_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-87">
+<caption class="title"><a href="#trm-table-87">Table 87</a>. <code>smc_dfd_reg_stage1_w_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>data</code></td><td><code>smc_dfd_reg_stage1_data_t</code></td><td></td></tr>
+<tr><td><code>strb</code></td><td><code>smc_dfd_reg_stage1_strb_t</code></td><td></td></tr>
+<tr><td><code>last</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>smc_dfd_reg_stage1_user_t</code></td><td></td></tr>
+</table>
+<h2 id="smc_dfd_reg_stage1_b_chan_t"><code>smc_dfd_reg_stage1_b_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-88">
+<caption class="title"><a href="#trm-table-88">Table 88</a>. <code>smc_dfd_reg_stage1_b_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>smc_dfd_reg_stage1_id_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>smc_dfd_reg_stage1_user_t</code></td><td></td></tr>
+</table>
+<h2 id="smc_dfd_reg_stage1_ar_chan_t"><code>smc_dfd_reg_stage1_ar_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-89">
+<caption class="title"><a href="#trm-table-89">Table 89</a>. <code>smc_dfd_reg_stage1_ar_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>smc_dfd_reg_stage1_id_t</code></td><td></td></tr>
+<tr><td><code>addr</code></td><td><code>smc_dfd_reg_stage1_addr_t</code></td><td></td></tr>
+<tr><td><code>len</code></td><td><code>axi_pkg::len_t</code></td><td></td></tr>
+<tr><td><code>size</code></td><td><code>axi_pkg::size_t</code></td><td></td></tr>
+<tr><td><code>burst</code></td><td><code>axi_pkg::burst_t</code></td><td></td></tr>
+<tr><td><code>lock</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>cache</code></td><td><code>axi_pkg::cache_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+<tr><td><code>qos</code></td><td><code>axi_pkg::qos_t</code></td><td></td></tr>
+<tr><td><code>region</code></td><td><code>axi_pkg::region_t</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>smc_dfd_reg_stage1_user_t</code></td><td></td></tr>
+</table>
+<h2 id="smc_dfd_reg_stage1_r_chan_t"><code>smc_dfd_reg_stage1_r_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-90">
+<caption class="title"><a href="#trm-table-90">Table 90</a>. <code>smc_dfd_reg_stage1_r_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td><code>smc_dfd_reg_stage1_id_t</code></td><td></td></tr>
+<tr><td><code>data</code></td><td><code>smc_dfd_reg_stage1_data_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+<tr><td><code>last</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>user</code></td><td><code>smc_dfd_reg_stage1_user_t</code></td><td></td></tr>
+</table>
+<h2 id="smc_dfd_reg_stage1_req_t"><code>smc_dfd_reg_stage1_req_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-91">
+<caption class="title"><a href="#trm-table-91">Table 91</a>. <code>smc_dfd_reg_stage1_req_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw</code></td><td><code>smc_dfd_reg_stage1_aw_chan_t</code></td><td></td></tr>
+<tr><td><code>aw_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w</code></td><td><code>smc_dfd_reg_stage1_w_chan_t</code></td><td></td></tr>
+<tr><td><code>w_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar</code></td><td><code>smc_dfd_reg_stage1_ar_chan_t</code></td><td></td></tr>
+<tr><td><code>ar_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r_ready</code></td><td><code>logic</code></td><td></td></tr>
+</table>
+<h2 id="smc_dfd_reg_stage1_resp_t"><code>smc_dfd_reg_stage1_resp_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-92">
+<caption class="title"><a href="#trm-table-92">Table 92</a>. <code>smc_dfd_reg_stage1_resp_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b</code></td><td><code>smc_dfd_reg_stage1_b_chan_t</code></td><td></td></tr>
+<tr><td><code>r_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r</code></td><td><code>smc_dfd_reg_stage1_r_chan_t</code></td><td></td></tr>
+</table>
+<h2 id="smc_dfd_reg_stage2_addr_t"><code>smc_dfd_reg_stage2_addr_t</code></h2>
+<p>AXI4-Lite typedefs for smc_dfd_reg_stage2</p>
+<p>Alias for <code>logic [31:0]</code></p>
+<h2 id="smc_dfd_reg_stage2_data_t"><code>smc_dfd_reg_stage2_data_t</code></h2>
+<p>Alias for <code>logic [31:0]</code></p>
+<h2 id="smc_dfd_reg_stage2_strb_t"><code>smc_dfd_reg_stage2_strb_t</code></h2>
+<p>Alias for <code>logic [3:0]</code></p>
+<h2 id="smc_dfd_reg_stage2_aw_chan_t"><code>smc_dfd_reg_stage2_aw_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-93">
+<caption class="title"><a href="#trm-table-93">Table 93</a>. <code>smc_dfd_reg_stage2_aw_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>addr</code></td><td><code>smc_dfd_reg_stage2_addr_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+</table>
+<h2 id="smc_dfd_reg_stage2_w_chan_t"><code>smc_dfd_reg_stage2_w_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-94">
+<caption class="title"><a href="#trm-table-94">Table 94</a>. <code>smc_dfd_reg_stage2_w_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>data</code></td><td><code>smc_dfd_reg_stage2_data_t</code></td><td></td></tr>
+<tr><td><code>strb</code></td><td><code>smc_dfd_reg_stage2_strb_t</code></td><td></td></tr>
+</table>
+<h2 id="smc_dfd_reg_stage2_b_chan_t"><code>smc_dfd_reg_stage2_b_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-95">
+<caption class="title"><a href="#trm-table-95">Table 95</a>. <code>smc_dfd_reg_stage2_b_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+</table>
+<h2 id="smc_dfd_reg_stage2_ar_chan_t"><code>smc_dfd_reg_stage2_ar_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-96">
+<caption class="title"><a href="#trm-table-96">Table 96</a>. <code>smc_dfd_reg_stage2_ar_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>addr</code></td><td><code>smc_dfd_reg_stage2_addr_t</code></td><td></td></tr>
+<tr><td><code>prot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+</table>
+<h2 id="smc_dfd_reg_stage2_r_chan_t"><code>smc_dfd_reg_stage2_r_chan_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-97">
+<caption class="title"><a href="#trm-table-97">Table 97</a>. <code>smc_dfd_reg_stage2_r_chan_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>data</code></td><td><code>smc_dfd_reg_stage2_data_t</code></td><td></td></tr>
+<tr><td><code>resp</code></td><td><code>axi_pkg::resp_t</code></td><td></td></tr>
+</table>
+<h2 id="smc_dfd_reg_stage2_req_t"><code>smc_dfd_reg_stage2_req_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-98">
+<caption class="title"><a href="#trm-table-98">Table 98</a>. <code>smc_dfd_reg_stage2_req_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw</code></td><td><code>smc_dfd_reg_stage2_aw_chan_t</code></td><td></td></tr>
+<tr><td><code>aw_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w</code></td><td><code>smc_dfd_reg_stage2_w_chan_t</code></td><td></td></tr>
+<tr><td><code>w_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar</code></td><td><code>smc_dfd_reg_stage2_ar_chan_t</code></td><td></td></tr>
+<tr><td><code>ar_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r_ready</code></td><td><code>logic</code></td><td></td></tr>
+</table>
+<h2 id="smc_dfd_reg_stage2_resp_t"><code>smc_dfd_reg_stage2_resp_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-99">
+<caption class="title"><a href="#trm-table-99">Table 99</a>. <code>smc_dfd_reg_stage2_resp_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>aw_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>w_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>b</code></td><td><code>smc_dfd_reg_stage2_b_chan_t</code></td><td></td></tr>
+<tr><td><code>b_valid</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>ar_ready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>r</code></td><td><code>smc_dfd_reg_stage2_r_chan_t</code></td><td></td></tr>
+<tr><td><code>r_valid</code></td><td><code>logic</code></td><td></td></tr>
+</table>
+<h2 id="smc_dfd_reg_addr_t"><code>smc_dfd_reg_addr_t</code></h2>
+<p>APB4 typedefs for smc_dfd_reg</p>
+<p>Alias for <code>logic [31:0]</code></p>
+<h2 id="smc_dfd_reg_data_t"><code>smc_dfd_reg_data_t</code></h2>
+<p>Alias for <code>logic [31:0]</code></p>
+<h2 id="smc_dfd_reg_strb_t"><code>smc_dfd_reg_strb_t</code></h2>
+<p>Alias for <code>logic [3:0]</code></p>
+<h2 id="smc_dfd_reg_req_t"><code>smc_dfd_reg_req_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-100">
+<caption class="title"><a href="#trm-table-100">Table 100</a>. <code>smc_dfd_reg_req_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>paddr</code></td><td><code>smc_dfd_reg_addr_t</code></td><td></td></tr>
+<tr><td><code>pprot</code></td><td><code>axi_pkg::prot_t</code></td><td></td></tr>
+<tr><td><code>psel</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>penable</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>pwrite</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>pwdata</code></td><td><code>smc_dfd_reg_data_t</code></td><td></td></tr>
+<tr><td><code>pstrb</code></td><td><code>smc_dfd_reg_strb_t</code></td><td></td></tr>
+</table>
+<h2 id="smc_dfd_reg_resp_t"><code>smc_dfd_reg_resp_t</code></h2>
+<p>Packed struct</p>
+<table id="trm-table-101">
+<caption class="title"><a href="#trm-table-101">Table 101</a>. <code>smc_dfd_reg_resp_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>pready</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>prdata</code></td><td><code>smc_dfd_reg_data_t</code></td><td></td></tr>
+<tr><td><code>pslverr</code></td><td><code>logic</code></td><td></td></tr>
+</table>
+<h2 id="addr_rule_t"><code>addr_rule_t</code></h2>
+<p>Custom address rule type with end_addr 1 bit wider to handle overflow</p>
+<p>Packed struct</p>
+<table id="trm-table-102">
+<caption class="title"><a href="#trm-table-102">Table 102</a>. <code>addr_rule_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>idx</code></td><td><code>int unsigned</code></td><td></td></tr>
+<tr><td><code>start_addr</code></td><td><code>logic [31:0]</code></td><td></td></tr>
+<tr><td><code>end_addr</code></td><td><code>logic [32:0]</code></td><td></td></tr>
+</table>
+<h2 id="apb_addr_rule_t"><code>apb_addr_rule_t</code></h2>
+<p>APB address rule type for AXI-Lite to APB bridges (decode width = xbar AXI-Lite width)</p>
+<p>Packed struct</p>
+<table id="trm-table-103">
+<caption class="title"><a href="#trm-table-103">Table 103</a>. <code>apb_addr_rule_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>idx</code></td><td><code>int unsigned</code></td><td></td></tr>
+<tr><td><code>start_addr</code></td><td><code>logic [31:0]</code></td><td></td></tr>
+<tr><td><code>end_addr</code></td><td><code>logic [32:0]</code></td><td></td></tr>
+</table>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../../../_/js/register-sections.js"></script>
+<script src="../../../../../_/js/toc-collapse.js"></script>
+<script src="../../../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/version-menu.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
+<script async src="../../../../../_/js/vendor/highlight.js"></script>
+<script src="../../../../../_/js/vendor/lunr.js"></script>
+<script src="../../../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../../../.." data-snippet-length="100" data-stylesheet="../../../../../_/css/search.css"></script>
+<script async src="../../../../../search-index.js"></script>
+  </body>
+</html>

@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>JTAG Interface Unit :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="JTAG Interface Unit — top-level JTAG control, STAP configuration, iJTAG chains and JTAG2AXI bridges.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-starting" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../../../index.html">Getting Started and Contributing Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../../../index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a user</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../dependencies.html">Dependencies</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../setup.html">Environment Setup</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../workflows.html">Workflows</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../guidelines.html">Guidelines</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a contributor</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../licensing.html">Licensing</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../contribution.html">Contributions</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../contribution.html#versioning">Versioning</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../defects.html">Defect Reporting</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../documentation.html">Documentation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../code_of_conduct.html">Code of Conduct</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Getting Started and Contributing Guide 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../../../index.html">Starting with OCAH</a></li>
+    <li><a href="index.html">JTAG Interface Unit</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">JTAG Interface Unit</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="jtag-interface-unit" class="paragraph">
+<p>The JTAG Interface Unit (JIU) is the top-level JTAG control module for the
+DTP subsystem. It manages the primary JTAG port and all supporting instrument
+logic.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1. Overview</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The JIU contains:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A Primary TAP (PTAP) with chiplet IDCODE, boundary scan, BIST, reset
+control and JTAG2AXI bridges.</p>
+</li>
+<li>
+<p>A configurable number of Secondary TAPs (STAPs) for downstream chiplet JTAG,
+SMC CPU debug, SEP CPU debug, and optional additional TAPs.</p>
+</li>
+<li>
+<p>An iJTAG network with SIB-based chains for DFT (secure and non-secure), DFD,
+and JTAG2AXI bridges to the SMC fabric, SMC OTP and SEP OTP controllers.</p>
+</li>
+<li>
+<p>Per-path debug-disable inputs gate STAPs, iJTAG SIBs, and JTAG2AXI bridges.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The PTAP, STAP and all supporting logic conform to IEEE 1149.1-2013 (JTAG),
+IEEE 1687-2014 (iJTAG) and IEEE 1838-2019 (3DIC).</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">2. Configuration Parameters</a></h2>
+<div class="sectionbody">
+<span id="jiu-configuration-parameters-table"></span>
+<div class="paragraph">
+<p>The JIU is configured through the PTAP feature enables, the I/O, SMC debug and SEP
+debug STAP enables, the number of additional STAPs, the IDCODE and JTAG_CAPS values,
+and the JTAG2AXI pipeline depths.</p>
+</div>
+<div class="paragraph">
+<p>The parameters of <code>jtag_intf_unit</code> are listed in <a href="../../../../../ocah-docs/0.5/rtl-modules-reference/ip/jtag_intf_unit/jtag_intf_unit.html" class="xref page">jtag_intf_unit</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="architecture"><a class="anchor" href="#architecture"></a><a class="link" href="#architecture">3. Architecture</a></h2>
+<div class="sectionbody">
+<div id="jtag-intf-unit-architecture" class="paragraph">
+<p>The JTAG Interface Unit integrates the PTAP, STAP chain and iJTAG network into
+a unified debug access point.</p>
+</div>
+<div class="paragraph">
+<p><a href="#jtag-interface-unit-scan-chain-figure">JTAG Interface Unit scan chain</a> shows the PTAP, STAP chain, and iJTAG network
+at the debug access point. Follow the arrows from TDI to TDO: italic labels beside
+a mux name the instructions or select bit that choose its input, 0 or 1 at a mux
+input is the select value that picks it, and italic labels in the STAPs and SIBs
+name the <code>dbg_disable_i</code> field that closes each one. Dashed blocks exist only when
+their enable parameter is set; <code>NUM_EXTRA_STAPS</code> sets the number of <code>u_stap_extra</code>
+instances. TDO is retimed on the falling edge of TCK except during a
+<code>ZERO_LENGTH_BYPASS</code> DR scan with the <code>TAP_3DCR</code> STAP-select bit clear, when the
+last mux takes the TDO mux output ahead of the retimer and TDI reaches TDO
+combinationally. While the bit is set, <code>ZERO_LENGTH_BYPASS</code> behaves exactly as
+<code>BYPASS</code>: the PTAP bypass register leads the STAP chain and the chain&#8217;s return
+is retimed, because the chain launches its last bit on the rising TCK edge.</p>
+</div>
+<div id="jtag-interface-unit-scan-chain-figure" class="imageblock">
+<div class="content">
+<img src="../../_images/dtp-jtag-scan-chain.svg" alt="JTAG Interface Unit scan chain: TDI fans out to the PTAP instruction and data registers, the boundary-scan chain and the three iJTAG SIBs; the PTAP output passes through the STAP chain and an external STAP chain back to the TDO mux" width="100%">
+</div>
+<div class="title">Figure 1. JTAG Interface Unit scan chain</div>
+</div>
+<div class="sect2">
+<h3 id="scan-chain-topology"><a class="anchor" href="#scan-chain-topology"></a><a class="link" href="#scan-chain-topology">3.1. Scan Chain Topology</a></h3>
+<div class="paragraph">
+<p>The PTAP is connected to the incoming JTAG interface for the chiplet. The scan
+chain is organized in three major segments: the Primary TAP processes all
+instructions, the Secondary TAP chain provides hierarchical TAP access, and the
+iJTAG network enables instrument-level access to debug blocks.</p>
+</div>
+<div class="sect3">
+<h4 id="stap-chain-hierarchy"><a class="anchor" href="#stap-chain-hierarchy"></a><a class="link" href="#stap-chain-hierarchy">3.1.1. STAP Chain Hierarchy</a></h4>
+<div class="paragraph">
+<p>The STAP chain implements a four-level hierarchy with configurable lockup latch
+insertion optimized for different physical routing distances.</p>
+</div>
+<div class="paragraph">
+<p><a href="#jiu-stap-chain-hierarchy-table">JIU STAP chain hierarchy</a> relates each STAP level to its lockup-latch
+configuration and physical role.</p>
+</div>
+<table id="jiu-stap-chain-hierarchy-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. JIU STAP chain hierarchy</caption>
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 25%;">
+<col style="width: 15%;">
+<col style="width: 15%;">
+<col style="width: 30%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Level</th>
+<th class="tableblock halign-left valign-top">STAP Type</th>
+<th class="tableblock halign-left valign-top">TDI_LOCKUP</th>
+<th class="tableblock halign-left valign-top">SCAN_OUT_LOCKUP</th>
+<th class="tableblock halign-left valign-top">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I/O STAP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chiplet-to-chiplet connectivity (die boundary crossing)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC Debug STAP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">On-chip connection to SMC CPU debugger TAP</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP Debug STAP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">On-chip connection to SEP CPU debugger TAP</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAPs [N-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Local debug ports</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The I/O STAP enables TDI lockup to handle the longer propagation delays across
+die boundaries. On-chip STAPs (SMC Debug, SEP Debug) disable TDI lockup since
+signal routing is local to the chiplet.</p>
+</div>
+<div class="paragraph">
+<p>No STAP in the chain enables scan output lockup. The chain return reaches the
+PTAP&#8217;s falling-edge TDO retimer, and a lockup ahead of that retimer would add
+one TCK of latency to every scan through the STAP chain. The last STAP&#8217;s scan
+output also drives <code>stap_host_scan_out_o</code>, which launches on the rising edge of
+TCK like the host scan outputs of the iJTAG SIBs.</p>
+</div>
+<div class="paragraph">
+<p><code>stap_host_scan_out_o</code> carries the scan bit of the last STAP&#8217;s SIB. That bit
+resets to 0 on TRST and in Test-Logic-Reset, so the port reads 0 from reset.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="debug-disable-synchronization"><a class="anchor" href="#debug-disable-synchronization"></a><a class="link" href="#debug-disable-synchronization">3.1.2. Debug Disable Synchronization</a></h4>
+<div class="paragraph">
+<p><code>dbg_disable_i</code> (<code>sep_lifecycle_ctrl_pkg::dbg_disable_t</code>) is in the system clock
+domain and must be synchronized to TCK before use. The interface unit
+synchronizes each bit through a 2-FF chain whose reset value is 1 (fail-closed).
+The synchronized fields gate STAP and SIB selection and are forwarded to the
+PTAP for the JTAG2AXI bridges.</p>
+</div>
+<div class="paragraph">
+<p>Each field is active-high (1 = path disabled).</p>
+</div>
+<div class="paragraph">
+<p><a href="#jiu-debug-disable-fields-table">JIU debug-disable fields</a> maps each debug access point to its synchronized
+disable field.</p>
+</div>
+<table id="jiu-debug-disable-fields-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. JIU debug-disable fields</caption>
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Access Point</th>
+<th class="tableblock halign-left valign-top">Disable Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I/O STAP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_io</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC Debug STAP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_smc</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP Debug STAP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_sep</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAPs</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_extra</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External STAP return path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_host</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFT Secure SIB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.dft_secure</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFT Non-Secure SIB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.dft_nonsecure</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFD SIB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.dfd</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric JTAG2AXI</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.smc_jtag2axi</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP JTAG2AXI</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.smc_otp_jtag2axi</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP JTAG2AXI</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.sep_otp_jtag2axi</code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="jiu-ijtag-network"><a class="anchor" href="#jiu-ijtag-network"></a><a class="link" href="#jiu-ijtag-network">3.2. iJTAG Network</a></h3>
+<div class="paragraph">
+<p>The iJTAG network is organized into three cascaded Segment Insertion Bit (SIB)
+chains. Each SIB is gated by the corresponding synchronized debug-disable field.
+Each SIB&#8217;s scan bit and control bit reset to 0 on TRST and in Test-Logic-Reset,
+so <code>dft_secure_host_scan_out_o</code>, <code>dft_host_scan_out_o</code> and <code>dfd_host_scan_out_o</code>
+read 0 from reset, whether or not the SIB is disabled.</p>
+</div>
+<div class="paragraph">
+<p>The PTAP selects the iJTAG network as its DR under SELECT_IJTAG and, when
+<code>RUNBIST_ENABLE</code> is set, under RUNBIST. From TDI the scan path passes through the
+DFT Secure SIB, the DFT Non-Secure SIB and the DFD SIB, and the DFD SIB&#8217;s output
+returns to the PTAP. Each SIB is one bit long. While a SIB is open, its segment
+is inserted on the TDO side of its bit: the SIB bit drives the segment&#8217;s scan
+input, and the segment&#8217;s return continues to the next SIB. With every SIB closed
+the iJTAG DR is three bits long, laid out as in <a href="#jiu-ijtag-sib-bit-map-table">JIU iJTAG DR with every SIB closed</a>.</p>
+</div>
+<table id="jiu-ijtag-sib-bit-map-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. JIU iJTAG DR with every SIB closed</caption>
+<colgroup>
+<col style="width: 12%;">
+<col style="width: 28%;">
+<col style="width: 30%;">
+<col style="width: 30%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">DR Bit</th>
+<th class="tableblock halign-left valign-top">SIB</th>
+<th class="tableblock halign-left valign-top">Segment Ports</th>
+<th class="tableblock halign-left valign-top">Disable Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFD</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dfd_host_scan_*</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.dfd</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFT Non-Secure</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dft_host_scan_*</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.dft_nonsecure</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFT Secure</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dft_secure_host_scan_*</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.dft_secure</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Bit 0 is nearest TDO and is the first bit shifted in. A SIB bit shifted in as 1
+opens that SIB at Update-DR, and its segment is on the scan path from the next DR
+scan. Each SIB captures its own open state. A SIB whose disable field is set
+stays closed and remains a one-bit stage that captures 0, whatever is shifted
+into it.</p>
+</div>
+<div class="paragraph">
+<p>With the DFT Non-Secure SIB open and an N-bit segment, the DR is N + 3 bits
+long: bit 0 is the DFD SIB, bits N to 1 are the segment with the bit nearest its
+scan output at bit 1, bit N + 1 is the DFT Non-Secure SIB and bit N + 2 is the
+DFT Secure SIB. The network attached to each segment&#8217;s ports defines its
+contents and length. The Programmer&#8217;s Guide gives the
+<a href="../../../../../ocah-programmer-guide/0.5/index.html#dtp-ijtag-access" class="xref page">segment access sequence</a>.</p>
+</div>
+<div class="sect3">
+<h4 id="dft-secure-chain"><a class="anchor" href="#dft-secure-chain"></a><a class="link" href="#dft-secure-chain">3.2.1. DFT Secure Chain</a></h4>
+<div class="paragraph">
+<p>The DFT Secure chain is gated by <code>dbg_disable_i.dft_secure</code>. This port is for
+security-sensitive DFT control.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="dft-non-secure-chain"><a class="anchor" href="#dft-non-secure-chain"></a><a class="link" href="#dft-non-secure-chain">3.2.2. DFT Non-Secure Chain</a></h4>
+<div class="paragraph">
+<p>The DFT Non-Secure chain is gated by <code>dbg_disable_i.dft_nonsecure</code>. General DFT
+control is attached to this port.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="dfd-chain"><a class="anchor" href="#dfd-chain"></a><a class="link" href="#dfd-chain">3.2.3. DFD Chain</a></h4>
+<div class="paragraph">
+<p>The Design-for-Debug (DFD) chain is gated by <code>dbg_disable_i.dfd</code>.
+Integrator-defined debug instruments are attached to this port.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="jtag2axi-interfaces"><a class="anchor" href="#jtag2axi-interfaces"></a><a class="link" href="#jtag2axi-interfaces">3.3. JTAG2AXI Interfaces</a></h3>
+<div class="paragraph">
+<p>The interface unit instantiates multiple JTAG2AXI bridges. Each bridge is a set
+of PTAP TDRs selected by its own instructions and gated by its own
+<code>dbg_disable_i</code> field (<a href="#jiu-debug-disable-fields-table">JIU debug-disable fields</a>); no bridge is reached
+through the iJTAG network.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>SMC JTAG2AXI TDRs</strong>: This set of TDRs provide a mechanism to inject AXI
+transactions onto the SMC AXI local interconnect.</p>
+</li>
+<li>
+<p><strong>SMC Fuse JTAG2AXIL TDRs</strong>: This set of TDRs provide a mechanism to interact
+directly with the SMC fuse controller. The JTAG2AXIL interface connects to the
+fuse controller CSRs through an AXI4-lite-to-APB bridge.</p>
+</li>
+<li>
+<p><strong>SEP Fuse JTAG2AXIL TDRs</strong>: This set of TDRs provide a mechanism to interact
+directly with the SEP fuse controller. The JTAG2AXIL interface connects to the
+fuse controller CSRs through an AXI4-lite-to-APB bridge.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="interface"><a class="anchor" href="#interface"></a><a class="link" href="#interface">4. Interface</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="jtag-intf-unit-interface"><a class="anchor" href="#jtag-intf-unit-interface"></a><a class="link" href="#jtag-intf-unit-interface">4.1. Instruction Encodings</a></h3>
+<span id="jiu-signal-interface-table"></span>
+<div class="paragraph">
+<p>The JTAG interface unit uses 6-bit instruction encodings (<a href="#jiu-instruction-encodings-table">JIU instruction encodings</a>).</p>
+</div>
+<table id="jiu-instruction-encodings-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. JIU instruction encodings</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Encoding</th>
+<th class="tableblock halign-left valign-top">Name</th>
+<th class="tableblock halign-left valign-top">Register Size</th>
+<th class="tableblock halign-left valign-top">Security</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BYPASS (IEEE 1149.1, Section 8.4)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">IDCODE (IEEE 1149.1, Section 8.13)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RUNBIST (IEEE 1149.1, Section 8.10)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BIST</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x03</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SAMPLE_PRELOAD (IEEE 1149.1, Sections 8.6 and 8.7)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BSR</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x04</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">EXTEST (IEEE 1149.1, Section 8.8)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BSR</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x05</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">EXTEST_TRAIN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BSR</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x06</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">EXTEST_PULSE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BSR</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x07</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLAMP (IEEE 1149.1, Section 8.11)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x08</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HIGHZ (IEEE 1149.1, Section 8.16)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x09</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">INTEST (IEEE 1149.1, Section 8.9)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BSR</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLAMP_HOLD (IEEE 1149.1, Section 8.20)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLAMP_RELEASE (IEEE 1149.1, Section 8.20)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0C</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TMP_STATUS (IEEE 1149.1, Section 8.20)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0D</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">IC_RESET (IEEE 1149.1, Section 8.21)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0E</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TAP_3DCR (IEEE 1838, Section 5.5.1)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10-0x17</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Reserved for RISC-V</em></p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x18</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DEBUG_CONTROL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">5</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x19</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG_CAPS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">60</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SELECT_IJTAG</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_OTP_JTAG2AXI_CAPS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">14</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1C</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_OTP_AXI_SINGLE_OP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1D</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_OTP_AXI_SERIES_CTRL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1E</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_OTP_AXI_SERIES_DATA_INCR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_OTP_AXI_SERIES_DATA_NO_INCR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x20</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x21</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_OTP_JTAG2AXI_CAPS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">14</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x22</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_OTP_AXI_SINGLE_OP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x23</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_OTP_AXI_SERIES_CTRL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x24</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_OTP_AXI_SERIES_DATA_INCR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x25</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_OTP_AXI_SERIES_DATA_NO_INCR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x26</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x27</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_JTAG2AXI_CAPS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">14</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x28</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_AXI_SINGLE_OP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x29</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_AXI_SERIES_CTRL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x2A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_AXI_SERIES_DATA_INCR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x2B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_AXI_SERIES_DATA_NO_INCR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x2C</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x3D</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ZERO_LENGTH_BYPASS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0; 1, as BYPASS, while the PTAP TAP_3DCR STAP-select bit is set</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x3E</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">INV_BYPASS</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x3F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BYPASS (IEEE 1149.1, Section 8.4)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The length of each variable-length JTAG2AXI register follows from the bridge&#8217;s
+address width, data width and pipeline depth, and for the series data registers
+from the size last written to <code>*_AXI_SERIES_CTRL</code>. The
+<a href="../../jtag_ptap/doc/index.html#ptap-jtag2axi-support" class="xref page">PTAP JTAG2AXI Support</a>
+section defines each layout.</p>
+</div>
+<div class="paragraph">
+<p><strong>NOTE:</strong> All instruction encodings <em>not</em> explicitly defined in this table map
+to the BYPASS instruction.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="signal-interface"><a class="anchor" href="#signal-interface"></a><a class="link" href="#signal-interface">4.2. Signal Interface</a></h3>
+<div class="paragraph">
+<p>Packed control and bus types remain bundles at the <code>jtag_intf_unit</code> boundary; their
+members are not separate scalar ports.</p>
+</div>
+<div class="paragraph">
+<p>The parameters and ports of <code>jtag_intf_unit</code> are listed in <a href="../../../../../ocah-docs/0.5/rtl-modules-reference/ip/jtag_intf_unit/jtag_intf_unit.html" class="xref page">jtag_intf_unit</a>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="dependencies"><a class="anchor" href="#dependencies"></a><a class="link" href="#dependencies">4.3. Dependencies</a></h3>
+<div class="paragraph">
+<p>The JTAG Interface Unit depends on the following components:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>hw/ip/jtag/jtag_ptap</code> - Primary TAP</p>
+</li>
+<li>
+<p><code>hw/ip/jtag/jtag_stap</code> - Secondary TAP</p>
+</li>
+<li>
+<p><code>hw/common/ocah_prim</code> - Primitive cells</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../../../_/js/register-sections.js"></script>
+<script src="../../../../../_/js/toc-collapse.js"></script>
+<script src="../../../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/version-menu.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
+<script async src="../../../../../_/js/vendor/highlight.js"></script>
+<script src="../../../../../_/js/vendor/lunr.js"></script>
+<script src="../../../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../../../.." data-snippet-length="100" data-stylesheet="../../../../../_/css/search.css"></script>
+<script async src="../../../../../search-index.js"></script>
+  </body>
+</html>

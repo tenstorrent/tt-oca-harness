@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Open Chiplet Atlas (OCA) Harness :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs" autofocus>
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-home" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Open Chiplet Atlas (OCA) Harness</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-current-page is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="index.html">Home</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="features.html">Feature Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="motivation.html">Motivation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="use-cases.html">Use Cases</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="license.html">License</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Guides</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../ocah-programmer-guide/0.5/index.html">Programmer&#8217;s Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../ocah-appnotes/0.5/index.html">Application Notes</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Verification</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="dashboard.html">Dashboard</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="index.html" class="home-link is-current"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Home</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Open Chiplet Atlas (OCA) Harness</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>The Open Chiplet Atlas (OCA) Harness is an OCA architecture compliant, open-source chiplet
+framework: a reusable implementation vehicle for the Open Chiplet Atlas
+(OCA) standard. It packages the common, non-differentiating infrastructure
+every chiplet needs&#8201;&#8212;&#8201;security, boot, system management, debug, test, and
+die-to-die integration&#8201;&#8212;&#8201;so adopters can focus their effort on their own
+value-differentiating application logic.</p>
+</div>
+<div class="ulist home-guides">
+<div class="title">Guides</div>
+<ul>
+<li>
+<p><a href="../../ocah-starting/0.5/index.html" class="xref page">Starting with OCAH</a></p>
+</li>
+<li>
+<p><a href="../../ocah-docs/0.5/index.html" class="xref page">Technical Reference Manual</a></p>
+</li>
+<li>
+<p><a href="../../ocah-integrator-guide/0.5/index.html" class="xref page">Integrator Guide</a></p>
+</li>
+<li>
+<p><a href="../../ocah-programmer-guide/0.5/index.html" class="xref page">Programmer&#8217;s Guide</a></p>
+</li>
+<li>
+<p><a href="../../ocah-appnotes/0.5/index.html" class="xref page">Application Notes</a></p>
+</li>
+</ul>
+</div>
+<div class="ulist home-guides">
+<div class="title">Verification</div>
+<ul>
+<li>
+<p><a href="dashboard.html" class="xref page">Dashboard</a></p>
+</li>
+</ul>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/oca-banner.png" alt="OCA banner" width="600">
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+OCA Harness is the <strong>Harness</strong> pillar of the wider
+<a href="https://www.openchipletatlas.org">Open Chiplet Atlas (OCA)</a> ecosystem,
+alongside the OCA Architecture specification and the OCA Compliance program.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="ecosystem-repositories"><a class="anchor" href="#ecosystem-repositories"></a><a class="link" href="#ecosystem-repositories">Ecosystem repositories</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The OCA Harness ecosystem itself spans a small family of Tenstorrent-owned
+repositories, each covering a distinct part of building and using OCA Harness:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 14.2857%;">
+<col style="width: 28.5714%;">
+<col style="width: 42.8572%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Package</th>
+<th class="tableblock halign-left valign-top">Upstream</th>
+<th class="tableblock halign-left valign-top">Repository</th>
+<th class="tableblock halign-left valign-top">Role in the ecosystem</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">tt-oca-harness</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tenstorrent</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-oca-harness">tenstorrent/tt-oca-harness</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">This repository: OCA Harness&#8217;s RTL, documentation, and register/IP-XACT tooling</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">tt-oca-harness-aou</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tenstorrent</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-oca-harness-aou">tenstorrent/tt-oca-harness-aou</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI-over-UCIe Bridge (AoU) RTL, a component of OCA Harness&#8217;s RTL collateral</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">tt-oca-harness-model</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tenstorrent</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-oca-harness-model">tenstorrent/tt-oca-harness-model</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Virtual platform of the harness for rapid prototyping</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">tt-oca-manifest</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tenstorrent</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-oca-manifest">tenstorrent/tt-oca-manifest</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCA boot manifest format specification and producer/consumer tooling for
+the secure boot images OCA Harness&#8217;s SEP subsystem loads</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>OCA Harness also reuses third-party open-source IP rather than reimplementing it.
+Tenstorrent generally maintains a fork of each such dependency to support
+coordinated development, keeps it synchronized with the upstream project, and
+contributes suitable changes back upstream where possible. The exact
+revisions and subsets imported into this repository are defined in
+<code>Bender.yml</code>; the
+<a href="../../ocah-starting/0.5/workflows.html#vendor-packages" class="xref page">Getting Started Guide</a>
+explains how Bender materializes and updates them.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 14.2857%;">
+<col style="width: 28.5714%;">
+<col style="width: 42.8572%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Package</th>
+<th class="tableblock halign-left valign-top">Upstream</th>
+<th class="tableblock halign-left valign-top">Repository</th>
+<th class="tableblock halign-left valign-top">Role in OCA Harness</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OpenTitan</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">lowRISC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-opentitan">tenstorrent/tt-opentitan</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Common primitives, cryptography, entropy, and timers</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Common Verification</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PULP Platform</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-common_verification">tenstorrent/tt-common_verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Vendored so PULP-derived dependencies resolve a consistent local copy; not
+directly used by OCA Harness</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Common Cells</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PULP Platform</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-common_cells">tenstorrent/tt-common_cells</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reusable RTL cells used by interconnect and DMA components</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">APB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PULP Platform</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-apb">tenstorrent/tt-apb</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Advanced Peripheral Bus components</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PULP Platform</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-axi">tenstorrent/tt-axi</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Advanced eXtensible Interface components</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">iDMA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PULP Platform</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-iDMA">tenstorrent/tt-iDMA</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intelligent direct memory access engine</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UNBENT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PULP Platform</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent-forks/unbent">tenstorrent-forks/unbent</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI bus-error-unit wrapper for chiplet integrators; not instantiated in
+OCA Harness&#8217;s own RTL</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI Stream</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PULP Platform</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-axi_stream">tenstorrent/tt-axi_stream</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Compiled into iDMA&#8217;s generated backend bundle; OCA Harness&#8217;s AXI-only DMA
+configuration does not instantiate it</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OBI</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PULP Platform</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-obi">tenstorrent/tt-obi</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Supplies the types iDMA&#8217;s OBI backend headers reference; OCA Harness does not
+instantiate an OBI bus</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Register Interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PULP Platform</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-register_interface">tenstorrent/tt-register_interface</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI-to-register bridge (<code>axi_to_reg_v2</code>) used by the iDMA control interface</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIPS Alliance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/chipsalliance/adams-bridge">chipsalliance/adams-bridge</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Post-quantum cryptography engine</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Caliptra RTL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIPS Alliance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/chipsalliance/caliptra-rtl">chipsalliance/caliptra-rtl</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key-vault client helpers for Adams Bridge</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">VeeR EL2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIPS Alliance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-Cores-VeeR-EL2">tenstorrent/tt-Cores-VeeR-EL2</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP processor core</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PicoRV32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">YosysHQ</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-picorv32">tenstorrent/tt-picorv32</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager processor core</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C Core</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIPS Alliance / Antmicro</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-i3c-core">tenstorrent/tt-i3c-core</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller and target</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Caliptra RTL for I3C</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIPS Alliance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/caliptra-rtl-fork">tenstorrent/caliptra-rtl-fork</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI and common RTL used by I3C</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">cocotbext-i3c</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Antmicro</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/antmicro/cocotbext-i3c">antmicro/cocotbext-i3c</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C target verification model vendored for the I3C DV testbench; not yet
+exercised by an active test</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The SMC&#8217;s Rocket CPU cluster is a further exception: it is generated
+SystemVerilog output of the
+<a href="https://chipyard.readthedocs.io/en/stable/Generators/Rocket.html">Chipyard
+Rocket-chip</a> Chisel generator rather than a checked-out upstream source
+tree, so there is no upstream repository to fork or pin. It lives flat in
+the repository under
+<code>hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/</code>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="learn-more"><a class="anchor" href="#learn-more"></a><a class="link" href="#learn-more">Learn more</a></h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p><a href="features.html" class="xref page">Feature Overview</a>&#8201;&#8212;&#8201;what OCA Harness provides today</p>
+</li>
+<li>
+<p><a href="motivation.html" class="xref page">Motivation</a>&#8201;&#8212;&#8201;why OCA Harness exists</p>
+</li>
+<li>
+<p><a href="use-cases.html" class="xref page">Use Cases</a>&#8201;&#8212;&#8201;how adopters use OCA Harness in practice</p>
+</li>
+<li>
+<p><a href="license.html" class="xref page">License</a>&#8201;&#8212;&#8201;OCA Harness&#8217;s open-source license</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/register-sections.js"></script>
+<script src="../../_/js/toc-collapse.js"></script>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script src="../../_/js/version-menu.js"></script>
+<script src="../../_/js/vendor/viewer.min.js"></script>
+<script src="../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>

@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Dependencies :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-starting" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Getting Started and Contributing Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a user</span>
+<ul class="nav-list">
+  <li class="nav-item is-current-page" data-depth="2">
+    <a class="nav-link" href="dependencies.html">Dependencies</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="setup.html">Environment Setup</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="workflows.html">Workflows</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="guidelines.html">Guidelines</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a contributor</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="licensing.html">Licensing</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="contribution.html">Contributions</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="contribution.html#versioning">Versioning</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="defects.html">Defect Reporting</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="documentation.html">Documentation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="code_of_conduct.html">Code of Conduct</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Getting Started and Contributing Guide 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="index.html">Starting with OCAH</a></li>
+    <li>Starting as a user</li>
+    <li><a href="dependencies.html">Dependencies</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Dependencies</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>This document is currently under development.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>This section outlines the system requirements and dependencies for the
+OCAH project. To install the required packages, refer to <a href="setup.html" class="xref page">Environment Setup</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="system-requirements"><a class="anchor" href="#system-requirements"></a><a class="link" href="#system-requirements">1. System Requirements</a></h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Operating System</strong>: x86_64 Linux or macOS with the prebuilt container. See
+<a href="setup.html#supported-platforms" class="xref page">Supported platforms</a> for what each setup supports.</p>
+</li>
+<li>
+<p><strong>Python</strong>: Version 3.11 - 3.13 (3.14+ is not supported at this time)</p>
+</li>
+<li>
+<p><strong>CPU</strong>: Multi-core processor (8+ cores recommended for simulation and synthesis)</p>
+</li>
+<li>
+<p><strong>Memory</strong>: Minimum 16GB RAM recommended for full builds, 32GB recommended for large designs</p>
+</li>
+<li>
+<p><strong>Storage</strong>: Minimum 50GB available disk space, SSD recommended for build performance</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="software-dependencies"><a class="anchor" href="#software-dependencies"></a><a class="link" href="#software-dependencies">2. Software Dependencies</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The project uses the following documentation tools. See <a href="setup.html" class="xref page">Environment Setup</a> for
+installation/setup options.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Asciidoctor</strong>: AsciiDoc documentation processing and PDF generation</p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>asciidoctor-pdf</code> Version 2.3.24+</p>
+</li>
+<li>
+<p><code>asciidoctor-diagram</code> — renders diagrams during the PDF builds; the Integrator
+and Programmer guides require it. PlantUML diagrams are drawn by its bundled jar,
+so a Java runtime is also needed. The HTML builds instead render diagrams through
+the <code>asciidoctor-kroki</code> Antora extension and need no Java.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Antora</strong>: Multi-repository documentation site generator for AsciiDoc - Version 3.1.10+</p>
+</li>
+<li>
+<p><strong>Python packages</strong>: Managed by the repo-level <code>pyproject.toml</code> and <code>uv.lock</code>;
+run <code>make uv-sync</code> or <code>uv sync</code> from the repository root.</p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>PeakRDL</strong>: SystemRDL processing and RTL generation</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>RISC-V Toolchain</strong>: <code>riscv64-unknown-elf-*</code> with support for both 32-bit and
+64-bit architectures — used to compile firmware and bootcode. Provided by the
+project container; a native install is optional.</p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>riscv-unknown-elf-gcc</code> - Version 15.3.0+ recommended</p>
+</li>
+<li>
+<p><code>binutils-riscv-unknown-elf</code> - Version 2.44+ recommended</p>
+</li>
+<li>
+<p><code>picolibc-riscv64-unknown-elf</code> - Version 1.8.12+ recommended</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Verilator</strong>: Used for simulation workflows - Version 5.050+</p>
+</li>
+<li>
+<p><strong>Verible</strong>: Version v0.0-4148-g1ea007ec or newer</p>
+</li>
+<li>
+<p><strong>GnuMake</strong>: Version 4.4.1</p>
+</li>
+<li>
+<p><strong>Bender</strong>: Version 0.32.0 - Used to manage Vendor RTL and code</p>
+</li>
+<li>
+<p><strong>Slang</strong>: Version 9.1+</p>
+</li>
+<li>
+<p><strong>Yosys</strong>: Version 0.68+</p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>SV-Elab</strong>: Version 2026-08-30+ (formerly yosys-slang)</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>GCC</strong>: Version 15.3.0+ recommended</p>
+</li>
+<li>
+<p><strong>CCache</strong>: Version 4.12.3+</p>
+</li>
+<li>
+<p><strong>CMake</strong>: Version 4.2.3+</p>
+</li>
+<li>
+<p>The Virtual Platform for testing the SEP Firmware has the following additional
+dependencies, but installs and manages them itself unless configured otherwise:</p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>SystemC</strong>: Version 3.0.2, built with C++20</p>
+</li>
+<li>
+<p><strong>Boost</strong>: Version 1.84.0</p>
+</li>
+<li>
+<p><strong>OPENSSL</strong>: Version 3.3.2</p>
+</li>
+<li>
+<p><strong>SystemC CCI</strong>: Version 1.0.2, built with the above SystemC and C++20</p>
+</li>
+<li>
+<p><strong>Whisper</strong>: RISC-V Simulator - Pinned Version Managed Automatically</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="license-requirements"><a class="anchor" href="#license-requirements"></a><a class="link" href="#license-requirements">3. License Requirements</a></h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Open Source Tools</strong>: No additional licenses required</p>
+</li>
+<li>
+<p><strong>Commercial Tools</strong>: Valid licenses for VCS, Design Compiler,
+etc are optional, these may be used for alternate workflows.</p>
+</li>
+<li>
+<p><strong>Dependencies</strong>: All External IPs used within the project are distributed
+under open-source licenses (Mostly Apache/MIT).</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/register-sections.js"></script>
+<script src="../../_/js/toc-collapse.js"></script>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script src="../../_/js/version-menu.js"></script>
+<script src="../../_/js/vendor/viewer.min.js"></script>
+<script src="../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>

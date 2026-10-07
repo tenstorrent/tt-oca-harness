@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Prim Cell Replacement and Don&#8217;t-Touch Constraints :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-integrator-guide" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Integrator Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="index.html">Integrator Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="checklist.html">SoC Integration Checklist</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smu.html">SMU Top-Level Integration</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-filelists.html">RTL Filelists</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-address-map.html">Address Map Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-rom-fw.html">Immutable ROM FW Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-smc.html">System Management Controller (SMC) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-dtp.html">Debug &amp; Test Ports (DTP) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-sep.html">Security Processor (SEP) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-composition.html">SMU Composition and Internal Wiring</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="smn.html">SMN Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aou.html">AXI-over-UCIe Bridge (AoU) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="defines.html">Project Defines</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="2">
+    <a class="nav-link" href="prim.html">Prim Cell Replacement and Don&#8217;t-Touch Constraints</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="cdc.html">CDC Timing Constraints</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Integrator Guide 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="index.html">Integrator Guide</a></li>
+    <li><a href="prim.html">Prim Cell Replacement and Don&#8217;t-Touch Constraints</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Prim Cell Replacement and Don&#8217;t-Touch Constraints</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>OCAH primitives (<code>prim_buf</code>, <code>prim_and2</code>, <code>prim_clock_gating</code>, the
+<code>prim_flop_*sync*</code> family, and so on) ship as behavioral models with a
+reference technology mapping. Adopters replace them with cells from their own
+library.</p>
+</div>
+<div class="paragraph">
+<p>Two rules govern those replacements. Both are the adopter&#8217;s responsibility&#8201;&#8212;&#8201;OCAH provides the instance names, but the names have no effect until the
+adopter&#8217;s synthesis and place-and-route flows constrain them.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="prim-cell-replacement-naming"><a class="anchor" href="#prim-cell-replacement-naming"></a><a class="link" href="#prim-cell-replacement-naming">1. Naming Requirement</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><strong>Every library cell instantiated inside a replacement primitive must have
+<code>d0nt_</code> in its instance name.</strong></p>
+</div>
+<div class="paragraph">
+<p>The marker is deliberately misspelled with a zero. <code>dont_touch</code> is a reserved
+keyword in several tools and a common substring in ordinary comments and signal
+names; <code>d0nt_</code> occurs only where the protection is intended, so a name-based
+match cannot pick up unrelated cells.</p>
+</div>
+<div class="paragraph">
+<p>Clock-path cells take the extended prefix <code>d0nt_clk</code>, which selects the stricter
+rule below. The <code>d0nt_*</code> naming convention appears in the eFuse IP
+(<code>efuse_token_digest_sha256</code>, <code>efuse_triple_redundant_comparator</code>) as the
+primary example. The adopter is expected to carry the same convention into any
+technology-mapped primitive wrapper they deliver. The intended name assignments
+are:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 20%;">
+<col style="width: 55%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Instance name</th>
+<th class="tableblock halign-left valign-top">Rule</th>
+<th class="tableblock halign-left valign-top">Primitive</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>d0nt_clkgate</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Don&#8217;t touch</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_clock_gating</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>d0nt_clkbuf</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Don&#8217;t touch</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_clock_buf</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>d0nt_clkinv</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Don&#8217;t touch</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_clock_inv</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>d0nt_clkmux</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Don&#8217;t touch</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_clock_mux2</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>d0nt_clknand</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Don&#8217;t touch</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_clock_nand2</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>d0nt_clkxor</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Don&#8217;t touch</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_xor2</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>d0nt_stdbuf</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Size only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_buf</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>d0nt_stdinv</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Size only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_flop_*sync_*</code> reset inverter</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>d0nt_an*</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Size only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_and2</code>, <code>prim_and3</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>d0nt_ao222</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Size only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_ao222</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>d0nt_wrap_sync</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Size only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_flop_*sync_*</code> synchronizer flops</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Keep the same names when substituting your own cells. Adopters who rename must
+apply the equivalent constraints to whatever names they use.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="prim-cell-replacement-constraints"><a class="anchor" href="#prim-cell-replacement-constraints"></a><a class="link" href="#prim-cell-replacement-constraints">2. Constraint Requirement</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><strong>In synthesis, apply <code>set_size_only</code> to every cell matching <code>d0nt_</code>, then
+<code>set_dont_touch</code> to every cell matching <code>d0nt_clk</code>. Every step after synthesis
+needs <code>size_only</code> alone&#8201;&#8212;&#8201;on all <code>d0nt_</code> cells, clock cells included.</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-tcl hljs" data-lang="tcl"># Order matters: d0nt_clk* also matches d0nt_*, so the clock rule is applied
+# second and overrides size-only for those cells.
+set_size_only  [get_cells -hierarchical -filter "full_name =~ *d0nt_*"]
+set_dont_touch [get_cells -hierarchical -filter "full_name =~ *d0nt_clk*"]</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>size_only</code> keeps the instance in the netlist&#8201;&#8212;&#8201;the tool may not delete, merge,
+absorb, restructure, or buffer through it&#8201;&#8212;&#8201;while still allowing it to be
+swapped for another library cell of the same logic function, typically to change
+drive strength or threshold-voltage flavor for timing, area, and EM closure.
+That is the intent for every replacement cell: these primitives exist because
+the structure matters, not because the logic function could not be inferred.
+Synthesis will otherwise remove them&#8201;&#8212;&#8201;an inverter pair that cancels,
+redundant AND gates that always agree, a buffer driving a single load are all
+dead weight to an optimizer.</p>
+</div>
+<div class="paragraph">
+<p>Clock cells need the stronger <code>dont_touch</code> because that swap is exactly the
+problem. Under <code>size_only</code> the tool treats the logic function as the contract
+and every other property of the cell as free to change. On the clock path the
+function is the least of the reasons the cell was chosen. Clock buffers,
+inverters, muxes, and gaters are picked for electrical characteristics the
+function does not capture&#8201;&#8212;&#8201;matched rise and fall times above all, and with
+them duty-cycle preservation, balanced input-to-output delay, and low delay
+variation across PVT. A functionally identical cell pulled from the
+general-purpose library guarantees none of that. The netlist still says
+"inverter", functional simulation still passes, and the duty-cycle distortion
+shows up only in silicon or in a timing run late enough to be expensive.</p>
+</div>
+<div class="paragraph">
+<p><code>dont_touch</code> removes the tool&#8217;s discretion: the cell the designer selected is
+the cell that reaches the netlist. Sizing and insertion-delay decisions on the
+clock path belong to clock tree synthesis, which owns them explicitly, rather
+than to a logic-optimization pass making a substitution it believes is free.</p>
+</div>
+<div class="sect2">
+<h3 id="prim-cell-replacement-post-synthesis"><a class="anchor" href="#prim-cell-replacement-post-synthesis"></a><a class="link" href="#prim-cell-replacement-post-synthesis">2.1. After Synthesis</a></h3>
+<div class="paragraph">
+<p>The <code>dont_touch</code> on <code>d0nt_clk*</code> is a synthesis-only constraint. Once synthesis
+has handed off the netlist, release the clock cells to <code>size_only</code> and carry
+that&#8201;&#8212;&#8201;and nothing stronger&#8201;&#8212;&#8201;through placement, clock tree synthesis,
+routing, and optimization:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-tcl hljs" data-lang="tcl"># Post-synthesis: uniform size_only, clock cells included.
+set_dont_touch [get_cells -hierarchical -filter "full_name =~ *d0nt_clk*"] false
+set_size_only  [get_cells -hierarchical -filter "full_name =~ *d0nt_*"]</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The stricter rule exists to stop logic optimization from choosing the cell.
+Downstream, clock cell sizing is CTS&#8217;s job: it cannot balance skew or close
+transition violations with the cells it needs to resize frozen, and freezing
+them there buys nothing. Keeping <code>size_only</code> in place still prevents deletion,
+merging, and restructuring for the rest of the flow.</p>
+</div>
+<div class="paragraph">
+<p>Restrict the physical flow to the library&#8217;s clock-cell list so a resize stays
+inside the same clock cell family. Sizing a <code>CLKBUF_D4</code> up to a <code>CLKBUF_D8</code>
+keeps the matched rise and fall behavior the cell was chosen for; substituting a
+general-purpose buffer of equivalent drive does not.</p>
+</div>
+<div class="paragraph">
+<p>Additional requirements:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Carry <code>size_only</code> through PnR.</strong> The <code>dont_touch</code> is synthesis-only, but
+<code>size_only</code> is not. A cell protected in synthesis and left entirely
+unprotected downstream is not protected.</p>
+</li>
+<li>
+<p><strong>Verify the match is non-zero.</strong> A typo in the filter, or a flow that renames
+instances before the constraint is read, silently protects nothing. Check the
+collection size and error out if it is empty.</p>
+</li>
+<li>
+<p><strong>Preserve the names.</strong> Uniquification, flattening, and name mapping must not
+strip the <code>d0nt_</code> substring. If your flow renames instances, derive the
+collections before flattening and carry them forward.</p>
+</li>
+<li>
+<p><strong>Restore protection after ECOs.</strong> Flows that relax preservation constraints for
+clock-tree or filler ECOs&#8201;&#8212;&#8201;clearing <code>eco_honor_dont_touch</code>, for example&#8201;&#8212;&#8201;must restore <code>size_only</code> before any subsequent optimization pass.</p>
+</li>
+<li>
+<p><strong>Check the final netlist,</strong> not just the post-synthesis one.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Flows other than Design Compiler and Fusion Compiler must apply the equivalent
+<code>size_only</code> and <code>dont_touch</code> attributes to the same collections.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="prim-cell-replacement-simulation"><a class="anchor" href="#prim-cell-replacement-simulation"></a><a class="link" href="#prim-cell-replacement-simulation">3. Simulation</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>These constraints have no functional effect and no simulation impact. RTL
+simulation compiles the technology-independent primitive models (<code>not(synth)</code>).
+Library cells are not on that filelist, so a simulator never elaborates them.</p>
+</div>
+<div class="paragraph">
+<p>Confirming that the protected cells survived is therefore a gate-level netlist
+check. RTL simulation cannot detect their loss.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/register-sections.js"></script>
+<script src="../../_/js/toc-collapse.js"></script>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script src="../../_/js/version-menu.js"></script>
+<script src="../../_/js/vendor/viewer.min.js"></script>
+<script src="../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>

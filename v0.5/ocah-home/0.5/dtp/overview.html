@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Overview :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="DTP internal structure and how debug access reaches the JIU and CTN.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-home" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Home</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../features.html">Feature Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../motivation.html">Motivation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../use-cases.html">Use Cases</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../license.html">License</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Guides</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-programmer-guide/0.5/index.html">Programmer&#8217;s Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Verification</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../dashboard.html">Dashboard</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="overview.html">Overview</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Overview</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="dtp-overview" class="paragraph">
+<p>The DTP contains two major functional blocks — the JTAG Interface Unit (JIU) and
+the Cross Trigger Network (CTN) — plus the DTP top-level wiring that connects
+them to each other, to the SMC and SEP, and to the external JTAG and
+cross-trigger pads.</p>
+</div>
+<div id="dtp-internal-structure-figure" class="imageblock">
+<div class="content">
+<img src="_images/dtp-top-level.svg" alt="DTP top-level block diagram: the JTAG interface unit with the primary TAP, JTAG2AXI bridges, STAP chain, iJTAG SIBs and debug-disable synchroniser, and the cross-trigger network with its CSR crossbar, matrix, external and internal cross-trigger ports and clock-stop control" width="100%">
+</div>
+<div class="title">Figure 1. DTP internal structure</div>
+</div>
+<div class="paragraph">
+<p><a href="#dtp-internal-structure-figure">DTP internal structure</a> draws each RTL instance under its instance name
+inside the <code>u_jtag_intf_unit</code> and <code>u_cross_trigger_network</code> hierarchy boundaries.
+Labels at the figure edges name what each DTP port connects to in the SMU. Blue
+lines carry JTAG and scan data, dark lines AXI4 and AXI-Lite, and grey lines other
+signals. Dashed blocks exist only when their enable parameter is set: the three
+JTAG2AXI bridges follow <code>JTAG_SMC_DBG_ENABLE</code> and <code>JTAG_SEP_DBG_ENABLE</code>, and the
+STAPs follow <code>JTAG_STAP_IO_ENABLE</code>, <code>JTAG_SMC_DBG_ENABLE</code>, <code>JTAG_SEP_DBG_ENABLE</code>
+and <code>JTAG_NUM_EXTRA_STAPS</code>. The grey fan-out from the debug-disable synchroniser
+reaches every STAP, SIB and bridge. The
+<a href="jtag.html#dtp-jtag-scan-chain-figure" class="xref page">DTP JTAG scan chain</a> figure gives the
+serial order of the scan paths.</p>
+</div>
+<div class="paragraph">
+<p>The figure names each count by its <code>dtp</code> parameter. <code>XTRIG_NUM_CTP</code> external CTPs,
+<code>XTRIG_NUM_INT_CT</code> internal lanes and <code>XTRIG_NUM_CLK_STOP_REQ</code> clock-stop requests
+default to the <code>dtp_pkg</code> values 16, 10 and 9. The CTM is N × N, where N is
+<code>XTRIG_NUM_CTP</code> + <code>XTRIG_NUM_INT_CT</code> (26 by default); its generated register
+geometry must equal that sum, which elaboration checks. <code>u_axil_xbar</code> has one
+manager port for the CTM and one for each external CTP, 17 by default.
+<code>JTAG_NUM_EXTRA_STAPS</code> sets the number of <code>u_stap_extra</code> instances, 1 by default.
+In the cross-trigger network, <code>u_axil_xbar</code> decodes the DTP CSR window, which the
+SMC peripheral crossbar rebases to 0, onto the CTM at offset 0x000 and one 16-byte
+window for each external CTP from 0x200. The internal cross-trigger lanes are
+<code>u_int_ctp_core</code> instances without CSRs, whose protocol <code>XTRIG_INT_CT_MODE</code> fixes.
+In the SMU the first two lanes connect to the SMC DFD CLA, one clock-stop request
+comes from the CLA, and the remaining lanes and requests leave the SMU.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="jtag-interface-unit"><a class="anchor" href="#jtag-interface-unit"></a><a class="link" href="#jtag-interface-unit">JTAG Interface Unit</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The JTAG Interface Unit (JIU) is the top-level JTAG control module. It contains:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A Primary TAP (PTAP) — the main chiplet JTAG entry point, connected to the
+five external JTAG pins (TCK, TDI, TDO, TMS, TRST_n).</p>
+</li>
+<li>
+<p>A configurable set of Secondary TAPs (STAPs) — for I/O chiplet-to-chiplet
+JTAG, SMC CPU debug, SEP CPU debug, and optional extra TAPs.</p>
+</li>
+<li>
+<p>An iJTAG network selected by <code>SELECT_IJTAG</code>, with a serial cascade of
+secure DFT, non-secure DFT, and DFD SIBs. Each SIB inserts or bypasses its
+associated external scan segment.</p>
+</li>
+<li>
+<p>Independent instruction-selected PTAP TDRs for SMC fabric debug
+(JTAG2AXI), SMC OTP (JTAG2AXIL), and SEP OTP (JTAG2AXIL). These bridges
+are outside the iJTAG SIB cascade.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="cross-trigger-network"><a class="anchor" href="#cross-trigger-network"></a><a class="link" href="#cross-trigger-network">Cross Trigger Network</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The Cross Trigger Network (CTN) routes cross-trigger pulses between on-chip
+sources and sinks and the external CTP pads. It consists of:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Cross Trigger Ports (CTPs)</strong> — pad-facing modules, each connecting to four
+I/O pads (CT_Req_out, CT_Ack_in, CT_Req_in, CT_Ack_out) and supporting both
+wire-OR and point-to-point signalling.</p>
+</li>
+<li>
+<p><strong>Cross Trigger Matrix (CTM)</strong> — an N × N AND-OR crossbar (26 × 26 by default)
+that statically routes trigger pulses under AXI-Lite CSR control.</p>
+</li>
+<li>
+<p><strong>Clock stop aggregation</strong> — the CTN OR-reduces all <code>xtrig_clk_stop_req_i</code>
+inputs (CLA sources) and OR-combines the result with the JTAG <code>jtag_clock_stop</code>
+bit to produce the registered <code>stop_clks_o</code> output.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Per-path debug-disable inputs gate STAPs, iJTAG SIBs, and JTAG2AXI bridges.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="debug-access-paths"><a class="anchor" href="#debug-access-paths"></a><a class="link" href="#debug-access-paths">Debug Access Paths</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>External debug access reaches the DTP subsystem through two routes:</p>
+</div>
+<div class="paragraph">
+<p><strong>JTAG path</strong>: An external debugger drives the five JTAG pins directly. The PTAP
+decodes the JTAG instruction, selects the appropriate TDR, and routes data
+through the scan chain. JTAG2AXI instructions allow the debugger to generate
+AXI transactions on the SMC fabric via the PTAP&#8217;s built-in bridges, without
+involving the SMC CPU.</p>
+</div>
+<div class="paragraph">
+<p><strong>AXI path</strong>: The DTP cross-trigger configuration registers (CTM and CTP CSRs)
+are memory-mapped inside the SMC address space. The SMC exposes them on its
+<code>axil_dtp_csr_req_o</code> / <code>axil_dtp_csr_resp_i</code> interface, which the SMU wires
+directly to the DTP <code>axil_xtrig_req_i</code> / <code>axil_xtrig_resp_o</code> ports. Software
+running on the SMC reaches the CTN CSRs through its own register map
+(<code>dtp_ctrl_reg</code> in <code>smc.rdl</code>). An external debugger using the PTAP JTAG2AXI
+bridge reaches the same window through the SMC fabric AXI port.
+See the CTN Memory Map section for the CTN-internal address layout.</p>
+</div>
+<div class="paragraph">
+<p>Firmware and an external debugger share this window. The Programmer&#8217;s Guide
+gives the
+<a href="../../../ocah-programmer-guide/0.5/index.html#dtp-cross-trigger" class="xref page">cross-trigger programming sequence</a>.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

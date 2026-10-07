@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>SRAM Scrambling :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-starting" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../../../index.html">Getting Started and Contributing Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../../../index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a user</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../dependencies.html">Dependencies</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../setup.html">Environment Setup</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../workflows.html">Workflows</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../guidelines.html">Guidelines</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a contributor</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../licensing.html">Licensing</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../contribution.html">Contributions</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../contribution.html#versioning">Versioning</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../defects.html">Defect Reporting</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../documentation.html">Documentation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../code_of_conduct.html">Code of Conduct</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Getting Started and Contributing Guide 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../../../index.html">Starting with OCAH</a></li>
+    <li><a href="index.html">SRAM Scrambling</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">SRAM Scrambling</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>Both the address as well as data can optionally be scrambled. The goal
+of the scrambler is not secure data encryption but rather basic
+obfuscation to impede simple memory dumping by an attacker aiming to
+recover secrets. The algorithm would be straight forward to break by a
+trained cryptanalyst. The implementation is intentionally very simple so
+that the timing overhead on memory read and write transactions is
+minimal.</p>
+</div>
+<div class="paragraph">
+<p>The scrambler is disabled by default, but a configuration register field
+can be set to turn this feature on after booting and the scrambling key
+is installed. When it is on, all write data transactions will have both
+the address and data scrambled before performing a write to memory. On
+read operations, the address will be scrambled in the same fashion as
+for writes so we have an equivalent address mapping. The read data
+however must be descrambled. Address data tweaks the key, which means it
+is mixed in to ensure that the same data at different address locations
+has a different scrambled value.</p>
+</div>
+<div class="paragraph">
+<p>The KM ROM writes DRBG output into the key register and then enables and
+locks the scrambler; the
+<a href="../../../../../ocah-programmer-guide/0.5/index.html#memory-scrambler-provisioning" class="xref page">Memory Scrambler Provisioning</a>
+section of the Key Manager Application ROM appendix in the Programmer&#8217;s Guide
+gives the order.</p>
+</div>
+<div class="paragraph">
+<p>The scrambler IP consists of a generic top-level module (<code>scrambler</code>) and a set of pre-configured size-specific wrappers that fix the address width to match a particular SRAM depth. The generic module selects the correct address scrambling function at elaboration time through generate blocks keyed on <code>ADDR_WIDTH</code>. The <code>scrambler_addr_tweak</code> submodule expands and mixes the memory address into a 32-bit round key. All cryptographic primitives (S-boxes, permutations, and address scramble functions) are declared as <code>automatic</code> functions in <code>scrambler_pkg</code>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="parameters"><a class="anchor" href="#parameters"></a><a class="link" href="#parameters">1. Parameters</a></h2>
+<div class="sectionbody">
+<span id="sram-scrambler-parameters-table"></span>
+<div class="paragraph">
+<p>The scrambler module accepts three parameters. Only 32-bit data widths are supported in the current implementation.</p>
+</div>
+<div class="paragraph">
+<p>The parameters and ports of <code>scrambler</code> are listed in <a href="../../../../../ocah-docs/0.5/rtl-modules-reference/ip/scrambler/scrambler.html" class="xref page">scrambler</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="port-interface"><a class="anchor" href="#port-interface"></a><a class="link" href="#port-interface">2. Port Interface</a></h2>
+<div class="sectionbody">
+<span id="sram-scrambler-ports-table"></span>
+<div class="paragraph">
+<p>The scrambler is purely combinational. It has no clock or reset ports.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="data-scrambling-algorithm"><a class="anchor" href="#data-scrambling-algorithm"></a><a class="link" href="#data-scrambling-algorithm">3. Data Scrambling Algorithm</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The scrambling algorithm is an extremely rudimentary, round reduced,
+block cipher inspired by the PRESENT cipher. PRESENT works on 64 bit
+blocks, while this scrambler works on 32-bit blocks. PRESENT operates on
+32 repeated rounds, while this scrambler performs only a single round.
+The player (permutation function) is also altered to accommodate the
+reduced block size i.e. word length.</p>
+</div>
+<div class="paragraph">
+<p>The data path implements the PRESENT 4-bit S-box (<code>sbox4</code>) from <code>scrambler_pkg</code>. Eight parallel S-box instances process the 32-bit word one nibble at a time. The S-box mapping is shown in <a href="#sram-scrambler-s-box-table">SRAM scrambler S-box</a>.</p>
+</div>
+<table id="sram-scrambler-s-box-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SRAM scrambler S-box</caption>
+<colgroup>
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8832%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">x</th>
+<th class="tableblock halign-left valign-top">0</th>
+<th class="tableblock halign-left valign-top">1</th>
+<th class="tableblock halign-left valign-top">2</th>
+<th class="tableblock halign-left valign-top">3</th>
+<th class="tableblock halign-left valign-top">4</th>
+<th class="tableblock halign-left valign-top">5</th>
+<th class="tableblock halign-left valign-top">6</th>
+<th class="tableblock halign-left valign-top">7</th>
+<th class="tableblock halign-left valign-top">8</th>
+<th class="tableblock halign-left valign-top">9</th>
+<th class="tableblock halign-left valign-top">A</th>
+<th class="tableblock halign-left valign-top">B</th>
+<th class="tableblock halign-left valign-top">C</th>
+<th class="tableblock halign-left valign-top">D</th>
+<th class="tableblock halign-left valign-top">E</th>
+<th class="tableblock halign-left valign-top">F</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>S(x)</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">C</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">D</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">E</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The inverse S-box (<code>ibox4</code>) reverses the mapping and is used on the descramble path.</p>
+</div>
+<div class="paragraph">
+<p>The permutation layer follows the PRESENT structure with progressive offsets of 8 bits rather than 16. Index <em>i</em> indicates the input bit position and <em>P(i)</em> indicates the output bit position.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sram-scrambler-permutation-for-bits-31-to-16-table">SRAM scrambler permutation for bits 31 to 16</a> maps input bits 31 through 16 to
+their output positions.</p>
+</div>
+<table id="sram-scrambler-permutation-for-bits-31-to-16-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. SRAM scrambler permutation for bits 31 to 16</caption>
+<colgroup>
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8832%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">i</th>
+<th class="tableblock halign-left valign-top">31</th>
+<th class="tableblock halign-left valign-top">30</th>
+<th class="tableblock halign-left valign-top">29</th>
+<th class="tableblock halign-left valign-top">28</th>
+<th class="tableblock halign-left valign-top">27</th>
+<th class="tableblock halign-left valign-top">26</th>
+<th class="tableblock halign-left valign-top">25</th>
+<th class="tableblock halign-left valign-top">24</th>
+<th class="tableblock halign-left valign-top">23</th>
+<th class="tableblock halign-left valign-top">22</th>
+<th class="tableblock halign-left valign-top">21</th>
+<th class="tableblock halign-left valign-top">20</th>
+<th class="tableblock halign-left valign-top">19</th>
+<th class="tableblock halign-left valign-top">18</th>
+<th class="tableblock halign-left valign-top">17</th>
+<th class="tableblock halign-left valign-top">16</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>P(i)</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">20</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">24</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">28</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">13</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">17</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">21</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">25</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">29</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><a href="#sram-scrambler-permutation-for-bits-15-to-0-table">SRAM scrambler permutation for bits 15 to 0</a> maps input bits 15 through 0 to
+their output positions.</p>
+</div>
+<table id="sram-scrambler-permutation-for-bits-15-to-0-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. SRAM scrambler permutation for bits 15 to 0</caption>
+<colgroup>
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8832%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">i</th>
+<th class="tableblock halign-left valign-top">15</th>
+<th class="tableblock halign-left valign-top">14</th>
+<th class="tableblock halign-left valign-top">13</th>
+<th class="tableblock halign-left valign-top">12</th>
+<th class="tableblock halign-left valign-top">11</th>
+<th class="tableblock halign-left valign-top">10</th>
+<th class="tableblock halign-left valign-top">9</th>
+<th class="tableblock halign-left valign-top">8</th>
+<th class="tableblock halign-left valign-top">7</th>
+<th class="tableblock halign-left valign-top">6</th>
+<th class="tableblock halign-left valign-top">5</th>
+<th class="tableblock halign-left valign-top">4</th>
+<th class="tableblock halign-left valign-top">3</th>
+<th class="tableblock halign-left valign-top">2</th>
+<th class="tableblock halign-left valign-top">1</th>
+<th class="tableblock halign-left valign-top">0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>P(i)</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">14</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">18</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">22</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">26</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">30</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">15</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">19</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">23</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">27</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">31</p></td>
+</tr>
+</tbody>
+</table>
+<div id="scrambling-procedure" class="paragraph">
+<p><strong>Scrambling Procedure</strong></p>
+</div>
+<div class="paragraph">
+<p>First the tweaked key is xor&#8217;ed with the input write data. The output is
+split into 8 4-bit nibble lanes and each is fed into an sbox function.
+The resulting values are concatenated and fed into the player permutation
+function to form the final scrambled data value which is written to memory.</p>
+</div>
+<div id="descrambling-procedure" class="paragraph">
+<p><strong>Descrambling Procedure</strong></p>
+</div>
+<div class="paragraph">
+<p>The descrambling process is exactly the reverse as scrambling. The
+scrambled data value is read from memory and we first perform the
+iplayer inverse permutation operation. This is followed by inverse sbox
+functions applied to each 4-bit lane, with the outputs concatenated.
+This word is then xor&#8217;ed with the tweaked key to recover the unscrambled
+read data.</p>
+</div>
+<div class="paragraph">
+<p><strong>Address Tweaking:</strong></p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>Rkey = scrambler_key[31:0] ^ {addr[N-1:0] repeated to fill 32-bits}</pre>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>Scrambling:</strong></p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>Write_data_sbi = Write_data ^ Rkey
+Write_data_sb = {
+    sbox(write_data_ak[31:28]),
+    sbox(write_data_ak[27:24]),
+    sbox(write_data_ak[23:20]),
+    sbox(write_data_ak[19:16]),
+    sbox(write_data_ak[15:12]),
+    sbox(write_data_ak[11:8]),
+    sbox(write_data_ak[7:4]),
+    sbox(write_data_ak[3:0])}
+Scrambled_write_data = player(Write_data_sb)</pre>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>Descrambling:</strong></p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>Read_data_sbi = iplayer(Scrambled_read_data)
+Read_data_sbo = {
+    ibox(Read_data_sbi[31:28]),
+    ibox(Read_data_sbi[27:24]),
+    ibox(Read_data_sbi[23:20]),
+    ibox(Read_data_sbi[19:16]),
+    ibox(Read_data_sbi[15:12]),
+    ibox(Read_data_sbi[11:8]),
+    ibox(Read_data_sbi[7:4]),
+    ibox(Read_data_sbi[3:0])}
+Read_data = Read_data_sbo ^ Rkey</pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="address-tweaking"><a class="anchor" href="#address-tweaking"></a><a class="link" href="#address-tweaking">4. Address Tweaking</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>As previously mentioned, address tweaking is necessary so that the same
+data at different addresses scrambles to unique values. Tweaking is
+performed by simply xor mixing the address with the random scrambler key
+to form the round key. If the address is less than 32 bits wide, then we
+just repeatedly concatenate the address with itself until we have 32
+bits, truncating any excess bits.</p>
+</div>
+<div class="paragraph">
+<p>The <code>scrambler_addr_tweak</code> submodule implements this expansion. For power-of-two-aligned widths (8 and 16), the address is replicated exactly to fill 32 bits. For non-power-of-two widths, the address is concatenated three times and the upper portion of the third copy is truncated to produce exactly 32 bits. <a href="#sram-scrambler-address-expansion-table">SRAM scrambler address expansion</a> lists the expansion formula used for each supported width.</p>
+</div>
+<table id="sram-scrambler-address-expansion-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. SRAM scrambler address expansion</caption>
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 85%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">ADDR_WIDTH</th>
+<th class="tableblock halign-left valign-top">Expansion to 32 bits</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>{addr, addr, addr, addr}</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>{addr, addr, addr, addr[8:4]}</code> (9+9+9+5 = 32)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>{addr, addr, addr, addr[9:8]}</code> (10+10+10+2 = 32)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>{addr, addr, addr[10:1]}</code> (11+11+10 = 32)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>{addr, addr, addr[11:4]}</code> (12+12+8 = 32)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">13</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>{addr, addr, addr[12:7]}</code> (13+13+6 = 32)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>{addr, addr}</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Identity (no expansion).</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The expanded address is XORed with <code>scrambler_key_i</code> to produce the 32-bit <code>round_key_o</code>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="address-scrambling"><a class="anchor" href="#address-scrambling"></a><a class="link" href="#address-scrambling">5. Address Scrambling</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Address scrambling is done in a similar fashion as data scrambling with
+an arbitrary permutation function. The address bits are first xor&#8217;ed
+with the key bits according to the address width. The result is then
+split into 3 or 4 bit lanes, and passed through one sbox per lane.
+Finally the sbox results are concatenated and fed through a linear
+permutation network. There is <em>no descrambling operation on the
+address</em>, only scrambling.</p>
+</div>
+<div class="paragraph">
+<p>Each supported address width has a dedicated <code>addr_scrambleN</code> function in <code>scrambler_pkg</code>. These functions partition the address-key-XOR result into lanes of 3 or 4 bits, apply <code>sbox3</code> (Pyjamask) or <code>sbox4</code> (PRESENT) to each lane, concatenate the S-box outputs, and pass the result through the corresponding <code>permN</code> fixed permutation. The lane partitioning varies by width to ensure the full address is covered without padding.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sram-scrambler-address-lanes-table">SRAM scrambler address lanes</a> identifies the S-box lanes and permutation used
+at each address width.</p>
+</div>
+<table id="sram-scrambler-address-lanes-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 5. SRAM scrambler address lanes</caption>
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 35%;">
+<col style="width: 20%;">
+<col style="width: 30%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Width</th>
+<th class="tableblock halign-left valign-top">S-box Lane Partition</th>
+<th class="tableblock halign-left valign-top">S-box Types</th>
+<th class="tableblock halign-left valign-top">Permutation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[5:3], [2:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbox3</code>, <code>sbox3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>perm6</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[6:3], [2:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbox4</code>, <code>sbox3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>perm7</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[7:4], [3:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbox4</code>, <code>sbox4</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>perm8</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[8:6], [5:3], [2:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbox3</code> x3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>perm9</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[9:6], [5:3], [2:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbox4</code>, <code>sbox3</code> x2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>perm10</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[10:8], [7:4], [3:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbox3</code>, <code>sbox4</code> x2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>perm11</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[11:8], [7:4], [3:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbox4</code> x3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>perm12</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">13</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[12:9], [8:6], [5:3], [2:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbox4</code>, <code>sbox3</code> x3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>perm13</code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="byte-wise-scrambling-mode"><a class="anchor" href="#byte-wise-scrambling-mode"></a><a class="link" href="#byte-wise-scrambling-mode">6. Byte-Wise Scrambling Mode</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>When the <code>BYTE_WISE</code> parameter is set to 1, the permutation layer operates on each byte independently rather than across the full 32-bit word. On the write path, the eight S-box outputs are grouped into four byte lanes and each lane is permuted with <code>perm8</code>. On the read path, <code>iperm8</code> is applied per byte lane before the inverse S-box stage. The S-box and round-key XOR stages are identical regardless of the <code>BYTE_WISE</code> setting.</p>
+</div>
+<div class="paragraph">
+<p>This mode is used in the Key Manager SRAM interface where byte-level write strobes require that scrambling of one byte lane does not depend on data in other lanes.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="instantiation-variants"><a class="anchor" href="#instantiation-variants"></a><a class="link" href="#instantiation-variants">7. Instantiation Variants</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Five pre-configured modules are provided, each fixing the <code>ADDR_WIDTH</code> parameter for a specific SRAM depth. All variants default to <code>DATA_WIDTH</code> = 32 and <code>BYTE_WISE</code> = 0, though the <code>BYTE_WISE</code> parameter can be overridden at instantiation.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sram-scrambler-module-variants-table">SRAM scrambler module variants</a> relates each preconfigured module to its SRAM
+depth and address-scramble function.</p>
+</div>
+<table id="sram-scrambler-module-variants-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 6. SRAM scrambler module variants</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 15%;">
+<col style="width: 20%;">
+<col style="width: 40%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Module</th>
+<th class="tableblock halign-left valign-top">ADDR_WIDTH</th>
+<th class="tableblock halign-left valign-top">SRAM Depth</th>
+<th class="tableblock halign-left valign-top">Address Scramble Function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scrambler_512x32</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 words</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>addr_scramble9</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scrambler_1024x32</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1024 words</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>addr_scramble10</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scrambler_2048x32</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2048 words</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>addr_scramble11</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scrambler_4096x32</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4096 words</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>addr_scramble12</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scrambler_8192x32</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">13</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8192 words</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>addr_scramble13</code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="integration-in-the-key-manager"><a class="anchor" href="#integration-in-the-key-manager"></a><a class="link" href="#integration-in-the-key-manager">8. Integration in the Key Manager</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The Key Manager SRAM interface (<code>km_sram_interface</code>) instantiates two <code>scrambler_8192x32</code> instances with <code>BYTE_WISE</code> = 1, whose 13-bit address covers the 8192 words of the 32 KiB SRAM. The first instance (<code>u_req_scrambler</code>) scrambles the write data and address on the request path. The second instance (<code>u_rsp_descrambler</code>) descrambles read data on the response path using the address captured when the SRAM accepts the read.</p>
+</div>
+<div class="paragraph">
+<p>The scrambler is controlled through the <code>SCRAMBLER_KEY</code> and <code>SCRAMBLER_CTRL</code> registers in the Key Manager CSR block (<code>km_csr</code>). The <code>SCRAMBLER_CTRL</code> register has two fields: <code>enable</code> at bit 0 and <code>lock</code> at bit 1. When <code>lock</code> is written to 1, the transition is permanent until the next reset. Once locked, the key register reads as zero, writes to it are ignored, and the scrambler is forced into the enabled state. This prevents firmware from disabling scrambling or reading back the key after provisioning.</p>
+</div>
+<div class="paragraph">
+<p>A bypass multiplexer gates the scrambled data path. When <code>scrambler_en_i</code> is deasserted, addresses and data pass through unmodified. Parity is always computed on the plaintext data before scrambling, ensuring that the parity check on the read path operates on the descrambled value.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sram-scrambler-datapath-figure">SRAM scrambler datapath</a> shows the address and data scrambling paths at the
+SRAM interface.</p>
+</div>
+<div id="sram-scrambler-datapath-figure" class="imageblock">
+<div class="content">
+<img src="../../_images/scrambler-datapath.svg" alt="Scrambler datapath: address tweak, address scramble, write-path S-boxes and permutation, and read-path inverse permutation and S-boxes" width="100%">
+</div>
+<div class="title">Figure 1. SRAM scrambler datapath</div>
+</div>
+<div class="paragraph">
+<p>Inputs enter on the left and the memory side is on the right. The write path
+runs left to right along the middle row and the read path right to left along
+the bottom row. Both paths use the same <code>round_key</code> from <code>u_addr_tweak</code>, so the
+read path must be given the address the read data was fetched from.
+<code>BYTE_WISE</code> selects between the whole-word permutations and the per-byte
+permutations shown in each permutation box. The enable multiplexer and the
+parity logic belong to the caller, not to <code>scrambler</code>.</p>
+</div>
+<div class="paragraph">
+<p>The Key and Policy Vault (<code>km_kpv</code>) also instantiates <code>scrambler_1024x32</code>
+(<code>u_scrambler_km</code>, <code>BYTE_WISE</code> = 0) in front of its key register file, keyed by
+the KPV&#8217;s own scrambler key.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../../../_/js/register-sections.js"></script>
+<script src="../../../../../_/js/toc-collapse.js"></script>
+<script src="../../../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/version-menu.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
+<script async src="../../../../../_/js/vendor/highlight.js"></script>
+<script src="../../../../../_/js/vendor/lunr.js"></script>
+<script src="../../../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../../../.." data-snippet-length="100" data-stylesheet="../../../../../_/css/search.css"></script>
+<script async src="../../../../../search-index.js"></script>
+  </body>
+</html>

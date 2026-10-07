@@ -1,0 +1,1104 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ */
+
+.doc .stemblock > .content {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+/* Hide placeholder navbar items (upstream demo content only: any leftover
+   Home/Products/Services/Download not otherwise replaced) -- explicit
+   exceptions for every real item we've added. */
+.navbar-end > .navbar-item.has-dropdown:not(.guides-menu):not(.downloads-menu):not(.datasheets-menu):not(.versions-menu),
+.navbar-end > .navbar-item:not(.navbar-brand):not(.tt-link):not(.repo-links):not(.guides-menu):not(.downloads-menu):not(.datasheets-menu):not(.versions-menu) {
+    display: none !important;
+}
+
+/* version-menu.js reveals the menu once versions.json lists a release */
+.navbar-end .navbar-item.versions-menu {
+    display: none !important;
+}
+
+.navbar-end .navbar-item.versions-menu.is-ready {
+    display: flex !important;
+    align-items: center;
+}
+
+/* Guides / Downloads / Datasheets dropdowns -- keep visible, style to match navbar */
+.navbar-end .navbar-item.guides-menu,
+.navbar-end .navbar-item.downloads-menu,
+.navbar-end .navbar-item.datasheets-menu {
+    display: flex !important;
+    align-items: center;
+}
+
+.navbar-end .navbar-link {
+    color: var(--oca-text) !important;
+    font-family: var(--oca-font-body);
+    background: none !important;
+}
+
+.navbar-dropdown {
+    background-color: var(--oca-cream) !important;
+    border: 1px solid var(--oca-green);
+}
+
+/* Explicit show/hide behavior for the dropdown, rather than relying on the
+   underlying bundle's own hover CSS */
+.header,
+.navbar,
+.navbar-menu,
+.navbar-end {
+    overflow: visible !important;
+}
+
+.navbar-item.has-dropdown {
+    position: relative;
+}
+
+.navbar-item.has-dropdown .navbar-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 500;
+}
+
+.navbar-item.has-dropdown:hover .navbar-dropdown,
+.navbar-item.has-dropdown:focus-within .navbar-dropdown,
+.navbar-item.has-dropdown.is-active .navbar-dropdown {
+    display: block !important;
+}
+
+.navbar-dropdown .navbar-item {
+    display: block !important;
+    color: var(--oca-text) !important;
+    font-family: var(--oca-font-body);
+}
+
+.navbar-dropdown .navbar-item:hover {
+    background-color: var(--oca-green) !important;
+    color: #ffffff !important;
+}
+
+/* Tenstorrent link -- keep visible, style to match navbar */
+.navbar-end .navbar-item.tt-link {
+    display: flex !important;
+    align-items: center;
+}
+
+.navbar-end .navbar-item.tt-link img {
+    display: block;
+}
+
+/* GitHub repository and Discussions links: monochrome icons in the navbar
+   text color, set off from the menus by a thin divider. The icons are CSS
+   masks so they take currentColor. */
+.navbar-end .navbar-item.repo-links {
+    display: flex !important;
+    align-items: center;
+    gap: 2px;
+    padding: 0 6px 0 14px;
+}
+
+.navbar-end .navbar-item.repo-links::before {
+    content: "";
+    width: 1px;
+    height: 20px;
+    margin-right: 8px;
+    background-color: rgba(0, 0, 0, 0.15);
+}
+
+.navbar-end .repo-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    color: var(--oca-text);
+    font-family: var(--oca-font-body);
+    text-decoration: none;
+}
+
+.navbar-end .repo-link:hover {
+    color: var(--oca-green);
+    background-color: rgba(16, 53, 37, 0.08);
+}
+
+.navbar-end .repo-link:focus-visible {
+    outline: 2px solid var(--oca-green);
+    outline-offset: 1px;
+}
+
+.repo-icon {
+    width: 20px;
+    height: 20px;
+    background-color: currentColor;
+    -webkit-mask: center / contain no-repeat;
+    mask: center / contain no-repeat;
+}
+
+.repo-icon-github {
+    -webkit-mask-image: url("../img/vendor/octicons/mark-github-16.svg");
+    mask-image: url("../img/vendor/octicons/mark-github-16.svg");
+}
+
+.repo-icon-discussions {
+    -webkit-mask-image: url("../img/vendor/octicons/comment-discussion-16.svg");
+    mask-image: url("../img/vendor/octicons/comment-discussion-16.svg");
+}
+
+.repo-link-label {
+    display: none;
+}
+
+/* ========================================
+   OCA ECOSYSTEM VISUAL ALIGNMENT
+   Palette and font names sourced from openchipletatlas.org page inspection.
+   Menu structure is left unchanged; this block only touches color,
+   background, and typography.
+   ======================================== */
+/* Fonts, served from the sibling fonts/    folder under ui-supplemental. 
+   Each family is declared once per
+   weight/style actually supplied; the system-font fallback in each
+   --oca-font-* stack below only applies if a given font file fails
+   to load.*/
+@font-face {
+    font-family: "Degular Display";
+    src: url("../fonts/DegularDisplay-Light.woff2") format("woff2"),
+         url("../fonts/DegularDisplay-Light.woff") format("woff");
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Degular Display";
+    src: url("../fonts/DegularDisplay-Medium.woff2") format("woff2"),
+         url("../fonts/DegularDisplay-Medium.woff") format("woff");
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Neue Haas Unica Pro";
+    src: url("../fonts/NeueHaasUnicaProRegular.woff2") format("woff2"),
+         url("../fonts/NeueHaasUnicaProRegular.woff") format("woff");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Neue Haas Unica Pro";
+    src: url("../fonts/NeueHaasUnicaProMedium.woff2") format("woff2"),
+         url("../fonts/NeueHaasUnicaProMedium.woff") format("woff");
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Berkeley Mono";
+    src: url("../fonts/BerkeleyMono-Regular.woff2") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Berkeley Mono";
+    src: url("../fonts/BerkeleyMono-Bold.woff2") format("woff2");
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Berkeley Mono";
+    src: url("../fonts/BerkeleyMono-Oblique.woff2") format("woff2");
+    font-weight: 400;
+    font-style: oblique;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Berkeley Mono";
+    src: url("../fonts/BerkeleyMono-Bold-Oblique.woff2") format("woff2");
+    font-weight: 700;
+    font-style: oblique;
+    font-display: swap;
+}
+
+:root {
+    --oca-green: #103525;
+    --oca-cream: #EEEAE0;
+    --oca-cream-light: #F8F4EB;
+    --oca-gold: #F6BC42;
+    /* Darkened variant of --oca-gold for use as text color on light/white
+       backgrounds. Only needed where gold is used as foreground text on a 
+	   light background. */
+    --oca-gold-accessible: #937027;
+    --oca-orange: #F6931E;
+    --oca-text: #484848;
+    --oca-code-inline-bg: #D8E1E7;
+    --oca-font-display: "Degular Display", Georgia, "Iowan Old Style", serif;
+    --oca-font-body: "Neue Haas Unica Pro", -apple-system, "Segoe UI", sans-serif;
+    --oca-font-mono: "Berkeley Mono", ui-monospace, "SFMono-Regular", monospace;
+}
+
+/* Top navbar -> match OCA's cream navbar */
+.navbar {
+    background-color: var(--oca-cream) !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.navbar-item,
+.navbar-link {
+    color: var(--oca-text) !important;
+    font-family: var(--oca-font-body);
+}
+
+/* Logo swap: hide default text title, show OCA logo image instead */
+.navbar-brand a.navbar-item {
+    background: url("../img/oca_black.svg") no-repeat left center;
+    background-size: contain;
+    text-indent: -9999px;
+    width: 120px;
+    overflow: hidden;
+}
+
+/* Navbar title text, positioned in-flow right after the OCA logo (not
+   centered). */
+.navbar-brand .oca-title-text {
+    font-family: var(--oca-font-display);
+    font-size: 1.1rem;
+    color: var(--oca-text);
+    white-space: nowrap;
+    padding-left: 8px;
+}
+
+/* Hide the title text at narrow widths rather than let it wrap/collide --
+   logo + Guides/Downloads/Tenstorrent take priority on small screens. */
+@media (max-width: 900px) {
+    .navbar-brand .oca-title-text {
+        display: none;
+    }
+}
+
+/* Sidebar -> OCA dark green, white text */
+.nav-container {
+    background-color: var(--oca-green) !important;
+}
+
+.nav-panel-menu {
+    background-color: var(--oca-green) !important;
+}
+
+.nav-panel-menu .nav-link,
+.nav-panel-menu .nav-text,
+.nav-panel-menu a {
+    color: #ffffff !important;
+    font-family: var(--oca-font-body);
+}
+
+.nav-panel-menu .is-current-page > .nav-link,
+.nav-panel-menu a:hover {
+    color: var(--oca-gold) !important;
+}
+
+/* Home page Guides card (doc/home/src/index.adoc). Shown only below the
+   stock theme's 1024px breakpoint, where the sidebar starts hidden; above
+   it the sidebar Guides section is on screen instead. */
+.doc .home-guides {
+    display: none;
+}
+
+@media screen and (max-width: 1023.5px) {
+    .doc .home-guides {
+        display: block;
+        margin: 1.5rem 0;
+        padding: 0.75rem 1rem 0.25rem;
+        background-color: var(--oca-cream-light);
+        border: 1px solid var(--oca-cream);
+        border-left: 3px solid var(--oca-green);
+        border-radius: 4px;
+    }
+
+    .doc .home-guides > .title {
+        margin: 0 0 0.25rem;
+        font-style: normal;
+        font-size: 0.75rem;
+        font-weight: 500;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--oca-gold-accessible);
+    }
+
+    .doc .home-guides ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .doc .home-guides li {
+        margin: 0;
+    }
+
+    .doc .home-guides li + li {
+        border-top: 1px solid rgba(16, 53, 37, 0.1);
+    }
+
+    .doc .home-guides li p {
+        margin: 0;
+    }
+
+    .doc .home-guides a {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.65rem 0;
+        color: var(--oca-green);
+        font-weight: 500;
+        text-decoration: none;
+    }
+
+    .doc .home-guides a::after {
+        content: "\2192";
+        color: var(--oca-gold-accessible);
+    }
+}
+
+/* Keep the desktop navigation within the viewport while the menu tree uses
+   its existing internal scroll area. */
+@media screen and (min-width: 1024px) {
+    .nav-container {
+        align-self: flex-start;
+        position: sticky;
+        top: 3.5rem;
+        height: calc(100vh - 3.5rem);
+    }
+
+    .nav {
+        position: static;
+        height: 100%;
+    }
+}
+
+/* Component/version switcher panel (".nav-panel-explore") -- shows when
+   toggled from the context bar below the page nav tree. */
+.nav-panel-explore {
+    background-color: var(--oca-cream) !important;
+    border: 2px solid var(--oca-green);
+    border-radius: 4px;
+}
+
+.nav-panel-explore .title,
+.nav-panel-explore .component .title a {
+    color: var(--oca-text) !important;
+    font-family: var(--oca-font-body);
+}
+
+/* Version "pill" buttons inside the switcher -- fixed-width font + orange
+   accent */
+.nav-panel-explore .versions .version a,
+.nav-panel-explore .version.is-current a {
+    font-family: var(--oca-font-mono);
+    background-color: var(--oca-orange) !important;
+    color: var(--oca-green) !important;
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.nav-panel-explore .versions .version a:hover {
+    background-color: var(--oca-gold) !important;
+}
+
+/* Headings -> OCA display font + green. Large headers (h1/h2) use the
+   Light weight; subheaders (h3-h6) use Medium, per the supplied font's
+   intended usage. */
+.doc h1,
+.doc h2 {
+    font-family: var(--oca-font-display);
+    font-weight: 300;
+    color: var(--oca-green);
+}
+
+.doc h3,
+.doc h4,
+.doc h5,
+.doc h6 {
+    font-family: var(--oca-font-display);
+    font-weight: 500;
+    color: var(--oca-green);
+}
+
+.doc h3 { font-size: 1.3em; }
+.doc h4 { font-size: 1.2em; }
+.doc h5 { font-size: 1.1em; }
+.doc h6 { font-size: 1em; }
+
+/* Body copy */
+.doc {
+    font-family: var(--oca-font-body);
+    color: var(--oca-text);
+}
+
+/* Emphasis (bold inline text) -> body font at Medium weight, used in
+   place of a true bold face.*/
+.doc strong,
+.doc b {
+    font-weight: 500;
+}
+
+/* Links / accents -> green base, gold hover, matching OCA's CTA buttons.
+   Uses --oca-gold-accessible rather than --oca-gold: this text sits on
+   the white/light doc content background */
+.doc a {
+    color: var(--oca-green);
+    text-decoration: underline;
+}
+
+.doc a:hover {
+    color: var(--oca-gold-accessible);
+}
+
+/* ========================================
+   ACCESSIBILITY FIXES -- STOCK ANTORA UI DEFAULTS
+   These three colors are antora-ui-default bundle's own toolbar and 
+   syntax-highlight    theme colors, which fail WCAG AA contrast. 
+   Overridden here since the underlying
+   bundle isn't ours to edit directly.
+   ======================================== */
+
+/* Stock "Edit this Page" toolbar link: #8e8e8e on #fafafa measured
+   3.14:1, below the 4.5:1 minimum for text. */
+.toolbar .edit-this-page a {
+    color: #737373;
+}
+
+/* Stock highlight.js theme's comment/quote color: #999988 on the
+   #fafafa code-block background measured 2.77:1. */
+.hljs-comment,
+.hljs-quote {
+    color: #747467;
+}
+
+.hljs-built_in {
+    color: #006f93;
+}
+
+/* Stock sidebar nav-tree expand/collapse toggle: rendered at 20.9x20.9px,
+   below the 24px WCAG 2.5.8 minimum target size. min-width/min-height
+   (rather than a fixed size) only enlarges the box where it currently
+   falls short, without otherwise touching this element's position or
+   background-image sizing. */
+.nav-item-toggle {
+    min-width: 24px;
+    min-height: 24px;
+}
+
+.toc .toc-menu li[data-level="4"] a {
+    padding-left: 2.75rem;
+}
+
+.toc .toc-menu li[data-level="5"] a {
+    padding-left: 3.5rem;
+}
+
+.toc .toc-menu a {
+    overflow-wrap: anywhere;
+}
+
+.toc .toc-menu.is-collapsible li[hidden] {
+    display: none;
+}
+
+.toc .toc-menu.is-collapsible li > a {
+    min-height: 24px;
+}
+
+.toc .toc-menu a:focus-visible {
+    outline: 2px solid var(--oca-green);
+    outline-offset: -2px;
+}
+
+.toc .toc-menu .is-active-ancestor > a {
+    border-left-color: var(--oca-green);
+    font-weight: 600;
+}
+
+@media screen and (min-width: 1024px) {
+    aside.toc.sidebar {
+        flex-basis: 12rem;
+    }
+}
+
+@media screen and (min-width: 1216px) {
+    aside.toc.sidebar {
+        flex-basis: 16rem;
+    }
+}
+
+/* Code/mono elements */
+.doc code,
+.doc pre {
+    font-family: var(--oca-font-mono);
+}
+
+.doc .colist > table code,
+.doc p code,
+.doc thead code {
+    background-color: var(--oca-code-inline-bg);
+}
+
+/* ========================================
+   FOOTER RESTYLE
+   Requires the accompanying doc/ui-supplemental/partials/footer-content.hbs
+   override.
+   ======================================== */
+.footer {
+    background-color: var(--oca-green) !important;
+    padding: 20px;
+}
+
+/* Grid keeps the message block centered on the full footer width 
+   while pinning the OCA logo to the left edge, using an empty mirrored 
+   third column */
+.footer-inner {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 16px;
+}
+
+.footer-oca-logo {
+    height: 32px;
+    justify-self: start;
+}
+
+.footer-main {
+    grid-column: 2;
+    text-align: center;
+}
+
+@media (max-width: 600px) {
+    .footer-inner {
+        display: flex;
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .footer-oca-logo {
+        margin-bottom: 8px;
+    }
+}
+
+.footer .oca-footer-text,
+.footer .oca-footer-text a {
+    color: #ffffff !important;
+    font-family: var(--oca-font-body);
+    align-items: center;
+    font-size: 0.95rem;
+}
+
+.footer .footer-tt-link {
+    display: inline-flex;
+    text-decoration: none;
+    vertical-align: middle;
+}
+
+.footer .footer-tt-icon {
+    height: 20px;
+}
+
+/* De-emphasized license attribution, kept for MPL-2.0 compliance rather
+   than removed outright. */
+.footer .oca-footer-fineprint {
+    color: var(--oca-cream) !important;
+    opacity: 0.6;
+    font-size: 0.72rem;
+    margin-top: 6px;
+}
+
+/* ========================================
+   VERIFICATION DASHBOARD
+   ======================================== */
+.dashboard-table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0 1.5em 0;
+    font-family: var(--oca-font-body);
+}
+
+.dashboard-table-scroll {
+    overflow-x: auto;
+}
+
+/* Keep a heading, and a number and its unit, on one line. */
+.dashboard-table th,
+.dashboard-table td {
+    white-space: nowrap;
+}
+
+.dashboard-table th {
+    background-color: var(--oca-cream);
+    color: var(--oca-text);
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+    padding: 10px 9px;
+    text-align: center;
+    border: 1px solid #ddd;
+}
+
+.dashboard-table td {
+    padding: 10px 9px;
+    border: 1px solid #ddd;
+    text-align: center;
+    font-weight: 600;
+}
+
+/* Only the overview tables lead with a label; the block page leads with a
+   measurement. */
+.dashboard-table-series th:first-child,
+.dashboard-table-series td:first-child {
+    text-align: left;
+}
+
+.dashboard-table-series td:first-child {
+    font-weight: normal;
+    background-color: #fafafa;
+}
+
+/* dash-pass/dash-fail backgrounds are darkened. */
+.dash-pass {
+    background-color: #3A863D;
+    color: #ffffff;
+}
+
+.dash-warn {
+    background-color: #f6c343;
+    color: #2b2b2b;
+}
+
+.dash-fail {
+    background-color: #C55050;
+    color: #ffffff;
+}
+
+.dashboard h3 {
+    font-family: var(--oca-font-display);
+    color: var(--oca-green);
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+}
+
+.dashboard-legend {
+    font-size: 0.85rem;
+    color: var(--oca-text);
+}
+
+.dashboard-legend span {
+    display: inline-block;
+    border-radius: 3px;
+    margin-right: 2px;
+}
+
+.dashboard-status {
+    font-size: 0.85rem;
+    color: var(--oca-text);
+    padding: 8px 12px;
+    margin: 1em 0;
+    border-left: 3px solid var(--oca-green);
+    background-color: #fafafa;
+}
+
+.dashboard-status-error {
+    border-left-color: #C55050;
+    background-color: #fbf0f0;
+}
+
+.dashboard-na {
+    color: #888;
+    font-weight: normal;
+}
+
+.dashboard-detail-table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0.5em 0 1.5em 0;
+    font-size: 0.78rem;
+    font-family: var(--oca-font-body);
+}
+
+.dashboard-detail-table th {
+    text-align: left;
+    text-transform: uppercase;
+    font-size: 0.68rem;
+    letter-spacing: 0.03em;
+    color: var(--oca-text);
+    background-color: var(--oca-cream);
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+}
+
+.dashboard-detail-table td {
+    padding: 5px 10px;
+    border: 1px solid #eee;
+    text-align: left;
+    font-weight: normal;
+    vertical-align: middle;
+}
+
+.dashboard-detail-table .dash-pass,
+.dashboard-detail-table .dash-fail {
+    text-align: center;
+}
+
+.dashboard .dashboard-more {
+    margin-top: 2em;
+}
+
+.dashboard-window {
+    font-size: 0.85rem;
+    color: var(--oca-text);
+}
+
+.dashboard-window select {
+    font-family: var(--oca-font-body);
+    font-size: 0.85rem;
+    margin-left: 6px;
+    padding: 2px 6px;
+    border: 1px solid #ddd;
+}
+
+.dashboard-badges {
+    margin: 1em 0;
+    line-height: 1.9;
+}
+
+.dashboard-badge {
+    vertical-align: middle;
+    margin-right: 6px;
+}
+
+.dashboard .dashboard-back {
+    margin: 1.5em 0;
+}
+
+.dashboard-chart {
+    margin: 0.5em 0 1.5em 0;
+}
+
+.dashboard .dashboard-detail-reason {
+    font-family: var(--oca-font-mono);
+    font-size: 0.72rem;
+    text-align: left;
+    word-break: break-word;
+    max-width: 34em;
+}
+
+.dashboard .dashboard-outcome {
+    font-weight: 500;
+}
+
+/* ========================================
+   MOBILE NAVBAR
+   ======================================== */
+/* Hamburger icon contrast against the cream navbar -- the bundle's default
+   burger-icon color doesn't suit our palette. */
+.navbar-burger span {
+    background-color: var(--oca-text) !important;
+}
+
+/* .navbar-menu has its own background-color, separate from .navbar's, so
+   the cream rule above doesn't reach it on its own. */
+.navbar-menu {
+    background-color: var(--oca-cream) !important;
+}
+
+/* In the mobile menu, set the repository links and the Tenstorrent icon off
+   from the menu list with one separator and center them, rather than as
+   full-width list rows. The repository links gain text labels there. */
+@media (max-width: 1023px) {
+    .navbar-end .navbar-item.repo-links {
+        justify-content: center;
+        gap: 16px;
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+        padding: 12px 0 0;
+        margin-top: 4px;
+    }
+
+    .navbar-end .navbar-item.repo-links::before {
+        display: none;
+    }
+
+    .navbar-end .repo-link {
+        padding: 0 10px;
+    }
+
+    .repo-link-label {
+        display: inline;
+    }
+
+    .navbar-end .navbar-item.tt-link {
+        justify-content: center;
+    }
+}
+
+/* ========================================
+   REGISTER MAP TABLES
+   PeakRDL-generated HTML partials (.ocah-reg-html wrapper) ship their own
+   embedded <style> block with a hardcoded blue header and grey background.
+   Overridden here rather than in the generator, since that's separately
+   owned tooling output.
+   ======================================== */
+.ocah-reg-html {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.ocah-reg-html table {
+    background: var(--oca-cream) !important;
+    font-size: 0.85rem;
+}
+
+.ocah-reg-html th,
+.ocah-reg-html td {
+    font-size: 0.85rem;
+}
+
+.ocah-reg-html th {
+    background: var(--oca-green) !important;
+    color: #ffffff !important;
+}
+
+.ocah-reg-html h2 + table,
+.ocah-reg-html .register-list {
+    min-width: 740px;
+    table-layout: fixed;
+    overflow-wrap: anywhere;
+}
+
+.ocah-reg-html h2 + table th:nth-child(1),
+.ocah-reg-html .register-list th:nth-child(1) {
+    width: 16%;
+}
+
+.ocah-reg-html h2 + table th:nth-child(2),
+.ocah-reg-html .register-list th:nth-child(2) {
+    width: 32%;
+}
+
+.ocah-reg-html h2 + table th:nth-child(3),
+.ocah-reg-html .register-list th:nth-child(3) {
+    width: 9%;
+}
+
+.ocah-reg-html h3 + table th:nth-child(2),
+.ocah-reg-html h3 + table td:nth-child(2),
+.ocah-reg-html .register-fields th:nth-child(2),
+.ocah-reg-html .register-fields td:nth-child(2) {
+    white-space: nowrap;
+}
+
+/* %autowidth tables get Asciidoctor's `fit-content` class, so this avoids
+   table overrunning.  */
+.tableblock.fit-content {
+    width: 100% !important;
+    table-layout: fixed;
+}
+
+.tableblock.fit-content td,
+.tableblock.fit-content th {
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+/* Fixed-width tables are implemented using a colgroup in the table body, but
+   the problem of code overrunning remains - though limited to the `code` items */
+.tableblock:has(colgroup) code {
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.telemetry-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.telemetry-table-scroll:focus-visible {
+    outline: 3px solid var(--oca-gold-accessible);
+    outline-offset: 1px;
+}
+
+.doc .telemetry-table-scroll table.telemetry-table {
+    min-width: 680px;
+}
+
+.smc-memory-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.smc-memory-table-scroll:focus-visible {
+    outline: 3px solid var(--oca-gold-accessible);
+    outline-offset: 1px;
+}
+
+.doc .smc-memory-table-scroll table.smc-memory-table {
+    min-width: 680px;
+}
+
+.smc-interrupt-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.smc-interrupt-table-scroll:focus-visible {
+    outline: 3px solid var(--oca-gold-accessible);
+    outline-offset: 1px;
+}
+
+.doc .smc-interrupt-table-scroll table.smc-interrupt-table {
+    min-width: 680px;
+}
+
+.doc .smc-interrupt-table-scroll table.smc-interrupt-table-wide {
+    min-width: 750px;
+}
+
+.lifecycle-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.lifecycle-table-scroll:focus-visible {
+    outline: 3px solid var(--oca-gold-accessible);
+    outline-offset: 1px;
+}
+
+.doc .lifecycle-table-scroll table.lifecycle-table {
+    min-width: 680px;
+}
+
+.doc .lifecycle-table-scroll table.lifecycle-table-wide {
+    min-width: 774px;
+}
+
+/* ========================================
+   PORT REFERENCE TABLES
+   Scoped to .port-reference role only; no global selectors.
+   ======================================== */
+
+/* Keep wide tables within the viewport while preserving readable columns. */
+.port-reference-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.port-reference-scroll:focus-visible {
+    outline: 3px solid var(--oca-gold-accessible);
+    outline-offset: 1px;
+}
+
+.doc .port-reference-scroll table.port-reference {
+    min-width: 680px;
+}
+
+.doc .port-reference-scroll table.port-reference-wide {
+    min-width: 750px;
+}
+
+.doc table.port-reference {
+    table-layout: fixed;
+    width: 100%;
+    max-width: 100%;
+}
+
+.doc table.port-reference td,
+.doc table.port-reference th,
+.doc table.port-reference code {
+    overflow-wrap: anywhere;
+    white-space: normal;
+    word-break: normal;
+}
+
+/* ========================================
+   WIDE TABLE CONTAINMENT — PTAP Module Hierarchy
+   The AsciiDoc source wraps the Module Hierarchy table in a passthrough
+   <div class="ptap-module-hierarchy-scroll"> (HTML backend only), mirroring
+   the pattern used by the DTP port reference table. The table also carries
+   role class [.ptap-module-hierarchy] for styling.
+   Allows long identifiers and conditional expressions to wrap naturally
+   while providing local horizontal scroll at narrow viewports.
+   The tabindex="0" on the wrapper is set explicitly in the AsciiDoc
+   passthrough HTML, making the scroll area keyboard-operable.
+   ======================================== */
+
+/* Scroll wrapper — passthrough div in the AsciiDoc source */
+.ptap-module-hierarchy-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.ptap-module-hierarchy-scroll:focus-visible {
+    outline: 3px solid var(--oca-gold-accessible);
+    outline-offset: 1px;
+}
+
+/* Table itself — allow wrapping of long identifiers and conditions */
+.doc table.ptap-module-hierarchy {
+    width: 100%;
+    table-layout: auto;
+}
+
+.doc table.ptap-module-hierarchy td,
+.doc table.ptap-module-hierarchy th,
+.doc table.ptap-module-hierarchy code {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+/* ========================================
+   VERSION SELECTOR CONTEXT TOGGLE
+   The .context element inside .nav-panel-explore is a native <button>
+   (supplied by the nav-explore.hbs partial override) that toggles the
+   expanded component/version list. The bundle's site.js attaches the
+   panel-toggle click handler to .querySelector(".context"), so a button
+   with class="context" receives both mouse clicks and keyboard Enter/Space.
+   The collapsed view shows only the version pill; the full product name is
+   exposed via aria-label on the button and remains visible in the expanded
+   .components list. Selectors are scoped to .nav-panel-explore only.
+   ======================================== */
+.nav-panel-explore .context {
+    appearance: none;
+    -webkit-appearance: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    width: 100%;
+    text-align: left;
+    font-family: var(--oca-font-mono);
+    font-size: 0.68rem;
+    color: var(--oca-text);
+    background-color: var(--oca-cream);
+    border-top: 2px solid var(--oca-green);
+}
+
+.nav-panel-explore .context:focus-visible {
+    outline: 3px solid var(--oca-gold-accessible);
+    outline-offset: -3px;
+}

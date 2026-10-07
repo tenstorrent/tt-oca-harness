@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Memory Map and Register Reference :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SMC address-space organization, access control, and register reference.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-home" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Home</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../features.html">Feature Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../motivation.html">Motivation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../use-cases.html">Use Cases</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../license.html">License</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Guides</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-programmer-guide/0.5/index.html">Programmer&#8217;s Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Verification</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../dashboard.html">Dashboard</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="memmap.html">Memory Map and Register Reference</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Memory Map and Register Reference</h1>
+<div class="sect1">
+<h2 id="smc-memory-map"><a class="anchor" href="#smc-memory-map"></a><a class="link" href="#smc-memory-map">Memory Map</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This section provides a comprehensive overview of the SMC memory map.
+The SMC address space is organized to provide access to various
+functional units including CPU control, peripheral interfaces, system
+management functions, and fabric control mechanisms.</p>
+</div>
+<div class="paragraph">
+<p>All addresses below are expressed as <code>BASE + offset</code>, where <code>BASE</code> can
+be either the local alias (<code>LOCAL_BASE</code>, fixed read-only at
+<code>0xC000_0000</code>) or the global system address (<code>GLOBAL_BASE</code>,
+programmable by firmware). The fabric routes transactions to SMC
+resources identically regardless of which base is used, as long as the
+access falls inside the relevant local or global aperture. Both
+apertures are sized by the SMC <code>REGION_SIZE</code> CSR, which resets to
+16 MiB and may be reprogrammed by firmware.
+Address ranges include both endpoints.
+Addresses are 32-bit aligned and follow standard AXI4-Lite addressing
+conventions. For details on how <code>LOCAL_BASE</code> and <code>GLOBAL_BASE</code> relate
+and how an adopter maps this aperture into the system address space,
+refer to the
+SMC Address Map Integration
+section of the Integration Guide.</p>
+</div>
+<div class="sect2">
+<h3 id="address-space-organization"><a class="anchor" href="#address-space-organization"></a><a class="link" href="#address-space-organization">Address Space Organization</a></h3>
+<div class="paragraph">
+<p>The generated component map reports each allocated aperture separately from
+the extent occupied by registers.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SMC Functional Address-Space Organization</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Address Range</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Unit</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x0 – BASE + 0xFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog Timers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-core watchdog timers.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x2000 – BASE + 0xBFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">40 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System and Peripheral Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset, GPIO, serial peripherals, eFuse, telemetry, timer, DTP, and DFT status.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x10000 – BASE + 0x16FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">28 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fabric Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Base configuration, address remapping, and traffic filters.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x18000 – BASE + 0x37FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Thirty-two bidirectional mailbox pairs.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x38000 – BASE + 0x382FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">768 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Data Processing</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA controller and memory zeroer.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x39000 – BASE + 0x3FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">28 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU and I/O Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU-cluster control and OCA I3C controller.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x40000 – BASE + 0x15FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1152 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Local Memories</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scratchpad ROM and RAM.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x160000 – BASE + 0x163FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Core Logic Analyzer debug and trace.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x400000 – BASE + 0x406547</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">25928 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter External</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter-owned technology-specific and supplementary peripherals.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1000000 – BASE + 0x1FFFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address Remapping</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Machine-mode and hypervisor remapped regions.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x4000000 – BASE + 0x7FFFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLIC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Platform-Level Interrupt Controller aperture.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x8000000 – BASE + 0x8013FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Core-Local Timer and Errors</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Core-local timer and per-core bus-error units.</p></td>
+</tr>
+</tbody>
+</table>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. SMC Component Address Map</caption>
+<colgroup>
+<col style="width: 11.1111%;">
+<col style="width: 11.1111%;">
+<col style="width: 11.1111%;">
+<col style="width: 11.1111%;">
+<col style="width: 11.1111%;">
+<col style="width: 11.1111%;">
+<col style="width: 11.1111%;">
+<col style="width: 11.1111%;">
+<col style="width: 11.1112%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Address Range</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Decoded Extent</th>
+<th class="tableblock halign-left valign-top">Unit</th>
+<th class="tableblock halign-left valign-top">Instances</th>
+<th class="tableblock halign-left valign-top">Stride</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Hole in Extent (R / W)</th>
+<th class="tableblock halign-left valign-top">Past Extent (R / W)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x0 – BASE + 0x3FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">36 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog Timer Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Core 0 watchdog timer.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x400 – BASE + 0x7FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">36 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog Timer Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Core 1 watchdog timer.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x800 – BASE + 0xBFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">36 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog Timer Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Core 2 watchdog timer.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0xC00 – BASE + 0xFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">36 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog Timer Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Core 3 watchdog timer.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1000 – BASE + 0x1867</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2152 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2152 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug Module Hart Interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory region through which a hart in Debug Mode exchanges state with the Debug Module: handshake mailboxes, generated instructions, program buffer, data registers, per-hart flags and the debug ROM. Only the harts of the CPU cluster reach this region; SMC bus initiators outside the cluster do not. The debugger-facing Debug Module registers (dmcontrol, dmstatus, abstractcs, sbcs, &#8230;&#8203;) are reached over the Debug Module Interface and do not appear in this map.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR<sup><a href="#smc-components-note-1">[1]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x2000 – BASE + 0x27FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">204 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Unit Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System reset control.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / SLVERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x2800 – BASE + 0x2FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">524 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC Miscellaneous Wrapper Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / SLVERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / SLVERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x3000 – BASE + 0x3FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1040 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO Interface Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">65 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO interface configuration: pad/core routing, receive and transmit enables, and interrupt control.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / SLVERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x4000 – BASE + 0x4FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">92 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus Controller Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Command, readback, status, and interrupt registers for the AVSBus (V1.3.1) controller.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / SLVERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x5000 – BASE + 0x5FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3596 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C Wrapper Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C and SMBus controller.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / SLVERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / SLVERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x6000 – BASE + 0x6FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART Wrapper Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART controller.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY; between sub-blocks: DECERR, 0xBADCAB1E / SLVERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x7000 – BASE + 0x7FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Efuse address map of physical efuse macro</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address map for efuse shadow registers providing access to various chip configuration and ID fields</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / SLVERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x8000 – BASE + 0x8FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">28 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Interface Control Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse command and status registers.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / SLVERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x9000 – BASE + 0x9FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">768 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry Receiver Wrapper Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry data receiver.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / SLVERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0xA000 – BASE + 0xAFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">36 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCTS System Timer Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Open Chiplet Time Synchronization (OCTS) System Timer Registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / SLVERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0xB000 – BASE + 0xB7FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">dtp_ctrl_reg</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512-entry DTP control block.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Forwarded</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0xB800 – BASE + 0xBFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">24 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFX Control and Status Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFT status exposed to boot firmware.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x10000 – BASE + 0x11FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">76 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC Base Configuration Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC base-address and aperture configuration.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / SLVERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x12000 – BASE + 0x12FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI Alias Remap Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TLB Registers for address remapping and attribute tagging</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / SLVERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x13000 – BASE + 0x13FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output Remap Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address-translation registers that remap outbound transactions and tag their attributes.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / SLVERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x14000 – BASE + 0x14FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output Remap Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address-translation registers that remap outbound transactions and tag their attributes.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / SLVERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x15000 – BASE + 0x15FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI Filter Control Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-filter access-control registers defining permitted address ranges and transaction attributes.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / SLVERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x16000 – BASE + 0x16FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI Filter Control Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-filter access-control registers defining permitted address ranges and transaction attributes.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / SLVERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x18000 – BASE + 0x37FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">129104 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC AXI-Lite Mailbox Wrapper Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Thirty-two bidirectional mailbox pairs.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0x0 / SLVERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x38000 – BASE + 0x381FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">312 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">iDMA Controller Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Direct-memory-access controller.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0xFFFFFFFF / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x38200 – BASE + 0x382FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">24 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Zeroer Control Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Control and status registers for the AXI memory-zeroing engine.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x39000 – BASE + 0x39FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">704 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU Control Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC CPU-cluster control.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x3A000 – BASE + 0x3FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">24 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">24 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCA I3C Controller Wrapper Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Wrapper address map instantiating the per-controller I3C CSR blocks.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY<sup><a href="#smc-components-note-2">[2]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x40000 – BASE + 0x5FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spm_rom_memory</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scratchpad ROM memory, present only in non-CPL configurations.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-<sup><a href="#smc-components-note-3">[3]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x60000 – BASE + 0x15FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spm_memory</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scratch RAM Memory - only present for non-CPL configurations</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x160000 – BASE + 0x163FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC DFD MMR Aperture Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Core Logic Analyzer debug and trace aperture.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x400000 – BASE + 0x406547</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">25928 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">25928 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC External Window Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter-owned external peripheral aperture.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter-defined</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1000000 – BASE + 0x17FFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">mmode_region</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address region whose accesses an output remap redirects.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Forwarded</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1800000 – BASE + 0x1FFFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">xvisor_region</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address region whose accesses an output remap redirects.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Forwarded</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x4000000 – BASE + 0x7FFFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2125832 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLIC Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Platform-Level Interrupt Controller.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY<sup><a href="#smc-components-note-4">[4]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x8000000 – BASE + 0x800FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">48 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLINT Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Core-Local Interruptor.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x8010000 – BASE + 0x8010FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">48 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bus Error Unit Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Core 0 bus-error unit.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x8011000 – BASE + 0x8011FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">48 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bus Error Unit Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Core 1 bus-error unit.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x8012000 – BASE + 0x8012FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">48 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bus Error Unit Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Core 2 bus-error unit.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x8013000 – BASE + 0x8013FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">48 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bus Error Unit Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Core 3 bus-error unit.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x8014000 – BASE + 0x8014FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cluster_error_device</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Error responder for unmapped cluster-bus accesses.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR<sup><a href="#smc-components-note-1">[1]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<div class="title">Notes</div>
+<p><a id="smc-components-note-1"></a><sup>[1]</sup> Only the harts of the CPU cluster reach this unit. An access from outside the cluster answers the same at every address in its aperture.<br>
+<a id="smc-components-note-2"></a><sup>[2]</sup> Each instance implements 16 DAT and 16 DCT entries: the DAT at 0x400-0x7FF repeats every 0x80 bytes, the DCT at 0x800-0xFFF repeats every 0x100 bytes, and DCT writes are dropped.<br>
+<a id="smc-components-note-3"></a><sup>[3]</sup> A write answers SLVERR and leaves the ROM unchanged.<br>
+<a id="smc-components-note-4"></a><sup>[4]</sup> 0x544, 0x102C and 0x202C are the upper halves of live 64-bit words, so a 64-bit read there returns live data.</p>
+</div>
+<div class="paragraph">
+<p>The last two columns state how the SMC answers a 32-bit access that no
+register or memory backs, as seen at its inbound AXI port, and
+<a href="../../../ocah-docs/0.5/memory_map.html#ocah-decode-response-codes" class="xref page">Decode Response Codes</a>
+defines them and their codes.</p>
+</div>
+<div class="paragraph">
+<p>An address between unit apertures reaches no unit. A read there answers <code>DECERR</code>
+with data <code>0xBADCAB1E</code>, and a write answers <code>DECERR</code>, except from
+<code>BASE + 0x001_7000</code> through <code>BASE + 0x001_7FFF</code>, where it answers <code>SLVERR</code>.</p>
+</div>
+<div class="paragraph">
+<p>An address inside neither the local nor the global aperture answers <code>DECERR</code>
+to reads and writes. The M-mode and Xvisor remap regions forward accesses from
+SMC initiators only; an access to them from the inbound port answers <code>DECERR</code>.</p>
+</div>
+<div class="paragraph">
+<p>The inbound port reaches a unit only while its whole aperture lies below
+<code>BASE + REGION_SIZE</code>. At the reset value the PLIC, CLINT and bus-error units lie
+beyond it and answer <code>DECERR</code>. The SMC harts reach the PLIC and CLINT inside the
+CPU cluster regardless of <code>REGION_SIZE</code>.</p>
+</div>
+<div class="paragraph">
+<p>The I2C, UART, I3C, AVSBus and Telemetry Receiver windows answer <code>SLVERR</code>, with
+read data <code>0xBADCAB1E</code>, while the peripheral&#8217;s <code>CLOCK_GATE_CONTROL</code> enable in
+SMC_BASE_CONFIG is set and its clock is stopped.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="axi-lite-external-window"><a class="anchor" href="#axi-lite-external-window"></a><a class="link" href="#axi-lite-external-window">AXI-Lite External Window</a></h3>
+<div class="paragraph">
+<p>The <code>smc_external</code> window at <code>BASE + 0x040_0000</code> is the adopter extension
+window. OCAH exposes this AXI-Lite bus so an adopter can attach their own
+technology- and vendor-specific implementations of memory-mapped blocks. The
+window is split into two regions (see <code>smc_external.rdl</code>). Apart from the
+eFuse SHIM control block described below, hardware treats both identically;
+the split is purely organizational:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Mandatory</strong> (<code>BASE + 0x040_0000</code>): blocks every integration must implement.
+Their function is dictated by the OCAH specifications, but their
+implementation is inherently technology- and vendor-specific — the eFuse
+SHIM, the per-pad GPIO controls, the PLL wrapper and the strap registers at
+<code>BASE + 0x040_3000</code>.</p>
+</li>
+<li>
+<p><strong>Supplementary</strong> (<code>BASE + 0x040_4000</code>): any additional memory-mapped devices
+the adopter wants to expose, such as peripheral controllers, extra pad
+controls and the PVT wrapper.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The generated SMC map reports this as one opaque adopter-owned aperture.
+Concrete placements inside it are integration-specific and are documented by
+the adopter. The strap registers are read-only values consumed by boot firmware;
+how the adopter captures them is implementation-defined. Both boot ROMs read them at
+<code>BASE + 0x040_3000</code>, so an integration places them there.</p>
+</div>
+<div class="paragraph">
+<p>The eFuse SHIM control block is the exception. Its placement is fixed at the
+base of the window, <code>BASE + 0x040_0000</code>, and its size is the
+<code>EFUSE_SHIM_SIZE</code> parameter (<code>CFG.SMC_EFUSE_SHIM_SIZE</code> at the SMU). The peripheral
+crossbar routes that range to the eFuse controller,
+which forwards it unchanged on <code>efuse_bank_ctrl</code> to the adopter&#8217;s SHIM. It
+never appears on the external port. The adopter defines the SHIM&#8217;s control
+registers at offset <code>0x0</code> of its own <code>smc_external</code> map.</p>
+</div>
+<div class="paragraph">
+<p>The supplementary (optional) region of the window is passed through to the SMU&#8217;s
+<code>smc_external_req_o</code> / <code>smc_external_resp_i</code> ports for adopter integration. The
+adopter may implement any memory-mapped functions there, or may instead
+terminate the region with an error response. The reference integration
+(<code>hw/top/smc_ip_integration.sv</code>) terminates
+unclaimed accesses in this region with a DECERR response via the
+<code>prim_axi_lite_err_slv</code> helper; this is one integration choice, not a
+requirement.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="register-interface-standards"><a class="anchor" href="#register-interface-standards"></a><a class="link" href="#register-interface-standards">Register Interface Standards</a></h3>
+<div class="paragraph">
+<p>All SMC components use standard AMBA interfaces. We summarize the
+interfaces in <a href="#smc-register-interface-standards-table">SMC Register Interface Standards</a>:</p>
+</div>
+<div class="smc-memory-table-scroll" role="region" aria-label="Register Interface Standards" tabindex="0">
+<table id="smc-register-interface-standards-table" class="tableblock frame-all grid-all stretch smc-memory-table">
+<caption class="title">Table 3. SMC Register Interface Standards</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 18%;">
+<col style="width: 18%;">
+<col style="width: 44%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Interface</th>
+<th class="tableblock halign-left valign-top">Address Width</th>
+<th class="tableblock halign-left valign-top">Data Width</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">High-performance components</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">APB4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Peripheral components</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" colspan="4"><p class="tableblock"><strong>Address Alignment:</strong> 32-bit registers on 4-byte boundaries, 64-bit on 8-byte boundaries</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" colspan="4"><p class="tableblock"><strong>Endianness:</strong> Little-endian byte ordering throughout</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" colspan="4"><p class="tableblock"><strong>Protection:</strong> AXI protection bits used for secure/non-secure access control</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="access-control-and-security"><a class="anchor" href="#access-control-and-security"></a><a class="link" href="#access-control-and-security">Access Control and Security</a></h3>
+<div class="paragraph">
+<p><a href="#smc-access-control-mechanisms-table">SMC Access Control Mechanisms</a> summarises the SMC access-control mechanisms.</p>
+</div>
+<table id="smc-access-control-mechanisms-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. SMC Access Control Mechanisms</caption>
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Mechanism</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address Filtering</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configurable inbound and outbound address filters</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Protection Levels</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI protection attribute enforcement</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure Regions</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse and security-critical registers require elevated
+privileges</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Error Handling</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bus error units provide comprehensive error logging and
+reporting</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Detailed Register Map</a></h2>
+<div class="sectionbody">
+<span id="preamble"></span>
+<span id="detailed-address-map"></span>
+<span id="component-specific-register-documentation"></span>
+<div class="sect2">
+<h3 id="external-window-reference-maps"><a class="anchor" href="#external-window-reference-maps"></a><a class="link" href="#external-window-reference-maps">External Window Reference Maps</a></h3>
+<div class="paragraph">
+<p>The PLL and PVT maps below describe placeholder memory footprints used by the
+open verification models. Their memory words do not specify the control
+registers of an adopter&#8217;s clock or sensor implementation. The straps map
+describes captured GPIO values. Placement of these blocks within the external
+window is integration-specific.</p>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-pll_wrap">PLL Wrapper Placeholder Address Map</h2>
+<p>Adopter clock-control placeholder reserving the PLL map slot; no CSRs are modeled.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>mem_array[954]</strong>: 954 registers, base 0x0, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0xEE4</td><td><a href="#pll_wrap-mem_array_954_">mem_array[954]</a></td><td>R</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="mem_array_954_"></span><h3 id="pll_wrap-mem_array_954_" data-register-alias="mem_array_954_">mem_array[954]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>R</td><td>-</td><td>-</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-pvt_wrap">PVT Wrapper Placeholder Address Map</h2>
+<p>Adopter PVT and monitor placeholder reserving the map slot; no CSRs are modeled.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>mem_array[594]</strong>: 594 registers, base 0x0, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x944</td><td><a href="#pvt_wrap-mem_array_594_">mem_array[594]</a></td><td>R</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="mem_array_594_"></span><h3 id="pvt_wrap-mem_array_594_" data-register-alias="mem_array_594_">mem_array[594]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>R</td><td>-</td><td>-</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-straps">Straps Address Map</h2>
+<p>Configuration strap values. How they are captured is adopter-defined.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#straps-STRAPS_LO">STRAPS_LO</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#straps-STRAPS_HI">STRAPS_HI</a></td><td>R</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="STRAPS_LO"></span><h3 id="straps-STRAPS_LO" data-register-alias="STRAPS_LO">STRAPS_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>straps</td><td>R</td><td>0x0</td><td>Configuration straps 0 - 31.<br>Bits 0 - 10, 16, 17, 24 and 27 - 31 have no strap assigned; no strap function<br>consumes them.<br>Strap assignments in this range:<br>* bit 11: CHIP_ID[3] - CHIP_ID is the I2C/I3C static address strap<br>* bit 12: CHIP_ID[2] - CHIP_ID is the I2C/I3C static address strap<br>* bit 13: BYPASS_SRAM_REPAIR - Bypass the memory repair process<br>* bit 14: TEST_EN - Enable DFT test mode<br>* bit 15: CHIP_ID[1] - CHIP_ID is the I2C/I3C static address strap<br>* bit 18: BOOT_I2C - Default alternate boot channel is I3C0 and can be reconfigured to use I2C0<br>* bit 19: BOOT_RECOVERY - Use I3C0 for BL1 boot image loading instead of the SPI channel<br>* bit 20: BL0_PLLCLK - Use the PLL generated clock by default in BL0, and override to use the reference clock when this strap is asserted<br>* bit 21: STATUS_RPT_DISABLE - Disable BL0 status reporting. It is on by default<br>* bit 22: SPI_USE_FUSED_CONFIG - Use the SPI configuration values stored in the fuse field<br>* bit 23: CHIP_ID[0] - CHIP_ID is the I2C/I3C static address strap<br>* bit 25: PRIMARY_CHIPLET - Identifies the primary chiplet, the boot master<br>* bit 26: SRAM_AUTO_ZERO_DISABLE - Disable auto zero of the SMC SRAM when asserted</td></tr>
+</table>
+<span id="STRAPS_HI"></span><h3 id="straps-STRAPS_HI" data-register-alias="STRAPS_HI">STRAPS_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>28:0</td><td>straps</td><td>R</td><td>0x0</td><td>Configuration straps 32 - 60.<br>All bits other than those listed below have no strap assigned; no strap<br>function consumes them.<br>Strap assignments in this range:<br>* bit 22: MBIST_BYPASS - Ignore results of Power-On MBIST for boot<br>* bit 26: ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="spare-smc-register-blocks"><a class="anchor" href="#spare-smc-register-blocks"></a><a class="link" href="#spare-smc-register-blocks">Spare SMC Register Blocks</a></h2>
+<div class="sectionbody">
+<span id="spare-smc-register-blocks"></span>
+<div class="paragraph">
+<p>The following shows the detailed register map of a set of
+programmer-visible spare SMC blocks. They are spare but essential: for
+example, the scratch block provides general-purpose registers, and the
+chip-config and NDM-reset blocks hold system-level configuration and
+reset control.</p>
+</div>
+<div class="sect2">
+<h3 id="smc-ndm-reset-block"><a class="anchor" href="#smc-ndm-reset-block"></a><a class="link" href="#smc-ndm-reset-block">Chip Config, Scratch, NDM Reset, and Misc Wrap</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-chip_config">Chip Configuration Address Map</h2>
+<p>Chip version, identification, and lifecycle-state registers.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#chip_config-VERSION_LO">VERSION_LO</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#chip_config-VERSION_HI">VERSION_HI</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#chip_config-CHIP_ID">CHIP_ID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#chip_config-LC_STATE">LC_STATE</a></td><td>R</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="VERSION_LO"></span><h3 id="chip_config-VERSION_LO" data-register-alias="VERSION_LO">VERSION_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>version_lo</td><td>R</td><td>0x100A0</td><td>SMC version, lower 32 bits</td></tr>
+</table>
+<span id="VERSION_HI"></span><h3 id="chip_config-VERSION_HI" data-register-alias="VERSION_HI">VERSION_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>version_hi</td><td>R</td><td>0x0</td><td>SMC version, upper 32 bits</td></tr>
+</table>
+<span id="CHIP_ID"></span><h3 id="chip_config-CHIP_ID" data-register-alias="CHIP_ID">CHIP_ID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>chip_id</td><td>R</td><td>0x0</td><td>Chip ID (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet)</td></tr>
+</table>
+<span id="LC_STATE"></span><h3 id="chip_config-LC_STATE" data-register-alias="LC_STATE">LC_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>lc_state</td><td>R</td><td>0xF</td><td>Lifecycle state value from SEP. Default to invalid state</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-scratch">Scratch Address Map</h2>
+<p>General-purpose scratch register bank.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>SCRATCH[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x1C</td><td><a href="#scratch-SCRATCH_8_">SCRATCH[8]</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="SCRATCH_8_"></span><h3 id="scratch-SCRATCH_8_" data-register-alias="SCRATCH_8_">SCRATCH[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Scratch register</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-ndm_reset">NDM Reset Control Address Map</h2>
+<p>Per-cluster NDM reset handshake with an external CPU cluster debug module</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#ndm_reset-NDMRESET_REQUEST">NDMRESET_REQUEST</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#ndm_reset-NDMRESET_PROCESS">NDMRESET_PROCESS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#ndm_reset-NDMRESET_CLUSTER_COUNT">NDMRESET_CLUSTER_COUNT</a></td><td>R</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="NDMRESET_REQUEST"></span><h3 id="ndm_reset-NDMRESET_REQUEST" data-register-alias="NDMRESET_REQUEST">NDMRESET_REQUEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>ndmreset_request</td><td>R</td><td>0x0</td><td>Bit i is the NDM reset request from external CPU cluster i.<br>Bits below ndmreset_cluster_count follow the request input.<br>Bits at and above that count read as 0. The field holds up to 32 clusters.</td></tr>
+</table>
+<span id="NDMRESET_PROCESS"></span><h3 id="ndm_reset-NDMRESET_PROCESS" data-register-alias="NDMRESET_PROCESS">NDMRESET_PROCESS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>ndmreset_process</td><td>RW</td><td>0x0</td><td>Bit i is the firmware response to the NDM reset request from external CPU cluster i.<br>Bits below ndmreset_cluster_count are driven on the process output.<br>Bits at and above that count are stored and are not driven. The field holds up to 32 clusters.</td></tr>
+</table>
+<span id="NDMRESET_CLUSTER_COUNT"></span><h3 id="ndm_reset-NDMRESET_CLUSTER_COUNT" data-register-alias="NDMRESET_CLUSTER_COUNT">NDMRESET_CLUSTER_COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>ndmreset_cluster_count</td><td>R</td><td>0x0</td><td>Number of external CPU clusters connected on the low bits of NDMRESET_REQUEST and NDMRESET_PROCESS.<br>Software masks those registers with this value. The maximum is 32.</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-misc_wrap">SMC Miscellaneous Wrapper Address Map</h2>
+<p>Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>scratch_cold.SCRATCH[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
+<li><strong>scratch_cold_warm.SCRATCH[8]</strong>: 8 registers, base 0x80, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x1C</td><td><a href="#misc_wrap-scratch_cold.SCRATCH_8_">scratch_cold.SCRATCH[8]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x80 - 0x9C</td><td><a href="#misc_wrap-scratch_cold_warm.SCRATCH_8_">scratch_cold_warm.SCRATCH[8]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x100</td><td><a href="#misc_wrap-VERSION_LO">VERSION_LO</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x104</td><td><a href="#misc_wrap-VERSION_HI">VERSION_HI</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x108</td><td><a href="#misc_wrap-CHIP_ID">CHIP_ID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x10C</td><td><a href="#misc_wrap-LC_STATE">LC_STATE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x200</td><td><a href="#misc_wrap-NDMRESET_REQUEST">NDMRESET_REQUEST</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x204</td><td><a href="#misc_wrap-NDMRESET_PROCESS">NDMRESET_PROCESS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x208</td><td><a href="#misc_wrap-NDMRESET_CLUSTER_COUNT">NDMRESET_CLUSTER_COUNT</a></td><td>R</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="scratch_cold.SCRATCH_8_"></span><h3 id="misc_wrap-scratch_cold.SCRATCH_8_" data-register-alias="scratch_cold.SCRATCH_8_">scratch_cold.SCRATCH[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Scratch register</td></tr>
+</table>
+<span id="scratch_cold_warm.SCRATCH_8_"></span><h3 id="misc_wrap-scratch_cold_warm.SCRATCH_8_" data-register-alias="scratch_cold_warm.SCRATCH_8_">scratch_cold_warm.SCRATCH[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Scratch register</td></tr>
+</table>
+<h3 id="misc_wrap-VERSION_LO" data-register-alias="VERSION_LO">VERSION_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>version_lo</td><td>R</td><td>0x100A0</td><td>SMC version, lower 32 bits</td></tr>
+</table>
+<h3 id="misc_wrap-VERSION_HI" data-register-alias="VERSION_HI">VERSION_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>version_hi</td><td>R</td><td>0x0</td><td>SMC version, upper 32 bits</td></tr>
+</table>
+<h3 id="misc_wrap-CHIP_ID" data-register-alias="CHIP_ID">CHIP_ID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>chip_id</td><td>R</td><td>0x0</td><td>Chip ID (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet)</td></tr>
+</table>
+<h3 id="misc_wrap-LC_STATE" data-register-alias="LC_STATE">LC_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>lc_state</td><td>R</td><td>0xF</td><td>Lifecycle state value from SEP. Default to invalid state</td></tr>
+</table>
+<h3 id="misc_wrap-NDMRESET_REQUEST" data-register-alias="NDMRESET_REQUEST">NDMRESET_REQUEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>ndmreset_request</td><td>R</td><td>0x0</td><td>Bit i is the NDM reset request from external CPU cluster i.<br>Bits below ndmreset_cluster_count follow the request input.<br>Bits at and above that count read as 0. The field holds up to 32 clusters.</td></tr>
+</table>
+<h3 id="misc_wrap-NDMRESET_PROCESS" data-register-alias="NDMRESET_PROCESS">NDMRESET_PROCESS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>ndmreset_process</td><td>RW</td><td>0x0</td><td>Bit i is the firmware response to the NDM reset request from external CPU cluster i.<br>Bits below ndmreset_cluster_count are driven on the process output.<br>Bits at and above that count are stored and are not driven. The field holds up to 32 clusters.</td></tr>
+</table>
+<h3 id="misc_wrap-NDMRESET_CLUSTER_COUNT" data-register-alias="NDMRESET_CLUSTER_COUNT">NDMRESET_CLUSTER_COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>ndmreset_cluster_count</td><td>R</td><td>0x0</td><td>Number of external CPU clusters connected on the low bits of NDMRESET_REQUEST and NDMRESET_PROCESS.<br>Software masks those registers with this value. The maximum is 32.</td></tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="base-config-and-dfx-status"><a class="anchor" href="#base-config-and-dfx-status"></a><a class="link" href="#base-config-and-dfx-status">Base Config and DFX Status</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-smc_base_config">SMC Base Configuration Address Map</h2>
+<p>Base-address, region-size, per-block clock-gating enable, and interrupt configuration registers.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#smc_base_config-GLOBAL_BASE">GLOBAL_BASE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#smc_base_config-LOCAL_BASE">LOCAL_BASE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#smc_base_config-REGION_SIZE">REGION_SIZE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#smc_base_config-CLOCK_GATE_CONTROL">CLOCK_GATE_CONTROL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#smc_base_config-HANG_DET_SYS_AXI_CTRL">HANG_DET_SYS_AXI_CTRL</a></td><td>RW</td><td>AXI hang detector control and interrupt status.</td></tr>
+<tr><td>0x28</td><td><a href="#smc_base_config-HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD">HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD</a></td><td>RW</td><td>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.</td></tr>
+<tr><td>0x30</td><td><a href="#smc_base_config-HANG_DET_SEP_AXI_CTRL">HANG_DET_SEP_AXI_CTRL</a></td><td>RW</td><td>AXI hang detector control and interrupt status.</td></tr>
+<tr><td>0x38</td><td><a href="#smc_base_config-HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD">HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD</a></td><td>RW</td><td>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.</td></tr>
+<tr><td>0x40</td><td><a href="#smc_base_config-HANG_DET_DATA_ACCEL_CTRL">HANG_DET_DATA_ACCEL_CTRL</a></td><td>RW</td><td>AXI hang detector control and interrupt status.</td></tr>
+<tr><td>0x48</td><td><a href="#smc_base_config-HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD">HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD</a></td><td>RW</td><td>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="GLOBAL_BASE"></span><h3 id="smc_base_config-GLOBAL_BASE" data-register-alias="GLOBAL_BASE">GLOBAL_BASE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>55:0</td><td>base</td><td>RW</td><td>0x40000000</td><td>Global base address for the CPU</td></tr>
+</table>
+<span id="LOCAL_BASE"></span><h3 id="smc_base_config-LOCAL_BASE" data-register-alias="LOCAL_BASE">LOCAL_BASE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>55:0</td><td>base</td><td>R</td><td>0xC0000000</td><td>Local base address for the CPU</td></tr>
+</table>
+<span id="REGION_SIZE"></span><h3 id="smc_base_config-REGION_SIZE" data-register-alias="REGION_SIZE">REGION_SIZE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>31:0</td><td>size</td><td>RW</td><td>0x1000000</td><td>Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Inbound accesses to a unit whose window extends past this size answer DECERR. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.</td></tr>
+</table>
+<span id="CLOCK_GATE_CONTROL"></span><h3 id="smc_base_config-CLOCK_GATE_CONTROL" data-register-alias="CLOCK_GATE_CONTROL">CLOCK_GATE_CONTROL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:30</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>29:24</td><td>cg_hysteresis</td><td>RW</td><td>0x1F</td><td>Clockgate cg_hysteresis</td></tr>
+<tr><td>23:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>13</td><td>telemetry_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for telemetry. While set, the telemetry receiver clocks are stopped and every access to the SMC_TELEMETRY_RECEIVER_WRAP window answers SLVERR with read data 0xBADCAB1E.</td></tr>
+<tr><td>12</td><td>uart_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for UART. While set, the UART peripheral clock is stopped and every access to the SMC_UART_WRAP window answers SLVERR with read data 0xBADCAB1E.</td></tr>
+<tr><td>11</td><td>i2c_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for I2C. While set, the I2C peripheral clock is stopped and every access to the SMC_I2C_WRAP window answers SLVERR with read data 0xBADCAB1E.</td></tr>
+<tr><td>10</td><td>avs_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for AVSBus. While set, the AVSBus controller clocks are stopped and every access to the SMC_AVSBUS_CONTROLLER window answers SLVERR with read data 0xBADCAB1E.</td></tr>
+<tr><td>9</td><td>i3c_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for I3C. While set, the I3C peripheral clock is stopped and every access to the OCA_I3C_WRAP window answers SLVERR with read data 0xBADCAB1E.</td></tr>
+<tr><td>8</td><td>zeroer_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for axi zeroer</td></tr>
+<tr><td>7</td><td>output_fabric_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for the output fabric remap demux and mux</td></tr>
+<tr><td>6</td><td>addr_remap_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for address remapper register logic</td></tr>
+<tr><td>5</td><td>filter_ib_reg_cg_en</td><td>RW</td><td>0x0</td><td>Clockgate enable for inbound filter registers</td></tr>
+<tr><td>4</td><td>filter_ib_axi_cg_en</td><td>RW</td><td>0x0</td><td>Clockgate enable for the inbound filters</td></tr>
+<tr><td>3</td><td>filter_ob_reg_cg_en</td><td>RW</td><td>0x0</td><td>Clockgate enable for outbound filter registers</td></tr>
+<tr><td>2</td><td>filter_ob_axi_cg_en</td><td>RW</td><td>0x0</td><td>Clockgate enable for the outbound filters</td></tr>
+<tr><td>1</td><td>mailbox_cg_en</td><td>RW</td><td>0x0</td><td>Clockgate enable for the mailbox</td></tr>
+<tr><td>0</td><td>dma_cg_en</td><td>RW</td><td>0x0</td><td>Clockgate enable for the DMA</td></tr>
+</table>
+<span id="HANG_DET_SYS_AXI_CTRL"></span><h3 id="smc_base_config-HANG_DET_SYS_AXI_CTRL" data-register-alias="HANG_DET_SYS_AXI_CTRL">HANG_DET_SYS_AXI_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12</td><td>irq</td><td>R</td><td>0x0</td><td>Reads 1 while this detector&#x27;s interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops. Writes are ignored.</td></tr>
+<tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>irq_test</td><td>RW</td><td>0x0</td><td>Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>irq_en</td><td>RW</td><td>0x0</td><td>Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When 1, the timeout counter runs. When 0, the counter reloads from the threshold and irq_o is forced low.</td></tr>
+</table>
+<span id="HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD"></span><h3 id="smc_base_config-HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD" data-register-alias="HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD">HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>value</td><td>RW</td><td>0x1000</td><td>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</td></tr>
+</table>
+<span id="HANG_DET_SEP_AXI_CTRL"></span><h3 id="smc_base_config-HANG_DET_SEP_AXI_CTRL" data-register-alias="HANG_DET_SEP_AXI_CTRL">HANG_DET_SEP_AXI_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12</td><td>irq</td><td>R</td><td>0x0</td><td>Reads 1 while this detector&#x27;s interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops. Writes are ignored.</td></tr>
+<tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>irq_test</td><td>RW</td><td>0x0</td><td>Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>irq_en</td><td>RW</td><td>0x0</td><td>Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When 1, the timeout counter runs. When 0, the counter reloads from the threshold and irq_o is forced low.</td></tr>
+</table>
+<span id="HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD"></span><h3 id="smc_base_config-HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD" data-register-alias="HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD">HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>value</td><td>RW</td><td>0x1000</td><td>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</td></tr>
+</table>
+<span id="HANG_DET_DATA_ACCEL_CTRL"></span><h3 id="smc_base_config-HANG_DET_DATA_ACCEL_CTRL" data-register-alias="HANG_DET_DATA_ACCEL_CTRL">HANG_DET_DATA_ACCEL_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12</td><td>irq</td><td>R</td><td>0x0</td><td>Reads 1 while this detector&#x27;s interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops. Writes are ignored.</td></tr>
+<tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>irq_test</td><td>RW</td><td>0x0</td><td>Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>irq_en</td><td>RW</td><td>0x0</td><td>Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When 1, the timeout counter runs. When 0, the counter reloads from the threshold and irq_o is forced low.</td></tr>
+</table>
+<span id="HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD"></span><h3 id="smc_base_config-HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD" data-register-alias="HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD">HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>value</td><td>RW</td><td>0x1000</td><td>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-dfx_ctrl_status">DFX Control and Status Address Map</h2>
+<p>Memory-repair and MBIST status, debug clock and cross-trigger controls, and debug-mux selects.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#dfx_ctrl_status-STATUS_SMU">STATUS_SMU</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#dfx_ctrl_status-DEBUG_CTRL">DEBUG_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#dfx_ctrl_status-DEBUG_BUS_MUX">DEBUG_BUS_MUX</a></td><td>RW</td><td>Mode, ID and lane selects for the twelve debug-bus muxes that reduce the SMC debug<br>bus to the 16 CLA input lanes. Each mux takes its mode while Dbmid equals its ID,<br>and its lane selects while Dbmid equals its ID and its mode is 1, so program one mux<br>at a time.</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="STATUS_SMU"></span><h3 id="dfx_ctrl_status-STATUS_SMU" data-register-alias="STATUS_SMU">STATUS_SMU</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12</td><td>mbist_abort</td><td>R</td><td>0x0</td><td>One bit indicator from DFT logic to say that MBIST has hit timeout and aborted<br>This register is sticky 1 and will hold the value until reset</td></tr>
+<tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>mbist_pass</td><td>R</td><td>0x0</td><td>One bit indicator from DFT logic to say when MBIST is successful<br>This register is sticky 1 and will hold the value until reset</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>mbist_done</td><td>R</td><td>0x0</td><td>One bit indicator from DFT logic to say when MBIST is completed<br>This register is sticky 1 and will hold the value until reset</td></tr>
+<tr><td>3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>mem_repair_abort</td><td>R</td><td>0x0</td><td>One bit indicator from DFT logic to say that mem repair has hit timeout and aborted<br>This register is sticky 1 and will hold the value until reset</td></tr>
+<tr><td>1</td><td>mem_repair_success</td><td>R</td><td>0x0</td><td>One bit indicator from DFT logic to say if mem repair was successful<br>This register is sticky 1 and will hold the value until reset</td></tr>
+<tr><td>0</td><td>mem_repair_done</td><td>R</td><td>0x0</td><td>One bit indicator from DFT logic to say when mem repair is completed.<br>This register is sticky 1 and will hold the value until reset</td></tr>
+</table>
+<span id="DEBUG_CTRL"></span><h3 id="dfx_ctrl_status-DEBUG_CTRL" data-register-alias="DEBUG_CTRL">DEBUG_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>30:23</td><td>debug_marker</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC;<br>the debug marker on the SMC debug bus comes from the core logic analyzer (CLA).</td></tr>
+<tr><td>22:7</td><td>xtrig_clk_halt_mask</td><td>RW</td><td>0x0</td><td>CLA cross-trigger and halt-clock enable. Bit 0 (register bit 7) enables every<br>CLA cross-trigger output lane together with the CLA halt-clock request; 0 holds<br>them all inactive. Bits 15:1 hold the written value for software to read back<br>and have no effect.</td></tr>
+<tr><td>6</td><td>dtb_ew_en</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC.</td></tr>
+<tr><td>5</td><td>dtb_ns_en</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC.</td></tr>
+<tr><td>4</td><td>force_clk_en</td><td>RW</td><td>0x0</td><td>Design-for-debug (DFD) clock force. 1 keeps the DFD clock running whatever the<br>value of cg_en.</td></tr>
+<tr><td>3</td><td>cg_en</td><td>RW</td><td>0x0</td><td>DFD clock stop. 1 stops the clock to the debug-bus muxes and the CLA unless<br>force_clk_en is 1; 0 lets it run. The clock also runs while the SMC is in<br>reset.</td></tr>
+<tr><td>2</td><td>gpio_en</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC.</td></tr>
+<tr><td>1:0</td><td>chiplet_enable</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC.</td></tr>
+</table>
+<span id="DEBUG_BUS_MUX"></span><h3 id="dfx_ctrl_status-DEBUG_BUS_MUX" data-register-alias="DEBUG_BUS_MUX">DEBUG_BUS_MUX</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Muxselseg7</td><td>RW</td><td>0x0</td><td>No effect in the SMC: each debug-bus mux has four output lanes, selected by<br>Muxselseg0 to Muxselseg3.</td></tr>
+<tr><td>57:52</td><td>Muxselseg6</td><td>RW</td><td>0x0</td><td>No effect in the SMC: each debug-bus mux has four output lanes, selected by<br>Muxselseg0 to Muxselseg3.</td></tr>
+<tr><td>51:46</td><td>Muxselseg5</td><td>RW</td><td>0x0</td><td>No effect in the SMC: each debug-bus mux has four output lanes, selected by<br>Muxselseg0 to Muxselseg3.</td></tr>
+<tr><td>45:40</td><td>Muxselseg4</td><td>RW</td><td>0x0</td><td>No effect in the SMC: each debug-bus mux has four output lanes, selected by<br>Muxselseg0 to Muxselseg3.</td></tr>
+<tr><td>39:34</td><td>Muxselseg3</td><td>RW</td><td>0x0</td><td>Binary input-lane select for output lane 3 of the addressed debug-bus mux, which<br>takes eight 16-bit input lanes and drives four. 0 selects input lane 3; a value k<br>from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</td></tr>
+<tr><td>33:28</td><td>Muxselseg2</td><td>RW</td><td>0x0</td><td>Binary input-lane select for output lane 2 of the addressed debug-bus mux, which<br>takes eight 16-bit input lanes and drives four. 0 selects input lane 2; a value k<br>from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</td></tr>
+<tr><td>27:22</td><td>Muxselseg1</td><td>RW</td><td>0x0</td><td>Binary input-lane select for output lane 1 of the addressed debug-bus mux, which<br>takes eight 16-bit input lanes and drives four. 0 selects input lane 1; a value k<br>from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</td></tr>
+<tr><td>21:16</td><td>Muxselseg0</td><td>RW</td><td>0x0</td><td>Binary input-lane select for output lane 0 of the addressed debug-bus mux, which<br>takes eight 16-bit input lanes and drives four. 0 selects input lane 0; a value k<br>from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</td></tr>
+<tr><td>15:8</td><td>Rsvd158</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>7:2</td><td>Dbmid</td><td>RW</td><td>0x0</td><td>ID of the debug-bus mux to program: 3 to 6 address the level-2 muxes and 7 to 14 the<br>level-3 muxes.</td></tr>
+<tr><td>1:0</td><td>Dbmmode</td><td>RW</td><td>0x0</td><td>Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode</td></tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="component-register-references"><a class="anchor" href="#component-register-references"></a><a class="link" href="#component-register-references">Component Register References</a></h3>
+<div class="paragraph">
+<p>For detailed register-level documentation of each SMC component, refer
+to the individual component documentation (<a href="#smc-component-documentation-table">SMC Component Documentation</a>).</p>
+</div>
+<table id="smc-component-documentation-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 5. SMC Component Documentation</caption>
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 50%;">
+<col style="width: 20%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Category</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Reference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU and System Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU Control, PLIC, CLINT, Watchdog Timers, and
+Bus Error Units</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">cpu</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt Controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Platform-Level Interrupt Controller (PLIC)
+details</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">interrupts</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA Controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA Controller detailed register interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">dma</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory Zeroer</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory Zeroer control registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">zeroer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fabric Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address remapping, inbound/outbound filters, and fabric
+control registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">fabric</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Peripherals and I/O</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox, System Timer OCTS, eFuse, UART 16550, Log
+Engine, I2C, I3C, AVSBus, GPIO, and Telemetry Receiver</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">periphs</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Management</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset unit and system control registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">clk_rst</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Clock Generation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL wrapper and clock generation registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pll</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFD / CLA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Design-for-debug wrap and Core Logic Analyzer register map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">dfd</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

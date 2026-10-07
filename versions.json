@@ -2,5 +2,9 @@
   {
     "version": "latest",
     "path": ""
+  },
+  {
+    "version": "0.5.1",
+    "path": "v0.5/"
   }
 ]

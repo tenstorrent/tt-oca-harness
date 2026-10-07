@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Watchdog Timers :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-integrator-guide" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Integrator Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Integrator Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../checklist.html">SoC Integration Checklist</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../smu.html">SMU Top-Level Integration</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-filelists.html">RTL Filelists</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-address-map.html">Address Map Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-rom-fw.html">Immutable ROM FW Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-smc.html">System Management Controller (SMC) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-dtp.html">Debug &amp; Test Ports (DTP) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-sep.html">Security Processor (SEP) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-composition.html">SMU Composition and Internal Wiring</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../smn.html">SMN Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../aou.html">AXI-over-UCIe Bridge (AoU) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../defines.html">Project Defines</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../prim.html">Prim Cell Replacement and Don&#8217;t-Touch Constraints</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../cdc.html">CDC Timing Constraints</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Integrator Guide 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../index.html">Integrator Guide</a></li>
+    <li><a href="watchdog.html">Watchdog Timers</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Watchdog Timers</h1>
+<div class="sect1">
+<h2 id="smc-watchdog"><a class="anchor" href="#smc-watchdog"></a><a class="link" href="#smc-watchdog">1. Operation</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Each CPU core includes a dedicated watchdog timer (at 0xC000_0000 + N *
+0x400), providing per-core timeout monitoring. Reset effects are described in
+Clocks and Resets. Base addresses and interrupt-related context for the WDT are
+summarized in
+<a href="interrupts.html#interrupts" class="xref page">Interrupts</a>.</p>
+</div>
+<div class="paragraph">
+<p>Timeouts are configurable to suit different workloads, and staged
+warnings (followed by reset) allow software intervention before hardware
+reset is triggered.</p>
+</div>
+<div class="paragraph">
+<p>Watchdog monitoring can be disabled during debugging to prevent false
+triggers, supporting uninterrupted development and troubleshooting.</p>
+</div>
+<div class="paragraph">
+<p>The watchdog interrupt is <code>CTRL.wdogip0</code>. Hardware sets it on every cycle the
+scaled count is at or above <code>CMP</code>, so it cannot be cleared while that holds.
+Feeding the watchdog resets the count but leaves <code>wdogip0</code> set. The
+<a href="../../../ocah-programmer-guide/0.5/index.html#smc-watchdog-clear" class="xref page">watchdog interrupt clear sequence</a>
+is in the Programmer&#8217;s Guide.</p>
+</div>
+<div class="sect2">
+<h3 id="register-access"><a class="anchor" href="#register-access"></a><a class="link" href="#register-access">1.1. Register Access</a></h3>
+<div class="paragraph">
+<p>Each watchdog is locked out of reset, and a write to any register other
+than KEY locks it again. Software changes one register at a time:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Write <code>0x51F15E</code> to KEY. KEY reads 1 while the watchdog is unlocked.</p>
+</li>
+<li>
+<p>Write the target register. The watchdog locks again on this write, so
+the next write needs a new KEY write first.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>A write acts only when its byte enables cover the register&#8217;s width, and a
+narrower write completes with an OKAY response without changing anything,
+so software cannot detect a dropped write from the response. Software uses
+32-bit stores for every register except CTRL, which accepts byte writes.
+The Detailed Register Map below gives the width each register requires.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-map-and-register-reference"><a class="anchor" href="#memory-map-and-register-reference"></a><a class="link" href="#memory-map-and-register-reference">2. Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<span id="register-reference"></span>
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">2.1. Memory Map</a></h3>
+<div class="paragraph">
+<p>Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">2.2. Detailed Register Map</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-wdt">Watchdog Timer Address Map</h2>
+<p>Watchdog timer configuration, counter, compare, and feed and key registers.<br><br>A write takes effect only if its byte enables cover all four bytes of COUNT, COUNT_HI, FEED or KEY, or bytes 0 and 1 of SCALED_COUNT or CMP; each CTRL byte is written on its own. Any other write returns OKAY and changes nothing, not even the lock.<br><br>Each effective write to a register other than KEY locks the watchdog, and changes no field if it was already locked. A 64-bit write at 0x18 writes FEED and KEY together and leaves the watchdog locked.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#wdt-CTRL">CTRL</a></td><td>RW</td><td>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+<tr><td>0x8</td><td><a href="#wdt-COUNT">COUNT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#wdt-COUNT_HI">COUNT_HI</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#wdt-SCALED_COUNT">SCALED_COUNT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#wdt-FEED">FEED</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1C</td><td><a href="#wdt-KEY">KEY</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#wdt-CMP">CMP</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="CTRL"></span><h3 id="wdt-CTRL" data-register-alias="CTRL">CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>rsvd3</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>28</td><td>wdogip0</td><td>RW</td><td>0x0</td><td>Pending interrupt. Hardware sets this bit on every cycle the scaled count has reached the compare value.<br>To clear it, write KEY and then write 0 to this bit while the scaled count is below the compare value. Writing FEED does not clear it.</td></tr>
+<tr><td>27:14</td><td>rsvd2</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>13</td><td>wdogcoreawake</td><td>RW</td><td>0x0</td><td>Enable WDT to only count when the core is not in reset</td></tr>
+<tr><td>12</td><td>wdogenalways</td><td>RW</td><td>0x0</td><td>Enable WDT to always count. This has priority over wdogcoreawake</td></tr>
+<tr><td>11:10</td><td>rsvd1</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>9</td><td>wdogzerocmp</td><td>RW</td><td>0x0</td><td>Enable cycle counter to be reset to 0 when compare value has been reached</td></tr>
+<tr><td>8</td><td>wdogrsten</td><td>RW</td><td>0x0</td><td>Enables a sticky reset signal to outputted to top level, can be used for a second stage wdt</td></tr>
+<tr><td>7:4</td><td>rsvd0</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3:0</td><td>wdogscale</td><td>RW</td><td>0x0</td><td>WDT counter scale value. Scales the current cycle count (time) by count / 2 ^ wdogscale value</td></tr>
+</table>
+<span id="COUNT"></span><h3 id="wdt-COUNT" data-register-alias="COUNT">COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>30:0</td><td>wdogcount</td><td>RW</td><td>0x0</td><td>31 bit wdt counter registers. On write, the counter will be set to the written value, then continue counting up.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+<span id="COUNT_HI"></span><h3 id="wdt-COUNT_HI" data-register-alias="COUNT_HI">COUNT_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>wdogcounthi</td><td>W</td><td>0x0</td><td>Upper word of the counter. The counter is 31 bits wide and lies entirely in COUNT, so this register has no storage and reads 0. A write covering all four bytes leaves the counter unchanged but locks the WDT, so KEY must be written again before the next write.</td></tr>
+</table>
+<span id="SCALED_COUNT"></span><h3 id="wdt-SCALED_COUNT" data-register-alias="SCALED_COUNT">SCALED_COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>wdogs</td><td>RW</td><td>0x0</td><td>Scaled value of wdt counter. (i.e. count &gt;&gt; wdogscale). Writing to this reg has no effect, but will lock the WDT (meaning KEY must be written to KEY reg to unlock it again).<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+<span id="FEED"></span><h3 id="wdt-FEED" data-register-alias="FEED">FEED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>wdogfeed</td><td>RW</td><td>0x0</td><td>Feed register. Writing 0xD09F00D will reset the counter value back to 0. Feeding does not clear CTRL.wdogip0.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+<span id="KEY"></span><h3 id="wdt-KEY" data-register-alias="KEY">KEY</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>wdogkey</td><td>RW</td><td>0x0</td><td>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it<br>is unlocked, 0 otherwise.</td></tr>
+</table>
+<span id="CMP"></span><h3 id="wdt-CMP" data-register-alias="CMP">CMP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>wdogcmp0</td><td>RW</td><td>0x1000</td><td>Compare register. Value that gets compared to wdogs.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

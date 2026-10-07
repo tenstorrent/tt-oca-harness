@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Interrupts :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP PIC assignments and non-PIC interrupt paths.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-appnotes" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Application Notes</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Application Notes 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component is-current">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../index.html">Application Notes</a></li>
+    <li><a href="interrupts.html">Interrupts</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Interrupts</h1>
+<div class="sect1">
+<h2 id="sep-interrupts"><a class="anchor" href="#sep-interrupts"></a><a class="link" href="#sep-interrupts">1. Controllers</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SEP integrates a VeeR EL2 core with a built-in
+<strong>Programmable Interrupt Controller (PIC)</strong>. All maskable external interrupt
+sources feed a single <code>extintsrc_req</code> bus; the memory-mapped <code>meipl</code>, <code>meie</code>,
+and <code>meigwctrl</code> registers configure priority, enable, and gateway polarity per
+source.</p>
+</div>
+<div class="paragraph">
+<p>The PIC base address is <code>0xC008_0000</code>; its register layout is described in the
+<a href="#sep-pic-registers">Register Interfaces</a> section below.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sources-and-routing"><a class="anchor" href="#sources-and-routing"></a><a class="link" href="#sources-and-routing">2. Sources and Routing</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The vector driven to the core, <code>sep_internal_interrupts</code>, is indexed from 0.
+Bit <code>i</code> of that vector is PIC source <code>i + 1</code>. The core&#8217;s <code>extintsrc_req</code> port
+is numbered from 1, and the core ties source 0 to zero, so the low bit of the
+driven vector is the first programmable source. The comment directly above
+<code>NUM_INTERNAL_IRQS</code> in <code>sep_pkg.sv</code> numbers sources by that vector index, one
+less than the PIC source in <a href="#sep-pic-source-assignments-table">Table 1</a>.</p>
+</div>
+<div class="sect2">
+<h3 id="sep-cpu-interrupt-vector-map"><a class="anchor" href="#sep-cpu-interrupt-vector-map"></a><a class="link" href="#sep-cpu-interrupt-vector-map">2.1. SEP CPU Interrupt Vector Map</a></h3>
+<div class="paragraph">
+<p>The PIC supports 255 external sources. Slots 1–43 are individually assigned to
+specific peripherals and subsystems connected to the SEP, including both
+SEP-internal blocks (crypto engines, DMA, entropy) and cross-block sources
+(SMC mailboxes, SPI). Slots 44–255 are reserved for chip-level external inputs
+passed in at the SEP block boundary.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sep-pic-source-assignments-table">Table 1</a> lists the assigned PIC sources and the range
+reserved for chip-level inputs.</p>
+</div>
+<table id="sep-pic-source-assignments-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SEP PIC source assignments</caption>
+<colgroup>
+<col style="width: 10%;">
+<col style="width: 35%;">
+<col style="width: 55%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">PIC source</th>
+<th class="tableblock halign-left valign-top">Source</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 0 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 1 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 2 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>4</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 3 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>5</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 4 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>6</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 5 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>7</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 6 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>8</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 7 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>9</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA transfer done</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure DMA full-transfer-complete interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>10</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA chunk done</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure DMA chunk-transfer-complete interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>11</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure DMA error interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>12</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA alert</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure DMA aggregated alert (fault)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>13</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WDT alert</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog timer aggregated alert. Note: the WDT <strong>bark</strong> goes to the NMI pin,
+not here; see <a href="#sep-non-pic-paths">Section 2.2</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>14</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI IRQ</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI host controller interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>15</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KM mailbox IRQ</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager-to-SEP mailbox interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>16</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy source IRQ</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OpenTitan entropy source interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>17</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG IRQ</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG interrupt; driven to zero in the current OSS integration</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>18</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC done</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC operation complete interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>19</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC FIFO empty</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC message FIFO empty interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>20</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC error interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>21</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC done</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC operation complete interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>22</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC FIFO empty</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC message FIFO empty interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>23</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC error interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>24</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG command request done</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG command request complete interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>25</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG entropy request</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG entropy request interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>26</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG HW instance exception</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG hardware instance exception interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>27</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG fatal error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG fatal error interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>28</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">EDN command request done</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy Distribution Network command request complete interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>29</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">EDN fatal error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy Distribution Network fatal error interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>30</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTBN done</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OpenTitan Big Number Accelerator operation complete interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>31</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KM unrecoverable error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager unrecoverable error interrupt; also exported as a SEP output port</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>32</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KM recoverable error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager recoverable error interrupt; also exported as a SEP output port</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>33</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Crypto alert</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Combined OpenTitan crypto alert. SEP has no <code>alert_handler</code>; each
+accelerator has its own <code>prim_alert_receiver</code> channel(s) with ping
+disabled, and those pulses plus integrity-fails share this source. See
+<a href="crypto.html#sep-crypto-alert-policy" class="xref page">OpenTitan Alert Termination</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>34</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Locked field access</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse locked-field access violation interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>35</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge (post-quantum accelerator) error interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>36</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge notification</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge (post-quantum accelerator) operation notification interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>37</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy pool low</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy pool FIFO low-water condition (informational: pool draining faster than filling)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>38</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy pool fill stall</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy pool FIFO fill-path stall (fault: EDN not making progress)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>39</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy pool pointer fault</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy pool FIFO read/write pointer integrity fault (fault). The pool&#8217;s
+pointer-integrity check is not built in the current configuration, so this
+source is tied to zero and never asserts; the slot is assigned anyway so that
+enabling the check later does not renumber the map. When live it is
+level-sensitive and holds until a <code>TRNG_ENTROPY_CLEAR</code> pool scrub resets the
+pointers; there is no write-one-to-clear.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>40</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Token match fault</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse token comparator redundancy fault (fault). The OR of the three sticky
+<code>TOKEN_MATCH_FAULT</code> bits. Those bits are software-read-only and clear only on
+reset, so this source stays asserted; there is no write-one-to-clear.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>41</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA register-path bus error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A CPU access to a Secure DMA register returned a TL-UL error response
+(unmapped or misaligned offset). The faulting access also
+received SLVERR synchronously. Latched and held until firmware writes
+<code>DMA_BUS_ERR_CLEAR.clr</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>42</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA host-path integrity/bus fault</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Either the fabric returned a non-OKAY AXI response to a DMA transfer, or a
+TL-UL command-integrity check failed on a command issued by the DMA. The
+integrity case is a fault-detection event with no other reporting path.
+Cleared by the same <code>DMA_BUS_ERR_CLEAR.clr</code> write.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>43</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Peripheral register-bridge fault</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The OR of the per-block register-bridge error bits for AES, HMAC, KMAC, OTBN,
+CSRNG, EDN and the watchdog timer. <code>PERIPH_BUS_ERR_STATUS</code> identifies the
+block, and <code>PERIPH_BUS_ERR_CLEAR</code> clears one block&#8217;s bit at a time, so
+acknowledging one cannot discard another block&#8217;s fault. See
+<a href="crypto.html#sep-crypto-bridge-faults" class="xref page">Crypto Register-Bridge Faults</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[44–255]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved (external band)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chip-level external interrupt inputs</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="sep-non-pic-paths"><a class="anchor" href="#sep-non-pic-paths"></a><a class="link" href="#sep-non-pic-paths">2.2. Non-PIC Interrupt Paths</a></h3>
+<div class="paragraph">
+<p>Three CPU interrupt pins bypass the EL2 PIC entirely. The core also reports its
+own memory errors through a path that is neither a pin nor a PIC source; see
+<a href="#sep-memory-error-reporting">Section 2.2.3</a>.</p>
+</div>
+<span id="nmi-watchdog-timer-bark"></span>
+<div class="sect3">
+<h4 id="sep-interrupts-nmi-watchdog-timer-bark"><a class="anchor" href="#sep-interrupts-nmi-watchdog-timer-bark"></a><a class="link" href="#sep-interrupts-nmi-watchdog-timer-bark">2.2.1. NMI — Watchdog Timer Bark</a></h4>
+<div class="paragraph">
+<p>The VeeR EL2 <code>nmi_int</code> pin is wired to the watchdog timer bark signal from
+<code>sep_wdt_wrap</code>. When the bark fires, the CPU jumps to the NMI vector address
+held in the <code>SEP_NMI_VEC</code> register. The <code>SEP_NMI_VEC_LOCK</code> register prevents
+runtime modification of the vector once locked.</p>
+</div>
+<div class="paragraph">
+<p>The NMI is non-maskable: it cannot be suppressed by <code>mstatus.MIE</code> or any PIC
+configuration register.</p>
+</div>
+<span id="timer-and-software-interrupts"></span>
+</div>
+<div class="sect3">
+<h4 id="sep-interrupts-timer-and-software-interrupts"><a class="anchor" href="#sep-interrupts-timer-and-software-interrupts"></a><a class="link" href="#sep-interrupts-timer-and-software-interrupts">2.2.2. Timer and Software Interrupts</a></h4>
+<div class="paragraph">
+<p>The <code>timer_int</code> and <code>soft_int</code> pins of the VeeR EL2 core are tied to zero at
+the SMU integration boundary. There is no external CLINT-style delivery path.
+The external pins drive <code>mip.MTIP</code> and <code>mip.MSIP</code>, respectively, so these
+pending bits remain inactive in this integration.</p>
+</div>
+<div class="paragraph">
+<p>The two internal timers instead report <code>mip.MITIP0</code> (bit 29) and
+<code>mip.MITIP1</code> (bit 28). Enable them through <code>mie.MITIE0</code> and <code>mie.MITIE1</code>
+at the corresponding bit positions, together with <code>mstatus.MIE</code>. Their
+interrupt cause codes are <code>0x1D</code> and <code>0x1C</code>, respectively (with the interrupt
+bit set in <code>mcause</code>). Enabling <code>mie.MTIE</code> or <code>mie.MSIE</code> does not enable the
+internal timers.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="sep-memory-error-reporting"><a class="anchor" href="#sep-memory-error-reporting"></a><a class="link" href="#sep-memory-error-reporting">2.2.3. Memory ECC Errors</a></h4>
+<div class="paragraph">
+<p>The ICCM and DCCM are SECDED-protected. Neither reaches the PIC: the core
+reports these errors itself, correctable ones as a local interrupt and
+uncorrectable ones as a synchronous trap. No PIC register affects either, and
+there is no PIC source to enable or mask.</p>
+</div>
+<div class="paragraph">
+<p>The SEP core is configured without an I-cache, so the I-cache parity counter
+<code>MICECT</code> (<code>0x7F0</code>) never increments. Only the two tightly-coupled-memory
+counters below are live.</p>
+</div>
+<span id="correctable-single-bit-errors"></span>
+<div class="sect4">
+<h5 id="sep-interrupts-correctable-single-bit-errors"><a class="anchor" href="#sep-interrupts-correctable-single-bit-errors"></a><a class="link" href="#sep-interrupts-correctable-single-bit-errors">Correctable (single-bit) errors</a></h5>
+<div class="paragraph">
+<p>Hardware corrects the data and the access is retried, so no data is lost and no
+trap is taken. Each protected memory has a counter CSR (<a href="#sep-correctable-error-counters-table">Table 2</a>).</p>
+</div>
+<table id="sep-correctable-error-counters-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. SEP correctable-error counters</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 15%;">
+<col style="width: 65%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">CSR</th>
+<th class="tableblock halign-left valign-top">Address</th>
+<th class="tableblock halign-left valign-top">Counts</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MICCMECT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x7F1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ICCM single-bit corrections</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MDCCMECT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x7F2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DCCM single-bit corrections</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Bits <code>[26:0]</code> are the running count. Bits <code>[31:27]</code> hold a threshold exponent:
+the counter raises a request once the count reaches 2<sup>threshold</sup>. A written
+threshold above 26 is clamped to 26. The requests from both counters are ORed
+into <code>mip[30]</code> (<code>MCEIP</code>) and delivered when <code>mie[30]</code> (<code>MCEIE</code>) and
+<code>mstatus.MIE</code> are both set, with <code>mcause</code> = <code>0x8000_001E</code>.</p>
+</div>
+<div class="paragraph">
+<p>Counters and thresholds reset to zero, so a zero threshold raises the request
+on the first corrected error. <code>mie[30]</code> is clear at reset, and until it is set
+corrected errors are counted silently. <code>MCEIP</code> follows the threshold comparator
+and has no write-one-to-clear: it stays asserted until the count drops below the
+threshold. The
+<a href="../../../ocah-programmer-guide/0.5/index.html#sep-memory-errors" class="xref page">memory error handling section</a>
+of the Programmer&#8217;s Guide gives the enable and service sequence.</p>
+</div>
+<span id="uncorrectable-double-bit-errors"></span>
+</div>
+<div class="sect4">
+<h5 id="sep-interrupts-uncorrectable-double-bit-errors"><a class="anchor" href="#sep-interrupts-uncorrectable-double-bit-errors"></a><a class="link" href="#sep-interrupts-uncorrectable-double-bit-errors">Uncorrectable (double-bit) errors</a></h5>
+<div class="paragraph">
+<p>These cannot be masked and have no enable bit. The access returned no valid
+data, so the core traps on the instruction that hit the error (<a href="#sep-uncorrectable-error-traps-table">Table 3</a>).</p>
+</div>
+<table id="sep-uncorrectable-error-traps-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. SEP uncorrectable-error traps</caption>
+<colgroup>
+<col style="width: 35%;">
+<col style="width: 20%;">
+<col style="width: 45%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Access</th>
+<th class="tableblock halign-left valign-top"><code>mcause</code></th>
+<th class="tableblock halign-left valign-top">Trap</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Instruction fetch from ICCM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0000_0001</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Instruction access fault</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Load from DCCM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0000_0005</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Load access fault</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Store to DCCM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0000_0007</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Store access fault</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DCCM access on the fast-interrupt path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xF000_1000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">NMI, taken through <code>SEP_NMI_VEC</code> like the watchdog bark</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>mcause</code> alone does not identify these as memory failures&#8201;&#8212;&#8201;a bad pointer and a
+failing SRAM both raise a load access fault. <code>mscause</code> (<code>0x7FF</code>) is what
+separates them: on an access fault, <code>mscause</code> = <code>1</code> means uncorrectable ECC.
+A handler that does not read <code>mscause</code> cannot distinguish a software bug from
+failing hardware.</p>
+</div>
+<div class="paragraph">
+<p>The faulting access cannot be completed, and retrying it re-reads the same
+corrupted location.</p>
+</div>
+<div class="paragraph">
+<p>An uncorrectable error on an externally initiated (DMA) access to either memory
+is not a CPU trap at all. It is returned as an error response on that
+transaction, and the initiator is responsible for reporting it.</p>
+</div>
+<span id="debug-bus-mirror"></span>
+</div>
+<div class="sect4">
+<h5 id="sep-interrupts-debug-bus-mirror"><a class="anchor" href="#sep-interrupts-debug-bus-mirror"></a><a class="link" href="#sep-interrupts-debug-bus-mirror">Debug bus mirror</a></h5>
+<div class="paragraph">
+<p>The ICCM and DCCM single- and double-bit error signals are also mirrored onto
+<code>ext_debug_bus_o[367:364]</code>, most significant first: ICCM single, ICCM double,
+DCCM single, DCCM double. These are single-cycle pulses with no latch and no
+handshake, provided for external trace and bring-up observability. They are not
+a delivery path, so software must not rely on sampling them; use the CSRs above.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="software-handling"><a class="anchor" href="#software-handling"></a><a class="link" href="#software-handling">3. Software Handling</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Interrupt source IDs are <strong>1-based</strong> inside the PIC. Source 0 is permanently
+tied to zero inside the core. Firmware programs source <code>N</code> through the
+per-source arrays, each indexed at an offset of <code>N * 4</code> from its region base:
+<code>meipl</code> at PIC base <code>+0x0000</code>, <code>meie</code> at <code>+0x2000</code>, <code>meigwctrl</code> at <code>+0x4000</code>
+and <code>meigwclr</code> at <code>+0x5000</code>. Pending status is the exception&#8201;&#8212;&#8201;<code>meip</code> at
+<code>+0x1000</code> is a bitmap rather than a per-source array, so source <code>N</code> is bit
+<code>N % 32</code> of <code>meip[N / 32]</code>.</p>
+</div>
+<div class="paragraph">
+<p>Each per-source array carries an entry 0, so that the array index is the source
+ID and no off-by-one applies: <code>meipl[7]</code> is source 7. That entry is reserved and
+has no hardware behind it&#8201;&#8212;&#8201;the PIC decodes the address but ties the register
+off, so <code>+0x0000</code>, <code>+0x2000</code>, <code>+0x4000</code> and <code>+0x5000</code> read as zero and discard
+writes. It appears in the RDL, the generated headers and the UVM RAL only to
+preserve the indexing. The
+<a href="../../../ocah-programmer-guide/0.5/index.html#sep-pic" class="xref page">PIC section</a>
+of the Programmer&#8217;s Guide gives the programming and per-source service
+rules.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Register tests that walk the whole PIC map must skip index 0 of <code>meipl</code>,
+<code>meie</code>, <code>meigwctrl</code> and <code>meigwclr</code>. The register model declares those entries
+read-write like every other element, but the hardware treats them as reserved,
+so a read-write check on them fails.
+</td>
+</tr>
+</table>
+</div>
+<span id="register-reference"></span>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-pic-registers"><a class="anchor" href="#sep-pic-registers"></a><a class="link" href="#sep-pic-registers">4. Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">4.1. Memory Map</a></h3>
+<div class="paragraph">
+<p>The EL2 PIC register block (<code>meipl</code>, <code>meie</code>, <code>meigwctrl</code>, <code>meigwclr</code>, and
+related registers) is documented in the register reference below.</p>
+</div>
+<div class="paragraph">
+<p>The per-source arrays in that table are listed from index 0. Index 0 is the
+reserved entry described in <a href="#sep-interrupts">Interrupts</a>: it exists so the array index
+equals the interrupt source ID, and the first programmable source is index 1.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">4.2. Detailed Register Map</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-el2_pic">EL2_PIC</h2>
+<p>VeeR EL2 Programmable Interrupt Controller (PIC) memory-mapped registers.<br>Supports up to PIC_TOTAL_INT external interrupt sources with 15 priority levels.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>meipl[256]</strong>: 256 registers, base 0x0, stride 0x4</li>
+<li><strong>meip[8]</strong>: 8 registers, base 0x1000, stride 0x4</li>
+<li><strong>meie[256]</strong>: 256 registers, base 0x2000, stride 0x4</li>
+<li><strong>meigwctrl[256]</strong>: 256 registers, base 0x4000, stride 0x4</li>
+<li><strong>meigwclr[256]</strong>: 256 registers, base 0x5000, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x3FC</td><td><a href="#el2_pic-meipl_256_">meipl[256]</a></td><td>RW</td><td>External Interrupt Priority Level Register. Sets the priority level for an interrupt source.</td></tr>
+<tr><td>0x1000 - 0x101C</td><td><a href="#el2_pic-meip_8_">meip[8]</a></td><td>R</td><td>External Interrupt Pending Register. Reports pending status of up to 32 interrupt sources.</td></tr>
+<tr><td>0x2000 - 0x23FC</td><td><a href="#el2_pic-meie_256_">meie[256]</a></td><td>RW</td><td>External Interrupt Enable Register. Controls interrupt enable for a single source.</td></tr>
+<tr><td>0x3000</td><td><a href="#el2_pic-mpiccfg">mpiccfg</a></td><td>RW</td><td>PIC Configuration Register. Used to select the operational parameters of the PIC.</td></tr>
+<tr><td>0x4000 - 0x43FC</td><td><a href="#el2_pic-meigwctrl_256_">meigwctrl[256]</a></td><td>RW</td><td>External Interrupt Gateway Configuration Register. Controls interrupt type and polarity.</td></tr>
+<tr><td>0x5000 - 0x53FC</td><td><a href="#el2_pic-meigwclr_256_">meigwclr[256]</a></td><td>W</td><td>External Interrupt Gateway Clear Register. Writing any value clears the gateway&#x27;s<br>interrupt pending (IP) bit for edge-triggered interrupts.</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="meipl_256_"></span><h3 id="el2_pic-meipl_256_" data-register-alias="meipl_256_">meipl[256]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3:0</td><td>intpriority</td><td>RW</td><td>0x0</td><td>External interrupt priority level:<br>RISC-V standard order: 0=Never interrupt, 1..15=Priority (1 lowest, 15 highest)<br>Reverse order: 15=Never interrupt, 14..0=Priority (14 lowest, 0 highest)</td></tr>
+</table>
+<span id="meip_8_"></span><h3 id="el2_pic-meip_8_" data-register-alias="meip_8_">meip[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>intpend</td><td>R</td><td>0x0</td><td>External interrupt pending bits. Bit Y indicates pending status for source X*32+Y.<br>0: Interrupt not pending<br>1: Interrupt pending</td></tr>
+</table>
+<span id="meie_256_"></span><h3 id="el2_pic-meie_256_" data-register-alias="meie_256_">meie[256]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>inten</td><td>RW</td><td>0x0</td><td>External interrupt enable:<br>0: Interrupt disabled<br>1: Interrupt enabled</td></tr>
+</table>
+<span id="mpiccfg"></span><h3 id="el2_pic-mpiccfg" data-register-alias="mpiccfg">mpiccfg</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>priord</td><td>RW</td><td>0x0</td><td>Priority order:<br>0: RISC-V standard compliant priority order (0=lowest to 15=highest)<br>1: Reverse priority order (15=lowest to 0=highest)</td></tr>
+</table>
+<span id="meigwctrl_256_"></span><h3 id="el2_pic-meigwctrl_256_" data-register-alias="meigwctrl_256_">meigwctrl[256]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>irq_type</td><td>RW</td><td>0x0</td><td>External interrupt type:<br>0: Level-triggered interrupt<br>1: Edge-triggered interrupt</td></tr>
+<tr><td>0</td><td>polarity</td><td>RW</td><td>0x0</td><td>External interrupt polarity:<br>0: Active-high interrupt<br>1: Active-low interrupt</td></tr>
+</table>
+<span id="meigwclr_256_"></span><h3 id="el2_pic-meigwclr_256_" data-register-alias="meigwclr_256_">meigwclr[256]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>clear</td><td>W</td><td>0x0</td><td>Write any value to clear the interrupt pending bit in the gateway.<br>This register is write-only; reads return 0.</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

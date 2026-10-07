@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Token Processing :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP token generation, matching, and fault handling.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-appnotes" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Application Notes</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Application Notes 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component is-current">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../index.html">Application Notes</a></li>
+    <li><a href="token_processing.html">Token Processing</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Token Processing</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="token-processing" class="paragraph">
+<p>SEP uses 256-bit tokens to authorize RMA lifecycle transitions and emergency
+security disable. The OTP controller hashes each submitted token with SHA-256
+and compares the digest with the expected value. Plaintext tokens are held in
+three separate, non-scannable eight-word arrays in the eFuse MMR block. These
+arrays have no reset; reset is not a token-erasure operation.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="token-generation-storage-and-provisioning"><a class="anchor" href="#token-generation-storage-and-provisioning"></a><a class="link" href="#token-generation-storage-and-provisioning">1. Token Generation, Storage and Provisioning</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Generate and retain plaintext tokens within a hardware security module (HSM),
+using its secure random-generation and derivation facilities. Keep token
+processing inside the HSM except for final provisioning, and protect transfer
+to the manufacturing tester. Provision the RMA token digests, not plaintext
+tokens, into OTP at manufacturing test. Provisioning policy may use a common
+token or a distinct token per device; the matching mechanism supports either.</p>
+</div>
+<div class="paragraph">
+<p>Track each token and its SHA-256 digest separately. Token confidentiality and
+entropy protect authorization; expected-digest integrity prevents substitution
+of a digest for a token an attacker knows. The hardware-embedded SEC_DIS digest
+is common to devices using that design. Bind it under controlled implementation
+procedures; it does not require the plaintext token in the RTL database.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="token-matching-mechanism-and-attack-countermeasures"><a class="anchor" href="#token-matching-mechanism-and-attack-countermeasures"></a><a class="link" href="#token-matching-mechanism-and-attack-countermeasures">2. Token Matching Mechanism and Attack Countermeasures</a></h2>
+<div class="sectionbody">
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Token roles and expected digests</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 40%;">
+<col style="width: 40%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Token</th>
+<th class="tableblock halign-left valign-top">Purpose</th>
+<th class="tableblock halign-left valign-top">Expected digest</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RMA_SIP_TOKEN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Authorize SiP RMA transitions</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RMA_SIP_TOKEN_DIGEST</code> in OTP</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RMA_CHIPLET_TOKEN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Authorize chiplet RMA transitions</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RMA_CHIPLET_TOKEN_DIGEST</code> in OTP</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEC_DIS_TOKEN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Emergency debug access to a part whose fuse sensing fails</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hardware constant, independent of OTP</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Each token has a dedicated SHA-256 engine and three redundant digest comparators:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">match = (SHA256(token[255:0]) == expected_digest[255:0])</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Hashing is sequential; the digest comparison is combinational. The computed
+digest and its valid bit survive reset. A new start clears validity; hash
+completion replaces the digest. Test enable freezes those retained latches. The presented token
+and expected digest must not enter scannable storage.</p>
+</div>
+<div class="paragraph">
+<p>RMA comparisons require both a valid computed digest and completed fuse sensing,
+because their expected values come from OTP shadows. SEC_DIS requires only a
+valid digest: its expected value is implemented in gates, so a SEC_DIS match
+holds before fuse sensing completes. A match forces feature control on, stops
+fuse sensing, and opens eFuse shadow-map reads. It does not release SEP reset;
+the IC_RESET <code>sep_reset_n</code> override does. The
+<a href="../../../ocah-programmer-guide/0.5/index.html#sep-sec-dis-recovery" class="xref page">SEC_DIS recovery sequence</a>
+is in the Programmer&#8217;s Guide. SEC_DIS follows the feature-control rules in the
+Lifecycle Controller chapter, with the metal-programmable enable also required.
+The design requirement is A0-only use and permanent removal by a metal-mask ECO
+in later A1/B0 revisions; this is not a software-disable mechanism. See
+<a href="security_disable.html#security-disable-sec_dis" class="xref page">Security Disable (SEC_DIS)</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="token-submission"><a class="anchor" href="#token-submission"></a><a class="link" href="#token-submission">3. Token Submission</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>SEP software or JTAG submits tokens through the eFuse MMR interface, subject to
+its access policy. Register names and start bits are:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. Token submission registers</caption>
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 20%;">
+<col style="width: 40%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Eight-word input array</th>
+<th class="tableblock halign-left valign-top"><code>TOKEN_EOP</code> bit</th>
+<th class="tableblock halign-left valign-top">Result register</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RMA_SIP_TOKEN_I</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RMA_SIP_TOKEN_MATCH</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RMA_CHIPLET_TOKEN_I</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RMA_CHIPLET_TOKEN_MATCH</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEC_DISABLE_TOKEN_I</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEC_DISABLE_TOKEN_MATCH</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Index 0 of an input array holds <code>token[31:0]</code> and index 7 holds
+<code>token[255:224]</code>; the hash engine consumes index 7 first, down to index 0,
+without a byte swap. A write of 1 to a <code>TOKEN_EOP</code> bit generates a start pulse,
+and the engine then streams the array rather than taking a snapshot. RMA
+results remain idle until fuse sensing completes. The
+<a href="../../../ocah-programmer-guide/0.5/index.html#sep-token-matching" class="xref page">token submission sequence</a>
+is in the Programmer&#8217;s Guide.</p>
+</div>
+<div class="paragraph">
+<p>There is no submission queue: the feeder accepts a new operation only while
+idle. Starting
+a hash clears retained digest validity, so comparison returns idle while the
+new digest is unavailable. The result register follows the comparator through
+a clocked output stage; writing the token words alone does not invalidate the
+previous result or launch a comparison.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. Token result encodings</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Result</th>
+<th class="tableblock halign-left valign-top">Six-bit value</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Idle</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00</code> (<code>000000</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No valid comparison; hashing or fuse sensing may be pending</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Match</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x15</code> (<code>010101</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All three comparators report equal digests</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mismatch</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x2a</code> (<code>101010</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All three comparators report unequal digests</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x3f</code> (<code>111111</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A differential-pair or comparator-agreement fault is present</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Reset clears the registered result and sticky fault flags, but does not erase
+the input arrays, retained digest or digest-valid state. A retained digest can
+therefore produce a result again after reset once its comparison prerequisites
+hold, so reset alone does not revoke a prior token authorization.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="token-matching-countermeasures"><a class="anchor" href="#token-matching-countermeasures"></a><a class="link" href="#token-matching-countermeasures">4. Matching Logic Countermeasures</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The three comparators provide differential outputs. When comparison is valid,
+each pair must contain opposite values and all three instances must agree.
+A collapsed pair or disagreement raises a redundancy fault and forces the
+current comparator result to <code>0x3f</code>, which does not satisfy a match check.
+This is not majority voting: two matching instances cannot overrule a third.</p>
+</div>
+<div class="paragraph">
+<p>Each fault also sets a software-read-only flag in <code>TOKEN_MATCH_FAULT</code>: bit 0
+for SiP RMA, bit 8 for chiplet RMA and bit 16 for SEC_DIS. These flags remain
+set until reset and combine into SEP CPU PIC source 40; there is no
+write-one-to-clear operation to deassert the source. See
+<a href="interrupts.html#sep-cpu-interrupt-vector-map" class="xref page">SEP CPU Interrupt Vector Map</a>.</p>
+</div>
+<div class="paragraph">
+<p>The sticky flag records fault history; it does not latch the comparator into
+an error state. A later valid comparison can report match or mismatch while
+the fault flag and interrupt remain asserted.</p>
+</div>
+<div class="paragraph">
+<p>The detector does not cover common-mode faults. If all three instances flip
+in the same way while retaining legal differential pairs, they still agree.
+Inverting a mismatch can therefore produce an undetected match (fail-open);
+inverting a match produces a mismatch. The countermeasure detects collapsed
+pairs and disagreement, not every possible fault-injection outcome.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sep-token-processing-figure">Figure 1</a> shows the processing path. The six-bit RMA
+match codes are checked by the lifecycle and fuse-programming consumers.
+SEC_DIS has a separate bypass output qualified by the revision enable.</p>
+</div>
+<div id="sep-token-processing-figure" class="imageblock">
+<div class="content">
+<img src="_images/sep-token-processing.svg" alt="efuse_token_processing: three token lanes, each with its token array, SHA-256 engine and triple-redundant comparator, followed by the match flops, the sticky fault bits, the security-disable logic and the shadow map gate" width="100%">
+</div>
+<div class="title">Figure 1. SEP token processing</div>
+</div>
+<div class="paragraph">
+<p>Each of the three rows in <a href="#sep-token-processing-figure">Figure 1</a> is one token lane,
+from its token array and go bit in <code>efuse_mmr_reg</code>, through its SHA-256 engine,
+to its comparator. The expected digests and <code>fuse_sense_done_i</code> are named at
+their point of use; both come from the eFuse shadow registers at the lower
+left. <code>fuse_sense_done_i</code> gates only the two RMA comparators. The comparators'
+match codes and the sticky fault bits are also readable in the
+<code>*_TOKEN_MATCH</code> and <code>TOKEN_MATCH_FAULT</code> status registers. The RMA_CHIPLET match
+line crosses the RMA_SIP fault line without connecting; the gap marks the
+crossing.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="post-token-matching-handling"><a class="anchor" href="#post-token-matching-handling"></a><a class="link" href="#post-token-matching-handling">5. Post Token Matching Handling</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>An RMA match authorizes a lifecycle change; it does not itself burn a fuse.
+The controller gates RMA fuse programming with the corresponding token match.
+For shadow-state transitions, software can request an explicit update, or
+<code>TRANSIENT_RMA_EN</code> can enable automatic updates. The chiplet-RMA shadow
+transition also requires RMA_SIP to be established first. See
+<a href="otp_fuse_controller.html#fuse-controller-otp-fuse-controller-otp" class="xref page">OTP Fuse Controller</a>
+for lock exceptions and transition rules. SEC_DIS instead activates the
+emergency bypass while its match and revision-enable conditions hold.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

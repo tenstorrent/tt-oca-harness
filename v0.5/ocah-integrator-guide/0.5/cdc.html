@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>CDC Timing Constraints :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-integrator-guide" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Integrator Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="index.html">Integrator Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="checklist.html">SoC Integration Checklist</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smu.html">SMU Top-Level Integration</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-filelists.html">RTL Filelists</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-address-map.html">Address Map Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-rom-fw.html">Immutable ROM FW Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-smc.html">System Management Controller (SMC) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-dtp.html">Debug &amp; Test Ports (DTP) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-sep.html">Security Processor (SEP) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-composition.html">SMU Composition and Internal Wiring</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="smn.html">SMN Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aou.html">AXI-over-UCIe Bridge (AoU) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="defines.html">Project Defines</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="prim.html">Prim Cell Replacement and Don&#8217;t-Touch Constraints</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="2">
+    <a class="nav-link" href="cdc.html">CDC Timing Constraints</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Integrator Guide 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="index.html">Integrator Guide</a></li>
+    <li><a href="cdc.html">CDC Timing Constraints</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">CDC Timing Constraints</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>OCAH ships synthesis constraints that bound the enumerated synchronization
+structures in the SMC, SEP, DTP and SMU. Independent CDC sign-off is still
+required for the assembled SoC. This section explains what those constraints do, how they
+are produced, and what an adopter has to change when integrating OCAH into their
+own flow and cell library.</p>
+</div>
+<div class="paragraph">
+<p>To give the different systems a unified view of how the constraints are defined,
+these constraints are collected with symlinks under <code>integration/constraints</code>
+using a common hierarchy, described below. If the collateral inventory changes,
+run <code>scripts/update_integration_symlinks.py</code> to regenerate the index.</p>
+</div>
+<div class="paragraph">
+<p>The constraints for each system build on shared code, linked at
+<code>integration/constraints/shared</code>. This consists of four files:
+<code>clock_periods.tcl</code> (which sets the target clock periods every block reads),
+<code>async_clock_groups.tcl</code> (which defines clock groups with default bounds),
+<code>cdc_max_delay_procs.tcl</code> (which defines procs for emitting CDC constraints)
+and <code>hier_reuse_procs.tcl</code> (which lets a parent replay a block&#8217;s constraints
+under an instance prefix).</p>
+</div>
+<div class="paragraph">
+<p>The constraints for each system can use this shared code and are visible through
+symlinks at <code>integration/constraints/&lt;block&gt;/synth</code>. This directory contains the
+following files:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>constraints.sdc</code>:
+Composes the block&#8217;s timing intent from the files below and from the shared
+code, in the order they are listed here. It carries no constraints of its own
+beyond the caveats recorded in its header.</p>
+</li>
+<li>
+<p><code>&lt;block&gt;_clocks.sdc</code>:
+The block&#8217;s clock definitions: the <code>create_clock</code> stampings on its clock
+ports and the generated clocks derived from them. Reads the periods from
+<code>clock_periods.tcl</code>.</p>
+</li>
+<li>
+<p><code>&lt;block&gt;_clock_groups.sdc</code>:
+The asynchronous clock groups, declared with <code>-allow_paths</code> so the
+per-instance bounds below are not masked by a false path.</p>
+</li>
+<li>
+<p><code>&lt;block&gt;_io_delays.sdc</code>:
+The input and output delays on the block&#8217;s ports.
+The CDC/RDC sign-off run reads the same three files, without the max-delay
+layer below (see <a href="#cdc-signoff-collateral">CDC/RDC sign-off collateral</a>).</p>
+</li>
+<li>
+<p><code>&lt;block&gt;_cdc_max_delay.tcl</code>:
+This defines periods for generated clocks and any hand-written overrides and
+then sources the next script.</p>
+</li>
+<li>
+<p><code>&lt;block&gt;_cdc_max_delay_generated.tcl</code>:
+This auto-generated file defines maximum delays for instances of
+synchronization structures in the system. It expects to be sourced by a file
+that has already sourced <code>cdc_max_delay_procs.tcl</code> to define the procs that
+it uses.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Two blocks carry an extra file. SEP adds <code>sep_entropy_clocks.sdc</code>, whose
+ripple-divider clocks are built from the RTL hierarchy and are skipped when the
+entropy source is blackboxed. SMC adds <code>smc_gpio_io_delays.sdc</code> for the GPIO
+padring; SMU passes the same padring through, so its <code>smu_io_delays.sdc</code>
+sources that file rather than keeping a second copy of it.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="why-crossings-are-bounded-rather-than-timed"><a class="anchor" href="#why-crossings-are-bounded-rather-than-timed"></a><a class="link" href="#why-crossings-are-bounded-rather-than-timed">1. Why crossings are bounded rather than timed</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>A clock-domain crossing has no fixed phase relationship, so it cannot be timed
+against a capture edge. Its correctness still depends on delay, though: every CDC
+element assumes the data reaches the receiver within a bounded time.</p>
+</div>
+<div class="paragraph">
+<p>OCAH therefore keeps the crossings visible to the tool and gives each one an
+explicit upper bound, sized from the clock that captures it. This doesn&#8217;t assert
+any phase relationship. It only states how much delay the crossing tolerates
+while its CDC element&#8217;s guarantee still holds.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="what-is-constrained"><a class="anchor" href="#what-is-constrained"></a><a class="link" href="#what-is-constrained">2. What is constrained</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Any CDC element has at least one capture clock. For every CDC element whose type
+is listed below, the generated constraints give the element its own
+<code>set_max_delay</code>. This is sized from the capture clock, as read from the netlist.
+When the capture clock is muxed from several sources, the bound must hold for
+whichever source the mux selects at runtime; as such, the shortest period among
+the mux inputs is used.</p>
+</div>
+<div class="paragraph">
+<p>The elements covered are <code>prim_flop_2sync</code>, <code>prim_sync3/4</code> and their reset
+variants, the pulp <code>sync</code> shim, <code>prim_sync_reset</code>, <code>prim_sync3_pulse</code>, <code>prim_fifo_async</code>,
+<code>avsbus_async_fifo</code>, <code>cdc_fifo_gray</code>, <code>axi_cdc</code>, <code>prim_reg_cdc</code>,
+<code>prim_sync_reqack_data</code>, <code>prim_sync_data_autohs</code>, <code>cdc_2phase</code>, <code>dmi_wrapper</code> and
+Rocket <code>AsyncQueue</code>.</p>
+</div>
+<div class="paragraph">
+<p>The bound depends on what protects the crossing:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 27.2727%;">
+<col style="width: 27.2727%;">
+<col style="width: 45.4546%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Kind of path</th>
+<th class="tableblock halign-left valign-top">Bound</th>
+<th class="tableblock halign-left valign-top">Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Synchronizer data input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0.5 * T_dst</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Leaves half a destination period of settling margin before the capture edge the synchronizer relies on.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Protocol-protected data</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1.0 * T_dst</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Conservative. The requirement is set by the pointer synchronizer&#8217;s depth&#8201;&#8212;&#8201;see below.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Two-phase handshake nets</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>min(T_src, T_dst)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cdc_2phase</code> runs the handshake in both directions, so the tighter domain governs. This is the module&#8217;s own stated requirement.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>T_dst</code> rather than <code>min(T_src, T_dst)</code> in the general case because the gating
+synchronizer is clocked by the destination, so its settling window is <code>S * T_dst</code>
+and <code>T_src</code> does not enter the guarantee. This makes slow-to-fast and fast-to-slow
+equally safe.</p>
+</div>
+<div class="sect2">
+<h3 id="why-protocol-protected-data-still-needs-a-bound"><a class="anchor" href="#why-protocol-protected-data-still-needs-a-bound"></a><a class="link" href="#why-protocol-protected-data-still-needs-a-bound">2.1. Why protocol-protected data still needs a bound</a></h3>
+<div class="paragraph">
+<p>The payload of a gray-pointer FIFO or a req/ack handshake never passes through a
+synchronizer&#8201;&#8212;&#8201;only the pointer or request does. So this is not a metastability
+constraint, and it is reasonable to ask why such a path needs a bound at all, or
+why a single blanket bound covering every crossing in the design would not be
+enough.</p>
+</div>
+<div class="paragraph">
+<p>The bound is needed because the protocol guarantees <strong>ordering</strong>, not <strong>arrival</strong>.
+The read side will not look at an entry until the write pointer has crossed,
+which takes <code>SYNC_STAGES</code> destination cycles, where <code>SYNC_STAGES</code> is the depth
+of the pointer synchronizer. Nothing in the protocol ensures the data has
+physically arrived within that window; that is a timing property, and only a
+<code>max_delay</code> states it. Miss it and the consumer samples the entry&#8217;s previous
+contents. There is no violation report and no metastability event, just wrong
+data.</p>
+</div>
+<div class="paragraph">
+<p>So the requirement is <code>data path &lt; SYNC_STAGES * T_dst</code>. It is not a fixed number
+of nanoseconds: it scales with the clock that captures the crossing, and the
+destination periods within one design span an order of magnitude.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Destination period</th>
+<th class="tableblock halign-left valign-top">Guarantee at 3 stages</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 ns</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3 ns</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">5 ns</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">15 ns</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10 ns</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">30 ns</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>That is why the bound is applied per instance rather than as one global value. A
+single blanket <code>max_delay</code> would have to be loose enough to be feasible on the
+slowest domains. But this would permit several times more delay than a fast
+crossing&#8217;s pointer scheme tolerates. To ensure that fast crossings are properly
+constrained, each crossing is sized from its own capturing clock.</p>
+</div>
+<div class="paragraph">
+<p>The blanket default applied by the clock-group layer (see <a href="#cdc-two-layers">The
+two layers</a>) deliberately applies this looser constraint. For slow domains, it
+is already sufficient and an explicit per-instance constraint is redundant. It
+is the fast crossings that need a per-instance constraint.</p>
+</div>
+<div class="paragraph">
+<p><code>1.0 * T_dst</code> is therefore conservative by a factor of two to three. It is kept
+simple deliberately, but if wide payloads such as AXI data will not close then
+raising <code>cdc_data_delay</code> to <code>2.0 * T_dst</code> stays inside a three-stage guarantee
+with a cycle to spare. An adopter whose synchronizer cells use a different depth
+should recompute from their own <code>SYNC_STAGES</code> rather than inheriting this
+factor.</p>
+</div>
+<div class="paragraph">
+<p>Enumeration and clock resolution run once, offline, against an elaborated design,
+and their output is an explicit per-block file of constraint calls that is reviewed
+and checked in. The flow itself does no discovery. This matters to an integrator
+because those files are written against the OCAH hierarchy and OCAH&#8217;s clock names.
+If you instantiate a block as delivered, you do not need to regenerate or hand-edit
+them: set <code>::cdc_hier_prefix</code> to where the block sits in your hierarchy, and
+optionally <code>::cdc_clock_alias</code> to map OCAH clock names onto your own. Regeneration
+is needed only when the block is reconfigured in a way that changes which CDC
+elements exist, since no prefix can conjure constraints for elements the file never
+listed (see <a href="#cdc-integration-checklist">Integration checklist</a> item 2).</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="cdc-two-layers"><a class="anchor" href="#cdc-two-layers"></a><a class="link" href="#cdc-two-layers">3. The two layers</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The per-instance bounds only take effect on top of a correctly configured
+clock-group layer. That layer decides whether the tool considers inter-domain
+paths at all, so it must be established first; the per-instance exceptions then
+refine it.</p>
+</div>
+<div class="paragraph">
+<p><strong>Layer 1</strong> is <code>set_async_clock_groups</code>, defined in
+<code>flows/synth/constraints/async_clock_groups.tcl</code> and reached from each block&#8217;s
+<code>&lt;block&gt;_clock_groups.sdc</code> through <code>cdc_apply_async_groups</code> (in the same file),
+which resolves each domain&#8217;s membership and passes the block&#8217;s <code>-exclude</code>
+pairs through. It declares the asynchronous groups <strong>with
+<code>-allow_paths</code></strong> and applies a loose 20 ns / -20 ns default to every inter-group
+clock pair.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p><code>-allow_paths</code> is a prerequisite, not a refinement. In DC and PrimeTime exception
+priority, <code>set_false_path</code> outranks <code>set_max_delay</code> regardless of which is more
+specific, so a bare <code>set_clock_groups -asynchronous</code> silently masks <strong>every</strong>
+per-instance constraint. There is no warning; the exceptions simply have no
+effect.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The 20 ns default is what makes <code>-allow_paths</code> safe to enable. Once paths are
+allowed, every crossing without a specific constraint would otherwise be timed
+against a meaningless launch-capture relationship and fail. The default bounds
+them loosely so that only deliberately tightened paths appear as real
+requirements. It is emitted per ordered clock pair, never group-wide, because a
+20 ns bound inside a group would mask genuine setup failures on synchronous paths.</p>
+</div>
+<div class="paragraph">
+<p><strong>Layer 2</strong> is the per-instance <code>set_max_delay</code> output of the three steps above, with
+two deliberate carve-outs:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Paths from primary inputs revert to the default.</strong> A synchronizer input
+reachable from a top-level port carries that port&#8217;s <code>set_input_delay</code>, which is a
+budget figure rather than real logic and can alone exceed the tightened bound.
+Only the parent block sees both ends, so there is nothing to tighten at block
+level.</p>
+</li>
+<li>
+<p><strong>Same-clock instances are skipped.</strong> A two-clock element wired to one clock is not
+a crossing, and applying <code>set_max_delay -ignore_clock_latency</code> there would
+replace a proper setup check with a flat budget that discards skew and
+uncertainty. These are emitted commented out. OCAH has five, where OpenTitan
+AES, KMAC and OTBN instantiate <code>prim_sync_reqack_data</code> on EDN and OTP interfaces
+that are separate domains upstream but share a clock in SEP.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="cdc-signoff-collateral"><a class="anchor" href="#cdc-signoff-collateral"></a><a class="link" href="#cdc-signoff-collateral">4. CDC/RDC sign-off collateral</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The same clock, group and I/O-delay files that synthesis reads are the clock
+truth for static CDC/RDC sign-off, and the rest of that sign-off collateral is
+checked in beside them, so an adopter can run their own tool against the
+reviewed constraints and waivers rather than reconstructing them.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>hw/sys/&lt;block&gt;/cdc/&lt;block&gt;.cdc_rdc.tcl</code> is the entry point. It sources the
+block&#8217;s files in dependency order: <code>hier_reuse_procs.tcl</code>, <code>clock_periods.tcl</code>
+and the <code>&lt;block&gt;_{clocks,clock_groups,io_delays}.sdc</code> siblings (without the
+CDC max-delay layer <code>constraints.sdc</code> adds), <code>&lt;block&gt;.resets.tcl</code> (the reset
+tree and its assertion sequences), <code>&lt;block&gt;.case_analysis.tcl</code> (the functional
+pins for DFT and strap ports), <code>&lt;block&gt;.static_signals.tcl</code> (quasi-static
+signals, CDC only), the shared type-level setup in
+<code>flows/cdc/cdc_rdc_setup.tcl</code> (synchronizer and verified-IP modules, gray
+annotations) and the block&#8217;s instance-level <code>&lt;block&gt;.cdc_rdc_setup.tcl</code>.</p>
+</li>
+<li>
+<p><code>hw/sys/&lt;block&gt;/cdc/&lt;block&gt;.vccdc*.waiver.tcl</code> and
+<code>hw/sys/&lt;block&gt;/rdc/&lt;block&gt;.vcrdc*.waiver.tcl</code> hold the reviewed waivers, one
+file for Tenstorrent-owned RTL and, where needed, an <code>.opensource_ip</code> file
+for third-party IP. Each waiver carries its rationale in <code>-comment {}</code>.</p>
+</li>
+<li>
+<p><code>flows/synth/constraints/hier_reuse_procs.tcl</code> wraps the tool commands these
+files use so they can be replayed under a hierarchy prefix.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The files name the leaves of the generic primitives (<code>q_d</code>/<code>q_ddd</code> synchroniser
+stages, <code>u_sync_1</code>/<code>u_sync_2</code> two-stage synchronisers, <code>q_o</code> flops, <code>en_latch</code>
+clock gates); <code>flows/cdc/README.md</code> lists them. Run the sign-off against the
+generic primitive set or re-anchor the collateral to the swapped names.</p>
+</div>
+<div class="paragraph">
+<p>Two variables select how the files are read:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>::cdc_app</code> is <code>cdc</code> (default) or <code>rdc</code>; the entry skips CDC-only files for
+<code>rdc</code>.</p>
+</li>
+<li>
+<p><code>::cdc_scenario</code> is <code>synth</code> (default) or <code>functional</code>. The functional scenario
+is the sign-off run: the case-analysis files pin the DFT and strap ports, so
+<code>cdc_pinned_port_delay</code> skips the I/O delays on those ports.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><code>hw/sys/smu/cdc/smu.cdc_rdc.tcl</code> shows how a parent replays a child:
+<code>cdc_begin_block &lt;prefix&gt; {clock aliases} {reset aliases}</code>, source the child&#8217;s
+entry, <code>cdc_end_block</code>. Port clocks, I/O delays, port resets and the child&#8217;s own
+group declaration are block-top gated and skipped under a prefix; internal
+constraints re-anchor through <code>cdc_inst</code>, and generated clocks registered with
+<code>cdc_group_extra</code> land in the parent&#8217;s single <code>cdc_apply_async_groups</code>. Waiver
+filter fields carry a <code>${PREFIX}</code> token for the same reason. <code>flows/cdc/README.md</code>
+summarises the layout.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="what-is-covered"><a class="anchor" href="#what-is-covered"></a><a class="link" href="#what-is-covered">5. What is covered</a></h2>
+<div class="sectionbody">
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Block</th>
+<th class="tableblock halign-left valign-top">CDC elements constrained</th>
+<th class="tableblock halign-left valign-top">Exceptions emitted</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">365</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">412</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">18</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">21</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">250</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">270</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">758</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">838</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>SMU is a flat build containing the other three, so its instance paths carry
+<code>u_smc/</code>, <code>gen_sep.u_sep/</code> and <code>u_dtp/</code> prefixes. The SMU row has more CDC
+elements than the sum of the other three rows because the SMU instantiates a
+larger DTP. The DTP contains three JTAG2AXI bridges in the SMU configuration and
+only two when it is on its own. These configurations give the DTP 375 and 250
+elements, respectively.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="cdc-integration-checklist"><a class="anchor" href="#cdc-integration-checklist"></a><a class="link" href="#cdc-integration-checklist">6. Integration checklist</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Five things must change, three should be checked. None of them requires editing
+per-instance data by hand. Every change is either a one-line policy edit or a
+regeneration.</p>
+</div>
+<div class="sect2">
+<h3 id="1-repoint-the-constraints-at-the-pin-of-the-cell-inside-the-prim-wrapper"><a class="anchor" href="#1-repoint-the-constraints-at-the-pin-of-the-cell-inside-the-prim-wrapper"></a><a class="link" href="#1-repoint-the-constraints-at-the-pin-of-the-cell-inside-the-prim-wrapper">6.1. 1. Repoint the constraints at the pin of the cell inside the prim wrapper</a></h3>
+<div class="paragraph">
+<p>This is the most important change.</p>
+</div>
+<div class="paragraph">
+<p>As shipped, the procs target the prim wrapper&#8217;s own port, <code>prim_sync3/d_i</code>. That
+port exists only as long as the wrapper survives as a hierarchical boundary, and
+a prim cell is ordinary RTL: nothing stops synthesis from ungrouping it and
+dissolving its ports.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Do not rely on the wrapper port surviving. Anchor the constraint to the pin of the
+cell instantiated <strong>inside</strong> the wrapper. When you swap in your own synchronizer,
+that cell is a real library cell or macro&#8201;&#8212;&#8201;a leaf that cannot be flattened&#8201;&#8212;&#8201;so
+its pins persist through optimisation regardless of what happens to the RTL
+hierarchy around it.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-tcl hljs" data-lang="tcl">proc set_cdc_max_delay_prim_sync3 { inst dst_clk {delay {}} } {
+    cdc_emit "prim_sync3 $inst" [cdc_sync_delay $dst_clk $delay] to \
+        {} [get_pins "$inst/u_my_sync_cell/D" -quiet]
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>$inst</code> stays the wrapper instance path the generator recorded; you extend it down
+to the leaf. If your cell is instantiated in a generate loop or per bit, the path
+needs a glob. Note that generate scopes are separated by <code>.</code>, not <code>/</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-tcl hljs" data-lang="tcl">[get_pins "$inst/g_bits*.u_my_sync_cell/D" -quiet]</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Anchoring this way makes hierarchy preservation a safety margin rather than a
+load-bearing dependency.</p>
+</div>
+<div class="paragraph">
+<p>If you keep the prim wrappers unchanged, the shipped port names work as-is, but
+your flow must then preserve those wrapper boundaries. A <code>destination empty</code>
+warning appearing after <code>compile</code> where there was none at constraint-load time
+means a boundary was dissolved.</p>
+</div>
+<div class="paragraph">
+<p>If you go further and replace a wrapper with a module of your own name, the
+enumeration that produced <code>&lt;block&gt;_cdc_max_delay_generated.tcl</code> knows nothing
+about it and those crossings end up with no per-instance bound at all. Nothing
+warns&#8201;&#8212;&#8201;an element that was never listed cannot report itself missing. Add the
+calls for it to <code>&lt;block&gt;_cdc_max_delay.tcl</code> by hand; the procs take an instance
+path and the capturing clock regardless of the module they were named after.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="2-point-the-files-at-your-hierarchy-or-regenerate"><a class="anchor" href="#2-point-the-files-at-your-hierarchy-or-regenerate"></a><a class="link" href="#2-point-the-files-at-your-hierarchy-or-regenerate">6.2. 2. Point the files at your hierarchy, or regenerate</a></h3>
+<div class="paragraph">
+<p>The checked-in <code>&lt;block&gt;_cdc_max_delay_generated.tcl</code> files are written against the
+OCAH hierarchy, with paths relative to the block&#8217;s own top and clocks named as
+OCAH names them. Two ways to make them apply to your design.</p>
+</div>
+<div class="paragraph">
+<p><strong>If you instantiate the block as delivered</strong>, reuse the files and set two
+variables. Both default to no-ops, so leaving them alone reproduces the shipped
+behaviour exactly.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-tcl hljs" data-lang="tcl"># where the block sits in your hierarchy, with a trailing slash
+set ::cdc_hier_prefix "u_chiplet/u_mgmt/u_smc/"
+
+# optional: map an OCAH clock name onto the clock you actually drive it with
+set ::cdc_clock_alias(SMCCLK) MY_SYS_CLK</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The prefix is prepended to every instance path. The alias is applied wherever a
+clock name reaches the tool, so OCAH&#8217;s names become labels in your design. You can
+also skip the alias and supply the period directly with
+<code>set ::cdc_clock_period(SMCCLK) &lt;ps&gt;</code>, which is enough for the synchronizer
+constraints; the alias additionally matters for the data-path constraints, which
+name the destination clock as a timing endpoint and so need it to exist.</p>
+</div>
+<div class="paragraph">
+<p><strong>If you reconfigure the block</strong>, regenerate instead. Changing parameters that add
+or remove CDC elements makes the shipped file stale in the silent direction&#8201;&#8212;&#8201;the
+constraints that should exist for new elements simply will not, and nothing warns.
+The prefix does not help with that.</p>
+</div>
+<div class="paragraph">
+<p>A wrong prefix fails loudly: every path resolves to nothing, so you get a warning
+per constraint against a zero exception count, and <code>SUMMARY 0 exceptions</code> is itself
+reported as a setup failure.</p>
+</div>
+<div class="paragraph">
+<p>Regeneration is also the right answer whenever a parent build contains the block.
+Instance counts there can differ from the standalone build, so a parent&#8217;s file is
+not the child&#8217;s file with a prefix.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="3-set-the-default-bound"><a class="anchor" href="#3-set-the-default-bound"></a><a class="link" href="#3-set-the-default-bound">6.3. 3. Set the default bound</a></h3>
+<div class="paragraph">
+<p>The 20 ns / -20 ns figures are a starting point. Both are
+<code>info exists</code>-guarded in <code>flows/synth/constraints/async_clock_groups.tcl</code>, so
+setting them before that file is sourced overrides without editing it. <code>set_async_clock_groups</code> also
+accepts per-call overrides, which is the cleaner way to give one block a different
+default:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-tcl hljs" data-lang="tcl">set_async_clock_groups { {CLK_A} {CLK_B} } -max_delay 8000 -min_delay -8000</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Two constraints on the choice. The default must exceed every per-instance bound
+you tighten, because it also governs paths from primary inputs into synchronizers;
+if it is tighter than <code>0.5 * T_dst</code> it becomes the binding constraint there. And
+tighter is not automatically better: this is a net for crossings you have not
+enumerated, so set it loose enough that those do not fail and rely on layer 2 for
+the paths that matter.</p>
+</div>
+<div class="paragraph">
+<p>The minimum is negative deliberately. With <code>-allow_paths</code> a crossing has no
+meaningful hold relationship, and a zero floor would report hold violations where
+hold is not a real requirement.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="4-declare-your-own-clock-groups"><a class="anchor" href="#4-declare-your-own-clock-groups"></a><a class="link" href="#4-declare-your-own-clock-groups">6.4. 4. Declare your own clock groups</a></h3>
+<div class="paragraph">
+<p>Each block&#8217;s <code>&lt;block&gt;_clock_groups.sdc</code> calls <code>cdc_apply_async_groups</code> with its
+list of domain names. A domain&#8217;s group is its clock plus every generated clock
+registered against it with <code>cdc_group_extra</code>, clocks absent from the session are
+dropped, and the call reaches <code>set_async_clock_groups</code> with any <code>-exclude</code>
+pairs passed through. Both calls have to come after
+every <code>create_clock</code> and <code>create_generated_clock</code> they are meant to cover. Call
+<code>set_async_clock_groups</code> directly when you need globs or per-call bounds; each
+inner list is one asynchronous group:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-tcl hljs" data-lang="tcl">set_async_clock_groups {
+    {CLK_A CLK_A_DERIVED_*}
+    {CLK_B}
+    {JTAG_TCK}
+} -exclude {{PATTERN_X* PATTERN_Y*}}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>-exclude</code> takes pairs of patterns and suppresses that part of the cross product,
+for clock pairs that already have a <code>-logically_exclusive</code> or
+<code>-physically_exclusive</code> relationship that <code>-allow_paths</code> would contradict. Omit it
+unless you hit a <code>TIM-184</code> conflict.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="5-declare-periods-for-generated-clocks"><a class="anchor" href="#5-declare-periods-for-generated-clocks"></a><a class="link" href="#5-declare-periods-for-generated-clocks">6.5. 5. Declare periods for generated clocks</a></h3>
+<div class="paragraph">
+<p>A generated clock exposes no readable <code>period</code> attribute in Design Compiler, so
+any generated clock that clocks a CDC element needs an explicit entry in
+<code>&lt;block&gt;_cdc_max_delay.tcl</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-tcl hljs" data-lang="tcl">set ::cdc_clock_period(MY_DIV_CLK) [expr {4 * $clock_periods(MY_MASTER_PERIOD)}]</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Omitting one is loud&#8201;&#8212;&#8201;a <code>no period for clock</code> warning per affected element&#8201;&#8212;&#8201;so
+a clean run means you have them all. Keep them in step with your
+<code>create_generated_clock</code> divide factors; nothing cross-checks them.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="also-check"><a class="anchor" href="#also-check"></a><a class="link" href="#also-check">6.6. Also check</a></h3>
+<div class="paragraph">
+<p><strong>Hierarchy preservation.</strong> The reference flow applies <code>set_ungroup false</code> and
+<code>set_boundary_optimization false</code> to the CDC designs before <code>compile</code>. How much
+this matters depends on item 1: with leaf cell pins it is a safety margin, with
+wrapper ports it is load-bearing. Either way, your flow needs the equivalent, and
+it needs to name your cells rather than OCAH&#8217;s.</p>
+</div>
+<div class="paragraph">
+<p><strong>Delay factors.</strong> <code>0.5 * T_dst</code> and <code>1.0 * T_dst</code> are policy, not physics. If your
+methodology wants more settling margin, change <code>cdc_sync_delay</code> and
+<code>cdc_data_delay</code> in <code>flows/synth/constraints/cdc_max_delay_procs.tcl</code>.
+Per-instance overrides are also available without editing procs: every proc takes
+an optional trailing delay in picoseconds, and re-stating a call in
+<code>&lt;block&gt;_cdc_max_delay.tcl</code> after the <code>source</code> wins.</p>
+</div>
+<div class="paragraph">
+<p><strong>Tool differences.</strong> Two Design Compiler specific choices to revisit under
+PrimeTime. <code>get_attribute &lt;pin&gt; clocks</code> is used because <code>get_clocks -of_objects</code>
+is PrimeTime-only, and generated clocks may expose a readable <code>period</code> in
+PrimeTime, making item 5 unnecessary.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="confirming-it-worked"><a class="anchor" href="#confirming-it-worked"></a><a class="link" href="#confirming-it-worked">7. Confirming it worked</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Load the constraints and check the summary:</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>INFO: cdc_max_delay: SUMMARY &lt;n&gt; exceptions, 0 warnings</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Zero warnings is necessary but not sufficient. A pin pattern that matches nothing
+warns, but one that matches the <strong>wrong</strong> thing does not. Two stronger checks:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Predict the count.</strong> Multiply each proc&#8217;s number of emitted exceptions by its
+number of calls and compare against the summary. A mismatch localises the
+failure, because the size of the shortfall identifies which proc did not fire.</p>
+</li>
+<li>
+<p><strong>Confirm the precedence.</strong> Layer 2 is on pins and layer 1 on clocks, and the
+design assumes the more specific specification wins. Verify once in your tool:</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-tcl hljs" data-lang="tcl">report_timing -to [get_pins &lt;a synchronizer&gt;/d_i] -nworst 1</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>max_delay</code> line must show your <code>0.5 * T_dst</code> value rather than the default. If
+it shows the default, layer 2 is inert and nothing else in this section applies.</p>
+</div>
+<div class="paragraph">
+<p><code>SUMMARY 0 exceptions</code> is treated as a setup failure and warns as such. It means
+the constraints did not load, not that the design has no crossings.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="scope-and-limitations"><a class="anchor" href="#scope-and-limitations"></a><a class="link" href="#scope-and-limitations">8. Scope and limitations</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The 20 ns default is loose by design. Against a 1 ns clock it permits twenty clock
+periods of delay into a synchronizer input. This is a safety net that keeps
+<code>-allow_paths</code> usable, not a real constraint; any crossing that matters belongs in
+layer 2.</p>
+</div>
+<div class="paragraph">
+<p>Enumeration works from a fixed list of module names, so a hand-written two-flop
+synchronizer that uses none of them will not be found. Structural detection of
+crossings is what a static CDC tool does, and this flow does not attempt it. These
+constraints time crossings already known to exist; they are not a substitute for
+CDC signoff.</p>
+</div>
+<div class="paragraph">
+<p>Because the instance list is generated offline, removals are loud but additions
+are silent. A stale instance path warns, but a synchronizer added without
+regenerating produces no warning: the constraint never exists, the path falls back
+to the default, and it passes timing. Regenerate and diff the result against what
+is checked in whenever the RTL changes.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/register-sections.js"></script>
+<script src="../../_/js/toc-collapse.js"></script>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script src="../../_/js/version-menu.js"></script>
+<script src="../../_/js/vendor/viewer.min.js"></script>
+<script src="../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>

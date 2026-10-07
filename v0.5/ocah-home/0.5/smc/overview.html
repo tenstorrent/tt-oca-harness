@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Overview :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SMC responsibilities, architecture, and top-level organization.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-home" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Home</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../features.html">Feature Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../motivation.html">Motivation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../use-cases.html">Use Cases</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../license.html">License</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Guides</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-programmer-guide/0.5/index.html">Programmer&#8217;s Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Verification</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../dashboard.html">Dashboard</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="overview.html">Overview</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Overview</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="overview" class="paragraph">
+<p>The System Management Controller (SMC) is a subsystem in a chiplet that
+takes on the system management tasks, including managing
+clock/voltage/reset, configuring the hardware platform, bringing up the
+system, and reporting system status.</p>
+</div>
+<div class="paragraph">
+<p>Given its essential role, a SiP with multiple chiplets integrates one
+SMC per chiplet. Each SMC instance in a chiplet is responsible for
+system management of the local chiplet. On top of that, a management
+hierarchy is expected to be built among different SMC instances,
+according to the OCA hierarchical system architecture, , Sec. 3.1 and
+3.2. This means an SMC instance in the primary chiplet is expected to
+play additional roles to manage SiP level tasks for the secondary
+chiplets.</p>
+</div>
+<div class="paragraph">
+<p>The SMC consists of a micro-controller and different facilitative components for
+various purposes. At high level, SMC&#8217;s main control logic is implemented in the
+firmware running on the micro-controller. Hardware facilitative components are
+added only when certain tasks cannot be implemented by firmware.</p>
+</div>
+<div class="paragraph">
+<p><a href="#smc-top-level-block-diagram-figure">SMC top-level microarchitecture</a> shows the SMC microarchitectural diagram.</p>
+</div>
+<div id="smc-top-level-block-diagram-figure" class="imageblock">
+<div class="content">
+<img src="_images/smc-top-level.svg" alt="SMC top-level microarchitecture: the CPU cluster, smc_base with the input, local and output fabrics, internal registers, DFD and data accelerator, and smc_peripherals with the peripheral crossbar and its targets" width="100%">
+</div>
+<div class="title">Figure 1. SMC top-level microarchitecture</div>
+</div>
+<div class="paragraph">
+<p>The <code>smc</code> module holds three blocks: the CPU cluster <code>smc_cpu_wrapper</code>,
+<code>smc_base</code> and <code>smc_peripherals</code>. The CPU cluster is drawn as a single block;
+the CPU and memory system section describes its contents. Every AXI4 and
+AXI-Lite link carries a manager port (M) at the initiating end and a
+subordinate port (S) at the other.</p>
+</div>
+<div class="paragraph">
+<p>The input fabric takes six initiators: the system inbound port, the SEP
+inbound port, the JTAG debug port from the DTP, the CPU MMIO port, the UART
+log-engine fetch port and the data accelerator. Traffic inside the SMC
+window reaches the local fabric on three paths. System traffic passes the
+inbound filter first, and SEP traffic is not filtered. The CPU MMIO, JTAG,
+log and data accelerator traffic is alias-remapped and shares the third
+path. The input fabric forwards other addresses from those four initiators
+to the output fabric. The output fabric applies the M-mode and Xvisor
+remaps and the outbound filter, then drives the system outbound port.
+System and SEP requests outside the SMC window receive a decode error.</p>
+</div>
+<div class="paragraph">
+<p>The local fabric, <code>smc_local_xbar</code>, serves five targets: the CPU front port,
+the data accelerator control port, the internal CSRs, the DFD registers and
+the peripheral port. Its internal AXI-Lite crossbar splits the internal CSRs
+into eight blocks in <code>smc_internal_regs</code>: base configuration, the alias,
+M-mode and Xvisor remaps, the inbound and outbound filters, the mailboxes
+and the DFX CSRs. <code>smc_base</code> also builds the CPU interrupt vector from the
+external, peripheral, mailbox and internal sources. Its three AXI hang
+detectors, marked HD on the links they watch, observe the system inbound,
+SEP inbound and data accelerator AXI links without sitting in the data
+path; their combined interrupt reaches the PLIC through <code>smc_peripherals</code>.</p>
+</div>
+<div class="paragraph">
+<p>The peripheral crossbar, <code>smc_periph_axi_lite_xbar</code>, has twelve targets.
+Ten of them are inside <code>smc_peripherals</code>. The UART, I2C, I3C and AVSBus
+register paths, and the log-engine fetch path, cross between the SMC clock
+and the peripheral clock (CDC). The remaining two targets leave the SMC:
+the DTP control registers and the <code>smc_external</code> window. In the reference
+top <code>smc_wrapper</code>, <code>smc_ip_integration</code> supplies the grey blocks: the CPU
+memory macros, the trace RAMs, the eFuse shim and bank model, the GPIO pad
+shims, and the PLL, PVT and strap register models behind <code>smc_external</code>.</p>
+</div>
+<div class="paragraph">
+<p>The rest of this documentation describes architectural requirements and
+microarchitectural implementation of SMC&#8217;s components in OCAH. A
+consolidated description of OCAH use cases is available in
+<a href="../use-cases.html" class="xref page">Use Cases</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="clocks-and-resets"><a class="anchor" href="#clocks-and-resets"></a><a class="link" href="#clocks-and-resets">Clocks and Resets</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>SMC coordinates clock, voltage and reset control. Its processing, reference
+timing and peripheral interfaces use distinct clock branches. Clocks and
+Resets describes the domains and reset sequencing.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="cpu"><a class="anchor" href="#cpu"></a><a class="link" href="#cpu">CPU</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The RISC-V CPU cluster executes management firmware using its caches and local
+memories. The CPU chapter describes its configuration, interfaces, isolation,
+error reporting and debug support.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="boot-rom"><a class="anchor" href="#boot-rom"></a><a class="link" href="#boot-rom">Boot ROM</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Boot ROM contains the startup firmware. Scratchpad memory provides runtime
+storage. The Boot ROM chapter describes the hardware and links to the
+production firmware manual.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="interconnect"><a class="anchor" href="#interconnect"></a><a class="link" href="#interconnect">Interconnect</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>AXI4 and AXI4-Lite connect the CPU and management blocks. Remapping, traffic
+filters and crossbars provide address translation, access control and routing.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="interrupts"><a class="anchor" href="#interrupts"></a><a class="link" href="#interrupts">Interrupts</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The PLIC routes system events; CLINT supplies core-local timer and software
+interrupts. The interrupt chapter describes their integration and handling.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="peripherals"><a class="anchor" href="#peripherals"></a><a class="link" href="#peripherals">Peripherals</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>DMA performs bulk transfers and Zeroer clears memory. Communication and
+control services include mailboxes, GPIO, I2C, I3C, UART and AVSBus. Telemetry
+receivers collect performance data; OCTS supports multi-chiplet timekeeping.
+PVT sensors provide environmental monitoring through adopter integration.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="design-for-debug-and-cla"><a class="anchor" href="#design-for-debug-and-cla"></a><a class="link" href="#design-for-debug-and-cla">Design-for-Debug and CLA</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>JTAG, the RISC-V debug module and the Core Logic Analyzer support observation,
+triggering and trace capture.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="efuse-scan-protection"><a class="anchor" href="#efuse-scan-protection"></a><a class="link" href="#efuse-scan-protection">eFuse Scan Protection</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Scan protection controls access to eFuse shadow-register assets. Its dedicated
+chapter describes the asset classes and access restrictions.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">Memory Map</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The memory map summarizes the address space and points to the block pages for
+register details.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

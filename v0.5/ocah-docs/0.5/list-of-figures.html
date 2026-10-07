@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>List of Figures :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <link rel="prev" href="index.html">
+    <link rel="next" href="list-of-tables.html">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-docs" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Technical Reference Manual</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="index.html">Documentation Overview</a>
+<ul class="nav-list">
+  <li class="nav-item is-current-page" data-depth="2">
+    <a class="nav-link" href="list-of-figures.html">List of Figures</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="list-of-tables.html">List of Tables</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="architecture.html">OCAH Architecture &amp; Design</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="overview.html">Platform Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="memory_map.html">OCAH Memory Map</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="power_domains.html">Power Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="clock_domains.html">Clock Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="reset.html">Reset</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="architecture.html#ocah-rtl-assertions">RTL Assertions</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">OCAH Platform Components</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smu/index.html">System Management Unit (SMU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/index.html">Security Processor (SEP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/threat_model.html">Threat Model</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/attack_countermeasures.html">Attack Countermeasures</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/clk_rst.html">Clocks and Resets</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/reset_controller.html">SEP Reset Controller</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/cpu.html">CPU</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/fabric.html">Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/dma.html">Direct Memory Access (DMA)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/mailbox.html">Mailboxes</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/peripheral_subsystem.html">Peripheral Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/spi.html">Serial Peripheral Interface (SPI)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/security.html">Security and Lifecycle</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/otp_fuse_controller.html">OTP Fuse Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/token_processing.html">Token Processing</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/security_disable.html">Security Disable</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/lifecycle_controller.html">Lifecycle Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/test_mode.html">Test Mode Entry</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/crypto.html">Cryptographic Subsystem</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/trng.html">TRNG and DRBG</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/entropy_source/doc/index.html">Entropy Source</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/entropy_pool.html">Entropy Pool</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/aes.html">AES Cipher</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/hmac.html">HMAC-SHA2</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/kmac.html">KMAC-SHA3</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/adams_bridge.html">Adams Bridge (ABR)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/otbn.html">OTBN PKA Public Key Accelerator</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="ip/key_manager/doc/index.html">Key Manager</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="ip/key_manager/doc/index.html#key-manager-architecture">Architecture</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/memory_map.html">Memory Map and Register Reference</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smc/index.html">System Management Controller (SMC)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/clk_rst.html">Clocks and Resets</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/cpu.html">CPU</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/fabric.html">Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smc/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="smc/dma.html">Direct Memory Access Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="smc/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="smc/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/axi_lite_mailbox_unit/doc/index.html">Mailboxes</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/system_timer_octs/doc/index.html">System Timer OCTS</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/efuse/doc/index.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/uart_16550/doc/index.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/log_engine/doc/index.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/i2c/doc/index.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/i3ccore_wrap/doc/index.html">I3C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/avsbus_controller/doc/index.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/gpio/doc/index.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/telemetry_receiver/doc/index.html">Telemetry Receiver</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/dfd.html">Design-for-Debug and CLA</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/scan_protection.html">eFuse Scan Protection</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/memmap.html">Memory Map and Register Reference</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="dtp/index.html">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dtp/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dtp/clk_rst.html">Clocks and Resets</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dtp/jtag.html">JTAG Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dtp/cross_trigger.html">Cross-Trigger Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="dtp/ip_reference.html">IP Reference</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">JTAG</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="ip/jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Cross-Trigger</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dtp/reference.html">Configuration and Reference</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="smn.html">System Management Network (SMN)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="aou.html">AXI-over-UCIe Bridge (AoU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="aou-overview.html">Overview and Features</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="aou-architecture.html">Architecture</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="aou-interrupts-errors.html">Interrupts and Errors</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="aou-ppa-appendices.html">PPA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="aou-appendices.html">Appendices</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="aou-referenced-documents.html">Appendix B. Referenced Documents</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="rtl-modules-reference.html">RTL Modules Reference</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="rtl-modules-reference.html#ip">IP</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/avsbus_controller.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/axi_alias_remap.html">AXI Alias Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/axi_filter.html">AXI Filter</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/axi_hang_detector.html">AXI Hang Detector</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/axi_lite_mailbox_unit.html">AXI-Lite Mailbox</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/axi_window_remap.html">AXI Window Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/drbg.html">DRBG</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/efuse.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/entropy_source.html">Entropy Source</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/gpio.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/i2c.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/i3ccore_wrap.html">I3C</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/idma_wrapper.html">iDMA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/key_manager.html">Key Manager</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/memory_interface.html">Memory Interface</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/output_remap.html">Output Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/scrambler.html">Scrambler</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/system_timer_octs.html">System Timer</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/telemetry_receiver.html">Telemetry Receiver</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/cross_trigger_matrix.html">Cross-Trigger Matrix</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/cross_trigger_network.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/cross_trigger_port.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/jtag2axi.html">JTAG to AXI</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/jtag_intf_unit.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/jtag_ptap.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/jtag_stap.html">JTAG STAP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/log_engine.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/uart_16550.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/uart_log_engine_wrap.html">UART Log Engine Wrapper</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/ip/uart_wrap.html">UART Wrapper</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="rtl-modules-reference.html#subsystems">Subsystems</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/sys/sep.html">SEP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/sys/smc.html">SMC</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/sys/dtp.html">DTP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/sys/smu.html">SMU</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/sys/aou.html">AXI-over-UCIe</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="rtl-modules-reference.html#common">Common</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/common/ocah_prim.html">ocah_prim</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/common/ocah_prim_generic.html">ocah_prim_generic</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="rtl-modules-reference/common/tlul.html">TL-UL</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="ip-reference.html">IP Reference</a>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="register-field-access.html">Register Field Access Notation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="referenced-documents.html">Referenced Documents</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Technical Reference Manual 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="index.html">Technical Reference Manual</a></li>
+    <li><a href="list-of-figures.html">List of Figures</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="5">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">List of Figures</h1>
+<div class="paragraph">
+<p>Select a figure to open its topic. Figure numbers are local to each HTML
+topic; the PDF numbers figures consecutively across the book.</p>
+</div><div class="sect1"><h2 id="catalog-topic-1">AoU Architecture</h2><div class="sectionbody"><ul><li><a href="aou-architecture.html#figure-2">Figure 1. Architecture of AOU_CORE</a></li>
+<li><a href="aou-architecture.html#figure-3">Figure 2. Block Diagram of Single RP AOU_TX_CORE</a></li>
+<li><a href="aou-architecture.html#figure-4">Figure 3. TX_CORE QoS Scheme</a></li>
+<li><a href="aou-architecture.html#figure-5">Figure 4. Round-Robin arbitration example</a></li>
+<li><a href="aou-architecture.html#figure-6">Figure 5. Port QoS arbitration example</a></li>
+<li><a href="aou-architecture.html#figure-7">Figure 6. AXI QoS arbitration example</a></li>
+<li><a href="aou-architecture.html#figure-8">Figure 7. Block Diagram of AOU_RX_CORE</a></li>
+<li><a href="aou-architecture.html#figure-9">Figure 8. Architecture of Chunk Decoder</a></li>
+<li><a href="aou-architecture.html#figure-10">Figure 9. Data FIFO</a></li>
+<li><a href="aou-architecture.html#figure-11">Figure 10. Req / Resp FIFO</a></li>
+<li><a href="aou-architecture.html#figure-12">Figure 11. AXI4MUX_3X1_TOP</a></li>
+<li><a href="aou-architecture.html#aou-successful-early-write-response-figure">Figure 12. AoU successful early write response</a></li>
+<li><a href="aou-architecture.html#aou-error-after-an-early-write-response-figure">Figure 13. AoU error after an early write response</a></li>
+<li><a href="aou-architecture.html#aou-write-outstanding-backpressure-figure">Figure 14. AoU write-outstanding backpressure</a></li>
+<li><a href="aou-architecture.html#aou-bufferable-then-non-bufferable-writes-figure">Figure 15. AoU bufferable then non-bufferable writes</a></li>
+<li><a href="aou-architecture.html#aou-non-bufferable-then-bufferable-writes-figure">Figure 16. AoU non-bufferable then bufferable writes</a></li>
+<li><a href="aou-architecture.html#figure-13">Figure 17. Write Aggregation -- Narrow-to-Wide Beat Merging</a></li>
+<li><a href="aou-architecture.html#figure-14">Figure 18. Block Diagram of AOU_CRD_CTRL</a></li>
+<li><a href="aou-architecture.html#figure-15">Figure 19. Example of WDATA and WSTRB FIFO Operation</a></li>
+<li><a href="aou-architecture.html#figure-16">Figure 20. Example of RDATA FIFO Operation</a></li>
+<li><a href="aou-architecture.html#figure-17">Figure 21. Resource Plane Remapping</a></li>
+<li><a href="aou-architecture.html#figure-18">Figure 22. UCIe Flit Cancel - Retransmit case</a></li>
+<li><a href="aou-architecture.html#figure-19">Figure 23. UCIe Flit Cancel - Flit Partially Valid case</a></li>
+<li><a href="aou-architecture.html#figure-20">Figure 24. UCIe Flit Cancel - Full Flit Cancel case</a></li>
+<li><a href="aou-architecture.html#figure-21">Figure 25. Example of selecting valid chunks for RX_CORE</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-2">AoU Overview and Features</h2><div class="sectionbody"><ul><li><a href="aou-overview.html#figure-1">Figure 1. Block Diagram of AOU_CORE and function description</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-3">AoU PPA</h2><div class="sectionbody"><ul><li><a href="aou-ppa-appendices.html#figure-29">Figure 1. Initial Latency of AOU_CORE with UCIe (Cycle)</a></li>
+<li><a href="aou-ppa-appendices.html#figure-30">Figure 2. AoU Bandwidth Efficiency with Respect to UCIe FDI Latency</a></li>
+<li><a href="aou-ppa-appendices.html#figure-31">Figure 3. Area of 1 RP AOU</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-4">Clock Domains</h2><div class="sectionbody"><ul><li><a href="clock_domains.html#ocah-clock-domain-diagram">Figure 1. OCAH Clock-Domain Zones</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-5">Clocks and Resets</h2><div class="sectionbody"><ul><li><a href="dtp/clk_rst.html#dtp-clock-stop-diagram">Figure 1. DTP JTAG and CLA clock-stop aggregation</a></li>
+<li><a href="dtp/clk_rst.html#dtp-clock-tree">Figure 2. DTP system-clock and JTAG-clock distribution</a></li>
+<li><a href="dtp/clk_rst.html#dtp-reset-tree">Figure 3. DTP system and JTAG reset distribution</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-6">JTAG Operation</h2><div class="sectionbody"><ul><li><a href="dtp/jtag.html#dtp-jtag-scan-chain-figure">Figure 1. DTP JTAG scan chain</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-7">Overview</h2><div class="sectionbody"><ul><li><a href="dtp/overview.html#dtp-internal-structure-figure">Figure 1. DTP internal structure</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-8">AVSBus Controller</h2><div class="sectionbody"><ul><li><a href="ip/avsbus_controller/doc/index.html#avsbus-controller-diagram">Figure 1. AVSBus controller block diagram</a></li>
+<li><a href="ip/avsbus_controller/doc/index.html#avsbus-protocol-fsm-diagram">Figure 2. AVSBus protocol state machine</a></li>
+<li><a href="ip/avsbus_controller/doc/index.html#avsbus-clock-select-diagram">Figure 3. AVSBus clock selection</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-9">Mailbox Unit</h2><div class="sectionbody"><ul><li><a href="ip/axi_lite_mailbox_unit/doc/index.html#mailbox-wrapper-diagram">Figure 1. SMC mailbox wrapper and interrupt routing</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-10">Cross-Trigger Matrix</h2><div class="sectionbody"><ul><li><a href="ip/cross_trigger_matrix/doc/index.html#ctm-routing-structure-figure">Figure 1. CTM routing structure</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-11">Cross-Trigger Network</h2><div class="sectionbody"><ul><li><a href="ip/cross_trigger_network/doc/index.html#sip-cross-trigger-topology-figure">Figure 1. SiP cross-trigger topology</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-12">Cross-Trigger Port</h2><div class="sectionbody"><ul><li><a href="ip/cross_trigger_port/doc/index.html#ctp-module-structure-figure">Figure 1. CTP module structure</a></li>
+<li><a href="ip/cross_trigger_port/doc/index.html#ctp-wire-or-behavior-figure">Figure 2. CTP wire-OR behavior</a></li>
+<li><a href="ip/cross_trigger_port/doc/index.html#ctp-wire-or-chiplet-connections-figure">Figure 3. CTP wire-OR chiplet connections</a></li>
+<li><a href="ip/cross_trigger_port/doc/index.html#ctp-point-to-point-behavior-figure">Figure 4. CTP point-to-point behavior</a></li>
+<li><a href="ip/cross_trigger_port/doc/index.html#ctp-point-to-point-chiplet-connections-figure">Figure 5. CTP point-to-point chiplet connections</a></li>
+<li><a href="ip/cross_trigger_port/doc/index.html#ctp-request-acknowledge-timing-figure">Figure 6. CTP request-acknowledge timing</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-13">Entropy Source</h2><div class="sectionbody"><ul><li><a href="ip/entropy_source/doc/index.html#entropy-source-diagram">Figure 1. Entropy source microarchitecture</a></li>
+<li><a href="ip/entropy_source/doc/index.html#entropy-rosc-diagram">Figure 2. Entropy source ring-oscillator complex</a></li>
+<li><a href="ip/entropy_source/doc/index.html#entropy-decorrelator-diagram">Figure 3. Entropy source decorrelator</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-14">GPIO Peripheral</h2><div class="sectionbody"><ul><li><a href="ip/gpio/doc/index.html#gpio-interface-diagram">Figure 1. GPIO controller, interface shim, LSIO mux and strap-capture path</a></li>
+<li><a href="ip/gpio/doc/index.html#gpio-padring-diagram">Figure 2. SMC pad ring GPIO interfaces and adopter pad shims</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-15">I2C Controller</h2><div class="sectionbody"><ul><li><a href="ip/i2c/doc/index.html#i2c-core-diagram">Figure 1. OpenTitan I2C core reference architecture</a></li>
+<li><a href="ip/i2c/doc/index.html#i2c-wrapper-diagram">Figure 2. OCAH I2C wrapper and generated register interface</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-16">I3C Controller</h2><div class="sectionbody"><ul><li><a href="ip/i3ccore_wrap/doc/index.html#i3c-core-diagram">Figure 1. CHIPS Alliance i3c-core reference architecture</a></li>
+<li><a href="ip/i3ccore_wrap/doc/index.html#i3c-wrapper-diagram">Figure 2. OCAH I3C wrapper</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-17">JTAG Interface Unit</h2><div class="sectionbody"><ul><li><a href="ip/jtag_intf_unit/doc/index.html#jtag-interface-unit-scan-chain-figure">Figure 1. JTAG Interface Unit scan chain</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-18">JTAG PTAP</h2><div class="sectionbody"><ul><li><a href="ip/jtag_ptap/doc/index.html#ptap-module-architecture-figure">Figure 1. PTAP module architecture</a></li>
+<li><a href="ip/jtag_ptap/doc/index.html#jtag2axi-single-operation-layout-figure">Figure 2. JTAG2AXI single-operation layout</a></li>
+<li><a href="ip/jtag_ptap/doc/index.html#jtag2axi-series-control-layout-figure">Figure 3. JTAG2AXI series-control layout</a></li>
+<li><a href="ip/jtag_ptap/doc/index.html#jtag2axi-incrementing-data-layout-for-size-0-figure">Figure 4. JTAG2AXI incrementing data layout for effective size 0</a></li>
+<li><a href="ip/jtag_ptap/doc/index.html#jtag2axi-incrementing-data-layout-for-size-1-figure">Figure 5. JTAG2AXI incrementing data layout for effective size 1</a></li>
+<li><a href="ip/jtag_ptap/doc/index.html#jtag2axi-incrementing-data-layout-for-size-2-figure">Figure 6. JTAG2AXI incrementing data layout for effective size 2</a></li>
+<li><a href="ip/jtag_ptap/doc/index.html#jtag2axi-incrementing-data-layout-for-size-3-figure">Figure 7. JTAG2AXI incrementing data layout for effective size 3</a></li>
+<li><a href="ip/jtag_ptap/doc/index.html#jtag2axi-non-incrementing-data-layout-for-size-0-figure">Figure 8. JTAG2AXI non-incrementing data layout for effective size 0</a></li>
+<li><a href="ip/jtag_ptap/doc/index.html#jtag2axi-non-incrementing-data-layout-for-size-1-figure">Figure 9. JTAG2AXI non-incrementing data layout for effective size 1</a></li>
+<li><a href="ip/jtag_ptap/doc/index.html#jtag2axi-non-incrementing-data-layout-for-size-2-figure">Figure 10. JTAG2AXI non-incrementing data layout for effective size 2</a></li>
+<li><a href="ip/jtag_ptap/doc/index.html#jtag2axi-non-incrementing-data-layout-for-size-3-figure">Figure 11. JTAG2AXI non-incrementing data layout for effective size 3</a></li>
+<li><a href="ip/jtag_ptap/doc/index.html#jtag2axi-error-status-data-layout-for-size-0-figure">Figure 12. JTAG2AXI error-status data layout for effective size 0</a></li>
+<li><a href="ip/jtag_ptap/doc/index.html#jtag2axi-error-status-data-layout-for-size-1-figure">Figure 13. JTAG2AXI error-status data layout for effective size 1</a></li>
+<li><a href="ip/jtag_ptap/doc/index.html#jtag2axi-error-status-data-layout-for-size-2-figure">Figure 14. JTAG2AXI error-status data layout for effective size 2</a></li>
+<li><a href="ip/jtag_ptap/doc/index.html#jtag2axi-error-status-data-layout-for-size-3-figure">Figure 15. JTAG2AXI error-status data layout for effective size 3</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-19">JTAG STAP</h2><div class="sectionbody"><ul><li><a href="ip/jtag_stap/doc/index.html#stap-scan-and-control-paths-figure">Figure 1. STAP scan and control paths</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-20">Key Manager (KM)</h2><div class="sectionbody"><ul><li><a href="ip/key_manager/doc/index.html#key-manager-architecture-figure">Figure 1. Key Manager architecture</a></li>
+<li><a href="ip/key_manager/doc/index.html#key-manager-reset-diagram">Figure 2. Key Manager cold and warm reset conditioning</a></li>
+<li><a href="ip/key_manager/doc/index.html#key-manager-mailbox-transport-figure">Figure 3. Key Manager mailbox transport</a></li>
+<li><a href="ip/key_manager/doc/index.html#key-manager-accelerator-key-path-figure">Figure 4. Key Manager accelerator key path</a></li>
+<li><a href="ip/key_manager/doc/index.html#key-manager-coordination-diagram">Figure 5. SEP host and Key Manager key-load and key-transfer sequence</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-21">Log Engine</h2><div class="sectionbody"><ul><li><a href="ip/log_engine/doc/index.html#log-engine-wrapper-diagram">Figure 1. SMC log-engine wrapper and data paths</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-22">SRAM Scrambling</h2><div class="sectionbody"><ul><li><a href="ip/scrambler/doc/index.html#sram-scrambler-datapath-figure">Figure 1. SRAM scrambler datapath</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-23">System Timer OCTS</h2><div class="sectionbody"><ul><li><a href="ip/system_timer_octs/doc/index.html#system-timer-octs-diagram">Figure 1. System Timer OCTS primary/secondary synchronization and credit CDC</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-24">UART 16550</h2><div class="sectionbody"><ul><li><a href="ip/uart_16550/doc/index.html#uart-wrapper-diagram">Figure 1. SMC UART wrapper</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-25">Platform Overview</h2><div class="sectionbody"><ul><li><a href="overview.html#ocah-top-level-diagram">Figure 1. OCAH Top-Level Block Diagram</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-26">Adams Bridge (ABR)</h2><div class="sectionbody"><ul><li><a href="sep/adams_bridge.html#sep-abr-mldsa-diagram">Figure 1. Adams Bridge ML-DSA reference architecture</a></li>
+<li><a href="sep/adams_bridge.html#sep-abr-mlkem-diagram">Figure 2. Adams Bridge ML-KEM reference architecture</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-27">AES Cipher</h2><div class="sectionbody"><ul><li><a href="sep/aes.html#sep-aes-reference-diagram">Figure 1. OpenTitan AES core reference architecture</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-28">Clocks and Resets</h2><div class="sectionbody"><ul><li><a href="sep/clk_rst.html#sep-clock-tree">Figure 1. SEP clock tree and clock domains</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-29">CPU</h2><div class="sectionbody"><ul><li><a href="sep/cpu.html#sep-cpu-diagram">Figure 1. SEP VeeR EL2 CPU subsystem and memory interfaces</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-30">Cryptographic Subsystem</h2><div class="sectionbody"><ul><li><a href="sep/crypto.html#sep-crypto-diagram">Figure 1. SEP cryptographic subsystem and external memory interfaces</a></li>
+<li><a href="sep/crypto.html#sep-crypto-reset-diagram">Figure 2. SEP cryptographic subsystem resets</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-31">Direct Memory Access (DMA)</h2><div class="sectionbody"><ul><li><a href="sep/dma.html#sep-dma-reference-diagram">Figure 1. OpenTitan DMA core and inline hashing reference architecture</a></li>
+<li><a href="sep/dma.html#sep-dma-integration-figure">Figure 2. SEP secure DMA integration</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-32">Interconnect</h2><div class="sectionbody"><ul><li><a href="sep/fabric.html#sep-axi-connectivity">Figure 1. SEP AXI4 connectivity. Filled circles indicate connections; dashes indicate no connection.</a></li>
+<li><a href="sep/fabric.html#sep-input-fabric-diagram">Figure 2. SEP input fabric</a></li>
+<li><a href="sep/fabric.html#sep-local-fabric-diagram">Figure 3. SEP local fabric</a></li>
+<li><a href="sep/fabric.html#sep-output-fabric-diagram">Figure 4. SEP output fabric</a></li>
+<li><a href="sep/fabric.html#sep-system-peripheral-traffic-management-figure">Figure 5. SEP system-peripheral traffic management</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-33">HMAC-SHA2</h2><div class="sectionbody"><ul><li><a href="sep/hmac.html#sep-hmac-reference-diagram">Figure 1. OpenTitan HMAC core reference architecture</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-34">KMAC-SHA3</h2><div class="sectionbody"><ul><li><a href="sep/kmac.html#sep-kmac-reference-diagram">Figure 1. OpenTitan KMAC core reference architecture</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-35">Life Cycle Controller (LCC)</h2><div class="sectionbody"><ul><li><a href="sep/lifecycle_controller.html#sep-lifecycle-controller-figure">Figure 1. SEP lifecycle controller</a></li>
+<li><a href="sep/lifecycle_controller.html#sep-lifecycle-state-machine-figure">Figure 2. SEP lifecycle state machine</a></li>
+<li><a href="sep/lifecycle_controller.html#sep-security-domains-figure">Figure 3. SEP security domains</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-36">Mailboxes</h2><div class="sectionbody"><ul><li><a href="sep/mailbox.html#sep-mailbox-diagram">Figure 1. SEP host mailbox architecture and interrupt routing</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-37">OTBN PKA Public Key Accelerator</h2><div class="sectionbody"><ul><li><a href="sep/otbn.html#sep-otbn-reference-diagram">Figure 1. OpenTitan OTBN core reference architecture</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-38">OTP Fuse Controller</h2><div class="sectionbody"><ul><li><a href="sep/otp_fuse_controller.html#sep-otp-fuse-bank-diagram">Figure 1. SEP OTP fuse bank</a></li>
+<li><a href="sep/otp_fuse_controller.html#sep-efuse-interface-diagram">Figure 2. eFuse controller and technology-specific interface shim</a></li>
+<li><a href="sep/otp_fuse_controller.html#sep-efuse-sense-diagram">Figure 3. eFuse sensing state machine and shadow-register timing</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-39">Overview</h2><div class="sectionbody"><ul><li><a href="sep/overview.html#sep-top-level-diagram">Figure 1. SEP top-level microarchitecture</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-40">Peripheral Subsystem</h2><div class="sectionbody"><ul><li><a href="sep/peripheral_subsystem.html#sep-peripheral-extension-port-figure">Figure 1. SEP peripheral extension port</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-41">SEP Reset Controller</h2><div class="sectionbody"><ul><li><a href="sep/reset_controller.html#sep-reset-domain-diagram">Figure 1. SEP reset domains and reset sequencing</a></li>
+<li><a href="sep/reset_controller.html#sep-reset-ctrl-logic-diagram">Figure 2. SEP Reset Controller reset logic</a></li>
+<li><a href="sep/reset_controller.html#sep-crypto-axi-isolation-diagram">Figure 3. SEP crypto AXI isolation</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-42">Token Processing</h2><div class="sectionbody"><ul><li><a href="sep/token_processing.html#sep-token-processing-figure">Figure 1. SEP token processing</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-43">TRNG and DRBG</h2><div class="sectionbody"><ul><li><a href="sep/trng.html#sep-trng-diagram">Figure 1. SEP TRNG and DRBG entropy distribution</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-44">Clocks and Resets</h2><div class="sectionbody"><ul><li><a href="smc/clk_rst.html#smc-clock-tree">Figure 1. SMC clock tree and clock domains in u_smc_base</a></li>
+<li><a href="smc/clk_rst.html#smc-clock-tree-cpu-periph">Figure 2. SMC clock tree and clock domains in u_smc_cpu_wrapper and u_smc_peripherals</a></li>
+<li><a href="smc/clk_rst.html#smc-reset-distribution-figure">Figure 3. SMC reset unit architecture</a></li>
+<li><a href="smc/clk_rst.html#smc-flr-isolation-diagram">Figure 4. SMC FLR isolation connections between chiplets</a></li>
+<li><a href="smc/clk_rst.html#smc-flr-software-diagram">Figure 5. SMC-driven FLR isolation</a></li>
+<li><a href="smc/clk_rst.html#smc-flr-tile-diagram">Figure 6. Tile-request-driven FLR isolation</a></li>
+<li><a href="smc/clk_rst.html#smc-flr-gpio-diagram">Figure 7. GPIO-driven FLR isolation</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-45">CPU</h2><div class="sectionbody"><ul><li><a href="smc/cpu.html#smc-cpu-cluster-diagram">Figure 1. SMC CPU cluster and TileLink-to-AXI integration</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-46">Design-for-Debug (DFD) and Core Logic Analyzer (CLA)</h2><div class="sectionbody"><ul><li><a href="smc/dfd.html#smc-dfd-diagram">Figure 1. SMC DFD block diagram</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-47">Direct Memory Access (DMA) Engine</h2><div class="sectionbody"><ul><li><a href="smc/dma.html#smc-dma-zeroer-diagram">Figure 1. SMC DMA frontend, backend and shared fabric path</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-48">Interconnect</h2><div class="sectionbody"><ul><li><a href="smc/fabric.html#smc-input-fabric-diagram">Figure 1. SMC input fabric topology and routing</a></li>
+<li><a href="smc/fabric.html#smc-local-fabric-diagram">Figure 2. SMC local fabric and peripheral islands</a></li>
+<li><a href="smc/fabric.html#smc-output-fabric-diagram">Figure 3. SMC output fabric and remapping paths</a></li>
+<li><a href="smc/fabric.html#smc-traffic-filter-diagram">Figure 4. SMC inbound and outbound traffic-filter mechanism</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-49">Overview</h2><div class="sectionbody"><ul><li><a href="smc/overview.html#smc-top-level-block-diagram-figure">Figure 1. SMC top-level microarchitecture</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-50">Zeroer</h2><div class="sectionbody"><ul><li><a href="smc/zeroer.html#smc-memory-zeroer-diagram">Figure 1. SMC memory zeroer state machine and AXI write flow</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-51">System Management Unit (SMU)</h2><div class="sectionbody"><ul><li><a href="smu/index.html#smu-composition-diagram">Figure 1. SMU composition with the optional SEP subsystem</a></li>
+<li><a href="smu/index.html#smu-crossbar-connectivity-diagram">Figure 2. SMU AXI crossbar connectivity</a></li>
+<li><a href="smu/index.html#smu-crossbar-decode-diagram">Figure 3. SMU aperture decode and routing</a></li>
+<li><a href="smu/index.html#smu-clock-distribution">Figure 4. SMU clock distribution</a></li>
+<li><a href="smu/index.html#smu-reset-distribution">Figure 5. SMU reset distribution</a></li>
+<li><a href="smu/index.html#smu-lifecycle-propagation-diagram">Figure 6. SEP lifecycle and feature-control propagation to SMC and DTP</a></li></ul></div></div>
+<nav class="pagination">
+  <span class="prev"><a href="index.html">Documentation Overview</a></span>
+  <span class="next"><a href="list-of-tables.html">List of Tables</a></span>
+</nav>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/register-sections.js"></script>
+<script src="../../_/js/toc-collapse.js"></script>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script src="../../_/js/version-menu.js"></script>
+<script src="../../_/js/vendor/viewer.min.js"></script>
+<script src="../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>

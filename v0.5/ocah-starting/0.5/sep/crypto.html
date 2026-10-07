@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Cryptographic Subsystem :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP cryptographic accelerators, entropy sources, and key management.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-starting" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Getting Started and Contributing Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a user</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../dependencies.html">Dependencies</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../setup.html">Environment Setup</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../workflows.html">Workflows</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../guidelines.html">Guidelines</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a contributor</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../licensing.html">Licensing</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../contribution.html">Contributions</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../contribution.html#versioning">Versioning</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../defects.html">Defect Reporting</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../documentation.html">Documentation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../code_of_conduct.html">Code of Conduct</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Getting Started and Contributing Guide 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../index.html">Starting with OCAH</a></li>
+    <li><a href="crypto.html">Cryptographic Subsystem</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Cryptographic Subsystem</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="cryptographic-subsystem" class="paragraph">
+<p>The cryptographic accelerators use separate paths for data and secret keys:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The SEP system fabric drives the AXI4 data and CSR bus.</p>
+</li>
+<li>
+<p>Key Manager drives the AXI4-Lite secret-key buses.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The accelerators are derived from OpenTitan, except for the Adams Bridge
+post-quantum accelerator from Caliptra. The firmware is based on the
+<a href="https://opentitan.org/book/doc/security/cryptolib/cryptolib_api.html">OpenTitan
+cryptographic library</a>. Each block&#8217;s reference page includes its available
+register maps; the <a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a> links to those pages.</p>
+</div>
+<div class="paragraph">
+<p>OCAH adds bus adapters and separate key-delivery paths to the accelerator
+wrappers. Key Manager writes keys through AXI4-Lite interfaces; the wrappers
+connect them to the accelerators' key inputs. The following sections describe
+the shared integration rules and accelerator-specific differences.</p>
+</div>
+<div class="paragraph">
+<p>Adams Bridge requires 13 SRAM macros with masking enabled (default), or 9
+with masking disabled.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sep-crypto-diagram">SEP cryptographic subsystem and external memory interfaces</a> shows the accelerator interconnect, Key Manager paths, and
+external memory interfaces.</p>
+</div>
+<div id="sep-crypto-diagram" class="imageblock">
+<div class="content">
+<img src="_images/sep-crypto-subsystem.svg" alt="SEP cryptographic subsystem: the crypto AXI interconnect serves the TRNG, the accelerators, the Key Manager mailbox, the lifecycle controller and the eFuse wrapper; the Key Manager writes the key CSR block of each accelerator over its private key bus; entropy streams from the TRNG feed the Key Manager, the accelerators and the entropy pool; memory macros sit outside sep_crypto" width="100%">
+</div>
+<div class="title">Figure 1. SEP cryptographic subsystem and external memory interfaces</div>
+</div>
+<div class="paragraph">
+<p>In <a href="#sep-crypto-diagram">SEP cryptographic subsystem and external memory interfaces</a>, dark lines are host AXI4 and AXI4-Lite paths from the
+crypto AXI interconnect, and brown lines are the Key Manager private key buses.
+Each accelerator&#8217;s key CSR block is the <code>&lt;accelerator&gt;_wrapper_key_reg</code> block that
+receives the <code>KEY_SHARE0</code>, <code>KEY_SHARE1</code> and <code>KEY_CTRL</code> writes described in
+<a href="#km-key-delivery">Key Manager Key Delivery</a> and drives the core&#8217;s sideload key port. The Key Manager
+reaches the key CSR blocks through its internal crossbar; the Adams Bridge key bus
+leaves on the right, beside the ML-KEM shared-key interrupt that Adams Bridge
+returns. The host paths to the Key Manager mailbox, the external TRNG registers,
+the eFuse wrapper and the lifecycle controller are not isolated, and the eFuse and
+lifecycle legs leave the interconnect as AXI4. All six Key Manager paths, including
+its eFuse access, pass an isolation stage in <code>sep_crypto_axi_interconnect</code>.</p>
+</div>
+<div class="paragraph">
+<p>The Key Manager also receives OTP data: the eFuse shadow registers supply the
+lifecycle state and the identity and class-key fields, and the lifecycle
+controller supplies the two demotion states. Grey arrows carry entropy, OTP data
+and status one way; the three entropy streams from the DRBG pass through a source
+select that can take the external TRNG instead, as the TRNG and DRBG page
+describes. Grey boxes are outside <code>sep_crypto</code>: the memory macros live in the
+integration layer, and the entropy pool is <code>u_entropy_fifo</code> in <code>sep</code>. The Adams
+Bridge SRAMs are 13 macros with masking enabled and 9 without. Interrupts and
+OpenTitan alerts are not drawn; <a href="#sep-crypto-alert-and-fault-routing-table">SEP crypto alert and fault routing</a> lists
+them.</p>
+</div>
+<div class="paragraph">
+<p>The integrator must instantiate the Adams Bridge working SRAMs outside SEP and
+connect them through the dedicated <code>abr_mem</code> request/response interface.
+For the memory interface and configuration requirements, see
+<a href="../../../ocah-integrator-guide/0.5/smu-sep.html#sep-memory-interfaces" class="xref page">SEP Memory Interfaces in the Integrator Guide</a>.</p>
+</div>
+<div class="paragraph">
+<p>The <code>sep_crypto</code> module implements the integration layer, with
+<code>sep_crypto_axi_interconnect</code> centralizing its bus infrastructure. A single
+64-bit AXI slave port from the SEP system fabric is decoded to the accelerators
+and internal peripherals. The host paths to OTBN, HMAC, AES, KMAC, ESRC, CSRNG,
+and EDN are converted to AXI4-Lite before isolation, with data-width conversion
+where required by the endpoint. The OpenTitan wrappers then bridge the isolated
+AXI4-Lite paths to TL-UL.</p>
+</div>
+<div class="paragraph">
+<p>The Key Manager drives private AXI4-Lite key buses to the accelerator wrappers,
+which map key words into the sideload structures expected by the OpenTitan
+cores. These buses are independently isolated so that they drain before either
+the Key Manager or the destination accelerator enters software reset.</p>
+</div>
+<div class="paragraph">
+<p>Each accelerator has its own software-controllable reset. The SEP Reset
+Controller drains and isolates both its host and Key Manager paths before
+asserting reset; a Key Manager reset similarly drains all of its key paths. The
+entropy source, CSRNG, and EDN share one coordinated reset. See
+<a href="reset_controller.html#sep-reset-controller" class="xref page">SEP Reset Controller</a> and <a href="reset_controller.html#sep-trng-reset" class="xref page">Resetting the TRNG</a>.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sep-crypto-reset-diagram">SEP cryptographic subsystem resets</a> shows how the resets from the SEP Reset
+Controller reach the instances inside <code>u_sep_crypto</code>.</p>
+</div>
+<div id="sep-crypto-reset-diagram" class="imageblock">
+<div class="content">
+<img src="_images/sep-crypto-resets.svg" alt="Resets inside u_sep_crypto, including the TRNG reset-active synchronizer, the EDN adapter resets and the Key Manager reset conditioner" width="100%">
+</div>
+<div class="title">Figure 2. SEP cryptographic subsystem resets</div>
+</div>
+<div class="paragraph">
+<p>Inside <code>u_sep_trng</code>, <code>por_rst_ni</code> resets a 2-flop synchronizer that samples the
+inverted TRNG reset and drives <code>trng_reset_active</code>. That signal synchronously
+clears both EDN AXIS adapters and, as <code>trng_entropy_clear_o</code>, the entropy pool.
+Both adapters take <code>rst_ni</code>. An OTBN, AES or KMAC software reset cancels that
+engine&#8217;s endpoints in the crypto adapter (see <a href="reset_controller.html#sep-reset-controller" class="xref page">SEP Reset Controller</a>). The
+Key Manager conditions <code>sep_reset_n</code> into its cold domain through
+<code>u_cold_rst_sync</code>, and the gated Key Manager reset or its software reset
+<code>soft_rst_n</code> into a warm reset held for at least 10 cycles, as
+<a href="../ip/key_manager/doc/index.html#key-manager-reset-diagram" class="xref page">Key Manager cold and warm reset conditioning</a> shows in more detail.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-crypto-alert-policy"><a class="anchor" href="#sep-crypto-alert-policy"></a><a class="link" href="#sep-crypto-alert-policy">1. OpenTitan Alert Termination</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>SEP does not instantiate OpenTitan&#8217;s <code>alert_handler</code>. Each OpenTitan crypto
+alert channel is terminated locally by a <code>prim_alert_receiver</code> in <code>sep_crypto</code>.
+That primitive decodes the sender&#8217;s differential <code>alert_p</code>/<code>alert_n</code> handshake
+and pulses <code>alert_o</code> when the handshake starts; a malformed encoding raises
+<code>integ_fail_o</code>. Alert ping is disabled (<code>ping_req_i</code> tied 0); <code>ping_ok_o</code> is
+unused.</p>
+</div>
+<div class="paragraph">
+<p>PIC sources are in <a href="interrupts.html#sep-cpu-interrupt-vector-map" class="xref page">SEP CPU Interrupt Vector Map</a>. A receiver&#8217;s pulse and
+integrity-fail stay per-block at the receiver. <a href="#sep-crypto-alert-and-fault-routing-table">SEP crypto alert and fault routing</a> shows which of those,
+the native error IRQs, and the bridge faults are OR&#8217;d onto a PIC source and
+which are not.</p>
+</div>
+<table id="sep-crypto-alert-and-fault-routing-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SEP crypto alert and fault routing</caption>
+<colgroup>
+<col style="width: 14%;">
+<col style="width: 18%;">
+<col style="width: 22%;">
+<col style="width: 16%;">
+<col style="width: 30%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Block</th>
+<th class="tableblock halign-left valign-top">OT alert channels</th>
+<th class="tableblock halign-left valign-top">Alert PIC</th>
+<th class="tableblock halign-left valign-top">Native error IRQ</th>
+<th class="tableblock halign-left valign-top">Bridge <code>err_o</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[0]</code> fatal</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OR into Crypto alert</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">dedicated PIC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">STATUS bit; OR into Peripheral register-bridge fault</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTBN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[2:1]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OR into Crypto alert</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">none</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">STATUS bit; OR into Peripheral register-bridge fault</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AES</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[4:3]</code> recoverable, fatal</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OR into Crypto alert</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">none</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">STATUS bit; OR into Peripheral register-bridge fault</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[6:5]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OR into Crypto alert</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">dedicated PIC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">STATUS bit; OR into Peripheral register-bridge fault</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[8:7]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OR into Crypto alert</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">dedicated PIC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">STATUS bit; OR into Peripheral register-bridge fault</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">EDN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[10:9]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OR into Crypto alert</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">dedicated PIC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">STATUS bit; OR into Peripheral register-bridge fault</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Adams Bridge and the entropy source do not go through this conversion.</p>
+</div>
+<div id="sep-crypto-bridge-faults" class="paragraph">
+<p>The Crypto alert source is the OR of every receiver pulse and integrity-fail, so
+that interrupt does not name the block. Native error IRQs are not OR&#8217;d. HMAC,
+AES, KMAC, OTBN, CSRNG, and EDN convert isolated AXI4-Lite to TL-UL through
+<code>axi_lite_to_tlul</code>; each bridge&#8217;s sticky <code>err_o</code> is that wrapper&#8217;s <code>bus_err_o</code>,
+visible as one bit in <code>PERIPH_BUS_ERR_STATUS</code> and cleared with the matching
+<code>PERIPH_BUS_ERR_CLEAR</code> bit. The Peripheral register-bridge fault source is the OR
+of those bits and the watchdog timer&#8217;s bridge fault. Acknowledging one STATUS
+bit cannot discard another.</p>
+</div>
+<div class="paragraph">
+<p>The crypto complex uses whole-instance Class 2 scan boundaries so all
+sequential key, round-key, digest-working, seed, and random-distribution state
+is covered without per-register marking. The marked roots in <code>sep_crypto</code> are
+<code>u_hmac_wrapper_s3c_scan</code>, <code>u_sep_crypto_otbn_wrapper_s3c_scan</code>,
+<code>u_aes_wrapper_s3c_scan</code>, <code>u_kmac_wrapper_s3c_scan</code>,
+<code>u_sep_crypto_abr_wrapper_s3c_scan</code>, <code>u_entropy_source_s3c_scan</code>,
+<code>u_drbg_s3c_scan</code>, <code>u_axis_edn_crypto_s3c_scan</code>, <code>u_axis_edn_pool_s3c_scan</code>, and
+<code>u_key_manager_s3c_scan</code>. The integration module itself, public bus
+infrastructure, and combinational entropy muxes are not Class 2 roots.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="crypto-single-beat-only"><a class="anchor" href="#crypto-single-beat-only"></a><a class="link" href="#crypto-single-beat-only">2. Single-Beat Access Only</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>sep_crypto</code> demux enforces single-beat access to the crypto region
+(<a href="memory_map.html#sep-register-single-beat" class="xref page">Single-Beat Register Access</a>). Any access whose <code>AxLEN</code> is non-zero is
+routed to the internal error slave and answered with DECERR on every beat,
+whatever its address; no beat reaches an accelerator.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="km-key-delivery"><a class="anchor" href="#km-key-delivery"></a><a class="link" href="#km-key-delivery">3. Key Manager Key Delivery</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The Key Manager delivers keys and seeds to the crypto accelerators over a
+private key interface that software cannot read. Every delivery uses the same
+format: the value is carried as two shares whose XOR is the value, and each
+share is presented as a sequence of 32-bit words in the <code>KEY_SHARE0</code> and
+<code>KEY_SHARE1</code> registers of the destination. Within a share, word index N carries
+value bits <code>[32N+31:32N]</code>, so index 0 is the least-significant word and the
+highest index is the most-significant.</p>
+</div>
+<div class="paragraph">
+<p>Both shares are always consumed. Delivering a value V therefore requires two
+shares whose XOR is V; writing a single share delivers V only because the
+unwritten share reads as zero. <code>KEY_CTRL.KEY_VALID</code> qualifies the delivered
+value, and while it is 0 the destination has no valid key or seed.</p>
+</div>
+<div class="paragraph">
+<p>The words per share, whether software must select the delivered key in
+preference to the accelerator&#8217;s own software key registers, whether software
+must also declare the key length, and the behavior on an invalid or mismatched
+key are accelerator-specific. They are stated in the accelerator reference
+pages and summarized in <a href="#km-key-delivery-summary">Key Manager key delivery per accelerator</a>; the
+<a href="../../../ocah-programmer-guide/0.5/index.html#sep-km-delivered-keys" class="xref page">delivered-key section</a>
+of the Programmer&#8217;s Guide gives the corresponding software configuration.</p>
+</div>
+<table id="km-key-delivery-summary" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. Key Manager key delivery per accelerator</caption>
+<colgroup>
+<col style="width: 12%;">
+<col style="width: 14%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 34%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Accelerator</th>
+<th class="tableblock halign-left valign-top">Words per share</th>
+<th class="tableblock halign-left valign-top">Select delivered key</th>
+<th class="tableblock halign-left valign-top">Key length</th>
+<th class="tableblock halign-left valign-top">Invalid or mismatched key</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 (256-bit)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not required</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CFG.key_length</code>, set by software</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Digest is wrong but repeatable; no error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AES</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 (256-bit)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CTRL_SHADOWED.sideload</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CTRL_SHADOWED.key_len</code>, set by software</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Delivered key ignored while the select bit is 0; no error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 (256-bit)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CFG_SHADOWED.sideload</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Applied automatically</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Keyed operation raises an error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTBN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">12 (384-bit)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not required</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not applicable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ERR_BITS.KEY_INVALID</code>; the program stops</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ABR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 per block (256-bit)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Seed read enable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not applicable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Seed read does not complete</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Cryptographic subsystem reference pages:</p>
+</div>
+<span id="true-random-number-generator-trng-true-random-number-generator-trng"></span>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="trng.html" class="xref page">TRNG and DRBG</a></p>
+</li>
+</ul>
+</div>
+<span id="aes-cipher"></span>
+<span id="och-modifications-2"></span>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="aes.html" class="xref page">AES Cipher</a></p>
+</li>
+</ul>
+</div>
+<span id="hmac-sha2"></span>
+<span id="och-modifications-4"></span>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="hmac.html" class="xref page">HMAC-SHA2</a></p>
+</li>
+</ul>
+</div>
+<span id="kmac-sha3"></span>
+<span id="och-modifications-3"></span>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="kmac.html" class="xref page">KMAC-SHA3</a></p>
+</li>
+</ul>
+</div>
+<span id="adams-bridge-abr"></span>
+<span id="abr-aperture-decode"></span>
+<span id="och-modifications-5"></span>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="adams_bridge.html" class="xref page">Adams Bridge (ABR)</a></p>
+</li>
+</ul>
+</div>
+<span id="otbn-pka-public-key-accelerator"></span>
+<span id="och-modifications-1"></span>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="otbn.html" class="xref page">OTBN PKA Public Key Accelerator</a></p>
+</li>
+<li>
+<p><a href="../ip/key_manager/doc/index.html" class="xref page">Key Manager</a></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

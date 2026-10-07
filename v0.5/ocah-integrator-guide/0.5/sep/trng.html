@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>TRNG and DRBG :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP entropy generation, deterministic random bit generation, distribution, and reset coordination.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-integrator-guide" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Integrator Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Integrator Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../checklist.html">SoC Integration Checklist</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../smu.html">SMU Top-Level Integration</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-filelists.html">RTL Filelists</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-address-map.html">Address Map Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-rom-fw.html">Immutable ROM FW Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-smc.html">System Management Controller (SMC) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-dtp.html">Debug &amp; Test Ports (DTP) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-sep.html">Security Processor (SEP) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-composition.html">SMU Composition and Internal Wiring</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../smn.html">SMN Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../aou.html">AXI-over-UCIe Bridge (AoU) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../defines.html">Project Defines</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../prim.html">Prim Cell Replacement and Don&#8217;t-Touch Constraints</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../cdc.html">CDC Timing Constraints</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Integrator Guide 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../index.html">Integrator Guide</a></li>
+    <li><a href="trng.html">TRNG and DRBG</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">TRNG and DRBG</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>SEP separates physical entropy generation from deterministic random-data
+production and distribution. The internal path is:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Entropy Source (ESRC): ring-oscillator sampling, extraction, health checks
+and SHA-256 conditioning.</p>
+</li>
+<li>
+<p>Cryptographically Secure Random Number Generator (CSRNG): an AES-CTR
+deterministic random bit generator (DRBG), seeded by ESRC.</p>
+</li>
+<li>
+<p>Entropy Distribution Network (EDN): requests generated data from CSRNG
+and supplies the three SEP sink paths below.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Each sink can instead select an external stream. The source muxes sit after
+EDN, so external data bypasses the internal ESRC/CSRNG/EDN chain. Stream
+availability and FIPS tags do not establish entropy quality or certification.</p>
+</div>
+<div id="sep-trng-diagram" class="imageblock">
+<div class="content">
+<img src="_images/sep-trng-distribution.svg" alt="SEP TRNG and DRBG entropy distribution: the entropy source seeds CSRNG through a seed packer, EDN fills three AXI-Stream FIFOs, a source select can replace each stream with the external TRNG, and the streams feed the Key Manager, an EDN adapter for AES, KMAC and OTBN, and the entropy pool" width="100%">
+</div>
+<div class="title">Figure 1. SEP TRNG and DRBG entropy distribution</div>
+</div>
+<div class="paragraph">
+<p><a href="#sep-trng-diagram">SEP TRNG and DRBG entropy distribution</a> reads left to right. Inside <code>u_sep_trng</code>, the entropy source
+drives a 32-bit stream into the DRBG, whose seed packer collects twelve words into
+each 384-bit CSRNG seed. EDN draws from CSRNG and fills one 8-entry AXI-Stream FIFO
+per endpoint. The crypto AXI interconnect reaches the entropy source, CSRNG and
+EDN registers, and the external TRNG register window. The source select holds one
+2:1 mux per stream; each bit of <code>EXT_TRNG_SRC_SEL</code> chooses the internal DRBG (0)
+or the external TRNG (1, the reset value) for its stream. Streams 0, 1 and 2 go
+to the Key Manager DRBG sampler, to the crypto EDN adapter and to the pool EDN
+adapter. The entropy pool sits in <code>sep</code>, outside <code>sep_crypto</code>, and packs the
+32-bit words into a 32-entry FIFO of 64-bit words that software reads through the
+SEP local crossbar. The CSRNG and EDN cores are OpenTitan IP; their internal
+structure and register semantics are described in the
+<a href="https://opentitan.org/book/hw/ip/csrng/">OpenTitan CSRNG</a> and
+<a href="https://opentitan.org/book/hw/ip/edn/">EDN</a> documentation.
+The Programmer&#8217;s Guide gives the
+<a href="../../../ocah-programmer-guide/0.5/index.html#ocah-trng-bring-up" class="xref page">programming guidance</a>
+for this block.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="true-random-number-generator-trng-true-random-number-generator-trng"><a class="anchor" href="#true-random-number-generator-trng-true-random-number-generator-trng"></a><a class="link" href="#true-random-number-generator-trng-true-random-number-generator-trng">1. Entropy Generation</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The internal ESRC samples ring oscillators, decorrelates/extracts their output
+and conditions it with SHA-256. Its gating health test observes the extracted
+32-bit stream before SHA-256; per-generator health results provide additional
+monitoring. The health tests include repetition, adaptive-proportion and Markov
+checks. This is not a test of each DRBG output word.</p>
+</div>
+<div class="paragraph">
+<p>Startup health testing gates release into the normal output path. The stream
+to DRBG is the ESRC output selected by its configuration: normally SHA-256
+output, but compressor-bypass mode selects uncompressed generator data and
+disables the gating 32-bit health test. Do not treat bypass or diagnostic
+settings as equivalent to the qualified operating configuration.</p>
+</div>
+<div class="paragraph">
+<p>Source characterization, health-test thresholds and permitted configurations
+belong to the entropy-source qualification. Conditioning does not by itself
+establish the amount of physical entropy in a seed. The source requirements
+are described by <a href="https://csrc.nist.gov/pubs/sp/800/90/b/final">NIST SP 800-90B</a>.</p>
+</div>
+<div class="paragraph">
+<p>See <a href="../ip/entropy_source/doc/index.html" class="xref page">Entropy Source</a> for the source controls,
+startup status, health monitoring and configuration locks.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="distribution-and-source-selection"><a class="anchor" href="#distribution-and-source-selection"></a><a class="link" href="#distribution-and-source-selection">2. Distribution and Source Selection</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>SEP instantiates <code>drbg</code> with three AXI-Stream outputs and no direct native EDN
+endpoints. The crypto and pool paths convert the selected streams back to
+native EDN requests/responses outside that wrapper.</p>
+</div>
+<table id="sep-entropy-endpoint-routing" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SEP entropy sink paths</caption>
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 28.5714%;">
+<col style="width: 57.1429%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Stream / select bit</th>
+<th class="tableblock halign-left valign-top">Sink</th>
+<th class="tableblock halign-left valign-top">Connection after the source mux</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Direct stream to the KM DRBG sampler.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AES, KMAC, OTBN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>u_axis_edn_crypto_s3c_scan</code> distributes words to native
+clients 0 = AES, 1 = KMAC, 2 = OTBN RND, 3 = OTBN URND, using round-robin arbitration.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fabric entropy pool</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>u_axis_edn_pool_s3c_scan</code> supplies the single native
+EDN fill port of <code>u_entropy_fifo</code> in <code>sep.sv</code>.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>SEP_CPU_CTRL.EXT_TRNG_SRC_SEL</code> selects each path independently: 0 selects
+internal DRBG data and 1 selects external data. Its reset value is <code>0b111</code>,
+so all three paths initially select external inputs. The write-once-set
+<code>EXT_TRNG_SRC_SEL_LOCK</code> prevents selection changes until the CPU-control bank
+is reset; resetting the internal TRNG alone does not unlock it.</p>
+</div>
+<div class="paragraph">
+<p>The selected source receives the sink&#8217;s ready signal. An unselected internal
+endpoint is backpressured and retains queued data; an unselected external input
+receives ready high and its beats are discarded. Selection is combinational:
+there is no switch-complete handshake or automatic flush of previously queued
+words.</p>
+</div>
+<table id="entropy-streaming-signals-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. SEP random-data stream contract</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal</th>
+<th class="tableblock halign-left valign-top">Direction / width</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tvalid</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Source / 1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A word is available; transfer occurs with <code>tready</code> high.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tready</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sink / 1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The sink can accept the word. Hold valid data stable while stalled.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tdata</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Source / 32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">One random-data word.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tstrb</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Source / 4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Byte strobes. Internal endpoints drive <code>0xF</code>; the crypto
+and pool adapters accept only full words (<code>0xF</code>). Partial strobes stall those adapters.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tuser</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Internal source / 1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-word FIPS provenance from EDN. The external
+input has no provenance bit; its source mux supplies a constant 1.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>There is no stream address: each physical output selects its sink path.
+The pool packs received words for its 64-bit read aperture and reports
+<code>entropy_pool_low</code>, <code>entropy_pool_fill_stall</code> and <code>entropy_pool_err</code>.</p>
+</div>
+<div class="paragraph">
+<p>See <a href="interrupts.html#sep-cpu-interrupt-vector-map" class="xref page">SEP CPU Interrupt Vector Map</a>
+for source assignments.</p>
+</div>
+<div class="sect2">
+<h3 id="fips-provenance"><a class="anchor" href="#fips-provenance"></a><a class="link" href="#fips-provenance">2.1. FIPS Provenance</a></h3>
+<div class="paragraph">
+<p>The internal seed adapter attaches the provisional constant
+<code>DrbgCsrngSeedFipsProvisional = 1</code>. CSRNG/EDN output provenance is retained
+in each endpoint FIFO and forwarded through <code>tuser</code> into the native client&#8217;s
+<code>edn_fips</code>. OTBN RND checks the returned tag and can report <code>rnd_fips_chk_fail</code>.
+The external mux also attaches 1 unconditionally. Neither constant measures
+source quality, validates an external producer, or establishes FIPS compliance;
+qualification must justify the source and its operating configuration separately.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="reset-and-recovery-boundaries"><a class="anchor" href="#reset-and-recovery-boundaries"></a><a class="link" href="#reset-and-recovery-boundaries">3. Reset and Recovery Boundaries</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>SEP_RESET_CTRL.SW_RESET_N.TRNG_SW_RST_N</code> controls one internal reset domain:
+ESRC, CSRNG, EDN and the DRBG endpoint queues. The TRNG sequencer isolates
+all three host paths to drain and safely reset their converted AXI4-Lite CSR
+transactions. This protects register transactions; it does not wait for entropy consumers to become idle.</p>
+</div>
+<table id="sep-entropy-reset-boundaries" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. TRNG reset effects outside the internal domain</caption>
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Block</th>
+<th class="tableblock halign-left valign-top">Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Post-mux crypto and pool adapters</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Synchronously clear pending and buffered
+state while the internal TRNG reset is active, even if external inputs are selected.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fabric entropy pool</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Clears its partial word, queued entropy and fill-stall
+state. Its AXI responder remains accessible; this is not a reset of that responder.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AES, KMAC and OTBN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not reset by the TRNG coordinator. Native requests receive
+no acknowledgement during adapter clear and can resume after fresh data arrives.
+Their software resets cancel the corresponding adapter endpoints; OTBN owns RND and URND.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager sampler</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not scrubbed by TRNG reset: there is no post-mux adapter
+on this path. Keep KM idle before asserting TRNG reset; holding KM in software
+reset is sufficient. Hardware does not enforce this ordering.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG CSR path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not included in the internal TRNG reset/isolation boundary.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>An in-progress KM sample can otherwise combine old and new stream data or
+report a stream error. The reset is therefore not an atomic restart of all
+entropy consumers, and after release the internal chain produces no data until
+ESRC, CSRNG and EDN are reinitialized. External crypto/pool traffic also pauses
+during adapter clear; it can resume when that clear ends, independently of
+internal generator initialization. The
+<a href="../../../ocah-programmer-guide/0.5/index.html#sep-trng-recovery" class="xref page">TRNG recovery sequence</a>
+is in the Programmer&#8217;s Guide.</p>
+</div>
+<div class="paragraph">
+<p>See <a href="reset_controller.html#sep-trng-reset" class="xref page">Resetting the TRNG</a> for the
+coordinator and recovery contract.</p>
+</div>
+<div class="sect2">
+<h3 id="scan-protection-boundary"><a class="anchor" href="#scan-protection-boundary"></a><a class="link" href="#scan-protection-boundary">3.1. Scan Protection Boundary</a></h3>
+<div class="paragraph">
+<p>The Class 2 entropy boundary starts at <code>u_trng_wrapper_s3c_scan</code>: its sequencer,
+128-bit release stage and stream FIFOs retain seed material; the vendor core
+uses its delivered DFT view. Within <code>u_sep_crypto.u_sep_trng</code>,
+<code>u_entropy_source_s3c_scan</code> covers entropy FIFO/SHA-256 state and
+<code>u_drbg_s3c_scan</code> covers CSRNG, EDN and endpoint state. The post-mux
+<code>u_axis_edn_crypto_s3c_scan</code> covers staging outside the DRBG root.
+Source-selection muxes are combinational, not scan assets.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="drbg-deterministic-random-bit-generator"><a class="anchor" href="#drbg-deterministic-random-bit-generator"></a><a class="link" href="#drbg-deterministic-random-bit-generator">4. DRBG Deterministic Random Bit Generator</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This module is <a href="https://csrc.nist.gov/pubs/sp/800/90/a/r1/final">NIST
+800-90A</a> compliant. The module is based on the OpenTitan design.</p>
+</div>
+<div class="paragraph">
+<p>The DRBG is seeded by the TRNG entropy stream and generates an arbitrary
+length bitstream which is used as foundational random data by the Key
+Generator.</p>
+</div>
+<div class="paragraph">
+<p>This component uses the AES-CTR-DRBG version of the 800-90A.</p>
+</div>
+<div class="paragraph">
+<p>The <code>drbg</code> top-level module wraps the OpenTitan CSRNG and EDN blocks with bus-protocol adapters. It accepts a raw 32-bit entropy stream from the entropy source, feeds it directly into the CSRNG seed path, and exposes AXI-Stream (and optionally native) EDN endpoints for deterministic random data delivery.</p>
+</div>
+<div class="sect2">
+<h3 id="parameters"><a class="anchor" href="#parameters"></a><a class="link" href="#parameters">4.1. Parameters</a></h3>
+<div class="paragraph">
+<p>The DRBG is configured through its seed FIFO depth, its AXI-Stream and native EDN
+endpoint counts, and the depth of each AXI-Stream endpoint FIFO.</p>
+</div>
+<div class="paragraph">
+<p>The parameters of <code>drbg</code> are listed in <a href="../../../ocah-docs/0.5/rtl-modules-reference/ip/drbg/drbg.html" class="xref page">drbg</a>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="external-interfaces"><a class="anchor" href="#external-interfaces"></a><a class="link" href="#external-interfaces">4.2. External Interfaces</a></h3>
+<div class="paragraph">
+<p>The DRBG presents several interface types to the rest of the SEP subsystem.</p>
+</div>
+<div class="paragraph">
+<p><a href="#drbg-external-interfaces-table">DRBG external interfaces</a> describes the entropy ingress, random-data endpoints,
+and control interfaces.</p>
+</div>
+<table id="drbg-external-interfaces-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. DRBG external interfaces</caption>
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Interface</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy ingress</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fire-and-forget: <code>entropy_stream_data_i[31:0]</code> and <code>entropy_stream_vld_i</code> from the entropy source. There is no backpressure; each valid word feeds the CSRNG seed-packing path directly on the cycle it arrives.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">EDN AXI-Stream</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>edn_axis_o</code> / <code>edn_axis_i</code> (one pair per endpoint). Carries deterministic random data generated by CSRNG through the EDN. This is the primary interface consumed by the Key Manager DRBG sampler.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Native EDN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>edn_native_req_i</code> / <code>edn_native_rsp_o</code> (one pair per native endpoint, present when <code>EDN_NATIVE_ENDPOINT_COUNT &gt; 0</code>). Raw <code>edn_pkg</code> req/rsp handshake for consumers that bypass AXI-Stream buffering, such as the SEP entropy-pool FIFO fill path.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG AXI-Lite (64-bit)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>csrng_axil_req_i</code> / <code>csrng_axil_rsp_o</code>. Control-plane access to the CSRNG register set for instantiation, reseeding, and status monitoring.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">EDN AXI-Lite (64-bit)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>edn_axil_req_i</code> / <code>edn_axil_rsp_o</code>. Control-plane access to the EDN register set for mode configuration and status.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Life-cycle / OTP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>otp_en_csrng_sw_app_read_i</code> (MuBi8) and <code>lc_hw_debug_en_i</code> (lc_tx_t). These signals gate CSRNG software application read access based on device life-cycle state.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alerts</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Two alert pairs (CSRNG and EDN) following the OpenTitan alert protocol.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupts</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG: command done, entropy request, hardware instance exception, fatal error. EDN: command done, fatal error.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="seed-assembly"><a class="anchor" href="#seed-assembly"></a><a class="link" href="#seed-assembly">4.3. Seed Assembly</a></h3>
+<div class="paragraph">
+<p>The <code>drbg_csrng_seed_adapter</code> receives one 32-bit entropy word per valid cycle directly from the entropy source (there is no upstream routing or distribution FIFO) and packs the words into full CSRNG-width seeds using an OpenTitan <code>prim_packer_fifo</code>. The packed seed is pushed into a shallow FIFO (default depth 1) along with a FIPS compliance flag set to a provisional value (<code>DrbgCsrngSeedFipsProvisional = 1</code>). The CSRNG pulls seeds through the standard <code>entropy_src_hw_if</code> handshake: <code>es_req</code> / <code>es_ack</code> / <code>es_bits</code> / <code>es_fips</code>. Because ingress is fire-and-forget with no backpressure, the producer must supply entropy no faster than the seed adapter can pack it.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="opentitan-csrng-and-edn"><a class="anchor" href="#opentitan-csrng-and-edn"></a><a class="link" href="#opentitan-csrng-and-edn">4.4. OpenTitan CSRNG and EDN</a></h3>
+<div class="paragraph">
+<p>The CSRNG and EDN instances are standard OpenTitan IP blocks. The CSRNG implements AES-CTR-DRBG per NIST SP 800-90A. It accepts entropy seeds from the hardware interface, processes firmware-issued commands (instantiate, reseed, generate, uninstantiate) through TL-UL, and serves random data to multiple hardware application ports. In this integration, EDN is connected to CSRNG hardware application port 0; any additional hardware application ports are tied off.</p>
+</div>
+<div class="paragraph">
+<p>The EDN automates generate and reseed command sequences so that downstream consumers receive a continuous stream of random data without firmware intervention. The EDN endpoint interface uses a simple request/acknowledge handshake. The <code>drbg_edn_axis_adapter</code> converts this into the AXI-Stream protocol expected by the rest of the SEP fabric, buffering data in per-endpoint FIFOs.</p>
+</div>
+<div class="paragraph">
+<p>Consult the OpenTitan documentation at
+<a href="https://opentitan.org/book/hw/ip/csrng/">CSRNG</a> and
+<a href="https://opentitan.org/book/hw/ip/edn/">EDN</a> for the authoritative core
+functionality of those IPs.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="bus-protocol-adaptation"><a class="anchor" href="#bus-protocol-adaptation"></a><a class="link" href="#bus-protocol-adaptation">4.5. Bus Protocol Adaptation</a></h3>
+<div class="paragraph">
+<p>The CSRNG and EDN register interfaces use TL-UL, following the OpenTitan convention. The DRBG wrapper provides two levels of adaptation. The <code>drbg_axil64_lane_adapter</code> accepts 64-bit AXI4-Lite transactions from the SoC interconnect and narrows them to 32-bit AXI-Lite by selecting the appropriate data lane based on address bit [2]. Only aligned single-lane accesses with strobe <code>0x0F</code> or <code>0xF0</code> are forwarded; all others are rejected with SLVERR. Write address, write data, and read address are independent channels. The adapter holds a single downstream 32-bit slot: it accepts each write half as soon as that half is not already pending, and it accepts a read only when neither write half is pending. When a read address and a complete write handshake in the same idle cycle, the adapter forwards the read and holds the write until it returns to idle. The downstream <code>axi_lite_to_tlul</code> bridge then converts 32-bit AXI-Lite into TL-UL for the CSRNG and EDN register blocks.</p>
+</div>
+<div class="paragraph">
+<p>The CSRNG and EDN register maps are reported in the SEP detailed register map.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-map-and-register-reference"><a class="anchor" href="#memory-map-and-register-reference"></a><a class="link" href="#memory-map-and-register-reference">5. Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<span id="csrng-register-reference"></span>
+<span id="edn-register-reference"></span>
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">5.1. Memory Map</a></h3>
+<div class="paragraph">
+<p>CSRNG and EDN occupy separate apertures in the SEP memory map. Their register
+offsets and access rules are given in the generated maps below.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">5.2. Detailed Register Map</a></h3>
+<div class="sect3">
+<h4 id="csrng-registers"><a class="anchor" href="#csrng-registers"></a><a class="link" href="#csrng-registers">5.2.1. CSRNG Registers</a></h4>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-csrng">Cryptographically Secure Random Number Generator</h2>
+<p>Takes entropy bits to produce cryptographically secure random numbers for consumption by hardware blocks and by software</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#csrng-INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#csrng-INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#csrng-INTR_TEST">INTR_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#csrng-ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#csrng-REGWEN">REGWEN</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x14</td><td><a href="#csrng-CTRL">CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#csrng-CMD_REQ">CMD_REQ</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x1C</td><td><a href="#csrng-RESEED_INTERVAL">RESEED_INTERVAL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#csrng-RESEED_COUNTER_0">RESEED_COUNTER_0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x24</td><td><a href="#csrng-RESEED_COUNTER_1">RESEED_COUNTER_1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x28</td><td><a href="#csrng-RESEED_COUNTER_2">RESEED_COUNTER_2</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x2C</td><td><a href="#csrng-SW_CMD_STS">SW_CMD_STS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x30</td><td><a href="#csrng-GENBITS_VLD">GENBITS_VLD</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x34</td><td><a href="#csrng-GENBITS">GENBITS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x38</td><td><a href="#csrng-INT_STATE_READ_ENABLE">INT_STATE_READ_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x3C</td><td><a href="#csrng-INT_STATE_READ_ENABLE_REGWEN">INT_STATE_READ_ENABLE_REGWEN</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x40</td><td><a href="#csrng-INT_STATE_NUM">INT_STATE_NUM</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x44</td><td><a href="#csrng-INT_STATE_VAL">INT_STATE_VAL</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x48</td><td><a href="#csrng-FIPS_FORCE">FIPS_FORCE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4C</td><td><a href="#csrng-HW_EXC_STS">HW_EXC_STS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x50</td><td><a href="#csrng-RECOV_ALERT_STS">RECOV_ALERT_STS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x54</td><td><a href="#csrng-ERR_CODE">ERR_CODE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x58</td><td><a href="#csrng-ERR_CODE_TEST">ERR_CODE_TEST</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x5C</td><td><a href="#csrng-MAIN_SM_STATE">MAIN_SM_STATE</a></td><td>R</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="INTR_STATE"></span><h3 id="csrng-INTR_STATE" data-register-alias="INTR_STATE">INTR_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>CS_FATAL_ERR</td><td>RW1C</td><td>0x0</td><td>Asserted when a FIFO error or a fatal alert occurs. Check the !!ERR_CODE register to get more information.</td></tr>
+<tr><td>2</td><td>CS_HW_INST_EXC</td><td>RW1C</td><td>0x0</td><td>Asserted when a hardware-attached CSRNG instance encounters a command exception</td></tr>
+<tr><td>1</td><td>CS_ENTROPY_REQ</td><td>RW1C</td><td>0x0</td><td>Asserted when a request for entropy has been made.</td></tr>
+<tr><td>0</td><td>CS_CMD_REQ_DONE</td><td>RW1C</td><td>0x0</td><td>Asserted when a command request is completed.</td></tr>
+</table>
+<span id="INTR_ENABLE"></span><h3 id="csrng-INTR_ENABLE" data-register-alias="INTR_ENABLE">INTR_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>CS_FATAL_ERR</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.cs_fatal_err is set.</td></tr>
+<tr><td>2</td><td>CS_HW_INST_EXC</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.cs_hw_inst_exc is set.</td></tr>
+<tr><td>1</td><td>CS_ENTROPY_REQ</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.cs_entropy_req is set.</td></tr>
+<tr><td>0</td><td>CS_CMD_REQ_DONE</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.cs_cmd_req_done is set.</td></tr>
+</table>
+<span id="INTR_TEST"></span><h3 id="csrng-INTR_TEST" data-register-alias="INTR_TEST">INTR_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>CS_FATAL_ERR</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.cs_fatal_err to 1.</td></tr>
+<tr><td>2</td><td>CS_HW_INST_EXC</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.cs_hw_inst_exc to 1.</td></tr>
+<tr><td>1</td><td>CS_ENTROPY_REQ</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.cs_entropy_req to 1.</td></tr>
+<tr><td>0</td><td>CS_CMD_REQ_DONE</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.cs_cmd_req_done to 1.</td></tr>
+</table>
+<span id="ALERT_TEST"></span><h3 id="csrng-ALERT_TEST" data-register-alias="ALERT_TEST">ALERT_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>FATAL_ALERT</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+<tr><td>0</td><td>RECOV_ALERT</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+</table>
+<span id="REGWEN"></span><h3 id="csrng-REGWEN" data-register-alias="REGWEN">REGWEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>REGWEN</td><td>RW0C</td><td>0x1</td><td>When true, all writeable registers can be modified.<br>When false, they become read-only.</td></tr>
+</table>
+<span id="CTRL"></span><h3 id="csrng-CTRL" data-register-alias="CTRL">CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:12</td><td>FIPS_FORCE_ENABLE</td><td>RW</td><td>0x9</td><td>Setting this field to kMultiBitBool4True enables forcing the FIPS/CC compliance flag to true via the !!FIPS_FORCE register.</td></tr>
+<tr><td>11:8</td><td>READ_INT_STATE</td><td>RW</td><td>0x9</td><td>Setting this field to kMultiBitBool4True will enable reading from the !!INT_STATE_VAL register.<br>Reading the internal state of the enable instances will be enabled<br>only if the otp_en_csrng_sw_app_read input vector is set to the enable encoding.<br>Also, the !!INT_STATE_READ_ENABLE bit of the selected instance needs to be set to true for this to work.</td></tr>
+<tr><td>7:4</td><td>SW_APP_ENABLE</td><td>RW</td><td>0x9</td><td>Setting this field to kMultiBitBool4True will enable reading from the !!GENBITS register.<br>This application interface for software (register based) will be enabled<br>only if the otp_en_csrng_sw_app_read input vector is set to the enable encoding.</td></tr>
+<tr><td>3:0</td><td>ENABLE</td><td>RW</td><td>0x9</td><td>Setting this field to kMultiBitBool4True will enable the CSRNG module. The modules<br>of the entropy complex may only be enabled and disabled in a specific order, see<br>Programmers Guide for details.</td></tr>
+</table>
+<span id="CMD_REQ"></span><h3 id="csrng-CMD_REQ" data-register-alias="CMD_REQ">CMD_REQ</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>CMD_REQ</td><td>W</td><td>0x0</td><td>Writing this request with defined CSRNG commands will initiate all<br>possible CSRNG actions. The application interface must wait for the<br>&quot;ack&quot; to return before issuing new commands.</td></tr>
+</table>
+<span id="RESEED_INTERVAL"></span><h3 id="csrng-RESEED_INTERVAL" data-register-alias="RESEED_INTERVAL">RESEED_INTERVAL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>RESEED_INTERVAL</td><td>RW</td><td>0xFFFFFFFF</td><td>Setting this field will set the number of generate requests that can be<br>made to CSRNG before a reseed request needs to be made.<br>This register supports a maximum of 2^32 requests between reseeds.<br>This register will be compared to a counter, which counts the number of<br>generate commands between reseed or instantiate commands.<br>If the counter reaches the value of this register, the violating command<br>will be acknowledged with a status error.<br>If the violating command was issued by a HW instance, an interrupt will<br>be triggered.</td></tr>
+</table>
+<span id="RESEED_COUNTER_0"></span><h3 id="csrng-RESEED_COUNTER_0" data-register-alias="RESEED_COUNTER_0">RESEED_COUNTER_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>RESEED_COUNTER_0</td><td>R</td><td>0x0</td><td>Reseed Counter indicating the number of completed Generate requests since the last Instantiate or Reseed command.</td></tr>
+</table>
+<span id="RESEED_COUNTER_1"></span><h3 id="csrng-RESEED_COUNTER_1" data-register-alias="RESEED_COUNTER_1">RESEED_COUNTER_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>RESEED_COUNTER_0</td><td>R</td><td>0x0</td><td>For RESEED_COUNTER1</td></tr>
+</table>
+<span id="RESEED_COUNTER_2"></span><h3 id="csrng-RESEED_COUNTER_2" data-register-alias="RESEED_COUNTER_2">RESEED_COUNTER_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>RESEED_COUNTER_0</td><td>R</td><td>0x0</td><td>For RESEED_COUNTER2</td></tr>
+</table>
+<span id="SW_CMD_STS"></span><h3 id="csrng-SW_CMD_STS" data-register-alias="SW_CMD_STS">SW_CMD_STS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5:3</td><td>CMD_STS</td><td>R</td><td>0x0</td><td>This field represents the status code returned with the application command ack.<br>It is updated each time a command ack is asserted on the internal application<br>interface for software use.<br>To check whether a command was successful, wait for !!INTR_STATE.CS_CMD_REQ_DONE or<br>!!SW_CMD_STS.CMD_ACK to be high and then check the value of this field.</td></tr>
+<tr><td>2</td><td>CMD_ACK</td><td>R</td><td>0x0</td><td>This one bit field indicates when a SW command has been acknowledged by the CSRNG.<br>It is set to low each time a new command is written to !!CMD_REQ.<br>The field is set to high once a SW command request has been acknowledged by the CSRNG.<br>0b0: The last SW command has not been acknowledged yet.<br>0b1: The last SW command has been acknowledged.<br>In case of a generate command the acknowledgement goes high after all of the requested entropy is consumed.</td></tr>
+<tr><td>1</td><td>CMD_RDY</td><td>R</td><td>0x0</td><td>This bit indicates when the command interface is ready to accept commands.<br>Before starting to write a new command to !!SW_CMD_REQ, this field needs to be polled.<br>0b0: CSRNG is not ready to accept commands or the last command hasn&#x27;t been acked yet.<br>0b1: CSRNG is ready to accept the next command.</td></tr>
+<tr><td>0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<span id="GENBITS_VLD"></span><h3 id="csrng-GENBITS_VLD" data-register-alias="GENBITS_VLD">GENBITS_VLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>GENBITS_FIPS</td><td>R</td><td>-</td><td>This bit is set when genbits are FIPS/CC compliant.</td></tr>
+<tr><td>0</td><td>GENBITS_VLD</td><td>R</td><td>-</td><td>This bit is set when genbits are available on this application interface after a generate command has been issued.</td></tr>
+</table>
+<span id="GENBITS"></span><h3 id="csrng-GENBITS" data-register-alias="GENBITS">GENBITS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>GENBITS</td><td>R</td><td>-</td><td>Reading this register will get the generated bits that were requested with<br>the generate request. This register must be read four times for each request<br>made. For example, an application command generate request with<br>a `clen` value of 4 requires this register to be read 16 times to get all<br>of the data out of the FIFO path.<br>Note that for !!GENBITS to be able to deliver random numbers, also !!CTRL.SW_APP_ENABLE needs to be set to `kMultiBitBool4True`.<br>In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBool8True`.<br>Otherwise, the register reads as 0.</td></tr>
+</table>
+<span id="INT_STATE_READ_ENABLE"></span><h3 id="csrng-INT_STATE_READ_ENABLE" data-register-alias="INT_STATE_READ_ENABLE">INT_STATE_READ_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>INT_STATE_READ_ENABLE</td><td>RW</td><td>0x7</td><td>Per-instance internal state read enable.<br>Defines whether the internal state of the corresponding instance is readable via !!INT_STATE_VAL.<br>Note that for !!INT_STATE_VAL to provide read access to the internal state, also !!CTRL.READ_INT_STATE needs to be set to `kMultiBitBool4True`.<br>In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBool8True`.</td></tr>
+</table>
+<span id="INT_STATE_READ_ENABLE_REGWEN"></span><h3 id="csrng-INT_STATE_READ_ENABLE_REGWEN" data-register-alias="INT_STATE_READ_ENABLE_REGWEN">INT_STATE_READ_ENABLE_REGWEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>INT_STATE_READ_ENABLE_REGWEN</td><td>RW0C</td><td>0x1</td><td>INT_STATE_READ_ENABLE register configuration enable bit.<br>If this is cleared to 0, the INT_STATE_READ_ENABLE register cannot be written anymore.</td></tr>
+</table>
+<span id="INT_STATE_NUM"></span><h3 id="csrng-INT_STATE_NUM" data-register-alias="INT_STATE_NUM">INT_STATE_NUM</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3:0</td><td>INT_STATE_NUM</td><td>RW</td><td>0x0</td><td>Setting this field will set the number for which internal state can be<br>selected for a read access. Up to 16 internal state values can be chosen<br>from this register. The actual number of valid internal state fields<br>is set by parameter NumHwApps plus 1 software app. For those selections that point<br>to reserved locations (greater than NumHwApps plus 1), the returned value<br>will be zero. Writing this register will also reset the internal read<br>pointer for the !!INT_STATE_VAL register.<br>Note: This register should be read back after being written to ensure<br>that the !!INT_STATE_VAL read back is accurate.</td></tr>
+</table>
+<span id="INT_STATE_VAL"></span><h3 id="csrng-INT_STATE_VAL" data-register-alias="INT_STATE_VAL">INT_STATE_VAL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>INT_STATE_VAL</td><td>R</td><td>-</td><td>Reading this register will dump out the contents of the selected internal state field.<br>Since the internal state field is 448 bits wide, it will require 14 reads from this<br>register to gather the entire field. Once 14 reads have been done, the internal read<br>pointer (selects 32 bits of the 448 bit field) will reset to zero. The !!INT_STATE_NUM<br>can be re-written at this time (internal read pointer is also reset), and then<br>another internal state field can be read.<br>Note that for !!INT_STATE_VAL to provide read access to the internal state, also !!CTRL.READ_INT_STATE needs to be set to `kMultiBitBool4True`.<br>In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBool8True`.<br>Also, the !!INT_STATE_READ_ENABLE bit of the selected instance needs to be set to true for this to work.<br>Otherwise, the register reads as 0.</td></tr>
+</table>
+<span id="FIPS_FORCE"></span><h3 id="csrng-FIPS_FORCE" data-register-alias="FIPS_FORCE">FIPS_FORCE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>FIPS_FORCE</td><td>RW</td><td>0x0</td><td>Force the FIPS/CC compliance flag of individual instances to true.<br>This allows CSRNG to set the output FIPS/CC compliance flag to true despite running in fully deterministic mode (flag0 being true).<br>This can be useful e.g. for known-answer testing through entropy consumers accepting FIPS/CC compliant entropy only, or when firmware is used to derive FIPS/CC compliant entropy seeds.<br>After setting a particular bit to 1, the FIPS/CC compliance flag of the corresponding instance will be forced to true upon the next Instantiate or Reseed command.<br><br>Note that for this to work, !!CTRL.FIPS_FORCE_ENABLE needs to be set to kMultiBitBool4True.</td></tr>
+</table>
+<span id="HW_EXC_STS"></span><h3 id="csrng-HW_EXC_STS" data-register-alias="HW_EXC_STS">HW_EXC_STS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>HW_EXC_STS</td><td>RW0C</td><td>0x0</td><td>Reading this register indicates whether one of the CSRNG HW instances has<br>encountered an exception.  Each bit corresponds to a particular hardware<br>instance, with bit 0 corresponding to instance HW0, bit 1 corresponding<br>to instance HW1, and so forth. (To monitor the status of requests made<br>to the SW instance, check the !!SW_CMD_STS register). Writing a zero to this register<br>resets the status bits.</td></tr>
+</table>
+<span id="RECOV_ALERT_STS"></span><h3 id="csrng-RECOV_ALERT_STS" data-register-alias="RECOV_ALERT_STS">RECOV_ALERT_STS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15</td><td>CMD_STAGE_RESEED_CNT_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the maximum number of generate requests between reseeds is<br>exceeded.<br>The invalid generate command is ignored and CSRNG continues to operate.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>14</td><td>CMD_STAGE_INVALID_CMD_SEQ_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when an out of order command is received by the main state machine.<br>This happens when an instantiate command is sent for a state that was already<br>instantiated or when any command other than instantiate is sent for a state that<br>wasn&#x27;t instantiated yet.<br>The invalid command is ignored and CSRNG continues to operate.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>13</td><td>CMD_STAGE_INVALID_ACMD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when an unsupported/illegal CSRNG command is received by the<br>main state machine.<br>The invalid command is ignored and CSRNG continues to operate.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>12</td><td>CS_BUS_CMP_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the software application port genbits bus value is equal<br>to the prior valid value on the bus, indicating a possible attack.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>11:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>ACMD_FLAG0_FIELD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the FLAG0 field in the Application Command is set to<br>a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>3</td><td>FIPS_FORCE_ENABLE_FIELD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the FIPS_FORCE_ENABLE field in the !!CTRL register is set to a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>2</td><td>READ_INT_STATE_FIELD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the READ_INT_STATE field in the !!CTRL register is set to<br>a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>1</td><td>SW_APP_ENABLE_FIELD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the SW_APP_ENABLE field in the !!CTRL register is set to<br>a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>0</td><td>ENABLE_FIELD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the ENABLE field in the !!CTRL register is set to<br>a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+</table>
+<span id="ERR_CODE"></span><h3 id="csrng-ERR_CODE" data-register-alias="ERR_CODE">ERR_CODE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>30</td><td>FIFO_STATE_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when any of the source bits (bits 0 through 15 of this<br>this register) are asserted as a result of an error pulse generated from<br>any FIFO where both the empty and full status bits are set.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>29</td><td>FIFO_READ_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when any of the source bits (bits 0 through 15 of this<br>this register) are asserted as a result of an error pulse generated from<br>any empty FIFO that has received a read pulse.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>28</td><td>FIFO_WRITE_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when any of the source bits (bits 0 through 15 of this<br>this register) are asserted as a result of an error pulse generated from<br>any full FIFO that has been received a write pulse.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>26</td><td>CTR_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when a mismatch in any of the hardened counters<br>has been detected.<br>This error will signal a fatal alert, and also an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>25</td><td>AES_CIPHER_SM_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an AES fatal error has been detected.<br>This error will signal a fatal alert, and also an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>24:23</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>22</td><td>CTR_DRBG_SM_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an illegal state has been detected for the<br>ctr_drbg state machine. This error will signal a fatal alert, and also<br>an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>21</td><td>MAIN_SM_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an illegal state has been detected for the<br>main state machine. This error will signal a fatal alert, and also<br>an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>20</td><td>CMD_STAGE_SM_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an illegal state has been detected for the<br>command stage state machine. This error will signal a fatal alert, and also<br>an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>19:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>SFIFO_GENBITS_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an error has been detected for the<br>command stage genbits FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>0</td><td>SFIFO_CMD_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an error has been detected for the<br>command stage command FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>This bit will stay set until the next reset.</td></tr>
+</table>
+<span id="ERR_CODE_TEST"></span><h3 id="csrng-ERR_CODE_TEST" data-register-alias="ERR_CODE_TEST">ERR_CODE_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>ERR_CODE_TEST</td><td>RW</td><td>0x0</td><td>Setting this field will set the bit number for which an error<br>will be forced in the hardware. This bit number is that same one<br>found in the !!ERR_CODE register. The action of writing this<br>register will force an error pulse. The sole purpose of this<br>register is to test that any error properly propagates to either<br>an interrupt or an alert.</td></tr>
+</table>
+<span id="MAIN_SM_STATE"></span><h3 id="csrng-MAIN_SM_STATE" data-register-alias="MAIN_SM_STATE">MAIN_SM_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5:0</td><td>MAIN_SM_STATE</td><td>R</td><td>0x37</td><td>This is the state of the CSRNG main state machine.<br>See the RTL file `csrng_main_sm` for the meaning of the values.</td></tr>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="edn-registers"><a class="anchor" href="#edn-registers"></a><a class="link" href="#edn-registers">5.2.2. EDN Registers</a></h4>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-edn">Entropy Distribution Network</h2>
+<p>Distributes random numbers produced by CSRNG to hardware blocks</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#edn-INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#edn-INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#edn-INTR_TEST">INTR_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#edn-ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#edn-REGWEN">REGWEN</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x14</td><td><a href="#edn-CTRL">CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#edn-BOOT_INS_CMD">BOOT_INS_CMD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1C</td><td><a href="#edn-BOOT_GEN_CMD">BOOT_GEN_CMD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#edn-SW_CMD_REQ">SW_CMD_REQ</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x24</td><td><a href="#edn-SW_CMD_STS">SW_CMD_STS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x28</td><td><a href="#edn-HW_CMD_STS">HW_CMD_STS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x2C</td><td><a href="#edn-RESEED_CMD">RESEED_CMD</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x30</td><td><a href="#edn-GENERATE_CMD">GENERATE_CMD</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x34</td><td><a href="#edn-MAX_NUM_REQS_BETWEEN_RESEEDS">MAX_NUM_REQS_BETWEEN_RESEEDS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x38</td><td><a href="#edn-RECOV_ALERT_STS">RECOV_ALERT_STS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x3C</td><td><a href="#edn-ERR_CODE">ERR_CODE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x40</td><td><a href="#edn-ERR_CODE_TEST">ERR_CODE_TEST</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x44</td><td><a href="#edn-MAIN_SM_STATE">MAIN_SM_STATE</a></td><td>R</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="edn-INTR_STATE" data-register-alias="INTR_STATE">INTR_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>edn_fatal_err</td><td>RW1C</td><td>0x0</td><td>Asserted when a FIFO error occurs.</td></tr>
+<tr><td>0</td><td>edn_cmd_req_done</td><td>RW1C</td><td>0x0</td><td>Asserted when a software CSRNG request has completed.</td></tr>
+</table>
+<h3 id="edn-INTR_ENABLE" data-register-alias="INTR_ENABLE">INTR_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>edn_fatal_err</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.edn_fatal_err is set.</td></tr>
+<tr><td>0</td><td>edn_cmd_req_done</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.edn_cmd_req_done is set.</td></tr>
+</table>
+<h3 id="edn-INTR_TEST" data-register-alias="INTR_TEST">INTR_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>edn_fatal_err</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.edn_fatal_err to 1.</td></tr>
+<tr><td>0</td><td>edn_cmd_req_done</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.edn_cmd_req_done to 1.</td></tr>
+</table>
+<h3 id="edn-ALERT_TEST" data-register-alias="ALERT_TEST">ALERT_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>fatal_alert</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+<tr><td>0</td><td>recov_alert</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+</table>
+<h3 id="edn-REGWEN" data-register-alias="REGWEN">REGWEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>REGWEN</td><td>RW0C</td><td>0x1</td><td>When true, the CTRL can be written by software.<br>When false, this field read-only. Defaults true, write zero to clear.<br>Note that this needs to be cleared after initial configuration at boot in order to<br>lock in the listed register settings.</td></tr>
+</table>
+<h3 id="edn-CTRL" data-register-alias="CTRL">CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:12</td><td>CMD_FIFO_RST</td><td>RW</td><td>0x9</td><td>Setting this field to kMultiBitBool4True clears the two command FIFOs: the<br>RESEED_CMD FIFO and the GENERATE_CMD FIFO. This field must be<br>set to the reset state by software before any further commands can be issued to<br>these FIFOs.</td></tr>
+<tr><td>11:8</td><td>AUTO_REQ_MODE</td><td>RW</td><td>0x9</td><td>Setting this field to kMultiBitBool4True enables auto request mode.<br>In this mode, EDN automatically sends `generate` and `reseed` command requests to the CSRNG application interface.<br>The purpose of this mode is to continuously deliver entropy to endpoints without firmware intervention.<br><br>For this to work, firmware has to 1) configure the !!GENERATE_CMD, !!RESEED_CMD, and !!MAX_NUM_REQS_BETWEEN_RESEEDS registers, and 2) to issue the first `instantiate` command via the !!SW_CMD_REQ register.<br>Once this command has been acknowledged by CSRNG, the first `generate` command is sent out automatically, and a `reseed` command is sent after every MAX_NUM_REQS_BETWEEN_RESEEDS number of `generate` commands.<br><br>Note that the BOOT_REQ_MODE field takes precedence over this field: If both fields are set, EDN enters boot-time request mode.<br>If none of the fields are set, EDN enters Software Port Mode upon enabling.</td></tr>
+<tr><td>7:4</td><td>BOOT_REQ_MODE</td><td>RW</td><td>0x9</td><td>Setting this field to kMultiBitBool4True enables the boot-time request mode.<br>In this mode, EDN automatically sends a boot-time request to the CSRNG application interface.<br>The purpose of this mode is to request entropy as fast as possible after reset, and during chip boot time.<br><br>Note that this takes precedence over the AUTO_REQ_MODE field: If both fields are set, EDN enters boot-time request mode.<br>If none of the fields are set, EDN enters Software Port Mode upon enabling.</td></tr>
+<tr><td>3:0</td><td>EDN_ENABLE</td><td>RW</td><td>0x9</td><td>Setting this field to kMultiBitBool4True enables the EDN module. The modules of the<br>entropy complex may only be enabled and disabled in a specific order, see<br>Programmers Guide for details.</td></tr>
+</table>
+<span id="BOOT_INS_CMD"></span><h3 id="edn-BOOT_INS_CMD" data-register-alias="BOOT_INS_CMD">BOOT_INS_CMD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>BOOT_INS_CMD</td><td>RW</td><td>0x901</td><td>This field is used as the value for the `instantiate` command at boot time.<br><br>See [Command Header](../../csrng/doc/theory_of_operation.md#command-header) for the meaning of the individual bits.<br>Note that the hardware only supports a value of 0 for the `clen` field.<br>If `clen` has a different value, EDN will hang.<br>Fixing this requires disabling and restarting both EDN and CSRNG.</td></tr>
+</table>
+<span id="BOOT_GEN_CMD"></span><h3 id="edn-BOOT_GEN_CMD" data-register-alias="BOOT_GEN_CMD">BOOT_GEN_CMD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>BOOT_GEN_CMD</td><td>RW</td><td>0xFFF003</td><td>This field is used as the value for the `generate` command at boot time.<br><br>See [Command Header](../../csrng/doc/theory_of_operation.md#command-header) for the meaning of the individual bits.<br>Note that the hardware only supports a value of 0 for the `clen` field.<br>If `clen` has a different value, EDN will hang.<br>Fixing this requires disabling and restarting both EDN and CSRNG.</td></tr>
+</table>
+<span id="SW_CMD_REQ"></span><h3 id="edn-SW_CMD_REQ" data-register-alias="SW_CMD_REQ">SW_CMD_REQ</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>SW_CMD_REQ</td><td>W</td><td>-</td><td>Any CSRNG action can be initiated by writing a CSRNG command to this register.<br>Before any write operation to this register, firmware must read !!SW_CMD_STS to check whether EDN is ready to receive a new command or the next word of a previously started command.<br><br>While !!CTRL.AUTO_REQ_MODE is set, only the first instantiate command has any effect.<br>After that command has been processed, writes to this register will have no effect on operation, until !!CTRL.AUTO_REQ_MODE is de-asserted and the state machine of EDN enters the `SwPortMode` state.<br><br>Refer to the [CSRNG documentation](../../csrng/doc/theory_of_operation.md#general-command-format) for details on the command format.</td></tr>
+</table>
+<h3 id="edn-SW_CMD_STS" data-register-alias="SW_CMD_STS">SW_CMD_STS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5:3</td><td>CMD_STS</td><td>R</td><td>0x0</td><td>This field represents the status code returned with the CSRNG application command ack.<br>It is updated each time a SW command is acknowledged by CSRNG.<br>To check whether a command was successful, wait for !!INTR_STATE.EDN_CMD_REQ_DONE or<br>!!SW_CMD_STS.CMD_ACK to be high and then check the value of this field.<br>A description of the command status types can be found [here](../../csrng/doc/registers.md#sw_cmd_sts--cmd_sts).</td></tr>
+<tr><td>2</td><td>CMD_ACK</td><td>R</td><td>0x0</td><td>This one bit field indicates when a SW command has been acknowledged by the CSRNG.<br>It is set to low each time a new command is written to !!SW_CMD_REQ.<br>The field is set to high once a SW command request has been acknowledged by the CSRNG.<br>0b0: The last SW command has not been acknowledged yet.<br>0b1: The last SW command has been acknowledged.</td></tr>
+<tr><td>1</td><td>CMD_RDY</td><td>R</td><td>0x0</td><td>This bit indicates when the EDN is ready to accept the next command.<br>Before starting to write a new command to !!SW_CMD_REQ, this field needs to be polled.<br>0b0: The EDN is not ready to accept commands or the last command hasn&#x27;t been acked yet.<br>0b1: The EDN is ready to accept the next command.</td></tr>
+<tr><td>0</td><td>CMD_REG_RDY</td><td>R</td><td>0x0</td><td>This bit indicates when !!SW_CMD_REQ is ready to accept the next word.<br>This bit has to be polled before each word of a command is written to !!SW_CMD_REQ.<br>0b0: The EDN is not ready to accept the next word yet.<br>0b1: The EDN is ready to accept the next word.</td></tr>
+</table>
+<span id="HW_CMD_STS"></span><h3 id="edn-HW_CMD_STS" data-register-alias="HW_CMD_STS">HW_CMD_STS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9:7</td><td>CMD_STS</td><td>R</td><td>0x0</td><td>This field represents the status code returned with the CSRNG application command ack.<br>It is updated each time a HW command is acknowledged by CSRNG.<br>A description of the command status types can be found [here](../../csrng/doc/registers.md#sw_cmd_sts--cmd_sts).</td></tr>
+<tr><td>6</td><td>CMD_ACK</td><td>R</td><td>0x0</td><td>This one bit field indicates when a HW command has been acknowledged by the CSRNG.<br>It is set to low each time a new command is sent to the CSRNG.<br>The field is set to high once a HW command request has been acknowledged by the CSRNG.<br>0b0: The last HW command has not been acknowledged yet.<br>0b1: The last HW command has been acknowledged.</td></tr>
+<tr><td>5:2</td><td>CMD_TYPE</td><td>R</td><td>0x0</td><td>This field contains the application command type of the hardware controlled command issued last.<br>The application command selects one of five operations to perform.<br>A description of the application command types can be found [here](../../csrng/doc/theory_of_operation.md#command-description).</td></tr>
+<tr><td>1</td><td>AUTO_MODE</td><td>R</td><td>0x0</td><td>This one bit field indicates whether the EDN is in the hardware controlled part of auto mode.<br>The instantiate command is issued via SW interface and is thus not part of the hardware controlled part of auto mode.<br>0b0: The EDN is not in the hardware controlled part of auto mode.<br>0b1: The EDN is in the hardware controlled part of auto mode.</td></tr>
+<tr><td>0</td><td>BOOT_MODE</td><td>R</td><td>0x0</td><td>This one bit field indicates whether the EDN is in the hardware controlled boot mode.<br>0b0: The EDN is not in boot mode.<br>0b1: The EDN is in boot mode.</td></tr>
+</table>
+<span id="RESEED_CMD"></span><h3 id="edn-RESEED_CMD" data-register-alias="RESEED_CMD">RESEED_CMD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>RESEED_CMD</td><td>W</td><td>-</td><td>Writing this register will fill a FIFO with up to 13 command words (32b words).<br>When running in auto request mode, this FIFO is used to automatically send out a `reseed` command to the CSRNG application interface after every MAX_NUM_REQS_BETWEEN_RESEEDS number of `generate` commands.<br><br>See [General Command Format](../../csrng/doc/theory_of_operation.md#general-command-format) for details about the command format.<br><br>Note that the number of additional data words provided must match the value of the `clen` field of the first word.<br>Otherwise, undefined behavior may result.<br>If more than 13 entries are written to the FIFO, they are ignored and EDN signals an `edn_fatal_err` interrupt as well as a fatal alert.</td></tr>
+</table>
+<span id="GENERATE_CMD"></span><h3 id="edn-GENERATE_CMD" data-register-alias="GENERATE_CMD">GENERATE_CMD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>GENERATE_CMD</td><td>W</td><td>-</td><td>Writing this register will fill a FIFO with up to 13 command words (32b words).<br>When running auto request mode, this FIFO is used to automatically send out `generate` commands to the CSRNG<br>application interface.<br><br>See [General Command Format](../../csrng/doc/theory_of_operation.md#general-command-format) for details about the command format.<br><br>Note that the number of additional data words provided must match the value of the `clen` field of the first word.<br>Otherwise, undefined behavior may result.<br>If more than 13 entries are written to the FIFO, they are ignored and EDN signals an `edn_fatal_err` interrupt as well as a fatal alert.</td></tr>
+</table>
+<span id="MAX_NUM_REQS_BETWEEN_RESEEDS"></span><h3 id="edn-MAX_NUM_REQS_BETWEEN_RESEEDS" data-register-alias="MAX_NUM_REQS_BETWEEN_RESEEDS">MAX_NUM_REQS_BETWEEN_RESEEDS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>MAX_NUM_REQS_BETWEEN_RESEEDS</td><td>RW</td><td>0x0</td><td>Setting this field will set the number of `generate` command requests that are made<br>to CSRNG before a reseed request is made.<br>This value only has meaning when running in auto request mode.<br>This register supports a maximum of 2^32 `generate` requests between reseeds.<br>This register will be used by a counter that counts down, triggering an automatic `reseed` request when it reaches zero.<br><br>Note that this value must be chosen smaller than or equal to the value configured in the [`RESEED_INTERVAL` register of CSRNG](../../csrng/doc/registers.md#reseed-interval).</td></tr>
+</table>
+<h3 id="edn-RECOV_ALERT_STS" data-register-alias="RECOV_ALERT_STS">RECOV_ALERT_STS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>13</td><td>CSRNG_ACK_ERR</td><td>RW0C</td><td>0x0</td><td>This bit is set when the CSRNG returns an acknowledgement where the status signal is non-zero.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>12</td><td>EDN_BUS_CMP_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the interal entropy bus value is equal to the prior<br>valid value on the bus, indicating a possible attack.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>11:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>CMD_FIFO_RST_FIELD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the CMD_FIFO_RST field is set to an illegal value,<br>something other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>2</td><td>AUTO_REQ_MODE_FIELD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the !!CTRL.AUTO_REQ_MODE field is set to an illegal value,<br>something other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>1</td><td>BOOT_REQ_MODE_FIELD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the BOOT_REQ_MODE field is set to an illegal value,<br>something other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>0</td><td>EDN_ENABLE_FIELD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the EDN_ENABLE field is set to an illegal value,<br>something other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+</table>
+<h3 id="edn-ERR_CODE" data-register-alias="ERR_CODE">ERR_CODE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>30</td><td>FIFO_STATE_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when any of the source bits (bits 0 through 1 of this register) are asserted as a result of an error pulse generated from any FIFO where both the empty and full status bits are set or in case of error conditions inside the hardened counters.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>29</td><td>FIFO_READ_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when any of the source bits (bits 0 through 1 of this register) are asserted as a result of an error pulse generated from any empty FIFO that has received a read pulse.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>28</td><td>FIFO_WRITE_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when any of the source bits (bits 0 through 1 of this register) are asserted as a result of an error pulse generated from any full FIFO that has received a write pulse.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>27:23</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>22</td><td>EDN_CNTR_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when a hardened counter has detected an error<br>condition. This error will signal a fatal alert.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>21</td><td>EDN_MAIN_SM_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an illegal state has been detected for the<br>EDN main stage state machine. This error will signal a fatal alert.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>20</td><td>EDN_ACK_SM_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an illegal state has been detected for the<br>EDN ack stage state machine. This error will signal a fatal alert.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>19:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>SFIFO_GENCMD_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an error has been detected for the<br>generate command FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>When this bit is set, a fatal error condition will result.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>0</td><td>SFIFO_RESCMD_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an error has been detected for the<br>reseed command FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>When this bit is set, a fatal error condition will result.</td></tr>
+</table>
+<h3 id="edn-ERR_CODE_TEST" data-register-alias="ERR_CODE_TEST">ERR_CODE_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>ERR_CODE_TEST</td><td>RW</td><td>0x0</td><td>Setting this field will set the bit number for which an error<br>will be forced in the hardware. This bit number is that same one<br>found in the !!ERR_CODE register. The action of writing this<br>register will force an error pulse. The sole purpose of this<br>register is to test that any error properly propagates to either<br>an interrupt or an alert.</td></tr>
+</table>
+<h3 id="edn-MAIN_SM_STATE" data-register-alias="MAIN_SM_STATE">MAIN_SM_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8:0</td><td>MAIN_SM_STATE</td><td>R</td><td>0xC1</td><td>This is the state of the EDN main state machine.<br>See the RTL file `edn_main_sm` for the meaning of the values.</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

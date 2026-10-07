@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="522" viewBox="0 0 1040 522" role="img" aria-labelledby="title desc">
+<title id="title">Cross Trigger Port in wire-OR mode</title>
+<desc id="desc">The Cross Trigger Port with CONFIG.MODE set to wire-OR, showing only the logic that is active in that mode. ct_src_i starts u_pulse_stretcher; the stretched pulse is registered as the CT_Req_out pad output enable and as busy_o. The pad output data is invert_i, so an enabled pad pulls the shared wire low (or high when inverted), and the pad input enable is 1. The pad input passes through two synchroniser registers and an XOR with invert_i into a falling-edge detector, a register holding the previous level and an AND gate with one inverted input; its registered output is ct_dst_o. The other three pads are disabled.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.axil { fill: none; stroke: #103525; stroke-width: 1.5; marker-start: url(#as); marker-end: url(#ae); }
+.sigd { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 5 4; marker-end: url(#ge); }
+.axin { fill: none; stroke: #103525; stroke-width: 2.5; }
+.axis { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); }
+.axie { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#ae); }
+.axiln { fill: none; stroke: #103525; stroke-width: 1.5; }
+.gate { fill: #fff0cc; stroke: #937027; stroke-width: 1.5; }
+.reg { fill: #ffffff; stroke: #937027; stroke-width: 1.5; }
+.pad { fill: #ffffff; stroke: #77736b; stroke-width: 1.4; }
+.bus { fill: none; stroke: #5b6670; stroke-width: 4.5; }
+.wire { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.net { font-size: 13px; font-style: italic; fill: #484848; }
+
+</style>
+</defs>
+<rect width="1040" height="522" fill="#ffffff"/>
+<rect class="smu" x="96" y="20" width="788" height="430" rx="6"/>
+<text class="b" x="106" y="440" text-anchor="start">cross_trigger_port</text>
+<rect class="core" x="120" y="34" width="750" height="58" rx="6"/>
+<text class="bs" x="140" y="58" text-anchor="start">u_reg</text>
+<text class="s" x="140" y="78" text-anchor="start">cross_trigger_port_reg</text>
+<text class="s" x="470" y="82" text-anchor="middle">CONFIG.INVERT</text>
+<path class="sigplain" d="M470,92 L470,106"/>
+<text class="net" x="476" y="108" text-anchor="start">invert_i</text>
+<text class="s" x="730" y="82" text-anchor="middle">STRETCH_MULT</text>
+<path class="sigplain" d="M730,92 L730,106"/>
+<text class="net" x="736" y="108" text-anchor="start">stretch_mult_i</text>
+<path class="axi" d="M12,63.0 L117,63.0"/>
+<text class="s" x="12" y="55" text-anchor="start">AXI-Lite</text>
+<rect class="smu" x="112" y="118" width="760" height="300" rx="6"/>
+<text class="b" x="122" y="408" text-anchor="start">u_core (cross_trigger_port_core)</text>
+<rect class="external" x="896" y="185" width="134" height="187" rx="4"/>
+<text class="bs" x="904" y="203" text-anchor="start">CT_Req_out</text>
+<path class="pad" d="M916,248 L942,260 L916,272 Z"/>
+<path class="sigo" d="M854,260 L913,260"/>
+<path class="sigo" d="M854,215 L929,215 L929,251"/>
+<path class="pad" d="M942,338 L916,350 L942,362 Z"/>
+<path class="sigo" d="M916,350 L857,350"/>
+<path class="sigo" d="M854,305 L933,305 L933,339"/>
+<path class="sigplain" d="M942,260 L1006,260"/>
+<path class="sigplain" d="M975,260 L975,350 L942,350"/>
+<circle cx="975" cy="260" r="3.5" fill="#5b6670"/>
+<rect class="pad" x="1006" y="254" width="12" height="12" rx="0"/>
+<path class="sigplain" d="M1006,254 L1018,266 M1018,254 L1006,266"/>
+<rect class="core" x="420" y="188" width="160" height="52" rx="6"/>
+<text class="bs" x="500" y="210.5" text-anchor="middle">u_pulse_stretcher</text>
+<text class="s" x="500" y="227.5" text-anchor="middle">16-bit down counter</text>
+<path class="sigo" d="M460,168 L460,185"/>
+<text class="net" x="466" y="172" text-anchor="start">stretch_mult_i</text>
+<path class="sigo" d="M580,215 L823,215"/>
+<rect class="reg" x="826" y="200" width="28" height="30" rx="2"/>
+<path class="sigplain" d="M835,230 L840,223 L845,230"/>
+<text class="net" x="814" y="264.5" text-anchor="end">invert_i</text>
+<path class="sigo" d="M817,260 L823,260"/>
+<rect class="reg" x="826" y="245" width="28" height="30" rx="2"/>
+<path class="sigplain" d="M835,275 L840,268 L845,275"/>
+<text class="s" x="814" y="309.5" text-anchor="end">1</text>
+<path class="sigo" d="M817,305 L823,305"/>
+<rect class="reg" x="826" y="290" width="28" height="30" rx="2"/>
+<path class="sigplain" d="M835,320 L840,313 L845,320"/>
+<rect class="reg" x="826" y="335" width="28" height="30" rx="2"/>
+<path class="sigplain" d="M835,365 L840,358 L845,365"/>
+<rect class="reg" x="776" y="335" width="28" height="30" rx="2"/>
+<path class="sigplain" d="M785,365 L790,358 L795,365"/>
+<path class="sigo" d="M826,350 L807,350"/>
+<path class="sigo" d="M776,350 L718,350"/>
+<circle class="gate" cx="705" cy="350" r="10"/>
+<path class="sigplain" d="M698,350 L712,350 M705,343 L705,357"/>
+<path class="sigo" d="M705,324 L705,337"/>
+<text class="net" x="705" y="320" text-anchor="middle">invert_i</text>
+<text class="s" x="12" y="144" text-anchor="start">busy_o</text>
+<path class="sigo" d="M208,150 L14,150"/>
+<text class="s" x="12" y="344" text-anchor="start">ct_dst_o</text>
+<path class="sigo" d="M208,350 L14,350"/>
+<text class="s" x="12" y="216" text-anchor="start">ct_src_i</text>
+<path class="sigo" d="M12,222 L417,222"/>
+<circle cx="630" cy="215" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M630,215 L630,150 L239,150"/>
+<rect class="reg" x="208" y="135" width="28" height="30" rx="2"/>
+<path class="sigplain" d="M217,165 L222,158 L227,165"/>
+<rect class="reg" x="208" y="335" width="28" height="30" rx="2"/>
+<path class="sigplain" d="M217,365 L222,358 L227,365"/>
+<path class="sigo" d="M695,350 L613,350"/>
+<rect class="reg" x="540" y="335" width="28" height="30" rx="2"/>
+<path class="sigplain" d="M549,365 L554,358 L559,365"/>
+<path class="gate" d="M500,335 L485,335 A15,15 0 0 0 485,365 L500,365 Z"/>
+<circle class="reg" cx="503.5" cy="359" r="3.5"/>
+<circle cx="610" cy="350" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M610,350 L571,350"/>
+<path class="sigo" d="M540,350 L520,350 L520,341 L503,341"/>
+<path class="sigo" d="M610,350 L610,372 L530,372 L530,359 L510,359"/>
+<text class="s" x="555" y="328" text-anchor="middle">prev</text>
+<path class="sigo" d="M470,350 L239,350"/>
+<rect class="core" x="14" y="469" width="36" height="18" rx="4"/>
+<text class="s" x="58" y="482.5" text-anchor="start">RTL block</text>
+<circle class="gate" cx="154.1" cy="478" r="10"/>
+<path class="sigplain" d="M147.1,478 L161.1,478 M154.1,471 L154.1,485"/>
+<text class="s" x="172.1" y="482.5" text-anchor="start">XOR</text>
+<path class="gate" d="M216.8,468 L230.8,468 A10,10 0 0 1 230.8,488 L216.8,488 Z"/>
+<text class="s" x="248.8" y="482.5" text-anchor="start">AND, bubble inverts</text>
+<rect class="reg" x="403.9" y="467" width="18" height="22" rx="2"/>
+<path class="sigplain" d="M407.9,489 L412.9,482 L417.9,489"/>
+<text class="s" x="429.9" y="482.5" text-anchor="start">Register on clk_i</text>
+<rect class="external" x="571.2" y="469" width="36" height="18" rx="4"/>
+<text class="s" x="615.2" y="482.5" text-anchor="start">GPIO pad</text>
+<path class="pad" d="M694.4,469 L712.4,478 L694.4,487 Z"/>
+<text class="s" x="720.4" y="482.5" text-anchor="start">Pad buffer</text>
+<rect class="pad" x="814.4" y="472" width="12" height="12" rx="0"/>
+<path class="sigplain" d="M814.4,472 L826.4,484 M826.4,472 L814.4,484"/>
+<text class="s" x="835.4" y="482.5" text-anchor="start">Pin</text>
+<path class="sigo" d="M17,506 L59,506"/>
+<text class="s" x="70" y="510.5" text-anchor="start">Signal</text>
+<text class="net" x="135.4" y="510.5" text-anchor="start">name</text>
+<text class="s" x="175.4" y="510.5" text-anchor="start">Net from u_reg</text>
+<text class="s" x="326" y="510.5" text-anchor="start">AXI-Lite subordinate</text>
+<rect class="ps" x="109.0" y="54.0" width="22" height="18" rx="4"/>
+<text class="pst" x="120" y="67.5" text-anchor="middle">S</text>
+<rect class="ps" x="296.0" y="497.0" width="22" height="18" rx="4"/>
+<text class="pst" x="307" y="510.5" text-anchor="middle">S</text>
+</svg>

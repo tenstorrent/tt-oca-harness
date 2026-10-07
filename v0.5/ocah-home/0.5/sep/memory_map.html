@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Memory Map and Register Reference :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP address regions and generated register tables.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-home" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Home</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../features.html">Feature Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../motivation.html">Motivation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../use-cases.html">Use Cases</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../license.html">License</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Guides</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-programmer-guide/0.5/index.html">Programmer&#8217;s Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Verification</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../dashboard.html">Dashboard</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="memory_map.html">Memory Map and Register Reference</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Memory Map and Register Reference</h1>
+<div class="sect1">
+<h2 id="sep-memory-map"><a class="anchor" href="#sep-memory-map"></a><a class="link" href="#sep-memory-map">Memory Map</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>SEP uses 32-bit addressing. The following table outlines the SEP CPU&#8217;s
+logical view of the SEP-local address space. External masters use the
+chiplet-global base programmed in <code>SEP_GLOBAL_BASE_ADDR</code>; SEP CPU
+software uses either direct internal addresses (<code>0x1000_0000</code>,
+<code>0x1080_0000</code>, and so on) or the local alias view described below.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SEP CPU Logical Address Space</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Base Address</th>
+<th class="tableblock halign-left valign-top">End Address</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Unit</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00000000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0FFFFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External to the chiplet but outside SMU.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10000000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1FFFFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP Local</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Direct SEP-local resources.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x20000000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x3FFFFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP External</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved adopter extension aperture.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x40000000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x7FFFFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 GiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC resources.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x80000000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xBFFFFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 GiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU resources, including DTP.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC0000000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xCFFFFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP CPU Resources</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">EL2 ICCM, DCCM, and interrupt-controller resources.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xD0000000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xFFFFFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">768 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP Local Alias</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU-local alias of the direct 0x10000000–0x3FFFFFFF range.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The <code>SEP Local Alias</code> row is an alternate CPU-side name for the same
+hardware listed in the <code>SEP Local</code> and <code>SEP External</code> rows. For
+example, <code>0xD000_0000</code> aliases <code>0x1000_0000</code> and <code>0xD080_2000</code> aliases
+<code>0x1080_2000</code>. This alias range is used by SEP-local masters, while
+external masters use chiplet-global addresses.</p>
+</div>
+<div class="paragraph">
+<p>The EL2 CPU resources are mapped into a separate segment than the SEP
+Local resources due to constraints on the CPU memory map. The ICCM,
+DCCM, and PIC addresses in the <code>0xC000_0000</code> region are statically
+configured in the CPU core module and are reached through the CPU&#8217;s
+internal wiring. The high local-alias mapping covers the <code>0xD000_0000</code>
+and above alias view. CPU CSRs are accessed with dedicated RISC-V
+instructions and do not appear in the address map.</p>
+</div>
+<div class="paragraph">
+<p>The high local alias span has a fixed SEP-local size of 768 MiB
+(<code>0xD000_0000</code> through <code>0xFFFF_FFFF</code>), corresponding to the direct
+internal range <code>0x1000_0000</code> through <code>0x3FFF_FFFF</code>. The
+chiplet-global SEP aperture configured by <code>SEP_GLOBAL_BASE_ADDR</code> /
+<code>SEP_REGION_SIZE</code> controls the SMU xbar and inbound global-to-local
+remap.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. SEP EL2 CPU Resources</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Base Address</th>
+<th class="tableblock halign-left valign-top">End Address</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Unit</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC0000000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC003FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ICCM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tightly coupled instruction SRAM for the SEP CPU.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC0040000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC005FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DCCM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tightly coupled data SRAM for the SEP CPU.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC0060000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC007FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC0080000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC0087FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PIC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">VeeR EL2 Programmable Interrupt Controller (PIC) memory-mapped registers. Supports up to PIC_TOTAL_INT external interrupt sources with 15 priority levels.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC0088000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xCFFFFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">261600 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The remaining subsystems are mapped into regions 1 and 2 for the EL2 CPU.</p>
+</div>
+<div class="paragraph">
+<p>Each row below is the aperture reserved for a unit, and the Decoded Extent
+column gives the part of it that registers or memory back. The last two
+columns state how SEP answers a 32-bit access that no register or memory
+backs, as seen at its inbound AXI port, and
+<a href="../../../ocah-docs/0.5/memory_map.html#ocah-decode-response-codes" class="xref page">Decode Response Codes</a>
+defines them and their codes.</p>
+</div>
+<div class="paragraph">
+<p>The TRNG aperture is forwarded in full to an adopter-defined external IP. SEP
+does not decode offsets inside that window, so every access reaches the external
+TRNG slave. Intra-aperture decode is then an integrator constraint: when an
+adopter TRNG is connected, an address that owns no register must return an error
+and must not alias onto a live register. When no external TRNG is connected, the
+window is terminated with a DECERR slave, so single-beat reads and writes both
+return DECERR, refuse the access and never alias onto a live register. See the
+<a href="../../../ocah-docs/0.5/referenced-documents.html#ref-ocah-integrator-guide" class="xref page">Integrator Guide</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-register-single-beat"><a class="anchor" href="#sep-register-single-beat"></a><a class="link" href="#sep-register-single-beat">Single-Beat Register Access</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Register regions support single-beat transactions only. Bursts are supported
+into ICCM, DCCM, SRAM, the extension port and the outbound SMN windows. The
+fabric routes a burst on its first address only, so the later beats of a burst
+to a register region may be answered with errors or alias onto other
+registers. The crypto region, which spans OTBN through ABR in the generated
+memory map below, refuses bursts (<a href="crypto.html#crypto-single-beat-only" class="xref page">Single-Beat Access Only</a>).</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="units-unreachable-from-the-inbound-port"><a class="anchor" href="#units-unreachable-from-the-inbound-port"></a><a class="link" href="#units-unreachable-from-the-inbound-port">Units Unreachable from the Inbound Port</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Several SEP units are not connected to the external inbound port and answer
+<code>DECERR</code> to any external access attempt. These units include the Boot ROM,
+Reset Control, ICCM, DCCM, PIC, and AP/STEE remap regions. The inbound port
+serves the mailbox and system CSR windows, and forwards all other addresses
+below 0x4000_0000 (outside the mailbox and system CSR windows) to the SEP local
+crossbar. Addresses above 0x4000_0000 and the units listed above are not
+reachable through this external path and receive error responses from the
+<code>smn_inbound</code> port. Their rows in the table below state what the SEP CPU sees.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. SEP Component Address Map</caption>
+<colgroup>
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Base Address</th>
+<th class="tableblock halign-left valign-top">End Address</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Decoded Extent</th>
+<th class="tableblock halign-left valign-top">Unit</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Hole in Extent (R / W)</th>
+<th class="tableblock halign-left valign-top">Past Extent (R / W)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10000000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1003FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">sep_sram</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP scratch SRAM.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10040000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1004FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">sep_boot_rom</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BL0 immutable instruction memory.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10050000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x107FFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7872 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7872 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10800000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10800FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">336 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA Controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure DMA control and status registers.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0xFFFFFFFF / SLVERR<sup><a href="#sep-components-note-1">[1]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10801000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10801FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always-On Timer</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Wakeup and watchdog timers running on a low-power, always-on clock</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10802000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1080203F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP Scratch Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cold-reset scratch register bank.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10802040</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1080207F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10802080</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x108020BF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP Scratch Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Warm-reset scratch register bank.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x108020C0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10802FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3904 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3904 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10803000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10803FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP Reset Control Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Software resets for KM, OTBN, AES, HMAC, KMAC, the internal TRNG, and Adams Bridge.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10804000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x108FFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1008 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1008 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10900000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1090FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">48 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OpenTitan Big Number Accelerator</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Programmable coprocessor for asymmetric cryptography with SCA and FI countermeasures</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0xFFFFFFFF / SLVERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10910000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10910FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">140 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AES Accelerator</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AES block-cipher accelerator.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10911000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10912FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC Accelerator</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Accelerator for SHA-2 256/384/512-based keyed HMAC and the hash function</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0xFFFFFFFF / SLVERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10913000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10913FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC Accelerator</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Accelerator for Keccak-based keyed hash message authentication code and SHA-3 hash functions; with SCA and FI countermeasures</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0xFFFFFFFF / SLVERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10914000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10914FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10915000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x109157FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">96 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cryptographically Secure Random Number Generator</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Takes entropy bits to produce cryptographically secure random numbers for consumption by hardware blocks and by software</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10915800</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10915FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">72 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy Distribution Network</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Distributes random numbers produced by CSRNG to hardware blocks</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10916000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10916FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">380 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy Source Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy-source configuration, status, and data registers.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10917000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10917FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG register passthrough; the register layout is adopter-defined</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter-defined<sup><a href="#sep-components-note-2">[2]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10918000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1091FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">24 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP Lifecycle Control Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle state and transition control.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10920000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10920FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">28 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager Mailbox SEP Side</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Register interface for SEP host to access mailbox (write to inbound FIFO, read from outbound FIFO)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10921000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1092FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">60 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">60 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10930000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x109303FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP eFuse Map Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cached eFuse shadow registers.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10930400</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x109304FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">28 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Interface Control Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse command and status registers.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0xBADCAB1E / SLVERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10930500</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x109305FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">116 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Token Registers Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse security-token registers.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10930600</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1093FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64000 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64000 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10940000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1094FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">49176 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">abr</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge post-quantum accelerator for ML-DSA and ML-KEM.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10950000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1095FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">24 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP Entropy Pool</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read-only entropy pool FIFO; DATA reads drain conditioned entropy supplied by the native EDN, and writes return SLVERR.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0x0 / SLVERR<sup><a href="#sep-components-note-3">[3]</a></sup></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10960000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x109FFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">640 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">640 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A00000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A0FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">30800 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP AXI-Lite Mailbox Wrapper Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Eight bidirectional mailbox pairs.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0x0 / SLVERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0x0 / SLVERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A10000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A101FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI Alias Remap Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TLB Registers for address remapping and attribute tagging</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A10200</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A1027F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output Remap Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address-translation registers that remap outbound transactions and tag their attributes.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A10280</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A102FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A10300</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A1037F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output Remap Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address-translation registers that remap outbound transactions and tag their attributes.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A10380</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A1FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64640 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64640 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A20000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A203FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI Filter Control Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-filter access-control registers defining permitted address ranges and transaction attributes.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A20400</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A20FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A21000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A211FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI Filter Control Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-filter access-control registers defining permitted address ranges and transaction attributes.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A21200</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A2FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">60928 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">60928 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A30000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A31FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4104 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP CPU Control Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP CPU control and interrupt registers.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A32000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10AFFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">824 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">824 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10B00000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10BFFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI Host</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External I/O SPI controller bridge.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10C00000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10FFFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x11000000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x117FFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ap_region</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address region whose accesses an output remap redirects.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Forwarded</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x11800000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x11FFFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">stee_region</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address region whose accesses an output remap redirects.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Forwarded</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x12000000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1FFFFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">224 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">224 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x20000000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x3FFFFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP External</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP external address map (eFuse SHIM control and execute-in-place window).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter-defined</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC0000000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC003FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">sep_iccm</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tightly coupled instruction SRAM for the SEP CPU.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC0040000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC005FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">sep_dccm</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tightly coupled data SRAM for the SEP CPU.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC0080000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC0087FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">21 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">EL2_PIC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">VeeR EL2 Programmable Interrupt Controller (PIC) memory-mapped registers. Supports up to PIC_TOTAL_INT external interrupt sources with 15 priority levels.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<div class="title">Notes</div>
+<p><a id="sep-components-note-1"></a><sup>[1]</sup> An access to an unmapped offset also latches PIC source 41.<br>
+<a id="sep-components-note-2"></a><sup>[2]</sup> With no TRNG fitted, the reference integration answers DECERR, 0xBADCAB1E / DECERR.<br>
+<a id="sep-components-note-3"></a><sup>[3]</sup> A 32-bit read of the upper word of a register also answers SLVERR, 0x0.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-detailed-register-map"><a class="anchor" href="#sep-detailed-register-map"></a><a class="link" href="#sep-detailed-register-map">Detailed Register Map</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The address tables above identify each aperture. Detailed registers are
+published with the owning block:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="cpu.html" class="xref page">CPU</a> — sep_cpu_ctrl.</p>
+</li>
+<li>
+<p><a href="interrupts.html" class="xref page">Interrupts</a> — el2_pic.</p>
+</li>
+<li>
+<p><a href="reset_controller.html" class="xref page">SEP Reset Controller</a> — sep_reset_ctrl.</p>
+</li>
+<li>
+<p><a href="lifecycle_controller.html" class="xref page">Life Cycle Controller (LCC)</a> — sep_lifecycle_ctrl.</p>
+</li>
+<li>
+<p><a href="otp_fuse_controller.html" class="xref page">OTP Fuse Controller</a> — sep_efuse_map.</p>
+</li>
+<li>
+<p><a href="watchdog.html" class="xref page">Watchdog Timer (WDT)</a> — aon_timer.</p>
+</li>
+<li>
+<p><a href="aes.html" class="xref page">AES Cipher</a> — aes.</p>
+</li>
+<li>
+<p><a href="hmac.html" class="xref page">HMAC-SHA2</a> — hmac.</p>
+</li>
+<li>
+<p><a href="kmac.html" class="xref page">KMAC-SHA3</a> — kmac.</p>
+</li>
+<li>
+<p><a href="otbn.html" class="xref page">OTBN PKA Public Key Accelerator</a> — otbn.</p>
+</li>
+<li>
+<p><a href="trng.html" class="xref page">TRNG and DRBG</a> — csrng, edn.</p>
+</li>
+<li>
+<p><a href="dma.html" class="xref page">Direct Memory Access (DMA)</a> — secure_dma.</p>
+</li>
+<li>
+<p><a href="spi.html" class="xref page">Serial Peripheral Interface (SPI)</a> — spi_controller.</p>
+</li>
+<li>
+<p><a href="cpu.html#dual-scratch-register-banks" class="xref page">CPU scratch banks</a> — sep_scratch.</p>
+</li>
+<li>
+<p><a href="entropy_pool.html" class="xref page">Entropy Pool</a> — sep_entropy_pool.</p>
+</li>
+<li>
+<p><a href="../ip/entropy_source/doc/index.html" class="xref page">Entropy Source</a>.</p>
+</li>
+<li>
+<p><a href="../ip/key_manager/doc/index.html" class="xref page">Key Manager</a> — controller, KPV, sampler, mailboxes and key wrappers.</p>
+</li>
+<li>
+<p><a href="../ip/efuse/doc/index.html" class="xref page">Shared eFuse IP</a> — eFuse MMR and interface registers.</p>
+</li>
+</ul>
+</div>
+<div class="sect2">
+<h3 id="external-window-reference-model"><a class="anchor" href="#external-window-reference-model"></a><a class="link" href="#external-window-reference-model">External Window Reference Model</a></h3>
+<div class="paragraph">
+<p>The SEP external-window model supplies the eFuse SHIM control register below.
+The <code>efuse_shim_ctrl</code> instance at offset <code>0x0</code> fixes where that block sits.
+<code>EFUSE_SHIM_SIZE</code> bytes from that base (<code>CFG.SEP_EFUSE_SHIM_SIZE</code> at the SMU,
+default <code>0x4</code>) are routed to the eFuse controller, which forwards them
+unchanged on <code>efuse_bank_ctrl</code> to the adopter&#8217;s SHIM rather than out the
+external port. An adopter external map must keep an <code>efuse_shim_ctrl</code>
+instance at that offset.
+Its execute-in-place region is a memory window rather than a register bank.
+Adopter-specific external devices require their own register documentation.</p>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-sep_external">SEP External</h2>
+<p>SEP external address map (eFuse SHIM control and execute-in-place window).</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#sep_external-EFUSE_BANK_INIT_TIME">EFUSE_BANK_INIT_TIME</a></td><td>RW</td><td>eFuse bank initialization time. Number of cycles to wait for the OTP macro to initialize before sensing can begin.</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="EFUSE_BANK_INIT_TIME"></span><h3 id="sep_external-EFUSE_BANK_INIT_TIME" data-register-alias="EFUSE_BANK_INIT_TIME">EFUSE_BANK_INIT_TIME</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>init_time</td><td>RW</td><td>0x20</td><td>Most OTP have a initialization time before sensing can be done</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

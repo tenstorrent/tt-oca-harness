@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="862" viewBox="0 0 1040 862" role="img" aria-labelledby="title desc">
+<title id="title">STAP architecture and gating</title>
+<desc id="desc">The jtag_stap module. client_scan_in_i, optionally through the SCAN_IN_PIPE stage, becomes stap_scan_in, which passes through the falling-edge TDO lockup flop u_tdo_lockup_flop and an AND gate that forces it low while security_disable_i is high, to host_tdo_o and the secondary TAP. The secondary TAP returns host_tdi_i, optionally through the falling-edge TDI_LOCKUP stage. The scan-in mux passes that return while stap_sel is set and stap_scan_in otherwise, into the SIB u_sib_mux_pre. The SIB inserts the 3-bit 3DCR u_3dcr_scan_reg (tms_hold, stap_sel_int, config_hold) into the chain through host_sib_scan_out and client_reg_scan_out, and its one-bit register drives client_scan_out_o. The 3DCR update enable is the SIB's update_en ANDed with NOT security_disable_i. The 3DCR reset is client TRST ANDed with config_hold_sticky, a falling-edge copy of config_hold, ORed with the scan reset. stap_sel is stap_sel_int ANDed with NOT security_disable_i; it selects the scan-in mux, selects host_tap_ctrl_o.tms between client_tap_ctrl_i.tms on input 1 and tms_hold on input 0, and with the client shift enable drives host_tdo_oen_o. The .tck and .trst_n of client_tap_ctrl_i bypass the mux and pass to host_tap_ctrl_o unchanged.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.axil { fill: none; stroke: #103525; stroke-width: 1.5; marker-start: url(#as); marker-end: url(#ae); }
+.sigd { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 5 4; marker-end: url(#ge); }
+.axin { fill: none; stroke: #103525; stroke-width: 2.5; }
+.axis { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); }
+.axie { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#ae); }
+.axiln { fill: none; stroke: #103525; stroke-width: 1.5; }
+.jtagplain { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.bub { fill: #ffffff; stroke: #937027; stroke-width: 1.5; }
+.nofill { fill: none; }
+</style>
+</defs>
+<rect width="1040" height="862" fill="#ffffff"/>
+<rect class="smu" x="150" y="20" width="740" height="764" rx="6"/>
+<path class="jtag" d="M10,80 L166,80"/>
+<text class="s" x="14" y="72" text-anchor="start">client_scan_in_i</text>
+<rect class="core opt" x="170" y="58" width="130" height="44" rx="6"/>
+<text class="s" x="235" y="77" text-anchor="middle">input pipeline</text>
+<text class="s" x="235" y="93" text-anchor="middle">SCAN_IN_PIPE</text>
+<path class="jtagplain" d="M300,80 L380,80"/>
+<circle cx="380" cy="80" r="3.5" fill="#42759b"/>
+<text class="s" x="310" y="72" text-anchor="start">stap_scan_in</text>
+<path class="jtag" d="M380,80 L536,80"/>
+<rect class="core" x="540" y="58" width="160" height="44" rx="6"/>
+<text class="s" x="620" y="77" text-anchor="middle">TDO lockup flop</text>
+<text class="s" x="620" y="93" text-anchor="middle">falling TCK</text>
+<path class="jtag" d="M700,72 L790,72"/>
+<path class="fabric" d="M790,64 L800.0,64 A16.0,16.0 0 0 1 800.0,96 L790,96 Z"/>
+<circle class="bub" cx="786" cy="88" r="4"/>
+<path class="sigo" d="M740,88 L782,88"/>
+<text class="s" x="740" y="116" text-anchor="start">security_disable_i</text>
+<path class="jtag" d="M816,80 L1030,80"/>
+<text class="s" x="1030" y="72" text-anchor="end">host_tdo_o</text>
+<path class="jtag" d="M1030,170 L704,170"/>
+<text class="s" x="1030" y="162" text-anchor="end">host_tdi_i</text>
+<rect class="core opt" x="540" y="148" width="160" height="44" rx="6"/>
+<text class="s" x="620" y="167" text-anchor="middle">TDI lockup flop</text>
+<text class="s" x="620" y="183" text-anchor="middle">TDI_LOCKUP</text>
+<path class="jtag" d="M540,170 L420,170 L420,208"/>
+<path class="jtag" d="M380,80 L380,208"/>
+<path class="fabric" d="M340,212 L460,212 L448,242 L352,242 Z"/>
+<text class="s" x="380" y="232" text-anchor="middle">0</text>
+<text class="s" x="420" y="232" text-anchor="middle">1</text>
+<path class="sigo" d="M290,227 L342,227"/>
+<text class="s" x="286" y="232" text-anchor="end">stap_sel</text>
+<path class="jtag" d="M400.0,242 L400.0,278"/>
+<rect class="core" x="290" y="282" width="220" height="110" rx="6"/>
+<text class="t" x="400" y="321" text-anchor="middle">SIB</text>
+<text class="s" x="400" y="339" text-anchor="middle">u_sib_mux_pre</text>
+<text class="s" x="400" y="357" text-anchor="middle">1-bit register</text>
+<text class="s" x="400" y="375" text-anchor="middle">SCAN_OUT_LOCKUP (optional)</text>
+<path class="jtag" d="M290,304 L10,304"/>
+<text class="s" x="14" y="296" text-anchor="start">client_scan_out_o</text>
+<path class="sigo" d="M10,366 L286,366"/>
+<text class="s" x="14" y="358" text-anchor="start">client_scan_ctrl_i</text>
+<rect class="core" x="640" y="282" width="220" height="110" rx="6"/>
+<text class="t" x="750" y="318" text-anchor="middle">3DCR</text>
+<text class="s" x="750" y="336" text-anchor="middle">u_3dcr_scan_reg, 3 bits</text>
+<path class="jtag" d="M510,302 L636,302"/>
+<text class="s" x="575" y="294" text-anchor="middle">host_sib_scan_out</text>
+<path class="jtag" d="M640,326 L514,326"/>
+<text class="s" x="575" y="319" text-anchor="middle">client_reg_scan_out</text>
+<path class="sigo" d="M510,364 L564,364"/>
+<path class="fabric" d="M568,356 L578.0,356 A16.0,16.0 0 0 1 578.0,388 L568,388 Z"/>
+<circle class="bub" cx="564" cy="380" r="4"/>
+<text class="s" x="516" y="353" text-anchor="start">update_en</text>
+<path class="sigo" d="M594,372 L636,372"/>
+<text class="s" x="680" y="382" text-anchor="middle">[1]</text>
+<text class="s" x="730" y="382" text-anchor="middle">[2]</text>
+<text class="s" x="852" y="382" text-anchor="end">config_hold [0]</text>
+<rect class="core" x="765" y="440" width="115" height="60" rx="6"/>
+<text class="t" x="822.5" y="459" text-anchor="middle">3DCR reset</text>
+<text class="s" x="822.5" y="475" text-anchor="middle">trst_n AND</text>
+<text class="s" x="822.5" y="491" text-anchor="middle">(sticky OR rst_n)</text>
+<path class="sigo" d="M840,392 L840,436"/>
+<path class="sigo" d="M780,440 L780,396"/>
+<path class="sigo" d="M680,392 L680,598 L696,598"/>
+<text class="s" x="674" y="440" text-anchor="end">stap_sel_int</text>
+<path class="fabric" d="M700,590 L710.0,590 A16.0,16.0 0 0 1 710.0,622 L700,622 Z"/>
+<circle class="bub" cx="696" cy="614" r="4"/>
+<path class="sigplain" d="M10,614 L692,614"/>
+<text class="s" x="14" y="606" text-anchor="start">security_disable_i</text>
+<circle cx="540" cy="614" r="3.5" fill="#5b6670"/>
+<path class="sigplain" d="M540,614 L540,380 L560,380"/>
+<path class="sigo" d="M730,392 L730,544 L826,544"/>
+<text class="s" x="736" y="520" text-anchor="start">tms_hold</text>
+<path class="fabric" d="M830,530 L866,540 L866,580 L830,590 Z"/>
+<text class="s" x="840" y="549" text-anchor="middle">0</text>
+<text class="s" x="840" y="581" text-anchor="middle">1</text>
+<path class="sigo" d="M866,560 L1030,560"/>
+<text class="s" x="1030" y="552" text-anchor="end">host_tap_ctrl_o.tms</text>
+<path class="sigo" d="M726,606 L848,606 L848,582"/>
+<text class="s" x="732" y="599" text-anchor="start">stap_sel</text>
+<circle cx="820" cy="606" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M820,606 L820,648 L846,648"/>
+<path class="fabric" d="M850,640 L860.0,640 A16.0,16.0 0 0 1 860.0,672 L850,672 Z"/>
+<path class="sigplain" d="M838,736 L838,706"/>
+<path class="sigo" d="M838,694 L838,664 L846,664"/>
+<text class="s" x="880" y="752" text-anchor="end">client_scan_ctrl_i.shift_en</text>
+<path class="sigo" d="M876,656 L1030,656"/>
+<text class="s" x="1030" y="648" text-anchor="end">host_tdo_oen_o</text>
+<path class="sigo" d="M10,700 L1030,700"/>
+<circle cx="796" cy="700" r="3.5" fill="#5b6670"/>
+<path class="sigplain" d="M796,700 L796,612"/>
+<path class="sigo" d="M796,600 L796,576 L826,576"/>
+<text class="s" x="791" y="670" text-anchor="end">.tms</text>
+<text class="s" x="14" y="692" text-anchor="start">client_tap_ctrl_i</text>
+<text class="s" x="1030" y="692" text-anchor="end">host_tap_ctrl_o</text>
+<text class="s" x="1030" y="717" text-anchor="end">.tck, .trst_n</text>
+<text class="b" x="162" y="772" text-anchor="start">jtag_stap</text>
+<rect class="core" x="14" y="807" width="36" height="18" rx="4"/>
+<text class="s" x="58" y="820.5" text-anchor="start">RTL block</text>
+<rect class="core opt" x="146.1" y="807" width="36" height="18" rx="4"/>
+<text class="s" x="190.1" y="820.5" text-anchor="start">Optional (parameter)</text>
+<path class="fabric" d="M354.1,807 L384.1,807 L378.1,825 L360.1,825 Z"/>
+<text class="s" x="392.1" y="820.5" text-anchor="start">Multiplexer</text>
+<path class="fabric" d="M494.0,807 L509.0,807 A9.0,9.0 0 0 1 509.0,825 L494.0,825 Z"/>
+<text class="s" x="526" y="820.5" text-anchor="start">AND gate</text>
+<circle class="bub" cx="611.2" cy="816" r="4"/>
+<text class="s" x="623.2" y="820.5" text-anchor="start">Inverted input</text>
+<path class="jtag" d="M17,844 L59,844"/>
+<text class="s" x="70" y="848.5" text-anchor="start">Scan data</text>
+<path class="sigo" d="M161.1,844 L203.1,844"/>
+<text class="s" x="214.1" y="848.5" text-anchor="start">Control signal</text>
+<path class="sigplain" d="M336.70000000000005,844 L366.70000000000005,844 M351.70000000000005,844 L351.70000000000005,853"/>
+<circle cx="351.7" cy="844" r="3.5" fill="#5b6670"/>
+<text class="s" x="374.7" y="848.5" text-anchor="start">Fan-out</text>
+</svg>

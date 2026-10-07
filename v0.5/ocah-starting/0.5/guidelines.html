@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>OCAH development guidelines :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-starting" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Getting Started and Contributing Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a user</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="dependencies.html">Dependencies</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="setup.html">Environment Setup</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="workflows.html">Workflows</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="2">
+    <a class="nav-link" href="guidelines.html">Guidelines</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a contributor</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="licensing.html">Licensing</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="contribution.html">Contributions</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="contribution.html#versioning">Versioning</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="defects.html">Defect Reporting</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="documentation.html">Documentation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="code_of_conduct.html">Code of Conduct</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Getting Started and Contributing Guide 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="index.html">Starting with OCAH</a></li>
+    <li>Starting as a user</li>
+    <li><a href="guidelines.html">Guidelines</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">OCAH development guidelines</h1>
+<div class="sect1">
+<h2 id="standards"><a class="anchor" href="#standards"></a><a class="link" href="#standards">1. Standards</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The OCAH design will follow industry or FOSS standards where appropriate:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>SystemVerilog RTL</p>
+</li>
+<li>
+<p>AMBA system buses</p>
+</li>
+<li>
+<p>SystemRDL memory map</p>
+</li>
+<li>
+<p>AsciiDoc documentation with Asciidoctor</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The hardware design is written in a synthesizable subset of
+SystemVerilog RTL language. The coding standards are adopted from the
+lowRISC organization and are also used in OpenTitan.</p>
+</div>
+<div class="paragraph">
+<p>System interconnect is implemented with AMBA standard buses. AXI4 and
+AXI4-lite is used for data interfaces and is generally configured with
+64-bit data and address. Control buses for accessing CSRs and other low
+speed sources are implemented with 32-bit APB.</p>
+</div>
+<div class="paragraph">
+<p>The system memory map and component CSRs (Control and Status
+Registers) are defined in SystemRDL. This is the single source of truth
+and all downstream representations are rendered from this source.
+Examples are documentation (HTML), C headers, SystemVerilog UVM DV and
+SystemVerilog RTL.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="development-tools"><a class="anchor" href="#development-tools"></a><a class="link" href="#development-tools">2. Development Tools</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>We aim primarily to use open source tools for the development of OCAH in
+order to eliminate commercial dependencies and enabling open-sourcing
+not only the design, but also the associated tools.</p>
+</div>
+<div class="paragraph">
+<p>The goal is to enable new adopters of OCAH to be able to immediately
+perform simulations and other analyses of the design using readily
+available free tools.</p>
+</div>
+<div class="paragraph">
+<p>For internal development and testing we will employ commercial tools to
+validate the OCAH design, proving readiness for chip deployment i.e.
+tapeout. This includes:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Design verification</p>
+</li>
+<li>
+<p>lint tools for code quality</p>
+</li>
+<li>
+<p>logic synthesis</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="component-directory-organization"><a class="anchor" href="#component-directory-organization"></a><a class="link" href="#component-directory-organization">3. Component Directory Organization</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Every component under <code>hw/ip/&lt;ip&gt;/</code> and <code>hw/sys/&lt;sys&gt;/</code> shares the same base
+layout, whether it is a leaf IP or a full subsystem:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-none hljs">&lt;component&gt;/
+├── README.md   Overview and quick-start pointer into doc/
+├── doc/        AsciiDoc chapters (architecture, interface, memmap, ...)
+├── rtl/        SystemVerilog RTL sources
+├── regs/       SystemRDL register/CSR definitions and generated collateral
+├── dv/         Testbenches and verification collateral
+└── lint/       Lint waiver files</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Not every element is present everywhere&#8201;&#8212;&#8201;<code>regs/</code> only exists where the
+component owns CSRs, and a small IP may have no <code>lint/</code> waivers to carry&#8201;&#8212;&#8201;but where an element exists, it is always at this location. The <code>regs/</code>
+directory&#8217;s generated collateral layout is detailed in
+<a href="../../ocah-integrator-guide/0.5/index.html#address-map-collateral" class="xref page">the
+Integrator Guide</a>, and the waiver conventions under <code>lint/</code> are in
+<a href="workflows.html#linting" class="xref page">Linting</a>.</p>
+</div>
+<div class="paragraph">
+<p>A subsystem (<code>hw/sys/&lt;sys&gt;/</code>) additionally carries the full-chip elements a
+leaf IP does not need on its own:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>synth/</code>&#8201;&#8212;&#8201;the block SDC (clocks, I/O delays, asynchronous clock groups)
+and its CDC max-delay bounds</p>
+</li>
+<li>
+<p><code>cdc/</code>&#8201;&#8212;&#8201;clock- and reset-domain-crossing sign-off constraints (the
+<code>&lt;sys&gt;.cdc_rdc.tcl</code> entry, resets, case analysis, quasi-static signals,
+synchronizer setup) and the CDC waivers</p>
+</li>
+<li>
+<p><code>rdc/</code>&#8201;&#8212;&#8201;reset-domain-crossing waivers</p>
+</li>
+<li>
+<p><code>bootrom/</code>&#8201;&#8212;&#8201;immutable ROM firmware sources, where the subsystem has one</p>
+</li>
+<li>
+<p><code>build/</code>&#8201;&#8212;&#8201;local build scratch, not checked in</p>
+</li>
+<li>
+<p><code>flow.mk</code>&#8201;&#8212;&#8201;the subsystem&#8217;s entry point into the shared lint/synth flows</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="coding-conventions"><a class="anchor" href="#coding-conventions"></a><a class="link" href="#coding-conventions">4. Coding Conventions</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="license-headers"><a class="anchor" href="#license-headers"></a><a class="link" href="#license-headers">4.1. License headers</a></h3>
+<div class="paragraph">
+<p>Every hand-authored source file must carry an SPDX license header. Use the form appropriate to the file&#8217;s comment syntax.</p>
+</div>
+<div class="paragraph">
+<p>For SystemVerilog (<code>.sv</code>, <code>.svh</code>, <code>.v</code>, <code>.vh</code>) and SystemRDL (<code>.rdl</code>):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-systemverilog hljs" data-lang="systemverilog">// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For Python, shell, Makefile, Nix and YAML files:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-makefile hljs" data-lang="makefile"># SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For C and C++ (<code>.c</code>, <code>.h</code>, <code>.cpp</code>, <code>.hpp</code>):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-c hljs" data-lang="c">/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For AsciiDoc (<code>.adoc</code>), use line comments. Documentation and images are
+licensed under CC-BY-4.0:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-asciidoc hljs" data-lang="asciidoc">// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For JavaScript (<code>.js</code>), use line comments:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For shell and Python scripts that begin with a <code>#!</code> shebang line, place the header immediately after the shebang. Keep the year current for new files; do not edit the year on files you only modify.</p>
+</div>
+<div class="paragraph">
+<p>The CC-BY-4.0 AsciiDoc header above is for hand-authored documentation. Generated
+register collateral under <code>hw/**/regs/gen/</code>&#8201;&#8212;&#8201;including its <code>.adoc</code> and <code>.html</code>
+tables&#8201;&#8212;&#8201;is a mechanical rendering of the Apache-2.0-licensed SystemRDL source it
+is generated from, not hand-authored documentation, so it keeps the Apache-2.0
+header across every emitted extension (<code>.sv</code>, <code>.c</code>, <code>.py</code>, <code>.adoc</code>, <code>.html</code>, &#8230;&#8203;)
+rather than switching to CC-BY-4.0 by file extension. <code>tools/regs/stamp_spdx.py</code>
+stamps this header uniformly; do not hand-edit it into CC-BY-4.0.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="vendored-code"><a class="anchor" href="#vendored-code"></a><a class="link" href="#vendored-code">4.2. Vendored code</a></h3>
+<div class="paragraph">
+<p>Third-party RTL and tools are vendored under <code>vendor/</code> via Bender <code>vendor_package</code> entries. Do not hand-edit files under <code>vendor/*/upstream/</code>; use <code>patches/</code> and local overlays instead. See the README for the full vendor workflow.</p>
+</div>
+<div class="paragraph">
+<p>When adding a new vendored dependency, confirm its license is Apache-2.0 compatible and note the dependency, source, version, and license in the pull request description.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="systemverilog-coding-guidelines"><a class="anchor" href="#systemverilog-coding-guidelines"></a><a class="link" href="#systemverilog-coding-guidelines">4.3. SystemVerilog Coding Guidelines</a></h3>
+<div class="paragraph">
+<p>The high level goals are:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>avoid SystemVerilog constructs that are error prone or not consistently supported,
+particularly across open source tools</p>
+</li>
+<li>
+<p>ensure that the code is tidy and easy to read</p>
+</li>
+<li>
+<p>keep the code style consistent across the project&#8217;s code base regardless of who authored it</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>OCAH will <em>mostly</em> follow the OpenTitan SystemVerilog coding rules
+defined by lowRISC group in
+<a href="https://github.com/lowRISC/style-guides/blob/master/VerilogCodingStyle.md">Verilog
+Coding Style</a>.</p>
+</div>
+<div class="paragraph">
+<p>This section highlights a few of the most important aspects as well as a
+few deviations from the OpenTitan rules. If there is a conflict between
+the two, the specification here takes precedence.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Use two spaces for indentation, matching the lowRISC style guide.</p>
+</li>
+<li>
+<p>Use all upper case letters to name enums and parameters instead of
+UpperCamelCase, and UpperCamelCase to name constants (localparam).</p>
+</li>
+<li>
+<p>Name enum types in lower_snake_case with an <code>_e</code> suffix.</p>
+</li>
+<li>
+<p>TT-owned RTL uses postfix *_i / *_o / *_io; active-low _n sits immediately
+before the direction suffix so resets are rst_ni.</p>
+</li>
+<li>
+<p>As stated in the lowRISC guidelines, SystemVerilog Interfaces can be
+limited in terms of tool support, so we <em>highly discourage</em> their use as
+they are not uniformly supported by open source tools. As an
+alternative, struct types can be used instead to bundle groups of input
+or output signals to make ports more abstract.</p>
+</li>
+<li>
+<p>Finite State Machines (FSMs) are powerful sequence control constructs
+but can spiral out of control quickly. Consequences are difficult to
+understand "next state" logic and long timing paths. Separate the
+combinatorial "next state" logic from the sequential state update into
+distinct always blocks. <strong>Do not</strong> combine the two into a single clocked
+always block. Opt for a
+<a href="https://en.wikipedia.org/wiki/Moore_machine">Moore machine</a>
+implementation when possible to aid in timing closure. If you have
+complexity of more than ten states or so, use a microsequencer approach.
+This is more scalable and maintainable.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>There will be additional rules that apply to security sensitive
+components such as ciphers. These will be documented in more detail, but
+here is a summary for now:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>FSM state encodings are one-hot with error checking</p>
+</li>
+<li>
+<p>Error detection is implemented on storage elements and some bus and
+computational elements</p>
+</li>
+<li>
+<p>Secret data is transferred and stored in secret-split fashion</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="rtl-code-comments"><a class="anchor" href="#rtl-code-comments"></a><a class="link" href="#rtl-code-comments">4.4. RTL Code Comments</a></h3>
+<div class="paragraph">
+<p>Every hand-maintained module, interface, and package uses the same <code>//</code>
+header, after the SPDX lines. Generated register RTL and
+<code>vendor/<strong>/upstream/</strong></code> stay as their generator or upstream left them.</p>
+</div>
+<div class="paragraph">
+<p>The header is two parts. The first line is one imperative sentence: the RTL
+job of this module. One blank <code>//</code> line follows, then the behavior the
+declarations do not carry: resets, clock domains, ordering, and constraints
+an integrator or reviewer would otherwise have to rediscover. Keep it
+concise, but keep every fact. The same paragraphs are the text at the top of
+that module&#8217;s page in RTL Modules Reference.</p>
+</div>
+<div class="paragraph">
+<p>Every parameter, input, and output has a <code>//</code> clause that starts on the
+same line as the declaration. The clause is that item&#8217;s role in this
+module. Polarity, clock domain, or synchronizer behavior goes in the clause
+when the name does not already say it. The clause does not say "input" or
+"output", and it does not restate the type or the default. A clause that
+needs more than one line continues on the next <code>//</code> lines, each starting at
+or right of the clause&#8217;s <code>//</code>.</p>
+</div>
+<div class="paragraph">
+<p>No other <code>//</code> line sits between two parameters or two ports. A group banner
+in the gap is published as part of the previous item. A blank line may
+separate groups. Section banners stay in the body, below the port list.</p>
+</div>
+<div class="paragraph">
+<p>Write each comment so it reads on its own, without the diff or the
+surrounding discussion. A comment that records why a change was made
+belongs in the commit message.</p>
+</div>
+<div class="paragraph">
+<p>Do not use <code>// File:</code>, <code>// Module:</code>, <code>// Author:</code>, <code>@file</code>, <code>@brief</code>,
+<code>@param</code>, <code>@author</code>, or a <code>/** */</code> file header.</p>
+</div>
+<div class="paragraph">
+<p>Body comments stay sparse. Do not restate a line the code already makes
+obvious. Comment a constraint, an ordering, or a hardware behavior a reader
+would otherwise have to rediscover.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-systemverilog hljs" data-lang="systemverilog">// Condition the cold and warm resets for the Key Manager.
+//
+// Synchronize cold_rst_ni onto rst_cold_aasd_no, which resets every flop in
+// this block. Assert rst_warm_sync_no on warm_rst_ni, soft_rst_ni, or a cold
+// reset, and hold it for MIN_RESET_CYCLES. scanmode_i bypasses both outputs.
+
+module km_reset_conditioner #(
+  parameter int unsigned MIN_RESET_CYCLES = 10  // Warm-reset hold, in clk_i cycles.
+) (
+  input  logic clk_i,             // Clock for the warm-hold counter.
+  input  logic cold_rst_ni,       // Active-low. Async assert, sync deassert.
+                                  // Resets every flop in the block.
+  output logic rst_warm_sync_no   // Active-low warm reset, held MIN_RESET_CYCLES.
+);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This header is the one to reject. The banner repeats the filename, and each
+<code>@param</code> repeats a name the declaration already has:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-systemverilog hljs" data-lang="systemverilog">// File: km_reset_conditioner.sv
+// Author: example
+/**
+ * @file km_reset_conditioner.sv
+ * @brief Reset conditioner.
+ * @param MIN_RESET_CYCLES Minimum hold.
+ * @param clk_i Clock.
+ */</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Check files with:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-shell hljs" data-lang="shell">python3 tools/doc/check_sv_comments.py hw/ip/key_manager/rtl/*.sv</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>make lint-sv-comments</code> checks every source the RTL Modules Reference
+documents, except the generated CPU RTL, and is the <code>lint-sv-comments</code> CI job.</p>
+</div>
+<div class="paragraph">
+<p>The checker covers every module in a file. It fails when the two-part <code>//</code>
+block is missing, when a parameter or port has no same-line <code>//</code> clause, when
+a <code>//</code> line that is not a continuation sits between two of those
+declarations, when a clause only restates the declared name, repeats a
+literal default, is a single word, or repeats another clause of the same
+module word for word, or when a banned banner or tag is present. A group
+label such as "Debug outputs." shared by several ports is such a repeat:
+give each port its own clause.</p>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/register-sections.js"></script>
+<script src="../../_/js/toc-collapse.js"></script>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script src="../../_/js/version-menu.js"></script>
+<script src="../../_/js/vendor/viewer.min.js"></script>
+<script src="../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>

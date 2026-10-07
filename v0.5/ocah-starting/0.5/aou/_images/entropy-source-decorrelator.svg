@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="446" viewBox="0 0 1040 446" role="img" aria-labelledby="title desc">
+<title id="title">Entropy source decorrelator</title>
+<desc id="desc">Entropy source decorrelator, entropy_decorrelator, with LENGTH 29. The synchronized noise bit noise_i is XORed with the feedback bit and shifted into ff_stage[0]; the chain shifts through ff_stage[28] on every enabled clk_i cycle. The feedback is ff_stage[28], forced to 0 while bypass_i is high so raw noise shifts through unmixed. The top eight stages, ff_stage[28:21], are ANDed with byte_mask_i. A downsample counter reloads from sample_clk_div_i each time it reaches zero; at zero the output register captures the masked byte as entropy_byte_sample_o and pulses entropy_byte_valid_o for one cycle, so a byte leaves every sample_clk_div_i plus one cycles. enable_i holds the chain and reloads the counter while low.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+</style>
+</defs>
+<rect width="1040" height="446" fill="#ffffff"/>
+<rect class="smu" x="16" y="44" width="1008" height="356" rx="8"/>
+<text class="b" x="26" y="388" text-anchor="start">entropy_decorrelator (LENGTH = 29)</text>
+<path class="sigo" d="M4,146 L67,146"/>
+<text class="s" x="24" y="138" text-anchor="start">noise_i</text>
+<rect class="fabric" x="70" y="122" width="70" height="48" rx="6"/>
+<text class="s" x="105" y="151" text-anchor="middle">XOR</text>
+<rect class="core" x="172" y="122" width="50" height="48" rx="6"/>
+<text class="s" x="197" y="151" text-anchor="middle">[0]</text>
+<path class="sigo" d="M140,146 L169,146"/>
+<rect class="core" x="234" y="122" width="50" height="48" rx="6"/>
+<text class="s" x="259" y="151" text-anchor="middle">[1]</text>
+<path class="sigo" d="M222,146 L231,146"/>
+<rect class="core" x="330" y="122" width="50" height="48" rx="6"/>
+<text class="s" x="355" y="151" text-anchor="middle">[20]</text>
+<text class="t" x="313" y="151" text-anchor="middle">...</text>
+<path class="sigplain" d="M284,146 L292,146"/>
+<path class="sigo" d="M322,146 L327,146"/>
+<rect class="core" x="396" y="122" width="50" height="48" rx="6"/>
+<text class="s" x="421" y="151" text-anchor="middle">[21]</text>
+<path class="sigo" d="M380,146 L393,146"/>
+<rect class="core" x="458" y="122" width="50" height="48" rx="6"/>
+<text class="s" x="483" y="151" text-anchor="middle">[22]</text>
+<path class="sigo" d="M446,146 L455,146"/>
+<rect class="core" x="520" y="122" width="50" height="48" rx="6"/>
+<text class="s" x="545" y="151" text-anchor="middle">[23]</text>
+<path class="sigo" d="M508,146 L517,146"/>
+<rect class="core" x="582" y="122" width="50" height="48" rx="6"/>
+<text class="s" x="607" y="151" text-anchor="middle">[24]</text>
+<path class="sigo" d="M570,146 L579,146"/>
+<rect class="core" x="644" y="122" width="50" height="48" rx="6"/>
+<text class="s" x="669" y="151" text-anchor="middle">[25]</text>
+<path class="sigo" d="M632,146 L641,146"/>
+<rect class="core" x="706" y="122" width="50" height="48" rx="6"/>
+<text class="s" x="731" y="151" text-anchor="middle">[26]</text>
+<path class="sigo" d="M694,146 L703,146"/>
+<rect class="core" x="768" y="122" width="50" height="48" rx="6"/>
+<text class="s" x="793" y="151" text-anchor="middle">[27]</text>
+<path class="sigo" d="M756,146 L765,146"/>
+<rect class="core" x="830" y="122" width="50" height="48" rx="6"/>
+<text class="s" x="855" y="151" text-anchor="middle">[28]</text>
+<path class="sigo" d="M818,146 L827,146"/>
+<text class="s" x="526" y="114" text-anchor="middle">ff_stage, shifted on every enabled clk_i cycle</text>
+<path class="sigplain" d="M880,146 L950,146 L950,76 L700,76"/>
+<rect class="fabric" x="560" y="58" width="140" height="36" rx="6"/>
+<text class="s" x="630" y="81" text-anchor="middle">Feedback gate</text>
+<path class="sigo" d="M560,76 L105,76 L105,119"/>
+<text class="s" x="330" y="70" text-anchor="middle">feedback: ff_stage[28], or 0 while bypass_i</text>
+<path class="sigo" d="M630,22 L630,55"/>
+<text class="s" x="638" y="20" text-anchor="start">bypass_i</text>
+<path class="sigplain" d="M421.0,206 L855.0,206"/>
+<path class="sigplain" d="M421.0,170 L421.0,206"/>
+<path class="sigplain" d="M483.0,170 L483.0,206"/>
+<circle cx="483" cy="206" r="3.5" fill="#5b6670"/>
+<path class="sigplain" d="M545.0,170 L545.0,206"/>
+<circle cx="545" cy="206" r="3.5" fill="#5b6670"/>
+<path class="sigplain" d="M607.0,170 L607.0,206"/>
+<circle cx="607" cy="206" r="3.5" fill="#5b6670"/>
+<path class="sigplain" d="M669.0,170 L669.0,206"/>
+<circle cx="669" cy="206" r="3.5" fill="#5b6670"/>
+<path class="sigplain" d="M731.0,170 L731.0,206"/>
+<circle cx="731" cy="206" r="3.5" fill="#5b6670"/>
+<path class="sigplain" d="M793.0,170 L793.0,206"/>
+<circle cx="793" cy="206" r="3.5" fill="#5b6670"/>
+<path class="sigplain" d="M855.0,170 L855.0,206"/>
+<circle cx="638" cy="206" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M638,206 L638,237"/>
+<text class="s" x="646" y="226" text-anchor="start">ff_stage[28:21]</text>
+<rect class="fabric" x="568" y="240" width="140" height="40" rx="6"/>
+<text class="s" x="638" y="265" text-anchor="middle">AND</text>
+<path class="sigo" d="M4,260 L565,260"/>
+<text class="s" x="24" y="252" text-anchor="start">byte_mask_i</text>
+<path class="sigo" d="M638,280 L638,307"/>
+<rect class="core" x="558" y="310" width="160" height="50" rx="6"/>
+<text class="s" x="638" y="340" text-anchor="middle">Output register</text>
+<rect class="core" x="278" y="310" width="210" height="50" rx="6"/>
+<text class="s" x="383" y="332" text-anchor="middle">Downsample counter</text>
+<text class="s" x="383" y="348" text-anchor="middle">reloads at 0, counts down</text>
+<path class="sigo" d="M488,335 L555,335"/>
+<text class="s" x="522" y="328" text-anchor="middle">load</text>
+<path class="sigo" d="M4,346 L275,346"/>
+<text class="s" x="24" y="338" text-anchor="start">sample_clk_div_i</text>
+<path class="sigo" d="M718,324 L1012,324"/>
+<text class="s" x="1012" y="318" text-anchor="end">entropy_byte_sample_o[7:0]</text>
+<path class="sigo" d="M718,348 L1012,348"/>
+<text class="s" x="1012" y="364" text-anchor="end">entropy_byte_valid_o (one-cycle pulse)</text>
+<rect class="core" x="16" y="419" width="40" height="18" rx="4"/>
+<text class="s" x="64" y="433" text-anchor="start">Flop or register</text>
+<rect class="fabric" x="200" y="419" width="40" height="18" rx="4"/>
+<text class="s" x="248" y="433" text-anchor="start">Combinational logic</text>
+<path class="sigo" d="M410,428 L444,428"/>
+<text class="s" x="455" y="433" text-anchor="start">Signal (clk_i domain)</text>
+<circle cx="640" cy="428" r="3.5" fill="#5b6670"/>
+<text class="s" x="652" y="433" text-anchor="start">Junction</text>
+</svg>

@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>CPU :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP VeeR EL2 configuration, local memories, debug and interfaces.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-appnotes" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Application Notes</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Application Notes 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component is-current">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../index.html">Application Notes</a></li>
+    <li><a href="cpu.html">CPU</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">CPU</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="cpu-subsystem" class="paragraph">
+<p>SEP uses the 32-bit RISC-V
+<a href="https://github.com/chipsalliance/Cores-VeeR-EL2">VeeR EL2 CPU</a> to run boot and
+security-service firmware. This chapter describes the SEP configuration,
+local memories, reset vector and debug integration. The
+<a href="https://chipsalliance.github.io/Cores-VeeR-EL2/html/main/docs_rendered/html/index.html">EL2 Programmer&#8217;s Reference Manual</a>
+defines the core programming model.
+The Programmer&#8217;s Guide gives the
+<a href="../../../ocah-programmer-guide/0.5/index.html#sep-pic" class="xref page">programming guidance</a>
+for this block.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sep-cpu-diagram">Figure 1</a> shows the CPU subsystem and its instruction, data, and external
+memory interfaces.</p>
+</div>
+<div id="sep-cpu-diagram" class="imageblock">
+<div class="content">
+<img src="_images/sep-cpu.svg" alt="sep_cpu with the VeeR EL2 core complex, its ICCM, DCCM, PIC, debug module and DMA slave, and the alias remaps and demuxes on its AXI4 masters" width="100%">
+</div>
+<div class="title">Figure 1. SEP VeeR EL2 CPU subsystem and memory interfaces</div>
+</div>
+<div class="paragraph">
+<p><code>sep_cpu</code> holds the VeeR EL2 core complex, <code>u_el2_veer_wrapper</code>, and the fabric
+elements on its bus masters; the figure uses the notation of the
+<a href="fabric.html#sep-fabric-topology" class="xref page">fabric figures</a>. The ICCM and DCCM controllers are part of
+the core complex, but their RAM macros sit outside <code>sep_cpu</code> in
+<code>sep_tcm_wrapper</code>, each bank 32 data bits plus 7 ECC bits wide. The instruction
+cache is not configured. The DMA slave port is the local crossbar&#8217;s <code>cpu_tcm</code>
+target, the backdoor through which the secure DMA preloads the ICCM and DCCM.
+The IFU, LSU and debug system-bus masters are AXI4 with 64-bit data and 3-bit
+IDs, and each carries <code>SepSourceId</code> in AxUSER. The debug master&#8217;s 1-bit ID is
+zero-extended to 3 bits. Each master passes a local alias remap that rewrites the
+768 MiB window at <code>SEP_LOCAL_BASE_ADDR</code> to <code>0x1000_0000</code>. The IFU demux then
+sends boot ROM addresses to the boot ROM mux, SEP SRAM addresses to the local
+crossbar and everything else to a DECERR responder, and the LSU demux sends boot
+ROM addresses to the boot ROM mux and everything else to the local crossbar. The
+core and its buses run on the SEP clock. <code>mpc_reset_run_req_i</code> passes a two-flop
+synchronizer in <code>sep_cpu</code>; the core synchronizes the NMI, timer, software
+interrupt and the other halt and run requests itself.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="cpu-feature-summary"><a class="anchor" href="#cpu-feature-summary"></a><a class="link" href="#cpu-feature-summary">1. Processor Core</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SEP build configures the core as follows. Optional VeeR capabilities must
+not be assumed to be present merely because the core supports them.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SEP processor configuration</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Feature</th>
+<th class="tableblock halign-left valign-top">SEP configuration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Instruction set</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RV32IMC. The bit-manipulation build options enable Zba, Zbb, Zbc and Zbe; Zbf, Zbp, Zbr and Zbs are disabled.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pipeline and privilege</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Four-stage pipeline; user-mode support enabled.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory protection</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 Physical Memory Protection (PMP) entries with Smepmp enabled. <code>pmpcfg</code> and <code>pmpaddr</code> CSRs control address ranges and access permissions.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory attributes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>mrac</code> independently selects cacheability and side-effect attributes for sixteen fixed 256 MiB regions. These attributes do not grant read, write or execute permission.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupts and timers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Programmable Interrupt Controller (PIC), configured for 255 external sources, plus two internal timers that can operate independently or be linked. The timers use VeeR-specific <code>mip.MITIP0</code> and <code>mip.MITIP1</code> interrupts.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG debug interface and an AXI4 debug master connected to the SEP fabric.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Dual Core Lock Step (DCLS)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Disabled in the checked-in SEP configuration. The integration exposes lockstep controls and status for builds that enable it; this does not establish functional-safety compliance.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The Interrupts chapter owns the source-by-source PIC mapping:
+<a href="interrupts.html#sep-cpu-interrupt-vector-map" class="xref page">SEP CPU Interrupt Vector Map</a>.
+The Boot ROM chapter describes secure boot and execution unlock.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="local-memory"><a class="anchor" href="#local-memory"></a><a class="link" href="#local-memory">2. Local Memory</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The configured closely coupled memories provide separate instruction and data
+storage. Their memory macros connect through the SEP CPU memory interface.
+The instruction cache is disabled in this configuration.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. SEP closely coupled memories</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 40%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Memory</th>
+<th class="tableblock halign-left valign-top">Capacity</th>
+<th class="tableblock halign-left valign-top">CPU base address</th>
+<th class="tableblock halign-left valign-top">Protection</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Instruction Closely Coupled Memory (ICCM)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xC000_0000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7 ECC bits per 32-bit word</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Data Closely Coupled Memory (DCCM)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xC004_0000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7 ECC bits per 32-bit word</p></td>
+</tr>
+</tbody>
+</table>
+<div class="sect2">
+<h3 id="dual-scratch-register-banks"><a class="anchor" href="#dual-scratch-register-banks"></a><a class="link" href="#dual-scratch-register-banks">2.1. Dual Scratch Register Banks</a></h3>
+<div class="paragraph">
+<p>The system CSR block supplies two software read/write scratch banks. Each
+contains eight 32-bit data fields in 64-bit register slots, giving an 8-byte
+stride. Both banks reset their data to zero. Hardware exposes the field values,
+but the current system CSR logic does not use them to control behavior.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. Scratch-bank reset behavior</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Bank</th>
+<th class="tableblock halign-left valign-top">Reset and retention</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Set 0, cold scratch</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cleared by <code>sep_reset_n</code>. Retains data through a watchdog-only CPU reset; retention is not guaranteed across reassertion of the boot-qualified SEP reset.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Set 1, warm scratch</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cleared by either <code>sep_reset_n</code> or <code>sep_cpu_reset_n</code>, so an aggregated SMC/SEP watchdog reset also clears this bank.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The names distinguish watchdog-reset behavior; they do not mean that set 0
+can only be cleared by a power-on event. The Clocks and Resets chapter defines
+these reset boundaries.</p>
+</div>
+<div class="sect3">
+<h4 id="scratch-register-reference"><a class="anchor" href="#scratch-register-reference"></a><a class="link" href="#scratch-register-reference">2.1.1. Scratch Register Reference</a></h4>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-sep_scratch">SEP Scratch Address Map</h2>
+<p>General-purpose SEP scratch register bank.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>SCRATCH[8]</strong>: 8 registers, base 0x0, stride 0x8</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x38</td><td><a href="#sep_scratch-SCRATCH_8_">SCRATCH[8]</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="SCRATCH_8_"></span><h3 id="sep_scratch-SCRATCH_8_" data-register-alias="SCRATCH_8_">SCRATCH[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Scratch register for the CPU</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="reset-and-boot"><a class="anchor" href="#reset-and-boot"></a><a class="link" href="#reset-and-boot">3. Reset and Boot</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The default reset vector points to BL0 in the Boot ROM. The debugger can
+change that vector as described below. Boot ROM owns the ROM layout,
+integrity limitations and BL0-to-BL1 boot sequence.</p>
+</div>
+<div class="paragraph">
+<p><a href="rom.html#sep-rom" class="xref page">SEP Boot ROM</a>.</p>
+</div>
+<div id="boot-rom" class="paragraph">
+<p>See <a href="rom.html" class="xref page">Boot ROM</a>.</p>
+</div>
+<div id="bl0-secure-boot-and-bl1-execution-unlock" class="paragraph">
+<p>See <a href="rom.html#bl0-secure-boot-and-bl1-execution-unlock" class="xref page">BL0 boot sequence</a>.</p>
+</div>
+<div class="sect2">
+<h3 id="configuration-straps"><a class="anchor" href="#configuration-straps"></a><a class="link" href="#configuration-straps">3.1. Configuration Straps</a></h3>
+<div class="paragraph">
+<p>The platform boot-interface requirement is at least eight static configuration
+straps, preferably sixteen. This is a platform requirement, not a count of strap
+inputs on the CPU core. How the straps are sourced and captured is up to the
+adopter; firmware reads their values from the SMC strap registers
+(<code>STRAPS_LO</code> and <code>STRAPS_HI</code>).</p>
+</div>
+<div class="paragraph">
+<p>BL0 uses platform configuration to select startup options, such as primary or
+secondary chiplet operation and normal or recovery boot. The board and boot
+firmware define the assignment of those options to pins; the
+<a href="../../../ocah-programmer-guide/0.5/index.html#sep-configuration-straps" class="xref page">configuration strap section</a>
+of the Programmer&#8217;s Guide describes reading them.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="cpu-reset-vector"><a class="anchor" href="#cpu-reset-vector"></a><a class="link" href="#cpu-reset-vector">3.2. Reset Vector</a></h3>
+<div class="paragraph">
+<p>The SEP CPU reset vector is held in a test data register (TDR) in the EL2
+debug TAP, selected by JTAG instruction opcode 0x18. The TDR resets to the
+Boot ROM base address on JTAG reset (TRST assertion or the Test-Logic-Reset
+TAP state). With that default vector, the CPU starts in the BL0 Root-of-Trust
+code.</p>
+</div>
+<div class="paragraph">
+<p>An alternate address shifted into the TDR while the SEP CPU is held in reset
+redirects the first instruction fetch, which supports bring-up and failure
+analysis flows that execute from a memory other than the Boot ROM. The TDR
+stores address bits [31:1]; bit 0 is zero. The programmed value persists until
+it is rewritten or the TAP is reset; CPU reset alone does not restore the
+default. The Programmer&#8217;s Guide gives the
+<a href="../../../ocah-programmer-guide/0.5/index.html#dtp-sep-reset-vector" class="xref page">redirect procedure</a>.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="system-interfaces"><a class="anchor" href="#system-interfaces"></a><a class="link" href="#system-interfaces">4. System Interfaces</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="dma-interface"><a class="anchor" href="#dma-interface"></a><a class="link" href="#dma-interface">4.1. DMA Interface</a></h3>
+<div class="paragraph">
+<p>The DMA engine is described under Peripherals:
+<a href="dma.html" class="xref page">Direct Memory Access (DMA)</a></p>
+</div>
+<div id="direct-memory-access-controller-dma-direct-memory-access-controller-dma" class="paragraph">
+<p>See <a href="dma.html" class="xref page">DMA</a>.</p>
+</div>
+<div id="och-modifications" class="paragraph">
+<p>See <a href="dma.html#och-modifications" class="xref page">DMA integration</a>.</p>
+</div>
+<div id="future-enhancements" class="paragraph">
+<p>See <a href="dma.html#future-enhancements" class="xref page">DMA future enhancements</a>.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="debug-module"><a class="anchor" href="#debug-module"></a><a class="link" href="#debug-module">5. Debug</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The VeeR EL2 debug module is reached from the DTP SEP debug STAP through the
+core&#8217;s JTAG TAP. TAP access is already gated by lifecycle state, so the DMI
+core aperture is left enabled at the SMU and does not take a second lifecycle
+check. The DMI uncore aperture is unused: the debug module&#8217;s AXI master already
+reaches the rest of the SEP fabric.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="alarm-aggregation-processor-agp-alarm-aggregation-processor-agp"><a class="anchor" href="#alarm-aggregation-processor-agp-alarm-aggregation-processor-agp"></a><a class="link" href="#alarm-aggregation-processor-agp-alarm-aggregation-processor-agp">6. Alarm Aggregation Processor (AGP)</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The AGP is a proposed addition for a later SEP generation, aimed at edge
+applications such as automotive and robotics. It is not implemented in the
+first-generation SEP.</p>
+</div>
+<div class="paragraph">
+<p>The proposed CPU-programmed monitor would collect and filter alarm events,
+detect suspected attacks and request countermeasures: wiping sensitive state
+or resetting selected components, subsystems or the SEP. These are future
+capabilities, not available alarm-response controls in the current integration.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-map-and-register-reference"><a class="anchor" href="#memory-map-and-register-reference"></a><a class="link" href="#memory-map-and-register-reference">7. Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<span id="register-reference"></span>
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">7.1. Memory Map</a></h3>
+<div class="paragraph">
+<p>The SEP subsystem memory map gives the base addresses of the CPU-control and
+scratch banks. Offsets below are relative to the CPU-control block base.
+The detailed map describes the memory-mapped SEP CPU-control registers;
+RISC-V core CSRs such as <code>pmpcfg</code> and <code>mrac</code> are accessed by CSR instructions.
+The scratch-bank register layout appears under Local Memory above.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">7.2. Detailed Register Map</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-sep_cpu_ctrl">SEP CPU Control Address Map</h2>
+<p>SEP CPU control and status registers: PKA and crypto configuration, boot and fast-memory enables, fuse-sense status, and interrupt controls.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x8</td><td><a href="#sep_cpu_ctrl-CLOCK_GATE_CTRL">CLOCK_GATE_CTRL</a></td><td>RW</td><td>TODO: clock-gate control - placeholder fields, not yet implemented.</td></tr>
+<tr><td>0x10</td><td><a href="#sep_cpu_ctrl-REFERENCE_COUNTER">REFERENCE_COUNTER</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#sep_cpu_ctrl-TIMEOUT_INTERRUPT">TIMEOUT_INTERRUPT</a></td><td>R</td><td>Reserved - per-block timeout interrupt not yet implemented.</td></tr>
+<tr><td>0x20</td><td><a href="#sep_cpu_ctrl-PKA_CTRL">PKA_CTRL</a></td><td>RW</td><td>TODO: PKA control - placeholder fields, not yet implemented.</td></tr>
+<tr><td>0x28</td><td><a href="#sep_cpu_ctrl-TIMEOUT_COUNT_DMA">TIMEOUT_COUNT_DMA</a></td><td>RW</td><td>Reserved - per-block timeout count/threshold not yet implemented.</td></tr>
+<tr><td>0x30</td><td><a href="#sep_cpu_ctrl-TIMEOUT_COUNT_SYS_IN">TIMEOUT_COUNT_SYS_IN</a></td><td>RW</td><td>Reserved - per-block timeout count/threshold not yet implemented.</td></tr>
+<tr><td>0x38</td><td><a href="#sep_cpu_ctrl-TIMEOUT_COUNT_MAILBOX_INBOUND">TIMEOUT_COUNT_MAILBOX_INBOUND</a></td><td>RW</td><td>Reserved - per-block timeout count/threshold not yet implemented.</td></tr>
+<tr><td>0x40</td><td><a href="#sep_cpu_ctrl-TIMEOUT_COUNT_MAILBOX_OUTBOUND">TIMEOUT_COUNT_MAILBOX_OUTBOUND</a></td><td>RW</td><td>Reserved - per-block timeout count/threshold not yet implemented.</td></tr>
+<tr><td>0x48</td><td><a href="#sep_cpu_ctrl-TIMEOUT_COUNT_ENTROPY_WRITE">TIMEOUT_COUNT_ENTROPY_WRITE</a></td><td>RW</td><td>Reserved - per-block timeout count/threshold not yet implemented.</td></tr>
+<tr><td>0x50</td><td><a href="#sep_cpu_ctrl-TIMEOUT_COUNT_ENTROPY_READ">TIMEOUT_COUNT_ENTROPY_READ</a></td><td>RW</td><td>Reserved - per-block timeout count/threshold not yet implemented.</td></tr>
+<tr><td>0x58</td><td><a href="#sep_cpu_ctrl-TIMEOUT_COUNT_FILTER_OUT">TIMEOUT_COUNT_FILTER_OUT</a></td><td>RW</td><td>Reserved - per-block timeout count/threshold not yet implemented.</td></tr>
+<tr><td>0x60</td><td><a href="#sep_cpu_ctrl-TIMEOUT_COUNT_ALIAS_REMAP">TIMEOUT_COUNT_ALIAS_REMAP</a></td><td>RW</td><td>Reserved - per-block timeout count/threshold not yet implemented.</td></tr>
+<tr><td>0x68</td><td><a href="#sep_cpu_ctrl-TIMEOUT_ENABLE">TIMEOUT_ENABLE</a></td><td>RW</td><td>Reserved - per-block timeout enable not yet implemented.</td></tr>
+<tr><td>0x70</td><td><a href="#sep_cpu_ctrl-TIMEOUT_CLEAR">TIMEOUT_CLEAR</a></td><td>W</td><td>Reserved - per-block timeout interrupt-clear not yet implemented.</td></tr>
+<tr><td>0x78</td><td><a href="#sep_cpu_ctrl-TIMEOUT_MODE">TIMEOUT_MODE</a></td><td>W</td><td>Reserved - per-block timeout mode not yet implemented.</td></tr>
+<tr><td>0xB0</td><td><a href="#sep_cpu_ctrl-SEP_TEST_CTRL">SEP_TEST_CTRL</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xC0</td><td><a href="#sep_cpu_ctrl-SEP_GLOBAL_BASE_ADDR">SEP_GLOBAL_BASE_ADDR</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xC8</td><td><a href="#sep_cpu_ctrl-SEP_LOCAL_BASE_ADDR">SEP_LOCAL_BASE_ADDR</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xD0</td><td><a href="#sep_cpu_ctrl-SEP_REGION_SIZE">SEP_REGION_SIZE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x100</td><td><a href="#sep_cpu_ctrl-SMU_GLOBAL_BASE_ADDR">SMU_GLOBAL_BASE_ADDR</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x110</td><td><a href="#sep_cpu_ctrl-SMU_REGION_SIZE">SMU_REGION_SIZE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x140</td><td><a href="#sep_cpu_ctrl-SMC_FUSE_SENSE_STATUS">SMC_FUSE_SENSE_STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x150</td><td><a href="#sep_cpu_ctrl-SEP_FUSE_SENSE_STATUS">SEP_FUSE_SENSE_STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x178</td><td><a href="#sep_cpu_ctrl-SEP_SW_DEBUG">SEP_SW_DEBUG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x180</td><td><a href="#sep_cpu_ctrl-SEP_NMI_VEC">SEP_NMI_VEC</a></td><td>RW</td><td>NMI vector address for VeeR-EL2 CPU. The default value is 0xC000_0100. The NMI<br>interrupt is used for the WDT Bark interrupt.<br><br>WARNING: the reset value is a placeholder, not a usable handler. Firmware must<br>program this register with the address of its own NMI handler, and then set<br>SEP_NMI_VEC_LOCK, before enabling any NMI source (the WDT bark in particular).<br>If a bark arrives while the reset value is still in place, the CPU jumps to<br>0xC000_0100 in ICCM and executes whatever is there: arbitrary instructions if<br>the loaded image covers that location, or an uncorrectable ICCM ECC error<br>(which itself re-raises NMI) if it does not.</td></tr>
+<tr><td>0x188</td><td><a href="#sep_cpu_ctrl-SEP_NMI_VEC_LOCK">SEP_NMI_VEC_LOCK</a></td><td>RW</td><td>Lock the NMI vector address. Once locked, the NMI vector address cannot be changed. The<br>NMI interrupt is used for the WDT Bark interrupt.</td></tr>
+<tr><td>0x190</td><td><a href="#sep_cpu_ctrl-EXT_TRNG_SRC_SEL">EXT_TRNG_SRC_SEL</a></td><td>RW</td><td>Per-stream external TRNG source selection for crypto subsystem entropy muxes.</td></tr>
+<tr><td>0x198</td><td><a href="#sep_cpu_ctrl-EXT_TRNG_SRC_SEL_LOCK">EXT_TRNG_SRC_SEL_LOCK</a></td><td>RW</td><td>Lock the TRNG source selection. Once locked, EXT_TRNG_SRC_SEL cannot be changed until reset.</td></tr>
+<tr><td>0x1A0</td><td><a href="#sep_cpu_ctrl-KM_WIPE_CTRL">KM_WIPE_CTRL</a></td><td>RW</td><td>Key Manager emergency wipe control.</td></tr>
+<tr><td>0x1A8</td><td><a href="#sep_cpu_ctrl-DMA_BUS_ERR_STATUS">DMA_BUS_ERR_STATUS</a></td><td>R</td><td>Secure DMA bridge fault status. Each bit is latched in hardware and held<br>until the corresponding DMA_BUS_ERR_CLEAR write. These bits also drive<br>dedicated PIC sources.<br><br>Neither bit is cleared by a CPU-only reset (the WDT resets the CPU without<br>resetting the DMA), so a bit read as set immediately after boot may describe<br>a fault from before that reset rather than a new one.</td></tr>
+<tr><td>0x1B0</td><td><a href="#sep_cpu_ctrl-DMA_BUS_ERR_CLEAR">DMA_BUS_ERR_CLEAR</a></td><td>W</td><td>Clear the DMA_BUS_ERR_STATUS bits. Writing 1 emits a single-cycle clear pulse<br>to both latches. A fault arriving in the same cycle as the clear still<br>latches, so acknowledging cannot drop a concurrent fault.</td></tr>
+<tr><td>0x1B8</td><td><a href="#sep_cpu_ctrl-PERIPH_BUS_ERR_STATUS">PERIPH_BUS_ERR_STATUS</a></td><td>R</td><td>Peripheral register-bridge fault status, one bit per block. Each bit latches<br>when a CPU access to that block&#x27;s registers returned a TL-UL error response<br>(unmapped or misaligned offset), and is held until the matching<br>PERIPH_BUS_ERR_CLEAR bit is written. The faulting access also received<br>SLVERR synchronously.<br><br>All bits OR together into a single PIC source, so read this register to<br>identify which block faulted.<br><br>No bit is cleared by a CPU-only reset (the WDT resets the CPU without<br>resetting the peripherals), so a bit read as set immediately after boot may<br>describe a fault from before that reset rather than a new one.</td></tr>
+<tr><td>0x1C0</td><td><a href="#sep_cpu_ctrl-PERIPH_BUS_ERR_CLEAR">PERIPH_BUS_ERR_CLEAR</a></td><td>W</td><td>Clear PERIPH_BUS_ERR_STATUS bits. Writing 1 to a bit emits a single-cycle<br>clear pulse to that block&#x27;s latch; bit order matches<br>PERIPH_BUS_ERR_STATUS. Clears are per-block so acknowledging one block<br>cannot discard a fault another block raised between the status read and<br>this write. A fault arriving in the same cycle as its own clear still<br>latches.</td></tr>
+<tr><td>0x1000</td><td><a href="#sep_cpu_ctrl-SEP_VERSION_ID">SEP_VERSION_ID</a></td><td>R</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="CLOCK_GATE_CTRL"></span><h3 id="sep_cpu_ctrl-CLOCK_GATE_CTRL" data-register-alias="CLOCK_GATE_CTRL">CLOCK_GATE_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>pka_cg_enable</td><td>RW</td><td>0x0</td><td>Reserved - PKA clock-gate enable, not yet implemented.</td></tr>
+</table>
+<span id="REFERENCE_COUNTER"></span><h3 id="sep_cpu_ctrl-REFERENCE_COUNTER" data-register-alias="REFERENCE_COUNTER">REFERENCE_COUNTER</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>rc</td><td>RW</td><td>0x0</td><td>SEP REFERENCE COUNTER, counting after deassert of cold reset. Write once,<br>then poll this register until the readback reflects the written value before<br>writing again. The counter keeps advancing, so the readback is at or just<br>above the written value rather than equal to it.</td></tr>
+</table>
+<span id="TIMEOUT_INTERRUPT"></span><h3 id="sep_cpu_ctrl-TIMEOUT_INTERRUPT" data-register-alias="TIMEOUT_INTERRUPT">TIMEOUT_INTERRUPT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>R</td><td>0x0</td><td>Reserved - timeout interrupt status not yet implemented.</td></tr>
+</table>
+<span id="PKA_CTRL"></span><h3 id="sep_cpu_ctrl-PKA_CTRL" data-register-alias="PKA_CTRL">PKA_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>pka_noise_src_valid</td><td>RW</td><td>0x0</td><td>Reserved - PKA noise source valid, not yet implemented.</td></tr>
+<tr><td>1</td><td>pka_noise_src</td><td>RW</td><td>0x0</td><td>Reserved - PKA noise source select, not yet implemented.</td></tr>
+<tr><td>0</td><td>pka_dpa_disable</td><td>RW</td><td>0x0</td><td>Reserved - disable DPA countermeasures in PKA, not yet implemented.</td></tr>
+</table>
+<span id="TIMEOUT_COUNT_DMA"></span><h3 id="sep_cpu_ctrl-TIMEOUT_COUNT_DMA" data-register-alias="TIMEOUT_COUNT_DMA">TIMEOUT_COUNT_DMA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
+</table>
+<span id="TIMEOUT_COUNT_SYS_IN"></span><h3 id="sep_cpu_ctrl-TIMEOUT_COUNT_SYS_IN" data-register-alias="TIMEOUT_COUNT_SYS_IN">TIMEOUT_COUNT_SYS_IN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
+</table>
+<span id="TIMEOUT_COUNT_MAILBOX_INBOUND"></span><h3 id="sep_cpu_ctrl-TIMEOUT_COUNT_MAILBOX_INBOUND" data-register-alias="TIMEOUT_COUNT_MAILBOX_INBOUND">TIMEOUT_COUNT_MAILBOX_INBOUND</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
+</table>
+<span id="TIMEOUT_COUNT_MAILBOX_OUTBOUND"></span><h3 id="sep_cpu_ctrl-TIMEOUT_COUNT_MAILBOX_OUTBOUND" data-register-alias="TIMEOUT_COUNT_MAILBOX_OUTBOUND">TIMEOUT_COUNT_MAILBOX_OUTBOUND</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
+</table>
+<span id="TIMEOUT_COUNT_ENTROPY_WRITE"></span><h3 id="sep_cpu_ctrl-TIMEOUT_COUNT_ENTROPY_WRITE" data-register-alias="TIMEOUT_COUNT_ENTROPY_WRITE">TIMEOUT_COUNT_ENTROPY_WRITE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
+</table>
+<span id="TIMEOUT_COUNT_ENTROPY_READ"></span><h3 id="sep_cpu_ctrl-TIMEOUT_COUNT_ENTROPY_READ" data-register-alias="TIMEOUT_COUNT_ENTROPY_READ">TIMEOUT_COUNT_ENTROPY_READ</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
+</table>
+<span id="TIMEOUT_COUNT_FILTER_OUT"></span><h3 id="sep_cpu_ctrl-TIMEOUT_COUNT_FILTER_OUT" data-register-alias="TIMEOUT_COUNT_FILTER_OUT">TIMEOUT_COUNT_FILTER_OUT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
+</table>
+<span id="TIMEOUT_COUNT_ALIAS_REMAP"></span><h3 id="sep_cpu_ctrl-TIMEOUT_COUNT_ALIAS_REMAP" data-register-alias="TIMEOUT_COUNT_ALIAS_REMAP">TIMEOUT_COUNT_ALIAS_REMAP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
+</table>
+<span id="TIMEOUT_ENABLE"></span><h3 id="sep_cpu_ctrl-TIMEOUT_ENABLE" data-register-alias="TIMEOUT_ENABLE">TIMEOUT_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout monitors not yet implemented.</td></tr>
+</table>
+<span id="TIMEOUT_CLEAR"></span><h3 id="sep_cpu_ctrl-TIMEOUT_CLEAR" data-register-alias="TIMEOUT_CLEAR">TIMEOUT_CLEAR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>W 1P</td><td>0x0</td><td>Reserved - timeout monitors not yet implemented.</td></tr>
+</table>
+<span id="TIMEOUT_MODE"></span><h3 id="sep_cpu_ctrl-TIMEOUT_MODE" data-register-alias="TIMEOUT_MODE">TIMEOUT_MODE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>W</td><td>0x0</td><td>Reserved - timeout monitors not yet implemented.</td></tr>
+</table>
+<span id="SEP_TEST_CTRL"></span><h3 id="sep_cpu_ctrl-SEP_TEST_CTRL" data-register-alias="SEP_TEST_CTRL">SEP_TEST_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>fast_spi_en</td><td>R</td><td>0x0</td><td>Fast SPI Enable</td></tr>
+<tr><td>30</td><td>fast_iccm_en</td><td>R</td><td>0x0</td><td>Fast ICCM Enable</td></tr>
+<tr><td>29</td><td>fast_dccm_en</td><td>R</td><td>0x0</td><td>Fast DCCM Enable</td></tr>
+<tr><td>28</td><td>fast_sram_en</td><td>R</td><td>0x0</td><td>Fast SRAM Enable</td></tr>
+<tr><td>27</td><td>fast_pka_en</td><td>R</td><td>0x0</td><td>Fast PKA Enable</td></tr>
+<tr><td>26</td><td>sep_standalone</td><td>R</td><td>0x0</td><td>SEP is standalone (not part of eg SMU)</td></tr>
+<tr><td>25:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<span id="SEP_GLOBAL_BASE_ADDR"></span><h3 id="sep_cpu_ctrl-SEP_GLOBAL_BASE_ADDR" data-register-alias="SEP_GLOBAL_BASE_ADDR">SEP_GLOBAL_BASE_ADDR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>55:0</td><td>addr</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<span id="SEP_LOCAL_BASE_ADDR"></span><h3 id="sep_cpu_ctrl-SEP_LOCAL_BASE_ADDR" data-register-alias="SEP_LOCAL_BASE_ADDR">SEP_LOCAL_BASE_ADDR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>55:0</td><td>addr</td><td>RW</td><td>0xD0000000</td><td>-</td></tr>
+</table>
+<span id="SEP_REGION_SIZE"></span><h3 id="sep_cpu_ctrl-SEP_REGION_SIZE" data-register-alias="SEP_REGION_SIZE">SEP_REGION_SIZE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>31:0</td><td>size</td><td>RW</td><td>0x1000000</td><td>-</td></tr>
+</table>
+<span id="SMU_GLOBAL_BASE_ADDR"></span><h3 id="sep_cpu_ctrl-SMU_GLOBAL_BASE_ADDR" data-register-alias="SMU_GLOBAL_BASE_ADDR">SMU_GLOBAL_BASE_ADDR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>55:0</td><td>addr</td><td>RW</td><td>0x80000000</td><td>-</td></tr>
+</table>
+<span id="SMU_REGION_SIZE"></span><h3 id="sep_cpu_ctrl-SMU_REGION_SIZE" data-register-alias="SMU_REGION_SIZE">SMU_REGION_SIZE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>31:0</td><td>size</td><td>RW</td><td>0x40000000</td><td>-</td></tr>
+</table>
+<span id="SMC_FUSE_SENSE_STATUS"></span><h3 id="sep_cpu_ctrl-SMC_FUSE_SENSE_STATUS" data-register-alias="SMC_FUSE_SENSE_STATUS">SMC_FUSE_SENSE_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>smc_fuse_sense_done</td><td>R</td><td>0x0</td><td>This bit indicates when SMC&#x27;s fuse sense is completed. While fuse sense if ongoing, SMC fabric will be in reset. Any requests to the SMC will hang.<br>When this is 1, it is safe to send requests to the SMC.</td></tr>
+</table>
+<span id="SEP_FUSE_SENSE_STATUS"></span><h3 id="sep_cpu_ctrl-SEP_FUSE_SENSE_STATUS" data-register-alias="SEP_FUSE_SENSE_STATUS">SEP_FUSE_SENSE_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>sep_fuse_sense_done</td><td>R</td><td>0x0</td><td>This reg is used to indicate the fuse sense status of SEP.</td></tr>
+</table>
+<span id="SEP_SW_DEBUG"></span><h3 id="sep_cpu_ctrl-SEP_SW_DEBUG" data-register-alias="SEP_SW_DEBUG">SEP_SW_DEBUG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>31:0</td><td>sep_sw_debug</td><td>RW</td><td>0x0</td><td>software writtable debug information. This reg is routed to CLA</td></tr>
+</table>
+<span id="SEP_NMI_VEC"></span><h3 id="sep_cpu_ctrl-SEP_NMI_VEC" data-register-alias="SEP_NMI_VEC">SEP_NMI_VEC</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>31:1</td><td>nmi_vec</td><td>RW</td><td>0x60000080</td><td>NMI vector address [31:1] for VeeR-EL2 CPU. Bit 0 is always 0 (aligned).<br>Address where CPU jumps on Non-Maskable Interrupt. This is used for the<br>WDT Bark interrupt. The reset value does not point at a valid handler --<br>see the register description for the required programming order.</td></tr>
+<tr><td>0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved, bit 0 is always 0 (aligned)</td></tr>
+</table>
+<span id="SEP_NMI_VEC_LOCK"></span><h3 id="sep_cpu_ctrl-SEP_NMI_VEC_LOCK" data-register-alias="SEP_NMI_VEC_LOCK">SEP_NMI_VEC_LOCK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>lock</td><td>RW1S</td><td>0x0</td><td>Lock the NMI vector address. Once locked, the NMI vector address cannot be changed.<br>The NMI interrupt is used for the WDT Bark interrupt.</td></tr>
+</table>
+<span id="EXT_TRNG_SRC_SEL"></span><h3 id="sep_cpu_ctrl-EXT_TRNG_SRC_SEL" data-register-alias="EXT_TRNG_SRC_SEL">EXT_TRNG_SRC_SEL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>sel</td><td>RW</td><td>0x7</td><td>TRNG source select per stream. Bit N selects the source for stream N<br>(bit0 = Key Manager, bit1 = crypto blocks, bit2 = entropy pool).<br>0 = internal DRBG output, 1 = external TRNG (default).</td></tr>
+</table>
+<span id="EXT_TRNG_SRC_SEL_LOCK"></span><h3 id="sep_cpu_ctrl-EXT_TRNG_SRC_SEL_LOCK" data-register-alias="EXT_TRNG_SRC_SEL_LOCK">EXT_TRNG_SRC_SEL_LOCK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>lock</td><td>RW1S</td><td>0x0</td><td>Lock TRNG source selection. Once set, cannot be cleared by software.</td></tr>
+</table>
+<span id="KM_WIPE_CTRL"></span><h3 id="sep_cpu_ctrl-KM_WIPE_CTRL" data-register-alias="KM_WIPE_CTRL">KM_WIPE_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>wipe_state</td><td>RW</td><td>0x0</td><td>Key Manager wipe state. A rising edge zeroes all KPV entries and sets the WIPE_STATE interrupt status.</td></tr>
+</table>
+<span id="DMA_BUS_ERR_STATUS"></span><h3 id="sep_cpu_ctrl-DMA_BUS_ERR_STATUS" data-register-alias="DMA_BUS_ERR_STATUS">DMA_BUS_ERR_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>host_path_err</td><td>R</td><td>0x0</td><td>DMA-master-path fault: either the fabric returned a non-OKAY AXI response<br>to a DMA transfer, or a TL-UL command-integrity check failed on a command<br>issued by the DMA. The latter is a fault-detection event with no other<br>reporting path.</td></tr>
+<tr><td>0</td><td>reg_path_err</td><td>R</td><td>0x0</td><td>Register-path bus error: a CPU access to a Secure DMA register returned<br>a TL-UL error response (unmapped or misaligned offset). The faulting<br>access also received SLVERR synchronously.</td></tr>
+</table>
+<span id="DMA_BUS_ERR_CLEAR"></span><h3 id="sep_cpu_ctrl-DMA_BUS_ERR_CLEAR" data-register-alias="DMA_BUS_ERR_CLEAR">DMA_BUS_ERR_CLEAR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>clr</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear both DMA_BUS_ERR_STATUS bits. Always reads 0.</td></tr>
+</table>
+<span id="PERIPH_BUS_ERR_STATUS"></span><h3 id="sep_cpu_ctrl-PERIPH_BUS_ERR_STATUS" data-register-alias="PERIPH_BUS_ERR_STATUS">PERIPH_BUS_ERR_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>6</td><td>wdt</td><td>R</td><td>0x0</td><td>Watchdog timer register bridge error.</td></tr>
+<tr><td>5</td><td>edn</td><td>R</td><td>0x0</td><td>EDN register bridge error (DRBG EDN path).</td></tr>
+<tr><td>4</td><td>csrng</td><td>R</td><td>0x0</td><td>CSRNG register bridge error (DRBG CSRNG path).</td></tr>
+<tr><td>3</td><td>otbn</td><td>R</td><td>0x0</td><td>OTBN register bridge error.</td></tr>
+<tr><td>2</td><td>kmac</td><td>R</td><td>0x0</td><td>KMAC register bridge error.</td></tr>
+<tr><td>1</td><td>hmac</td><td>R</td><td>0x0</td><td>HMAC register bridge error.</td></tr>
+<tr><td>0</td><td>aes</td><td>R</td><td>0x0</td><td>AES register bridge error.</td></tr>
+</table>
+<span id="PERIPH_BUS_ERR_CLEAR"></span><h3 id="sep_cpu_ctrl-PERIPH_BUS_ERR_CLEAR" data-register-alias="PERIPH_BUS_ERR_CLEAR">PERIPH_BUS_ERR_CLEAR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>6</td><td>wdt</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.</td></tr>
+<tr><td>5</td><td>edn</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.edn. Always reads 0.</td></tr>
+<tr><td>4</td><td>csrng</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.csrng. Always reads 0.</td></tr>
+<tr><td>3</td><td>otbn</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.otbn. Always reads 0.</td></tr>
+<tr><td>2</td><td>kmac</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.kmac. Always reads 0.</td></tr>
+<tr><td>1</td><td>hmac</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.hmac. Always reads 0.</td></tr>
+<tr><td>0</td><td>aes</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.aes. Always reads 0.</td></tr>
+</table>
+<span id="SEP_VERSION_ID"></span><h3 id="sep_cpu_ctrl-SEP_VERSION_ID" data-register-alias="SEP_VERSION_ID">SEP_VERSION_ID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>31:0</td><td>version_id</td><td>R</td><td>0xDEADBEEF</td><td>Version ID for the CPU</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

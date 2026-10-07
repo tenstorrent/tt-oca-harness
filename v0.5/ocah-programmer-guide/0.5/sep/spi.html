@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Serial Peripheral Interface (SPI) :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP SPI host capabilities, register access, interrupts, and DMA integration.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-programmer-guide" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Programmer&#x27;s Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Programmer&#8217;s Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../index.html#smc-programming-guide">SMC Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../index.html#sep-programming-guide">SEP Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../index.html#sep-smc-common-blocks-communication">SEP &amp; SMC Common Blocks &amp; Communication</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../index.html#dtp-programming-guide">DTP Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../index.html#aou-software-operation-guide">AoU Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#smc-boot-rom">A. SMC Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#sep-boot-rom">B. SEP Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#km-application-rom">C. Key Manager Application ROM</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Programmer&#x27;s Guide 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../index.html">Programmer&#8217;s Guide</a></li>
+    <li><a href="spi.html">Serial Peripheral Interface (SPI)</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Serial Peripheral Interface (SPI)</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="serial-peripheral-interface-spi-serial-peripheral-interface-spi" class="paragraph">
+<p>SEP instantiates one OpenTitan SPI Host for software-controlled access to
+external devices. NOR flash is the primary source of the BL1 boot image.
+The controller uses commands and transmit/receive FIFOs; it does not provide
+a memory-mapped flash window for execute-in-place (XIP) access.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="spi-use-cases"><a class="anchor" href="#spi-use-cases"></a><a class="link" href="#spi-use-cases">1. Use Cases</a></h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p>Read the BL1 boot image from external NOR flash.</p>
+</li>
+<li>
+<p>Connect to sensors, particularly in automotive applications.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The intended flash interface uses the x1 and x4 modes of MT25-class devices.
+The host cannot drive the octal x8 DDR interface of MT35-class devices.
+Select a flash device and command protocol compatible with the supported
+modes below.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="features"><a class="anchor" href="#features"></a><a class="link" href="#features">2. Features</a></h2>
+<div class="sectionbody">
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Capability</th>
+<th class="tableblock halign-left valign-top">SEP implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Transfer width</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Standard (x1), dual (x2) and quad (x4), selected per command segment.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Transfer rate</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Single transfer rate only. No octal (x8), DDR or DQS read-data strobe.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chip select</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">One chip-select output. The wrapper parameter <code>NUM_CS</code> supports other counts, but <code>sep_io</code> instantiates it with <code>NUM_CS = 1</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Data buffering</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Separate transmit and receive FIFOs, with independently defined depths in the core configuration.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Register interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32-bit AXI4-Lite converted to the core&#8217;s native TL-UL interface.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External signals</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SCK, active-low chip select and four bidirectional data lines, with output enables.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The frequency targets are up to 80 MHz in x1 mode and 166 MHz in x4 mode.
+These are design targets, not guaranteed operating limits for an integrated
+platform. Software sets the serial clock through <code>CONFIGOPTS.CLKDIV</code>:
+<code>f_SCK = f_clk_i / (2 * (CLKDIV + 1))</code>. Select the divider and sampling timing
+for the attached device and the platform&#8217;s validated clock and I/O timing.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-spi-integration"><a class="anchor" href="#sep-spi-integration"></a><a class="link" href="#sep-spi-integration">3. Integration and Register Access</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>sep_io</code> narrows the 64-bit peripheral AXI bus to 32 bits. The
+<code>sep_ot_spi_wrap</code> wrapper then converts AXI4-Lite accesses to TL-UL for the
+vendored OpenTitan SPI Host. Software submits command segments and moves data
+through the FIFOs; controller activity is available in <code>STATUS.ACTIVE</code>,
+not on a separate busy output.</p>
+</div>
+<div class="paragraph">
+<p>An 8-byte write is split into two 4-byte writes. If the byte strobes select
+only one half, the other reaches the AXI4-Lite bridge with all strobes clear.
+The bridge completes that no-op locally with OKAY and sends no TL-UL request.
+Forwarding it to the core would set <code>ERROR_STATUS.ACCESSINVAL</code> and return
+an error.</p>
+</div>
+<div class="paragraph">
+<p>The core&#8217;s access-control (RACL) interface is disabled and its SPI pass-through
+interface is tied inactive. SEP contains no SPI slave device and does not use
+the pass-through arrangement that lets a discrete secure element interpose on
+another SPI device&#8217;s traffic. An integration requiring XIP, octal or DDR
+operation needs a different controller; <code>sep_io_spi</code> is the existing SPI
+integration boundary.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-spi-interrupts"><a class="anchor" href="#sep-spi-interrupts"></a><a class="link" href="#sep-spi-interrupts">4. Interrupts</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The core&#8217;s error and SPI-event interrupt outputs are ORed onto one line.
+The <code>irq</code> field of <code>sep_io_spi_req_t</code> carries that line to
+<code>sep_internal_interrupts</code> and the SEP PIC. Software reads <code>INTR_STATE</code> to
+identify the source.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top"><code>INTR_STATE</code> bit</th>
+<th class="tableblock halign-left valign-top">Behavior and clearing</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ERROR</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Latched event. An enabled error event or an <code>INTR_TEST</code> write sets it.
+It remains set after the cause disappears or <code>INTR_TEST</code> is written back to
+zero. Clear it by writing 1 to the state bit; clearing <code>ERROR_STATUS</code> alone
+does not clear it.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SPI_EVENT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Level-sensitive status of the conditions selected by <code>EVENT_ENABLE</code>.
+Service the condition or change its selection to remove the source; it is
+not a latched error event.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>INTR_ENABLE</code> qualifies only the outgoing interrupt line. It does not gate
+either state bit. <code>ERROR_ENABLE</code> selects the configurable error events;
+invalid register accesses always generate an error event.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-spi-dma"><a class="anchor" href="#sep-spi-dma"></a><a class="link" href="#sep-spi-dma">5. DMA Trigger</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The host&#8217;s <code>lsio_trigger_o</code> connects to Secure DMA handshake input 0. It is
+the registered OR of the transmit and receive watermark conditions:
+<code>TXQD &lt; TX_WATERMARK</code> or <code>RXQD &gt;= RX_WATERMARK</code>. These thresholds are in
+32-bit FIFO words. The trigger does not depend on <code>EVENT_ENABLE</code> or
+<code>INTR_ENABLE</code>; interrupt selection and DMA pacing are separate controls.
+Configure the FIFO watermarks for the intended transfer direction and use
+the DMA chapter&#8217;s handshake setup.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-spi-core-reference"><a class="anchor" href="#sep-spi-core-reference"></a><a class="link" href="#sep-spi-core-reference">6. Core Reference</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The
+<a href="https://opentitan.org/book/hw/ip/spi_host/index.html">OpenTitan SPI Host documentation</a>
+describes core operation and command sequencing. The register map below
+records the integrated core&#8217;s registers and fields. The Programmer&#8217;s Guide gives the
+<a href="../index.html#sep-spi-host" class="xref page">programming guidance</a>
+for this block.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-map-and-register-reference"><a class="anchor" href="#memory-map-and-register-reference"></a><a class="link" href="#memory-map-and-register-reference">7. Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<span id="register-reference"></span>
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">7.1. Memory Map</a></h3>
+<div class="paragraph">
+<p>Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">7.2. Detailed Register Map</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-spi_controller">SPI Host</h2>
+<p>Serial peripheral interface for host mode, suitable for interfacing external serial NOR flash devices</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#spi_controller-INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#spi_controller-INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#spi_controller-INTR_TEST">INTR_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#spi_controller-ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#spi_controller-CONTROL">CONTROL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x14</td><td><a href="#spi_controller-STATUS">STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#spi_controller-CONFIGOPTS">CONFIGOPTS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1C</td><td><a href="#spi_controller-CSID">CSID</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#spi_controller-COMMAND">COMMAND</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x2C</td><td><a href="#spi_controller-ERROR_ENABLE">ERROR_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x30</td><td><a href="#spi_controller-ERROR_STATUS">ERROR_STATUS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x34</td><td><a href="#spi_controller-EVENT_ENABLE">EVENT_ENABLE</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="INTR_STATE"></span><h3 id="spi_controller-INTR_STATE" data-register-alias="INTR_STATE">INTR_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>SPI_EVENT</td><td>R</td><td>0x0</td><td>Event-related interrupts, see !!EVENT_ENABLE register for more<br>information.</td></tr>
+<tr><td>0</td><td>ERROR</td><td>RW1C</td><td>0x0</td><td>Error-related interrupts, see !!ERROR_ENABLE register for more<br>information.</td></tr>
+</table>
+<span id="INTR_ENABLE"></span><h3 id="spi_controller-INTR_ENABLE" data-register-alias="INTR_ENABLE">INTR_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>SPI_EVENT</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.spi_event is set.</td></tr>
+<tr><td>0</td><td>ERROR</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.error is set.</td></tr>
+</table>
+<span id="INTR_TEST"></span><h3 id="spi_controller-INTR_TEST" data-register-alias="INTR_TEST">INTR_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>SPI_EVENT</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.spi_event to 1.</td></tr>
+<tr><td>0</td><td>ERROR</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.error to 1.</td></tr>
+</table>
+<span id="ALERT_TEST"></span><h3 id="spi_controller-ALERT_TEST" data-register-alias="ALERT_TEST">ALERT_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>FATAL_FAULT</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+</table>
+<span id="CONTROL"></span><h3 id="spi_controller-CONTROL" data-register-alias="CONTROL">CONTROL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>SPIEN</td><td>RW</td><td>0x0</td><td>Enables the SPI host.  On reset, this field is 0, meaning<br>that no transactions can proceed.</td></tr>
+<tr><td>30</td><td>SW_RST</td><td>RW</td><td>0x0</td><td>Clears the internal state (not registers) to the reset state when set to 1,<br>including the FIFOs, the CDC&#x27;s, the core state machine and the shift register.<br>In the current implementation, the CDC FIFOs are drained not reset.<br>Therefore software must confirm that both FIFO&#x27;s empty before releasing<br>the IP from reset.</td></tr>
+<tr><td>29</td><td>OUTPUT_EN</td><td>RW</td><td>0x0</td><td>Enable the SPI host output buffers for the sck, csb, and sd lines.  This allows<br>the SPI_HOST IP to connect to the same bus as other SPI controllers without<br>interference.</td></tr>
+<tr><td>28:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:8</td><td>TX_WATERMARK</td><td>RW</td><td>0x0</td><td>If !!EVENT_ENABLE.TXWM is set, the IP will send<br>an interrupt when the depth of the TX FIFO drops below<br>TX_WATERMARK words (32b each).</td></tr>
+<tr><td>7:0</td><td>RX_WATERMARK</td><td>RW</td><td>0x7F</td><td>If !!EVENT_ENABLE.RXWM is set, the IP will send<br>an interrupt when the depth of the RX FIFO reaches<br>RX_WATERMARK words (32b each).</td></tr>
+</table>
+<span id="STATUS"></span><h3 id="spi_controller-STATUS" data-register-alias="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>READY</td><td>R</td><td>0x0</td><td>When high, indicates the SPI host is ready to receive<br>commands. Writing to COMMAND when READY is low is<br>an error, and will trigger an interrupt.</td></tr>
+<tr><td>30</td><td>ACTIVE</td><td>R</td><td>0x0</td><td>When high, indicates the SPI host is processing a previously<br>issued command.</td></tr>
+<tr><td>29</td><td>TXFULL</td><td>R</td><td>0x0</td><td>When high, indicates that the transmit data fifo is full.<br>Any further writes to !!TXDATA will create an error interrupt.</td></tr>
+<tr><td>28</td><td>TXEMPTY</td><td>R</td><td>0x0</td><td>When high, indicates that the transmit data fifo is empty.</td></tr>
+<tr><td>27</td><td>TXSTALL</td><td>R</td><td>0x0</td><td>If high, signifies that an ongoing transaction has stalled<br>due to lack of data in the TX FIFO</td></tr>
+<tr><td>26</td><td>TXWM</td><td>R</td><td>0x0</td><td>If high, the amount of data in the TX FIFO has fallen below the<br>level of !!CONTROL.TX_WATERMARK words (32b each).</td></tr>
+<tr><td>25</td><td>RXFULL</td><td>R</td><td>0x0</td><td>When high, indicates that the receive fifo is full.  Any<br>ongoing transactions will stall until firmware reads some<br>data from !!RXDATA.</td></tr>
+<tr><td>24</td><td>RXEMPTY</td><td>R</td><td>0x0</td><td>When high, indicates that the receive fifo is empty.<br>Any reads from RX FIFO will cause an error interrupt.</td></tr>
+<tr><td>23</td><td>RXSTALL</td><td>R</td><td>0x0</td><td>If high, signifies that an ongoing transaction has stalled<br>due to lack of available space in the RX FIFO</td></tr>
+<tr><td>22</td><td>BYTEORDER</td><td>R</td><td>0x0</td><td>The value of the ByteOrder parameter, provided so that firmware<br>can confirm proper IP configuration.</td></tr>
+<tr><td>21</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>20</td><td>RXWM</td><td>R</td><td>0x0</td><td>If high, the number of 32-bits in the RX FIFO now exceeds the<br>!!CONTROL.RX_WATERMARK entries (32b each).</td></tr>
+<tr><td>19:16</td><td>CMDQD</td><td>R</td><td>0x0</td><td>Command queue depth. Indicates how many unread 32-bit words are<br>currently in the command segment queue.</td></tr>
+<tr><td>15:8</td><td>RXQD</td><td>R</td><td>0x0</td><td>Receive queue depth. Indicates how many unread 32-bit words are<br>currently in the RX FIFO.  When active, this result may an<br>underestimate due to synchronization delays.</td></tr>
+<tr><td>7:0</td><td>TXQD</td><td>R</td><td>0x0</td><td>Transmit queue depth.<br>Indicates how many unsent 32-bit words are currently in the TX FIFO.<br>When active, this result may be an overestimate due to synchronization delays.</td></tr>
+</table>
+<span id="CONFIGOPTS"></span><h3 id="spi_controller-CONFIGOPTS" data-register-alias="CONFIGOPTS">CONFIGOPTS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>CPOL</td><td>RW</td><td>0x0</td><td>The polarity of the sck clock signal.  When CPOL is 0,<br>sck is low when idle, and emits high pulses.   When CPOL<br>is 1, sck is high when idle, and emits a series of low<br>pulses.</td></tr>
+<tr><td>30</td><td>CPHA</td><td>RW</td><td>0x0</td><td>The phase of the sck clock signal relative to the data. When<br>CPHA = 0, the data changes on the trailing edge of sck<br>and is typically sampled on the leading edge.  Conversely<br>if CPHA = 1 high, data lines change on the leading edge of<br>sck and are typically sampled on the trailing edge.<br>CPHA should be chosen to match the phase of the selected<br>device.  The sampling behavior is modified by the<br>!!CONFIGOPTS.FULLCYC bit.</td></tr>
+<tr><td>29</td><td>FULLCYC</td><td>RW</td><td>0x0</td><td>Full cycle.  Modifies the CPHA sampling behaviour to allow<br>for longer device logic setup times.  Rather than sampling the SD<br>bus a half cycle after shifting out data, the data is sampled<br>a full cycle after shifting data out.  This means that if<br>CPHA = 0, data is shifted out on the trailing edge, and<br>sampled a full cycle later.  If CPHA = 1, data is shifted and<br>sampled with the trailing edge, also separated by a<br>full cycle.</td></tr>
+<tr><td>28</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>27:24</td><td>CSNLEAD</td><td>RW</td><td>0x0</td><td>CS_N Leading Time.  Indicates the number of half sck cycles,<br>CSNLEAD+1, to leave between the falling edge of cs_n and<br>the first edge of sck.  Setting this register to zero<br>corresponds to the minimum delay of one-half sck cycle</td></tr>
+<tr><td>23:20</td><td>CSNTRAIL</td><td>RW</td><td>0x0</td><td>CS_N Trailing Time.  Indicates the number of half sck cycles,<br>CSNTRAIL+1, to leave between last edge of sck and the rising<br>edge of cs_n. Setting this register to zero corresponds<br>to the minimum delay of one-half sck cycle.</td></tr>
+<tr><td>19:16</td><td>CSNIDLE</td><td>RW</td><td>0x0</td><td>Minimum idle time between commands. Indicates the minimum<br>number of sck half-cycles to hold cs_n high between commands.<br>Setting this register to zero creates a minimally-wide CS_N-high<br>pulse of one-half sck cycle.</td></tr>
+<tr><td>15:0</td><td>CLKDIV</td><td>RW</td><td>0x0</td><td>Core clock divider.  Slows down subsequent SPI transactions by a<br>factor of (CLKDIV+1) relative to the core clock frequency.  The<br>period of sck, T(sck) then becomes `2*(CLK_DIV+1)*T(core)`</td></tr>
+</table>
+<span id="CSID"></span><h3 id="spi_controller-CSID" data-register-alias="CSID">CSID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>CSID</td><td>RW</td><td>0x0</td><td>Chip Select ID</td></tr>
+</table>
+<span id="COMMAND"></span><h3 id="spi_controller-COMMAND" data-register-alias="COMMAND">COMMAND</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:25</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>24:5</td><td>LEN</td><td>W</td><td>0x0</td><td>Segment Length.<br><br>For read or write segments, this field controls the<br>number of 1-byte bursts to transmit and or receive in<br>this command segment.  The number of cycles required<br>to send or received a byte will depend on !!COMMAND.SPEED.<br>For dummy segments, (!!COMMAND.DIRECTION == 0), this register<br>controls the number of dummy cycles to issue.<br>The number of bytes (or dummy cycles) in the segment will be<br>equal to !!COMMAND.LEN + 1.</td></tr>
+<tr><td>4:3</td><td>DIRECTION</td><td>W</td><td>0x0</td><td>The direction for the following command: &quot;0&quot; = Dummy cycles<br>(no TX/RX). &quot;1&quot; = Rx only, &quot;2&quot; = Tx only, &quot;3&quot; = Bidirectional<br>Tx/Rx (Standard SPI mode only).</td></tr>
+<tr><td>2:1</td><td>SPEED</td><td>W</td><td>0x0</td><td>The speed for this command segment: &quot;0&quot; = Standard SPI. &quot;1&quot; = Dual SPI.<br>&quot;2&quot;=Quad SPI,  &quot;3&quot;: RESERVED.</td></tr>
+<tr><td>0</td><td>CSAAT</td><td>W</td><td>0x0</td><td>**C**hip **S**elect **A**ctive **A**fter **T**ransaction.<br>If !!COMMAND.CSAAT = 0, the chip select line is raised immediately<br>at the end of the command segment.<br>If !!COMMAND.CSAAT = 1, the chip select line is left low at the<br>end of the current transaction segment.<br>This allows the creation of longer, more complete SPI transactions,<br>consisting of several separate segments for issuing instructions,<br>pausing for dummy cycles, and transmitting or receiving data from<br>the device.</td></tr>
+</table>
+<span id="ERROR_ENABLE"></span><h3 id="spi_controller-ERROR_ENABLE" data-register-alias="ERROR_ENABLE">ERROR_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>CSIDINVAL</td><td>RW</td><td>0x1</td><td>Invalid CSID: If this bit is set, the block sends an error interrupt whenever<br>a command is submitted, but CSID exceeds NumCS.</td></tr>
+<tr><td>3</td><td>CMDINVAL</td><td>RW</td><td>0x1</td><td>Invalid Command Errors: If this bit is set, the block sends an<br>error interrupt whenever a command is sent with invalid values for<br>!!COMMAND.SPEED or !!COMMAND.DIRECTION.</td></tr>
+<tr><td>2</td><td>UNDERFLOW</td><td>RW</td><td>0x1</td><td>Underflow Errors: If this bit is set, the block sends an<br>error interrupt whenever there is a read from !!RXDATA<br>but the RX FIFO is empty.</td></tr>
+<tr><td>1</td><td>OVERFLOW</td><td>RW</td><td>0x1</td><td>Overflow Errors: If this bit is set, the block sends an<br>error interrupt whenever the TX FIFO overflows.</td></tr>
+<tr><td>0</td><td>CMDBUSY</td><td>RW</td><td>0x1</td><td>Command Error: If this bit is set, the block sends an error<br>interrupt whenever a command is issued while busy (i.e. a 1 is<br>when !!STATUS.READY is not asserted.)</td></tr>
+</table>
+<span id="ERROR_STATUS"></span><h3 id="spi_controller-ERROR_STATUS" data-register-alias="ERROR_STATUS">ERROR_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5</td><td>ACCESSINVAL</td><td>RW1C</td><td>0x0</td><td>Indicates that TLUL attempted to write to TXDATA with no bytes enabled. Such<br>&#x27;zero byte&#x27; writes are not supported.</td></tr>
+<tr><td>4</td><td>CSIDINVAL</td><td>RW1C</td><td>0x0</td><td>Indicates a command was attempted with an invalid value for !!CSID.</td></tr>
+<tr><td>3</td><td>CMDINVAL</td><td>RW1C</td><td>0x0</td><td>Indicates an invalid command segment, meaning either an invalid value of<br>!!COMMAND.SPEED or a request for bidirectional data transfer at dual or quad<br>speed</td></tr>
+<tr><td>2</td><td>UNDERFLOW</td><td>RW1C</td><td>0x0</td><td>Indicates that firmware has attempted to read from<br>!!RXDATA when the RX FIFO is empty.</td></tr>
+<tr><td>1</td><td>OVERFLOW</td><td>RW1C</td><td>0x0</td><td>Indicates that firmware has overflowed the TX FIFO</td></tr>
+<tr><td>0</td><td>CMDBUSY</td><td>RW1C</td><td>0x0</td><td>Indicates a write to !!COMMAND when !!STATUS.READY = 0.</td></tr>
+</table>
+<span id="EVENT_ENABLE"></span><h3 id="spi_controller-EVENT_ENABLE" data-register-alias="EVENT_ENABLE">EVENT_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5</td><td>IDLE</td><td>RW</td><td>0x0</td><td>Assert to send a spi_event interrupt whenever !!STATUS.ACTIVE<br>goes low</td></tr>
+<tr><td>4</td><td>READY</td><td>RW</td><td>0x0</td><td>Assert to send a spi_event interrupt whenever !!STATUS.READY<br>goes high</td></tr>
+<tr><td>3</td><td>TXWM</td><td>RW</td><td>0x0</td><td>Assert to send a spi_event interrupt whenever the number of 32-bit words in<br>the TX FIFO is less than !!CONTROL.TX_WATERMARK.  To prevent the<br>reassertion of this interrupt add more data to the TX FIFO, or<br>reduce !!CONTROL.TX_WATERMARK.</td></tr>
+<tr><td>2</td><td>RXWM</td><td>RW</td><td>0x0</td><td>Assert to send a spi_event interrupt whenever the number of 32-bit words in<br>the RX FIFO is greater than !!CONTROL.RX_WATERMARK. To prevent the<br>reassertion of this interrupt, read more data from the RX FIFO, or<br>increase !!CONTROL.RX_WATERMARK.</td></tr>
+<tr><td>1</td><td>TXEMPTY</td><td>RW</td><td>0x0</td><td>Assert to send a spi_event interrupt whenever !!STATUS.TXEMPTY<br>goes high</td></tr>
+<tr><td>0</td><td>RXFULL</td><td>RW</td><td>0x0</td><td>Assert to send a spi_event interrupt whenever !!STATUS.RXFULL<br>goes high</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

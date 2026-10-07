@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="654" viewBox="0 0 920 654" role="img" aria-labelledby="title desc">
+<title id="title">SEP AXI4 connectivity</title>
+<desc id="desc">Columns are the SEP local crossbar initiators, ifu_sram, lsu, dbg, dma and ext; rows are its ten targets, plus the boot ROM, which the IFU and LSU reach through a dedicated AXI mux outside the crossbar. A filled circle marks a permitted path and a dash marks none, following the Connectivity parameter in sep_local_axi_xbar_pkg.sv.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+</style>
+</defs>
+<rect width="920" height="654" fill="#ffffff"/>
+<text class="bs" x="14" y="26" text-anchor="start">Crossbar targets</text>
+<text class="bs" x="643" y="26" text-anchor="middle">Initiators</text>
+<rect class="fabric" x="14" y="38" width="892" height="56" rx="5"/>
+<text class="bs" x="432.6" y="63" text-anchor="middle">CPU IFU</text>
+<text class="bs" x="432.6" y="79" text-anchor="middle">ifu_sram</text>
+<text class="bs" x="537.8" y="63" text-anchor="middle">CPU LSU</text>
+<text class="bs" x="537.8" y="79" text-anchor="middle">lsu</text>
+<text class="bs" x="643" y="63" text-anchor="middle">CPU debug</text>
+<text class="bs" x="643" y="79" text-anchor="middle">dbg</text>
+<text class="bs" x="748.2" y="63" text-anchor="middle">DMA</text>
+<text class="bs" x="748.2" y="79" text-anchor="middle">dma</text>
+<text class="bs" x="853.4" y="63" text-anchor="middle">SMN inbound</text>
+<text class="bs" x="853.4" y="79" text-anchor="middle">ext</text>
+<rect x="14" y="100" width="892" height="40" rx="3" fill="#f8f4eb"/>
+<text class="t" x="30" y="125" text-anchor="start">cpu_tcm (CPU TCM)</text>
+<path d="M425.6,120 L439.6,120" stroke="#5b6670" stroke-width="2"/>
+<path d="M530.8,120 L544.8,120" stroke="#5b6670" stroke-width="2"/>
+<path d="M636,120 L650,120" stroke="#5b6670" stroke-width="2"/>
+<circle cx="748.2" cy="120" r="6.5" fill="#103525"/>
+<path d="M846.4,120 L860.4,120" stroke="#5b6670" stroke-width="2"/>
+<text class="t" x="30" y="167" text-anchor="start">sram (SEP SRAM)</text>
+<circle cx="432.6" cy="162" r="6.5" fill="#103525"/>
+<circle cx="537.8" cy="162" r="6.5" fill="#103525"/>
+<circle cx="643" cy="162" r="6.5" fill="#103525"/>
+<circle cx="748.2" cy="162" r="6.5" fill="#103525"/>
+<circle cx="853.4" cy="162" r="6.5" fill="#103525"/>
+<rect x="14" y="184" width="892" height="40" rx="3" fill="#f8f4eb"/>
+<text class="t" x="30" y="209" text-anchor="start">dma_csr (DMA registers)</text>
+<path d="M425.6,204 L439.6,204" stroke="#5b6670" stroke-width="2"/>
+<circle cx="537.8" cy="204" r="6.5" fill="#103525"/>
+<circle cx="643" cy="204" r="6.5" fill="#103525"/>
+<path d="M741.2,204 L755.2,204" stroke="#5b6670" stroke-width="2"/>
+<circle cx="853.4" cy="204" r="6.5" fill="#103525"/>
+<text class="t" x="30" y="251" text-anchor="start">sep_wdt (watchdog)</text>
+<path d="M425.6,246 L439.6,246" stroke="#5b6670" stroke-width="2"/>
+<circle cx="537.8" cy="246" r="6.5" fill="#103525"/>
+<circle cx="643" cy="246" r="6.5" fill="#103525"/>
+<circle cx="748.2" cy="246" r="6.5" fill="#103525"/>
+<circle cx="853.4" cy="246" r="6.5" fill="#103525"/>
+<rect x="14" y="268" width="892" height="40" rx="3" fill="#f8f4eb"/>
+<text class="t" x="30" y="293" text-anchor="start">sep_reset_ctrl (reset controller)</text>
+<path d="M425.6,288 L439.6,288" stroke="#5b6670" stroke-width="2"/>
+<circle cx="537.8" cy="288" r="6.5" fill="#103525"/>
+<circle cx="643" cy="288" r="6.5" fill="#103525"/>
+<circle cx="748.2" cy="288" r="6.5" fill="#103525"/>
+<path d="M846.4,288 L860.4,288" stroke="#5b6670" stroke-width="2"/>
+<text class="t" x="30" y="335" text-anchor="start">sep_crypto (crypto)</text>
+<path d="M425.6,330 L439.6,330" stroke="#5b6670" stroke-width="2"/>
+<circle cx="537.8" cy="330" r="6.5" fill="#103525"/>
+<circle cx="643" cy="330" r="6.5" fill="#103525"/>
+<circle cx="748.2" cy="330" r="6.5" fill="#103525"/>
+<circle cx="853.4" cy="330" r="6.5" fill="#103525"/>
+<rect x="14" y="352" width="892" height="40" rx="3" fill="#f8f4eb"/>
+<text class="t" x="30" y="377" text-anchor="start">sep_system_peripherals (system peripherals)</text>
+<path d="M425.6,372 L439.6,372" stroke="#5b6670" stroke-width="2"/>
+<circle cx="537.8" cy="372" r="6.5" fill="#103525"/>
+<circle cx="643" cy="372" r="6.5" fill="#103525"/>
+<circle cx="748.2" cy="372" r="6.5" fill="#103525"/>
+<path d="M846.4,372 L860.4,372" stroke="#5b6670" stroke-width="2"/>
+<text class="t" x="30" y="419" text-anchor="start">sep_io (SPI host)</text>
+<path d="M425.6,414 L439.6,414" stroke="#5b6670" stroke-width="2"/>
+<circle cx="537.8" cy="414" r="6.5" fill="#103525"/>
+<circle cx="643" cy="414" r="6.5" fill="#103525"/>
+<circle cx="748.2" cy="414" r="6.5" fill="#103525"/>
+<circle cx="853.4" cy="414" r="6.5" fill="#103525"/>
+<rect x="14" y="436" width="892" height="40" rx="3" fill="#f8f4eb"/>
+<text class="t" x="30" y="461" text-anchor="start">entropy_fifo (entropy pool)</text>
+<path d="M425.6,456 L439.6,456" stroke="#5b6670" stroke-width="2"/>
+<circle cx="537.8" cy="456" r="6.5" fill="#103525"/>
+<circle cx="643" cy="456" r="6.5" fill="#103525"/>
+<path d="M741.2,456 L755.2,456" stroke="#5b6670" stroke-width="2"/>
+<circle cx="853.4" cy="456" r="6.5" fill="#103525"/>
+<text class="t" x="30" y="503" text-anchor="start">sep_external (extension, eFuse shim)</text>
+<path d="M425.6,498 L439.6,498" stroke="#5b6670" stroke-width="2"/>
+<circle cx="537.8" cy="498" r="6.5" fill="#103525"/>
+<circle cx="643" cy="498" r="6.5" fill="#103525"/>
+<circle cx="748.2" cy="498" r="6.5" fill="#103525"/>
+<circle cx="853.4" cy="498" r="6.5" fill="#103525"/>
+<text class="bs" x="14" y="546" text-anchor="start">Dedicated path, outside the crossbar</text>
+<rect x="14" y="558" width="892" height="40" rx="3" fill="#f8f4eb"/>
+<text class="t" x="30" y="583" text-anchor="start">boot ROM (u_boot_rom_axi_mux)</text>
+<circle cx="432.6" cy="578" r="6.5" fill="#103525"/>
+<circle cx="537.8" cy="578" r="6.5" fill="#103525"/>
+<path d="M636,578 L650,578" stroke="#5b6670" stroke-width="2"/>
+<path d="M741.2,578 L755.2,578" stroke="#5b6670" stroke-width="2"/>
+<path d="M846.4,578 L860.4,578" stroke="#5b6670" stroke-width="2"/>
+<circle cx="22" cy="627" r="6.5" fill="#103525"/>
+<text class="s" x="38" y="632" text-anchor="start">Connected</text>
+<path d="M134,627 L148,627" stroke="#5b6670" stroke-width="2"/>
+<text class="s" x="158" y="632" text-anchor="start">Not connected</text>
+</svg>

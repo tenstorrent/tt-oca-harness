@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="746" viewBox="0 0 1040 746" role="img" aria-labelledby="title desc">
+<title id="title">DTP JTAG scan-chain topology</title>
+<desc id="desc">Scan-chain topology of the JTAG interface unit u_jtag_intf_unit. TCK, TMS and TRST_n drive the TAP controller of the primary TAP u_jtag_ptap. TDI fans out to the 6-bit instruction register, the internal data registers, the three optional JTAG2AXI bridge registers, the external boundary-scan chain and the iJTAG chain. The iJTAG chain runs through three SIBs in series, u_dft_secure_sib, u_dft_nonsecure_sib and u_dfd_sib; each SIB bit, when open, inserts its external scan segment after it, and the dft_secure, dft_nonsecure and dfd debug-disable fields hold each one closed. The IR and TDR mux selects the instruction register in Shift-IR, or in Shift-DR the register the instruction selects: the boundary-scan return under EXTEST, SAMPLE/PRELOAD, EXTEST_TRAIN, EXTEST_PULSE and INTEST, and the iJTAG return under SELECT_IJTAG and RUNBIST. The zero-length bypass mux takes the IR and TDR mux on input 0 and TDI on input 1, which it selects during a ZERO_LENGTH_BYPASS DR scan while the TAP_3DCR STAP-select bit is clear. Its output, the PTAP output, feeds both the TDO mux and the secondary TAP chain: the optional STAPs u_stap_io, u_stap_smc_dbg, u_stap_sep_dbg and NUM_EXTRA_STAPS instances of u_stap_extra in series, each of which can splice in its secondary TAP, the next chiplet's TAP chain, the SMC CPU debug TAP, the SEP CPU debug TAP or a local TAP. Each is gated by its debug-disable field: stap_io, stap_smc, stap_sep or stap_extra. After the last STAP the chain leaves for an external STAP chain; the stap_host field selects input 1 of the stap_host mux, replacing its return with the last STAP's output. The TDO mux selects the STAP chain return on input 1 while the TAP_3DCR STAP-select bit is set, and the PTAP output on input 0 otherwise. Its output is retimed on the falling edge of TCK and reaches input 0 of the zero-length bypass TDO mux, whose input 1 taps the TDO mux output before the retimer; during a ZERO_LENGTH_BYPASS DR scan with the STAP-select bit clear TDO takes input 1, unretimed. While the bit is set, ZERO_LENGTH_BYPASS behaves as BYPASS: the IR and TDR mux passes the bypass register into the STAP chain and TDO is retimed.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.axil { fill: none; stroke: #103525; stroke-width: 1.5; marker-start: url(#as); marker-end: url(#ae); }
+.sigd { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 5 4; marker-end: url(#ge); }
+.axin { fill: none; stroke: #103525; stroke-width: 2.5; }
+.axis { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); }
+.axie { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#ae); }
+.axiln { fill: none; stroke: #103525; stroke-width: 1.5; }
+.jt { fill: none; stroke: #42759b; stroke-width: 1.8; }
+</style>
+</defs>
+<rect width="1040" height="746" fill="#ffffff"/>
+<rect class="smu" x="130" y="84" width="866" height="522" rx="6"/>
+<text class="bs" x="196" y="596" text-anchor="start">u_jtag_intf_unit</text>
+<rect class="smu" x="146" y="226" width="838" height="248" rx="6"/>
+<text class="bs" x="196" y="464" text-anchor="start">u_jtag_ptap</text>
+<rect class="core" x="162" y="234" width="150" height="30" rx="6"/>
+<text class="t" x="245" y="254" text-anchor="middle">TAP controller</text>
+<path class="jtag" d="M8,249 L142,249"/>
+<text class="s" x="8" y="241" text-anchor="start">TCK, TMS, TRST_n</text>
+<path class="jt" d="M8,284 L184,284"/>
+<text class="s" x="8" y="276" text-anchor="start">TDI</text>
+<circle cx="184" cy="284" r="3.5" fill="#42759b"/>
+<path class="jt" d="M184,284 L184,541"/>
+<path class="jtag" d="M184,541 L184,627"/>
+<rect class="core" x="206" y="298" width="116" height="28" rx="4"/>
+<text class="s" x="264" y="317" text-anchor="middle">IR, 6 bits</text>
+<circle cx="184" cy="312" r="3.5" fill="#42759b"/>
+<path class="jtag" d="M184,312.0 L203,312.0"/>
+<path class="jtag" d="M322,312.0 L337,312.0"/>
+<rect class="core" x="206" y="338" width="116" height="28" rx="4"/>
+<text class="s" x="264" y="357" text-anchor="middle">Internal TDRs</text>
+<circle cx="184" cy="352" r="3.5" fill="#42759b"/>
+<path class="jtag" d="M184,352.0 L203,352.0"/>
+<path class="jtag" d="M322,352.0 L337,352.0"/>
+<rect class="core opt" x="206" y="378" width="116" height="28" rx="4"/>
+<text class="s" x="264" y="397" text-anchor="middle">JTAG2AXI × 3</text>
+<circle cx="184" cy="392" r="3.5" fill="#42759b"/>
+<path class="jtag" d="M184,392.0 L203,392.0"/>
+<path class="jtag" d="M322,392.0 L337,392.0"/>
+<path class="fabric" d="M340,290 L366,309.68 L366,434.32 L340,454 Z"/>
+<path class="fabric" d="M400,318 L424,331.5 L424,394.5 L400,408 Z"/>
+<path class="jtag" d="M366,372.0 L397,372.0"/>
+<path class="jt" d="M184,284 L382,284 L382,334"/>
+<path class="jtag" d="M382,334 L397,334"/>
+<text class="si" x="192" y="279" text-anchor="start">ZERO_LENGTH_BYPASS, stap_sel clear</text>
+<text class="s" x="408" y="338.5" text-anchor="middle">1</text>
+<text class="s" x="408" y="376.5" text-anchor="middle">0</text>
+<rect class="core opt" x="440" y="112" width="108" height="50" rx="6"/>
+<text class="s" x="494" y="133" text-anchor="middle">u_stap_io</text>
+<text class="si" x="494" y="151" text-anchor="middle">stap_io</text>
+<rect class="external" x="440" y="12" width="108" height="46" rx="6"/>
+<text class="s" x="494" y="32" text-anchor="middle">Next chiplet</text>
+<text class="s" x="494" y="48" text-anchor="middle">TAP chain</text>
+<path class="jtag" d="M474,112 L474,61"/>
+<path class="jtag" d="M514,58 L514,109"/>
+<path class="jtag" d="M548,137 L559,137"/>
+<rect class="core opt" x="562" y="112" width="108" height="50" rx="6"/>
+<text class="s" x="616" y="133" text-anchor="middle">u_stap_smc_dbg</text>
+<text class="si" x="616" y="151" text-anchor="middle">stap_smc</text>
+<rect class="external" x="562" y="12" width="108" height="46" rx="6"/>
+<text class="s" x="616" y="32" text-anchor="middle">SMC CPU</text>
+<text class="s" x="616" y="48" text-anchor="middle">debug TAP</text>
+<path class="jtag" d="M596,112 L596,61"/>
+<path class="jtag" d="M636,58 L636,109"/>
+<path class="jtag" d="M670,137 L681,137"/>
+<rect class="core opt" x="684" y="112" width="108" height="50" rx="6"/>
+<text class="s" x="738" y="133" text-anchor="middle">u_stap_sep_dbg</text>
+<text class="si" x="738" y="151" text-anchor="middle">stap_sep</text>
+<rect class="external" x="684" y="12" width="108" height="46" rx="6"/>
+<text class="s" x="738" y="32" text-anchor="middle">SEP CPU</text>
+<text class="s" x="738" y="48" text-anchor="middle">debug TAP</text>
+<path class="jtag" d="M718,112 L718,61"/>
+<path class="jtag" d="M758,58 L758,109"/>
+<path class="jtag" d="M792,137 L803,137"/>
+<rect class="core opt" x="811" y="107" width="108" height="50" rx="6"/>
+<rect class="core opt" x="806" y="112" width="108" height="50" rx="6"/>
+<text class="s" x="860" y="133" text-anchor="middle">u_stap_extra[i]</text>
+<text class="si" x="860" y="151" text-anchor="middle">stap_extra</text>
+<rect class="external" x="806" y="12" width="108" height="46" rx="6"/>
+<text class="s" x="860" y="40" text-anchor="middle">Local TAPs</text>
+<path class="jtag" d="M840,107 L840,61"/>
+<path class="jtag" d="M880,58 L880,104"/>
+<text class="s" x="862.5" y="178" text-anchor="middle">× NUM_EXTRA_STAPS</text>
+<path class="jt" d="M424,369.0 L460,369.0"/>
+<circle cx="460" cy="369" r="3.5" fill="#42759b"/>
+<path class="jtag" d="M460,369.0 L460,165"/>
+<rect class="external" x="930" y="12" width="100" height="46" rx="6"/>
+<text class="s" x="980" y="32" text-anchor="middle">External</text>
+<text class="s" x="980" y="48" text-anchor="middle">STAP chain</text>
+<path class="jt" d="M919,137 L952,137"/>
+<circle cx="952" cy="137" r="3.5" fill="#42759b"/>
+<path class="jtag" d="M952,137 L952,61"/>
+<path class="jtag" d="M952,137 L952,183"/>
+<path class="jtag" d="M984,58 L984,183"/>
+<path class="fabric" d="M940,186 L992,186 L979,210 L953,210 Z"/>
+<text class="si" x="934" y="208" text-anchor="end">stap_host</text>
+<text class="s" x="956" y="202" text-anchor="middle">1</text>
+<text class="s" x="978" y="202" text-anchor="middle">0</text>
+<path class="fabric" d="M838,288 L862,303.3 L862,374.7 L838,390 Z"/>
+<path class="jtag" d="M966,210 L966,248 L822,248 L822,306 L835,306"/>
+<path class="jtag" d="M460,369.0 L835,369.0"/>
+<text class="s" x="846" y="310.5" text-anchor="middle">1</text>
+<text class="s" x="846" y="373.5" text-anchor="middle">0</text>
+<text class="si" x="830" y="330" text-anchor="end">TAP_3DCR</text>
+<text class="si" x="830" y="346" text-anchor="end">stap_sel</text>
+<rect class="core" x="888" y="319" width="44" height="40" rx="4"/>
+<text class="s" x="910" y="336.5" text-anchor="middle">neg</text>
+<text class="s" x="910" y="351.5" text-anchor="middle">edge</text>
+<path class="jtag" d="M862,339.0 L885,339.0"/>
+<circle cx="874" cy="339" r="3.5" fill="#42759b"/>
+<path class="fabric" d="M950,322 L974,336.4 L974,403.6 L950,418 Z"/>
+<path class="jtag" d="M932,339.0 L947,339.0"/>
+<path class="jtag" d="M874,339.0 L874,400 L947,400"/>
+<text class="s" x="958" y="343.5" text-anchor="middle">0</text>
+<text class="s" x="958" y="404.5" text-anchor="middle">1</text>
+<path class="jtag" d="M974,370.0 L1032,370.0"/>
+<text class="s" x="1000" y="362" text-anchor="start">TDO</text>
+<text class="si" x="976" y="440" text-anchor="end">ZERO_LENGTH_BYPASS,</text>
+<text class="si" x="976" y="456" text-anchor="end">stap_sel clear</text>
+<circle cx="184" cy="541" r="3.5" fill="#42759b"/>
+<path class="jtag" d="M184,541 L325,541 M335,541 L357,541"/>
+<rect class="core" x="360" y="516" width="150" height="50" rx="6"/>
+<text class="s" x="435" y="537" text-anchor="middle">u_dft_secure_sib</text>
+<text class="si" x="435" y="555" text-anchor="middle">dft_secure</text>
+<rect class="external" x="360" y="630" width="150" height="42" rx="6"/>
+<text class="s" x="435" y="656" text-anchor="middle">Secure DFT segment</text>
+<path class="jtag" d="M410,566 L410,627"/>
+<path class="jtag" d="M460,630 L460,569"/>
+<path class="jtag" d="M510,541 L537,541"/>
+<rect class="core" x="540" y="516" width="150" height="50" rx="6"/>
+<text class="s" x="615" y="537" text-anchor="middle">u_dft_nonsecure_sib</text>
+<text class="si" x="615" y="555" text-anchor="middle">dft_nonsecure</text>
+<rect class="external" x="540" y="630" width="150" height="42" rx="6"/>
+<text class="s" x="615" y="656" text-anchor="middle">DFT segment</text>
+<path class="jtag" d="M590,566 L590,627"/>
+<path class="jtag" d="M640,630 L640,569"/>
+<path class="jtag" d="M690,541 L717,541"/>
+<rect class="core" x="720" y="516" width="150" height="50" rx="6"/>
+<text class="s" x="795" y="537" text-anchor="middle">u_dfd_sib</text>
+<text class="si" x="795" y="555" text-anchor="middle">dfd</text>
+<rect class="external" x="720" y="630" width="150" height="42" rx="6"/>
+<text class="s" x="795" y="656" text-anchor="middle">DFD segment</text>
+<path class="jtag" d="M770,566 L770,627"/>
+<path class="jtag" d="M820,630 L820,569"/>
+<path class="jtag" d="M870,541 L890,541 L890,494 L318,494 L318,420 L337,420"/>
+<text class="si" x="880" y="489" text-anchor="end">SELECT_IJTAG, RUNBIST</text>
+<rect class="external" x="170" y="630" width="166" height="42" rx="6"/>
+<text class="s" x="257" y="648" text-anchor="middle">Boundary-scan</text>
+<text class="s" x="257" y="664" text-anchor="middle">chain</text>
+<path class="jtag" d="M330,630 L330,546 M330,536 L330,499 M330,489 L330,440 L337,440"/>
+<text class="si" x="162" y="646" text-anchor="end">EXTEST, INTEST,</text>
+<text class="si" x="162" y="662" text-anchor="end">SAMPLE/PRELOAD</text>
+<path class="jtag" d="M17,700 L59,700"/>
+<text class="s" x="70" y="704.5" text-anchor="start">Scan data</text>
+<rect class="core" x="158.1" y="691" width="36" height="18" rx="4"/>
+<text class="s" x="202.1" y="704.5" text-anchor="start">RTL block</text>
+<path class="fabric" d="M290.2,695 L312.2,690 L312.2,710 L290.2,705 Z"/>
+<text class="s" x="320.2" y="704.5" text-anchor="start">Mux</text>
+<rect class="smu" x="366.9" y="691" width="36" height="18" rx="4"/>
+<text class="s" x="410.9" y="704.5" text-anchor="start">Hierarchy boundary</text>
+<rect class="external" x="561.1" y="691" width="36" height="18" rx="4"/>
+<text class="s" x="605.1" y="704.5" text-anchor="start">Outside the DTP</text>
+<text class="si" x="734.6" y="704.5" text-anchor="start">stap_io</text>
+<text class="s" x="790.6" y="704.5" text-anchor="start">Gating dbg_disable field</text>
+<rect class="core opt" x="14" y="719" width="36" height="18" rx="4"/>
+<text class="s" x="58" y="732.5" text-anchor="start">Optional (parameter)</text>
+<path class="sigplain" d="M224,728 L254,728 M239,728 L239,737"/>
+<circle cx="239" cy="728" r="3.5" fill="#5b6670"/>
+<text class="s" x="262" y="732.5" text-anchor="start">Fan-out</text>
+<rect class="pj" x="146.6" y="240.0" width="30.8" height="18" rx="4"/>
+<text class="pjt" x="162" y="253.5" text-anchor="middle">TAP</text>
+</svg>

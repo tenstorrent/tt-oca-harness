@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Watchdog Timer (WDT) :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP watchdog timer integration, clocking, bark interrupts, and bite reset requests.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-programmer-guide" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Programmer&#x27;s Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Programmer&#8217;s Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../index.html#smc-programming-guide">SMC Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../index.html#sep-programming-guide">SEP Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../index.html#sep-smc-common-blocks-communication">SEP &amp; SMC Common Blocks &amp; Communication</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../index.html#dtp-programming-guide">DTP Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../index.html#aou-software-operation-guide">AoU Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#smc-boot-rom">A. SMC Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#sep-boot-rom">B. SEP Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#km-application-rom">C. Key Manager Application ROM</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Programmer&#x27;s Guide 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/0.5/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li>Guides</li>
+    <li><a href="../index.html">Programmer&#8217;s Guide</a></li>
+    <li><a href="watchdog.html">Watchdog Timer (WDT)</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Watchdog Timer (WDT)</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="watchdog-timer-wdt-watchdog-timer-wdt" class="paragraph">
+<p>The Watchdog timer is a component used to enhance reliability and ensure
+that the system is notified if the SEP subsystem is ``hanging''. The SEP
+CPU must periodically visit the WDT and reset its counter, proving that
+the CPU is still alive and well i.e. not hanging. If the WDT timer
+counts up to its bark threshold it fires an external interrupt, and if it
+counts up to its bite threshold it requests a reset, both indicating a
+timeout has expired and there is a problem within the SEP.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="bus-interface"><a class="anchor" href="#bus-interface"></a><a class="link" href="#bus-interface">1. Bus Interface</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>sep_wdt_wrap</code> module integrates the OpenTitan <code>aon_timer</code> IP as the watchdog timer. The 64-bit AXI slave port from the system crossbar is narrowed to 32-bit AXI through an <code>axi_dw_converter</code>. The address path subtracts the WDT base address so that the internal TL-UL decoder sees zero-based offsets. After <code>axi_to_axi_lite</code> and <code>axi_lite_to_tlul</code> conversion, the TL-UL bus drives the standard <code>aon_timer</code> register block.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="clock-reset-and-debug-behavior"><a class="anchor" href="#clock-reset-and-debug-behavior"></a><a class="link" href="#clock-reset-and-debug-behavior">2. Clock, Reset, and Debug Behavior</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The wrapper provides a dedicated watchdog clock input (<code>clk_wdt_i</code>) that is synchronized through a <code>prim_sync_reset</code> to produce the <code>rst_aon_ni</code> reset for the always-on timer domain. The <code>wdt_debug_sleep_mode_i</code> input controls whether the timer continues to count during debug halt. Life-cycle escalation is tied to its inactive state. Alert receivers are initialized to the idle encoding to avoid spurious integrity errors; alert outputs are left unconnected since the SEP aggregates watchdog events through the interrupt path.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="bark-interrupt-and-bite-reset"><a class="anchor" href="#bark-interrupt-and-bite-reset"></a><a class="link" href="#bark-interrupt-and-bite-reset">3. Bark Interrupt and Bite Reset</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The wrapper exports two signals: <code>intr_wdog_timer_bark_o</code>, the watchdog bark interrupt that fires when the first timeout stage expires, and <code>wdt_timer_rst_req_o</code>, the bite reset request that fires when the second timeout stage expires and the system failed to respond to the bark.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="programming-reference"><a class="anchor" href="#programming-reference"></a><a class="link" href="#programming-reference">4. Programming Reference</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Consult the
+<a href="https://opentitan.org/book/hw/ip/aon_timer/">OpenTitan Always-On Timer
+documentation</a> for the authoritative core functionality of the IP.
+The Programmer&#8217;s Guide gives the
+<a href="../index.html#sep-watchdog" class="xref page">programming guidance</a>
+for this block.
+The
+register map follows below.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-map-and-register-reference"><a class="anchor" href="#memory-map-and-register-reference"></a><a class="link" href="#memory-map-and-register-reference">5. Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<span id="register-reference"></span>
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">5.1. Memory Map</a></h3>
+<div class="paragraph">
+<p>Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">5.2. Detailed Register Map</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-aon_timer">Always-On Timer</h2>
+<p>Wakeup and watchdog timers running on a low-power, always-on clock</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#aon_timer-ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#aon_timer-WKUP_CTRL">WKUP_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#aon_timer-WKUP_THOLD_HI">WKUP_THOLD_HI</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#aon_timer-WKUP_THOLD_LO">WKUP_THOLD_LO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#aon_timer-WKUP_COUNT_HI">WKUP_COUNT_HI</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x14</td><td><a href="#aon_timer-WKUP_COUNT_LO">WKUP_COUNT_LO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#aon_timer-WDOG_REGWEN">WDOG_REGWEN</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1C</td><td><a href="#aon_timer-WDOG_CTRL">WDOG_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#aon_timer-WDOG_BARK_THOLD">WDOG_BARK_THOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x24</td><td><a href="#aon_timer-WDOG_BITE_THOLD">WDOG_BITE_THOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x28</td><td><a href="#aon_timer-WDOG_COUNT">WDOG_COUNT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2C</td><td><a href="#aon_timer-INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x30</td><td><a href="#aon_timer-INTR_TEST">INTR_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x34</td><td><a href="#aon_timer-WKUP_CAUSE">WKUP_CAUSE</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="ALERT_TEST"></span><h3 id="aon_timer-ALERT_TEST" data-register-alias="ALERT_TEST">ALERT_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>fatal_fault</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+</table>
+<span id="WKUP_CTRL"></span><h3 id="aon_timer-WKUP_CTRL" data-register-alias="WKUP_CTRL">WKUP_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12:1</td><td>prescaler</td><td>RW</td><td>0x0</td><td>Pre-scaler value for wakeup timer count</td></tr>
+<tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When set to 1, the wakeup timer will count</td></tr>
+</table>
+<span id="WKUP_THOLD_HI"></span><h3 id="aon_timer-WKUP_THOLD_HI" data-register-alias="WKUP_THOLD_HI">WKUP_THOLD_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>threshold_hi</td><td>RW</td><td>0x0</td><td>The count at which a wakeup interrupt should be generated, top 32 bits.</td></tr>
+</table>
+<span id="WKUP_THOLD_LO"></span><h3 id="aon_timer-WKUP_THOLD_LO" data-register-alias="WKUP_THOLD_LO">WKUP_THOLD_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>threshold_lo</td><td>RW</td><td>0x0</td><td>The count at which a wakeup interrupt should be generated, bottom 32 bits.</td></tr>
+</table>
+<span id="WKUP_COUNT_HI"></span><h3 id="aon_timer-WKUP_COUNT_HI" data-register-alias="WKUP_COUNT_HI">WKUP_COUNT_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>count_hi</td><td>RW</td><td>0x0</td><td>The current wakeup counter value, top 32 bits.</td></tr>
+</table>
+<span id="WKUP_COUNT_LO"></span><h3 id="aon_timer-WKUP_COUNT_LO" data-register-alias="WKUP_COUNT_LO">WKUP_COUNT_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>count_lo</td><td>RW</td><td>0x0</td><td>The current wakeup counter value, bottom 32 bits.</td></tr>
+</table>
+<span id="WDOG_REGWEN"></span><h3 id="aon_timer-WDOG_REGWEN" data-register-alias="WDOG_REGWEN">WDOG_REGWEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>regwen</td><td>RW0C</td><td>0x1</td><td>Once cleared, the watchdog configuration will be locked until the next reset.</td></tr>
+</table>
+<span id="WDOG_CTRL"></span><h3 id="aon_timer-WDOG_CTRL" data-register-alias="WDOG_CTRL">WDOG_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>pause_in_sleep</td><td>RW</td><td>0x0</td><td>When set to 1, the watchdog timer will not count during sleep.</td></tr>
+<tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When set to 1, the watchdog timer will count.</td></tr>
+</table>
+<span id="WDOG_BARK_THOLD"></span><h3 id="aon_timer-WDOG_BARK_THOLD" data-register-alias="WDOG_BARK_THOLD">WDOG_BARK_THOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>threshold</td><td>RW</td><td>0x0</td><td>The count at which a watchdog bark interrupt should be generated.</td></tr>
+</table>
+<span id="WDOG_BITE_THOLD"></span><h3 id="aon_timer-WDOG_BITE_THOLD" data-register-alias="WDOG_BITE_THOLD">WDOG_BITE_THOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>threshold</td><td>RW</td><td>0x0</td><td>The count at which a watchdog bite reset should be generated.</td></tr>
+</table>
+<span id="WDOG_COUNT"></span><h3 id="aon_timer-WDOG_COUNT" data-register-alias="WDOG_COUNT">WDOG_COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>count</td><td>RW</td><td>0x0</td><td>The current watchdog counter value.</td></tr>
+</table>
+<span id="INTR_STATE"></span><h3 id="aon_timer-INTR_STATE" data-register-alias="INTR_STATE">INTR_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>wdog_timer_bark</td><td>RW1C</td><td>0x0</td><td>Raised if the watchdog timer has hit the bark threshold.</td></tr>
+<tr><td>0</td><td>wkup_timer_expired</td><td>RW1C</td><td>0x0</td><td>Raised if the wakeup timer has hit the specified threshold.</td></tr>
+</table>
+<span id="INTR_TEST"></span><h3 id="aon_timer-INTR_TEST" data-register-alias="INTR_TEST">INTR_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>wdog_timer_bark</td><td>W</td><td>-</td><td>Write 1 to force wdog_timer_bark interrupt.</td></tr>
+<tr><td>0</td><td>wkup_timer_expired</td><td>W</td><td>-</td><td>Write 1 to force wkup_timer_expired interrupt.</td></tr>
+</table>
+<span id="WKUP_CAUSE"></span><h3 id="aon_timer-WKUP_CAUSE" data-register-alias="WKUP_CAUSE">WKUP_CAUSE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>cause</td><td>RW0C</td><td>0x0</td><td>AON timer requested wakeup, write 0 to clear.</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

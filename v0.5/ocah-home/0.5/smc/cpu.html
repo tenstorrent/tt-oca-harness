@@ -1,0 +1,1613 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>CPU :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SMC processor cluster, caches, local memory, isolation, interrupts, and debug.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/v0.5">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/0.5/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item repo-links">
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness" target="_blank" rel="noopener" title="Source on GitHub" aria-label="tt-oca-harness on GitHub">
+            <span class="repo-icon repo-icon-github" aria-hidden="true"></span>
+            <span class="repo-link-label">GitHub</span>
+          </a>
+          <a class="repo-link" href="https://github.com/tenstorrent/tt-oca-harness/discussions" target="_blank" rel="noopener" title="Discussions on GitHub" aria-label="tt-oca-harness Discussions on GitHub">
+            <span class="repo-icon repo-icon-discussions" aria-hidden="true"></span>
+            <span class="repo-link-label">Discussions</span>
+          </a>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-home" data-version="0.5">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Home</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../features.html">Feature Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../motivation.html">Motivation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../use-cases.html">Use Cases</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../license.html">License</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Guides</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-starting/0.5/index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-docs/0.5/index.html">Technical Reference Manual</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-integrator-guide/0.5/index.html">Integrator Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-programmer-guide/0.5/index.html">Programmer&#8217;s Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-active" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Verification</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../dashboard.html">Dashboard</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness 0.5.1 — switch documentation">
+    <span class="version">0.5.1</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="cpu.html">CPU</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">CPU</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="cpu-memory-system" class="paragraph">
+<p>The SMC CPU subsystem contains four Rocket RV64GC cores, each with private
+instruction and data caches. The cores share a 1 MiB scratchpad and a 128 KiB
+boot ROM through the Chipyard-generated TileLink interconnect. AXI4 bridges
+connect the cluster to the SMC fabric.</p>
+</div>
+<div class="paragraph">
+<p>This chapter describes the generated configuration, memory interfaces and
+CPU reset boundary. The
+<a href="https://chipyard.readthedocs.io/en/stable/Generators/Rocket.html">Rocket Chip documentation</a>
+provides background on the core and generator.</p>
+</div>
+<div class="paragraph">
+<p><a href="#smc-cpu-cluster-diagram">SMC CPU cluster and TileLink-to-AXI integration</a> shows the CPU cluster, memory hierarchy, and fabric bridge.</p>
+</div>
+<div id="smc-cpu-cluster-diagram" class="imageblock">
+<div class="content">
+<img src="_images/smc-cpu-cluster.svg" alt="SMC CPU cluster: four Rocket tiles on the TileLink system bus, the control, front and memory buses, and the AXI4 bridges and isolation at the cluster boundary, with the scratchpad SRAM and boot ROM macros outside the SMC" width="100%">
+</div>
+<div class="title">Figure 1. SMC CPU cluster and TileLink-to-AXI integration</div>
+</div>
+<div class="paragraph">
+<p>The figure separates three implementation boundaries:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>u_digital_top</code> contains the generated cluster and TileLink buses.</p>
+</li>
+<li>
+<p><code>u_smc_cpu</code> adds AXI isolation, reset sequencing and scratchpad zero-fill.</p>
+</li>
+<li>
+<p><code>u_smc_cpu_wrapper</code> adds the front-port demultiplexer, <code>cpu_ctrl</code> registers
+and boot ROM bridge.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Each tile connects to the system bus (<code>sbus</code>) as a manager and to the control
+bus (<code>cbus</code>) through its Bus Error Unit (BEU) subordinate port. Debug system
+bus accesses and the L2 frontend port enter <code>sbus</code> through the front bus
+(<code>fbus</code>). The coherence manager (<code>coh_wrapper</code>, a TileLink broadcast hub)
+connects to the memory bus (<code>mbus</code>), which serves the scratchpad and boot ROM.
+The PLIC receives four watchdog and four BEU interrupt sources; these paths
+are omitted from the figure.</p>
+</div>
+<div class="paragraph">
+<p>Thick lines denote AXI4; thin dark lines denote TileLink, except for the
+AXI-Lite link to <code>cpu_ctrl</code>. The scratchpad contains 32 TLRAM banks with SECDED
+encode/decode logic. The SRAM macros, L1 tag/data arrays and boot ROM macro
+sit outside SMC. Memory interface ports carry their requests through the SMC
+boundary, including one 72-bit port for each scratchpad bank.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="processor-core-overview"><a class="anchor" href="#processor-core-overview"></a><a class="link" href="#processor-core-overview">Processor Core</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="#smc-processor-core-features-table">SMC processor core features</a> summarizes the processor configuration.</p>
+</div>
+<table id="smc-processor-core-features-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SMC processor core features</caption>
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Attribute</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cores</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4, Rocket RV64GC</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Base ISA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RV64GC (I, M, A, F, D, C extensions)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Additional configured extensions</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Zba, Zbb, Zbs and conditional-zero instructions</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Microarchitecture</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In-order, 5-stage pipeline</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Privilege Levels</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">M/S/U</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Phys. Address</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56 bits</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Vector</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-core, independently configurable (56b)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="cache-and-memory-hierarchy"><a class="anchor" href="#cache-and-memory-hierarchy"></a><a class="link" href="#cache-and-memory-hierarchy">Local Memory</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="#smc-cache-and-memory-hierarchy-table">SMC cache and memory hierarchy</a> lists the memory geometry in the generated cluster and
+the associated macro controls.</p>
+</div>
+<div class="smc-memory-table-scroll" role="region" aria-label="Cache and memory hierarchy" tabindex="0">
+<table id="smc-cache-and-memory-hierarchy-table" class="tableblock frame-all grid-all stretch smc-memory-table">
+<caption class="title">Table 2. SMC cache and memory hierarchy</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 20%;">
+<col style="width: 30%;">
+<col style="width: 25%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Component</th>
+<th class="tableblock halign-left valign-top">Configured Size</th>
+<th class="tableblock halign-left valign-top">Protection / role</th>
+<th class="tableblock halign-left valign-top">Macro controls</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L1 I-Cache per core</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB (32 sets × 2 ways)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read-only instruction cache; tag/data parity</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>icache_tag_cfg</code> / <code>icache_data_cfg</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L1 D-Cache per core</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB (32 sets × 2 ways)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write-back data cache; tag/data SECDED ECC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dcache_tag_cfg</code> / <code>dcache_data_cfg</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Local SRAM/Scratchpad</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 MiB (32 banks)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Shared local memory; SECDED ECC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scratch_ram_cfg</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boot ROM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read-only, stores boot firmware</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rom_cfg</code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="paragraph">
+<p>The sizes and associativity above are set by the Chipyard configuration and
+its generated memory interfaces. Changing them requires a matching generated
+cluster and memory implementation. The <code>*_cfg</code> signals configure the external
+memory macros; they are passed unchanged to each macro and do not resize
+caches or the scratchpad. Macro-specific repair and power controls depend on
+the selected memory implementation.</p>
+</div>
+<div class="paragraph">
+<p>The cluster uses TileLink internally for the scratchpad and boot ROM, for
+the PLIC, CLINT and BEUs on the control bus, and for watchdog timers on the
+peripheral bus. At its boundary, the MMIO manager bridge converts TileLink
+to AXI4; the L2 frontend bridge converts incoming AXI4 to TileLink. The
+front-port branch serving <code>cpu_ctrl</code> uses AXI4-Lite. Both AXI4 ports connect
+to the SMC
+<a href="fabric.html#fabric" class="xref page">Fabric</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="smc-per-core-reset"><a class="anchor" href="#smc-per-core-reset"></a><a class="link" href="#smc-per-core-reset">Reset and Boot</a></h2>
+<div class="sectionbody">
+<span id="reset-boot-and-initialization"></span>
+<div class="paragraph">
+<p><code>CPU_CTRL.RESET_CTRL</code> provides per-core reset controls and reset-pulse
+requests, plus separate uncore and debug-module reset controls. Each core has
+a 56-bit <code>RESET_VECTOR</code> register, reset to the boot ROM base <code>0xC004_0000</code>.
+The wrapper supplies these values to the generated cluster. While warm reset
+is asserted, it selects <code>0xC004_0000</code> instead of the programmed vectors.</p>
+</div>
+<div class="paragraph">
+<p>Individual core reset clears the core&#8217;s private L1 cache and TileLink client
+state without resetting the shared coherence manager. The current SMC Rocket
+integration provides no reset-aware coherence mechanism to drain outstanding
+transactions or preserve dirty cache data. The AXI boundary drain described
+below does not remove this limitation.</p>
+</div>
+<div class="paragraph">
+<p>The scratchpad zero-fill sequencer starts when its memory-initialization reset
+releases. It writes zeros across the scratchpad banks and holds the cores in
+reset until initialization completes. <code>smc_disable_sram_auto_init_i</code> bypasses
+this operation. <code>smc_init_mem_done_o</code> reports either completion or bypass;
+it does not certify memory repair, MBIST success or initialized contents when
+zero-fill is skipped. The integrator must provide suitable memory contents
+and ECC state before use when bypassing initialization.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-repair"><a class="anchor" href="#memory-repair"></a><a class="link" href="#memory-repair">Memory Repair</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Memory repair and memory built-in self-test (MBIST) are external DFT
+responsibilities. The external repair controller applies redundant memory
+elements as required by the selected SRAM implementation. The SMC fuse map
+provides no repair-data storage; the integrator supplies the repair data and
+its storage location.</p>
+</div>
+<div class="paragraph">
+<p>The intended cold-boot sequence is fuse sensing, external repair, then MBIST
+before normal CPU use. SMC supplies the following sequencing and status
+interfaces; it does not implement the external repair algorithm.</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>smc_fuse_sense_done_o</code></dt>
+<dd>
+<p>Signals completion of fuse sensing into shadow registers. External DFT logic
+can use it to begin the repair/MBIST sequence.</p>
+</dd>
+<dt class="hdlist1"><code>ext_boot_seq_done_i</code></dt>
+<dd>
+<p>Reports completion of the external boot sequence. Its qualified value gates
+fuse-reset release together with fuse sensing; the repair and MBIST status
+bits themselves are not this handshake.</p>
+</dd>
+<dt class="hdlist1"><code>skip_mem_repair_o</code></dt>
+<dd>
+<p>Asserted by the synchronized isolation pin or the FLR-set
+<code>ISOLATE_REQ_SMC_REG</code> latch. Software writes can clear this latch but cannot
+set it. A request through the separate <code>ISOLATE_REQ_REG</code> register does not
+assert this output. External logic determines how it bypasses repair/MBIST.</p>
+</dd>
+<dt class="hdlist1"><code>BYPASS_SRAM_REPAIR</code> (<code>STRAPS_LO[13]</code>)</dt>
+<dd>
+<p>Requests repair bypass. The ROM skips its repair-status check when this
+strap is set; the external integration owns the repair bypass behavior.</p>
+</dd>
+<dt class="hdlist1"><code>mem_repair_done</code> / <code>mem_repair_success</code></dt>
+<dd>
+<p>External completion and success status, visible in
+<code>DFX_CTRL_STATUS.STATUS_SMU</code> at <code>0xC000_B800</code>.</p>
+</dd>
+</dl>
+</div>
+<div class="paragraph">
+<p>The ROM checks repair status during early startup, before normal stack use.
+It treats a clear <code>mem_repair_done</code> as repair not required rather than waiting
+for completion. When repair reports done, the ROM checks success; the
+<code>SMC_CONFIG</code> DFT-ignore-error setting can permit boot to continue after a
+reported failure. These firmware checks do not establish that repair has
+completed successfully. The external sequencer must enforce the platform&#8217;s
+repair and MBIST requirements before reporting boot-sequence completion.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="system-interfaces"><a class="anchor" href="#system-interfaces"></a><a class="link" href="#system-interfaces">System Interfaces</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="#smc-cpu-system-interfaces-table">SMC CPU system interfaces</a> identifies the protocols and roles of the CPU
+cluster interfaces.</p>
+</div>
+<table id="smc-cpu-system-interfaces-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. SMC CPU system interfaces</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 20%;">
+<col style="width: 55%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Interface</th>
+<th class="tableblock halign-left valign-top">Protocol</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">MMIO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Manager port to the SMC fabric; 56-bit address, 64-bit data, 3-bit ID</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L2 Frontend</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Subordinate port into the cluster through the front bus;
+32-bit SMC-local address, 64-bit data, 8-bit ID</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG debug transport module into the debug module on the control bus;
+system bus access through the front bus</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="cpu-axi-isolation"><a class="anchor" href="#cpu-axi-isolation"></a><a class="link" href="#cpu-axi-isolation">CPU AXI Isolation</a></h2>
+<div class="sectionbody">
+<span id="cluster-boundary-isolation"></span>
+<div class="paragraph">
+<p>The cluster is reset independently of the surrounding SMC fabric.
+If the cluster were reset while a transaction on one of its AXI ports
+was still in flight, the fabric on the other side would be left
+ waiting on a response that never returns, hanging the bus, and could
+sample boundary signals while they glitch through reset. To avoid this, each
+AXI port is wrapped in an <code>axi_isolate</code> block that drains the outstanding
+transactions and holds the boundary at safe values before the reset is allowed
+to take effect.</p>
+</div>
+<div class="paragraph">
+<p>Two instances wrap the AXI ports listed above, each sized for up to four
+outstanding transactions:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>the <strong>L2 frontend</strong> slave port, which blocks new transactions rather than
+terminating them, and</p>
+</li>
+<li>
+<p>the <strong>MMIO</strong> master port, which terminates new transactions presented while
+isolated with SLVERR responses to keep reset-time X values from propagating
+into the fabric.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The non-AXI status crossings (<code>wb_pc_valid</code>, <code>wb_reg_pc</code>, and the per-core
+<code>wdt_reset</code>) are clamped to constants over the same window so they cannot leak
+glitches either. The boundary also self-isolates on cold boot, releasing four
+cycles after SRAM initialization completes and the cores and uncore are out of
+reset.</p>
+</div>
+<div class="paragraph">
+<p>The boundary is shared by all cores and stays isolated while any core or the
+uncore is in reset. Holding one core in reset therefore also terminates the
+other cores' MMIO accesses with SLVERR and stalls L2 frontend traffic until
+every core is released.</p>
+</div>
+<div class="sect2">
+<h3 id="drain-handshake"><a class="anchor" href="#drain-handshake"></a><a class="link" href="#drain-handshake">Drain Handshake</a></h3>
+<div class="paragraph">
+<p>The
+<a href="../../../ocah-programmer-guide/0.5/index.html#smc-core-reset-sequence" class="xref page">per-core reset sequence</a>
+in the Programmer&#8217;s Guide gives the firmware steps. A software reset through <code>CPU_CTRL.RESET_CTRL</code>, whether a core or uncore reset
+bit or a core reset pulse, proceeds as follows:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Firmware writes <code>RESET_CTRL</code>.</p>
+</li>
+<li>
+<p>The control logic (<code>smc_cpu_ctrl_wrap</code>) raises <code>isolate_req_i</code> and withholds
+the reset.</p>
+</li>
+<li>
+<p>Both <code>axi_isolate</code> instances drain their outstanding transactions and
+isolate.</p>
+</li>
+<li>
+<p>The cluster raises <code>drained_o</code>, and the control logic applies the reset.</p>
+</li>
+<li>
+<p><code>isolate_req_i</code> stays high until every reset bit is released and every pulse
+completes. The boundary then reconnects.</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect2">
+<h3 id="timeout-recovery"><a class="anchor" href="#timeout-recovery"></a><a class="link" href="#timeout-recovery">Timeout Recovery</a></h3>
+<div class="paragraph">
+<p><code>CPU_CTRL.RESET_TIMEOUT</code> limits how long a software-requested reset waits for
+the drain handshake. A <code>timeout_value</code> of zero disables the timer. When the
+timer expires, <code>timeout_mode=0</code> reports the timeout and continues to withhold
+the reset. <code>timeout_mode=1</code> forces the reset and flushes both AXI isolation
+blocks.</p>
+</div>
+<div class="paragraph">
+<p><code>reset_timeout</code> remains high until the software reset request is removed,
+including after a recovery flush completes. <code>reset_applied</code> is high once the
+reset is applied by a completed drain or a force-mode timeout.</p>
+</div>
+<div class="paragraph">
+<p>The flush clears outstanding-transaction records at the cluster boundary and
+discards late responses and write data until isolation is released. This lets
+the reset complete when the CPU cluster is unresponsive but the surrounding
+fabric remains operational.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The flush cannot cancel an address request or write-data beat while <code>VALID</code> is
+high and <code>READY</code> is low. It waits for that transfer before flushing the channel.
+If <code>READY</code> never goes high, isolation cannot complete.</p>
+</div>
+<div class="paragraph">
+<p>The flush clears only the CPU isolation blocks. It does not clear state
+elsewhere in the SMC fabric. The cluster reset may complete while another block
+remains unresponsive or holds a response, leaving that route or AXI ID blocked,
+so that block must be recovered separately or through the eventual cold reset.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="reset-domain-crossing"><a class="anchor" href="#reset-domain-crossing"></a><a class="link" href="#reset-domain-crossing">Reset-Domain Crossing</a></h3>
+<div class="paragraph">
+<p>The flops driving the isolate-control logic are held by the cluster&#8217;s
+uncore/core reset, while the flops inside <code>axi_isolate</code> are held by the Primary
+Reset (see
+<a href="clk_rst.html#clock-and-reset-management" class="xref page">Clock and Reset Management</a>
+). The
+uncore/core reset is driven from two sources:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>a Warm Reset from a watchdog timeout, which is <strong>asynchronous</strong> to the isolate
+logic, and</p>
+</li>
+<li>
+<p>a CPU CSR write (the reset-control register in <code>smc_cpu_ctrl_wrap</code>), which is
+<strong>synchronous</strong>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Because the two sets of flops sit in different reset domains, the asynchronous
+warm-reset path is a reset-domain crossing into <code>axi_isolate</code>. This is
+acceptable: only the watchdog asserts the warm reset asynchronously, and a
+watchdog timeout is followed by a cold reset, so the
+brief crossing window has no functional consequence. The CSR path is
+synchronous and crosses no domains.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="interrupt-and-control-integration"><a class="anchor" href="#interrupt-and-control-integration"></a><a class="link" href="#interrupt-and-control-integration">Interrupt Integration</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>All interrupt wiring—MMIO bases for PLIC, CLINT, watchdog, and bus-error
+units; the authoritative <code>cpu_interrupts_o</code> map; PLIC/CLINT register
+documentation; and BEU direct interrupt delivery—is documented in
+<a href="interrupts.html#interrupts" class="xref page">Interrupts</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="watchdog-interface"><a class="anchor" href="#watchdog-interface"></a><a class="link" href="#watchdog-interface">Watchdog Interface</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Each core has a watchdog. See
+<a href="watchdog.html" class="xref page">Watchdog Timers</a>
+for operation and the register reference.</p>
+</div>
+<span id="watchdog-timer-system"></span>
+</div>
+</div>
+<div class="sect1">
+<h2 id="advanced-bus-infrastructure-monitoring-and-error-management"><a class="anchor" href="#advanced-bus-infrastructure-monitoring-and-error-management"></a><a class="link" href="#advanced-bus-infrastructure-monitoring-and-error-management">Bus Error Reporting</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Each core has a Bus Error Unit (BEU) at <code>0xC801_0000 + N * 0x1000</code>, for
+N = 0 through 3. It reports errors seen by that core&#8217;s L1 caches:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>instruction-cache correctable errors,</p>
+</li>
+<li>
+<p>instruction-cache bus errors,</p>
+</li>
+<li>
+<p>data-cache correctable errors,</p>
+</li>
+<li>
+<p>data-cache uncorrectable errors, and</p>
+</li>
+<li>
+<p>data-cache bus errors.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>An error response from the SMC fabric reaches the BEU only as a cache bus
+error; the BEU does not distinguish decode, slave or timeout errors. It is
+not a general AXI transaction monitor and has no independent AXI timeout
+detector or transaction-data log.</p>
+</div>
+<div class="paragraph">
+<p><code>ENABLE</code> selects events that capture <code>CAUSE</code> and <code>PHYS_ADDR</code> while <code>CAUSE</code>
+is zero. Instruction-cache correctable errors capture a physical address
+of zero. The register named <code>ACCRUED_ENABLE</code> is instead sticky event status:
+events accumulate independently of <code>ENABLE</code>, and ordinary software writes
+replace the bits. <code>PLIC_ENABLE</code> and <code>LOCAL_ENABLE</code> select from that accrued
+status for the PLIC and direct-core interrupt paths. Capture the diagnostic
+state before clearing status or rearming cause capture. The generated
+register map below lists the implemented fields. Delivery and clearing
+are described in
+<a href="interrupts.html#smc-interrupts-bus-error-unit-interrupts" class="xref page">Bus Error Units</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="debug"><a class="anchor" href="#debug"></a><a class="link" href="#debug">Debug</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The generated memory map below describes the hart-facing Debug Module memory
+region. Only the harts of the CPU cluster reach it, over the cluster&#8217;s own control
+bus. The SMC fabric does not route it, so system, SEP and other SMC initiators
+receive DECERR at every address in the region. Debugger-facing registers such as
+<code>dmcontrol</code>, <code>dmstatus</code>, <code>abstractcs</code> and <code>sbcs</code> are accessed through the Debug
+Module Interface (DMI), not through that memory region.
+<a href="#smc-debug-module-configuration">Debug Module Configuration</a> describes them.</p>
+</div>
+<div class="paragraph">
+<p>JTAG reaches the cluster&#8217;s debug transport module and debug module. The
+configured debug facilities provide per-core register access, program-buffer
+execution, breakpoints and system bus access. Debug system bus transactions
+enter through <code>fbus</code> and use the cluster&#8217;s interconnect and reset/isolation
+conditions.</p>
+</div>
+<div class="paragraph">
+<p>Debug-module reset is separately controlled by <code>CPU_CTRL.RESET_CTRL</code>; its
+reset value holds the debug module in reset. Separate control does not make
+debug memory accesses independent of cluster reset or boundary isolation.
+Per-core boot addresses are controlled by the <code>RESET_VECTOR</code> registers
+described above.</p>
+</div>
+<div class="sect2">
+<h3 id="smc-debug-module-configuration"><a class="anchor" href="#smc-debug-module-configuration"></a><a class="link" href="#smc-debug-module-configuration">Debug Module Configuration</a></h3>
+<div class="paragraph">
+<p>The Debug Module implements version 0.13 of the RISC-V External Debug Support
+specification for the four harts of the CPU cluster. A debugger discovers its
+configuration by reading DMI registers.
+<a href="#smc-debug-module-capabilities-table">SMC Debug Module capability readbacks</a> lists the fixed capability values those
+registers return, and <a href="#smc-debug-module-dmi-registers-table">SMC Debug Module DMI register inventory</a> lists which DMI
+registers are implemented.</p>
+</div>
+<table id="smc-debug-module-capabilities-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. SMC Debug Module capability readbacks</caption>
+<colgroup>
+<col style="width: 18%;">
+<col style="width: 32%;">
+<col style="width: 12%;">
+<col style="width: 38%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Register</th>
+<th class="tableblock halign-left valign-top">Field</th>
+<th class="tableblock halign-left valign-top">Value</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmstatus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>version</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug Specification 0.13</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmstatus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>authenticated</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No authentication is required</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmstatus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hasresethaltreq</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Halt-on-reset is supported</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmstatus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>confstrptrvalid</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No configuration string</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmstatus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>impebreak</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">An implicit <code>ebreak</code> follows the program buffer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmcontrol</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hartsello</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Harts 0 to 3; <code>hartselhi</code> reads 0</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>abstractcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>progbufsize</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>progbuf0</code> to <code>progbuf15</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>abstractcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>datacount</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>data0</code> to <code>data3</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>abstractauto</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>autoexecdata</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Auto-execution from <code>data0</code> to <code>data3</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>abstractauto</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>autoexecprogbuf</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Auto-execution from <code>progbuf0</code> to <code>progbuf15</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbversion</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System bus access as defined by Debug Specification 0.13</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbasize</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System bus address width in bits</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbaccess8</code>, <code>sbaccess16</code>, <code>sbaccess32</code>, <code>sbaccess64</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8-, 16-, 32- and 64-bit system bus accesses</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbaccess128</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No 128-bit system bus access</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The <code>command</code> register accepts only the Access Register command (<code>cmdtype</code> 0).
+With <code>transfer</code> set, Access Register reaches the general-purpose registers <code>x0</code> to
+<code>x31</code> (<code>regno</code> 0x1000 to 0x101F) with an <code>aarsize</code> of 2 or 3 (32 or 64 bits). With
+<code>transfer</code> clear, any <code>regno</code> and size is accepted. Any other command type, and
+any transfer outside those registers and sizes, sets <code>abstractcs.cmderr</code> to 2
+(not supported). The
+debugger reaches CSRs and floating-point registers by executing instructions from
+the program buffer. Reading <code>command</code> returns the last value written.</p>
+</div>
+<div class="paragraph">
+<p><code>hawindowsel</code> reads 0 and ignores writes, so <code>hawindow</code> bits 3:0 hold the hart
+array mask for harts 0 to 3. <code>setresethaltreq</code> and <code>clrresethaltreq</code> in
+<code>dmcontrol</code> set and clear halt-on-reset for the selected harts.</p>
+</div>
+<div class="paragraph">
+<p>DMI address 0x32 provides the halt-group fields of the <code>dmcs2</code> register, which
+later versions of the specification define. A write with <code>hgwrite</code> set,
+<code>hgselect</code> clear and <code>haltgroup</code> 0 or 1 removes the selected harts from halt
+group 1 or adds them to it. When one hart in halt group 1 halts, the Debug Module
+halts the other harts in that group. A read returns the group of the hart selected
+by <code>hartsel</code> in <code>haltgroup</code>. External trigger groups (<code>hgselect</code> set) are not
+supported.</p>
+</div>
+<span id="abstractdata_12_"></span>
+<span id="debug_module-abstractdata_12_"></span>
+<span id="dmcontrol"></span>
+<span id="debug_module-dmcontrol"></span>
+<span id="dmstatus"></span>
+<span id="debug_module-dmstatus"></span>
+<span id="hartinfo"></span>
+<span id="debug_module-hartinfo"></span>
+<span id="haltsum1"></span>
+<span id="debug_module-haltsum1"></span>
+<span id="hawindowsel"></span>
+<span id="debug_module-hawindowsel"></span>
+<span id="hawindow"></span>
+<span id="debug_module-hawindow"></span>
+<span id="abstractcs"></span>
+<span id="debug_module-abstractcs"></span>
+<span id="command"></span>
+<span id="debug_module-command"></span>
+<span id="abstractauto"></span>
+<span id="debug_module-abstractauto"></span>
+<span id="confstrptr_3_"></span>
+<span id="debug_module-confstrptr_3_"></span>
+<span id="nextdm"></span>
+<span id="debug_module-nextdm"></span>
+<span id="progbuf_16_"></span>
+<span id="debug_module-progbuf_16_"></span>
+<span id="authdata"></span>
+<span id="debug_module-authdata"></span>
+<span id="haltsum2"></span>
+<span id="debug_module-haltsum2"></span>
+<span id="haltsum3"></span>
+<span id="debug_module-haltsum3"></span>
+<span id="sbaddress3"></span>
+<span id="debug_module-sbaddress3"></span>
+<span id="sbcs"></span>
+<span id="debug_module-sbcs"></span>
+<span id="sbaddress0"></span>
+<span id="debug_module-sbaddress0"></span>
+<span id="sbaddress1"></span>
+<span id="debug_module-sbaddress1"></span>
+<span id="sbaddress2"></span>
+<span id="debug_module-sbaddress2"></span>
+<span id="sbdata0"></span>
+<span id="debug_module-sbdata0"></span>
+<span id="sbdata1"></span>
+<span id="debug_module-sbdata1"></span>
+<span id="sbdata2"></span>
+<span id="debug_module-sbdata2"></span>
+<span id="sbdata3"></span>
+<span id="debug_module-sbdata3"></span>
+<span id="haltsum0"></span>
+<span id="debug_module-haltsum0"></span>
+<div class="paragraph">
+<p>DMI registers that the Debug Module does not implement read as 0 and ignore
+writes.</p>
+</div>
+<table id="smc-debug-module-dmi-registers-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 5. SMC Debug Module DMI register inventory</caption>
+<colgroup>
+<col style="width: 18%;">
+<col style="width: 27%;">
+<col style="width: 55%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">DMI address</th>
+<th class="tableblock halign-left valign-top">Register</th>
+<th class="tableblock halign-left valign-top">Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x04-0x07</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>data0</code>-<code>data3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x08-0x0F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>data4</code>-<code>data11</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmcontrol</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented; <code>hartsello</code> bits 17:16 only, <code>hartselhi</code> reads 0</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmstatus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hartinfo</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x13</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>haltsum1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented; bit 0 only</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x14</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hawindowsel</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reads 0</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x15</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hawindow</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented; bits 3:0 only</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>abstractcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x17</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>command</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented; Access Register only</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x18</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>abstractauto</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented; <code>autoexecdata</code> bits 3:0 only</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x19-0x1C</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>confstrptr0</code>-<code>confstrptr3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1D</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>nextdm</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented; this is the only Debug Module</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x20-0x2F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>progbuf0</code>-<code>progbuf15</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x30</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>authdata</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmcs2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented; halt groups 0 and 1 only</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x34</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>haltsum2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x35</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>haltsum3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x37</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbaddress3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x38</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x39-0x3A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbaddress0</code>-<code>sbaddress1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x3B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbaddress2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x3C-0x3D</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbdata0</code>-<code>sbdata1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x3E-0x3F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbdata2</code>-<code>sbdata3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x40</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>haltsum0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented; bits 3:0 only</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="smc-debug-command-cmderr"><a class="anchor" href="#smc-debug-command-cmderr"></a><a class="link" href="#smc-debug-command-cmderr">Abstract Command Writes While cmderr Is Set</a></h3>
+<div class="paragraph">
+<p>The Debug Module departs from the RISC-V External Debug Support specification
+(version 0.13) for writes to <code>command</code> while <code>abstractcs.cmderr</code> is nonzero.
+The specification ignores those writes. In this Debug Module, a <code>command</code> write
+made while no abstract command is executing (<code>abstractcs.busy</code> is 0) has two
+effects:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>the written value replaces the stored command, whatever <code>cmderr</code> holds, and</p>
+</li>
+<li>
+<p>a command type other than Access Register (<code>cmdtype</code> other than 0) sets
+<code>cmderr</code> to 2 (not supported), replacing the error code it held.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>No abstract command executes while <code>cmderr</code> is nonzero. Once <code>cmderr</code> is
+cleared, an access that <code>abstractauto</code> selects re-executes the stored command,
+which is the last value written to <code>command</code>.</p>
+</div>
+<div class="paragraph">
+<p>A <code>command</code> write therefore discards the error code of a failed command unless
+<code>abstractcs</code> was read first. The Programmer&#8217;s Guide gives the
+<a href="../../../ocah-programmer-guide/0.5/index.html#dtp-smc-cmderr" class="xref page">debugger sequence for clearing <code>cmderr</code></a>.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">Memory Map</a></h3>
+<div class="paragraph">
+<p>Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map-2"><a class="anchor" href="#detailed-register-map-2"></a><a class="link" href="#detailed-register-map-2">Detailed Register Map</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-cpu_ctrl">CPU Control Address Map</h2>
+<p>Per-core reset control and status, reset timing, chip configuration, mailbox, and boot-ROM stub registers for the SMC CPU cluster.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>RESET_VECTOR[4]</strong>: 4 registers, base 0x0, stride 0x8</li>
+<li><strong>SCRATCH[16]</strong>: 16 registers, base 0x80, stride 0x8</li>
+<li><strong>WB_PC_CORE0[8]</strong>: 8 registers, base 0x100, stride 0x8</li>
+<li><strong>WB_PC_CORE1[8]</strong>: 8 registers, base 0x140, stride 0x8</li>
+<li><strong>WB_PC_CORE2[8]</strong>: 8 registers, base 0x180, stride 0x8</li>
+<li><strong>WB_PC_CORE3[8]</strong>: 8 registers, base 0x1C0, stride 0x8</li>
+<li><strong>MUTEX[4]</strong>: 4 registers, base 0x240, stride 0x8</li>
+<li><strong>SEMA[4]</strong>: 4 registers, base 0x260, stride 0x8</li>
+<li><strong>DUMMY_ROM_NULL[4]</strong>: 4 registers, base 0x2A0, stride 0x8</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x18</td><td><a href="#cpu_ctrl-RESET_VECTOR_4_">RESET_VECTOR[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#cpu_ctrl-RESET_CTRL">RESET_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x28</td><td><a href="#cpu_ctrl-CORE_RESET_PULSE_COUNT">CORE_RESET_PULSE_COUNT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x30</td><td><a href="#cpu_ctrl-RESET_TIMEOUT">RESET_TIMEOUT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x40</td><td><a href="#cpu_ctrl-REFERENCE_COUNTER">REFERENCE_COUNTER</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x50</td><td><a href="#cpu_ctrl-WDT_TIMEOUT">WDT_TIMEOUT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x58</td><td><a href="#cpu_ctrl-WDT_TIMEOUT_RESET">WDT_TIMEOUT_RESET</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x60</td><td><a href="#cpu_ctrl-TEST_CTRL">TEST_CTRL</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x80 - 0xF8</td><td><a href="#cpu_ctrl-SCRATCH_16_">SCRATCH[16]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x100 - 0x138</td><td><a href="#cpu_ctrl-WB_PC_CORE0_8_">WB_PC_CORE0[8]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x140 - 0x178</td><td><a href="#cpu_ctrl-WB_PC_CORE1_8_">WB_PC_CORE1[8]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x180 - 0x1B8</td><td><a href="#cpu_ctrl-WB_PC_CORE2_8_">WB_PC_CORE2[8]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1C0 - 0x1F8</td><td><a href="#cpu_ctrl-WB_PC_CORE3_8_">WB_PC_CORE3[8]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x200</td><td><a href="#cpu_ctrl-SMC_ATTRIBUTES">SMC_ATTRIBUTES</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x240 - 0x258</td><td><a href="#cpu_ctrl-MUTEX_4_">MUTEX[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x260 - 0x278</td><td><a href="#cpu_ctrl-SEMA_4_">SEMA[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x280</td><td><a href="#cpu_ctrl-DUMMY_ROM_0">DUMMY_ROM_0</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x288</td><td><a href="#cpu_ctrl-DUMMY_ROM_1">DUMMY_ROM_1</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x290</td><td><a href="#cpu_ctrl-DUMMY_ROM_2">DUMMY_ROM_2</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x298</td><td><a href="#cpu_ctrl-DUMMY_ROM_3">DUMMY_ROM_3</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2A0 - 0x2B8</td><td><a href="#cpu_ctrl-DUMMY_ROM_NULL_4_">DUMMY_ROM_NULL[4]</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="RESET_VECTOR_4_"></span><h3 id="cpu_ctrl-RESET_VECTOR_4_" data-register-alias="RESET_VECTOR_4_">RESET_VECTOR[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>55:0</td><td>vector</td><td>RW</td><td>0xC0040000</td><td>-</td></tr>
+</table>
+<span id="RESET_CTRL"></span><h3 id="cpu_ctrl-RESET_CTRL" data-register-alias="RESET_CTRL">RESET_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:25</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>24</td><td>debug_reset_n_n0_scan</td><td>RW</td><td>0x0</td><td>Debug Module Reset, active low</td></tr>
+<tr><td>23:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>uncore_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Cluster Uncore Reset, active low. Writing this register will only reset the uncore portion in the chipyard cluster.<br>WARNING: using this can cause any outstanding axi requests to and from the cluster to cause timeouts/exceptions.</td></tr>
+<tr><td>7</td><td>core3_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse on core 3, timed by CORE_RESET_PULSE_COUNT.<br>A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.</td></tr>
+<tr><td>6</td><td>core2_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse on core 2, timed by CORE_RESET_PULSE_COUNT.<br>A 0 in core2_reset_n_n0_scan holds the core in reset for the whole pulse.</td></tr>
+<tr><td>5</td><td>core1_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse on core 1, timed by CORE_RESET_PULSE_COUNT.<br>A 0 in core1_reset_n_n0_scan holds the core in reset for the whole pulse.</td></tr>
+<tr><td>4</td><td>core0_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse on core 0, timed by CORE_RESET_PULSE_COUNT.<br>A 0 in core0_reset_n_n0_scan holds the core in reset for the whole pulse.</td></tr>
+<tr><td>3</td><td>core3_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Reset control for the CPU, active low.</td></tr>
+<tr><td>2</td><td>core2_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Reset control for the CPU, active low.</td></tr>
+<tr><td>1</td><td>core1_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Reset control for the CPU, active low.</td></tr>
+<tr><td>0</td><td>core0_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Reset control for the CPU, active low.</td></tr>
+</table>
+<span id="CORE_RESET_PULSE_COUNT"></span><h3 id="cpu_ctrl-CORE_RESET_PULSE_COUNT" data-register-alias="CORE_RESET_PULSE_COUNT">CORE_RESET_PULSE_COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:36</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>35:32</td><td>core_resets_done</td><td>R</td><td>0xF</td><td>Logic low while performing core reset, logic high otherwise.</td></tr>
+<tr><td>31:16</td><td>post_reset_count</td><td>RW</td><td>0x10</td><td>Cycles (clk_smc), minus one, that a core reset pulse holds the core in reset.</td></tr>
+<tr><td>15:0</td><td>pre_reset_count</td><td>RW</td><td>0x8</td><td>Cycles (clk_smc), minus one, from the start of a core reset pulse to reset assertion.</td></tr>
+</table>
+<span id="RESET_TIMEOUT"></span><h3 id="cpu_ctrl-RESET_TIMEOUT" data-register-alias="RESET_TIMEOUT">RESET_TIMEOUT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:37</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>36</td><td>reset_timeout</td><td>R</td><td>0x0</td><td>Status for the active software reset request: high after the request exceeds<br>timeout_value and remains high until the request is deasserted. Set in both modes.</td></tr>
+<tr><td>35:33</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>32</td><td>reset_applied</td><td>R</td><td>0x0</td><td>Live status: high while a requested software reset is applied at the cluster,<br>either after drain completes or after a force-mode timeout.</td></tr>
+<tr><td>31:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>16</td><td>timeout_mode</td><td>RW</td><td>0x0</td><td>Timeout mode: 0 = give up and report error (stay withheld, do not apply);<br>1 = force the reset on timeout.</td></tr>
+<tr><td>15:0</td><td>timeout_value</td><td>RW</td><td>0x0</td><td>Cycles (clk_smc) a software reset may stay pending (withheld, waiting<br>for drain) before timeout. 0 = disabled, wait indefinitely.</td></tr>
+</table>
+<span id="REFERENCE_COUNTER"></span><h3 id="cpu_ctrl-REFERENCE_COUNTER" data-register-alias="REFERENCE_COUNTER">REFERENCE_COUNTER</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>rc</td><td>RW</td><td>0x0</td><td>Reference counter for the CPU. Write once, then poll this register until<br>the readback reflects the written value before writing again. The counter<br>keeps advancing, so the readback is at or just above the written value<br>rather than equal to it.</td></tr>
+</table>
+<span id="WDT_TIMEOUT"></span><h3 id="cpu_ctrl-WDT_TIMEOUT" data-register-alias="WDT_TIMEOUT">WDT_TIMEOUT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x4000</td><td>Cycle count value that 2nd stage watchdog timer timeout should occur at. Defaults to 16384 cycles</td></tr>
+</table>
+<span id="WDT_TIMEOUT_RESET"></span><h3 id="cpu_ctrl-WDT_TIMEOUT_RESET" data-register-alias="WDT_TIMEOUT_RESET">WDT_TIMEOUT_RESET</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>reset_cycle_count_3</td><td>RW 1P</td><td>0x0</td><td>Reset current cycle count value in 2nd stage watchdog timer</td></tr>
+<tr><td>2</td><td>reset_cycle_count_2</td><td>RW 1P</td><td>0x0</td><td>Reset current cycle count value in 2nd stage watchdog timer</td></tr>
+<tr><td>1</td><td>reset_cycle_count_1</td><td>RW 1P</td><td>0x0</td><td>Reset current cycle count value in 2nd stage watchdog timer</td></tr>
+<tr><td>0</td><td>reset_cycle_count_0</td><td>RW 1P</td><td>0x0</td><td>Reset current cycle count value in 2nd stage watchdog timer</td></tr>
+</table>
+<span id="TEST_CTRL"></span><h3 id="cpu_ctrl-TEST_CTRL" data-register-alias="TEST_CTRL">TEST_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>31:0</td><td>data</td><td>R</td><td>0x0</td><td>Test control register for the CPU</td></tr>
+</table>
+<span id="SCRATCH_16_"></span><h3 id="cpu_ctrl-SCRATCH_16_" data-register-alias="SCRATCH_16_">SCRATCH[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Scratch register for the CPU</td></tr>
+</table>
+<span id="WB_PC_CORE0_8_"></span><h3 id="cpu_ctrl-WB_PC_CORE0_8_" data-register-alias="WB_PC_CORE0_8_">WB_PC_CORE0[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>57:0</td><td>pc</td><td>R</td><td>0x0</td><td>Writeback PC value</td></tr>
+</table>
+<span id="WB_PC_CORE1_8_"></span><h3 id="cpu_ctrl-WB_PC_CORE1_8_" data-register-alias="WB_PC_CORE1_8_">WB_PC_CORE1[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>57:0</td><td>pc</td><td>R</td><td>0x0</td><td>Writeback PC value</td></tr>
+</table>
+<span id="WB_PC_CORE2_8_"></span><h3 id="cpu_ctrl-WB_PC_CORE2_8_" data-register-alias="WB_PC_CORE2_8_">WB_PC_CORE2[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>57:0</td><td>pc</td><td>R</td><td>0x0</td><td>Writeback PC value</td></tr>
+</table>
+<span id="WB_PC_CORE3_8_"></span><h3 id="cpu_ctrl-WB_PC_CORE3_8_" data-register-alias="WB_PC_CORE3_8_">WB_PC_CORE3[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>57:0</td><td>pc</td><td>R</td><td>0x0</td><td>Writeback PC value</td></tr>
+</table>
+<span id="SMC_ATTRIBUTES"></span><h3 id="cpu_ctrl-SMC_ATTRIBUTES" data-register-alias="SMC_ATTRIBUTES">SMC_ATTRIBUTES</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:46</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>45:40</td><td>num_mailboxes</td><td>R</td><td>-</td><td>-</td></tr>
+<tr><td>39:36</td><td>mailbox_depth</td><td>R</td><td>-</td><td>-</td></tr>
+<tr><td>35:33</td><td>num_cores</td><td>R</td><td>-</td><td>-</td></tr>
+<tr><td>32</td><td>no_output_remap</td><td>R</td><td>-</td><td>-</td></tr>
+<tr><td>31:26</td><td>sram_size</td><td>R</td><td>-</td><td>Total SRAM size is 2 ^ value bytes</td></tr>
+<tr><td>25:17</td><td>num_cpu_interrupts</td><td>R</td><td>-</td><td>-</td></tr>
+<tr><td>16:8</td><td>num_ext_interrupts</td><td>R</td><td>-</td><td>-</td></tr>
+<tr><td>7:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>chiplet_is_primary</td><td>R</td><td>-</td><td>Indicates if this chiplet is primary (1) or secondary (0). Driven by strap.</td></tr>
+</table>
+<span id="MUTEX_4_"></span><h3 id="cpu_ctrl-MUTEX_4_" data-register-alias="MUTEX_4_">MUTEX[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>mutex</td><td>RW</td><td>0x1</td><td>HW mutex. Reads will attempt to acquire mutex, 1 on success. If the mutex is already acquired, the read will return 0. To release the mutex, write any value to the register.</td></tr>
+</table>
+<span id="SEMA_4_"></span><h3 id="cpu_ctrl-SEMA_4_" data-register-alias="SEMA_4_">SEMA[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>sema</td><td>RW</td><td>0x0</td><td>16-bit semaphore value to inc/dec. Writing to this register will inc/dec the semaphore value.<br>The written value is treated as a signed number using 2s compliment.</td></tr>
+</table>
+<span id="DUMMY_ROM_0"></span><h3 id="cpu_ctrl-DUMMY_ROM_0" data-register-alias="DUMMY_ROM_0">DUMMY_ROM_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>dummy_rom_word_0</td><td>RW</td><td>0x145051300000517</td><td>Word 0 of WFI loop</td></tr>
+</table>
+<span id="DUMMY_ROM_1"></span><h3 id="cpu_ctrl-DUMMY_ROM_1" data-register-alias="DUMMY_ROM_1">DUMMY_ROM_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>dummy_rom_word_1</td><td>RW</td><td>0xFFF0069330551073</td><td>Word 1 of WFI loop</td></tr>
+</table>
+<span id="DUMMY_ROM_2"></span><h3 id="cpu_ctrl-DUMMY_ROM_2" data-register-alias="DUMMY_ROM_2">DUMMY_ROM_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>dummy_rom_word_2</td><td>RW</td><td>0x105000733046B073</td><td>Word 2 of WFI loop</td></tr>
+</table>
+<span id="DUMMY_ROM_3"></span><h3 id="cpu_ctrl-DUMMY_ROM_3" data-register-alias="DUMMY_ROM_3">DUMMY_ROM_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>dummy_rom_word_3</td><td>RW</td><td>0xFFDFF06F</td><td>Word 3 of WFI loop</td></tr>
+</table>
+<span id="DUMMY_ROM_NULL_4_"></span><h3 id="cpu_ctrl-DUMMY_ROM_NULL_4_" data-register-alias="DUMMY_ROM_NULL_4_">DUMMY_ROM_NULL[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>dummy_rom_null</td><td>RW</td><td>0x0</td><td>Cache line size is 64 bytes so want to ensure no random data is read when reading dummy rom</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-clint">CLINT Address Map</h2>
+<p>Core-Local Interruptor: software-interrupt, timer-compare, and machine-time registers.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>MSIP[4]</strong>: 4 registers, base 0x0, stride 0x4</li>
+<li><strong>MTIMECMP[4]</strong>: 4 registers, base 0x4000, stride 0x8</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0xC</td><td><a href="#clint-MSIP_4_">MSIP[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4000 - 0x4018</td><td><a href="#clint-MTIMECMP_4_">MTIMECMP[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xBFF8</td><td><a href="#clint-MTIME">MTIME</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="MSIP_4_"></span><h3 id="clint-MSIP_4_" data-register-alias="MSIP_4_">MSIP[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd0</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>value</td><td>RW</td><td>0x0</td><td>MSIP bit for core</td></tr>
+</table>
+<span id="MTIMECMP_4_"></span><h3 id="clint-MTIMECMP_4_" data-register-alias="MTIMECMP_4_">MTIMECMP[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>count</td><td>RW</td><td>-</td><td>Timer compare value. The core&#x27;s machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME.</td></tr>
+</table>
+<span id="MTIME"></span><h3 id="clint-MTIME" data-register-alias="MTIME">MTIME</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>count</td><td>RW</td><td>-</td><td>Cycle count (time) value</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-debug_module">Debug Module Hart Interface</h2>
+<p>Memory region through which a hart in Debug Mode exchanges state with the Debug Module: handshake mailboxes, generated instructions, program buffer, data registers, per-hart flags and the debug ROM. Only the harts of the CPU cluster reach this region; SMC bus initiators outside the cluster do not. The debugger-facing Debug Module registers (dmcontrol, dmstatus, abstractcs, sbcs, ...) are reached over the Debug Module Interface and do not appear in this map.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>ABSTRACT[5]</strong>: 5 registers, base 0x328, stride 0x4</li>
+<li><strong>PROGBUF[16]</strong>: 16 registers, base 0x33C, stride 0x4</li>
+<li><strong>DATA[4]</strong>: 4 registers, base 0x380, stride 0x4</li>
+<li><strong>ROM[26]</strong>: 26 registers, base 0x800, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x100</td><td><a href="#debug_module-HALTED">HALTED</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x104</td><td><a href="#debug_module-GOING">GOING</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x108</td><td><a href="#debug_module-RESUMING">RESUMING</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x10C</td><td><a href="#debug_module-EXCEPTION">EXCEPTION</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x300</td><td><a href="#debug_module-WHERETO">WHERETO</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x328 - 0x338</td><td><a href="#debug_module-ABSTRACT_5_">ABSTRACT[5]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x33C - 0x378</td><td><a href="#debug_module-PROGBUF_16_">PROGBUF[16]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x37C</td><td><a href="#debug_module-IMPEBREAK">IMPEBREAK</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x380 - 0x38C</td><td><a href="#debug_module-DATA_4_">DATA[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x400</td><td><a href="#debug_module-FLAGS">FLAGS</a></td><td>R</td><td>One flag byte per hart, at byte offset equal to the hart ID. Bit 0 is go (execute the command at WHERETO); bit 1 is resume (leave Debug Mode). Bits 7:2 read as 0.</td></tr>
+<tr><td>0x800 - 0x864</td><td><a href="#debug_module-ROM_26_">ROM[26]</a></td><td>R</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="HALTED"></span><h3 id="debug_module-HALTED" data-register-alias="HALTED">HALTED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9:0</td><td>hartid</td><td>W</td><td>-</td><td>Debug ROM causes the hart to write its hart ID here when it is in Debug Mode.</td></tr>
+</table>
+<span id="GOING"></span><h3 id="debug_module-GOING" data-register-alias="GOING">GOING</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9:0</td><td>hartid</td><td>W</td><td>-</td><td>Debug ROM causes the hart to write 0 here when it begins executing Debug Mode instructions.</td></tr>
+</table>
+<span id="RESUMING"></span><h3 id="debug_module-RESUMING" data-register-alias="RESUMING">RESUMING</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9:0</td><td>hartid</td><td>W</td><td>-</td><td>Debug ROM causes the hart to write its hart ID here when it leaves Debug Mode.</td></tr>
+</table>
+<span id="EXCEPTION"></span><h3 id="debug_module-EXCEPTION" data-register-alias="EXCEPTION">EXCEPTION</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9:0</td><td>hartid</td><td>W</td><td>-</td><td>Debug ROM causes the hart to write 0 here if it takes an exception in Debug Mode.</td></tr>
+</table>
+<span id="WHERETO"></span><h3 id="debug_module-WHERETO" data-register-alias="WHERETO">WHERETO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>instr</td><td>R</td><td>-</td><td>Jump instruction filled in by the Debug Module to direct the hart in Debug Mode.</td></tr>
+</table>
+<span id="ABSTRACT_5_"></span><h3 id="debug_module-ABSTRACT_5_" data-register-alias="ABSTRACT_5_">ABSTRACT[5]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>instr</td><td>R</td><td>-</td><td>Instruction generated by the Debug Module for the current abstract command.</td></tr>
+</table>
+<span id="PROGBUF_16_"></span><h3 id="debug_module-PROGBUF_16_" data-register-alias="PROGBUF_16_">PROGBUF[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Program buffer word shared with the debugger. Byte accesses are supported.</td></tr>
+</table>
+<span id="IMPEBREAK"></span><h3 id="debug_module-IMPEBREAK" data-register-alias="IMPEBREAK">IMPEBREAK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>instr</td><td>R</td><td>0x100073</td><td>Implicit EBREAK instruction following the program buffer.</td></tr>
+</table>
+<span id="DATA_4_"></span><h3 id="debug_module-DATA_4_" data-register-alias="DATA_4_">DATA[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Abstract command data word shared with the debugger. Byte accesses are supported.</td></tr>
+</table>
+<span id="FLAGS"></span><h3 id="debug_module-FLAGS" data-register-alias="FLAGS">FLAGS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>flags_3</td><td>R</td><td>-</td><td>Hart 3 go/resume flags.</td></tr>
+<tr><td>23:16</td><td>flags_2</td><td>R</td><td>-</td><td>Hart 2 go/resume flags.</td></tr>
+<tr><td>15:8</td><td>flags_1</td><td>R</td><td>-</td><td>Hart 1 go/resume flags.</td></tr>
+<tr><td>7:0</td><td>flags_0</td><td>R</td><td>-</td><td>Hart 0 go/resume flags.</td></tr>
+</table>
+<span id="ROM_26_"></span><h3 id="debug_module-ROM_26_" data-register-alias="ROM_26_">ROM[26]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>R</td><td>-</td><td>Debug ROM word. Holds the fixed Debug Mode entry, exception and resume handlers.</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-bus_error_unit">Bus Error Unit Address Map</h2>
+<p>Status registers reporting correctable and uncorrectable I-cache, D-cache, and TileLink bus errors.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#bus_error_unit-CAUSE">CAUSE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#bus_error_unit-PHYS_ADDR">PHYS_ADDR</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#bus_error_unit-ENABLE">ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#bus_error_unit-PLIC_ENABLE">PLIC_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#bus_error_unit-ACCRUED_ENABLE">ACCRUED_ENABLE</a></td><td>RW</td><td>Sticky accrued error status. The legacy name ACCRUED_ENABLE does not denote an enable mask. Error events set these bits independently of ENABLE. Ordinary software writes replace the bits (write zero to clear) and take priority over simultaneous events. PLIC_ENABLE and LOCAL_ENABLE mask this status for interrupt delivery.</td></tr>
+<tr><td>0x28</td><td><a href="#bus_error_unit-LOCAL_ENABLE">LOCAL_ENABLE</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="CAUSE"></span><h3 id="bus_error_unit-CAUSE" data-register-alias="CAUSE">CAUSE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>data</td><td>RW</td><td>0x0</td><td>Cause register. Enumerates different kinds of errors</td></tr>
+</table>
+<span id="PHYS_ADDR"></span><h3 id="bus_error_unit-PHYS_ADDR" data-register-alias="PHYS_ADDR">PHYS_ADDR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>55:0</td><td>value</td><td>RW</td><td>-</td><td>Physical address captured with CAUSE when an enabled error arrives and CAUSE is zero. Software may overwrite the value; writes take priority over capture. No reset value</td></tr>
+</table>
+<span id="ENABLE"></span><h3 id="bus_error_unit-ENABLE" data-register-alias="ENABLE">ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>dcache_uncorrectable</td><td>RW</td><td>0x1</td><td>Enable recording error information for DCache ECC uncorrectable bus error. Enabled on reset.</td></tr>
+<tr><td>6</td><td>dcache_correctable</td><td>RW</td><td>0x1</td><td>Enable recording error information for DCache ECC correctable bus error. Enabled on reset.</td></tr>
+<tr><td>5</td><td>dcache_tlbus</td><td>RW</td><td>0x1</td><td>Enable recording error information for DCache Tilelink bus error. Enabled on reset.</td></tr>
+<tr><td>4</td><td>rsvd4</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3</td><td>rsvd3</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>2</td><td>icache_correctable</td><td>RW</td><td>0x1</td><td>Enable recording error information for ICache ECC correctable bus error. Enabled on reset.</td></tr>
+<tr><td>1</td><td>icache_tlbus</td><td>RW</td><td>0x1</td><td>Enable recording error information for ICache Tilelink bus error. Enabled on reset.</td></tr>
+<tr><td>0</td><td>rsvd0</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+</table>
+<span id="PLIC_ENABLE"></span><h3 id="bus_error_unit-PLIC_ENABLE" data-register-alias="PLIC_ENABLE">PLIC_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>dcache_uncorrectable</td><td>RW</td><td>0x0</td><td>PLIC interrupt enable mask for DCache ECC uncorrectable bus error.</td></tr>
+<tr><td>6</td><td>dcache_correctable</td><td>RW</td><td>0x0</td><td>PLIC interrupt enable mask for DCache ECC correctable bus error.</td></tr>
+<tr><td>5</td><td>dcache_tlbus</td><td>RW</td><td>0x0</td><td>PLIC interrupt enable mask for DCache Tilelink bus error.</td></tr>
+<tr><td>4</td><td>rsvd4</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3</td><td>rsvd3</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>2</td><td>icache_correctable</td><td>RW</td><td>0x0</td><td>PLIC interrupt enable mask for ICache ECC correctable bus error.</td></tr>
+<tr><td>1</td><td>icache_tlbus</td><td>RW</td><td>0x0</td><td>PLIC interrupt enable mask for ICache Tilelink bus error.</td></tr>
+<tr><td>0</td><td>rsvd0</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+</table>
+<span id="ACCRUED_ENABLE"></span><h3 id="bus_error_unit-ACCRUED_ENABLE" data-register-alias="ACCRUED_ENABLE">ACCRUED_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>dcache_uncorrectable</td><td>RW</td><td>0x0</td><td>Sticky accrued status for DCache ECC uncorrectable bus error.</td></tr>
+<tr><td>6</td><td>dcache_correctable</td><td>RW</td><td>0x0</td><td>Sticky accrued status for DCache ECC correctable bus error.</td></tr>
+<tr><td>5</td><td>dcache_tlbus</td><td>RW</td><td>0x0</td><td>Sticky accrued status for DCache Tilelink bus error.</td></tr>
+<tr><td>4</td><td>rsvd4</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3</td><td>rsvd3</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>2</td><td>icache_correctable</td><td>RW</td><td>0x0</td><td>Sticky accrued status for ICache ECC correctable bus error.</td></tr>
+<tr><td>1</td><td>icache_tlbus</td><td>RW</td><td>0x0</td><td>Sticky accrued status for ICache Tilelink bus error.</td></tr>
+<tr><td>0</td><td>rsvd0</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+</table>
+<span id="LOCAL_ENABLE"></span><h3 id="bus_error_unit-LOCAL_ENABLE" data-register-alias="LOCAL_ENABLE">LOCAL_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>dcache_uncorrectable</td><td>RW</td><td>0x0</td><td>Core local interrupt enable mask for DCache ECC uncorrectable bus error.</td></tr>
+<tr><td>6</td><td>dcache_correctable</td><td>RW</td><td>0x0</td><td>Core local interrupt enable mask for DCache ECC correctable bus error.</td></tr>
+<tr><td>5</td><td>dcache_tlbus</td><td>RW</td><td>0x0</td><td>Core local interrupt enable mask for DCache Tilelink bus error.</td></tr>
+<tr><td>4</td><td>rsvd4</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3</td><td>rsvd3</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>2</td><td>icache_correctable</td><td>RW</td><td>0x0</td><td>Core local interrupt enable mask for ICache ECC correctable bus error.</td></tr>
+<tr><td>1</td><td>icache_tlbus</td><td>RW</td><td>0x0</td><td>Core local interrupt enable mask for ICache Tilelink bus error.</td></tr>
+<tr><td>0</td><td>rsvd0</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>
