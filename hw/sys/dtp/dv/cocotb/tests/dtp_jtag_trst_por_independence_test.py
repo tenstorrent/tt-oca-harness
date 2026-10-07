@@ -14,7 +14,7 @@ from seq_lib.dtp_jtag_trst_por_independence_test_seq import (
 
 @pyuvm.test()
 class dtp_jtag_trst_por_independence_test(dtp_base_test):
-    """Run the DTP VPLAN POR-only TAP reset scenario."""
+    """Power-on reset alone, TRST_N high, resets the TAP and reloads IDCODE."""
 
     required_features = (DTP_FEATURE_IR_DECODE, DTP_FEATURE_IDCODE)
 

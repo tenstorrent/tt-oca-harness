@@ -11,7 +11,7 @@ from seq_lib.dtp_jtag2axi_error_test_seq import dtp_jtag2axi_error_test_seq
 
 @pyuvm.test()
 class dtp_jtag2axi_smc_otp_axi_error_series_incr_write_with_status_test(dtp_base_test):
-    """Run the `error_series_incr_write_with_status` SMC OTP AXI-Lite JTAG2AXI scenario."""
+    """On the SMC OTP bridge the with-status write stream flags the failing beat."""
 
     use_axi_scoreboard = True
     axi_checker_required_ids = (

@@ -10,7 +10,7 @@ from dtp_jtag2axi_robustness_base_test import dtp_jtag2axi_robustness_base_test
 
 @pyuvm.test()
 class dtp_jtag2axi_backpressure_long_stall_test(dtp_jtag2axi_robustness_base_test):
-    """Run the `backpressure_long_stall` JTAG2AXI scenario on every bridge."""
+    """Every bridge holds its requests through long READY stalls."""
 
     scenario = "backpressure_long_stall"
     specific_knob = "DTP_JTAG2AXI_BACKPRESSURE_LONG_STALL_TEST_LOOPS"

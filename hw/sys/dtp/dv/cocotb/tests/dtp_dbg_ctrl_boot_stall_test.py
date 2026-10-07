@@ -11,7 +11,7 @@ from seq_lib.dtp_dbg_ctrl_boot_stall_test_seq import dtp_dbg_ctrl_boot_stall_tes
 
 @pyuvm.test()
 class dtp_dbg_ctrl_boot_stall_test(dtp_base_test):
-    """Run the DTP VPLAN boot-stall override scenario."""
+    """Each boot-stall pin follows its DEBUG_CONTROL field."""
 
     async def run_scenario(self) -> None:
         await self.start_looped_seq(

@@ -10,7 +10,7 @@ from dtp_jtag2axi_robustness_base_test import dtp_jtag2axi_robustness_base_test
 
 @pyuvm.test()
 class dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test(dtp_jtag2axi_robustness_base_test):
-    """Run the `cdc_clear_abort_back_to_back_reset` JTAG2AXI scenario on every bridge."""
+    """Back-to-back resets, one inside a CDC clear, leave every bridge working."""
 
     scenario = "cdc_clear_abort_back_to_back_reset"
     specific_knob = "DTP_JTAG2AXI_CDC_CLEAR_ABORT_BACK_TO_BACK_RESET_TEST_LOOPS"

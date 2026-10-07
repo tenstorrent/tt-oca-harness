@@ -12,7 +12,7 @@ from seq_lib.dtp_jtag_trst_test_seq import dtp_jtag_trst_test_seq
 
 @pyuvm.test()
 class dtp_jtag_trst_test(dtp_base_test):
-    """Run the DTP VPLAN TRST scenario."""
+    """TRST_N resets the TAP from every state before any TCK edge."""
 
     required_features = (DTP_FEATURE_IR_DECODE, DTP_FEATURE_IDCODE)
 

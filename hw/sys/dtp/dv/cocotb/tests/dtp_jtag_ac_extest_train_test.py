@@ -11,7 +11,7 @@ from seq_lib.dtp_jtag_ac_extest_train_test_seq import dtp_jtag_ac_extest_train_t
 
 @pyuvm.test()
 class dtp_jtag_ac_extest_train_test(dtp_base_test):
-    """Run the DTP VPLAN EXTEST_TRAIN scenario."""
+    """EXTEST_TRAIN selects the chain; run_test_idle follows Run-Test/Idle."""
 
     async def run_scenario(self) -> None:
         await self.start_looped_seq(

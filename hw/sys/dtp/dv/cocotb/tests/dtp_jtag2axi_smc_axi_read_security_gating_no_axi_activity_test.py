@@ -11,7 +11,7 @@ from seq_lib.dtp_jtag2axi_smc_axi_rd_test_seq import dtp_jtag2axi_smc_axi_rd_tes
 
 @pyuvm.test()
 class dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test(dtp_base_test):
-    """Run the `read_security_gating_no_axi_activity` SMC fabric JTAG2AXI scenario."""
+    """The SMC fabric disable blocks all AXI read activity until release."""
 
     # Per lifecycle bit, a gated read leaves no request activity; baseline and
     # restore reads bracket it as positive controls.

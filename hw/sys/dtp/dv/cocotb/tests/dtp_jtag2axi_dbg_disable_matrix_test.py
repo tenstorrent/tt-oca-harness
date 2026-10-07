@@ -32,7 +32,7 @@ class dtp_jtag2axi_dbg_disable_matrix_test(dtp_jtag2axi_robustness_base_test):
 
     async def run_scenario(self) -> None:
         seq = dtp_jtag2axi_dbg_disable_matrix_test_seq(
-            "dbg_disable_jtag2axi_matrix",
+            "jtag2axi_dbg_disable_matrix",
             scenario_seed=self.base_seed(),
             # The matrix runs once: its rows (all_clear, one one-hot per bridge
             # gate field, multi_hot_rows multi-hot, all_disabled) are the seeded

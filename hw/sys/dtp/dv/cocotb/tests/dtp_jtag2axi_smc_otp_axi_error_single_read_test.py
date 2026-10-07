@@ -11,7 +11,7 @@ from seq_lib.dtp_jtag2axi_error_test_seq import dtp_jtag2axi_error_test_seq
 
 @pyuvm.test()
 class dtp_jtag2axi_smc_otp_axi_error_single_read_test(dtp_base_test):
-    """Run the `error_single_read` SMC OTP AXI-Lite JTAG2AXI scenario."""
+    """On the SMC OTP bridge a read error reaches the op-status with its RDATA."""
 
     use_axi_scoreboard = True
     axi_checker_required_ids = (

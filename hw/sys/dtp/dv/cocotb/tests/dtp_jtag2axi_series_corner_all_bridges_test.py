@@ -10,7 +10,7 @@ from dtp_jtag2axi_robustness_base_test import dtp_jtag2axi_robustness_base_test
 
 @pyuvm.test()
 class dtp_jtag2axi_series_corner_all_bridges_test(dtp_jtag2axi_robustness_base_test):
-    """Run the `series_corner_all_bridges` JTAG2AXI scenario on every bridge."""
+    """Series corner cases and the CDC FIFO entry sweep hold on every bridge."""
 
     scenario = "series_corner_all_bridges"
     specific_knob = "DTP_JTAG2AXI_SERIES_CORNER_ALL_BRIDGES_TEST_LOOPS"

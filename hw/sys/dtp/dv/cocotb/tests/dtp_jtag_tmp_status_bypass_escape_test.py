@@ -13,7 +13,7 @@ from seq_lib.dtp_jtag_tmp_status_bypass_escape_test_seq import (
 
 @pyuvm.test()
 class dtp_jtag_tmp_status_bypass_escape_test(dtp_base_test):
-    """Run the DTP VPLAN TMP BYPASS_ESCAPE scenario."""
+    """BYPASS_ESCAPE then BYPASS forces the TMP FSM out of persistence."""
 
     async def run_scenario(self) -> None:
         await self.start_looped_seq(

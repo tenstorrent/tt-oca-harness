@@ -11,7 +11,7 @@ from seq_lib.dtp_jtag2axi_error_test_seq import dtp_jtag2axi_error_test_seq
 
 @pyuvm.test()
 class dtp_jtag2axi_sep_otp_axi_error_series_incr_read_test(dtp_base_test):
-    """Run the `error_series_incr_read` SEP OTP AXI-Lite JTAG2AXI scenario."""
+    """On the SEP OTP bridge an incrementing series read reports its fault beat."""
 
     use_axi_scoreboard = True
     axi_checker_required_ids = (

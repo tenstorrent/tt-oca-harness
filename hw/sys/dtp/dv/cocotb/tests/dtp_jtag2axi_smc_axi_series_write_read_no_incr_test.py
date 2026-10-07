@@ -11,7 +11,7 @@ from seq_lib.dtp_jtag2axi_smc_axi_rd_test_seq import dtp_jtag2axi_smc_axi_rd_tes
 
 @pyuvm.test()
 class dtp_jtag2axi_smc_axi_series_write_read_no_incr_test(dtp_base_test):
-    """Run the `series_write_read_no_incr` SMC fabric JTAG2AXI scenario."""
+    """On the SMC fabric bridge a fixed-address series read returns each word it found."""
 
     use_axi_scoreboard = True
     axi_checker_required_ids = (

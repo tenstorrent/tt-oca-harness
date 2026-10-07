@@ -11,7 +11,7 @@ from seq_lib.dtp_dbg_jtag_caps_test_seq import dtp_dbg_jtag_caps_test_seq
 
 @pyuvm.test()
 class dtp_dbg_jtag_caps_test(dtp_base_test):
-    """Run the DTP VPLAN JTAG_CAPS scenario."""
+    """Every JTAG_CAPS field matches the bench configuration; writes are rejected."""
 
     async def run_scenario(self) -> None:
         await self.start_looped_seq(

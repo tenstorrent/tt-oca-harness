@@ -11,7 +11,7 @@ from seq_lib.dtp_jtag2axi_smc_axi_rd_test_seq import dtp_jtag2axi_smc_axi_rd_tes
 
 @pyuvm.test()
 class dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test(dtp_base_test):
-    """Run the `series_write_read_incr_narrow` SMC fabric JTAG2AXI scenario."""
+    """SMC fabric 32-bit series reads return the address-selected lanes."""
 
     use_axi_scoreboard = True
     axi_checker_required_ids = (

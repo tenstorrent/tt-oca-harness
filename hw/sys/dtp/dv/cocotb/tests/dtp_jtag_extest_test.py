@@ -11,7 +11,7 @@ from seq_lib.dtp_jtag_extest_test_seq import dtp_jtag_extest_test_seq
 
 @pyuvm.test()
 class dtp_jtag_extest_test(dtp_base_test):
-    """Run the DTP VPLAN EXTEST scenario."""
+    """EXTEST selects the looped-back chain and returns each pattern one TCK late."""
 
     async def run_scenario(self) -> None:
         await self.start_looped_seq(

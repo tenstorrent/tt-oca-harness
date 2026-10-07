@@ -11,7 +11,7 @@ from seq_lib.dtp_jtag2axi_error_test_seq import dtp_jtag2axi_error_test_seq
 
 @pyuvm.test()
 class dtp_jtag2axi_smc_axi_error_single_write_test(dtp_base_test):
-    """Run the `error_single_write` SMC fabric JTAG2AXI scenario."""
+    """On the SMC fabric bridge a write error reaches the op-status and updates no memory."""
 
     # Shared AXI checker: SLVERR and DECERR injections must both be
     # classified as EXPECTED (per-beat position pinned by the model), every

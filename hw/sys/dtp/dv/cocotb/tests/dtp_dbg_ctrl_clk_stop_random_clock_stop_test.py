@@ -13,7 +13,7 @@ from seq_lib.dtp_dbg_ctrl_clk_stop_random_clock_stop_test_seq import (
 
 @pyuvm.test()
 class dtp_dbg_ctrl_clk_stop_random_clock_stop_test(dtp_base_test):
-    """Run the DTP VPLAN randomized clock-stop scenario."""
+    """Seeded clock-stop combinations drive the halt, enable and readback as modelled."""
 
     async def run_scenario(self) -> None:
         await self.start_looped_seq(

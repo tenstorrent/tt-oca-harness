@@ -13,7 +13,7 @@ from seq_lib.dtp_jtag_zero_length_bypass_test_seq import dtp_jtag_zero_length_by
 
 @pyuvm.test()
 class dtp_jtag_zero_length_bypass_test(dtp_base_test):
-    """Run the DTP VPLAN zero-length bypass scenario."""
+    """ZERO_LENGTH_BYPASS passes TDI straight through, and is BYPASS in a STAP chain."""
 
     required_features = (DTP_FEATURE_IR_DECODE, DTP_FEATURE_BYPASS)
 

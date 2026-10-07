@@ -10,7 +10,7 @@ from dtp_jtag2axi_robustness_base_test import dtp_jtag2axi_robustness_base_test
 
 @pyuvm.test()
 class dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test(dtp_jtag2axi_robustness_base_test):
-    """Run the `cdc_clear_abort_narrow_reset_mid_xaction` JTAG2AXI scenario on every bridge."""
+    """Every bridge recovers from narrow system and TAP resets mid-transaction."""
 
     scenario = "cdc_clear_abort_narrow_reset_mid_xaction"
     specific_knob = "DTP_JTAG2AXI_CDC_CLEAR_ABORT_NARROW_RESET_MID_XACTION_TEST_LOOPS"

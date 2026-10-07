@@ -13,7 +13,7 @@ from seq_lib.dtp_dbg_ctrl_clk_stop_jtag_clock_stop_test_seq import (
 
 @pyuvm.test()
 class dtp_dbg_ctrl_clk_stop_jtag_clock_stop_test(dtp_base_test):
-    """Run the DTP VPLAN JTAG clock-stop scenario."""
+    """stop_clks_o asserts and releases with the JTAG_CLOCK_STOP bit."""
 
     async def run_scenario(self) -> None:
         await self.start_looped_seq(

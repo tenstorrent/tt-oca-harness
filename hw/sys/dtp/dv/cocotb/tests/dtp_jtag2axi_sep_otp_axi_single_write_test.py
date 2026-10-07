@@ -11,7 +11,7 @@ from seq_lib.dtp_jtag2axi_otp_axi_test_seq import dtp_jtag2axi_otp_axi_test_seq
 
 @pyuvm.test()
 class dtp_jtag2axi_sep_otp_axi_single_write_test(dtp_base_test):
-    """Run the `single_write` SEP OTP AXI-Lite JTAG2AXI scenario."""
+    """On the SEP OTP bridge a SINGLE_OP write completes OKAY with its address and data."""
 
     use_axi_scoreboard = True
     axi_checker_required_ids = (

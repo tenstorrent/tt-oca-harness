@@ -13,7 +13,7 @@ from seq_lib.dtp_dbg_smc_otp_jtag2axi_caps_test_seq import (
 
 @pyuvm.test()
 class dtp_dbg_smc_otp_jtag2axi_caps_test(dtp_base_test):
-    """Run the DTP VPLAN SMC OTP JTAG2AXI_CAPS scenario."""
+    """SMC_OTP_JTAG2AXI_CAPS matches the SMC OTP bridge; writes are rejected."""
 
     async def run_scenario(self) -> None:
         await self.start_looped_seq(

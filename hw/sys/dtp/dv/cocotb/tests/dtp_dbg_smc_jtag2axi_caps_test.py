@@ -11,7 +11,7 @@ from seq_lib.dtp_dbg_smc_jtag2axi_caps_test_seq import dtp_dbg_smc_jtag2axi_caps
 
 @pyuvm.test()
 class dtp_dbg_smc_jtag2axi_caps_test(dtp_base_test):
-    """Run the DTP VPLAN SMC fabric JTAG2AXI_CAPS scenario."""
+    """SMC_JTAG2AXI_CAPS matches the SMC fabric bridge; writes are rejected."""
 
     async def run_scenario(self) -> None:
         await self.start_looped_seq(

@@ -11,7 +11,7 @@ from seq_lib.dtp_jtag2axi_smc_axi_wr_test_seq import dtp_jtag2axi_smc_axi_wr_tes
 
 @pyuvm.test()
 class dtp_jtag2axi_smc_axi_series_write_incr_narrow_test(dtp_base_test):
-    """Run the `series_write_incr_narrow` SMC fabric JTAG2AXI scenario."""
+    """SMC fabric 32-bit series writes strobe only the address-selected lanes."""
 
     # Every beat's strobes must match the lanes its address selects (the
     # stimulus wstrb intent).

@@ -11,7 +11,7 @@ from seq_lib.dtp_jtag_runbist_test_seq import dtp_jtag_runbist_test_seq
 
 @pyuvm.test()
 class dtp_jtag_runbist_test(dtp_base_test):
-    """Run the DTP VPLAN RUNBIST scenario."""
+    """RUNBIST selects the SIB chain; DFT controls follow it only while dft_nonsecure is clear."""
 
     async def run_scenario(self) -> None:
         await self.start_looped_seq(

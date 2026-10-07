@@ -1968,7 +1968,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         )
 
     async def run_decode_error_mixed(self) -> None:
-        self.log_banner("JTAG2AXI mixed mapped/unmapped decode access")
+        self.log_banner("JTAG2AXI interleaved clean and responder-injected DECERR accesses")
         await self.reset_tap()
         rng = self.rng("decode_error_mixed")
         for idx, target in enumerate(ROBUST_TARGETS, start=1):

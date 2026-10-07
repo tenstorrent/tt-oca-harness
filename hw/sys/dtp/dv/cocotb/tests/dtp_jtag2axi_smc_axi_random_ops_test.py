@@ -11,7 +11,7 @@ from seq_lib.dtp_jtag2axi_smc_axi_wr_test_seq import dtp_jtag2axi_smc_axi_wr_tes
 
 @pyuvm.test()
 class dtp_jtag2axi_smc_axi_random_ops_test(dtp_base_test):
-    """Run the `random_ops` SMC fabric JTAG2AXI scenario."""
+    """On the SMC fabric bridge seeded writes complete OKAY and match the byte image."""
 
     use_axi_scoreboard = True
     axi_checker_required_ids = (

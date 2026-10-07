@@ -10,7 +10,7 @@ from dtp_jtag2axi_robustness_base_test import dtp_jtag2axi_robustness_base_test
 
 @pyuvm.test()
 class dtp_jtag2axi_decode_error_decerr_write_test(dtp_jtag2axi_robustness_base_test):
-    """Run the `decode_error_decerr_write` JTAG2AXI scenario on every bridge."""
+    """Every bridge reports a responder-injected write DECERR, memory unchanged."""
 
     # The bridge's DECERR write handling is exercised on all three JTAG2AXI
     # targets with the response injected by each target's responder (the DTP

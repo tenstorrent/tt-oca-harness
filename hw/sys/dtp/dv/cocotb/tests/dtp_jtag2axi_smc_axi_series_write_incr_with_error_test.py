@@ -11,7 +11,7 @@ from seq_lib.dtp_jtag2axi_smc_axi_wr_test_seq import dtp_jtag2axi_smc_axi_wr_tes
 
 @pyuvm.test()
 class dtp_jtag2axi_smc_axi_series_write_incr_with_error_test(dtp_base_test):
-    """Run the `series_write_incr_with_error` SMC fabric JTAG2AXI scenario."""
+    """On the SMC fabric bridge a series write's fault beat reaches only the next status bit."""
 
     use_axi_scoreboard = True
     axi_checker_required_ids = (

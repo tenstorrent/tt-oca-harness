@@ -10,7 +10,7 @@ from dtp_jtag2axi_robustness_base_test import dtp_jtag2axi_robustness_base_test
 
 @pyuvm.test()
 class dtp_jtag2axi_backpressure_abort_at_data_w_test(dtp_jtag2axi_robustness_base_test):
-    """Run the `backpressure_abort_at_data_w` JTAG2AXI scenario on every bridge."""
+    """A reset around the write data phase discards the write on every bridge."""
 
     scenario = "backpressure_abort_at_data_w"
     specific_knob = "DTP_JTAG2AXI_BACKPRESSURE_ABORT_AT_DATA_W_TEST_LOOPS"

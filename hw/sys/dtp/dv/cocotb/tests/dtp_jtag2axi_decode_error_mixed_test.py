@@ -10,7 +10,7 @@ from dtp_jtag2axi_robustness_base_test import dtp_jtag2axi_robustness_base_test
 
 @pyuvm.test()
 class dtp_jtag2axi_decode_error_mixed_test(dtp_jtag2axi_robustness_base_test):
-    """Run the `decode_error_mixed` JTAG2AXI scenario on every bridge."""
+    """Clean accesses on every bridge stay intact around injected DECERRs."""
 
     scenario = "decode_error_mixed"
     specific_knob = "DTP_JTAG2AXI_DECODE_ERROR_MIXED_TEST_LOOPS"

@@ -11,7 +11,7 @@ from seq_lib.dtp_jtag2axi_otp_axi_test_seq import dtp_jtag2axi_otp_axi_test_seq
 
 @pyuvm.test()
 class dtp_jtag2axi_sep_otp_axi_random_ops_test(dtp_base_test):
-    """Run the `random_ops` SEP OTP AXI-Lite JTAG2AXI scenario."""
+    """On the SEP OTP bridge seeded writes complete OKAY and match the byte image."""
 
     use_axi_scoreboard = True
     axi_checker_required_ids = (

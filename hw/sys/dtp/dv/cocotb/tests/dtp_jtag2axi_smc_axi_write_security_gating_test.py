@@ -11,7 +11,7 @@ from seq_lib.dtp_jtag2axi_smc_axi_wr_test_seq import dtp_jtag2axi_smc_axi_wr_tes
 
 @pyuvm.test()
 class dtp_jtag2axi_smc_axi_write_security_gating_test(dtp_base_test):
-    """Run the `write_security_gating` SMC fabric JTAG2AXI scenario."""
+    """The SMC fabric disable blocks writes and drops queued requests until release."""
 
     use_axi_scoreboard = True
     axi_checker_required_ids = (
