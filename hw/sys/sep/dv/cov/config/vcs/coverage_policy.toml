@@ -54,13 +54,6 @@ args = ["-elfile", "{path}"]
 # value on any of the three modules the struct crosses. The source-select mux
 # that consumes the stream stays graded: its select is a CSR field, so both
 # arms are reachable. SEP_FCOV.adoc, "External TRNG payload".
-[[native_files]]
-tool = "vcs"
-role = "exclude"
-path = "sep_ext_trng_payload_exclusions.el"
-apply_phase = "report"
-args = ["-elfile", "{path}"]
-
 # Structurally tied inputs on the Tenstorrent-owned SEP DMA wrapper. Each entry names
 # the RTL tie. Stimulus gaps stay in the denominator. Checksums come from
 # `urg -dump full_exclusions tgl` on the merged VDB, never by hand.

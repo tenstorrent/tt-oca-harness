@@ -1184,7 +1184,7 @@ uncovered code-coverage point closes in one of these ways:
 |Cover |The point is reachable. A new or extended scenario reaches it |The test and its VPLAN entry
 |Fix design |A design defect blocks the point |The design change
 |Scope |The point is outside the graded ownership scope |`sep_cov_scope.hier` (<<sep-fcov-scope>>)
-|Exclude |An RTL tie, parameter, unconnected port or generate condition makes the point unreachable |One of the nine `-elfile` lists (<<sep-fcov-exclusion-lists>>)
+|Exclude |An RTL tie, parameter, unconnected port or generate condition makes the point unreachable |One of the eight `-elfile` lists (<<sep-fcov-exclusion-lists>>)
 |===
 
 A stimulus gap stays in the denominator. It takes no exclusion.
@@ -1214,26 +1214,31 @@ class follows the kind of fact that the input rests on.
 |===
 |Input |Fact it rests on |Review
 |`sep_cov_scope.hier` |An ownership decision: which modules the number grades. The testbench, the VeeR EL2 core complex, library-class cells, DV models and complete third-party IP leave the scope |Coverage-flow review
-|The nine `-elfile` lists |A design fact: an RTL tie, an elaborated parameter, an unconnected port or a generate condition, which <<sep-fcov-exclusion-lists>> states for each list |Design review
+|The eight `-elfile` lists |A design fact: an RTL tie, an elaborated parameter, an unconnected port or a generate condition, which <<sep-fcov-exclusion-lists>> states for each list |Design review
 |A `pass:[[[native_files]]]` entry of the policy |Which file the report applies, with which arguments |Coverage-flow review
 |A Phase 1 bin or its owner |The cell that an `all` test walks (<<sep-fcov-owners>>) |DV review
 |===
 
 A change to an exclusion list is graded by a re-render of a named finished
 run, `python3 tools/dv/run_dv.py --dut sep --run-dir <run> --stage cov_report`,
-and the report must complete with no checksum or missing-object warning. A
+and the report must complete with no missing-object warning. A report run
+with `-excl_strict` must show the same counts as a run without it, which shows
+that no excluded object has a hit. The report does not reject an entry with
+a stale checksum, so the review of an entry checks it against a fresh
+`urg -dump full_exclusions` of its scope (<<sep-fcov-reopen>>). A
 change to `sep_cov_scope.hier` takes a new compile (`--rebuild`) and a new
 coverage regression, because the scope applies at compile time.
 
+[[sep-fcov-reopen]]
 ==== Reopen triggers
 
 An accepted exclusion stays accepted until the policy or the design changes;
 the calendar does not reopen it. It reopens when:
 
-* an RTL change moves the module or instance checksum of a scope that an entry
-  names. URG does not apply an entry whose checksum differs from the design it
-  reports on, and the report prints a checksum warning, which this policy does
-  not accept;
+* an RTL change touches a module or instance that an entry names. The review
+  re-dumps that scope with `urg -dump full_exclusions` and checks the entry
+  against the dump, because the report applies an entry with a stale checksum
+  and does not reject it;
 * a design change removes the tie, parameter, unconnected port or generate
   condition that the entry rests on;
 * a leaf covers a point that an entry excludes, which shows that the fact the
@@ -1268,133 +1273,193 @@ denominator.
 [[sep-fcov-exclusion-lists]]
 ==== Unreachability exclusion lists
 
-The VCS code-coverage report applies nine `-elfile` lists, which
+The VCS code-coverage report applies eight `-elfile` lists, which
 `cov/config/vcs/coverage_policy.toml` names, on top of the compile-time scope
 (<<sep-fcov-scope>>). Report-time lists apply only to objects that remain in
-the compile-time scope. An exclusion needs an RTL tie, parameter, unconnected
-port or generate condition that makes the object unreachable. A stimulus gap
-stays in the denominator. The checksums in each list come from
-`urg -dump full_exclusions` on the merged VCS database, and a report run must
-complete without a checksum or missing-object warning.
+the compile-time scope. The checksums in each list come from
+`urg -dump full_exclusions` on the merged VCS database. A report run must
+complete without a missing-object warning, and a report run with
+`-excl_strict` must show the same counts as a run without it.
+
+All eight lists obey the same rules:
+
+* An entry rests only on a literal RTL constant, an elaborated parameter, an
+  unconnected DUT port or a generate-disabled path of SEP design logic. Its
+  `ANNOTATION` cites that fact as file and line and names the fields that stay
+  graded.
+* A constant that the reference integration (`hw/top/sep_ip_integration.sv`,
+  `hw/top/sep_wrapper.sv`) drives into a SEP input port is not an exclusion
+  reason. A literal assign inside a module that the reference integration
+  instantiates is an RTL tie of that module.
+* A field that a master, the inbound SoC port, JTAG, an integrator port, a
+  software-writable CSR, an error response or a fault can move stays graded as
+  a stimulus gap.
+* A logic argument without a constant signal (an implication, a complement, a
+  case default, an FSM default arm, a value set or reset timing) is not an
+  exclusion reason.
+* No listed object toggles or is hit in the merged database.
 
 [cols="2,3",options="header"]
 |===
 |File (`cov/config/vcs/`) |Excludes
-|`sep_regblock_exclusions.el` |PeakRDL no-stall and no-error ties
-|`sep_ext_trng_payload_exclusions.el` |The external-TRNG AXI-Stream payload
-|`sep_unreachable_exclusions.el` |Tied SEP DMA inputs
-|`sep_master_tie_exclusions.el` |AXI request fields that one internal master ties
-|`sep_xbar_tie_exclusions.el` |Crossbar and interconnect request bits that no initiator moves
-|`sep_system_tie_exclusions.el` |Ties in the CPU wrapper, reset, IO, watchdog, DMA and mailbox units
-|`sep_crypto_tie_exclusions.el` |Ties inside `sep_crypto`
-|`sep_fsm_unreachable_exclusions.el` |FSM transitions that the SEP parameters make unreachable
-|`sep_cond_branch_exclusions.el` |Condition and branch terms that ties and parameters hold constant
+|`sep_regblock_exclusions.el` |PeakRDL regblock literal ties: no-stall, no-error decode and response, `load_next`, reserved and width-cast bits, and the response ports that carry them
+|`sep_unreachable_exclusions.el` |Tied SEP DMA inputs: upper `lsio_trigger` bits, the CTN response and the alert ping
+|`sep_master_tie_exclusions.el` |Request fields on ports that one internal master drives with a constant: VeeR IFU, LSU (pre-remap), debug, secure DMA and the KM picorv32 CPU
+|`sep_xbar_tie_exclusions.el` |Crossbar and interconnect bits that copy a listed master tie or that a target or bridge ties
+|`sep_system_tie_exclusions.el` |Ties in the CPU wrapper, reset, IO/SPI, watchdog, DMA, system peripherals, memory interfaces, entropy FIFO and the integration shims
+|`sep_crypto_tie_exclusions.el` |Ties in `sep_crypto`, the TRNG, the key manager and the eFuse command path
+|`sep_fsm_unreachable_exclusions.el` |`axi_lite_to_tlul` FSM transitions that `ACK_ZERO_STROBE_WRITE` disables
+|`sep_cond_branch_exclusions.el` |Condition and branch terms that literal ties and elaboration parameters hold constant
 |===
 
 ===== PeakRDL register blocks
 
 `cov/config/vcs/sep_regblock_exclusions.el` excludes generated register-block
-signals that cannot change:
+signals that a literal in the generated RTL holds constant:
 
-* A block listed for no-stall hardwires `cpuif_req_stall_rd` and
-  `cpuif_req_stall_wr` to zero. For example,
-  `hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg.sv` assigns both to `'0`.
-  A block with external registers drives the stall from `external_pending`
-  (`efuse_mmr_reg`, `entropy_source_reg`, `km_kpv_reg`), so its stall stays
-  graded.
-* Register spaces with no error decode also hold `is_valid_addr` and
-  `is_valid_rw` high and `decoded_err` low. The same generated block makes
-  these assignments in its decode `always_comb`.
-* The wrapper-key register blocks and the KM `km_csr`, `km_drbg_sampler` and
-  `km_mailbox_*` blocks decode real errors. Their exclusion is limited to the
-  two no-stall signals; their error responses remain graded.
+* No-stall: a block whose cpuif hardwires `cpuif_req_stall_rd` and
+  `cpuif_req_stall_wr` to `'0`, for example
+  `hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg.sv`. A block with external
+  registers drives the stall from `external_pending` (`efuse_mmr_reg`,
+  `entropy_source_reg`, `km_kpv_reg`), so its stall stays graded.
+* No-error: a register space that decodes no error holds `is_valid_addr` and
+  `is_valid_rw` high and every error net low, so its AXI-Lite `bresp`/`rresp`
+  and its APB `pslverr` hold OKAY. Two entries carry this response one level
+  up: `efuse_token_processing` `apb_resp_o.pslverr` and the B/R response
+  outputs of the eFuse interface shim. The copies of the shim response inside
+  `u_sep` arrive through an integrator input port and stay graded.
+* Other literals: `sep_cpu_ctrl_reg` and `filter_ctrl_reg` `load_next` nets
+  that the generator assigns `'1` in both arms, the reserved
+  `SEP_NMI_VEC.rsvd` field, and the `sep_scratch_reg` address bits [2:0] and
+  data bits [63:32].
 
-===== External TRNG payload
-
-`cov/config/vcs/sep_ext_trng_payload_exclusions.el` excludes the three
-AXI-Stream request payloads while they cross `sep_ip_integration`, `sep` and
-`sep_crypto`. `hw/top/sep_ip_integration.sv` ties the complete request array
-`ext_trng_axis_req_o` to `'{default: '0}`. The source-select mux remains graded because software controls
-its select.
+The wrapper-key register blocks and the KM `km_csr`, `km_drbg_sampler` and
+`km_mailbox_*` blocks decode errors, so their error responses stay graded.
+The fabric SLVERR paths (the AXI-Lite demux error slave, the `axi_filter`
+datapath and the crossbar decode error slave) stay graded.
 
 ===== SEP DMA tied inputs
 
-`cov/config/vcs/sep_unreachable_exclusions.el` contains two instance-scoped
-blocks on `sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap`:
+`cov/config/vcs/sep_unreachable_exclusions.el` contains instance-scoped blocks
+on `sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap`:
 
-* `hw/sys/sep/rtl/sep.sv` connects `lsio_trigger[0]` to the SPI request
-  (`sep_io_spi_req_o.lsio_trigger`) and ties the upper bits of `lsio_trigger`
-  low. Bit 0 remains graded.
-* `hw/sys/sep/rtl/sep_dma_wrap.sv` ties the unused CTN response fields
-  (`ctn_tl_d2h`) and ties the alert receiver `ping_req_i` low. The live DMA host path
-  and alert request/acknowledge behaviour remain graded.
+* `hw/sys/sep/rtl/sep.sv` ties `lsio_trigger[10:1]` low. Bit 0 carries the SPI
+  request and stays graded.
+* `hw/sys/sep/rtl/sep_dma_wrap.sv` drives the CTN TL-UL response
+  (`ctn_tl_d2h`) to constants and ties the alert receiver `ping_req_i` low.
+  The DMA host path and the alert request and acknowledge stay graded.
 
 ===== Single-master AXI ties
 
 `cov/config/vcs/sep_master_tie_exclusions.el` excludes request fields on ports
-that exactly one internal master drives: the VeeR IFU, LSU and debug masters
-and the secure DMA host port. Each master assigns those fields a constant, for
-example the IFU AXI request assignments in
-`vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/ifu/el2_ifu_mem_ctl.sv`
-and the request assignments in
-`vendor/pulp-platform/axi/upstream/src/axi_lite_to_axi.sv`, and every
-module on the path passes them unchanged. A port that the inbound SoC port,
-the JTAG bridge or a second master can reach is not listed. A tied field that a
-leaf moved, for example through the no_cpu TB force on the LSU path, is not
-listed.
+that exactly one internal master drives, where that master's RTL assigns the
+field a constant and every module on the path passes it unchanged:
 
-A post-remap IFU write address is not a constant on every bit:
+* VeeR IFU: the pre-remap AR address bits [2:0]
+  (`vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/ifu/el2_ifu_mem_ctl.sv`).
+* VeeR LSU: AxSIZE bit 2 and `rready` on the pre-remap `lsu_axi_req_raw` only.
+  The no_cpu bench force drives the LSU request after the window remap, so
+  every post-remap LSU field stays graded.
+* VeeR debug system-bus master: its ID, AxPROT, AxCACHE, length, burst, QoS,
+  lock and last ties.
+* Secure DMA host port: the burst, ID, length, lock, QoS, region, atop, user
+  and cache ties of `axi_lite_to_axi` and `hw/sys/sep/rtl/sep_dma_wrap.sv`.
+* KM picorv32 CPU: address bits [1:0] and the AxPROT ties, from the CPU through
+  the KM AXI-Lite crossbar to each KM target and the key CSR blocks of the
+  crypto wrappers. The KM CPU is the only initiator on that bus
+  (`hw/ip/key_manager/rtl/key_manager.sv`).
+
+A port that the inbound SoC port, the JTAG bridge or a second master can reach
+is not listed. The IFU never writes, so its raw write address is 0. After the
+IFU window remap that address is 0 or `0x1000_0000`:
 `hw/ip/axi_window_remap/rtl/axi_window_remap.sv` moves a raw address of 0 to
-`0x1000_0000` when `SEP_LOCAL_BASE_ADDR[31:0]` is 0, and that CSR is
-software-writable (`SEP_LOCAL_BASE_ADDR` in
-`hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl`). Bit 28 of those `aw.addr`
-fields therefore stays graded; the other bits are listed.
+`0x1000_0000` when `SEP_LOCAL_BASE_ADDR[31:0]` is 0, and software writes that
+CSR (`hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl`). Bit 28 of those
+`aw.addr` fields stays graded; the other bits are listed.
 
 ===== Crossbar and interconnect ties
 
-`cov/config/vcs/sep_xbar_tie_exclusions.el` excludes request bits in
+`cov/config/vcs/sep_xbar_tie_exclusions.el` excludes bits in
 `sep_local_axi_xbar`, `sep_system_peripherals_xbar` and
-`sep_crypto_axi_interconnect` that no connected initiator can move: address
-bits outside every decode rule, initiator-index bits that no initiator sets,
-and fields that every initiator on the port ties. Response IDs, response USER
-fields and every field the inbound SoC port drives remain graded.
+`sep_crypto_axi_interconnect` that take no second value in any legal system: a
+direct copy of an IFU, debug or DMA field that the master list excludes, a
+`cpu_tcm` target field that the DMA ties, the DMA AxPROT, the `cpu_tcm`
+response `rlast` and USER, the `reset_ctrl` read data bits [63:7], mailbox
+response bit 0, the external ID bit that `axi_id_remap` holds at 0, the tied
+`test_i` input and the OTBN AxCACHE bit that the interconnect forces to 1.
+A field that the inbound SoC port, an integrator-driven target, the no_cpu
+bench force on the LSU port or a free CPU or DMA field can reach stays graded.
+An address bit that only a decode range bounds stays graded.
 
-===== CPU, reset, IO, watchdog, DMA and mailbox ties
+===== System logic ties
 
-`cov/config/vcs/sep_system_tie_exclusions.el` excludes toggle, line, condition
-and branch objects in Tenstorrent wrappers where an RTL constant, an elaborated
-parameter or a single tied master holds the value: the IFU/LSU/debug/DMA demux
-and window-remap fields, constant response and TL-UL fields at the AXI-Lite
-bridges, the SPI address mask, regblock no-stall ties and the isolate-FSM
-default arm. Each block names its tie with a file and line.
+`cov/config/vcs/sep_system_tie_exclusions.el` excludes toggle bits, condition
+vectors, branch arms and FSM transitions in the SEP system logic. Its main tie
+families are:
+
+* Error-slave ties: the request and response literals inside the AXI-Lite
+  error slaves, and the read side of the per-entry filter and remap lock
+  demuxes, whose read select
+  `hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv` ties to 0.
+* Filter and remap ties: the traffic-filter data-width and group-ID
+  parameters, the outbound-filter skip input, the output-remap address bit 3
+  and USER override, and the constant region size and base of the CPU alias
+  remaps (`hw/sys/sep/rtl/sep_cpu.sv`).
+* CPU wrapper ties: the IFU and debug request literals on the wrapper nets,
+  the IFU decode-error slave response, the lockstep and trace ties, and a
+  non-secure entropy FIFO whose error output is a constant.
+* Bridge and memory-interface ties: `axi_lite_to_tlul` and `tlul_to_axi_lite`
+  literals, integrity generation that SEP enables, DMA TL-UL size and
+  alignment, memory-interface CSR and no-error ties, and the ROM, SRAM and
+  eFuse interface shims of the reference integration.
+
+The response echo fields `d_source` and `d_size` stay graded. A net that a
+master, the inbound SoC port, JTAG, an integrator port or a software-writable
+CSR can move stays graded.
 
 ===== sep_crypto ties
 
-`cov/config/vcs/sep_crypto_tie_exclusions.el` excludes toggle bits in the
-crypto wrappers that SEP RTL fixes: the key-vault shim interface and write
-response, the zero-extended key-vault offset bit, AHB control ties, the unused
-response bit on bridges that return only OKAY or SLVERR, ABR memory address
-pad bits, alert ping lines, the DRBG stream strobe and the constant OTBN OTP
-key. Key storage, key transfer and alert handshakes remain graded.
+`cov/config/vcs/sep_crypto_tie_exclusions.el` excludes bits and one block that
+a literal tie, an elaborated parameter, a localparam or a width cast in SEP RTL
+fixes. Its main tie families are:
+
+* eFuse ties: the field map, which
+  `hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv` ties to the localparam
+  `EfuseFieldMap` of `hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv`, the command
+  literals, the security-disable token rails and the ID-converter pad bits.
+* Key manager ties: the OTP error slave, the scramblers, the mailbox depth
+  pad, the virtual-ROM decode, the unused key-bus read data and the response
+  codes that never return EXOKAY.
+* TRNG ties: entropy-source FIFO inputs and no-error responses, DRBG strobe
+  and FIFO ties, and the pool EDN cancel.
+* Wrapper ties: the key-vault shim defaults and write response, alert ping
+  lines, AHB control, OTBN OTP key and memory error, ABR memory address pad,
+  and the unused response bit 0 of bridges that return only OKAY or SLVERR.
+
+Key storage, key transfer, alert handshakes and every error response that a
+test can provoke stay graded.
 
 ===== Unreachable FSM transitions
 
 `cov/config/vcs/sep_fsm_unreachable_exclusions.el` excludes eight
-`axi_lite_to_tlul` transitions that depend on `ACK_ZERO_STROBE_WRITE`, which is
-off in every SEP instance except the SPI host wrapper
-(`hw/sys/sep/rtl/sep_ot_spi_wrap.sv`, `ACK_ZERO_STROBE_WRITE` set to 1), whose
-transitions remain graded.
-Transitions taken on a reset with a transfer outstanding, error transitions and
-abort transitions are reachable and remain graded.
+`axi_lite_to_tlul` transitions that depend on `ACK_ZERO_STROBE_WRITE`
+(`hw/common/axi/axi_lite_to_tlul.sv`), which is off in every SEP instance
+except the SPI host wrapper (`hw/sys/sep/rtl/sep_ot_spi_wrap.sv`), whose
+transitions stay graded. Transitions on a reset with a transfer outstanding,
+error transitions and abort transitions stay graded.
 
 ===== Condition and branch ties
 
 `cov/config/vcs/sep_cond_branch_exclusions.el` excludes condition and branch
-terms that cannot change in the SEP elaboration: the stall terms of no-stall
-PeakRDL regblocks, the error operand of APB regblocks that decode no error, the
-KM CPU virtual-ROM decode without its simulation define, branches inside
-elaboration-only constant functions, and the else arms of the integrity
-generation and `HAS_LC_STATE` parameters that SEP fixes.
+terms that a literal tie or an elaboration parameter holds constant: the stall
+terms of no-stall PeakRDL regblocks, the error operand and error branches of
+regblocks that decode no error, `load_next` arms that the generator assigns
+`'1`, the KM CPU virtual-ROM decode and the KM ROM base compare, branches
+inside elaboration-only constant functions, the else arms of the integrity
+generation, `ACK_ZERO_STROBE_WRITE` and `HAS_LC_STATE` parameters, literal
+input ties inside SEP (entropy-source FIFO, pool EDN cancel, outbound-filter
+skip, SPI `err_clr`, output-remap address bit 3, IFU write address) and the
+constant eFuse `sw_lock` bits.
 
 [[sep-fcov-waiver-list]]
 ==== Waiver list
