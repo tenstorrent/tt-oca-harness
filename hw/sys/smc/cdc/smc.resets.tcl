@@ -40,6 +40,10 @@ set_reset_groups \
     -name POWERGOOD_RESET_GROUP \
     -group {POWERGOOD_RESET_N POWERGOOD_STABLE_N}
 
+# Pad cold reset after the 32-cycle REFCLK deglitch. Through the rstbypass mux it is the
+# async reset of the cold-reset extend counter and gates stable_cold_rst_no.
+create_reset -name COLD_RESET_DEGLITCH_N [cdc_inst "${reset_unit_hier}/u_smc_reset_ctrl/cold_rst_deglitch_to_rstbypass/Q"] -async -type reset -value low -disable_assertions_db
+
 # COLD RESET GROUP
 create_reset -name COLD_RESET_N [cdc_inst "${reset_unit_hier}/u_smc_reset_ctrl/stable_cold_rst_no"] -async -type reset -value low -disable_assertions_db
 create_reset -name COLD_RESET_N_REF_CLK [cdc_inst "${reset_unit_hier}/rst_cold_ref_n"] -both -type reset -value low -disable_assertions_db
@@ -176,6 +180,12 @@ set_rdc_define_assertion_sequence \
 # the system, so cold reset is guaranteed to also be asserted.
 set_rdc_define_assertion_sequence \
     -from_reset {POWERGOOD_RESET_N POWERGOOD_STABLE_N} \
+    -to_reset {COLD_RESET_DEGLITCH_N COLD_RESET_N COLD_RESET_N_REF_CLK COLD_RESET_N_SMC_CLK}
+
+# COLD_DEGLITCH => COLD: in the functional mode the rstbypass mux passes the deglitched
+# reset straight to stable_cold_rst_no.
+set_rdc_define_assertion_sequence \
+    -from_reset {COLD_RESET_DEGLITCH_N} \
     -to_reset {COLD_RESET_N COLD_RESET_N_REF_CLK COLD_RESET_N_SMC_CLK}
 
 # COLD/COOL_FLR => PRIMARY: when cold or cool-from-FLR asserts, primary asserts
@@ -232,10 +242,10 @@ set_rdc_define_assertion_sequence \
     -to_reset {AVS_APB_CLK_RESET_N AVS_CLK_RESET_N AVS_PRE_DIV_CLK_RESET_N}
 
 # Telemetry reset pairing. rst_telemetry_ni is a chip-level input that passes through smu.sv
-# and smc.sv untouched. Chip integration confirms it asserts whenever PRIMARY asserts and never
-# on its own. VC accepts an assertion sequence for a reset pair in one direction only, so only
-# the PRIMARY -> TELEMETRY direction is declared; the co-assertion carries the
-# SMC_RDC_CORRUPT_TELEM_FIFO_STORAGE disposition in hw/sys/smc/rdc/smc.vcrdc.waiver.tcl.
+# and smc.sv untouched. The integrator guide requires the adopter to assert it only while
+# PRIMARY is asserted (doc/integrator/src/smu-smc.adoc, Telemetry and Debug Integration).
+# This command declares PRIMARY -> TELEMETRY; the TELEMETRY -> PRIMARY direction is an
+# asyncrst_assert_sequence below.
 set_rdc_define_assertion_sequence \
     -from_reset {PRIMARY_RESET_N PRIMARY_RESET_N_SMC_CLK PRIMARY_RESET_N_REF_CLK PRIMARY_RESET_N_PERIPH_CLK} \
     -to_reset {TELEMETRY_RESET_N}
@@ -250,6 +260,12 @@ set_app_var rdc_new_asyncrst_commands true
 # so system is in reset
 asyncrst_assert_sequence \
     -from_reset {WARM_RESET_N WARM_RESET_N_SMC_CLK FUSE_RESET_N} \
+    -to_reset {PRIMARY_RESET_N PRIMARY_RESET_N_SMC_CLK}
+
+# TELEMETRY => PRIMARY: rst_telemetry_ni never asserts without PRIMARY (see the telemetry
+# pairing above), so the telemetry receivers are in reset whenever their ATB FIFO is.
+asyncrst_assert_sequence \
+    -from_reset {TELEMETRY_RESET_N} \
     -to_reset {PRIMARY_RESET_N PRIMARY_RESET_N_SMC_CLK}
 
 # AVS_APB_CLK_RESET_N => PRIMARY: AVS_APB is the prim_sync_reset tail of primary_periph,

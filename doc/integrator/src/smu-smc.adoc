@@ -648,6 +648,12 @@ interfaces. The telemetry interface group (`telemetry_atdata_i`, `telemetry_atid
 clock domain with separate `rst_telemetry_ni` reset. Connect these signals to ATB trace
 sources for debug data collection.
 
+The adopter must not assert `rst_telemetry_ni` while `rst_primary_smc_clk_no` is
+deasserted; assert it only together with, or while, the primary reset is asserted. The
+telemetry receivers are reset by the primary reset, and asserting `rst_telemetry_ni`
+alone clears the ATB FIFOs while the receivers are still reading from them, which can
+corrupt a received telemetry packet.
+
 At the SMC boundary, `ext_debug_bus_i` is 512 bits wide; the SMU concatenates
 the adopter-visible 128-bit input with the SEP's internal 384-bit bus before
 driving SMC. The typed `xtrigger_ss_i` / `xtrigger_ss_o` ports are the only
