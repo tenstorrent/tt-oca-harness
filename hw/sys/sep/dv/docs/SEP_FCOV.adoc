@@ -2673,7 +2673,7 @@ Reach values (<<sep-fcov-parked>>). "executable": the owner fills every bin as w
 
 ===== `sep_fabric_port_silence_cp`
 
-*Description*: A group of cover properties. Each point is a `cover property` of one form: a request is accepted at initiator X for class Y, a response follows at X, no handshake occurs on probe P between the two, and `probe_alive` is true. The response is the one the spec states for the class. The point `sil_dma_not_connected` drops the response qualifier, because the spec states no response for a not-connected DMA target: it needs an accepted `dma_req` request and `probe_alive`, and its window ends at the done or error interrupt of the DMA run.
+*Description*: A covergroup with one coverpoint per property and one bin per cause. Each point records one form: a request is accepted at initiator X for class Y, a response follows at X, no handshake occurs on probe P between the two, and `probe_alive` is true. The response is the one the spec states for the class. The point `sil_dma_not_connected` drops the response qualifier, because the spec states no response for a not-connected DMA target: it needs an accepted `dma_req` request and `probe_alive`, and its window ends at the done or error interrupt of the DMA run.
 
 *Tool*: VCS. *Class*: executable.
 
