@@ -47,6 +47,7 @@ from env.sep_filter_model import FilterEntry
 from env.sep_lcc_golden import LC_PROD, LCC_FEAT_CTRL, feat_ctrl_expected
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
@@ -58,17 +59,17 @@ RESP_DECERR = 3
 RESP_NAME = {-1: "TIMEOUT", 0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 AXI_BURST_INCR = 1
 
-EXT_BASE = 0x2000_0000
-EXT_END = 0x3FFF_FFFF
-# memory_map.adoc, External Window Reference Model: EFUSE_SHIM_SIZE default 0x4.
-EFUSE_SHIM_SIZE = 0x4
+EXT_BASE = sym("SEP_EXTERNAL_REG_MAP_BASE_ADDR")
+EXT_END = EXT_BASE + sym("SEP_EXTERNAL_REG_MAP_SIZE") - 1
+EFUSE_SHIM_SIZE = sym("SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_SIZE")
 SHIM_LAST = EXT_BASE + EFUSE_SHIM_SIZE - 1
 FIRST_ABOVE_SHIM = EXT_BASE + EFUSE_SHIM_SIZE
-LAST_WORD = 0x3FFF_FFF8
-MID_LO, MID_HI = 0x2000_0008, 0x3FFF_FFF7
+LAST_WORD = EXT_END + 1 - 8
+MID_LO, MID_HI = EXT_BASE + 8, EXT_END - 8
 # Reset bytes of the shim register (EFUSE_BANK_INIT_TIME): byte 0 and byte 3.
-SHIM_RESET_BYTE = {EXT_BASE: 0x20, SHIM_LAST: 0x00}
-BURST_PAGE = 0x2000_1000
+_SHIM_RESET = sym("EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_DEFAULT")
+SHIM_RESET_BYTE = {EXT_BASE: _SHIM_RESET & 0xFF, SHIM_LAST: (_SHIM_RESET >> 24) & 0xFF}
+BURST_PAGE = EXT_BASE + 0x1000
 PAGE = 0x1000
 # SI requests are non-secure data accesses; the entry takes allow_ns = AxPROT[1].
 SI_PROT = 0b010

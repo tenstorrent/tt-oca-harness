@@ -477,15 +477,25 @@ static void out_entry(uint32_t i, uint64_t start, uint64_t endv, uint32_t cfg) {
     WRITE_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(i), endv);
     wr(SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(i), cfg);
 }
+// FILTER_CONFIG field bits of the low word (the locked bit is in the high word).
+#define CFG_FIELDS_LO                                                                \
+    ((uint32_t)(FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm |                        \
+                FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm |                       \
+                FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm |                       \
+                FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bm |                            \
+                FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_bm |                      \
+                FILTER_CTRL__FILTER_CONFIG__SRC_ID_bm |                              \
+                FILTER_CTRL__FILTER_CONFIG__GROUP_ID_bm |                            \
+                FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bm))
 // Read an entry back. The field bits of FILTER_CONFIG are graded (the sum lets
 // the host check them). The specification states no write-back timing for
 // START and END, so their read-back is counted and logged only.
 static void out_entry_check(uint32_t i, uint64_t start, uint64_t endv, uint32_t cfg) {
-    uint32_t c = rd(SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(i)) & 0x01FF7113u;
+    uint32_t c = rd(SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(i)) & CFG_FIELDS_LO;
     uint64_t s = READ_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(i)) & FILTER_CTRL__START_ADDR__START_ADDR_bm;
     uint64_t e = READ_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(i)) & FILTER_CTRL__END_ADDR__END_ADDR_bm;
     uint32_t want_c = (cfg | ((uint32_t)FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_reset
-                              << FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_bp)) & 0x01FF7113u;
+                              << FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_bp)) & CFG_FIELDS_LO;
     if (s != start || e != endv) g_frb_rng++;
     if (c != want_c) {
         if (g_frb_bad == 0u) {

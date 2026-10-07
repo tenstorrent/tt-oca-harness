@@ -33,7 +33,14 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 from env.sep_decode_resp import MapRow, expected_unbacked, sep_map_rows
-from sep_reg_meta import _IPXACT_NS, _ipxact_num, _iter_ipxact_registers, iter_addrs, sep_reg
+from sep_reg_meta import (
+    _IPXACT_NS,
+    SEP_RESET_CTRL,
+    _ipxact_num,
+    _iter_ipxact_registers,
+    iter_addrs,
+    sep_reg,
+)
 
 NS = _IPXACT_NS
 
@@ -92,9 +99,9 @@ BURST_ROWS = ("otbn", "hmac", "kmac", "esrc", "abr")
 NONZERO_LIVE = ("esrc", "abr")
 
 # Reset control (hw/sys/sep/regs/gen/adoc/blocks/sep_reset_ctrl.adoc).
-SW_RESET_N = 0x1080_3000
-SW_RESET_N_FIELDS = 0x7F
-SW_RESET_N_REF = 0x7E
+SW_RESET_N = SEP_RESET_CTRL.addr("SW_RESET_N")
+SW_RESET_N_FIELDS = SEP_RESET_CTRL.mask("SW_RESET_N")
+SW_RESET_N_REF = SEP_RESET_CTRL.reset("SW_RESET_N")
 
 # Key Manager mailbox, SEP side (hw/ip/key_manager/regs/gen/adoc/km_mailbox_sep.adoc).
 KM_WRITE_DATA = sep_reg.KM_MAILBOX_SEP_SEP_WRITE_DATA_REG_ADDR
