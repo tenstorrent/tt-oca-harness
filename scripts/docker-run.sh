@@ -313,9 +313,12 @@ nixos_run() {
 }
 
 image_hash() {
-  local flake_output
+  local flake_output platforms=""
   flake_output=$([[ "${IMAGE_WITH_UV:-false}" == true ]] && echo "with_uv_deps" || echo "without_uv_deps")
-  nixos_run "nix eval \$(pwd)#containerHashes.$flake_output" | tr -d '"'
+  # The tag is read from a built x86_64-linux derivation. On an arm64 host the
+  # NixOS container is aarch64-linux and builds it under the engine's emulation.
+  case "$(uname -m)" in arm64 | aarch64) platforms="--extra-platforms x86_64-linux" ;; esac
+  nixos_run "nix eval $platforms \$(pwd)#containerHashes.$flake_output" | tr -d '"'
 }
 
 # Open a shell in the Nix Container - even on a nix-enabled host
