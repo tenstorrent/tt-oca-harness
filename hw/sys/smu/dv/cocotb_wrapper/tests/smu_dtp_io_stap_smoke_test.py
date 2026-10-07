@@ -11,7 +11,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_dtp_io_stap_smoke_test(smu_base_test):
-    """IO STAP TCK fanout during PTAP scans; no Force / no sep_in."""
+    """IO STAP TCK fanout during PTAP scans."""
 
     use_shared_env = True
 

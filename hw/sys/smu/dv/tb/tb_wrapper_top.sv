@@ -483,9 +483,8 @@ module smu_wrapper_uvm_top
   //
   // Everything the crossbar does not consume is tied to its AXI reset value
   // here rather than exposed, so a sequence cannot accidentally drive a
-  // meaningless field. Bursts are supported (len/size/burst are real ports)
-  // because the ext_axi protocol's route legs are single-beat but its DECERR
-  // leg is easier to reason about with the full channel present.
+  // meaningless field. len/size/burst are real ports: the ext_axi route legs
+  // are single-beat, and the DECERR leg carries the full channel.
   assign smu_axi_in_req.aw.id     = ext_in_awid;
   assign smu_axi_in_req.aw.addr   = ext_in_awaddr;
   assign smu_axi_in_req.aw.len    = ext_in_awlen;

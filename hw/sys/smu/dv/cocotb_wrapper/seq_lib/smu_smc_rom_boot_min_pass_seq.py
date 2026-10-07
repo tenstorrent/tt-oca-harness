@@ -49,9 +49,7 @@ from seq_lib.smu_jtag_helpers import (
 MIN_PASS_MAGIC = 0xACAF_ACA1
 
 #: SMC CPU_CTRL scratch0, SMC-local: the address the ROM stub builds in t0.
-SMC_SCRATCH0_ADDR = smc_indexed_addr(
-    "SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", 0
-)  # SMC CPU_CTRL scratch0
+SMC_SCRATCH0_ADDR = smc_indexed_addr("SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", 0)
 
 BOOT_MAX_CYCLES = 600_000
 HEARTBEAT_CYCLES = 50_000

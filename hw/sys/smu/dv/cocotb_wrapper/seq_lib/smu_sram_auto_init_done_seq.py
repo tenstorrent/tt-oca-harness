@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_sram_auto_init_done_test (SMU_110).
+"""Sequence for smu_sram_auto_init_done_test.
 
 With smc_disable_sram_auto_init_i at its 1'b0 default, the bring-up sweep is
 awaited until smc_init_mem_done_o is high, a cold reset is then held until it
@@ -8,8 +8,8 @@ reaches the primary reset and the flag is required to clear, and the SMC
 scratch-RAM zeroing is watched at its consumer after release: the
 initialisation enable rises and the address counter advances, zeroing writes
 reach the scratch RAM, and smc_init_mem_done_o asserts again and holds. The
-covered geometry and latency are unstated (SF-046), so completion is awaited
-under a testbench bound rather than compared against a cycle count.
+covered geometry and latency are unstated, so completion is awaited under a
+testbench bound rather than compared against a cycle count.
 """
 
 from __future__ import annotations

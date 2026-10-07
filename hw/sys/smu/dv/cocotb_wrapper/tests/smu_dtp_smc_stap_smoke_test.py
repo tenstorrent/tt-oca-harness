@@ -11,7 +11,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_dtp_smc_stap_smoke_test(smu_base_test):
-    """SMC STAP TRST + TAP_3DCR via tdo_oen; no Force / no sep_in."""
+    """SMC STAP TRST + TAP_3DCR via tdo_oen."""
 
     use_shared_env = True
 

@@ -11,7 +11,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_dtp_bsr_ijtag_scan_test(smu_base_test):
-    """EXTEST/SAMPLE_PRELOAD BSR select; no Force / no sep_in."""
+    """EXTEST/SAMPLE_PRELOAD BSR select over the primary TAP."""
 
     use_shared_env = True
 

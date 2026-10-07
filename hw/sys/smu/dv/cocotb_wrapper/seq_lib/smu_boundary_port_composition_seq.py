@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_boundary_port_composition_test (SMU_101).
+"""Sequence for smu_boundary_port_composition_test.
 
 Reads the elaborated SEP=1 `smu` boundary passively: port presence, the widths
 the specifications state, the idle values the specifications state, and the

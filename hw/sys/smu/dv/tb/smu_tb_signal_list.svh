@@ -41,9 +41,9 @@
 `SMU_TB_OUT(logic, drbg_seed_valid_o)
 `SMU_TB_OUT(logic, drbg_es_ack_o)
 `SMU_TB_OUT(logic, drbg_genbits_vld_o)
-// Sticky versions. These are pulses; latching them in hardware means a test
-// can poll every few thousand cycles instead of sampling every edge from
-// Python, which is both far faster and cannot miss a one-cycle event.
+// Sticky versions of the pulses above: each is one cycle wide, so a test
+// that polls every few thousand cycles instead of sampling every edge
+// reads these.
 `SMU_TB_OUT(logic, drbg_seed_valid_seen_o)
 `SMU_TB_OUT(logic, drbg_es_ack_seen_o)
 `SMU_TB_OUT(logic, drbg_genbits_seen_o)
@@ -173,7 +173,7 @@
 // AP output-remap CSR path, split at the two stages unique to this branch:
 // the second-level 16-way demux inside sep_system_csr, and the generated
 // register block behind it. Everything upstream is shared with the filter
-// and scratch CSRs, which are known good.
+// and scratch CSRs.
 `SMU_TB_OUT(logic [31:0], sep_ap_csr_aw_count_o)  // reaches the AP_OUTPUT_REMAP demux
 `SMU_TB_OUT(logic [31:0], sep_ap_reg0_aw_count_o)  // reaches region 0's register block
 `SMU_TB_OUT(logic [31:0], sep_csr_aw_count_o)  // reaches sep_system_csr at all
