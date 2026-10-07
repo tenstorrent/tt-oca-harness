@@ -11911,7 +11911,7 @@ address are Approved, through `dbg_iccm_active_o` and `dbg_dccm_active_o`.
 
 *Area*: Memory, boot, reset, WDT, clock
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense` with `ext_boot_seq_done_i` at 1, so `rst_ni` is the only open term. VCS only (sub-cycle phase and X on reset need VCS). `reseed = 4`. Each leaf runs two `rst_ni` passes: the control pass and one graded pass.
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense` with `ext_boot_seq_done_i` at 1, so `rst_ni` is the only open term. VCS only (sub-cycle phase and X on reset need VCS). `reseed = 4`. Testlist `system.toml`, groups `all` and `cpu_stub`. Each leaf runs two `rst_ni` passes: the control pass and one graded pass.
 
 *Source Module*: `sep_cold_reset_phase_test`
 
@@ -12606,7 +12606,7 @@ address are Approved, through `dbg_iccm_active_o` and `dbg_dccm_active_o`.
 
 *Area*: Memory, boot, reset, WDT, clock
 
-*Run mode*: `no_cpu` with `tools = ["vcs"]`, VCS only (the stub target has no TCM controller), `reseed = 4`. No firmware runs. The test uses the full-CPU VCS build with the core held.
+*Run mode*: `no_cpu`, testlist target `lsu_stub_all_live`, with `tools = ["vcs"]`, `reseed = 4`. No firmware runs. Testlist `memory.toml`, groups `all` and `cpu_stub`. The graded invocation overrides the target to `default`, because the stub target has no TCM controller; on that full-CPU VCS build the no-CPU force-splice holds the core and drives the LSU register path.
 
 *Source Module*: `sep_tcm_dma_aperture_ecc_test`
 
@@ -20555,7 +20555,7 @@ use it" names the entries whose checks need the hook.
 |Existing bench hook
 |Holds the read side of the HMAC message FIFO idle while the input is high, so the hash engine stops consuming and the FIFO fills.
 |The read-ready net of the HMAC message FIFO, inside `sep`
-|`sep_hmac_fifo_stream_rand_test` (the stalled legs: CHK-HMAC-BACKPRESSURE, CHK-HMAC-FIFOEMPTY)
+|`sep_hmac_fifo_stream_rand_test` (the stalled legs: CHK-HMAC-BACKPRESSURE, CHK-HMAC-FIFOEMPTY); `sep_pic_pending_map_walk_rand_test` (source 19 set-up of CHK-FIFO-EMPTY)
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |BH-SMC
 |Top-port drive
