@@ -1013,19 +1013,14 @@ class _EvidenceRecorder:
     BASE_IDS = frozenset({"CHK-BUILD-MODEL-IDENTITY"})
     BASE_PREFIXES = ("CHK-PROBE-",)
 
-    # Leaves that emit no CHK-* line of their own, with the channel each one
-    # grades through instead. Every entry is a LOGGING gap, not a verification
-    # gap: each grades through sequence-level asserts, the scoreboard's
-    # ``expected=`` compares, or a protocol-VIP record with a stimulus floor,
-    # and none is a clean exit that checks nothing. Naming them is what lets the
-    # gate below be unconditional for every other leaf.
+    # Leaves allowed to emit no CHK-* line of their own, with the channel each
+    # one grades through instead: sequence-level asserts, the scoreboard's
+    # ``expected=`` compares, or a protocol-VIP record with a stimulus floor.
+    # Naming them lets the gate below be unconditional for every other leaf.
     #
-    # owner: SMC DV. opened: 2026-09-13, from the leaves that emitted no token
-    # of their own at introduction. review_date: NO_OWN_EVIDENCE_REVIEW_DATE.
-    # Closes when empty. Keys must stay inside NO_OWN_EVIDENCE_CEILING (the
-    # set at introduction); a new name fails the run. To remove an entry, make
-    # the check that already runs log a ``CHK-<ID>:`` line where it happens --
-    # in the sequence, not here.
+    # Keys must stay inside NO_OWN_EVIDENCE_CEILING; a new name fails the run.
+    # To remove an entry, make the check that already runs log a ``CHK-<ID>:``
+    # line where it happens, in the sequence.
     NO_OWN_EVIDENCE: dict[str, str] = {}
 
     # Past this date, ``_finalize_evidence`` warns on every run while the set is

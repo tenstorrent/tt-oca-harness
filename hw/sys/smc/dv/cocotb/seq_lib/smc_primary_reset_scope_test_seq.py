@@ -18,18 +18,18 @@ observed held for a whole window rather than at one instant:
   revert is the whole fabric claim, and it is a scoreboard exact-value compare.
 
   "The fabric is held" is *not* claimed, because this bench cannot observe it.
-  Two measurements say so and both are logged. ``s_axi_arready`` and
+  Two facts say so and both are logged. ``s_axi_arready`` and
   ``s_axi_awready`` read 1 immediately before the cool pin drops and read 1 at
   every sample of the held window, so the SEP_IN request channels do not
   withdraw ready while the primary reset is asserted and "not ready" cannot be
   the observable. And a request cannot be presented inside the window either:
   the SEP_IN AXI master takes ``rst_primary_smc_clk_no`` as its own reset
-  (``env/smc_sys_axi_agent.py``), so it parks ``arvalid`` low there -- a read
-  forked into the window was measured with ``arvalid`` high at 0 of 382
-  samples, and its expiry would have been the bench's reset, not the DUT's
-  refusal. Response-channel silence (``s_axi_rvalid`` / ``s_axi_bvalid``) is
-  recorded for the same reason it cannot carry anything: the window issues no
-  traffic, so both read 0 on any RTL.
+  (``env/smc_sys_axi_agent.py``), so it parks ``arvalid`` low there: a read
+  forked into the window cannot present a request, and its expiry would be the
+  bench's reset, not the DUT's refusal. Response-channel silence
+  (``s_axi_rvalid`` / ``s_axi_bvalid``) is recorded for the same reason it
+  cannot carry anything: the window issues no traffic, so both read 0 on any
+  RTL.
 * peripherals -- UART0 is enabled and mid-frame (its TX pad driven low in the
   start bit, with the pad's output enable asserted) when the reset lands;
   during the window the pad's output enable is released at every sample, so

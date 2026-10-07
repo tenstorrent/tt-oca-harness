@@ -52,7 +52,7 @@ timeout_sec = 1800
 tags = ["ci", "gpio"]
 run_modes = ["smoke"]
 
-# BFM rebuild of gpio_filter_access_sep (ACCESS_FILTER AxPROT allow/deny).
+# ACCESS_FILTER AxPROT allow/deny on the GPIO window.
 [[tests]]
 name = "smc_gpio_filter_access_sep_test"
 module = "smc_gpio_filter_access_sep_test"

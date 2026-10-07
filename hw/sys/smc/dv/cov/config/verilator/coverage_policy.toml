@@ -47,12 +47,12 @@
 # toolchain-free CI tier; the fw leaves carry the PLIC, I2C, UART and OCTS
 # stimulus that no hosted leaf drives.
 #
-# Measured on `--items hosted fw` (294 leaves, Verilator 5.050): line 97.83,
-# branch 92.58, expression 92.54, user 453 of 453. Those are the targets
-# SMC_FCOV.adoc reads the figures against, not gates. Every collected `user`
-# point is hit by an enrolled leaf; a point this bench cannot legally reach
-# is not collected (see the Phase 2 list in SMC_FCOV.adoc) rather than
-# waived here, so this file carries no `[[holes]]`.
+# No code-metric family carries a floor: line, branch and expression are
+# targets, read from the run SMC_FCOV.adoc names in "Owning tests, measured"
+# (its commit and simulator). Every collected `user` point is hit by an
+# enrolled leaf; a point this bench cannot legally reach is not collected (see
+# the Phase 2 list in SMC_FCOV.adoc) rather than waived here, so this file
+# carries no `[[holes]]`.
 #
 # Hole categories a row may carry:
 #   missing_stimulus  no enrolled test drives the condition; the rationale

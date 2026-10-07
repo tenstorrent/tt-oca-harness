@@ -49,9 +49,9 @@ response was right belongs to the checker of the leaf that reached it.
 waiver for a `user` point |`user` family of a `--dut smc --items hosted fw
 --cov` run, Verilator or VCS
 |Phase 2 functional coverage |The named set in <<smc-fcov-phase2>> |Not collected
-|Line / branch / expression |Targets, not gates: line 97.83, branch 92.58,
-expression 92.54 effective, the figures the coverage set measures. No floor
-is set |`--coverage-line`, `--coverage-expr`
+|Line / branch / expression |Targets, not gates: the figures the coverage set
+measures on the run <<smc-fcov-owners>> names (its commit and simulator). No
+floor is set |`--coverage-line`, `--coverage-expr`
 |Condition / FSM / toggle / assertion / covergroups |Commercial sign-off |VCS
 |===
 
@@ -379,12 +379,12 @@ smc_wrapper) |Collection on a bench that connects the SMC DTP CSR port to a
 DTP, as `smu.sv` does
 |`c_axil_dtp_csr_active` |`smc_fabric_fcov` |As above: an access the port
 carries never completes, so no leaf drives one |As above
-|`c_next_id_0_zero_on_invalid_setup` |`smc_dma_fcov` |Waits on a ruling
-between `dma_ctrl.rdl` / `dma.adoc`, which have `NEXT_ID` return 0 for a
-command that was not set up correctly, and the stream-0 frontend, which
-returns the transfer-id generator whatever the setup |A ruling: either the
-frontend returns 0 for a rejected command, and a leaf issues one, or the
-specification drops the sentence and the point with it
+|`c_next_id_0_zero_on_invalid_setup` |`smc_dma_fcov` |`dma_ctrl.rdl` /
+`dma.adoc` have `NEXT_ID` return 0 for a command that was not set up
+correctly; the stream-0 frontend returns the transfer-id generator whatever
+the setup, so no stimulus reaches the point as written |Either the frontend
+returns 0 for a rejected command and a leaf issues one, or the specification
+drops the sentence and the point with it
 |`cg_map_access`, local memories × read × error |`smc_map_fcov` |The ROM and
 scratchpad fill their region, so a read of them is refused only for an
 uncorrectable ECC error, which the bench reaches only by fault injection |A
@@ -552,41 +552,49 @@ reaches, never the reverse. The CPU cluster, the I3C controllers and the
 library cells are outside the compile-time scope, so none of their points is
 analysed.
 
-The analysis is the `smc_cov_vcf` item of the runner's formal mode in the
-companion's SMC formal configuration; a reader without the companion runs
-their own unreachability tool over the same database with the same
-environment and writes the same URG exclusion format.
+The analysis runs in the runner's formal mode from a configuration that is not
+in this repository; a reader without it runs their own unreachability tool
+over the same database with the same environment and writes the same URG
+exclusion format.
 
-The accepted list is seeded from the merged database of the commercial-path
-`--items hosted fw` regression (<<smc-cov-paths>>), so it targets the points
-that regression left uncovered, and it runs on the RTL that produced that
-database, because the formal model and the seed must describe one RTL.
+The analysis that writes the accepted list starts from the merged database
+of the commercial-path `--items hosted fw` regression (<<smc-cov-paths>>), so
+it targets the points that regression left uncovered. Every run of the
+analysis, the check mode below included, takes its seed from the checkout it
+runs in, because the formal model and the seed must describe one RTL.
 
-The weekly formal job re-runs the analysis, so the accepted list is
-re-validated on a schedule rather than only when someone remembers. That job
-seeds from the block's `smoke` group unless it is given a database, and
-`smoke` is three leaves: it leaves far more points uncovered than the
-coverage set does, so a list regenerated from it proves a larger exclusion
-set and leaves a smaller effective population behind it. The weekly run is
-therefore a check that an accepted entry has not become reachable, not a
-source of the accepted list. A signoff-grade list takes a hand-run
-coverage-set seed, and a list of unrecorded provenance is not one.
+The analysis has a check mode. With
+`SMC_FCA_ELFILE=hw/sys/smc/dv/cov/config/vcs/smc_unreachable.el` and
+`SMC_FCA_CHECK_EL=1` the goals of the accepted list are the only goals, and
+the item fails when the analysis reaches one of them or when the tool cannot
+apply an entry to the current RTL. A scheduled formal job runs the check
+weekly. A seed's holes do not decide which goals a check analyses, so the
+check needs no coverage-set seed. They do decide what the analysis without
+the check mode proves: a seed narrower than the coverage set leaves more
+points uncovered, so a list regenerated from it proves a larger exclusion set
+and leaves a smaller effective population behind it. The scheduled check
+therefore validates the accepted list and is not a source of it. A
+signoff-grade list takes a coverage-set seed, and a list of unrecorded
+provenance is not one.
 
 The `pass:[[[native_files]]]` entry of `cov/config/vcs/coverage_policy.toml`
 that names the list pins the file's SHA-256. The runner refuses the policy
 when the file and the pinned digest differ, so a regenerated list takes a new
 entry. URG applies no entry whose module or instance checksum differs from
 the design it reports on, so an RTL change under an excluded scope drops that
-scope's exclusions on its own.
+scope's exclusions on its own. The runner applies the list at report time
+without re-checking it, so until the check has run against a changed RTL,
+the effective figures rest on a list proven against the RTL before the
+change.
 
 Regeneration rule: after a change to the SMC RTL file set, the list is
 regenerated from the merged database of a fresh `--items hosted fw`
 regression. Until it is, URG drops the entries of every scope whose checksum
 the change moved, and the entries of the other scopes still apply; the
-analysis's check mode over the accepted list, which the weekly formal job
-runs, fails when an excluded point has become reachable. A regenerated list
-takes design review before its entry changes, and the review accepts no entry
-that stimulus can reach.
+analysis's check mode over the accepted list, which a scheduled formal job
+runs weekly, fails when an excluded point has become reachable or an entry no
+longer applies to the design. A regenerated list takes design review before
+its entry changes, and the review accepts no entry that stimulus can reach.
 
 [[smc-fcov-exclusion-files]]
 === Exclusions and Limitations

@@ -36,10 +36,9 @@ import smc_seq_lib_pkg::*;
 // Reset-domain scenarios (test-sequenced resets through smc_tb_if).
 `include "smc_multi_reset_csr_persistence_test.svh"
 
-// Adopter overlay hook: an external (non-OSS) build may append vendor-
-// specific test classes -- e.g. a commercial-VIP overlay -- by defining
-// SMC_OVERLAY_TESTS to the quoted name of an include file on its own
-// include path. Never defined by the OSS flists.
+// Adopter overlay hook: a build outside this tree may append test classes by
+// defining SMC_OVERLAY_TESTS to the quoted name of an include file on its own
+// include path. The open filelists never define it.
 `ifdef SMC_OVERLAY_TESTS
 `include `SMC_OVERLAY_TESTS
 `endif

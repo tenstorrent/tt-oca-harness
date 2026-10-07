@@ -192,8 +192,7 @@ async def smc_occp_sanity_test(harness: SmcDualHarness) -> None:
     else:
         cocotb.log.info(
             "NOTE: no I3C or I2C bus saw an SCL fall. The pass did not come from a transfer "
-            "on the wire; this is informational because the reference gate does not check "
-            "it either."
+            "on the wire; this is informational, not a gate."
         )
 
     cocotb.log.info(

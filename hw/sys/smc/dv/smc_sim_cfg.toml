@@ -35,7 +35,7 @@ format = "toml_list"
 #
 #   ignore    -- drops the "Error:" line of exactly these six assertions, and
 #                only when it reads "at time 0 fs".
-#   hard-fail -- the companion line carries the timestamp ("...: started at
+#   hard-fail -- the paired line carries the timestamp ("...: started at
 #                0fs failed at 0fs"). Matching "failed at <non-zero>" turns any
 #                post-time-0 firing of those exact assertions into a hard
 #                failure.
@@ -335,10 +335,9 @@ outputs = [
 #   occp_unsecure_boot_test -> u_bfm  (controller, rom-mode DV image)
 #   hello_world             -> transferred over I3C by the controller. An
 #                              ordinary sram-mode image from the shared test
-#                              engine, matching the reference environment's
-#                              +ROM_FW_TEST=hello_world. cocotb writes it into
-#                              the controller's SRAM over AXI, so nothing has to
-#                              embed it in a ROM image.
+#                              engine; cocotb writes it into the controller's
+#                              SRAM over AXI, so nothing has to embed it in a
+#                              ROM image.
 #
 # {fw_target} is the only placeholder the runlib allows, so the DV test names
 # are spelled out rather than interpolated. Same host-toolchain-vs-container
@@ -364,8 +363,7 @@ outputs = [
 # [c_build.occp_rom_only] plus the payload the target ends up running: the
 # production boot ROM for the target, one rom-mode DV controller image named by
 # the test's `firmware = { name = ... }`, and hello_world as an ordinary
-# sram-mode image. This is the shape the reference expresses as
-# +ROM_FW_TEST=hello_world.
+# sram-mode image.
 #
 # Separate from [c_build.dual_occp], which hardcodes occp_unsecure_boot_test as
 # the controller; here the controller varies per test.

@@ -4,12 +4,9 @@
 # SMC coverage exclusions design engineering reviewed on the predecessor SMC
 # bench's exclusion lists, recorded by category against this tree's names. The
 # reviewed lists are not part of this repository; `[review]` states their
-# origin. The companion's smc_reviewed_exclusions.py resolves every entry
-# against urg's templates of a graded run and keeps only the points that run's raw report
-# leaves uncovered; gen_smc_cov_exclusions.py and
-# gen_smc_ports_only_exclusions.py write them into the file each class names.
-# The toggle nets of a [[unit]] are planned by smc_toggle_exclusions.py and
-# written by gen_smc_toggle_exclusions.py, gated the same way.
+# origin. Every entry is resolved against urg's templates of a graded run, and
+# only the points that run's raw report leaves uncovered are written into the
+# file each class names; the toggle nets of a [[unit]] are gated the same way.
 # README.md states every class.
 #
 # [[object]]: a module or an instance (`[*]` for any index) and the toggle

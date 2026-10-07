@@ -18,7 +18,7 @@ timeout_sec = 1800
 tags = ["ci", "i2c"]
 run_modes = ["smoke"]
 
-# BFM rebuild of commercial smc_i2c_p0_rdwr (I2C0↔I2C1).
+# I2C0↔I2C1 controller read/write on the shared pad bus.
 # Requires tb_top +smc_i2c_shared_bus.
 [[tests]]
 name = "smc_i2c_p0_rdwr_test"
@@ -29,7 +29,7 @@ tags = ["ci", "i2c"]
 run_modes = ["smoke"]
 args = ["+smc_i2c_shared_bus"]
 
-# BFM rebuild of commercial smc_i2c_p0_nack (allow-path + VIP NACK legs).
+# Controller allow path plus NACK legs driven by the VIP target.
 [[tests]]
 name = "smc_i2c_p0_nack_test"
 module = "smc_i2c_p0_nack_test"
