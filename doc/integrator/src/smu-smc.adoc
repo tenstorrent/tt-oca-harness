@@ -652,13 +652,18 @@ interfaces. The telemetry interface group (`telemetry_atdata_i`, `telemetry_atid
 clock domain with separate `rst_telemetry_ni` reset. Connect these signals to ATB trace
 sources for debug data collection.
 
-The adopter must assert `rst_telemetry_ni` whenever `rst_primary_smc_clk_no` asserts,
-and must not assert it while `rst_primary_smc_clk_no` is deasserted; driving both from
-the same reset source meets this. The telemetry receivers are reset by the primary
-reset, and asserting `rst_telemetry_ni` alone clears the ATB FIFOs while the receivers
-are still reading from them, which can corrupt a received telemetry packet. The
-`telemetry_afvalid_o` synchronizers are reset by `rst_telemetry_ni` alone, so they rely
-on it asserting with the primary reset.
+The adopter must not assert `rst_telemetry_ni` while `rst_primary_smc_clk_no` is
+deasserted; assert it only together with, or while, the primary reset is asserted. The
+telemetry receivers are reset by the primary reset, and asserting `rst_telemetry_ni`
+alone clears the ATB FIFOs while the receivers are still reading from them, which can
+corrupt a received telemetry packet.
+
+Either reset clears the SMC side of the telemetry interface, so `telemetry_atready_o`
+and `telemetry_afvalid_o` can change asynchronously to `clk_telemetry_i` when
+`rst_primary_smc_clk_no` asserts. The ATB sources that sample them must be held in reset
+whenever `rst_primary_smc_clk_no` is asserted. Deriving both `rst_telemetry_ni` and the
+ATB source resets from `rst_primary_smc_clk_no`, resynchronized to `clk_telemetry_i`,
+meets both requirements.
 
 At the SMC boundary, `ext_debug_bus_i` is 512 bits wide; the SMU concatenates
 the adopter-visible 128-bit input with the SEP's internal 384-bit bus before
