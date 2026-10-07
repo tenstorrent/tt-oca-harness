@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import pyuvm
-from dtp_base_test import dtp_base_test
+from dtp_jtag2axi_robustness_base_test import dtp_jtag2axi_robustness_base_test
 from ocah_lib import OcahKnobs
 from seq_lib.dtp_jtag2axi_dbg_disable_matrix_test_seq import (
     dtp_jtag2axi_dbg_disable_matrix_test_seq,
@@ -13,13 +13,12 @@ from seq_lib.dtp_jtag2axi_dbg_disable_matrix_test_seq import (
 
 
 @pyuvm.test()
-class dtp_jtag2axi_dbg_disable_matrix_test(dtp_base_test):
+class dtp_jtag2axi_dbg_disable_matrix_test(dtp_jtag2axi_robustness_base_test):
     """The debug-disable matrix over the three JTAG2AXI bridge gate fields."""
 
     # Every gated attempt must leave the request counters flat from before its
     # TDR write and put no transaction inside the blocked window held across
     # the release.
-    use_axi_scoreboard = True
     axi_checker_required_ids = (
         "CHK-AXI-RESP",
         "CHK-AXI-RDATA",
@@ -30,7 +29,6 @@ class dtp_jtag2axi_dbg_disable_matrix_test(dtp_base_test):
         "CHK-AXI-STREAM-MIN",
     )
     axi_checker_target_required_ids = ("CHK-J2A-GATE-TDR",)
-    axi_checker_stream_minimums = {"smc_axi": 2, "smc_otp": 2, "sep_otp": 2}
 
     async def run_scenario(self) -> None:
         seq = dtp_jtag2axi_dbg_disable_matrix_test_seq(
