@@ -1330,7 +1330,7 @@ stage_dashboard_data.sh
   render_badges.py                  badge-<flow>-<framework>-<tool>-<kind>.svg
 ----
 
-Staged files land in `<site-root>/ocah-docs/latest/data/`.
+Staged files land in `<site-root>/ocah-home/latest/data/`.
 
 === Running it
 
@@ -1441,23 +1441,23 @@ IDs the page declares.
 |===
 |Page |Selected by |Reads
 
-|`doc/trm/src/dashboard.adoc`
+|`doc/home/src/dashboard.adoc`
 |`dashboard-chip-rows` and `dashboard-block-rows`
 |`summary.json`
 
-|`doc/trm/src/dashboard-block.adoc`
+|`doc/home/src/dashboard-block.adoc`
 |`dashboard-block-row`
 |`summary.json`, `tests.json`
 
-|`doc/trm/src/dashboard-trends.adoc`
+|`doc/home/src/dashboard-trends.adoc`
 |`dashboard-trends` and `dashboard-window-select`
 |`history.json`
 
-|`doc/trm/src/dashboard-test-history.adoc`
+|`doc/home/src/dashboard-test-history.adoc`
 |`dashboard-history-chart`
 |`test-history.json`
 
-|`doc/trm/src/dashboard-test-detail.adoc`
+|`doc/home/src/dashboard-test-detail.adoc`
 |`dashboard-detail-rows`
 |`test-history.json`
 |===
