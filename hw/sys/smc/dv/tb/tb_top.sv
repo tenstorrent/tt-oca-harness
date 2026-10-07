@@ -582,8 +582,8 @@ module smc_uvm_top
     localparam int unsigned I2c0SdaPad = 38;
     localparam int unsigned I2c0SmbAlertPad = 39;
     localparam int unsigned I2c0SmbSusPad = 40;
-    // I2C1 pads (padring: 37+4*i / 38+4*i). Commercial TB shorts I2C0/1/2
-    // SCL/SDA via tranif1 for internal P0 controller↔target loops.
+    // I2C1/I2C2 pads (padring: 37+4*i / 38+4*i). +smc_i2c_shared_bus joins
+    // them to the I2C0 open-drain bus for controller-to-target loops.
     localparam int unsigned I2c1SclPad = 41;
     localparam int unsigned I2c1SdaPad = 42;
     localparam int unsigned I2c1SmbAlertPad = 43;
@@ -615,7 +615,7 @@ module smc_uvm_top
     bit tb_hold_ext_boot /*verilator public_flat_rw*/;
     // ext_interrupts_i[16:2], PLIC sources 3-17; bits 1 and 0 keep their own pins.
     bit [16:2] tb_ext_interrupts_hi_i /*verilator public_flat_rw*/;
-    // +smc_uart_cross_3to0: short commercial UART pairs 0↔3 and 1↔2
+    // +smc_uart_cross_3to0: cross-wire UART pairs 0↔3 and 1↔2
     // (TX of each into RX of the peer).
     bit tb_uart_cross_3to0;
     initial begin
@@ -641,8 +641,8 @@ module smc_uvm_top
     // or cocotb side may pull a line low.
     //
     // +smc_i2c_shared_bus: OR I2C1/I2C2 open-drain pulls into the same resolved
-    // bus and drive those pads with that value (commercial tranif1 short).
-    // Default off so existing I2C0↔VIP tests stay isolated.
+    // bus and drive those pads with that value. Default off, so I2C0↔VIP
+    // tests see an isolated bus.
     logic tb_i2c_shared_bus;
     logic tb_i2c1_scl_dut_low;
     logic tb_i2c1_sda_dut_low;
@@ -667,8 +667,8 @@ module smc_uvm_top
     assign tb_i2c0_sda = !(tb_i2c0_sda_dut_low || tb_i2c0_sda_ext_low ||
                            (tb_i2c_shared_bus && (tb_i2c1_sda_dut_low ||
                                                   tb_i2c2_sda_dut_low)));
-    // SMBus sideband OD (commercial tranif1 on i2c_smbus_alert / suspend):
-    // wrap *_no is 0 while that controller asserts the open-drain line.
+    // SMBus sideband open-drain resolve: wrap *_no is 0 while that controller
+    // asserts the open-drain line.
     logic tb_i2c0_smbalert_dut_low;
     logic tb_i2c1_smbalert_dut_low;
     logic tb_i2c2_smbalert_dut_low;
@@ -763,7 +763,7 @@ module smc_uvm_top
             tb_pad_drive_val[I2c2SclPad] = tb_i2c0_scl;
             tb_pad_drive_en[I2c2SdaPad]  = 1'b1;
             tb_pad_drive_val[I2c2SdaPad] = tb_i2c0_sda;
-            // Shared SMBus alert / suspend (commercial i2c_smbus_alert/suspend).
+            // Shared SMBus alert / suspend lines.
             tb_pad_drive_en[I2c0SmbAlertPad]  = 1'b1;
             tb_pad_drive_val[I2c0SmbAlertPad] = tb_i2c_smbalert;
             tb_pad_drive_en[I2c1SmbAlertPad]  = 1'b1;
@@ -2404,10 +2404,9 @@ module smc_uvm_top
     // target's production ROM drives it from set_gpio_status(OCCP_ERROR_NONE)
     // (bootrom/prod/lib/src/occp.c) on the success path of OCCP init.
     //
-    // The undriven value is 0, matching the reference environment's pulldown
-    // on this pad. It must NOT default high: a target that never asserts
-    // readiness would then be indistinguishable from one that does, and in
-    // silicon a real host would hang forever waiting for it.
+    // The undriven value is 0 (pulldown). It must NOT default high: a target
+    // that never asserts readiness would then be indistinguishable from one
+    // that does, and in silicon a real host would hang forever waiting for it.
     // ==================================================================
 
     /* verilator public_module */

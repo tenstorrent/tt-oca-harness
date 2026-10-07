@@ -24,9 +24,6 @@ buffer in the controller's own SRAM. A driver that fills the target's buffer wit
 mirroring it leaves the firmware expecting an empty buffer, and its guard rejects the
 first real entry. The mirror has its own layout -- head, tail, entries[] with no
 num_entries word -- so it is not a byte copy of the target's.
-
-The reference also writes a test-mode code to controller scratch 5; the firmware here
-declares that address and never reads it, so it is not carried.
 """
 
 from __future__ import annotations

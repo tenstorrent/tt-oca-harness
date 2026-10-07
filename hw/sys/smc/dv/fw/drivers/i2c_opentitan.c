@@ -310,15 +310,9 @@ uint32_t g_i2c_tx_reset_residual;     /* TXLVL after that second attempt */
 
 /* Fail-closed by default. When a FIFO reset does not take, the code below
  * repairs the FIFO by hand, and the caller's "level is 0 after reset" check is
- * then satisfied by that repair rather than by the hardware. Every test calling
- * this helper on its setup path inherits the blind spot, and four independent
- * audits filed it, so the helper now terminates the test rather than hide it.
- *
- * Measured across 12 recent runs the repair path fires zero times, so failing
- * closed is not load-bearing in healthy operation. A test that deliberately
- * provokes a stuck FIFO sets this to 1 for the window in which it expects a
- * repair, which puts that expectation in the source instead of leaving it
- * silently global. */
+ * then satisfied by that repair rather than by the hardware, so with this clear
+ * the helper terminates the test. A test that provokes a stuck FIFO sets this
+ * to 1 for the window in which it expects a repair. */
 uint32_t g_i2c_reset_repair_allowed;
 
 /* Bound on the manual drain. The ACQ FIFO is 64 deep

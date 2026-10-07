@@ -15,14 +15,12 @@ under test:
 
     +sep_rb_entries=0     underflow  -- every read must return an empty buffer
     +sep_rb_entries=600   overflow   -- 512-slot buffer, so the oldest 89 are dropped
-    (unset)               nominal    -- randomised 1..512, as the reference does
+    (unset)               nominal    -- randomised 1..512
 
 Gating follows the rom-only family: poll both instances' scratch 0, fail on TEST_FAIL from
-either, pass on TEST_PASS. The firmware is what compares -- it walks min(count, 511)
-entries and then requires ten further reads to return 0. Note what this does NOT check:
-the reference driver mirrors every entry into a shadow buffer in controller SRAM, but no
-firmware in either tree reads that mirror, so no value comparison happens on either side.
-The entries this driver wrote are logged so a failure can be read against them by hand.
+either, pass on TEST_PASS. The firmware walks min(count, 511) entries and then requires ten
+further reads to return 0. The entries this driver wrote are logged so a failure can be
+read against them by hand.
 
 Plusargs:
     +rom_bin64=<image>        target production ROM               (required)
@@ -267,8 +265,7 @@ async def smc_sep_ring_buffer_test(harness: SmcDualHarness) -> None:
     else:
         cocotb.log.info(
             "NOTE: no I3C channel saw an SCL fall. The pass did not come from GET_SEP_STATUS "
-            "traffic on the wire; this is informational because the reference gate does not "
-            "check it either."
+            "traffic on the wire; this is informational, not a gate."
         )
 
     cocotb.log.info(

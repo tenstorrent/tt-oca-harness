@@ -8,9 +8,9 @@ values above that range into the target before cold reset -- a well-formed
 structurally valid but semantically illegal state -- and requires the ROM to reach its
 POST error state rather than continue booting.
 
-Pass criterion, from the reference monitor's _check_invalid_lc_flow(): POST code boot
-phase ERROR with error INVALID_SEC_MODE. Reaching TEST_PASS instead is a failure: it
-would mean the ROM booted on a lifecycle it cannot classify.
+Pass criterion: POST code boot phase ERROR with error INVALID_SEC_MODE. Reaching
+TEST_PASS instead is a failure: it would mean the ROM booted on a lifecycle it cannot
+classify.
 
 The controller is not part of this: it runs its own image and is not gated on. Only the
 target's POST code decides the outcome.
