@@ -13,9 +13,10 @@ register's captured 0. The SV-UVM twin is
 
 from __future__ import annotations
 
-from env.dtp_scan_ref_model import PTAP_3DCR_WIDTH, SCAN_MARKER_WIDTH
+from env.dtp_ijtag_sib_model import SCAN_MARKER_WIDTH
+from env.dtp_stap_3dcr_model import PTAP_3DCR_WIDTH
 from env.dtp_stap_ds_agent import STAP_DS_TDR_NAME
-from env.dtp_types import DtpJtagInstr
+from env.dtp_types import DtpJtagInstr, DtpScanKind
 
 from .dtp_scan_base_test_seq import dtp_scan_base_test_seq
 
@@ -90,25 +91,36 @@ class dtp_jtag_zero_length_bypass_test_seq(dtp_scan_base_test_seq):
 
         self.log_step(3, "ZERO_LENGTH_BYPASS: write DS_TDR through the chain, then read it back")
         captured = await self.stap_chain_write(
-            ds_values={stap: value}, marker=marker, context=f"{ctx}.zlb_write", scan_kind="zlb"
+            ds_values={stap: value},
+            marker=marker,
+            context=f"{ctx}.zlb_write",
+            scan_kind=DtpScanKind.ZLB,
         )
-        self.check_zlb_chain_align(captured, marker, scan_kind="zlb", context=f"{ctx}.zlb_write")
+        self.check_zlb_chain_align(
+            captured, marker, scan_kind=DtpScanKind.ZLB, context=f"{ctx}.zlb_write"
+        )
         captured = await self.stap_chain_maintain(
-            marker=marker, context=f"{ctx}.zlb_read", scan_kind="zlb"
+            marker=marker, context=f"{ctx}.zlb_read", scan_kind=DtpScanKind.ZLB
         )
-        self.check_stap_chain_readback(captured, context=f"{ctx}.zlb_read", scan_kind="zlb")
-        self.check_zlb_chain_align(captured, marker, scan_kind="zlb", context=f"{ctx}.zlb_read")
+        self.check_stap_chain_readback(
+            captured, context=f"{ctx}.zlb_read", scan_kind=DtpScanKind.ZLB
+        )
+        self.check_zlb_chain_align(
+            captured, marker, scan_kind=DtpScanKind.ZLB, context=f"{ctx}.zlb_read"
+        )
 
         self.log_step(4, "BYPASS: the same chain reads back behind the same bypass register")
         await self.stap_chain_ir_write(
             ptap_instr=DtpJtagInstr.BYPASS_3F, context=f"{ctx}.load_bypass"
         )
         captured = await self.stap_chain_maintain(
-            marker=marker, context=f"{ctx}.bypass_read", scan_kind="bypass"
+            marker=marker, context=f"{ctx}.bypass_read", scan_kind=DtpScanKind.BYPASS
         )
-        self.check_stap_chain_readback(captured, context=f"{ctx}.bypass_read", scan_kind="bypass")
+        self.check_stap_chain_readback(
+            captured, context=f"{ctx}.bypass_read", scan_kind=DtpScanKind.BYPASS
+        )
         self.check_zlb_chain_align(
-            captured, marker, scan_kind="bypass", context=f"{ctx}.bypass_read"
+            captured, marker, scan_kind=DtpScanKind.BYPASS, context=f"{ctx}.bypass_read"
         )
 
         chain_len = self.stap_chain_len()
@@ -122,7 +134,7 @@ class dtp_jtag_zero_length_bypass_test_seq(dtp_scan_base_test_seq):
         )
 
     def check_zlb_chain_align(
-        self, captured: int, marker: int, *, scan_kind: str, context: str
+        self, captured: int, marker: int, *, scan_kind: DtpScanKind, context: str
     ) -> None:
         """``CHK-ZLB-CHAIN-ALIGN``: with the PTAP 3DCR select set, the bit
         after the STAP chain is the bypass register's captured 0 and the
@@ -131,7 +143,9 @@ class dtp_jtag_zero_length_bypass_test_seq(dtp_scan_base_test_seq):
         Valid after a scan that leaves the chain layout as it found it, such
         as a maintain scan or a downstream register write.
         """
-        assert scan_kind in ("zlb", "bypass"), f"no alignment rule for a {scan_kind} scan"
+        assert scan_kind in (DtpScanKind.ZLB, DtpScanKind.BYPASS), (
+            f"no alignment rule for a {scan_kind} scan"
+        )
         chain_len = self.stap_chain_len()
         name = f"{self.CHAIN_SCAN_NAMES[scan_kind]}: captured 0, then the marker"
         self.family_check(
@@ -148,4 +162,4 @@ class dtp_jtag_zero_length_bypass_test_seq(dtp_scan_base_test_seq):
     def stap_chain_len(self) -> int:
         """STAP chain length: the TAP_3DCR layout less the PTAP 3DCR, which
         holds no PTAP bypass bit."""
-        return len(self.stap_model.chain_layout(None, "dr")) - PTAP_3DCR_WIDTH
+        return len(self.stap_model.chain_layout(None, DtpScanKind.DR)) - PTAP_3DCR_WIDTH

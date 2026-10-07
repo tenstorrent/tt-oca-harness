@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // dtp_ijtag_sib_all_off_test — all iJTAG SIBs closed stays closed under any seeded gating mask
-// (looped runner with per-pass family evidence, 16-pass floor).
+// (looped runner with per-pass family evidence).
 
 class dtp_ijtag_sib_all_off_test extends dtp_base_test;
   `uvm_component_utils(dtp_ijtag_sib_all_off_test)

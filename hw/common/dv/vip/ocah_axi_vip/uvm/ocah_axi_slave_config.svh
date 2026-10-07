@@ -6,13 +6,14 @@
 // Owns the responder-side one-shot fault controls (the SV-UVM analogue of
 // the cocotb OcahFaultMixin): error-injection tables — a beat-aligned
 // address armed for a direction answers the programmed non-OKAY response
-// ONCE, skips the memory update (writes), and returns zero data (reads) —
-// plus per-direction one-shot response-ID corruption, a one-shot missing
-// RLAST per beat-aligned read address, and per-channel bounded READY
-// backpressure. This table makes the responder MISBEHAVE; the separate
-// passive ocah_axi_config arm_expected_resp table is what classifies the
-// observed non-OKAY as EXPECTED for the scoreboard; tests arm both through
-// their sequence layer.
+// ONCE, skips the memory update (writes), and returns the armed errored-beat
+// word, zero unless given (reads) — plus per-direction one-shot response-ID
+// corruption, a one-shot missing RLAST per beat-aligned read address, and
+// per-channel bounded READY backpressure. This table makes the responder
+// MISBEHAVE; the separate passive ocah_axi_config arm_expected_resp table is
+// what classifies the observed non-OKAY as EXPECTED for the scoreboard;
+// tests arm both through their sequence layer. It also holds the one-shot
+// W-before-AW write order and the response USER policy.
 
 class ocah_axi_slave_config extends uvm_object;
   `uvm_object_utils(ocah_axi_slave_config)
@@ -41,11 +42,19 @@ class ocah_axi_slave_config extends uvm_object;
   int unsigned w_stall_cycles  = 0;
   int unsigned ar_stall_cycles = 0;
 
+  // One-shot write order (arm_w_before_aw): the next write raises WREADY
+  // with its first AWREADY window, so its first W beat is accepted while its
+  // AW waits (a subordinate may accept write data before the address,
+  // IHI 0022 A3.3.1). The driver clears it when that write starts.
+  bit w_before_aw;
+
   // Stable name for log messages.
   string name_tag = "ocah_axi_slave";
 
-  // One-shot injected-error tables, keyed by beat-aligned address.
+  // One-shot injected-error tables, keyed by beat-aligned address; a read
+  // entry carries the RDATA word its errored beat answers.
   protected ocah_axi_resp_e m_inject_rd[bit [63:0]];
+  protected bit [63:0]      m_inject_rdata[bit [63:0]];
   protected ocah_axi_resp_e m_inject_wr[bit [63:0]];
 
   // One-shot response-ID corruption masks per direction (the SV-UVM mirror
@@ -58,6 +67,13 @@ class ocah_axi_slave_config extends uvm_object;
 
   // One-shot missing-RLAST table, keyed by beat-aligned read address.
   protected bit m_missing_rlast[bit [63:0]];
+
+  // Response USER policy: BUSER and RUSER are zero until
+  // randomize_resp_user() sets a seed. Each call advances the epoch, which
+  // tells the driver to reseed its draws.
+  protected bit          m_resp_user_random;
+  protected int unsigned m_resp_user_seed;
+  protected int unsigned m_resp_user_epoch;
 
   function new(string name = "ocah_axi_slave_config");
     super.new(name);
@@ -77,20 +93,25 @@ class ocah_axi_slave_config extends uvm_object;
     return ((addr / 64'(beat_bytes())) * 64'(beat_bytes())) % 64'(mem_bytes);
   endfunction
 
-  // Program a one-shot non-OKAY response at a beat-aligned address.
+  // Program a one-shot non-OKAY response at a beat-aligned address; the
+  // errored read beat answers `rdata` as its RDATA word.
   function void inject_error(bit [63:0] addr, ocah_axi_resp_e resp, bit for_read = 1'b1,
-                             bit for_write = 1'b1);
+                             bit for_write = 1'b1, bit [63:0] rdata = '0);
     bit [63:0] aligned = beat_align(addr);
-    if (for_read) m_inject_rd[aligned] = resp;
+    if (for_read) begin
+      m_inject_rd[aligned]    = resp;
+      m_inject_rdata[aligned] = rdata & ((data_width >= 64) ? '1 : ((64'h1 << data_width) - 64'h1));
+    end
     if (for_write) m_inject_wr[aligned] = resp;
     `uvm_info(get_type_name(), $sformatf(
-              "%s: injecting error addr=0x%0h (aligned 0x%0h) resp=%s read=%0d write=%0d",
+              "%s: injecting error addr=0x%0h (aligned 0x%0h) resp=%s read=%0d write=%0d rdata=0x%0h",
               name_tag,
               addr,
               aligned,
               resp.name(),
               for_read,
-              for_write
+              for_write,
+              rdata
               ), UVM_LOW)
   endfunction
 
@@ -152,6 +173,7 @@ class ocah_axi_slave_config extends uvm_object;
 
   function void clear_errors();
     m_inject_rd.delete();
+    m_inject_rdata.delete();
     m_inject_wr.delete();
     m_id_corrupt_rd = '0;
     m_id_corrupt_wr = '0;
@@ -185,19 +207,59 @@ class ocah_axi_slave_config extends uvm_object;
     `uvm_info(get_type_name(), $sformatf("%s: disabled backpressure", name_tag), UVM_LOW)
   endfunction
 
+  // Arm the one-shot W-before-AW order for the next write. Arm it while the
+  // write channels are idle.
+  function void arm_w_before_aw();
+    w_before_aw = 1'b1;
+    `uvm_info(get_type_name(), $sformatf("%s: armed W-before-AW for the next write", name_tag),
+              UVM_LOW)
+  endfunction
+
+  // Answer every later B and R beat with a BUSER and RUSER value drawn per
+  // beat from a stream seeded by `seed`, held until the beat's handshake.
+  // AXI4 only.
+  function void randomize_resp_user(int unsigned seed);
+    if (protocol == OCAH_AXI_PROTO_AXI4_LITE)
+      `uvm_fatal(
+          get_type_name(), $sformatf(
+          "%s: randomize_resp_user needs an AXI4 responder (AXI4-Lite carries no USER)", name_tag))
+    m_resp_user_random = 1'b1;
+    m_resp_user_seed   = seed;
+    m_resp_user_epoch++;
+    `uvm_info(get_type_name(), $sformatf("%s: random response USER seed=%0d", name_tag, seed),
+              UVM_LOW)
+  endfunction
+
+  function bit resp_user_random();
+    return m_resp_user_random;
+  endfunction
+
+  function int unsigned resp_user_seed();
+    return m_resp_user_seed;
+  endfunction
+
+  function int unsigned resp_user_epoch();
+    return m_resp_user_epoch;
+  endfunction
+
   function int unsigned pending_errors();
     return m_inject_rd.size() + m_inject_wr.size() + m_missing_rlast.size();
   endfunction
 
-  // Consume the one-shot injection for one beat address, if armed.
-  function ocah_axi_resp_e consume_injected(bit [63:0] addr, ocah_axi_dir_e dir, output bit armed);
+  // Consume the one-shot injection for one beat address, if armed; `rdata`
+  // is the errored read beat's word.
+  function ocah_axi_resp_e consume_injected(bit [63:0] addr, ocah_axi_dir_e dir, output bit armed,
+                                            output bit [63:0] rdata);
     bit [63:0] aligned = beat_align(addr);
     ocah_axi_resp_e resp = OCAH_AXI_RESP_OKAY;
     armed = 1'b0;
+    rdata = '0;
     if (dir == OCAH_AXI_DIR_READ && m_inject_rd.exists(aligned)) begin
       resp  = m_inject_rd[aligned];
+      rdata = m_inject_rdata[aligned];
       armed = 1'b1;
       m_inject_rd.delete(aligned);
+      m_inject_rdata.delete(aligned);
     end else if (dir == OCAH_AXI_DIR_WRITE && m_inject_wr.exists(aligned)) begin
       resp  = m_inject_wr[aligned];
       armed = 1'b1;

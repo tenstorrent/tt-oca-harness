@@ -2,6 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Each inbound mailbox threshold interrupt reaches the CPU on PIC source ch+1 and not the SMC line.
 
+OCAH provenance: ``sep_mailbox_plic_test`` checks mailbox interrupt delivery
+through the PIC to the CPU.
+
 The test boots the VeeR EL2 core and runs the mailbox_plic firmware, which walks all eight
 inbound mailbox channels (axil_mailbox @ 0x10A0_0800, stride 0x1000). Each channel self-triggers its
 threshold interrupt by pushing a word into that FIFO, and proves the interrupt

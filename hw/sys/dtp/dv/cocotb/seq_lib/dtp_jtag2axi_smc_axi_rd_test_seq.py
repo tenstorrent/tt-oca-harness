@@ -4,13 +4,12 @@
 
 from __future__ import annotations
 
-from env.dtp_types import DtpJtag2AxiOp, DtpJtag2AxiStatus, DtpJtagInstr, pack_single_op
+from env.dtp_types import DtpJtag2AxiOp, DtpJtag2AxiStatus
 
-from .dtp_jtag2axi_base_test_seq import dtp_jtag2axi_base_test_seq
+from .dtp_jtag2axi_base_test_seq import AXI_BEAT_BYTES, dtp_jtag2axi_base_test_seq
 
 DEFAULT_AXI_ADDR = 0x40
 DEFAULT_AXI_DATA = 0x0123_4567_89AB_CDEF
-AXI_BEAT_BYTES = 8
 
 
 class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
@@ -37,7 +36,6 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
     async def run_single_write_read(self) -> None:
         self.log_banner("SMC_AXI_SINGLE_OP Single Write-Read")
         await self.reset_tap()
-        # Seeded per-pass payloads: each loop writes and reads back different data.
         self.status, self.rdata, self.data = await self.write_neighbour_then_read(
             "smc_axi",
             DEFAULT_AXI_ADDR + 0x400,
@@ -79,11 +77,13 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
                 context=f"series_wr_rd_incr.read#{idx}",
             )
             self.log_iteration(idx + 1, beats, "series read incr addr=0x%014x obs=0x%x", addr, obs)
-            self.assert_equal(f"series_wr_rd_incr.rdata#{idx}", obs, exp, f"addr=0x{addr:x}")
+            self.check_bridge_rdata(
+                "smc_axi", obs, exp, context=f"series_wr_rd_incr.rdata#{idx} addr=0x{addr:x}"
+            )
             self.operation_count += 1
         # The last primed incrementing read advanced the series address by
         # one stride past the last beat.
-        self.status = await self.check_series_addr(
+        self.status = await self.check_series_end(
             "smc_axi", addr + stride, size=size, context="series_wr_rd_incr.final"
         )
 
@@ -119,11 +119,8 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
                 context=f"series_wr_rd_incr_narrow.write#{idx}",
             )
             # A NOP SERIES_CTRL capture leaves the latched stream running.
-            status = await self.check_series_addr(
+            await self.check_series_end(
                 "smc_axi", addr + stride, size=size, context=f"series_wr_rd_incr_narrow.write#{idx}"
-            )
-            self.assert_equal(
-                f"series_wr_rd_incr_narrow.write_status#{idx}", status, DtpJtag2AxiStatus.SUCCESS
             )
         self.log_step(2, "Read 32-bit incrementing series back")
         for idx, exp in enumerate(expected):
@@ -138,15 +135,12 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
             self.log_iteration(
                 idx + 1, beats, "series read incr narrow addr=0x%014x obs=0x%x", addr, obs
             )
-            self.assert_equal(f"series_wr_rd_incr_narrow.rdata#{idx}", obs, exp, f"addr=0x{addr:x}")
-            # The primed read advanced the series address by one stride.
-            self.status = await self.check_series_addr(
-                "smc_axi", addr + stride, size=size, context=f"series_wr_rd_incr_narrow.read#{idx}"
+            self.check_bridge_rdata(
+                "smc_axi", obs, exp, context=f"series_wr_rd_incr_narrow.rdata#{idx} addr=0x{addr:x}"
             )
-            self.assert_equal(
-                f"series_wr_rd_incr_narrow.read_status#{idx}",
-                self.status,
-                DtpJtag2AxiStatus.SUCCESS,
+            # The primed read advanced the series address by one stride.
+            self.status = await self.check_series_end(
+                "smc_axi", addr + stride, size=size, context=f"series_wr_rd_incr_narrow.read#{idx}"
             )
             self.operation_count += 1
 
@@ -156,7 +150,9 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
         rng = self.rng("series_read_no_incr")
         size = 3
         beats = max(2, min(self.random_count, 6))
-        addr = self.random_upper_addr("smc_axi", rng) | self.random_aligned_addr(rng, size)
+        addr = self.random_upper_addr("smc_axi", rng) | self.random_target_aligned_addr(
+            "smc_axi", rng
+        )
         values = [rng.getrandbits(64) & self.data_mask(size) for _ in range(beats)]
         await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.WRITE, addr, size=size)
         for idx, data in enumerate(values, start=1):
@@ -172,7 +168,12 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
                 context=f"series_wr_rd_no_incr.write#{idx}",
             )
         self.status = await self.series_reread_fixed(
-            "smc_axi", addr, values[-1], beats, rng, context="series_wr_rd_no_incr"
+            "smc_axi",
+            addr,
+            last_word=values[-1],
+            beats=beats,
+            rng=rng,
+            context="series_wr_rd_no_incr",
         )
         self.operation_count += beats
 
@@ -212,7 +213,9 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
         reads = 4 + self.random_count
         for idx in range(1, reads + 1):
             size = idx - 1 if idx <= 4 else rng.choice([0, 1, 2, 3])
-            beat = self.random_upper_addr("smc_axi", rng) | self.random_aligned_addr(rng, size)
+            beat = self.random_upper_addr("smc_axi", rng) | self.random_target_aligned_addr(
+                "smc_axi", rng
+            )
             offset = rng.randrange(0, AXI_BEAT_BYTES >> size) << size
             addr = beat + offset
             # Whole-beat preload: the read returns the whole beat, and the
@@ -228,14 +231,13 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
                 size,
                 data,
             )
-            item = await self.read_single_and_check(
+            self.status, self.rdata = await self.read_target_single_and_check(
+                "smc_axi",
                 addr,
                 data,
                 size=size,
                 context=f"random_read#{idx}",
             )
-            self.status = item.status
-            self.rdata = item.rdata
             self.data = data
             self.operation_count += 1
 
@@ -248,106 +250,53 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
         self.log_banner(title)
         await self.reset_tap()
         addr = DEFAULT_AXI_ADDR + 0x500
-        # Seeded per-pass payload for the baseline/restore reads.
+        # One payload serves the baseline and restore reads.
         data = self.rng("smc_axi_read_gate").getrandbits(64)
         self.write_mem_int(addr, data, 3)
+        reads_start = self.port_history("smc_axi").count(read=True)
         self.log_step(1, "Establish baseline read and AXI activity")
-        before = await self.axi_activity_counts()
-        item = await self.read_single_and_check(addr, data, context="read_gate.baseline")
-        await self.expect_smc_axi_activity(before=before, read=True, context="read_gate.baseline")
-        self.status = item.status
+        before = await self.target_activity_counts("smc_axi")
+        self.status, _ = await self.read_target_single_and_check(
+            "smc_axi", addr, data, context="read_gate.baseline"
+        )
+        await self.expect_target_activity(
+            "smc_axi", before=before, read=True, context="read_gate.baseline"
+        )
 
         # Two assert/release passes of the one direct disable prove the gate
         # is repeatable, not a one-shot POR effect.
-        cfg = self.target_cfg("smc_axi")
         image_rng = self.rng("smc_axi_read_gate_image")
         for idx in (1, 2):
             bit_name = f"smc_jtag2axi_pass{idx}"
             self.log_step(idx + 1, "Gate SMC fabric read with smc_jtag2axi (pass %d)", idx)
-            gate_addr = addr + (idx * AXI_BEAT_BYTES)
-            reference = await self.gate_image_reference(
-                "smc_axi", image_rng, request_addr=gate_addr
-            )
-            await self.disable_debug_bits("smc_jtag2axi")
-            # Snapshot BEFORE the gated attempt so a request pulse leaked at
-            # shift time is caught, then hold a blocked window across it: any
-            # monitored m_axi transaction inside the window fails.
-            gate_before = await self.axi_activity_counts()
-            self.scoreboard_begin_blocked("smc_axi")
-            raw = pack_single_op(DtpJtag2AxiOp.READ, gate_addr)
-            await self.load_ir(DtpJtagInstr.SMC_AXI_SINGLE_OP, back_to_rti=True)
-            gated = await self.shift_dr(raw, cfg.single_op_len, back_to_rti=True)
-            await self.expect_no_smc_axi_activity(8, context=f"read_gate.{bit_name}.no_axi")
-            if self.axi_scoreboard is not None:
-                gate_after = await self.axi_activity_counts()
-                self.axi_scoreboard.expect_no_activity(
-                    before=gate_before,
-                    after=gate_after,
-                    context=(
-                        f"read_gate.{bit_name} target=smc_axi "
-                        f"source=tb_pulse_counters window=gated_attempt+8cyc"
-                    ),
-                )
-            post = await self.read_tdr(cfg.single_op_reg)
-            self.check_gated_tdr(
+            gate_before = await self.gated_attempt(
                 "smc_axi",
-                reference,
-                raw,
-                request_capture=gated.result,
-                post_capture=post,
+                DtpJtag2AxiOp.READ,
+                addr + (idx * AXI_BEAT_BYTES),
+                data=0,
+                image_rng=image_rng,
                 context=f"read_gate.{bit_name}",
             )
-            # Hold the blocked window ACROSS disable release: a bridge that
-            # queued the gated request and replays it once the gate re-opens
-            # is the exact leak this scenario must catch.
-            await self.enable_all_debug()
-            await self.wait_sys_cycles(8)
-            self.scoreboard_end_blocked("smc_axi", context=f"read_gate.{bit_name}")
-            before = await self.axi_activity_counts()
-            item = await self.read_single_and_check(
-                addr,
-                data,
-                context=f"read_gate.{bit_name}.restore",
-            )
-            await self.expect_smc_axi_activity(
-                before=before,
+            self.status = await self.restore_after_gate(
+                "smc_axi",
                 read=True,
-                context=f"read_gate.{bit_name}.restore",
+                addr=addr,
+                data=data,
+                gate_before=gate_before,
+                context=f"read_gate.{bit_name}",
             )
-            if self.axi_scoreboard is not None:
-                # Exact-delta proof from BEFORE the gated attempt to AFTER the
-                # restore read: only the sanctioned restore read may appear
-                # (ar +1, aw/w +0). A delayed replay anywhere in the span
-                # makes ar >= +2 and fails.
-                final = await self.axi_activity_counts()
-                expected_exact = {
-                    "aw": gate_before["aw"],
-                    "w": gate_before["w"],
-                    "ar": gate_before["ar"] + 1,
-                }
-                self.axi_scoreboard.expect_no_activity(
-                    before=expected_exact,
-                    after=final,
-                    context=(
-                        f"read_gate.{bit_name} target=smc_axi "
-                        f"source=tb_pulse_counters window=exact_delta "
-                        f"sanctioned=restore_read(ar+1)"
-                    ),
-                )
-            self.status = item.status
             self.operation_count += 1
-        if self.axi_scoreboard is not None:
-            # CHK-AXI-NONVAC: the same counters that stayed flat while gated
-            # demonstrably move for real traffic (baseline + both restores), so
-            # the no-activity evidence cannot pass on a dead or tied-off bus.
-            final = await self.axi_activity_counts()
-            self.axi_scoreboard.expect_nonvacuous(
-                self.operation_count >= 2 and final["ar"] >= 3,
-                context=(
-                    f"gated_attempts={self.operation_count} ar_pulses={final['ar']} "
-                    f"expected_ar>=3 (baseline+2 restores)"
-                ),
-            )
+        # The read counts that stayed flat while gated move for real traffic,
+        # so the no-activity evidence cannot pass on a dead or tied-off bus.
+        reads = self.port_history("smc_axi").count(read=True) - reads_start
+        self.emit_nonvacuity(
+            "smc_axi",
+            reads >= 3,
+            context=(
+                f"read_gate.reads source=responder_burst_counts read_bursts={reads} "
+                f"sanctioned>=3 (baseline+2 restores)"
+            ),
+        )
 
     async def body(self) -> None:
         await self.enable_all_debug()

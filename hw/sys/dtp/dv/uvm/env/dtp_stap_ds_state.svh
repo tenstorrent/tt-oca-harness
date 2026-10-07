@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// One downstream STAP TAP behind a STAP host port (cocotb StapDownstream
-// parity), predicted from IEEE 1149.1 and never read back from the VIP's
-// device engine: Test-Logic-Reset selects IDCODE, an unknown instruction
-// selects the one-bit BYPASS, Capture-IR presents 01 in the IR LSBs, and a
-// writable register latches the shifted-in value on Update-DR. Seeded from
-// the attached device's ocah_jtag_slave_config. Plain model class, built
-// with new(); no reporting. Types come from dtp_types.svh.
+// One downstream STAP TAP behind a STAP host port (the cocotb twin is
+// env/dtp_stap_ds_state.py), predicted from IEEE 1149.1 and never read back
+// from the VIP's device engine: Test-Logic-Reset selects IDCODE, an unknown
+// instruction selects the one-bit BYPASS, Capture-IR presents 01 in the IR
+// LSBs, and a writable register latches the shifted-in value on Update-DR.
+// Seeded from the attached device's ocah_jtag_slave_config. Plain model
+// class, built with new(); it records no evidence and reports only a fatal
+// on misuse. Types come from dtp_types.svh.
 
 // Tracked state of the downstream TAP spliced behind one STAP host port,
 // seeded from the attached device's ocah_jtag_slave_config (IR width, IDCODE,

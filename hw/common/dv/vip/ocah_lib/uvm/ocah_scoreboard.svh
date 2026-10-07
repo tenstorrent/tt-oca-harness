@@ -13,14 +13,15 @@
 // the bench implements with compare_equal() or record_compare(): a mismatch
 // is a uvm_error at once, carrying feature, expected, observed, and
 // context. Analysis subscriber order is unordered, so either stream may
-// arrive first. A reset that cancels predicted transactions withdraws them
-// with flush_expected(). check_phase errors on items left unpaired, turns each
-// feature into one CHK-SB-<FEATURE> record through the shared evidence
-// recorder, and finalizes it once; a required feature (require_feature,
-// from the env cfg) that ends with zero comparisons fails the run, so a
-// scenario cannot pass without exercising what it claims to check. The
-// scoreboard holds no expected-value state: prediction is the reference
-// model's job. The cocotb twin is ocah_lib.OcahScoreboard.
+// arrive first. An event that cancels predicted transactions, a reset or a
+// drop the bench models, withdraws them with flush_expected(), on every lane
+// or on one. check_phase errors on items left unpaired, turns each feature,
+// its unpaired items included, into one CHK-SB-<FEATURE> record through the
+// shared evidence recorder, and finalizes it once; a required feature
+// (require_feature, from the env cfg) that ends with zero comparisons fails
+// the run, so a scenario cannot pass without exercising what it claims to
+// check. The scoreboard holds no expected-value state: prediction is the
+// reference model's job. The cocotb twin is ocah_lib.OcahScoreboard.
 
 class ocah_scoreboard extends uvm_scoreboard;
   `uvm_component_utils(ocah_scoreboard)
@@ -30,7 +31,11 @@ class ocah_scoreboard extends uvm_scoreboard;
     bit          required;
     int unsigned compares;
     int unsigned mismatches;
+    int unsigned unpaired;
   } feature_t;
+
+  // The flush_expected() lane that selects every lane of a feature.
+  localparam string AllLanes = "*";
 
   // Evidence identity for the CHK-SB-* records and the mismatch report id.
   string name_tag = "ocah_scoreboard";
@@ -61,19 +66,22 @@ class ocah_scoreboard extends uvm_scoreboard;
     foreach (m_feature_order[i]) begin
       feature_t f = m_features[m_feature_order[i]];
       any_required |= f.required;
-      report_unpaired(f.name, m_observed_q, "observed item(s) never paired with an expectation");
-      report_unpaired(f.name, m_expected_q, "expected item(s) never paired with an observation");
-      if (!f.required && f.compares == 0) continue;
+      f.unpaired = report_unpaired(f.name, m_observed_q,
+                                   "observed item(s) never paired with an expectation") +
+          report_unpaired(f.name, m_expected_q,
+                          "expected item(s) never paired with an observation");
+      if (!f.required && f.compares == 0 && f.unpaired == 0) continue;
       void'(m_evidence.expect_true(
           feature_check_id(
               f.name
           ),
-          (f.compares > 0) && (f.mismatches == 0),
+          (f.compares > 0) && (f.mismatches == 0) && (f.unpaired == 0),
           $sformatf(
-              "feature=%s compares=%0d mismatches=%0d required=%0d",
+              "feature=%s compares=%0d mismatches=%0d unpaired=%0d required=%0d",
               f.name,
               f.compares,
               f.mismatches,
+              f.unpaired,
               f.required)
       ));
     end
@@ -92,6 +100,7 @@ class ocah_scoreboard extends uvm_scoreboard;
     f.required   = required;
     f.compares   = 0;
     f.mismatches = 0;
+    f.unpaired   = 0;
     m_features[feature] = f;
     m_feature_order.push_back(feature);
   endfunction
@@ -174,12 +183,14 @@ class ocah_scoreboard extends uvm_scoreboard;
   endfunction
 
   // Drop every expected item of a feature still waiting for its
-  // observation, on every lane: a reset cancels the transactions they
-  // predicted. Returns how many were dropped.
-  function int unsigned flush_expected(string feature);
+  // observation, on every lane or on `lane` alone, once an event cancels the
+  // transactions they predicted: a reset, or a drop the bench models.
+  // Returns how many were dropped.
+  function int unsigned flush_expected(string feature, string lane = AllLanes);
+    string only = (lane == AllLanes) ? "" : pair_key(feature, lane);
     int unsigned dropped = 0;
     foreach (m_expected_q[key]) begin
-      if (m_key_feature[key] != feature) continue;
+      if (m_key_feature[key] != feature || (only != "" && key != only)) continue;
       dropped += m_expected_q[key].size();
       m_expected_q[key].delete();
     end
@@ -209,14 +220,18 @@ class ocah_scoreboard extends uvm_scoreboard;
     return key;
   endfunction
 
-  // One error per lane of a feature that still holds items at check_phase.
-  protected function void report_unpaired(string feature, ref uvm_object q[string][$],
-                                          input string what);
+  // One error per lane of a feature that holds items at check_phase;
+  // returns how many items they hold.
+  protected function int unsigned report_unpaired(string feature, ref uvm_object q[string][$],
+                                                  input string what);
+    int unsigned total = 0;
     foreach (q[key]) begin
       if (m_key_feature[key] != feature || q[key].size() == 0) continue;
+      total += q[key].size();
       `uvm_error({name_tag, "_", feature, "_chk"}, $sformatf(
                  "%0d %s (feature %s, lane %s)", q[key].size(), what, feature, key))
     end
+    return total;
   endfunction
 
   protected function void check_registered(string feature, string what);

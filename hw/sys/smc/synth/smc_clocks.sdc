@@ -76,13 +76,8 @@ create_generated_clock [get_ports smc_l1_dcache_data_intf_req_o*3*clk]  -name SM
 # Note: For STA you need to care about the divided value (it is a programmable clock divider), but for CDC setup the fact its a divided value is all that matters
 set avs_hier [cdc_inst u_smc_peripherals/u_avsbus_controller]
 
-# `set_clock_sense` needs a leaf pin, and every pin on an RTL module boundary is
-# hierarchical, so the stops below only apply once technology mapping has turned
-# the gater and the post-divider mux into library cells. DC reports that failure
-# without raising a Tcl error, so an unguarded call fails in silence -- hence the
-# check. One gater pin stands for all of them: they become leaves together. The
-# sign-off (functional) scenario is exempt: VC accepts the stop on a hierarchical
-# pin, and without it the AVS clocks propagate to the GPIO pads.
+# The clock-sense stops below need leaf pins, so they apply only once the
+# gaters are mapped to library cells, or in the sign-off scenario.
 set avs_gate_cell [get_cells -quiet -of_objects \
     [get_pins -quiet "${avs_hier}/u_refclk_apbclk_mux/u_clk1_gate/clk_o"]]
 set avs_mapped [expr { [cdc_ports_pinned] || ([sizeof_collection $avs_gate_cell] \

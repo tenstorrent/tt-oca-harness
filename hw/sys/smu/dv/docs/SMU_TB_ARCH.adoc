@@ -86,12 +86,13 @@ run.
 
 === Stimulus Strategy
 
-Sequences drive the DUT through its real pins and buses. One enrolled force
-exists, `+esrc_noise_force` on the twelve ESRC raw-noise lanes of three
-SEP=1 leaves; it and every other stand-in on a proof path (the fuse-sense
-skip, the `abr_reg.sv` waiver, the scan-chain loopbacks, the `prim_sync`
-stand-ins, the eFuse models) have a six-field entry in the *Bench stand-ins
-and exceptions* section of
+Sequences drive the DUT through its real pins and buses. Two enrolled forces
+exist: `+esrc_noise_force` on the twelve ESRC raw-noise lanes of three
+SEP=1 leaves, and `+lc_sigint_inject`, which breaks the LC_STATE pair the SEP
+exports for `smu_lc_sigint_fail_closed_test`. They and every other stand-in on
+a proof path (the fuse-sense skip, the `abr_reg.sv` waiver, the scan-chain
+loopbacks, the `prim_sync` stand-ins, the eFuse models) have an entry in the
+*Bench stand-ins and exceptions* section of
 `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`. A scenario that needs a
 force or deposit outside that record is not reportable as PASS and is
 classified OUT in the same document.

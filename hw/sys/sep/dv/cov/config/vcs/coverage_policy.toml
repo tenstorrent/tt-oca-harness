@@ -48,18 +48,9 @@ path = "sep_regblock_exclusions.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
 
-# External-TRNG AXI-Stream payload. The stream has no master in this
-# elaboration -- sep_ip_integration.sv ties ext_trng_axis_req_o to
-# '{default: '0} in RTL, not in the testbench -- so tvalid/tdata/tstrb cannot present a second
-# value on any of the three modules the struct crosses. The source-select mux
-# that consumes the stream stays graded: its select is a CSR field, so both
-# arms are reachable. SEP_FCOV.adoc, "External TRNG payload".
-[[native_files]]
-tool = "vcs"
-role = "exclude"
-path = "sep_ext_trng_payload_exclusions.el"
-apply_phase = "report"
-args = ["-elfile", "{path}"]
+# External-TRNG AXI-Stream payload: no exclusion. sep_ip_integration.sv ties the
+# integration output ext_trng_axis_req_o to '{default: '0}, but the payload enters
+# `sep` as the input ext_trng_axis_req_i, which the bench drives, so it stays graded.
 
 # Structurally tied inputs on the Tenstorrent-owned SEP DMA wrapper. Each entry names
 # the RTL tie. Stimulus gaps stay in the denominator. Checksums come from

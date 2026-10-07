@@ -7,9 +7,12 @@
 //
 // With explicit clock modelling every step is a time point and the asynchronous resets are free
 // inputs, so a reset that changes at a tck sampling edge, or between two edges, lands in the state
-// register without the sampled `disable iff` seeing it. The environment therefore asserts every
-// reset up to the first tck posedge, so that every clock domain starts from its reset state, and
-// releases all of them there for the rest of the trace.
+// register without the sampled `disable iff` seeing it. The environment therefore asserts the
+// resets up to the first tck posedge and releases all of them there for the rest of the trace.
+// TRST and the power-on reset each reset the TAP alone, so before that edge they take any values
+// with at least one of them low, and the system reset is low. Every flop then starts from its
+// reset state except the dbg_disable_i synchronizers, which the power-on reset alone clears and
+// which start from any value when TRST alone is low.
 //
 // The external scan chains and the downstream TAPs are JTAG slaves whose return data changes on
 // the falling edge of tck (IEEE 1149.1 §4.5.1), so the value each return input presents at a
@@ -45,9 +48,11 @@ module dtp_sby_env #(
   always_ff @(posedge tck_i) released_q <= 1'b1;
 
   always_comb begin
-    asm_env_resets_asserted : assume (released_q || !(trst_ni || pwr_on_rst_ni || rst_ni));
+    asm_env_resets_asserted : assume (released_q || !((trst_ni && pwr_on_rst_ni) || rst_ni));
     asm_env_resets_released : assume (!released_q || (trst_ni && pwr_on_rst_ni && rst_ni));
+    // The RTL leaves the scan reset unconnected.
     asm_env_scan_reset_inactive : assume (scan_rst_ni);
+    // Functional operation holds DFT test mode off.
     asm_env_test_mode_inactive : assume (!test_en_i);
   end
 

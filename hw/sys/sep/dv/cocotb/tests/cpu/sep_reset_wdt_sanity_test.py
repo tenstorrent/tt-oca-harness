@@ -2,6 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SW_RESET_N clears only its own domain, fabric gaps raise a bus-error NMI, and the WDT bites.
 
+OCAH provenance: ``sep_reset_ctrl_csr_test`` checks reset-control CSRs and
+domains, and ``wdt_sanity_test`` checks watchdog bark, pet, disable and bite.
+
 The reset_wdt_sanity firmware:
   * checks SW_RESET_N default 0x7E, that pulsing each crypto/TRNG/ABR reset bit clears that
     domain's probe CSRs and leaves every probe outside that reset bit unchanged, and that each

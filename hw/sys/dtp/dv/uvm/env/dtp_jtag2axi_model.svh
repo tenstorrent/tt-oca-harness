@@ -8,11 +8,11 @@
 //
 //   SINGLE_OP    Update-DR with op READ/WRITE launches one transaction with
 //                the host-packed address, strobes, and data, and the size
-//                limited to one full beat, unless an
-//                operation is still pending (then it is rejected: status
-//                BUSY_OR_FULL, sticky full). Capture-DR presents
-//                BUSY_OR_FULL while pending, else the last completion
-//                status, and the last read data after a read.
+//                limited to one full beat, unless an operation is still
+//                pending (then it is rejected: status BUSY_OR_FULL, sticky
+//                full). Capture-DR presents BUSY_OR_FULL while pending,
+//                else the last completion status, and the last read data
+//                after a read.
 //   SERIES_CTRL  Update-DR with op != NOP latches op, size (limited to one
 //                full beat), pipeline depth and address and restarts the
 //                read budget; the reset bit clears the sticky status.

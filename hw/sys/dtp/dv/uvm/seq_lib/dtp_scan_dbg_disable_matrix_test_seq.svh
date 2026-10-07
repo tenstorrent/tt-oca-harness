@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // Debug-disable matrix over the eight scan-side gate fields — the SV
-// analogue of the cocotb dtp_dbg_disable_scan_matrix_test_seq: deterministic
+// analogue of the cocotb dtp_scan_dbg_disable_matrix_test_seq: deterministic
 // one-hot rows, the all-clear and all-disabled boundary masks, and seeded
 // multi-hot masks. Every row drives the full disable vector, then proves
 // each resource's allowed/blocked outcome with temporal windows and chain
@@ -14,14 +14,12 @@
 // the all_disabled row, releasing every gate without reset must not replay
 // any gated open attempt, and a sanctioned all-clear row recovers.
 //
-// The default 6 seeded multi-hot rows make 16 rows per pass (1 all_clear +
-// 8 one-hot + 6 multi-hot + 1 all_disabled), so one matrix pass meets the
-// 16-iteration floor with seeded rows; +DTP_DBG_DISABLE_MULTI_HOT_ROWS
-// overrides. The cocotb flow's Python DtpDbgDisableFcov ledger is
-// cocotb-only.
+// Rows: all_clear, one per scan field, multi_hot_rows seeded multi-hot
+// masks (+DTP_DBG_DISABLE_MULTI_HOT_ROWS), all_disabled. The cocotb flow's
+// Python DtpDbgDisableFcov ledger is cocotb-only.
 
-class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
-  `uvm_object_utils(dtp_dbg_disable_scan_matrix_test_seq)
+class dtp_scan_dbg_disable_matrix_test_seq extends dtp_scan_base_test_seq;
+  `uvm_object_utils(dtp_scan_dbg_disable_matrix_test_seq)
 
   localparam int unsigned ScanFieldCount = 8;
   // The scan-side paths of the debug-disable table, one row bit each.
@@ -38,7 +36,7 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
 
   int unsigned multi_hot_rows = 6;
 
-  function new(string name = "dtp_dbg_disable_scan_matrix_test_seq");
+  function new(string name = "dtp_scan_dbg_disable_matrix_test_seq");
     super.new(name);
   endfunction
 
@@ -73,10 +71,10 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
   // parked at the stored tms_hold=1) follows its disable, a gated
   // clearing update is ignored while ungated ports accept it (chain
   // readback against the model's gated-update semantics), and the
-  // extended host scan interface follows stap_host. Configuring under
-  // the gate instead couples stored 3DCR state across rows through the
-  // chain's IR-scan-time client updates, so the row mask is asserted
-  // only after the configuration is established.
+  // extended host scan interface follows stap_host. The row mask is
+  // asserted only after the ungated configuration: configured under the
+  // gate, the chain's IR-scan-time client updates couple stored 3DCR state
+  // across rows.
   protected task check_stap_row(sep_lifecycle_ctrl_pkg::dbg_disable_t d, string context_s);
     int all_sib[int];
     dtp_stap_3dcr_state_t all_payloads[int];
@@ -142,8 +140,7 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
     string all_gated_controls[$];
     sep_lifecycle_ctrl_pkg::dbg_disable_t d;
     seed_scenario_rng();
-    // Scenario-owned Shift-x exits: skip the scan-count cross-check.
-    attach_family_checker(required, 1'b0);
+    attach_scan_family_checker(required);
     enable_all_debug();
     reset_to_tlr();
 
@@ -169,13 +166,8 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
     row_labels.push_back("all_disabled");
 
     foreach (row_bits[r]) begin
-      `uvm_info(get_type_name(), $sformatf(
-                "Iteration %0d/%0d: row=%s mask=0b%08b",
-                r + 1,
-                row_bits.size(),
-                row_labels[r],
-                row_bits[r]
-                ), UVM_LOW)
+      log_iteration(r + 1, row_bits.size(), $sformatf(
+                    "row=%s mask=0b%08b", row_labels[r], row_bits[r]));
       d = scan_mask_from_bits(row_bits[r]);
       check_ijtag_row(d, row_labels[r]);
       check_stap_row(d, row_labels[r]);
@@ -203,4 +195,4 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
     finalize_family_checker();
   endtask
 
-endclass : dtp_dbg_disable_scan_matrix_test_seq
+endclass : dtp_scan_dbg_disable_matrix_test_seq

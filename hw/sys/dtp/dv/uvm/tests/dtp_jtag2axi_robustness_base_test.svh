@@ -3,11 +3,9 @@
 //
 // Shared base for the cross-bridge JTAG2AXI robustness tests: arms the
 // baseline evidence contract on every bridge's passive recorder through the
-// test cfg (so a silent bridge fails at finalization) and plumbs the
-// per-target evidence bundles for all three bridges (smc_axi, smc_otp,
-// sep_otp) into the robustness sequence; the responders come from the
-// virtual sequencer. Concrete tests name the scenario, the specific loops
-// knob, and any scenario-specific required evidence IDs.
+// test cfg (so a silent bridge fails at finalization); dtp_base_test plumbs
+// every bridge's evidence bundle. Concrete tests name the scenario, the
+// specific loops knob, and any scenario-specific required evidence IDs.
 
 class dtp_jtag2axi_robustness_base_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag2axi_robustness_base_test)
@@ -47,24 +45,6 @@ class dtp_jtag2axi_robustness_base_test extends dtp_base_test;
 
   virtual function string group_loops_knob();
     return "DTP_JTAG2AXI_TEST_LOOPS";
-  endfunction
-
-  virtual function void plumb_scenario_seq(ocah_sequence seq);
-    dtp_jtag2axi_robustness_test_seq rob_seq;
-    super.plumb_scenario_seq(seq);
-    if (!$cast(rob_seq, seq))
-      `uvm_fatal(get_type_name(), "scenario sequence is not a dtp_jtag2axi_robustness_test_seq")
-    // Index order mirrors the sequence's target order:
-    // smc_axi, smc_otp, sep_otp.
-    rob_seq.target_cfgs       = '{m_env.m_smc_axi_cfg,
-                                      m_env.m_smc_otp_axi_cfg,
-                                      m_env.m_sep_otp_axi_cfg};
-    rob_seq.target_evidence   = '{m_env.m_smc_axi_env.m_checker,
-                                      m_env.m_smc_otp_axi_env.m_checker,
-                                      m_env.m_sep_otp_axi_env.m_checker};
-    rob_seq.target_ref_models = '{m_env.m_smc_axi_env.m_ref_model,
-                                      m_env.m_smc_otp_axi_env.m_ref_model,
-                                      m_env.m_sep_otp_axi_env.m_ref_model};
   endfunction
 
 endclass : dtp_jtag2axi_robustness_base_test

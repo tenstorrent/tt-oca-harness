@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// CTM routing scenarios — the SV analogue of the CTM scenario set in the
-// cocotb dtp_xtrig_base_test_seq. One parameterized sequence, dispatched on
-// `scenario`:
+// CTM routing scenarios. The cocotb twin is seq_lib/dtp_ctm_route_test_seq.py.
+// One parameterized sequence, dispatched on `scenario`:
 //
 //   ctm_wire_or_{cla_to_ctp, ctp_to_cla, cla_to_cla, ctp_to_ctp}
-//       one seeded route of the class plus a two-source overlap onto one
-//       shared destination: each source alone, then both in the same cycle
-//       merging into one pulse of the single-source width
+//       one seeded multicast route of the class, every destination firing
+//       in one cycle with one pulse of the route stretch width, plus a
+//       two-source overlap onto one shared destination: each source alone,
+//       then both in the same cycle merging into one pulse of the
+//       single-source width
 //   ctm_p2p_{cla_to_ctp, ctp_to_cla, cla_to_cla, ctp_to_ctp}
 //       three seeded source/destination pairs of the class with full
 //       req/ack handshakes
@@ -68,11 +69,16 @@ class dtp_ctm_route_test_seq extends dtp_xtrig_base_test_seq;
       "ctm_reset_wire_or_mode": run_reset_wire_or_mode();
       "ctm_reset_p2p_mode":     run_reset_p2p_mode();
       "ctm_reset_all_modes":    run_reset_all_modes();
-      "ctm_rand_all_scenarios": run_ctm_random("all_scenarios", "all", "all", 1'b1, 1'b1);
-      "ctm_rand_wire_or_only":  run_ctm_random("wire_or_only", "all", "all", 1'b1, 1'b0);
-      "ctm_rand_p2p_only":      run_ctm_random("p2p_only", "all", "all", 1'b0, 1'b1);
-      "ctm_rand_cla_to_ctp":    run_ctm_random("cla_to_ctp", "internal", "ctp", 1'b1, 1'b1);
-      "ctm_rand_ctp_to_cla":    run_ctm_random("ctp_to_cla", "ctp", "internal", 1'b1, 1'b1);
+      "ctm_rand_all_scenarios":
+      run_ctm_random("all_scenarios", "all", "all", .multicast(1'b1), .allow_p2p(1'b1));
+      "ctm_rand_wire_or_only":
+      run_ctm_random("wire_or_only", "all", "all", .multicast(1'b1), .allow_p2p(1'b0));
+      "ctm_rand_p2p_only":
+      run_ctm_random("p2p_only", "all", "all", .multicast(1'b0), .allow_p2p(1'b1));
+      "ctm_rand_cla_to_ctp":
+      run_ctm_random("cla_to_ctp", "internal", "ctp", .multicast(1'b1), .allow_p2p(1'b1));
+      "ctm_rand_ctp_to_cla":
+      run_ctm_random("ctp_to_cla", "ctp", "internal", .multicast(1'b1), .allow_p2p(1'b1));
       default: super.dispatch_scenario();
     endcase
   endtask
@@ -80,6 +86,50 @@ class dtp_ctm_route_test_seq extends dtp_xtrig_base_test_seq;
   // ------------------------------------------------------------------
   // Wire-OR route classes: one seeded route plus the two-source overlap.
   // ------------------------------------------------------------------
+  // The main route: every destination fires one pulse of the route stretch
+  // width (CHK-XTRIG-STRETCH `wire_or.<class>.main.port<p>.width` and
+  // `.pulses`), measured on each destination through the route window.
+  protected task run_wire_or_main_route(string name, int unsigned input_port,
+                                        bit [31:0] output_mask);
+    int unsigned dests[$];
+    string sigs[$];
+    int unsigned bits[$];
+    int unsigned widths[], pulses[];
+    port_bits(output_mask, dests);
+    foreach (dests[i]) begin
+      string sig;
+      int unsigned bit_idx;
+      request_observable(dests[i], sig, bit_idx);
+      sigs.push_back(sig);
+      bits.push_back(bit_idx);
+    end
+    widths = new[dests.size()];
+    pulses = new[dests.size()];
+    configure_ctp_modes_for_route_mask(32'd1 << input_port, output_mask, CtpModeWireOr);
+    program_routes(32'd1 << input_port, output_mask, {"wire_or.", name, ".main"});
+    fork
+      begin
+        foreach (dests[i]) begin
+          automatic int unsigned k = i;
+          fork
+            measure_mask_width(.name(sigs[k]), .mask(32'd1 << bits[k]), .width(widths[k]),
+                               .pulses(pulses[k]));
+          join_none
+        end
+        wait fork;
+      end
+      run_route_window(32'd1 << input_port, output_mask, CtpModeWireOr, {"wire_or.", name, ".main"
+                       });
+    join
+    foreach (dests[i]) begin
+      string ctx = $sformatf("output=%0d source=%0d", dests[i], input_port);
+      check_evidence(ChkStretch, $sformatf("wire_or.%s.main.port%0d.width", name, dests[i]),
+                     64'(widths[i]), 64'(RouteStretchMult) + 64'd1, ctx);
+      check_evidence(ChkStretch, $sformatf("wire_or.%s.main.port%0d.pulses", name, dests[i]),
+                     64'(pulses[i]), 64'd1, ctx);
+    end
+  endtask
+
   protected task run_wire_or_route_class(string name, int unsigned input_port,
                                          bit [31:0] output_mask, int unsigned overlap_input,
                                          int unsigned overlap_output);
@@ -87,7 +137,7 @@ class dtp_ctm_route_test_seq extends dtp_xtrig_base_test_seq;
     string sig;
     int unsigned bit_idx, width, pulses;
     `uvm_info(get_type_name(), {"CTM wire-OR routing ", name}, UVM_LOW)
-    verify_route(input_port, output_mask, CtpModeWireOr, {"wire_or.", name, ".main"});
+    run_wire_or_main_route(name, input_port, output_mask);
     // Two sources selected into one destination: each source alone reaches
     // it, and both pulsed in the same cycle merge into one pulse of the
     // single-source width.
@@ -150,14 +200,8 @@ class dtp_ctm_route_test_seq extends dtp_xtrig_base_test_seq;
   protected task run_p2p_route_class(string name, int unsigned inputs[$], int unsigned outputs[$]);
     `uvm_info(get_type_name(), {"CTM point-to-point routing ", name}, UVM_LOW)
     foreach (inputs[idx]) begin
-      `uvm_info(get_type_name(), $sformatf(
-                "Iteration %0d/%0d: %s input=%0d output=%0d",
-                idx + 1,
-                inputs.size(),
-                name,
-                inputs[idx],
-                outputs[idx]
-                ), UVM_LOW)
+      log_iteration(idx + 1, inputs.size(), $sformatf(
+                    "%s input=%0d output=%0d", name, inputs[idx], outputs[idx]));
       verify_route(inputs[idx], 32'd1 << outputs[idx], CtpModeP2p, $sformatf(
                    "p2p.%s.%0d", name, idx + 1));
     end
@@ -223,11 +267,10 @@ class dtp_ctm_route_test_seq extends dtp_xtrig_base_test_seq;
     active_ports = {ctps[0], ctps[1]};
     active = ports_mask(active_ports);
     pre_outputs = active | (32'd1 << internal_ct_port(ints[2]));
-    `uvm_info(
-        get_type_name(),
-        $sformatf(
-            "Step 1: two outputs, CTP[%0d] inverted, hold a long stretched pulse when the reset lands",
-            active_ports[inverted]), UVM_LOW)
+    log_step("1", $sformatf(
+             "two outputs, CTP[%0d] inverted, hold a long stretched pulse when the reset lands",
+             active_ports[inverted]
+             ));
     foreach (active_ports[i])
       program_ctp(active_ports[i], CtpModeWireOr, bit'(i == inverted), 1'b0, ResetHoldStretch);
     program_routes(32'd1 << internal_ct_port(ints[0]), pre_outputs, "reset_wire_or.pre");
@@ -242,9 +285,7 @@ class dtp_ctm_route_test_seq extends dtp_xtrig_base_test_seq;
     wait_window_fired("xtrig_ctp_ct_dst", active, 60, "reset_wire_or.self_receive", 1'b1);
     check_status(ctps[0], "reset_wire_or.active_before", .busy(1));
     reset_window("ctm_reset_wire_or", wire_or_reset_signals);
-    `uvm_info(get_type_name(),
-              "Step 2: routing and CTP state read their defaults, then fresh routes recover",
-              UVM_LOW)
+    log_step("2", "routing and CTP state read their defaults, then fresh routes recover");
     check_all_ctm_cleared("reset_wire_or");
     check_ctp_defaults("reset_wire_or");
     for (int unsigned k = 2; k < 2 + post_count; k++) post_ports.push_back(ctps[k]);
@@ -262,10 +303,8 @@ class dtp_ctm_route_test_seq extends dtp_xtrig_base_test_seq;
     pick_distinct(XtrigNumCtp, 3, ctps);
     mask = 32'd1 << ctps[0];
     rx   = 32'd1 << ctps[1];
-    `uvm_info(
-        get_type_name(),
-        "Step 1: a P2P request stays pending without its acknowledge, and a second P2P port holds a received request, when the reset lands",
-        UVM_LOW)
+    log_step("1",
+             "a P2P request stays pending without its acknowledge, and a second P2P port holds a received request, when the reset lands");
     configure_ctp_mode_for_port(ctps[0], CtpModeP2p);
     program_route(internal_ct_port(ints[0]), mask, "reset_p2p.pre");
     configure_ctp_mode_for_port(ctps[1], CtpModeP2p);
@@ -281,10 +320,9 @@ class dtp_ctm_route_test_seq extends dtp_xtrig_base_test_seq;
                      "reset_p2p.rx_ack_held");
     wait_window_fired("xtrig_ctm_src_req", 32'd1 << ints[2], 60, "reset_p2p.rx_delivered", 1'b1);
     reset_window("ctm_reset_p2p", reset_signals);
-    `uvm_info(
-        get_type_name(),
-        "Step 2: the handshake, routing, and CTP state read their defaults, then a fresh route completes",
-        UVM_LOW)
+    log_step(
+        "2",
+        "the handshake, routing, and CTP state read their defaults, then a fresh route completes");
     check_status(ctps[0], "reset_p2p.after", .busy(0), .req_out(0));
     check_all_ctm_cleared("reset_p2p");
     check_ctp_defaults("reset_p2p");
@@ -323,7 +361,7 @@ class dtp_ctm_route_test_seq extends dtp_xtrig_base_test_seq;
     run_route_window(p2p_in, p2p_mask, CtpModeP2p, "reset_all.pre_p2p");
     `uvm_info(
         get_type_name(),
-        "Step: a P2P request stays pending without its acknowledge, and a second P2P port holds a received request, when the reset lands",
+        "A P2P request stays pending without its acknowledge, and a second P2P port holds a received request, when the reset lands",
         UVM_LOW)
     idle_inputs();
     pulse_ctm_dst_req(32'd1 << ints[1], 2);
@@ -506,10 +544,14 @@ class dtp_ctm_route_test_seq extends dtp_xtrig_base_test_seq;
         drop_route_pending(name, head_src, selected[j]);
         m_route_driven[name][head_src*32+selected[j]] = 1'b1;
       end
-    `uvm_info(get_type_name(),
-              $sformatf("Iteration %0d/%0d: inputs=0x%0h mode=%0d outputs=0x%0h pulse=%0d lead=%0d",
-                        idx + 1, total, input_mask, mode, output_mask, pulse_cycles, lead_cycles),
-              UVM_LOW)
+    log_iteration(idx + 1, total, $sformatf(
+                  "inputs=0x%0h mode=%0d outputs=0x%0h pulse=%0d lead=%0d",
+                  input_mask,
+                  mode,
+                  output_mask,
+                  pulse_cycles,
+                  lead_cycles
+                  ));
     verify_route_mask(input_mask, output_mask, mode, $sformatf("rand.%s.%0d", name, idx),
                       pulse_cycles, lead_cycles);
     if (mode == CtpModeP2p)

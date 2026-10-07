@@ -3,8 +3,9 @@
 
 // Compile-time coverage scope of the DTP bench on VCS (`-cm_hier` with
 // `-lca -cm_common_hier`, from `[coverage.vcs]` in dtp_sim_cfg.toml). Every
-// name here matches an elaborated instance of the default configuration; VCS
-// reports a name that matches nothing as `VCM-HFUFR` in the compile log.
+// name here matches an elaborated instance or generate block of the default
+// configuration; VCS reports a name that matches nothing as `VCM-HFUFR` in the
+// compile log.
 //
 // Code coverage (line, cond, fsm, tgl, branch) grades the DUT instance with
 // everything it instantiates, the vendored cells included, apart from the two
@@ -12,8 +13,8 @@
 // protocol checkers and the coverage modules never enter the database, except
 // the bind connections described below. `+tree` on its own restricts nothing,
 // so the bench tree is excluded first and the DUT re-admitted under it.
--tree dtp_uvm_top
-+tree dtp_uvm_top.u_dut
+-tree tb_top
++tree tb_top.u_dut
 
 // prim_cdc_rand_delay is the CDC jitter model that the synchronizer
 // primitives (prim_flop_2sync, prim_sync3r and their siblings) instantiate
@@ -30,33 +31,34 @@
 -module dtp_j2a_state_flags
 
 // Assertion coverage carries the DUT's own assertions, the `cover property`
-// points of the functional-coverage modules, and the protocol checkers
-// under the bench top; the assertions of the UVM and AXI packages, which URG
-// lists as top-level scopes of their own, stay out. uvm_pkg exists in the
+// points of the functional-coverage modules, and the protocol checkers and
+// rules under the bench top; the assertions of the UVM and AXI packages, which
+// URG lists as top-level scopes of their own, stay out. uvm_pkg exists in the
 // SV-UVM elaboration only, so the cocotb compile reports that line as
 // unmatched. A metric section replaces the general rules for that metric, so
 // the tree is stated again.
 begin assert
--tree dtp_uvm_top
+-tree tb_top
 -tree uvm_pkg
 -tree axi_pkg
-+tree dtp_uvm_top.u_dut
-+tree dtp_uvm_top.u_dtp_fcov
-+tree dtp_uvm_top.u_dtp_jtag2axi_fcov
-+tree dtp_uvm_top.u_dtp_debug_tdr_fcov
-+tree dtp_uvm_top.u_dtp_scan_fcov
-+tree dtp_uvm_top.u_dtp_xtrig_fcov
-+tree dtp_uvm_top.u_jtag_ptap_sva
-+tree dtp_uvm_top.u_stap_io_host_sva
-+tree dtp_uvm_top.u_stap_smc_host_sva
-+tree dtp_uvm_top.u_stap_sep_host_sva
-+tree dtp_uvm_top.u_stap_extra0_host_sva
-+tree dtp_uvm_top.u_smc_otp_axil_sva
-+tree dtp_uvm_top.u_sep_otp_axil_sva
-+tree dtp_uvm_top.u_m_axi_sva
-+tree dtp_uvm_top.u_xtrig_axil_sva
-+tree dtp_uvm_top.u_smc_otp_axil_data_sva
-+tree dtp_uvm_top.u_sep_otp_axil_data_sva
-+tree dtp_uvm_top.u_m_axi_data_sva
-+tree dtp_uvm_top.u_xtrig_axil_data_sva
++tree tb_top.u_dut
++tree tb_top.u_dtp_fcov
++tree tb_top.u_dtp_jtag2axi_fcov
++tree tb_top.u_dtp_debug_tdr_fcov
++tree tb_top.u_dtp_scan_fcov
++tree tb_top.u_dtp_xtrig_fcov
++tree tb_top.u_jtag_ptap_sva
++tree tb_top.u_stap_io_host_sva
++tree tb_top.u_stap_smc_host_sva
++tree tb_top.u_stap_sep_host_sva
++tree tb_top.u_stap_extra0_host_sva
++tree tb_top.u_smc_otp_axil_sva
++tree tb_top.u_sep_otp_axil_sva
++tree tb_top.u_m_axi_sva
++tree tb_top.gen_smc_axi_atop_sva
++tree tb_top.u_xtrig_axil_sva
++tree tb_top.u_smc_otp_axil_data_sva
++tree tb_top.u_sep_otp_axil_data_sva
++tree tb_top.u_m_axi_data_sva
++tree tb_top.u_xtrig_axil_data_sva
 end

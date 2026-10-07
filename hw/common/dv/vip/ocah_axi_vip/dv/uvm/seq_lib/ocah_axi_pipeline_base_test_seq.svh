@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// Base of the pipeline scenario sequences: the handles the test binds, a
-// per-cycle recorder of the master's own interface, and the queries the
-// scenarios judge the recording with. recorded_pipeline() runs
-// pipeline_result under the recorder, which keeps sampling for `tail`
+// Base of the scenario sequences judged against a per-cycle recording of
+// the master's own interface: the handles the test binds, the recorder, and
+// the queries the scenarios judge the recording with. recorded_pipeline()
+// runs pipeline_result under the recorder, which keeps sampling for `tail`
 // cycles after the operation returns; handshakes() and stalls() reduce the
 // recording per channel, and valid_at / ready_at / payload_at read one
 // sample.
@@ -19,6 +19,7 @@ class ocah_axi_pipeline_base_test_seq extends ocah_axi_master_sequence;
     bit        awvalid, awready, wvalid, wready, bvalid, bready;
     bit        arvalid, arready, rvalid, rready, rlast;
     bit [63:0] awaddr, wdata, araddr;
+    bit [15:0] buser, ruser;
   } sample_t;
 
   // Bound by the test before start().
@@ -51,6 +52,8 @@ class ocah_axi_pipeline_base_test_seq extends ocah_axi_master_sequence;
       row.awaddr  = 64'(cfg.vif.mon_cb.awaddr);
       row.wdata   = 64'(cfg.vif.mon_cb.wdata);
       row.araddr  = 64'(cfg.vif.mon_cb.araddr);
+      row.buser   = 16'(cfg.vif.mon_cb.buser);
+      row.ruser   = 16'(cfg.vif.mon_cb.ruser);
       m_samples.push_back(row);
     end
   endtask

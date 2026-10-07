@@ -80,7 +80,7 @@ name = "dtp_dbg_smc_jtag2axi_caps_test"
 module = { cocotb = "dtp_dbg_smc_jtag2axi_caps_test", uvm = "dtp_dbg_smc_jtag2axi_caps_test" }
 seed = 1
 timeout_sec = 1800
-tags = ["debug_tdr", "caps", "jtag2axi"]
+tags = ["debug_tdr", "caps", "jtag"]
 run_modes = ["debug_tdr"]
 
 [[tests]]
@@ -88,7 +88,7 @@ name = "dtp_dbg_sep_otp_jtag2axi_caps_test"
 module = { cocotb = "dtp_dbg_sep_otp_jtag2axi_caps_test", uvm = "dtp_dbg_sep_otp_jtag2axi_caps_test" }
 seed = 1
 timeout_sec = 1800
-tags = ["debug_tdr", "caps", "jtag2axi"]
+tags = ["debug_tdr", "caps", "jtag"]
 run_modes = ["debug_tdr"]
 
 [[tests]]
@@ -96,23 +96,5 @@ name = "dtp_dbg_smc_otp_jtag2axi_caps_test"
 module = { cocotb = "dtp_dbg_smc_otp_jtag2axi_caps_test", uvm = "dtp_dbg_smc_otp_jtag2axi_caps_test" }
 seed = 1
 timeout_sec = 1800
-tags = ["debug_tdr", "caps", "jtag2axi"]
+tags = ["debug_tdr", "caps", "jtag"]
 run_modes = ["debug_tdr"]
-
-[[groups]]
-name = "debug_tdr"
-expected_count = 12
-tests = [
-    "dtp_jtag_tmp_status_register_smoke_test",
-    "dtp_jtag_tmp_status_chrst_n_in_persistence_test",
-    "dtp_jtag_tmp_status_bypass_escape_test",
-    "dtp_jtag_ic_reset_test",
-    "dtp_dbg_jtag_caps_test",
-    "dtp_dbg_ctrl_clk_stop_jtag_clock_stop_test",
-    "dtp_dbg_ctrl_clk_stop_cla_clock_stop_test",
-    "dtp_dbg_ctrl_clk_stop_random_clock_stop_test",
-    "dtp_dbg_ctrl_boot_stall_test",
-    "dtp_dbg_smc_jtag2axi_caps_test",
-    "dtp_dbg_sep_otp_jtag2axi_caps_test",
-    "dtp_dbg_smc_otp_jtag2axi_caps_test",
-]

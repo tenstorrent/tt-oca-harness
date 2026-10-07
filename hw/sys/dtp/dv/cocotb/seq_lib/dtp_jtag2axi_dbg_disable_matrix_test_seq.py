@@ -19,7 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from env.dtp_dbg_disable import full_dbg_disable
-from env.dtp_fcov import ALLOWED, BLOCKED, DtpDbgDisableFcov
+from env.dtp_fcov import DtpDbgDisableFcov
 from env.dtp_types import DtpJtag2AxiOp, pack_single_op
 
 from .dtp_jtag2axi_base_test_seq import BLOCKED_CHECK_ID, dtp_jtag2axi_base_test_seq
@@ -44,21 +44,24 @@ WRITE_DELTA = {"aw": 1, "w": 1, "ar": 0}
 READ_DELTA = {"aw": 0, "w": 0, "ar": 1}
 
 
-class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
+class dtp_jtag2axi_dbg_disable_matrix_test_seq(dtp_jtag2axi_base_test_seq):
     """Run the JTAG2AXI debug-disable matrix and emit the FCOV artifact."""
 
     def __init__(
         self,
-        name: str = "dtp_dbg_disable_jtag2axi_matrix_test_seq",
+        name: str = "dtp_jtag2axi_dbg_disable_matrix_test_seq",
         *,
-        multi_hot_rows: int = 2,
+        multi_hot_rows: int = 11,
         **kwargs,
     ) -> None:
         super().__init__(name, **kwargs)
         self.multi_hot_rows = multi_hot_rows
-        self.fcov = DtpDbgDisableFcov("jtag2axi_matrix")
+        self.fcov = DtpDbgDisableFcov(
+            "jtag2axi_matrix", tuple(self.target_cfg(t).dbg_disable_bit for t in MATRIX_TARGETS)
+        )
 
     def build_rows(self) -> list[tuple[str, dict[str, int]]]:
+        """The matrix rows: all clear, each field alone, seeded two-hot rows, and all disabled."""
         fields = tuple(self.target_cfg(t).dbg_disable_bit for t in MATRIX_TARGETS)
         rows: list[tuple[str, dict[str, int]]] = [("all_clear", {})]
         rows += [(f"one_hot_{field}", {field: 1}) for field in fields]
@@ -84,22 +87,14 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
         The matrix configures no backpressure, so each request holds VALID for
         one cycle and a replayed or extra request moves a counter past it.
         """
-        after = await self.target_activity_counts(target)
         expected = {key: before[key] + delta[key] for key in ("aw", "w", "ar")}
-        self.log.info("%s %s activity before=%s after=%s", context, target, before, after)
-        scoreboard = self.axi_scoreboard
-        if scoreboard is not None:
-            sanctioned = ",".join(f"{key}+{count}" for key, count in delta.items() if count)
-            scoreboard.expect_no_activity(
-                before=expected,
-                after=after,
-                context=(
-                    f"{context} target={target} source=tb_pulse_counters "
-                    f"window=exact_delta sanctioned={sanctioned}"
-                ),
-            )
-        for key in ("aw", "w", "ar"):
-            self.assert_equal(f"{context}.{key}_count", after[key], expected[key])
+        sanctioned = ",".join(f"{key}+{count}" for key, count in delta.items() if count)
+        self.check_no_activity(
+            target,
+            expected,
+            await self.target_activity_counts(target),
+            context=f"{context} window=exact_delta sanctioned={sanctioned}",
+        )
 
     async def check_allowed(
         self, target: str, addr: int, data: int, *, mask: dict[str, int], context: str
@@ -115,7 +110,6 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
         self.fcov.sample_cell(
             cfg.dbg_disable_bit,
             0,
-            ALLOWED,
             mask=mask,
             operation="single_write_read",
             result="activity+readback_ok",
@@ -158,11 +152,7 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
         await self.scoreboard_expect_no_activity_since(
             target, before, context=f"{context}.no_activity"
         )
-        self.assert_equal(
-            f"{context}.sentinel",
-            self.read_target_mem_int(target, addr, size),
-            sentinel,
-        )
+        self.check_target_word(target, addr, sentinel, size=size, context=f"{context}.sentinel")
         post = await self.read_tdr(cfg.single_op_reg)
         self.check_gated_tdr(
             target, reference, raw, request_capture=gated, post_capture=post, context=context
@@ -170,7 +160,6 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
         self.fcov.sample_cell(
             cfg.dbg_disable_bit,
             1,
-            BLOCKED,
             mask=mask,
             operation="single_write_gated",
             result="no_activity+sentinel_intact",
@@ -178,7 +167,7 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
         return _GatedAttempt(addr=addr, sentinel=sentinel, before=before)
 
     async def check_released(self, target: str, attempt: _GatedAttempt, *, context: str) -> None:
-        """After the release: counters equal the pre-attempt snapshot, window empty, sentinel intact."""
+        """After the release: no activity since the attempt, blocked window, sentinel intact."""
         cfg = self.target_cfg(target)
         await self.scoreboard_expect_no_activity_since(
             target, attempt.before, context=f"{context}.post_release"
@@ -186,16 +175,18 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
         self.scoreboard_end_blocked(
             target, context=f"{context}.blocked_window", check_id=BLOCKED_CHECK_ID
         )
-        self.assert_equal(
-            f"{context}.sentinel_post_release",
-            self.read_target_mem_int(target, attempt.addr, cfg.default_size),
+        self.check_target_word(
+            target,
+            attempt.addr,
             attempt.sentinel,
+            size=cfg.default_size,
+            context=f"{context}.sentinel_post_release",
         )
 
     async def _release_and_recover(
         self, label: str, row_idx: int, gated: dict[str, _GatedAttempt]
     ) -> None:
-        """Release without reset: nothing queued may replay, then a sanctioned operation recovers."""
+        """Release without reset: nothing queued replays, then a sanctioned operation recovers."""
         await self.enable_all_debug()
         await self.wait_sys_cycles(GATE_WINDOW_CYCLES)
         for target, attempt in gated.items():
@@ -220,10 +211,12 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
                 {key: WRITE_DELTA[key] + READ_DELTA[key] for key in WRITE_DELTA},
                 context=f"{label}.{target}.recovery.from_gated_attempt",
             )
-            self.assert_equal(
-                f"{label}.{target}.sentinel_post_recovery",
-                self.read_target_mem_int(target, attempt.addr, cfg.default_size),
+            self.check_target_word(
+                target,
+                attempt.addr,
                 attempt.sentinel,
+                size=cfg.default_size,
+                context=f"{label}.{target}.sentinel_post_recovery",
             )
         self.fcov.sample_aux("recovery", context=label)
 
@@ -275,7 +268,7 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
             if gated:
                 await self._release_and_recover(label, row_idx, gated)
 
-        self.fcov.require_cells(tuple(self.target_cfg(t).dbg_disable_bit for t in MATRIX_TARGETS))
+        self.fcov.require_cells()
         self.fcov.write_artifact(seed=self.scenario_seed)
         self.log_summary(
             "Debug-disable JTAG2AXI matrix",

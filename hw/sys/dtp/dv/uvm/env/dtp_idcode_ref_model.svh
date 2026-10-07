@@ -3,7 +3,8 @@
 //
 // idcode reference model: every DR scan while IDCODE is the active
 // instruction (after Test-Logic-Reset by TRST or TMS, or an explicit load)
-// shifts out the public DTP device identification in its low 32 bits.
+// shifts out the DTP device identification (DtpDefaultIdcode) in its low
+// 32 bits.
 // Consumes the reconstructed scan stream (write) and the per-TCK event
 // stream (event_export) through a dtp_jtag_ir_model, re-baselines on
 // power-on reset through dtp_tb_if, and publishes one dtp_expected_item
@@ -14,9 +15,9 @@
 // No comparison, no reporting. The cocotb twin is
 // env/dtp_idcode_ref_model.py.
 //
-// expected_idcode defaults to the public DTP elaboration's value; a bench
-// that embeds DTP sets it from its own configuration before build_phase, so
-// the same model judges the embedded instance.
+// expected_idcode defaults to DtpDefaultIdcode, the IDCODE tb_top
+// elaborates the DUT with (dtp_dv_cfg_pkg); a bench that embeds DTP, such as
+// the SMU bench, sets it from its own configuration before build_phase.
 
 `uvm_analysis_imp_decl(_dtp_idcode_event)
 

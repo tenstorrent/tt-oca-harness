@@ -289,6 +289,7 @@ class smu_base_test(uvm_test):
         "tb_ss_reset_incomplete",
         "tb_chiplet_secondary",
         "tb_cool_reset_pin",
+        "lc_sigint_inject_i",
         "tb_secure_tm_req",
         "tb_smc_sram_auto_init_restore",
         "tb_gpio0_drive_en",
@@ -375,6 +376,7 @@ class smu_base_test(uvm_test):
             reset_active_level=False,
             size=self.cfg.axi_out_mem_size,
             name="smu_axi_out",
+            max_outstanding=self.cfg.axi_out_max_outstanding,
         ).sequence
         # Verilator two-state simulation initializes every signal to 0, so a
         # reset input that starts low never produces the falling edge that

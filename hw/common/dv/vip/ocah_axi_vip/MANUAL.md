@@ -304,14 +304,62 @@ Responder methods:
 |---|---|
 | `read(addr, length)` / `write(addr, data)` | Backdoor byte access |
 | `read32/read64` / `write32/write64` | Little-endian integer helpers |
-| `inject_error(addr, resp, read=True, write=True)` | Program one-shot non-OKAY response |
+| `inject_error(addr, resp, read=True, write=True, rdata=0)` | Program one-shot non-OKAY response; the errored read beat answers `rdata` as its RDATA word |
 | `inject_id_corruption(mask=0x1, read=True, write=True)` | Arm one-shot response-ID corruption: the next selected transaction answers with `request_id ^ mask` (ID-width truncated); data path and response code stay untouched (AXI4 responder only) |
 | `clear_errors()` | Clear all programmed errors and armed ID corruption |
 | `enable_backpressure(channels, stall_cycles)` | Repeating bounded READY stalls |
 | `disable_backpressure()` | Clear READY stalls |
+| `set_response_delay(delays, read=True, write=True)` | Delay each B or R response by `delays` cycles (an integer), or by the next value of an iterable drawn once per response in request order (AXI4 responder only) |
+| `clear_response_delay()` | Send every response as soon as it is ready |
+| `max_outstanding` | The configured outstanding depth, or `None` |
+| `outstanding_peak()` | Most writes and reads outstanding at once since construction; needs `max_outstanding` |
+| `arm_w_before_aw()` | One-shot W-before-AW order for the next write; this responder accepts W beats independently of AW, so the call changes nothing on the wires |
+| `randomize_resp_user(seed)` | Answer every later B and R beat with BUSER and RUSER drawn per beat, B from `random.Random(seed)` and R from `random.Random(seed + 1)`; zero until called (AXI4 responder only) |
+
+Both responders drive BVALID and RVALID low as their reset input asserts
+(IHI 0022 A3.1.2), not at the next clock edge. `ocah_axi_responder_ops_test`
+proves the errored-beat word, the W-before-AW order, the USER streams, and
+the reset drop on the wires of `OcahAxiSlaveAgent`.
+
+### Outstanding depth
+
+By default the AXI4 responder serves one request at a time, in request
+order: its request queues hold two more, and a request whose response
+cannot be sent holds up every request behind it. Constructed with
+`max_outstanding=N` (an agent keyword argument or the
+`OcahAxiSlaveConfig.max_outstanding` field), it accepts up to N writes and N
+reads, each counted from its address handshake to its B or RLAST handshake,
+and holds AWREADY or ARREADY low while N are outstanding. Each response
+then runs on its own: it waits its response delay, then for the previous
+response of the same ID, so same-ID responses leave in request order while
+responses of different IDs overtake one another. W beats are taken in AW
+order, and the beats of one read burst are never interleaved with another's.
+Error injection, ID corruption, backpressure and the response USER policy
+apply in either mode. The W channel holds N beats, so up to N W beats are
+accepted ahead of their AW. BUSER and RUSER are drawn as each response is
+queued, so the USER streams follow the order of B and R beats on the wires,
+which with a depth is the response order. A reset drops every response in
+service and empties the window: after the release the responder accepts N
+new requests and answers none taken before the reset.
+
+In both modes a read claims the one-shot errors of all its beats, with
+their errored-beat words, when the responder takes it into service, before
+its first R beat, so an `inject_error(..., read=True)` armed while a burst
+is in progress applies to a later read of the address, not to the remaining
+beats of that burst. A write claims its one-shot errors as each W beat
+arrives.
+
+```python
+ram = OcahAxiSlaveAgent(bus, dut.clk_i, dut.rst_ni, reset_active_level=False,
+                        max_outstanding=8).sequence
+rng = random.Random(seed)
+ram.set_response_delay(iter(lambda: rng.randint(8, 32), None))
+...
+assert ram.outstanding_peak()["read"] > 3
+```
 
 `OcahAxiLiteSlaveAgent` provides the same fault-control API for AXI4-Lite
-responder ports.
+responder ports, apart from the AXI4-only operations.
 
 ```python
 axil_ram = OcahAxiLiteSlaveAgent.from_prefix(
@@ -623,17 +671,36 @@ beat-aligned address like `inject_error`: the next read whose AR address
 aligns there answers its final beat with RLAST low and sends no further
 beat, so the master's read times out holding that beat; `clear_errors()`
 disarms it and `pending_errors()` counts it (SV-UVM responder only).
+`inject_error(addr, resp, for_read, for_write, rdata)` returns `rdata`
+(default zero) as the errored read beat's RDATA word, as the cocotb
+responder does. `arm_w_before_aw()` arms a one-shot write order: the next
+write raises WREADY with its first AWREADY window, so its first W beat is
+accepted while its AW waits (IHI 0022 A3.3.1); later writes take AW first.
+The cocotb responder accepts W independently of AW, which gives the same
+order on every write. `randomize_resp_user(seed)` answers every later B and
+R beat with BUSER and RUSER drawn per beat, the write pump's process RNG
+seeded from `seed` and the read pump's from `seed + 1` (AXI4 only; zero
+until called). The responder drives BVALID, RVALID and its READYs low as
+`aresetn` asserts and abandons the transfer in flight, including after a
+reset that ends between two clock edges. The SV-UVM
+`ocah_axi_responder_ops_test` proves the errored-beat word, the W-before-AW
+order and the USER streams on the harness bus; the SV-UVM master holds
+`aresetn` high across an item, so only the cocotb realization drops a reset.
+The SV-UVM responder serves one write and one read at a time, so it has no
+outstanding depth and no response delay (see "Outstanding depth" above).
 `check_response=1` (default) escalates a non-OKAY response to `uvm_error`;
 `allow_timeout=1` downgrades a watchdog expiry to a returned result with
 `timed_out` set.
 
-The DTP SV-UVM flow (`--dut dtp --framework uvm`) consumes the slave side:
-tb_top wires the slave agent onto the SMC OTP AXI-Lite port (a dedicated
-`ocah_axi_if` carries the connection) and keeps the behavioral RAM responder
-module on the `m_axi` fabric port, instantiates the SVA checkers on both, and
-`dtp_jtag2axi_single_op_seq` drives JTAG2AXI traffic through the wide-scan
-JTAG VIP path, programming responder error injection via the slave agent's
-`ocah_axi_slave_sequence`. The SV-UVM selftests (`--dut ocah_axi_vip
+The DTP SV-UVM flow (`--dut dtp --framework uvm`) consumes both sides: a
+slave agent answers each JTAG2AXI port (SMC OTP and SEP OTP AXI-Lite, SMC
+fabric AXI4; a dedicated `ocah_axi_if` per port carries the connection), the
+master env drives the XTRIG CSR AXI-Lite port, tb_top instantiates the SVA
+checkers on every port, and the scenario sequences program responder memory,
+error injection, backpressure, and write order through each port's
+`ocah_axi_slave_sequence`. The cocotb flow answers the same ports with
+`OcahAxi[Lite]SlaveAgent` and drives the XTRIG CSR port with
+`OcahAxiLiteMasterAgent`. The SV-UVM selftests (`--dut ocah_axi_vip
 --framework uvm`) drive the master side through the same scenarios as the
 cocotb selftests, full-stack through the master sequence API against the
 fault slave, with the passive env scoring the same wires wherever a
