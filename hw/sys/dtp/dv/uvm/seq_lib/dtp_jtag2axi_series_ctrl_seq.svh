@@ -13,17 +13,22 @@
 class dtp_jtag2axi_series_ctrl_seq extends dtp_jtag_op_seq;
   `uvm_object_utils(dtp_jtag2axi_series_ctrl_seq)
 
-  dtp_j2a_target_t  target;
-  dtp_j2a_request_t request;
+  dtp_j2a_target_t target;
+  dtp_j2a_op_e     op = DTP_J2A_OP_NOP;
+  bit [63:0]       addr;
+  int unsigned     size;
+  int unsigned     pipeline_depth;
+  bit              series_reset;
   // Result: the SERIES_CTRL word captured while shifting.
-  bit [63:0]        captured;
+  bit [63:0]       captured;
 
   function new(string name = "dtp_jtag2axi_series_ctrl_seq");
     super.new(name);
   endfunction
 
   virtual task do_op();
-    bit [63:0] value = dtp_j2a_pack_series_ctrl(target, request);
+    bit [63:0] value = dtp_j2a_pack_series_ctrl(target, op, addr, pipeline_depth, size,
+                                                    series_reset);
     bit [63:0] ir_captured;
     ir_scan(64'(target.series_ctrl_instr), DtpIrWidth, ir_captured);
     dr_scan(value, dtp_j2a_series_ctrl_len(target), captured);

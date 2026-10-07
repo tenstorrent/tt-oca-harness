@@ -569,8 +569,12 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
       axi_cfg.arm_expected_read(addr & bit_mask(t.addr_width));
     begin
       dtp_jtag2axi_single_op_seq req = dtp_jtag2axi_single_op_seq::type_id::create("single_op");
-      req.target  = t;
-      req.request = dtp_j2a_single_op_request(op, addr, data, wstrb, eff_size);
+      req.target = t;
+      req.op     = op;
+      req.addr   = addr;
+      req.data   = data;
+      req.wstrb  = wstrb;
+      req.size   = eff_size;
       run_jtag_op(req);
       m_single_capture = req.captured;
     end
@@ -589,7 +593,7 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     bit tms[];
     bit tdi[];
     int unsigned len;
-    dtp_j2a_pack_single_op(t, dtp_j2a_single_op_request(op, addr, data, wstrb, size), dr);
+    dtp_j2a_pack_single_op(t, op, addr, data, wstrb, size, dr);
     len = dr.size();
     `uvm_info(get_type_name(),
               $sformatf(
@@ -857,13 +861,12 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     `uvm_info(get_type_name(),
               $sformatf("%s SERIES_CTRL %s addr=0x%0h size=%0d pl_depth=%0d reset=%0d", t.name,
                         op.name(), addr, size, pipeline_depth, series_reset), UVM_MEDIUM)
-    ctrl.target                 = t;
-    ctrl.request.kind           = DTP_J2A_SCAN_SERIES_CTRL;
-    ctrl.request.op             = op;
-    ctrl.request.addr           = addr;
-    ctrl.request.size           = size;
-    ctrl.request.pipeline_depth = pipeline_depth;
-    ctrl.request.series_reset   = series_reset;
+    ctrl.target         = t;
+    ctrl.op             = op;
+    ctrl.addr           = addr;
+    ctrl.size           = size;
+    ctrl.pipeline_depth = pipeline_depth;
+    ctrl.series_reset   = series_reset;
     run_jtag_op(ctrl);
     check_state(RUN_TEST_IDLE, "jtag2axi_scan_chk", "after SERIES_CTRL scan");
     note_tdr_access(series_ctrl_len(t), $sformatf("%s series_ctrl", t.name));
@@ -877,18 +880,15 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     dtp_jtag2axi_series_ctrl_seq ctrl = dtp_jtag2axi_series_ctrl_seq::type_id::create(
         "series_ctrl_read"
     );
-    dtp_j2a_request_t held;
-    ctrl.target            = t;
-    ctrl.request.kind      = DTP_J2A_SCAN_SERIES_CTRL;
-    ctrl.request.size      = size;
+    ctrl.target = t;
+    ctrl.op     = DTP_J2A_OP_NOP;
+    ctrl.addr   = '0;
+    ctrl.size   = size;
     run_jtag_op(ctrl);
     check_state(RUN_TEST_IDLE, "jtag2axi_scan_chk", "after SERIES_CTRL capture");
     note_tdr_access(series_ctrl_len(t), $sformatf("%s series_ctrl capture", t.name));
-    status         = dtp_j2a_unpack_series_ctrl(t, ctrl.captured, held);
-    series_reset   = held.series_reset;
-    addr_after     = held.addr;
-    pipeline_depth = held.pipeline_depth;
-    size_rd        = held.size;
+    dtp_j2a_unpack_series_ctrl(t, ctrl.captured, series_reset, addr_after, pipeline_depth, size_rd,
+                               status);
     `uvm_info(get_type_name(),
               $sformatf("%s SERIES_CTRL reset=%0d addr=0x%0h pl_depth=%0d size=%0d status=%s",
                         t.name, series_reset, addr_after, pipeline_depth, size_rd, status.name()),
@@ -1441,8 +1441,7 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
                    .use_default_size(1'b0));
     last_single_capture(reference);
     ref_q = reference;
-    dtp_j2a_pack_single_op(t, dtp_j2a_single_op_request(
-                           DTP_J2A_OP_NOP, img_addr, img_data, img_wstrb, img_size), image);
+    dtp_j2a_pack_single_op(t, DTP_J2A_OP_NOP, img_addr, img_data, img_wstrb, img_size, image);
     detail = $sformatf(
         "gate_reference image=0x%s reference=0x%s target=%s",
         dtp_bits_hex(

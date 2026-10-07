@@ -555,56 +555,19 @@ function automatic bit [63:0] dtp_j2a_strobe_lanes(bit [7:0] strb);
   return lanes;
 endfunction
 
-// Which JTAG2AXI register a DR scan addressed, from the active instruction.
-typedef enum int unsigned {
-  DTP_J2A_SCAN_NONE = 0,
-  DTP_J2A_SCAN_SINGLE_OP,
-  DTP_J2A_SCAN_SERIES_CTRL,
-  DTP_J2A_SCAN_SERIES_DATA_INCR,
-  DTP_J2A_SCAN_SERIES_DATA_NO_INCR,
-  DTP_J2A_SCAN_SERIES_DATA_WITH_STATUS
-} dtp_j2a_scan_kind_e;
-
-// One JTAG2AXI request: the fields of a DR scan's TDI image, as the bridge
-// latches them at Update-DR.
-typedef struct {
-  dtp_j2a_scan_kind_e kind;
-  dtp_j2a_op_e        op;              // SINGLE_OP and SERIES_CTRL op field
-  bit [63:0]          addr;
-  bit [63:0]          data;
-  bit [7:0]           wstrb;
-  int unsigned        size;
-  int unsigned        pipeline_depth;  // SERIES_CTRL
-  bit                 series_reset;    // SERIES_CTRL
-  bit                 incr;            // series data: advance the address
-} dtp_j2a_request_t;
-
-// A SINGLE_OP request.
-function automatic dtp_j2a_request_t dtp_j2a_single_op_request(
-    dtp_j2a_op_e op, bit [63:0] addr, bit [63:0] data = '0, bit [7:0] wstrb = '0,
-    int unsigned size = 0);
-  dtp_j2a_request_t r;
-  r.kind  = DTP_J2A_SCAN_SINGLE_OP;
-  r.op    = op;
-  r.addr  = addr;
-  r.data  = data;
-  r.wstrb = wstrb;
-  r.size  = size;
-  return r;
-endfunction
-
 // SINGLE_OP DR packing, the *_AXI_SINGLE_OP table order LSB-first:
 // OP | SIZE | WSTRB | DATA | ADDR.
-function automatic void dtp_j2a_pack_single_op(dtp_j2a_target_t t, dtp_j2a_request_t r,
+function automatic void dtp_j2a_pack_single_op(dtp_j2a_target_t t, dtp_j2a_op_e op, bit [63:0] addr,
+                                               bit [63:0] data, bit [7:0] wstrb, int unsigned size,
                                                ref bit dr[]);
   int unsigned offset = 0;
   dr = new[dtp_j2a_single_op_len(t)];
   foreach (dr[i]) dr[i] = 1'b0;
-  for (int unsigned i = 0; i < 2; i++) dr[offset++] = (int'(r.op) >> i) & 1'b1;
-  for (int unsigned i = 0; i < t.size_bits; i++) dr[offset++] = (r.size >> i) & 1'b1;
-  for (int unsigned i = 0; i < t.wstrb_bits; i++) dr[offset++] = (r.wstrb >> i) & 1'b1;
-  for (int unsigned i = 0; i < t.data_width; i++) dr[offset++] = (r.data >> i) & 1'b1;
-  for (int unsigned i = 0; i < t.addr_width; i++) dr[offset++] = (r.addr >> i) & 1'b1;
+  for (int unsigned i = 0; i < 2; i++) dr[offset++] = (int'(op) >> i) & 1'b1;
+  for (int unsigned i = 0; i < t.size_bits; i++) dr[offset++] = (size >> i) & 1'b1;
+  for (int unsigned i = 0; i < t.wstrb_bits; i++) dr[offset++] = (wstrb >> i) & 1'b1;
+  for (int unsigned i = 0; i < t.data_width; i++) dr[offset++] = (data >> i) & 1'b1;
+  for (int unsigned i = 0; i < t.addr_width; i++) dr[offset++] = (addr >> i) & 1'b1;
 endfunction
 
 function automatic void dtp_j2a_unpack_single_op(
@@ -620,34 +583,57 @@ endfunction
 
 // SERIES_CTRL packing, the *_AXI_SERIES_CTRL table order LSB-first:
 // OP | SIZE | PL_DEPTH | ADDR | RESET.
-function automatic bit [63:0] dtp_j2a_pack_series_ctrl(dtp_j2a_target_t t, dtp_j2a_request_t r);
+function automatic bit [63:0] dtp_j2a_pack_series_ctrl(dtp_j2a_target_t t, dtp_j2a_op_e op,
+                                                       bit [63:0] addr, int unsigned pipeline_depth,
+                                                       int unsigned size, bit series_reset);
   int unsigned size_off     = 2;
   int unsigned pl_depth_off = size_off + t.size_bits;
   int unsigned addr_off     = pl_depth_off + 2;
   int unsigned reset_off    = addr_off + t.addr_width;
-  return (64'(int'(r.op)) & 64'h3) | ((64'(r.size) & ocah_rng::bit_mask(
+  return (64'(int'(op)) & 64'h3) | ((64'(size) & ocah_rng::bit_mask(
       t.size_bits
-  )) << size_off) | ((64'(r.pipeline_depth) & 64'h3) << pl_depth_off) |
-      ((r.addr & ocah_rng::bit_mask(
+  )) << size_off) | ((64'(pipeline_depth) & 64'h3) << pl_depth_off) | ((addr & ocah_rng::bit_mask(
       t.addr_width
-  )) << addr_off) | (64'(r.series_reset) << reset_off);
+  )) << addr_off) | (64'(series_reset) << reset_off);
 endfunction
 
-// Decode a captured SERIES_CTRL word: the settled status sits in the OP
-// field, the rest of the word is the request the bridge holds.
-function automatic dtp_j2a_status_e dtp_j2a_unpack_series_ctrl(dtp_j2a_target_t t, bit [63:0] value,
-                                                               output dtp_j2a_request_t r);
+function automatic void dtp_j2a_unpack_series_ctrl(
+    dtp_j2a_target_t t, bit [63:0] value, output bit series_reset, output bit [63:0] addr,
+    output int unsigned pipeline_depth, output int unsigned size, output dtp_j2a_status_e status);
   int unsigned size_off     = 2;
   int unsigned pl_depth_off = size_off + t.size_bits;
   int unsigned addr_off     = pl_depth_off + 2;
   int unsigned reset_off    = addr_off + t.addr_width;
-  r.kind           = DTP_J2A_SCAN_SERIES_CTRL;
-  r.size           = int'((value >> size_off) & ocah_rng::bit_mask(t.size_bits));
-  r.pipeline_depth = int'((value >> pl_depth_off) & 64'h3);
-  r.addr           = (value >> addr_off) & ocah_rng::bit_mask(t.addr_width);
-  r.series_reset   = value[reset_off];
-  return dtp_j2a_status_e'(value & 64'h3);
+  status         = dtp_j2a_status_e'(value & 64'h3);
+  size           = int'((value >> size_off) & ocah_rng::bit_mask(t.size_bits));
+  pipeline_depth = int'((value >> pl_depth_off) & 64'h3);
+  addr           = (value >> addr_off) & ocah_rng::bit_mask(t.addr_width);
+  series_reset   = value[reset_off];
 endfunction
+
+// Which JTAG2AXI register a DR scan addressed, from the active instruction.
+typedef enum int unsigned {
+  DTP_J2A_SCAN_NONE = 0,
+  DTP_J2A_SCAN_SINGLE_OP,
+  DTP_J2A_SCAN_SERIES_CTRL,
+  DTP_J2A_SCAN_SERIES_DATA_INCR,
+  DTP_J2A_SCAN_SERIES_DATA_NO_INCR,
+  DTP_J2A_SCAN_SERIES_DATA_WITH_STATUS
+} dtp_j2a_scan_kind_e;
+
+// One decoded JTAG2AXI request: the TDI image of a DR scan, as the bridge
+// latches it at Update-DR.
+typedef struct {
+  dtp_j2a_scan_kind_e kind;
+  dtp_j2a_op_e        op;              // SINGLE_OP and SERIES_CTRL op field
+  bit [63:0]          addr;
+  bit [63:0]          data;
+  bit [7:0]           wstrb;
+  int unsigned        size;
+  int unsigned        pipeline_depth;  // SERIES_CTRL
+  bit                 series_reset;    // SERIES_CTRL
+  bit                 incr;            // series data: advance the address
+} dtp_j2a_request_t;
 
 // The bridge and register a 6-bit instruction selects; SCAN_NONE when the
 // instruction is not a JTAG2AXI register.
