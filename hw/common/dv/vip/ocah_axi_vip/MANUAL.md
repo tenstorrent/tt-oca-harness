@@ -329,6 +329,12 @@ responses of different IDs overtake one another. W beats are taken in AW
 order, and the beats of one read burst are never interleaved with another's.
 Error injection, ID corruption and backpressure apply in either mode.
 
+In both modes a read claims the one-shot errors of all its beats when the
+responder takes it into service, before its first R beat, so an
+`inject_error(..., read=True)` armed while a burst is in progress applies to
+a later read of the address, not to the remaining beats of that burst. A
+write claims its one-shot errors as each W beat arrives.
+
 ```python
 ram = OcahAxiSlaveAgent(bus, dut.clk_i, dut.rst_ni, reset_active_level=False,
                         max_outstanding=8).sequence

@@ -148,7 +148,7 @@ class smu_axi_out_outstanding_test_seq(smu_axi_out_addr_len_size_test_seq):
         sb.expect_eq("smu_axi_out responder depth", mem.max_outstanding, DEPTH)
         jtag = await self._bring_up_tap()
         await program_outbound0_pass_all(jtag, scoreboard=sb)
-        rng = random.Random(self.test.random_seed() ^ 0x2473)
+        rng = random.Random(self.test.random_seed() ^ 0x0DE7_A11D)
         delays = iter(lambda: rng.randint(MIN_DELAY, MAX_DELAY), None)
         mem.set_response_delay(delays)
         tap = _InFlight(dut, mem)
