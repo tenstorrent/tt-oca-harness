@@ -160,6 +160,21 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "programmed target, and a following access leaves by the default path",
         ),
     ],
+    "smu_axi_out_outstanding_test": [
+        (
+            "CHK-AXIOUT-OUTSTANDING",
+            "CHK-AXIOUT-OUTSTANDING",
+            "an iDMA copy against a responder of depth 8 that delays every response "
+            "completes intact with more than 3 and at most 8 writes and reads in flight "
+            "at once, counted at the wires and by the responder",
+        ),
+        (
+            "CHK-AXIOUT-OUTSTANDING-ORDER",
+            "CHK-AXIOUT-OUTSTANDING-ORDER",
+            "every R beat carries the data of the oldest outstanding read of its RID, "
+            "every B answers an outstanding write of its BID, and none is left over",
+        ),
+    ],
     "smu_smc_inbound_window_sweep_test": [
         (
             "CHK-SMC-WINDOW-PROT",

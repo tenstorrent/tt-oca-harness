@@ -218,6 +218,7 @@ one-line intent.
 |`smu_axi_in_sep_aperture_test` |fabric |Inbound SMN traffic into the SEP aperture: SEP SRAM round trips under every id, qualifier, size, offset and burst swept, the SEP error responses, and every aperture address bit
 |`smu_smc_inbound_window_sweep_test` |fabric |Inbound SMN traffic into the SMC eFuse shim, external target and DTP control window under every AxPROT, the external target at every size and low address bit, and SMC SPM writes under distinct IDs held in flight.
 |`smu_axi_out_addr_len_size_test` |fabric |What the SMC masters a bench can drive send out of the chiplet crosses smu_axi_out with the address, AxSIZE and AxLEN they were given.
+|`smu_axi_out_outstanding_test` |fabric |An SMC iDMA copy holds more than three writes and more than three reads in flight on `smu_axi_out` against a responder of depth 8, and every response pairs with the oldest outstanding request of its ID.
 |`smu_aperture_map_walk_test` |fabric |The SMU crossbar decodes the SMC aperture at every base and size BASE_CONFIG admits and JTAG2AXI can follow.
 |`smu_xbar_connectivity_matrix_test` |fabric |An `ext_in` access that matches neither programmed aperture is answered DECERR by the crossbar and never reaches `ext_out`.
 |`smu_periph_ext_window_test` |fabric |The SMC peripheral crossbar's macro AXI-Lite window is reachable over JTAG2AXI, decodes its sub-windows, and shrinks with the SMC aperture.
@@ -5277,6 +5278,45 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 
 '''''
 
+[[sec-127-smu_axi_out_outstanding_test]]
+===== 127 `smu_axi_out_outstanding_test`
+
+*Source Module*: `smu_axi_out_outstanding_test` (`cocotb_wrapper/tests/`; the sequence extends `smu_axi_out_addr_len_size_test_seq` for its TAP bring-up and iDMA copy)
+
+*BFM / Model*: `ocah_jtag_vip` for the SMC JTAG2AXI bridge, the outbound filter and the iDMA registers; the shared responder on `u_axi_out_if`, built with `max_outstanding` 8 and a seeded response delay, whose handshakes the sequence records; `elaboration` firmware mode
+
+*Objective*: The outbound SMN port carries several transactions in flight at once, and the bench responder accepts and answers them without losing, duplicating or reordering a response within an ID.
+
+*Test Coverage*:
+
+* The responder accepts up to 8 writes and 8 reads, each counted from its address handshake to its B or RLAST handshake, and delays every response by a seeded 16 to 48 `clk_smu` cycles; a delayed response holds back only later responses of its own ID (`hw/common/dv/vip/ocah_axi_vip/MANUAL.md`, "Outstanding depth").
+* The SMC iDMA is the bench-drivable master that issues transactions back to back. With CONFIG `src_reduce_len` and `dst_reduce_len` set and `max_llen` 0, as in S3 of `smu_axi_out_addr_len_size_test`, a 2 KiB copy between two addresses outside the SMC and SEP apertures crosses the boundary as one address phase per beat.
+* Spec gap: no document states the outbound port's outstanding depth (`doc/integrator/src/smu.adoc` sizes no such queue), so the floor of more than three in flight is the DV-owned rule this leaf checks, and the peak each direction reaches is recorded as an observation.
+* Over the copy, the writes and the reads in flight at once are counted at the boundary wires and by the responder; each count exceeds 3 and none exceeds 8. The destination holds the source bytes and DONE reports the id the launch read from NEXT_ID.
+* Every R beat carries the bytes the responder holds at the address of the oldest outstanding read of its RID, every B answers an outstanding write of its BID, and none is left outstanding after the copy.
+* Not claimed: responses of different IDs overtaking one another at this boundary. The iDMA issues every read under one ID and every write under one ID, so the response order is judged within an ID only; `ocah_axi_slave_outstanding_test` proves the cross-ID behaviour of the responder.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up the primary TAP, program outbound filter entry 0 to pass all, set the responder's response delay and start recording the boundary handshakes.
+. Fill the source block in the responder, zero the destination, program the iDMA descriptor with the single-beat CONFIG, launch it by reading NEXT_ID once, and poll DONE.
+. Clear the response delay, wait for the outstanding transactions to retire, and compare the destination, the peak counts and the per-ID pairing.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-AXIOUT-OUTSTANDING` |the copy completes with the launched id and the destination holds the source block; the writes and the reads in flight at once, counted at the wires and by the responder, each peak above 3 and at most 8
+|`CHK-AXIOUT-OUTSTANDING-ORDER` |every R beat carries the data of the oldest outstanding read of its RID, every B answers an outstanding write of its BID, and the AW and B, and AR and RLAST, handshake counts are equal with none outstanding
+|assertion |outbound outstanding scenario incomplete s1..s2=<values>
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `hosted`.
+
+'''''
+
 === Formal Verification Plan
 
 No formal target exists for SMU. There is no `smu_formal_cfg.toml`, no
@@ -5296,12 +5336,12 @@ not SMU integration evidence. Every row of this plan is simulation credit.
 |Group |Leaves |Notes
 |`fw_boot` |4 |The firmware boot smokes, the SMC firmware fabric leaf and the elaboration leaf; needs the RISC-V toolchain, so no workflow schedules it
 |`elaboration` |1 |The elaboration leaf alone
-|`fabric` |18 |The fabric and filter leaves; every member is in `hosted`
+|`fabric` |19 |The fabric and filter leaves; every member is in `hosted`
 |`smc_under_smu` |23 |The SMC-facing leaves reached through the SMU; every member is in `hosted`
 |`dtp_under_smu` |38 |The DTP-facing leaves reached through the SMU; every member is in `hosted`
 |`smoke` |2 |The PR gate: `sim.yml` runs `--items smoke` on every hardware diff. Toolchain-free by construction
-|`hosted` |84 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
-|`all` |120 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
+|`hosted` |85 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
+|`all` |121 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
 |`sep_real_fw` |14 |Wrapper leaves that boot real SEP DV firmware images
 |`sep_entropy` |1 |The firmware-driven entropy stack
 |`sep_probe` |1 |The probe leaf that keeps SEP instruction retirement live while the TAP answers
