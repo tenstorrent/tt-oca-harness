@@ -31,9 +31,9 @@
 // capture shift whose TDO carries the primed beat. Random choices come from
 // the per-pass seeded stream and are logged with iteration context for
 // replay. The shared AXI scoreboard judges every observed transaction
-// (CHK-AXI-RESP/RDATA); the read data and status the bridge returns over
-// JTAG land as CHK-AXI-RDATA (source=jtag-capture) and CHK-J2A-FAULT-STATUS;
-// the gating windows ride the tb pulse counters (CHK-AXI-NOACT). The series
+// (CHK-AXI-RESP/RDATA); the read data and status the bridge returns over JTAG
+// land as CHK-AXI-RDATA (source=bridge_capture) and CHK-J2A-FAULT-STATUS; the
+// gating windows ride the tb pulse counters (CHK-AXI-NOACT). The series
 // write-read and gating flows are the family layer's
 // (dtp_jtag2axi_base_test_seq), shared with the OTP bridges.
 

@@ -3,32 +3,32 @@
 //
 // JTAG2AXI family layer of the DTP scenario sequences — the SV analogue of
 // the cocotb dtp_jtag2axi_base_test_seq. Every bridge request is a reusable
-// operation on the primary TAP sequencer
-// (dtp_jtag2axi_single_op_seq / _single_status_seq / _series_ctrl_seq /
-// _series_data_seq, all built on the dtp_types codec); this layer adds the
-// bridge geometry lookups, the status polling bound, the evidence arming,
-// the responder backdoor through the virtual sequencer's responder
-// sequences, the lifecycle debug-disable gating, and the request-activity
-// evidence from the dtp_tb_if pulse counters.
+// operation on the primary TAP sequencer (dtp_jtag2axi_single_op_seq /
+// _single_status_seq / _series_ctrl_seq / _series_data_seq, all built on
+// the dtp_types codec); this layer adds the bridge geometry lookups, the
+// status polling bound, the evidence arming, the responder backdoor through
+// the virtual sequencer's responder sequences, the lifecycle debug-disable
+// gating, and the request-activity evidence from the dtp_tb_if pulse
+// counters.
 //
 // The responders are shared ocah_axi_vip UVM slave agents reached through
 // the virtual sequencer by target name; the test plumbs every bridge's
 // evidence bundle (target_cfgs / target_evidence / target_ref_models, keyed
 // by bridge name) and port history (axi_ports) before start(), and
 // use_target() points axi_cfg / axi_evidence / axi_ref_model at the bridge
-// a scenario judges. Error
-// arming discipline: arm_target_error() programs the responder injection,
-// with the errored-beat word for a read, AND cfg.arm_expected_resp() in one
-// place, so the injected non-OKAY is EXPECTED for the shared AXI
-// scoreboard; clear_target_error() clears the injection.
-// test_cfg.axi_scoreboard_negative (+DTP_AXI_SCOREBOARD_NEGATIVE) is the
-// negative-validation hook: it arms the WRONG expected response so the run
-// must FAIL, proving the checker rejects a bad expectation end to end.
+// a scenario judges. Error arming discipline: arm_target_error() programs
+// the responder injection, with the errored-beat word for a read, AND
+// cfg.arm_expected_resp() in one place, so the injected non-OKAY is
+// EXPECTED for the shared AXI scoreboard; clear_target_error() clears the
+// injection. test_cfg.axi_scoreboard_negative (+DTP_AXI_SCOREBOARD_NEGATIVE)
+// is the negative-validation hook: it arms the WRONG expected response so
+// the run must FAIL, proving the checker rejects a bad expectation end to
+// end.
 //
 // Every judgement of the bridge under test lands as a CHK-* record on
 // axi_evidence: CHK-J2A-FAULT-STATUS for the status a SINGLE_OP or
-// SERIES_CTRL capture returns, CHK-AXI-RDATA (source=bridge_capture) for the
-// read data it returns, CHK-AXI-WMEM for responder words,
+// SERIES_CTRL capture returns, CHK-AXI-RDATA (source=bridge_capture) for
+// the read data it returns, CHK-AXI-WMEM for responder words,
 // CHK-J2A-SERIES-ADDR for the SERIES_CTRL address, and CHK-AXI-COMPLETION
 // for a bounded wait on the port that expired. A scenario calls
 // use_target() before its first operation on a bridge.

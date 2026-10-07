@@ -14,9 +14,9 @@
 //     system-domain helpers; the family layers (basic JTAG, JTAG2AXI, debug
 //     TDR, scan network, cross-trigger) add their evidence helpers; the
 //     concrete scenarios extend a family layer and never a VIP sequence.
-// The VIP drivers drive the protocol pins; the scenario layer drives only
-// the DTP-local TB interface pins dtp_base_test_seq names (reset ladder,
-// dbg_disable stimulus, cross-trigger pins, TRST in the reset family).
+// The VIP drivers drive the protocol pins; the scenario layer drives the
+// DTP-local TB interface pins its base and family layers name (reset
+// ladder, dbg_disable stimulus, cross-trigger pins).
 // Per-cycle FSM legality, scan reconstruction, and the always-on scoreboard
 // live in dtp_env_pkg.
 //

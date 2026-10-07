@@ -247,7 +247,7 @@ class dtp_jtag2axi_otp_axi_test_seq extends dtp_jtag2axi_base_test_seq;
                     "unknown OTP JTAG2AXI scenario %s", scenario))
     endcase
     enable_all_debug();
-    // Scenario-level operation minimum (cocotb CHK-AXI-STREAM-MIN parity);
+    // CHK-AXI-NONVAC: the pass ran an operation and moved a responder burst;
     // +DTP_RANDOM_COUNT=1 leaves the random scenarios one operation per pass.
     emit_nonvacuity_evidence(
         t, operation_count >= 1, $sformatf(

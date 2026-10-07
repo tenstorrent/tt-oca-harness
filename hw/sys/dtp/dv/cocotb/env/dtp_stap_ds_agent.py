@@ -45,7 +45,7 @@ STAP_DS_TDR_OPCODE = 0x02
 STAP_DS_TDR_NAME = "DS_TDR"
 
 # STAP name -> (IDCODE with the IEEE 1149.1 marker bit set, DS_TDR width).
-# Parity contract with uvm/env/dtp_env.svh (stap_ds_idcode / stap_ds_tdr_width).
+# Parity contract with uvm/env/dtp_types.svh (dtp_stap_ds_idcode / dtp_stap_ds_tdr_width).
 STAP_DS_DEVICES: dict[str, tuple[int, int]] = {
     "io": (0x1D51_0101, 12),
     "smc": (0x1D51_0203, 16),

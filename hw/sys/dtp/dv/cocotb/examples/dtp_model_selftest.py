@@ -2,12 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Simulator-free selftest of the DTP plain models.
 
-Runs as plain Python from ``hw/sys/dtp/dv/cocotb``
-(``python -m examples.dtp_model_selftest``). It round-trips the IR and 3DCR
-tracking model, the iJTAG SIB model, and the composed STAP chain with and
-without downstream TAPs, the host segment, and the ZERO_LENGTH_BYPASS and
-BYPASS layouts. The run exits non-zero on the first contract that does not
-hold.
+Runs as plain Python from ``hw/sys/dtp/dv/cocotb`` with the ``dv`` dependency
+group installed and the ``python_paths`` of ``dtp_sim_cfg.toml`` on
+``PYTHONPATH`` (``python -m examples.dtp_model_selftest``). It round-trips the
+IR and 3DCR tracking model, the iJTAG SIB model, and the composed STAP chain
+with and without downstream TAPs, the host segment, and the
+ZERO_LENGTH_BYPASS and BYPASS layouts. The run exits non-zero on the first
+contract that does not hold.
 """
 
 from __future__ import annotations
@@ -177,12 +178,12 @@ def _selftest_ijtag() -> None:
 def _selftest_stap() -> None:
     """Round-trip the composed-chain model with and without downstream TAPs.
 
-    For every STAP, select it, compose a
-    maintain scan, and check that the layout, the capture prediction, and
-    the downstream segment slice agree, both as a wire loopback and with a
-    device attached (IDCODE, a written register, an IR scan, gating, and
-    parking). The iJTAG model round-trips first, then the host segment and
-    the ZERO_LENGTH_BYPASS and BYPASS layouts.
+    For every STAP, select it, compose a maintain scan, and check that the
+    layout, the capture prediction, and the downstream segment slice agree,
+    both as a wire loopback and with a device attached (IDCODE, a written
+    register, an IR scan, gating, and parking). The iJTAG model round-trips
+    first, then the host segment and the ZERO_LENGTH_BYPASS and BYPASS
+    layouts.
     """
     _selftest_ijtag()
 

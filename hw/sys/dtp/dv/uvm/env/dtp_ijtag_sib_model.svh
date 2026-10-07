@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// DTP iJTAG SIB reference model (the cocotb twin is
-// env/dtp_ijtag_sib_model.py): the three SIBs and the instrument stubs
-// tb_top places behind them. The SELECT_IJTAG data register is, TDI to TDO, one SIB flop per SIB with the
+// DTP iJTAG SIB reference model (cocotb twin: env/dtp_ijtag_sib_model.py):
+// the three SIBs and the instrument stubs tb_top places behind them. The
+// SELECT_IJTAG data register is, TDI to TDO, one SIB flop per SIB with the
 // SIB's instrument spliced TDO-side of its flop while the SIB is open; scan
 // registers shift MSB-first, so an instrument's MSB is TDI-nearest. A SIB's
 // update register holds the sanctioned open bit through a gate: the gate

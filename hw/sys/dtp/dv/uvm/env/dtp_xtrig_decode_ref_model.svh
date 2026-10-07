@@ -3,13 +3,13 @@
 //
 // xtrig_decode reference model: every access to the cross-trigger CSR port
 // completes with the response the network memory map gives its word
-// (dtp_xtrig_csr_decode): DECERR for an unmapped word, OKAY for a register or
-// a hole. Consumes the XTRIG AXI-Lite monitor stream (write) and publishes
-// one dtp_expected_item per observed transaction so the scoreboard pairs the
-// two streams in lockstep. `negative` (+DTP_XTRIG_DECODE_REF_MODEL_NEGATIVE)
-// flips bit 0 of every predicted response, so the run must fail. No
-// comparison, no reporting. The cocotb twin is
-// env/dtp_xtrig_decode_ref_model.py.
+// (dtp_xtrig_csr_decode): DECERR for an unmapped word, OKAY for a register
+// or a hole. Consumes the XTRIG AXI-Lite monitor stream (write) and
+// publishes one dtp_expected_item per observed transaction so the
+// scoreboard pairs the two streams in lockstep. `negative`
+// (+DTP_XTRIG_DECODE_REF_MODEL_NEGATIVE) flips bit 0 of every predicted
+// response, so the run must fail. No comparison, no reporting; the cocotb
+// twin is env/dtp_xtrig_decode_ref_model.py.
 
 class dtp_xtrig_decode_ref_model extends ocah_ref_model #(ocah_axi_item, dtp_expected_item);
   `uvm_component_utils(dtp_xtrig_decode_ref_model)
