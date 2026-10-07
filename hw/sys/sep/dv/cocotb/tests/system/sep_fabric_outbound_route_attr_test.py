@@ -256,8 +256,12 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         prot: int,
         expect_okay: bool,
         graded: bool,
+        chk: str = "CHK-OUT-ROUTE",
     ) -> tuple[int, list]:
-        """One LSU access; returns (resp, PR-OUT beats of the access)."""
+        """One LSU access; returns (resp, PR-OUT beats of the access).
+
+        A response other than the expected one fails ``chk`` at once.
+        """
         user = self.tcfg.u
         wdata = self.tcfg.wdata() if write else 0
         mark = self.out.mark()
@@ -269,6 +273,12 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         if graded:
             close_graded_window(self.logger)
         beats = self.out.since(mark)
+        want = RESP_OKAY if expect_okay else RESP_DECERR
+        assert seq.resp_code == want, (
+            f"{chk} FAIL: class={cls} dir={'W' if write else 'R'} addr=0x{addr:x} "
+            f"prot=0x{prot:x} user={user} resp={_rname(seq.resp_code)} expect={_rname(want)} "
+            f"out_seen={len(beats)}"
+        )
         if seq.resp_code == RESP_OKAY and beats:
             self._capture(
                 cls, addr, pred, write=write, prot=prot, user=user, wdata=wdata, beats=beats
@@ -511,7 +521,14 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
                 f"model: stack does not fall through for OTHERS ({v.summary()})"
             )
             r, _ = await self._cell(
-                c.name, c.local, c.translated, write=write, prot=prot, expect_okay=True, graded=True
+                c.name,
+                c.local,
+                c.translated,
+                write=write,
+                prot=prot,
+                expect_okay=True,
+                graded=True,
+                chk="CHK-OUT-USER",
             )
             res[write] = r
         # Control: entry 0 with src_id 0 matches and refuses.
@@ -527,6 +544,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
                 prot=prot,
                 expect_okay=False,
                 graded=False,
+                chk="CHK-OUT-USER",
             )
             ctl[write] = r
         await self.filt.set_enabled(0, False)
@@ -580,6 +598,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             prot=self.tcfg.prot(1),
             expect_okay=True,
             graded=False,
+            chk="CHK-OUT-NOEXTRA",
         )
         control = len([b for b in beats if b.ch == "ar"])
         line = f"local_reads={n_local} out_seen={local_seen} control_out={control}"
@@ -627,6 +646,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             prot=self.tcfg.prot(1),
             expect_okay=False,
             graded=True,
+            chk="CHK-OUT-NOBYPASS",
         )
         await self._pair_enable(PAIR_SMU, True)
         r_on, _ = await self._cell(
@@ -637,6 +657,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             prot=self.tcfg.prot(1),
             expect_okay=True,
             graded=True,
+            chk="CHK-OUT-NOBYPASS",
         )
         line = (
             f"bypass_pre={_rname(pre)} feat_after=0x{feat1:016x} disabled_resp={_rname(r_off)} "
