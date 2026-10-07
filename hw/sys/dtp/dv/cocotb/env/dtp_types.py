@@ -3,12 +3,11 @@
 """DTP JTAG types and helpers shared by the OSS cocotb tests.
 
 The DTP instantiates one JTAG Interface Unit as its primary debug access point
-(`hw/sys/dtp/doc/jtag.adoc`, "DTP JTAG Topology"). The instruction and
-JTAG2AXI tables below are transcriptions of that unit's and its PTAP's
-documentation; each names the document and section it copies. The TAP states
-are the shared ``ocah_jtag_vip.OcahJtagState``, whose one-hot values match the
-PTAP's. The three
-JTAG2AXI bridge geometries are part of the bench configuration `tb_top`
+(`hw/sys/dtp/doc/jtag.adoc`, "DTP JTAG Topology"). The instruction and JTAG2AXI
+tables below are transcriptions of that unit's and its PTAP's documentation;
+each names the document and section it copies. The TAP states are the shared
+``ocah_jtag_vip.OcahJtagState``, whose one-hot values match the PTAP's. The
+three JTAG2AXI bridge geometries are part of the bench configuration `tb_top`
 elaborates the DUT with: `dtp_dv_cfg` republishes them for the parity check
 against the SystemVerilog package, the geometry gate compares each bridge's
 `*_JTAG2AXI_CAPS` publication with them every pass, and every TDR field width

@@ -5,13 +5,12 @@
 One table of the TDRs the tests exercise, so the JTAG driver and the sequences
 agree on register names, sizes, and IR opcodes; ``dtp_tap_device()`` builds it
 as the shared ``OcahJtagDevice`` the JTAG master reads and writes through. The
-opcodes are the
-interface-unit instruction table (`hw/ip/jtag/jtag_intf_unit/doc/interface.adoc`,
-"Instruction Encodings"); the register sizes are the TDR layouts in
-`hw/ip/jtag/jtag_ptap/doc/architecture.adoc` and, for the instructions that
-document does not lay out, the interface-unit table's "Register Size" column;
-the JTAG2AXI TDR sizes derive from the bridge geometries in
-``dtp_types.JTAG2AXI_TARGETS``.
+opcodes are the interface-unit instruction table
+(`hw/ip/jtag/jtag_intf_unit/doc/interface.adoc`, "Instruction Encodings"); the
+register sizes are the TDR layouts in `hw/ip/jtag/jtag_ptap/doc/architecture.adoc`
+and, for the instructions that document does not lay out, the interface-unit
+table's "Register Size" column; the JTAG2AXI TDR sizes derive from the bridge
+geometries in ``dtp_types.JTAG2AXI_TARGETS``.
 """
 
 from __future__ import annotations

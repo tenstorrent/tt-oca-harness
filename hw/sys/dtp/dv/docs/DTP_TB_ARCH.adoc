@@ -687,8 +687,8 @@ are where each hook sits:
 |Observed XTRIG CSR AXI-Lite port |`u_xtrig_axil_if` |`m_xtrig_axi_env` (`ocah_axi_env`)
 |===
 
-The four observed ports share one class, so a type override of
-`ocah_axi_env` replaces all four and an instance override names one member.
+The observed ports share one class, so a type override of `ocah_axi_env`
+replaces every one of them and an instance override names one member.
 An adopter test class compiles in through `DTP_OVERLAY_TESTS` at the end of
 `uvm/tests/dtp_tests.sv`: the overlay defines it to the quoted name of an
 include file on one of its include directories. Select such a class on a
