@@ -16,8 +16,8 @@ from __future__ import annotations
 import random
 
 from env.dtp_tap_device import DTP_DEFAULT_IDCODE, DTP_IC_RESET_LEN
-from env.dtp_types import DtpJtagInstr, DtpTapState
-from ocah_jtag_vip import OcahJtagChecker
+from env.dtp_types import DtpJtagInstr
+from ocah_jtag_vip import OcahJtagChecker, OcahJtagState
 from ocah_lib import OcahKnobs
 
 from .dtp_debug_tdr_base_test_seq import DEBUG_OUTPUT_DEFAULTS, dtp_debug_tdr_base_test_seq
@@ -89,7 +89,7 @@ class dtp_jtag_tlr_reset_test_seq(dtp_debug_tdr_base_test_seq):
 
     async def walk_to_tlr(
         self,
-        state: DtpTapState,
+        state: OcahJtagState,
         rng: random.Random,
         checker: OcahJtagChecker,
         *,
@@ -111,7 +111,7 @@ class dtp_jtag_tlr_reset_test_seq(dtp_debug_tdr_base_test_seq):
                 "TEST_LOGIC_RESET before the TMS-high walk from %s",
                 state.name,
             )
-            checker.sync_state(DtpTapState.TEST_LOGIC_RESET)
+            checker.sync_state(OcahJtagState.TEST_LOGIC_RESET)
 
         ones = rng.randint(5, 8)
         for _ in range(ones):
@@ -164,10 +164,10 @@ class dtp_jtag_tlr_reset_test_seq(dtp_debug_tdr_base_test_seq):
         negative = OcahKnobs.is_set("DTP_JTAG_TAP_CHECKER_NEGATIVE")
 
         states = [
-            DtpTapState.RUN_TEST_IDLE,
-            DtpTapState.SHIFT_IR,
-            DtpTapState.SHIFT_DR,
-            rng.choice([DtpTapState.PAUSE_IR, DtpTapState.PAUSE_DR]),
+            OcahJtagState.RUN_TEST_IDLE,
+            OcahJtagState.SHIFT_IR,
+            OcahJtagState.SHIFT_DR,
+            rng.choice([OcahJtagState.PAUSE_IR, OcahJtagState.PAUSE_DR]),
         ]
 
         ones_counts: list[int] = []

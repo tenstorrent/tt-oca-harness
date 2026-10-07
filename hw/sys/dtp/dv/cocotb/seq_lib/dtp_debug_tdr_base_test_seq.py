@@ -27,7 +27,8 @@ from env.dtp_tap_device import (
     DTP_TMP_STATUS_LEN,
     unpack_jtag2axi_caps,
 )
-from env.dtp_types import DtpJtag2AxiTargetCfg, DtpJtagInstr, DtpTapState
+from env.dtp_types import DtpJtag2AxiTargetCfg, DtpJtagInstr
+from ocah_jtag_vip import OcahJtagState
 
 from .dtp_jtag_base_test_seq import dtp_jtag_base_test_seq
 
@@ -122,7 +123,7 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
             item = await self.tms_step(1)
         if self.tap_checker is not None:
             self.tap_checker.check_tms_ones_to_tlr(5, item.result)
-        self.record_tap_state(item.result, DtpTapState.TEST_LOGIC_RESET)
+        self.record_tap_state(item.result, OcahJtagState.TEST_LOGIC_RESET)
 
     def decode_tmp_status(self, value: int) -> dict[str, int]:
         """Decode TMP_STATUS. Bit 1 reflects TMP persistence; bit 0 arms escape."""

@@ -23,7 +23,7 @@ from .dtp_jtag_ir_model import DtpJtagIrModel
 from .dtp_jtag_item import DtpJtagItem, DtpJtagOp
 from .dtp_jtag_scan_builder import DtpJtagScanBuilder
 from .dtp_scoreboard import DtpScoreboard
-from .dtp_tap_device import DtpTapDevice
+from .dtp_tap_device import dtp_tap_device
 from .dtp_tb_if import DtpTbIf
 from .dtp_types import (
     DTP_IR_WIDTH,
@@ -62,7 +62,7 @@ __all__ = [
     "DtpJtag2AxiStatusRefModel",
     "DtpJtagItem",
     "DtpJtagOp",
-    "DtpTapDevice",
+    "dtp_tap_device",
     "DtpTbIf",
     "DTP_IR_WIDTH",
     "DtpJtagInstr",

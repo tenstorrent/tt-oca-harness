@@ -3,9 +3,11 @@
 """DTP JTAG types and helpers shared by the OSS cocotb tests.
 
 The DTP instantiates one JTAG Interface Unit as its primary debug access point
-(`hw/sys/dtp/doc/jtag.adoc`, "DTP JTAG Topology"). The instruction, TAP-state and
+(`hw/sys/dtp/doc/jtag.adoc`, "DTP JTAG Topology"). The instruction and
 JTAG2AXI tables below are transcriptions of that unit's and its PTAP's
-documentation; each names the document and section it copies. The three
+documentation; each names the document and section it copies. The TAP states
+are the shared ``ocah_jtag_vip.OcahJtagState``, whose one-hot values match the
+PTAP's. The three
 JTAG2AXI bridge geometries are part of the bench configuration `tb_top`
 elaborates the DUT with: `dtp_dv_cfg` republishes them for the parity check
 against the SystemVerilog package, the geometry gate compares each bridge's
@@ -15,7 +17,6 @@ derives from them.
 
 from __future__ import annotations
 
-from collections import deque
 from dataclasses import dataclass
 from enum import Enum, IntEnum
 
@@ -143,146 +144,6 @@ class DtpJtagInstr(IntEnum):
 UNDEFINED_BYPASS_INSTRS = tuple(
     DtpJtagInstr(value) for value in [0x0F, *range(0x10, 0x18), *range(0x2D, 0x3D)]
 )
-
-
-class DtpTapState(IntEnum):
-    """IEEE 1149.1 TAP controller states as 16-bit one-hot encodings.
-
-    Transcription of the state table in `hw/ip/jtag/jtag_ptap/doc/architecture.adoc`,
-    "TAP Controller State Machine".
-    """
-
-    TEST_LOGIC_RESET = 0x0001
-    RUN_TEST_IDLE = 0x0002
-    SELECT_DR_SCAN = 0x0004
-    CAPTURE_DR = 0x0008
-    SHIFT_DR = 0x0010
-    EXIT1_DR = 0x0020
-    PAUSE_DR = 0x0040
-    EXIT2_DR = 0x0080
-    UPDATE_DR = 0x0100
-    SELECT_IR_SCAN = 0x0200
-    CAPTURE_IR = 0x0400
-    SHIFT_IR = 0x0800
-    EXIT1_IR = 0x1000
-    PAUSE_IR = 0x2000
-    EXIT2_IR = 0x4000
-    UPDATE_IR = 0x8000
-
-
-class DtpTapFsm:
-    """Reference IEEE 1149.1 TAP state machine used by open-source sequences."""
-
-    _TRANSITIONS: dict[DtpTapState, tuple[DtpTapState, DtpTapState]] = {
-        DtpTapState.TEST_LOGIC_RESET: (
-            DtpTapState.RUN_TEST_IDLE,
-            DtpTapState.TEST_LOGIC_RESET,
-        ),
-        DtpTapState.RUN_TEST_IDLE: (
-            DtpTapState.RUN_TEST_IDLE,
-            DtpTapState.SELECT_DR_SCAN,
-        ),
-        DtpTapState.SELECT_DR_SCAN: (
-            DtpTapState.CAPTURE_DR,
-            DtpTapState.SELECT_IR_SCAN,
-        ),
-        DtpTapState.CAPTURE_DR: (
-            DtpTapState.SHIFT_DR,
-            DtpTapState.EXIT1_DR,
-        ),
-        DtpTapState.SHIFT_DR: (
-            DtpTapState.SHIFT_DR,
-            DtpTapState.EXIT1_DR,
-        ),
-        DtpTapState.EXIT1_DR: (
-            DtpTapState.PAUSE_DR,
-            DtpTapState.UPDATE_DR,
-        ),
-        DtpTapState.PAUSE_DR: (
-            DtpTapState.PAUSE_DR,
-            DtpTapState.EXIT2_DR,
-        ),
-        DtpTapState.EXIT2_DR: (
-            DtpTapState.SHIFT_DR,
-            DtpTapState.UPDATE_DR,
-        ),
-        DtpTapState.UPDATE_DR: (
-            DtpTapState.RUN_TEST_IDLE,
-            DtpTapState.SELECT_DR_SCAN,
-        ),
-        DtpTapState.SELECT_IR_SCAN: (
-            DtpTapState.CAPTURE_IR,
-            DtpTapState.TEST_LOGIC_RESET,
-        ),
-        DtpTapState.CAPTURE_IR: (
-            DtpTapState.SHIFT_IR,
-            DtpTapState.EXIT1_IR,
-        ),
-        DtpTapState.SHIFT_IR: (
-            DtpTapState.SHIFT_IR,
-            DtpTapState.EXIT1_IR,
-        ),
-        DtpTapState.EXIT1_IR: (
-            DtpTapState.PAUSE_IR,
-            DtpTapState.UPDATE_IR,
-        ),
-        DtpTapState.PAUSE_IR: (
-            DtpTapState.PAUSE_IR,
-            DtpTapState.EXIT2_IR,
-        ),
-        DtpTapState.EXIT2_IR: (
-            DtpTapState.SHIFT_IR,
-            DtpTapState.UPDATE_IR,
-        ),
-        DtpTapState.UPDATE_IR: (
-            DtpTapState.RUN_TEST_IDLE,
-            DtpTapState.SELECT_DR_SCAN,
-        ),
-    }
-
-    @classmethod
-    def get_next_state(cls, current_state: DtpTapState, tms: int) -> DtpTapState:
-        """Return the TAP state reached after one TMS-sampled TCK edge."""
-        return cls._TRANSITIONS[current_state][int(tms) & 0x1]
-
-    @classmethod
-    def get_final_state(
-        cls,
-        start_state: DtpTapState,
-        tms_list: list[int],
-    ) -> DtpTapState:
-        """Return the state reached after applying a TMS sequence."""
-        state = start_state
-        for tms in tms_list:
-            state = cls.get_next_state(state, tms)
-        return state
-
-    @classmethod
-    def get_tms_path(
-        cls,
-        start_state: DtpTapState,
-        target_state: DtpTapState,
-    ) -> list[int]:
-        """Return a shortest TMS path between two TAP states."""
-        if start_state == target_state:
-            return []
-
-        queue: deque[tuple[DtpTapState, list[int]]] = deque([(start_state, [])])
-        seen = {start_state}
-
-        while queue:
-            state, path = queue.popleft()
-            for tms in (0, 1):
-                next_state = cls.get_next_state(state, tms)
-                if next_state in seen:
-                    continue
-                next_path = path + [tms]
-                if next_state == target_state:
-                    return next_path
-                seen.add(next_state)
-                queue.append((next_state, next_path))
-
-        raise ValueError(f"no TAP path from {start_state.name} to {target_state.name}")
 
 
 class DtpJtag2AxiOp(IntEnum):

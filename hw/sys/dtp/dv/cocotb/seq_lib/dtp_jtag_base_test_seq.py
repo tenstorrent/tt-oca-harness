@@ -20,17 +20,16 @@ import cocotb
 from env.dtp_jtag_item import DtpJtagItem
 from env.dtp_scan_model import DtpScanModel
 from env.dtp_scan_window_monitor import DtpScanControlWindowMonitor, DtpTapShiftMonitor
-from env.dtp_tap_device import DTP_BSR_MODEL_LEN, DtpTapDevice
+from env.dtp_tap_device import DTP_BSR_MODEL_LEN, dtp_tap_device
 from env.dtp_tb_if import JTAG_SIGNAL_MAP
-from env.dtp_types import (
-    DTP_IR_WIDTH,
-    RESET_COUNT_CHECK_ID,
-    DtpJtagInstr,
-    DtpScanCtrlExpect,
-    DtpTapFsm,
-    DtpTapState,
+from env.dtp_types import DTP_IR_WIDTH, RESET_COUNT_CHECK_ID, DtpJtagInstr, DtpScanCtrlExpect
+from ocah_jtag_vip import (
+    OcahJtagChecker,
+    OcahJtagMasterMonitor,
+    OcahJtagState,
+    jtag_tms_path,
+    next_jtag_state,
 )
-from ocah_jtag_vip import OcahJtagChecker, OcahJtagMasterMonitor
 from ocah_lib import OcahKnobs
 
 from .dtp_base_test_seq import dtp_base_test_seq
@@ -64,7 +63,7 @@ NON_IDCODE_PRELOADS: tuple[DtpJtagInstr, ...] = (
     DtpJtagInstr.SAMPLE_PRELOAD,
 )
 # The register map the driver's TDR accesses shift, by register name.
-TAP_REGISTERS = DtpTapDevice()
+TAP_REGISTERS = dtp_tap_device()
 
 
 class dtp_jtag_base_test_seq(dtp_base_test_seq):
@@ -233,7 +232,7 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
             )
         checker.finalize()
 
-    def record_tap_state(self, observed: int, expected: DtpTapState) -> None:
+    def record_tap_state(self, observed: int, expected: OcahJtagState) -> None:
         """Check the observed DUT TAP state and record the visit."""
         assert observed == int(expected), (
             f"TAP state mismatch: expected {expected.name} "
@@ -248,10 +247,10 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         item = await self.reset_tap()
         if self.tap_checker is not None:
             self.tap_checker.check_reset_to_tlr(item.result)
-        self.record_tap_state(item.result, DtpTapState.TEST_LOGIC_RESET)
+        self.record_tap_state(item.result, OcahJtagState.TEST_LOGIC_RESET)
 
     async def tms_expect(
-        self, tms: int, expected: DtpTapState | None = None, *, tdi: int = 0
+        self, tms: int, expected: OcahJtagState | None = None, *, tdi: int = 0
     ) -> None:
         """Drive one raw TMS cycle and check the next TAP state.
 
@@ -262,12 +261,12 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         if expected is None:
             if previous is None:
                 raise RuntimeError("current TAP state is unknown; call reset_to_tlr() first")
-            expected = DtpTapFsm.get_next_state(previous, tms)
+            expected = next_jtag_state(previous, tms)
         item = await self.tms_step(tms, tdi=tdi)
         if self.tap_checker is not None:
             self.tap_checker.check_state_step(tms, item.result)
         self.record_tap_state(item.result, expected)
-        if previous is not None and DtpTapFsm.get_next_state(previous, tms) == expected:
+        if previous is not None and next_jtag_state(previous, tms) == expected:
             self.visited_tap_arcs.add((previous, tms & 0x1))
 
     def _op_scan_mark(self, *, is_ir: bool) -> int | None:
@@ -308,7 +307,7 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         before = self._op_scan_mark(is_ir=True)
         item = await super().load_ir(instr, back_to_rti=back_to_rti)
         if back_to_rti and self.tap_checker is not None:
-            self.tap_checker.sync_state(DtpTapState.RUN_TEST_IDLE)
+            self.tap_checker.sync_state(OcahJtagState.RUN_TEST_IDLE)
         if self.family_monitor is not None:
             self._expected_ir_widths.append(DTP_IR_WIDTH)
         self.check_op_scan_length(
@@ -321,7 +320,7 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         before = self._op_scan_mark(is_ir=True)
         item = await super().shift_ir(value, width, back_to_rti=back_to_rti)
         if back_to_rti and self.tap_checker is not None:
-            self.tap_checker.sync_state(DtpTapState.RUN_TEST_IDLE)
+            self.tap_checker.sync_state(OcahJtagState.RUN_TEST_IDLE)
         if self.family_monitor is not None:
             self._expected_ir_widths.append(width)
         self.check_op_scan_length(
@@ -334,7 +333,7 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         before = self._op_scan_mark(is_ir=False)
         item = await super().shift_dr(value, width, back_to_rti=back_to_rti)
         if back_to_rti and self.tap_checker is not None:
-            self.tap_checker.sync_state(DtpTapState.RUN_TEST_IDLE)
+            self.tap_checker.sync_state(OcahJtagState.RUN_TEST_IDLE)
         if self.family_monitor is not None:
             self._expected_dr_widths.append(width)
         self.check_op_scan_length(
@@ -374,15 +373,15 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
 
     async def goto_run_test_idle(self) -> None:
         """Enter Run-Test/Idle from the current tracked TAP state."""
-        await self.goto_tap_state(DtpTapState.RUN_TEST_IDLE)
+        await self.goto_tap_state(OcahJtagState.RUN_TEST_IDLE)
 
-    async def goto_tap_state(self, target_state: DtpTapState) -> None:
+    async def goto_tap_state(self, target_state: OcahJtagState) -> None:
         """Navigate to a TAP state from the current state using raw TMS cycles."""
         if self.current_tap_state is None:
             await self.reset_to_tlr()
 
         assert self.current_tap_state is not None
-        path = DtpTapFsm.get_tms_path(self.current_tap_state, target_state)
+        path = jtag_tms_path(self.current_tap_state, target_state)
         self.log.info(
             "Navigating TAP %-16s -> %-16s with TMS %s",
             self.current_tap_state.name,
@@ -396,15 +395,15 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         self,
         *,
         rng: random.Random | None = None,
-        exclude: set[DtpTapState] | None = None,
-    ) -> DtpTapState:
+        exclude: set[OcahJtagState] | None = None,
+    ) -> OcahJtagState:
         """Choose and navigate to a random TAP state from the current state."""
         rand = rng or random
         excluded = set(exclude or set())
         if self.current_tap_state is not None:
             excluded.add(self.current_tap_state)
 
-        choices = [state for state in DtpTapState if state not in excluded]
+        choices = [state for state in OcahJtagState if state not in excluded]
         if not choices:
             raise ValueError("no TAP state choices remain after exclusions")
 
@@ -417,9 +416,9 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         cycles: int,
         *,
         rng: random.Random | None = None,
-        start_state: DtpTapState | None = None,
+        start_state: OcahJtagState | None = None,
         random_tdi: bool = False,
-    ) -> DtpTapState:
+    ) -> OcahJtagState:
         """Drive random TMS bits (and TDI bits with ``random_tdi``) and check each DUT state."""
         rand = rng or random
         if start_state is not None:
@@ -768,7 +767,7 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         """
         window = self._last_window
         assert window is not None, "no scan window was opened"
-        returned = window.last_state == int(DtpTapState.RUN_TEST_IDLE)
+        returned = window.last_state == int(OcahJtagState.RUN_TEST_IDLE)
         self.family_check(
             check_id,
             f"{signal} high outside Run-Test/Idle",

@@ -24,24 +24,23 @@ from collections.abc import Iterable
 
 import cocotb
 from cocotb.triggers import ReadOnly, RisingEdge
+from ocah_jtag_vip import OcahJtagState
 
-from env.dtp_types import DtpTapState
-
-_SHIFT_STATES = frozenset({int(DtpTapState.SHIFT_DR), int(DtpTapState.SHIFT_IR)})
+_SHIFT_STATES = frozenset({int(OcahJtagState.SHIFT_DR), int(OcahJtagState.SHIFT_IR)})
 # The DR-column states in which the selected data register captures, shifts,
 # and updates.
 _DR_SCAN_STATES = frozenset(
     int(state)
     for state in (
-        DtpTapState.CAPTURE_DR,
-        DtpTapState.SHIFT_DR,
-        DtpTapState.EXIT1_DR,
-        DtpTapState.PAUSE_DR,
-        DtpTapState.EXIT2_DR,
-        DtpTapState.UPDATE_DR,
+        OcahJtagState.CAPTURE_DR,
+        OcahJtagState.SHIFT_DR,
+        OcahJtagState.EXIT1_DR,
+        OcahJtagState.PAUSE_DR,
+        OcahJtagState.EXIT2_DR,
+        OcahJtagState.UPDATE_DR,
     )
 )
-_RUN_TEST_IDLE = int(DtpTapState.RUN_TEST_IDLE)
+_RUN_TEST_IDLE = int(OcahJtagState.RUN_TEST_IDLE)
 
 
 class DtpScanControlWindowMonitor:
@@ -139,7 +138,9 @@ class DtpTapShiftMonitor:
             state = self.tb_if.sample("jtag_ptap_state")
             current = state if state in _SHIFT_STATES else None
             if self._in_state is not None and current != self._in_state:
-                lens = self.ir_lens if self._in_state == int(DtpTapState.SHIFT_IR) else self.dr_lens
+                lens = (
+                    self.ir_lens if self._in_state == int(OcahJtagState.SHIFT_IR) else self.dr_lens
+                )
                 lens.append(self._run_len)
             if current is None:
                 self._run_len = 0

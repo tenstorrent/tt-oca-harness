@@ -19,7 +19,8 @@ from env.dtp_dbg_disable import (
     validate_dbg_disable,
 )
 from env.dtp_jtag_item import DtpJtagItem, DtpJtagOp
-from env.dtp_types import DTP_IR_WIDTH, RESET_COUNT_CHECK_ID, DtpJtagInstr, DtpTapState
+from env.dtp_types import DTP_IR_WIDTH, RESET_COUNT_CHECK_ID, DtpJtagInstr
+from ocah_jtag_vip import OcahJtagState
 from ocah_lib import OcahSequence
 
 
@@ -37,9 +38,9 @@ class dtp_base_test_seq(OcahSequence):
         # Assigned by the test (dtp_base_test.plumb_scenario_seq) before the sequence runs.
         self.cfg = None
         # DUT-confirmed TAP states and (state, TMS) transitions of this pass.
-        self.visited_tap_states: set[DtpTapState] = set()
-        self.visited_tap_arcs: set[tuple[DtpTapState, int]] = set()
-        self.current_tap_state: DtpTapState | None = None
+        self.visited_tap_states: set[OcahJtagState] = set()
+        self.visited_tap_arcs: set[tuple[OcahJtagState, int]] = set()
+        self.current_tap_state: OcahJtagState | None = None
 
     # --- quality logging / checking -----------------------------------------
     def log_banner(self, title: str) -> None:
@@ -135,7 +136,7 @@ class dtp_base_test_seq(OcahSequence):
             back_to_rti=back_to_rti,
         )
         if back_to_rti:
-            self.current_tap_state = DtpTapState.RUN_TEST_IDLE
+            self.current_tap_state = OcahJtagState.RUN_TEST_IDLE
         return item
 
     async def shift_ir(
@@ -159,7 +160,7 @@ class dtp_base_test_seq(OcahSequence):
             back_to_rti=back_to_rti,
         )
         if back_to_rti:
-            self.current_tap_state = DtpTapState.RUN_TEST_IDLE
+            self.current_tap_state = OcahJtagState.RUN_TEST_IDLE
         return item
 
     async def shift_dr(
@@ -177,7 +178,7 @@ class dtp_base_test_seq(OcahSequence):
             back_to_rti=back_to_rti,
         )
         if back_to_rti:
-            self.current_tap_state = DtpTapState.RUN_TEST_IDLE
+            self.current_tap_state = OcahJtagState.RUN_TEST_IDLE
         return item
 
     async def sample_observables(self) -> DtpJtagItem:

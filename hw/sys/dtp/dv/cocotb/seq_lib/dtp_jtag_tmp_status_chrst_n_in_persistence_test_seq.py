@@ -4,7 +4,8 @@
 
 from __future__ import annotations
 
-from env.dtp_types import DtpJtagInstr, DtpTapState
+from env.dtp_types import DtpJtagInstr
+from ocah_jtag_vip import OcahJtagState
 
 from .dtp_debug_tdr_base_test_seq import TMP_CHRST_CHECK_ID, dtp_debug_tdr_base_test_seq
 
@@ -27,7 +28,7 @@ class dtp_jtag_tmp_status_chrst_n_in_persistence_test_seq(dtp_debug_tdr_base_tes
         await self.check_scan_observable(
             TMP_CHRST_CHECK_ID, "jtag_bsr_chrst_n", expected, context=context
         )
-        await self.tms_expect(0, DtpTapState.RUN_TEST_IDLE)
+        await self.tms_expect(0, OcahJtagState.RUN_TEST_IDLE)
 
     async def body(self) -> None:
         self.log_banner("TMP_STATUS CHRST_N Persistence")

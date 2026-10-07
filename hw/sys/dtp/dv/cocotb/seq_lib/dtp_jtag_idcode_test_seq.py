@@ -16,7 +16,8 @@ from __future__ import annotations
 import random
 
 from env.dtp_tap_device import DTP_DEFAULT_IDCODE
-from env.dtp_types import RESET_COUNT_CHECK_ID, DtpJtagInstr, DtpTapState, decode_idcode
+from env.dtp_types import RESET_COUNT_CHECK_ID, DtpJtagInstr, decode_idcode
+from ocah_jtag_vip import OcahJtagState
 
 from .dtp_jtag_base_test_seq import NON_IDCODE_PRELOADS, dtp_jtag_base_test_seq
 
@@ -109,11 +110,11 @@ class dtp_jtag_idcode_test_seq(dtp_jtag_base_test_seq):
         context = f"preload=0x{int(preload):02x} por_cycles={cycles}"
         await self.load_ir(preload)
         item = await self.pulse_por(cycles=cycles)
-        self.record_tap_state(item.result, DtpTapState.TEST_LOGIC_RESET)
+        self.record_tap_state(item.result, OcahJtagState.TEST_LOGIC_RESET)
         assert item.signals["jtag_trst"] == 1, f"TRST_N low during the power-on reset ({context})"
         assert self.tap_checker is not None
-        self.tap_checker.sync_state(DtpTapState.TEST_LOGIC_RESET)
-        await self.tms_expect(0, DtpTapState.RUN_TEST_IDLE)
+        self.tap_checker.sync_state(OcahJtagState.TEST_LOGIC_RESET)
+        await self.tms_expect(0, OcahJtagState.RUN_TEST_IDLE)
         item = await self.shift_dr(0, 32)
         value = item.result & IDCODE_MASK
         self.family_check(

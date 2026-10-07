@@ -12,7 +12,8 @@ until the scan returns to Run-Test/Idle.
 from __future__ import annotations
 
 from env.dtp_tap_device import DTP_BSR_MODEL_LEN
-from env.dtp_types import DtpJtagInstr, DtpScanCtrlExpect, DtpTapState
+from env.dtp_types import DtpJtagInstr, DtpScanCtrlExpect
+from ocah_jtag_vip import OcahJtagState
 
 from .dtp_jtag_base_test_seq import dtp_jtag_base_test_seq
 
@@ -32,11 +33,11 @@ class dtp_jtag_ac_extest_train_test_seq(dtp_jtag_base_test_seq):
         await self.check_scan_observable(RTI_CHECK_ID, RTI_SIGNAL, 1, context=context)
         await self.check_scan_observable(RTI_CHECK_ID, TLR_SIGNAL, 0, context=context)
         await self.check_scan_observable(RTI_CHECK_ID, "jtag_bsr_select", 0, context=context)
-        await self.goto_tap_state(DtpTapState.TEST_LOGIC_RESET)
+        await self.goto_tap_state(OcahJtagState.TEST_LOGIC_RESET)
         context = "parked in Test-Logic-Reset"
         await self.check_scan_observable(RTI_CHECK_ID, RTI_SIGNAL, 0, context=context)
         await self.check_scan_observable(RTI_CHECK_ID, TLR_SIGNAL, 1, context=context)
-        await self.goto_tap_state(DtpTapState.RUN_TEST_IDLE)
+        await self.goto_tap_state(OcahJtagState.RUN_TEST_IDLE)
 
     async def body(self) -> None:
         await self.attach_family_checker(

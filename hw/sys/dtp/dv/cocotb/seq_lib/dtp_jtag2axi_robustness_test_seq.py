@@ -26,9 +26,9 @@ from env.dtp_types import (
     DtpJtag2AxiOp,
     DtpJtag2AxiStatus,
     DtpJtagInstr,
-    DtpTapState,
     unpack_single_op,
 )
+from ocah_jtag_vip import OcahJtagState
 from ocah_lib import OcahKnobs
 
 from .dtp_jtag2axi_base_test_seq import (
@@ -1545,7 +1545,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 target,
                 ORPHAN_DRAIN_CHECK_ID,
                 f"{leg.context}.drained_in_reset",
-                int(landed and tap == DtpTapState.TEST_LOGIC_RESET),
+                int(landed and tap == OcahJtagState.TEST_LOGIC_RESET),
                 1,
                 f"landed={int(landed)} tap_state=0x{tap:04x}",
             )

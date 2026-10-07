@@ -18,8 +18,8 @@ from env.dtp_scan_ref_model import (
     Stap3dcrState,
 )
 from env.dtp_scan_window_monitor import DtpScanControlWindowMonitor
-from env.dtp_types import DtpJtagInstr, DtpTapState
-from ocah_jtag_vip import OcahJtagSlaveSequence
+from env.dtp_types import DtpJtagInstr
+from ocah_jtag_vip import OcahJtagSlaveSequence, OcahJtagState
 
 from .dtp_jtag_base_test_seq import dtp_jtag_base_test_seq
 
@@ -801,9 +801,9 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
             item = await self.tms_step(1)
         if self.tap_checker is not None:
             self.tap_checker.check_tms_ones_to_tlr(5, item.result)
-        self.record_tap_state(item.result, DtpTapState.TEST_LOGIC_RESET)
+        self.record_tap_state(item.result, OcahJtagState.TEST_LOGIC_RESET)
         item = await self.tms_step(0)
-        self.record_tap_state(item.result, DtpTapState.RUN_TEST_IDLE)
+        self.record_tap_state(item.result, OcahJtagState.RUN_TEST_IDLE)
         self.stap_model.tlr()
         self.ijtag_model.reset()
 
@@ -812,6 +812,6 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         await self.assert_trst(cycles=5)
         await self.deassert_trst(cycles=2)
         item = await self.tms_step(0)
-        self.record_tap_state(item.result, DtpTapState.RUN_TEST_IDLE)
+        self.record_tap_state(item.result, OcahJtagState.RUN_TEST_IDLE)
         self.stap_model.trst()
         self.ijtag_model.reset()

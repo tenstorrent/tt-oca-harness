@@ -20,7 +20,7 @@ from pyuvm import (
 )
 
 from .dtp_jtag_item import DtpJtagItem, DtpJtagOp
-from .dtp_tap_device import DtpTapDevice
+from .dtp_tap_device import dtp_tap_device
 from .dtp_types import (
     DTP_IR_WIDTH,
     DtpJtag2AxiOp,
@@ -40,7 +40,7 @@ class DtpJtagDriver(uvm_driver):
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.ap = uvm_analysis_port("ap", self)
         self.jtag: OcahJtagMasterDriver | None = None
-        self.tap_device = DtpTapDevice(idle_delay=self.cfg.idle_tck)
+        self.tap_device = dtp_tap_device(idle_delay=self.cfg.idle_tck)
         self.tb_if = ConfigDB().get(self, "", "tb_if")
 
     async def run_phase(self) -> None:
@@ -53,6 +53,7 @@ class DtpJtagDriver(uvm_driver):
             signal_map=self.tb_if.JTAG_SIGNAL_MAP,
         )
         self.jtag.init_signals()
+        self.jtag.add_device(self.tap_device)
         # Wait until the base test has clocks running and resets released.
         await self.cfg.reset_done.wait()
         await self.jtag.reset_tap()
@@ -86,11 +87,11 @@ class DtpJtagDriver(uvm_driver):
         elif item.op is DtpJtagOp.SAMPLE:
             await self._sample_observables(item)
         elif item.op is DtpJtagOp.READ:
-            item.result = await self._read_reg(item.reg, shift_value=item.value)
+            item.result = await self.jtag.read(item.reg, shift_value=item.value)
         elif item.op is DtpJtagOp.WRITE:
-            await self._write_reg(item.reg, item.value)
+            await self.jtag.write(item.reg, item.value)
         elif item.op is DtpJtagOp.J2A_WRITE:
-            await self._write_reg(
+            await self.jtag.write(
                 "SMC_AXI_SINGLE_OP",
                 pack_single_op(
                     DtpJtag2AxiOp.WRITE,
@@ -102,7 +103,7 @@ class DtpJtagDriver(uvm_driver):
             )
             item.status, _ = await self._poll_single_op_status()
         elif item.op is DtpJtagOp.J2A_READ:
-            await self._write_reg(
+            await self.jtag.write(
                 "SMC_AXI_SINGLE_OP",
                 pack_single_op(DtpJtag2AxiOp.READ, item.axi_addr, size=item.axi_size),
             )
@@ -277,26 +278,6 @@ class DtpJtagDriver(uvm_driver):
                 item.signals[name] = self.tb_if.sample(name)
         await NextTimeStep()
 
-    async def _read_reg(self, name: str, shift_value: int = 0) -> int:
-        """Read a DTP TDR by register-map name through the OCAH JTAG BFM."""
-        reg = self.tap_device.reg(name)
-        shift_value &= (1 << reg.width) - 1
-        await self.jtag.shift_ir(reg.instr, width=DTP_IR_WIDTH)
-        value = await self.jtag.shift_dr(shift_value, width=reg.width, back_to_rti=True)
-        await self._idle_tck()
-        return value
-
-    async def _write_reg(self, name: str, value: int) -> None:
-        """Write a DTP TDR by register-map name through the OCAH JTAG BFM."""
-        reg = self.tap_device.reg(name)
-        await self.jtag.shift_ir(reg.instr, width=DTP_IR_WIDTH)
-        await self.jtag.shift_dr(value, width=reg.width, back_to_rti=True)
-        await self._idle_tck()
-
-    async def _idle_tck(self) -> None:
-        for _ in range(self.tap_device.idle_delay):
-            await self.jtag.step_tms(0)
-
     async def _poll_single_op_status(self) -> tuple[int, int]:
         """Re-read SMC_AXI_SINGLE_OP (a NOP op) until the bridge reports done.
 
@@ -306,7 +287,7 @@ class DtpJtagDriver(uvm_driver):
         """
         status, rdata = DtpJtag2AxiStatus.BUSY_OR_FULL, 0
         for _ in range(J2A_STATUS_POLLS):
-            raw = await self._read_reg("SMC_AXI_SINGLE_OP")
+            raw = await self.jtag.read("SMC_AXI_SINGLE_OP")
             status, rdata = unpack_single_op(raw)
             if status != DtpJtag2AxiStatus.BUSY_OR_FULL:
                 break

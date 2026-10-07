@@ -22,7 +22,6 @@ from env.dtp_types import (
     DtpJtag2AxiOp,
     DtpJtag2AxiStatus,
     DtpJtagInstr,
-    DtpTapState,
     get_jtag2axi_target,
     pack_series_ctrl,
     pack_series_data,
@@ -32,7 +31,7 @@ from env.dtp_types import (
     unpack_single_op,
     unpack_single_op_fields,
 )
-from ocah_jtag_vip import OcahJtagChecker
+from ocah_jtag_vip import OcahJtagChecker, OcahJtagState
 from ocah_lib import OcahKnobs
 
 from .dtp_base_test_seq import dtp_base_test_seq
@@ -1017,7 +1016,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             await self.tms_step(int(bit_idx == cfg.single_op_len - 1), tdi=(value >> bit_idx) & 1)
         item = await self.tms_step(1)
         self.assert_equal(
-            f"{target}.single_op_held_in_update_dr", item.result, DtpTapState.UPDATE_DR
+            f"{target}.single_op_held_in_update_dr", item.result, OcahJtagState.UPDATE_DR
         )
 
     async def poll_target_single_status(self, target: str) -> tuple[int, int]:
