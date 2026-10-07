@@ -187,8 +187,10 @@ Before parsing the command, the launcher:
   `sys.path` and `PYTHONPATH`.
 
 The supported Python range is 3.11 through 3.13. Install
-https://docs.astral.sh/uv/[`uv`] before the first run. The locked `dv`
-dependency group provides cocotb and the shared Python DV packages.
+https://docs.astral.sh/uv/[`uv`] before the first run, and check out the
+`tt-oca-manifest` submodule, which the root `uv` workspace lists as a member
+(<<runner-host-environments>>). The locked `dv` dependency group provides
+cocotb and the shared Python DV packages.
 <<runner-environment-matrix>> lists every other component a run needs, the
 file that pins it, and the check behind it.
 
@@ -311,6 +313,7 @@ two.
 fails when its DUT's command finds no usable toolchain.
 |===
 
+[[runner-host-environments]]
 ==== Hosted CI and a developer host
 
 Hosted CI is the qualified environment and the most constrained one. The
@@ -508,10 +511,10 @@ The shared `native` profile's `uvm` framework (SystemVerilog UVM) is a
 maintainer flow whose tool allowlist is VCS only; it carries
 `license = "required-commercial"`, so `--list` marks it `(licensed)` and the
 launcher says so when the simulator is absent. The UVM library comes from the
-simulator via `-ntb_opts uvm`, tests are selected with
-`+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses the `uvm-log` parse
-policy (summary `UVM_ERROR`/`UVM_FATAL` counts). Xcelium and Questa are not
-in the allowlist. The reference consumer is the
+simulator via `-ntb_opts uvm-1.2` (`[build.vcs].uvm_lib` selects another),
+tests are selected with `+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses
+the `uvm-log` parse policy (summary `UVM_ERROR`/`UVM_FATAL` counts). Xcelium
+and Questa are not in the allowlist. The reference consumer is the
 DTP SV-UVM smoke flow, `--dut dtp --framework uvm`. The framework's adopter
 guide — conventions plus the bring-up walkthrough for adding a UVM view to a
 cocotb-only DUT — is the SystemVerilog UVM Framework section of
