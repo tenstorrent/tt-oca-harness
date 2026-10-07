@@ -121,6 +121,10 @@ STRAP_BITS = {
     "ROTATE_UPDATE": 58,
 }
 
+# The plusargs that select the STATUS_RPT_DISABLE strap: reporting on, reporting off, or a
+# per-seed draw. A test whose firmware issues GET_STATUS-family commands names exactly one.
+STATUS_REPORTING_MODES = ("FORCE_STATUS_REPORTING", "STATUS_RPT_DISABLE", "STATUS_RPT_RANDOM")
+
 STRAP_CHIP_ID_BITS = (23, 15, 12, 11)
 
 I2C_ADDR_MIN = 0x08

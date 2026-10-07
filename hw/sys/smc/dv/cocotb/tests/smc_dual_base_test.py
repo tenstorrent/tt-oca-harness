@@ -455,6 +455,7 @@ class SmcDualHarness:
 
     def _apply_straps(self) -> None:
         from smc_occp_dual_defs import (
+            STATUS_REPORTING_MODES,
             STRAP_BITS,
             STRAP_BOOT_I2C,
             STRAP_PRIMARY_CHIPLET,
@@ -472,15 +473,26 @@ class SmcDualHarness:
         if named:
             self.log.info("straps set by plusarg: %s", ", ".join(sorted(named)))
 
-        if cocotb.plusargs.get("FORCE_STATUS_REPORTING") is not None:
+        status_modes = [m for m in STATUS_REPORTING_MODES if cocotb.plusargs.get(m) is not None]
+        if len(status_modes) > 1:
+            raise AssertionError(
+                f"{' and '.join('+' + m for m in status_modes)} given; "
+                "each selects a different STATUS_RPT_DISABLE strap"
+            )
+        status_mode = status_modes[0] if status_modes else None
+        if status_mode == "FORCE_STATUS_REPORTING":
             status_rpt_disable = 0
-        elif "STATUS_RPT_DISABLE" in named:
+        elif status_mode == "STATUS_RPT_DISABLE":
             status_rpt_disable = 1
         else:
             status_rpt_disable = random.choice([0, 1])
         target |= status_rpt_disable << STRAP_BITS["STATUS_RPT_DISABLE"]
         controller = status_rpt_disable << STRAP_BITS["STATUS_RPT_DISABLE"]
-        self.log.info("STATUS_RPT_DISABLE strap: %d", status_rpt_disable)
+        self.log.info(
+            "STATUS_RPT_DISABLE strap: %d (%s)",
+            status_rpt_disable,
+            f"+{status_mode}" if status_mode else "randomised",
+        )
 
         # Set, the ROM zeroes SRAM in software, which costs sim time; only a plusarg sets it.
         if cocotb.plusargs.get("FORCE_HW_AUTO_ZERO") is not None or random.choice([True, False]):

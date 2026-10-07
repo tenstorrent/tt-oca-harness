@@ -10,6 +10,14 @@ schema_version = 1
 # it includes smc_occp_dual_unsecure_boot_test, whose full payload transfer
 # takes hours. `sanity` is the dual-SMC bring-up set; it is held out of `all`,
 # which elaborates one target per run.
+#
+# The target's STATUS_RPT_DISABLE strap decides whether its ROM answers the
+# GET_STATUS family. Every entry whose controller firmware issues one of those
+# commands names exactly one reporting mode: +FORCE_STATUS_REPORTING when its
+# checks read the ROM's status answers, +STATUS_RPT_RANDOM when they hold with
+# either strap value, +STATUS_RPT_DISABLE when they need reporting off.
+# tools/dv/tests/test_smc_status_reporting_mode.py derives the set from the
+# firmware sources.
 
 [[tests]]
 name = "smc_dual_elaboration_test"
@@ -97,6 +105,7 @@ run_modes = ["dual"]
 firmware = { name = "occp_random_test", mode = "occp_rom_only" }
 args = [
     "+BOOT_I3C",
+    "+STATUS_RPT_RANDOM",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_random_test.rom.hex",
     "+occp_case=smc_occp_random_command_test",
@@ -131,6 +140,7 @@ run_modes = ["dual"]
 firmware = { name = "occp_invalid_cmd_test", mode = "occp_rom_only" }
 args = [
     "+BOOT_I3C",
+    "+STATUS_RPT_RANDOM",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_invalid_cmd_test.rom.hex",
     "+occp_case=smc_occp_invalid_cmd_test",
@@ -148,6 +158,7 @@ run_modes = ["dual"]
 firmware = { name = "occp_invalid_length_field_test", mode = "occp_rom_only" }
 args = [
     "+BOOT_I3C",
+    "+STATUS_RPT_RANDOM",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_invalid_length_field_test.rom.hex",
     "+occp_case=smc_occp_invalid_length_field_test",
@@ -165,6 +176,7 @@ run_modes = ["dual"]
 firmware = { name = "occp_undersize_header_test", mode = "occp_rom_only" }
 args = [
     "+BOOT_I3C",
+    "+STATUS_RPT_RANDOM",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_undersize_header_test.rom.hex",
     "+occp_case=smc_occp_undersize_header_test",
@@ -182,6 +194,7 @@ run_modes = ["dual"]
 firmware = { name = "occp_unaligned_access_test", mode = "occp_rom_only" }
 args = [
     "+BOOT_I3C",
+    "+STATUS_RPT_RANDOM",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_unaligned_access_test.rom.hex",
     "+occp_case=smc_occp_unaligned_access_test",
@@ -199,6 +212,7 @@ run_modes = ["dual"]
 firmware = { name = "occp_zero_length_rw_test", mode = "occp_rom_only" }
 args = [
     "+BOOT_I3C",
+    "+STATUS_RPT_RANDOM",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_zero_length_rw_test.rom.hex",
     "+occp_case=smc_occp_zero_length_rw_test",
@@ -252,6 +266,7 @@ firmware = { name = "occp_jump_invalid_region_test", mode = "occp_rom_only" }
 # needs; +lc_state selects another.
 args = [
     "+BOOT_I3C",
+    "+STATUS_RPT_RANDOM",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_jump_invalid_region_test.rom.hex",
     "+occp_case=smc_occp_jump_invalid_region_test",
@@ -287,6 +302,7 @@ run_modes = ["dual"]
 firmware = { name = "occp_validate_boot_invalid_region_test", mode = "occp_rom_only" }
 args = [
     "+BOOT_I3C",
+    "+STATUS_RPT_RANDOM",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_validate_boot_invalid_region_test.rom.hex",
     "+occp_case=smc_occp_validate_boot_invalid_region_test",
@@ -305,6 +321,7 @@ firmware = { name = "occp_secure_access_test", mode = "occp_rom_only" }
 # Runs on the TEST_DEV default lifecycle.
 args = [
     "+BOOT_I3C",
+    "+STATUS_RPT_RANDOM",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_secure_access_test.rom.hex",
     "+occp_case=smc_occp_secure_access_test",
@@ -361,6 +378,7 @@ run_modes = ["dual"]
 firmware = { name = "occp_undersize_body_test", mode = "occp_rom_only" }
 args = [
     "+BOOT_I3C",
+    "+STATUS_RPT_RANDOM",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_undersize_body_test.rom.hex",
     "+occp_case=smc_occp_undersize_body_test",
@@ -378,6 +396,7 @@ run_modes = ["dual"]
 firmware = { name = "occp_oversize_body_test", mode = "occp_rom_only" }
 args = [
     "+BOOT_I3C",
+    "+STATUS_RPT_RANDOM",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_oversize_body_test.rom.hex",
     "+occp_case=smc_occp_oversize_body_test",
@@ -393,8 +412,11 @@ timeout_sec = 7200
 tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "occp_unsupported_status_id_test", mode = "occp_rom_only" }
+# Reporting stays on: with it off every GET_STATUS-family request is already rejected
+# Unsupported, so the injected status_id would be indistinguishable from the strap.
 args = [
     "+BOOT_I3C",
+    "+FORCE_STATUS_REPORTING",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_unsupported_status_id_test.rom.hex",
     "+occp_case=smc_occp_unsupported_status_id_test",
@@ -459,8 +481,11 @@ run_modes = ["dual"]
 firmware = { name = "occp_ring_buffer_stress_test", mode = "occp_rom_only" }
 # The controller drives the ROM's own status ring buffer, not the SEP ring
 # buffer that smc_sep_ring_buffer_test covers.
+# Reporting stays on: the test compares every GET_SMC_STATUS answer against its model of
+# the ring, which only fills when the ROM reports.
 args = [
     "+BOOT_I3C",
+    "+FORCE_STATUS_REPORTING",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_ring_buffer_stress_test.rom.hex",
     "+occp_case=smc_occp_ring_buffer_stress_test",
@@ -545,6 +570,7 @@ firmware = { name = "occp_jump_reject", mode = "occp_rom_only" }
 # the jump, so the entry would pass for the wrong reason.
 args = [
     "+BOOT_I3C",
+    "+STATUS_RPT_RANDOM",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_jump_reject.rom.hex",
     "+occp_case=smc_occp_jump_rejection_test",
@@ -564,6 +590,7 @@ firmware = { name = "occp_master", mode = "occp_rom_only" }
 # No +lc_state: the illegal value is drawn from 0x9..0xF per run.
 args = [
     "+BOOT_I3C",
+    "+STATUS_RPT_RANDOM",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_master.rom.hex",
     "+rom_test_timeout=1000000000",
@@ -579,6 +606,7 @@ tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "occp_master", mode = "occp_rom_only" }
 args = [
+    "+STATUS_RPT_RANDOM",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_master.rom.hex",
     "+dft_scenario=mem_repair_fail",
@@ -595,6 +623,7 @@ tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "occp_master", mode = "occp_rom_only" }
 args = [
+    "+STATUS_RPT_RANDOM",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_master.rom.hex",
     "+dft_scenario=mbist_fail",
@@ -611,6 +640,7 @@ tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "occp_master", mode = "occp_rom_only" }
 args = [
+    "+STATUS_RPT_RANDOM",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_master.rom.hex",
     "+dft_scenario=mbist_timeout",
@@ -651,6 +681,7 @@ firmware = { name = "occp_validate_boot_test", mode = "occp_rom_only" }
 # invents, so nothing has to be transferred or executed.
 args = [
     "+BOOT_I3C",
+    "+STATUS_RPT_RANDOM",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_validate_boot_test.rom.hex",
     "+rom_test_timeout=200000000",
@@ -672,6 +703,7 @@ firmware = { name = "occp_secure_boot_test", mode = "occp_payload" }
 # jumping, and the testbench stands in for the SEP that would boot it.
 args = [
     "+BOOT_I3C",
+    "+STATUS_RPT_RANDOM",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_secure_boot_test.rom.hex",
     "+occp_payload_bin=hello_world.sram.bin",

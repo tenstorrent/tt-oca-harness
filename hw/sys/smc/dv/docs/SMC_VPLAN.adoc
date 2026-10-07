@@ -132,6 +132,15 @@ Executable membership is resolved from the testlists; the groups and their
 |`all` |The package regression, gated by its `expected_count`; `holdout.toml` defines the non-ROM leaves outside it, `sanity` holds the dual-target leaves, and <<smc-held-out-testcases>> records the sign-off holdouts
 |===
 
+Each `occp_rom` leaf whose controller firmware issues a GET_STATUS-family
+command names its status-reporting mode in `testlists/smc_rom.toml`.
+`+FORCE_STATUS_REPORTING` pins the target's `STATUS_RPT_DISABLE` strap clear for
+a leaf whose checks read the ROM's status answers; `+STATUS_RPT_RANDOM` draws the
+strap from the seed for a leaf whose checks hold with either value, so that
+leaf's seeds cover the disabled-reporting ROM path as well.
+`tools/dv/tests/test_smc_status_reporting_mode.py` derives the status-dependent
+firmware from its sources and fails a leaf that names no mode, or more than one.
+
 `smoke` is the three-leaf PR gate (`smc_canonical_smoke_test`,
 `smc_cold_reset_test`, `smc_register_sanity_test`). `smc_i3c_to_fabric_test`
 is in `hosted` but not `smoke`, and receives no feature credit.

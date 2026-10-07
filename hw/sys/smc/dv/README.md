@@ -276,6 +276,18 @@ That group runs every ROM case but one, including the hours-long unsecure-boot l
 python3 tools/dv/run_dv.py --dut smc --items occp_rom --tool verilator --regress
 ```
 
+The target's `STATUS_RPT_DISABLE` strap decides whether its ROM answers the
+GET_STATUS family or rejects every such request with `OCCP_UNSUPPORTED_STATUS`.
+`smc_dual_base_test` sets it from the entry's reporting-mode plusarg:
+`+FORCE_STATUS_REPORTING` holds it clear, `+STATUS_RPT_DISABLE` sets it, and
+`+STATUS_RPT_RANDOM` or no mode draws it from the seed. An entry whose controller
+firmware issues a GET_STATUS-family command passes exactly one mode:
+`+FORCE_STATUS_REPORTING` when its checks need the ROM's status answers, and
+`+STATUS_RPT_RANDOM` when its checks hold with either strap value.
+`tools/dv/tests/test_smc_status_reporting_mode.py` reads which firmware issues
+those commands from the firmware sources and fails an entry without exactly one
+mode.
+
 | Run mode / target | Meaning |
 |---|---|
 | `run_modes.smoke` (default) | single instance; loads `assets/smc_efuse_default.hex` and `assets/smc_rom_default.hex` at time zero |
