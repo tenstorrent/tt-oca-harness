@@ -71,7 +71,7 @@ sources:
     - upstream/design/lib/el2_mem_if.sv
 
     # Behavioural models of the ram_<depth>x<width> TCM macros
-    - target: not(synth)
+    - target: any(not(synth), emulation)
       files:
         - upstream/design/lib/mem_lib.sv
 

@@ -297,7 +297,7 @@ vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/dmi/rvjtag_tap.v
 vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/lib/el2_regfile_if.sv
 vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/lib/el2_lib.sv
 vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/lib/el2_mem_if.sv
-// Package(el2) Target(all(sep_el2, not(synth)))
+// Package(el2) Target(all(sep_el2, any(emulation, not(synth))))
 vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/lib/mem_lib.sv
 // Package(idma) Target(idma_rtl)
 vendor/pulp-platform/idma/upstream/src/idma_pkg.sv
