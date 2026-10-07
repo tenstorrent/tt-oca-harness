@@ -254,7 +254,8 @@ class OcahAxiRefModel:
                 # readback data is checked for either.
                 words.append(self.read_word(word_addr, self.beat_bytes))
             else:
-                # Error beats return no valid data; the fault responder drives 0.
+                # Error beats carry no predicted data; the scoreboard checks
+                # read data only on success completions.
                 words.append(0)
 
         worst = max(beat_resps) if beat_resps else RESP_OKAY

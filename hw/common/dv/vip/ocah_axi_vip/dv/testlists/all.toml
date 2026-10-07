@@ -123,8 +123,9 @@ run_modes = ["smoke"]
 
 [[tests]]
 name = "ocah_axi_responder_ops_test"
-# The SV-UVM responder runs the same operations in the DTP SV-UVM flow.
-module = { cocotb = "ocah_axi_responder_ops_test", uvm = false }
+# The SV-UVM master holds aresetn high across an item, so only the cocotb
+# realization drops the reset under a pending RVALID.
+module = { cocotb = "ocah_axi_responder_ops_test", uvm = "ocah_axi_responder_ops_test" }
 seed = 1
 timeout_sec = 600
 tags = ["smoke", "ci", "axi_responder"]

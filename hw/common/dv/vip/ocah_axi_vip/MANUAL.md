@@ -319,7 +319,7 @@ Responder methods:
 Both responders drive BVALID and RVALID low as their reset input asserts
 (IHI 0022 A3.1.2), not at the next clock edge. `ocah_axi_responder_ops_test`
 proves the errored-beat word, the W-before-AW order, the USER streams, and
-the reset drop on the wires.
+the reset drop on the wires of `OcahAxiSlaveAgent`.
 
 ### Outstanding depth
 
@@ -682,7 +682,10 @@ R beat with BUSER and RUSER drawn per beat, the write pump's process RNG
 seeded from `seed` and the read pump's from `seed + 1` (AXI4 only; zero
 until called). The responder drives BVALID, RVALID and its READYs low as
 `aresetn` asserts and abandons the transfer in flight, including after a
-reset that ends between two clock edges.
+reset that ends between two clock edges. The SV-UVM
+`ocah_axi_responder_ops_test` proves the errored-beat word, the W-before-AW
+order and the USER streams on the harness bus; the SV-UVM master holds
+`aresetn` high across an item, so only the cocotb realization drops a reset.
 `check_response=1` (default) escalates a non-OKAY response to `uvm_error`;
 `allow_timeout=1` downgrades a watchdog expiry to a returned result with
 `timed_out` set.

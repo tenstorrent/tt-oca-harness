@@ -29,10 +29,10 @@ from ocah_axi_vip_harness import (
     CLK_PERIOD_NS,
     build_full_stack,
     build_wire_slave,
+    drive_wire_ar,
     drive_wire_read,
     drive_wire_write,
     start_clock_reset,
-    wait_ready,
 )
 
 log = logging.getLogger("cocotb.tb.ocah_axi_responder_ops_test")
@@ -130,14 +130,7 @@ async def check_resp_user(dut) -> None:
 async def check_reset_drops_rvalid(dut, seq) -> None:
     """RVALID falls with the reset, before the next clock edge."""
     dut.t_axi_rready.value = 0
-    dut.t_axi_arid.value = 5
-    dut.t_axi_araddr.value = random.randrange(0, 2**14) & ~0x3
-    dut.t_axi_arlen.value = 0
-    dut.t_axi_arsize.value = 2
-    dut.t_axi_arburst.value = 1  # INCR
-    dut.t_axi_arvalid.value = 1
-    await wait_ready(dut.clk, dut.t_axi_arready)
-    dut.t_axi_arvalid.value = 0
+    await drive_wire_ar(dut, arid=5, addr=random.randrange(0, 2**14) & ~0x3)
     for _ in range(50):
         await RisingEdge(dut.clk)
         if int(dut.t_axi_rvalid.value):

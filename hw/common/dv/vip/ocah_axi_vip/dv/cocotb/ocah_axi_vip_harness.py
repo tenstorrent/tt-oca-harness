@@ -337,7 +337,7 @@ def handshake_cycle(samples: list[dict[str, int]], valid: str, ready: str) -> in
     return None
 
 
-async def wait_ready(clock, ready, *, timeout_cycles: int = 200) -> None:
+async def _wait_ready(clock, ready, *, timeout_cycles: int = 200) -> None:
     """Advance to the posedge on which ``ready`` completes the handshake."""
     for _ in range(timeout_cycles):
         await RisingEdge(clock)
@@ -367,7 +367,7 @@ async def drive_wire_write(
         dut.t_axi_awsize.value = 2
         dut.t_axi_awburst.value = 1  # INCR
         dut.t_axi_awvalid.value = 1
-        await wait_ready(clock, dut.t_axi_awready)
+        await _wait_ready(clock, dut.t_axi_awready)
         dut.t_axi_awvalid.value = 0
 
     async def data_beat() -> None:
@@ -375,7 +375,7 @@ async def drive_wire_write(
         dut.t_axi_wstrb.value = 0xF
         dut.t_axi_wlast.value = 1
         dut.t_axi_wvalid.value = 1
-        await wait_ready(clock, dut.t_axi_wready)
+        await _wait_ready(clock, dut.t_axi_wready)
         dut.t_axi_wvalid.value = 0
         dut.t_axi_wlast.value = 0
 
@@ -394,6 +394,18 @@ async def drive_wire_write(
     )
 
 
+async def drive_wire_ar(dut, *, arid: int, addr: int) -> None:
+    """Complete one single-beat AR handshake on t_axi by hand."""
+    dut.t_axi_arid.value = arid
+    dut.t_axi_araddr.value = addr
+    dut.t_axi_arlen.value = 0
+    dut.t_axi_arsize.value = 2
+    dut.t_axi_arburst.value = 1  # INCR
+    dut.t_axi_arvalid.value = 1
+    await _wait_ready(dut.clk, dut.t_axi_arready)
+    dut.t_axi_arvalid.value = 0
+
+
 async def drive_wire_read(
     dut, *, arid: int, addr: int, timeout_cycles: int = 200
 ) -> tuple[int, int]:
@@ -403,14 +415,7 @@ async def drive_wire_read(
     only completes the AR channel and consumes the R handshake.
     """
     clock = dut.clk
-    dut.t_axi_arid.value = arid
-    dut.t_axi_araddr.value = addr
-    dut.t_axi_arlen.value = 0
-    dut.t_axi_arsize.value = 2
-    dut.t_axi_arburst.value = 1  # INCR
-    dut.t_axi_arvalid.value = 1
-    await wait_ready(clock, dut.t_axi_arready)
-    dut.t_axi_arvalid.value = 0
+    await drive_wire_ar(dut, arid=arid, addr=addr)
 
     for _ in range(timeout_cycles):
         await RisingEdge(clock)
