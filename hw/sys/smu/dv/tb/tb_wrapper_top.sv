@@ -141,10 +141,11 @@ module smu_wrapper_uvm_top
   // ------------------------------------------------------------------
   // ESRC raw-noise force.
   // ------------------------------------------------------------------
-  // POLICY EXCEPTION. This DV root's rule is "no DUT Force" (see README); this
-  // is one of the two named exceptions, the same one hw/sys/sep/dv/tb/tb_top.sv
-  // calls "the one permitted force (raw noise at the source)". The other is
-  // the LC_STATE pair fault inject below.
+  // POLICY EXCEPTION. docs/SMU_VPLAN.adoc ("BFM Policy") and
+  // docs/SMU_TB_ARCH.adoc ("Stimulus Strategy") allow no force or deposit into
+  // the DUT outside the "Bench stand-ins and exceptions" section of
+  // docs/SMU_DEFERRED_DISPOSITION.adoc. This force and the LC_STATE pair fault
+  // inject below are the two declared there.
   //
   // The ESRC ring oscillators rely on `#delay` feedback, which Verilator
   // ignores, so the 12 noise lanes never toggle and no entropy is produced.
@@ -197,7 +198,7 @@ module smu_wrapper_uvm_top
   // ------------------------------------------------------------------
   // LC_STATE pair fault inject.
   // ------------------------------------------------------------------
-  // POLICY EXCEPTION, the second of the two named in the ESRC block above.
+  // POLICY EXCEPTION, the second of the two the ESRC block above names.
   //
   // The SEP eFuse shadow regenerates {~raw, raw} from the raw nibble, so no
   // eFuse image presents a broken pair to the SMC eFuse wrapper's decoder and
