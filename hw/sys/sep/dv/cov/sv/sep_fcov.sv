@@ -3839,13 +3839,18 @@ module sep_fcov (
         hk  = k;
       end
     end
+    // Byte classes S-1, S, E-1 and E; the middle class is any other byte of
+    // a page inside the region, so a two-page region still has one.
     for (int k = 0; k < 16; k++) begin
       if (al_valid_i[k] && (r.boundary == 4'd0)) begin
-        if (pg == al_start_i[k] - 44'd1) r.boundary = {3'd1, wr};
-        else if (pg == al_start_i[k]) r.boundary = {3'd2, wr};
-        else if ((pg > al_start_i[k]) && (pg < al_end_i[k] - 44'd1)) r.boundary = {3'd3, wr};
-        else if (pg == al_end_i[k] - 44'd1) r.boundary = {3'd4, wr};
-        else if (pg == al_end_i[k]) r.boundary = {3'd5, wr};
+        logic [55:0] sb, eb;
+        sb = {al_start_i[k], 12'h000};
+        eb = {al_end_i[k], 12'h000};
+        if (a == sb - 56'd1) r.boundary = {3'd1, wr};
+        else if (a == sb) r.boundary = {3'd2, wr};
+        else if (a == eb - 56'd1) r.boundary = {3'd4, wr};
+        else if (a == eb) r.boundary = {3'd5, wr};
+        else if ((pg > al_start_i[k]) && (pg < al_end_i[k])) r.boundary = {3'd3, wr};
         else if (pg == al_end_i[k] + 44'd1) r.boundary = {3'd6, wr};
       end
     end
