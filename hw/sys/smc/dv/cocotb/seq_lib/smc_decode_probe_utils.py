@@ -33,7 +33,6 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 AXI_RESP_OKAY = 0
@@ -41,8 +40,8 @@ AXI_RESP_DECERR = 3
 
 # The probed word inside the adopter external window: the port may carry the
 # full local address or the window offset, so both are compared on the window
-# bits above the byte lane.
-_EXTERNAL_WORD_MASK = (smc_addr("SMC_TOP_SMC_EXTERNAL_SIZE") - 1) & ~0x3
+# bits above the byte lane of the 4 MiB window (smc_pkg::SmcExternalWindowSize).
+_EXTERNAL_WORD_MASK = (0x40_0000 - 1) & ~0x3
 
 # Cycles the external-window activity sampler keeps running after the access
 # completes, so a request that is still being drained is not missed.

@@ -48544,9 +48544,112 @@ reaches termination value.</ipxact:description>
         <ipxact:registerFile>
           <ipxact:name>smc_external</ipxact:name>
           <ipxact:displayName>SMC External Window Address Map</ipxact:displayName>
-          <ipxact:description>Stubbed adopter extension window reserving the region as opaque external memory.</ipxact:description>
+          <ipxact:description>Adopter-provided external register window, split into mandatory and supplementary regions.</ipxact:description>
           <ipxact:addressOffset>'hc0400000</ipxact:addressOffset>
-          <ipxact:range>'h400000</ipxact:range>
+          <ipxact:range>'h6548</ipxact:range>
+          <ipxact:registerFile>
+            <ipxact:name>mandatory</ipxact:name>
+            <ipxact:displayName>SMC External Mandatory Region Address Map</ipxact:displayName>
+            <ipxact:description>Mandatory adopter blocks in the external window: eFuse shim, per-pad GPIO control, PLL, and configuration straps.</ipxact:description>
+            <ipxact:addressOffset>'h0</ipxact:addressOffset>
+            <ipxact:range>'h3008</ipxact:range>
+            <ipxact:registerFile>
+              <ipxact:name>efuse_shim_ctrl</ipxact:name>
+              <ipxact:displayName>eFuse SHIM Control Model Address Map</ipxact:displayName>
+              <ipxact:description>DV model of the eFuse SHIM control interface.</ipxact:description>
+              <ipxact:addressOffset>'h0</ipxact:addressOffset>
+              <ipxact:range>'h4</ipxact:range>
+              <ipxact:register>
+                <ipxact:name>EFUSE_BANK_INIT_TIME</ipxact:name>
+                <ipxact:description>eFuse bank initialization time. Number of cycles to wait for the OTP macro to initialize before sensing can begin.</ipxact:description>
+                <ipxact:addressOffset>'h0</ipxact:addressOffset>
+                <ipxact:size>32</ipxact:size>
+                <ipxact:field>
+                  <ipxact:name>init_time</ipxact:name>
+                  <ipxact:description>Most OTP have a initialization time before sensing can be done</ipxact:description>
+                  <ipxact:bitOffset>0</ipxact:bitOffset>
+                  <ipxact:resets>
+                    <ipxact:reset>
+                      <ipxact:value>'h20</ipxact:value>
+                    </ipxact:reset>
+                  </ipxact:resets>
+                  <ipxact:bitWidth>32</ipxact:bitWidth>
+                  <ipxact:access>read-write</ipxact:access>
+                </ipxact:field>
+              </ipxact:register>
+            </ipxact:registerFile>
+            <ipxact:registerFile>
+              <ipxact:name>straps</ipxact:name>
+              <ipxact:displayName>Straps Address Map</ipxact:displayName>
+              <ipxact:description>Configuration strap values. How they are captured is adopter-defined.</ipxact:description>
+              <ipxact:addressOffset>'h3000</ipxact:addressOffset>
+              <ipxact:range>'h8</ipxact:range>
+              <ipxact:register>
+                <ipxact:name>STRAPS_LO</ipxact:name>
+                <ipxact:addressOffset>'h0</ipxact:addressOffset>
+                <ipxact:size>32</ipxact:size>
+                <ipxact:field>
+                  <ipxact:name>straps</ipxact:name>
+                  <ipxact:description>Configuration straps 0 - 31.
+Bits 0 - 10, 16, 17, 24 and 27 - 31 have no strap assigned; no strap function
+consumes them.
+Strap assignments in this range:
+* bit 11: CHIP_ID[3] - CHIP_ID is the I2C/I3C static address strap
+* bit 12: CHIP_ID[2] - CHIP_ID is the I2C/I3C static address strap
+* bit 13: BYPASS_SRAM_REPAIR - Bypass the memory repair process
+* bit 14: TEST_EN - Enable DFT test mode
+* bit 15: CHIP_ID[1] - CHIP_ID is the I2C/I3C static address strap
+* bit 18: BOOT_I2C - Default alternate boot channel is I3C0 and can be reconfigured to use I2C0
+* bit 19: BOOT_RECOVERY - Use I3C0 for BL1 boot image loading instead of the SPI channel
+* bit 20: BL0_PLLCLK - Use the PLL generated clock by default in BL0, and override to use the reference clock when this strap is asserted
+* bit 21: STATUS_RPT_DISABLE - Disable BL0 status reporting. It is on by default
+* bit 22: SPI_USE_FUSED_CONFIG - Use the SPI configuration values stored in the fuse field
+* bit 23: CHIP_ID[0] - CHIP_ID is the I2C/I3C static address strap
+* bit 25: PRIMARY_CHIPLET - Identifies the primary chiplet, the boot master
+* bit 26: SRAM_AUTO_ZERO_DISABLE - Disable auto zero of the SMC SRAM when asserted</ipxact:description>
+                  <ipxact:bitOffset>0</ipxact:bitOffset>
+                  <ipxact:resets>
+                    <ipxact:reset>
+                      <ipxact:value>'h0</ipxact:value>
+                    </ipxact:reset>
+                  </ipxact:resets>
+                  <ipxact:bitWidth>32</ipxact:bitWidth>
+                  <ipxact:volatile>true</ipxact:volatile>
+                  <ipxact:access>read-only</ipxact:access>
+                </ipxact:field>
+              </ipxact:register>
+              <ipxact:register>
+                <ipxact:name>STRAPS_HI</ipxact:name>
+                <ipxact:addressOffset>'h4</ipxact:addressOffset>
+                <ipxact:size>32</ipxact:size>
+                <ipxact:field>
+                  <ipxact:name>straps</ipxact:name>
+                  <ipxact:description>Configuration straps 32 - 60.
+All bits other than those listed below have no strap assigned; no strap
+function consumes them.
+Strap assignments in this range:
+* bit 22: MBIST_BYPASS - Ignore results of Power-On MBIST for boot
+* bit 26: ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM</ipxact:description>
+                  <ipxact:bitOffset>0</ipxact:bitOffset>
+                  <ipxact:resets>
+                    <ipxact:reset>
+                      <ipxact:value>'h0</ipxact:value>
+                    </ipxact:reset>
+                  </ipxact:resets>
+                  <ipxact:bitWidth>29</ipxact:bitWidth>
+                  <ipxact:volatile>true</ipxact:volatile>
+                  <ipxact:access>read-only</ipxact:access>
+                </ipxact:field>
+              </ipxact:register>
+            </ipxact:registerFile>
+          </ipxact:registerFile>
+          <ipxact:registerFile>
+            <ipxact:name>supplementary</ipxact:name>
+            <ipxact:displayName>SMC External Supplementary Region Address Map</ipxact:displayName>
+            <ipxact:description>Supplementary adopter blocks in the external window: extra controllers, extra GPIO registers, and PVT.</ipxact:description>
+            <ipxact:addressOffset>'h4000</ipxact:addressOffset>
+            <ipxact:range>'h2548</ipxact:range>
+          </ipxact:registerFile>
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_plic</ipxact:name>

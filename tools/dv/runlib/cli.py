@@ -2516,13 +2516,8 @@ def combine_flow(
         f"commit={commit[:12]} inputs="
         + ",".join(repo_rel(root, run.run_dir) or str(run.run_dir) for run in plan.runs),
     )
-    for run in plan.runs:
-        if run.dirty:
-            console.event(
-                "warning",
-                f"{repo_rel(root, run.run_dir)} was recorded on a dirty tree",
-                force=True,
-            )
+    for warning in plan.tree_warnings(root):
+        console.event("warning", warning, force=True)
     run_started = time.monotonic()
     results: list[StageResult] = []
     for stage in ("cov_merge", "cov_report"):
@@ -2543,7 +2538,7 @@ def combine_flow(
         label="combine",
         args=args,
         versions=tool_versions(root),
-        git_metadata=git_provenance(root, run_dir),
+        git_metadata=git_provenance(root, run_dir, archive=not args.dry_run),
         planned_leaves=0,
     )
     if not args.dry_run:
@@ -3332,7 +3327,8 @@ def run_flow(
     run_versions = tool_versions(root)
     # Archives the uncommitted diff beside result.json when the tree is dirty, so the
     # commit hash plus that diff identify the sources every leaf of this run compiled.
-    run_git = git_provenance(root, run_dir)
+    # A coverage replay keeps the record and archive of the run it replays.
+    run_git = git_provenance(root, run_dir, archive=not (replaying_coverage or args.dry_run))
 
     console = Console(args.ui, quiet=args.quiet, verbose=args.verbose)
     args._ui_console = console

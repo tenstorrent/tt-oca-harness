@@ -172,20 +172,30 @@ module smc_ip_integration (
     // smc.sv presents the adopter blocks as a single AXI-Lite window; the map
     // inside it is the adopter contract, so the decode lives here where a
     // vendor integration replaces it wholesale. Offsets are relative to the
-    // window base and follow the smc_external mandatory map.
+    // window base and come from the generated smc_external map.
     //=========================================================================
 
-    // The vendor eFuse shim CSR occupies the base of the window, so everything
-    // else sits 0x1000 up from it. The shim is not decoded here: the peripheral
-    // crossbar diverts it to the eFuse controller before the external port.
-    localparam int unsigned ExtGpioCtrlBase   = 'h1100;
-    localparam int unsigned ExtGpioCtrlStride = 'h0020;
-    localparam int unsigned ExtGpioCtrlNum    = 65;
-    localparam int unsigned ExtPllBase        = 'h2000;
-    localparam int unsigned ExtPvtBase        = 'h3000;
-    localparam int unsigned ExtStrapsBase     = 'h5800;
-    localparam int unsigned ExtWindowSize     =
-        32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SIZE);
+    // The vendor eFuse shim CSR occupies the base of the window. The shim is not
+    // decoded here: the peripheral crossbar diverts it to the eFuse controller
+    // before the external port.
+    localparam longint unsigned ExtBase = smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR;
+    localparam int unsigned ExtGpioCtrlBase = 32'(
+        smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_BASE_ADDR(0) - ExtBase);
+    localparam int unsigned ExtGpioCtrlSize = 32'(
+        smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_TOTAL_SIZE);
+    localparam int unsigned ExtPllBase = 32'(
+        smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_BASE_ADDR - ExtBase);
+    localparam int unsigned ExtPllSize = 32'(
+        smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_SIZE);
+    localparam int unsigned ExtPvtBase = 32'(
+        smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_BASE_ADDR - ExtBase);
+    localparam int unsigned ExtPvtSize = 32'(
+        smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_SIZE);
+    localparam int unsigned ExtStrapsBase = 32'(
+        smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_BASE_ADDR - ExtBase);
+    localparam int unsigned ExtStrapsSize = 32'(
+        smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_SIZE);
+    localparam int unsigned ExtWindowSize = smc_pkg::SmcExternalWindowSize;
 
     // Targets, in demux port order. Anything unclaimed lands on ExtUnmapped,
     // which answers DECERR.
@@ -204,15 +214,11 @@ module smc_ip_integration (
         input logic [smc_pkg::SmcLocalAddrWidth-1:0] addr
     );
         automatic logic [smc_pkg::SmcLocalAddrWidth-1:0] off = addr % ExtWindowSize;
-        if (off >= ExtStrapsBase &&
-            off < ExtStrapsBase + straps_reg_pkg::STRAPS_REG_SIZE) return ExtStraps;
-        else if (off >= ExtPvtBase &&
-                 off < ExtPvtBase + pvt_wrap_addrmap_pkg::PVT_WRAP_SIZE) return ExtPvt;
-        else if (off >= ExtPllBase &&
-                 off < ExtPllBase + pll_wrap_addrmap_pkg::PLL_WRAP_SIZE) return ExtPll;
-        else if (off >= ExtGpioCtrlBase &&
-                 off < ExtGpioCtrlBase + ExtGpioCtrlNum * ExtGpioCtrlStride) return ExtGpioCtrl;
-        else                                                                 return ExtUnmapped;
+        if (off >= ExtStrapsBase && off < ExtStrapsBase + ExtStrapsSize)          return ExtStraps;
+        else if (off >= ExtPvtBase && off < ExtPvtBase + ExtPvtSize)                return ExtPvt;
+        else if (off >= ExtPllBase && off < ExtPllBase + ExtPllSize)                return ExtPll;
+        else if (off >= ExtGpioCtrlBase && off < ExtGpioCtrlBase + ExtGpioCtrlSize) return ExtGpioCtrl;
+        else                                                                        return ExtUnmapped;
     endfunction
 
     assign ext_aw_select = ext_decode(smc_external_req_i.aw.addr);
@@ -276,14 +282,14 @@ module smc_ip_integration (
     //////////////////////////////
     // These rom_straps are intentionally undriven in RTL. They are to be driven/configured in DV/FW (cocotb)
 
-    logic [smc_pkg::NumBondedGpio-1:0] rom_straps;
+    logic [$bits(straps_reg_pkg::straps__in_t)-1:0] rom_straps;
     assign rom_straps = '0;
 
     straps_reg_pkg::straps__in_t straps_hwif_in;
 
     always_comb begin
         straps_hwif_in.STRAPS_LO.straps.next = rom_straps[31:0];
-        straps_hwif_in.STRAPS_HI.straps.next = rom_straps[smc_pkg::NumBondedGpio-1:32];
+        straps_hwif_in.STRAPS_HI.straps.next = rom_straps[$high(rom_straps):32];
     end
 
     straps_reg u_straps_reg (

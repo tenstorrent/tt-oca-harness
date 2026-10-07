@@ -675,7 +675,7 @@ module sep_uvm_top
 
         // SMC address configuration tied to 0 (identity remap).
 `ifdef SEP_SMC_MEM_MODEL
-        // Route the SMC region (scratch 0x4003_9080+, straps 0x4040_5800, SMC SRAM
+        // Route the SMC region (scratch 0x4003_9080+, straps 0x4040_3000, SMC SRAM
         // 0x4006_0000+ manifest) out the sep_ext_to_smc AXI to the TB's SMC
         // responder. The ROM boots secondary (non-SPI) and DMAs the manifest+BL1
         // from SMC SRAM.
@@ -742,7 +742,9 @@ module sep_uvm_top
     // existing window.
     localparam logic [63:0] SmcLocalBase = 64'hC000_0000;
     localparam logic [63:0] SmcSepViewBase = 64'h4000_0000;
-    localparam logic [55:0] SmcStrapsLoAddr = 56'h4040_5800;
+    localparam logic [55:0] SmcStrapsLoAddr = 56'(
+        smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_BASE_ADDR - SmcLocalBase +
+        SmcSepViewBase);
     localparam logic [55:0] SmcStrapsHiAddr = SmcStrapsLoAddr + 4;
     localparam int unsigned SmcNumWindows = 7;
     // {base, size} pairs, SEP-side addresses.
@@ -768,7 +770,7 @@ module sep_uvm_top
         56'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE),
         56'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE),
         56'(smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_SIZE),
-        56'h0000_0008
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_SIZE)
     };
 
     // Counted as well as reported: a cocotb test can require this to be 0, so the

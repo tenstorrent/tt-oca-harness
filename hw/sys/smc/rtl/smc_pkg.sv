@@ -16,9 +16,7 @@ package smc_pkg;
   // Include register header file
 
   // Peripheral parameters
-  localparam int unsigned NumBondedGpio = 61;
-  localparam int unsigned NumUnbondedGpio = 4;
-  localparam int unsigned NumGpioWraps = NumBondedGpio + NumUnbondedGpio;
+  localparam int unsigned NumGpioWraps = 65;
 
   // DFD parameters
   localparam int unsigned XtriggerWidth = 2;
@@ -35,6 +33,10 @@ package smc_pkg;
   // Full AXI
   localparam int unsigned AxiAddrWidth = 56;  // General AXI address width.
   localparam int unsigned SmcLocalAddrWidth = 32;  // Within SMC.
+
+  // The adopter external window spans this much from SMC_TOP_SMC_EXTERNAL_BASE_ADDR,
+  // however much of it the smc_external map allocates.
+  localparam int unsigned SmcExternalWindowSize = 32'h40_0000;
 
   localparam int unsigned AxiDataWidth = 64;
   localparam int unsigned AxiStrbWidth = AxiDataWidth / 8;
